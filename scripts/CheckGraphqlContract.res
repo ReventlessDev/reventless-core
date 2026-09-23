@@ -62,7 +62,24 @@ let contracts = [
 ]
 
 let bootTimeoutMs = 120_000.0
-let update = NodeProcess.argv->Array.includes("--update")
+
+// ── Arguments ───────────────────────────────────────────────────────────────
+
+type args = {update: bool}
+
+let usage = `Usage: check:graphql [--update]
+
+  Boots the hybrid example's local platform and compares both GraphQL
+  contracts with their goldens. Drift exits 1.
+
+  --update  rewrite the goldens instead (pnpm run check:graphql:update)`
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(~bools=["update"], argv)
+  ->Result.flatMap(Reventless.CliArgs.noPositionals)
+  ->Result.map(a => {update: a->Reventless.CliArgs.bool("update")})
+
+let cli: Reventless.CliArgs.cli<args> = {bin: "check:graphql", usage, parse: parseArgs}
 
 // ── Introspection ───────────────────────────────────────────────────────────
 
@@ -266,81 +283,83 @@ let driftReport = (~golden: string, ~actual: string): string => {
 
 // ── Entry point ─────────────────────────────────────────────────────────────
 
-let main = async () => {
-  // The platform's own `serve` script silences this one, and it is the same
-  // process being started here — without it every run prints Node's SQLite
-  // experimental warning through the inherited stderr. Appended rather than
-  // set, so a NODE_OPTIONS the caller already relies on survives.
-  let nodeOptions = switch NodeProcess.env->Dict.get("NODE_OPTIONS") {
-  | Some(existing) => `${existing} --disable-warning=ExperimentalWarning`
-  | None => "--disable-warning=ExperimentalWarning"
-  }
-
-  let env =
-    NodeProcess.env
-    ->Dict.toArray
-    ->Array.concat([
-      ("NODE_OPTIONS", nodeOptions),
-      ("REVENTLESS_LOCAL_BACKEND", "memory"),
-      ("REVENTLESS_DOMAIN_PORT", domainPort),
-      ("REVENTLESS_PLATFORM_PORT", platformPort),
-      ("REVENTLESS_DOMAIN_MCP_PORT", domainMcpPort),
-      ("REVENTLESS_PLATFORM_MCP_PORT", platformMcpPort),
-    ])
-    ->Dict.fromArray
-
-  let child = NodeChildProcess.spawn(
-    "node",
-    ["src/Main.res.mjs"],
-    {
-      cwd: platformDir,
-      env,
-      // stdout discarded, stderr through: a clean run stays quiet, and a boot
-      // failure still says why on its way past.
-      stdio: ["ignore", "ignore", "inherit"],
-    },
-  )
-
-  let outcome = await waitForContracts(child, ~deadline=Date.now() +. bootTimeoutMs)
-  let _ = child->NodeChildProcess.kill("SIGTERM")
-
-  switch outcome {
-  | Error(msg) =>
-    Console.error(msg)
-    NodeProcess.exit(1)
-  | Ok(sdl) =>
-    let drifted = []
-    contracts->Array.forEachWithIndex((contract, i) => {
-      if !(contract.dir->NodeFs.existsSync) {
-        NodeFs.mkdirSync(contract.dir, {recursive: true})
-      }
-      let path = NodePath.join([contract.dir, contract.file])
-      let actual = sdl->Array.getUnsafe(i)->String.trim ++ "\n"
-      let existed = path->NodeFs.existsSync
-
-      if update || !existed {
-        NodeFs.writeFileSync(path, actual)
-        Console.log(`${existed ? "updated" : "wrote"} ${contract.file}`)
-      } else {
-        let golden = path->NodeFs.readFileSync
-        if golden == actual {
-          Console.log(`ok ${contract.file}`)
-        } else {
-          drifted->Array.push(contract.file)
-          Console.error(`\ndrift in ${contract.file}\n${driftReport(~golden, ~actual)}`)
-        }
-      }
-    })
-
-    if Array.length(drifted) > 0 {
-      Console.error(
-        `\n${drifted->Array.length->Int.toString} GraphQL contract(s) changed. ` ++
-        `If the change is intended, run\n` ++
-        `  pnpm run check:graphql:update\n` ++ `and commit the goldens alongside the change that moved them.`,
-      )
-      NodeProcess.exit(1)
+let main = () =>
+  Reventless.CliArgs.run(cli, async ({update}) => {
+    // The platform's own `serve` script silences this one, and it is the same
+    // process being started here — without it every run prints Node's SQLite
+    // experimental warning through the inherited stderr. Appended rather than
+    // set, so a NODE_OPTIONS the caller already relies on survives.
+    let nodeOptions = switch NodeProcess.env->Dict.get("NODE_OPTIONS") {
+    | Some(existing) => `${existing} --disable-warning=ExperimentalWarning`
+    | None => "--disable-warning=ExperimentalWarning"
     }
-  }
-}
 
-let _ = main()
+    let env =
+      NodeProcess.env
+      ->Dict.toArray
+      ->Array.concat([
+        ("NODE_OPTIONS", nodeOptions),
+        ("REVENTLESS_LOCAL_BACKEND", "memory"),
+        ("REVENTLESS_DOMAIN_PORT", domainPort),
+        ("REVENTLESS_PLATFORM_PORT", platformPort),
+        ("REVENTLESS_DOMAIN_MCP_PORT", domainMcpPort),
+        ("REVENTLESS_PLATFORM_MCP_PORT", platformMcpPort),
+      ])
+      ->Dict.fromArray
+
+    let child = NodeChildProcess.spawn(
+      "node",
+      ["src/Main.res.mjs"],
+      {
+        cwd: platformDir,
+        env,
+        // stdout discarded, stderr through: a clean run stays quiet, and a boot
+        // failure still says why on its way past.
+        stdio: ["ignore", "ignore", "inherit"],
+      },
+    )
+
+    let outcome = await waitForContracts(child, ~deadline=Date.now() +. bootTimeoutMs)
+    let _ = child->NodeChildProcess.kill("SIGTERM")
+
+    switch outcome {
+    | Error(msg) =>
+      Console.error(msg)
+      NodeProcess.exit(1)
+    | Ok(sdl) =>
+      let drifted = []
+      contracts->Array.forEachWithIndex((contract, i) => {
+        if !(contract.dir->NodeFs.existsSync) {
+          NodeFs.mkdirSync(contract.dir, {recursive: true})
+        }
+        let path = NodePath.join([contract.dir, contract.file])
+        let actual = sdl->Array.getUnsafe(i)->String.trim ++ "\n"
+        let existed = path->NodeFs.existsSync
+
+        if update || !existed {
+          NodeFs.writeFileSync(path, actual)
+          Console.log(`${existed ? "updated" : "wrote"} ${contract.file}`)
+        } else {
+          let golden = path->NodeFs.readFileSync
+          if golden == actual {
+            Console.log(`ok ${contract.file}`)
+          } else {
+            drifted->Array.push(contract.file)
+            Console.error(`\ndrift in ${contract.file}\n${driftReport(~golden, ~actual)}`)
+          }
+        }
+      })
+
+      if Array.length(drifted) > 0 {
+        Console.error(
+          `\n${drifted->Array.length->Int.toString} GraphQL contract(s) changed. ` ++
+          `If the change is intended, run\n` ++
+          `  pnpm run check:graphql:update\n` ++ `and commit the goldens alongside the change that moved them.`,
+        )
+        NodeProcess.exit(1)
+      }
+    }
+  })
+
+// No top-level call: `./check-graphql-contract.mjs` invokes [main], so a test can
+// import this module.

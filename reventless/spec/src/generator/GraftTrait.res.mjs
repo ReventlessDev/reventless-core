@@ -3,11 +3,12 @@
 import * as Nodefs from "node:fs";
 import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
-import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodemodule from "node:module";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
@@ -25,35 +26,6 @@ let usage = `Usage: graft-trait <trait-package> --into <srcDir> --tests <testsDi
 
   Every other --key value is a field of the trait's config. The trait validates
   them, so run it once to be told what it wants.`;
-
-function parseFlags(args) {
-  let out = {};
-  let go = _i => {
-    while (true) {
-      let i = _i;
-      let arg = args[i];
-      if (arg === undefined) {
-        return;
-      }
-      if (arg.startsWith("--")) {
-        let key = arg.slice(2, arg.length);
-        let value = args[i + 1 | 0];
-        if (value !== undefined && !value.startsWith("--")) {
-          out[key] = value;
-          _i = i + 2 | 0;
-          continue;
-        }
-        out[key] = true;
-        _i = i + 1 | 0;
-        continue;
-      }
-      _i = i + 1 | 0;
-      continue;
-    };
-  };
-  go(0);
-  return out;
-}
 
 function splitList(value) {
   return value.split(",").map(part => part.trim()).filter(part => part !== "").map(prim => prim);
@@ -82,112 +54,143 @@ function arrayFieldNames(schema) {
   }
 }
 
-async function main() {
-  let argv = process.argv.slice(2, process.argv.length);
-  let traitPackage = argv[0];
-  if (traitPackage !== undefined) {
-    switch (traitPackage) {
-      case "" :
-      case "--help" :
-      case "-h" :
-        break;
-      default:
-        let flags = parseFlags(argv.slice(1, argv.length));
-        let stringFlag = key => Stdlib_Option.flatMap(flags[key], Stdlib_JSON.Decode.string);
-        let into = stringFlag("into");
-        let tests = stringFlag("tests");
-        let dryRun = Stdlib_Option.isSome(flags["dry-run"]);
-        if (into === undefined) {
-          return fail("--into and --tests are both required.\n\n" + usage);
-        }
-        if (tests === undefined) {
-          return fail("--into and --tests are both required.\n\n" + usage);
-        }
-        let scaffoldModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1, part.length)).join("") + "_Scaffold";
-        let specifier = traitPackage + `/src/` + scaffoldModule + `.res.mjs`;
-        let modulePath;
-        try {
-          modulePath = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
-        } catch (exn) {
-          modulePath = specifier;
-        }
-        let scaffold;
-        try {
-          scaffold = await import(Nodeurl.pathToFileURL(modulePath).href);
-        } catch (exn$1) {
-          fail(traitPackage + ` ships no scaffold (looked for ` + specifier + `).\n  Not every trait has one — a trait whose graft is all patches has nothing to write.\n  Write the graft by hand instead; its README says what the host must declare.`);
-          scaffold = undefined;
-        }
-        let listFields = arrayFieldNames(scaffold.configSchema);
-        let raw = {};
-        Object.entries(flags).forEach(param => {
-          let value = param[1];
-          let key = param[0];
-          let match = listFields.includes(key);
-          let match$1 = Stdlib_JSON.Decode.string(value);
-          if (match && match$1 !== undefined) {
-            raw[key] = splitList(match$1);
-          } else {
-            raw[key] = value;
-          }
-        });
-        [
-          "into",
-          "tests",
-          "dry-run"
-        ].forEach(k => Stdlib_Dict.$$delete(raw, k));
-        let config;
-        try {
-          config = Util_Sury$Reventless.fromJson(raw, scaffold.configSchema);
-        } catch (raw_exn) {
-          let exn$2 = Primitive_exceptions.internalToException(raw_exn);
-          fail(traitPackage + ` refused this config: ` + Util_Sury$Reventless.exnMessage(exn$2, undefined) + `\n  Every --key is a field of the trait's own config; it decides what it needs.`);
-          config = undefined;
-        }
-        let match = scaffold.emit(config, into, tests);
-        let patches = match.patches;
-        match.files.forEach(param => {
-          let contents = param.contents;
-          let path = param.path;
-          if (dryRun) {
-            console.log(`Would write: ` + path + ` (` + contents.split("\n").length.toString() + ` lines)`);
-          } else if (Nodefs.existsSync(path)) {
-            console.log(`Skipped (exists): ` + path);
-          } else {
-            Nodefs.mkdirSync(Nodepath.dirname(path), {
-              recursive: true
-            });
-            Nodefs.writeFileSync(path, contents, "utf8");
-            console.log(`Wrote: ` + path);
-          }
-        });
-        if (patches.length !== 0) {
-          console.log("");
-          console.log("── Paste these; they go into files you already own ──────────────");
-          patches.forEach(param => {
-            console.log("");
-            console.log(`# ` + param.into + ` — ` + param.at);
-            console.log(param.contents);
-          });
-          console.log("");
-          console.log("Printed rather than written: placing an arm in an existing ordered `switch`\nis an AST operation, and a text splice into the wrong arm is a bug the\ncompiler cannot see.");
-        }
-        process.exit(0);
-        return;
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "into",
+    "tests"
+  ], ["dry-run"], undefined, true, argv), a => CliArgs$Reventless.atMost(a, 1)), a => {
+    let match = CliArgs$Reventless.positionals(a)[0];
+    let match$1 = CliArgs$Reventless.string(a, "into");
+    let match$2 = CliArgs$Reventless.string(a, "tests");
+    if (match === undefined) {
+      return {
+        TAG: "Error",
+        _0: "<trait-package> is required."
+      };
     }
-  }
-  console.log(usage);
-  process.exit(argv.length === 0 ? 1 : 0);
+    if (match === "") {
+      return {
+        TAG: "Error",
+        _0: "<trait-package> is required."
+      };
+    }
+    if (match$1 === undefined) {
+      return {
+        TAG: "Error",
+        _0: "--into and --tests are both required."
+      };
+    }
+    if (match$2 === undefined) {
+      return {
+        TAG: "Error",
+        _0: "--into and --tests are both required."
+      };
+    }
+    let fields = {};
+    CliArgs$Reventless.pairs(a).forEach(param => {
+      let value = param[1];
+      let tmp;
+      tmp = typeof value !== "object" ? true : value._0;
+      fields[param[0]] = tmp;
+    });
+    return {
+      TAG: "Ok",
+      _0: {
+        traitPackage: match,
+        into: match$1,
+        tests: match$2,
+        dryRun: CliArgs$Reventless.bool(a, "dry-run"),
+        fields: fields
+      }
+    };
+  });
 }
 
-await main();
+let cli = {
+  bin: "graft-trait",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let dryRun = param.dryRun;
+    let traitPackage = param.traitPackage;
+    let scaffoldModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1, part.length)).join("") + "_Scaffold";
+    let specifier = traitPackage + `/src/` + scaffoldModule + `.res.mjs`;
+    let modulePath;
+    try {
+      modulePath = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
+    } catch (exn) {
+      modulePath = specifier;
+    }
+    let scaffold;
+    try {
+      scaffold = await import(Nodeurl.pathToFileURL(modulePath).href);
+    } catch (exn$1) {
+      fail(traitPackage + ` ships no scaffold (looked for ` + specifier + `).\n  Not every trait has one — a trait whose graft is all patches has nothing to write.\n  Write the graft by hand instead; its README says what the host must declare.`);
+      scaffold = undefined;
+    }
+    let listFields = arrayFieldNames(scaffold.configSchema);
+    let raw = {};
+    Object.entries(param.fields).forEach(param => {
+      let value = param[1];
+      let key = param[0];
+      let match = listFields.includes(key);
+      let match$1 = Stdlib_JSON.Decode.string(value);
+      if (match && match$1 !== undefined) {
+        raw[key] = splitList(match$1);
+      } else {
+        raw[key] = value;
+      }
+    });
+    let config;
+    try {
+      config = Util_Sury$Reventless.fromJson(raw, scaffold.configSchema);
+    } catch (raw_exn) {
+      let exn$2 = Primitive_exceptions.internalToException(raw_exn);
+      fail(traitPackage + ` refused this config: ` + Util_Sury$Reventless.exnMessage(exn$2, undefined) + `\n  Every --key is a field of the trait's own config; it decides what it needs.`);
+      config = undefined;
+    }
+    let match = scaffold.emit(config, param.into, param.tests);
+    let patches = match.patches;
+    match.files.forEach(param => {
+      let contents = param.contents;
+      let path = param.path;
+      if (dryRun) {
+        console.log(`Would write: ` + path + ` (` + contents.split("\n").length.toString() + ` lines)`);
+      } else if (Nodefs.existsSync(path)) {
+        console.log(`Skipped (exists): ` + path);
+      } else {
+        Nodefs.mkdirSync(Nodepath.dirname(path), {
+          recursive: true
+        });
+        Nodefs.writeFileSync(path, contents, "utf8");
+        console.log(`Wrote: ` + path);
+      }
+    });
+    if (patches.length !== 0) {
+      console.log("");
+      console.log("── Paste these; they go into files you already own ──────────────");
+      patches.forEach(param => {
+        console.log("");
+        console.log(`# ` + param.into + ` — ` + param.at);
+        console.log(param.contents);
+      });
+      console.log("");
+      console.log("Printed rather than written: placing an arm in an existing ordered `switch`\nis an AST operation, and a text splice into the wrong arm is a bug the\ncompiler cannot see.");
+    }
+    process.exit(0);
+  });
+}
 
 export {
   fail,
   usage,
-  parseFlags,
   splitList,
   arrayFieldNames,
+  parseArgs,
+  cli,
   main,
 }
-/*  Not a pure module */
+/* node:fs Not a pure module */

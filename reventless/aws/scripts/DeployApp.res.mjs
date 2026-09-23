@@ -16,6 +16,7 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as ClientSsm from "@aws-sdk/client-ssm";
 import * as ClientSts from "@aws-sdk/client-sts";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -30,131 +31,68 @@ import * as IndexJs from "@pulumi/pulumi/automation/index.js";
 let defaultStack = "dev";
 
 function parseArgs(argv) {
-  let acc = {
-    TAG: "Ok",
-    _0: {
+  return Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "manifest",
+    "stack"
+  ], undefined, undefined, undefined, argv), a => {
+    let help = CliArgs$Reventless.help(a);
+    let args_manifest = CliArgs$Reventless.string(a, "manifest");
+    let args_stack = Stdlib_Option.getOr(CliArgs$Reventless.string(a, "stack"), defaultStack);
+    let args = {
       command: undefined,
-      manifest: undefined,
-      stack: defaultStack,
-      help: false
+      manifest: args_manifest,
+      stack: args_stack,
+      help: help
+    };
+    let positionals = CliArgs$Reventless.positionals(a);
+    let match = positionals[0];
+    let match$1 = positionals[1];
+    if (match$1 !== undefined) {
+      return CliArgs$Reventless.extra(match$1);
     }
-  };
-  let i = 0;
-  let count = argv.length;
-  while (i < count) {
-    let flag = argv[i];
-    let value = argv[i + 1 | 0];
-    let match = acc;
-    let exit = 0;
-    if (match.TAG === "Ok") {
-      let a = match._0;
-      let exit$1 = 0;
-      switch (flag) {
-        case "--manifest" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                command: a.command,
-                manifest: value,
-                stack: a.stack,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--stack" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                command: a.command,
-                manifest: a.manifest,
-                stack: value,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--help" :
-        case "-h" :
-          exit$1 = 2;
-          break;
-        case "down" :
-          if (a.command === undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                command: "Down",
-                manifest: a.manifest,
-                stack: a.stack,
-                help: a.help
-              }
-            };
-            i = i + 1 | 0;
-          } else {
-            exit$1 = 3;
-          }
-          break;
-        case "up" :
-          if (a.command === undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                command: "Up",
-                manifest: a.manifest,
-                stack: a.stack,
-                help: a.help
-              }
-            };
-            i = i + 1 | 0;
-          } else {
-            exit$1 = 3;
-          }
-          break;
-        default:
-          exit$1 = 3;
+    if (match === undefined) {
+      if (help) {
+        return {
+          TAG: "Ok",
+          _0: args
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "say `up` or `down`"
+        };
       }
-      switch (exit$1) {
-        case 2 :
-          acc = {
-            TAG: "Ok",
-            _0: {
-              command: a.command,
-              manifest: a.manifest,
-              stack: a.stack,
-              help: true
-            }
-          };
-          i = i + 1 | 0;
-          break;
-        case 3 :
-          acc = {
-            TAG: "Error",
-            _0: `unknown argument "` + flag + `"`
-          };
-          break;
-      }
-    } else {
-      i = count;
     }
-    if (exit === 1) {
-      acc = {
-        TAG: "Error",
-        _0: flag + ` needs a value`
-      };
+    switch (match) {
+      case "down" :
+        return {
+          TAG: "Ok",
+          _0: {
+            command: "Down",
+            manifest: args_manifest,
+            stack: args_stack,
+            help: help
+          }
+        };
+      case "up" :
+        return {
+          TAG: "Ok",
+          _0: {
+            command: "Up",
+            manifest: args_manifest,
+            stack: args_stack,
+            help: help
+          }
+        };
+      default:
+        return CliArgs$Reventless.extra(match);
     }
-  };
-  return acc;
+  });
 }
 
 let usage = `
+Usage: deploy-app up|down [--manifest <path>] [--stack <name>]
+
 Deploy an app to AWS, or remove it again.
 
   deploy-app up     Deploy the platform and every plugin, bake the component
@@ -907,32 +845,20 @@ async function down(manifest, stack) {
   };
 }
 
-async function run() {
-  let e = parseArgs(process.argv.slice(2, process.argv.length));
+async function run(param) {
+  let stack = param.stack;
+  let command = param.command;
+  let e = DeployManifest$ReventlessAws.load(Stdlib_Option.getOr(param.manifest, DeployManifest$ReventlessAws.defaultFile));
   if (e.TAG !== "Ok") {
     return e;
-  }
-  let args = e._0;
-  let command = args.command;
-  if (args.help) {
-    console.log(usage);
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
   }
   if (command === undefined) {
     return {
       TAG: "Error",
-      _0: "say `up` or `down` (--help for more)"
+      _0: "say `up` or `down`"
     };
   }
-  let stack = args.stack;
-  let e$1 = DeployManifest$ReventlessAws.load(Stdlib_Option.getOr(args.manifest, DeployManifest$ReventlessAws.defaultFile));
-  if (e$1.TAG !== "Ok") {
-    return e$1;
-  }
-  let manifest = e$1._0;
+  let manifest = e._0;
   if (command === "Up") {
     return await up(manifest, stack);
   } else {
@@ -940,21 +866,29 @@ async function run() {
   }
 }
 
-async function main() {
-  let message;
-  try {
-    message = await run();
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    console.error(`deploy-app: ` + Util_AwsError$ReventlessAws.describe(exn));
+let cli = {
+  bin: "deploy-app",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async args => {
+    let message;
+    try {
+      message = await run(args);
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      console.error(`deploy-app: ` + Util_AwsError$ReventlessAws.describe(exn));
+      process.exit(1);
+      return;
+    }
+    if (message.TAG === "Ok") {
+      return;
+    }
+    console.error(`deploy-app: ` + message._0);
     process.exit(1);
-    return;
-  }
-  if (message.TAG === "Ok") {
-    return;
-  }
-  console.error(`deploy-app: ` + message._0);
-  process.exit(1);
+  });
 }
 
 let Automation;
@@ -1010,6 +944,7 @@ export {
   up,
   down,
   run,
+  cli,
   main,
 }
 /* yaml Not a pure module */

@@ -48,52 +48,34 @@ let defaultPoolName = "ReventlessIdentity"
 /** Parsed rather than positional, and unknown flags are an error: a typo'd
   `--provider-id` that parsed as "absent" would create a *second* pool beside the
   one the operator meant to extend. */
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(
-    Ok({
-      poolName: defaultPoolName,
-      providerId: None,
-      loginIdentifier: Auth_LoginIdentifier.default,
-      signUpMode: Auth_SignUpMode.default,
-      help: false,
-    }),
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(
+    ~strings=["name", "provider-id", "login-identifier", "sign-up-mode"],
+    argv,
   )
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "--name", Some(v)) =>
-      acc := Ok({...a, poolName: v})
-      i := i.contents + 2
-    | (Ok(a), "--provider-id", Some(v)) =>
-      acc := Ok({...a, providerId: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--login-identifier", Some(v)) =>
-      acc :=
-        Auth_LoginIdentifier.parse(Some(v))->Result.map(loginIdentifier => {
-          ...a,
-          loginIdentifier,
-        })
-      i := i.contents + 2
-    | (Ok(a), "--sign-up-mode", Some(v)) =>
-      acc := Auth_SignUpMode.parse(Some(v))->Result.map(signUpMode => {...a, signUpMode})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--name", None)
-    | (Ok(_), "--provider-id", None)
-    | (Ok(_), "--login-identifier", None)
-    | (Ok(_), "--sign-up-mode", None) =>
-      acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
+  ->Result.flatMap(Reventless.CliArgs.noPositionals)
+  ->Result.flatMap(a => {
+    let given = name => a->Reventless.CliArgs.string(name)
+    let loginIdentifier = switch given("login-identifier") {
+    | None => Ok(Auth_LoginIdentifier.default)
+    | Some(_) as v => Auth_LoginIdentifier.parse(v)
     }
-  }
-  acc.contents
-}
+    let signUpMode = switch given("sign-up-mode") {
+    | None => Ok(Auth_SignUpMode.default)
+    | Some(_) as v => Auth_SignUpMode.parse(v)
+    }
+    switch (loginIdentifier, signUpMode) {
+    | (Error(_) as e, _) | (_, Error(_) as e) => e
+    | (Ok(loginIdentifier), Ok(signUpMode)) =>
+      Ok({
+        poolName: given("name")->Option.getOr(defaultPoolName),
+        providerId: given("provider-id"),
+        loginIdentifier,
+        signUpMode,
+        help: a->Reventless.CliArgs.help,
+      })
+    }
+  })
 
 let _loginIdentifiers =
   Auth_LoginIdentifier.all->Array.map(Auth_LoginIdentifier.toString)->Array.join(" | ")
@@ -105,6 +87,8 @@ let _signUpModes = Auth_SignUpMode.all->Array.map(Auth_SignUpMode.toString)->Arr
 let _defaultSignUpMode = Auth_SignUpMode.toString(Auth_SignUpMode.default)
 
 let usage = `
+Usage: provision-identity [--name <name>] [--provider-id <id>] [--login-identifier <a>] [--sign-up-mode <m>]
+
 Provision a Reventless identity provider and its active-role store.
 
   --name <name>          Pool name to create or adopt (default: ${defaultPoolName})
@@ -327,26 +311,20 @@ That is a separate bin because it provisions nothing a stack owns, and because i
 is needed on a pool created here and on one a stack created for itself alike. See
 [ProvisionAdmin].`
 
-let run = async (): result<unit, string> =>
-  // argv[0] is node, argv[1] this script.
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
+let run = async (args: args): result<unit, string> =>
+  switch await resolvePool(~args) {
   | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok(args) =>
-    switch await resolvePool(~args) {
+  | Ok(providerId) =>
+    let tableName = Schema.derivedStoreName(~identityProviderId=providerId)
+    switch await provisionStore(~tableName) {
     | Error(_) as e => e
-    | Ok(providerId) =>
-      let tableName = Schema.derivedStoreName(~identityProviderId=providerId)
-      switch await provisionStore(~tableName) {
-      | Error(_) as e => e
-      | Ok() =>
-        Console.log(nextSteps(~providerId))
-        Ok()
-      }
+    | Ok() =>
+      Console.log(nextSteps(~providerId))
+      Ok()
     }
   }
+
+let cli: Reventless.CliArgs.cli<args> = {bin: "provision-identity", usage, parse: parseArgs}
 
 /**
 🚨 **Catches thrown exceptions, not only `Error` results.**
@@ -356,16 +334,18 @@ reports `UnhandledPromiseRejection ... "#<Object>"` — which names neither the 
 that failed nor why. Every AWS call in this script can throw, so the top level has
 to turn any of them into something an operator can read.
 */
-let main = async () =>
-  switch await run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(`provision-identity: ${message}`)
-    NodeProcess.exit(1)
-  | exception exn =>
-    Console.error(`provision-identity: ${Util_AwsError.describe(exn)}`)
-    NodeProcess.exit(1)
-  }
+let main = () =>
+  Reventless.CliArgs.run(cli, async args =>
+    switch await run(args) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(`provision-identity: ${message}`)
+      NodeProcess.exit(1)
+    | exception exn =>
+      Console.error(`provision-identity: ${Util_AwsError.describe(exn)}`)
+      NodeProcess.exit(1)
+    }
+  )
 
 // 🚨 **No top-level call.** `../run-provision-identity.mjs` invokes [main]; this
 // module only defines it. A module that ran itself on import could not be

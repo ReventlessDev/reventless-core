@@ -6,6 +6,8 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodemodule from "node:module";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as TraitManifest$Reventless from "../components/TraitManifest.res.mjs";
 import * as CapabilityNeed$Reventless from "../semantic/CapabilityNeed.res.mjs";
 
@@ -39,60 +41,72 @@ function readPackageField(packageJson, field, fallback) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(packageJson), o => o[field]), Stdlib_JSON.Decode.string), fallback);
 }
 
-async function main() {
-  let argv = process.argv.slice(2, process.argv.length);
-  let flag = key => {
-    let i = argv.indexOf("--" + key);
-    if (i !== -1) {
-      return argv[i + 1 | 0];
-    }
-  };
-  let match = argv[0];
-  let match$1 = flag("out");
-  if (match !== undefined) {
-    switch (match) {
-      case "" :
-      case "--help" :
-      case "-h" :
-        break;
-      default:
-        if (match$1 === undefined) {
-          return fail("--out is required.\n\n" + usage);
-        }
-        let base = moduleBase(match);
-        let path = resolveFrom(match + `/package.json`);
-        let packageJson = path !== undefined ? JSON.parse(Nodefs.readFileSync(path, "utf8")) : (fail(match + ` is not installed here. A manifest is derived from the trait, so the trait has to be resolvable.`), null);
-        let path$1 = resolveFrom(match + `/src/` + base + `.res.mjs`);
-        let traitModule = path$1 !== undefined ? await import(Nodeurl.pathToFileURL(path$1).href) : (fail(match + ` exports no ` + base + ` module, so its capability needs cannot be read.\n  A trait states them as a value — an empty array if it brokers nothing — because an unstated need fails silently at run time.`), undefined);
-        let path$2 = resolveFrom(match + `/src/` + base + `_Scaffold.res.mjs`);
-        let scaffold = path$2 !== undefined ? await import(Nodeurl.pathToFileURL(path$2).href) : undefined;
-        let manifest_trait = readPackageField(packageJson, "name", match);
-        let manifest_version = readPackageField(packageJson, "version", "0.0.0");
-        let manifest_description = readPackageField(packageJson, "description", "");
-        let manifest_license = readPackageField(packageJson, "license", "");
-        let manifest_capabilities = traitModule.capabilityNeeds.map(CapabilityNeed$Reventless.toString);
-        let manifest_config = scaffold !== undefined ? TraitManifest$Reventless.configFieldsOf(scaffold.configSchema) : [];
-        let manifest_scaffolded = Stdlib_Option.isSome(scaffold);
-        let manifest = {
-          trait: manifest_trait,
-          version: manifest_version,
-          description: manifest_description,
-          license: manifest_license,
-          capabilities: manifest_capabilities,
-          config: manifest_config,
-          scaffolded: manifest_scaffolded
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse(["out"], undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => {
+    let match = CliArgs$Reventless.positionals(a)[0];
+    let match$1 = CliArgs$Reventless.string(a, "out");
+    if (match !== undefined && match !== "") {
+      if (match$1 !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: {
+            traitPackage: match,
+            out: match$1
+          }
         };
-        Nodefs.writeFileSync(match$1, TraitManifest$Reventless.render(manifest), "utf8");
-        console.log(`trait-manifest: ` + manifest_trait + `@` + manifest_version + ` — ` + (manifest_capabilities.length.toString() + ` capabilit(ies), `) + (manifest_config.length.toString() + ` config field(s)`));
-        console.log(`Wrote: ` + match$1);
-        return;
+      } else {
+        return {
+          TAG: "Error",
+          _0: "--out is required."
+        };
+      }
+    } else {
+      return {
+        TAG: "Error",
+        _0: "<trait-package> is required."
+      };
     }
-  }
-  console.log(usage);
-  process.exit(argv.length === 0 ? 1 : 0);
+  });
 }
 
-main();
+let cli = {
+  bin: "trait-manifest",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let out = param.out;
+    let traitPackage = param.traitPackage;
+    let base = moduleBase(traitPackage);
+    let path = resolveFrom(traitPackage + `/package.json`);
+    let packageJson = path !== undefined ? JSON.parse(Nodefs.readFileSync(path, "utf8")) : (fail(traitPackage + ` is not installed here. A manifest is derived from the trait, so the trait has to be resolvable.`), null);
+    let path$1 = resolveFrom(traitPackage + `/src/` + base + `.res.mjs`);
+    let traitModule = path$1 !== undefined ? await import(Nodeurl.pathToFileURL(path$1).href) : (fail(traitPackage + ` exports no ` + base + ` module, so its capability needs cannot be read.\n  A trait states them as a value — an empty array if it brokers nothing — because an unstated need fails silently at run time.`), undefined);
+    let path$2 = resolveFrom(traitPackage + `/src/` + base + `_Scaffold.res.mjs`);
+    let scaffold = path$2 !== undefined ? await import(Nodeurl.pathToFileURL(path$2).href) : undefined;
+    let manifest_trait = readPackageField(packageJson, "name", traitPackage);
+    let manifest_version = readPackageField(packageJson, "version", "0.0.0");
+    let manifest_description = readPackageField(packageJson, "description", "");
+    let manifest_license = readPackageField(packageJson, "license", "");
+    let manifest_capabilities = traitModule.capabilityNeeds.map(CapabilityNeed$Reventless.toString);
+    let manifest_config = scaffold !== undefined ? TraitManifest$Reventless.configFieldsOf(scaffold.configSchema) : [];
+    let manifest_scaffolded = Stdlib_Option.isSome(scaffold);
+    let manifest = {
+      trait: manifest_trait,
+      version: manifest_version,
+      description: manifest_description,
+      license: manifest_license,
+      capabilities: manifest_capabilities,
+      config: manifest_config,
+      scaffolded: manifest_scaffolded
+    };
+    Nodefs.writeFileSync(out, TraitManifest$Reventless.render(manifest), "utf8");
+    console.log(`trait-manifest: ` + manifest_trait + `@` + manifest_version + ` — ` + (manifest_capabilities.length.toString() + ` capabilit(ies), `) + (manifest_config.length.toString() + ` config field(s)`));
+    console.log(`Wrote: ` + out);
+  });
+}
 
 export {
   fail,
@@ -100,6 +114,8 @@ export {
   moduleBase,
   resolveFrom,
   readPackageField,
+  parseArgs,
+  cli,
   main,
 }
-/*  Not a pure module */
+/* node:fs Not a pure module */

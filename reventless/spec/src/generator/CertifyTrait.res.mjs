@@ -6,6 +6,8 @@ import * as Nodeurl from "node:url";
 import * as Nodemodule from "node:module";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 import * as PackageVersion$Reventless from "../PackageVersion.res.mjs";
 import * as TraitCertificate$Reventless from "../components/TraitCertificate.res.mjs";
@@ -60,86 +62,99 @@ function readJson(path) {
   }
 }
 
-async function main() {
-  let argv = process.argv.slice(2, process.argv.length);
-  let flag = key => {
-    let i = argv.indexOf("--" + key);
-    if (i !== -1) {
-      return argv[i + 1 | 0];
-    }
-  };
-  let traitPackage = argv[0];
-  if (traitPackage !== undefined) {
-    switch (traitPackage) {
-      case "" :
-      case "--help" :
-      case "-h" :
-        break;
-      default:
-        let match = flag("host");
-        let match$1 = flag("report");
-        let match$2 = flag("out");
-        if (match === undefined) {
-          return fail("--host, --report and --out are all required.\n\n" + usage);
-        }
-        if (match$1 === undefined) {
-          return fail("--host, --report and --out are all required.\n\n" + usage);
-        }
-        if (match$2 === undefined) {
-          return fail("--host, --report and --out are all required.\n\n" + usage);
-        }
-        let conformanceModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1, part.length)).join("") + "_Conformance";
-        let specifier = traitPackage + `/src/` + conformanceModule + `.res.mjs`;
-        let modulePath;
-        try {
-          modulePath = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
-        } catch (exn) {
-          modulePath = specifier;
-        }
-        let conformance;
-        try {
-          conformance = await import(Nodeurl.pathToFileURL(modulePath).href);
-        } catch (exn$1) {
-          fail(traitPackage + ` ships no conformance suite (looked for ` + specifier + `).\n  A trait without one cannot be certified — there is nothing to prove.`);
-          conformance = undefined;
-        }
-        let suite = conformance.suiteName(match);
-        let parsed;
-        try {
-          parsed = Util_Sury$Reventless.fromJson(readJson(match$1), reportSchema);
-        } catch (exn$2) {
-          fail(match$1 + ` is not a Jest JSON report (expected \`testResults\`).`);
-          parsed = undefined;
-        }
-        let results = assertionsFor(parsed, suite);
-        if (results.length === 0) {
-          return fail(`the report contains no suite titled "` + suite + `".\n` + (`  Either the conformance binding was never registered, or ` + match + ` is not the `) + `name its Spec declares.`);
-        }
-        let resolveVersion = specifier => {
-          try {
-            let entry = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
-            return PackageVersion$Reventless.fromModuleUrl(Nodeurl.pathToFileURL(entry).href);
-          } catch (exn) {
-            return "0.0.0";
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "host",
+    "report",
+    "out"
+  ], undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => {
+    let match = CliArgs$Reventless.positionals(a)[0];
+    let match$1 = CliArgs$Reventless.string(a, "host");
+    let match$2 = CliArgs$Reventless.string(a, "report");
+    let match$3 = CliArgs$Reventless.string(a, "out");
+    if (match !== undefined && match !== "") {
+      if (match$1 !== undefined && match$2 !== undefined && match$3 !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: {
+            traitPackage: match,
+            host: match$1,
+            report: match$2,
+            out: match$3
           }
         };
-        let certificate = TraitCertificate$Reventless.fromReport(traitPackage, resolveVersion(specifier), resolveVersion("@reventlessdev/reventless-spec/package.json"), match, suite, results);
-        Nodefs.writeFileSync(match$2, TraitCertificate$Reventless.render(certificate), "utf8");
-        console.log(`certify-trait: ` + TraitCertificate$Reventless.summarize(certificate));
-        console.log(`Wrote: ` + match$2);
-        if (!TraitCertificate$Reventless.verified(certificate)) {
-          process.exit(1);
-          return;
-        } else {
-          return;
-        }
+      } else {
+        return {
+          TAG: "Error",
+          _0: "--host, --report and --out are all required."
+        };
+      }
+    } else {
+      return {
+        TAG: "Error",
+        _0: "<trait-package> is required."
+      };
     }
-  }
-  console.log(usage);
-  process.exit(argv.length === 0 ? 1 : 0);
+  });
 }
 
-main();
+let cli = {
+  bin: "certify-trait",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let out = param.out;
+    let reportPath = param.report;
+    let host = param.host;
+    let traitPackage = param.traitPackage;
+    let conformanceModule = Stdlib_Option.getOr(Stdlib_Array.last(traitPackage.split("/")), "").replace("trait-", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1, part.length)).join("") + "_Conformance";
+    let specifier = traitPackage + `/src/` + conformanceModule + `.res.mjs`;
+    let modulePath;
+    try {
+      modulePath = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
+    } catch (exn) {
+      modulePath = specifier;
+    }
+    let conformance;
+    try {
+      conformance = await import(Nodeurl.pathToFileURL(modulePath).href);
+    } catch (exn$1) {
+      fail(traitPackage + ` ships no conformance suite (looked for ` + specifier + `).\n  A trait without one cannot be certified — there is nothing to prove.`);
+      conformance = undefined;
+    }
+    let suite = conformance.suiteName(host);
+    let parsed;
+    try {
+      parsed = Util_Sury$Reventless.fromJson(readJson(reportPath), reportSchema);
+    } catch (exn$2) {
+      fail(reportPath + ` is not a Jest JSON report (expected \`testResults\`).`);
+      parsed = undefined;
+    }
+    let results = assertionsFor(parsed, suite);
+    if (results.length === 0) {
+      return fail(`the report contains no suite titled "` + suite + `".\n` + (`  Either the conformance binding was never registered, or ` + host + ` is not the `) + `name its Spec declares.`);
+    }
+    let resolveVersion = specifier => {
+      try {
+        let entry = Nodemodule.createRequire(process.cwd() + "/index.js").resolve(specifier);
+        return PackageVersion$Reventless.fromModuleUrl(Nodeurl.pathToFileURL(entry).href);
+      } catch (exn) {
+        return "0.0.0";
+      }
+    };
+    let certificate = TraitCertificate$Reventless.fromReport(traitPackage, resolveVersion(specifier), resolveVersion("@reventlessdev/reventless-spec/package.json"), host, suite, results);
+    Nodefs.writeFileSync(out, TraitCertificate$Reventless.render(certificate), "utf8");
+    console.log(`certify-trait: ` + TraitCertificate$Reventless.summarize(certificate));
+    console.log(`Wrote: ` + out);
+    if (!TraitCertificate$Reventless.verified(certificate)) {
+      process.exit(1);
+      return;
+    }
+  });
+}
 
 export {
   fail,
@@ -149,6 +164,8 @@ export {
   reportSchema,
   assertionsFor,
   readJson,
+  parseArgs,
+  cli,
   main,
 }
 /* reportAssertionSchema Not a pure module */

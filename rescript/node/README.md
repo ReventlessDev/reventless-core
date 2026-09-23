@@ -45,6 +45,7 @@ Add it to your `rescript.json` dependencies:
 | `NodeProcess` | the `process` global |
 | `NodeStreams` | `node:stream`, plus the stream-shaped parts of `node:fs` and `node:readline` |
 | `NodeUrl` | `node:url` |
+| `NodeUtil` | `parseArgs` from `node:util` |
 | `NodeZlib` | `node:zlib` |
 
 Every module specifier is `node:`-prefixed. Bare `"fs"` is what bundlers alias to a browser polyfill

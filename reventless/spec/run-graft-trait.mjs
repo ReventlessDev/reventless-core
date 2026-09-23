@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-import "./src/generator/GraftTrait.res.mjs"
+import { main } from "./src/generator/GraftTrait.res.mjs"
+await main()

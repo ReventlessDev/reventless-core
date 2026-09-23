@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-import "./src/generator/PluginGenerator.res.mjs"
+import { main } from "./src/generator/PluginGenerator.res.mjs"
+await main()

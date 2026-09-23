@@ -7,8 +7,10 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
@@ -20,25 +22,36 @@ let repoRoot = process.cwd();
 
 let examplesDir = Nodepath.join(repoRoot, "examples");
 
-let update = process.argv.includes("--update");
+let usage = `Usage: check-lifecycle [--root <dir>]... [--update] [--reuse-sidecars] [--json]
 
-function flagValues(flag) {
-  let argv = process.argv;
-  let out = [];
-  for (let i = 0, i_finish = argv.length; i < i_finish; ++i) {
-    if (Primitive_object.equal(argv[i], flag)) {
-      let value = argv[i + 1 | 0];
-      if (value !== undefined && !value.startsWith("--")) {
-        out.push(value);
-      }
-    }
-  }
-  return out;
+  --root <dir>       an app whose plugins are checked together; repeatable.
+                     Without one, every directory under ./examples
+  --update           rewrite the goldens and the models instead of comparing
+  --reuse-sidecars   read the scenario sidecars a prior build wrote instead of
+                     building with REVENTLESS_EMIT_SIDECAR=1
+  --json             report as one JSON document on stdout; writes and
+                     compares nothing
+
+Contradictions, drift and unreadable plugins exit 1.`;
+
+function parseArgs(argv) {
+  return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, [
+    "update",
+    "reuse-sidecars",
+    "json"
+  ], ["root"], undefined, argv), CliArgs$Reventless.noPositionals), a => ({
+    update: CliArgs$Reventless.bool(a, "update"),
+    roots: CliArgs$Reventless.strings(a, "root"),
+    reuseSidecars: CliArgs$Reventless.bool(a, "reuse-sidecars"),
+    json: CliArgs$Reventless.bool(a, "json")
+  }));
 }
 
-let reuseSidecars = process.argv.includes("--reuse-sidecars");
-
-let json = process.argv.includes("--json");
+let cli = {
+  bin: "check-lifecycle",
+  usage: usage,
+  parse: parseArgs
+};
 
 let noRow = "(none)";
 
@@ -685,40 +698,28 @@ function pluginDirsIn(exampleDir) {
   });
 }
 
-if (process.argv.includes("--root") && flagValues("--root").length === 0) {
-  console.error("--root needs a directory after it");
-  process.exit(1);
-}
-
-let given = flagValues("--root");
-
-let roots;
-
-if (given.length !== 0) {
-  roots = given.map(given => {
-    let dir = Nodepath.resolve(given);
-    return {
-      label: Nodepath.basename(dir),
-      dir: dir
-    };
-  });
-} else {
-  let exit = 0;
+function rootsOf(given) {
+  if (given.length !== 0) {
+    return given.map(given => {
+      let dir = Nodepath.resolve(given);
+      return {
+        label: Nodepath.basename(dir),
+        dir: dir
+      };
+    });
+  }
   let entries;
   try {
     entries = Nodefs.readdirSync(examplesDir, {
       withFileTypes: true
     });
-    exit = 1;
   } catch (exn) {
-    roots = [];
+    return [];
   }
-  if (exit === 1) {
-    roots = entries.filter(e => e.isDirectory()).map(e => e.name).toSorted(Primitive_string.compare).map(name => ({
-      label: name,
-      dir: Nodepath.join(examplesDir, name)
-    }));
-  }
+  return entries.filter(e => e.isDirectory()).map(e => e.name).toSorted(Primitive_string.compare).map(name => ({
+    label: name,
+    dir: Nodepath.join(examplesDir, name)
+  }));
 }
 
 function kindOfPath(path) {
@@ -1115,7 +1116,7 @@ function modelPath(pluginDir) {
   return Nodepath.join(pluginDir, "src", "LifecycleModel.res");
 }
 
-function writeOrCompare(path, actual, label, drifted) {
+function writeOrCompare(update, path, actual, label, drifted) {
   let existed = Nodefs.existsSync(path);
   if (update || !existed) {
     Nodefs.writeFileSync(path, actual, "utf8");
@@ -1132,113 +1133,117 @@ function writeOrCompare(path, actual, label, drifted) {
   }
 }
 
-async function main() {
-  let findings = [];
-  let opaque = [];
-  let outcomes = [];
-  let failures = [];
-  let drifted = [];
-  let allDerived = [];
-  let allPluginDirs = roots.flatMap(root => pluginDirsIn(root.dir));
-  if (allPluginDirs.length === 0) {
-    console.error(`no plugins found under ` + roots.map(r => r.dir).join(", ") + ` — a plugin is a directory with both src/Plugin.res and tests/`);
-    process.exit(1);
-  }
-  let msg = reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs);
-  if (msg.TAG !== "Ok") {
-    console.error(msg._0);
-    process.exit(1);
-  }
-  if (!hasCorpus(allPluginDirs)) {
-    console.error(`no scenario sidecar exists under ` + roots.map(r => r.dir).join(", ") + ` after the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`);
-    process.exit(1);
-  }
-  for (let i = 0, i_finish = roots.length; i < i_finish; ++i) {
-    let root = roots[i];
-    if (root !== undefined) {
-      let example = root.label;
-      let exampleDir = root.dir;
-      let derived = [];
-      let dirs = pluginDirsIn(exampleDir);
-      for (let j = 0, j_finish = dirs.length; j < j_finish; ++j) {
-        let pluginDir = dirs[j];
-        if (pluginDir !== undefined) {
-          let plugin = Nodepath.basename(pluginDir);
-          let qualified = example + `/` + plugin;
-          let commands = await runPlugin(qualified, pluginDir, findings, opaque, outcomes);
-          if (commands.TAG === "Ok") {
-            let commands$1 = commands._0;
-            commands$1.forEach(c => {
-              derived.push(c);
-              allDerived.push([
-                qualified,
-                c
-              ]);
-            });
-            if (!json) {
-              writeOrCompare(modelPath(pluginDir), modelSource(plugin, commands$1), example + `/` + plugin + `/src/LifecycleModel.res`, drifted);
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let json = param.json;
+    let update = param.update;
+    let roots = rootsOf(param.roots);
+    let findings = [];
+    let opaque = [];
+    let outcomes = [];
+    let failures = [];
+    let drifted = [];
+    let allDerived = [];
+    let allPluginDirs = roots.flatMap(root => pluginDirsIn(root.dir));
+    if (allPluginDirs.length === 0) {
+      console.error(`no plugins found under ` + roots.map(r => r.dir).join(", ") + ` — a plugin is a directory with both src/Plugin.res and tests/`);
+      process.exit(1);
+    }
+    let msg = param.reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs);
+    if (msg.TAG !== "Ok") {
+      console.error(msg._0);
+      process.exit(1);
+    }
+    if (!hasCorpus(allPluginDirs)) {
+      console.error(`no scenario sidecar exists under ` + roots.map(r => r.dir).join(", ") + ` after the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`);
+      process.exit(1);
+    }
+    for (let i = 0, i_finish = roots.length; i < i_finish; ++i) {
+      let root = roots[i];
+      if (root !== undefined) {
+        let example = root.label;
+        let exampleDir = root.dir;
+        let derived = [];
+        let dirs = pluginDirsIn(exampleDir);
+        for (let j = 0, j_finish = dirs.length; j < j_finish; ++j) {
+          let pluginDir = dirs[j];
+          if (pluginDir !== undefined) {
+            let plugin = Nodepath.basename(pluginDir);
+            let qualified = example + `/` + plugin;
+            let commands = await runPlugin(qualified, pluginDir, findings, opaque, outcomes);
+            if (commands.TAG === "Ok") {
+              let commands$1 = commands._0;
+              commands$1.forEach(c => {
+                derived.push(c);
+                allDerived.push([
+                  qualified,
+                  c
+                ]);
+              });
+              if (!json) {
+                writeOrCompare(update, modelPath(pluginDir), modelSource(plugin, commands$1), example + `/` + plugin + `/src/LifecycleModel.res`, drifted);
+              }
+            } else {
+              failures.push(example + `/` + plugin + `: ` + commands._0);
             }
-          } else {
-            failures.push(example + `/` + plugin + `: ` + commands._0);
           }
         }
-      }
-      if (dirs.length !== 0 && !json) {
-        let dir = Nodepath.join(exampleDir, "schema");
-        if (!Nodefs.existsSync(dir)) {
-          Nodefs.mkdirSync(dir, {
-            recursive: true
-          });
+        if (dirs.length !== 0 && !json) {
+          let dir = Nodepath.join(exampleDir, "schema");
+          if (!Nodefs.existsSync(dir)) {
+            Nodefs.mkdirSync(dir, {
+              recursive: true
+            });
+          }
+          writeOrCompare(update, goldenPath(root), goldenJson(derived), example + `/schema/lifecycle-model.json`, drifted);
+          console.log(`ok ` + example + ` — ` + derived.length.toString() + ` commands derived from scenarios`);
         }
-        writeOrCompare(goldenPath(root), goldenJson(derived), example + `/schema/lifecycle-model.json`, drifted);
-        console.log(`ok ` + example + ` — ` + derived.length.toString() + ` commands derived from scenarios`);
       }
     }
-  }
-  let of_ = severity => findings.filter(f => f.severity === severity);
-  let contradicted = of_("contradicted");
-  if (json) {
-    console.log(reportJson(findings, opaque, allDerived, outcomes, failures));
-  } else {
-    [
-      "contradicted",
-      "unverified",
-      "undeclared",
-      "level",
-      "ambiguous"
-    ].forEach(severity => {
-      let group = of_(severity);
-      if (group.length !== 0) {
-        console.log(`\n` + severity + ` (` + group.length.toString() + `)`);
-        group.forEach(f => {
-          console.log(`  ` + f.message);
-        });
-        return;
-      }
-    });
-  }
-  if (failures.length !== 0 && !json) {
-    console.error(`\ncould not read:`);
-    failures.forEach(f => {
-      console.error(`  ` + f);
-    });
-  }
-  if (drifted.length !== 0) {
-    console.error(`\n` + drifted.length.toString() + ` lifecycle artifact(s) changed. If the change is intended, re-run with --update and commit them alongside the change that moved them.`);
-  }
-  if (contradicted.length !== 0 || drifted.length !== 0 || failures.length !== 0) {
-    process.exit(1);
-    return;
-  }
+    let of_ = severity => findings.filter(f => f.severity === severity);
+    let contradicted = of_("contradicted");
+    if (json) {
+      console.log(reportJson(findings, opaque, allDerived, outcomes, failures));
+    } else {
+      [
+        "contradicted",
+        "unverified",
+        "undeclared",
+        "level",
+        "ambiguous"
+      ].forEach(severity => {
+        let group = of_(severity);
+        if (group.length !== 0) {
+          console.log(`\n` + severity + ` (` + group.length.toString() + `)`);
+          group.forEach(f => {
+            console.log(`  ` + f.message);
+          });
+          return;
+        }
+      });
+    }
+    if (failures.length !== 0 && !json) {
+      console.error(`\ncould not read:`);
+      failures.forEach(f => {
+        console.error(`  ` + f);
+      });
+    }
+    if (drifted.length !== 0) {
+      console.error(`\n` + drifted.length.toString() + ` lifecycle artifact(s) changed. If the change is intended, re-run with --update and commit them alongside the change that moved them.`);
+    }
+    if (contradicted.length !== 0 || drifted.length !== 0 || failures.length !== 0) {
+      process.exit(1);
+      return;
+    }
+  });
 }
 
 export {
   repoRoot,
   examplesDir,
-  update,
-  flagValues,
-  reuseSidecars,
-  json,
+  usage,
+  parseArgs,
+  cli,
   noRow,
   asObj,
   getStr,
@@ -1278,7 +1283,7 @@ export {
   allUnverified,
   compare,
   pluginDirsIn,
-  roots,
+  rootsOf,
   kindOfPath,
   isViewPath,
   isWritablePath,

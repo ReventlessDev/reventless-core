@@ -7,6 +7,8 @@ import * as Nodepath from "node:path";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as PlatformCodegen$Reventless from "./PlatformCodegen.res.mjs";
 import * as PlatformManifests$Reventless from "./PlatformManifests.res.mjs";
 import * as CapabilityManifest$Reventless from "../components/CapabilityManifest.res.mjs";
@@ -24,91 +26,120 @@ function stringAt(obj, field) {
   return Stdlib_Option.flatMap(obj[field], Stdlib_JSON.Decode.string);
 }
 
-let manifestArg = Stdlib_Option.getOr(process.argv[2], "");
+let usage = `Usage: generate-platform <deploy-manifest.yaml>
 
-if (manifestArg === "") {
-  console.error("Usage: generate-platform <deploy-manifest.yaml>");
-  process.exit(1);
-} else {
-  let manifestPath = Nodepath.resolve(manifestArg);
-  if (!Nodefs.existsSync(manifestPath)) {
-    fail(manifestPath + ` not found`);
-  }
-  let manifestDir = Nodepath.dirname(manifestPath);
-  let deployManifest;
-  try {
-    deployManifest = Yaml.parse(Nodefs.readFileSync(manifestPath, "utf8"));
-  } catch (exn) {
-    fail(`could not parse ` + manifestPath + ` as YAML`);
-    deployManifest = null;
-  }
-  let platformPath = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(deployManifest), m => m["platform"]), asObject), p => stringAt(p, "path"));
-  let plugins = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(deployManifest), m => m["plugins"]), Stdlib_JSON.Decode.array), entries => Stdlib_Array.filterMap(entries, entry => {
-    let obj = Stdlib_JSON.Decode.object(entry);
-    let match = Stdlib_Option.flatMap(obj, o => stringAt(o, "name"));
-    let match$1 = Stdlib_Option.flatMap(obj, o => stringAt(o, "path"));
-    if (match !== undefined && match$1 !== undefined) {
-      return [
-        match,
-        match$1
-      ];
-    }
-  }));
-  if (platformPath !== undefined) {
-    if (plugins !== undefined) {
-      let pluginManifests = plugins.flatMap(param => {
-        let pluginName = param[0];
-        let pluginDir = Nodepath.resolve(manifestDir, param[1]);
-        if (!Nodefs.existsSync(pluginDir)) {
-          fail(`plugin "` + pluginName + `" points at ` + pluginDir + `, which does not exist`);
+  Reads the plugins the deploy manifest lists, unions their committed
+  capabilities.json manifests, and writes the platform's
+  src/PlatformCapabilities.res.`;
+
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => {
+    let manifest = CliArgs$Reventless.positionals(a)[0];
+    if (manifest !== undefined && manifest !== "") {
+      return {
+        TAG: "Ok",
+        _0: {
+          manifest: manifest
         }
-        let manifests = PlatformManifests$Reventless.resolve(undefined, pluginDir);
-        if (typeof manifests !== "object") {
-          console.log(`Skipped: ` + pluginName + ` (` + pluginDir + `) — no plugin composition`);
-          return [];
-        }
-        if (manifests.TAG === "Manifests") {
-          return manifests._0.map(param => {
-            let path = param.path;
-            console.log(`Read: ` + pluginName + ` — ` + path + ` (via ` + PlatformManifests$Reventless.describeVia(param.via) + `)`);
-            let manifest;
-            try {
-              manifest = Sury.parseOrThrow(JSON.parse(Nodefs.readFileSync(path, "utf8")), CapabilityManifest$Reventless.schema);
-            } catch (exn) {
-              fail(`could not parse ` + path + ` as a capability manifest`);
-              manifest = {
-                capabilities: []
-              };
-            }
-            return {
-              pluginName: pluginName,
-              manifest: manifest
-            };
-          });
-        }
-        let match = manifests._0;
-        fail(`no capabilities.json found for plugin "` + pluginName + `" (` + pluginDir + `) — build the plugin first; its build emits src/capabilities.json beside Plugin.res ` + (`(` + match.evidence + `; expected ` + match.expected + `)`));
-        return [];
-      });
-      let message = PlatformCodegen$Reventless.render(pluginManifests);
-      if (message.TAG === "Ok") {
-        let outputPath = Nodepath.resolve(manifestDir, platformPath, "src", "PlatformCapabilities.res");
-        Nodefs.writeFileSync(outputPath, message._0, "utf8");
-        console.log("Generated: " + outputPath);
-      } else {
-        fail(message._0);
-      }
+      };
     } else {
-      fail(manifestPath + ` needs a \`platform.path\` and a \`plugins\` list with name + path`);
+      return {
+        TAG: "Error",
+        _0: "<deploy-manifest.yaml> is required."
+      };
     }
-  } else {
-    fail(manifestPath + ` needs a \`platform.path\` and a \`plugins\` list with name + path`);
-  }
+  });
+}
+
+let cli = {
+  bin: "generate-platform",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let manifestPath = Nodepath.resolve(param.manifest);
+    if (!Nodefs.existsSync(manifestPath)) {
+      fail(manifestPath + ` not found`);
+    }
+    let manifestDir = Nodepath.dirname(manifestPath);
+    let deployManifest;
+    try {
+      deployManifest = Yaml.parse(Nodefs.readFileSync(manifestPath, "utf8"));
+    } catch (exn) {
+      fail(`could not parse ` + manifestPath + ` as YAML`);
+      deployManifest = null;
+    }
+    let platformPath = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(deployManifest), m => m["platform"]), asObject), p => stringAt(p, "path"));
+    let plugins = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(deployManifest), m => m["plugins"]), Stdlib_JSON.Decode.array), entries => Stdlib_Array.filterMap(entries, entry => {
+      let obj = Stdlib_JSON.Decode.object(entry);
+      let match = Stdlib_Option.flatMap(obj, o => stringAt(o, "name"));
+      let match$1 = Stdlib_Option.flatMap(obj, o => stringAt(o, "path"));
+      if (match !== undefined && match$1 !== undefined) {
+        return [
+          match,
+          match$1
+        ];
+      }
+    }));
+    if (platformPath === undefined) {
+      return fail(manifestPath + ` needs a \`platform.path\` and a \`plugins\` list with name + path`);
+    }
+    if (plugins === undefined) {
+      return fail(manifestPath + ` needs a \`platform.path\` and a \`plugins\` list with name + path`);
+    }
+    let pluginManifests = plugins.flatMap(param => {
+      let pluginName = param[0];
+      let pluginDir = Nodepath.resolve(manifestDir, param[1]);
+      if (!Nodefs.existsSync(pluginDir)) {
+        fail(`plugin "` + pluginName + `" points at ` + pluginDir + `, which does not exist`);
+      }
+      let manifests = PlatformManifests$Reventless.resolve(undefined, pluginDir);
+      if (typeof manifests !== "object") {
+        console.log(`Skipped: ` + pluginName + ` (` + pluginDir + `) — no plugin composition`);
+        return [];
+      }
+      if (manifests.TAG === "Manifests") {
+        return manifests._0.map(param => {
+          let path = param.path;
+          console.log(`Read: ` + pluginName + ` — ` + path + ` (via ` + PlatformManifests$Reventless.describeVia(param.via) + `)`);
+          let manifest;
+          try {
+            manifest = Sury.parseOrThrow(JSON.parse(Nodefs.readFileSync(path, "utf8")), CapabilityManifest$Reventless.schema);
+          } catch (exn) {
+            fail(`could not parse ` + path + ` as a capability manifest`);
+            manifest = {
+              capabilities: []
+            };
+          }
+          return {
+            pluginName: pluginName,
+            manifest: manifest
+          };
+        });
+      }
+      let match = manifests._0;
+      fail(`no capabilities.json found for plugin "` + pluginName + `" (` + pluginDir + `) — build the plugin first; its build emits src/capabilities.json beside Plugin.res ` + (`(` + match.evidence + `; expected ` + match.expected + `)`));
+      return [];
+    });
+    let message = PlatformCodegen$Reventless.render(pluginManifests);
+    if (message.TAG !== "Ok") {
+      return fail(message._0);
+    }
+    let outputPath = Nodepath.resolve(manifestDir, platformPath, "src", "PlatformCapabilities.res");
+    Nodefs.writeFileSync(outputPath, message._0, "utf8");
+    console.log("Generated: " + outputPath);
+  });
 }
 
 export {
   fail,
   asObject,
   stringAt,
+  usage,
+  parseArgs,
+  cli,
+  main,
 }
-/* manifestArg Not a pure module */
+/* sury Not a pure module */

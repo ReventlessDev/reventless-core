@@ -30,29 +30,14 @@ type args = {
   help: bool,
 }
 
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({file: None, help: false}))
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "--file", Some(v)) =>
-      acc := Ok({...a, file: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--file", None) => acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
-    }
-  }
-  acc.contents
-}
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(~strings=["file"], argv)
+  ->Result.flatMap(CliArgs.noPositionals)
+  ->Result.map(a => {file: a->CliArgs.string("file"), help: a->CliArgs.help})
 
 let usage = `
+Usage: prepare-accounts [--file <path>]
+
 Make a platform's accounts manifest ready to use.
 
   --file <path>   The manifest. Defaults to .reventless/users.yaml relative to the
@@ -77,43 +62,39 @@ let castNote = (entries: array<AccountsManifest.entry>): string =>
   )
   ->Array.join("\n")
 
-let run = (): result<unit, string> =>
-  // argv[0] is node, argv[1] this script.
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
+let run = (args: args): result<unit, string> =>
+  switch AccountsManifest.locate(~given=?args.file, ()) {
   | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok(args) =>
-    switch AccountsManifest.locate(~given=?args.file, ()) {
-    | Error(_) as e => e
-    | Ok(located) =>
-      let file = located->AccountsManifest.pathOf
-      switch located {
-      | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
-      | Declared(_) => Console.log(`manifest ${file}`)
-      }
-      switch AccountsManifest.prepare(~path=file) {
-      | Error(message) => Error(`${file}: ${message}`)
-      | Ok([]) => Error(`${file} declares no accounts`)
-      | Ok(prepared) =>
-        let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
-        Console.log(
-          `accounts ${prepared
-            ->Array.length
-            ->Int.toString} declared, ${generated->Int.toString} password(s) generated\n\n${castNote(
-              prepared->Array.map(p => p.entry),
-            )}`,
-        )
-        Ok()
-      }
+  | Ok(located) =>
+    let file = located->AccountsManifest.pathOf
+    switch located {
+    | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
+    | Declared(_) => Console.log(`manifest ${file}`)
+    }
+    switch AccountsManifest.prepare(~path=file) {
+    | Error(message) => Error(`${file}: ${message}`)
+    | Ok([]) => Error(`${file} declares no accounts`)
+    | Ok(prepared) =>
+      let generated = prepared->Array.filter(p => p.passwordGenerated)->Array.length
+      Console.log(
+        `accounts ${prepared
+          ->Array.length
+          ->Int.toString} declared, ${generated->Int.toString} password(s) generated\n\n${castNote(
+            prepared->Array.map(p => p.entry),
+          )}`,
+      )
+      Ok()
     }
   }
 
-let main = async () =>
-  switch run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(`prepare-accounts: ${message}`)
-    NodeProcess.exit(1)
-  }
+let cli: CliArgs.cli<args> = {bin: "prepare-accounts", usage, parse: parseArgs}
+
+let main = () =>
+  CliArgs.run(cli, async args =>
+    switch run(args) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(`prepare-accounts: ${message}`)
+      NodeProcess.exit(1)
+    }
+  )

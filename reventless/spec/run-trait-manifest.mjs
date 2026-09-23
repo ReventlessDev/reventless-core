@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-import "./src/generator/TraitManifestCli.res.mjs"
+import { main } from "./src/generator/TraitManifestCli.res.mjs"
+await main()

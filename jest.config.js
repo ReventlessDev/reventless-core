@@ -114,6 +114,13 @@ module.exports = {
       setupFiles: [setupFile],
     },
     {
+      displayName: "scripts",
+      rootDir: "./scripts",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "reventless-seed",
       rootDir: "./reventless/seed",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],

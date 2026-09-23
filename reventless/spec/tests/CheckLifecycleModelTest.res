@@ -288,3 +288,44 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
     ])
   })
 })
+
+// How the check is invoked from outside this file: the editor extension runs
+// `check-lifecycle --root <dir> --reuse-sidecars --json`, and CI runs
+// `pnpm run check:lifecycle -- --reuse-sidecars`, which reaches here behind the
+// `--` pnpm forwards.
+describe("CheckLifecycleModel.parseArgs", () => {
+  testSync("the editor extension's invocation", () =>
+    expect(
+      CheckLifecycleModel.parseArgs(["--root", "/app", "--reuse-sidecars", "--json"]),
+    )->toEqual(
+      Ok({
+        CheckLifecycleModel.update: false,
+        roots: ["/app"],
+        reuseSidecars: true,
+        json: true,
+      }),
+    )
+  )
+
+  testSync("CI's invocation, behind the -- pnpm forwards", () =>
+    expect(CheckLifecycleModel.parseArgs(["--", "--reuse-sidecars"]))->toEqual(
+      Ok({CheckLifecycleModel.update: false, roots: [], reuseSidecars: true, json: false}),
+    )
+  )
+
+  testSync("no arguments checks every example", () =>
+    expect(CheckLifecycleModel.parseArgs([]))->toEqual(
+      Ok({CheckLifecycleModel.update: false, roots: [], reuseSidecars: false, json: false}),
+    )
+  )
+
+  testSync("--update rewrites, and --root may be repeated", () =>
+    expect(CheckLifecycleModel.parseArgs(["--update", "--root", "a", "--root", "b"]))->toEqual(
+      Ok({CheckLifecycleModel.update: true, roots: ["a", "b"], reuseSidecars: false, json: false}),
+    )
+  )
+
+  testSync("--root with no directory after it is refused", () =>
+    expect(CheckLifecycleModel.parseArgs(["--root", "--json"])->Result.isError)->toBe(true)
+  )
+})

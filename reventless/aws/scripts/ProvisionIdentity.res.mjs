@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
@@ -15,123 +16,41 @@ import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "../src/adapter/Auth/
 let defaultPoolName = "ReventlessIdentity";
 
 function parseArgs(argv) {
-  let acc = {
-    TAG: "Ok",
-    _0: {
-      poolName: defaultPoolName,
-      providerId: undefined,
-      loginIdentifier: Auth_LoginIdentifier$ReventlessAws.default,
-      signUpMode: Auth_SignUpMode$ReventlessAws.default,
-      help: false
-    }
-  };
-  let i = 0;
-  let count = argv.length;
-  while (i < count) {
-    let flag = argv[i];
-    let value = argv[i + 1 | 0];
-    let match = acc;
-    let exit = 0;
-    if (match.TAG === "Ok") {
-      let a = match._0;
-      let exit$1 = 0;
-      switch (flag) {
-        case "--login-identifier" :
-          if (value !== undefined) {
-            acc = Stdlib_Result.map(Auth_LoginIdentifier$ReventlessAws.parse(value), loginIdentifier => ({
-              poolName: a.poolName,
-              providerId: a.providerId,
-              loginIdentifier: loginIdentifier,
-              signUpMode: a.signUpMode,
-              help: a.help
-            }));
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--name" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                poolName: value,
-                providerId: a.providerId,
-                loginIdentifier: a.loginIdentifier,
-                signUpMode: a.signUpMode,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--provider-id" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                poolName: a.poolName,
-                providerId: value,
-                loginIdentifier: a.loginIdentifier,
-                signUpMode: a.signUpMode,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--sign-up-mode" :
-          if (value !== undefined) {
-            acc = Stdlib_Result.map(Auth_SignUpMode$ReventlessAws.parse(value), signUpMode => ({
-              poolName: a.poolName,
-              providerId: a.providerId,
-              loginIdentifier: a.loginIdentifier,
-              signUpMode: signUpMode,
-              help: a.help
-            }));
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--help" :
-        case "-h" :
-          exit$1 = 2;
-          break;
-        default:
-          acc = {
-            TAG: "Error",
-            _0: `unknown argument "` + flag + `"`
-          };
-      }
-      if (exit$1 === 2) {
-        acc = {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "name",
+    "provider-id",
+    "login-identifier",
+    "sign-up-mode"
+  ], undefined, undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => {
+    let v = CliArgs$Reventless.string(a, "login-identifier");
+    let loginIdentifier = v !== undefined ? Auth_LoginIdentifier$ReventlessAws.parse(v) : ({
+        TAG: "Ok",
+        _0: Auth_LoginIdentifier$ReventlessAws.default
+      });
+    let v$1 = CliArgs$Reventless.string(a, "sign-up-mode");
+    let signUpMode = v$1 !== undefined ? Auth_SignUpMode$ReventlessAws.parse(v$1) : ({
+        TAG: "Ok",
+        _0: Auth_SignUpMode$ReventlessAws.default
+      });
+    if (loginIdentifier.TAG === "Ok") {
+      if (signUpMode.TAG === "Ok") {
+        return {
           TAG: "Ok",
           _0: {
-            poolName: a.poolName,
-            providerId: a.providerId,
-            loginIdentifier: a.loginIdentifier,
-            signUpMode: a.signUpMode,
-            help: true
+            poolName: Stdlib_Option.getOr(CliArgs$Reventless.string(a, "name"), defaultPoolName),
+            providerId: CliArgs$Reventless.string(a, "provider-id"),
+            loginIdentifier: loginIdentifier._0,
+            signUpMode: signUpMode._0,
+            help: CliArgs$Reventless.help(a)
           }
         };
-        i = i + 1 | 0;
+      } else {
+        return signUpMode;
       }
     } else {
-      i = count;
+      return loginIdentifier;
     }
-    if (exit === 1) {
-      acc = {
-        TAG: "Error",
-        _0: flag + ` needs a value`
-      };
-    }
-  };
-  return acc;
+  });
 }
 
 let _loginIdentifiers = Auth_LoginIdentifier$ReventlessAws.all.map(Auth_LoginIdentifier$ReventlessAws.toString).join(" | ");
@@ -143,6 +62,8 @@ let _signUpModes = Auth_SignUpMode$ReventlessAws.all.map(Auth_SignUpMode$Reventl
 let _defaultSignUpMode = Auth_SignUpMode$ReventlessAws.toString(Auth_SignUpMode$ReventlessAws.default);
 
 let usage = `
+Usage: provision-identity [--name <name>] [--provider-id <id>] [--login-identifier <a>] [--sign-up-mode <m>]
+
 Provision a Reventless identity provider and its active-role store.
 
   --name <name>          Pool name to create or adopt (default: ` + defaultPoolName + `)
@@ -369,28 +290,16 @@ is needed on a pool created here and on one a stack created for itself alike. Se
 [ProvisionAdmin].`;
 }
 
-async function run() {
-  let e = parseArgs(process.argv.slice(2, process.argv.length));
+async function run(args) {
+  let e = await resolvePool(args);
   if (e.TAG !== "Ok") {
     return e;
   }
-  let args = e._0;
-  if (args.help) {
-    console.log(usage);
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
-  }
-  let e$1 = await resolvePool(args);
+  let providerId = e._0;
+  let tableName = Auth_ActiveRoleStore_Schema$ReventlessAws.derivedStoreName(providerId);
+  let e$1 = await provisionStore(tableName);
   if (e$1.TAG !== "Ok") {
     return e$1;
-  }
-  let providerId = e$1._0;
-  let tableName = Auth_ActiveRoleStore_Schema$ReventlessAws.derivedStoreName(providerId);
-  let e$2 = await provisionStore(tableName);
-  if (e$2.TAG !== "Ok") {
-    return e$2;
   }
   console.log(nextSteps(providerId));
   return {
@@ -399,21 +308,29 @@ async function run() {
   };
 }
 
-async function main() {
-  let message;
-  try {
-    message = await run();
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    console.error(`provision-identity: ` + Util_AwsError$ReventlessAws.describe(exn));
+let cli = {
+  bin: "provision-identity",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async args => {
+    let message;
+    try {
+      message = await run(args);
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      console.error(`provision-identity: ` + Util_AwsError$ReventlessAws.describe(exn));
+      process.exit(1);
+      return;
+    }
+    if (message.TAG === "Ok") {
+      return;
+    }
+    console.error(`provision-identity: ` + message._0);
     process.exit(1);
-    return;
-  }
-  if (message.TAG === "Ok") {
-    return;
-  }
-  console.error(`provision-identity: ` + message._0);
-  process.exit(1);
+  });
 }
 
 let Schema;
@@ -436,6 +353,7 @@ export {
   provisionStore,
   nextSteps,
   run,
+  cli,
   main,
 }
 /* _loginIdentifiers Not a pure module */

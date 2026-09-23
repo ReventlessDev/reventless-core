@@ -7,7 +7,9 @@ import * as Web_Timers from "@reventlessdev/rescript-web/src/Web_Timers.res.mjs"
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
@@ -40,7 +42,24 @@ let contracts = [
   }
 ];
 
-let update = process.argv.includes("--update");
+let usage = `Usage: check:graphql [--update]
+
+  Boots the hybrid example's local platform and compares both GraphQL
+  contracts with their goldens. Drift exits 1.
+
+  --update  rewrite the goldens instead (pnpm run check:graphql:update)`;
+
+function parseArgs(argv) {
+  return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, ["update"], undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => ({
+    update: CliArgs$Reventless.bool(a, "update")
+  }));
+}
+
+let cli = {
+  bin: "check:graphql",
+  usage: usage,
+  parse: parseArgs
+};
 
 async function introspect(url) {
   let payload = JSON.stringify(Object.fromEntries([[
@@ -230,86 +249,87 @@ function driftReport(golden, actual) {
   }
 }
 
-async function main() {
-  let existing = process.env["NODE_OPTIONS"];
-  let nodeOptions = existing !== undefined ? existing + ` --disable-warning=ExperimentalWarning` : "--disable-warning=ExperimentalWarning";
-  let env = Object.fromEntries(Object.entries(process.env).concat([
-    [
-      "NODE_OPTIONS",
-      nodeOptions
-    ],
-    [
-      "REVENTLESS_LOCAL_BACKEND",
-      "memory"
-    ],
-    [
-      "REVENTLESS_DOMAIN_PORT",
-      domainPort
-    ],
-    [
-      "REVENTLESS_PLATFORM_PORT",
-      platformPort
-    ],
-    [
-      "REVENTLESS_DOMAIN_MCP_PORT",
-      domainMcpPort
-    ],
-    [
-      "REVENTLESS_PLATFORM_MCP_PORT",
-      platformMcpPort
-    ]
-  ]));
-  let child = Nodechild_process.spawn("node", ["src/Main.res.mjs"], {
-    cwd: platformDir,
-    env: env,
-    stdio: [
-      "ignore",
-      "ignore",
-      "inherit"
-    ]
-  });
-  let outcome = await waitForContracts(child, Date.now() + 120000.0);
-  child.kill("SIGTERM");
-  if (outcome.TAG === "Ok") {
-    let sdl = outcome._0;
-    let drifted = [];
-    contracts.forEach((contract, i) => {
-      if (!Nodefs.existsSync(contract.dir)) {
-        Nodefs.mkdirSync(contract.dir, {
-          recursive: true
-        });
-      }
-      let path = Nodepath.join(contract.dir, contract.file);
-      let actual = sdl[i].trim() + "\n";
-      let existed = Nodefs.existsSync(path);
-      if (update || !existed) {
-        Nodefs.writeFileSync(path, actual, "utf8");
-        console.log((
-          existed ? "updated" : "wrote"
-        ) + ` ` + contract.file);
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let update = param.update;
+    let existing = process.env["NODE_OPTIONS"];
+    let nodeOptions = existing !== undefined ? existing + ` --disable-warning=ExperimentalWarning` : "--disable-warning=ExperimentalWarning";
+    let env = Object.fromEntries(Object.entries(process.env).concat([
+      [
+        "NODE_OPTIONS",
+        nodeOptions
+      ],
+      [
+        "REVENTLESS_LOCAL_BACKEND",
+        "memory"
+      ],
+      [
+        "REVENTLESS_DOMAIN_PORT",
+        domainPort
+      ],
+      [
+        "REVENTLESS_PLATFORM_PORT",
+        platformPort
+      ],
+      [
+        "REVENTLESS_DOMAIN_MCP_PORT",
+        domainMcpPort
+      ],
+      [
+        "REVENTLESS_PLATFORM_MCP_PORT",
+        platformMcpPort
+      ]
+    ]));
+    let child = Nodechild_process.spawn("node", ["src/Main.res.mjs"], {
+      cwd: platformDir,
+      env: env,
+      stdio: [
+        "ignore",
+        "ignore",
+        "inherit"
+      ]
+    });
+    let outcome = await waitForContracts(child, Date.now() + 120000.0);
+    child.kill("SIGTERM");
+    if (outcome.TAG === "Ok") {
+      let sdl = outcome._0;
+      let drifted = [];
+      contracts.forEach((contract, i) => {
+        if (!Nodefs.existsSync(contract.dir)) {
+          Nodefs.mkdirSync(contract.dir, {
+            recursive: true
+          });
+        }
+        let path = Nodepath.join(contract.dir, contract.file);
+        let actual = sdl[i].trim() + "\n";
+        let existed = Nodefs.existsSync(path);
+        if (update || !existed) {
+          Nodefs.writeFileSync(path, actual, "utf8");
+          console.log((
+            existed ? "updated" : "wrote"
+          ) + ` ` + contract.file);
+          return;
+        }
+        let golden = Nodefs.readFileSync(path, "utf8");
+        if (golden === actual) {
+          console.log(`ok ` + contract.file);
+        } else {
+          drifted.push(contract.file);
+          console.error(`\ndrift in ` + contract.file + `\n` + driftReport(golden, actual));
+        }
+      });
+      if (drifted.length !== 0) {
+        console.error(`\n` + drifted.length.toString() + ` GraphQL contract(s) changed. If the change is intended, run\n  pnpm run check:graphql:update\nand commit the goldens alongside the change that moved them.`);
+        process.exit(1);
+        return;
+      } else {
         return;
       }
-      let golden = Nodefs.readFileSync(path, "utf8");
-      if (golden === actual) {
-        console.log(`ok ` + contract.file);
-      } else {
-        drifted.push(contract.file);
-        console.error(`\ndrift in ` + contract.file + `\n` + driftReport(golden, actual));
-      }
-    });
-    if (drifted.length !== 0) {
-      console.error(`\n` + drifted.length.toString() + ` GraphQL contract(s) changed. If the change is intended, run\n  pnpm run check:graphql:update\nand commit the goldens alongside the change that moved them.`);
-      process.exit(1);
-      return;
-    } else {
-      return;
     }
-  }
-  console.error(outcome._0);
-  process.exit(1);
+    console.error(outcome._0);
+    process.exit(1);
+  });
 }
-
-main();
 
 let bootTimeoutMs = 120000.0;
 
@@ -326,7 +346,9 @@ export {
   platformMcpPort,
   contracts,
   bootTimeoutMs,
-  update,
+  usage,
+  parseArgs,
+  cli,
   introspect,
   introspectAll,
   waitForContracts,

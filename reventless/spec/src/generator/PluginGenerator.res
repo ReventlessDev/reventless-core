@@ -1,32 +1,33 @@
 // Entry point for the plugin generator.
-// Usage: generate-plugin <srcDir>
-//        generate-plugin --aws <Namespace> <srcDir>
 
-let () = {
-  let argv2 = NodeProcess.argv->Array.get(2)->Option.getOr("")
-  let argv3 = NodeProcess.argv->Array.get(3)->Option.getOr("")
-  let argv4 = NodeProcess.argv->Array.get(4)->Option.getOr("")
+let usage = `Usage: generate-plugin [--aws <Namespace>] <srcDir>
 
-  let (variant, srcDirArg) = if argv2 === "--aws" {
-    if argv3 !== "" && argv4 !== "" {
-      (Config.Aws({compositionNamespace: argv3}), argv4)
-    } else {
-      Console.error("Usage: generate-plugin --aws <Namespace> <srcDir>")
-      (Config.Composition, "")
+  <srcDir>           the plugin's sources; Plugin.res is written into it
+  --aws <Namespace>  generate an -aws package instead: Plugin.res and Main.res
+                     are written into ./src, composing the plugin whose sources
+                     are <srcDir> under <Namespace>`
+
+type args = {variant: Config.variant, srcDir: string}
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(~strings=["aws"], argv)
+  ->Result.flatMap(a => a->CliArgs.atMost(1))
+  ->Result.flatMap(a =>
+    switch (a->CliArgs.string("aws"), a->CliArgs.positionals->Array.get(0)) {
+    | (Some(""), _) => Error("--aws needs a value")
+    | (_, None | Some("")) => Error("<srcDir> is required.")
+    | (None, Some(srcDir)) => Ok({variant: Config.Composition, srcDir})
+    | (Some(compositionNamespace), Some(srcDir)) =>
+      Ok({variant: Config.Aws({compositionNamespace: compositionNamespace}), srcDir})
     }
-  } else {
-    (Config.Composition, argv2)
-  }
+  )
 
-  if srcDirArg === "" {
-    if argv2 !== "--aws" {
-      Console.error("Usage: generate-plugin <srcDir>")
-      Console.error("       generate-plugin --aws <Namespace> <srcDir>")
-    }
-    // Exit non-zero on a usage error so `prebuild` (and CI) actually fail
-    // instead of continuing green with no Plugin.res generated.
-    NodeProcess.exit(1)
-  } else {
+let cli: CliArgs.cli<args> = {bin: "generate-plugin", usage, parse: parseArgs}
+
+// A usage mistake exits non-zero, so `prebuild` (and CI) fail instead of
+// continuing green with no Plugin.res generated.
+let main = () =>
+  CliArgs.run(cli, async ({variant, srcDir: srcDirArg}) => {
     // Resolve to absolute path (handles relative paths and trailing slashes)
     let srcDir = NodePath.resolve([srcDirArg])
 
@@ -55,5 +56,4 @@ let () = {
       NodeFs.writeFileSync(mainPath, mainSource)
       Console.log("Generated: " ++ mainPath)
     }
-  }
-}
+  })

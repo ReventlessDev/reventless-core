@@ -2,73 +2,105 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Config$Reventless from "./Config.res.mjs";
+import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Codegen$Reventless from "./Codegen.res.mjs";
 import * as Pairing$Reventless from "./Pairing.res.mjs";
 import * as Discovery$Reventless from "./Discovery.res.mjs";
 
-let argv2 = Stdlib_Option.getOr(process.argv[2], "");
+let usage = `Usage: generate-plugin [--aws <Namespace>] <srcDir>
 
-let argv3 = Stdlib_Option.getOr(process.argv[3], "");
+  <srcDir>           the plugin's sources; Plugin.res is written into it
+  --aws <Namespace>  generate an -aws package instead: Plugin.res and Main.res
+                     are written into ./src, composing the plugin whose sources
+                     are <srcDir> under <Namespace>`;
 
-let argv4 = Stdlib_Option.getOr(process.argv[4], "");
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse(["aws"], undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => {
+    let match = CliArgs$Reventless.string(a, "aws");
+    let match$1 = CliArgs$Reventless.positionals(a)[0];
+    if (match === "") {
+      return {
+        TAG: "Error",
+        _0: "--aws needs a value"
+      };
+    }
+    if (match$1 !== undefined && match$1 !== "") {
+      if (match !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: {
+            variant: {
+              TAG: "Aws",
+              compositionNamespace: match
+            },
+            srcDir: match$1
+          }
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: {
+            variant: "Composition",
+            srcDir: match$1
+          }
+        };
+      }
+    } else {
+      return {
+        TAG: "Error",
+        _0: "<srcDir> is required."
+      };
+    }
+  });
+}
 
-let match = argv2 === "--aws" ? (
-    argv3 !== "" && argv4 !== "" ? [
-        {
-          TAG: "Aws",
-          compositionNamespace: argv3
-        },
-        argv4
-      ] : (console.error("Usage: generate-plugin --aws <Namespace> <srcDir>"), [
-        "Composition",
-        ""
-      ])
-  ) : [
-    "Composition",
-    argv2
-  ];
+let cli = {
+  bin: "generate-plugin",
+  usage: usage,
+  parse: parseArgs
+};
 
-let srcDirArg = match[1];
-
-let variant = match[0];
-
-if (srcDirArg === "") {
-  if (argv2 !== "--aws") {
-    console.error("Usage: generate-plugin <srcDir>");
-    console.error("       generate-plugin --aws <Namespace> <srcDir>");
-  }
-  process.exit(1);
-} else {
-  let srcDir = Nodepath.resolve(srcDirArg);
-  let init = Config$Reventless.read(srcDir);
-  let config_name = init.name;
-  let config_heartbeatInterval = init.heartbeatInterval;
-  let config_exclude = init.exclude;
-  let config_componentRuntime = init.componentRuntime;
-  let config = {
-    name: config_name,
-    heartbeatInterval: config_heartbeatInterval,
-    exclude: config_exclude,
-    componentRuntime: config_componentRuntime,
-    variant: variant
-  };
-  let discovered = Discovery$Reventless.scan(srcDir, config_exclude);
-  let resolved = Pairing$Reventless.resolve(discovered, srcDir);
-  let hasLifecycleModel = Nodefs.existsSync(Nodepath.join(srcDir, "LifecycleModel.res"));
-  let source = Codegen$Reventless.render(config, resolved, discovered, hasLifecycleModel);
-  let outputDir;
-  outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
-  let pluginPath = Nodepath.join(outputDir, "Plugin.res");
-  Nodefs.writeFileSync(pluginPath, source, "utf8");
-  console.log("Generated: " + pluginPath);
-  if (typeof variant === "object") {
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let variant = param.variant;
+    let srcDir = Nodepath.resolve(param.srcDir);
+    let init = Config$Reventless.read(srcDir);
+    let config_name = init.name;
+    let config_heartbeatInterval = init.heartbeatInterval;
+    let config_exclude = init.exclude;
+    let config_componentRuntime = init.componentRuntime;
+    let config = {
+      name: config_name,
+      heartbeatInterval: config_heartbeatInterval,
+      exclude: config_exclude,
+      componentRuntime: config_componentRuntime,
+      variant: variant
+    };
+    let discovered = Discovery$Reventless.scan(srcDir, config_exclude);
+    let resolved = Pairing$Reventless.resolve(discovered, srcDir);
+    let hasLifecycleModel = Nodefs.existsSync(Nodepath.join(srcDir, "LifecycleModel.res"));
+    let source = Codegen$Reventless.render(config, resolved, discovered, hasLifecycleModel);
+    let outputDir;
+    outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
+    let pluginPath = Nodepath.join(outputDir, "Plugin.res");
+    Nodefs.writeFileSync(pluginPath, source, "utf8");
+    console.log("Generated: " + pluginPath);
+    if (typeof variant !== "object") {
+      return;
+    }
     let mainSource = Codegen$Reventless.renderMain(config);
     let mainPath = Nodepath.join(outputDir, "Main.res");
     Nodefs.writeFileSync(mainPath, mainSource, "utf8");
     console.log("Generated: " + mainPath);
-  }
+  });
 }
 
-/* argv2 Not a pure module */
+export {
+  usage,
+  parseArgs,
+  cli,
+  main,
+}
+/* node:fs Not a pure module */

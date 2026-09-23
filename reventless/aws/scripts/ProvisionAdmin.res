@@ -52,36 +52,19 @@ type args = {
   `--email` that parsed as "absent" would be caught by the required-argument check
   below, but a typo'd `--provider-id` would fall through to the environment and
   create the administrator in a *different pool* than the operator named. */
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({providerId: None, stack: None, email: None, help: false}))
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "--provider-id", Some(v)) =>
-      acc := Ok({...a, providerId: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--stack", Some(v)) =>
-      acc := Ok({...a, stack: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--email", Some(v)) =>
-      acc := Ok({...a, email: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--provider-id", None) | (Ok(_), "--email", None) | (Ok(_), "--stack", None) =>
-      acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
-    }
-  }
-  acc.contents
-}
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(~strings=["provider-id", "stack", "email"], argv)
+  ->Result.flatMap(Reventless.CliArgs.noPositionals)
+  ->Result.map(a => {
+    providerId: a->Reventless.CliArgs.string("provider-id"),
+    stack: a->Reventless.CliArgs.string("stack"),
+    email: a->Reventless.CliArgs.string("email"),
+    help: a->Reventless.CliArgs.help,
+  })
 
 let usage = `
+Usage: provision-admin --email <address> [--provider-id <id>] [--stack <name>]
+
 Make the first administrator of a Reventless deployment.
 
   --provider-id <id>   The identity provider to create the account in. Usually
@@ -217,40 +200,40 @@ made through a signed-in session because there is no signed-in session yet. The
 rest of the cast is a list rather than a command: declare it in
 .reventless/users.yaml and run \`pnpm exec provision-accounts\`.`
 
-let run = async (): result<unit, string> =>
-  // argv[0] is node, argv[1] this script.
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
-  | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok(args) =>
-    // The address is checked before the provider is resolved: it costs nothing,
-    // while resolving may shell out to Pulumi, and a run missing both arguments
-    // should say the cheap thing rather than fail on a stack lookup it never
-    // needed.
-    switch args.email {
+type request = {email: string, providerId: option<string>, stack: option<string>}
+
+/** The address is required before anything else is looked at: it costs nothing,
+    while resolving the provider may shell out to Pulumi, and a run missing both
+    arguments should say the cheap thing rather than fail on a stack lookup it
+    never needed. */
+let parseRequest = (argv: array<string>): result<request, string> =>
+  parseArgs(argv)->Result.flatMap(({email, providerId, stack}) =>
+    switch email {
     | None => Error("--email is required — it is the address the administrator signs in with")
-    | Some(email) =>
-      switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
-      | Error(_) as e => e
-      | Ok((providerId, source)) =>
-        Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
-        switch await checkPoolAcceptsEmail(~providerId) {
-        | Error(_) as e => e
-        | Ok() =>
-          let group = Reventless.AdminGroup.name
-          let password = Reventless.Util_Password.generate()
-          await ensureGroup(~providerId, ~group)
-          await ensureUser(~providerId, ~email)
-          await setPassword(~providerId, ~email, ~password)
-          await addToGroup(~providerId, ~email, ~group)
-          Console.log(signInDetails(~providerId, ~email, ~password, ~group))
-          Ok()
-        }
-      }
+    | Some(email) => Ok({email, providerId, stack})
+    }
+  )
+
+let run = async ({email, providerId, stack}: request): result<unit, string> =>
+  switch ProvisionProvider.resolve(~given=providerId, ~stack) {
+  | Error(_) as e => e
+  | Ok((providerId, source)) =>
+    Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
+    switch await checkPoolAcceptsEmail(~providerId) {
+    | Error(_) as e => e
+    | Ok() =>
+      let group = Reventless.AdminGroup.name
+      let password = Reventless.Util_Password.generate()
+      await ensureGroup(~providerId, ~group)
+      await ensureUser(~providerId, ~email)
+      await setPassword(~providerId, ~email, ~password)
+      await addToGroup(~providerId, ~email, ~group)
+      Console.log(signInDetails(~providerId, ~email, ~password, ~group))
+      Ok()
     }
   }
+
+let cli: Reventless.CliArgs.cli<request> = {bin: "provision-admin", usage, parse: parseRequest}
 
 /**
 🚨 **Catches thrown exceptions, not only `Error` results** — the reason
@@ -258,16 +241,18 @@ let run = async (): result<unit, string> =>
 function nothing awaits and Node reports `UnhandledPromiseRejection ...
 "#<Object>"`, naming neither the call that failed nor why.
 */
-let main = async () =>
-  switch await run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(`provision-admin: ${message}`)
-    NodeProcess.exit(1)
-  | exception exn =>
-    Console.error(`provision-admin: ${Util_AwsError.describe(exn)}`)
-    NodeProcess.exit(1)
-  }
+let main = () =>
+  Reventless.CliArgs.run(cli, async request =>
+    switch await run(request) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(`provision-admin: ${message}`)
+      NodeProcess.exit(1)
+    | exception exn =>
+      Console.error(`provision-admin: ${Util_AwsError.describe(exn)}`)
+      NodeProcess.exit(1)
+    }
+  )
 
 // 🚨 **No top-level call.** `../run-provision-admin.mjs` invokes [main]; this
 // module only defines it. A module that ran itself on import could not be

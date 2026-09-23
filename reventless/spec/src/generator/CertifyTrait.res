@@ -83,106 +83,109 @@ let readJson = (path: string) =>
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-let main = async () => {
-  let argv = NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)
-  let flag = key =>
-    switch argv->Array.indexOf("--" ++ key) {
-    | -1 => None
-    | i => argv->Array.get(i + 1)
+type args = {traitPackage: string, host: string, report: string, out: string}
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(~strings=["host", "report", "out"], argv)
+  ->Result.flatMap(a => a->CliArgs.atMost(1))
+  ->Result.flatMap(a =>
+    switch (
+      a->CliArgs.positionals->Array.get(0),
+      a->CliArgs.string("host"),
+      a->CliArgs.string("report"),
+      a->CliArgs.string("out"),
+    ) {
+    | (None | Some(""), _, _, _) => Error("<trait-package> is required.")
+    | (Some(traitPackage), Some(host), Some(report), Some(out)) =>
+      Ok({traitPackage, host, report, out})
+    | (Some(_), _, _, _) => Error("--host, --report and --out are all required.")
+    }
+  )
+
+let cli: CliArgs.cli<args> = {bin: "certify-trait", usage, parse: parseArgs}
+
+let main = () =>
+  CliArgs.run(cli, async ({traitPackage, host, report: reportPath, out}) => {
+    // `@scope/trait-attachments` → `Attachments_Conformance`, the same
+    // derivation `graft-trait` does for `_Scaffold`.
+    let conformanceModule =
+      traitPackage
+      ->String.split("/")
+      ->Array.last
+      ->Option.getOr("")
+      ->String.replace("trait-", "")
+      ->String.split("-")
+      ->Array.map(part =>
+        part->String.charAt(0)->String.toUpperCase ++
+          part->String.slice(~start=1, ~end=part->String.length)
+      )
+      ->Array.join("") ++ "_Conformance"
+    let specifier = `${traitPackage}/src/${conformanceModule}.res.mjs`
+    // Resolved from the **caller's** directory: the trait is a dependency of
+    // the plugin being certified and deliberately not one of this package.
+    let modulePath = try NodeModule.createRequire(
+      NodeProcess.cwd() ++ "/index.js",
+    )->NodeModule.requireResolve(specifier) catch {
+    | _ => specifier
+    }
+    let conformance: conformanceExports = try await dynImport(
+      NodeUrl.pathToFileURL(modulePath)["href"],
+    ) catch {
+    | _ =>
+      fail(
+        `${traitPackage} ships no conformance suite (looked for ${specifier}).\n` ++ `  A trait without one cannot be certified — there is nothing to prove.`,
+      )
+      %raw(`undefined`)
     }
 
-  switch argv->Array.get(0) {
-  | None | Some("") | Some("--help") | Some("-h") => {
-      Console.log(usage)
-      NodeProcess.exit(argv->Array.length == 0 ? 1 : 0)
+    let suite = conformance.suiteName(host)
+    let parsed = switch readJson(reportPath)->Util_Sury.fromJson(reportSchema) {
+    | value => value
+    | exception _ =>
+      fail(`${reportPath} is not a Jest JSON report (expected \`testResults\`).`)
+      %raw(`undefined`)
     }
-  | Some(traitPackage) =>
-    switch (flag("host"), flag("report"), flag("out")) {
-    | (None, _, _) | (_, None, _) | (_, _, None) =>
-      fail("--host, --report and --out are all required.\n\n" ++ usage)
-    | (Some(host), Some(reportPath), Some(out)) => {
-        // `@scope/trait-attachments` → `Attachments_Conformance`, the same
-        // derivation `graft-trait` does for `_Scaffold`.
-        let conformanceModule =
-          traitPackage
-          ->String.split("/")
-          ->Array.last
-          ->Option.getOr("")
-          ->String.replace("trait-", "")
-          ->String.split("-")
-          ->Array.map(part =>
-            part->String.charAt(0)->String.toUpperCase ++
-              part->String.slice(~start=1, ~end=part->String.length)
-          )
-          ->Array.join("") ++ "_Conformance"
-        let specifier = `${traitPackage}/src/${conformanceModule}.res.mjs`
-        // Resolved from the **caller's** directory: the trait is a dependency of
-        // the plugin being certified and deliberately not one of this package.
-        let modulePath = try NodeModule.createRequire(
-          NodeProcess.cwd() ++ "/index.js",
-        )->NodeModule.requireResolve(specifier) catch {
-        | _ => specifier
-        }
-        let conformance: conformanceExports = try await dynImport(
-          NodeUrl.pathToFileURL(modulePath)["href"],
-        ) catch {
-        | _ =>
-          fail(
-            `${traitPackage} ships no conformance suite (looked for ${specifier}).\n` ++ `  A trait without one cannot be certified — there is nothing to prove.`,
-          )
-          %raw(`undefined`)
-        }
 
-        let suite = conformance.suiteName(host)
-        let parsed = switch readJson(reportPath)->Util_Sury.fromJson(reportSchema) {
-        | value => value
-        | exception _ =>
-          fail(`${reportPath} is not a Jest JSON report (expected \`testResults\`).`)
-          %raw(`undefined`)
-        }
-
-        switch parsed->assertionsFor(~suite) {
-        // The failure worth catching. A green build that never ran the suite
-        // looks exactly like one that ran it and passed, so silence is refused
-        // rather than certified as zero-of-zero.
-        | [] =>
-          fail(
-            `the report contains no suite titled "${suite}".\n` ++
-            `  Either the conformance binding was never registered, or ${host} is not the ` ++ `name its Spec declares.`,
-          )
-        | results => {
-            let resolveVersion = specifier =>
-              try {
-                let entry =
-                  NodeModule.createRequire(
-                    NodeProcess.cwd() ++ "/index.js",
-                  )->NodeModule.requireResolve(specifier)
-                PackageVersion.fromModuleUrl(NodeUrl.pathToFileURL(entry)["href"])
-              } catch {
-              | _ => "0.0.0"
-              }
-
-            let certificate = TraitCertificate.fromReport(
-              ~trait=traitPackage,
-              ~traitVersion=resolveVersion(specifier),
-              // The framework the suite ran against, read the same way — a trait
-              // is certified against a version, never in the abstract.
-              ~framework=resolveVersion("@reventlessdev/reventless-spec/package.json"),
-              ~host,
-              ~suite,
-              ~results,
-            )
-            NodeFs.writeFileSync(out, certificate->TraitCertificate.render)
-            Console.log(`certify-trait: ${certificate->TraitCertificate.summarize}`)
-            Console.log(`Wrote: ${out}`)
-            if !(certificate->TraitCertificate.verified) {
-              NodeProcess.exit(1)
-            }
+    switch parsed->assertionsFor(~suite) {
+    // The failure worth catching. A green build that never ran the suite
+    // looks exactly like one that ran it and passed, so silence is refused
+    // rather than certified as zero-of-zero.
+    | [] =>
+      fail(
+        `the report contains no suite titled "${suite}".\n` ++
+        `  Either the conformance binding was never registered, or ${host} is not the ` ++ `name its Spec declares.`,
+      )
+    | results => {
+        let resolveVersion = specifier =>
+          try {
+            let entry =
+              NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")->NodeModule.requireResolve(
+                specifier,
+              )
+            PackageVersion.fromModuleUrl(NodeUrl.pathToFileURL(entry)["href"])
+          } catch {
+          | _ => "0.0.0"
           }
+
+        let certificate = TraitCertificate.fromReport(
+          ~trait=traitPackage,
+          ~traitVersion=resolveVersion(specifier),
+          // The framework the suite ran against, read the same way — a trait
+          // is certified against a version, never in the abstract.
+          ~framework=resolveVersion("@reventlessdev/reventless-spec/package.json"),
+          ~host,
+          ~suite,
+          ~results,
+        )
+        NodeFs.writeFileSync(out, certificate->TraitCertificate.render)
+        Console.log(`certify-trait: ${certificate->TraitCertificate.summarize}`)
+        Console.log(`Wrote: ${out}`)
+        if !(certificate->TraitCertificate.verified) {
+          NodeProcess.exit(1)
         }
       }
     }
-  }
-}
+  })
 
-main()->Promise.ignore
+// No top-level call: `../../run-certify-trait.mjs` invokes [main], so a test can
+// import this module.

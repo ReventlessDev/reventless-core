@@ -54,36 +54,19 @@ type args = {
   [ProvisionAdmin.parseArgs] gives, which lands harder here: a typo'd
   `--provider-id` would fall through to the environment and create the whole cast
   in a *different pool* than the operator named. */
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({providerId: None, stack: None, file: None, help: false}))
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "--provider-id", Some(v)) =>
-      acc := Ok({...a, providerId: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--stack", Some(v)) =>
-      acc := Ok({...a, stack: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--file", Some(v)) =>
-      acc := Ok({...a, file: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--provider-id", None) | (Ok(_), "--file", None) | (Ok(_), "--stack", None) =>
-      acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
-    }
-  }
-  acc.contents
-}
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(~strings=["provider-id", "stack", "file"], argv)
+  ->Result.flatMap(Reventless.CliArgs.noPositionals)
+  ->Result.map(a => {
+    providerId: a->Reventless.CliArgs.string("provider-id"),
+    stack: a->Reventless.CliArgs.string("stack"),
+    file: a->Reventless.CliArgs.string("file"),
+    help: a->Reventless.CliArgs.help,
+  })
 
 let usage = `
+Usage: provision-accounts [--provider-id <id>] [--stack <name>] [--file <path>]
+
 Turn a declared cast of accounts into working sign-ins.
 
   --provider-id <id>   The identity provider to create the accounts in. Usually
@@ -291,31 +274,25 @@ let provision = async (
     }
   }
 
-let run = async (): result<unit, string> =>
-  // argv[0] is node, argv[1] this script.
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
+let run = async (args: args): result<unit, string> =>
+  switch Manifest.locate(~given=?args.file, ()) {
   | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok(args) =>
-    switch Manifest.locate(~given=?args.file, ()) {
-    | Error(_) as e => e
-    | Ok(located) =>
-      let file = located->Manifest.pathOf
-      switch located {
-      | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
-      | Declared(_) => ()
-      }
-      switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
-      | Error(message) =>
-        Error(`${message}. To fill in the manifest without creating anything, run prepare-accounts`)
-      | Ok((providerId, source)) =>
-        Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
-        await provision(~file, ~providerId)
-      }
+  | Ok(located) =>
+    let file = located->Manifest.pathOf
+    switch located {
+    | SeededFrom(_, template) => Console.log(`manifest ${file} (new, copied from ${template})`)
+    | Declared(_) => ()
+    }
+    switch ProvisionProvider.resolve(~given=args.providerId, ~stack=args.stack) {
+    | Error(message) =>
+      Error(`${message}. To fill in the manifest without creating anything, run prepare-accounts`)
+    | Ok((providerId, source)) =>
+      Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
+      await provision(~file, ~providerId)
     }
   }
+
+let cli: Reventless.CliArgs.cli<args> = {bin: "provision-accounts", usage, parse: parseArgs}
 
 /**
 🚨 **Catches thrown exceptions, not only `Error` results** — the reason
@@ -323,16 +300,18 @@ let run = async (): result<unit, string> =>
 nothing awaits and Node reports `UnhandledPromiseRejection ... "#<Object>"`,
 naming neither the call that failed nor why.
 */
-let main = async () =>
-  switch await run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(`provision-accounts: ${message}`)
-    NodeProcess.exit(1)
-  | exception exn =>
-    Console.error(`provision-accounts: ${Util_AwsError.describe(exn)}`)
-    NodeProcess.exit(1)
-  }
+let main = () =>
+  Reventless.CliArgs.run(cli, async args =>
+    switch await run(args) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(`provision-accounts: ${message}`)
+      NodeProcess.exit(1)
+    | exception exn =>
+      Console.error(`provision-accounts: ${Util_AwsError.describe(exn)}`)
+      NodeProcess.exit(1)
+    }
+  )
 
 // 🚨 **No top-level call.** `../run-provision-accounts.mjs` invokes [main]; this
 // module only defines it. A module that ran itself on import could not be

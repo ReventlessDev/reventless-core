@@ -3,6 +3,8 @@
 import * as Nodefs from "node:fs";
 import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as CapabilityManifest$Reventless from "@reventlessdev/reventless-spec/src/components/CapabilityManifest.res.mjs";
 
 function compositionModulePath(srcDir, moduleArg) {
@@ -29,22 +31,51 @@ function fail(message) {
   process.exit(1);
 }
 
-async function main() {
-  let match = process.env["LOG_LEVEL"];
-  if (match !== undefined) {
-    
-  } else {
-    process.env["LOG_LEVEL"] = "warn";
-  }
-  let srcDirArg = process.argv[2];
-  if (srcDirArg !== undefined) {
-    if (srcDirArg === "") {
-      console.error("Usage: emit-capabilities <srcDir> [<compositionModule>]");
-      process.exit(1);
-      return;
+let usage = `Usage: emit-capabilities <srcDir> [<compositionModule>]
+
+  <srcDir>             the plugin's sources; capabilities.json is written there
+  <compositionModule>  the composition root, when it is not the generated
+                       Plugin.res: a module name inside <srcDir>, or a path
+
+  Run from the plugin package, after rescript build.`;
+
+function parseArgs(argv) {
+  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 2)), a => {
+    let positionals = CliArgs$Reventless.positionals(a);
+    let srcDir = positionals[0];
+    if (srcDir !== undefined && srcDir !== "") {
+      return {
+        TAG: "Ok",
+        _0: {
+          srcDir: srcDir,
+          compositionModule: positionals[1]
+        }
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "<srcDir> is required."
+      };
     }
-    let srcDir = Nodepath.resolve(srcDirArg);
-    let modulePath = compositionModulePath(srcDir, process.argv[3]);
+  });
+}
+
+let cli = {
+  bin: "emit-capabilities",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let match = process.env["LOG_LEVEL"];
+    if (match !== undefined) {
+      
+    } else {
+      process.env["LOG_LEVEL"] = "warn";
+    }
+    let srcDir = Nodepath.resolve(param.srcDir);
+    let modulePath = compositionModulePath(srcDir, param.compositionModule);
     if (!Nodefs.existsSync(modulePath)) {
       fail(modulePath + ` not found — run \`rescript build\` first.`);
     }
@@ -56,15 +87,15 @@ async function main() {
     Nodefs.writeFileSync(manifestPath, CapabilityManifest$Reventless.renderForStructure(built.pluginStructure), "utf8");
     console.log("Generated: " + manifestPath);
     process.exit(0);
-    return;
-  }
-  console.error("Usage: emit-capabilities <srcDir> [<compositionModule>]");
-  process.exit(1);
+  });
 }
 
 export {
   compositionModulePath,
   fail,
+  usage,
+  parseArgs,
+  cli,
   main,
 }
 /* node:fs Not a pure module */

@@ -33,6 +33,10 @@
   "sources": [
     {
       "dir": "scripts"
+    },
+    {
+      "dir": "scripts/tests",
+      "type": "dev"
     }
   ],
   "suffix": ".res.mjs"

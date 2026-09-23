@@ -16,9 +16,6 @@
 // expecting the platform *value*, and a ReScript module is not one. Importing
 // it puts both sides on the same footing, and it keeps `LOG_LEVEL` (set below)
 // in force before the platform's logger initialises.
-//
-// Usage: emit-capabilities <srcDir> [<compositionModule>]
-//   (run from the plugin package, after `rescript build`)
 
 // Emitted by ReScript as a literal `import(...)` expression — the composition
 // root's path is only known at run time, so it cannot be a static binding.
@@ -56,45 +53,59 @@ let fail = (message: string) => {
   NodeProcess.exit(1)
 }
 
-let main = async () => {
-  // The local platform defaults to Debug-level logging; a build step should not.
-  switch NodeProcess.env->Dict.get("LOG_LEVEL") {
-  | Some(_) => ()
-  | None => NodeProcess.env->Dict.set("LOG_LEVEL", "warn")
-  }
+let usage = `Usage: emit-capabilities <srcDir> [<compositionModule>]
 
-  switch NodeProcess.argv->Array.get(2) {
-  | None | Some("") => {
-      Console.error("Usage: emit-capabilities <srcDir> [<compositionModule>]")
-      NodeProcess.exit(1)
+  <srcDir>             the plugin's sources; capabilities.json is written there
+  <compositionModule>  the composition root, when it is not the generated
+                       Plugin.res: a module name inside <srcDir>, or a path
+
+  Run from the plugin package, after rescript build.`
+
+type args = {srcDir: string, compositionModule: option<string>}
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(argv)
+  ->Result.flatMap(a => a->Reventless.CliArgs.atMost(2))
+  ->Result.flatMap(a => {
+    let positionals = a->Reventless.CliArgs.positionals
+    switch positionals->Array.get(0) {
+    | None | Some("") => Error("<srcDir> is required.")
+    | Some(srcDir) => Ok({srcDir, compositionModule: positionals->Array.get(1)})
     }
-  | Some(srcDirArg) => {
-      let srcDir = NodePath.resolve([srcDirArg])
-      let modulePath = compositionModulePath(~srcDir, ~moduleArg=NodeProcess.argv->Array.get(3))
-      if !NodeFs.existsSync(modulePath) {
-        fail(`${modulePath} not found — run \`rescript build\` first.`)
-      }
+  })
 
-      // Relative specifier: resolved against this module, so it finds the
-      // sibling compiled platform whatever the working directory is.
-      let platformModule: localPlatformExports = await dynImport("./Platform.res.mjs")
-      let platform = platformModule["Make"]()
+let cli: Reventless.CliArgs.cli<args> = {bin: "emit-capabilities", usage, parse: parseArgs}
 
-      let composition: compositionExports = await dynImport(
-        NodeUrl.pathToFileURL(modulePath)["href"],
-      )
-      let built = composition["Make"](platform)
-
-      let manifestPath = NodePath.join([srcDir, "capabilities.json"])
-      NodeFs.writeFileSync(
-        manifestPath,
-        Reventless.CapabilityManifest.renderForStructure(built["pluginStructure"]),
-      )
-      Console.log("Generated: " ++ manifestPath)
-
-      // Applying the platform functor wires in-process infrastructure; exit
-      // explicitly so no lingering handle keeps the build step alive.
-      NodeProcess.exit(0)
+let main = () =>
+  Reventless.CliArgs.run(cli, async ({srcDir: srcDirArg, compositionModule}) => {
+    // The local platform defaults to Debug-level logging; a build step should not.
+    switch NodeProcess.env->Dict.get("LOG_LEVEL") {
+    | Some(_) => ()
+    | None => NodeProcess.env->Dict.set("LOG_LEVEL", "warn")
     }
-  }
-}
+
+    let srcDir = NodePath.resolve([srcDirArg])
+    let modulePath = compositionModulePath(~srcDir, ~moduleArg=compositionModule)
+    if !NodeFs.existsSync(modulePath) {
+      fail(`${modulePath} not found — run \`rescript build\` first.`)
+    }
+
+    // Relative specifier: resolved against this module, so it finds the
+    // sibling compiled platform whatever the working directory is.
+    let platformModule: localPlatformExports = await dynImport("./Platform.res.mjs")
+    let platform = platformModule["Make"]()
+
+    let composition: compositionExports = await dynImport(NodeUrl.pathToFileURL(modulePath)["href"])
+    let built = composition["Make"](platform)
+
+    let manifestPath = NodePath.join([srcDir, "capabilities.json"])
+    NodeFs.writeFileSync(
+      manifestPath,
+      Reventless.CapabilityManifest.renderForStructure(built["pluginStructure"]),
+    )
+    Console.log("Generated: " ++ manifestPath)
+
+    // Applying the platform functor wires in-process infrastructure; exit
+    // explicitly so no lingering handle keeps the build step alive.
+    NodeProcess.exit(0)
+  })

@@ -171,11 +171,11 @@ let register = (
 ): unit => {
   let path = write(~port, ~endpoint, ~loginEndpoint, ~store, ~tapPort?)
   NodeProcess.onExit(_ => removeQuietly(path))
-  NodeProcess.onSignal(#SIGINT, () => {
+  NodeProcess.onSignal(SIGINT, () => {
     removeQuietly(path)
     NodeProcess.exit(130)
   })
-  NodeProcess.onSignal(#SIGTERM, () => {
+  NodeProcess.onSignal(SIGTERM, () => {
     removeQuietly(path)
     NodeProcess.exit(143)
   })

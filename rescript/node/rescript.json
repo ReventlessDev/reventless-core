@@ -26,6 +26,7 @@
         "NodeProcess",
         "NodeStreams",
         "NodeUrl",
+        "NodeUtil",
         "NodeZlib"
       ]
     }

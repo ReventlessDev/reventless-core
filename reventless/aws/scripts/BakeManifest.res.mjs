@@ -5,7 +5,9 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Lambda$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/Lambda.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientLambda from "@aws-sdk/client-lambda";
 import * as PulumiCli$ReventlessAws from "./PulumiCli.res.mjs";
@@ -13,110 +15,27 @@ import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs"
 import * as DeployManifest$ReventlessAws from "./DeployManifest.res.mjs";
 
 function parseArgs(argv) {
-  let acc = {
-    TAG: "Ok",
-    _0: {
-      manifest: undefined,
-      stack: undefined,
-      since: undefined,
-      help: false
-    }
-  };
-  let i = 0;
-  let count = argv.length;
-  while (i < count) {
-    let flag = argv[i];
-    let value = argv[i + 1 | 0];
-    let match = acc;
-    let exit = 0;
-    if (match.TAG === "Ok") {
-      let a = match._0;
-      let exit$1 = 0;
-      switch (flag) {
-        case "--manifest" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                manifest: value,
-                stack: a.stack,
-                since: a.since,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--since" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                manifest: a.manifest,
-                stack: a.stack,
-                since: value === "" ? undefined : value,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--stack" :
-          if (value !== undefined) {
-            acc = {
-              TAG: "Ok",
-              _0: {
-                manifest: a.manifest,
-                stack: value,
-                since: a.since,
-                help: a.help
-              }
-            };
-            i = i + 2 | 0;
-          } else {
-            exit = 1;
-          }
-          break;
-        case "--help" :
-        case "-h" :
-          exit$1 = 2;
-          break;
-        default:
-          acc = {
-            TAG: "Error",
-            _0: `unknown argument "` + flag + `"`
-          };
+  return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "manifest",
+    "stack",
+    "since"
+  ], undefined, undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => ({
+    manifest: CliArgs$Reventless.string(a, "manifest"),
+    stack: CliArgs$Reventless.string(a, "stack"),
+    since: Stdlib_Option.flatMap(CliArgs$Reventless.string(a, "since"), v => {
+      if (v === "") {
+        return;
+      } else {
+        return v;
       }
-      if (exit$1 === 2) {
-        acc = {
-          TAG: "Ok",
-          _0: {
-            manifest: a.manifest,
-            stack: a.stack,
-            since: a.since,
-            help: true
-          }
-        };
-        i = i + 1 | 0;
-      }
-    } else {
-      i = count;
-    }
-    if (exit === 1) {
-      acc = {
-        TAG: "Error",
-        _0: flag + ` needs a value`
-      };
-    }
-  };
-  return acc;
+    }),
+    help: CliArgs$Reventless.help(a)
+  }));
 }
 
 let usage = `
+Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>]
+
 Bake the component manifest of a deployed platform.
 
   --manifest <path>   The deploy manifest. Defaults to ` + DeployManifest$ReventlessAws.defaultFile + `
@@ -409,24 +328,12 @@ async function bake(manifest, stack, since) {
   };
 }
 
-async function run() {
-  let e = parseArgs(process.argv.slice(2, process.argv.length));
+async function run(args) {
+  let e = DeployManifest$ReventlessAws.load(Stdlib_Option.getOr(args.manifest, DeployManifest$ReventlessAws.defaultFile));
   if (e.TAG !== "Ok") {
     return e;
   }
-  let args = e._0;
-  if (args.help) {
-    console.log(usage);
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
-  }
-  let e$1 = DeployManifest$ReventlessAws.load(Stdlib_Option.getOr(args.manifest, DeployManifest$ReventlessAws.defaultFile));
-  if (e$1.TAG !== "Ok") {
-    return e$1;
-  }
-  let manifest = e$1._0;
+  let manifest = e._0;
   let stack = Stdlib_Option.orElse(args.stack, PulumiCli$ReventlessAws.selectedStack(manifest.platform.dir));
   if (stack !== undefined) {
     return await bake(manifest, stack, args.since);
@@ -438,22 +345,30 @@ async function run() {
   }
 }
 
-async function main() {
-  let message;
-  try {
-    message = await run();
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    console.error(`bake-manifest: ` + Util_AwsError$ReventlessAws.describe(exn));
+let cli = {
+  bin: "bake-manifest",
+  usage: usage,
+  parse: parseArgs
+};
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async args => {
+    let message;
+    try {
+      message = await run(args);
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      console.error(`bake-manifest: ` + Util_AwsError$ReventlessAws.describe(exn));
+      process.exit(1);
+      return;
+    }
+    if (message.TAG === "Ok") {
+      return;
+    }
+    let message$1 = message._0;
+    console.error(inGitHubActions() ? `::error::` + message$1 : `bake-manifest: ` + message$1);
     process.exit(1);
-    return;
-  }
-  if (message.TAG === "Ok") {
-    return;
-  }
-  let message$1 = message._0;
-  console.error(inGitHubActions() ? `::error::` + message$1 : `bake-manifest: ` + message$1);
-  process.exit(1);
+  });
 }
 
 let Lambda;
@@ -482,6 +397,7 @@ export {
   invokeWith,
   bake,
   run,
+  cli,
   main,
 }
 /* Lambda-AwsSdk Not a pure module */

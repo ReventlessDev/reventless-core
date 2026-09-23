@@ -30,36 +30,19 @@ type args = {
   help: bool,
 }
 
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({manifest: None, stack: None, since: None, help: false}))
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "--manifest", Some(v)) =>
-      acc := Ok({...a, manifest: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--stack", Some(v)) =>
-      acc := Ok({...a, stack: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--since", Some(v)) =>
-      acc := Ok({...a, since: v == "" ? None : Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--manifest", None) | (Ok(_), "--stack", None) | (Ok(_), "--since", None) =>
-      acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
-    }
-  }
-  acc.contents
-}
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(~strings=["manifest", "stack", "since"], argv)
+  ->Result.flatMap(Reventless.CliArgs.noPositionals)
+  ->Result.map(a => {
+    manifest: a->Reventless.CliArgs.string("manifest"),
+    stack: a->Reventless.CliArgs.string("stack"),
+    since: a->Reventless.CliArgs.string("since")->Option.flatMap(v => v == "" ? None : Some(v)),
+    help: a->Reventless.CliArgs.help,
+  })
 
 let usage = `
+Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>]
+
 Bake the component manifest of a deployed platform.
 
   --manifest <path>   The deploy manifest. Defaults to ${DeployManifest.defaultFile}
@@ -363,33 +346,30 @@ let bake = async (~manifest: DeployManifest.resolved, ~stack: string, ~since: op
     }
   }
 
-let run = async (): result<unit, string> =>
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
+let run = async (args: args): result<unit, string> =>
+  switch DeployManifest.load(args.manifest->Option.getOr(DeployManifest.defaultFile)) {
   | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok(args) =>
-    switch DeployManifest.load(args.manifest->Option.getOr(DeployManifest.defaultFile)) {
-    | Error(_) as e => e
-    | Ok(manifest) =>
-      switch args.stack->Option.orElse(PulumiCli.selectedStack(~dir=manifest.platform.dir)) {
-      | None => Error(`no stack selected in ${manifest.platform.dir} — pass --stack`)
-      | Some(stack) => await bake(~manifest, ~stack, ~since=args.since)
-      }
+  | Ok(manifest) =>
+    switch args.stack->Option.orElse(PulumiCli.selectedStack(~dir=manifest.platform.dir)) {
+    | None => Error(`no stack selected in ${manifest.platform.dir} — pass --stack`)
+    | Some(stack) => await bake(~manifest, ~stack, ~since=args.since)
     }
   }
 
-let main = async () =>
-  switch await run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(inGitHubActions() ? `::error::${message}` : `bake-manifest: ${message}`)
-    NodeProcess.exit(1)
-  | exception exn =>
-    Console.error(`bake-manifest: ${Util_AwsError.describe(exn)}`)
-    NodeProcess.exit(1)
-  }
+let cli: Reventless.CliArgs.cli<args> = {bin: "bake-manifest", usage, parse: parseArgs}
+
+let main = () =>
+  Reventless.CliArgs.run(cli, async args =>
+    switch await run(args) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(inGitHubActions() ? `::error::${message}` : `bake-manifest: ${message}`)
+      NodeProcess.exit(1)
+    | exception exn =>
+      Console.error(`bake-manifest: ${Util_AwsError.describe(exn)}`)
+      NodeProcess.exit(1)
+    }
+  )
 
 // No top-level call: `../run-bake-manifest.mjs` invokes [main], so a test can
 // import this module.

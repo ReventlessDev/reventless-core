@@ -62,77 +62,78 @@ let readPackageField = (packageJson: JSON.t, field: string, fallback: string) =>
   ->Option.flatMap(JSON.Decode.string)
   ->Option.getOr(fallback)
 
-let main = async () => {
-  let argv = NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)
-  let flag = key =>
-    switch argv->Array.indexOf("--" ++ key) {
-    | -1 => None
-    | i => argv->Array.get(i + 1)
+type args = {traitPackage: string, out: string}
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(~strings=["out"], argv)
+  ->Result.flatMap(a => a->CliArgs.atMost(1))
+  ->Result.flatMap(a =>
+    switch (a->CliArgs.positionals->Array.get(0), a->CliArgs.string("out")) {
+    | (None | Some(""), _) => Error("<trait-package> is required.")
+    | (Some(_), None) => Error("--out is required.")
+    | (Some(traitPackage), Some(out)) => Ok({traitPackage, out})
     }
+  )
 
-  switch (argv->Array.get(0), flag("out")) {
-  | (None, _) | (Some(""), _) | (Some("--help"), _) | (Some("-h"), _) => {
-      Console.log(usage)
-      NodeProcess.exit(argv->Array.length == 0 ? 1 : 0)
-    }
-  | (Some(_), None) => fail("--out is required.\n\n" ++ usage)
-  | (Some(traitPackage), Some(out)) => {
-      let base = moduleBase(traitPackage)
+let cli: CliArgs.cli<args> = {bin: "trait-manifest", usage, parse: parseArgs}
 
-      let packageJson = switch resolveFrom(`${traitPackage}/package.json`) {
-      | None =>
-        fail(
-          `${traitPackage} is not installed here. A manifest is derived from the trait, so ` ++ `the trait has to be resolvable.`,
-        )
-        JSON.Encode.null
-      | Some(path) => NodeFs.readFileSync(path)->JSON.parseOrThrow
-      }
+let main = () =>
+  CliArgs.run(cli, async ({traitPackage, out}) => {
+    let base = moduleBase(traitPackage)
 
-      // The trait's entry module, for what it needs. Absent is refused rather
-      // than defaulted to `[]`: "needs nothing" and "nobody said" are different
-      // claims, and a listing that could not tell them apart would quietly
-      // publish the second as the first.
-      let traitModule: traitExports = switch resolveFrom(`${traitPackage}/src/${base}.res.mjs`) {
-      | None =>
-        fail(
-          `${traitPackage} exports no ${base} module, so its capability needs cannot be read.\n` ++
-          `  A trait states them as a value — an empty array if it brokers nothing — because ` ++ `an unstated need fails silently at run time.`,
-        )
-        %raw(`undefined`)
-      | Some(path) => await dynImport(NodeUrl.pathToFileURL(path)["href"])
-      }
-
-      // The emitter is optional: a trait whose graft is all patches has nothing
-      // to write, and says so here rather than by failing when someone tries.
-      let scaffold: option<scaffoldExports> = switch resolveFrom(
-        `${traitPackage}/src/${base}_Scaffold.res.mjs`,
-      ) {
-      | None => None
-      | Some(path) => Some(await dynImport(NodeUrl.pathToFileURL(path)["href"]))
-      }
-
-      let manifest: TraitManifest.t = {
-        trait: readPackageField(packageJson, "name", traitPackage),
-        version: readPackageField(packageJson, "version", "0.0.0"),
-        description: readPackageField(packageJson, "description", ""),
-        license: readPackageField(packageJson, "license", ""),
-        capabilities: traitModule.capabilityNeeds->Array.map(CapabilityNeed.toString),
-        config: switch scaffold {
-        | Some({configSchema}) => TraitManifest.configFieldsOf(configSchema)
-        | None => []
-        },
-        scaffolded: scaffold->Option.isSome,
-      }
-
-      NodeFs.writeFileSync(out, manifest->TraitManifest.render)
-      Console.log(
-        `trait-manifest: ${manifest.trait}@${manifest.version} — ` ++
-        `${manifest.capabilities->Array.length->Int.toString} capabilit(ies), ` ++
-        `${manifest.config->Array.length->Int.toString} config field(s)`,
+    let packageJson = switch resolveFrom(`${traitPackage}/package.json`) {
+    | None =>
+      fail(
+        `${traitPackage} is not installed here. A manifest is derived from the trait, so ` ++ `the trait has to be resolvable.`,
       )
-      Console.log(`Wrote: ${out}`)
+      JSON.Encode.null
+    | Some(path) => NodeFs.readFileSync(path)->JSON.parseOrThrow
     }
-  }
-}
 
-main()->Promise.ignore
+    // The trait's entry module, for what it needs. Absent is refused rather
+    // than defaulted to `[]`: "needs nothing" and "nobody said" are different
+    // claims, and a listing that could not tell them apart would quietly
+    // publish the second as the first.
+    let traitModule: traitExports = switch resolveFrom(`${traitPackage}/src/${base}.res.mjs`) {
+    | None =>
+      fail(
+        `${traitPackage} exports no ${base} module, so its capability needs cannot be read.\n` ++
+        `  A trait states them as a value — an empty array if it brokers nothing — because ` ++ `an unstated need fails silently at run time.`,
+      )
+      %raw(`undefined`)
+    | Some(path) => await dynImport(NodeUrl.pathToFileURL(path)["href"])
+    }
+
+    // The emitter is optional: a trait whose graft is all patches has nothing
+    // to write, and says so here rather than by failing when someone tries.
+    let scaffold: option<scaffoldExports> = switch resolveFrom(
+      `${traitPackage}/src/${base}_Scaffold.res.mjs`,
+    ) {
+    | None => None
+    | Some(path) => Some(await dynImport(NodeUrl.pathToFileURL(path)["href"]))
+    }
+
+    let manifest: TraitManifest.t = {
+      trait: readPackageField(packageJson, "name", traitPackage),
+      version: readPackageField(packageJson, "version", "0.0.0"),
+      description: readPackageField(packageJson, "description", ""),
+      license: readPackageField(packageJson, "license", ""),
+      capabilities: traitModule.capabilityNeeds->Array.map(CapabilityNeed.toString),
+      config: switch scaffold {
+      | Some({configSchema}) => TraitManifest.configFieldsOf(configSchema)
+      | None => []
+      },
+      scaffolded: scaffold->Option.isSome,
+    }
+
+    NodeFs.writeFileSync(out, manifest->TraitManifest.render)
+    Console.log(
+      `trait-manifest: ${manifest.trait}@${manifest.version} — ` ++
+      `${manifest.capabilities->Array.length->Int.toString} capabilit(ies), ` ++
+      `${manifest.config->Array.length->Int.toString} config field(s)`,
+    )
+    Console.log(`Wrote: ${out}`)
+  })
+
+// No top-level call: `../../run-trait-manifest.mjs` invokes [main], so a test
+// can import this module.

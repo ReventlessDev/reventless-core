@@ -40,13 +40,20 @@ external kill: (int, int) => unit = "kill"
     synchronous work, while a signal handler receives the signal name and fires
     *before* the process is committed to leaving — code that registers one and
     expects the other's timing gets a cleanup that never runs. Signals are a
-    polyvariant so a typo is a compile error rather than a handler that is never
-    called. */
+    closed variant so a typo is a compile error rather than a handler that is
+    never called. */
 @val @scope("process")
 external onExit: (@as("exit") _, int => unit) => unit = "on"
 
+/** The signals a CLI cleans up on. Each constructor compiles to the name Node
+    reads. */
+type signal =
+  | @as("SIGINT") SIGINT
+  | @as("SIGTERM") SIGTERM
+  | @as("SIGHUP") SIGHUP
+
 @val @scope("process")
-external onSignal: ([#SIGINT | #SIGTERM | #SIGHUP], unit => unit) => unit = "on"
+external onSignal: (signal, unit => unit) => unit = "on"
 
 /** The standard streams. `write`, `isTTY`, `pause` and `unref` are what the
     interactive prompts in this repository reach for; the type is abstract so it

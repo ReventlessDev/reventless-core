@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-import "./src/generator/PlatformGenerator.res.mjs"
+import { main } from "./src/generator/PlatformGenerator.res.mjs"
+await main()

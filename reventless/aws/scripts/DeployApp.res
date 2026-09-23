@@ -37,39 +37,28 @@ type args = {
 
 let defaultStack = "dev"
 
-let parseArgs = (argv: array<string>): result<args, string> => {
-  let acc = ref(Ok({command: None, manifest: None, stack: defaultStack, help: false}))
-  let i = ref(0)
-  let count = argv->Array.length
-  while i.contents < count {
-    let flag = argv->Array.getUnsafe(i.contents)
-    let value = argv->Array.get(i.contents + 1)
-    switch (acc.contents, flag, value) {
-    | (Error(_), _, _) => i := count
-    | (Ok(a), "up", _) if a.command == None =>
-      acc := Ok({...a, command: Some(Up)})
-      i := i.contents + 1
-    | (Ok(a), "down", _) if a.command == None =>
-      acc := Ok({...a, command: Some(Down)})
-      i := i.contents + 1
-    | (Ok(a), "--manifest", Some(v)) =>
-      acc := Ok({...a, manifest: Some(v)})
-      i := i.contents + 2
-    | (Ok(a), "--stack", Some(v)) =>
-      acc := Ok({...a, stack: v})
-      i := i.contents + 2
-    | (Ok(a), "--help", _) | (Ok(a), "-h", _) =>
-      acc := Ok({...a, help: true})
-      i := i.contents + 1
-    | (Ok(_), "--manifest", None) | (Ok(_), "--stack", None) =>
-      acc := Error(`${flag} needs a value`)
-    | (Ok(_), unknown, _) => acc := Error(`unknown argument "${unknown}"`)
+let parseArgs = (argv: array<string>): result<args, string> =>
+  Reventless.CliArgs.parse(~strings=["manifest", "stack"], argv)->Result.flatMap(a => {
+    let help = a->Reventless.CliArgs.help
+    let args = {
+      command: None,
+      manifest: a->Reventless.CliArgs.string("manifest"),
+      stack: a->Reventless.CliArgs.string("stack")->Option.getOr(defaultStack),
+      help,
     }
-  }
-  acc.contents
-}
+    let positionals = a->Reventless.CliArgs.positionals
+    switch (positionals->Array.get(0), positionals->Array.get(1)) {
+    | (_, Some(surplus)) => Reventless.CliArgs.extra(surplus)
+    | (Some("up"), None) => Ok({...args, command: Some(Up)})
+    | (Some("down"), None) => Ok({...args, command: Some(Down)})
+    | (Some(other), None) => Reventless.CliArgs.extra(other)
+    | (None, None) => help ? Ok(args) : Error("say `up` or `down`")
+    }
+  })
 
 let usage = `
+Usage: deploy-app up|down [--manifest <path>] [--stack <name>]
+
 Deploy an app to AWS, or remove it again.
 
   deploy-app up     Deploy the platform and every plugin, bake the component
@@ -675,34 +664,31 @@ let down = async (~manifest: DeployManifest.resolved, ~stack: string): result<un
     }
   }
 
-let run = async (): result<unit, string> =>
-  switch parseArgs(NodeProcess.argv->Array.slice(~start=2, ~end=NodeProcess.argv->Array.length)) {
+let run = async ({command, manifest, stack}: args): result<unit, string> =>
+  switch DeployManifest.load(manifest->Option.getOr(DeployManifest.defaultFile)) {
   | Error(_) as e => e
-  | Ok(args) if args.help =>
-    Console.log(usage)
-    Ok()
-  | Ok({command: None}) => Error("say `up` or `down` (--help for more)")
-  | Ok({command: Some(command), manifest, stack}) =>
-    switch DeployManifest.load(manifest->Option.getOr(DeployManifest.defaultFile)) {
-    | Error(_) as e => e
-    | Ok(manifest) =>
-      switch command {
-      | Up => await up(~manifest, ~stack)
-      | Down => await down(~manifest, ~stack)
-      }
+  | Ok(manifest) =>
+    switch command {
+    | Some(Up) => await up(~manifest, ~stack)
+    | Some(Down) => await down(~manifest, ~stack)
+    | None => Error("say `up` or `down`")
     }
   }
 
-let main = async () =>
-  switch await run() {
-  | Ok() => ()
-  | Error(message) =>
-    Console.error(`deploy-app: ${message}`)
-    NodeProcess.exit(1)
-  | exception exn =>
-    Console.error(`deploy-app: ${Util_AwsError.describe(exn)}`)
-    NodeProcess.exit(1)
-  }
+let cli: Reventless.CliArgs.cli<args> = {bin: "deploy-app", usage, parse: parseArgs}
+
+let main = () =>
+  Reventless.CliArgs.run(cli, async args =>
+    switch await run(args) {
+    | Ok() => ()
+    | Error(message) =>
+      Console.error(`deploy-app: ${message}`)
+      NodeProcess.exit(1)
+    | exception exn =>
+      Console.error(`deploy-app: ${Util_AwsError.describe(exn)}`)
+      NodeProcess.exit(1)
+    }
+  )
 
 // No top-level call: `../run-deploy-app.mjs` invokes [main], so a test can import
 // this module.

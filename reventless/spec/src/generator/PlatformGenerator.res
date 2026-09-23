@@ -22,12 +22,28 @@ let asObject = (json: JSON.t): option<dict<JSON.t>> => json->JSON.Decode.object
 let stringAt = (obj: dict<JSON.t>, field: string): option<string> =>
   obj->Dict.get(field)->Option.flatMap(JSON.Decode.string)
 
-let () = {
-  let manifestArg = NodeProcess.argv->Array.get(2)->Option.getOr("")
-  if manifestArg == "" {
-    Console.error("Usage: generate-platform <deploy-manifest.yaml>")
-    NodeProcess.exit(1)
-  } else {
+let usage = `Usage: generate-platform <deploy-manifest.yaml>
+
+  Reads the plugins the deploy manifest lists, unions their committed
+  capabilities.json manifests, and writes the platform's
+  src/PlatformCapabilities.res.`
+
+type args = {manifest: string}
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(argv)
+  ->Result.flatMap(a => a->CliArgs.atMost(1))
+  ->Result.flatMap(a =>
+    switch a->CliArgs.positionals->Array.get(0) {
+    | None | Some("") => Error("<deploy-manifest.yaml> is required.")
+    | Some(manifest) => Ok({manifest: manifest})
+    }
+  )
+
+let cli: CliArgs.cli<args> = {bin: "generate-platform", usage, parse: parseArgs}
+
+let main = () =>
+  CliArgs.run(cli, async ({manifest: manifestArg}) => {
     let manifestPath = NodePath.resolve([manifestArg])
     if !NodeFs.existsSync(manifestPath) {
       fail(`${manifestPath} not found`)
@@ -52,16 +68,18 @@ let () = {
       ->Option.flatMap(m => m->Dict.get("plugins"))
       ->Option.flatMap(JSON.Decode.array)
       ->Option.map(entries =>
-        entries->Array.filterMap(entry => {
-          let obj = entry->asObject
-          switch (
-            obj->Option.flatMap(o => o->stringAt("name")),
-            obj->Option.flatMap(o => o->stringAt("path")),
-          ) {
-          | (Some(name), Some(path)) => Some((name, path))
-          | _ => None
-          }
-        })
+        entries->Array.filterMap(
+          entry => {
+            let obj = entry->asObject
+            switch (
+              obj->Option.flatMap(o => o->stringAt("name")),
+              obj->Option.flatMap(o => o->stringAt("path")),
+            ) {
+            | (Some(name), Some(path)) => Some((name, path))
+            | _ => None
+            }
+          },
+        )
       )
 
     switch (platformPath, plugins) {
@@ -89,20 +107,22 @@ let () = {
               []
             }
           | Manifests(manifests) =>
-            manifests->Array.map(({path, via}) => {
-              Console.log(
-                `Read: ${pluginName} — ${path} (via ${PlatformManifests.describeVia(via)})`,
-              )
-              let manifest = try NodeFs.readFileSync(path)
-              ->JSON.parseOrThrow
-              ->S.parseOrThrow(~to=CapabilityManifest.schema) catch {
-              | _ => {
-                  fail(`could not parse ${path} as a capability manifest`)
-                  ({capabilities: []}: CapabilityManifest.t)
+            manifests->Array.map(
+              ({path, via}) => {
+                Console.log(
+                  `Read: ${pluginName} — ${path} (via ${PlatformManifests.describeVia(via)})`,
+                )
+                let manifest = try NodeFs.readFileSync(path)
+                ->JSON.parseOrThrow
+                ->S.parseOrThrow(~to=CapabilityManifest.schema) catch {
+                | _ => {
+                    fail(`could not parse ${path} as a capability manifest`)
+                    ({capabilities: []}: CapabilityManifest.t)
+                  }
                 }
-              }
-              ({pluginName, manifest}: PlatformCodegen.pluginManifest)
-            })
+                ({pluginName, manifest}: PlatformCodegen.pluginManifest)
+              },
+            )
           }
         })
 
@@ -122,5 +142,4 @@ let () = {
       }
     | _ => fail(`${manifestPath} needs a \`platform.path\` and a \`plugins\` list with name + path`)
     }
-  }
-}
+  })

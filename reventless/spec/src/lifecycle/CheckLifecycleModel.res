@@ -71,25 +71,6 @@ NodeProcess.env->Dict.set("REVENTLESS_DECLARED_TRANSITIONS_ONLY", "1")
 
 let repoRoot = NodeProcess.cwd()
 let examplesDir = NodePath.join([repoRoot, "examples"])
-let update = NodeProcess.argv->Array.includes("--update")
-
-/** Every `<flag> <value>` pair on the command line, so a flag can be repeated.
-
-    A value that looks like another flag is not consumed, so `--root --json`
-    reports no roots rather than silently checking a directory named `--json`. */
-let flagValues = (flag: string): array<string> => {
-  let argv = NodeProcess.argv
-  let out = []
-  for i in 0 to Array.length(argv) - 1 {
-    if argv->Array.get(i) == Some(flag) {
-      switch argv->Array.get(i + 1) {
-      | Some(value) if !(value->String.startsWith("--")) => out->Array.push(value)->ignore
-      | _ => ()
-      }
-    }
-  }
-  out
-}
 
 /** An app whose plugins are checked together, and the name it is reported under.
 
@@ -97,28 +78,51 @@ let flagValues = (flag: string): array<string> => {
     other plugins it shares an event log with. */
 type appRoot = {label: string, dir: string}
 
-/** Read the sidecars a prior build already wrote instead of driving one. CI's
-    build step sets `REVENTLESS_EMIT_SIDECAR=1`, so by the time this runs the
-    corpus is on disk; a second pass over a warm tree buys nothing and costs the
-    multi-root build chain's habit of cleaning artifacts outside the root it is
-    building, which lands intermittently on a stale `.cmi`. */
-let reuseSidecars =
-  NodeProcess.argv->Array.includes("--reuse-sidecars")
+/** The command line.
 
-/** Report the run as one JSON document on stdout instead of the grouped prose.
+    `reuseSidecars` reads the sidecars a prior build already wrote instead of
+    driving one. CI's build step sets `REVENTLESS_EMIT_SIDECAR=1`, so by the time
+    this runs the corpus is on disk; a second pass over a warm tree buys nothing
+    and costs the multi-root build chain's habit of cleaning artifacts outside the
+    root it is building, which lands intermittently on a stale `.cmi`.
 
-    For a consumer that has to place a finding somewhere — an editor putting a
-    squiggle on the arm that made the claim — rather than read it. The prose
-    bakes component, command and state into a sentence; this keeps them as
-    fields, so the consumer does not parse English back into a range.
+    `json` reports the run as one JSON document on stdout instead of the grouped
+    prose, for a consumer that has to place a finding somewhere — an editor
+    putting a squiggle on the arm that made the claim — rather than read it.
+    Artifacts are neither written nor compared under it: a reader asking what the
+    corpus says now must not, as a side effect, rewrite what the repository says
+    it said — nor fail because the two have drifted. A contradiction still exits
+    non-zero, so this composes with a gate. */
+type args = {
+  update: bool,
+  roots: array<string>,
+  reuseSidecars: bool,
+  json: bool,
+}
 
-    Artifacts are neither written nor compared under `--json`: a reader asking
-    what the corpus says now must not, as a side effect, rewrite what the
-    repository says it said — nor fail because the two have drifted, which is a
-    fact about the repository rather than about the corpus it was asked to
-    report. A contradiction still exits non-zero, so this composes with a gate. */
-let json =
-  NodeProcess.argv->Array.includes("--json")
+let usage = `Usage: check-lifecycle [--root <dir>]... [--update] [--reuse-sidecars] [--json]
+
+  --root <dir>       an app whose plugins are checked together; repeatable.
+                     Without one, every directory under ./examples
+  --update           rewrite the goldens and the models instead of comparing
+  --reuse-sidecars   read the scenario sidecars a prior build wrote instead of
+                     building with REVENTLESS_EMIT_SIDECAR=1
+  --json             report as one JSON document on stdout; writes and
+                     compares nothing
+
+Contradictions, drift and unreadable plugins exit 1.`
+
+let parseArgs = (argv: array<string>): result<args, string> =>
+  CliArgs.parse(~bools=["update", "reuse-sidecars", "json"], ~lists=["root"], argv)
+  ->Result.flatMap(CliArgs.noPositionals)
+  ->Result.map(a => {
+    update: a->CliArgs.bool("update"),
+    roots: a->CliArgs.strings("root"),
+    reuseSidecars: a->CliArgs.bool("reuse-sidecars"),
+    json: a->CliArgs.bool("json"),
+  })
+
+let cli: CliArgs.cli<args> = {bin: "check-lifecycle", usage, parse: parseArgs}
 
 /** The label a state carries when no row exists yet. Not a lifecycle case — no
     enum declares it — so it is spelled in a way no constructor can name, and a
@@ -978,32 +982,24 @@ let pluginDirsIn = (exampleDir: string): array<string> =>
     get. A `--root` is resolved against the working directory so a relative one
     means what the person who typed it meant, and labelled by its basename so the
     prose reads the same either way. */
-// `--root` typed with nothing usable after it — `--root --json`, or a trailing
-// `--root`. Falling back to the default scan below would check the whole examples
-// tree while the person believed they had narrowed it to one app, so refuse here
-// rather than answer a question nobody asked.
-if NodeProcess.argv->Array.includes("--root") && Array.length(flagValues("--root")) == 0 {
-  Console.error("--root needs a directory after it")
-  NodeProcess.exit(1)
-}
-
-let roots: array<appRoot> = switch flagValues("--root") {
-| [] =>
-  switch NodeFs.readdirSync(examplesDir, {withFileTypes: true}) {
-  | entries =>
-    entries
-    ->Array.filter(e => e->NodeFs.isDirectory)
-    ->Array.map(e => e->NodeFs.direntName)
-    ->Array.toSorted(String.compare)
-    ->Array.map(name => {label: name, dir: NodePath.join([examplesDir, name])})
-  | exception _ => []
+let rootsOf = (given: array<string>): array<appRoot> =>
+  switch given {
+  | [] =>
+    switch NodeFs.readdirSync(examplesDir, {withFileTypes: true}) {
+    | entries =>
+      entries
+      ->Array.filter(e => e->NodeFs.isDirectory)
+      ->Array.map(e => e->NodeFs.direntName)
+      ->Array.toSorted(String.compare)
+      ->Array.map(name => {label: name, dir: NodePath.join([examplesDir, name])})
+    | exception _ => []
+    }
+  | given =>
+    given->Array.map(given => {
+      let dir = NodePath.resolve([given])
+      {label: NodePath.basename(dir), dir}
+    })
   }
-| given =>
-  given->Array.map(given => {
-    let dir = NodePath.resolve([given])
-    {label: NodePath.basename(dir), dir}
-  })
-}
 
 /** The kind a sidecar's source folder names, read through `ComponentKind` — the
     one vocabulary the plugin generator and the PPX already classify a folder by,
@@ -1363,7 +1359,13 @@ let modelPath = (~pluginDir: string) => NodePath.join([pluginDir, "src", "Lifecy
 /** Rewrite under `--update`, and when nothing is there yet so a plugin harvested
     for the first time is not a failure. Otherwise compare, and record the drift:
     a derivation that moved belongs in the diff of the change that moved it. */
-let writeOrCompare = (~path: string, ~actual: string, ~label: string, ~drifted: array<string>) => {
+let writeOrCompare = (
+  ~update: bool,
+  ~path: string,
+  ~actual: string,
+  ~label: string,
+  ~drifted: array<string>,
+) => {
   let existed = path->NodeFs.existsSync
   if update || !existed {
     NodeFs.writeFileSync(path, actual)
@@ -1376,142 +1378,154 @@ let writeOrCompare = (~path: string, ~actual: string, ~label: string, ~drifted: 
 
 // ── Entry point ─────────────────────────────────────────────────────────────
 
-let main = async () => {
-  let findings = []
-  let opaque = []
-  let outcomes = []
-  let failures = []
-  let drifted = []
-  let allDerived = []
+let main = () =>
+  CliArgs.run(cli, async ({update, roots, reuseSidecars, json}) => {
+    let roots = rootsOf(roots)
+    let findings = []
+    let opaque = []
+    let outcomes = []
+    let failures = []
+    let drifted = []
+    let allDerived = []
 
-  let allPluginDirs = roots->Array.flatMap(root => pluginDirsIn(root.dir))
+    let allPluginDirs = roots->Array.flatMap(root => pluginDirsIn(root.dir))
 
-  // A run that found nothing to check is a mistyped `--root` far more often than
-  // an app with no plugins, and reporting "ok" for it is how that typo survives.
-  if Array.length(allPluginDirs) == 0 {
-    Console.error(
-      `no plugins found under ${roots
-        ->Array.map(r => r.dir)
-        ->Array.join(", ")} — a plugin is a ` ++ `directory with both src/Plugin.res and tests/`,
-    )
-    NodeProcess.exit(1)
-  }
+    // A run that found nothing to check is a mistyped `--root` far more often than
+    // an app with no plugins, and reporting "ok" for it is how that typo survives.
+    if Array.length(allPluginDirs) == 0 {
+      Console.error(
+        `no plugins found under ${roots
+          ->Array.map(r => r.dir)
+          ->Array.join(
+            ", ",
+          )} — a plugin is a ` ++ `directory with both src/Plugin.res and tests/`,
+      )
+      NodeProcess.exit(1)
+    }
 
-  switch reuseSidecars
-    ? checkSidecars(~pluginDirs=allPluginDirs)
-    : emitSidecars(~pluginDirs=allPluginDirs) {
-  | Error(msg) =>
-    Console.error(msg)
-    NodeProcess.exit(1)
-  | Ok() => ()
-  }
+    switch reuseSidecars
+      ? checkSidecars(~pluginDirs=allPluginDirs)
+      : emitSidecars(~pluginDirs=allPluginDirs) {
+    | Error(msg) =>
+      Console.error(msg)
+      NodeProcess.exit(1)
+    | Ok() => ()
+    }
 
-  // The build above is the working directory's, so a `--root` elsewhere can come
-  // back successful having emitted nothing for the tree actually being checked.
-  // An empty corpus reads as every edge unverified — a warning — so without this
-  // the run would pass having checked nothing, which is the one outcome worth
-  // refusing outright.
-  if !hasCorpus(~pluginDirs=allPluginDirs) {
-    Console.error(
-      `no scenario sidecar exists under ${roots
-        ->Array.map(r => r.dir)
-        ->Array.join(
-          ", ",
-        )} after ` ++ `the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`,
-    )
-    NodeProcess.exit(1)
-  }
+    // The build above is the working directory's, so a `--root` elsewhere can come
+    // back successful having emitted nothing for the tree actually being checked.
+    // An empty corpus reads as every edge unverified — a warning — so without this
+    // the run would pass having checked nothing, which is the one outcome worth
+    // refusing outright.
+    if !hasCorpus(~pluginDirs=allPluginDirs) {
+      Console.error(
+        `no scenario sidecar exists under ${roots
+          ->Array.map(r => r.dir)
+          ->Array.join(
+            ", ",
+          )} after ` ++ `the build. Build that tree with REVENTLESS_EMIT_SIDECAR=1 and pass --reuse-sidecars.`,
+      )
+      NodeProcess.exit(1)
+    }
 
-  for i in 0 to Array.length(roots) - 1 {
-    switch roots->Array.get(i) {
-    | None => ()
-    | Some(root) =>
-      let example = root.label
-      let exampleDir = root.dir
-      let derived = []
-      let dirs = pluginDirsIn(exampleDir)
+    for i in 0 to Array.length(roots) - 1 {
+      switch roots->Array.get(i) {
+      | None => ()
+      | Some(root) =>
+        let example = root.label
+        let exampleDir = root.dir
+        let derived = []
+        let dirs = pluginDirsIn(exampleDir)
 
-      for j in 0 to Array.length(dirs) - 1 {
-        switch dirs->Array.get(j) {
-        | None => ()
-        | Some(pluginDir) =>
-          let plugin = NodePath.basename(pluginDir)
-          let qualified = `${example}/${plugin}`
-          switch await runPlugin(~plugin=qualified, ~pluginDir, ~findings, ~opaque, ~outcomes) {
-          | Ok(commands) =>
-            commands->Array.forEach(c => {
-              derived->Array.push(c)
-              allDerived->Array.push((qualified, c))
-            })
-            if !json {
-              writeOrCompare(
-                ~path=modelPath(~pluginDir),
-                ~actual=modelSource(~plugin, ~derived=commands),
-                ~label=`${example}/${plugin}/src/LifecycleModel.res`,
-                ~drifted,
-              )
+        for j in 0 to Array.length(dirs) - 1 {
+          switch dirs->Array.get(j) {
+          | None => ()
+          | Some(pluginDir) =>
+            let plugin = NodePath.basename(pluginDir)
+            let qualified = `${example}/${plugin}`
+            switch await runPlugin(~plugin=qualified, ~pluginDir, ~findings, ~opaque, ~outcomes) {
+            | Ok(commands) =>
+              commands->Array.forEach(c => {
+                derived->Array.push(c)
+                allDerived->Array.push((qualified, c))
+              })
+              if !json {
+                writeOrCompare(
+                  ~update,
+                  ~path=modelPath(~pluginDir),
+                  ~actual=modelSource(~plugin, ~derived=commands),
+                  ~label=`${example}/${plugin}/src/LifecycleModel.res`,
+                  ~drifted,
+                )
+              }
+            | Error(msg) => failures->Array.push(`${example}/${plugin}: ${msg}`)->ignore
             }
-          | Error(msg) => failures->Array.push(`${example}/${plugin}: ${msg}`)->ignore
           }
         }
-      }
 
-      if Array.length(dirs) > 0 && !json {
-        let dir = NodePath.join([exampleDir, "schema"])
-        if !(dir->NodeFs.existsSync) {
-          NodeFs.mkdirSync(dir, {recursive: true})
+        if Array.length(dirs) > 0 && !json {
+          let dir = NodePath.join([exampleDir, "schema"])
+          if !(dir->NodeFs.existsSync) {
+            NodeFs.mkdirSync(dir, {recursive: true})
+          }
+          writeOrCompare(
+            ~update,
+            ~path=goldenPath(~root),
+            ~actual=goldenJson(derived),
+            ~label=`${example}/schema/lifecycle-model.json`,
+            ~drifted,
+          )
+          Console.log(
+            `ok ${example} — ${Array.length(
+                derived,
+              )->Int.toString} commands derived from scenarios`,
+          )
         }
-        writeOrCompare(
-          ~path=goldenPath(~root),
-          ~actual=goldenJson(derived),
-          ~label=`${example}/schema/lifecycle-model.json`,
-          ~drifted,
-        )
-        Console.log(
-          `ok ${example} — ${Array.length(
-              derived,
-            )->Int.toString} commands derived from scenarios`,
-        )
       }
     }
-  }
 
-  let of_ = severity => findings->Array.filter(f => f.severity == severity)
-  let contradicted = of_("contradicted")
+    let of_ = severity => findings->Array.filter(f => f.severity == severity)
+    let contradicted = of_("contradicted")
 
-  if json {
-    Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~outcomes, ~failures))
-  } else {
-    ["contradicted", "unverified", "undeclared", "level", "ambiguous"]->Array.forEach(severity => {
-      let group = of_(severity)
-      if Array.length(group) > 0 {
-        Console.log(`\n${severity} (${Array.length(group)->Int.toString})`)
-        group->Array.forEach(f => Console.log(`  ${f.message}`))
-      }
-    })
-  }
+    if json {
+      Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~outcomes, ~failures))
+    } else {
+      [
+        "contradicted",
+        "unverified",
+        "undeclared",
+        "level",
+        "ambiguous",
+      ]->Array.forEach(severity => {
+        let group = of_(severity)
+        if Array.length(group) > 0 {
+          Console.log(`\n${severity} (${Array.length(group)->Int.toString})`)
+          group->Array.forEach(f => Console.log(`  ${f.message}`))
+        }
+      })
+    }
 
-  if Array.length(failures) > 0 && !json {
-    Console.error(`\ncould not read:`)
-    failures->Array.forEach(f => Console.error(`  ${f}`))
-  }
+    if Array.length(failures) > 0 && !json {
+      Console.error(`\ncould not read:`)
+      failures->Array.forEach(f => Console.error(`  ${f}`))
+    }
 
-  if Array.length(drifted) > 0 {
-    Console.error(
-      `\n${Array.length(
-          drifted,
-        )->Int.toString} lifecycle artifact(s) changed. If the change is ` ++ `intended, re-run with --update and commit them alongside the change that moved them.`,
-    )
-  }
+    if Array.length(drifted) > 0 {
+      Console.error(
+        `\n${Array.length(
+            drifted,
+          )->Int.toString} lifecycle artifact(s) changed. If the change is ` ++ `intended, re-run with --update and commit them alongside the change that moved them.`,
+      )
+    }
 
-  // Warnings do not fail the build: an unverified edge is a corpus that has not
-  // caught up, which is a thing to work on rather than a thing to stop for. A
-  // contradiction is a disagreement between two statements about the same
-  // command, and one of them is wrong.
-  if Array.length(contradicted) > 0 || Array.length(drifted) > 0 || Array.length(failures) > 0 {
-    NodeProcess.exit(1)
-  }
-}
+    // Warnings do not fail the build: an unverified edge is a corpus that has not
+    // caught up, which is a thing to work on rather than a thing to stop for. A
+    // contradiction is a disagreement between two statements about the same
+    // command, and one of them is wrong.
+    if Array.length(contradicted) > 0 || Array.length(drifted) > 0 || Array.length(failures) > 0 {
+      NodeProcess.exit(1)
+    }
+  })
 
 // 🚨 **No top-level call.** `../../run-check-lifecycle.mjs` invokes [main]; this
 // module only defines it. While the call was here, importing the module *ran the
