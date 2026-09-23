@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-23
+- refactor(tests): the plugin's example file takes the companion suffix too ([9eef47b](https://github.com/ReventlessDev/reventless-core/commit/9eef47b16a705a507d0f7e9e9bdc60cd356dca70))
+- docs(gwt): the guide teaches example files, and its links resolve again ([f9beaaf](https://github.com/ReventlessDev/reventless-core/commit/f9beaaf280dc150f7e98732bea4d12feb219279c))
 ### 2026-09-21
 - fix(deps): update rescript to 12.3.1 ([ea1ce37](https://github.com/ReventlessDev/reventless-core/commit/ea1ce377297640f6d0d360e6c84c778d59ecbcc5))
 ### 2026-09-21
