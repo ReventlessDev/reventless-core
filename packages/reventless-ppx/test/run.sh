@@ -3962,7 +3962,7 @@ EOF
 cat > "$SIDECARS/src/OrderingExamples.res" <<'EOF'
 @@reventless.examples
 
-type orderLine = {name: string, quantity: int, total: Money.t}
+@schema type orderLine = {name: string, quantity: int, total: Money.t}
 
 let eur = amount => Money.make(~amount, ~currency=EUR)
 
@@ -3970,7 +3970,15 @@ let dockLine: orderLine = {name: "Fathom Dock", quantity: 1, total: eur(2500.0)}
 let lines: array<orderLine> = [dockLine]
 let firstLine = dockLine
 EOF
+cat > "$SIDECARS/src/DeliveryOption.res" <<'EOF'
+@schema
+type t =
+  | Standard
+  | Express
+  | Pickup({storeId: string})
+EOF
 cat > "$SIDECARS/src/Lines_GWT.res" <<'EOF'
+@schema
 type row = {line: OrderingExamples.orderLine, total: Money.t}
 let describe = (_: string, f: unit => unit) => f()
 let test = (_: string, f: unit => unit) => f()
@@ -4015,6 +4023,19 @@ GJ="$SIDECARS/src/Lines_GWT.gwt.json"
 assert_js_contains "$GJ" '"kind": "ref", "name": "OrderingExamples.dockLine"' "a qualified name is a ref"
 assert_js_contains "$GJ" '"value": "Money.make(~amount=1000.0, ~currency=Money.EUR)"' \
   "a call is code, cut from the ReScript source"
+
+echo ""
+echo "=== Test: a module of shared @schema types gets a types sidecar ==="
+TJ="$SIDECARS/src/DeliveryOption.types.json"
+assert_js_contains "$TJ" '"module": "DeliveryOption"' "module is the file stem"
+assert_js_contains "$TJ" '"typeName": "t"' "the type is recorded"
+assert_js_contains "$TJ" '"name": "storeId"' "an inline-record payload carries its fields"
+if [ -e "$SIDECARS/src/Money.types.json" ] || [ -e "$SIDECARS/src/OrderingExamples.types.json" ] \
+   || [ -e "$SIDECARS/src/Lines_GWT.types.json" ]; then
+  fail "types sidecar" "written for a module with no @schema type, an examples file or a GWT file"
+else
+  pass "no types sidecar without a @schema type, for an examples file or a GWT file"
+fi
 
 # ─── The source reader (reventless-ppx-read) ─────────────────────────
 #

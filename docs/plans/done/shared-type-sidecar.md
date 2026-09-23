@@ -1,8 +1,9 @@
 # Plan: a module of shared schema types gets a sidecar of its own
 
-**Status:** 📋 Proposed — 2026-09-24. Nothing built.<br/>
+**Status:** ✅ Done — 2026-09-24. T1 and T2 built; T3 ships with the next PPX release.<br/>
 **Touches:** `packages/reventless-ppx` only (`src/ppx/SidecarEmit.ml`, `src/ppx/ReventlessPpx.ml`,
-`src/test_sidecar/`), the root `.gitignore`, and `docs/guides/reverse-codegen-pipeline.md`.
+`src/test_sidecar/`, `test/run.sh`), the root `.gitignore`, and
+`docs/guides/reverse-codegen-pipeline.md`.
 
 ## Goal
 
@@ -150,3 +151,15 @@ Built with `REVENTLESS_EMIT_SIDECAR=1`, a plugin with `src/DeliveryOption.res` a
 `Pickup` element carries `storeId`. A record module gets `shape: "record"`. An identity module,
 a spec and a behavior file get no `.types.json`. Without the variable nothing is written, and
 the compiled output is the same either way.
+
+## Outcome
+
+- The dispatcher's check is `ReventlessPpx.is_shared_types_module`; the sidecar is
+  `SidecarEmit.types_fragment_json` / `maybe_emit_types`, reusing `type_entry`.
+- `SidecarEmit.is_enabled` now reads the variable on each call instead of caching it, so a
+  test can prove "nothing without the variable" and "a file with it" in one process. A build
+  reads it once per file either way.
+- Covered twice: `test_sidecar` drives `ReventlessPpx.transform` over files in a temp dir
+  (every case in T1, and the pretty-printed output compared with the variable set and unset),
+  and `test/run.sh` compiles `DeliveryOption.res` from real ReScript beside an examples file and
+  a GWT file that each declare a `@schema` type and get no `.types.json`.

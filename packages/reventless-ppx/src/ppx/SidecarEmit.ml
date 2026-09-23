@@ -22,13 +22,10 @@ open Ppxlib
 
 (* ── Gating ─────────────────────────────────────────────────────────────── *)
 
-let enabled =
-  lazy
-    (match Sys.getenv_opt "REVENTLESS_EMIT_SIDECAR" with
-     | Some ("1" | "true" | "TRUE") -> true
-     | _ -> false)
-
-let is_enabled () = Lazy.force enabled
+let is_enabled () =
+  match Sys.getenv_opt "REVENTLESS_EMIT_SIDECAR" with
+  | Some ("1" | "true" | "TRUE") -> true
+  | _ -> false
 
 (* ── Small AST helpers ──────────────────────────────────────────────────── *)
 
@@ -1019,4 +1016,54 @@ let maybe_emit_examples ~fname (str : structure) : unit =
       close_out oc
     with exn ->
       Printf.eprintf "[reventless-ppx] examples sidecar emit failed for %s: %s\n"
+        fname (Printexc.to_string exn)
+
+(* ════════════════════════════════════════════════════════════════════════
+   Shared types — emit <Stem>.types.json for a plain module declaring `@schema`
+   types that components share (`DeliveryOption.t`). A spec's field of that type
+   reads `custom DeliveryOption.t`; this sidecar is where a reader resolves it,
+   as the entry `typeName: "t"` of the sidecar whose `module` is `DeliveryOption`.
+
+   The dispatcher decides which modules qualify (no mode attribute, not a GWT or
+   examples file); a module with no top-level `@schema` type yields no fragment.
+   Not `.model.json`: every reader of those takes the file for a component.
+   ════════════════════════════════════════════════════════════════════════ *)
+
+let types_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
+  let schema_types =
+    List.concat_map
+      (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_type (_, tds) -> List.filter is_schema_type tds
+        | _ -> [])
+      str
+  in
+  match schema_types with
+  | [] -> None
+  | _ ->
+    Some
+      (`Assoc
+         [ ("module", `String (filename_stem fname));
+           ("file", `String (repo_relative fname));
+           ("types", `List (List.filter_map (fun td -> type_entry td) schema_types)) ])
+
+let types_sidecar_path (fname : string) : string =
+  if Filename.check_suffix fname ".res" then
+    Filename.chop_suffix fname ".res" ^ ".types.json"
+  else fname ^ ".types.json"
+
+(* Public entry — called from the dispatcher, with the file as authored, for a
+   module no other sidecar covers. *)
+let maybe_emit_types ~fname (str : structure) : unit =
+  if is_enabled () && fname <> "" then
+    try
+      match types_fragment_json ~fname str with
+      | Some json ->
+        let oc = open_out (types_sidecar_path fname) in
+        output_string oc (Yojson.Safe.pretty_to_string json);
+        output_char oc '\n';
+        close_out oc
+      | None -> ()
+    with exn ->
+      Printf.eprintf "[reventless-ppx] types sidecar emit failed for %s: %s\n"
         fname (Printexc.to_string exn)

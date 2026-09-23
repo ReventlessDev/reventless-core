@@ -26,6 +26,7 @@ The compiler is the parser. Rather than re-parse `.res`, the **`reventless-ppx`*
 plugin/src/**/*.res ──── rescript build ────► <Stem>.model.json   (PPX)
 plugin/tests/**/*_GWT.res ───────────────────► <Stem>.gwt.json     (PPX)
 @@reventless.examples files ─────────────────► <Stem>.examples.json (PPX)
+modules of shared @schema types ─────────────► <Stem>.types.json   (PPX)
                                    │
                                    ▼
                   Assemble    sidecars + provenance headers → Model.t
@@ -42,12 +43,13 @@ plugin/tests/**/*_GWT.res ──────────────────
 - `<Stem>.model.json` — for every `@@reventless.spec` file: each `@schema type` (command / event / consumedEvent / error / state) as a list of elements whose fields carry name, kind, identity flags, and the resolved DCB-tag **`dcbRole`**.
 - `<Stem>.gwt.json` — for every `@@reventless.gwt` file: per scenario its id (`scenarioId`), title, and given/when/then steps with their example values.
 - `<Stem>.examples.json` — for every `@@reventless.examples` file (a module of named example values): its `module` (the file stem), `file`, and per top-level `let` of a single name its `name`, `type` (the annotation as written, `""` when there is none), `kind` (as for a spec field; `custom Unknown` when unannotated), `line`, and `value`. The attribute selects no mode; the PPX removes it and compiles the file as written.
+- `<Stem>.types.json` — for every plain module that declares `@schema` types for components to share (`DeliveryOption.t`): its `module` (the file stem), `file`, and `types`, each top-level `@schema` type in the `.model.json` encoding (`typeName`, `shape`, `elements`). A spec field typed `DeliveryOption.t` reads `{"kind": "custom", "name": "DeliveryOption.t"}`; a reader resolves it as the entry `typeName: "t"` of the sidecar whose `module` is `DeliveryOption`. A module is selected by what it is, with no attribute: it carries no `@@reventless.*` mode (spec, behavior, projection, automation, translation, mappings, extension, task), no `@@reventless.gwt` or `@@reventless.examples`, is not a GWT file by name, and declares at least one top-level `@schema` type. So an identity module (`include Reventless.Id.Make(...)`) gets none. A spec's own types need no such file: they are already in its `.model.json`, where a reader resolves `RegisterOrder.shippingMethod` the same way.
 
 An example value is a literal where the source writes one (`string`, `int`, `float`, `bool`, `null` for `None`, `enum` for a payload-less constructor, a `string` with its `constructor` for a typed id like `oid("o1")`, `list`, `record`). `Some(x)` is `x`'s value. A named value (`dockLine`, `OrderingExamples.dockLine`) is `{"kind": "ref", "name": …}`, recorded as written and not resolved. Any other expression (`eur(4500.0)`) is `{"kind": "code", "value": …}`, its exact source text cut from the file; only when that text cannot be had is the value left out.
 
 A scenario's id comes from a `// scenario-id: <id>` comment on the line above its `test(`. The older spelling `// spec-id: <id>` is still read, and always will be. A marker belongs only to the test directly below it: a test with no marker of its own gets the id `""`, even when a marked test comes before it. The sidecar also repeats the id under `specId`, for codegen releases that read only that key; that duplicate will be dropped once the codegen reads `scenarioId`.
 
-Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDECAR=1` — which `export` sets before it builds. Ordinary `rescript build` writes nothing new. They are git-ignored (`*.model.json` / `*.gwt.json` / `*.examples.json` / `*.wiring.json`) and never hand-edited: `export` does a clean rebuild first so they cannot lag source.
+Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDECAR=1` — which `export` sets before it builds. Ordinary `rescript build` writes nothing new. They are git-ignored (`*.model.json` / `*.gwt.json` / `*.examples.json` / `*.types.json` / `*.wiring.json`) and never hand-edited: `export` does a clean rebuild first so they cannot lag source.
 
 ## DCB-tag fidelity (`dcbRole`)
 

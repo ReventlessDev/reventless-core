@@ -566,4 +566,91 @@ let () =
      Printf.printf "  FAIL(examples): unexpected entries %s\n" (Yojson.Safe.to_string xj);
      exit 1);
 
+  (* ── The shared-types sidecar ─────────────────────────────────────────── *)
+  (* Driven through the dispatcher, as the compiler would: whether a module is
+     selected is the dispatcher's rule, not SidecarEmit's. *)
+  let dir = Filename.temp_dir "types_sidecar" "" in
+  (* A spec's moduleUrl is resolved against the package it sits in. *)
+  let oc = open_out (Filename.concat dir "package.json") in
+  output_string oc "{\"name\": \"shop\"}";
+  close_out oc;
+  let compile name lines =
+    let path = Filename.concat dir name in
+    let src = String.concat "\n" lines in
+    let oc = open_out path in
+    output_string oc src;
+    close_out oc;
+    let lexbuf = Lexing.from_string src in
+    Lexing.set_filename lexbuf path;
+    let ast = Parse.implementation lexbuf in
+    Format.asprintf "%a" Pprintast.structure (ReventlessPpx.transform ast)
+  in
+  let sidecar name =
+    Filename.concat dir (Filename.chop_suffix name ".res" ^ ".types.json")
+  in
+  let tmust label cond =
+    if cond then Printf.printf "  ok(types): %s\n" label
+    else (Printf.printf "  FAIL(types): %s\n" label; exit 1)
+  in
+  let delivery =
+    [ "type t = Standard | Express | Pickup of { storeId : string } [@@schema]" ]
+  in
+  let address = [ "type t = { street : string; city : string option } [@@schema]" ] in
+  let pair =
+    [ "type side = Left | Right [@@schema]";
+      "type t = { left : side; right : side } [@@schema]";
+      "type internal = int" ]
+  in
+  let unset_output = compile "DeliveryOption.res" delivery in
+  tmust "nothing is written without REVENTLESS_EMIT_SIDECAR"
+    (not (Sys.file_exists (sidecar "DeliveryOption.res")));
+  Unix.putenv "REVENTLESS_EMIT_SIDECAR" "1";
+  let set_output = compile "DeliveryOption.res" delivery in
+  tmust "the compiled output is the same with the variable set and unset"
+    (String.equal unset_output set_output);
+  let read name = Yojson.Safe.from_file (sidecar name) in
+  let types_of j = match field "types" j with Some (`List ts) -> ts | _ -> [] in
+  let dj = read "DeliveryOption.res" in
+  tmust "module is the file stem" (field "module" dj = Some (`String "DeliveryOption"));
+  (match types_of dj with
+   | [ t ] ->
+     tmust "one variant entry t"
+       (field "typeName" t = Some (`String "t") && field "shape" t = Some (`String "variant"));
+     let elements = match field "elements" t with Some (`List es) -> es | _ -> [] in
+     tmust "payloadless constructors are payloadless"
+       (List.filter_map (fun e -> match field "payloadless" e with
+          | Some (`Bool true) -> field "name" e | _ -> None) elements
+        = [ `String "Standard"; `String "Express" ]);
+     let pickup = List.find (fun e -> field "name" e = Some (`String "Pickup")) elements in
+     tmust "the inline-record payload carries its fields"
+       (match field "fields" pickup with
+        | Some (`List [ f ]) -> field "name" f = Some (`String "storeId")
+        | _ -> false)
+   | _ -> tmust "exactly one type" false);
+  ignore (compile "Address.res" address);
+  (match types_of (read "Address.res") with
+   | [ t ] -> tmust "a record is shape record" (field "shape" t = Some (`String "record"))
+   | _ -> tmust "exactly one record type" false);
+  ignore (compile "Pair.res" pair);
+  tmust "every @schema type is recorded, and nothing else"
+    (List.map (field "typeName") (types_of (read "Pair.res"))
+     = [ Some (`String "side"); Some (`String "t") ]);
+  List.iter
+    (fun (label, name, lines) ->
+      ignore (compile name lines);
+      tmust label (not (Sys.file_exists (sidecar name))))
+    [ ("no sidecar for an identity module", "CustomerId.res",
+       [ "include Reventless.Id.Make (struct let name = \"customer\" end)" ]);
+      ("no sidecar for a module without a @schema type", "Helpers.res",
+       [ "type t = int"; "let double x = x * 2" ]);
+      ("no sidecar for a spec", "RegisterOrder.res",
+       [ "[@@@reventless.spec]"; "type command = Register [@@schema]" ]);
+      ("no sidecar for a behavior file", "RegisterOrder_Behavior.res",
+       [ "[@@@reventless.behavior]"; "type step = One [@@schema]" ]);
+      ("no sidecar for a GWT file", "RegisterOrder_GWT.res",
+       [ "type fixture = A [@@schema]" ]);
+      ("no sidecar for an examples file", "OrderingExamples.res",
+       [ "[@@@reventless.examples]"; "type line = { n : int } [@@schema]" ]) ];
+  ignore (Sys.command (Printf.sprintf "rm -rf %s" (Filename.quote dir)));
+
   print_endline "ALL SIDECAR CHECKS PASSED"

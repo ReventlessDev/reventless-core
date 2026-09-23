@@ -683,7 +683,24 @@ let dispatch_task_impl ~loc ~specifier ~name body =
   in
   !prefix @ body @ suffix
 
+(* A plain module of shared `@schema` types: selected by what it is, not by an
+   attribute. Every file with a mode, a GWT file and an examples file has its own
+   sidecar or none. *)
+let is_shared_types_module ~fname (str : structure) : bool =
+  detect_mode str = None
+  && SidecarEmit.find_examples_attr str = None
+  && GwtInference.find_gwt_attr str = None
+  && not (SidecarEmit.looks_like_gwt_file fname)
+
 let transform (str : structure) : structure =
+  let () =
+    match str with
+    | item :: _ ->
+      let fname = item.pstr_loc.loc_start.pos_fname in
+      if SidecarEmit.is_enabled () && is_shared_types_module ~fname str then
+        SidecarEmit.maybe_emit_types ~fname str
+    | [] -> ()
+  in
   (* @@reventless.examples: a file of named example values. Its sidecar is
      written from the file as authored, and the attribute is then removed; it
      selects no mode, so the rest of the file compiles as written. *)
