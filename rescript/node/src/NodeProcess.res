@@ -59,6 +59,12 @@ external stdin: stream = "stdin"
 @val @scope("process")
 external stdout: stream = "stdout"
 
+/** The third standard stream. Diagnostics belong here rather than on `stdout`,
+    whose content is the program's output and is routinely piped into something
+    an error message mixed into it would corrupt. */
+@val @scope("process")
+external stderr: stream = "stderr"
+
 @send external write: (stream, string) => unit = "write"
 @send external pause: stream => unit = "pause"
 @send external unref: stream => unit = "unref"
