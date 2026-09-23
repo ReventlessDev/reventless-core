@@ -253,10 +253,12 @@ jobs:
       # their own before this was made uniform, and `eur` meant major units in
       # nine of them and minor units in two.
       #
-      # Reads the tests' source, so it needs no build and can run beside the
-      # other source checks.
+      # Reads the tests' source with node builtins alone, so it needs no build
+      # and no install. Invoked as plain `node` for the reason the Output guard
+      # above is: unguarded, `pnpm run` fails at 127 on a commit that affects no
+      # test project, since every setup step was skipped.
       - name: Check GWT tests name the values they share
-        run: pnpm run check:examples
+        run: node ./scripts/check-examples.mjs
 
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
