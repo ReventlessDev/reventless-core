@@ -1022,11 +1022,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.93
-        version: 1.0.0-alpha.93
+        specifier: ^1.0.0-alpha.94
+        version: 1.0.0-alpha.94
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.93
-        version: 1.0.0-alpha.93
+        specifier: ^1.0.0-alpha.94
+        version: 1.0.0-alpha.94
 
   rescript/aws-sdk:
     dependencies:
@@ -4855,13 +4855,13 @@ packages:
     resolution: {integrity: sha512-0C+SN4ZSMLXgrmeo01FyGOg0mS6s8EP9H4tKpbW71jicayTxU4JLZv2uLKLt9Km0DqFjBrjtvG6bybuOo2hwzA==}
     hasBin: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.93':
-    resolution: {integrity: sha512-MtusdAXZ3FRdjBcrHYFgQ3yDjOt5GCyI3bybM5iKhQSnDqzE4kIGbZvkxt3zyYtZ3x5WiGpDDgoJm99Svy1wIg==}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.94':
+    resolution: {integrity: sha512-oGJ7EfuEyzGbMpK4wgUsEVZATaXZUfSu5S39DZ6H4cr+pWzk018nS7UE/Qz8RihgMZTCPNuB+IqaA+bo3DbvlQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.93':
-    resolution: {integrity: sha512-9OPnoINSD5lUGbNrOsLWKUf7P4s/kSgAuhSdLEiDlSlEQHF3OVPDHOPUihWgTpnAjN+I2oDw6iplGrugFZleZw==}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.94':
+    resolution: {integrity: sha512-bJIa8WtXyuoVC8sfZ8xx+JyRqQHJqKIjsWjeQHoM3TfRspZuhNGGFbflgPc/XjvN/L6tfDUVMWc0QuGW84IWlw==}
     cpu: [x64]
     os: [linux]
 
@@ -17996,10 +17996,10 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.93':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.94':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.93':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.94':
     optional: true
 
   '@reventlessdev/reventless-ui-slots@3.0.0-alpha.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.1)':
