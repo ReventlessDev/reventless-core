@@ -88,7 +88,8 @@ something to key off would rename every order to a timestamp.
 
 The field holding the entity's lifecycle state. The generated view sections and
 badges rows by it, and it drives the per-row command menu — each command's
-`@allowedStates` is filtered against the row's current state.
+from-set in the spec's `commandTransition` is filtered against the row's current
+state.
 
 Name the field `lifecycle` and the name is the declaration:
 
@@ -711,8 +712,8 @@ owner scoping — and `ShipOrder` appears on rows whose status is `Placed`. Acti
 `Shopper`, the same account, the same login, reads only its own orders and the API
 refuses `ShipOrder` outright.
 
-**A note on `@allowedStates`.** `CancelOrder` carries
-`@allowedStates([Orders.Placed])`, which is a **menu filter**: the command is
+**A note on `commandTransition`.** `CancelOrder` declares
+`Moves([Orders.Placed], Orders.Cancelled)`, whose from-set is a **menu filter**: the command is
 offered only on rows whose lifecycle field is `Placed`. It is UX, not a gate — the
 behaviour is what refuses a shipped order, by returning `OrderAlreadyShipped`.
 

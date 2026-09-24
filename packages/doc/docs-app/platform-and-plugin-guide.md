@@ -1705,8 +1705,8 @@ A handful of PPX annotations on aggregate / read model / state-view spec files s
 | `@displayName` | One or more `string` fields on a `@schema type state` | Picks the row label for list views and search results. Falls back to a non-`id` string field, then to `"id"`. (No canonical entry in the PPX guide yet.) |
 | [`@id`](reventless-ppx.md#id-compositeid--partition-key-derivation) | A `string` field on a `@schema type state` | Marks the entity primary key. Used by the auto-generated query and by AutoUI's row-id wiring on per-row command forms. |
 | [`@subId`](reventless-ppx.md#subid-compositesubid--sort-key-derivation) | A `string` field on a `@schema type state` | Adds a sort-key dimension to the entity's query field, so list views can drill into a specific sort key. |
-| [`@lifecycle`](reventless-ppx.md#lifecycle--mark-the-field-a-records-lifecycle-lives-in) | One field on a `@schema type state` | Names the field a record's lifecycle lives in. AutoUI compares this field per row against each command's `@allowedStates` to decide whether to show the command. Unnecessary when the field is already named `lifecycle` — the name declares it. |
-| [`@allowedStates([…])`](reventless-ppx.md#allowedstates--per-variant-command-state-guard) | A single command variant on a `@schema type command` | Hides the command on rows whose lifecycle field value isn't in the set. `[]` is "never show"; absent is "always show" (back-compat). |
+| [`@lifecycle`](reventless-ppx.md#lifecycle--mark-the-field-a-records-lifecycle-lives-in) | One field on a `@schema type state` | Names the field a record's lifecycle lives in. AutoUI compares this field per row against each command's from-set in `commandTransition` to decide whether to show the command. Unnecessary when the field is already named `lifecycle` — the name declares it. |
+| [`commandTransition`](reventless-ppx.md#commandtransition-the-states-a-command-applies-in) (a value, not an annotation) | A `let` beside the `@schema type command` | Hides a command on rows whose lifecycle value is not in its from-set (`Guards([…])` or `Moves([…], _)`). A command with no from-set (`Creates`, `Unrestricted`) is always shown. |
 | [`@dcbTag`](reventless-ppx.md#partitiontag-nodcbtag-dcbtag--field-level-dcb-tag-control) and family | Field-level inside command / event variants | Drives DCB tag inference. Affects which arg becomes `id: ID!` on the auto-generated GraphQL mutation. |
 | [`@noApi`](reventless-ppx.md#noapi--exclude-commands-from-graphqlmcp-exposure) | Whole `@schema type command` or single variants | Excludes the command from the GraphQL surface entirely — AutoUI never sees it, so it never renders a button for it. |
 
@@ -1716,7 +1716,7 @@ A typical entity flow:
 @@reventless.spec
 
 @schema
-type status = Placed | Shipped | Cancelled
+type lifecycle = Placed | Shipped | Cancelled
 
 @schema
 type state = {
@@ -1728,9 +1728,21 @@ type state = {
 @schema
 type command =
   | Place({customerId: string, productIds: array<string>})
-  | @allowedStates([Orders.Placed]) Ship
-  | @allowedStates([Orders.Placed]) Cancel
+  | Ship
+  | Cancel
   | @noApi InternalRefund({reason: string})  // hidden entirely
+
+type lifecycleState = lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | Place(_) => Creates(Placed)
+  | Ship => Moves([Placed], Shipped)
+  | Cancel => Moves([Placed], Cancelled)
+  | InternalRefund(_) => Unrestricted
+  }
+}
 ```
 
 After build, AutoUI's Orders list view labels rows by `customerId`, and the per-row `…` menu shows `Ship` and `Cancel` only on `Placed` rows. `InternalRefund` is invisible to the UI.

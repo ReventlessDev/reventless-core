@@ -441,7 +441,7 @@ The `@noApi` annotation is stripped from the compiled output by the PPX. Filteri
 
 ### `@lifecycle` — mark the field a record's lifecycle lives in
 
-The field whose value identifies where the record is in its life: the enum a command's `@allowedStates` is written in terms of, the one a board draws its columns from, a progress tracker walks and a state diagram renders. AutoUI's command-menu filter reads it per row and matches it against each command's `@allowedStates` set.
+The field whose value identifies where the record is in its life: the enum a spec's `commandTransition` names its states in, the one a board draws its columns from, a progress tracker walks and a state diagram renders. AutoUI's command-menu filter reads it per row and matches it against each command's from-set (`commandDef.allowedStates`).
 
 There are two ways to declare it, and a record uses whichever fits.
 
@@ -478,7 +478,7 @@ The PPX emits the annotated field name into `stateAnnotationSpec.lifecycle` (sur
 
 An enum-shaped field is not automatically a candidate. A field tracking a background job's progress — an export, a delivery attempt, a geocoder — is enum-shaped and often named like a status, and annotating it would section the list by how far that job got and filter the command menu against states no command mentions. The annotation is keyed on `lifecycle` rather than `status` for exactly this reason — a record often carries several statuses and at most one lifecycle.
 
-**Resolution order** (codegen, `Plugin_Structure.lifecycleFieldFromStateSchema`): (1) field annotated `@lifecycle`; (2) field literally named `"lifecycle"` whose shape is an enum (a free-text `lifecycle: string` does not count — `@allowedStates` filtering needs states to compare against); (3) `None`, and the per-row filter is inert.
+**Resolution order** (codegen, `Plugin_Structure.lifecycleFieldFromStateSchema`): (1) field annotated `@lifecycle`; (2) field literally named `"lifecycle"` whose shape is an enum (a free-text `lifecycle: string` does not count, because the command filter needs states to compare against); (3) `None`, and the per-row filter is inert.
 
 **Why the convention is keyed on `lifecycle` and not `status`.** `status` is a promiscuous name — geocoding progress, todo-queue progress, translation audit outcome and plugin connection state all wear it — so a convention keyed on it genuinely guesses, and guesses often. `lifecycle` is a deliberate word nobody types by accident, so matching it is close to reading a declaration written in the field name.
 
@@ -537,9 +537,9 @@ The PPX emits the bool into `stateAnnotationSpec.live` (sury metadata attached t
 
 ---
 
-### `@allowedStates` — per-variant command state guard
+### `commandTransition`: the states a command applies in
 
-Use on individual command variants in an aggregate or DCB-slice `@schema type command` to declare which lifecycle states the command is meaningful in. The payload is an expression list of status-type constructor references. AutoUI hides the command on rows whose status isn't in the set.
+Which lifecycle states a command is legal in, and which state it moves the row to, is declared as a **value**, not as an annotation. The spec names its lifecycle enum once, then writes a switch over its commands:
 
 ```rescript
 // In Order.res (an Order aggregate spec):
@@ -548,21 +548,45 @@ Use on individual command variants in an aggregate or DCB-slice `@schema type co
 @schema
 type command =
   | Place({customerId: string, productIds: array<string>})
-  | @allowedStates([Orders.Placed]) Ship
-  | @allowedStates([Orders.Placed]) Cancel
+  | Ship
+  | Cancel
+  | AddNote({text: string})
+
+type lifecycleState = Orders.lifecycle
+
+let commandTransition = (command: command): Reventless.Transition.t<lifecycleState> => {
+  open Reventless.Transition
+  switch command {
+  | Place(_) => Creates(Orders.Placed)
+  | Ship => Moves([Orders.Placed], Orders.Shipped)
+  | Cancel => Moves([Orders.Placed], Orders.Cancelled)
+  | AddNote(_) => Unrestricted
+  }
+}
 ```
 
-| Annotation | Placed on | Effect |
-|---|---|---|
-| `@allowedStates([…])` | A single command variant | Variant is shown only on rows where the row's `lifecycleField` value is in the set |
-| (no annotation) | A single command variant | Variant is always shown (back-compat default) |
-| `@allowedStates([])` | A single command variant | Variant is never shown (defensive "never available" form) |
+| Arm | Meaning |
+|---|---|
+| `Creates(s)` | Brings the row into existence in state `s`. There is no state it comes from. |
+| `Moves([…], s)` | Legal in the listed states, and lands the row in `s`. |
+| `Guards([…])` | Legal in the listed states, and leaves the row where it is. |
+| `Unrestricted` | Legal in every state, and moves nothing. Use it for a report that must not be refused because the row has moved on in the meantime. |
 
-The PPX extracts each constructor's leaf identifier as a string and emits `let commandSchema = ReventlessInfra.Api.markAllowedStates(commandSchema, [|("Ship", [|"Placed"|]); …|])` attaching the per-variant map to the schema metadata. The wire format on `Platform_ComponentDefinitions` is `commandDef.allowedStates: option<array<string>>` — `None` means "always show", `Some([…])` means "filter".
+`lifecycleState` is the type of the view's `@lifecycle` field, so the states are that view's own constructors. The compiler checks three things an annotation could not:
 
-**Supports payloadless and payload variants uniformly.** The PPX walks the attribute payload as syntactic AST and extracts the leaf identifier; it works for `Submitted` (payloadless), `OrdersStatus.Submitted` (qualified payloadless), `Shipped({trackingNumber})` (payload), and any combination. AutoUI's filter compares against the row's serialised status tag — sury emits payloadless variants as bare JSON strings and payload variants as `{TAG: …, …}` objects, both surfacing the constructor name.
+- **The switch is exhaustive.** A command without an arm is a build error, including a command spliced in from a trait by a variant spread.
+- **A misspelled state is a build error.** `Orders.Plased` does not compile.
+- **Every arm uses one lifecycle.** A from-set taken from one enum with a target taken from another does not compile.
 
-**Limitation: no compile-time existence check.** The constructor name is extracted as a string without verifying the constructor actually exists on the read model's status type. A typo (`@allowedStates([Orders.Plased])`) compiles cleanly; the filter just never matches that string. ReScript's dependency analysis runs pre-PPX, so a witness-binding approach (emitting `let _ = Orders.Placed`) would force ReScript to build the witness's module first — which it doesn't see as a dep, breaking the build order. Runtime cross-validation against the status-field schema is captured as future work in `AllowedStatesAnnotation.ml`.
+The reference costs nothing at run time. A lifecycle enum's cases have no payload, so `[Orders.Placed]` compiles to `["Placed"]`, and the aggregate imports nothing from its view.
+
+**What reads it.** `Plugin_Structure` evaluates the switch once per command constructor while it assembles the plugin structure. It publishes the from-set as `commandDef.allowedStates` and the target as `commandDef.targetState`. AutoUI shows a command only on rows whose lifecycle value is in the from-set. A command with no from-set (`Creates`, `Unrestricted`) is shown everywhere.
+
+**The lifecycle model.** Where the plugin's harvested lifecycle model (`src/LifecycleModel.res`, what its GWT scenarios show) records a from-set or a target for a command, that is published instead of the switch's, and `commandDef.allowedStatesSource` says which one answered. The exception is `Unrestricted`: a set of scenarios covers only the states someone wrote a scenario for, so it never narrows a command declared legal everywhere.
+
+**Without a switch.** A spec that writes no `commandTransition` gets one from the PPX. It answers `Undeclared` for every command. That reads like `Unrestricted`, except that the lifecycle model may give it a from-set. A command type that splices another type's constructors must write the switch. The build refuses it otherwise, because the PPX cannot tell a guard left out on purpose from one forgotten.
+
+**Removed annotations.** `@transition`, `@allowedStates` and `@targetState` on a command constructor are compile errors, and the message says which arm to write instead. See [Domain traits](./domain-traits.md#policy-on-a-command-you-did-not-declare) for why the value form replaced them.
 
 ---
 
@@ -860,7 +884,7 @@ The index carries no query field of its own — a `<view>By<OwnerField>` door an
 
 ### `@retired` — what withdraws a row from ordinary reads
 
-`@retired` names what means *this row is retired from ordinary use* — a deactivated customer, an archived category. Place it **before the field name**, on a `@schema type state` field of a ReadModel or StateViewSlice spec.
+`@retired` names what means *this row is retired from ordinary use* — a deactivated customer, an archived category. Place it **before the field name**, on a `@schema type state` field of a ReadModel or StateViewSlice spec, or **before a constructor** of the lifecycle enum that the state holds.
 
 It has two forms, and which one is right depends on whether the record has a lifecycle.
 
@@ -891,17 +915,36 @@ type state = {
 }
 ```
 
-**Reach for the state form whenever the record has a lifecycle at all**, and the reason is what it does to commands. Without it, a record whose retirement is part of its life carries the same fact twice — once as the boolean the query layer filters on, once as a value of the enum that board columns, group sections, the progress tracker and `@allowedStates` are all expressed in terms of. Two sources of one truth, free to drift, with no rule keeping them in step.
-
-With one field, `@allowedStates` becomes the command-applicability mechanism with no new annotation at all:
+When the enum is declared in the same file, mark the state on the constructor instead. This is the preferred way to write the state form, because a constructor cannot name a state that does not exist. More than one state may carry the marker, and the field that holds the enum becomes the retirement field:
 
 ```rescript
-| @allowedStates([Active]) UpdateEmail({email: string})
-| @allowedStates([Active]) Deactivate
-| @allowedStates([Deactivated]) Reactivate
+@schema
+type shelfStatus =
+  | Listed
+  | @retired Archived
+  | @retired Discontinued
+
+@schema
+type state = {
+  @id productId: string,
+  name: string,
+  @lifecycle shelf: shelfStatus,
+}
 ```
 
-That last line is the point. A consumer filtering a per-row command menu against `allowedStates` already exists and already works; what was missing was never a way to describe a command's stance on retirement — it was retirement being expressible in the vocabulary that stance is already written in.
+The constructor form takes no argument, and it is a compile error if the field holding the enum carries `@retired` as well. It is also a compile error if no field of `type state` holds the enum, or if two fields do. Use the field form, `@retired(Deactivated)`, when the enum is declared in another file, where this file's PPX cannot reach its constructors.
+
+**Reach for the state form whenever the record has a lifecycle at all**, and the reason is what it does to commands. Without it, a record whose retirement is part of its life carries the same fact twice — once as the boolean the query layer filters on, once as a value of the enum that board columns, group sections, the progress tracker and `commandTransition` are all expressed in terms of. Two sources of one truth, free to drift, with no rule keeping them in step.
+
+With one field, the spec's `commandTransition` decides which commands a retired row still offers, with no new annotation at all:
+
+```rescript
+| UpdateEmail(_) => Guards([Customers.Active])
+| Deactivate => Moves([Customers.Active], Customers.Deactivated)
+| Reactivate => Moves([Customers.Deactivated], Customers.Active)
+```
+
+That last line is the point. A consumer filtering a per-row command menu against each command's from-set already exists and already works; what was missing was never a way to describe a command's stance on retirement — it was retirement being expressible in the vocabulary that stance is already written in.
 
 The boolean form stays the right choice where retirement genuinely *is* a flag rather than a state: a `Products` view with an `archived` boolean and no lifecycle should not have to invent a two-valued enum.
 
@@ -920,13 +963,13 @@ Two things follow from the one annotation, and the second is why this is not a p
 @retired({value: Deactivated, label: "Closed"}) accountStatus: accountStatus,
 ```
 
-The state is a **constructor reference**, not a string literal, matching `@allowedStates` — the two annotations name states in the same vocabulary, which is the whole reason the state form exists. A string would read the same and check nothing; what survives the constructor reference (a value that is not one of the field's declared cases) is reported when the plugin structure is built, where the schema is in hand.
+The state is a **constructor reference**, not a string literal, like the states in `commandTransition`: both name states in the same vocabulary, which is the whole reason the state form exists. A string would read the same and check nothing; what survives the constructor reference (a value that is not one of the field's declared cases) is reported when the plugin structure is built, where the schema is in hand.
 
 The label defaults to empty, which the schema emitter omits so a consumer can tell "not stated" from "stated as empty" and derive one from the field name. `showWhenFalse` defaults to `false` and always travels: it asks a consumer to surface the flag in its negative state too, and since a non-exempt caller never receives a retired row, a default-on marker would appear on every row they can read and carry no information.
 
 - **One per state record.** A second `@retired` is a compile error. Two retirement flags do not narrow the read further, they leave it undecided — the query layer tests a single field.
 - **The field type check inverts on the payload.** With no state named, the field must be `bool` or `option<bool>` (the `f?: bool` form works too) — the predicate is "is this true?", and on a non-boolean there is nothing to evaluate. With a state named, the field must NOT be a boolean, because it holds the enum that state belongs to. Either mistake is a compile error with the message for that branch; getting it wrong would leave the annotation riding the schema, rendering as a marker and narrowing nothing.
-- **The state form must sit on the record's `@lifecycle` field.** A retirement state anywhere else keeps the read narrowing but loses the command filtering that motivates it, because `@allowedStates` is written in terms of the lifecycle field — a state no command can name. Reported when the structure is built, along with a state the field does not declare.
+- **The state form must sit on the record's `@lifecycle` field.** A retirement state anywhere else keeps the read narrowing but loses the command filtering that motivates it, because `commandTransition` is written in terms of the lifecycle field — a state no command can name. Reported when the structure is built, along with a state the field does not declare.
 - **Absent means not retired**, on all four backends. A row written before the annotation existed carries no flag, and excluding those would empty the view the day someone adds `@retired`.
 - **Annotation or nothing.** Unlike `@lifecycle`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
 
