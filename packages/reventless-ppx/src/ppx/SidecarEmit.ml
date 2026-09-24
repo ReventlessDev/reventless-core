@@ -32,8 +32,69 @@ let is_enabled () =
 let has_attr (name : string) (attrs : attributes) : bool =
   List.exists (fun (a : attribute) -> String.equal a.attr_name.txt name) attrs
 
-let attr_names (attrs : attributes) : string list =
-  List.map (fun (a : attribute) -> a.attr_name.txt) attrs
+(* ── source text ────────────────────────────────────────────────────────── *)
+
+(* The whole source file, or None when it cannot be read. One read serves every
+   cut a sidecar makes from it: annotation arguments, scenario-id markers
+   (comments, which ppxlib drops) and the values recorded as code. *)
+let read_source (fname : string) : string option =
+  try
+    let ic = open_in_bin fname in
+    let len = in_channel_length ic in
+    let text = really_input_string ic len in
+    close_in ic;
+    Some text
+  with _ -> None
+
+(* The byte offset of a position in [src]. The ReScript parser gives a line's start
+   (pos_bol) in bytes but counts the column (pos_cnum - pos_bol) in UTF-16 code
+   units, so after a non-ASCII character on the same line pos_cnum falls short of
+   the byte: by one for `é`, two for `—` or an emoji. The column is walked again
+   over the line's bytes. *)
+let byte_offset (src : string) (p : Lexing.position) : int =
+  let len = String.length src in
+  let rec go i units =
+    if units <= 0 || i >= len || src.[i] = '\n' then i
+    else
+      let c = Char.code src.[i] in
+      let bytes, u =
+        if c < 0x80 then (1, 1) else if c < 0xE0 then (2, 1) else if c < 0xF0 then (3, 1) else (4, 2)
+      in
+      go (i + bytes) (units - u)
+  in
+  if p.pos_bol < 0 || p.pos_bol > len || p.pos_cnum < p.pos_bol then p.pos_cnum
+  else go p.pos_bol (p.pos_cnum - p.pos_bol)
+
+(* The byte span of an attribute's argument, `@name(<here>)`: its payload's
+   first item to its last. None for a structure payload with no items, or any
+   other payload shape. The source reader cuts with this too. *)
+let attribute_args_span ~(src : string) (a : attribute) : (int * int) option =
+  match a.attr_payload with
+  | PStr (first :: _ as items) ->
+    let last = List.nth items (List.length items - 1) in
+    Some (byte_offset src first.pstr_loc.loc_start, byte_offset src last.pstr_loc.loc_end)
+  | _ -> None
+
+let attribute_args ~(src : string) (a : attribute) : string option =
+  match attribute_args_span ~src a with
+  | Some (s, e) when s >= 0 && e >= s && e <= String.length src -> Some (String.sub src s (e - s))
+  | _ -> None
+
+let is_res_hint (a : attribute) =
+  let n = a.attr_name.txt in
+  String.length n >= 4 && String.equal (String.sub n 0 4) "res."
+
+(* A field annotation as the sidecar writes it: its name, or `{name, args}` when
+   it has an argument. `res.*` are the parser's hints (`res.doc`'s payload is a
+   whole doc comment), so they stay names. Without the source, names only. *)
+let annotation_json ?src (a : attribute) : Yojson.Safe.t =
+  let name = a.attr_name.txt in
+  match src with
+  | Some src when not (is_res_hint a) -> (
+    match attribute_args ~src a with
+    | Some args -> `Assoc [ ("name", `String name); ("args", `String args) ]
+    | None -> `String name)
+  | _ -> `String name
 
 let is_schema_type (td : type_declaration) : bool =
   has_attr "schema" td.ptype_attributes
@@ -152,7 +213,7 @@ let ref_json (attrs : attributes) : (string * Yojson.Safe.t) list =
             ("plugin", match plugin with Some p -> `String p | None -> `Null) ] ) ]
   | None -> []
 
-let field_json ~dcb_context ?(nested = false) (ld : label_declaration) : Yojson.Safe.t =
+let field_json ?src ~dcb_context ?(nested = false) (ld : label_declaration) : Yojson.Safe.t =
   let name = ld.pld_name.txt in
   let attrs = ld.pld_attributes in
   let is_id = has_attr "id" attrs || has_attr "compositeId" attrs in
@@ -170,15 +231,15 @@ let field_json ~dcb_context ?(nested = false) (ld : label_declaration) : Yojson.
        ("isCompositeTag", `Bool is_composite);
        ("dcbRole", dcb_role_json ~dcb_context ~nested ~name ~ct:ld.pld_type ~attrs ());
        ("example", `Null);
-       ("annotations", `List (List.map (fun n -> `String n) (attr_names attrs))) ]
+       ("annotations", `List (List.map (annotation_json ?src) attrs)) ]
      @ ref_json attrs)
 
 (* ── constructor / record → element JSON ────────────────────────────────── *)
 
-let fields_of_args ~dcb_context (args : constructor_arguments) :
+let fields_of_args ?src ~dcb_context (args : constructor_arguments) :
     Yojson.Safe.t list =
   match args with
-  | Pcstr_record lds -> List.map (field_json ~dcb_context) lds
+  | Pcstr_record lds -> List.map (field_json ?src ~dcb_context) lds
   | Pcstr_tuple _ -> [] (* payload-less or positional — no named fields *)
 
 (* ── nested records ─────────────────────────────────────────────────────── *)
@@ -228,7 +289,7 @@ let element_json ~name ~fields : Yojson.Safe.t =
 (* A `@schema type` declaration → one "types" entry. Variants expand to one
    element per constructor; records collapse to a single element named after
    the type. Abstract / alias types are skipped (returns None). *)
-let type_entry ?(nested = []) (td : type_declaration) : Yojson.Safe.t option =
+let type_entry ?src ?(nested = []) (td : type_declaration) : Yojson.Safe.t option =
   let type_name = td.ptype_name.txt in
   let dcb_context = is_dcb_context type_name in
   let nested = (not dcb_context) && List.mem type_name nested in
@@ -237,7 +298,7 @@ let type_entry ?(nested = []) (td : type_declaration) : Yojson.Safe.t option =
     let elements =
       List.map
         (fun (c : constructor_declaration) ->
-          let fields = fields_of_args ~dcb_context c.pcd_args in
+          let fields = fields_of_args ?src ~dcb_context c.pcd_args in
           element_json ~name:c.pcd_name.txt ~fields)
         ctors
     in
@@ -247,7 +308,7 @@ let type_entry ?(nested = []) (td : type_declaration) : Yojson.Safe.t option =
            ("shape", `String "variant");
            ("elements", `List elements) ])
   | Ptype_record lds ->
-    let fields = List.map (field_json ~dcb_context ~nested) lds in
+    let fields = List.map (field_json ?src ~dcb_context ~nested) lds in
     Some
       (`Assoc
          [ ("typeName", `String type_name);
@@ -316,7 +377,7 @@ let repo_relative (fname : string) : string =
       else fname
     | None -> fname
 
-let fragment_json ~spec_name ~fname (body : structure) : Yojson.Safe.t =
+let fragment_json ?src ~spec_name ~fname (body : structure) : Yojson.Safe.t =
   let schema_types =
     List.concat_map
       (fun (item : structure_item) ->
@@ -326,7 +387,7 @@ let fragment_json ~spec_name ~fname (body : structure) : Yojson.Safe.t =
       body
   in
   let nested = nested_type_names schema_types in
-  let types = List.filter_map (type_entry ~nested) schema_types in
+  let types = List.filter_map (type_entry ?src ~nested) schema_types in
   `Assoc
     [ ("specName", `String spec_name);
       ("stem", `String (filename_stem fname));
@@ -342,7 +403,7 @@ let sidecar_path (fname : string) : string =
 (* Best-effort: never fail the compile if the write throws. *)
 let write_sidecar ~spec_name ~fname (body : structure) : unit =
   try
-    let json = fragment_json ~spec_name ~fname body in
+    let json = fragment_json ?src:(read_source fname) ~spec_name ~fname body in
     let path = sidecar_path fname in
     let oc = open_out path in
     output_string oc (Yojson.Safe.pretty_to_string json);
@@ -379,41 +440,10 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
 
 (* ── source text (read once per sidecar) ─────────────────────────────── *)
 
-(* The whole source file, or None when it cannot be read. One read serves both
-   the scenario-id markers (comments, which ppxlib drops) and the text of the
-   values the walk below records as code. *)
-let read_source (fname : string) : string option =
-  try
-    let ic = open_in_bin fname in
-    let len = in_channel_length ic in
-    let text = really_input_string ic len in
-    close_in ic;
-    Some text
-  with _ -> None
-
 (* The source text an expression was parsed from, cut by its byte offsets. None
    when there is no source, or the location is one the parser did not set or
    that does not fit the file — the value is then dropped, as before code
    values existed. *)
-(* The byte offset of a position in [src]. The ReScript parser gives a line's start
-   (pos_bol) in bytes but counts the column (pos_cnum - pos_bol) in UTF-16 code
-   units, so after a non-ASCII character on the same line pos_cnum falls short of
-   the byte: by one for `é`, two for `—` or an emoji. The column is walked again
-   over the line's bytes. *)
-let byte_offset (src : string) (p : Lexing.position) : int =
-  let len = String.length src in
-  let rec go i units =
-    if units <= 0 || i >= len || src.[i] = '\n' then i
-    else
-      let c = Char.code src.[i] in
-      let bytes, u =
-        if c < 0x80 then (1, 1) else if c < 0xE0 then (2, 1) else if c < 0xF0 then (3, 1) else (4, 2)
-      in
-      go (i + bytes) (units - u)
-  in
-  if p.pos_bol < 0 || p.pos_bol > len || p.pos_cnum < p.pos_bol then p.pos_cnum
-  else go p.pos_bol (p.pos_cnum - p.pos_bol)
-
 let text_at ?src (loc : Location.t) : string option =
   match src with
   | None -> None
@@ -1029,7 +1059,7 @@ let maybe_emit_examples ~fname (str : structure) : unit =
    Not `.model.json`: every reader of those takes the file for a component.
    ════════════════════════════════════════════════════════════════════════ *)
 
-let types_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
+let types_fragment_json ?src ~fname (str : structure) : Yojson.Safe.t option =
   let schema_types =
     List.concat_map
       (fun (item : structure_item) ->
@@ -1045,7 +1075,7 @@ let types_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
       (`Assoc
          [ ("module", `String (filename_stem fname));
            ("file", `String (repo_relative fname));
-           ("types", `List (List.filter_map (fun td -> type_entry td) schema_types)) ])
+           ("types", `List (List.filter_map (fun td -> type_entry ?src td) schema_types)) ])
 
 let types_sidecar_path (fname : string) : string =
   if Filename.check_suffix fname ".res" then
@@ -1057,7 +1087,7 @@ let types_sidecar_path (fname : string) : string =
 let maybe_emit_types ~fname (str : structure) : unit =
   if is_enabled () && fname <> "" then
     try
-      match types_fragment_json ~fname str with
+      match types_fragment_json ?src:(read_source fname) ~fname str with
       | Some json ->
         let oc = open_out (types_sidecar_path fname) in
         output_string oc (Yojson.Safe.pretty_to_string json);

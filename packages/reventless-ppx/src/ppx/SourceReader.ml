@@ -54,14 +54,13 @@ let is_authored (a : attribute) =
      && not (String.equal n "ocaml.ppx.context")
 
 (* An attribute's location covers its name only (`@ref`), so its span runs on
-   to the end of its payload and the `)` that closes it. *)
+   to the end of its payload and the `)` that closes it. The argument is cut as
+   the model sidecar cuts it. *)
 let attribute_json ~src (a : attribute) : Yojson.Safe.t =
   let start = byte_of ~src a.attr_loc.loc_start in
   let args, stop =
-    match a.attr_payload with
-    | PStr (_ :: _ as items) ->
-      let first = byte_of ~src (List.hd items).pstr_loc.loc_start in
-      let last = byte_of ~src (List.nth items (List.length items - 1)).pstr_loc.loc_end in
+    match SidecarEmit.attribute_args_span ~src a with
+    | Some (first, last) ->
       let rec close i =
         if i >= String.length src then last
         else match src.[i] with

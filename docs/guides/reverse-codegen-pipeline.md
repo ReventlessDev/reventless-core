@@ -69,6 +69,8 @@ Event Modeling JSON has a single identity signal (`idAttribute`); Reventless DCB
 
 **Reference targets.** A field carrying `@ref("Entity")` or `@ref("Plugin.Entity")` also gets `"ref": {"entity": "Entity", "plugin": null | "Plugin"}` in the `.model.json` sidecar. Fields without `@ref` have no `ref` key.
 
+**Field annotations.** A field's `annotations` lists what its source says, in order. An annotation without an argument is its name (`"owner"`). One with an argument is `{"name": "storageRef", "args": "\"Catalog.productImages\""}`, where `args` is the source text between the parentheses, as written, quotes included: a reader writes it back as it came, and parses it only where it needs the value (as `ref` does for `@ref`). The parser's own hints (`res.optional`, `res.doc`, …) are always names. The `.types.json` sidecar writes its fields the same way.
+
 ## Merge authority
 
 `export` is a three-way merge against the [sync base](./forward-codegen-pipeline.md#sync-base) (`.reventless/sync-base/<id>.json`):

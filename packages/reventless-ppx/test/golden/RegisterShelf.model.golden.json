@@ -1,0 +1,102 @@
+{
+  "specName": "RegisterShelf",
+  "stem": "RegisterShelf",
+  "types": [
+    {
+      "typeName": "command",
+      "shape": "variant",
+      "elements": [
+        {
+          "name": "RegisterShelf",
+          "payloadless": false,
+          "fields": [
+            {
+              "name": "shelfId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "partition" },
+              "example": null,
+              "annotations": [ "partitionTag" ]
+            },
+            {
+              "name": "aisleId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "suppressed" },
+              "example": null,
+              "annotations": [ "noDcbTag" ]
+            },
+            {
+              "name": "label",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            },
+            {
+              "name": "note",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": [ "res.optional" ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeName": "event",
+      "shape": "variant",
+      "elements": [
+        {
+          "name": "ShelfRegistered",
+          "payloadless": false,
+          "fields": [
+            {
+              "name": "shelfId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "partition" },
+              "example": null,
+              "annotations": [ "partitionTag" ]
+            },
+            {
+              "name": "label",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeName": "error",
+      "shape": "variant",
+      "elements": [
+        {
+          "name": "ShelfAlreadyRegistered",
+          "payloadless": true,
+          "fields": []
+        }
+      ]
+    }
+  ],
+  "config": []
+}

@@ -377,6 +377,76 @@ let () =
   nmust "top-level fields keep their rules" "command" "orderId" "dcbRole"
     "{\"role\":\"customKey\",\"key\":\"orderId\"}";
 
+  (* ── Annotation arguments ────────────────────────────────────────────────
+     Parsed from OCaml-syntax source, then given the columns the ReScript
+     parser counts (UTF-16 units from the line's byte start), so the field after
+     the `—` is cut the way it would be from a .res file. *)
+  let args_src =
+    String.concat "\n"
+      [ "type command =";
+        "  | StockShelf of";
+        "      { shelfId : string [@partitionTag]";
+        "      ; imageRef : string [@storageRef \"Catalog.images\"]";
+        "      ; groups : string [@authorize AllowGroups [\"Admin\", \"Merchandiser\"]]";
+        "      ; quantity : int [@default 1]";
+        "      ; (* — restocked *) facings : int [@default 2]";
+        "      ; note : string [@res.optional] [@res.doc \" a note \"]";
+        "      ; shape : string [@shape: int] }";
+        "  [@@schema]" ]
+  in
+  let as_rescript_columns =
+    object
+      inherit Ast_traverse.map
+      method! position (p : Lexing.position) =
+        let rec units i n =
+          if i >= p.pos_cnum then n
+          else
+            let c = Char.code args_src.[i] in
+            if c < 0x80 then units (i + 1) (n + 1)
+            else if c < 0xE0 then units (i + 2) (n + 1)
+            else if c < 0xF0 then units (i + 3) (n + 1)
+            else units (i + 4) (n + 2)
+        in
+        if p.pos_bol < 0 || p.pos_cnum < p.pos_bol then p
+        else { p with pos_cnum = p.pos_bol + units p.pos_bol 0 }
+    end
+  in
+  let args_body =
+    as_rescript_columns#structure (Parse.implementation (Lexing.from_string args_src))
+  in
+  let annotations ?src () =
+    let open Yojson.Safe.Util in
+    ReventlessPpx__SidecarEmit.fragment_json ?src ~spec_name:"StockShelf" ~fname:"StockShelf.res"
+      args_body
+    |> member "types" |> to_list |> List.hd |> member "elements" |> to_list |> List.hd
+    |> member "fields" |> to_list
+    |> List.map (fun f -> (to_string (member "name" f), Yojson.Safe.to_string (member "annotations" f)))
+  in
+  let amust label got field expected =
+    match List.assoc_opt field got with
+    | Some s when String.equal s expected -> Printf.printf "  ok(args): %s\n" label
+    | other ->
+      Printf.printf "  FAIL(args): %s\n    %s annotations = %s, expected %s\n" label field
+        (Option.value other ~default:"<no field>") expected;
+      exit 1
+  in
+  let with_src = annotations ~src:args_src () in
+  amust "a bare annotation is its name" with_src "shelfId" "[\"partitionTag\"]";
+  amust "an argument is kept, quotes and all" with_src "imageRef"
+    "[{\"name\":\"storageRef\",\"args\":\"\\\"Catalog.images\\\"\"}]";
+  amust "an argument with spaces, brackets and commas round-trips" with_src "groups"
+    "[{\"name\":\"authorize\",\"args\":\"AllowGroups [\\\"Admin\\\", \\\"Merchandiser\\\"]\"}]";
+  amust "@default(1)" with_src "quantity" "[{\"name\":\"default\",\"args\":\"1\"}]";
+  amust "a field after non-ASCII text on its line" with_src "facings"
+    "[{\"name\":\"default\",\"args\":\"2\"}]";
+  amust "res.* stay names" with_src "note" "[\"res.optional\",\"res.doc\"]";
+  amust "a non-structure payload is a name" with_src "shape" "[\"shape\"]";
+  let without = annotations () in
+  List.iter
+    (fun (field, expected) -> amust ("without the source, " ^ field ^ " is names") without field expected)
+    [ ("imageRef", "[\"storageRef\"]"); ("groups", "[\"authorize\"]"); ("quantity", "[\"default\"]");
+      ("note", "[\"res.optional\",\"res.doc\"]") ];
+
   (* A typed id made from a literal reads as that literal. *)
   (match
      ReventlessPpx__SidecarEmit.example_of_expr [%expr oid "o1"]

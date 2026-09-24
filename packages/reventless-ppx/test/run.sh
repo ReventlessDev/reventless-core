@@ -4079,6 +4079,80 @@ else
   pass "no types sidecar without a @schema type, for an examples file or a GWT file"
 fi
 
+# A spec's field annotations keep their argument, cut from the ReScript source.
+# One without arguments is written exactly as before: test/golden holds the
+# sidecar the PPX wrote before arguments were kept, less its machine-local `file`.
+SPEC_SIDECARS="$TMPDIR/spec-sidecars"
+mkdir -p "$SPEC_SIDECARS/src"
+cat > "$SPEC_SIDECARS/package.json" <<'EOF'
+{ "name": "@test/spec-sidecars" }
+EOF
+cat > "$SPEC_SIDECARS/rescript.json" <<EOF
+{
+  "name": "@test/spec-sidecars",
+  "namespace": "SpecSidecars",
+  "ppx-flags": ["$PPX_BIN", "sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": ["sury", "@reventlessdev/reventless-spec", "@reventlessdev/reventless-infra"]
+}
+EOF
+link_node_modules "$SPEC_SIDECARS"
+cat > "$SPEC_SIDECARS/src/RegisterShelf.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = RegisterShelf({@partitionTag shelfId: string, @noDcbTag aisleId: string, label: string, note?: string})
+
+@schema
+type event = ShelfRegistered({@partitionTag shelfId: string, label: string})
+
+@schema
+type error = ShelfAlreadyRegistered
+EOF
+cat > "$SPEC_SIDECARS/src/StockShelf.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = StockShelf({
+  @partitionTag shelfId: string,
+  @ref("Products") productId: string,
+  @storageRef("Catalog.images") imageRef: string,
+  @default(1) quantity: int,
+  /* — restocked */ @default(2) facings: int,
+  @owner clerkId: string,
+})
+
+@schema
+type event = ShelfStocked({@partitionTag shelfId: string, productId: string, quantity: int})
+
+@schema
+type error = ShelfUnknown
+EOF
+
+echo ""
+echo "=== Test: a spec sidecar keeps annotation arguments ==="
+if ! (cd "$SPEC_SIDECARS" && REVENTLESS_EMIT_SIDECAR=1 npx rescript build 2>&1); then
+  fail "spec sidecars" "the package did not compile"
+else
+  MJ="$SPEC_SIDECARS/src/StockShelf.model.json"
+  assert_js_contains "$MJ" '{ "name": "storageRef", "args": "\\"Catalog.images\\"" }' \
+    "@storageRef keeps its argument"
+  assert_js_contains "$MJ" '"annotations": \[ { "name": "ref", "args": "\\"Products\\"" } \]' \
+    "@ref keeps its argument beside its ref key"
+  assert_js_contains "$MJ" '"annotations": \[ { "name": "default", "args": "1" } \]' "@default(1)"
+  assert_js_contains "$MJ" '"annotations": \[ { "name": "default", "args": "2" } \]' \
+    "an argument after non-ASCII text on its line"
+  assert_js_contains "$MJ" '"annotations": \[ "owner" \]' "a bare annotation is its name"
+  if diff <(grep -v '"file":' "$SPEC_SIDECARS/src/RegisterShelf.model.json") \
+       "$PPX_DIR/test/golden/RegisterShelf.model.golden.json" > /dev/null; then
+    pass "a spec without arguments is written as before"
+  else
+    fail "spec sidecars" "RegisterShelf.model.json differs from test/golden"
+  fi
+fi
+
 # ─── The source reader (reventless-ppx-read) ─────────────────────────
 #
 # docs/plans/source-reader-with-spans.md. The reader is built by the dune build

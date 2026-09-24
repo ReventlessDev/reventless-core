@@ -1,6 +1,6 @@
 # Plan: the model sidecar keeps an annotation's argument
 
-**Status:** 📋 Planned — 2026-09-24.<br/>
+**Status:** 🚧 S1 done — 2026-09-24; S2 (release) open.<br/>
 **Touches:** `packages/reventless-ppx` only (`src/ppx/SidecarEmit.ml`, `src/ppx/SourceReader.ml`,
 `src/test_sidecar/`, `test/run.sh`) and `docs/guides/reverse-codegen-pipeline.md`.<br/>
 **Companion:** reventless-tools `docs/plans/authoring-follows-the-framework-vocabulary.md`,
@@ -93,6 +93,15 @@ and the parsed target stays in `ref` beside it.
 
 `docs/guides/reverse-codegen-pipeline.md`: an `annotations` entry is a name, or `{name, args}`
 when the annotation has an argument; `res.*` are always names.
+
+### Outcome
+
+- `SidecarEmit.attribute_args_span` / `attribute_args` is the one cutter; `SourceReader.attribute_json`
+  calls it. `read_source` and `byte_offset` moved above the field walk so it can.
+- The `.types.json` sidecar writes its fields through the same `field_json`, so it gets the source
+  too and keeps arguments the same way.
+- The golden is `test/golden/RegisterShelf.model.golden.json` (a `*.model.json` name is git-ignored).
+- The hybrid example's 41 sidecars, rebuilt: only the five fields named above changed.
 
 ## S2 — Release
 
