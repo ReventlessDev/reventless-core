@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-24
+- feat(dcb): a command reference no decision reads by stays out of the query ([3ae149a](https://github.com/ReventlessDev/reventless-core/commit/3ae149ae91ebab63413be57df5827c5fd4390160))
 ### 2026-09-23
 - refactor(tests): the plugin's example file takes the companion suffix too ([9eef47b](https://github.com/ReventlessDev/reventless-core/commit/9eef47b16a705a507d0f7e9e9bdc60cd356dca70))
 - docs(gwt): the guide teaches example files, and its links resolve again ([f9beaaf](https://github.com/ReventlessDev/reventless-core/commit/f9beaaf280dc150f7e98732bea4d12feb219279c))
