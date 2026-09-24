@@ -4222,7 +4222,7 @@ fi
 
 echo ""
 echo "=== Test: the reader prints the vocabulary ==="
-# docs/plans/attribute-vocabulary-from-the-ppx.md. The version is the release's,
+# docs/plans/done/attribute-vocabulary-from-the-ppx.md. The version is the release's,
 # so the golden holds a placeholder for it.
 VOCAB_OUT="$READ_DIR/vocabulary.json"
 if ! "$READER" --vocabulary > "$VOCAB_OUT"; then

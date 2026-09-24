@@ -1,12 +1,12 @@
 # Plan: the PPX says which attributes it reads, and where
 
-**Status:** 🚧 2026-09-24: S0, S1 and S2 done. S3 is the next PPX release.<br/>
+**Status:** ✅ Done 2026-09-24. Released in 1.0.0-alpha.94.<br/>
 **Touches:** `packages/reventless-ppx` only: a table in the `ReventlessPpx` library
 (`src/ppx/Vocabulary.ml`), a flag on the reader's executable (`src/read/read.ml`), and the PPX tests.<br/>
 **Companion:** reventless-tools `docs/plans/authoring-follows-the-framework-vocabulary.md`,
 decision D3 ("the understood set is sourced, not typed") and its "Open, upstream" items. Also
 reventless-tools `docs/plans/forms-as-views-of-the-source.md` L5a, where a field's attributes
-are shown and edited in a form. Builds on [source-reader-with-spans](source-reader-with-spans.md).
+are shown and edited in a form. Builds on [source-reader-with-spans](../source-reader-with-spans.md).
 
 ## Goal
 
@@ -228,9 +228,15 @@ constant; and the names in `TaggedUnionInference.refused_field_attrs`,
 
 ## S3 — Release
 
-The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](gwt-sidecar-refs-and-examples.md)
+The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](../gwt-sidecar-refs-and-examples.md)
 R3. **Exit:** the published PPX prints its vocabulary. The companion plans then close their
 upstream item, and replace their transcribed lists with this output.
+
+- **Done: 1.0.0-alpha.94.** The published darwin-arm64 `read.exe --vocabulary` prints version
+  `1.0.0-alpha.94`, and its output matches the golden file. The release's first drift-guard run
+  gave up waiting for the linux-x64 tarball, which the registry served about ten minutes after
+  publishing; a re-run passed. That wait is gone since: each build job now tests its packed
+  tarball before publishing it, and the git pin moved to `pin-ppx.yml`.
 
 ## Risks
 
