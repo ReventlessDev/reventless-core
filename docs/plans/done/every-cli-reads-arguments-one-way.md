@@ -8,7 +8,10 @@ below and their tests, and the two `onSignal` calls in
 `reventless/local/src/LocalPlatformRegistry.res`. No runtime change to any platform.<br/>
 **Consumer:** reventless-tools' command-line tools, which hand-roll the same parsing. They adapt
 after the release that carries this, starting with `scripts/BootstrapApp.res`; nothing here
-waits on them.
+waits on them. **Adapted 2026-09-24** on spec `alpha.144`: `bootstrap:app`, `check:demos`,
+`reventless-dev`, `reventless-codegen` and `create-app` all read argv through `CliArgs`.
+`create-app` takes `reventless-spec` as a dependency for it, and spells `-y` out as `--yes`
+before parsing, because `CliArgs` gives a short form to `-h` alone.
 
 ## Goal
 

@@ -288,6 +288,11 @@ identity fails to compile (fixture).
   `Id.StringPure` in a `StateView/` folder, so a view that declares no identity keeps
   `string` keys and compiles unchanged. `module Key = OrderId` types it. Six hand-written
   inline test specs needed the default by hand.
+  **Since ppx `alpha.91` (2026-09-24)** `Key` also names the key: when the state declares no
+  `@id`/`@compositeId` and exactly one field has type `OrderId.t`, the PPX marks that field
+  `@id` before any other pass, so the sidecar and `classifyKeyField` see a declared key. Before,
+  a view holding `chargerId` and `siteId` beside `module Key = ChargerId` was `Ambiguous` and
+  published no key. Two fields of the identity's type still infer nothing.
 - **`module Id` is gone from `StateChangeSlice.Spec`, but not from the PPX's injection.**
   A slice that is an extension point's `Delegate` must satisfy the delegate signature,
   which requires `Id` (`UiFragmentRegistry`), so the injected `Id` stays on slice files. It
