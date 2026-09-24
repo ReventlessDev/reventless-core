@@ -449,6 +449,40 @@ type event =
 type error = AlreadyRegistered
 EOF
 
+# A view that declares its identity: the one state field of that type becomes its
+# @id. With two such fields it is ambiguous and nothing is inferred.
+mkdir -p "$DCB/src/StateView"
+cat > "$DCB/src/StateView/BuyerBoard.res" <<'EOF'
+@@reventless.spec
+
+module Key = CustomerId
+
+@schema
+type state = {buyer: CustomerId.t, favourite: ProductId.t, name: string}
+
+@schema
+type consumedEvent = Seen({buyer: CustomerId.t, favourite: ProductId.t, name: string})
+
+let project = event => switch event {
+  | Seen({buyer, favourite, name}) => [Set(buyer, {buyer, favourite, name})]
+}
+EOF
+cat > "$DCB/src/StateView/PairBoard.res" <<'EOF'
+@@reventless.spec
+
+module Key = CustomerId
+
+@schema
+type state = {buyer: CustomerId.t, seller: CustomerId.t}
+
+@schema
+type consumedEvent = Paired({buyer: CustomerId.t, seller: CustomerId.t})
+
+let project = event => switch event {
+  | Paired({buyer, seller}) => [Set(buyer, {buyer, seller})]
+}
+EOF
+
 # @id and @owner on identity-typed state fields.
 mkdir -p "$DCB/src/ReadModel"
 cat > "$DCB/src/ReadModel/Buyers.res" <<'EOF'
@@ -1978,6 +2012,13 @@ echo "=== Test: @id and @owner on identity-typed state fields ==="
 JS="$DCB/src/ReadModel/Buyers.res.mjs"
 assert_js_contains "$JS" 'state => state.buyer'               "@id on an identity generates makeId"
 assert_js_contains "$JS" 'Owner$Reventless.mark(CustomerId$TestDcb.schema)' "@owner on an identity composes onto its schema"
+
+echo ""
+echo "=== Test: module Key = <Identity> marks that identity's state field @id ==="
+JS="$DCB/src/StateView/BuyerBoard.res.mjs"
+assert_js_contains "$JS" 'ids: \["buyer"\]'                  "Key: the one CustomerId.t field is recorded as the id"
+JS="$DCB/src/StateView/PairBoard.res.mjs"
+assert_js_not_contains "$JS" 'ids: \["buyer"\]'              "Key: two fields of the identity's type infer nothing"
 
 echo ""
 echo "=== Test: module Delegate auto-detected via @@reventless.spec (no @reventless.delegate needed) ==="

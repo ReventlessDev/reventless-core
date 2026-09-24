@@ -764,6 +764,12 @@ let transform (str : structure) : structure =
     let dcb_tags = has_dcb_tags_attr str
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in
+    (* First, so the sidecar and every later pass see the key as a written [@id]. *)
+    let body =
+      if Util.is_stateview_filename loc.loc_start.pos_fname
+      then StateAnnotations.infer_id_from_key body
+      else body
+    in
     (* Capture the spec body before the DCB-tag passes rewrite the field
        annotations into [@s.matches(...)] — the Plan 06 sidecar emitter reads
        the original [@partitionTag] / [@noDcbTag] / [@dcbTag] / [@id] intent. *)

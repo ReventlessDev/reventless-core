@@ -33,6 +33,61 @@ let strip_composite_id_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "compositeId")
   ) attrs
 
+(* ── @id from a view's declared identity ── *)
+
+(* A StateView that declares [module Key = ChargerId] says what its rows are keyed
+   by, and its state holds that key as a [ChargerId.t] field. Mark that field [@id],
+   so the key reaches everything that reads one (state annotations, the sidecar,
+   core's key ladder) without each of them learning about [Key]. Only when the
+   state declares no [@id]/[@compositeId] of its own and exactly one field has the
+   identity's type: several is ambiguous, and an explicit [@id] says which. *)
+let infer_id_from_key (str : structure) : structure =
+  let key_ident =
+    List.find_map (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_module { pmb_name = { txt = Some "Key"; _ };
+                      pmb_expr = { pmod_desc = Pmod_ident { txt; _ }; _ }; _ } ->
+        Some txt
+      | _ -> None
+    ) str
+  in
+  match key_ident with
+  | None -> str
+  | Some key ->
+    let is_key_type (ld : label_declaration) =
+      match ld.pld_type.ptyp_desc with
+      | Ptyp_constr ({ txt = Ldot (m, "t"); _ }, []) -> m = key
+      | _ -> false
+    in
+    let map_state (td : type_declaration) =
+      match td.ptype_name.txt, td.ptype_kind with
+      | "state", Ptype_record fields
+        when not (List.exists (fun (ld : label_declaration) ->
+                    has_id_field_attr ld.pld_attributes
+                    || has_composite_id_field_attr ld.pld_attributes) fields) ->
+        (match List.filter is_key_type fields with
+         | [ only ] ->
+           let id_attr =
+             { attr_name = { txt = "id"; loc = only.pld_loc };
+               attr_payload = PStr [];
+               attr_loc = only.pld_loc }
+           in
+           let fields =
+             List.map (fun (ld : label_declaration) ->
+               if ld == only then { ld with pld_attributes = id_attr :: ld.pld_attributes }
+               else ld
+             ) fields
+           in
+           { td with ptype_kind = Ptype_record fields }
+         | _ -> td)
+      | _ -> td
+    in
+    List.map (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_type (rf, tds) -> { item with pstr_desc = Pstr_type (rf, List.map map_state tds) }
+      | _ -> item
+    ) str
+
 (* ── @subId / @compositeSubId attribute helpers ── *)
 
 let has_subid_field_attr (attrs : attributes) =
