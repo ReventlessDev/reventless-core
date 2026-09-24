@@ -1,0 +1,143 @@
+name: Pin Reventless PPX
+
+# Records a published reventless-ppx release in git: main's version and its
+# optionalDependencies pin, plus the relocked pnpm-lock.yaml. Housekeeping only —
+# in-repo builds compile the PPX from source, and the published main already names
+# its binaries exactly (publish-ppx.yml), so nothing waits on this commit.
+#
+# It is its own workflow because it is the one step that needs the registry to have
+# finished processing a publish, which since 2026-09 takes one to ten minutes per
+# package, plus up to five more for the registry CDN's metadata cache. Waiting for
+# that inside the release made the release slow and, when the wait ran out, red.
+# Here nothing waits: each run pins what is complete (scripts/pin-ppx.mjs) and
+# otherwise does nothing, and the next run tries again.
+#
+# Loop-safe: the commit carries [skip ci], and a GITHUB_TOKEN push triggers no
+# workflow anyway.
+
+on:
+  workflow_run:
+    workflows: ["Publish Reventless PPX"]
+    types: [completed]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  branches:
+    name: Branches to pin
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.b.outputs.list }}
+    steps:
+      - id: b
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          # After a release, the branch it released from; a PR run published nothing.
+          # On a schedule, every release branch that exists.
+          if [ "$EVENT" = "workflow_run" ]; then
+            case "$RUN_EVENT:$RUN_BRANCH" in
+              push:main|push:beta|push:alpha|workflow_dispatch:*) list="[\"$RUN_BRANCH\"]" ;;
+              *) list="[]" ;;
+            esac
+          else
+            list=$(gh api "repos/${{ github.repository }}/branches" --paginate --jq '[.[].name | select(. == "main" or . == "beta" or . == "alpha")]' | jq -cs 'add')
+          fi
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          echo "branches: $list"
+
+  pin:
+    name: Pin (${{ matrix.branch }})
+    needs: branches
+    if: needs.branches.outputs.list != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.branches.outputs.list) }}
+    concurrency:
+      group: pin-ppx-${{ matrix.branch }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Is a newer release complete?
+        id: pin
+        run: |
+          VERSION=$(node scripts/pin-ppx.mjs --explain)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # Everything below runs only when there is something to pin, so the
+      # scheduled runs that find nothing cost a checkout and one script.
+      - name: Setup pnpm
+        if: steps.pin.outputs.version != ''
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.pin.outputs.version != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.1"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup workspace (pnpm-workspace.yaml)
+        if: steps.pin.outputs.version != ''
+        run: node scripts/workspace-setup.mjs
+
+      - name: Relock
+        id: relock
+        if: steps.pin.outputs.version != ''
+        env:
+          VERSION: ${{ steps.pin.outputs.version }}
+        run: |
+          # pnpm reads metadata through the CDN, which can lag the check above by up
+          # to five minutes. It does not fail on an optional dependency it cannot
+          # resolve yet — it drops it from the lockfile, which breaks every frozen
+          # install — so a relock counts only with every pinned binary locked at
+          # $VERSION. Otherwise commit nothing; the next run pins it.
+          pnpm install --lockfile-only --no-frozen-lockfile --config.prefer-offline=false
+          pinned=$(node -p 'Object.keys(require("./packages/reventless-ppx/package.json").optionalDependencies || {}).filter(k => k.startsWith("@reventlessdev/reventless-ppx-")).join(" ")')
+          missing=""
+          for pkg in $pinned; do
+            grep -qF "'$pkg@$VERSION':" pnpm-lock.yaml || missing="$missing $pkg"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::pnpm does not resolve$missing at $VERSION yet — the next run pins it"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push the pin
+        if: steps.relock.outputs.ok == 'true'
+        env:
+          VERSION: ${{ steps.pin.outputs.version }}
+          BRANCH: ${{ matrix.branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          SHORT="${VERSION#*-}"   # 1.0.0-alpha.64 -> alpha.64
+          git add packages/reventless-ppx/package.json pnpm-lock.yaml
+          git commit -m "chore(ppx): record ${SHORT} as published and pin its binaries" -m "[skip ci]"
+          # Rebase-retry in case another [skip ci] commit (e.g. lerna version) landed.
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH" && git push origin "HEAD:$BRANCH" && exit 0
+            echo "push attempt $i failed, retrying…"
+            sleep 5
+          done
+          echo "::error::failed to push the pin commit"
+          exit 1

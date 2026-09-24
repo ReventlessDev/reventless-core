@@ -14,10 +14,19 @@ name: Publish Reventless PPX
 # main @reventlessdev/reventless-ppx declares them as optionalDependencies, so a
 # consumer installs only the matching one.
 #
-# Each platform's runner publishes its own per-platform package directly — no
-# upload/download-artifact round-trip — so the workflow doesn't depend on the
-# org's Actions artifact storage. The main (thin) package is published in a
-# small follow-up job after all platforms succeed.
+# Each platform's runner packs its own per-platform package, runs the PPX suite
+# against the binaries INSIDE that tarball, and only then publishes that same
+# tarball — so what is tested is what is uploaded, byte for byte, and a binary
+# that drifted from source never reaches the registry. No upload/download-artifact
+# round-trip, so the workflow doesn't depend on the org's Actions artifact
+# storage. The main (thin) package is published in a small follow-up job after
+# all platforms succeed.
+#
+# Nothing here reads a just-published version back from the registry. Since
+# 2026-09 npm makes a version visible one to ten minutes after `npm publish`
+# returns, and its CDN caches package metadata for five more; the drift guard
+# that used to fetch the published tarball spent 5–10 minutes waiting on every
+# release and failed when the wait ran out.
 #
 # Current matrix: linux-x64 + darwin-arm64. darwin-x64 (Intel macOS) is OUT of CI
 # on purpose and published manually from a maintainer's Intel Mac via
@@ -29,7 +38,7 @@ name: Publish Reventless PPX
 # against every package in the release (main + all per-platform), and steps forward
 # until it finds one free on all of them. A forgotten bump therefore costs nothing,
 # and a version half-claimed by an earlier partial publish is stepped over rather
-# than reused. The `pin` job commits the resolved version back. Recovery from a
+# than reused. pin-ppx.yml commits the published version back. Recovery from a
 # partial publish is always forward: a published tarball cannot be replaced, so
 # completing a half-published version would ship whatever binaries it already has.
 # The per-platform scaffolds' versions are generated from the resolved one, so the
@@ -40,8 +49,9 @@ name: Publish Reventless PPX
 # install the new binary. It is NOT a prerequisite for keeping this repo green:
 # CI, Release, and the example deploys build the PPX from source (via
 # .github/actions/setup-ppx) and never resolve the published binary, so a PPX
-# source change ships in one commit. The `pin` job automates the pin bump +
-# relock after publishing. See docs/plans/done/ppx-republish-single-commit.md.
+# source change ships in one commit. The published main names its binaries at
+# exactly its own version; pin-ppx.yml records that in git and relocks, once the
+# registry serves every package. See docs/plans/done/ppx-republish-single-commit.md.
 
 on:
   push:
@@ -75,7 +85,7 @@ permissions:
 jobs:
   # Choose a version the whole release can publish under, rather than failing on
   # one it cannot. The resolver checks main AND every per-platform package, and
-  # steps forward until it finds one free on all of them; the `pin` job commits
+  # steps forward until it finds one free on all of them; pin-ppx.yml commits
   # the result back, so git catches up without a human in the loop.
   #
   # This replaces a hard gate that checked main only. Two failures came out of
@@ -126,7 +136,7 @@ jobs:
           # The package is NOT in the main package's optionalDependencies while its
           # CI publish is suspended — pinning a platform CI does not publish would
           # install nothing (optional deps fail silently) and surface as
-          # "no binary found", so the `pin` job below leaves it out on purpose.
+          # "no binary found", so pin-ppx.mjs leaves it out on purpose.
           # Intel consumers therefore fall back to the launcher's local build, the
           # same path as any platform without a prebuilt: `pnpm run setup` /
           # `pnpm build:ppx`. Re-adding it to optionalDependencies is only correct
@@ -160,19 +170,21 @@ jobs:
           chmod +x packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe \
                    packages/reventless-ppx/npm/${{ matrix.target }}/read.exe
 
-      - name: Setup Node.js (for publish)
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22.17.1"
+          cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 
       - name: Sync per-platform version from main
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          # Generate the scaffold's version from main immediately before publish
+          # Generate the scaffold's version from main immediately before packing
           # so the two can never disagree. lerna bumps only the main package
           # (npm/* is not a workspace member — packages/* is one level deep), so
           # without this the scaffolds drift a version behind after every release.
@@ -180,11 +192,46 @@ jobs:
           npm pkg set version="$VERSION"
           echo "Set ${{ matrix.target }} version to $VERSION"
 
-      - name: Publish per-platform package
+      - name: Pack the per-platform package
+        id: pack
+        run: |
+          out="$RUNNER_TEMP/pack"
+          mkdir -p "$out" "$RUNNER_TEMP/packed"
+          name=$(cd "packages/reventless-ppx/npm/${{ matrix.target }}" \
+                 && npm pack --pack-destination "$out" --json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8"))[0].filename')
+          tar -xzf "$out/$name" -C "$RUNNER_TEMP/packed"
+          chmod +x "$RUNNER_TEMP/packed/package/ppx.exe" "$RUNNER_TEMP/packed/package/read.exe"
+          echo "tgz=$out/$name" >> "$GITHUB_OUTPUT"
+          echo "bin=$RUNNER_TEMP/packed/package/ppx.exe" >> "$GITHUB_OUTPUT"
+          echo "read_bin=$RUNNER_TEMP/packed/package/read.exe" >> "$GITHUB_OUTPUT"
+
+      - name: Setup workspace (pnpm-workspace.yaml)
+        run: node scripts/workspace-setup.mjs
+
+      - name: Install dependencies
+        # run.sh's temp fixtures resolve sury / sury-ppx / reventless-spec through
+        # the (hoisted) root node_modules.
+        run: pnpm install --frozen-lockfile
+
+      # The drift guard. The `test` job validates the SOURCE; this validates the
+      # ARTIFACT, before it is published: the maintained suite, run through the
+      # binaries unpacked from the tarball the next step uploads. A tarball that
+      # shipped a stale or mis-staged binary fails the suite's assertions (which
+      # track source) here, while the version is still unpublished.
+      - name: Run the PPX suite against the packed binary
+        env:
+          REVENTLESS_PPX_BIN: ${{ steps.pack.outputs.bin }}
+          REVENTLESS_PPX_READ_BIN: ${{ steps.pack.outputs.read_bin }}
+          REVENTLESS_PPX_SKIP_SELF_BUILD: "1"
+        run: ./test/run.sh
+        working-directory: packages/reventless-ppx
+
+      - name: Publish the tested tarball
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ needs.preflight.outputs.version }}
+          TGZ: ${{ steps.pack.outputs.tgz }}
         run: |
           # Every error is fatal, the version conflict included. Preflight resolved
           # a version free on every package in this release, so a conflict here
@@ -194,7 +241,7 @@ jobs:
           # pointing at it, which is how a stale ppx ships under a fresh version.
           # Fail, and let the next run resolve forward.
           set +e
-          out=$(cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish --access public 2>&1)
+          out=$(npm publish "$TGZ" --access public 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ]; then
@@ -251,8 +298,8 @@ jobs:
         # compiles the current spec fixtures with the previously published binary
         # and goes red on any PPX change that adds a new assertion — which is how
         # the Test PPX job used to gate PPX source changes behind a republish.
-        # Testing source keeps this job green in the same commit; the drift-guard
-        # job separately validates the published artifact.
+        # Testing source keeps this job green in the same commit; the build job
+        # separately validates each packed artifact before publishing it.
         run: opam exec -- npm test
         working-directory: packages/reventless-ppx
         env:
@@ -289,6 +336,20 @@ jobs:
           # published at .69 while the platforms went out as .70.
           cd packages/reventless-ppx
           npm pkg set version="$VERSION"
+          # Name the binaries at exactly this version. The checked-in pin is a range
+          # from the PREVIOUS release (^1.0.0-alpha.93 in main 1.0.0-alpha.94), which
+          # admits the previous binaries too; exact means a consumer gets this
+          # release's binaries or, while the registry still processes them, none —
+          # an install that fails loudly, not one that runs an older PPX.
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            for (const k of Object.keys(j.optionalDependencies || {})) {
+              if (k.startsWith("@reventlessdev/reventless-ppx-")) j.optionalDependencies[k] = process.env.VERSION;
+            }
+            fs.writeFileSync("package.json", JSON.stringify(j, null, 2) + "\n");
+          '
+          grep -A4 '"optionalDependencies"' package.json
           set +e
           out=$(npm publish --access public 2>&1)
           code=$?
@@ -297,186 +358,3 @@ jobs:
             echo "::error::publish of main@$VERSION FAILED — see npm error above"
             exit $code
           fi
-
-  # Drift guard: the build job validated the SOURCE (it compiled from source);
-  # this validates the PUBLISHED artifact. In-repo builds no longer resolve the
-  # published binary (they build from source), so nothing else would notice if the
-  # tarball shipped a stale or mis-staged binary. Fetch the just-published
-  # linux-x64 package and run the maintained PPX suite through it: if it drifted
-  # from source, the suite's assertions (which track source) fail here. This is
-  # what buys back the published-artifact validation that building from source
-  # everywhere gave up.
-  drift-guard:
-    name: Drift guard (published binary matches source)
-    needs: [preflight, build]
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
-
-      - name: Install dependencies
-        # run.sh's temp fixtures resolve sury / sury-ppx / reventless-spec through
-        # the (hoisted) root node_modules, so `node-linker=hoisted` in the project
-        # .npmrc has to survive. It does now unconditionally — that file expands
-        # no environment variable, so there is nothing for a missing one to break.
-        run: pnpm install --frozen-lockfile
-
-      - name: Fetch the just-published linux-x64 binary
-        id: fetch
-        env:
-          VERSION: ${{ needs.preflight.outputs.version }}
-        run: |
-          pkg="@reventlessdev/reventless-ppx-linux-x64@${VERSION}"
-          ok=false
-          # ~10 min: the registry has taken up to ~8 min to serve a just-published
-          # tarball (linux-x64, 1.0.0-alpha.87), though it lists the version sooner.
-          for i in $(seq 1 30); do
-            if npm pack "$pkg" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP"; then ok=true; break; fi
-            echo "npm pack $pkg failed (registry may still be propagating) — retrying in 20s"
-            sleep 20
-          done
-          if [ "$ok" != true ]; then echo "::error::could not fetch $pkg after retries"; exit 1; fi
-          tar -xzf "$RUNNER_TEMP"/reventlessdev-reventless-ppx-linux-x64-*.tgz -C "$RUNNER_TEMP"
-          bin="$RUNNER_TEMP/package/ppx.exe"
-          read_bin="$RUNNER_TEMP/package/read.exe"
-          chmod +x "$bin" "$read_bin"
-          echo "bin=$bin" >> "$GITHUB_OUTPUT"
-          echo "read_bin=$read_bin" >> "$GITHUB_OUTPUT"
-
-      - name: Run the PPX suite against the published binary
-        # REVENTLESS_PPX_BIN points the fixtures at the published binary;
-        # REVENTLESS_PPX_SKIP_SELF_BUILD skips run.sh's source dune build (no OCaml
-        # here — we are testing the artifact, not the source).
-        env:
-          REVENTLESS_PPX_BIN: ${{ steps.fetch.outputs.bin }}
-          REVENTLESS_PPX_READ_BIN: ${{ steps.fetch.outputs.read_bin }}
-          REVENTLESS_PPX_SKIP_SELF_BUILD: "1"
-        run: ./test/run.sh
-        working-directory: packages/reventless-ppx
-
-  # Automate the previously-manual second commit. Once the new per-platform
-  # binaries and the main package are on the registry, bump main's
-  # optionalDependencies pin to the new version and relock, so EXTERNAL consumers
-  # (who install the published binary) resolve the fresh one. In-repo builds no
-  # longer need this — they build the PPX from source (see
-  # docs/plans/done/ppx-republish-single-commit.md) — so this is pure housekeeping;
-  # automating it removes the leftover human step that used to trail every PPX
-  # source change (e.g. commit 2e8d076fd, done by hand).
-  #
-  # Loop-safe: the commit touches only packages/reventless-ppx/package.json +
-  # pnpm-lock.yaml (never src/**, so it cannot re-trigger this workflow) and
-  # carries [skip ci]; a GITHUB_TOKEN push does not trigger workflows anyway.
-  pin:
-    name: Pin optionalDependencies to the published version
-    needs: [preflight, build, publish-main, drift-guard]
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Bump optionalDependencies pin and relock
-        id: bump
-        env:
-          VERSION: ${{ needs.preflight.outputs.version }}
-        run: |
-          # Rewrite every @reventlessdev/reventless-ppx-* optionalDependency to
-          # ^$VERSION (only those already listed — darwin-x64 is intentionally
-          # absent while its CI publish is suspended).
-          node -e '
-            const fs = require("fs");
-            const p = "packages/reventless-ppx/package.json";
-            const j = JSON.parse(fs.readFileSync(p, "utf8"));
-            const want = "^" + process.env.VERSION;
-            // The version too, not just the pin: preflight may have resolved past
-            // a claimed version, and if git never learns the published number the
-            // next run starts from a stale one and resolves forward again.
-            j.version = process.env.VERSION;
-            for (const k of Object.keys(j.optionalDependencies || {})) {
-              if (k.startsWith("@reventlessdev/reventless-ppx-")) j.optionalDependencies[k] = want;
-            }
-            fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
-          '
-          # Relock so --frozen-lockfile consumers resolve the new pin. Retry to
-          # ride out registry propagation of the just-published packages.
-          # pnpm does not fail on an optional dependency it cannot resolve yet: it
-          # drops it from the lockfile, which then breaks every frozen install.
-          # So a relock counts only once every pinned binary is locked at $VERSION.
-          pinned=$(node -p 'Object.keys(require("./packages/reventless-ppx/package.json").optionalDependencies || {}).filter(k => k.startsWith("@reventlessdev/reventless-ppx-")).join(" ")')
-          ok=false
-          for i in $(seq 1 30); do
-            if pnpm install --lockfile-only --no-frozen-lockfile --config.prefer-offline=false; then
-              missing=""
-              for pkg in $pinned; do
-                grep -qF "'$pkg@$VERSION':" pnpm-lock.yaml || missing="$missing $pkg"
-              done
-              if [ -z "$missing" ]; then ok=true; break; fi
-              echo "relock attempt $i left out:$missing"
-            fi
-            echo "relock attempt $i incomplete (registry may still be propagating) — retrying in 20s"
-            sleep 20
-          done
-          if [ "$ok" != true ]; then echo "::error::relock failed after retries"; exit 1; fi
-
-          if git diff --quiet -- packages/reventless-ppx/package.json pnpm-lock.yaml; then
-            echo "Pin already at ^$VERSION — nothing to commit"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Commit and push the pin
-        if: steps.bump.outputs.changed == 'true'
-        env:
-          VERSION: ${{ needs.preflight.outputs.version }}
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          SHORT="${VERSION#*-}"   # 1.0.0-alpha.64 -> alpha.64
-          git add packages/reventless-ppx/package.json pnpm-lock.yaml
-          git commit -m "chore(ppx): record ${SHORT} as published and pin its binaries" -m "[skip ci]"
-          # Rebase-retry in case another [skip ci] commit (e.g. lerna version) landed.
-          for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH" && git push origin "HEAD:$BRANCH" && exit 0
-            echo "push attempt $i failed, retrying…"
-            sleep 5
-          done
-          echo "::error::failed to push the pin commit"
-          exit 1

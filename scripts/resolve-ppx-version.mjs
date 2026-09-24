@@ -15,6 +15,9 @@
 //
 // The registry is read over HTTP rather than through `npm view`: the npm CLI
 // caches 404s, and a cached 404 here reads as "free" for a version that is not.
+// The URL carries a throwaway query, because the registry's CDN serves package
+// metadata up to five minutes old (`max-age=300`) and a stale copy would read a
+// version published minutes ago as free.
 //
 // Usage:
 //   node scripts/resolve-ppx-version.mjs           # print the resolved version
@@ -51,7 +54,7 @@ const packageNames = () => {
 /** The set of versions already on the registry for one package. A package that
     has never been published 404s, which is an empty set rather than an error. */
 const publishedVersions = async (name) => {
-  const res = await fetch(`${REGISTRY}/${name.replace('/', '%2F')}`)
+  const res = await fetch(`${REGISTRY}/${name.replace('/', '%2F')}?fresh=${Date.now()}`)
   if (res.status === 404) return new Set()
   if (!res.ok) {
     throw new Error(`registry lookup for ${name} failed: ${res.status} ${res.statusText}`)
