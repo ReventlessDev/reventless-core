@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.273 (2026-09-24)
+
+### Features
+
+* **dcb:** a command reference no decision reads by stays out of the query ([3ae149a](https://github.com/ReventlessDev/reventless-core/commit/3ae149ae91ebab63413be57df5827c5fd4390160))
+
+
 # 3.0.0-alpha.272 (2026-09-23)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.357 (2026-09-24)
+
+**Note:** Version bump only for package @reventlessdev/reventless-aws
+
+
+
+
+
 # 3.0.0-alpha.356 (2026-09-23)
 
 * feat(node)!: every command-line tool reads its arguments through parseArgs ([2e41979](https://github.com/ReventlessDev/reventless-core/commit/2e41979b73646c46356e197e17eb4a3da0154c73))
