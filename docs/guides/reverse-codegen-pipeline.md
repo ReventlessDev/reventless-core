@@ -51,6 +51,21 @@ A scenario's id comes from a `// scenario-id: <id>` comment on the line above it
 
 Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDECAR=1` — which `export` sets before it builds. Ordinary `rescript build` writes nothing new. They are git-ignored (`*.model.json` / `*.gwt.json` / `*.examples.json` / `*.types.json` / `*.wiring.json`) and never hand-edited: `export` does a clean rebuild first so they cannot lag source.
 
+### The source reader
+
+`reventless-ppx-read` ships in the same package as the PPX. Given a file, it prints that file's declarations with their byte spans, for tools that edit the source in place (`reventless-ppx-read [--bsc <path>] <file.res>`).
+
+`reventless-ppx-read --vocabulary` prints every attribute the PPX reads, as JSON. It takes no file and needs no `bsc`. Each entry has:
+
+- `name`, as written after `@` or `@@`.
+- `positions`, where the PPX reads it: `file` (a standalone `@@…`), `module` (a module binding), and `type.<owner>`, `case.<owner>` or `field.<owner>`. The owner is `command`, `event`, `consumedEvent`, `state`, or `other` for any other type. An attribute that the PPX only recognises in order to reject it has no positions.
+- `args`: `none`, `optional` or `required`. `argsExample` is an argument as it would be written in source.
+- `summary`, one sentence on what the attribute does.
+- `replacedBy`, on a renamed attribute: the name to use instead.
+- `readBy`, the PPX modules that read it.
+
+The top-level `version` is the version of the package the binary shipped in. The list is `Vocabulary.all` in `src/ppx/Vocabulary.ml`. A unit test fails when a module matches an attribute name that the table does not list, and `test/golden/vocabulary.golden.json` pins the printed output.
+
 ## DCB-tag fidelity (`dcbRole`)
 
 Event Modeling JSON has a single identity signal (`idAttribute`); Reventless DCB tagging is richer. The canonical model carries a four-way `dcbRole` so intent survives the roundtrip:

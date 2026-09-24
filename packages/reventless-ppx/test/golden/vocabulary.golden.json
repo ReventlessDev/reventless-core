@@ -1,0 +1,475 @@
+{
+  "version": "<version>",
+  "attributes": [
+    {
+      "name": "reventless.spec",
+      "positions": [ "file" ],
+      "args": "optional",
+      "argsExample": "\"Catalog.Products\"",
+      "summary": "Marks a spec file: injects its name, Id and moduleUrl, and runs the field passes.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.behavior",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks a behavior file: opens its spec and injects Spec and moduleUrl.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.projection",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks a state view's projection file: opens its spec and injects Spec and moduleUrl.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.automation",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks an automation file: its process and per-source mappings, with the spec opened.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.translation",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks a translation file: opens its spec and injects Spec and moduleUrl.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.mappings",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks a file of per-source mappings (`_Mappings` or `_Projections`) and injects their functor.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.extension",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks an extension file, and derives the table of events it routes to commands.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.task",
+      "positions": [ "file" ],
+      "args": "optional",
+      "summary": "Marks a task file: injects its name and moduleUrl.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.dcbTags",
+      "positions": [ "file" ],
+      "args": "none",
+      "summary": "Infers DCB tags in a file outside a slice folder.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.async",
+      "positions": [ "file" ],
+      "args": "none",
+      "summary": "Dispatches this aggregate's or slice's commands asynchronously: a command answers pending.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.systemCallable",
+      "positions": [ "file" ],
+      "args": "none",
+      "summary": "Lets a deploy-time system caller (IAM) call this component's GraphQL fields.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.gwt",
+      "positions": [ "file" ],
+      "args": "optional",
+      "argsExample": "Product, Product_Behavior",
+      "summary": "Marks a GWT test file: opens its spec and includes the matching test DSL.",
+      "readBy": [ "GwtInference" ]
+    },
+    {
+      "name": "reventless.visibility",
+      "positions": [ "file" ],
+      "args": "required",
+      "argsExample": "Internal",
+      "summary": "Hides a read model or state view from the generated UI (`Internal`); the default is `Public`.",
+      "readBy": [ "VisibilityInjection" ]
+    },
+    {
+      "name": "reventless.authorize",
+      "positions": [ "file" ],
+      "args": "required",
+      "argsExample": "AllowGroups([\"Admin\"])",
+      "summary": "Who may call this component, in place of the default: any signed-in user.",
+      "readBy": [ "AuthorizationInjection" ]
+    },
+    {
+      "name": "reventless.consistency",
+      "positions": [ "file" ],
+      "args": "required",
+      "argsExample": "AlwaysStrong",
+      "summary": "How a state-change slice reads its history before deciding; the default escalates on retry.",
+      "readBy": [ "ReadConsistencyInjection" ]
+    },
+    {
+      "name": "reventless.snapshots",
+      "positions": [ "file" ],
+      "args": "required",
+      "argsExample": "50",
+      "summary": "Snapshots this aggregate's state every N events.",
+      "readBy": [ "SnapshotInjection" ]
+    },
+    {
+      "name": "reventless.examples",
+      "positions": [ "file" ],
+      "args": "none",
+      "summary": "Marks a module of named example values that scenarios refer to.",
+      "readBy": [ "SidecarEmit" ]
+    },
+    {
+      "name": "reventless.delegate",
+      "positions": [ "module" ],
+      "args": "none",
+      "summary": "Treats this module as a Delegate outside an extension-point or extension file.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.projections",
+      "positions": [],
+      "args": "none",
+      "summary": "Removed. Move the mappings into a `_Projections.res` file marked `@@reventless.mappings`.",
+      "replacedBy": "reventless.mappings",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "noApi",
+      "positions": [ "type.command", "case.command" ],
+      "args": "none",
+      "summary": "Keeps this command, or every command of the type, off the GraphQL and MCP APIs.",
+      "readBy": [ "NoApiAnnotation", "ReventlessPpx" ]
+    },
+    {
+      "name": "authorize",
+      "positions": [ "case.command" ],
+      "args": "required",
+      "argsExample": "AllowGroups([\"Admin\"])",
+      "summary": "Who may issue this one command, in place of the file's rule.",
+      "readBy": [ "AuthorizationInjection" ]
+    },
+    {
+      "name": "live",
+      "positions": [ "type.state" ],
+      "args": "required",
+      "argsExample": "false",
+      "summary": "Whether the view offers live updates by default.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "namedWhenRetired",
+      "positions": [ "type.state" ],
+      "args": "none",
+      "summary": "A retired row still answers the reference door with its name.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "transition",
+      "positions": [],
+      "args": "none",
+      "summary": "Removed. Declare the command's edge in a `commandTransition` switch.",
+      "readBy": [ "TransitionAnnotation" ]
+    },
+    {
+      "name": "allowedStates",
+      "positions": [],
+      "args": "none",
+      "summary": "Removed. Declare the from-set in a `commandTransition` switch.",
+      "readBy": [ "TransitionAnnotation" ]
+    },
+    {
+      "name": "targetState",
+      "positions": [],
+      "args": "none",
+      "summary": "Removed. Declare the target in a `commandTransition` switch.",
+      "readBy": [ "TransitionAnnotation" ]
+    },
+    {
+      "name": "partitionTag",
+      "positions": [ "field.command", "field.event", "field.consumedEvent" ],
+      "args": "none",
+      "summary": "The id this event is stored under, where the slice's partition cannot be inferred.",
+      "readBy": [ "DcbTagInference", "SidecarEmit" ]
+    },
+    {
+      "name": "crossPartition",
+      "positions": [ "field.command", "field.event", "field.consumedEvent" ],
+      "args": "none",
+      "summary": "A tag whose decision read spans every partition carrying it.",
+      "readBy": [ "DcbTagInference" ]
+    },
+    {
+      "name": "dcbTag",
+      "positions": [ "field.command", "field.event", "field.consumedEvent" ],
+      "args": "optional",
+      "argsExample": "\"sku\"",
+      "summary": "Tags a field that is not named `*Id`; the argument sets the tag key.",
+      "readBy": [ "DcbTagInference", "SidecarEmit" ]
+    },
+    {
+      "name": "compositePartitionTag",
+      "positions": [ "field.command", "field.event", "field.consumedEvent" ],
+      "args": "optional",
+      "argsExample": "\"/\"",
+      "summary": "One segment of a partition key made of several fields, joined in declaration order.",
+      "readBy": [ "DcbTagInference", "SidecarEmit" ]
+    },
+    {
+      "name": "noDcbTag",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "none",
+      "summary": "This `*Id` field is payload, not a DCB tag.",
+      "readBy": [ "DcbTagInference", "ReferenceInference", "SidecarEmit" ]
+    },
+    {
+      "name": "noTag",
+      "positions": [],
+      "args": "none",
+      "summary": "Renamed. Use `@noDcbTag`.",
+      "replacedBy": "noDcbTag",
+      "readBy": [ "DcbTagInference" ]
+    },
+    {
+      "name": "ref",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "required",
+      "argsExample": "\"Catalog.Product\"",
+      "summary": "This field holds the id of another entity.",
+      "readBy": [ "ReferenceInference" ]
+    },
+    {
+      "name": "storageRef",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "required",
+      "argsExample": "\"Catalog.productImages\"",
+      "summary": "The object store the file this field refers to is kept in.",
+      "readBy": [ "StorageRefInference", "UploadableInference" ]
+    },
+    {
+      "name": "offload",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "required",
+      "argsExample": "\"pluginStructures\"",
+      "summary": "A value kept in an object store and carried by reference when large, inline when small.",
+      "readBy": [ "OffloadInference" ]
+    },
+    {
+      "name": "owner",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "optional",
+      "argsExample": "{index: false}",
+      "summary": "The caller a row or command belongs to: set from the caller on write, and narrowing reads.",
+      "readBy": [ "OwnerInference", "StateAnnotations" ]
+    },
+    {
+      "name": "sensitive",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "none",
+      "summary": "A value that must not be put into content a person receives.",
+      "readBy": [ "SensitiveInference" ]
+    },
+    {
+      "name": "default",
+      "positions": [
+        "field.command", "field.event", "field.consumedEvent", "field.state",
+        "field.other"
+      ],
+      "args": "required",
+      "argsExample": "1",
+      "summary": "The value a generated form opens this field on.",
+      "readBy": [ "DefaultInference" ]
+    },
+    {
+      "name": "displayName",
+      "positions": [ "field.state" ],
+      "args": "optional",
+      "argsExample": "\" \"",
+      "summary": "Part of the row's display name, with the other fields marked; the argument is the separator.",
+      "readBy": [ "DisplayNameInference" ]
+    },
+    {
+      "name": "id",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "The row's partition key.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference", "SidecarEmit" ]
+    },
+    {
+      "name": "compositeId",
+      "positions": [ "field.state" ],
+      "args": "optional",
+      "argsExample": "\"/\"",
+      "summary": "One segment of a partition key made of several fields; the argument is the separator.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference", "SidecarEmit" ]
+    },
+    {
+      "name": "subId",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "The row's sort key.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "compositeSubId",
+      "positions": [ "field.state" ],
+      "args": "optional",
+      "argsExample": "\"/\"",
+      "summary": "One segment of a sort key made of several fields; the argument is the separator.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference", "SidecarEmit" ]
+    },
+    {
+      "name": "index",
+      "positions": [ "field.state" ],
+      "args": "optional",
+      "argsExample": "\"byCustomer\"",
+      "summary": "A key of a secondary index; the argument names it, or sets its projection.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference", "SidecarEmit" ]
+    },
+    {
+      "name": "indexSubId",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "\"byCustomer\"",
+      "summary": "The sort key of the named secondary index.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "resolves",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "{table: \"Products\", field: \"product\"}",
+      "summary": "Adds a field resolving this id to a row of another view of the plugin.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "resolvesMany",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "{table: \"Products\", field: \"products\"}",
+      "summary": "Adds a field resolving these ids to rows of another view of the plugin.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "lifecycle",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "The field a record's lifecycle lives in.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "status",
+      "positions": [],
+      "args": "none",
+      "summary": "Renamed. Use `@lifecycle`.",
+      "replacedBy": "lifecycle",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "groupBy",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "The field a list view sections its rows by.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "retired",
+      "positions": [ "field.state", "case.other" ],
+      "args": "optional",
+      "argsExample": "\"Archived\"",
+      "summary": "The flag, or the lifecycle state, that withdraws a row from ordinary reads.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "hidden",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Left out of summary and list views.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "summary",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Always shown in summary and list views.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "internal",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Left out of the generated GraphQL type; still stored.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "drillTarget",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "\"OrderLines\"",
+      "summary": "The view a row drills down into.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "collapsed",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Shown collapsed in a hierarchical view.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "scan",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Lets a field without an index be filtered on the server.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "scanSort",
+      "positions": [ "field.state" ],
+      "args": "none",
+      "summary": "Lets a field without an index be sorted on the server.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
+      "name": "semantic",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "\"currency\"",
+      "summary": "What the value means, for how it is shown.",
+      "readBy": [ "StateAnnotations" ]
+    },
+    {
+      "name": "metric",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "\"sum\"",
+      "summary": "A dashboard metric over this field.",
+      "readBy": [ "StateAnnotations" ]
+    }
+  ]
+}

@@ -4221,6 +4221,22 @@ else
 fi
 
 echo ""
+echo "=== Test: the reader prints the vocabulary ==="
+# docs/plans/attribute-vocabulary-from-the-ppx.md. The version is the release's,
+# so the golden holds a placeholder for it.
+VOCAB_OUT="$READ_DIR/vocabulary.json"
+if ! "$READER" --vocabulary > "$VOCAB_OUT"; then
+  fail "--vocabulary" "the reader exited non-zero"
+elif ! grep -qE '^  "version": "[^"]+",$' "$VOCAB_OUT"; then
+  fail "--vocabulary" "no version (the reader found no package.json above itself)"
+elif diff <(sed -E '2s/"version": "[^"]*"/"version": "<version>"/' "$VOCAB_OUT") \
+     "$PPX_DIR/test/golden/vocabulary.golden.json"; then
+  pass "--vocabulary matches test/golden/vocabulary.golden.json"
+else
+  fail "--vocabulary" "differs from test/golden (refresh it in the commit that changes Vocabulary.ml)"
+fi
+
+echo ""
 echo "─────────────────────────"
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

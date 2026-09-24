@@ -1,1 +1,1 @@
-(dirs ppx bin read test_sidecar test_arity)
+(dirs ppx bin read test_sidecar test_arity test_vocabulary)

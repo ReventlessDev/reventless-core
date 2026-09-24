@@ -1,6 +1,6 @@
 # Plan: the PPX says which attributes it reads, and where
 
-**Status:** 📝 Proposed 2026-09-24.<br/>
+**Status:** 🚧 2026-09-24: S0, S1 and S2 done. S3 is the next PPX release.<br/>
 **Touches:** `packages/reventless-ppx` only: a table in the `ReventlessPpx` library
 (`src/ppx/Vocabulary.ml`), a flag on the reader's executable (`src/read/read.ml`), and the PPX tests.<br/>
 **Companion:** reventless-tools `docs/plans/authoring-follows-the-framework-vocabulary.md`,
@@ -98,6 +98,103 @@ records what the code does.
 - **Exit:** a table, written into this plan, covering every name the modules match. A name
   matched only to refuse it (`status`) is in the table with `replacedBy`.
 
+### S0 result
+
+60 names, matched in 17 modules. The code differs from the plan's sketch in these places:
+
+- **Positions.** Cases and types need an owner too, not only fields. `@authorize` and
+  `@noApi` are read on a command's cases, and `@live` and `@namedWhenRetired` on the state
+  type, so offering them on any case or type would be wrong. The list is closed at `file`,
+  `module`, and `type.<owner>`, `case.<owner>` and `field.<owner>`. The owner is `command`,
+  `event`, `consumedEvent`, `state` or `other`, where `other` is any other type: a named
+  record, an enum, or another variant. `module` is new: `@reventless.delegate` is read on a
+  module binding.
+- **Where a pass reads.** `@ref`, `@storageRef`, `@offload`, `@owner`, `@sensitive` and
+  `@default` are read on every field in a spec file, including a state's, whatever the
+  documentation says each is for. The DCB passes read the fields of a `@schema` variant.
+  Those are listed as the command's, event's and consumedEvent's fields, and the rarer
+  variants (`sourceEvent`, `inboundCommand`) are left out. The rest of the state annotations
+  are read on state fields only.
+- **Where a read has an effect.** `@noApi` is read on every `@schema` type, but only a
+  command's schema is consumed, so its positions are `type.command` and `case.command`.
+- **Refusals.** The table has six attributes that are recognised only to be refused:
+  `@status` (use `@lifecycle`), `@noTag` (use `@noDcbTag`),
+  `@reventless.projections` (use `@@reventless.mappings`), and `@transition`,
+  `@allowedStates` and `@targetState`. The last three have no `replacedBy`, because they
+  were replaced by a `commandTransition` value rather than by another attribute. The
+  documentation still describes `@allowedStates` in `packages/doc/docs-app/reventless-ppx.md`.
+- **Not listed:** also `ocaml.*` (`ocaml.ppx.context`, which the compiler adds). No
+  `reventless.*` attribute is written by the PPX itself. The one attribute it synthesises,
+  `@id` on a view's key field, is also written by authors.
+
+The patterns: the name compared with `attr_name.txt`, passed to `has_attr` / `find_attr` /
+`attr_is`, or compared in `is_ppx_attr`; the name held in a `let …attr… = "…"`
+constant; and the names in `TaggedUnionInference.refused_field_attrs`,
+`TransitionAnnotation.removed_attrs` and `ReventlessPpx.impl_kind_attr_name`.
+
+| Attribute | Positions | Args | Read by |
+|---|---|---|---|
+| `@@reventless.spec` | `file` | optional | ReventlessPpx |
+| `@@reventless.behavior` | `file` | optional | ReventlessPpx |
+| `@@reventless.projection` | `file` | optional | ReventlessPpx |
+| `@@reventless.automation` | `file` | optional | ReventlessPpx |
+| `@@reventless.translation` | `file` | optional | ReventlessPpx |
+| `@@reventless.mappings` | `file` | optional | ReventlessPpx |
+| `@@reventless.extension` | `file` | optional | ReventlessPpx |
+| `@@reventless.task` | `file` | optional | ReventlessPpx |
+| `@@reventless.dcbTags` | `file` | none | ReventlessPpx |
+| `@@reventless.async` | `file` | none | ReventlessPpx |
+| `@@reventless.systemCallable` | `file` | none | ReventlessPpx |
+| `@@reventless.gwt` | `file` | optional | GwtInference |
+| `@@reventless.visibility` | `file` | required | VisibilityInjection |
+| `@@reventless.authorize` | `file` | required | AuthorizationInjection |
+| `@@reventless.consistency` | `file` | required | ReadConsistencyInjection |
+| `@@reventless.snapshots` | `file` | required | SnapshotInjection |
+| `@@reventless.examples` | `file` | none | SidecarEmit |
+| `@reventless.delegate` | `module` | none | ReventlessPpx |
+| `@reventless.projections` | — (refused; use `@reventless.mappings`) | none | ReventlessPpx |
+| `@noApi` | `type.command`, `case.command` | none | NoApiAnnotation, ReventlessPpx |
+| `@authorize` | `case.command` | required | AuthorizationInjection |
+| `@live` | `type.state` | required | StateAnnotations |
+| `@namedWhenRetired` | `type.state` | none | StateAnnotations |
+| `@transition` | — (refused) | none | TransitionAnnotation |
+| `@allowedStates` | — (refused) | none | TransitionAnnotation |
+| `@targetState` | — (refused) | none | TransitionAnnotation |
+| `@partitionTag` | `field.command`, `field.event`, `field.consumedEvent` | none | DcbTagInference, SidecarEmit |
+| `@crossPartition` | `field.command`, `field.event`, `field.consumedEvent` | none | DcbTagInference |
+| `@dcbTag` | `field.command`, `field.event`, `field.consumedEvent` | optional | DcbTagInference, SidecarEmit |
+| `@compositePartitionTag` | `field.command`, `field.event`, `field.consumedEvent` | optional | DcbTagInference, SidecarEmit |
+| `@noDcbTag` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | none | DcbTagInference, ReferenceInference, SidecarEmit |
+| `@noTag` | — (refused; use `@noDcbTag`) | none | DcbTagInference |
+| `@ref` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | required | ReferenceInference |
+| `@storageRef` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | required | StorageRefInference, UploadableInference |
+| `@offload` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | required | OffloadInference |
+| `@owner` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | optional | OwnerInference, StateAnnotations |
+| `@sensitive` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | none | SensitiveInference |
+| `@default` | `field.command`, `field.event`, `field.consumedEvent`, `field.state`, `field.other` | required | DefaultInference |
+| `@displayName` | `field.state` | optional | DisplayNameInference |
+| `@id` | `field.state` | none | StateAnnotations, TaggedUnionInference, SidecarEmit |
+| `@compositeId` | `field.state` | optional | StateAnnotations, TaggedUnionInference, SidecarEmit |
+| `@subId` | `field.state` | none | StateAnnotations, TaggedUnionInference |
+| `@compositeSubId` | `field.state` | optional | StateAnnotations, TaggedUnionInference, SidecarEmit |
+| `@index` | `field.state` | optional | StateAnnotations, TaggedUnionInference, SidecarEmit |
+| `@indexSubId` | `field.state` | required | StateAnnotations, TaggedUnionInference |
+| `@resolves` | `field.state` | required | StateAnnotations |
+| `@resolvesMany` | `field.state` | required | StateAnnotations |
+| `@lifecycle` | `field.state` | none | StateAnnotations, TaggedUnionInference |
+| `@status` | — (refused; use `@lifecycle`) | none | StateAnnotations |
+| `@groupBy` | `field.state` | none | StateAnnotations, TaggedUnionInference |
+| `@retired` | `field.state`, `case.other` | optional | StateAnnotations, TaggedUnionInference |
+| `@hidden` | `field.state` | none | StateAnnotations |
+| `@summary` | `field.state` | none | StateAnnotations |
+| `@internal` | `field.state` | none | StateAnnotations |
+| `@drillTarget` | `field.state` | required | StateAnnotations |
+| `@collapsed` | `field.state` | none | StateAnnotations |
+| `@scan` | `field.state` | none | StateAnnotations, TaggedUnionInference |
+| `@scanSort` | `field.state` | none | StateAnnotations, TaggedUnionInference |
+| `@semantic` | `field.state` | required | StateAnnotations |
+| `@metric` | `field.state` | required | StateAnnotations |
+
 ## S1 — One table
 
 - `src/ppx/Vocabulary.ml`: `type position`, `type args`, `type entry = {name; positions; args;
@@ -110,6 +207,9 @@ records what the code does.
   attribute to a module without adding it to the table fails the build's tests.
 - **Exit:** the guard passes on the current sources, and fails on a test fixture that matches
   a name the table does not list.
+- **Done:** `src/test_vocabulary`, run by `dune build @runtest`. It also checks that each
+  entry's `readBy` names exactly the modules that match it, and that the list has no name
+  twice.
 
 ## S2 — The reader prints it
 
@@ -120,6 +220,11 @@ records what the code does.
 - **Docs:** the reader's section in `docs/guides/reverse-codegen-pipeline.md` describes the
   flag. The documentation's hand-written annotation list says that the reader's vocabulary is
   the complete list.
+- **Done.** The `version` is read when the flag runs, from the `package.json` of the package
+  the binary is in: the per-platform package once it is installed, or the PPX package above a
+  local build. It cannot be compiled in, because the release resolves the version after the
+  build. The golden (`test/golden/vocabulary.golden.json`) replaces it with `<version>`.
+  `reverse-codegen-pipeline.md` had no section on the reader, so this adds one.
 
 ## S3 — Release
 

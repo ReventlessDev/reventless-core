@@ -1,6 +1,10 @@
 (* reventless-ppx-read — print one ReScript file's declarations with their spans.
 
      read [--bsc <path-to-bsc>] <file.res>
+     read --vocabulary
+
+   `--vocabulary` prints every attribute the PPX reads (Vocabulary.all) and
+   needs no bsc.
 
    The file is parsed by the compiler: this executable runs bsc with itself as
    the ppx, because bsc hands a ppx the tree in the binary format ppxlib reads
@@ -36,6 +40,38 @@ let emit ~out ~source ~input ~output =
        write_file out (Yojson.Safe.to_string json)
      | Intf _ -> fail "%s is an interface; only implementations are read" source));
   write_file output (read_file input)
+
+(* ── vocabulary ─────────────────────────────────────────────────────────── *)
+
+(* The version of the package this binary ships in: the per-platform package's
+   manifest beside it, or the PPX package's above a local build. The release
+   resolves the version after the build, so it cannot be compiled in. *)
+let own_version () : string option =
+  let manifest dir =
+    let p = Filename.concat dir "package.json" in
+    if not (Sys.file_exists p) then None
+    else
+      match Yojson.Safe.from_file p with
+      | `Assoc kv -> (
+        match List.assoc_opt "name" kv, List.assoc_opt "version" kv with
+        | Some (`String n), Some (`String v)
+          when String.length n >= 29 && String.equal (String.sub n 0 29) "@reventlessdev/reventless-ppx" ->
+          Some v
+        | _ -> None)
+      | _ | (exception _) -> None
+  in
+  let rec up dir =
+    match manifest dir with
+    | Some _ as v -> v
+    | None ->
+      let parent = Filename.dirname dir in
+      if String.equal parent dir then None else up parent
+  in
+  let exe = Sys.executable_name in
+  up (Filename.dirname (if Filename.is_relative exe then Filename.concat (Sys.getcwd ()) exe else exe))
+
+let vocabulary () =
+  print_endline (Yojson.Safe.pretty_to_string (ReventlessPpx__Vocabulary.to_json ~version:(own_version ())))
 
 (* ── command-line role ──────────────────────────────────────────────────── *)
 
@@ -77,9 +113,10 @@ let run ~bsc ~file =
 let () =
   match Array.to_list Sys.argv |> List.tl with
   | [ "--emit"; out; "--source"; source; input; output ] -> emit ~out ~source ~input ~output
+  | [ "--vocabulary" ] -> vocabulary ()
   | [ "--bsc"; bsc; file ] -> run ~bsc ~file
   | [ file ] -> (
     match Sys.getenv_opt "RESCRIPT_BSC_EXE", find_bsc file with
     | Some bsc, _ | None, Some bsc -> run ~bsc ~file
     | None, None -> fail "no bsc found above %s; pass --bsc <path>" file)
-  | _ -> fail "usage: read [--bsc <path-to-bsc>] <file.res>"
+  | _ -> fail "usage: read [--bsc <path-to-bsc>] <file.res> | read --vocabulary"

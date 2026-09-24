@@ -20,6 +20,8 @@ The PPX reads `package.json` (for the npm package name) and `rescript.json` (for
 
 ## Annotations
 
+This section explains the annotations you will use most. For the complete list, run `pnpm exec reventless-ppx-read --vocabulary` in your app. It prints, as JSON, every attribute the PPX installed with your app reads, where it reads each one, and whether it takes an argument.
+
 ### `@@reventless.spec`
 
 Use on **all spec files**: aggregate specs, read model specs, extension point specs, DCB slice specs, event mapping specs, and side effect specs.

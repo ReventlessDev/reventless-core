@@ -1,0 +1,5 @@
+(test
+ (name test_vocabulary)
+ (libraries ReventlessPpx yojson str)
+ (deps (glob_files %{project_root}/ppx/*.ml))
+ (action (run %{test} %{deps})))
