@@ -10,7 +10,7 @@ a tag-metadata flag. That is precisely what we are replacing — so both the run
 VS Code tooling (building shapes from parsed `.res` source) can feed the same
 `infer`. See `docs/plans/done/dcb-tag-scope-inference.md` § "Phase 1 design".
 
-The three rules (over the representation):
+The four rules (over the representation):
 
 1. **Owner / partition.** A slice's partition key is the key its *own* emitted
    events are identified by — computed as `producedKeys(S)` minus the keys `S`
@@ -33,6 +33,12 @@ The three rules (over the representation):
    producing slice's own partition key. Foreign reference keys (e.g. `categoryId`
    on `ProductAdded`) are payload ⇒ not indexed ⇒ the sibling-leak GSI write never
    happens.
+
+4. **Command scope.** A scalar key on a *command* is a query tag iff it is the
+   slice's partition or a key the slice reads off a foreign event (rule 2's
+   candidates). `ShipOrder({orderId, carrierId})` names the carrier as information:
+   AND-ing it into the clause would hide every order event that does not carry it,
+   so it is payload. See `commandPayloadKeys`.
 */
 /** A field the slice graph treats as an entity identity.
 
@@ -55,6 +61,9 @@ type idField = {
   byTag?: bool,
   /** The tag key, when the field's type says it (an identity) rather than its name. */
   key?: string,
+  /** The author asked for the tag (`@dcbTag`, `@partitionTag`, `@crossPartition`,
+      `@compositePartitionTag`), so a command keeps it in its query (rule 4). */
+  declared?: bool,
 }
 
 /** One variant arm: its constructor name and the `*Id` fields it carries. */
@@ -395,6 +404,35 @@ let crossPartitionForSlice = (s: sliceShape): array<string> => {
   // A foreign read is cross-partition only when the command carries the key as a
   // scalar (must be fanned); an array-only foreign key auto-fans partition-scoped.
   foreign->Array.filter(k => Some(k) != partition && scalar->Array.includes(k))
+}
+
+/**
+Rule 4: the scalar command keys that stay out of the slice's decision query.
+
+A key stays in when it is the partition, when the slice reads it off a foreign
+event, when the boundary reads it across partitions, when the author declared it
+on the command or on one of the slice's own arms (an M:N capacity read's
+`@crossPartition` sits on the event), or when the command also carries it as a
+list. Anything else only names another thing, and the fence is the partition.
+*/
+let commandPayloadKeys = (s: sliceShape, ~partition: string, ~crossPartition: array<string>): array<
+  string,
+> => {
+  let foreign = foreignConsumedKeys(s)
+  let declared = (f: idField) => f.declared->Option.getOr(false)
+  let pinned =
+    s.command
+    ->Array.filter(f => f.isList || declared(f))
+    ->Array.concat(
+      Array.concat(s.consumed, s.produced)->Array.flatMap(e => e.idFields->Array.filter(declared)),
+    )
+    ->Array.map(tagKeyOf)
+  commandScalarKeys(s)->Array.filter(k =>
+    k != partition &&
+    !(foreign->Array.includes(k)) &&
+    !(crossPartition->Array.includes(k)) &&
+    !(pinned->Array.includes(k))
+  )
 }
 
 let infer = (slices: array<sliceShape>): derived => {

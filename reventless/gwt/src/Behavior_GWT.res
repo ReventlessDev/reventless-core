@@ -280,6 +280,14 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
   // emitted event (payload, not a read key) is narrowed out of a cross-partition
   // clause — the same dead-clause removal the runtime threads.
   let tagKeysByEventType = Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
+  // Command keys this slice does not decide by stay out of the query (rule 4),
+  // judged against the partition the slice resolves to on its own.
+  let payloadTagKeys = scopeShape->Reventless.DcbTag.commandPayloadTagKeys(
+    ~partitionTag=Reventless.DcbScopeInference.resolvePartitions([scopeShape]).partitionBySlice
+    ->Dict.get("")
+    ->Option.map(key => Reventless.DcbTag.Simple({key: key})),
+    ~crossPartitionTagKeys,
+  )
 
   // Reachability guard inputs. The event types this slice *emits* are its own
   // history — read with composite AND clauses, which is fine. A *foreign* event
@@ -338,6 +346,7 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
       ~value=command,
       ~tagKeysByEventType,
       ~crossPartitionTagKeys,
+      ~payloadTagKeys,
     )
     let condition: Reventless.DcbTag.appendCondition = {query: query}
     derivedCondition := Some(condition)

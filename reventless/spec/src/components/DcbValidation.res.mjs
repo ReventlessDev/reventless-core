@@ -191,7 +191,8 @@ function dedupeKeys(keys) {
   });
 }
 
-function validateCompositeReads(slices, producedTagKeys) {
+function validateCompositeReads(slices, producedTagKeys, payloadTagKeysBySliceOpt) {
+  let payloadTagKeysBySlice = payloadTagKeysBySliceOpt !== undefined ? payloadTagKeysBySliceOpt : ({});
   let warnings = [];
   slices.forEach(param => {
     let commandSchema = param[1];
@@ -201,8 +202,9 @@ function validateCompositeReads(slices, producedTagKeys) {
     }
     let commandTagKeysByVariant = DcbTag$Reventless.extractTagKeysByEventType(commandSchema);
     let consumedTypes = DcbTag$Reventless.extractVariantNames(param[2]);
+    let payload = Stdlib_Option.getOr(payloadTagKeysBySlice[sliceName], []);
     Object.values(commandTagKeysByVariant).forEach(cmdKeys => {
-      let querySet = dedupeKeys(cmdKeys);
+      let querySet = dedupeKeys(cmdKeys).filter(k => !payload.includes(k));
       if (querySet.length >= 2) {
         consumedTypes.forEach(consumedType => {
           let producedKeys = producedTagKeys[consumedType];
@@ -491,6 +493,20 @@ function validatePartitionHintsVsInference(shapes) {
   };
 }
 
+function validateCommandTagSuppressions(shapes, suppressedBySlice, payloadTagKeysBySlice) {
+  return shapes.flatMap(s => {
+    let payload = Stdlib_Option.getOr(payloadTagKeysBySlice[s.sliceName], []);
+    return Stdlib_Array.filterMap(Stdlib_Option.getOr(suppressedBySlice[s.sliceName], []), field => Stdlib_Option.flatMap(Stdlib_Option.map(s.command.find(f => f.name === field), DcbScopeInference$Reventless.tagKeyOf), key => {
+      if (payload.includes(key)) {
+        return {
+          sliceName: s.sliceName,
+          message: `@noDcbTag ` + field + ` is what inference derives without it — ` + s.sliceName + ` decides nothing by ` + key + `, so it stays out of the query anyway. The annotation is redundant and can be removed.`
+        };
+      }
+    }));
+  });
+}
+
 export {
   extractVariantInfo,
   extractAllVariants,
@@ -505,5 +521,6 @@ export {
   validateCrossPartitionScope,
   validateScopeVsInference,
   validatePartitionHintsVsInference,
+  validateCommandTagSuppressions,
 }
 /* DcbTag-Reventless Not a pure module */

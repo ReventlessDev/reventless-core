@@ -93,6 +93,15 @@ module Make = (
     }
   )
 
+  // A command key the slice does not decide by stays out of its query; which keys
+  // those are depends on the partition, so `handleCommands` asks per boundary.
+  let scopeShape = Reventless.DcbTag.sliceShapeFromSchemas(
+    ~name=Spec.name,
+    ~commandSchema=Spec.commandSchema,
+    ~consumedEventSchema=Spec.consumedEventSchema,
+    ~eventSchema=Spec.eventSchema,
+  )
+
   // Extracts the entity id of a read event from its own tags, for logging
   // which events the decision model was built from. Prefers this slice's
   // partition key, but consumed events from other sources are tagged by their
@@ -162,6 +171,7 @@ module Make = (
   let handleSingleCommand = (
     ~tagKeysByEventType,
     ~crossPartitionTagKeys,
+    ~payloadTagKeys,
     ~partitionTag,
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
@@ -186,6 +196,7 @@ module Make = (
       ~value=command'.command,
       ~tagKeysByEventType,
       ~crossPartitionTagKeys,
+      ~payloadTagKeys,
     )
 
     // Log the DCB query parameters — the OR clauses (event types + tags) the
@@ -504,11 +515,14 @@ module Make = (
     | Some(_) => partitionTag
     | None => slicePartitionTag->Lazy.get
     }
+    let payloadTagKeys =
+      scopeShape->Reventless.DcbTag.commandPayloadTagKeys(~partitionTag, ~crossPartitionTagKeys)
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
       handleSingleCommand(
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
+        ~payloadTagKeys,
         ~partitionTag,
         dcbEventLog,
         command,

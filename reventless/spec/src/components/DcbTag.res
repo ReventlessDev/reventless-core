@@ -127,6 +127,17 @@ let dcbTagKeyOverrideId: S.Metadata.Id.t<string> = S.Metadata.Id.make(
 )
 
 /**
+Internal sury metadata ID marking a tag the author wrote (`@dcbTag`) rather than
+one the naming convention or the field's identity implied. A declared command tag
+always stays in the decision query; an implied one the slice does not decide by
+is payload (`DcbScopeInference.commandPayloadKeys`).
+*/
+let dcbDeclaredTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(
+  ~namespace="dcb",
+  ~name="declaredTag",
+)
+
+/**
 Type-preserving forms of the markers below, for a field whose schema is not a
 bare `S.string` — an identity (`OrderId.schema->DcbTag.mark`) keeps its type and
 its semantic, and the tag key follows the identity unless `markForKey` says
@@ -142,6 +153,12 @@ let markPartition = (schema: S.t<'a>): S.t<'a> =>
 
 let markCrossPartition = (schema: S.t<'a>): S.t<'a> =>
   schema->mark->S.Metadata.set(~id=dcbCrossPartitionId, true)
+
+let markDeclared = (schema: S.t<'a>): S.t<'a> =>
+  schema->mark->S.Metadata.set(~id=dcbDeclaredTagId, true)
+
+let markDeclaredForKey = (schema: S.t<'a>, ~key: string): S.t<'a> =>
+  schema->markForKey(~key)->S.Metadata.set(~id=dcbDeclaredTagId, true)
 
 /**
 A sury string schema annotated as a DCB tag field.
@@ -189,6 +206,11 @@ annotations carrying a string payload.
 ```
 */
 let stringForKey = (~key: string): S.t<string> => S.string->markForKey(~key)
+
+/** What `@dcbTag` emits: `string` / `stringForKey`, marked as written by the author. */
+let declared: S.t<string> = S.string->markDeclared
+
+let declaredForKey = (~key: string): S.t<string> => S.string->markDeclaredForKey(~key)
 
 /**
 A sury int schema annotated as a DCB tag field.
@@ -358,6 +380,14 @@ let isPartitionTag = (fieldSchema: S.t<unknown>) =>
 /** Returns `true` if the schema was annotated with `DcbTag.crossPartition`. */
 let isCrossPartitionTag = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbCrossPartitionId)->Option.isSome
+
+/** Returns `true` if the author asked for the tag: `@dcbTag`, `@partitionTag`,
+    `@crossPartition` or `@compositePartitionTag`. */
+let isDeclaredTag = (fieldSchema: S.t<unknown>) =>
+  S.Metadata.get(fieldSchema, ~id=dcbDeclaredTagId)->Option.isSome ||
+  isPartitionTag(fieldSchema) ||
+  isCrossPartitionTag(fieldSchema) ||
+  S.Metadata.get(fieldSchema, ~id=dcbCompositePartitionMemberId)->Option.isSome
 
 /**
 Returns `true` if the schema is an array whose item schema is a cross-partition
@@ -926,6 +956,10 @@ pairing matches nothing, so results are unchanged. A type that carries the tag
 as a *secondary* tag is retained (a legitimate cross-partition read), and a type
 absent from the map is kept (cannot be proven vacuous).
 
+`~payloadTagKeys` (`commandPayloadTagKeys`) are command keys the slice does not
+decide by; they are left out of every clause, so they narrow neither the read nor
+the append condition.
+
 @example
 ```rescript
 // Single-entity command → single AND clause
@@ -953,20 +987,23 @@ let buildQueryFromCommand = (
   ~value: 'a,
   ~tagKeysByEventType: dict<array<string>>=Dict.make(),
   ~crossPartitionTagKeys: array<string>=[],
+  ~payloadTagKeys: array<string>=[],
 ): query => {
   let typesForTags = clauseTags =>
     narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
+  let decidedBy = (tags: array<tag>) =>
+    tags->Array.filter(tag => !(payloadTagKeys->Array.includes(tag.key)))
   if hasTaggedArrayFields(schema) {
     // Array fields already fan out per element into single-tag clauses, so a
     // cross-partition array tag is already its own clause (the adapter routes it
     // by `crossPartitionTagKeys`).
-    let tags = extractTagsExpanded(schema, value)
+    let tags = extractTagsExpanded(schema, value)->decidedBy
     tags->Array.map(tag => {
       let clauseTags = [{key: tag.key, value: tag.value}]
       {eventTypes: typesForTags(clauseTags), tags: clauseTags}
     })
   } else {
-    let tags = extractTags(schema, value)
+    let tags = extractTags(schema, value)->decidedBy
     // When any command tag is cross-partition, fan every scalar tag out into its
     // own single-tag clause instead of AND-ing them into one composite
     // (exact-pair) clause. An M:N command (`SubscribeStudent({courseId, studentId})`)
@@ -1108,11 +1145,18 @@ let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInfer
     } else {
       None
     }
+  let isDeclared = (fieldSchema: S.t<unknown>, isList) => {
+    let valueSchema = switch (isList, fieldSchema) {
+    | (true, Array({additionalItems: Schema(item)})) => item
+    | _ => fieldSchema
+    }
+    valueSchema->Semantic.unwrapOptional->Option.getOr(valueSchema)->isDeclaredTag
+  }
   let identity = (name, fieldSchema, isList) =>
     switch typedKey(fieldSchema, isList) {
     | Some(key) => Some({DcbScopeInference.name, isList, key})
     | None => untypedIdentity(name, fieldSchema, isList)
-    }
+    }->Option.map(f => isDeclared(fieldSchema, isList) ? {...f, declared: true} : f)
   properties
   ->Dict.toArray
   ->Array.flatMap(((name, fieldSchema)) => {
@@ -1336,6 +1380,27 @@ let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
       : inferred.crossPartitionTagKeys->Array.filter(k => !(annotatedCross->Array.includes(k))),
   }
 }
+
+/**
+The command tag keys a slice's decision query leaves out (rule 4 of
+`DcbScopeInference`), given the slice's partition within its boundary and the
+boundary's cross-partition keys. Empty unless the partition is a single key: a
+composite boundary keeps every tag it has.
+*/
+let commandPayloadTagKeys = (
+  shape: DcbScopeInference.sliceShape,
+  ~partitionTag: option<derivedPartitionTag>,
+  ~crossPartitionTagKeys: array<string>,
+): array<string> =>
+  switch partitionTag {
+  | Some(Simple({key})) =>
+    DcbScopeInference.commandPayloadKeys(
+      shape,
+      ~partition=key,
+      ~crossPartition=crossPartitionTagKeys,
+    )
+  | _ => []
+  }
 
 // --- Composite partition key helpers ---
 

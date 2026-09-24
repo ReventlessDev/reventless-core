@@ -355,16 +355,18 @@ let decide = (state, command) =>
 
 ### 4. Tag Only What's Needed
 
-DCB tags are auto-applied to `*Id` fields inside `StateChange/` folders. For a payload field that happens to end in `Id` but is **not** a query key, suppress tagging with `@noDcbTag`:
+DCB tags are auto-applied to `*Id` fields inside `StateChange/` folders. On a **command**, a reference the slice decides nothing by stays out of the decision query without an annotation: only the partition and the keys the slice reads off other slices' events are queried (see [Command references nothing decides by](../dcb-usage.md#command-references-nothing-decides-by-inferred--no-annotation)).
 
 ```rescript
-// Good: *Id fields are tagged automatically; suppress the ones that are payload only
+// Good: externalId is information, not a query key, and needs no annotation
 @schema
 type command = CreateItem({
-  itemId: string,            // auto-tagged for entity lookup
-  @noDcbTag externalId: string,  // payload data, not a DCB query key
+  itemId: string,      // the partition: the query reads this item's history
+  externalId: string,  // tagged, but left out of the query
 })
 ```
+
+On an **event**, suppress tagging with `@noDcbTag` on a payload field that happens to end in `Id`.
 
 ## Pulumi Outputs
 

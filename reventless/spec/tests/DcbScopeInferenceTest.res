@@ -114,6 +114,83 @@ describe("DcbScopeInference.crossPartitionForSlice", () => {
   })
 })
 
+// Rule 4. `ShipOrder` names a carrier as information: nothing is decided per
+// carrier, so the key stays on the command and out of the query.
+let shipOrder = slice(
+  ~name="ShipOrder",
+  ~command=[id("orderId"), id("carrierId")],
+  ~consumed=[ev("OrderPlaced", [id("orderId")]), ev("OrderShipped", [id("orderId")])],
+  ~produced=[ev("OrderShipped", [id("orderId"), id("carrierId")])],
+)
+
+describe("DcbScopeInference.commandPayloadKeys", () => {
+  testSync("a reference no decision reads by is payload", () =>
+    expect(I.commandPayloadKeys(shipOrder, ~partition="orderId", ~crossPartition=[]))->toEqual([
+      "carrierId",
+    ])
+  )
+
+  testSync("a key read off a foreign event stays a query tag", () =>
+    expect(
+      I.commandPayloadKeys(productSlice, ~partition="productId", ~crossPartition=["categoryId"]),
+    )->toEqual([])
+  )
+
+  testSync("a key the command also carries as a list is unchanged", () => {
+    let transfer = slice(
+      ~name="ShipOrder",
+      ~command=[id("orderId"), id("carrierId"), ids("carrierIds")],
+      ~produced=[ev("OrderShipped", [id("orderId")])],
+    )
+    expect(I.commandPayloadKeys(transfer, ~partition="orderId", ~crossPartition=[]))->toEqual([])
+  })
+
+  testSync("a key the boundary reads across partitions stays a query tag", () =>
+    expect(
+      I.commandPayloadKeys(shipOrder, ~partition="orderId", ~crossPartition=["carrierId"]),
+    )->toEqual([])
+  )
+
+  testSync("an explicit @crossPartition on the slice's own event wins", () => {
+    // The M:N capacity shape: the slice reads its own event by a secondary key.
+    let subscribe = slice(
+      ~name="SubscribeStudent",
+      ~command=[id("courseId"), id("studentId")],
+      ~consumed=[
+        ev(
+          "StudentSubscribed",
+          [id("courseId"), {name: "studentId", isList: false, declared: true}],
+        ),
+      ],
+      ~produced=[
+        ev(
+          "StudentSubscribed",
+          [id("courseId"), {name: "studentId", isList: false, declared: true}],
+        ),
+      ],
+    )
+    expect(I.commandPayloadKeys(subscribe, ~partition="courseId", ~crossPartition=[]))->toEqual([])
+  })
+
+  testSync("a key declared on the command stays a query tag", () => {
+    let declared = {
+      ...shipOrder,
+      command: [id("orderId"), {name: "carrierId", isList: false, declared: true}],
+    }
+    expect(I.commandPayloadKeys(declared, ~partition="orderId", ~crossPartition=[]))->toEqual([])
+  })
+
+  testSync("an identity-typed reference is judged by its key", () => {
+    let typed = {
+      ...shipOrder,
+      command: [id("orderId"), {name: "shipper", isList: false, key: "carrierId"}],
+    }
+    expect(I.commandPayloadKeys(typed, ~partition="orderId", ~crossPartition=[]))->toEqual([
+      "carrierId",
+    ])
+  })
+})
+
 describe("DcbScopeInference.infer", () => {
   testSync("infers each slice's own partition from its produced key", () => {
     let d = I.infer([orderSlice])

@@ -25,7 +25,8 @@
 //
 // It also holds this repository's examples to their annotations: a
 // `@partitionTag` inference contradicts fails, and so does one inference already
-// agrees with, since the examples are what readers copy.
+// agrees with, or a `@noDcbTag` on a command key the slice decides nothing by,
+// since the examples are what readers copy.
 //
 // Plain .mjs because it is untyped reflection: a plugin is found by path and its
 // `dcbSliceSchemas` is a value shaped by that plugin, not by anything this
@@ -74,6 +75,22 @@ const identityChapters = (pluginDir) => {
     }
   }
   return found
+}
+
+// The command fields a slice writes `@noDcbTag` on. The PPX consumes the attribute,
+// so the schema cannot say; the spec's `type command` block can.
+const suppressedCommandFields = (pluginDir, moduleUrl) => {
+  const [, rel] = (moduleUrl ?? "").split("/src/")
+  if (!rel) return []
+  const file = path.join(pluginDir, "src", rel.replace(/\.res\.mjs$/, ".res"))
+  if (!existsSync(file)) return []
+  const text = readFileSync(file, "utf8")
+  const start = text.search(/\btype command\b/)
+  if (start < 0) return []
+  const rest = text.slice(start)
+  const end = rest.slice(1).search(/\n(@schema|type |let |module )/)
+  const block = end < 0 ? rest : rest.slice(0, end + 1)
+  return [...block.matchAll(/@noDcbTag\b[^:]*?(\w+)\s*\??:/g)].map((m) => m[1])
 }
 
 // A plugin is a directory holding a compiled `src/Plugin.res.mjs`; it is part of
@@ -133,8 +150,29 @@ for (const example of examples) {
     }
     let partitionKeyByEventType = {}
     try {
-      const { partitionTag } = DcbTag.deriveBoundaryPartition(slices)
+      const boundary = DcbTag.deriveBoundaryPartition(slices)
+      const { partitionTag } = boundary
       partitionKeyByEventType = partitionTag.TAG === "ByEventType" ? partitionTag._0 : partitionTag
+      // A `@noDcbTag` on a command reference nothing decides by says what rule 4
+      // already derives, and the examples are what readers copy.
+      const suppressions = Validation.validateCommandTagSuppressions(
+        shapes,
+        Object.fromEntries(slices.map((s) => [s.name, suppressedCommandFields(dir, s.moduleUrl)])),
+        Object.fromEntries(
+          shapes.map((shape) => [
+            shape.sliceName,
+            DcbTag.commandPayloadTagKeys(
+              shape,
+              DcbTag.slicePartitionTag(boundary, shape.sliceName),
+              effective.crossPartitionTagKeys,
+            ),
+          ]),
+        ),
+      )
+      for (const { sliceName, message } of suppressions) {
+        annotations++
+        console.error(`✗ ${example}/${name}: ${sliceName} — ${message}`)
+      }
     } catch (err) {
       // An unresolved slice is already reported above; anything else is new.
       if (inferred.ambiguities.length === 0) {
@@ -187,7 +225,7 @@ for (const example of examples) {
 
 if (failures > 0 || annotations > 0 || identities > 0 || drift > 0) {
   console.error(
-    `\n${failures} unresolved slice(s), ${annotations} @partitionTag issue(s), ` +
+    `\n${failures} unresolved slice(s), ${annotations} annotation issue(s), ` +
       `${identities} identity issue(s), ${drift} golden drift(s). ` +
       `An unresolved partition is usually a consumed arm declaring the id its slice is already partitioned by — remove the field.`,
   )

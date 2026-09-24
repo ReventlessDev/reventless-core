@@ -205,6 +205,12 @@ function Make(Spec) {
     });
     let crossPartitionTagKeys = Array.from(set.values()).toSorted(Primitive_string.compare);
     let tagKeysByEventType = DcbScopeInference$Reventless.infer([scopeShape]).tagKeysByEventType;
+    let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, Stdlib_Option.map(DcbScopeInference$Reventless.resolvePartitions([scopeShape]).partitionBySlice[""], key => ({
+      TAG: "Simple",
+      _0: {
+        key: key
+      }
+    })), crossPartitionTagKeys);
     let emittedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.eventSchema).eventTypes;
     let consumedTagKeysByType = DcbTag$Reventless.extractTagKeysByEventType(Spec.consumedEventSchema);
     let queryTagKeys = query => query.flatMap(qi => Stdlib_Option.mapOr(qi.tags, [], tags => tags.map(t => t.key)));
@@ -241,7 +247,7 @@ function Make(Spec) {
     let whenCmd = (history, cmd) => {
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
       let condition = {
         query: query
       };

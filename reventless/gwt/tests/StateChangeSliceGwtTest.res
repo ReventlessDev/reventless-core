@@ -159,3 +159,83 @@ MissingTagGwt.describe("MissingTag slice implicit check", () => {
       }),
   )
 })
+
+// A command naming a second thing only as information: `carrierId` is tagged by
+// its name, but no decision is made per carrier. Its tag stays on the command and
+// out of the query, so the order's own history — which never carries the carrier —
+// is still selected.
+module ShipOrderSlice = {
+  let name = "ShipOrder"
+
+  @schema
+  type consumedEvent =
+    | OrderPlaced({orderId: @s.matches(Reventless.DcbTag.string) string})
+    | OrderShipped({orderId: @s.matches(Reventless.DcbTag.string) string})
+
+  @schema
+  type command =
+    | ShipOrder({
+        orderId: @s.matches(Reventless.DcbTag.string) string,
+        carrierId: @s.matches(Reventless.DcbTag.string) string,
+      })
+
+  @schema
+  type error = OrderNotPlaced | AlreadyShipped
+
+  // Seen alone the slice has no chapter to say that two ids on its event mean
+  // "the order", so the partition is named, as `@partitionTag` would.
+  @schema
+  type event =
+    | OrderShipped({
+        orderId: @s.matches(Reventless.DcbTag.partition) string,
+        carrierId: @s.matches(Reventless.DcbTag.string) string,
+      })
+}
+
+module ShipOrderBehavior = {
+  module Spec = ShipOrderSlice
+
+  type state = {placed: bool, shipped: bool}
+  let initialState: state = {placed: false, shipped: false}
+
+  let evolve = (state: state, event: Spec.consumedEvent): state =>
+    switch event {
+    | Spec.OrderPlaced(_) => {...state, placed: true}
+    | Spec.OrderShipped(_) => {...state, shipped: true}
+    }
+
+  let decide = (state: state, cmd: Spec.command): result<array<Spec.event>, Spec.error> =>
+    switch cmd {
+    | Spec.ShipOrder({orderId, carrierId}) =>
+      if !state.placed {
+        Error(Spec.OrderNotPlaced)
+      } else if state.shipped {
+        Error(Spec.AlreadyShipped)
+      } else {
+        Ok([Spec.OrderShipped({orderId, carrierId})])
+      }
+    }
+}
+
+module ShipOrderGwt = Behavior_GWT.Make(ShipOrderSlice, ShipOrderBehavior)
+
+ShipOrderGwt.describe("ShipOrder — a command reference no decision reads by", () => {
+  ShipOrderGwt.test("reads the order's history without the carrier", () =>
+    ShipOrderGwt.givenEvents([ShipOrderSlice.OrderPlaced({orderId: "o1"})])
+    ->ShipOrderGwt.whenCmd(ShipOrderSlice.ShipOrder({orderId: "o1", carrierId: "c1"}))
+    ->ShipOrderGwt.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o1", carrierId: "c1"}))
+  )
+
+  ShipOrderGwt.test("the append condition is the order alone", () =>
+    ShipOrderGwt.givenEvents([ShipOrderSlice.OrderPlaced({orderId: "o1"})])
+    ->ShipOrderGwt.whenCmd(ShipOrderSlice.ShipOrder({orderId: "o1", carrierId: "c1"}))
+    ->ShipOrderGwt.thenAppendsConditionedOnExactly({
+      query: [
+        {
+          eventTypes: ["OrderPlaced", "OrderShipped"],
+          tags: [{key: "orderId", value: "o1"}],
+        },
+      ],
+    })
+  )
+})

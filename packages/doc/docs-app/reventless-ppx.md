@@ -158,8 +158,8 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 |---|---|---|
 | `@partitionTag` | A `*Id: string` field on a produced `event` | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. **Required only when inference is ambiguous** — the framework infers the partition key from the slice graph otherwise. See [When you still need `@partitionTag`](dcb-usage.md#when-you-still-need-partitiontag). |
 | `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)`. **Rarely needed** — cross-entity *reference* reads are inferred from the slice graph; this is the escape hatch only for **M:N capacity** reads of a slice's own event type. See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
-| `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
-| `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
+| `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use on an event field that is payload data, not a DCB query key. A command needs it no longer: a reference the slice decides nothing by is left out of the query anyway ([Command references nothing decides by](dcb-usage.md#command-references-nothing-decides-by-inferred--no-annotation)). |
+| `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.declared)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). On a command it also keeps a reference in the decision query, which fences the command per that key. |
 
 The PPX strips all four attributes from the output AST, so the compiler never sees them as unknown attributes.
 

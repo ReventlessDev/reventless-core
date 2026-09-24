@@ -59,7 +59,7 @@ let lineItemSchema = Sury.$schema(s => ({
 let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
-  customerId: s.m(Owner$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  customerId: s.m(Owner$Reventless.mark(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))),
   lineItems: s.m(Sury.array(lineItemSchema)),
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))

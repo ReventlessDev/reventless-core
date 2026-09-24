@@ -258,6 +258,25 @@ function crossPartitionForSlice(s) {
   });
 }
 
+function commandPayloadKeys(s, partition, crossPartition) {
+  let foreign = foreignConsumedKeys(s);
+  let declared = f => Stdlib_Option.getOr(f.declared, false);
+  let pinned = s.command.filter(f => {
+    if (f.isList) {
+      return true;
+    } else {
+      return Stdlib_Option.getOr(f.declared, false);
+    }
+  }).concat(s.consumed.concat(s.produced).flatMap(e => e.idFields.filter(declared))).map(tagKeyOf);
+  return commandScalarKeys(s).filter(k => {
+    if (k !== partition && !foreign.includes(k) && !crossPartition.includes(k)) {
+      return !pinned.includes(k);
+    } else {
+      return false;
+    }
+  });
+}
+
 function infer(slices) {
   let match = resolvePartitions(slices);
   let partitionBySlice = match.partitionBySlice;
@@ -332,6 +351,7 @@ export {
   resolvePartitions,
   partitionBlockers,
   crossPartitionForSlice,
+  commandPayloadKeys,
   infer,
 }
 /* No side effect */

@@ -192,9 +192,15 @@ function CommandStep(Spec) {
     });
     let crossPartitionTagKeys = Array.from(set.values()).toSorted(Primitive_string.compare);
     let tagKeysByEventType = DcbScopeInference$Reventless.infer([scopeShape]).tagKeysByEventType;
+    let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, Stdlib_Option.map(DcbScopeInference$Reventless.resolvePartitions([scopeShape]).partitionBySlice[""], key => ({
+      TAG: "Simple",
+      _0: {
+        key: key
+      }
+    })), crossPartitionTagKeys);
     let whenCommand = async (flowP, command) => {
       let s = await flowP;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
       let events = Behavior.decide(state, command);
@@ -265,6 +271,7 @@ function CommandStep(Spec) {
       scopeShape: scopeShape,
       crossPartitionTagKeys: crossPartitionTagKeys,
       tagKeysByEventType: tagKeysByEventType,
+      payloadTagKeys: payloadTagKeys,
       whenCommand: whenCommand,
       thenEvents: thenEvents,
       thenEvent: thenEvent,

@@ -1,7 +1,7 @@
 # Plan: a command reference no decision reads by stays out of the query
 
-**Status:** 📝 Proposed 2026-09-24. Nothing built.<br/>
-**Follows:** [dcb-tag-scope-inference](done/dcb-tag-scope-inference.md), whose rule 3 settles
+**Status:** ✅ Done 2026-09-24. All three phases built; see [What was built](#what-was-built).<br/>
+**Follows:** [dcb-tag-scope-inference](dcb-tag-scope-inference.md), whose rule 3 settles
 index-vs-payload for keys on **events**. This adds the same rule for keys on **commands**.
 
 ---
@@ -74,10 +74,58 @@ append condition.
 - **P3**: the redundancy check, and a note in `dcb-usage.md` that a command reference nothing
   decides by needs no annotation.
 
-## Open question
+## Open question (settled)
 
 **Should a key the slice's own consumed events carry, but no other slice owns, still count?**
 Example: a command carrying a reference it also wrote on its own past events, so that a
 decision can check "not twice for the same carrier". That is a real fence per carrier, but
 rule 3 does not index the key on the event, so the read could not work anyway. The
 recommendation is payload, with `@dcbTag` as the explicit way to ask for the fence.
+
+**Settled as recommended:** payload. `@dcbTag` on the command keeps the key in the query.
+
+## What was built
+
+In plain words: a command no longer narrows its own decision read by an id it only carries
+as information. The slice reads its partition's history, and the id stays on the command.
+
+- **The rule** is `DcbScopeInference.commandPayloadKeys(s, ~partition, ~crossPartition)`:
+  scalar command keys, minus the partition, minus keys read off a foreign event, minus the
+  boundary's cross-partition keys, minus declared or list keys. The plan's formula
+  (`commandScalarKeys − partition − crossPartitionForSlice`) reduces to the same set.
+- **No `commandPayloadKeysBySlice` on `infer`.** Every caller already hands the slice callback
+  its partition (`~partitionTag`) and the boundary's cross-partition keys, so the slice
+  derives its own payload keys (`DcbTag.commandPayloadTagKeys`). Deploy (`Dcb_Builder`), the
+  deployed entry point and the local platform are covered with no new threading. A composite
+  boundary keeps every tag.
+- **Explicit annotations.** `@partitionTag`, `@crossPartition` and `@compositePartitionTag`
+  were already visible on the schema. `@dcbTag` was not: it emitted the same
+  `DcbTag.string` as auto-tagging. The PPX now emits `DcbTag.declared` /
+  `declaredForKey` / `markDeclared` / `markDeclaredForKey`, and the shape carries
+  `idField.declared`. A `@crossPartition` on the slice's **own** events is honoured too,
+  since that is where the M:N capacity read declares it (`SubscribeStudent`).
+- **`buildQueryFromCommand ~payloadTagKeys`** drops the keys from every clause, in both query
+  modes. The append condition is the same query, so the fence widens to the partition.
+- **GWT harness** (`Behavior_GWT`, `Flow_GWT`) derives the same keys against the partition
+  the slice resolves to alone. `StateChangeSliceGwtTest`'s `ShipOrder` case fails with the
+  unreachable-read error when the keys are withheld, and passes with them.
+- **Validation.** `validateCompositeReads` ignores payload keys, so it no longer warns about
+  a composite clause the slice does not issue. `DcbValidation.validateCommandTagSuppressions`
+  reports a `@noDcbTag` on a command key that is payload anyway. The PPX consumes the
+  attribute, so `check:dcb-scope` reads the suppressed fields off the spec's `type command`
+  block. It flagged the hybrid example's `PlaceOrder.customerId`, whose annotation is removed.
+- **Docs.** `dcb-usage.md` § "Command references nothing decides by", with the
+  `statechangeslice.md`, `reventless-ppx.md` and `dcb-consistency-checks.md` passages that
+  recommended `@noDcbTag` on a command.
+
+### Findings
+
+- **The `ShipOrder` shape above, seen alone, is partitioned by `carrierId`.** A consumed
+  `OrderPlaced({orderId})` is a foreign arm, so rule 1 subtracts `orderId`. In a plugin the
+  chapter (`Order/`) settles it; the harness sees no chapter, so the test's event names
+  its partition with `DcbTag.partition`.
+- **External consumers need the republished PPX.** An older binary emits a plain tag for
+  `@dcbTag`, so a `@dcbTag` on a `*Id` command field would read as payload there. No
+  example in this repository writes one.
+- **`@ref` + `@dcbTag("k")`** passes the key through `Reference.to_`, which carries no
+  declared marker. A command reference written that way is still judged by rule 4.

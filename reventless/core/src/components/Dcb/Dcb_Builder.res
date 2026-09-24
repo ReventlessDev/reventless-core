@@ -306,21 +306,6 @@ module Make = (
         ->Array.map(schema => Reventless.DcbTag.extractTagKeysByEventType(schema))
         ->Reventless.DcbTag.mergeTagKeysByEventType
 
-      // Warn on composite (multi-tag) decision reads that would silently miss an
-      // event carrying extra tags (the tag_composite key is the event's full tag
-      // set, so composite reads are exact-match). Non-fatal — today's slices are
-      // aligned; the guard catches a tag added to a multi-tag event later.
-      Reventless.DcbValidation.validateCompositeReads(
-        ~slices=stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => (
-          Sc.Spec.name,
-          Sc.Spec.commandSchema->S.castToUnknown,
-          Sc.Spec.consumedEventSchema->S.castToUnknown,
-        )),
-        ~producedTagKeys=tagKeysByEventType,
-      )->Array.forEach(w =>
-        log.warn(~comp="Dcb_Builder", `DCB composite-read warning (${w.sliceName}): ${w.message}`)
-      )
-
       // --- Phase 2 (dcb-tag-scope-inference): derive scope from the global slice
       // graph and THREAD it into the decision-query wiring, replacing the
       // annotation-based extraction. The derived `tagKeysByEventType` is what
@@ -387,6 +372,32 @@ module Make = (
       let effective = Reventless.DcbTag.deriveEffectiveScope(sliceSchemas)
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys
       let effectiveTagKeysByEventType = effective.tagKeysByEventType
+
+      // Warn on composite (multi-tag) decision reads that would silently miss an
+      // event carrying extra tags (the tag_composite key is the event's full tag
+      // set, so composite reads are exact-match). Non-fatal — today's slices are
+      // aligned; the guard catches a tag added to a multi-tag event later.
+      Reventless.DcbValidation.validateCompositeReads(
+        ~slices=stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => (
+          Sc.Spec.name,
+          Sc.Spec.commandSchema->S.castToUnknown,
+          Sc.Spec.consumedEventSchema->S.castToUnknown,
+        )),
+        ~producedTagKeys=tagKeysByEventType,
+        ~payloadTagKeysBySlice=sliceSchemas
+        ->Array.map(slice => (
+          slice.name,
+          slice
+          ->Reventless.DcbTag.sliceShape
+          ->Reventless.DcbTag.commandPayloadTagKeys(
+            ~partitionTag=partitionTagOf(slice.name),
+            ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+          ),
+        ))
+        ->Dict.fromArray,
+      )->Array.forEach(w =>
+        log.warn(~comp="Dcb_Builder", `DCB composite-read warning (${w.sliceName}): ${w.message}`)
+      )
 
       // An ambiguity is a warning above because a boundary can fall back and
       // lose nothing. Losing a cross-partition key is not that: the decision

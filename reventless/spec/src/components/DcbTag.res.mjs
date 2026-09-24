@@ -32,6 +32,8 @@ let dcbCompositePartitionMemberId = Sury.$Metadata_Id_make("dcb", "compositePart
 
 let dcbTagKeyOverrideId = Sury.$Metadata_Id_make("dcb", "tagKeyOverride");
 
+let dcbDeclaredTagId = Sury.$Metadata_Id_make("dcb", "declaredTag");
+
 function mark(schema) {
   return Sury.$Metadata_set(schema, dcbTagId, true);
 }
@@ -48,10 +50,24 @@ function markCrossPartition(schema) {
   return Sury.$Metadata_set(Sury.$Metadata_set(schema, dcbTagId, true), dcbCrossPartitionId, true);
 }
 
+function markDeclared(schema) {
+  return Sury.$Metadata_set(Sury.$Metadata_set(schema, dcbTagId, true), dcbDeclaredTagId, true);
+}
+
+function markDeclaredForKey(schema, key) {
+  return Sury.$Metadata_set(markForKey(schema, key), dcbDeclaredTagId, true);
+}
+
 let string = Sury.$Metadata_set(Sury.string, dcbTagId, true);
 
 function stringForKey(key) {
   return markForKey(Sury.string, key);
+}
+
+let declared = markDeclared(Sury.string);
+
+function declaredForKey(key) {
+  return markDeclaredForKey(Sury.string, key);
 }
 
 let int = Sury.$Metadata_set(Sury.int32, dcbTagId, true);
@@ -170,6 +186,14 @@ function isPartitionTag(fieldSchema) {
 
 function isCrossPartitionTag(fieldSchema) {
   return Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbCrossPartitionId));
+}
+
+function isDeclaredTag(fieldSchema) {
+  if (Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbDeclaredTagId)) || Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbPartitionTagId)) || Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbCrossPartitionId))) {
+    return true;
+  } else {
+    return Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema, dcbCompositePartitionMemberId));
+  }
 }
 
 function isCrossPartitionTaggedArray(fieldSchema) {
@@ -610,11 +634,13 @@ function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
   });
 }
 
-function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt) {
+function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, payloadTagKeysOpt) {
   let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let payloadTagKeys = payloadTagKeysOpt !== undefined ? payloadTagKeysOpt : [];
+  let decidedBy = tags => tags.filter(tag => !payloadTagKeys.includes(tag.key));
   if (hasTaggedArrayFields(schema)) {
-    let tags = extractTagsExpanded(schema, value);
+    let tags = decidedBy(extractTagsExpanded(schema, value));
     return tags.map(tag => {
       let clauseTags = [{
           key: tag.key,
@@ -626,7 +652,7 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt,
       };
     });
   }
-  let tags$1 = extractTags(schema, value);
+  let tags$1 = decidedBy(extractTags(schema, value));
   let hasCrossPartition = tags$1.some(tag => crossPartitionTagKeys.includes(tag.key));
   if (hasCrossPartition && tags$1.length > 1) {
     return tags$1.map(tag => {
@@ -735,15 +761,8 @@ function idFieldsOfProperties(properties) {
     }
     return Stdlib_Option.map(Semantic$Reventless.identityKey(valueSchema), param => resolveTagKey("", valueSchema));
   };
-  let identity = (name, fieldSchema, isList) => {
-    let key = typedKey(fieldSchema, isList);
-    if (key !== undefined) {
-      return {
-        name: name,
-        isList: isList,
-        key: key
-      };
-    } else if (isIdName(name)) {
+  let untypedIdentity = (name, fieldSchema, isList) => {
+    if (isIdName(name)) {
       return {
         name: name,
         isList: isList
@@ -757,6 +776,31 @@ function idFieldsOfProperties(properties) {
     } else {
       return;
     }
+  };
+  let isDeclared = (fieldSchema, isList) => {
+    let valueSchema;
+    if (isList && fieldSchema.type === "array") {
+      let item = fieldSchema.additionalItems;
+      valueSchema = item === "strip" || item === "strict" ? fieldSchema : item;
+    } else {
+      valueSchema = fieldSchema;
+    }
+    return isDeclaredTag(Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(valueSchema), valueSchema));
+  };
+  let identity = (name, fieldSchema, isList) => {
+    let key = typedKey(fieldSchema, isList);
+    return Stdlib_Option.map(key !== undefined ? ({
+        name: name,
+        isList: isList,
+        key: key
+      }) : untypedIdentity(name, fieldSchema, isList), f => {
+      if (!isDeclared(fieldSchema, isList)) {
+        return f;
+      }
+      let newrecord = {...f};
+      newrecord.declared = true;
+      return newrecord;
+    });
   };
   return Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
@@ -893,6 +937,19 @@ function deriveEffectiveScope(slices) {
     ambiguities: inferred.ambiguities,
     droppedCrossPartitionTagKeys: useInferred ? [] : inferred.crossPartitionTagKeys.filter(k => !annotatedCross.includes(k))
   };
+}
+
+function commandPayloadTagKeys(shape, partitionTag, crossPartitionTagKeys) {
+  if (partitionTag === undefined) {
+    return [];
+  }
+  switch (partitionTag.TAG) {
+    case "Simple" :
+      return DcbScopeInference$Reventless.commandPayloadKeys(shape, partitionTag._0.key, crossPartitionTagKeys);
+    case "Composite" :
+    case "ByEventType" :
+      return [];
+  }
 }
 
 function extractCompositePartitionFieldsFromProperties(properties) {
@@ -1084,12 +1141,17 @@ export {
   dcbCrossPartitionId,
   dcbCompositePartitionMemberId,
   dcbTagKeyOverrideId,
+  dcbDeclaredTagId,
   mark,
   markForKey,
   markPartition,
   markCrossPartition,
+  markDeclared,
+  markDeclaredForKey,
   string,
   stringForKey,
+  declared,
+  declaredForKey,
   int,
   partition,
   crossPartition,
@@ -1105,6 +1167,7 @@ export {
   hasNestedTags,
   isPartitionTag,
   isCrossPartitionTag,
+  isDeclaredTag,
   isCrossPartitionTaggedArray,
   resolveTagKey,
   resolveArrayTagKey,
@@ -1140,6 +1203,7 @@ export {
   sliceShapeFromSchemas,
   sliceShape,
   deriveEffectiveScope,
+  commandPayloadTagKeys,
   extractCompositePartitionFieldsFromProperties,
   extractCompositePartitionFields,
   getCompositePartitionKeyValue,

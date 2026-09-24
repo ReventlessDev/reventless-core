@@ -69,12 +69,13 @@ type lineItem = {
 type command =
   | PlaceOrder({
       orderId: OrderId.t,
-      // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
+      // customerId is payload, not a query key: nothing here is decided per
+      // customer, so it stays out of the decision query without an annotation.
       // It is also the order's owner: the resolver overwrites this with the
       // authenticated caller's id before the command is published, so what a
       // client sends here is ignored rather than trusted. An operator placing an
       // order on someone's behalf is exempt and keeps the value they sent.
-      @noDcbTag @owner customerId: CustomerId.t,
+      @owner customerId: CustomerId.t,
       lineItems: array<lineItem>,
       shippingMethod: shippingMethod,
       // A requested delivery slot, chosen at checkout. An optional field — a

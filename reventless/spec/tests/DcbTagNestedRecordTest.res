@@ -153,8 +153,9 @@ describe("DcbScopeInference shapes over a record inside an array", () => {
   // does — reporting it single-valued would make a line-item list read as a scalar
   // foreign reference and derive the wrong partition for the slice.
   testSync("a nested id field is reported as a list under its own name", () =>
+    // `orderId` is written `DcbTag.partition`, so the shape records it as declared.
     expect(shape.command)->toEqual([
-      {DcbScopeInference.name: "orderId", isList: false},
+      {DcbScopeInference.name: "orderId", isList: false, declared: true},
       {DcbScopeInference.name: "productId", isList: true},
     ])
   )

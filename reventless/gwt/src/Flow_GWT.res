@@ -312,6 +312,14 @@ module CommandStep = (
     Array.fromIterator(set->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
   }
   let tagKeysByEventType = Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
+  // Command keys this slice does not decide by stay out of the query (rule 4),
+  // judged against the partition the slice resolves to on its own.
+  let payloadTagKeys = scopeShape->Reventless.DcbTag.commandPayloadTagKeys(
+    ~partitionTag=Reventless.DcbScopeInference.resolvePartitions([scopeShape]).partitionBySlice
+    ->Dict.get("")
+    ->Option.map(key => Reventless.DcbTag.Simple({key: key})),
+    ~crossPartitionTagKeys,
+  )
 
   let whenCommand = async (flowP: flow, command: Spec.command) => {
     let s = await flowP
@@ -321,6 +329,7 @@ module CommandStep = (
       ~value=command,
       ~tagKeysByEventType,
       ~crossPartitionTagKeys,
+      ~payloadTagKeys,
     )
     let history = decodeMatching(s.log, consumedDecoder, query)
     let state = history->Array.reduce(Behavior.initialState, Behavior.evolve)

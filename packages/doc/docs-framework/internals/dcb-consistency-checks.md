@@ -36,7 +36,7 @@ The orchestration lives in `StateChangeSlice_Callback.handleSingleCommand`; the 
 The slice does not hand-write a query. `DcbTag.buildQueryFromCommand(~eventTypes, ~schema, ~value)` derives it from the command value and its schema:
 
 - **`eventTypes`** — the event types the slice consumes, taken from its `consumedEvent` schema, then **narrowed per clause** to the types whose *produced* tag set (looked up in the shared event-log schema) can actually carry that clause's tag(s). A type that can never carry a clause's tag is dropped from that clause — a vacuous (type, tag) pairing matches nothing, so results are unchanged.
-- **tags** — extracted from the command's DCB-tagged fields (`@s.matches(DcbTag.string)`, injected by the `@@reventless.spec` ppx on `*Id` fields). Fields marked `@noDcbTag` are excluded.
+- **tags** — extracted from the command's DCB-tagged fields (`@s.matches(DcbTag.string)`, injected by the `@@reventless.spec` ppx on `*Id` fields). Fields marked `@noDcbTag` are excluded, and so are the command's **payload keys** (`~payloadTagKeys`, from `DcbTag.commandPayloadTagKeys`): scalar keys that are neither the slice's partition nor a key it reads off another slice's event or across partitions, unless declared with `@dcbTag`. The slice callback derives them from the partition and cross-partition keys it is handed, and the GWT harness does the same, so a test sees the production query.
 
 A query is an array of **clauses** (`queryItem`s). Within a clause, tags are AND-ed; across clauses, they are OR-ed. The clause shape is chosen automatically from the schema:
 
@@ -65,13 +65,13 @@ AddProduct({ productId: "prod-1", … })
 
 ```rescript
 type command =
-  PlaceOrder({ orderId: string, @noDcbTag customerId: string, productIds: array<string> })
+  PlaceOrder({ orderId: string, customerId: string, productIds: array<string> })
 type consumedEvent =
   | OrderPlaced({ orderId: string })
   | CatalogProductSynced({ productId: string })
 ```
 
-`productIds` is a tagged array, so the command references many entities at once. The query expands to **one OR clause per element**, plus the scalar `orderId` clause. `customerId` is `@noDcbTag`, so it never appears:
+`productIds` is a tagged array, so the command references many entities at once. The query expands to **one OR clause per element**, plus the scalar `orderId` clause. `customerId` is a payload key (the slice decides nothing by it), so it never appears:
 
 ```
 PlaceOrder({ orderId: "ord-1", customerId: "cust-9", productIds: ["prod-1", "prod-2"] })

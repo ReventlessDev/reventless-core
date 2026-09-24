@@ -170,20 +170,24 @@ exact-match trap. Returns one `validationError` (warning) per offending
 
 @param slices `(sliceName, commandSchema, consumedEventSchema)` per consumer.
 @param producedTagKeys event type → its produced tag-key set (from the event-log schema).
+@param payloadTagKeysBySlice slice → the command keys its query leaves out
+(`DcbTag.commandPayloadTagKeys`), which take no part in a composite read.
 */
 let validateCompositeReads = (
   ~slices: array<(string, S.t<unknown>, S.t<unknown>)>,
   ~producedTagKeys: dict<array<string>>,
+  ~payloadTagKeysBySlice: dict<array<string>>=Dict.make(),
 ): array<validationError> => {
   let warnings: array<validationError> = []
   slices->Array.forEach(((sliceName, commandSchema, consumedSchema)) =>
     if !DcbTag.hasTaggedArrayFields(commandSchema) {
       let commandTagKeysByVariant = DcbTag.extractTagKeysByEventType(commandSchema)
       let consumedTypes = DcbTag.extractVariantNames(consumedSchema)
+      let payload = payloadTagKeysBySlice->Dict.get(sliceName)->Option.getOr([])
       commandTagKeysByVariant
       ->Dict.valuesToArray
       ->Array.forEach(cmdKeys => {
-        let querySet = dedupeKeys(cmdKeys)
+        let querySet = dedupeKeys(cmdKeys)->Array.filter(k => !(payload->Array.includes(k)))
         if querySet->Array.length >= 2 {
           consumedTypes->Array.forEach(
             consumedType =>
@@ -564,3 +568,40 @@ let validatePartitionHintsVsInference = (
   )
   {contradictions, redundancies}
 }
+
+/**
+Finds `@noDcbTag` on command fields whose key the slice's query leaves out anyway
+(rule 4 of `DcbScopeInference`). Such a reference is payload without the
+annotation, so the annotation can go.
+
+The PPX consumes the attribute, so the caller reads the suppressed fields off the
+source. A field the shape does not know (a name that is no identity) is skipped.
+
+@param suppressedBySlice slice → the command fields written `@noDcbTag`.
+@param payloadTagKeysBySlice slice → `DcbTag.commandPayloadTagKeys`.
+*/
+let validateCommandTagSuppressions = (
+  ~shapes: array<DcbScopeInference.sliceShape>,
+  ~suppressedBySlice: dict<array<string>>,
+  ~payloadTagKeysBySlice: dict<array<string>>,
+): array<validationError> =>
+  shapes->Array.flatMap(s => {
+    let payload = payloadTagKeysBySlice->Dict.get(s.sliceName)->Option.getOr([])
+    suppressedBySlice
+    ->Dict.get(s.sliceName)
+    ->Option.getOr([])
+    ->Array.filterMap(field =>
+      s.command
+      ->Array.find(f => f.name == field)
+      ->Option.map(DcbScopeInference.tagKeyOf)
+      ->Option.flatMap(
+        key =>
+          payload->Array.includes(key)
+            ? Some({
+                sliceName: s.sliceName,
+                message: `@noDcbTag ${field} is what inference derives without it — ${s.sliceName} decides nothing by ${key}, so it stays out of the query anyway. The annotation is redundant and can be removed.`,
+              })
+            : None,
+      )
+    )
+  })

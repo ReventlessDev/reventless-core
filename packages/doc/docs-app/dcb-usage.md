@@ -529,7 +529,29 @@ Because `categoryId` is owned by another entity (Category emits `CategoryAdded` 
 
 If you write a redundant or contradictory `@crossPartition` the build logs a diagnostic — a key marked cross-partition that the framework resolves as the slice's *own* partition is flagged as a contradiction.
 
-In this repo, `pnpm run check:dcb-scope` guards all of this for the examples: it fails on an unresolvable slice or a redundant `@partitionTag`, and goldens each plugin's partition key per event type (`partitionKeyByEventType`) in `examples/<example>/schema/dcb-scope.json`.
+### Command references nothing decides by (inferred — no annotation)
+
+A command often names a second thing only as information: the carrier an order ships with, the customer placing it. Such a field is tagged like any other `*Id` (or identity-typed) field, but a tag the decision does not read by would narrow the query. A query clause ANDs its tags, so every event about the order that does not carry the carrier would drop out, and the slice would decide against an empty history.
+
+The framework leaves such a key out of the decision query and out of the append condition. A scalar key on a command stays in the query only when it is:
+
+- the slice's partition,
+- a key the slice reads off another slice's event (a cross-entity reference, as above),
+- read across partitions by the plugin, or declared `@crossPartition` on the slice's events,
+- declared on the command with `@dcbTag`, `@partitionTag` or `@crossPartition`, or
+- also carried by the command as a list.
+
+```rescript
+// ShipOrder.res — no annotation on carrierId.
+@schema
+type command = ShipOrder({orderId: OrderId.t, carrierId: CarrierId.t})
+```
+
+`ShipOrder` reads the order's history by `orderId` alone, and its consistency fence is the order. That is the check the command means: shipping is judged against the order, not the carrier. Array keys (`*Ids`) are unchanged; they already read one clause per element.
+
+To fence per carrier as well, for example "never twice for the same carrier", ask for it with `@dcbTag carrierId: CarrierId.t` on the command. A `@noDcbTag` on such a reference is redundant.
+
+In this repo, `pnpm run check:dcb-scope` guards all of this for the examples: it fails on an unresolvable slice, a redundant `@partitionTag` or a redundant `@noDcbTag` on a command, and goldens each plugin's partition key per event type (`partitionKeyByEventType`) in `examples/<example>/schema/dcb-scope.json`.
 
 ### Composite partition keys (`@compositePartitionTag`)
 

@@ -165,3 +165,100 @@ describe("DcbTag.chapterOfModuleUrl", () => {
     expect(DcbTag.chapterOfModuleUrl("ep-test://EpTestSlice"))->toEqual(None)
   )
 })
+
+// Rule 4 end to end: a command key no decision reads by leaves the query, so the
+// clause selects the order's history rather than only events naming the carrier.
+
+@schema
+type shipOrderCommand =
+  | ShipOrder({
+      orderId: @s.matches(DcbTag.string) string,
+      carrierId: @s.matches(DcbTag.string) string,
+    })
+@schema
+type shipOrderConsumed =
+  | OrderPlaced({orderId: @s.matches(DcbTag.string) string})
+  | OrderShipped({orderId: @s.matches(DcbTag.string) string})
+@schema
+type orderShippedEvent =
+  | OrderShipped({
+      orderId: @s.matches(DcbTag.string) string,
+      carrierId: @s.matches(DcbTag.string) string,
+    })
+@schema
+type shipOrderDeclaredCommand =
+  | ShipOrder({
+      orderId: @s.matches(DcbTag.string) string,
+      carrierId: @s.matches(DcbTag.declared) string,
+    })
+
+let shipOrderShape = (~commandSchema) =>
+  DcbTag.sliceShapeFromSchemas(
+    ~name="ShipOrder",
+    ~commandSchema,
+    ~consumedEventSchema=shipOrderConsumedSchema,
+    ~eventSchema=orderShippedEventSchema,
+  )
+
+describe("DcbTag.commandPayloadTagKeys", () => {
+  let byOrder = Some(DcbTag.Simple({key: "orderId"}))
+
+  testSync("a reference the slice does not decide by is payload", () =>
+    expect(
+      shipOrderShape(~commandSchema=shipOrderCommandSchema)->DcbTag.commandPayloadTagKeys(
+        ~partitionTag=byOrder,
+        ~crossPartitionTagKeys=[],
+      ),
+    )->toEqual(["carrierId"])
+  )
+
+  testSync("@dcbTag's declared marker keeps it in the query", () =>
+    expect(
+      shipOrderShape(~commandSchema=shipOrderDeclaredCommandSchema)->DcbTag.commandPayloadTagKeys(
+        ~partitionTag=byOrder,
+        ~crossPartitionTagKeys=[],
+      ),
+    )->toEqual([])
+  )
+
+  testSync("a composite boundary keeps every tag", () =>
+    expect(
+      shipOrderShape(~commandSchema=shipOrderCommandSchema)->DcbTag.commandPayloadTagKeys(
+        ~partitionTag=Some(DcbTag.Composite({keys: ["orderId", "carrierId"], seps: ["/"]})),
+        ~crossPartitionTagKeys=[],
+      ),
+    )->toEqual([])
+  )
+})
+
+describe("DcbTag.buildQueryFromCommand with payload keys", () => {
+  let command: shipOrderCommand = ShipOrder({orderId: "o1", carrierId: "c1"})
+
+  testSync("without them the clause ANDs the carrier in", () =>
+    expect(
+      DcbTag.buildQueryFromCommand(
+        ~eventTypes=["OrderPlaced", "OrderShipped"],
+        ~schema=shipOrderCommandSchema,
+        ~value=command,
+      ),
+    )->toEqual([
+      {
+        DcbTag.eventTypes: ["OrderPlaced", "OrderShipped"],
+        tags: [{key: "orderId", value: "o1"}, {key: "carrierId", value: "c1"}],
+      },
+    ])
+  )
+
+  testSync("with them the clause is the order alone", () =>
+    expect(
+      DcbTag.buildQueryFromCommand(
+        ~eventTypes=["OrderPlaced", "OrderShipped"],
+        ~schema=shipOrderCommandSchema,
+        ~value=command,
+        ~payloadTagKeys=["carrierId"],
+      ),
+    )->toEqual([
+      {DcbTag.eventTypes: ["OrderPlaced", "OrderShipped"], tags: [{key: "orderId", value: "o1"}]},
+    ])
+  )
+})

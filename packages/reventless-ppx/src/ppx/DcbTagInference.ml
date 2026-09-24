@@ -336,22 +336,27 @@ let transform_cross_partition_tags ~loc (str : structure) : structure =
   ) str
 
 (** Builds the attribute injected by [@dcbTag] / [@dcbTag("explicitKey")]:
-    bare [DcbTag.string] when no payload, [DcbTag.stringForKey(~key=...)] otherwise. *)
+    [DcbTag.declared] when no payload, [DcbTag.declaredForKey(~key=...)] otherwise.
+    Marked as declared so a command keeps the tag in its decision query even where
+    the slice would otherwise treat the key as payload. *)
 let dcb_explicit_tag_attr ~loc ~key_override =
   match key_override with
-  | Some key -> dcb_tag_for_key_attr ~loc ~key
-  | None -> dcb_tag_attr ~loc
+  | Some key ->
+    Util.s_matches_apply ~loc
+      (Ldot (Ldot (Lident "Reventless", "DcbTag"), "declaredForKey"))
+      [ (Labelled "key", Ast_builder.Default.estring ~loc key) ]
+  | None -> s_matches_attr ~loc (Ldot (Ldot (Lident "Reventless", "DcbTag"), "declared"))
 
-(** @dcbTag → @s.matches(Reventless.DcbTag.string) on string fields, or on the inner
+(** @dcbTag → @s.matches(Reventless.DcbTag.declared) on string fields, or on the inner
     element type of [array<string>] fields. With a string payload [@dcbTag("key")] the
-    emitted attribute uses [DcbTag.stringForKey(~key="key")]. Runs unconditionally. *)
+    emitted attribute uses [DcbTag.declaredForKey(~key="key")]. Runs unconditionally. *)
 let transform_explicit_dcb_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
     if not (has_explicit_dcb_tag_field_attr ld.pld_attributes) then ld
     else
       let key_override = get_explicit_dcb_tag_key ld.pld_attributes in
       let attr = dcb_explicit_tag_attr ~loc ~key_override in
-      let identity_fn = match key_override with Some _ -> "markForKey" | None -> "mark" in
+      let identity_fn = match key_override with Some _ -> "markDeclaredForKey" | None -> "markDeclared" in
       let clean = strip_explicit_dcb_tag_field_attr ld.pld_attributes in
       match Util.identity_module ld.pld_type, array_identity ld.pld_type with
       | Some m, _ when not (has_s_matches_attr ld.pld_type.ptyp_attributes) ->

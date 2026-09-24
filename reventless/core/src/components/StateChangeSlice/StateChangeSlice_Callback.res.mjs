@@ -36,6 +36,7 @@ function Make(Spec) {
         return;
       }
     });
+    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas(Spec.name, Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
     let readEventId = (partitionTag, tags) => {
       let ownTagValues = () => {
         let vals = Stdlib_Array.reduce(tags, [], (acc, t) => {
@@ -70,10 +71,10 @@ function Make(Spec) {
     };
     let projectionCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(projectionCache);
-    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLog, command$p) => {
+    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, partitionTag, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
-      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -315,9 +316,10 @@ function Make(Spec) {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       let partitionTag$1 = partitionTag !== undefined ? partitionTag : Stdlib_Lazy.get(slicePartitionTag);
+      let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, partitionTag$1, crossPartitionTagKeys);
       return Stream.runCollect(Stream$1.mapEffect(stream, param => {
         let reference = param.reference;
-        return Effect.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, partitionTag$1, dcbEventLog, param.command), result => {
+        return Effect.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, partitionTag$1, dcbEventLog, param.command), result => {
           if (result.TAG === "Ok") {
             return {
               TAG: "Ok",
