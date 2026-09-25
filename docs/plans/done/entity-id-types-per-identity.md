@@ -367,3 +367,15 @@ has to hold on a field that is also a reference.
 
 Composite partitions as identities (open question 1); per-identity validation (open
 question 2); making untyped ids an error.
+
+## Follow-up (2026-09-25): an identity is published as a string, not a UUID
+
+`SuryToJsonSchema` wrote every `EntityId` (a typed identity, or a string field named `*Id`) as
+`{"type": "string", "format": "uuid"}`. Nothing in the framework keeps that claim: `Id.Make`'s
+`makeFromString` takes any string, the domain API accepts one, and the examples' own ids are
+not UUIDs. A form generated from the schema enforces it, so a reference to an identity that no
+view lists (nothing to pick from) could only be filled with an invented UUID.
+
+An `EntityId` is now published as `{"type": "string"}`. What marks a field as an identity for a
+consumer is unchanged: the GraphQL `ID` type and the `x-reventless-*` reference markers. An id
+a client mints for a new row may still be a UUID; the schema no longer requires one.

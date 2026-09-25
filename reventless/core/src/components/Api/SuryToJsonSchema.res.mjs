@@ -193,17 +193,6 @@ function fromSchemaType(_inputNamesOpt, _st) {
               "type",
               "integer"
             ]]);
-        case "EntityId" :
-          return Object.fromEntries([
-            [
-              "type",
-              "string"
-            ],
-            [
-              "format",
-              "uuid"
-            ]
-          ]);
         case "DateTime" :
           return Object.fromEntries([
             [
@@ -227,6 +216,7 @@ function fromSchemaType(_inputNamesOpt, _st) {
             ]
           ]);
         case "ScalarString" :
+        case "EntityId" :
         case "Unknown" :
           return Object.fromEntries([[
               "type",

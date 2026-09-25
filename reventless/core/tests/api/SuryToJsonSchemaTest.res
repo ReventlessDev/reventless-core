@@ -1103,7 +1103,15 @@ describe("SuryToJsonSchema:", () => {
             },
         )->S.castToUnknown
         let json = SuryToJsonSchema.deriveObjectSchema(schema)
-        expect(formatOf(json, "orderId"))->toEqual(Some(JSON.Encode.string("uuid")))
+        expect(
+          SchemaType.fromSury(
+            ~parentName="T",
+            ~fieldName="orderId",
+            Reventless.DcbTag.string->S.castToUnknown,
+          ),
+        )->toEqual(SchemaType.EntityId)
+        // Published as a plain string: an identity is not a UUID.
+        expect(formatOf(json, "orderId"))->toEqual(None)
         expect(Reventless.Reference.getTarget(schema))->toBe(None)
       },
     )
@@ -1114,7 +1122,10 @@ describe("SuryToJsonSchema:", () => {
         let field = Reventless.Reference.toWithoutDcbTag("Customer")
         let schema = S.schema(s => {"customerId": s.matches(field)})->S.castToUnknown
         let json = SuryToJsonSchema.deriveObjectSchema(schema)
-        expect(formatOf(json, "customerId"))->toEqual(Some(JSON.Encode.string("uuid")))
+        expect(
+          SchemaType.fromSury(~parentName="T", ~fieldName="customerId", field->S.castToUnknown),
+        )->toEqual(SchemaType.EntityId)
+        expect(formatOf(json, "customerId"))->toEqual(None)
         expect(Reventless.DcbTag.isTagged(field->S.castToUnknown))->toBe(false)
       },
     )

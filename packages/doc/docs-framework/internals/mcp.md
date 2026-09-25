@@ -86,7 +86,7 @@ The `SuryToJsonSchema` utility converts sury type schemas to JSON Schema objects
 | `float` | `{ "type": "number" }` |
 | `int` / `bigint` | `{ "type": "integer" }` |
 | `bool` | `{ "type": "boolean" }` |
-| `@s.matches(DcbTag.string)` | `{ "type": "string", "format": "uuid" }` |
+| `@s.matches(DcbTag.string)` | `{ "type": "string" }` (an identity is any string, not a UUID) |
 | `option<T>` | schema for T, not in `required` |
 | Record | `{ "type": "object", "properties": {...}, "required": [...] }` |
 | Variant `\| Cmd({fields})` | one tool per variant arm |

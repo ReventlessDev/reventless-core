@@ -203,7 +203,9 @@ let rec fromSchemaType = (~inputNames: bool=false, st: SchemaType.schemaType): J
   | ScalarInt => jsonObject([("type", str("integer"))])
   | ScalarBoolean => jsonObject([("type", str("boolean"))])
   | ScalarBigInt => jsonObject([("type", str("integer"))])
-  | EntityId => jsonObject([("type", str("string")), ("format", str("uuid"))])
+  // An identity is any string: `Id.Make.makeFromString` takes one, and so does the API.
+  // Claiming `format: uuid` made every generated form refuse an id it had not minted.
+  | EntityId => jsonObject([("type", str("string"))])
   | DateTime => jsonObject([("type", str("string")), ("format", str("date-time"))])
   | CalendarDate => jsonObject([("type", str("string")), ("format", str("date"))])
   | Nullable(inner) =>
