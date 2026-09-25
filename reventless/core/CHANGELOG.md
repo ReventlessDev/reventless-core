@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.278 (2026-09-25)
+
+### Bug Fixes
+
+* **core:** an identity is published as a string, not a UUID ([f3781ba](https://github.com/ReventlessDev/reventless-core/commit/f3781ba5cae75f156175f649d51f32c3ca053907))
+
+
 # 3.0.0-alpha.277 (2026-09-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
