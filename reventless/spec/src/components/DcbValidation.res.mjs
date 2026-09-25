@@ -435,8 +435,14 @@ function validatePartitionHintsVsInference(shapes) {
   let overrides = [];
   let chapterKeys = DcbScopeInference$Reventless.chapterKeys(shapes);
   let producersOf = eventType => shapes.filter(p => p.produced.some(e => e.eventType === eventType));
-  let backedByChapter = (s, hint, partitionBySlice) => {
-    let chapterAgrees = Stdlib_Option.mapOr(Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]), false, keys => keys.includes(hint));
+  let backedByChapter = (s, hint, inferred, partitionBySlice) => {
+    let chapterAgrees = Stdlib_Option.mapOr(Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]), false, keys => {
+      if (keys.includes(hint)) {
+        return !inferred.some(k => keys.includes(k));
+      } else {
+        return false;
+      }
+    });
     let own = s.produced.map(e => e.eventType);
     let readsOwnEntity = s.consumed.filter(e => {
       if (own.includes(e.eventType)) {
@@ -504,7 +510,7 @@ function validatePartitionHintsVsInference(shapes) {
           message: `@partitionTag ` + hint + ` is what inference derives without it — the annotation is redundant and can be removed.`
         });
         return;
-      } else if (backedByChapter(s, hint, unaided.partitionBySlice)) {
+      } else if (backedByChapter(s, hint, [inferred], unaided.partitionBySlice)) {
         return overridden(s, hint, `it derives ` + inferred);
       } else {
         contradictions.push({
@@ -517,7 +523,7 @@ function validatePartitionHintsVsInference(shapes) {
     let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
     if (candidates.includes(hint)) {
       return;
-    } else if (backedByChapter(s, hint, unaided.partitionBySlice)) {
+    } else if (backedByChapter(s, hint, candidates, unaided.partitionBySlice)) {
       return overridden(s, hint, `candidates: ` + candidates.join(", "));
     } else {
       contradictions.push({

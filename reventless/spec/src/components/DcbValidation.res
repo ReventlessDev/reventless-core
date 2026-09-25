@@ -497,7 +497,8 @@ Checks each `@partitionTag` against what inference derives with that hint remove
   fence and read scope would all follow the wrong key.
 - **Redundant** — inference reaches the same key unaided; the annotation can go.
 - **Override** — inference disagrees, but the slice's chapter backs the hint: every
-  id-carrying event written in the chapter carries the hinted key, and every foreign
+  id-carrying event written in the chapter carries the hinted key and not every one
+  carries the key inference chose, and every foreign
   event the slice reads by that key is written by a slice partitioned by it. Rule 1
   cannot tell an own key read back off a sibling's events from a reference
   (`ShipOrder` writing `{orderId, carrierBookingId}` and reading `OrderPlaced` has
@@ -519,11 +520,16 @@ let validatePartitionHintsVsInference = (
     shapes->Array.filter(p => p.produced->Array.some(e => e.eventType == eventType))
   // The chapter backs the hint, and what the slice reads by that key is its own
   // entity: each foreign arm carrying it comes from a slice partitioned by it.
-  let backedByChapter = (s: DcbScopeInference.sliceShape, hint, partitionBySlice) => {
+  // Backing means telling the keys apart: a chapter whose events all carry both the
+  // hinted key and inference's (one slice, one event with both ids) says nothing
+  // about which one the slice is about, so it backs neither.
+  let backedByChapter = (s: DcbScopeInference.sliceShape, hint, inferred, partitionBySlice) => {
     let chapterAgrees =
       s.chapter
       ->Option.flatMap(c => chapterKeys->Dict.get(c))
-      ->Option.mapOr(false, keys => keys->Array.includes(hint))
+      ->Option.mapOr(false, keys =>
+        keys->Array.includes(hint) && !(inferred->Array.some(k => keys->Array.includes(k)))
+      )
     let own = s.produced->Array.map(e => e.eventType)
     let readsOwnEntity =
       s.consumed
@@ -591,7 +597,7 @@ let validatePartitionHintsVsInference = (
             sliceName: s.sliceName,
             message: `@partitionTag ${hint} is what inference derives without it — the annotation is redundant and can be removed.`,
           })
-        | Some(inferred) if backedByChapter(s, hint, unaided.partitionBySlice) =>
+        | Some(inferred) if backedByChapter(s, hint, [inferred], unaided.partitionBySlice) =>
           overridden(s, hint, `it derives ${inferred}`)
         | Some(inferred) =>
           contradictions->Array.push({
@@ -602,7 +608,7 @@ let validatePartitionHintsVsInference = (
           let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
           if candidates->Array.includes(hint) {
             ()
-          } else if backedByChapter(s, hint, unaided.partitionBySlice) {
+          } else if backedByChapter(s, hint, candidates, unaided.partitionBySlice) {
             overridden(s, hint, `candidates: ${candidates->Array.join(", ")}`)
           } else {
             contradictions->Array.push({

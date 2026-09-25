@@ -414,8 +414,12 @@ agrees with the author; every event under `Product/` carries `productId`, so a
 accepts a hint that inference contradicts when **both** hold, and reports it as an override
 instead:
 
-1. **Its chapter agrees.** Every id-carrying event written in the slice's chapter carries the
-   hinted key (the same set the chapter tie-break uses).
+1. **Its chapter tells the keys apart.** Every id-carrying event written in the slice's chapter
+   carries the hinted key (the same set the chapter tie-break uses), and not every one carries
+   the key inference chose. A chapter whose events all carry both ids, such as one slice with
+   one event, cannot say which of them the slice is about, so it backs neither. (First built
+   without this half; a tools test, one slice alone in its chapter hinted at its reference key,
+   showed the hole the same day.)
 2. **What it reads by that key is the same entity.** Every foreign arm carrying the hinted key
    is written by a slice partitioned by that key, in inference's own resolution. A hint
    naming a key the slice reads off another entity's events is still a contradiction.

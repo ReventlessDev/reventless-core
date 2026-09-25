@@ -545,12 +545,37 @@ describe("DcbScopeInference:", () => {
       },
     )
 
+    // Every producer is present, so the arms it reads by `categoryId` all come from
+    // category slices: only the chapter can refuse the hint.
+    let categories = [
+      {...addCategory, chapter: "Category"},
+      {...renameCategory, chapter: "Category"},
+      {...archiveCategory, chapter: "Category"},
+    ]
+
     testSync(
       "a hint its chapter disagrees with is still a contradiction",
       () => {
-        // Every event under `Product/` carries `productId`, not `categoryId`.
+        // `RenameProduct` writes only `productId`, so `Product/` is about products.
+        let renameProduct = slice(
+          "RenameProduct",
+          ~chapter="Product",
+          ~consumed=[ev("ProductAdded", [scal("productId")])],
+          ~produced=[ev("ProductRenamed", [scal("productId")])],
+        )
         let inProduct = {...hinted(addProduct, "categoryId"), chapter: "Product"}
-        let issues = check([inProduct, {...addCategory, chapter: "Category"}])
+        let issues = check([inProduct, renameProduct, ...categories])
+        expect(issues.contradictions->names)->toEqual(["AddProduct"])
+        expect(issues.overrides)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a chapter that carries both keys everywhere backs neither",
+      () => {
+        // One slice, one event with both ids: the chapter cannot say which one it is about.
+        let inProduct = {...hinted(addProduct, "categoryId"), chapter: "Product"}
+        let issues = check([inProduct, ...categories])
         expect(issues.contradictions->names)->toEqual(["AddProduct"])
         expect(issues.overrides)->toEqual([])
       },
