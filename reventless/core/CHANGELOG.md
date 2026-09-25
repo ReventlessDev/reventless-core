@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.276 (2026-09-25)
+
+### Bug Fixes
+
+* **spec:** a chapter that carries both keys backs neither ([cbd823e](https://github.com/ReventlessDev/reventless-core/commit/cbd823e4f87ddd5810debd929bb536b2003d0e4c))
+
+
 # 3.0.0-alpha.275 (2026-09-25)
 
 ### Bug Fixes
