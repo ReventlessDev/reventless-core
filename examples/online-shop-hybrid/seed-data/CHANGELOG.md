@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.108 (2026-09-25)
+
+### Bug Fixes
+
+* **deps:** follow the host UI to 3.0.0-alpha.109 ([e45b67d](https://github.com/ReventlessDev/reventless-core/commit/e45b67d9b386813bed1510c36bcaf2f37d208a6d))
+
+
 # 1.0.0-alpha.107 (2026-09-25)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed
