@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.149 (2026-09-25)
+
+### Bug Fixes
+
+* **spec:** the lifecycle harvest reads an app that installs at its root ([977b368](https://github.com/ReventlessDev/reventless-core/commit/977b3681c6acde78ae05b18ca72935c10e6a5154))
+
+
 # 3.0.0-alpha.148 (2026-09-25)
 
 ### Bug Fixes
