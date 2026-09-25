@@ -237,11 +237,14 @@ module Make = (
 
       // A `@partitionTag` inference contradicts would steer storage, fence and read
       // scope to a key the slice only references, so it stops the build. One that
-      // inference agrees with is noise, and says so.
+      // inference agrees with is noise, and says so. One its chapter backs against
+      // inference is the author deciding what inference cannot see, and is kept.
       let hintIssues = Reventless.DcbValidation.validatePartitionHintsVsInference(
         ~shapes=inferenceShapes,
       )
-      hintIssues.redundancies->Array.forEach(e =>
+      hintIssues.redundancies
+      ->Array.concat(hintIssues.overrides)
+      ->Array.forEach(e =>
         log.info(~comp="Dcb_Builder", `DCB partition (${e.sliceName}): ${e.message}`)
       )
       if hintIssues.contradictions->Array.length > 0 {

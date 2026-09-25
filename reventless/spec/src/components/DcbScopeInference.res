@@ -211,6 +211,32 @@ Applying the give-back everywhere would be wrong: `AddProduct` reads
 `CategoryAdded({categoryId})` from a slice partitioned by `categoryId`, which
 would hand `categoryId` back and leave it two candidates.
 */
+/**
+Chapter -> the keys every id-carrying event written in that chapter carries: what the
+chapter says its slices are about. Rule 1's tie-break reads it, and so does the check
+that decides whether a `@partitionTag` inference disagrees with is the author's
+mistake or inference's (`DcbValidation.validatePartitionHintsVsInference`).
+*/
+let chapterKeys = (slices: array<sliceShape>): dict<array<string>> => {
+  let byChapter = Dict.make()
+  slices->Array.forEach(s =>
+    s.chapter->Option.forEach(chapter => {
+      let events = s.produced->Array.filter(e => e.idFields->Array.length > 0)
+      events->Array.forEach(
+        e => {
+          let keys = e->keysOfEvent
+          let shared = switch byChapter->Dict.get(chapter) {
+          | Some(prev) => prev->Array.filter(k => keys->Array.includes(k))
+          | None => dedupSorted(keys)
+          }
+          byChapter->Dict.set(chapter, shared)
+        },
+      )
+    })
+  )
+  byChapter
+}
+
 let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
   let producersByEventType: dict<array<sliceShape>> = Dict.make()
   slices->Array.forEach(s =>
@@ -221,23 +247,7 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
       }
     })
   )
-  // chapter -> the keys every id-carrying event written in that chapter carries.
-  let chapterKeys = Dict.make()
-  slices->Array.forEach(s =>
-    s.chapter->Option.forEach(chapter => {
-      let events = s.produced->Array.filter(e => e.idFields->Array.length > 0)
-      events->Array.forEach(
-        e => {
-          let keys = e->keysOfEvent
-          let shared = switch chapterKeys->Dict.get(chapter) {
-          | Some(prev) => prev->Array.filter(k => keys->Array.includes(k))
-          | None => dedupSorted(keys)
-          }
-          chapterKeys->Dict.set(chapter, shared)
-        },
-      )
-    })
-  )
+  let chapterKeys = chapterKeys(slices)
   let chapterKeysOf = (s: sliceShape) => s.chapter->Option.flatMap(c => chapterKeys->Dict.get(c))
   let byChapter = (s: sliceShape, candidates) =>
     switch s->chapterKeysOf {

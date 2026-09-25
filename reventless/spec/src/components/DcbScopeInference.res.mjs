@@ -58,6 +58,20 @@ function sameAssignment(a, b) {
   return Primitive_object.equal(entries(a), entries(b));
 }
 
+function chapterKeys(slices) {
+  let byChapter = {};
+  slices.forEach(s => Stdlib_Option.forEach(s.chapter, chapter => {
+    let events = s.produced.filter(e => e.idFields.length !== 0);
+    events.forEach(e => {
+      let keys = e.idFields.map(tagKeyOf);
+      let prev = byChapter[chapter];
+      let shared = prev !== undefined ? prev.filter(k => keys.includes(k)) : dedupSorted(keys);
+      byChapter[chapter] = shared;
+    });
+  }));
+  return byChapter;
+}
+
 function resolvePartitions(slices) {
   let producersByEventType = {};
   slices.forEach(s => {
@@ -69,17 +83,8 @@ function resolvePartitions(slices) {
       }
     });
   });
-  let chapterKeys = {};
-  slices.forEach(s => Stdlib_Option.forEach(s.chapter, chapter => {
-    let events = s.produced.filter(e => e.idFields.length !== 0);
-    events.forEach(e => {
-      let keys = e.idFields.map(tagKeyOf);
-      let prev = chapterKeys[chapter];
-      let shared = prev !== undefined ? prev.filter(k => keys.includes(k)) : dedupSorted(keys);
-      chapterKeys[chapter] = shared;
-    });
-  }));
-  let chapterKeysOf = s => Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]);
+  let chapterKeys$1 = chapterKeys(slices);
+  let chapterKeysOf = s => Stdlib_Option.flatMap(s.chapter, c => chapterKeys$1[c]);
   let byChapter = (s, candidates) => {
     let keys = chapterKeysOf(s);
     if (keys === undefined) {
@@ -348,6 +353,7 @@ export {
   commandScalarKeys,
   foreignConsumedKeys,
   sameAssignment,
+  chapterKeys,
   resolvePartitions,
   partitionBlockers,
   crossPartitionForSlice,

@@ -424,13 +424,46 @@ function validateScopeVsInference(annotations, inferred) {
   });
   return {
     contradictions: contradictions,
-    redundancies: redundancies
+    redundancies: redundancies,
+    overrides: []
   };
 }
 
 function validatePartitionHintsVsInference(shapes) {
   let contradictions = [];
   let redundancies = [];
+  let overrides = [];
+  let chapterKeys = DcbScopeInference$Reventless.chapterKeys(shapes);
+  let producersOf = eventType => shapes.filter(p => p.produced.some(e => e.eventType === eventType));
+  let backedByChapter = (s, hint, partitionBySlice) => {
+    let chapterAgrees = Stdlib_Option.mapOr(Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]), false, keys => keys.includes(hint));
+    let own = s.produced.map(e => e.eventType);
+    let readsOwnEntity = s.consumed.filter(e => {
+      if (own.includes(e.eventType)) {
+        return false;
+      } else {
+        return DcbScopeInference$Reventless.keysOfEvent(e).includes(hint);
+      }
+    }).every(e => {
+      let producers = producersOf(e.eventType);
+      if (producers.length !== 0) {
+        return producers.every(p => Primitive_object.equal(partitionBySlice[p.sliceName], hint));
+      } else {
+        return false;
+      }
+    });
+    if (chapterAgrees) {
+      return readsOwnEntity;
+    } else {
+      return false;
+    }
+  };
+  let overridden = (s, hint, inference) => {
+    overrides.push({
+      sliceName: s.sliceName,
+      message: `@partitionTag ` + hint + ` decides the partition against inference (` + inference + `): every event in chapter ` + Stdlib_Option.getOr(s.chapter, "") + ` carries ` + hint + `, and what the slice reads by it is written by slices partitioned by ` + hint + `.`
+    });
+  };
   shapes.forEach(s => {
     let hint = s.partitionHint;
     if (hint === undefined) {
@@ -470,16 +503,23 @@ function validatePartitionHintsVsInference(shapes) {
           sliceName: s.sliceName,
           message: `@partitionTag ` + hint + ` is what inference derives without it — the annotation is redundant and can be removed.`
         });
+        return;
+      } else if (backedByChapter(s, hint, unaided.partitionBySlice)) {
+        return overridden(s, hint, `it derives ` + inferred);
       } else {
         contradictions.push({
           sliceName: s.sliceName,
           message: `@partitionTag names ` + hint + `, but inference derives ` + inferred + ` from the slice graph — ` + hint + ` is read from another entity. Remove the annotation, or move it to ` + inferred + `.`
         });
+        return;
       }
-      return;
     }
     let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
-    if (!candidates.includes(hint)) {
+    if (candidates.includes(hint)) {
+      return;
+    } else if (backedByChapter(s, hint, unaided.partitionBySlice)) {
+      return overridden(s, hint, `candidates: ` + candidates.join(", "));
+    } else {
       contradictions.push({
         sliceName: s.sliceName,
         message: `@partitionTag names ` + hint + `, which this slice only reads as a reference to another entity (candidates: ` + candidates.join(", ") + `). Move the annotation to the slice's own key.`
@@ -489,7 +529,8 @@ function validatePartitionHintsVsInference(shapes) {
   });
   return {
     contradictions: contradictions,
-    redundancies: redundancies
+    redundancies: redundancies,
+    overrides: overrides
   };
 }
 

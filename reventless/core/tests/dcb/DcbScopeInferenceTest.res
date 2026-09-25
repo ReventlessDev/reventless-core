@@ -503,6 +503,80 @@ describe("DcbScopeInference:", () => {
         expect(issues.redundancies)->toEqual([])
       },
     )
+
+    // `ShipOrder` records the carrier's booking, which nothing else in the boundary
+    // writes or reads. Rule 1 subtracts `orderId` (read off `OrderPlaced`) and is
+    // left with the booking: `AddProduct`'s shape exactly, with the other answer.
+    let placeOrder = slice(
+      "PlaceOrder",
+      ~chapter="Order",
+      ~produced=[ev("OrderPlaced", [scal("orderId")])],
+    )
+    let shipOrder = slice(
+      "ShipOrder",
+      ~chapter="Order",
+      ~partitionHint="orderId",
+      ~command=[scal("orderId"), scal("carrierBookingId")],
+      ~consumed=[ev("OrderPlaced", [scal("orderId")]), ev("OrderShipped", [scal("orderId")])],
+      ~produced=[ev("OrderShipped", [scal("orderId"), scal("carrierBookingId")])],
+    )
+
+    testSync(
+      "a hint its chapter backs overrides inference instead of contradicting it",
+      () => {
+        let issues = check([placeOrder, shipOrder])
+        expect(issues.contradictions)->toEqual([])
+        expect(issues.redundancies)->toEqual([])
+        expect(issues.overrides->names)->toEqual(["ShipOrder"])
+        // and the hint is what the boundary is partitioned by
+        expect(
+          DSI.resolvePartitions([placeOrder, shipOrder]).partitionBySlice->Dict.get("ShipOrder"),
+        )->toEqual(Some("orderId"))
+      },
+    )
+
+    testSync(
+      "without a chapter the same hint is still a contradiction",
+      () => {
+        let noChapter = (s: DSI.sliceShape) => {...s, chapter: ?None}
+        let issues = check([noChapter(placeOrder), noChapter(shipOrder)])
+        expect(issues.contradictions->names)->toEqual(["ShipOrder"])
+        expect(issues.overrides)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a hint its chapter disagrees with is still a contradiction",
+      () => {
+        // Every event under `Product/` carries `productId`, not `categoryId`.
+        let inProduct = {...hinted(addProduct, "categoryId"), chapter: "Product"}
+        let issues = check([inProduct, {...addCategory, chapter: "Category"}])
+        expect(issues.contradictions->names)->toEqual(["AddProduct"])
+        expect(issues.overrides)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a chapter-backed hint read off another entity's events is still a contradiction",
+      () => {
+        // `WarehouseAssigned` carries the order but belongs to the warehouse.
+        let assign = slice(
+          "AssignWarehouse",
+          ~chapter="Warehouse",
+          ~partitionHint="warehouseId",
+          ~produced=[ev("WarehouseAssigned", [scal("warehouseId"), scal("orderId")])],
+        )
+        let ship = {
+          ...shipOrder,
+          consumed: shipOrder.consumed->Array.concat([
+            ev("WarehouseAssigned", [scal("warehouseId"), scal("orderId")]),
+          ]),
+        }
+        let issues = check([placeOrder, ship, assign])
+        expect(issues.overrides->names)->toEqual([])
+        expect(issues.contradictions->names)->toEqual(["ShipOrder"])
+      },
+    )
   })
 
   describe("ambiguity surfacing", () => {

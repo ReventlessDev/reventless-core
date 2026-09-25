@@ -388,3 +388,38 @@ a tie-breaker, its costs shrink:
 - **The remaining cost is the one F6 named:** where the chapter decides, moving the
   slice to another chapter can move its partition. The `dcb-scope.json` golden shows
   it; the docs tell apps without one to annotate slices they expect to move.
+
+## Follow-up (2026-09-25): a hint its chapter agrees with is not a contradiction
+
+`@partitionTag` exists to override inference where the slice graph cannot tell an own key
+from a reference, and Phase 2's check rejected it in exactly that case. The shape:
+
+- `ShipOrder` writes `OrderShipped({orderId, carrierBookingId})` and reads `OrderPlaced`
+  (`orderId`), written by `PlaceOrder`. `carrierBookingId` names a booking at the carrier,
+  which nothing in the boundary writes or reads.
+- Rule 1 subtracts `orderId`, read off a foreign event, and is left with
+  `carrierBookingId`. Inference resolves, to the wrong key.
+- The author writes `@partitionTag orderId`, and the check reports a contradiction
+  ("`orderId` is read from another entity"), so boot throws. The escape hatch is refused
+  where it is the only way out.
+
+Rule 1 cannot be refined to see this. The shape is `AddProduct`'s exactly (writes
+`{productId, categoryId}`, reads `CategoryAdded({categoryId})`), where subtracting the
+read key is right. The difference is information the graph does not hold: which of the two
+ids the slice is about.
+
+The chapter holds it. Every event written under `Order/` carries `orderId`, so the chapter
+agrees with the author; every event under `Product/` carries `productId`, so a
+`@partitionTag categoryId` on `AddProduct` still disagrees with its chapter. The check now
+accepts a hint that inference contradicts when **both** hold, and reports it as an override
+instead:
+
+1. **Its chapter agrees.** Every id-carrying event written in the slice's chapter carries the
+   hinted key (the same set the chapter tie-break uses).
+2. **What it reads by that key is the same entity.** Every foreign arm carrying the hinted key
+   is written by a slice partitioned by that key, in inference's own resolution. A hint
+   naming a key the slice reads off another entity's events is still a contradiction.
+
+A slice with no chapter keeps Phase 2's verdict, so the existing contradiction cases do not
+change. The override is logged at info level by `Dcb_Builder`, next to the redundancies, so
+a hint that decides the partition against inference stays visible.

@@ -440,12 +440,15 @@ let validateCrossPartitionScope = (~producers: array<(string, S.t<unknown>)>): a
   warnings
 }
 
-/** Two-bucket result of validating annotations against the inferred scope. */
+/** Result of validating annotations against the inferred scope. */
 type scopeInferenceIssues = {
   /** Annotations that conflict with inference — likely bugs (warn/error). */
   contradictions: array<validationError>,
   /** Annotations inference already derives — safe to delete (info). */
   redundancies: array<validationError>,
+  /** Annotations that decide against inference where the slice's chapter backs them —
+      kept, and reported so the decision stays visible (info). */
+  overrides: array<validationError>,
 }
 
 /**
@@ -483,7 +486,7 @@ let validateScopeVsInference = (
       }
     )
   )
-  {contradictions, redundancies}
+  {contradictions, redundancies, overrides: []}
 }
 
 /**
@@ -493,6 +496,14 @@ Checks each `@partitionTag` against what inference derives with that hint remove
   hint names a key the slice only reads as a reference to another entity. Storage,
   fence and read scope would all follow the wrong key.
 - **Redundant** — inference reaches the same key unaided; the annotation can go.
+- **Override** — inference disagrees, but the slice's chapter backs the hint: every
+  id-carrying event written in the chapter carries the hinted key, and every foreign
+  event the slice reads by that key is written by a slice partitioned by it. Rule 1
+  cannot tell an own key read back off a sibling's events from a reference
+  (`ShipOrder` writing `{orderId, carrierBookingId}` and reading `OrderPlaced` has
+  `AddProduct`'s shape exactly), and the hint is how the author says which. The
+  chapter is what separates the two: every event under `Order/` carries `orderId`,
+  while a `@partitionTag categoryId` on `AddProduct` disagrees with `Product/`.
 
 A hint that names a key the slice's events do not carry is not checked here:
 inference ignores it, and the boundary derivation reports the slice instead.
@@ -502,6 +513,40 @@ let validatePartitionHintsVsInference = (
 ): scopeInferenceIssues => {
   let contradictions: array<validationError> = []
   let redundancies: array<validationError> = []
+  let overrides: array<validationError> = []
+  let chapterKeys = DcbScopeInference.chapterKeys(shapes)
+  let producersOf = eventType =>
+    shapes->Array.filter(p => p.produced->Array.some(e => e.eventType == eventType))
+  // The chapter backs the hint, and what the slice reads by that key is its own
+  // entity: each foreign arm carrying it comes from a slice partitioned by it.
+  let backedByChapter = (s: DcbScopeInference.sliceShape, hint, partitionBySlice) => {
+    let chapterAgrees =
+      s.chapter
+      ->Option.flatMap(c => chapterKeys->Dict.get(c))
+      ->Option.mapOr(false, keys => keys->Array.includes(hint))
+    let own = s.produced->Array.map(e => e.eventType)
+    let readsOwnEntity =
+      s.consumed
+      ->Array.filter(e =>
+        !(own->Array.includes(e.eventType)) &&
+        e->DcbScopeInference.keysOfEvent->Array.includes(hint)
+      )
+      ->Array.every(e =>
+        switch producersOf(e.eventType) {
+        | [] => false
+        | producers =>
+          producers->Array.every(p => partitionBySlice->Dict.get(p.sliceName) == Some(hint))
+        }
+      )
+    chapterAgrees && readsOwnEntity
+  }
+  let overridden = (s: DcbScopeInference.sliceShape, hint, inference) =>
+    overrides->Array.push({
+      sliceName: s.sliceName,
+      message: `@partitionTag ${hint} decides the partition against inference (${inference}): every event in chapter ${s.chapter->Option.getOr(
+          "",
+        )} carries ${hint}, and what the slice reads by it is written by slices partitioned by ${hint}.`,
+    })
   shapes->Array.forEach(s =>
     switch s.partitionHint {
     | Some(hint) if DcbScopeInference.producedKeys(s)->Array.includes(hint) =>
@@ -546,6 +591,8 @@ let validatePartitionHintsVsInference = (
             sliceName: s.sliceName,
             message: `@partitionTag ${hint} is what inference derives without it — the annotation is redundant and can be removed.`,
           })
+        | Some(inferred) if backedByChapter(s, hint, unaided.partitionBySlice) =>
+          overridden(s, hint, `it derives ${inferred}`)
         | Some(inferred) =>
           contradictions->Array.push({
             sliceName: s.sliceName,
@@ -553,7 +600,11 @@ let validatePartitionHintsVsInference = (
           })
         | None =>
           let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
-          if !(candidates->Array.includes(hint)) {
+          if candidates->Array.includes(hint) {
+            ()
+          } else if backedByChapter(s, hint, unaided.partitionBySlice) {
+            overridden(s, hint, `candidates: ${candidates->Array.join(", ")}`)
+          } else {
             contradictions->Array.push({
               sliceName: s.sliceName,
               message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
@@ -566,7 +617,7 @@ let validatePartitionHintsVsInference = (
     | _ => ()
     }
   )
-  {contradictions, redundancies}
+  {contradictions, redundancies, overrides}
 }
 
 /**

@@ -178,7 +178,7 @@ function Make(DcbEventLogStorage) {
       }));
       let inferenceShapes = sliceSchemas.map(DcbTag$Reventless.sliceShape);
       let hintIssues = DcbValidation$Reventless.validatePartitionHintsVsInference(inferenceShapes);
-      hintIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB partition (` + e.sliceName + `): ` + e.message));
+      hintIssues.redundancies.concat(hintIssues.overrides).forEach(e => log.info("Dcb_Builder", undefined, `DCB partition (` + e.sliceName + `): ` + e.message));
       if (hintIssues.contradictions.length !== 0) {
         let detail = hintIssues.contradictions.map(e => e.sliceName + `: ` + e.message).join(" | ");
         log.error("Dcb_Builder", undefined, `DCB partition contradiction (` + name + `): ` + detail);
