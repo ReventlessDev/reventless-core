@@ -300,8 +300,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -363,8 +363,8 @@ importers:
         version: 11.0.0(sury@11.0.0(rescript@12.3.1))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -561,8 +561,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -627,8 +627,8 @@ importers:
         version: 11.0.0(sury@11.0.0(rescript@12.3.1))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -843,8 +843,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -918,8 +918,8 @@ importers:
         version: 11.0.0(sury@11.0.0(rescript@12.3.1))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.108
-        version: 3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.109
+        version: 3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/seed-data:
     dependencies:
@@ -951,8 +951,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/spec
       '@reventlessdev/reventless-ui-slots':
-        specifier: 3.0.0-alpha.11
-        version: 3.0.0-alpha.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.1)
+        specifier: 3.0.0-alpha.12
+        version: 3.0.0-alpha.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.1)
       sury:
         specifier: 11.0.0
         version: 11.0.0(rescript@12.3.1)
@@ -4851,8 +4851,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.108':
-    resolution: {integrity: sha512-0C+SN4ZSMLXgrmeo01FyGOg0mS6s8EP9H4tKpbW71jicayTxU4JLZv2uLKLt9Km0DqFjBrjtvG6bybuOo2hwzA==}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.109':
+    resolution: {integrity: sha512-7tDXmOqxmkWIts97+kUeLL9He/5A3/gR+tksDL+J8HV8lyYs1+0RfuuFef5av8rCb2bO4f0XYzbSWeGNd4FYPQ==}
     hasBin: true
 
   '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.94':
@@ -4865,11 +4865,11 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.11':
-    resolution: {integrity: sha512-wC0xh0SzTaLvUCMeEguHQ6su38j4IWr4S4TuImESk1D7PF51dXU5Dy51KJnZNfHA3EtWW1uDNAea49zQ7jwrxw==}
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.12':
+    resolution: {integrity: sha512-XrX6HUtE87rjKoqS6gkczl35NM2/gYhkc2waXDPi31vKGH0wmNu0ohPDlG4xvivYxQgSuLqQ/wHL8zm+yDpV5A==}
     peerDependencies:
       react: '>=18'
-      rescript: ^12.3.0
+      rescript: ^12.3.1
     peerDependenciesMeta:
       react:
         optional: true
@@ -17974,7 +17974,7 @@ snapshots:
   '@rescript/win32-x64@12.3.1':
     optional: true
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.108(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.109(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@module-federation/vite': 1.15.4(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
       vite: 6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
@@ -18002,7 +18002,7 @@ snapshots:
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.94':
     optional: true
 
-  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.1)':
+  '@reventlessdev/reventless-ui-slots@3.0.0-alpha.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.1)':
     dependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     optionalDependencies:
