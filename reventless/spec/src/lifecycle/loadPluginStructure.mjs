@@ -18,13 +18,30 @@
 // schema describes the wire form, so validating an in-memory structure against
 // it fails on every optional that happens to be empty.
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-const localPlatformPath = (pluginDir) =>
-  join(
-    pluginDir,
-    "node_modules/@reventlessdev/reventless-local/src/Platform.res.mjs",
-  );
+const localPlatformModule = "node_modules/@reventlessdev/reventless-local/src/Platform.res.mjs";
+
+/**
+ * Where the local platform is installed for this plugin: the nearest
+ * `node_modules` from the plugin directory up, the way Node resolves a package.
+ * A monorepo member has its own copy; an app that installs its dependencies at
+ * its root (`node-linker=hoisted`) has one only there. Walked rather than
+ * resolved through the package, so its `exports` map does not decide what can be
+ * reached.
+ *
+ * @returns {string | undefined}
+ */
+export const localPlatformPath = (pluginDir) => {
+  let dir = resolve(pluginDir);
+  for (;;) {
+    const candidate = join(dir, localPlatformModule);
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+};
 
 const pluginEntryPath = (pluginDir) => join(pluginDir, "src/Plugin.res.mjs");
 
@@ -40,10 +57,10 @@ export const loadPluginStructure = async (pluginDir) => {
       error: `no compiled plugin at ${entry} — build the plugin first`,
     };
   }
-  if (!existsSync(local)) {
+  if (local === undefined) {
     return {
       ok: false,
-      error: `no local platform installed at ${local}`,
+      error: `no local platform installed for ${pluginDir} — none in any node_modules from there up`,
     };
   }
   try {

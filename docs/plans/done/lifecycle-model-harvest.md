@@ -486,3 +486,13 @@ That is the right failure — published, it would offer the command on no row.
   produces an unmet obligation rather than a silently narrower menu. Needs
   Phase 1's verdict machinery first.
 - **The closed-world gate**, with the generation pipeline.
+
+## Follow-up (2026-09-25): an app that installs at its root
+
+The harvest found the local platform only in a plugin's own `node_modules`, where this
+monorepo installs it. An app that installs its dependencies once at its root
+(`node-linker=hoisted`) has the package only there, so the harvest read no plugin and derived
+nothing, reporting *"no local platform installed"*. `loadPluginStructure.localPlatformPath` now
+walks up from the plugin directory to the nearest `node_modules` holding it, as Node resolves a
+package; a plugin with its own copy still gets that one. `LoadPluginStructureTest` covers both
+layouts and the case where none is installed.
