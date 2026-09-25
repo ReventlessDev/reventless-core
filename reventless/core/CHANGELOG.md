@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.275 (2026-09-25)
+
+### Bug Fixes
+
+* **spec,core:** a partition tag its chapter backs overrides inference ([4244a4a](https://github.com/ReventlessDev/reventless-core/commit/4244a4af9e7aad4378d9b6276ddeb44878e125b2))
+
+
 # 3.0.0-alpha.274 (2026-09-24)
 
 ### Features
