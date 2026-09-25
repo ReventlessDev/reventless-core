@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-25
+- fix(core): an identity is published as a string, not a UUID ([f3781ba](https://github.com/ReventlessDev/reventless-core/commit/f3781ba5cae75f156175f649d51f32c3ca053907))
 ### 2026-09-24
 - docs: commandTransition replaces @allowedStates in the PPX guide ([6f7ba20](https://github.com/ReventlessDev/reventless-core/commit/6f7ba20146d181a9999f1dd2cd62ab26a051a3b7))
 - feat(ppx): the reader prints every attribute the PPX reads ([012f999](https://github.com/ReventlessDev/reventless-core/commit/012f9990d8151651a7384d2fc39377792de9e8a8))
