@@ -224,6 +224,15 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:dcb-scope
 
+      # A sury codegen change can leave a union parser unable to reach some of
+      # its constructors: values encode fine and then cannot be read back. This
+      # reads every compiled union parser for that shape, before anyone writes a
+      # decode test. Run by hand only, it printed ok while examining nothing for
+      # a whole sury release, so it runs here, and fails when it examines none.
+      - name: Check every union constructor is reachable
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:unions
+
       # A Pulumi Output is a Proxy that answers ReScript's nested-option probe,
       # so any generic Option combinator over one replaces it with the
       # {BS_PRIVATE_NESTED_SOME_NONE: 0} sentinel — a type-correct None the
