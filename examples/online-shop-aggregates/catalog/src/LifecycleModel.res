@@ -6,4 +6,19 @@
 // `@transition` annotation where it says anything, and falls back to the
 // annotation where it is silent.
 
-let model: array<Reventless.Plugin.derivedEdge> = []
+let model: array<Reventless.Plugin.derivedEdge> = [
+  {
+    component: "Category",
+    command: "Add",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+  {
+    component: "Product",
+    command: "Add",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+]

@@ -228,10 +228,10 @@
   {
     "component": "EmailVerificationChallenges",
     "command": "IssueEmailChallenge",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 1
   },
   {
     "component": "EmailVerificationChallenges",
@@ -239,39 +239,15 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 6
-  },
-  {
-    "component": "NotificationPreferences",
-    "command": "RecordDelivery",
-    "level": "",
-    "allowedStates": [],
-    "targets": [],
     "scenarios": 1
-  },
-  {
-    "component": "NotificationPreferences",
-    "command": "RecordDeliveryFailure",
-    "level": "",
-    "allowedStates": [],
-    "targets": [],
-    "scenarios": 1
-  },
-  {
-    "component": "NotificationPreferences",
-    "command": "RequestNotification",
-    "level": "",
-    "allowedStates": [],
-    "targets": [],
-    "scenarios": 2
   },
   {
     "component": "NotificationSourceClaims",
     "command": "ClaimNotificationSource",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 3
+    "scenarios": 1
   },
   {
     "component": "NotificationSourceClaims",
@@ -279,7 +255,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 1
   },
   {
     "component": "PlaceOrder",
@@ -392,7 +368,7 @@
   {
     "component": "SyncCatalogProduct",
     "command": "SyncNewProduct",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2

@@ -4027,11 +4027,19 @@ let test = (_: string, f: unit => unit) => f()
 let givenEvents = (_: array<unit>) => ()
 let thenState = ((), _: row) => ()
 
+let seeded = ()
+
 describe("Lines", () => {
   test("keeps named values and code", () =>
     givenEvents([])->thenState({
       line: OrderingExamples.dockLine,
       total: Money.make(~amount=1000.0, ~currency=Money.EUR),
+    })
+  )
+  test("keeps a step it cannot read", () =>
+    givenEvents([seeded])->thenState({
+      line: OrderingExamples.dockLine,
+      total: Money.make(~amount=1.0, ~currency=Money.EUR),
     })
   )
 })
@@ -4065,6 +4073,9 @@ GJ="$SIDECARS/src/Lines_GWT.gwt.json"
 assert_js_contains "$GJ" '"kind": "ref", "name": "OrderingExamples.dockLine"' "a qualified name is a ref"
 assert_js_contains "$GJ" '"value": "Money.make(~amount=1000.0, ~currency=Money.EUR)"' \
   "a call is code, cut from the ReScript source"
+assert_js_contains "$GJ" '"kind": "opaque"' "a step it cannot read is kept, as opaque"
+assert_js_contains "$GJ" '"of": "event"' "an opaque step says which kind it stands in for"
+assert_js_contains "$GJ" '"element": "seeded"' "an opaque step is named by its source text"
 
 echo ""
 echo "=== Test: a module of shared @schema types gets a types sidecar ==="

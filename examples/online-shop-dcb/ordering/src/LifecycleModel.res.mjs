@@ -17,11 +17,25 @@ let model = [
     targets: ["Placed"]
   },
   {
+    component: "RegisterCustomer",
+    command: "RegisterCustomer",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
+  },
+  {
     component: "ShipOrder",
     command: "ShipOrder",
     level: "Instance",
     allowedStates: ["Placed"],
     targets: ["Shipped"]
+  },
+  {
+    component: "SyncCatalogProduct",
+    command: "SyncNewProduct",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
   }
 ];
 

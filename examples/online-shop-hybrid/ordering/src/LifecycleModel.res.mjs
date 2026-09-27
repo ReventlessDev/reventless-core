@@ -66,6 +66,20 @@ let model = [
     targets: []
   },
   {
+    component: "EmailVerificationChallenges",
+    command: "IssueEmailChallenge",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
+  },
+  {
+    component: "NotificationSourceClaims",
+    command: "ClaimNotificationSource",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
+  },
+  {
     component: "PlaceOrder",
     command: "PlaceOrder",
     level: "Collection",
@@ -78,6 +92,13 @@ let model = [
     level: "Instance",
     allowedStates: ["Placed"],
     targets: ["Shipped"]
+  },
+  {
+    component: "SyncCatalogProduct",
+    command: "SyncNewProduct",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
   }
 ];
 

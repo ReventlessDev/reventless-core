@@ -8,6 +8,20 @@
 
 let model: array<Reventless.Plugin.derivedEdge> = [
   {
+    component: "CatalogProduct",
+    command: "Sync",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+  {
+    component: "Customer",
+    command: "Register",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+  {
     component: "Order",
     command: "Cancel",
     level: Reventless.Plugin.Instance,

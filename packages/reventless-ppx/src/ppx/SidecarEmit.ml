@@ -630,16 +630,26 @@ let step_json ~kind ~element ~values : Yojson.Safe.t =
    command that ran and produced nothing. That is the opposite of what it
    asserts, and it is why the lifecycle check called such a scenario a
    contradiction of the transition the command declares. *)
+(* A step this walk cannot read — `givenEvents([added])`, `thenEvent(made())` —
+   is kept as `opaque`, `of` the kind it stands in for, named by its source
+   text. Dropped, `given: []` read as a history with nothing in it, and a command
+   that only runs on an existing row as one that creates it. *)
+let opaque_step_json ?src ~(kind : string) (e : expression) : Yojson.Safe.t =
+  `Assoc
+    [ ("kind", `String "opaque"); ("of", `String kind);
+      ("element", `String (Option.value (source_text ?src e) ~default:""));
+      ("values", `List []) ]
+
 let steps_of_payload ?src ~(kind : string) (payload : expression) :
     Yojson.Safe.t list =
   let one el =
     match element_of_constructor ?src el with
-    | Some (element, values) -> Some (step_json ~kind ~element ~values)
-    | None -> None
+    | Some (element, values) -> step_json ~kind ~element ~values
+    | None -> opaque_step_json ?src ~kind el
   in
   match payload.pexp_desc with
-  | Pexp_array els -> List.filter_map one els
-  | _ -> ( match one payload with Some step -> [ step ] | None -> [])
+  | Pexp_array els -> List.map one els
+  | _ -> [ one payload ]
 
 (* The same, for the verbs whose payload is a record rather than a constructor:
    a projection asserts the row itself, so there is no element name to read and

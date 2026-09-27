@@ -2,7 +2,7 @@
   {
     "component": "CatalogProduct",
     "command": "Sync",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2
@@ -18,7 +18,7 @@
   {
     "component": "Category",
     "command": "Add",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2
@@ -50,7 +50,7 @@
   {
     "component": "Customer",
     "command": "Register",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 3
@@ -120,10 +120,10 @@
   {
     "component": "Product",
     "command": "Add",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 1
   },
   {
     "component": "Product",
@@ -131,7 +131,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 3
+    "scenarios": 1
   },
   {
     "component": "Product",
@@ -139,7 +139,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 3
+    "scenarios": 1
   },
   {
     "component": "Product",
@@ -147,7 +147,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 3
+    "scenarios": 1
   },
   {
     "component": "Product",
@@ -155,7 +155,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 3
+    "scenarios": 1
   },
   {
     "component": "ProductDemand",

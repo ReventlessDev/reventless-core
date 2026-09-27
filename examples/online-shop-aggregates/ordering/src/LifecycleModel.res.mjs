@@ -3,6 +3,20 @@
 
 let model = [
   {
+    component: "CatalogProduct",
+    command: "Sync",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
+  },
+  {
+    component: "Customer",
+    command: "Register",
+    level: "Collection",
+    allowedStates: [],
+    targets: []
+  },
+  {
     component: "Order",
     command: "Cancel",
     level: "Instance",

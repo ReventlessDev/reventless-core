@@ -2,7 +2,7 @@
   {
     "component": "AddCategory",
     "command": "AddCategory",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 3
@@ -10,7 +10,7 @@
   {
     "component": "AddProduct",
     "command": "AddProduct",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2
@@ -112,7 +112,7 @@
   {
     "component": "RegisterCustomer",
     "command": "RegisterCustomer",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2
@@ -148,7 +148,7 @@
   {
     "component": "SyncCatalogProduct",
     "command": "SyncNewProduct",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2

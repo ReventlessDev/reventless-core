@@ -71,6 +71,20 @@ let model: array<Reventless.Plugin.derivedEdge> = [
     targets: [],
   },
   {
+    component: "EmailVerificationChallenges",
+    command: "IssueEmailChallenge",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+  {
+    component: "NotificationSourceClaims",
+    command: "ClaimNotificationSource",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
+  {
     component: "PlaceOrder",
     command: "PlaceOrder",
     level: Reventless.Plugin.Collection,
@@ -83,5 +97,12 @@ let model: array<Reventless.Plugin.derivedEdge> = [
     level: Reventless.Plugin.Instance,
     allowedStates: ["Placed"],
     targets: ["Shipped"],
+  },
+  {
+    component: "SyncCatalogProduct",
+    command: "SyncNewProduct",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
   },
 ]

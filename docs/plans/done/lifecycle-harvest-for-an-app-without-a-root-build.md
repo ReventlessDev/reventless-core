@@ -1,6 +1,6 @@
 # Plan (Backlog): the lifecycle harvest outside the monorepo, and placement for a view with no lifecycle
 
-**Status:** Backlog. §1 built 2026-09-27; §2 not started.
+**Status:** Built. §1 2026-09-27, §2 2026-09-28.
 
 **Relates to:** [lifecycle-transition-annotation](../lifecycle-transition-annotation.md),
 [lifecycle-fact-provenance](../lifecycle-fact-provenance.md)
@@ -38,3 +38,10 @@ after). The first-word guess stays for a plugin with no scenario corpus at all.
 
 **Verify:** a list view without a lifecycle field, with one command named `EnrolDriver` whose
 scenarios start from an empty history, harvests as Collection-level.
+
+**Found while building it:** the scenario sidecar dropped any step that was not a constructor
+literal, so `givenEvents([added])` arrived as `given: []`, an empty history. Read that way, half
+the commands this rule placed act on an existing row (`Product.UpdateName`). The sidecar now keeps
+such a step as `opaque`, `of` the kind it stands in for. The harvest drops an observation whose
+history holds one (its from-state is unknown), and reads an opaque `then` as the kind it asserts,
+which also stops `thenEvent(added)` reading as "accepted, nothing happened".

@@ -18,6 +18,7 @@ let observation = (~command, ~from, ~outcome, ~to_="") => {
   from,
   outcome,
   to: to_ == "" ? from : to_,
+  rowHistory: from == Check.noRow ? 0 : 1,
 }
 
 let derive = observations =>
@@ -369,4 +370,118 @@ describe("CheckLifecycleModel.emitSidecars", () => {
     remove(dir)
     expect(found)->toBe(false)
   })
+})
+
+// A view with no lifecycle field labels nothing, but a scenario that starts from
+// no event about the row still says the command creates one.
+describe("a view with no lifecycle field still places a creating command", () => {
+  let driverId = JSON.Encode.string("d1")
+  let scenario = (~given) => {
+    Check.title: "enrol a driver",
+    given,
+    whenKind: "command",
+    whenElements: [{Check.name: "EnrolDriver", values: [("driverId", driverId)]}],
+    thenKind: "event",
+    thenElements: [{Check.name: "DriverEnrolled", values: [("driverId", driverId)]}],
+    thenValues: [],
+  }
+  let levelOf = scenarios =>
+    Check.observe(~scenarios, ~map=Dict.make(), ~idFieldFor=_ => Some("driverId"))
+    ->(observations => Check.deriveCommands(~component="Drivers", ~observations, ~labelled=false))
+    ->Array.get(0)
+    ->Option.map(d => d.level)
+
+  testSync("EnrolDriver from an empty history is Collection-level", () =>
+    expect(levelOf([scenario(~given=[])]))->toEqual(Some("Collection"))
+  )
+
+  testSync("another driver's events are not this row's history", () =>
+    expect(
+      levelOf([
+        scenario(
+          ~given=[{Check.name: "DriverEnrolled", values: [("driverId", JSON.Encode.string("d2"))]}],
+        ),
+      ]),
+    )->toEqual(Some("Collection"))
+  )
+
+  testSync("a success after events about the row says nothing", () =>
+    expect(
+      levelOf([
+        scenario(~given=[]),
+        scenario(~given=[{Check.name: "DriverEnrolled", values: [("driverId", driverId)]}]),
+      ]),
+    )->toEqual(Some(""))
+  )
+})
+
+// A step the sidecar could not read arrives as `opaque`, `of` the kind it stands
+// in for. The shape a `let added = Added(...)` binding leaves behind.
+describe("a step the sidecar could not read", () => {
+  let step = (kind, element) =>
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("kind", JSON.Encode.string(kind)),
+        ("element", JSON.Encode.string(element)),
+        ("values", JSON.Encode.array([])),
+      ]),
+    )
+  let opaque = (~of_, element) =>
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("kind", JSON.Encode.string("opaque")),
+        ("of", JSON.Encode.string(of_)),
+        ("element", JSON.Encode.string(element)),
+        ("values", JSON.Encode.array([])),
+      ]),
+    )
+  let scenario = (~given, ~when_, ~then_) =>
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("title", JSON.Encode.string("t")),
+        ("given", JSON.Encode.array(given)),
+        ("when", JSON.Encode.array(when_)),
+        ("then", JSON.Encode.array(then_)),
+      ]),
+    )
+    ->Check.scenarioOf
+    ->Option.getOrThrow
+  let levels = scenarios =>
+    Check.observe(~scenarios, ~map=Dict.make(), ~idFieldFor=_ => None)
+    ->(observations => Check.deriveCommands(~component="Product", ~observations, ~labelled=false))
+    ->Array.map(d => (d.command, d.level))
+
+  testSync("an unread history is not an empty one", () =>
+    expect(
+      levels([
+        scenario(
+          ~given=[opaque(~of_="event", "added")],
+          ~when_=[step("command", "UpdateName")],
+          ~then_=[step("event", "NameUpdated")],
+        ),
+      ]),
+    )->toEqual([])
+  )
+
+  testSync("an unread then still says what kind it asserts", () => {
+    let s = scenario(
+      ~given=[],
+      ~when_=[step("command", "Add")],
+      ~then_=[opaque(~of_="event", "added")],
+    )
+    expect(s.thenKind)->toBe("event")
+    expect(levels([s]))->toEqual([("Add", "Collection")])
+  })
+
+  testSync("an unread when names no command", () =>
+    expect(
+      levels([
+        scenario(
+          ~given=[],
+          ~when_=[opaque(~of_="command", "renamed")],
+          ~then_=[step("event", "X")],
+        ),
+      ]),
+    )->toEqual([])
+  )
 })

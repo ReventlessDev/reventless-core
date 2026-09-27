@@ -123,12 +123,26 @@ function valuesOf(step) {
 function elementsOf(steps) {
   return Stdlib_Array.filterMap(steps, s => Stdlib_Option.map(getStr(s, "element"), name => ({
     name: lastSegment(name),
-    values: valuesOf(s)
+    values: valuesOf(s),
+    opaque: Primitive_object.equal(getStr(s, "kind"), "opaque")
   })));
+}
+
+function isOpaque(e) {
+  return Primitive_object.equal(e.opaque, true);
 }
 
 function kindOf(steps) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(steps[0], s => getStr(s, "kind")), "");
+}
+
+function thenKindOf(steps) {
+  let s = steps[0];
+  if (s !== undefined && Primitive_object.equal(getStr(s, "kind"), "opaque")) {
+    return Stdlib_Option.getOr(getStr(s, "of"), "");
+  } else {
+    return kindOf(steps);
+  }
 }
 
 function scenarioOf(j) {
@@ -141,7 +155,7 @@ function scenarioOf(j) {
       given: elementsOf(given),
       whenKind: kindOf(when_),
       whenElements: elementsOf(when_),
-      thenKind: kindOf(then_),
+      thenKind: thenKindOf(then_),
       thenElements: elementsOf(then_),
       thenValues: Stdlib_Option.getOr(Stdlib_Option.map(then_[0], valuesOf), [])
     };
@@ -497,13 +511,18 @@ function observe(scenarios, map, idFieldFor) {
     let history = s.given.filter(e => sameRow(e, idField, idValue));
     let from = fold(history);
     let outcome = outcomeOf(s);
-    return {
-      title: s.title,
-      command: command.name,
-      from: from,
-      outcome: outcome,
-      to: outcome === "Emitted" ? fold(history.concat(s.thenElements)) : from
-    };
+    if (history.some(isOpaque)) {
+      return;
+    } else {
+      return {
+        title: s.title,
+        command: command.name,
+        from: from,
+        outcome: outcome,
+        to: outcome === "Emitted" ? fold(history.concat(s.thenElements)) : from,
+        rowHistory: history.length
+      };
+    }
   });
 }
 
@@ -542,8 +561,12 @@ function deriveCommands(component, observations, labelled) {
           return o.to;
         }
       })),
-      level: labelled && match !== 0 ? (
-          effective.every(o => o.from === noRow) ? "Collection" : "Instance"
+      level: match !== 0 ? (
+          labelled ? (
+              effective.every(o => o.from === noRow) ? "Collection" : "Instance"
+            ) : (
+              effective.every(o => o.rowHistory === 0) ? "Collection" : ""
+            )
         ) : "",
       scenarios: mine.length
     };
@@ -564,10 +587,14 @@ function shownOutcomeOf(s) {
     default:
       return;
   }
-  return [
-    s.thenKind,
-    s.thenElements.map(e => e.name)
-  ];
+  if (s.thenElements.some(isOpaque)) {
+    return;
+  } else {
+    return [
+      s.thenKind,
+      s.thenElements.map(e => e.name)
+    ];
+  }
 }
 
 function byPluginComponentCommand(xs) {
@@ -1304,7 +1331,9 @@ export {
   sortedUnique,
   valuesOf,
   elementsOf,
+  isOpaque,
   kindOf,
+  thenKindOf,
   scenarioOf,
   readCorpus,
   filesUnder,

@@ -185,7 +185,9 @@ let sortedUnique = (xs: array<string>): array<string> => {
     slice's setup routinely names other entities, and folding those into this
     row's state is how a scenario about a second order gets read as a scenario
     about the first one's. */
-type element = {name: string, values: array<(string, JSON.t)>}
+/** `opaque` is a step the sidecar could not read (`givenEvents([added])`): it is
+    there, but its name is source text, not an element. */
+type element = {name: string, values: array<(string, JSON.t)>, opaque?: bool}
 
 /** One scenario, reduced to what the harvest reads. `then` carries at most one
     step in every DSL here, so it is a kind and a payload rather than a list. */
@@ -220,11 +222,28 @@ let valuesOf = (step: dict<JSON.t>): array<(string, JSON.t)> =>
 
 let elementsOf = (steps: array<dict<JSON.t>>): array<element> =>
   steps->Array.filterMap(s =>
-    s->getStr("element")->Option.map(name => {name: lastSegment(name), values: valuesOf(s)})
+    s
+    ->getStr("element")
+    ->Option.map(name => {
+      name: lastSegment(name),
+      values: valuesOf(s),
+      opaque: s->getStr("kind") == Some("opaque"),
+    })
   )
+
+let isOpaque = (e: element) => e.opaque == Some(true)
 
 let kindOf = (steps: array<dict<JSON.t>>): string =>
   steps->Array.get(0)->Option.flatMap(s => s->getStr("kind"))->Option.getOr("")
+
+/** A `then` the sidecar could not read still says which kind it asserts:
+    `thenEvent(added)` emitted, though nothing says what. A `when` keeps
+    `opaque`, so no command is named after a variable. */
+let thenKindOf = (steps: array<dict<JSON.t>>): string =>
+  switch steps->Array.get(0) {
+  | Some(s) if s->getStr("kind") == Some("opaque") => s->getStr("of")->Option.getOr("")
+  | _ => kindOf(steps)
+  }
 
 let scenarioOf = (j: JSON.t): option<scenario> =>
   j
@@ -238,7 +257,7 @@ let scenarioOf = (j: JSON.t): option<scenario> =>
       given: elementsOf(given),
       whenKind: kindOf(when_),
       whenElements: elementsOf(when_),
-      thenKind: kindOf(then_),
+      thenKind: thenKindOf(then_),
       thenElements: elementsOf(then_),
       thenValues: then_->Array.get(0)->Option.map(valuesOf)->Option.getOr([]),
     }
@@ -577,6 +596,9 @@ type observation = {
   from: string,
   outcome: outcome,
   to: string,
+  /** The setup events about this command's row. Zero is "no row before", which
+      a view with no lifecycle field can still say, having no states to fold. */
+  rowHistory: int,
 }
 
 type derivedCommand = {
@@ -605,8 +627,8 @@ type derivedCommand = {
       carry the model, and that is worth seeing before spending the change. */
   targets: array<string>,
   /** `""` where the corpus cannot say. Without a lifecycle map every history
-      folds to "no row", which would make every command in the plugin look like
-      it creates one — a confident wrong answer where the honest one is silence. */
+      folds to "no row", so the fold cannot answer; an empty history still can,
+      and a command that only ever succeeds on one is `Collection`. */
   level: string,
   scenarios: int,
 }
@@ -671,13 +693,18 @@ let observe = (
       let history = s.given->Array.filter(e => e->sameRow(~idField, ~idValue))
       let from = fold(history)
       let outcome = outcomeOf(s)
-      Some({
-        title: s.title,
-        command: command.name,
-        from,
-        outcome,
-        to: outcome == Emitted ? fold(Array.concat(history, s.thenElements)) : from,
-      })
+      // A history holding a step nobody could read has a from-state nobody
+      // knows; reading it as "no row" makes an update look like a create.
+      history->Array.some(isOpaque)
+        ? None
+        : Some({
+            title: s.title,
+            command: command.name,
+            from,
+            outcome,
+            to: outcome == Emitted ? fold(Array.concat(history, s.thenElements)) : from,
+            rowHistory: Array.length(history),
+          })
     | _ => None
     }
   )
@@ -710,9 +737,12 @@ let deriveCommands = (
       // A command whose every successful scenario starts from no row is creating
       // one. This is what the published metadata guesses at today from the
       // command's name stem, which misreads `Enroll`, `Provision`, `Onboard`.
+      // Without labels only an empty history says "no row"; a non-empty one
+      // cannot tell a live row from events that fold to none, so it says nothing.
       level: switch (labelled, Array.length(effective)) {
-      | (false, _) | (_, 0) => ""
+      | (_, 0) => ""
       | (true, _) => effective->Array.every(o => o.from == noRow) ? "Collection" : "Instance"
+      | (false, _) => effective->Array.every(o => o.rowHistory == 0) ? "Collection" : ""
       },
       scenarios: Array.length(mine),
     }
@@ -749,6 +779,7 @@ type commandOutcomes = {
 
 let shownOutcomeOf = (s: scenario): option<(string, array<string>)> =>
   switch s.thenKind {
+  | "event" | "error" if s.thenElements->Array.some(isOpaque) => None
   | "event" | "error" => Some((s.thenKind, s.thenElements->Array.map(e => e.name)))
   | "noEvent" => Some(("noEvent", []))
   // The empty `then` above, and a `then` that is not about this command's
