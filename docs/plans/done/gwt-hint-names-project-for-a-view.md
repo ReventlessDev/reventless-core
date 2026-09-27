@@ -1,6 +1,6 @@
 # Plan (Backlog): a view's failing scenario points at `project`
 
-**Status:** Backlog (not started)
+**Status:** Built 2026-09-27. `StateMismatch` carries an optional `fold`; both projection harnesses set it to `Project`.
 
 `Hint.res` answers a `StateMismatch` with locus `<Slice>.evolve` and "evolve() produced a
 different state than expected". That is right for an aggregate or a state-change slice. A

@@ -6,9 +6,9 @@
 // and §3.3 (JSON `hint` field).
 //
 // `locus` is a dotted pointer like "CategoryBehavior.decide" filled in by
-// the DSL at `then*` call time when the slice module name is in scope. If the
-// DSL can't provide it (e.g. Projection has no single "locus" function name
-// the user controls), `locus` falls back to a generic pointer.
+// the DSL at `then*` call time when the slice module name is in scope, else a
+// generic pointer. A `StateMismatch` names its fold, so a view's points at
+// `project` rather than `evolve`.
 
 type t = {
   locus: string,
@@ -57,6 +57,11 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
         branch: None,
         message,
       }
+    }
+  | StateMismatch({fold: Project}) => {
+      locus: `${slice}.project`,
+      branch: None,
+      message: "project() filed a different row than expected. Check the arm for the event and the key it sets.",
     }
   | StateMismatch(_) => {
       locus: `${slice}.evolve`,

@@ -239,6 +239,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     } else {
       Outcome.fail(
         StateMismatch({
+          fold: Project,
           key: testId.contents,
           expected: Some(JSON.Encode.array(expectedStates->encStates)),
           actual: Some(encStore(store)),
@@ -257,6 +258,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     } else {
       Outcome.fail(
         StateMismatch({
+          fold: Project,
           key: id,
           expected: Some(JSON.Encode.array(expectedStates->encStates)),
           actual: Some(encStore(store)),
@@ -272,6 +274,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     } else {
       Outcome.fail(
         StateMismatch({
+          fold: Project,
           key: "<all>",
           expected: Some(encStore(expectedStore)),
           actual: Some(encStore(store)),
@@ -293,6 +296,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     } else {
       Outcome.fail(
         StateMismatch({
+          fold: Project,
           key: "<any>",
           expected: None,
           actual: Some(encStore(store)),

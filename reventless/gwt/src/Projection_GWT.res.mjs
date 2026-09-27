@@ -231,7 +231,8 @@ function Make(Spec) {
           TAG: "StateMismatch",
           key: testId.contents,
           expected: expectedStates.map(encState),
-          actual: encStore(store)
+          actual: encStore(store),
+          fold: "Project"
         });
       }
     };
@@ -247,7 +248,8 @@ function Make(Spec) {
           TAG: "StateMismatch",
           key: id,
           expected: expectedStates.map(encState),
-          actual: encStore(store)
+          actual: encStore(store),
+          fold: "Project"
         });
       }
     };
@@ -260,7 +262,8 @@ function Make(Spec) {
           TAG: "StateMismatch",
           key: "<all>",
           expected: encStore(expectedStore),
-          actual: encStore(store)
+          actual: encStore(store),
+          fold: "Project"
         });
       }
     };
@@ -276,7 +279,8 @@ function Make(Spec) {
           TAG: "StateMismatch",
           key: "<any>",
           expected: undefined,
-          actual: encStore(store)
+          actual: encStore(store),
+          fold: "Project"
         });
       }
     };

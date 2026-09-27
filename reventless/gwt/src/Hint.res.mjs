@@ -48,6 +48,14 @@ function forMismatch(sliceOpt, m) {
         message: message
       };
     case "StateMismatch" :
+      let match$2 = m.fold;
+      if (match$2 !== undefined && match$2 !== "Evolve") {
+        return {
+          locus: slice + `.project`,
+          branch: undefined,
+          message: "project() filed a different row than expected. Check the arm for the event and the key it sets."
+        };
+      }
       return {
         locus: slice + `.evolve`,
         branch: undefined,

@@ -787,7 +787,7 @@ value — they only differ in how they render it.
 |-----------------------------|-----------------------------------------------------|-----------------------------------------------------------------|
 | `EventsMismatch`            | `thenEvent(s)` when `decide` / `map` events differ  | `{slice}.decide`                                                |
 | `ErrorMismatch`             | `thenError` when `decide` returned `Ok(_)` or a different error variant | `{slice}.decide`                          |
-| `StateMismatch`             | `thenState(WithId)` / `thenAllStates`               | `{slice}.evolve`                                                |
+| `StateMismatch`             | `thenState(WithId)` / `thenAllStates`               | `{slice}.evolve`; `{slice}.project` for a view or read model    |
 | `NoEventExpected`           | `thenNoEvent` / `thenNoCommand` when something was produced | `{slice}.decide`                                         |
 | `TodoMismatch`              | `thenTodos` / `thenScenarioTodos`                   | `{slice}.collect / {slice}.resolve`                             |
 | `AppendConditionMismatch`   | implicit DCB check + `thenAppendsConditionedOn*`    | `{slice}.commandSchema` — usually a missing `@s.matches(DcbTag.string)` |

@@ -248,7 +248,8 @@ function Make(Projection) {
         TAG: "StateMismatch",
         key: testId.contents,
         expected: expectedStates.map(encState),
-        actual: encStore(store)
+        actual: encStore(store),
+        fold: "Project"
       });
     }
   };
@@ -264,7 +265,8 @@ function Make(Projection) {
         TAG: "StateMismatch",
         key: id,
         expected: expectedStates.map(encState),
-        actual: encStore(store)
+        actual: encStore(store),
+        fold: "Project"
       });
     }
   };
@@ -277,7 +279,8 @@ function Make(Projection) {
         TAG: "StateMismatch",
         key: "<all>",
         expected: encStore(expectedStore),
-        actual: encStore(store)
+        actual: encStore(store),
+        fold: "Project"
       });
     }
   };
@@ -293,7 +296,8 @@ function Make(Projection) {
         TAG: "StateMismatch",
         key: "<any>",
         expected: undefined,
-        actual: encStore(store)
+        actual: encStore(store),
+        fold: "Project"
       });
     }
   };

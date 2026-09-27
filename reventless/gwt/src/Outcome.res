@@ -8,10 +8,14 @@
 // shape and §3.3 for the JSON rendering. Stage 7 adds sury-aware rendering and
 // structural `fieldDiff`. Stage 4 added `AppendConditionMismatch`.
 
+// The function whose fold produced a state: a behavior's `evolve`, or a view's
+// `project`. Absent means `Evolve`, so a harness that does not say keeps its hint.
+type fold = Evolve | Project
+
 type mismatch =
   | EventsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
   | ErrorMismatch({expected: JSON.t, actual: option<JSON.t>, actualEvents: array<JSON.t>})
-  | StateMismatch({key: string, expected: option<JSON.t>, actual: option<JSON.t>})
+  | StateMismatch({key: string, expected: option<JSON.t>, actual: option<JSON.t>, fold?: fold})
   | NoEventExpected({actual: array<JSON.t>})
   | TodoMismatch({expected: array<(string, JSON.t)>, actual: array<(string, JSON.t)>})
   | AppendConditionMismatch({expected: JSON.t, actual: JSON.t})
