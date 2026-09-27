@@ -323,34 +323,68 @@ let checkSidecars = (~pluginDirs: array<string>): result<unit, string> =>
     right for the ordinary invocations — this repository's gate, and `--root .`
     from an app — and wrong for a `--root` pointing somewhere else, which is why
     the caller checks for a corpus afterwards either way rather than trusting
-    that a build it did not target wrote one. */
-let emitSidecars = (~pluginDirs: array<string>): result<unit, string> => {
-  let now = Date.now() /. 1000.0
-  gwtSources(~pluginDirs)->Array.forEach(f => NodeFs.utimesSync(f, now, now))
+    that a build it did not target wrote one.
 
-  let env =
-    NodeProcess.env
-    ->Dict.toArray
-    ->Array.concat([("REVENTLESS_EMIT_SIDECAR", "1")])
-    ->Dict.fromArray
+    An app laid out as one package per plugin has no root `build`; there the
+    harvest stops before running anything and names the way that does work. */
+let reuseAdvice = "Build the packages with REVENTLESS_EMIT_SIDECAR=1 set, then run check-lifecycle --reuse-sidecars."
 
-  try {
-    let _ = NodeChildProcess.execFileSync(
-      "pnpm",
-      ["run", "build"],
-      {cwd: repoRoot, env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024},
-    )
-    Ok()
-  } catch {
-  | exn =>
-    Error(
-      exn
-      ->JsExn.fromException
-      ->Option.flatMap(JsExn.message)
-      ->Option.getOr("the build that emits the scenario sidecars failed"),
-    )
+let hasBuildScript = (~dir: string): bool => {
+  let path = NodePath.join([dir, "package.json"])
+  NodeFs.existsSync(path) &&
+  switch path
+  ->NodeFs.readFileSync
+  ->JSON.parseOrThrow
+  ->asObj
+  ->Option.flatMap(d => d->Dict.get("scripts"))
+  ->Option.flatMap(asObj) {
+  | Some(scripts) => scripts->getStr("build")->Option.isSome
+  | None => false
+  | exception _ => false
   }
 }
+
+let lastLines = (output: string, ~count: int): string => {
+  let lines = output->String.trimEnd->String.split("\n")
+  lines->Array.slice(~start=Math.Int.max(0, Array.length(lines) - count))->Array.join("\n")
+}
+
+let emitSidecars = (~pluginDirs: array<string>, ~dir=repoRoot): result<unit, string> =>
+  if !hasBuildScript(~dir) {
+    Error(
+      `${dir} has no "build" script, so there is no build to run with REVENTLESS_EMIT_SIDECAR=1. ${reuseAdvice}`,
+    )
+  } else {
+    let now = Date.now() /. 1000.0
+    gwtSources(~pluginDirs)->Array.forEach(f => NodeFs.utimesSync(f, now, now))
+
+    let env =
+      NodeProcess.env
+      ->Dict.toArray
+      ->Array.concat([("REVENTLESS_EMIT_SIDECAR", "1")])
+      ->Dict.fromArray
+
+    let result = NodeChildProcess.spawnSync(
+      "pnpm",
+      ["run", "build"],
+      {cwd: dir, env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024},
+    )
+    switch (result.error->Nullable.toOption, result.status->Nullable.toOption) {
+    | (None, Some(0)) => Ok()
+    | (Some(err), _) =>
+      Error(
+        `pnpm could not be started to build ${dir}: ${err
+          ->JsExn.message
+          ->Option.getOr("no reason given")}. ${reuseAdvice}`,
+      )
+    | (None, _) =>
+      let output =
+        [result.stdout, result.stderr]
+        ->Array.filterMap(Nullable.toOption)
+        ->Array.join("\n")
+      Error(`The build at ${dir} failed. ${reuseAdvice}\n\n${output->lastLines(~count=20)}`)
+    }
+  }
 
 // ── The declared side ───────────────────────────────────────────────────────
 

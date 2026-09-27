@@ -1,6 +1,6 @@
 # Plan (Backlog): the lifecycle harvest outside the monorepo, and placement for a view with no lifecycle
 
-**Status:** Backlog (not started)
+**Status:** Backlog. §1 built 2026-09-27; §2 not started.
 
 **Relates to:** [lifecycle-transition-annotation](../lifecycle-transition-annotation.md),
 [lifecycle-fact-provenance](../lifecycle-fact-provenance.md)

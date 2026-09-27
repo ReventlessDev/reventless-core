@@ -329,3 +329,44 @@ describe("CheckLifecycleModel.parseArgs", () => {
     expect(CheckLifecycleModel.parseArgs(["--root", "--json"])->Result.isError)->toBe(true)
   )
 })
+
+// An app laid out as one package per plugin has no root `build`, and the harvest
+// has to say what works there instead of ending on `Command failed`.
+describe("CheckLifecycleModel.emitSidecars", () => {
+  let appWith = (pkg: string) => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "check-lifecycle-"]))
+    NodeFs.writeFileSync(NodePath.join([dir, "package.json"]), pkg)
+    dir
+  }
+  let remove = dir => NodeFs.rmSync(dir, {recursive: true, force: true})
+
+  testSync("a root with no build script stops and names --reuse-sidecars", () => {
+    let dir = appWith(`{"name": "app", "scripts": {"test": "jest"}}`)
+    let result = Check.emitSidecars(~pluginDirs=[], ~dir)
+    remove(dir)
+    expect(result)->toEqual(
+      Error(
+        `${dir} has no "build" script, so there is no build to run with REVENTLESS_EMIT_SIDECAR=1. ${Check.reuseAdvice}`,
+      ),
+    )
+  })
+
+  testSync("a failing build says the same, with the build's last lines after it", () => {
+    let dir = appWith(`{"name": "app", "scripts": {"build": "echo tsc: 2 errors >&2 && exit 3"}}`)
+    let result = Check.emitSidecars(~pluginDirs=[], ~dir)
+    remove(dir)
+    switch result {
+    | Error(msg) =>
+      expect(msg->String.startsWith(`The build at ${dir} failed. ${Check.reuseAdvice}`))->toBe(true)
+      expect(msg->String.includes("tsc: 2 errors"))->toBe(true)
+    | Ok() => JsError.throwWithMessage("expected the build to fail")
+    }
+  })
+
+  testSync("a package.json that is not JSON has no build script", () => {
+    let dir = appWith("not json")
+    let found = Check.hasBuildScript(~dir)
+    remove(dir)
+    expect(found)->toBe(false)
+  })
+})

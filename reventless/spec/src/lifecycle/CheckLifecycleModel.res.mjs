@@ -9,10 +9,10 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Nodechild_process from "node:child_process";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
 import * as LoadPluginStructureMjs from "./loadPluginStructure.mjs";
 
@@ -218,7 +218,39 @@ function checkSidecars(pluginDirs) {
   }
 }
 
-function emitSidecars(pluginDirs) {
+let reuseAdvice = "Build the packages with REVENTLESS_EMIT_SIDECAR=1 set, then run check-lifecycle --reuse-sidecars.";
+
+function hasBuildScript(dir) {
+  let path = Nodepath.join(dir, "package.json");
+  if (!Nodefs.existsSync(path)) {
+    return false;
+  }
+  let scripts;
+  try {
+    scripts = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(Nodefs.readFileSync(path, "utf8"))), d => d["scripts"]), asObj);
+  } catch (exn) {
+    return false;
+  }
+  if (scripts !== undefined) {
+    return Stdlib_Option.isSome(getStr(scripts, "build"));
+  } else {
+    return false;
+  }
+}
+
+function lastLines(output, count) {
+  let lines = output.trimEnd().split("\n");
+  return lines.slice(Math.max(0, lines.length - count | 0)).join("\n");
+}
+
+function emitSidecars(pluginDirs, dirOpt) {
+  let dir = dirOpt !== undefined ? dirOpt : repoRoot;
+  if (!hasBuildScript(dir)) {
+    return {
+      TAG: "Error",
+      _0: dir + ` has no "build" script, so there is no build to run with REVENTLESS_EMIT_SIDECAR=1. ` + reuseAdvice
+    };
+  }
   let now = Date.now() / 1000.0;
   gwtSources(pluginDirs).forEach(f => {
     Nodefs.utimesSync(f, now, now);
@@ -227,27 +259,43 @@ function emitSidecars(pluginDirs) {
       "REVENTLESS_EMIT_SIDECAR",
       "1"
     ]]));
-  try {
-    Nodechild_process.execFileSync("pnpm", [
-      "run",
-      "build"
-    ], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      env: env,
-      maxBuffer: 268435456
-    });
+  let result = Nodechild_process.spawnSync("pnpm", [
+    "run",
+    "build"
+  ], {
+    cwd: dir,
+    encoding: "utf8",
+    env: env,
+    maxBuffer: 268435456
+  });
+  let match = result.error;
+  let match$1 = result.status;
+  if (!(match == null)) {
+    return {
+      TAG: "Error",
+      _0: `pnpm could not be started to build ` + dir + `: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(match), "no reason given") + `. ` + reuseAdvice
+    };
+  }
+  if (!(match$1 == null) && match$1 === 0) {
     return {
       TAG: "Ok",
       _0: undefined
     };
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    return {
-      TAG: "Error",
-      _0: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "the build that emits the scenario sidecars failed")
-    };
   }
+  let output = Stdlib_Array.filterMap([
+    result.stdout,
+    result.stderr
+  ], prim => {
+    if (prim == null) {
+      return;
+    } else {
+      return Primitive_option.some(prim);
+    }
+  }).join("\n");
+  return {
+    TAG: "Error",
+    _0: `The build at ` + dir + ` failed. ` + reuseAdvice + `\n\n` + lastLines(output, 20)
+  };
 }
 
 function levelOf(d) {
@@ -1149,7 +1197,7 @@ function main() {
       console.error(`no plugins found under ` + roots.map(r => r.dir).join(", ") + ` — a plugin is a directory with both src/Plugin.res and tests/`);
       process.exit(1);
     }
-    let msg = param.reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs);
+    let msg = param.reuseSidecars ? checkSidecars(allPluginDirs) : emitSidecars(allPluginDirs, undefined);
     if (msg.TAG !== "Ok") {
       console.error(msg._0);
       process.exit(1);
@@ -1264,6 +1312,9 @@ export {
   sidecarOf,
   hasCorpus,
   checkSidecars,
+  reuseAdvice,
+  hasBuildScript,
+  lastLines,
   emitSidecars,
   levelOf,
   declaredCommandOf,
