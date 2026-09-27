@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as CategoryId$CatalogPlugin from "../CategoryId.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
   categoryId: s.m(CategoryId$CatalogPlugin.schema),
@@ -30,6 +31,31 @@ let consumedEventSchema = Sury.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let makeId = (state => state.categoryId);
+
+let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["categoryId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  internal: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  lifecycle: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined,
+  retired: undefined
+});
+
 let name = "Categories";
 
 let Id;
@@ -48,10 +74,11 @@ export {
   name,
   Id,
   Key,
-  stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
+  makeId,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

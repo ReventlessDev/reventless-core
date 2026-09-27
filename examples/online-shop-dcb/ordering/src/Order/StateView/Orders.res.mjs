@@ -6,6 +6,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let lifecycleSchema = Sury.union([
   Sury.literal("Placed"),
@@ -39,6 +40,31 @@ let consumedEventSchema = Sury.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let makeId = (state => state.orderId);
+
+let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["orderId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  internal: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  lifecycle: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined,
+  retired: undefined
+});
+
 let name = "Orders";
 
 let Id;
@@ -58,10 +84,11 @@ export {
   Id,
   Key,
   lifecycleSchema,
-  stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
+  makeId,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

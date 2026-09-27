@@ -93,8 +93,10 @@ let config = ReadModel$Reventless.config(undefined, undefined, [{
     projectionType: "ALL"
   }]);
 
+let makeId = (state => state.productId);
+
 let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
-  ids: [],
+  ids: ["productId"],
   compositeIds: [],
   subIds: [],
   compositeSubIds: [],
@@ -150,6 +152,7 @@ export {
   shelfStatusSchema,
   config,
   subIdConfig,
+  makeId,
   stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,

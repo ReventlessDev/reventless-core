@@ -5,6 +5,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as CustomerId$OrderingPlugin from "../CustomerId.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let stateSchema = Sury.$schema(s => ({
   customerId: s.m(CustomerId$OrderingPlugin.schema),
@@ -44,6 +45,31 @@ let consumedEventSchema = Sury.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let makeId = (state => state.customerId);
+
+let stateSchema$2 = Sury.$Metadata_set(stateSchema$1, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["customerId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  internal: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  lifecycle: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined,
+  retired: undefined
+});
+
 let name = "Customers";
 
 let Id;
@@ -62,10 +88,11 @@ export {
   name,
   Id,
   Key,
-  stateSchema$1 as stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
+  makeId,
+  stateSchema$2 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

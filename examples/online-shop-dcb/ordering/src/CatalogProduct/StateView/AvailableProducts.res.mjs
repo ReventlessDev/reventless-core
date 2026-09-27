@@ -28,8 +28,10 @@ let consumedEventSchema = Sury.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let makeId = (state => state.productId);
+
 let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
-  ids: [],
+  ids: ["productId"],
   compositeIds: [],
   subIds: [],
   compositeSubIds: [],
@@ -72,6 +74,7 @@ export {
   consumedEventSchema,
   config,
   subIdConfig,
+  makeId,
   stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
