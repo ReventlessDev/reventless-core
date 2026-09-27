@@ -1,7 +1,11 @@
 # `check:unions` only examines the older codegen shape
 
 **Date:** 2026-08-21
-**Status:** Backlog — nothing is broken today; the guard reports more coverage than it has.
+**Status:** Built 2026-09-28 (options 2 and 3). The guard reads the parser sury caches on the
+schema after a first parse, matches both tag spellings on the dispatched value only, anchors on
+the dispatch loop rather than the parser's opening, and fails when it examines nothing. On
+`11.0.0`: 135 parsers examined, 24 with a grouped block, none stranded. Checked against
+synthetic fixed, broken, payload-union and `rc.0` shapes.
 
 > **2026-09-27: the guard now examines nothing.** On the sury `11.0.0` pin it prints
 > `ok 0 tagged-union schemas, every constructor reachable`. `11.0.0` no longer exports

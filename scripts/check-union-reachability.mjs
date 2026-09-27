@@ -38,16 +38,17 @@ import { fileURLToPath } from "node:url"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
-const OUTER_DISPATCH = "i=>{for(;;){"
-const GROUP_MARKER = "){for(;;){"
+// The dispatch loop, however the parser opens around it: `rc.0` emitted
+// `i=>{for(;;){`, `rc.2` and `11.0.0` guard it on "is an object" first. The
+// first loop is the outer dispatch; a loop inside it that tests `i`'s tag is a
+// grouped block.
+const LOOP = "for(;;){"
 
-// Constructor names are ReScript identifiers, so a quote always closes one.
-const tagsIn = (src) =>
-  src
-    .split('["TAG"]==="')
-    .slice(1)
-    .map((part) => part.slice(0, part.indexOf('"')))
-    .filter(Boolean)
+// The tags tested on the dispatched value `i` itself, in either spelling sury
+// has emitted. A payload's own union dispatches on `v0.TAG`, not on `i`, and a
+// test there says nothing about which of `i`'s members are reachable.
+const TAG_TEST = /\bi(?:\["TAG"\]|\.TAG)==="([^"]+)"/g
+const tagsIn = (src) => [...src.matchAll(TAG_TEST)].map((m) => m[1])
 
 // Index of the `}` closing the block whose opening `{` sits at `start`.
 const blockEnd = (src, start) => {
@@ -59,16 +60,38 @@ const blockEnd = (src, start) => {
   return src.length
 }
 
-// {reachable, stranded} when a grouped block is followed by further members.
-const strandedAfterGroup = (parser) => {
-  const outer = parser.indexOf(OUTER_DISPATCH)
-  if (outer === -1) return null
-  const group = parser.indexOf(GROUP_MARKER, outer + 5)
-  if (group === -1) return null
+// {grouped, reachable, stranded}: whether the outer dispatch holds a grouped
+// block, and the tags tested after that block inside the outer one, which no
+// value can reach.
+const examine = (parser) => {
+  const outer = parser.indexOf(LOOP)
+  if (outer === -1) return { grouped: false, stranded: [] }
+  const outerEnd = blockEnd(parser, outer + LOOP.length - 1)
+  for (let at = parser.indexOf(LOOP, outer + 1); at !== -1 && at < outerEnd; ) {
+    const end = blockEnd(parser, at + LOOP.length - 1)
+    const inside = tagsIn(parser.slice(at, end))
+    if (inside.length) {
+      return {
+        grouped: true,
+        reachable: inside,
+        stranded: tagsIn(parser.slice(end, outerEnd)),
+      }
+    }
+    at = parser.indexOf(LOOP, end)
+  }
+  return { grouped: false, stranded: [] }
+}
 
-  const end = blockEnd(parser, group + GROUP_MARKER.length - 1)
-  const stranded = tagsIn(parser.slice(end))
-  return stranded.length ? { reachable: tagsIn(parser.slice(group, end)), stranded } : null
+// sury exports no way to read a compiled parser since `11.0.0` dropped
+// `S.parser`. A first parse compiles one and caches it on the schema as a list
+// (`c`, next `n`) of operations, each with its function in `v`. Internal, so the
+// run fails below when it finds none rather than passing having read nothing.
+const compiledParser = (schema) => {
+  try {
+    S.parseOrThrow({ TAG: "" }, schema)
+  } catch {}
+  for (let op = schema.c; op; op = op.n) if (typeof op.v === "function") return String(op.v)
+  return null
 }
 
 const files = execSync(
@@ -80,6 +103,7 @@ const files = execSync(
   .filter(Boolean)
 
 let checked = 0
+let grouped = 0
 const failures = []
 const unimportable = []
 
@@ -95,18 +119,12 @@ for (const file of files) {
   }
   for (const [schemaName, value] of Object.entries(mod)) {
     if (!value || typeof value !== "object" || !schemaName.toLowerCase().includes("schema")) continue
-    let parser
-    try {
-      parser = String(S.parser(value))
-    } catch {
-      // Not every exported schema compiles a parser on its own; those cannot
-      // strand a constructor either.
-      continue
-    }
-    if (!parser.includes('["TAG"]===')) continue
+    const parser = compiledParser(value)
+    if (!parser || !tagsIn(parser).length) continue
     checked++
-    const bug = strandedAfterGroup(parser)
-    if (bug) failures.push({ file: relative, schemaName, ...bug })
+    const result = examine(parser)
+    if (result.grouped) grouped++
+    if (result.stranded.length) failures.push({ file: relative, schemaName, ...result })
   }
 }
 
@@ -128,4 +146,16 @@ if (failures.length) {
 
 if (unimportable.length) process.exit(1)
 
-console.log(`ok ${checked} tagged-union schemas, every constructor reachable`)
+// Zero examined is a guard that can no longer see sury's output (a renamed cache,
+// a new tag spelling), not a repository with no unions.
+if (checked === 0) {
+  console.error(
+    "examined 0 tagged-union parsers: this sury release compiles them in a way the guard\n" +
+      "cannot read. Teach compiledParser / TAG_TEST the new shape before trusting a pass.",
+  )
+  process.exit(1)
+}
+
+console.log(
+  `ok ${checked} tagged-union parsers examined, ${grouped} with a grouped block, every constructor reachable`,
+)
