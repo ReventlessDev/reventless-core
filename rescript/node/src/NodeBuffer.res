@@ -25,6 +25,10 @@ external fromStringBase64Url: (string, @as("base64url") _) => t = "from"
 
 /** A `Buffer` over a copy of the bytes. A plain `Uint8Array` — what the AWS SDK
     hands back — has only the array's own `toString`, which joins the numbers. */
+/** Standard base64, the alphabet of a `data:…;base64,` URI. */
+@val @scope("Buffer")
+external fromStringBase64: (string, @as("base64") _) => t = "from"
+
 @val @scope("Buffer")
 external fromBytes: Uint8Array.t => t = "from"
 

@@ -15,6 +15,7 @@
       "dir": "src",
       "subdirs": true,
       "public": [
+        "NodeAssert",
         "NodeBuffer",
         "NodeChildProcess",
         "NodeCrypto",
@@ -25,6 +26,7 @@
         "NodePath",
         "NodeProcess",
         "NodeStreams",
+        "NodeTest",
         "NodeUrl",
         "NodeUtil",
         "NodeZlib"

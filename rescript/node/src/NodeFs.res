@@ -16,6 +16,15 @@ existsSync: string => bool = "existsSync"
 @module("node:fs")
 external realpathSync: string => string = "realpathSync"
 
+type stats
+
+/** Stats the path itself rather than what it points to, which is the only way to
+    tell a symbolic link from its target. */
+@module("node:fs")
+external lstatSync: string => stats = "lstatSync"
+
+@send external isSymbolicLink: stats => bool = "isSymbolicLink"
+
 /** Set a file's access and modification times, in seconds since the epoch.
 
     The reason this exists here rather than as a shell-out to `touch`: a build

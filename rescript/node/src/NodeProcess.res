@@ -23,6 +23,12 @@ external exit: int => unit = "exit"
 @val @scope("process")
 external pid: int = "pid"
 
+/** The absolute path of the running `node` binary — what a test spawns a script
+    with, so the child runs on the same Node as the parent rather than whichever
+    `node` is first on `PATH`. */
+@val @scope("process")
+external execPath: string = "execPath"
+
 /** `versions["node"]` is the running Node's version, without the leading `v`. */
 @val @scope("process")
 external versions: dict<string> = "versions"
