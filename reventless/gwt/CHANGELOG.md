@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.226 (2026-09-27)
+
+### Features
+
+* **gwt:** a view's failing scenario points at project, not evolve ([1cb5cd3](https://github.com/ReventlessDev/reventless-core/commit/1cb5cd3651ec9830abac2676142a40d311d0b77c))
+
+
 # 1.0.0-alpha.225 (2026-09-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.16 (2026-09-27)
+
+### Features
+
+* **node:** bind node:test and node:assert, lstatSync, execPath and base64 decoding ([c067e39](https://github.com/ReventlessDev/reventless-core/commit/c067e39ce3a5979f3a18c4761e4673baa6c11ffd))
+
+
 # 2.0.0-alpha.15 (2026-09-23)
 
 * feat(node)!: every command-line tool reads its arguments through parseArgs ([2e41979](https://github.com/ReventlessDev/reventless-core/commit/2e41979b73646c46356e197e17eb4a3da0154c73))
