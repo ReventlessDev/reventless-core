@@ -74,9 +74,15 @@ jobs:
           ref: ${{ matrix.branch }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # A release branch cut before the pin script existed has nothing this job
+      # knows how to pin. It is skipped, not failed, until the script reaches it.
       - name: Is a newer release complete?
         id: pin
         run: |
+          if [ ! -f scripts/pin-ppx.mjs ]; then
+            echo "::notice::${{ matrix.branch }} predates scripts/pin-ppx.mjs — nothing to pin"
+            exit 0
+          fi
           VERSION=$(node scripts/pin-ppx.mjs --explain)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
