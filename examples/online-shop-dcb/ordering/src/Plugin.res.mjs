@@ -449,7 +449,10 @@ function Make(Platform) {
       "SyncCatalogProduct",
       "CatalogProduct"
     ]
-  ]), LifecycleModel$OrderingPlugin.model);
+  ]), LifecycleModel$OrderingPlugin.model, [
+    CustomerId$OrderingPlugin.key,
+    OrderId$OrderingPlugin.key
+  ]);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], undefined, undefined, undefined, [
     CancelOrderSlice,
     ChangeAddressSlice,

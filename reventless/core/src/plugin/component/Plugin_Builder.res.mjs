@@ -95,7 +95,7 @@ function Make(Spec) {
         pages: pages
       };
     };
-    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt) => {
+    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt, identitiesOpt) => {
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -107,7 +107,8 @@ function Make(Spec) {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
       let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
-      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, lifecycleModel);
+      let identities = identitiesOpt !== undefined ? identitiesOpt : [];
+      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, lifecycleModel, identities);
     };
     let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, componentRuntimeOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];

@@ -340,6 +340,7 @@ let renderPluginStructureCall = (
   ~extensionPoints: array<Pairing.extensionPointDef>,
   ~componentChapters: array<(string, string)>,
   ~hasLifecycleModel: bool,
+  ~identities: array<string>,
 ): option<array<string>> => {
   // The structure call carries the EP *mapping* files (one per Delegate
   // connection), not the wrapped ExtensionPoint module — Plugin_Structure reads
@@ -430,6 +431,13 @@ let renderPluginStructureCall = (
     // been harvested keeps a byte-identical generated Plugin.res.
     if hasLifecycleModel {
       ls->Array.push("    ~lifecycleModel=LifecycleModel.model,")
+    }
+
+    // The identities the plugin declares, so one no view lists yet is reported
+    // as information rather than a warning. Omitted when there are none.
+    if identities->Array.length > 0 {
+      let keys = identities->Array.map(m => m ++ ".key")
+      ls->Array.push("    ~identities=[" ++ keys->Array.join(", ") ++ "],")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -610,6 +618,7 @@ let renderComposition = (
   ~resolved: Pairing.resolved,
   ~componentChapters: array<(string, string)>,
   ~hasLifecycleModel: bool,
+  ~identities: array<string>,
 ): string => {
   let lines: array<string> = []
 
@@ -754,6 +763,7 @@ let renderComposition = (
     ~extensionPoints=resolved.extensionPoints,
     ~componentChapters,
     ~hasLifecycleModel,
+    ~identities,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {
@@ -856,6 +866,7 @@ let render = (
   ~resolved: Pairing.resolved,
   ~discovered: array<Discovery.discoveredFile>,
   ~hasLifecycleModel: bool=false,
+  ~identities: array<string>=[],
 ): string => {
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
@@ -881,6 +892,7 @@ let render = (
     )
   switch config.variant {
   | Aws({compositionNamespace}) => renderAwsWrapper(~compositionNamespace)
-  | Composition => renderComposition(~config, ~resolved, ~componentChapters, ~hasLifecycleModel)
+  | Composition =>
+    renderComposition(~config, ~resolved, ~componentChapters, ~hasLifecycleModel, ~identities)
   }
 }

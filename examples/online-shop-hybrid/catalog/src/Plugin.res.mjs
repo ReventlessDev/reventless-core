@@ -614,7 +614,7 @@ function Make(Platform) {
       "UnarchiveProduct",
       "Product"
     ]
-  ]), LifecycleModel$CatalogPlugin.model);
+  ]), LifecycleModel$CatalogPlugin.model, [CategoryId$CatalogPlugin.key]);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,

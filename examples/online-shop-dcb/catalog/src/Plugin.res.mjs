@@ -447,7 +447,7 @@ function Make(Platform) {
       "RenameCategory",
       "Category"
     ]
-  ]), LifecycleModel$CatalogPlugin.model);
+  ]), LifecycleModel$CatalogPlugin.model, [CategoryId$CatalogPlugin.key]);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, [CategoryActivityReadModel], [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,

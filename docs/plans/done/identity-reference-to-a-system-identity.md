@@ -1,6 +1,6 @@
 # Plan (Backlog): an identity the plugin declares is not a dangling reference
 
-**Status:** Backlog (not started)
+**Status:** Built 2026-09-28.
 
 In plain words: a field typed by an identity (`siteId: SiteId.t`) is linked to the view keyed
 by that identity. When the plugin has no such view, platform start warns that the field
@@ -34,7 +34,7 @@ and `Plugin_Structure` never sees files.
    `src/**/<Name>Id.res` whose source includes `Id.Make`, and emits
    `~identities=[CategoryId.key, OrderId.key]` on `Plugin.make`. It references the modules, so
    the key comes from the compiler rather than from parsing a string out of the source.
-   `Plugin.make` takes it as an optional argument, so a `Plugin.res` generated before this change
+   `makePluginDefinition` takes it as an optional argument, so a `Plugin.res` generated before this change
    keeps compiling and keeps today's warning.
 2. **`identityViews` carries them** as `ownIdentities: array<string>`.
 3. **The report splits by case.** In the no-view case, a key in `ownIdentities` logs the same

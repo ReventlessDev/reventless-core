@@ -182,6 +182,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("VerifyCustomerEmail", "Customer"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
+    ~identities=[CustomerId.key, OrderId.key],
   )
 
   let make = () =>

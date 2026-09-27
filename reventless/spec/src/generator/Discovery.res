@@ -245,3 +245,34 @@ let scan = (~srcDir: string, ~exclude: array<string>): array<discoveredFile> => 
   walkDir(~dir=srcDir, ~relDir="", ~parentComponentType=None, ~epGroup=None, ~exclude, ~acc)
   acc
 }
+
+/** The identity modules the plugin declares in its own `src/`: a `<Name>Id.res`
+    whose source calls `Id.Make(`. Named by module, so the generated call reads
+    each key off the compiled module (`CategoryId.key`) rather than parsing it
+    out of a string. Sorted, so the generated file is stable. */
+let scanIdentities = (~srcDir: string, ~exclude: array<string>): array<string> => {
+  let found = []
+  let rec walk = (~dir, ~relDir) =>
+    Generator_Node.readDir(dir)->Array.forEach(entry => {
+      let name = entry->NodeFs.direntName
+      let relPath = relDir === "" ? name : relDir ++ "/" ++ name
+      let path = NodePath.join([dir, name])
+      if isExcluded(relPath, exclude) {
+        ()
+      } else if entry->NodeFs.isDirectory {
+        if !isAlwaysExcludedDir(name) {
+          walk(~dir=path, ~relDir=relPath)
+        }
+      } else {
+        switch stemOf(name) {
+        | Some(stem)
+          if stem->String.endsWith("Id") &&
+            path->NodeFs.readFileSync->String.includes("Id.Make(") =>
+          found->Array.push(stem)
+        | _ => ()
+        }
+      }
+    })
+  walk(~dir=srcDir, ~relDir="")
+  found->Array.toSorted(String.compare)
+}

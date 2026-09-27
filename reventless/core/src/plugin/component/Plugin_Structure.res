@@ -591,12 +591,15 @@ let labelFieldsFromStateSchema = (
 The plugin's views by the identity each is keyed by, which is what lets a typed
 id find the view that lists it without an `@ref`. `report` says where the type
 cannot decide: several views keyed by the identity, none, or an `@ref` naming a
-view keyed by another.
+view keyed by another. `inform` takes the one case that is not a fault: an
+identity in `ownIdentities`, declared by this plugin, that no view lists yet.
 */
 type identityViews = {
   viewsByKey: dict<array<string>>,
   viewNames: array<string>,
+  ownIdentities: array<string>,
   report: string => unit,
+  inform: string => unit,
 }
 
 // The reference a typed id implies, and the check on one it declares.
@@ -615,7 +618,11 @@ let identityReference = (
       switch keyed {
       | [view] => [(fieldName, {Reventless.Semantic.entity: view, plugin: None, identity: key})]
       | [] =>
-        identityViews.report(
+        let say =
+          identityViews.ownIdentities->Array.includes(key)
+            ? identityViews.inform
+            : identityViews.report
+        say(
           `${fieldName} is a ${key}, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`,
         )
         []
@@ -1110,6 +1117,9 @@ let make = (
   // What the plugin's own scenarios say about each command's lifecycle edge,
   // harvested by `check:lifecycle` and committed as `src/LifecycleModel.res`.
   ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=[],
+  // The keys of the identities the plugin declares in its own `src/`, passed by
+  // the plugin generator. One no view lists is reported as information.
+  ~identities: array<string>=[],
 ): Reventless.Plugin.pluginStructure => {
   let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)
   // The harvest compares its own reading of the corpus with the DECLARATION, so
@@ -1648,14 +1658,17 @@ let make = (
   // Warned rather than refused, like the key-field gap: the field still decodes,
   // it just links nowhere. Once per message, since a field recurs across variants.
   let reported: Set.t<string> = Set.make()
+  let once = (logFn: Logger.logFn, message) =>
+    if !(reported->Set.has(message)) {
+      reported->Set.add(message)
+      logFn(~comp="Plugin_Structure", `${name}: ${message}`)
+    }
   let identityViews = {
     viewsByKey,
     viewNames: viewKeys->Array.map(((view, _)) => view),
-    report: message =>
-      if !(reported->Set.has(message)) {
-        reported->Set.add(message)
-        log.warn(~comp="Plugin_Structure", `${name}: ${message}`)
-      },
+    ownIdentities: identities,
+    report: message => once(log.warn, message),
+    inform: message => once(log.info, message),
   }
 
   let stateChangeDefs =

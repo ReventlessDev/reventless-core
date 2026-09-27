@@ -137,6 +137,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("SyncCatalogProduct", "CatalogProduct"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
+    ~identities=[CustomerId.key, OrderId.key],
   )
 
   let make = () =>

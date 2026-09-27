@@ -60,6 +60,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("Products", "Product"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
+    ~identities=[CategoryId.key],
   )
 
   let make = () =>

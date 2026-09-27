@@ -11,12 +11,14 @@ module CustomerId = Reventless.Id.Make({
   let key = "customerId"
 })
 
-let refsOf = (~viewsByKey, ~minted=?, schema: S.t<'a>) => {
+let refsOf = (~viewsByKey, ~ownIdentities=[], ~minted=?, schema: S.t<'a>) => {
   let reports = []
   let identityViews: Plugin_Structure.identityViews = {
     viewsByKey: Dict.fromArray(viewsByKey),
     viewNames: viewsByKey->Array.flatMap(((_, views)) => views),
+    ownIdentities,
     report: message => reports->Array.push(message),
+    inform: message => reports->Array.push(`info: ${message}`),
   }
   let properties = switch schema->S.castToUnknown {
   | Object({properties}) => properties
@@ -61,6 +63,27 @@ describe("a reference derived from the type", () => {
     let (refs, reports) = refsOf(~viewsByKey=[("productId", ["AvailableProducts"])], order)
     expect(refs)->toEqual([("productIds", "AvailableProducts")])
     expect(reports->Array.some(r => r->String.includes("no view in this plugin")))->toBe(true)
+  })
+
+  // A site other parts name but no screen lists: declared on purpose, not a fault.
+  testSync("an identity the plugin declares, with no view, is information", () => {
+    let (_, reports) = refsOf(
+      ~viewsByKey=[("productId", ["AvailableProducts"])],
+      ~ownIdentities=["customerId"],
+      order,
+    )
+    expect(reports)->toEqual([
+      `info: buyer is a customerId, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`,
+    ])
+  })
+
+  testSync("one it does not declare still warns", () => {
+    let (_, reports) = refsOf(
+      ~viewsByKey=[("productId", ["AvailableProducts"])],
+      ~ownIdentities=["orderId"],
+      order,
+    )
+    expect(reports->Array.some(r => r->String.startsWith("buyer is a customerId")))->toBe(true)
   })
 
   // A create form mints this id; a list of the rows that already exist is the

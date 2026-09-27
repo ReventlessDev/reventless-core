@@ -37,7 +37,8 @@ let main = () =>
     // Sits at the src root rather than in a kind folder, so `Discovery` never
     // sees it and it is not a component. Its presence is the whole question.
     let hasLifecycleModel = NodePath.join([srcDir, "LifecycleModel.res"])->NodeFs.existsSync
-    let source = Codegen.render(~config, ~resolved, ~discovered, ~hasLifecycleModel)
+    let identities = Discovery.scanIdentities(~srcDir, ~exclude=config.exclude)
+    let source = Codegen.render(~config, ~resolved, ~discovered, ~hasLifecycleModel, ~identities)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir

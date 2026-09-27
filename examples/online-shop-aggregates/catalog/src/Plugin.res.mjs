@@ -239,7 +239,7 @@ function Make(Platform) {
       "Products",
       "Product"
     ]
-  ]), LifecycleModel$CatalogPlugin.model);
+  ]), LifecycleModel$CatalogPlugin.model, [CategoryId$CatalogPlugin.key]);
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [
     CategoryAggregate,
     ProductAggregate,

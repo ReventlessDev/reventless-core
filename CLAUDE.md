@@ -144,6 +144,8 @@ A second committed artifact sits beside it: `src/LifecycleModel.res`, what the p
 - Refresh it in the commit that moves it, like the GraphQL goldens: `pnpm run check:lifecycle` fails on drift, and CI runs it.
 - After a first harvest, re-run `generate-plugin` (`pnpm run generate` in the plugin) so `src/Plugin.res` picks up `~lifecycleModel=LifecycleModel.model`. The root `build` is a chain of `rescript build` invocations and does **not** fire per-package `prebuild`.
 
+The generator also passes `~identities=[CategoryId.key, …]`: each `<Name>Id.res` in the plugin's own `src/` that calls `Id.Make(`. A field typed by one of these identities that no view lists is logged as information at start, not as a warning; an identity from a spec package keeps the warning, since its field needs an `@ref`.
+
 Plugin modules are referenced from the platform as `<Namespace>.Plugin.Make(Platform)` (e.g. `CatalogPlugin.Plugin.Make(Platform)`).
 
 **Convention:** Each `Extension/` file exposes its mapping as `module Mapping` (not a descriptively named variant). The generator references it as `ExtensionFile.Mapping`.

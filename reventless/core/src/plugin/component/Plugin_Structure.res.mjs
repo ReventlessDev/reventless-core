@@ -465,10 +465,10 @@ function identityReference(identityViews, fieldName, fieldSchema, declared) {
     if (len !== 0) {
       identityViews.report(fieldName + ` is a ` + key + `, and ` + keyed.join(" and ") + ` are all keyed by it. Say which it references with @ref.`);
       return [];
-    } else {
-      identityViews.report(fieldName + ` is a ` + key + `, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`);
-      return [];
     }
+    let say = identityViews.ownIdentities.includes(key) ? identityViews.inform : identityViews.report;
+    say(fieldName + ` is a ` + key + `, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`);
+    return [];
   }
   let view = keyed[0];
   return [[
@@ -774,7 +774,7 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
   };
 }
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt, identitiesOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -786,6 +786,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
   let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
   let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
+  let identities = identitiesOpt !== undefined ? identitiesOpt : [];
   let model = declaredTransitionsOnly ? [] : lifecycleModel;
   let derivedEdgeFor = (component, command) => model.find(e => {
     if (e.component === component) {
@@ -1173,17 +1174,21 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     });
   });
   let reported = new Set();
-  let identityViews_viewNames = viewKeys.map(param => param[0]);
-  let identityViews_report = message => {
+  let once = (logFn, message) => {
     if (!reported.has(message)) {
       reported.add(message);
-      return log.warn("Plugin_Structure", undefined, name + `: ` + message);
+      return logFn("Plugin_Structure", undefined, name + `: ` + message);
     }
   };
+  let identityViews_viewNames = viewKeys.map(param => param[0]);
+  let identityViews_report = message => once(log.warn, message);
+  let identityViews_inform = message => once(log.info, message);
   let identityViews = {
     viewsByKey: viewsByKey,
     viewNames: identityViews_viewNames,
-    report: identityViews_report
+    ownIdentities: identities,
+    report: identityViews_report,
+    inform: identityViews_inform
   };
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];

@@ -91,3 +91,25 @@ describe("Discovery.chaptersByStem", () => {
     )
   )
 })
+
+// The identities a plugin declares in its own `src/`, which the generated call
+// hands to the structure so one no view lists is information, not a warning.
+describe("Discovery.scanIdentities", () => {
+  let src = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "scan-identities-"]))
+  let write = (rel, text) => {
+    let path = NodePath.join([src, rel])
+    NodeFs.mkdirSync(NodePath.dirname(path), {recursive: true})
+    NodeFs.writeFileSync(path, text)
+  }
+  write("Site/SiteId.res", `include Reventless.Id.Make({let key = "siteId"})`)
+  write("Order/OrderId.res", `include Reventless.Id.Make({let key = "orderId"})`)
+  write("Order/StateChange/PlaceOrder.res", `let x = 1`)
+  write("Legacy/LegacyId.res", `type t = string`)
+  write("Scratch/ScratchId.res", `include Reventless.Id.Make({let key = "scratchId"})`)
+  let found = D.scanIdentities(~srcDir=src, ~exclude=["Scratch/**"])
+  NodeFs.rmSync(src, {recursive: true, force: true})
+
+  testSync("an Id.Make module is an identity, by its module name, sorted", () =>
+    expect(found)->toEqual(["OrderId", "SiteId"])
+  )
+})

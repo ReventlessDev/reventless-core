@@ -241,7 +241,10 @@ function Make(Platform) {
       "Orders",
       "Order"
     ]
-  ]), LifecycleModel$OrderingPlugin.model);
+  ]), LifecycleModel$OrderingPlugin.model, [
+    CustomerId$OrderingPlugin.key,
+    OrderId$OrderingPlugin.key
+  ]);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,

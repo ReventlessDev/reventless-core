@@ -226,6 +226,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("UnarchiveProduct", "Product"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
+    ~identities=[CategoryId.key],
   )
 
   let make = () =>

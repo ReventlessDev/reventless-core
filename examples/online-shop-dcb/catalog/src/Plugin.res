@@ -149,6 +149,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("RenameCategory", "Category"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
+    ~identities=[CategoryId.key],
   )
 
   let make = () =>

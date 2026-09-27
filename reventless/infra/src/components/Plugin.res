@@ -96,5 +96,6 @@ module type T = {
     ~extensionPoints: array<module(ExtensionPointMapping.Mapping)>=?,
     ~componentChapters: dict<string>=?,
     ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=?,
+    ~identities: array<string>=?,
   ) => Reventless.Plugin.pluginStructure
 }

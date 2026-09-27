@@ -239,7 +239,7 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, hasLifecycleModel) {
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters, hasLifecycleModel, identities) {
   let epMappingStems = extensionPoints.flatMap(param => param.mappings);
   let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0 || epMappingStems.length !== 0;
   if (!hasComponents) {
@@ -297,6 +297,10 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   }
   if (hasLifecycleModel) {
     ls.push("    ~lifecycleModel=LifecycleModel.model,");
+  }
+  if (identities.length !== 0) {
+    let keys = identities.map(m => m + ".key");
+    ls.push("    ~identities=[" + keys.join(", ") + "],");
   }
   ls.push("  )");
   return ls;
@@ -397,7 +401,7 @@ function renderAwsWrapper(compositionNamespace) {
   ].join("\n");
 }
 
-function renderComposition(config, resolved, componentChapters, hasLifecycleModel) {
+function renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
   lines.push("");
@@ -462,7 +466,7 @@ function renderComposition(config, resolved, componentChapters, hasLifecycleMode
     lines.push("  // Extensions");
     push(renderExtensions(resolved.extensions));
   }
-  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints, componentChapters, hasLifecycleModel);
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints, componentChapters, hasLifecycleModel, identities);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
   if (pluginStructureLines !== undefined) {
     pluginStructureLines.forEach(l => {
@@ -520,8 +524,9 @@ function renderComposition(config, resolved, componentChapters, hasLifecycleMode
   return lines.join("\n");
 }
 
-function render(config, resolved, discovered, hasLifecycleModelOpt) {
+function render(config, resolved, discovered, hasLifecycleModelOpt, identitiesOpt) {
   let hasLifecycleModel = hasLifecycleModelOpt !== undefined ? hasLifecycleModelOpt : false;
+  let identities = identitiesOpt !== undefined ? identitiesOpt : [];
   validateUniqueSpecStems(discovered);
   validateSliceTargets(resolved);
   let componentStems = [
@@ -537,7 +542,7 @@ function render(config, resolved, discovered, hasLifecycleModelOpt) {
   let componentChapters = Discovery$Reventless.chaptersByStem(discovered).filter(param => componentStems.includes(param[0]));
   let match = config.variant;
   if (typeof match !== "object") {
-    return renderComposition(config, resolved, componentChapters, hasLifecycleModel);
+    return renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities);
   } else {
     return renderAwsWrapper(match.compositionNamespace);
   }
