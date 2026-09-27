@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-09-27
+- feat(gwt): a view's failing scenario points at project, not evolve ([1cb5cd3](https://github.com/ReventlessDev/reventless-core/commit/1cb5cd3651ec9830abac2676142a40d311d0b77c))
 ### 2026-09-25
 - fix(core): an identity is published as a string, not a UUID ([f3781ba](https://github.com/ReventlessDev/reventless-core/commit/f3781ba5cae75f156175f649d51f32c3ca053907))
 ### 2026-09-24
