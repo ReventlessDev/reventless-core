@@ -177,6 +177,15 @@ jobs:
         env:
           REVENTLESS_EMIT_SIDECAR: "1"
 
+      # The tracked .res.mjs outputs are what Pulumi, the local runner and the
+      # published example packages load. A PPX change that alters its output
+      # leaves them as they were, and they stay stale until someone's unrelated
+      # build rewrites them. Straight after the build, before any step below can
+      # touch the tree: a checkout the build changes was committed stale.
+      - name: Check tracked compiled outputs match the build
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:fresh-outputs
+
       # A jest project whose test outputs are missing discovers 0 suites and exits 0
       # — a silent pass. Guard against that before trusting the test result below.
       - name: Check every jest project discovers suites
