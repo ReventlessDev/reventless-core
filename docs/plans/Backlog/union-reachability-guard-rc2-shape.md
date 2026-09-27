@@ -3,6 +3,16 @@
 **Date:** 2026-08-21
 **Status:** Backlog — nothing is broken today; the guard reports more coverage than it has.
 
+> **2026-09-27: the guard now examines nothing.** On the sury `11.0.0` pin it prints
+> `ok 0 tagged-union schemas, every constructor reachable`. `11.0.0` no longer exports
+> `parser`, so `S.parser(value)` throws for every schema and the `catch` skips it as "compiles
+> no parser". Nothing is stranded on this pin: measured across the 120 tagged-union parsers in
+> this repository, 28 still dispatch their object constructors in one inner block, and in every
+> one of them each tag is tested inside the block and none after it — the fixed shape described
+> below. The options below were written for `rc.2` and need revisiting. Retiring the guard
+> in favour of decode tests, each failing when a constructor the union's JSON Schema
+> (`S.toOutputJSONSchemaOrThrow`) declares is not decoded, is now a fourth option.
+
 ## What
 
 [`scripts/check-union-reachability.mjs`](../../../scripts/check-union-reachability.mjs)
