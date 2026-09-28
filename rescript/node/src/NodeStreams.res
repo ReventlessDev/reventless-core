@@ -13,6 +13,8 @@ module EventHandler = {
 module Writable = {
   type t = writableStream
   @send external close: t => unit = "end"
+  /** Writes a last chunk, then closes. */
+  @send external closeWith: (t, string) => unit = "end"
   @send external pipe: (t, t) => t = "pipe"
 
   include EventHandler // onError & onClose & onEvent

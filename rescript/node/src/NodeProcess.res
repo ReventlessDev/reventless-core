@@ -44,6 +44,11 @@ external versions: dict<string> = "versions"
 @val @scope("process")
 external kill: (int, int) => unit = "kill"
 
+/** `kill` with a signal by name (`"SIGTERM"`, `"SIGINT"`). A negated pid signals
+    that process's whole group. Throws as `kill` does. */
+@val @scope("process")
+external killWithSignal: (int, string) => unit = "kill"
+
 /** `process.on` for the two shutdown paths a CLI has to clean up on.
 
     Split into an `exit` binding and a signal binding because the handlers are
