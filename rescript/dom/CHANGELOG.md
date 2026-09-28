@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.3 (2026-09-28)
+
+### Features
+
+* **rescript-dom:** markup set as HTML, and scrolling an element into view ([7da6d3e](https://github.com/ReventlessDev/reventless-core/commit/7da6d3ea3321ce05aab6642d2be2b392de2e972e))
+
+
 # 1.0.0-alpha.2 (2026-09-28)
 
 ### Features
