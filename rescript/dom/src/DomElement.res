@@ -50,8 +50,17 @@ external isContentEditable: Dom.element => bool = "isContentEditable"
 
 // ── Place in the tree ────────────────────────────────────────────────────────
 
+/** The parent node, which for the outermost element is the document itself: a
+    node with none of the methods here. A walk up the tree that calls them on
+    each step wants {!parentElement}. */
 @get
 external parentNode: Dom.element => Nullable.t<Dom.element> = "parentNode"
+
+/** The parent element, or null above the outermost one. Walking up with this
+    never reaches the document, so every step is an element with a class list
+    and attributes. */
+@get
+external parentElement: Dom.element => Nullable.t<Dom.element> = "parentElement"
 
 @get
 external firstChild: Dom.element => Nullable.t<Dom.element> = "firstChild"
