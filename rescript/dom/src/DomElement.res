@@ -39,6 +39,11 @@ external setTitle: (Dom.element, string) => unit = "title"
 @get
 external title: Dom.element => string = "title"
 
+/** Replaces its content with the markup, parsed as HTML. For markup the page wrote itself
+    (an icon's SVG): text from anywhere else goes in with {!setTextContent}. */
+@set
+external setInnerHTML: (Dom.element, string) => unit = "innerHTML"
+
 /** The `data-*` attributes, keyed without the prefix and in camelCase
     (`data-slice-id` is `sliceId`). Setting a key writes the attribute. */
 @get
@@ -140,6 +145,16 @@ external scrollTop: Dom.element => float = "scrollTop"
 
 @set
 external setScrollTop: (Dom.element, float) => unit = "scrollTop"
+
+/** Where an element scrolled into view lands in its scrolling box, along each axis. */
+type scrollPosition =
+  | @as("start") Start | @as("center") Center | @as("end") End | @as("nearest") Nearest
+
+type scrollIntoViewOptions = {block?: scrollPosition, inline?: scrollPosition}
+
+/** Scrolls its ancestors until it is visible (`{block: Center}` puts it in the middle). */
+@send
+external scrollIntoView: (Dom.element, scrollIntoViewOptions) => unit = "scrollIntoView"
 
 // ── Listening ────────────────────────────────────────────────────────────────
 
