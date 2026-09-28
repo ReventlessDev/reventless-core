@@ -20,6 +20,11 @@ external checked: Dom.element => bool = "checked"
 @set
 external setChecked: (Dom.element, bool) => unit = "checked"
 
+/** A checkbox drawn as neither ticked nor clear (a "select all" over a mixed set). Only
+    the drawing: `checked` is unchanged, and a click clears it. */
+@set
+external setIndeterminate: (Dom.element, bool) => unit = "indeterminate"
+
 @set
 external setType: (Dom.element, string) => unit = "type"
 
