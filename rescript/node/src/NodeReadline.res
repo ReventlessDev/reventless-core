@@ -16,5 +16,22 @@ external createInterface: options => t = "createInterface"
 @send
 external question: (t, string) => promise<string> = "question"
 
+/** The prompt {!prompt} writes, and redraws when a terminal refreshes the line. */
+@send
+external setPrompt: (t, string) => unit = "setPrompt"
+
+@send
+external prompt: t => unit = "prompt"
+
+/** Every line read, as it arrives, whether or not a {!question} is waiting for it.
+    Piped input arrives all at once, before a second question could listen, so a
+    prompt that asks several questions reads them from here. */
+@send
+external onLine: (t, @as("line") _, string => unit) => unit = "on"
+
+/** Input has ended (the pipe closed, or Ctrl-D), or the interface was closed. */
+@send
+external onClose: (t, @as("close") _, unit => unit) => unit = "on"
+
 @send
 external close: t => unit = "close"
