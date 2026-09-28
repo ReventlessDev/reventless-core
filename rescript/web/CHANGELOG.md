@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.6 (2026-09-28)
+
+### Bug Fixes
+
+* **rescript-web:** drop the unused @rescript/std dependency ([e5d2429](https://github.com/ReventlessDev/reventless-core/commit/e5d242917aa2bb136456cb8d5e92fdce0ef04179))
+
+
 # 1.0.0-alpha.5 (2026-09-21)
 
 ### Bug Fixes

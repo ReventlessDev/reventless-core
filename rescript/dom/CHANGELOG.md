@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.2 (2026-09-28)
+
+### Features
+
+* **rescript-dom:** what the creation form calls: its title, place, scroll and label, the document's own listeners, and the next frame ([42d5ea5](https://github.com/ReventlessDev/reventless-core/commit/42d5ea52c082c6d486cde9b4ab1073fc0e5127f3))
+
+
 # 1.0.0-alpha.1 (2026-09-28)
 
 ### Features

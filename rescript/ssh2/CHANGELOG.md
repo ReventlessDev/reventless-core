@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.19 (2026-09-28)
+
+### Bug Fixes
+
+* **rescript-ssh2:** drop the unused @rescript/std dependency ([af7847c](https://github.com/ReventlessDev/reventless-core/commit/af7847cd9d1e0839fd356c504252b090b2e7f313))
+
+
 # 2.0.0-alpha.18 (2026-09-28)
 
 **Note:** Version bump only for package @reventlessdev/rescript-ssh2
