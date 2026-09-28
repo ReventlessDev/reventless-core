@@ -1246,9 +1246,6 @@ importers:
 
   rescript/ssh2:
     dependencies:
-      '@rescript/std':
-        specifier: ^11.1.4
-        version: 11.1.4
       '@reventlessdev/rescript-node':
         specifier: workspace:*
         version: link:../node
@@ -4843,9 +4840,6 @@ packages:
 
   '@rescript/runtime@12.3.1':
     resolution: {integrity: sha512-yTM0iTl6owyA37UEtPAZR0A3G1kFffJWb+UE6+rcG/N2kxYQnuSlNDfVvsry7l8O+o/ME6QE7Zt7efjCDGM3xg==}
-
-  '@rescript/std@11.1.4':
-    resolution: {integrity: sha512-coR+xPh0fS4Mx0bDFUG8I9KhYv7FEXISKa775jvqVeus1zlVJjYf19/qj7mTzgrRmyCnxKBRvrfAM/BXYNUFCQ==}
 
   '@rescript/win32-x64@12.3.1':
     resolution: {integrity: sha512-1ffFbw9IJnJmGTNshWzRcG6wQ7GkzOeWxLLrarvxI38p2aYPQKTbVovUraXpw1Jfg2bbWkm8hPMMrFIezI/pkA==}
@@ -17970,8 +17964,6 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@rescript/runtime@12.3.1': {}
-
-  '@rescript/std@11.1.4': {}
 
   '@rescript/win32-x64@12.3.1':
     optional: true
