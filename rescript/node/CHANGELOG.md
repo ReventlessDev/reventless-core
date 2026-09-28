@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.17 (2026-09-28)
+
+### Features
+
+* **node:** bind node:test and node:assert, lstatSync, execPath and base64 decoding ([c067e39](https://github.com/ReventlessDev/reventless-core/commit/c067e39ce3a5979f3a18c4761e4673baa6c11ffd))
+* **node:** bind readline's promise API, process.platform and spawnSync's shell option ([c166726](https://github.com/ReventlessDev/reventless-core/commit/c166726008a08bb8b4b3e7b9d33dabde02389bad))
+
+
 # 2.0.0-alpha.16 (2026-09-27)
 
 ### Features

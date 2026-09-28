@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.280 (2026-09-28)
+
+### Features
+
+* **core,spec:** an identity the plugin declares is information, not a dangling reference ([30d7917](https://github.com/ReventlessDev/reventless-core/commit/30d7917669ff062439f9c65e5274ab63a2e20de0))
+
+
 # 3.0.0-alpha.279 (2026-09-27)
 
 ### Features

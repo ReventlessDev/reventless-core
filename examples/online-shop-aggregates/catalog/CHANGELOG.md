@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.259 (2026-09-28)
+
+### Features
+
+* **core,spec:** an identity the plugin declares is information, not a dangling reference ([30d7917](https://github.com/ReventlessDev/reventless-core/commit/30d7917669ff062439f9c65e5274ab63a2e20de0))
+* **ppx,spec:** a view with no lifecycle field places a creating command by its scenarios ([acfc7fe](https://github.com/ReventlessDev/reventless-core/commit/acfc7feeb4d23d40cddaade7ae177fcd627b3d48))
+
+
 # 3.0.0-alpha.258 (2026-09-27)
 
 ### Features
