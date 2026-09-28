@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.19 (2026-09-28)
+
+### Features
+
+* **node:** child processes that run alongside the caller ([8ee08e1](https://github.com/ReventlessDev/reventless-core/commit/8ee08e13b12d74866245698280d64d5feed71268))
+
+
 # 2.0.0-alpha.18 (2026-09-28)
 
 ### Features
