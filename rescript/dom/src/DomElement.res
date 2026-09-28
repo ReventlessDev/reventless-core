@@ -36,6 +36,9 @@ external textContent: Dom.element => Nullable.t<string> = "textContent"
 @set
 external setTitle: (Dom.element, string) => unit = "title"
 
+@get
+external title: Dom.element => string = "title"
+
 /** The `data-*` attributes, keyed without the prefix and in camelCase
     (`data-slice-id` is `sliceId`). Setting a key writes the attribute. */
 @get
@@ -68,6 +71,11 @@ external firstChild: Dom.element => Nullable.t<Dom.element> = "firstChild"
 @get
 external nextSibling: Dom.element => Nullable.t<Dom.element> = "nextSibling"
 
+/** Whether it is in the document: false once removed, or before it is added. A handle
+    kept from an earlier render says whether that render is still the one shown. */
+@get
+external isConnected: Dom.element => bool = "isConnected"
+
 @send
 external appendChild: (Dom.element, Dom.element) => unit = "appendChild"
 
@@ -77,6 +85,10 @@ external appendText: (Dom.element, string) => unit = "append"
 
 @send
 external insertBefore: (Dom.element, Dom.element, Nullable.t<Dom.element>) => unit = "insertBefore"
+
+/** Inserts the second right after the first, as its next sibling. */
+@send
+external after: (Dom.element, Dom.element) => unit = "after"
 
 @send
 external replaceWith: (Dom.element, Dom.element) => unit = "replaceWith"
@@ -121,6 +133,13 @@ external offsetWidth: Dom.element => float = "offsetWidth"
 
 @get
 external offsetHeight: Dom.element => float = "offsetHeight"
+
+/** How far its content is scrolled down, in pixels. */
+@get
+external scrollTop: Dom.element => float = "scrollTop"
+
+@set
+external setScrollTop: (Dom.element, float) => unit = "scrollTop"
 
 // ── Listening ────────────────────────────────────────────────────────────────
 

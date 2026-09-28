@@ -1,4 +1,4 @@
-/** Setters for an element's inline
+/** Setters (and the odd getter) for an element's inline
     [`style`](https://developer.mozilla.org/docs/Web/API/HTMLElement/style), one per
     property a caller sets, so a misspelt property is a compile error rather than a
     style that silently does nothing. Values are CSS text (`"12px"`, `"none"`).
@@ -28,6 +28,10 @@ external setDisplay: (Dom.element, string) => unit = "display"
 
 @set @scope("style")
 external setFlexBasis: (Dom.element, string) => unit = "flexBasis"
+
+/** The inline flex basis as set (`"320px"`), empty when none is. */
+@get @scope("style")
+external flexBasis: Dom.element => string = "flexBasis"
 
 @set @scope("style")
 external setCursor: (Dom.element, string) => unit = "cursor"
