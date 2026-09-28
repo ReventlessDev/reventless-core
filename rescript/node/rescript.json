@@ -25,6 +25,7 @@
         "NodeOs",
         "NodePath",
         "NodeProcess",
+        "NodeReadline",
         "NodeStreams",
         "NodeTest",
         "NodeUrl",

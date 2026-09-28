@@ -29,6 +29,11 @@ external pid: int = "pid"
 @val @scope("process")
 external execPath: string = "execPath"
 
+/** The operating system Node was built for: `"darwin"`, `"linux"`, `"win32"`, …
+    A string rather than a variant because the set is Node's to extend. */
+@val @scope("process")
+external platform: string = "platform"
+
 /** `versions["node"]` is the running Node's version, without the leading `v`. */
 @val @scope("process")
 external versions: dict<string> = "versions"

@@ -8,6 +8,10 @@ type execOptions = {
   maxBuffer?: int,
   /** Written to the child's stdin, which is then closed. */
   input?: string,
+  /** Runs the command through a shell. Needed on Windows to start a `.cmd` shim
+      such as `pnpm`, and for a shell builtin such as `command -v`; otherwise
+      leave it off, since a shell re-splits the arguments. */
+  shell?: bool,
 }
 
 @module("node:child_process")
