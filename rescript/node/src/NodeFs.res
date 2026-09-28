@@ -25,6 +25,21 @@ external lstatSync: string => stats = "lstatSync"
 
 @send external isSymbolicLink: stats => bool = "isSymbolicLink"
 
+/** Stats what the path names, following a symbolic link to its target. Throws
+    when nothing is there (`ENOENT`). */
+@module("node:fs")
+external statSync: string => stats = "statSync"
+
+/** When the contents last changed, in milliseconds since the epoch, with a
+    fraction: the precise form, for comparing two readings of one file. */
+@get external mtimeMs: stats => float = "mtimeMs"
+
+/** The same moment as a `Date`. */
+@get external mtime: stats => Date.t = "mtime"
+
+/** The size in bytes. A float, since a file may pass what an int holds. */
+@get external size: stats => float = "size"
+
 /** Set a file's access and modification times, in seconds since the epoch.
 
     The reason this exists here rather than as a shell-out to `touch`: a build
@@ -112,6 +127,11 @@ type rmOptions = {recursive?: bool, force?: bool}
 
 @module("node:fs")
 external rmSync: (string, rmOptions) => unit = "rmSync"
+
+/** Move or rename a file or directory. Replaces a file already at the target;
+    across devices it fails (`EXDEV`) rather than copying. */
+@module("node:fs")
+external renameSync: (string, string) => unit = "renameSync"
 
 type cpOptions = {recursive?: bool}
 

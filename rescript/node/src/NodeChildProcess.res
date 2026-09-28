@@ -54,6 +54,8 @@ type spawnOptions = {
       negated pid (`NodeProcess.killWithSignal(-pid, …)`) reaches everything it
       started. */
   detached?: bool,
+  /** See `execOptions.shell`. */
+  shell?: bool,
 }
 
 @module("node:child_process")

@@ -22,3 +22,10 @@ external relative: (string, string) => string = "relative"
 
 @module("node:path") @val
 external sep: string = "sep"
+
+/** What separates the entries of `PATH`: `:` on POSIX, `;` on Windows. */
+@module("node:path") @val
+external delimiter: string = "delimiter"
+
+@module("node:path")
+external isAbsolute: string => bool = "isAbsolute"

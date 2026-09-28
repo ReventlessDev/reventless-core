@@ -39,6 +39,10 @@ external createServer: (socket => unit) => server = "createServer"
     listener must not be the reason a CLI hangs at the end of its work. */
 @send external unref: server => unit = "unref"
 
+/** Calls back once the socket has been idle for that many milliseconds. It only
+    notices: the socket stays open until the caller destroys it. */
+@send external setSocketTimeout: (socket, int, unit => unit) => unit = "setTimeout"
+
 /** Connect to a listening server. The callback fires once the connection is up. */
 @module("node:net")
 external connect: (int, string, unit => unit) => socket = "createConnection"

@@ -3,10 +3,13 @@
 
 let AbortController = {};
 
+let AbortSignal = {};
+
 let Body = {};
 
 export {
   AbortController,
+  AbortSignal,
   Body,
 }
 /* No side effect */

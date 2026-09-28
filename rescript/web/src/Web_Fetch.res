@@ -22,6 +22,13 @@ module AbortController = {
   @send external abort: (t, ~reason: string=?, unit) => unit = "abort"
 }
 
+module AbortSignal = {
+  /** A signal that aborts on its own after `ms` milliseconds, with a
+      `TimeoutError`: a request that must not hang, without a timer to clear. */
+  @val @scope("AbortSignal")
+  external timeout: int => AbortController.signal = "timeout"
+}
+
 module Body = {
   /** An opaque `BodyInit`. Build one with `string` or `raw`. */
   type t
