@@ -1,0 +1,31 @@
+{
+  "name": "@reventlessdev/rescript-dom",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": false,
+  "suffix": ".res.mjs",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true,
+      "public": [
+        "DomClassList",
+        "DomDocument",
+        "DomElement",
+        "DomEvent",
+        "DomInput",
+        "DomNodeList",
+        "DomStyle",
+        "DomSvg",
+        "DomWindow"
+      ]
+    }
+  ],
+  "dependencies": []
+}
