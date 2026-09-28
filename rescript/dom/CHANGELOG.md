@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.4 (2026-09-28)
+
+### Features
+
+* **rescript-dom:** a checkbox drawn as indeterminate ([3174030](https://github.com/ReventlessDev/reventless-core/commit/3174030fefa66f7818ed1ca1bc3b1529e8f1e4d9))
+
+
 # 1.0.0-alpha.3 (2026-09-28)
 
 ### Features
