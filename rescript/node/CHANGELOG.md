@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.18 (2026-09-28)
+
+### Features
+
+* **node:** readline's line and close events, and its own prompt ([ce2d0fa](https://github.com/ReventlessDev/reventless-core/commit/ce2d0faf929d44c88705e20009674254a49f15d7))
+
+
 # 2.0.0-alpha.17 (2026-09-28)
 
 ### Features
