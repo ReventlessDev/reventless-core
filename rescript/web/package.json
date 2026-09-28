@@ -10,9 +10,6 @@
     "test": "echo \"There are no tests for rescript-web.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
-  "dependencies": {
-    "@rescript/std": "^11.1.4"
-  },
   "devDependencies": {
     "rescript": "12.3.1"
   },

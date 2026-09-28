@@ -1271,10 +1271,6 @@ importers:
         version: 12.3.1
 
   rescript/web:
-    dependencies:
-      '@rescript/std':
-        specifier: ^11.1.4
-        version: 11.1.4
     devDependencies:
       rescript:
         specifier: 12.3.1
