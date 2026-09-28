@@ -12,6 +12,10 @@ external remove: (Dom.domTokenList, string) => unit = "remove"
 @send
 external contains: (Dom.domTokenList, string) => bool = "contains"
 
+/** The classes, in the order the `class` attribute lists them, each once. */
+@val
+external toArray: Dom.domTokenList => array<string> = "Array.from"
+
 /** Adds the class when `force` is true and removes it when false. */
 @send
 external toggle: (Dom.domTokenList, string, bool) => bool = "toggle"
