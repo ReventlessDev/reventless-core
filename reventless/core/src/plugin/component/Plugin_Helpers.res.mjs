@@ -42,6 +42,7 @@ import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHe
 import * as AutomationSlice$ReventlessCore from "../../components/AutomationSlice/AutomationSlice.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../../components/Builder_Helpers.res.mjs";
 import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
+import * as DeploymentProvenance$Reventless from "@reventlessdev/reventless-spec/src/types/DeploymentProvenance.res.mjs";
 import * as Plugin_BuiltHook$ReventlessCore from "./Plugin_BuiltHook.res.mjs";
 import * as StateChangeSlice$ReventlessCore from "../../components/StateChangeSlice/StateChangeSlice.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
@@ -607,10 +608,40 @@ function getInteropMeta() {
 }
 
 function exportDeploymentMetadata() {
+  let provenance = DeploymentProvenance$Reventless.current();
+  let stack = Pulumi.getStack();
+  let optional = Stdlib_Array.filterMap([
+    [
+      "commit",
+      provenance.commit
+    ],
+    [
+      "purpose",
+      provenance.purpose
+    ],
+    [
+      "tag",
+      provenance.tag
+    ],
+    [
+      "pullRequest",
+      Stdlib_Option.map(provenance.pullRequest, n => n.toString())
+    ]
+  ], param => {
+    let key = param[0];
+    return Stdlib_Option.map(param[1], v => [
+      key,
+      v
+    ]);
+  });
   let metadata = Object.fromEntries([
     [
       "environment",
-      Pulumi.getStack()
+      Stdlib_Option.getOr(provenance.environment, stack)
+    ],
+    [
+      "stack",
+      stack
     ],
     [
       "region",
@@ -622,13 +653,17 @@ function exportDeploymentMetadata() {
     ],
     [
       "gitSha",
-      Stdlib_Option.getOr(process.env["GITHUB_SHA"], "unknown")
+      Stdlib_Option.getOr(provenance.commit, "unknown")
+    ],
+    [
+      "dirty",
+      provenance.dirty ? "true" : "false"
     ],
     [
       "actor",
       Stdlib_Option.getOr(process.env["GITHUB_ACTOR"], "unknown")
     ]
-  ]);
+  ].concat(optional));
   Pulumi$Pulumi.$$export("deploymentMetadata", Pulumi.output(Stdlib_Dict.mapValues(metadata, prim => prim)));
 }
 
@@ -725,6 +760,7 @@ function exportPluginOutputs(pluginOutputs) {
   }
   let actor = Stdlib_Option.getOr(Stdlib_Option.orElse(Stdlib_Option.orElse(process.env["GITHUB_ACTOR"], process.env["CI_COMMIT_AUTHOR"]), process.env["USER"]), "local");
   let deploymentId = Stdlib_Option.getOr(Stdlib_Option.orElse(process.env["GITHUB_SHA"], process.env["CI_COMMIT_SHA"]), new Date().toISOString());
+  let provenance = DeploymentProvenance$Reventless.current();
   let resolveAggregates = Output$Pulumi.flatMap(pluginOutputs.aggregates, aggs => Pulumi.all(Object.entries(aggs).map(param => {
     let name = param[0];
     return Aggregate$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
@@ -904,11 +940,16 @@ function exportPluginOutputs(pluginOutputs) {
       return hook({
         name: name,
         version: version,
-        environment: Pulumi.getStack(),
+        environment: Stdlib_Option.getOr(provenance.environment, Pulumi.getStack()),
         stackName: Pulumi.getStack(),
         deployedAt: new Date().toISOString(),
         actor: actor,
         deploymentId: deploymentId,
+        commit: provenance.commit,
+        dirty: provenance.dirty ? true : undefined,
+        purpose: provenance.purpose,
+        tag: provenance.tag,
+        pullRequest: provenance.pullRequest,
         kind: Stdlib_Option.flatMap(meta, m => m.kind),
         displayName: Stdlib_Option.flatMap(meta, m => m.displayName),
         vendor: Stdlib_Option.flatMap(meta, m => m.vendor),

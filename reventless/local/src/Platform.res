@@ -1273,6 +1273,7 @@ module MakeWithConfig = (
     ~pluginOutputs=?,
   ) => {
     let environment = Pulumi.Pulumi.getStackName()
+    let provenance = Reventless.DeploymentProvenance.current()
     builtInfos->Array.forEachWithIndex((info, i) => {
       switch ReventlessCore.Plugin_Helpers.onPluginDeployedHook.contents {
       | Some(hook) =>
@@ -1289,6 +1290,8 @@ module MakeWithConfig = (
             deployedAt: Date.make()->Date.toISOString,
             actor: "local",
             deploymentId: Date.make()->Date.toISOString,
+            commit: ?provenance.commit,
+            dirty: ?(provenance.dirty ? Some(true) : None),
             kind: ?info.kind,
             displayName: ?info.displayName,
             vendor: ?info.vendor,

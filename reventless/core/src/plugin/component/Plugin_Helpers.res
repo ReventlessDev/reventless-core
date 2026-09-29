@@ -783,6 +783,15 @@ type pluginDeployedInfo = {
   deployedAt: string,
   actor: string,
   deploymentId: string,
+  /** The commit the deployment was built from, when CI or git could say. */
+  commit?: string,
+  /** The working tree had changes the commit does not hold. */
+  dirty?: bool,
+  /** What the environment is for, from the app's `environments.yaml`. */
+  purpose?: string,
+  tag?: string,
+  /** The pull request a review environment was deployed for. */
+  pullRequest?: int,
   kind?: pluginKind,
   displayName?: string,
   vendor?: string,
@@ -1237,21 +1246,34 @@ let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
 }
 
 // ---------------------------------------------------------------------------
-// Stack metadata export — environment, region, timestamp, actor, git SHA.
+// Stack metadata export — environment, region, timestamp, actor, commit.
 // Called from both exportPluginOutputs and exportPlatformOutputs.
 // ---------------------------------------------------------------------------
 let exportDeploymentMetadata = () => {
+  let provenance = Reventless.DeploymentProvenance.current()
+  let stack = Pulumi.Pulumi.getStackName()
+  let optional =
+    [
+      ("commit", provenance.commit),
+      ("purpose", provenance.purpose),
+      ("tag", provenance.tag),
+      ("pullRequest", provenance.pullRequest->Option.map(n => n->Int.toString)),
+    ]->Array.filterMap(((key, value)) => value->Option.map(v => (key, v)))
   let metadata =
     [
-      ("environment", Pulumi.Pulumi.getStackName()),
+      ("environment", provenance.environment->Option.getOr(stack)),
+      ("stack", stack),
       (
         "region",
         Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown"),
       ),
       ("timestamp", Date.make()->Date.toISOString),
-      ("gitSha", NodeProcess.env->Dict.get("GITHUB_SHA")->Option.getOr("unknown")),
+      ("gitSha", provenance.commit->Option.getOr("unknown")),
+      ("dirty", provenance.dirty ? "true" : "false"),
       ("actor", NodeProcess.env->Dict.get("GITHUB_ACTOR")->Option.getOr("unknown")),
-    ]->Dict.fromArray
+    ]
+    ->Array.concat(optional)
+    ->Dict.fromArray
   Pulumi.Pulumi.export(
     "deploymentMetadata",
     metadata->Dict.mapValues(JSON.Encode.string)->JSON.Encode.object->Pulumi.Output.make,
@@ -1595,6 +1617,7 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Dict.get("GITHUB_SHA")
       ->Option.orElse(NodeProcess.env->Dict.get("CI_COMMIT_SHA"))
       ->Option.getOr(Date.make()->Date.toISOString)
+    let provenance = Reventless.DeploymentProvenance.current()
     let schemaFor = name => componentSchemaRegistry->Dict.get(name)->Option.getOr({})
     let resolveAggregates = pluginOutputs.aggregates->Pulumi.Output.flatMap(aggs =>
       aggs
@@ -1855,11 +1878,16 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
           let info: pluginDeployedInfo = {
             name,
             version,
-            environment: Pulumi.Pulumi.getStackName(),
+            environment: provenance.environment->Option.getOr(Pulumi.Pulumi.getStackName()),
             stackName: Pulumi.Pulumi.getStackName(),
             deployedAt: Date.make()->Date.toISOString,
             actor,
             deploymentId,
+            commit: ?provenance.commit,
+            dirty: ?(provenance.dirty ? Some(true) : None),
+            purpose: ?provenance.purpose,
+            tag: ?provenance.tag,
+            pullRequest: ?provenance.pullRequest,
             kind: ?(meta->Option.flatMap(m => m.kind)),
             displayName: ?(meta->Option.flatMap(m => m.displayName)),
             vendor: ?(meta->Option.flatMap(m => m.vendor)),

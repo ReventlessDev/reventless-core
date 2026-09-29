@@ -1,6 +1,7 @@
 # Plan: an app declares its environments, and every deployment says which commit it runs
 
-**Status:** 📝 Planned 2026-09-29, nothing built.<br/>
+**Status:** 🚧 E1–E4 built 2026-09-29, and the guide of E5; the release is open, and E3 has not run
+against a real pull request yet (see *As built*).<br/>
 **Touches:** `reventless/spec` (a new `Environments` type beside `AccountsManifest`),
 `reventless/aws` (a resolver CLI beside `deploy-app`),
 `.github/workflows/deploy-reventless-aws.yml` (the reusable deploy workflow),
@@ -179,3 +180,32 @@ is merged either way.
 - Enforcing promotion by pull request: that is the code host's branch protection.
 - Changing the example apps' own deploy branches; they keep deploying as today unless a file is
   added deliberately.
+
+## As built (2026-09-29)
+
+- **E1** `Reventless.Environments` in spec: the type, `parseString`, `parseFile`, `print`,
+  `refOf`, `resolve`, `resolvePullRequest`, and the pattern matcher; 24 tests. **Not built:**
+  the generated JSON Schema. Spec's sury has no JSON Schema export under the name tried, and the
+  tools, which already generate schemas, can derive it from this type.
+- **E2** `resolve-environment` in aws, printing `key=value` lines; 11 tests. **Changed from the
+  plan:** the workflow resolves in each deploy job after `pnpm install`, not in `detect-changes`,
+  which installs nothing. Resolving there would have needed a second, bash reading of the file.
+  `detect-changes` only finds the file and marks a pull request as a review candidate, which
+  makes the whole app deploy (or, with no review environment, the dry run of all of it).
+  Without the file each job sets the stack to the branch without calling anything.
+  The workflow input is `environments`, not `environments-path`, beside the existing
+  `manifest` input, which is also a path.
+- **E3** review stacks in the platform, plugin and bake jobs, and a `destroy-review` job on
+  close. **Changed from the plan:** a review stack gets its configuration with
+  `pulumi config cp` from the base environment's stack rather than by copying
+  `Pulumi.<base>.yaml`, whose `secure:` values are encrypted for the base stack only. Checked
+  locally: the YAML parses, all 34 `run:` scripts pass `bash -n`, and the resolve step, run
+  with the real CLI, gives the intended mode and stack for nine cases (no file on a push and a
+  pull request, a branch, a tag, an unnamed branch, a pull request, a draft, a pull request into
+  a branch with no review environment, a fork). **Not yet run:** a real pull request opening,
+  updating and closing a review environment on AWS.
+- **E4** `Reventless.DeploymentProvenance` in spec (9 tests), used by `exportDeploymentMetadata`,
+  the plugin-deployed hook, and the local platform's hook. `environment` is the resolved
+  environment when there is one and the stack name otherwise.
+- **E5** `docs/guides/deploy-environments.md`. The release is open.
+

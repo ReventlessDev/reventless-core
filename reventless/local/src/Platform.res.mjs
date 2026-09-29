@@ -43,6 +43,7 @@ import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as Plugin_Builder$ReventlessLocal from "./components/Plugin_Builder.res.mjs";
 import * as Counter_Builder$ReventlessLocal from "./components/Counter_Builder.res.mjs";
+import * as DeploymentProvenance$Reventless from "@reventlessdev/reventless-spec/src/types/DeploymentProvenance.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
@@ -1069,6 +1070,7 @@ function MakeWithConfig(Config) {
   }));
   let firePluginDeployedHooks = (builtInfos, pluginOutputs) => {
     let environment = Pulumi.getStack();
+    let provenance = DeploymentProvenance$Reventless.current();
     builtInfos.forEach((info, i) => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
       if (hook === undefined) {
@@ -1081,6 +1083,8 @@ function MakeWithConfig(Config) {
         let deployedInfo_version = info.version;
         let deployedInfo_deployedAt = new Date().toISOString();
         let deployedInfo_deploymentId = new Date().toISOString();
+        let deployedInfo_commit = provenance.commit;
+        let deployedInfo_dirty = provenance.dirty ? true : undefined;
         let deployedInfo_kind = info.kind;
         let deployedInfo_displayName = info.displayName;
         let deployedInfo_vendor = info.vendor;
@@ -1100,6 +1104,8 @@ function MakeWithConfig(Config) {
           deployedAt: deployedInfo_deployedAt,
           actor: "local",
           deploymentId: deployedInfo_deploymentId,
+          commit: deployedInfo_commit,
+          dirty: deployedInfo_dirty,
           kind: deployedInfo_kind,
           displayName: deployedInfo_displayName,
           vendor: deployedInfo_vendor,
@@ -2822,6 +2828,7 @@ function Make($star) {
   }));
   let firePluginDeployedHooks = (builtInfos, pluginOutputs) => {
     let environment = Pulumi.getStack();
+    let provenance = DeploymentProvenance$Reventless.current();
     builtInfos.forEach((info, i) => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
       if (hook === undefined) {
@@ -2834,6 +2841,8 @@ function Make($star) {
         let deployedInfo_version = info.version;
         let deployedInfo_deployedAt = new Date().toISOString();
         let deployedInfo_deploymentId = new Date().toISOString();
+        let deployedInfo_commit = provenance.commit;
+        let deployedInfo_dirty = provenance.dirty ? true : undefined;
         let deployedInfo_kind = info.kind;
         let deployedInfo_displayName = info.displayName;
         let deployedInfo_vendor = info.vendor;
@@ -2853,6 +2862,8 @@ function Make($star) {
           deployedAt: deployedInfo_deployedAt,
           actor: "local",
           deploymentId: deployedInfo_deploymentId,
+          commit: deployedInfo_commit,
+          dirty: deployedInfo_dirty,
           kind: deployedInfo_kind,
           displayName: deployedInfo_displayName,
           vendor: deployedInfo_vendor,

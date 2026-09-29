@@ -8,7 +8,8 @@
     "provision-admin": "./run-provision-admin.mjs",
     "provision-accounts": "./run-provision-accounts.mjs",
     "bake-manifest": "./run-bake-manifest.mjs",
-    "deploy-app": "./run-deploy-app.mjs"
+    "deploy-app": "./run-deploy-app.mjs",
+    "resolve-environment": "./run-resolve-environment.mjs"
   },
   "scripts": {
     "build": "rescript build",
