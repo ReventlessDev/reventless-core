@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.7 (2026-09-29)
+
+### Features
+
+* **node, web:** stat, rename, the PATH delimiter, the home directory, a socket timeout, spawn through a shell, Node's timers and a timed abort signal ([1502246](https://github.com/ReventlessDev/reventless-core/commit/15022468bc7c7627fc6c45183ecb15de36d02fab))
+
+
 # 1.0.0-alpha.6 (2026-09-28)
 
 ### Bug Fixes
