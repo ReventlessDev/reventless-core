@@ -5,10 +5,13 @@
 stack for the first time. Both defects were **live**, both are **AppSync-only**,
 and the in-process platform passes the same assertions — so every test and every
 browser run to date had been green while a deployed shop trusted the client.
-✅ **Both are now fixed in source, with tests, and neither is released or
-deployed** — the deployed stack still carries them until a release and a deploy,
-and the acceptance below has to be re-run against that deploy before either is
-called closed.<br/>
+✅ **Both are fixed and released** (updated 2026-09-30): the DCB stamping fix
+(`6edbdf468`) and the by-key read fix (`8232fd4c09`) both shipped in
+`@reventlessdev/reventless-aws` 3.0.0-alpha.306 (release `51e7166fe7`, 2026-08-16).
+⚠️ **The acceptance below has not been recorded against a deployed stack**, so
+neither is called closed yet: a deployment older than that release still carries
+both gaps. `a-command-acts-only-on-what-the-caller-owns.md` builds on this
+acceptance and waits on it before its AWS half.<br/>
 **Relates to:** `owner-scoped-identity-and-reads.md` (the feature these two sites
 were missed by), `denied-query-returns-empty.md` (why the read gap is hard to
 notice from outside).
