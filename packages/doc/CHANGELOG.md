@@ -719,6 +719,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-01
+- fix: check a plugin's roles against the user pool's groups ([ddb3c42](https://github.com/ReventlessDev/reventless-core/commit/ddb3c422b7226a19800e781abd5f03af18867007))
+- docs: automation and translation slices no longer decide Aggregate vs DCB ([bf0cd2e](https://github.com/ReventlessDev/reventless-core/commit/bf0cd2e93a2f26f90f5f7499283647ed6d6ed821))
+### 2026-10-01
 - feat!: roles a plugin declares, groups a platform provides ([43daace](https://github.com/ReventlessDev/reventless-core/commit/43daace6ca588afe22562d079af1e6f1da81942e))
 - docs: what an operator is, and how it relates to the admin role ([991c6e4](https://github.com/ReventlessDev/reventless-core/commit/991c6e4d031c8c914d906123056a2820020c4df8))
 ### 2026-10-01
