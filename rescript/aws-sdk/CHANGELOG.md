@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.28 (2026-10-01)
+
+### Bug Fixes
+
+* check a plugin's roles against the user pool's groups ([ddb3c42](https://github.com/ReventlessDev/reventless-core/commit/ddb3c422b7226a19800e781abd5f03af18867007))
+
+
 # 3.0.0-alpha.27 (2026-09-29)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

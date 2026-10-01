@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.228 (2026-10-01)
+
+### Bug Fixes
+
+* check a plugin's roles against the user pool's groups ([ddb3c42](https://github.com/ReventlessDev/reventless-core/commit/ddb3c422b7226a19800e781abd5f03af18867007))
+
+
 # 1.0.0-alpha.227 (2026-10-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering-aws

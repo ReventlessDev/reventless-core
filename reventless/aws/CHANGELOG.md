@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.371 (2026-10-01)
+
+### Bug Fixes
+
+* check a plugin's roles against the user pool's groups ([ddb3c42](https://github.com/ReventlessDev/reventless-core/commit/ddb3c422b7226a19800e781abd5f03af18867007))
+
+
 # 3.0.0-alpha.370 (2026-10-01)
 
 * feat!: roles a plugin declares, groups a platform provides ([43daace](https://github.com/ReventlessDev/reventless-core/commit/43daace6ca588afe22562d079af1e6f1da81942e))

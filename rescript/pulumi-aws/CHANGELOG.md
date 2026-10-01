@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.23 (2026-10-01)
+
+**Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
+
+
+
+
+
 # 3.0.0-alpha.22 (2026-09-29)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

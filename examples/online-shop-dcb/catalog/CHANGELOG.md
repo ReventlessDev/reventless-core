@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.270 (2026-10-01)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog
+
+
+
+
+
 # 1.0.0-alpha.269 (2026-10-01)
 
 * feat!: roles a plugin declares, groups a platform provides ([43daace](https://github.com/ReventlessDev/reventless-core/commit/43daace6ca588afe22562d079af1e6f1da81942e))
