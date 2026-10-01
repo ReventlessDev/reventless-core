@@ -20,10 +20,11 @@ where a self-contained entity has to be DCB because another slice reads it.
 | Must a command check state across multiple entity IDs? | -- | Yes |
 | Is the entity independent of other entities in the same plugin? | Yes | -- |
 | Does the entity exist mainly to sync external data? | -- | Yes |
-| Do you need automation, inbound/outbound translation slices? | -- | Yes |
 | Is the domain well-understood with clear entity boundaries? | Yes | Either |
 
 **"--" means the approach is not a natural fit but is not prohibited.**
+
+Needing an automation or a translation slice is not a reason to choose DCB. Those slices react to Aggregate events as well as DCB events, and send their commands to an Aggregate or a StateChangeSlice (see [Automation and Side Effects](#5-automation-and-side-effects)).
 
 ---
 
@@ -55,6 +56,8 @@ A **DCB** uses a single shared event log per plugin. Commands are handled by **S
 - **StateChangeSlice** — handles commands, queries shared event log, produces events
 - **StateViewSlice** — projects events into queryable state (read-side)
 - **DcbEventLog** — single shared event log with tag-based filtering
+The automation and translation slices below grew up with DCB, but they also serve aggregates (see [Automation and Side Effects](#5-automation-and-side-effects)):
+
 - **AutomationSlice** — event-driven autonomous workflows
 - **InboundTranslationSlice** — converts external input to commands
 - **OutboundTranslationSlice** — reacts to events by calling external systems
@@ -119,14 +122,15 @@ A single plugin can **mix both approaches**. Independent entities use aggregates
 
 ### 5. Automation and Side Effects
 
-**Choose DCB when** you need autonomous workflows or external system integration within the same bounded context.
+**This criterion does not decide between the approaches.** Three slice types cover autonomous workflows and external system integration, and they work with both:
 
-DCB provides dedicated slice types:
-- **AutomationSlice** — reacts to events by generating new commands (e.g., auto-ship orders after payment confirmation)
-- **OutboundTranslationSlice** — reacts to events by calling external systems (e.g., send order confirmation email)
-- **InboundTranslationSlice** — receives external input and translates to commands (e.g., import products from supplier feed)
+- **AutomationSlice** — reacts to events by generating new commands (e.g., auto-ship orders after payment confirmation). It declares one mapping per source, so it can observe an Aggregate's events, the plugin's DCB log, or both. See [Mixed-source AutomationSlice](./mixed-source-automationslice.md).
+- **OutboundTranslationSlice** — reacts to events by calling external systems (e.g., send order confirmation email). Its `sourceNames` lists the Aggregates or DCB logs it listens to; `[]` means the plugin's own DCB log.
+- **InboundTranslationSlice** — receives external input and translates to commands (e.g., import products from supplier feed).
 
-The aggregate approach handles these scenarios through **Tasks** (for long-running operations) and **EventMappers** (for aggregate-to-aggregate event routing), but the DCB slice types are more explicit and composable.
+All three send their commands to the component named by `targetName`, which may be an Aggregate or a StateChangeSlice. The hybrid online shop shows it: the `Customer` aggregate's events feed `GeocodeCustomerAddress`, an outbound slice whose answer goes back to `Customer`.
+
+Choose the approach for the entity on the other criteria, then add these slices where you need them. **EventMappers** remain the lighter option for stateless aggregate-to-aggregate routing, and **Tasks** for scheduled or file-triggered work. Choose an AutomationSlice over an EventMapper when you need its TODO list: retries, completion tracking and a heartbeat sweep.
 
 ### 6. Event Log Size and Query Performance
 
@@ -161,7 +165,6 @@ The aggregate approach handles these scenarios through **Tasks** (for long-runni
 | Dynamic consistency — tag-based queries determine boundaries at runtime | Tag annotations required on all filterable fields (`@s.matches(DcbTag.string)`) |
 | Cross-entity decisions — one query can span multiple entity types | Optimistic concurrency with retries (up to 3) — conflicts are expected |
 | Fine-grained slices — one slice per command, easy to add/remove | More files per domain concept (one slice file per command vs one behavior with all commands) |
-| Built-in automation and translation slices | DCB-specific slice types only work with DcbEventLog, not aggregates |
 | Minimal decision model — evolve only the fields needed for the decision | Event type union grows as slices are added (all events in one schema) |
 | No separate ReadModel wiring — StateViewSlice projects directly | StateViewSlice is simpler but less flexible than ReadModel (single event source) |
 
@@ -243,7 +246,7 @@ StateViewSlice: ReservationsView
 
 An external supplier feed provides product data that must be validated and imported into the catalog.
 
-**Why DCB:** InboundTranslationSlice receives external JSON, validates it (currency, required fields), and translates to `AddProduct` commands. This is a DCB-native pattern with no aggregate equivalent.
+**Why DCB:** InboundTranslationSlice receives external JSON, validates it (currency, required fields), and translates to `AddProduct` commands. The import itself does not force DCB, since the translation slice could equally target a `Product` aggregate. Product is DCB here because other slices make cross-entity decisions over product events.
 
 ```
 InboundTranslationSlice: ImportProduct (validates + translates)
@@ -390,5 +393,7 @@ plugin-wide namespace and collide with the next host.
 | Side Effect Handler | OutboundTranslationSlice | External system integration |
 | CommandTopic (per aggregate) | CommandTopic (shared per plugin) | Command delivery |
 | EventTopic (per aggregate) | EventTopic (shared) | Event distribution |
+
+The rows pair the closest equivalents; they are not exclusive. AutomationSlice and both translation slices also work alongside aggregates, and a ReadModel can project DCB events (see [Mixed-source ReadModel](./mixed-source-readmodel.md)).
 
 ---

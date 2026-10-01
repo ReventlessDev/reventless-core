@@ -82,7 +82,7 @@ Event → [collect + translate] → External System Call
 
 ## Event Modeling JSON Format
 
-When exported from Event Modeling tools, the model is structured as:
+When exported from Event Modeling tools, the model is structured as shown below. To turn a file into code, use the `reventless-codegen` importer (see `SKILL.md`); this summary is for reading the model during analysis.
 
 ```json
 {

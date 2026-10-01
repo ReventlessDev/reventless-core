@@ -6,9 +6,11 @@
 |-----------|--------------|-------------------|-------------|
 | Command (State Change) | `STATE_CHANGE` | Aggregate (Spec + Behavior) | StateChangeSlice |
 | View (State View) | `STATE_VIEW` | ReadModel + Projection | StateViewSlice |
-| Automation | `AUTOMATION` | EventMapper / Counter | AutomationSlice |
-| Inbound Translation | — | Task (S3 trigger) | InboundTranslationSlice |
-| Outbound Translation | — | SideEffectHandler | OutboundTranslationSlice |
+| Automation | `AUTOMATION` | AutomationSlice (Aggregate source), or EventMapper / Counter | AutomationSlice |
+| Inbound Translation | — | InboundTranslationSlice (`targetName` = the Aggregate), or Task (S3 trigger) | InboundTranslationSlice |
+| Outbound Translation | — | OutboundTranslationSlice (`sourceNames` = the Aggregate), or SideEffectHandler | OutboundTranslationSlice |
+
+The automation and translation slices work in both approaches. They listen to Aggregate events, DCB events or both, and send commands to an Aggregate or a StateChangeSlice. The Aggregate column's second option is the lighter one, without a TODO list, retries or completion tracking.
 
 ## STATE_CHANGE → Reventless
 
@@ -89,12 +91,15 @@ EM slice:
   resolution: OrderShipped
   action: ShipOrder command
 
-→ Reventless (DCB):
-  AutoShipOrder.res (AutomationSlice with collect/resolve/process)
+→ Reventless (DCB or Aggregate source):
+  AutoShipOrder.res (AutomationSlice spec)
+  AutoShipOrder_Automation.res (one Mapping.Make per source + collect/resolve/process)
 
-→ Reventless (Aggregate):
-  EventMapper or Counter with threshold-based command generation
+→ Reventless (Aggregate, stateless):
+  EventMapper, or Counter for threshold-based command generation
 ```
+
+An AutomationSlice whose trigger is an Aggregate event names that Aggregate as a source in its mappings. Use an EventMapper only when the reaction needs no TODO list (no retries, nothing to resolve).
 
 ## Translation → Reventless
 
@@ -102,30 +107,30 @@ EM slice:
 ```
 EM: External supplier feed → validate → AddProduct command
 
-→ Reventless (DCB):
+→ Reventless:
   ImportProduct.res (InboundTranslationSlice with translate function)
+  targetName = the StateChangeSlice or the Aggregate that handles AddProduct
 ```
 
 ### Outbound
 ```
 EM: OrderPlaced event → send confirmation email
 
-→ Reventless (DCB):
+→ Reventless (tracked, with retries):
   SendOrderConfirmation.res (OutboundTranslationSlice with collect/translate)
+  sourceNames = [] for the plugin's own DCB log, or ["Order"] for an Order aggregate
 
-→ Reventless (Aggregate):
+→ Reventless (Aggregate, fire-and-forget):
   Order_EmailNotification.res (SideEffectHandler with execute function)
 ```
 
 ## What EM JSON Cannot Express
 
-These must be added manually during Reventless code generation:
+The `reventless-codegen` importer writes the Spec (`@schema` types), the GWT scenarios and a compiling skeleton per slice. `generate-plugin` writes the plugin wiring. What remains is authored by hand or with `reventless-app`:
 
 - `state` type and `initialState` for StateChangeSlices
 - `evolve` function logic
 - `decide` function guard conditions
-- `@s.matches(DcbTag.string)` annotations
-- `@schema` attributes
+- DCB tag overrides (`@partitionTag`, `@dcbTag`, `@noDcbTag`) where the inferred partition is not the one you want
 - Extension point specs and mappings
-- Plugin composition wiring
 - Error variant types (beyond simple rejection)
