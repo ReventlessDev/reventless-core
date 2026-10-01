@@ -214,7 +214,8 @@ module Make = (
                 ~kind=Aggregate,
                 ~fields=fieldNames,
                 ~commandSchema,
-                ~commandAuthorization=M.Spec.commandAuthorization->Obj.magic,
+                ~commandAuthorization=command =>
+                  M.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
               )
             )
             let aggDef =
@@ -235,7 +236,8 @@ module Make = (
                 cname,
               )
               let syntheticCmd: unknown = hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
-              let rule = M.Spec.commandAuthorization(syntheticCmd->Obj.magic)
+              let rule =
+                M.Spec.commandAuthorization(syntheticCmd->Obj.magic)->Reventless.Authorization.named
               fieldPermissions->Dict.set(fieldName, rule)
             })
             [
@@ -272,7 +274,7 @@ module Make = (
           returnTypeName: qn.returnTypeName,
           stateSchema: R.Spec.stateSchema->S.castToUnknown,
           authorization: None,
-          permission: R.Spec.authorization,
+          permission: R.Spec.authorization->Reventless.Authorization.named,
           connectionSpec: true,
           ?subIdField,
           indexQueries: ?(indexes->Array.length > 0 ? Some(indexes) : None),
@@ -1149,6 +1151,8 @@ module Make = (
     ~opts=?,
   ) => {
     PluginRuntimeBuilder.registerPluginName(name)
+    // Here, outside any `Output.apply`, so a preview refuses the plugin too.
+    pluginStructure->Option.forEach(s => Reventless.RoleCoverage.check(s, ~plugin=name))
     let version = Reventless.PackageVersion.fromCaller()
     Component.make(
       ~componentType=Plugin.componentType->ComponentType.toString,

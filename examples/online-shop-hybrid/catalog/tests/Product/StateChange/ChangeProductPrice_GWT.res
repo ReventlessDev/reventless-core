@@ -51,3 +51,37 @@ describe("ChangeProductPrice StateChangeSlice", () => {
     ->thenError(ProductIsDiscontinued)
   )
 })
+
+describe("Who may ChangeProductPrice", () => {
+  // scenario-id: 9687b7a9-3166-4371-bba6-fd4698b519cf
+  test("a Merchandiser may reprice a product", () =>
+    givenEvents([ProductAdded({price: laptopPrice})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
+    ->thenEvent(ProductPriceChanged({productId: p1, price: laptopChangedPrice}))
+  )
+
+  // scenario-id: 184d3f59-516d-46e2-83a3-ec1b15aa0f9e
+  test("an Admin may reprice a product", () =>
+    givenEvents([ProductAdded({price: laptopPrice})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
+    ->thenEvent(ProductPriceChanged({productId: p1, price: laptopChangedPrice}))
+  )
+
+  // scenario-id: f9a60394-73e3-46ed-9a09-f276180312dd
+  test("a shopper may not reprice a product", () =>
+    givenEvents([ProductAdded({price: laptopPrice})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
+    ->thenRefused
+  )
+
+  // scenario-id: 939488ab-716d-420b-ae89-a6a637f394f4
+  test("an anonymous caller may not reprice a product", () =>
+    givenEvents([ProductAdded({price: laptopPrice})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
+    ->thenRefused
+  )
+})

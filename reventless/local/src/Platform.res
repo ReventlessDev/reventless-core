@@ -73,6 +73,24 @@ let decodeUiFragmentRegistryEventEnvelope = (eventJson: JSON.t): option<
 // splitApi=true to serve core and plugin APIs on separate ports,
 // backend=Backend.Sqlite({...}) to opt into file-backed SQLite persistence.
 // Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false; let cloner = false; let backend = Backend.Memory})
+/** Which group stands for which role, only where the two differ; every other
+    role maps to the group of its own name. Call before `Make()`: the platform
+    resolves roles while it is built, and a mapping stated later is refused. */
+let roleGroups = Reventless.Role.setGroups
+
+/** The groups of a user pool this deployment did not create, which no accounts
+    manifest names. They count as provided by the check that every role a plugin
+    needs has a group. */
+let providedGroups = Reventless.Role.provideGroups
+
+/** The group a role resolves to — the name this platform writes into its
+    directives, its shell configuration and the elevated groups. For code that
+    grants access by group, so it never spells one itself. */
+let groupOf = Reventless.Role.groupOf
+
+/** `groupOf(Role.admin)`. */
+let adminGroup = Reventless.Role.adminGroup
+
 module MakeWithConfig = (
   Config: {
     let silent: bool
@@ -87,6 +105,14 @@ module MakeWithConfig = (
   // …) are no-ops in-memory. envVars are not propagated here because the
   // local platform has no per-component process boundary.
   let _ = Config.commandHandlerConfig
+
+  // What this platform provides for the roles its plugins need: every account it
+  // can sign in as, built-in and manifest alike. The manifest is read here rather
+  // than from the user store, which loads only when the servers start — after
+  // the plugins are built and checked.
+  Reventless.Role.provideGroupsFrom(() =>
+    LocalAuth.knownGroups()->Array.concat(Reventless.AccountsManifest.declaredGroups())
+  )
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
   let _ = TestRunner.setup()
@@ -1789,7 +1815,7 @@ module MakeWithConfig = (
     // structure manually.
     pluginStructuresStore.contents->Dict.set(
       ReventlessCore.Platform_Admin_Structure.pluginId,
-      ReventlessCore.Platform_Admin_Structure.structure,
+      ReventlessCore.Platform_Admin_Structure.structure(),
     )
 
     let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name

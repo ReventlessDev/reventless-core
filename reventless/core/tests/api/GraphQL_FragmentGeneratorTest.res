@@ -853,7 +853,7 @@ describe("@resolves / @resolvesMany reach the SDL", () => {
         () =>
           orderType(
             ~resolvedFields=Some(ResolvedFields.bothFields),
-            ~targetPermission=AllowGroups(["Admin"]),
+            ~targetPermission=AllowRoles([Reventless.Role.make("Admin")]),
           ),
       ),
     )->toBe(true)

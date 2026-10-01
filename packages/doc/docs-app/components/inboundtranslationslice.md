@@ -78,13 +78,16 @@ module type Spec = {
   @schema type command
 
   let targetName: string
-  let commandAuthorization: command => Authorization.permission
+  type role
+  let commandAuthorization: command => Authorization.rule<role>
 }
 ```
 
 `translate` lives on the `Translation` module.
 There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
-`moduleUrl`, and a default `commandAuthorization` (`AllowAuthenticated`).
+`moduleUrl`, a default `commandAuthorization` (`AllowAuthenticated`), and
+`type role`, the plugin's `Roles.t` when it declares one (see
+[Authorization](../authorization.md#roles-and-groups)).
 
 ### Spec Fields Explained
 

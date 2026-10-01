@@ -246,6 +246,23 @@ function locate(given, param) {
   }
 }
 
+function declaredGroups() {
+  let template = Nodepath.join(process.cwd(), templateName);
+  let file = Nodefs.existsSync(defaultPath()) ? defaultPath() : (
+      Nodefs.existsSync(template) ? template : undefined
+    );
+  let match = Stdlib_Option.map(file, parseFile);
+  if (match !== undefined) {
+    if (match.TAG === "Ok") {
+      return match._0.flatMap(e => e.groups);
+    } else {
+      return [];
+    }
+  } else {
+    return [];
+  }
+}
+
 function prepare(file) {
   let e = parseFile(file);
   if (e.TAG !== "Ok") {
@@ -306,6 +323,7 @@ export {
   templateName,
   pathOf,
   locate,
+  declaredGroups,
   prepare,
 }
 /* entrySchema Not a pure module */

@@ -1,22 +1,49 @@
 // Provider-agnostic authorization rules. Evaluated against the
 // `Identity.t` resolved by an `Auth_Adapter.Provider.authenticate` call.
 //
-// `array<string>` for groups (not a parameterised variant) keeps the
-// framework decoupled from any application's specific group set —
-// applications can define their own typed `group` variant and convert via
-// a thin helper, see docs/analysis/authentication-authorization.md §4.2.
+// A spec writes its rules over its plugin's own roles, `rule<Roles.t>`, so a
+// misspelled role does not compile. The framework reads them as `permission`,
+// the same rule over role names, which `Role.groupOf` maps to the group that
+// stands for each role in this deployment.
 
-@schema
-type permission =
-  | AllowGroups(array<string>)
+type rule<'role> =
+  | AllowRoles(array<'role>)
   | AllowAuthenticated
   | AllowAnonymous
   | DenyAll
 
-let isAllowed = (rule: permission, identity: Identity.t): bool =>
+/** A rule over role names: what the framework compares, maps and publishes. */
+type permission = rule<Role.name>
+
+/** A spec's rule as the framework reads it. Each role must be a case without a
+    payload, which is its name at run time; anything else is refused. */
+@module("./authorizationNamed.mjs")
+external named: rule<'role> => permission = "named"
+
+/** The roles a rule names, before mapping. */
+let rolesOf = (rule: permission): array<Role.name> =>
+  switch rule {
+  | AllowRoles(roles) => roles
+  | AllowAuthenticated | AllowAnonymous | DenyAll => []
+  }
+
+/** The groups a rule admits, mapped. */
+let groupsOf = (rule: permission): array<string> => rule->rolesOf->Array.map(Role.groupOf)
+
+/**
+Whether a rule admits a caller, given whether they are signed in and which roles
+they hold. The one decision both `isAllowed` and a GWT scenario make, so the two
+cannot read a rule differently.
+*/
+let admits = (rule: permission, ~signedIn: bool, ~holds: Role.name => bool): bool =>
   switch rule {
   | DenyAll => false
   | AllowAnonymous => true
-  | AllowAuthenticated => identity.userId !== "anonymous"
-  | AllowGroups(groups) => groups->Array.some(group => identity.groups->Array.includes(group))
+  | AllowAuthenticated => signedIn
+  | AllowRoles(roles) => roles->Array.some(holds)
   }
+
+let isAllowed = (rule: permission, identity: Identity.t): bool =>
+  admits(rule, ~signedIn=identity.userId !== "anonymous", ~holds=role =>
+    identity.groups->Array.includes(Role.groupOf(role))
+  )

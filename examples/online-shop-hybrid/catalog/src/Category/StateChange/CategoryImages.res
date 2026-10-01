@@ -24,17 +24,14 @@ type consumedEvent =
 // cardinality's effect on the surface.
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   SetCategoryImage({
       categoryId: CategoryId.t,
       categoryImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
-  RemoveCategoryImage({
-      categoryId: CategoryId.t,
-    })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser])) RemoveCategoryImage({categoryId: CategoryId.t})
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   SetCategoryImageAltText({
       categoryId: CategoryId.t,
       altText: string,

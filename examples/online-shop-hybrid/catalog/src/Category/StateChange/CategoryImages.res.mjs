@@ -88,18 +88,13 @@ function commandTransition(command) {
 let traits = [Attachments$TraitAttachments.declaration];
 
 function commandAuthorization(command) {
-  switch (command.TAG) {
-    case "SetCategoryImage" :
-    case "RemoveCategoryImage" :
-    case "SetCategoryImageAltText" :
-      return {
-        TAG: "AllowGroups",
-        _0: [
-          "Admin",
-          "Merchandiser"
-        ]
-      };
-  }
+  return {
+    TAG: "AllowRoles",
+    _0: [
+      "Admin",
+      "Merchandiser"
+    ]
+  };
 }
 
 let name = "CategoryImages";

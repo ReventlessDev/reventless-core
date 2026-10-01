@@ -22,6 +22,10 @@ let eventSchema = Sury.$schema(s => ({
   name: s.m(Sury.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ExternalAddCategory";
 
 export {
@@ -30,5 +34,6 @@ export {
   commandSchema,
   errorSchema,
   eventSchema,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

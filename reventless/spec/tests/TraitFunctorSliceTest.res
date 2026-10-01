@@ -87,8 +87,9 @@ module type GraftConfig = {
   // The host's lifecycle, and the edge its commands own.
   type lifecycleState
   let guard: Transition.t<lifecycleState>
-  // The host's groups.
-  let authorize: Authorization.permission
+  // The host's roles, and the rule over them.
+  type role
+  let authorize: Authorization.rule<role>
 }
 
 module MakeAttachmentSlice = (H: GraftConfig) => {
@@ -128,6 +129,7 @@ module MakeAttachmentSlice = (H: GraftConfig) => {
   ])
   let consumedEventSchema = eventSchema
 
+  type role = H.role
   let commandAuthorization = _ => H.authorize
   type lifecycleState = H.lifecycleState
   let commandTransition = _ => H.guard
@@ -146,6 +148,12 @@ module MakeAttachmentBehavior = (Spec: StateChangeSlice.Spec) => {
 
 // ── The host side: what would be left in ProductImages.res ────────────────────
 
+module Roles = {
+  type t =
+    | Admin
+    | Merchandiser
+}
+
 module ProductShelf = {
   @schema
   type shelfStatus = Listed | Archived | Discontinued
@@ -156,7 +164,8 @@ module ProductImagesSpec = MakeAttachmentSlice({
   let moduleUrl = "file:///host/ProductImages.res"
   type lifecycleState = ProductShelf.shelfStatus
   let guard = Transition.Guards([ProductShelf.Listed, ProductShelf.Archived])
-  let authorize = Authorization.AllowGroups(["Admin", "Merchandiser"])
+  type role = Roles.t
+  let authorize: Authorization.rule<role> = AllowRoles([Admin, Merchandiser])
 })
 
 module CategoryImagesSpec = MakeAttachmentSlice({
@@ -164,7 +173,8 @@ module CategoryImagesSpec = MakeAttachmentSlice({
   let moduleUrl = "file:///host/CategoryImages.res"
   type lifecycleState = ProductShelf.shelfStatus
   let guard = Transition.Guards([ProductShelf.Listed])
-  let authorize = Authorization.AllowGroups(["Admin"])
+  type role = Roles.t
+  let authorize: Authorization.rule<role> = AllowRoles([Admin])
 })
 
 // THE ASSERTIONS. If a functor-produced module could not be a slice, these
@@ -298,8 +308,8 @@ describe("P4 — a functor-produced module IS a StateChangeSlice spec", () => {
         }),
       ),
     ))->toEqual((
-      Authorization.AllowGroups(["Admin", "Merchandiser"]),
-      Authorization.AllowGroups(["Admin"]),
+      Authorization.AllowRoles([Roles.Admin, Merchandiser]),
+      Authorization.AllowRoles([Roles.Admin]),
     ))
   )
 

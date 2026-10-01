@@ -67,8 +67,10 @@ elevation would let two views disagree about who an operator is, so a caller
 scoped on one view would be unscoped on the next — and the gap would appear one
 view at a time, as views were added.
 
-Resolved as: an explicit `setElevatedGroups` wins, else the environment, else
-empty. The env fallback exists because a deployment is **two kinds of process**,
+Resolved as: an explicit `setElevatedGroups` / `setElevatedRoles` (joined) wins,
+else the environment, else empty. Roles are resolved to groups here, so the
+environment carries groups and a runtime never needs the role mapping to read it.
+The env fallback exists because a deployment is **two kinds of process**,
 not one. On a cloud provider the read predicate for a table-backed view is baked
 into resolver source by the deploy program, while stamping and the SQL-backed
 reads run later inside separate function runtimes the deploy never enters. A
@@ -86,13 +88,39 @@ external _elevatedGroupsEnv: option<string> = "process.env.REVENTLESS_ELEVATED_G
 
 let explicitElevatedGroups: ref<option<array<string>>> = ref(None)
 
+/** The elevated list stated as roles, kept unresolved so a role mapping stated
+    after it still applies. */
+let explicitElevatedRoles: ref<option<array<Role.name>>> = ref(None)
+
 /** Set the list for this process. Wins over the environment — a platform root
     that states its operator groups in code means it, and should not be silently
     overridden by a stray variable. */
 let setElevatedGroups = (groups: array<string>) => explicitElevatedGroups := Some(groups)
 
+/** The same setting stated as roles, each resolved to the group that stands for
+    it. Joined with `setElevatedGroups` where a root states both. */
+let setElevatedRoles = (roles: array<Role.name>) => explicitElevatedRoles := Some(roles)
+
 /** Forget an explicit setting and fall back to the environment again. */
-let clearElevatedGroups = () => explicitElevatedGroups := None
+let clearElevatedGroups = () => {
+  explicitElevatedGroups := None
+  explicitElevatedRoles := None
+}
+
+/** The explicit settings joined, or `None` when neither was given. */
+let explicitElevated = (): option<array<string>> =>
+  switch (explicitElevatedGroups.contents, explicitElevatedRoles.contents) {
+  | (None, None) => None
+  | (groups, roles) =>
+    Some(
+      groups
+      ->Option.getOr([])
+      ->Array.concat(roles->Option.getOr([])->Array.map(Role.groupOf))
+      ->Set.fromArray
+      ->Set.values
+      ->Array.fromIterator,
+    )
+  }
 
 /**
 Name the elevated groups only where the deployment has not already answered.
@@ -111,13 +139,20 @@ environment: the more specific statement wins, and the default only fills silenc
 🚨 **An explicit empty list is an answer, and this must not fill it in.** A
 deployment that deliberately elevates nobody has decided that; a default landing
 on top would silently re-grant the cross-owner read it withheld. That is why this
-reads [explicitElevatedGroups] rather than [elevatedGroups] — the latter answers
+reads [explicitElevated] rather than [elevatedGroups] — the latter answers
 `[]` for "nobody" and for "nothing said" alike, and those must not be treated the
 same here.
 */
 let defaultElevatedGroups = (groups: array<string>) =>
-  switch (explicitElevatedGroups.contents, _elevatedGroupsEnv) {
+  switch (explicitElevated(), _elevatedGroupsEnv) {
   | (None, None) => explicitElevatedGroups := Some(groups)
+  | _ => ()
+  }
+
+/** `defaultElevatedGroups` stated as roles, resolved when read. */
+let defaultElevatedRoles = (roles: array<Role.name>) =>
+  switch (explicitElevated(), _elevatedGroupsEnv) {
+  | (None, None) => explicitElevatedRoles := Some(roles)
   | _ => ()
   }
 
@@ -136,7 +171,7 @@ appearing later in a process still takes effect. Reading a raw ref would have
 frozen whichever half happened to be consulted first.
 */
 let elevatedGroups = (): array<string> =>
-  switch explicitElevatedGroups.contents {
+  switch explicitElevated() {
   | Some(groups) => groups
   | None =>
     switch _elevatedGroupsEnv {

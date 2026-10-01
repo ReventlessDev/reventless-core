@@ -12,6 +12,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
@@ -25,10 +26,12 @@ import * as UiSlots$ReventlessLocal from "./UiSlots.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
+import * as LocalAuth$ReventlessLocal from "./adapter/Auth/LocalAuth.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
+import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
@@ -140,6 +143,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 }
 
 function MakeWithConfig(Config) {
+  Role$Reventless.provideGroupsFrom(() => LocalAuth$ReventlessLocal.knownGroups().concat(AccountsManifest$Reventless.declaredGroups()));
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
   if (typeof match !== "object") {
@@ -1360,7 +1364,7 @@ function MakeWithConfig(Config) {
       connectPlugin(plugins$1);
       seedPluginStructuresStore(plugins$1);
     }
-    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure();
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -1905,6 +1909,7 @@ function MakeWithConfig(Config) {
 
 function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
+  Role$Reventless.provideGroupsFrom(() => LocalAuth$ReventlessLocal.knownGroups().concat(AccountsManifest$Reventless.declaredGroups()));
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();
@@ -3113,7 +3118,7 @@ function Make($star) {
       connectPlugin(plugins$1);
       seedPluginStructuresStore(plugins$1);
     }
-    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure();
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -3642,6 +3647,14 @@ function Make($star) {
   };
 }
 
+let roleGroups = Role$Reventless.setGroups;
+
+let providedGroups = Role$Reventless.provideGroups;
+
+let groupOf = Role$Reventless.groupOf;
+
+let adminGroup = Role$Reventless.adminGroup;
+
 export {
   log,
   platformGraphQLRef,
@@ -3649,6 +3662,10 @@ export {
   platformMCPRef,
   decodePluginEventEnvelope,
   decodeUiFragmentRegistryEventEnvelope,
+  roleGroups,
+  providedGroups,
+  groupOf,
+  adminGroup,
   MakeWithConfig,
   Make,
 }

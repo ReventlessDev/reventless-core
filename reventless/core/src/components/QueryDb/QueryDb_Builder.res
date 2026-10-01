@@ -55,7 +55,7 @@ module Make = (
       ~subIdField,
       ~idResolverConfigs=Spec.config.idResolvers,
       ~idsResolverConfigs=Spec.config.idsResolvers,
-      ~authorization=Spec.authorization,
+      ~authorization=Spec.authorization->Reventless.Authorization.named,
       ~opts,
     )
 

@@ -302,7 +302,7 @@ its own default.
 type state = { … }
 ```
 
-**`@@reventless.authorize(AllowGroups([…]))`** is the real gate, and it is worth
+**`@@reventless.authorize(AllowRoles([…]))`** is the real gate, and it is worth
 stating next to the hints because the two are easy to confuse. `visibility`
 decides what a menu shows; `authorize` decides what the server answers.
 
@@ -587,13 +587,15 @@ read it, and confusing them is the main way this goes wrong:
 
 | Question | Mechanism | Kind |
 |---|---|---|
-| What may this role **call**? | `@@reventless.authorize(AllowGroups([…]))` | enforced |
+| What may this role **call**? | `@@reventless.authorize(AllowRoles([…]))` | enforced |
 | Whose rows does it **read**? | `elevatedGroups` + `@owner` | enforced |
 | What does it **see in the menu**? | `bakedManifest.journeys` | curation |
 | Which of my roles am I **acting as**? | active-role token narrowing | enforced |
 
-The permission vocabulary is `AllowGroups([…])`, `AllowAuthenticated`,
-`AllowAnonymous` and `DenyAll`, evaluated against the resolved identity.
+The permission vocabulary is `AllowRoles([…])`, over the plugin's own `Roles.t`,
+`AllowAuthenticated`, `AllowAnonymous` and `DenyAll`, evaluated against the
+resolved identity; each role is compared as the group the deployment maps it to
+(see [Authorization](./authorization.md#roles-and-groups)).
 
 **Elevation and journeys are orthogonal**, and the hybrid shop is built to make
 that visible:
@@ -639,15 +641,21 @@ Cognito groups.
 
 **Permission** — what the role may call. A command with no `@authorize` defaults to
 `AllowAuthenticated`, so `PlaceOrder` is open to any logged-in caller and no
-`Shopper` gate is needed; `ShipOrder` names its groups and a shopper is refused by
-the API:
+`Shopper` gate is needed, and the ordering plugin declares no `Shopper` role.
+`ShipOrder` names its roles, which the plugin declares in `src/Roles.res`, and a
+shopper is refused by the API:
 
 ```rescript
+// Ordering/Roles.res
+type t =
+  | Admin
+  | Fulfilment
+
 // Ordering/Order/StateChange/ShipOrder.res — operator-only
-@authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
+@authorize(AllowRoles([Admin, Fulfilment])) ShipOrder({orderId: string})
 
 // Ordering/Customer/ReadModelStream/Customers.res — file-level, whole view
-@@reventless.authorize(AllowGroups(["Admin", "Fulfilment"]))
+@@reventless.authorize(AllowRoles([Admin, Fulfilment]))
 ```
 
 Note the two forms: `@authorize` on a **command variant** gates that one command;
@@ -1050,11 +1058,11 @@ view is entitled to claim it.
 `elevatedGroups` appears twice on purpose, and the two are different things:
 
 ```rescript
-// The server-side rule: these groups read across owners.
-Reventless.OwnerScope.setElevatedGroups(Storefront.elevatedGroups)
+// The server-side rule: these roles read across owners.
+Reventless.OwnerScope.setElevatedRoles(Storefront.elevatedRoles)
 
-// The browser's mirror of it.
-shellConfig: Dict.fromArray([("elevatedGroups", …)])
+// The browser's mirror of it: the groups the server resolved those roles to.
+shellConfig: Dict.fromArray([("elevatedGroups", Reventless.OwnerScope.elevatedGroups()…)])
 ```
 
 The server call decides whose rows a query returns. The `shellConfig` key is the
@@ -1078,6 +1086,17 @@ curated surface of its own declares it under `journeys` like any other.
 Set the elevated groups **before** the plugins are built — the components read
 them as they are constructed.
 
+### 5.4 The administrator group
+
+The shell decides whether a caller may use the admin discovery queries by the
+group the admin API is gated on. That is the group the deployment maps the
+administrator role to (see [Authorization](./authorization.md#roles-and-groups)),
+`Admin` unless the platform root says otherwise. The platform writes it as
+`adminGroup`, on both platforms, only where it differs from `Admin`; an absent key
+reads as `Admin`. It is computed, not passthrough: naming it in `shellConfig`
+fails, because a shell gating on another group than the server would treat a real
+administrator as a non-admin.
+
 ---
 
 ## 6. Putting it together
@@ -1087,7 +1106,7 @@ The hybrid shop's local root, in full:
 ```rescript
 module Platform = ReventlessLocal.Platform.Make()
 
-Reventless.OwnerScope.setElevatedGroups(OnlineShopHybridSeed.Storefront.elevatedGroups)
+Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedRoles)
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
@@ -1103,7 +1122,7 @@ Platform.makePlatform(
       ("home", JSON.Encode.string("/Catalog/Products")),
       (
         "elevatedGroups",
-        OnlineShopHybridSeed.Storefront.elevatedGroups
+        Reventless.OwnerScope.elevatedGroups()
         ->Array.map(JSON.Encode.string)
         ->JSON.Encode.array,
       ),
@@ -1125,7 +1144,7 @@ What each of the shop's components declares:
 |---|---|
 | `Catalog/Products` | `Money.t` price; a `productImages` attachment set of `UploadableImage.t` members with a primary `productImage` beside it; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
 | `Catalog/Categories` | a `categoryImages` attachment set — its own store, not the products' one — with a primary `categoryImage`; nav group "Shop" |
-| `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
+| `Catalog/ProductDemand` | `@@reventless.authorize(AllowRoles([Admin, Merchandiser]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; `@summary total`/`itemCount` with `@hidden productIds`; `@live(true)`; nav "All Orders", or "My Orders" for a caller reading only their own |
 | `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle accountStatus` with `@retired Deactivated` on its own constructor; a `Geolocation` union carrying the geocoder's answer, whose `Located` arm holds the `GeoPoint` the map pin is drawn from |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |

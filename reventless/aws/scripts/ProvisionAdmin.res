@@ -76,7 +76,7 @@ Make the first administrator of a Reventless deployment.
                        one. The run always names the stack it used.
   --email <address>    The address they sign in with.
 
-Creates the "${Reventless.AdminGroup.name}" group if it is missing, the account if
+Creates the "${Reventless.Role.adminGroup()}" group if it is missing, the account if
 it is missing, a working password, and the membership between them. Provisions
 nothing that a platform stack owns. Region and credentials come from the
 environment, as for any AWS SDK call.
@@ -222,7 +222,7 @@ let run = async ({email, providerId, stack}: request): result<unit, string> =>
     switch await checkPoolAcceptsEmail(~providerId) {
     | Error(_) as e => e
     | Ok() =>
-      let group = Reventless.AdminGroup.name
+      let group = Reventless.Role.adminGroup()
       let password = Reventless.Util_Password.generate()
       await ensureGroup(~providerId, ~group)
       await ensureUser(~providerId, ~email)

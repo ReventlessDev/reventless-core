@@ -89,7 +89,7 @@ section describes.
 nothing makes them agree:
 
 1. **Authorization** — whether a caller may reach a field at all. This is what
-   `@@reventless.authorize(AllowGroups(["Admin"]))` states, and it is checked per
+   `@@reventless.authorize(AllowRoles([Admin]))` states, and it is checked per
    command and per query. See [Authorization](./authorization.md).
 2. **Owner scoping** — whether a caller reads across owners or only their own
    rows. This is `REVENTLESS_ELEVATED_GROUPS`, and it is what `@owner` narrows on.
@@ -99,15 +99,16 @@ gets a refusal, which is visible. A caller in the group but *not* elevated passe
 every authorization check and then sees empty screens — because an empty
 owner-scoped view and a view with nothing in it are indistinguishable.
 
-A default deploy sets both for you: the stack declares the `Admin` group and
-defaults the elevated list to it, so an administrator provisioned by the command
-above is elevated without anyone configuring anything.
+A default deploy sets both for you: the stack declares the group the `Admin`
+role maps to (`Admin`, unless the root maps it elsewhere) and defaults the elevated
+list to that role, so an administrator provisioned by the command above is
+elevated without anyone configuring anything.
 
 **If you override one, override both.** A deployment that names its own operator
-groups:
+roles:
 
 ```rescript
-Reventless.OwnerScope.setElevatedGroups(["Admin", "Fulfilment"])
+Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedRoles)
 ```
 
 wins over the default entirely — including the empty list, if you deliberately

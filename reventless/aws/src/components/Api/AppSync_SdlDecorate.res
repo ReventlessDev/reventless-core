@@ -136,8 +136,12 @@ type fieldGate =
 
 let permissionToGate = (permission: Reventless.Authorization.permission): fieldGate =>
   switch permission {
-  | AllowGroups([]) => Groups(["__deny_all__"])
-  | AllowGroups(groups) => Groups(groups)
+  // The groups the roles map to: the deploy program is where the mapping is known.
+  | AllowRoles(_) =>
+    switch Reventless.Authorization.groupsOf(permission) {
+    | [] => Groups(["__deny_all__"])
+    | groups => Groups(groups)
+    }
   | DenyAll => Groups(["__deny_all__"])
   | AllowAuthenticated => AnyAuthenticated
   | AllowAnonymous => Anonymous
@@ -165,7 +169,7 @@ let refuseAnonymousFields = (fieldNames: array<string>): 'a =>
     `Anonymous fields on AWS are deferred. When they land it will be as a separate\n` ++
     `API carrying only the unauthenticated fields. Do not add API_KEY to this one:\n` ++
     `every field here would then have to say whether the key reaches it, and one\n` ++
-    `that forgot would be open. Until then, declare the field AllowAuthenticated\n` ++ `(or AllowGroups) and mean it.`,
+    `that forgot would be open. Until then, declare the field AllowAuthenticated\n` ++ `(or AllowRoles) and mean it.`,
   )
 
 // Injects the Cognito group gate on ALL mutation, query, and subscription fields

@@ -96,7 +96,8 @@ let buildFixture = async (
     type state = productRow
     let config = Reventless.ReadModel.config()
     let subIdConfig = None
-    let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    type role = Reventless.Role.name
+    let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
     let visibility: Reventless.Visibility.t = Public
   }
 
@@ -125,7 +126,8 @@ let buildFixture = async (
       ],
     )
     let subIdConfig = None
-    let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    type role = Reventless.Role.name
+    let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
     let visibility: Reventless.Visibility.t = Public
   }
 

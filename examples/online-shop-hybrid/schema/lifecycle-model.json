@@ -7,7 +7,7 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "AddProduct",
@@ -17,7 +17,7 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "ArchiveCategory",
@@ -29,7 +29,7 @@
     "targets": [
       "Archived"
     ],
-    "scenarios": 3
+    "scenarios": 5
   },
   {
     "component": "ArchiveProduct",
@@ -41,7 +41,7 @@
     "targets": [
       "Archived"
     ],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "CancelOrder",
@@ -75,7 +75,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 1
+    "scenarios": 3
   },
   {
     "component": "CategoryImages",
@@ -85,7 +85,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "CategoryImages",
@@ -95,7 +95,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 1
+    "scenarios": 3
   },
   {
     "component": "ChangeProductDescription",
@@ -106,7 +106,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "ChangeProductName",
@@ -117,7 +117,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "ChangeProductPrice",
@@ -128,7 +128,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "Customer",
@@ -223,7 +223,7 @@
     "targets": [
       "Discontinued"
     ],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "EmailVerificationChallenges",
@@ -276,7 +276,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "ProductImages",
@@ -287,7 +287,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 4
   },
   {
     "component": "ProductImages",
@@ -298,7 +298,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 4
   },
   {
     "component": "ProductImages",
@@ -309,7 +309,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 4
   },
   {
     "component": "RecordProductDemand",
@@ -335,7 +335,7 @@
       "Listed"
     ],
     "targets": [],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "ShipOrder",
@@ -347,7 +347,7 @@
     "targets": [
       "Shipped"
     ],
-    "scenarios": 5
+    "scenarios": 7
   },
   {
     "component": "SyncCatalogProduct",
@@ -382,6 +382,18 @@
     "scenarios": 2
   },
   {
+    "component": "UnarchiveCategory",
+    "command": "UnarchiveCategory",
+    "level": "Instance",
+    "allowedStates": [
+      "Archived"
+    ],
+    "targets": [
+      "Listed"
+    ],
+    "scenarios": 5
+  },
+  {
     "component": "UnarchiveProduct",
     "command": "UnarchiveProduct",
     "level": "Instance",
@@ -391,6 +403,6 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 5
+    "scenarios": 7
   }
 ]

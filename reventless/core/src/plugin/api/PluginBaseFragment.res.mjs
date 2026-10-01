@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
@@ -20,7 +21,7 @@ let queryEntries = [{
     stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
     specName: PluginsReadModelSpec$ReventlessCore.name,
     authorization: undefined,
-    permission: PluginsReadModelSpec$ReventlessCore.authorization,
+    permission: Authorization$Reventless.named(PluginsReadModelSpec$ReventlessCore.authorization),
     subIdField: Stdlib_Option.map(undefined, c => c.subIdField),
     indexQueries: indexQueriesOfConfig(PluginsReadModelSpec$ReventlessCore.config)
   }];

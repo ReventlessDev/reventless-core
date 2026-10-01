@@ -221,16 +221,23 @@ cat > "$PLUGIN/src/ReadModel/OwnedIndexedReadModel.res" <<'EOF'
 type state = { id: string, @index @owner customerId: string, name: string }
 EOF
 
-# Authorization injection — per-constructor @authorize plus file-level default
+# Authorization injection — per-constructor @authorize plus file-level default.
+# The roles are the plugin's own `Roles.t`, found by ordinary scoping.
+cat > "$PLUGIN/src/Roles.res" <<'EOF'
+type t =
+  | Admin
+  | Catalog
+EOF
+
 cat > "$PLUGIN/src/Aggregate/Category.res" <<'EOF'
 @@reventless.spec
-@@reventless.authorize(AllowGroups(["Catalog"]))
+@@reventless.authorize(AllowRoles([Catalog]))
 
 @schema
 type command =
   | Add({name: string})
   | Rename({name: string})
-  | @authorize(AllowGroups(["Admin"])) Archive
+  | @authorize(AllowRoles([Admin])) Archive
 
 @schema
 type event =
@@ -1133,7 +1140,7 @@ let initialState = { orderId: "" }
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin"])) Ship({orderId: string})
+  | @authorize(AllowRoles([Admin])) Ship({orderId: string})
   | ...reportCommands
 
 @schema
@@ -1849,8 +1856,10 @@ JS="$PLUGIN/src/Aggregate/Category.res.mjs"
 assert_js_contains "$JS" '"Catalog"'                       "@authorize: file-level default group present"
 # Per-constructor rule lifted into a Archive case
 assert_js_contains "$JS" '"Admin"'                         "@authorize: per-ctor Admin group present"
-# Both lines refer to AllowGroups — qualified name fine, just confirm it's there
-assert_js_contains "$JS" 'AllowGroups'                     "@authorize: AllowGroups constructor used"
+# Both rules are AllowRoles, their roles coerced to plain strings
+assert_js_contains "$JS" 'AllowRoles'                      "@authorize: AllowRoles constructor used"
+# The coercion is type-level only: no `Roles` import or lookup survives
+assert_js_not_contains "$JS" 'Roles.res.mjs'               "@authorize: a role is its name at runtime"
 # Generated switch retains a `command` parameter (not wildcard `_`)
 assert_js_contains "$JS" 'function commandAuthorization(command)' "@authorize: switch lambda parameter"
 # Sanity: @authorize attribute stripped from the AST so sury-ppx doesn't see it
@@ -2977,6 +2986,12 @@ if echo "$AUTH_BLOCK" | grep -q '"Reported"' && echo "$AUTH_BLOCK" | grep -q '"F
   pass "spliced constructors reach commandAuthorization"
 else
   fail "spread authorization" "commandAuthorization does not answer for the spliced constructors"
+fi
+# The plugin's role case, written bare in the annotation, is its name at run time.
+if echo "$AUTH_BLOCK" | grep -q '"Admin"'; then
+  pass "a role case compiles to its name"
+else
+  fail "role case" "commandAuthorization does not carry the role's name"
 fi
 
 # The host's own switch reaches them because it is exhaustive over the command,

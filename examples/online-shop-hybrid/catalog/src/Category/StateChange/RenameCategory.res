@@ -16,7 +16,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   RenameCategory({
       categoryId: CategoryId.t,
       name: string,

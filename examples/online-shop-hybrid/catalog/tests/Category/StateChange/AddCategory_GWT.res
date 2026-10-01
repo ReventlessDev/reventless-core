@@ -31,3 +31,37 @@ describe("AddCategory StateChangeSlice", () => {
     ->thenError(CategoryAlreadyExists)
   )
 })
+
+describe("Who may AddCategory", () => {
+  // scenario-id: c458d10e-0c65-4480-b801-99d0e3a643aa
+  test("a Merchandiser may add a category", () =>
+    givenEvents([])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
+    ->thenEvent(CategoryAdded({categoryId: c1, name: electronics}))
+  )
+
+  // scenario-id: 37154da1-4c78-4b77-97ed-0b73e35d5532
+  test("an Admin may add a category", () =>
+    givenEvents([])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
+    ->thenEvent(CategoryAdded({categoryId: c1, name: electronics}))
+  )
+
+  // scenario-id: fd2ec80d-1154-4243-b798-58d25fbcec1b
+  test("a shopper may not add a category", () =>
+    givenEvents([])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
+    ->thenRefused
+  )
+
+  // scenario-id: 25bb6900-8985-4abd-8b21-4052d4e7284e
+  test("an anonymous caller may not add a category", () =>
+    givenEvents([])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
+    ->thenRefused
+  )
+})

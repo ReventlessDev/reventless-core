@@ -18,3 +18,8 @@ type error = CategoryAlreadyExists
 
 @schema
 type event = CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+// What `@@reventless.spec` injects into a real spec: the default rule.
+type role = Reventless.Role.name
+let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
+  Reventless.Authorization.AllowAuthenticated

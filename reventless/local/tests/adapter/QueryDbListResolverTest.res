@@ -145,7 +145,8 @@ let buildFixture = async (~name: string, ~indexes: array<Reventless.ReadModel.in
     type state = rowState
     let config = Reventless.ReadModel.config()
     let subIdConfig = None
-    let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    type role = Reventless.Role.name
+    let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
     let visibility: Reventless.Visibility.t = Public
   }
 
@@ -646,7 +647,8 @@ let buildSubIdFixture = async (~name: string) => {
       Reventless.ReadModel.subIdField: "lineNo",
       getSubId: (state: lineState) => state.lineNo,
     })
-    let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    type role = Reventless.Role.name
+    let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
     let visibility: Reventless.Visibility.t = Public
   }
 

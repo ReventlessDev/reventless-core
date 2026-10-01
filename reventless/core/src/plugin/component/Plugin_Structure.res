@@ -793,14 +793,31 @@ let commandLevelAndId = (
   }
 
 // The server's rule as keys a client checks against `identity.groups ++
-// config.accessTiers`; an any-of, since `isAllowed` is `some`. The rules asking
-// for nothing checkable — and `DenyAll` — publish no keys rather than an
+// config.accessTiers`; an any-of, since `isAllowed` is `some`. Mapped groups, not
+// role names: a key no token carries would gate the surface shut. The rules
+// asking for nothing checkable — and `DenyAll` — publish no keys rather than an
 // unsatisfiable one.
 let accessKeysFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
-  switch rule {
-  | AllowGroups(groups) if groups->Array.length > 0 => Some(groups)
-  | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
+  switch Reventless.Authorization.groupsOf(rule) {
+  | [] => None
+  | groups => Some(groups)
   }
+
+let nonEmpty = (xs: array<string>): option<array<string>> => xs->Array.length > 0 ? Some(xs) : None
+
+// The same rule's roles before mapping, which the deploy check compares with what
+// the platform provides.
+let rolesFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
+  rule->Reventless.Authorization.rolesOf->Array.map(role => (role :> string))->nonEmpty
+
+// A stand-in for one constructor, the same shape the resolver builds at call time:
+// a payload-bearing variant compiles to `{TAG, ...}`, a payload-less one to a bare
+// string. Enough for the per-command switches the PPX generates, which match on
+// the constructor alone.
+let syntheticCommand = (~schema: S.t<unknown>, variantName: string): 'command =>
+  Reventless.DcbTag.isVariantPayloadBearing(schema, variantName)
+    ? {"TAG": variantName}->Obj.magic
+    : variantName->Obj.magic
 
 // Each mutation argument's GraphQL type onto its property, so a consumer declares
 // the variable the server expects. Mutates the freshly derived schema in place.
@@ -860,15 +877,8 @@ let toCommandDef = (
       ~variantName,
       properties,
     )
-    // Evaluated against a synthetic value per constructor, the same shape the
-    // resolver builds at call time: a payload-bearing variant compiles to
-    // `{TAG, ...}`, a payload-less one to a bare string.
-    let syntheticCommand: unknown = Reventless.DcbTag.isVariantPayloadBearing(
-      parentSchema,
-      variantName,
-    )
-      ? {"TAG": variantName}->Obj.magic
-      : variantName->Obj.magic
+    // Evaluated against a synthetic value per constructor; see `syntheticCommand`.
+    let syntheticCommand: unknown = syntheticCommand(~schema=parentSchema, variantName)
     // The spec's own switch, which is exhaustive — so it also speaks for a
     // constructor the host did not declare but spliced from a trait.
     //
@@ -937,7 +947,8 @@ let toCommandDef = (
       | Some(excluded) => !(excluded->Set.has(variantName))
       | None => true
       }
-    let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
+    let rule = commandAuthorization(syntheticCommand)
+    let requiredAccess = accessKeysFor(rule)
     // See the note on the record's `mutationField` for why a non-exposed
     // variant gets the empty sentinel. It has no callable field, and the
     // argument type names are composed *from* that field name, so there is
@@ -975,6 +986,7 @@ let toCommandDef = (
         ?allowedStatesSource,
         apiExposed: Some(apiExposed),
         requiredAccess,
+        requiredRoles: ?rolesFor(rule),
         // Resolved from this constructor's own properties, not the union's: two
         // commands in one slice can disagree about whether they record an owner,
         // and the write path stamps per constructor for the same reason.
@@ -1094,6 +1106,7 @@ let queryableDefFromSpec = (
     idField: keyField->Option.map(((f, _)) => f),
     idFieldSource: keyField->Option.map(((_, rung)) => rung),
     requiredAccess: accessKeysFor(authorization),
+    requiredRoles: ?rolesFor(authorization),
   }
 }
 
@@ -1550,7 +1563,8 @@ let make = (
         singleQueryField: Some(qf.singleFieldName),
         idField: keyField->Option.map(((f, _)) => f),
         idFieldSource: keyField->Option.map(((_, rung)) => rung),
-        requiredAccess: accessKeysFor(R.Spec.authorization),
+        requiredAccess: accessKeysFor(R.Spec.authorization->Reventless.Authorization.named),
+        requiredRoles: ?rolesFor(R.Spec.authorization->Reventless.Authorization.named),
       }: Reventless.Plugin.queryableDef
     )
   })
@@ -1590,7 +1604,8 @@ let make = (
           singleQueryField: Some(qf.singleFieldName),
           idField: keyField->Option.map(((f, _)) => f),
           idFieldSource: keyField->Option.map(((_, rung)) => rung),
-          requiredAccess: accessKeysFor(SVS.Spec.authorization),
+          requiredAccess: accessKeysFor(SVS.Spec.authorization->Reventless.Authorization.named),
+          requiredRoles: ?rolesFor(SVS.Spec.authorization->Reventless.Authorization.named),
         }: Reventless.Plugin.queryableDef
       )
     })
@@ -1690,7 +1705,8 @@ let make = (
                 ~commandSchema=SCS.Spec.commandSchema->S.castToUnknown,
                 ~variant=variantName,
               ),
-            ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
+            ~commandAuthorization=command =>
+              SCS.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
             ~commandTransition=SCS.Spec.commandTransition->Obj.magic,
             ~derivedEdgeFor=derivedEdgeFor(~component=SCS.Spec.name, ...),
             SCS.Spec.commandSchema->S.castToUnknown,
@@ -1724,7 +1740,8 @@ let make = (
               ~aggregate=A.Spec.name,
               ~command=variantName,
             ),
-          ~commandAuthorization=A.Spec.commandAuthorization->Obj.magic,
+          ~commandAuthorization=command =>
+            A.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
           ~commandTransition=A.Spec.commandTransition->Obj.magic,
           ~derivedEdgeFor=derivedEdgeFor(~component=A.Spec.name, ...),
           A.Spec.commandSchema->S.castToUnknown,
@@ -1798,6 +1815,22 @@ let make = (
       targetName: ITS.Spec.targetName,
       externalSystem: ITS.Spec.externalSystem,
       chapter: chapterOf(ITS.Spec.name),
+      // Per command, as the resolver evaluates the rule, then joined: the slice
+      // publishes no command defs to carry them.
+      requiredRoles: ?(
+        Reventless.DcbTag.extractAllVariantNames(ITS.Spec.commandSchema)
+        ->Array.flatMap(variantName =>
+          syntheticCommand(~schema=ITS.Spec.commandSchema->S.castToUnknown, variantName)
+          ->ITS.Spec.commandAuthorization
+          ->Reventless.Authorization.named
+          ->Reventless.Authorization.rolesOf
+          ->Array.map(role => (role :> string))
+        )
+        ->Set.fromArray
+        ->Set.values
+        ->Array.fromIterator
+        ->nonEmpty
+      ),
     })
 
   // ── Extensions ───────────────────────────────────────────────────────────

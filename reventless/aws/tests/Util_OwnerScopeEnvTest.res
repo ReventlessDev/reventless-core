@@ -68,7 +68,7 @@ describe("Util_OwnerScopeEnv — the elevated-groups carrier", () => {
   testSync("the platform's administrator default reaches a composed environment", () => {
     Reventless.OwnerScope.clearElevatedGroups()
     NodeProcess.env->Dict.delete(Util_OwnerScopeEnv.key)
-    Reventless.OwnerScope.defaultElevatedGroups([Reventless.AdminGroup.name])
+    Reventless.OwnerScope.defaultElevatedRoles([Reventless.Role.admin])
 
     let variables = Dict.make()
     Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables)
@@ -81,7 +81,53 @@ describe("Util_OwnerScopeEnv — the elevated-groups carrier", () => {
     // Round-tripped, like the first case above: the runtime reads this back with
     // `parseElevatedGroups`, so the encoding is asserted rather than the spelling.
     expect(Reventless.OwnerScope.parseElevatedGroups(encoded))->toEqual([
-      Reventless.AdminGroup.name,
+      Reventless.Role.adminGroup(),
     ])
+  })
+
+  // Runtimes read groups, never roles, so an elevated role travels as the group
+  // the deploy program mapped it to.
+  testSync("an elevated role travels as the group it is mapped to", () => {
+    Reventless.OwnerScope.clearElevatedGroups()
+    Reventless.Role.clearGroups()
+    NodeProcess.env->Dict.delete(Util_OwnerScopeEnv.key)
+    Reventless.Role.setGroups([(Reventless.Role.make("Fulfilment"), "shop-ops")])
+    Reventless.OwnerScope.setElevatedRoles([Reventless.Role.make("Fulfilment")])
+    Reventless.OwnerScope.setElevatedGroups(["Admin"])
+
+    let variables = Dict.make()
+    Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables)
+    let encoded = switch variables->Dict.get(Util_OwnerScopeEnv.key) {
+    | Some(value) => value->Obj.magic
+    | None => ""
+    }
+    Reventless.OwnerScope.clearElevatedGroups()
+    Reventless.Role.clearGroups()
+
+    expect(Reventless.OwnerScope.parseElevatedGroups(encoded))->toEqual(["Admin", "shop-ops"])
+  })
+})
+
+describe("Util_OwnerScopeEnv.applyRoleGroupsDefault", () => {
+  testSync("carries the renamed roles, and only those", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.make("Merchandiser"), "shop-merch-team")])
+    let variables = Dict.make()
+    Util_OwnerScopeEnv.applyRoleGroupsDefault(variables)
+    Reventless.Role.clearGroups()
+    let encoded = switch variables->Dict.get(Reventless.Role.envKey) {
+    | Some(value) => value->Obj.magic
+    | None => ""
+    }
+    expect(Reventless.Role.parseGroups(encoded))->toEqual([
+      (Reventless.Role.make("Merchandiser"), "shop-merch-team"),
+    ])
+  })
+
+  testSync("adds nothing when no role is renamed", () => {
+    Reventless.Role.clearGroups()
+    let variables = Dict.make()
+    Util_OwnerScopeEnv.applyRoleGroupsDefault(variables)
+    expect(variables->Dict.get(Reventless.Role.envKey)->Option.isNone)->toBe(true)
   })
 })

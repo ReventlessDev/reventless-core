@@ -6,9 +6,9 @@ import * as Nodepath from "node:path";
 import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
-import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types/AdminGroup.res.mjs";
 import * as Auth_ActiveRole$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_ActiveRole.res.mjs";
 
 let defaultUser_groups = ["User"];
@@ -20,29 +20,23 @@ let defaultUser = {
   provider: "InMemory"
 };
 
-let adminUser_groups = [
-  AdminGroup$Reventless.name,
-  "User"
-];
-
-let adminUser = {
-  userId: "local-admin",
-  username: "admin",
-  groups: adminUser_groups,
-  provider: "InMemory"
-};
+function adminUser() {
+  return {
+    userId: "local-admin",
+    username: "admin",
+    groups: [
+      Role$Reventless.adminGroup(),
+      "User"
+    ],
+    provider: "InMemory"
+  };
+}
 
 function initialUsers() {
-  return Object.fromEntries([
-    [
+  return Object.fromEntries([[
       "user",
       defaultUser
-    ],
-    [
-      "admin",
-      adminUser
-    ]
-  ]);
+    ]]);
 }
 
 let users = {
@@ -58,7 +52,16 @@ function resetUsers() {
 }
 
 function lookupUser(username) {
-  return users.contents[username];
+  let found = users.contents[username];
+  if (found !== undefined || username !== "admin") {
+    return found;
+  } else {
+    return adminUser();
+  }
+}
+
+function knownGroups() {
+  return Object.values(users.contents).concat([adminUser()]).flatMap(identity => identity.groups);
 }
 
 function parseGroups(s) {
@@ -329,7 +332,7 @@ async function authenticate(ctx) {
   let userHeader = ctx.headers["X-User".toLowerCase()];
   let groupsHeader = ctx.headers["X-Groups".toLowerCase()];
   if (userHeader !== undefined) {
-    let identity$1 = users.contents[userHeader];
+    let identity$1 = lookupUser(userHeader);
     if (identity$1 === undefined) {
       return "Anonymous";
     }
@@ -371,6 +374,7 @@ export {
   registerUser,
   resetUsers,
   lookupUser,
+  knownGroups,
   parseGroups,
   getHeader,
   Login,

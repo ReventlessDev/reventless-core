@@ -265,7 +265,10 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
     in
     let auth_suffix =
       if Util.has_let_binding "commandAuthorization" body then []
-      else [AuthorizationInjection.gen_command_authorization ~loc (AuthorizationInjection.default_rule_expr ~loc)]
+      else
+        (* A delegate's commands are `unit`, so it names no roles. *)
+        AuthorizationInjection.role_type_suffix ~loc ~generated:false ~roles_in_scope:false body
+        @ [AuthorizationInjection.gen_command_authorization ~loc (AuthorizationInjection.default_rule_expr ~loc)]
     in
     (* A delegate wraps no lifecycle of its own — it is the event face of one —
        so it declares no edge, the same answer the synthesised `command = unit`

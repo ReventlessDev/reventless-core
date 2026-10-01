@@ -13,6 +13,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
@@ -291,13 +292,13 @@ function Make(DcbEventLogStorage) {
         syncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, command => Authorization$Reventless.named(S.Spec.commandAuthorization(command)));
           }
         });
         asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, command => Authorization$Reventless.named(S.Spec.commandAuthorization(command)));
           }
         });
       }
@@ -562,7 +563,6 @@ function Make(DcbEventLogStorage) {
           return;
         }
         let sliceDef = Stdlib_Option.flatMap(pluginStructure, s => s.stateChangeSlices.find(d => d.name === S.Spec.name));
-        let commandAuthorization = S.Spec.commandAuthorization;
         let fieldPermissions = {};
         fieldSpecs.forEach(param => {
           let ctor = param[1];
@@ -570,7 +570,7 @@ function Make(DcbEventLogStorage) {
           let syntheticCmd = hasPayload ? ({
               TAG: ctor
             }) : ctor;
-          fieldPermissions[param[0]] = commandAuthorization(syntheticCmd);
+          fieldPermissions[param[0]] = Authorization$Reventless.named(S.Spec.commandAuthorization(syntheticCmd));
         });
         return {
           fieldNames: fieldSpecs.map(param => param[0]),
@@ -585,7 +585,7 @@ function Make(DcbEventLogStorage) {
       let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => {
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let fieldPermissions = {};
-        let rule = permissionForFirstConstructor(ITS.Spec.commandSchema, ITS.Spec.commandAuthorization);
+        let rule = permissionForFirstConstructor(ITS.Spec.commandSchema, command => Authorization$Reventless.named(ITS.Spec.commandAuthorization(command)));
         if (rule !== undefined) {
           fieldPermissions[fieldName] = rule;
         }
@@ -609,7 +609,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
-          permission: V.Spec.authorization,
+          permission: Authorization$Reventless.named(V.Spec.authorization),
           systemCallable: systemCallableComponents.includes(V.Spec.name),
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,

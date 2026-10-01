@@ -74,3 +74,117 @@ describe("CategoryImages StateChangeSlice", () => {
     ])
   )
 })
+
+describe("Who may SetCategoryImage", () => {
+  // scenario-id: 49e65046-27fe-4b6b-b195-2c3d987a843c
+  test("a Merchandiser may set a category image", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
+    ->thenEvents([
+      CategoryImageAttached({categoryId: c1, categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: c1, categoryImage: img}),
+    ])
+  )
+
+  // scenario-id: ae0c4ed2-4044-4cdf-908b-30bb75c63d4d
+  test("an Admin may set a category image", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
+    ->thenEvents([
+      CategoryImageAttached({categoryId: c1, categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: c1, categoryImage: img}),
+    ])
+  )
+
+  // scenario-id: 762f7e3f-ccf7-49ba-8695-ce4fa0e0dc17
+  test("a shopper may not set a category image", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
+    ->thenRefused
+  )
+
+  // scenario-id: b458e1f5-9851-46c4-8f54-70f15cd07363
+  test("an anonymous caller may not set a category image", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
+    ->thenRefused
+  )
+})
+
+describe("Who may RemoveCategoryImage", () => {
+  // scenario-id: b564e912-d050-404e-b5f2-4414ceb6b3a0
+  test("a Merchandiser may remove a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(RemoveCategoryImage({categoryId: c1}))
+    ->thenEvents([
+      CategoryImageRemoved({categoryId: c1, categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: c1}),
+    ])
+  )
+
+  // scenario-id: e2f9e18e-c578-4aa0-8022-505413a40c14
+  test("an Admin may remove a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(RemoveCategoryImage({categoryId: c1}))
+    ->thenEvents([
+      CategoryImageRemoved({categoryId: c1, categoryImage: img}),
+      CategoryEffectiveImageChanged({categoryId: c1}),
+    ])
+  )
+
+  // scenario-id: eb94bf0e-b9b3-4c95-8ff9-04e10d529a76
+  test("a shopper may not remove a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(RemoveCategoryImage({categoryId: c1}))
+    ->thenRefused
+  )
+
+  // scenario-id: d5a1189a-39ca-4621-ad76-f6ad09278de1
+  test("an anonymous caller may not remove a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(RemoveCategoryImage({categoryId: c1}))
+    ->thenRefused
+  )
+})
+
+describe("Who may SetCategoryImageAltText", () => {
+  // scenario-id: 8416ec6f-0792-4bdc-b86f-13edb493c1d1
+  test("a Merchandiser may caption a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
+    ->thenEvent(CategoryImageAltTextSet({categoryId: c1, categoryImage: img, altText: bannerAlt}))
+  )
+
+  // scenario-id: 58b0db4c-6d8e-4e45-9a31-e275f54e587b
+  test("an Admin may caption a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
+    ->thenEvent(CategoryImageAltTextSet({categoryId: c1, categoryImage: img, altText: bannerAlt}))
+  )
+
+  // scenario-id: a09f3b50-7fe2-4be5-94ed-412810079c52
+  test("a shopper may not caption a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
+    ->thenRefused
+  )
+
+  // scenario-id: 3379e5bc-7c2e-4ea4-b174-5572e12edab6
+  test("an anonymous caller may not caption a category image", () =>
+    givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
+    ->thenRefused
+  )
+})

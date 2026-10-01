@@ -95,6 +95,6 @@ Cognito + host-shell settings.
 | Extension | `catalog/src/Extension/`, `ordering/src/Extension/` |
 | Task | `catalog/src/Task/` |
 | `@@reventless.visibility(Internal)` | `ordering/src/CatalogProduct/StateView/AvailableProducts/` |
-| `@authorize` | one Category command annotated for the `Admin` group |
+| `@authorize` | one Category command annotated for the `Admin` role, declared in the plugin's `src/Roles.res` |
 | `@displayName` | Customer's `email` field |
 | Cross-plugin Flow test | `platform-local/tests/Flow/DcbFlow_GWT.res` |

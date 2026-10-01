@@ -107,6 +107,24 @@ let messagingEmailSenderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.ma
     `""` means the platform named none, which the runtime reads as its default. */
 let messagingEmailProviderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
+/** Which group stands for which role, only where the two differ; every other
+    role maps to the group of its own name. Call before `Make()`: the platform
+    resolves roles while it is built, and a mapping stated later is refused. */
+let roleGroups = Reventless.Role.setGroups
+
+/** The groups of a user pool this deployment did not create, which no accounts
+    manifest names. They count as provided by the check that every role a plugin
+    needs has a group. */
+let providedGroups = Reventless.Role.provideGroups
+
+/** The group a role resolves to — the name this platform writes into its
+    directives, its shell configuration and the elevated groups. For code that
+    grants access by group, so it never spells one itself. */
+let groupOf = Reventless.Role.groupOf
+
+/** `groupOf(Role.admin)`. */
+let adminGroup = Reventless.Role.adminGroup
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -144,7 +162,15 @@ module MakeWithConfig = (
   // A default, never a forcing: an explicit `setElevatedGroups` in a platform
   // root — including one naming nobody — means what it says and wins. See
   // [Reventless.OwnerScope.defaultElevatedGroups].
-  Reventless.OwnerScope.defaultElevatedGroups([Reventless.AdminGroup.name])
+  Reventless.OwnerScope.defaultElevatedRoles([Reventless.Role.admin])
+
+  // What this deployment provides for the roles its plugins need: the
+  // administrator group the stack declares, and the groups of the accounts
+  // provisioning creates. Read when each plugin is built, after the root has
+  // mapped its roles.
+  Reventless.Role.provideGroupsFrom(() =>
+    [Reventless.Role.adminGroup()]->Array.concat(Reventless.AccountsManifest.declaredGroups())
+  )
 
   // Dispatch per-flavor commandHandlerConfig records to the four runtime
   // builders. Every sub-record is optional; only branches the caller actually
@@ -308,13 +334,16 @@ module MakeWithConfig = (
   // Admin base as a source-API document — auth-decorated (all fields Admin,
   // Cognito-only; the deploy-time SigV4 system-caller fields died with the
   // fragment registry) plus the canonical stamp.
-  let adminSourceSdl = (): string =>
+  let adminSourceSdl = (): string => {
+    // The directive below fixes the administrator's group for this deploy.
+    Reventless.Role.freeze()
     assembleCanonicalSourceSdl(
       ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
         ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group=Reventless.AdminGroup.name,
+        ~group=Reventless.Role.adminGroup(),
       ),
     )
+  }
 
   // Split-mode Domain source document: relay base types + Platform_ping — the
   // Domain merged API's canonical owner (plugin fields come from plugin sources).

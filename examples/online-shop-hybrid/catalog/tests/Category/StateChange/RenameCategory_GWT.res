@@ -31,3 +31,37 @@ describe("RenameCategory StateChangeSlice", () => {
     ->thenError(CategoryAlreadyArchived)
   )
 })
+
+describe("Who may RenameCategory", () => {
+  // scenario-id: 414ac462-4498-4831-9e48-0ae5212b6d10
+  test("a Merchandiser may rename a category", () =>
+    givenEvents([CategoryAdded({name: electronics})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
+    ->thenEvent(CategoryRenamed({categoryId: c1, name: consumerElectronics}))
+  )
+
+  // scenario-id: 5aa5f1a0-4b27-47a8-a445-312259efdf6c
+  test("an Admin may rename a category", () =>
+    givenEvents([CategoryAdded({name: electronics})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
+    ->thenEvent(CategoryRenamed({categoryId: c1, name: consumerElectronics}))
+  )
+
+  // scenario-id: 10e861cf-ad26-461e-b2c2-04194a34054a
+  test("a shopper may not rename a category", () =>
+    givenEvents([CategoryAdded({name: electronics})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
+    ->thenRefused
+  )
+
+  // scenario-id: c1896219-85d5-463d-9bcd-23fa1484d933
+  test("an anonymous caller may not rename a category", () =>
+    givenEvents([CategoryAdded({name: electronics})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
+    ->thenRefused
+  )
+})

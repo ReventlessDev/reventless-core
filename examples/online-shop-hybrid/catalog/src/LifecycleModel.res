@@ -120,6 +120,13 @@ let model: array<Reventless.Plugin.derivedEdge> = [
     targets: [],
   },
   {
+    component: "UnarchiveCategory",
+    command: "UnarchiveCategory",
+    level: Reventless.Plugin.Instance,
+    allowedStates: ["Archived"],
+    targets: ["Listed"],
+  },
+  {
     component: "UnarchiveProduct",
     command: "UnarchiveProduct",
     level: Reventless.Plugin.Instance,

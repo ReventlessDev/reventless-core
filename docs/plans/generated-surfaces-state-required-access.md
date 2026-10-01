@@ -26,7 +26,7 @@ keys as `identity.groups ++ config.accessTiers` and gates each surface on
 receives declares that it requires nothing.
 
 The result is a menu that lies. A component annotated
-`@authorize(AllowGroups(["Admin"]))` still gets a nav entry for a caller with no
+`@authorize(AllowRoles([Admin]))` still gets a nav entry for a caller with no
 `Admin` group; the caller clicks it and the command is refused. On the read side
 it is worse than a refusal: a denied query returns an empty connection rather
 than an error (`docs/plans/Backlog/denied-query-returns-empty.md`), so the page
@@ -61,7 +61,7 @@ an author states who may do what.
 
 | Rule | Access keys | Why |
 | --- | --- | --- |
-| `AllowGroups(gs)` | `gs`, satisfied by **any** | Mirrors `isAllowed`, which is `some`, not `every` |
+| `AllowRoles(rs)` | the groups `rs` map to, satisfied by **any** | Mirrors `isAllowed`, which is `some`, not `every` |
 | `AllowAuthenticated` | none | Every caller who can see a shell at all already satisfies it |
 | `AllowAnonymous` | none | Same, weaker |
 | `DenyAll` | **omit the surface** | See below |
@@ -113,7 +113,7 @@ reverse.
 
 - Each `permission` arm maps to the keys in §3's table; `DenyAll` yields no
   surface at all.
-- A command whose rule is `AllowGroups(["Admin"])` produces a page entry whose
+- A command whose rule is `AllowRoles([Admin])` produces a page entry whose
   `requiredAccess` names `Admin`; a sibling command with no annotation in the same
   component produces one with none — the per-constructor evaluation is what makes
   this possible, and it is the case a component-level shortcut would get wrong.

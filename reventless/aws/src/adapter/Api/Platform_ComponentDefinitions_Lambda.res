@@ -194,7 +194,7 @@ let make = (
   let adminEntryJson =
     ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
       ~pluginId=ReventlessCore.Platform_Admin_Structure.pluginId,
-      ReventlessCore.Platform_Admin_Structure.structure,
+      ReventlessCore.Platform_Admin_Structure.structure(),
     )->JSON.stringify
 
   // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and

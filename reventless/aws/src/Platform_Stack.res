@@ -25,7 +25,7 @@ type cognitoUserPool = {
  *   with SPA-friendly defaults (email sign-in unless `platform:loginIdentifier`
  *   says otherwise, 12-char password policy, no MFA, and admin-only user
  *   creation unless `platform:signUpMode` says otherwise), plus the
- *   administrator group named by [Reventless.AdminGroup] and an elevated-groups
+ *   administrator group named by [Reventless.Role.adminGroup] and an elevated-groups
  *   default naming it. What it does **not** create is the first administrator:
  *   accounts are not stack resources, and a pool full of them is not something a
  *   `pulumi destroy` should be able to empty. `provision-admin` makes that one,
@@ -302,7 +302,7 @@ let _resolveUncached = (): cognitoUserPool => {
     // An ordinary child resource: the pool is ours, so this needs no out-of-band
     // call and Pulumi's state stays the authority for whether it exists.
     let _adminGroup = Util_CognitoGroupUser.addUserGroup(
-      ~name=Reventless.AdminGroup.name,
+      ~name=Reventless.Role.adminGroup(),
       ~userPoolId=pool.id,
     )
 
@@ -400,7 +400,10 @@ let _resolveUncached = (): cognitoUserPool => {
   // name is what a caller needs either way, and an output that appeared in one
   // mode and not the other would read as "there is no administrator group here"
   // rather than "this stack did not create it".
-  Pulumi.Pulumi.export("identityProviderAdminGroup", Pulumi.Output.make(Reventless.AdminGroup.name))
+  Pulumi.Pulumi.export(
+    "identityProviderAdminGroup",
+    Pulumi.Output.make(Reventless.Role.adminGroup()),
+  )
 
   // Exported so an operator can read back the store this provider resolved to —
   // the name is derived, not configured, so this is a convenience for checking

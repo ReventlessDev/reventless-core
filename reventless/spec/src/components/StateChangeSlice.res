@@ -75,12 +75,15 @@ module type Spec = {
   /** Schema for the command type — used to extract DCB tags for the conditional read. */
   let commandSchema: S.t<command>
 
+  /** The roles this spec's rules name: its plugin's `Roles.t`, which the PPX
+      supplies; `Role.name` where the plugin declares none. */
+  type role
   /** Authorization rule evaluated at the GraphQL resolver entry before any
       command is dispatched. Auto-injected by `@@reventless.spec` and on
       structurally-detected inline spec modules — defaults to
       `AllowAuthenticated`; override at the file/module level with
       `@@reventless.authorize(<rule>)`. */
-  let commandAuthorization: command => Authorization.permission
+  let commandAuthorization: command => Authorization.rule<role>
 
   /** The lifecycle enum this component's commands move a row through — the
       linked view's own, e.g. `type lifecycleState = Customers.accountStatus`.

@@ -13,10 +13,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
-import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types/AdminGroup.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
@@ -34,6 +34,7 @@ import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "./adapter/QueryDb/QueryDbBackend.res.mjs";
@@ -152,7 +153,8 @@ let messagingEmailProviderRef = {
 };
 
 function MakeWithConfig(Config) {
-  OwnerScope$Reventless.defaultElevatedGroups([AdminGroup$Reventless.name]);
+  OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
+  Role$Reventless.provideGroupsFrom(() => [Role$Reventless.adminGroup()].concat(AccountsManifest$Reventless.declaredGroups()));
   Stdlib_Option.forEach(Config.commandHandlerConfig.aggregates, param => {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
@@ -214,7 +216,8 @@ function MakeWithConfig(Config) {
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
-    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner), AdminGroup$Reventless.name, undefined);
+    Role$Reventless.freeze();
+    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner), Role$Reventless.adminGroup(), undefined);
     return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;
@@ -1566,7 +1569,8 @@ function MakeWithConfig(Config) {
 
 function Make($star) {
   let commandHandlerConfig = {};
-  OwnerScope$Reventless.defaultElevatedGroups([AdminGroup$Reventless.name]);
+  OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
+  Role$Reventless.provideGroupsFrom(() => [Role$Reventless.adminGroup()].concat(AccountsManifest$Reventless.declaredGroups()));
   Stdlib_Option.forEach(commandHandlerConfig.aggregates, param => {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
@@ -1628,7 +1632,8 @@ function Make($star) {
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
-    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(false), AdminGroup$Reventless.name, undefined);
+    Role$Reventless.freeze();
+    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(false), Role$Reventless.adminGroup(), undefined);
     return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;
@@ -2958,6 +2963,14 @@ function Make($star) {
   };
 }
 
+let roleGroups = Role$Reventless.setGroups;
+
+let providedGroups = Role$Reventless.provideGroups;
+
+let groupOf = Role$Reventless.groupOf;
+
+let adminGroup = Role$Reventless.adminGroup;
+
 export {
   log,
   apiConfigRef,
@@ -2969,6 +2982,10 @@ export {
   geocoderPlaceIndexRef,
   messagingEmailSenderRef,
   messagingEmailProviderRef,
+  roleGroups,
+  providedGroups,
+  groupOf,
+  adminGroup,
   MakeWithConfig,
   Make,
 }

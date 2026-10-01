@@ -104,6 +104,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   });
   Util_LambdaLogging$ReventlessAws.applyLogLevelDefault(variables);
   Util_OwnerScopeEnv$ReventlessAws.applyElevatedGroupsDefault(variables);
+  Util_OwnerScopeEnv$ReventlessAws.applyRoleGroupsDefault(variables);
   variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
   variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
   if (!RuntimeExtension$ReventlessCore.isEmpty()) {

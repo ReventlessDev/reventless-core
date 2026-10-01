@@ -139,6 +139,13 @@ let model = [
     targets: []
   },
   {
+    component: "UnarchiveCategory",
+    command: "UnarchiveCategory",
+    level: "Instance",
+    allowedStates: ["Archived"],
+    targets: ["Listed"]
+  },
+  {
     component: "UnarchiveProduct",
     command: "UnarchiveProduct",
     level: "Instance",

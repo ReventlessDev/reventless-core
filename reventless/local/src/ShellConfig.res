@@ -41,7 +41,12 @@ let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
 // caller matching no declared group gets and what every existing deployment has.
 let journeyManifestsKey = "journeyManifestUrls"
 
-let computedKeys = ["manifestUrl", journeyManifestsKey, ReventlessCore.Platform_UiSlots.configKey]
+let computedKeys = [
+  "manifestUrl",
+  journeyManifestsKey,
+  ReventlessCore.Platform_UiSlots.configKey,
+  ReventlessCore.Platform_AdminGroup.configKey,
+]
 
 /**
  The overlay this platform puts on top of the shipped `config.json`.
@@ -68,6 +73,8 @@ let overlay = (
       JSON.Encode.string(ReventlessCore.Platform_UiSlots.url),
     )
   )
+
+  ReventlessCore.Platform_AdminGroup.configEntry()->Option.forEach(((k, v)) => out->Dict.set(k, v))
 
   bakedManifest->Option.forEach(config => {
     out->Dict.set("manifestUrl", JSON.Encode.string(manifestUrlOf(config)))

@@ -33,6 +33,7 @@ module Make = (
       let stateSchema = Spec.stateSchema
       let config = Spec.config
       let subIdConfig = Spec.subIdConfig
+      type role = Spec.role
       let authorization = Spec.authorization
       let visibility = Spec.visibility
     }

@@ -35,7 +35,8 @@ module Make = (
       let stateSchema = InboundTranslationSlice_Callback.auditRowSchema
       let config = Reventless.ReadModel.config()
       let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
-      let authorization: Reventless.Authorization.permission = AllowAuthenticated
+      type role = Reventless.Role.name
+      let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
       let visibility: Reventless.Visibility.t = Public
     }
 

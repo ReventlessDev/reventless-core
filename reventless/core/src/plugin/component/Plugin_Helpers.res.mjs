@@ -21,6 +21,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Task.res.mjs";
 import * as Aggregate$ReventlessCore from "../../components/Aggregate/Aggregate.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../../components/ReadModel/ReadModel.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
@@ -540,7 +541,7 @@ function registerAdminAggregateMutations(aggregates, hooks) {
     let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.adminField(M.Spec.name + "_" + cname));
     aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
     if (fieldNames.length !== 0) {
-      return Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
+      return Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, command => Authorization$Reventless.named(M.Spec.commandAuthorization(command))));
     }
   });
 }

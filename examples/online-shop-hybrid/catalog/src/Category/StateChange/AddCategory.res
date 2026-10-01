@@ -9,7 +9,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   AddCategory({
       categoryId: CategoryId.t,
       name: string,

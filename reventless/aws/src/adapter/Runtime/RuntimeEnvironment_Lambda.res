@@ -246,6 +246,7 @@ let makeFromCodeAsset: (
   // concludes nobody is elevated and stamps an operator's on-behalf write with
   // the operator's own id.
   Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables)
+  Util_OwnerScopeEnv.applyRoleGroupsDefault(variables)
 
   // ESM self-containment (Option C): every code archive built by
   // Util_Bundle.buildCodeArchive ships register-hook.mjs + layer-resolver.mjs at

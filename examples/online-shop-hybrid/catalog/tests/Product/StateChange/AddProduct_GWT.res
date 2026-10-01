@@ -104,3 +104,85 @@ describe("AddProduct StateChangeSlice", () => {
     )
   )
 })
+
+describe("Who may AddProduct", () => {
+  // scenario-id: 389e0316-b095-4929-8783-1bf6a2de540e
+  test("a Merchandiser may add a product", () =>
+    givenEvents([CategoryAdded({categoryId: cat1})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(
+      AddProduct({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+    ->thenEvent(
+      ProductAdded({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+  )
+
+  // scenario-id: 70aeaa56-c008-47ee-850f-dfb2c714ff0b
+  test("an Admin may add a product", () =>
+    givenEvents([CategoryAdded({categoryId: cat1})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(
+      AddProduct({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+    ->thenEvent(
+      ProductAdded({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+  )
+
+  // scenario-id: 95314cae-15f7-4e47-b977-fb5d21fbc5f4
+  test("a shopper may not add a product", () =>
+    givenEvents([CategoryAdded({categoryId: cat1})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(
+      AddProduct({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+    ->thenRefused
+  )
+
+  // scenario-id: 91aa6316-15c5-4e79-b7b4-7418f1996d5f
+  test("an anonymous caller may not add a product", () =>
+    givenEvents([CategoryAdded({categoryId: cat1})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(
+      AddProduct({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+    ->thenRefused
+  )
+})

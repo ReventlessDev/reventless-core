@@ -108,7 +108,7 @@ Every DSL uses the same verbs for the same roles:
 | Verb                                  | Meaning                                         |
 |---------------------------------------|-------------------------------------------------|
 | `givenEvents([...])` / `givenEvent(e)`| prior events on the entity (sets up `evolve`)   |
-| `asCaller(c)`                         | name who issues the next `whenCmd` (`Caller.owner(id)`, `Caller.operator`, `Caller.anonymous`) |
+| `asCaller(c)`                         | name who issues the next `whenCmd` (`Caller.owner(id)`, `Caller.inRoles([...])`, `Caller.operator`, `Caller.anonymous`) |
 | `whenCmd(c)`                          | dispatch a command to `decide`                  |
 | `whenEvent(e)` / `whenEvents([...])`  | push an event through `project` / `map`         |
 | `whenInput(i)`                        | feed external input to a translation slice      |
@@ -170,10 +170,32 @@ Real example:
 
 #### Who may act: `asCaller` and `thenRefused`
 
-When a slice marks `@owner` on an event it consumes (or an aggregate on one of
-its events), its commands may act only on what the caller owns. `asCaller`
-names the caller before `whenCmd`, and the command is checked against the
-owners the given events record, as the handler checks it before `decide`:
+`asCaller` names the caller before `whenCmd`, and the command is checked as
+production checks it before `decide`:
+
+1. its [`@authorize`](./authorization.md) rule, against the roles the caller
+   holds;
+2. when the slice marks `@owner` on an event it consumes (or an aggregate on one
+   of its events), the owners the given events record, so it may act only on what
+   the caller owns.
+
+```rescript
+test("a Merchandiser may add a product", () =>
+  givenEvents([CategoryAdded({categoryId: cat1})])
+  ->asCaller(Caller.inRoles([Merchandiser]))
+  ->whenCmd(AddProduct({productId: p1, name: laptop, categoryId: cat1}))
+  ->thenEvent(ProductAdded({productId: p1, name: laptop, categoryId: cat1}))
+)
+
+test("a shopper may not add a product", () =>
+  givenEvents([CategoryAdded({categoryId: cat1})])
+  ->asCaller(Caller.owner(shopper))
+  ->whenCmd(AddProduct({productId: p1, name: laptop, categoryId: cat1}))
+  ->thenRefused
+)
+```
+
+And for ownership:
 
 ```rescript
 test("another customer cannot cancel the order", () =>
@@ -191,19 +213,31 @@ test("an operator may cancel any customer's order", () =>
 )
 ```
 
-The three callers:
+The callers:
 
-- `Caller.owner(id)`: a signed-in person who owns only what records `id`. It
-  takes the scenario's typed id (`Caller.owner(c1)` with `c1: CustomerId.t`) or a
-  plain string.
+- `Caller.owner(id)`: a signed-in person who owns only what records `id` and holds
+  no restricted role. It takes the scenario's typed id (`Caller.owner(c1)` with
+  `c1: CustomerId.t`) or a plain string. `Caller.owner(id, ~roles=[...])` holds
+  roles as well.
+- `Caller.inRoles([Merchandiser])`: a signed-in person holding those roles, who
+  owns nothing the given events record. The roles are typed by the spec's
+  `role`, the plugin's own `Roles.t`, so they are written bare, and a role the
+  plugin does not declare does not compile.
 - `Caller.operator`: a caller the ownership rule does not apply to. In a
   deployment that is someone in an elevated group, such as an administrator
   where the administrator group is on the list, or the platform's own traffic.
-  See [Who is exempt](./authorization.md#who-is-exempt).
-- `Caller.anonymous`: a caller with no identity, refused on anything owned.
+  It holds no role, because elevation does not grant a command whose rule the
+  caller fails. See [Who is exempt](./authorization.md#who-is-exempt).
+- `Caller.anonymous`: a caller with no identity, refused by every rule but
+  `AllowAnonymous` and on anything owned.
+
+The rule is checked against roles, not groups: which group stands for a role is
+the deployment's fact, so a scenario does not depend on it. `thenRefused` passes
+for either refusal, since both are `Forbidden` to a client; let the title say
+which rule refused.
 
 A scenario without `asCaller` names no caller, which the handler reads as the
-platform acting for itself, so it is never refused. Any other `then*` after a
+platform acting for itself, so neither rule refuses it. Any other `then*` after a
 refusal fails, because `decide` never ran. The lifecycle check leaves
 `thenRefused` scenarios out: who may act says nothing about which states a
 command is legal in.

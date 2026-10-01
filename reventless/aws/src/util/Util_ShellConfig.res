@@ -98,6 +98,10 @@ let fields = (
 ): dict<JSON.t> => {
   let out = computed->Dict.fromArray
 
+  // Computed, like the endpoints: the group the admin API is gated on, from the
+  // deploy's own role mapping.
+  ReventlessCore.Platform_AdminGroup.configEntry()->Option.forEach(((k, v)) => out->Dict.set(k, v))
+
   // The shell imports the module this key names, and imports nothing when the
   // key is absent — so writing the object without naming it here would ship a
   // file nothing fetches. Computed rather than left to `shellConfig` for the

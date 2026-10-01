@@ -21,19 +21,22 @@ let defaultUser: Identity.t = {
   provider: InMemory,
 }
 
-let adminUser: Identity.t = {
+// A function, not a value: the administrator's group is the one the platform
+// root maps `Role.admin` to, and this module is evaluated before the root runs.
+let adminUser = (): Identity.t => {
   userId: "local-admin",
   username: "admin",
-  groups: [AdminGroup.name, "User"],
+  groups: [Role.adminGroup(), "User"],
   provider: InMemory,
 }
 
 // ── User registry ─────────────────────────────────────────────────────────
 //
 // A `dict<Identity.t>` keyed by `username`. A4 hydrates this from
-// `.reventless/users.yaml`; tests inject via `registerUser`.
+// `.reventless/users.yaml`; tests inject via `registerUser`. The built-in
+// `admin` is answered on lookup, for the reason above, unless one is registered.
 
-let initialUsers = () => Dict.fromArray([("user", defaultUser), ("admin", adminUser)])
+let initialUsers = () => Dict.fromArray([("user", defaultUser)])
 
 let users: ref<dict<Identity.t>> = ref(initialUsers())
 
@@ -42,7 +45,19 @@ let registerUser = (~username: string, ~identity: Identity.t): unit =>
 
 let resetUsers = (): unit => users := initialUsers()
 
-let lookupUser = (username: string): option<Identity.t> => users.contents->Dict.get(username)
+let lookupUser = (username: string): option<Identity.t> =>
+  switch users.contents->Dict.get(username) {
+  | None if username == "admin" => Some(adminUser())
+  | found => found
+  }
+
+/** The groups of every account this adapter can authenticate as, built-in
+    included — what the local platform provides. */
+let knownGroups = (): array<string> =>
+  users.contents
+  ->Dict.valuesToArray
+  ->Array.concat([adminUser()])
+  ->Array.flatMap(identity => identity.groups)
 
 // ── Header parsing ────────────────────────────────────────────────────────
 

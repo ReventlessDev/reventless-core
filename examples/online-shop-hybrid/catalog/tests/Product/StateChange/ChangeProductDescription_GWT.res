@@ -38,3 +38,37 @@ describe("ChangeProductDescription StateChangeSlice", () => {
     ->thenError(ProductIsDiscontinued)
   )
 })
+
+describe("Who may ChangeProductDescription", () => {
+  // scenario-id: 3a3ea812-a6ef-4a5e-9cc9-a326a5e360c5
+  test("a Merchandiser may describe a product", () =>
+    givenEvents([ProductAdded({description: laptopDescription})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(ChangeProductDescription({productId: p1, description: highEndLaptop}))
+    ->thenEvent(ProductDescriptionChanged({productId: p1, description: highEndLaptop}))
+  )
+
+  // scenario-id: bbe4ad6d-02d1-4ca0-87b9-8ee280f261f0
+  test("an Admin may describe a product", () =>
+    givenEvents([ProductAdded({description: laptopDescription})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(ChangeProductDescription({productId: p1, description: highEndLaptop}))
+    ->thenEvent(ProductDescriptionChanged({productId: p1, description: highEndLaptop}))
+  )
+
+  // scenario-id: f4dba59c-92e4-41a7-90e2-c75aec949db2
+  test("a shopper may not describe a product", () =>
+    givenEvents([ProductAdded({description: laptopDescription})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(ChangeProductDescription({productId: p1, description: highEndLaptop}))
+    ->thenRefused
+  )
+
+  // scenario-id: 34eb891c-0c5f-4b30-ba53-b89f48104840
+  test("an anonymous caller may not describe a product", () =>
+    givenEvents([ProductAdded({description: laptopDescription})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(ChangeProductDescription({productId: p1, description: highEndLaptop}))
+    ->thenRefused
+  )
+})

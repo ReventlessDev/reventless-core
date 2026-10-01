@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as QueryDb$ReventlessCore from "./QueryDb.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as QueryDb_Operations$ReventlessCore from "./QueryDb_Operations.res.mjs";
@@ -29,7 +30,7 @@ function Make(Spec) {
           deleteBatch: Operations.deleteBatch
         };
       }));
-      let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, Spec.authorization, opts);
+      let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, Authorization$Reventless.named(Spec.authorization), opts);
       let outputs_resources = storage.resources.concat(resolvers.resources);
       let outputs_resolversMaker = resolvers.resourcesMaker;
       let outputs_dataSourceName = storage.dataSourceName;
@@ -50,4 +51,4 @@ function Make(Spec) {
 export {
   Make,
 }
-/* Component-ReventlessCore Not a pure module */
+/* Authorization-Reventless Not a pure module */

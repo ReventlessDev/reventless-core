@@ -1,7 +1,7 @@
 // Resolver-boundary tests for per-constructor authorization (A3.3 + A3.3b).
 // Mirrors the catalog Category aggregate's command shape: a record-payload
 // constructor `Add({name})` defaulting to AllowAuthenticated, plus a
-// payload-less `Archive` constrained to AllowGroups(["Admin"]).
+// payload-less `Archive` constrained to AllowRoles([Admin]).
 //
 // The PPX emits a `commandAuthorization` switch at compile time (see
 // examples/online-shop-hybrid/catalog/.../Category.res.mjs). This test hand-
@@ -23,11 +23,11 @@ type command =
   | Rename({name: string})
   | Archive
 
-// Matches the shape the PPX emits for `@authorize(AllowGroups(["Admin"]))` on
+// Matches the shape the PPX emits for `@authorize(AllowRoles([Admin]))` on
 // the payload-less `Archive` constructor with a file-level default.
 let commandAuthorization = (cmd: unknown): Reventless.Authorization.permission =>
   if (cmd->Obj.magic: 'a) === "Archive" {
-    AllowGroups(["Admin"])
+    AllowRoles([Reventless.Role.make("Admin")])
   } else {
     AllowAuthenticated
   }
@@ -187,6 +187,30 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
     )
     expect(getTypename(response))->toEqual("CommandAccepted")
     expect(calls.contents)->toEqual(["Add"])
+  })
+
+  // The rule names the role; the resolver checks the group the platform maps it
+  // to, so a deployment that calls its administrators "ops" admits those.
+  testPromise("a renamed role admits its group and refuses the old name", async () => {
+    let (_, _, archiveResolver, calls) = buildFixture(~namespace="Cat8")
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.make("Admin"), "ops")])
+    let asOps = await archiveResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.make()),
+      ctxFor({...userIdentity, groups: ["ops"]}),
+    )
+    let asAdminGroup = await archiveResolver(
+      JSON.Encode.null,
+      JSON.Encode.object(Dict.make()),
+      ctxFor(adminIdentity),
+    )
+    Reventless.Role.clearGroups()
+    expect((getTypename(asOps), getErrorCode(asAdminGroup)))->toEqual((
+      "CommandAccepted",
+      "Forbidden",
+    ))
+    expect(calls.contents)->toEqual(["Archive"])
   })
 
   testPromise(

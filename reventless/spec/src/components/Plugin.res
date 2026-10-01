@@ -194,6 +194,10 @@ type commandDef = {
   /** Access keys — any one of them — a caller needs to be *offered* this command.
       A hint derived from the server's rule, never the refusal itself. */
   requiredAccess: option<array<string>>,
+  /** The roles `requiredAccess` was mapped from, as the rule names them. Absent
+      where the rule names none; read by the deploy check that every role maps to
+      a group the platform provides. */
+  requiredRoles?: array<string>,
   /** The `@owner` command field the server stamps with the caller's identity; a
       client omits it from a form, since whatever it collects is discarded. */
   ownerField: option<string>,
@@ -249,6 +253,8 @@ type queryableDef = {
   /** Access keys — any one of them — a caller needs to be *offered* this view. A
       denied read comes back empty rather than erroring, hence the hint. */
   requiredAccess: option<array<string>>,
+  /** The roles `requiredAccess` was mapped from; see `commandDef`. */
+  requiredRoles?: array<string>,
 }
 
 /** One emitted event of a write side. `name` is the variant name, `schema` its
@@ -326,6 +332,8 @@ type inboundTranslationSliceDef = {
   externalSystem: option<string>,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: option<string>,
+  /** The roles any of its commands' rules name; see `commandDef`. */
+  requiredRoles?: array<string>,
 }
 
 /** A published event of an extension point and the internal events producing it.

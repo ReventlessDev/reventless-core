@@ -99,7 +99,7 @@
       "name": "reventless.authorize",
       "positions": [ "file" ],
       "args": "required",
-      "argsExample": "AllowGroups([\"Admin\"])",
+      "argsExample": "AllowRoles([Admin])",
       "summary": "Who may call this component, in place of the default: any signed-in user.",
       "readBy": [ "AuthorizationInjection" ]
     },
@@ -152,7 +152,7 @@
       "name": "authorize",
       "positions": [ "case.command" ],
       "args": "required",
-      "argsExample": "AllowGroups([\"Admin\"])",
+      "argsExample": "AllowRoles([Merchandiser, Admin])",
       "summary": "Who may issue this one command, in place of the file's rule.",
       "readBy": [ "AuthorizationInjection" ]
     },

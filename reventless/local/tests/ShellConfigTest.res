@@ -268,3 +268,34 @@ describe("ShellConfig.overlay — journeys", () => {
     )->toBe(true)
   )
 })
+
+describe("ShellConfig.overlay — adminGroup", () => {
+  testSync("is absent while the administrator role keeps its own name", () => {
+    Reventless.Role.clearGroups()
+    expect(
+      ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)->Dict.keysToArray,
+    )->toEqual([])
+  })
+
+  testSync("carries the group a renamed administrator role maps to", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.admin, "shop-admins")])
+    let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
+    Reventless.Role.clearGroups()
+    expect(out->str("adminGroup"))->toEqual(Some("shop-admins"))
+  })
+
+  // Computed from the role mapping, so a passthrough cannot point the shell at
+  // another group than the one the server gates on.
+  testSync("a shellConfig naming it is refused", () =>
+    expect(
+      threw(
+        () =>
+          ShellConfig.overlay(
+            ~bakedManifest=None,
+            ~shellConfig=Some(Dict.fromArray([("adminGroup", JSON.Encode.string("x"))])),
+          )->ignore,
+      ),
+    )->toBe(true)
+  )
+})

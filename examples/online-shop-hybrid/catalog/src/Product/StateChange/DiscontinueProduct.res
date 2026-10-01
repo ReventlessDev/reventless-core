@@ -17,7 +17,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   DiscontinueProduct({
       productId: CatalogSpec.ProductId.t,
     })

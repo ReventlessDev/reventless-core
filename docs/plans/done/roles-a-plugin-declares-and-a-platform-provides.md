@@ -1,8 +1,10 @@
 # Plan: roles a plugin declares and a platform provides
 
 **Date:** 2026-10-01<br/>
-**Status:** Proposed; the open questions were decided on 2026-10-01 (§11).
-Nothing built.<br/>
+**Status:** Done (2026-10-01). Built as described below; where the build departed
+from the first draft, the section says how and why. The casts on the
+authorization path that remain are planned away in
+`../authorization-looked-up-by-command-name.md`.<br/>
 **Relates to:** `a-command-acts-only-on-what-the-caller-owns.md` (the GWT
 `Caller` this extends), `active-role-narrows-the-token.md` (the "active role" a
 person picks), `generated-surfaces-state-required-access.md` (what
@@ -120,21 +122,29 @@ and its annotations name those cases:
 
 A misspelled case fails to compile as "constructor not found in `Roles.t`".
 
-**How it works (decided, to be confirmed by the spike in step 1).**
+**How it works (as built).**
 
-- **Found by convention, no marker.** The PPX and the plugin generator recognise
-  the plugin's `Roles.res` by name and shape, as the generator already finds a
-  plugin's identities (`<Name>Id.res` calling `Id.Make`).
-- **Strings at runtime, by coercion.** A variant whose cases carry no payload is
-  a string at runtime, and ReScript coerces such a variant to `string` safely
-  with `:>`. The PPX already copies the rule as an expression; for `AllowRoles`
-  it wraps each element as `((Merchandiser : Roles.t) :> string)`. No unchecked
-  cast is involved.
-- **The rule's type** is `AllowRoles(array<Role.name>)`, where `Role.name` is a
-  string naming a role *before* mapping. Enforcement maps it to a group (§4).
-- **Fallback**, if the spike shows the coercion cannot be generated cleanly:
-  role values made once per plugin, `let merchandiser = Role.make("Merchandiser")`,
-  with the annotation reading `AllowRoles([Roles.merchandiser])`.
+- **The rule keeps the plugin's type.** The framework's rule is parameterised,
+  `Authorization.rule<'role>`, and every spec module type declares `type role`.
+  A spec's binding is `command => rule<role>` (or `rule<role>` for a view), so
+  hovering over a rule shows `rule<Roles.t>` and each role is a `Roles.t` case.
+  The first draft converted each case to a string inside the spec; that made the
+  editor show `string` for what is a variant, and was dropped.
+- **The PPX supplies `role`.** It copies the rule unchanged and annotates the
+  generated binding `Reventless.Authorization.rule<role>`, so the bare cases
+  resolve against `Roles.t` by their expected type. Beside it, it declares
+  `type role`: the spec's own, if it has one; `Roles.t` when it writes the
+  binding and the spec, its file or the package's `src/Roles.res` declares the
+  roles; `Reventless.Role.name` otherwise — no roles to name, or a rule written by
+  hand over the framework's `permission`.
+- **Names where the framework takes over.** `permission = rule<Role.name>` is the
+  form the framework compares, maps and publishes. `Authorization.named` turns a
+  spec's rule into it at each place the framework reads one. A payload-less case
+  is its name at run time, so `named` is an identity with a check, in a companion
+  `.mjs`: a role that is not such a case is refused there.
+- **`Role.name` is a private string.** A bare string is not a role. Code with no
+  plugin variant to hand — a platform root, a framework test — says so with
+  `Role.make("…")`.
 
 **Roles are joined by name.** Two plugins that each declare `Fulfilment` mean the
 same role, and §5 compares names, so each plugin declares only the roles it uses
@@ -143,15 +153,21 @@ part of a contract between plugins, and none do yet (§11, decision 4).
 
 **The administrator.** The framework's own administrator role is `Role.admin`
 (named `Admin`), replacing `AdminGroup.name`. A plugin that lists `Admin` in its
-`Roles.res` means the same role, by the same rule.
+`Roles.res` means the same role, by the same rule. The core declares it in its own
+`src/Roles.res`, for the platform's `Plugins` view.
 
 ## §4 — A platform provides groups for those roles
 
 The platform root states:
 
 - **which group stands for which role**, only where they differ:
-  `Platform.roleGroups([(Merchandiser, "shop-merch-team")])`. Everything else
-  maps to the group of the same name.
+  `ReventlessAws.Platform.roleGroups([(role, "shop-merch-team")])` (and the same
+  on `ReventlessLocal.Platform`). Everything else maps to the group of the same
+  name. These are functions of the platform package, called **before
+  `Platform.Make()`**: the AWS platform writes the admin API's directive while it
+  is built, and a mapping stated afterwards is refused rather than applied to
+  half the deployment. A root holds roles from several plugins, so it names them
+  as `Role.name`s: `Role.make((CatalogPlugin.Roles.Merchandiser :> string))`.
 - **which roles are elevated**: `OwnerScope.setElevatedRoles([Admin, Fulfilment])`,
   resolved through the mapping. `setElevatedGroups` **stays supported** beside it,
   as the group-level form of the same setting, for a platform root that already
@@ -198,13 +214,21 @@ At deploy (preview included) and at start, for every component of every plugin:
 "Provides" means the administrator group the platform declares, plus the groups
 of the accounts manifest, plus the groups named in the role mapping. A missing
 one fails with the plugin, the component, the command or view, and the role
-named. It runs in the deploy gate that already checks a trait's
-`capabilityNeeds`, and that `identity-is-a-capability-not-a-cognito-handle.md`
-extends to identity capabilities, rather than as a gate of its own.
+named.
+
+As built, it runs in `Plugin_Builder.make` rather than in the `capabilityNeeds`
+gate. That gate sits inside an `Output.apply` and only on a plugin stack, so a
+preview skips it; `Plugin_Builder.make` receives the plugin structure
+synchronously on both platforms. The roles travel on the structure as an optional
+`requiredRoles` beside `requiredAccess` (kept off the admin API's wire). Locally,
+"provides" also counts the built-in accounts, and the manifest is read directly
+— the user store loads only when the servers start, after the check. A manifest
+that does not exist yet counts as its `users.example.yaml`, the cast a fresh
+clone provisions.
 
 **A supplied user pool.** A deployment on a pool it did not create may have
 groups that no manifest names. Its platform root declares them,
-`~providedGroups=["shop-merch-team"]`, and they count as provided. The check
+`Platform.providedGroups(["shop-merch-team"])`, and they count as provided. The check
 still fails by default: a warning would bring back the silent "refused for
 everyone" this plan exists to remove. A plain declared list also works in a
 preview, locally and in tests, where no call to the provider is possible; a
@@ -214,39 +238,38 @@ as an extra check (§11).
 
 ## §6 — `AllowGroups` becomes `AllowRoles`
 
-- `Authorization.permission` gains `AllowRoles(array<Role.name>)`.
+- `AllowGroups` is gone, and so is `AdminGroup`. The first draft kept both
+  deprecated until graduation; as alpha may break and every use in this
+  repository moved in the same change, keeping a second spelling of a rule bought
+  nothing.
 - `requiredAccess` keeps its name and shape (strings), and holds the **mapped
   group names**, not role names. Its consumers compare it with the groups in the
   caller's token (`generated-surfaces-state-required-access.md`), alongside other
   access keys in the same namespace; a role name no token carries would gate a
   surface shut. With the default mapping the values do not change at all.
 - The plugin structure gains no required field (a required field added to it has
-  wedged plugin registration before), so clients that read it are unaffected.
-- **`AllowGroups` and `AdminGroup` stay, deprecated,** until the examples, the docs
-  and the authoring tools that write `@authorize` have moved. Until then
-  `AllowGroups` keeps working, the PPX warns on every use naming `AllowRoles`,
-  and the §5 check treats its strings as roles. They are then removed in a `feat!`
-  commit **before the framework graduates from alpha**, so the first stable
-  release has only `AllowRoles`. (On `alpha` a breaking commit bumps only the
-  prerelease counter; the major moves at graduation, so removing earlier costs
-  external users nothing extra.)
-- `REVENTLESS_ELEVATED_GROUPS` is **not** deprecated: it is the permanent runtime
-  carrier (§4).
-- `AdminGroup` is replaced by `Role.admin`, resolved through the mapping like any
-  role, at every site that hard-codes the administrator today: the admin API's
-  group decoration on both platforms (`AppSync_Adapter.injectAwsAuthAll` on AWS,
-  the `Platform_*` field wrapper locally), the default elevated list, and the six
-  `AdminGroup.name` uses. Clients that key on the administrator group receive the
-  mapped name. The module stays as a deprecated alias for the transition period.
+  wedged plugin registration before): `requiredRoles` is optional, and the
+  required-scalars tripwire lists its elements beside `requiredAccess`'s.
+- `REVENTLESS_ELEVATED_GROUPS` stays the runtime carrier of the elevated list
+  (§4).
+- `Role.admin`, resolved through the mapping like any role, replaces the
+  administrator's name at every site that hard-coded it: the admin API's group
+  decoration on both platforms, the local built-in `admin` account, the Cognito
+  group the stack declares, `provision-admin`, the default elevated list (now
+  `defaultElevatedRoles([Role.admin])`), and the admin `Plugins` view's
+  published access keys. Values that a module evaluated at load time became
+  functions, because a module loads before the platform root has mapped
+  anything.
 - **A platform root can ask for any role's resolved group.** Code outside the
-  framework that grants access by group, such as a platform root deploying extra
-  admin-only components, must not write `"Admin"` either. The platform exposes
-  the resolution it uses itself: `Platform.groupOf(role)`, with
-  `Platform.adminGroup()` for `Role.admin`. These are the same names it writes into
-  the AppSync directives, the shell configuration and `REVENTLESS_ELEVATED_GROUPS`,
-  so a root that uses them cannot disagree with the platform.
-- Docs: `authorization.md` describes roles and groups as in §2;
-  `reventless-ppx.md` documents `AllowRoles` and the `Roles` module.
+  framework that grants access by group must not write `"Admin"` either. The
+  platform package exposes the resolution it uses itself: `Platform.groupOf(role)`
+  and `Platform.adminGroup()`. The host shell gets the same answer as the
+  computed `config.json` key `adminGroup`, written on both platforms where the
+  administrator role is mapped away from `Admin` (the shell reads an absent key
+  as `Admin`).
+- Docs: `authorization.md` describes roles, groups, the mapping and the check;
+  `reventless-ppx.md` documents `@authorize`, `Roles.res` and the injected
+  `type role`; `given-when-then.md` the callers with roles.
 
 ## §7 — GWT scenarios state the caller's roles
 
@@ -268,6 +291,11 @@ ownership claim:
 `thenRefused` passes for either refusal, since both are `Forbidden` to a
 client; the scenario's title says which rule refused. A scenario without
 `asCaller` is checked against neither, so every existing scenario is unchanged.
+
+`Caller.operator` holds no role: elevation does not grant a command whose rule
+the caller fails, so an operator scenario on a restricted command is refused.
+`Caller.inRoles` is a signed-in person who owns nothing the given events record.
+The rule is checked against the scenario's roles, never through the role mapping.
 
 Who counts as an operator stays a property of `Caller.operator` rather than being
 derived from roles through the elevated list. That keeps a scenario independent
@@ -299,14 +327,21 @@ Scope, from §1:
   restated with roles where that reads better;
 - **aggregates and DCB examples**: the commands behind their `Admin`-only rules.
 
+As built: none of the examples declares a `DenyAll` or `AllowAnonymous`
+command, so those two cases are covered by the GWT package's own tests instead.
+The shopper is a named example value (`shopper` in each catalog's examples,
+`c1` in ordering), and no example declares a `Shopper` role: no rule requires
+one, and a case only tests would use reads as evidence that a rule does.
+`UnarchiveCategory` had no scenarios at all and got its behaviour scenarios too.
+
 The lifecycle check already leaves refused scenarios out, and the accepted ones
 add evidence it can use. `pnpm run check:lifecycle:update` refreshes the model
 files in the commit that adds them.
 
 Published values that hold group names keep holding them. In particular the
 example seed package keeps exporting `Storefront.elevatedGroups` (group names)
-when step 6 adds a role-typed list beside it, because other platform roots pass
-that export to `setElevatedGroups`.
+beside the role-typed `Storefront.elevatedRoles`, because other platform roots
+pass that export to `setElevatedGroups`.
 
 ## §9 — Order of work
 
@@ -325,9 +360,49 @@ that export to `setElevatedGroups`.
    - that the `Roles.res` convention and the generated coercion (§3) compile,
      and give a readable error for a misspelled role.
    Record the answers here before step 2.
-2. **Spec and PPX.** `Role.name`, `AllowRoles`, the coercion, the deprecation of
-   `AllowGroups`, `Role.admin`. Unit tests for `isAllowed` with roles mapped to
-   groups.
+
+   **Answers (2026-10-01).** §3's surface holds; the fallback is not needed. The
+   first answer was later revised (see §3): the rule is no longer converted.
+   - *The annotation and the copy.* `AllowRoles([Merchandiser, Admin])` is
+     copied unchanged; the generated binding is annotated
+     `Reventless.Authorization.rule<role>`, with `type role = Roles.t` beside
+     it. The cases resolve against `Roles.t` by their expected type, which the
+     compiler allows without `Roles` being opened.
+   - *The generated reference survives dependency analysis.* `Roles` appears
+     only in the PPX's output, never in the source. That is safe, because
+     rewatch reads a file's dependencies from the post-PPX AST. The GWT
+     companion-fixtures open (`open WithFixtures_Fixtures`, and the spec module
+     itself) has relied on this since it shipped. The comment on the injected
+     `commandTransition` claims the opposite. The example plugins, built from a
+     wiped `lib/` with the generated `Roles.t` references, are the evidence
+     against it.
+   - *A misspelled role* fails with "The constructor Merchandisr does not
+     belong to type Roles.t … Hint: Did you mean Merchandiser?", at the
+     misspelled constructor.
+   - *Where `Roles` comes from.* The PPX checks for the package's `src/Roles.res`
+     on disk (as it finds a GWT file's `_Fixtures` companion), or a
+     `module Roles` in the file or inline spec, and otherwise types the spec's
+     roles as `Role.name`; a spec can always state `type role` itself.
+   - *The model sidecar* records no constructor attributes, so no rule reaches it
+     in either form; nothing changes there. *The GWT sidecar* records
+     `thenRefused` as `forbidden`, independent of the rule. Neither needs work.
+   - *Text tools.* The VS Code authoring round trip in the tools repository reads
+     and writes the annotation as text, and a bare `Merchandiser` survives that.
+     Offering a role picker needs the plugin's `Roles.res`, which that tool
+     reads off disk like any source file (§11, decision 5).
+   - *One carrier the plan did not list.* A table-backed view read on AWS through
+     the Postgres resolver Lambda evaluates `isAllowed` at run time, so that
+     runtime needs the role mapping too. It gets it through the environment,
+     like the elevated groups: `REVENTLESS_ROLE_GROUPS` carries only the renamed
+     roles (`Merchandiser=shop-merch-team`) and is written by the same function
+     that writes `REVENTLESS_ELEVATED_GROUPS`. That is a different fact from
+     elevation, so §4's "one variable for one fact" still holds.
+   - *Where §5 runs.* `Plugin_Builder.make` receives the plugin structure
+     synchronously on both platforms. The check runs there, outside any
+     `Output.apply`, so a preview runs it too.
+2. **Spec and PPX.** `Role.name`, `rule<'role>` with `AllowRoles`, `named`,
+   the injected `type role`, `Role.admin`; `AllowGroups` and `AdminGroup`
+   removed. Unit tests for `isAllowed` with roles mapped to groups.
 3. **Platforms.** The role mapping, `setElevatedRoles` resolved into
    `REVENTLESS_ELEVATED_GROUPS`, `providedGroups`, on both platforms; the AppSync
    directives written from mapped groups. The local resolver test and the directive test extended with a
@@ -361,14 +436,13 @@ them on top of the roles this plan introduces (§2).
 ## §11 — Decisions and what is still open
 
 1. **The annotation syntax** is `@authorize(AllowRoles([Merchandiser]))`, with
-   the plugin's roles in a `Roles.res` found by convention and the PPX generating
-   a safe coercion to strings (§3). *Open:* the spike in step 1 confirms it; the
-   fallback is role values made once per plugin.
+   the plugin's roles in a `Roles.res` found by convention and the rule typed by
+   them (§3).
 2. **Supplied user pools** declare their groups with `providedGroups`, and the
    check fails by default (§5). *Open:* whether to add, later, a deploy-time
    comparison of the declared list with the pool's real groups.
-3. **Old names.** `AllowGroups` and `AdminGroup` are deprecated and removed in a
-   `feat!` before the framework graduates from alpha (§6).
+3. **Old names.** `AllowGroups` and `AdminGroup` are removed in this change
+   (§6).
    `REVENTLESS_ELEVATED_GROUPS` stays as the only environment variable; there is
    no `REVENTLESS_ELEVATED_ROLES` (§4).
 4. **Shared roles.** Each example plugin declares its own roles; they are joined
@@ -376,11 +450,10 @@ them on top of the roles this plan introduces (§2).
    in catalog, `Fulfilment` in ordering, `Admin` from the framework). A shared
    package is introduced only when a role becomes part of a contract between
    plugins, and the docs say so.
-5. **Authoring tools** that write `@authorize` keep *reading* `AllowGroups`
-   indefinitely, because existing code contains it, and switch to *writing*
-   `AllowRoles` with a `Roles.res` once the released framework supports it,
-   gated on that version. They stop writing `AllowGroups` before its removal
-   (decision 3). This repository's own generator does not write `@authorize`.
+5. **Authoring tools** that write `@authorize` keep *reading* `AllowGroups`,
+   because existing code contains it, and write `AllowRoles` with a `Roles.res`
+   for a framework version that has it, gated on that version. This repository's
+   own generator does not write `@authorize`.
 6. **Per-tenant roles** are out of this plan. A tenant-scoped role ("administrator
    of organisation X") is not a fixed group and cannot be a gate at the API
    layer. Its place already exists: `registerCommandInterceptor` in

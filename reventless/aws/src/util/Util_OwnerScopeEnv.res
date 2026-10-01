@@ -46,3 +46,12 @@ let applyElevatedGroupsDefault = (variables: dict<Pulumi.Input.t<string>>) =>
   if variables->Dict.get(key)->Option.isNone {
     entry()->Option.forEach(((k, v)) => variables->Dict.set(k, v))
   }
+
+/** The renamed roles, for the same two-process reason: a runtime that evaluates
+    a rule (the SQL-backed view reads) never runs the root that stated the
+    mapping. Only the renamed ones travel; every other role is its own group. */
+let applyRoleGroupsDefault = (variables: dict<Pulumi.Input.t<string>>) =>
+  switch (variables->Dict.get(Reventless.Role.envKey), Reventless.Role.envValue()) {
+  | (None, Some(value)) => variables->Dict.set(Reventless.Role.envKey, value->Pulumi.Input.make)
+  | _ => ()
+  }

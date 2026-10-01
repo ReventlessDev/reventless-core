@@ -328,3 +328,20 @@ describe("the subscription endpoint", () => {
     )
   )
 })
+
+// The shell gates its admin discovery on this group; a mirror of the server's
+// own resolution, so a renamed administrator role reaches the browser too.
+describe("Util_ShellConfig.fields — adminGroup", () => {
+  testSync("is absent while the administrator role keeps its own name", () => {
+    Reventless.Role.clearGroups()
+    expect(Util_ShellConfig.fields(~computed)->Dict.get("adminGroup")->Option.isNone)->toBe(true)
+  })
+
+  testSync("carries the group a renamed administrator role maps to", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.admin, "shop-admins")])
+    let out = Util_ShellConfig.fields(~computed)
+    Reventless.Role.clearGroups()
+    expect(out->get("adminGroup"))->toEqual(JSON.Encode.string("shop-admins"))
+  })
+})

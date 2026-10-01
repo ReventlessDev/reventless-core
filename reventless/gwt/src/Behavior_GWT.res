@@ -23,18 +23,40 @@ open ReventlessCore
 // differs). Pick the matching entry point.
 
 // ---------------------------------------------------------------------------
-// Who issues the command, for slices and aggregates that mark `@owner` on the
-// events they decide on. `asCaller` names the caller before `whenCmd`; the
-// command is then checked against the owners the given events record, exactly
-// as the handler checks it before `decide`. Without `asCaller` the command
-// carries no caller claim, which the handler reads as the platform acting for
-// itself — so every scenario written before this existed is unchanged.
+// Who issues the command. `asCaller` names the caller before `whenCmd`; the
+// command is then checked as production checks it: its `@authorize` rule against
+// the caller's roles, then — for slices and aggregates that mark `@owner` on the
+// events they decide on — against the owners the given events record. Without
+// `asCaller` the command carries no caller claim, which the handler reads as the
+// platform acting for itself — so every scenario written before this existed is
+// unchanged.
 // ---------------------------------------------------------------------------
 module Caller = {
-  external unsafeAsString: 'id => string = "%identity"
+  external unsafeAsString: 'a => string = "%identity"
+
+  type t = {
+    claim: Message.CallerClaim.t,
+    /** The roles held, by name. A scenario names them by its plugin's own
+        `Roles.t`, whose cases are their names at run time. */
+    roles: array<Reventless.Role.name>,
+    signedIn: bool,
+  }
+
+  // A plugin's roles are payload-less variants, strings at run time; anything
+  // else would be compared with a rule's role names and never match.
+  let roleNames = (roles: array<'role>): array<Reventless.Role.name> =>
+    roles->Array.map(role =>
+      if Reventless.OwnerScope.isJsString(role) {
+        Reventless.Role.make(role->unsafeAsString)
+      } else {
+        JsError.throwWithMessage(
+          "Caller: expected roles of the plugin's Roles.t (payload-less, so strings at runtime)",
+        )
+      }
+    )
 
   /**
-  A caller who owns only what records their id.
+  A caller who owns only what records their id, holding `roles` (none by default).
 
   Takes the id as the scenario has it — `Caller.owner(c1)` with `c1: CustomerId.t`,
   or a plain string — because every `Id.Make` identity is a string on the wire.
@@ -42,18 +64,52 @@ module Caller = {
   recorded owner, so it can only be refused, which fails the scenario that
   expected the owner to act. A value that is not a string at all is refused here.
   */
-  let owner = (id: 'id): Message.CallerClaim.t =>
+  let owner = (id: 'id, ~roles: array<'role>=[]): t =>
     if Reventless.OwnerScope.isJsString(id) {
-      Owned({userId: id->unsafeAsString})
+      {claim: Owned({userId: id->unsafeAsString}), roles: roleNames(roles), signedIn: true}
     } else {
       JsError.throwWithMessage(
         "Caller.owner: expected an id (a string at runtime, such as an Id.Make identity)",
       )
     }
-  /** A caller in an elevated group, acting on anyone's behalf. */
-  let operator: Message.CallerClaim.t = Exempt
+
+  /** A signed-in caller holding `roles`, who owns nothing the given events record. */
+  let inRoles = (roles: array<'role>): t => {
+    claim: Owned({userId: "caller-in-roles"}),
+    roles: roleNames(roles),
+    signedIn: true,
+  }
+
+  /** A caller exempt from ownership rules, acting on anyone's behalf. Holds no
+      role: elevation does not grant a command whose rule the caller fails. */
+  let operator: t = {claim: Exempt, roles: [], signedIn: true}
   /** A caller with no identity. */
-  let anonymous: Message.CallerClaim.t = Unidentified
+  let anonymous: t = {claim: Unidentified, roles: [], signedIn: false}
+}
+
+/** `Caller` as a scenario sees it: roles typed by the spec's own `role`, so they
+    are written bare (`Caller.inRoles([Merchandiser])`) and another plugin's role
+    does not compile. */
+module type Callers = {
+  type role
+  type t = Caller.t
+  let owner: ('id, ~roles: array<role>=?) => t
+  let inRoles: array<role> => t
+  let operator: t
+  let anonymous: t
+}
+
+module Callers = (
+  R: {
+    type role
+  },
+): (Callers with type role = R.role) => {
+  type role = R.role
+  type t = Caller.t
+  let owner = (id, ~roles: array<role>=[]) => Caller.owner(id, ~roles)
+  let inRoles = (roles: array<role>) => Caller.inRoles(roles)
+  let operator = Caller.operator
+  let anonymous = Caller.anonymous
 }
 
 module type ActingSpec = {
@@ -62,28 +118,58 @@ module type ActingSpec = {
   type history
   @schema
   type command
+  type role
+  let commandAuthorization: command => Reventless.Authorization.rule<role>
 }
 
 module Acting = (Spec: ActingSpec) => {
-  let caller: ref<option<Message.CallerClaim.t>> = ref(None)
+  let caller: ref<option<Caller.t>> = ref(None)
   let refusal: ref<option<CommandTopic_Helpers.rejectedResult>> = ref(None)
 
   let ownerFieldsByEventType = Reventless.Owner.fieldNamesByVariant(
     Spec.historySchema->S.castToUnknown,
   )
 
-  let asCaller = (history, claim) => {
-    caller := Some(claim)
+  let asCaller = (history, who: Caller.t) => {
+    caller := Some(who)
     history
   }
+
+  let commandName = command =>
+    command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson
+
+  // The rule first, as production checks it, against the roles alone: which group
+  // a role maps to is a deployment's fact, not the scenario's.
+  let refusedByRule = (who: Caller.t, command: Spec.command): bool =>
+    if (
+      Spec.commandAuthorization(command)
+      ->Reventless.Authorization.named
+      ->Reventless.Authorization.admits(~signedIn=who.signedIn, ~holds=role =>
+        who.roles->Array.includes(role)
+      )
+    ) {
+      false
+    } else {
+      refusal :=
+        Some({
+          errorCode: "Forbidden",
+          errorDetail: `${Spec.name}.${commandName(
+              command,
+            )}: the caller holds no role this command's rule admits`,
+        })
+      true
+    }
 
   // Every given event is the command's own history here, so all of them count.
   // The caller is consumed: the next scenario starts with no claim.
   let refuses = (history: array<Spec.history>, command: Spec.command): bool => {
-    let claim = caller.contents
+    let who = caller.contents
     caller := None
     refusal := None
-    if ownerFieldsByEventType->Dict.keysToArray->Array.length == 0 {
+    let claim = who->Option.map(w => w.claim)
+    if who->Option.mapOr(false, refusedByRule(_, command)) {
+      true
+    } else if ownerFieldsByEventType->Dict.keysToArray->Array.length == 0 {
       false
     } else {
       let owners = history->Array.reduce([], (owners, event) => {
@@ -95,10 +181,7 @@ module Acting = (Spec: ActingSpec) => {
       })
       refusal :=
         Reventless.OwnerScope.decideActing(~claim, ~recordedOwners=Some(owners))
-        ->CommandTopic_Helpers.ownershipRefusal(
-          ~component=Spec.name,
-          ~command=command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson,
-        )
+        ->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=commandName(command))
         ->Option.map(r => r.rejected)
       refusal.contents->Option.isSome
     }
@@ -155,6 +238,9 @@ module type BehaviorSpec = {
 
   @schema
   type event
+
+  type role
+  let commandAuthorization: command => Reventless.Authorization.rule<role>
 }
 
 module type Behavior = {
@@ -176,8 +262,8 @@ module type T = {
   let givenEvents: array<Spec.consumedEvent> => array<Spec.consumedEvent>
 
   // Who issues the next `whenCmd`; see `Caller`.
-  module Caller: module type of Caller
-  let asCaller: (array<Spec.consumedEvent>, Message.CallerClaim.t) => array<Spec.consumedEvent>
+  module Caller: Callers with type role = Spec.role
+  let asCaller: (array<Spec.consumedEvent>, Caller.t) => array<Spec.consumedEvent>
 
   let whenCmd: (array<Spec.consumedEvent>, Spec.command) => array<Spec.event>
 
@@ -187,7 +273,8 @@ module type T = {
   let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Outcome.outcome
   let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
-  // Refused before `decide` because the caller does not own what it acts on.
+  // Refused before `decide`: by the command's rule, or because the caller does not
+  // own what it acts on.
   let thenRefused: array<Spec.event> => Outcome.outcome
 
   // DCB optimistic-concurrency assertions.
@@ -363,13 +450,17 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
   module Core = AssertionCore(Spec)
   let errors = Core.errors
 
-  module Caller = Caller
+  module Caller = Callers({
+    type role = Spec.role
+  })
   module Guard = Acting({
     let name = Spec.name
     type history = Spec.consumedEvent
     let historySchema = Spec.consumedEventSchema
     type command = Spec.command
     let commandSchema = Spec.commandSchema
+    type role = Spec.role
+    let commandAuthorization = Spec.commandAuthorization
   })
   let asCaller = Guard.asCaller
 
@@ -637,6 +728,8 @@ module type AggregateSpec = {
   type event
   @schema
   type error
+  type role
+  let commandAuthorization: command => Reventless.Authorization.rule<role>
 }
 
 module type AggregateT = {
@@ -648,8 +741,8 @@ module type AggregateT = {
   let givenEvents: array<Spec.event> => array<Spec.event>
 
   // Who issues the next `whenCmd`; see `Caller`.
-  module Caller: module type of Caller
-  let asCaller: (array<Spec.event>, Message.CallerClaim.t) => array<Spec.event>
+  module Caller: Callers with type role = Spec.role
+  let asCaller: (array<Spec.event>, Caller.t) => array<Spec.event>
 
   let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
 
@@ -669,7 +762,8 @@ module type AggregateT = {
   ) => Outcome.outcome
   let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
-  // Refused before `decide` because the caller does not own what it acts on.
+  // Refused before `decide`: by the command's rule, or because the caller does not
+  // own what it acts on.
   let thenRefused: array<Spec.event> => Outcome.outcome
 }
 
@@ -686,13 +780,17 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
   module Core = AssertionCore(Spec)
   let errors = Core.errors
 
-  module Caller = Caller
+  module Caller = Callers({
+    type role = Spec.role
+  })
   module Guard = Acting({
     let name = Spec.name
     type history = Spec.event
     let historySchema = Spec.eventSchema
     type command = Spec.command
     let commandSchema = Spec.commandSchema
+    type role = Spec.role
+    let commandAuthorization = Spec.commandAuthorization
   })
   let asCaller = Guard.asCaller
 

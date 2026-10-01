@@ -31,3 +31,37 @@ describe("DiscontinueProduct StateChangeSlice", () => {
     ->thenNoEvent
   )
 })
+
+describe("Who may DiscontinueProduct", () => {
+  // scenario-id: 895a613e-f339-4e34-8eb2-72dfd73d6f3a
+  test("a Merchandiser may discontinue a product", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(DiscontinueProduct({productId: p1}))
+    ->thenEvent(ProductDiscontinued({productId: p1}))
+  )
+
+  // scenario-id: 31341526-878d-4ff3-b97d-9898a0ff1def
+  test("an Admin may discontinue a product", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(DiscontinueProduct({productId: p1}))
+    ->thenEvent(ProductDiscontinued({productId: p1}))
+  )
+
+  // scenario-id: 73b8ba74-2bbd-4026-a738-18cbb6e97b99
+  test("a shopper may not discontinue a product", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(DiscontinueProduct({productId: p1}))
+    ->thenRefused
+  )
+
+  // scenario-id: 66155fb5-8d1f-49c1-b18c-4020c20fe572
+  test("an anonymous caller may not discontinue a product", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(DiscontinueProduct({productId: p1}))
+    ->thenRefused
+  )
+})

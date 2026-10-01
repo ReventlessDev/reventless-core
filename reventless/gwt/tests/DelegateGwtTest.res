@@ -45,7 +45,8 @@ module ProductDelegate = {
   type error = NoError
 
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -132,7 +133,8 @@ module OrderDelegate = {
   type error = NoError
 
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -201,7 +203,8 @@ module SyncDelegate = {
   type error = NoError
 
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -279,7 +282,8 @@ module StockDelegate = {
   type error = NoError
 
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -341,7 +345,8 @@ module SyncedDelegate = {
   type error = NoError
 
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }

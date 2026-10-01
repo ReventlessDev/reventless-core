@@ -181,12 +181,13 @@ let rec waitForMergeSuccess = async (
 //      from `@@reventless.authorize` / `@authorize` PPX annotations.
 //
 // When both are present on the same field, the spec-level permission wins
-// (it is more specific). `AllowGroups([g1, g2, ...])` emits
-// `@aws_cognito_user_pools(cognito_groups: ["g1", "g2", ...])`.
+// (it is more specific). `AllowRoles([r1, r2, ...])` emits
+// `@aws_cognito_user_pools(cognito_groups: ["g1", "g2", ...])`, each `g` the group
+// the deployment maps that role to.
 // `AllowAuthenticated` emits the group-less `@aws_cognito_user_pools` — the same
 // reachability an undirectived field already has, but stated rather than left
 // implicit, so `assertGateable` can tell "deliberately open" from "nobody
-// stamped this". `AllowGroups([])` and `DenyAll` emit a sentinel `__deny_all__`
+// stamped this". `AllowRoles([])` and `DenyAll` emit a sentinel `__deny_all__`
 // group that no Cognito user can belong to — effectively blocking the field at
 // the API layer.
 //

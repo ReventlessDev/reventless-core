@@ -43,20 +43,18 @@ open ReventlessSeed
 // What the caller may do, against what the component demands. Groups come from
 // the TOKEN rather than the accounts file: membership is not what authorizes, as
 // a narrowed role demonstrates, and the server only ever sees the token.
+// Each role is compared as the group it maps to, as the server compares it.
 let permits = (rule: Reventless.Authorization.permission, ~groups: array<string>): bool =>
-  switch rule {
-  | DenyAll => false
-  | AllowAnonymous => true
-  | AllowAuthenticated => true
-  | AllowGroups(allowed) => allowed->Array.some(g => groups->Array.includes(g))
-  }
+  rule->Reventless.Authorization.admits(~signedIn=true, ~holds=role =>
+    groups->Array.includes(Reventless.Role.groupOf(role))
+  )
 
 let describeRule = (rule: Reventless.Authorization.permission): string =>
   switch rule {
   | DenyAll => "nobody"
   | AllowAnonymous => "anyone"
   | AllowAuthenticated => "any authenticated caller"
-  | AllowGroups(allowed) => allowed->Array.join(" | ")
+  | AllowRoles(_) => rule->Reventless.Authorization.groupsOf->Array.join(" | ")
   }
 
 // What to ask, and the rule that should decide the answer. A command carries the
@@ -75,9 +73,16 @@ type probeCase = {
 // so the cases below read as "this command, that rule" rather than repeating a
 // group list four times. Keep these in step with the `@authorize` attributes on
 // the command constructors — see the note at the top of this file for why they
-// cannot be read from the spec.
-let catalogOperator: Reventless.Authorization.permission = AllowGroups(["Admin", "Merchandiser"])
-let orderFulfilment: Reventless.Authorization.permission = AllowGroups(["Admin", "Fulfilment"])
+// cannot be read from the spec. Typed by each plugin's own roles, so a role either
+// plugin stops declaring fails to compile here.
+let catalogOperator: Reventless.Authorization.permission =
+  (
+    AllowRoles([Admin, Merchandiser]): Reventless.Authorization.rule<CatalogPlugin.Roles.t>
+  )->Reventless.Authorization.named
+let orderFulfilment: Reventless.Authorization.permission =
+  (
+    AllowRoles([Admin, Fulfilment]): Reventless.Authorization.rule<OrderingPlugin.Roles.t>
+  )->Reventless.Authorization.named
 let anyCaller: Reventless.Authorization.permission = AllowAuthenticated
 
 // Commands are sent with payloads the domain refuses anyway — ids that cannot
@@ -128,17 +133,17 @@ let cases: array<probeCase> = [
   // same reason as the command one.
   {
     name: "Catalog_ProductDemands",
-    rule: CatalogPlugin.ProductDemand.authorization,
+    rule: CatalogPlugin.ProductDemand.authorization->Reventless.Authorization.named,
     subject: Queryable("Catalog_ProductDemands"),
   },
   {
     name: "Ordering_Customers",
-    rule: OrderingPlugin.Customers.authorization,
+    rule: OrderingPlugin.Customers.authorization->Reventless.Authorization.named,
     subject: Queryable("Ordering_Customers"),
   },
   {
     name: "Catalog_Products",
-    rule: CatalogPlugin.Products.authorization,
+    rule: CatalogPlugin.Products.authorization->Reventless.Authorization.named,
     subject: Queryable("Catalog_Products"),
   },
 ]

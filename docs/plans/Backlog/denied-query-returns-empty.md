@@ -5,7 +5,7 @@
 ## What happens
 
 A read model or state-view slice carrying
-`@@reventless.authorize(AllowGroups(["Admin"]))` is queried by a caller outside
+`@@reventless.authorize(AllowRoles([Admin]))` is queried by a caller outside
 the group. The resolver evaluates the rule, takes the `Deny` branch, and returns
 an **empty connection** — `edges: []`, `pageInfo` with no next page
 (`reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res:350`, and the

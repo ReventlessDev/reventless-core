@@ -59,3 +59,29 @@ describe("Category Behavior", () => {
     ->thenNoEvent
   )
 })
+
+describe("Who may Archive", () => {
+  // scenario-id: 5164cae5-bd41-4802-aa03-3d42b3e2fb9f
+  test("an Admin may archive a category", () =>
+    givenEvents([Added({name: electronics})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(Archive)
+    ->thenEvent(Archived)
+  )
+
+  // scenario-id: 92a627eb-e78c-48ed-88f4-5065dc505885
+  test("a shopper may not archive a category", () =>
+    givenEvents([Added({name: electronics})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(Archive)
+    ->thenRefused
+  )
+
+  // scenario-id: c4c8e733-7e07-4f3c-b3f2-01bc6b52f601
+  test("an anonymous caller may not archive a category", () =>
+    givenEvents([Added({name: electronics})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(Archive)
+    ->thenRefused
+  )
+})

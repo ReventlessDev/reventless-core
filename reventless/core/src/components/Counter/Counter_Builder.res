@@ -29,7 +29,8 @@ module Make = (
 
       let subIdConfig = None
       let config = Reventless.ReadModel.config()
-      let authorization: Reventless.Authorization.permission = AllowAuthenticated
+      type role = Reventless.Role.name
+      let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
       let visibility: Reventless.Visibility.t = Public
     }
 
@@ -48,7 +49,8 @@ module Make = (
 
       let subIdConfig = None
       let config = Reventless.ReadModel.config()
-      let authorization: Reventless.Authorization.permission = AllowAuthenticated
+      type role = Reventless.Role.name
+      let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
       let visibility: Reventless.Visibility.t = Public
     }
     module CountsDb = QueryDb_Builder.Make(

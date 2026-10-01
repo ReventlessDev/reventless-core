@@ -17,10 +17,11 @@
    overrides the framework default ([AllowAuthenticated]). The PPX
    synthesises one of:
 
-     let commandAuthorization = _ => <rule>     (* Aggregate, StateChangeSlice, InboundTranslationSlice *)
-     let authorization        = <rule>          (* ReadModel, StateViewSlice, StateViewSliceStream *)
+     let commandAuthorization = _ => (<rule> : rule<role>)   (* Aggregate, StateChangeSlice, InboundTranslationSlice *)
+     let authorization        = (<rule> : rule<role>)        (* ReadModel, StateViewSlice, StateViewSliceStream *)
 
-   No injection happens if the user already declared the binding. Adds
+   beside [type role], unless the spec declares one (see "The spec's role
+   type"). No injection happens if the user already declared the binding. Adds
    [open Reventless.Authorization] to the prefix only when the rule
    payload uses unqualified rule constructors (the default rule is
    emitted fully qualified). *)
@@ -50,6 +51,78 @@ let default_rule_expr ~loc =
     ~loc
     { txt = Ldot (Ldot (Lident "Reventless", "Authorization"), "AllowAuthenticated"); loc }
     None
+
+(* The spec's role type -------------------------------------------------------- *)
+(* Every spec module type declares [type role]: the roles its rules name. A rule
+   is written over the plugin's own [Roles.t] with the cases bare,
+   [AllowRoles([Admin, Merchandiser])], and the generated binding is annotated
+   [Reventless.Authorization.rule<role>], so the compiler resolves each case
+   against [Roles.t] and a misspelled one fails at the case itself. [role] is:
+
+   - the spec's own [type role], when it declares one (nothing is injected);
+   - [Roles.t], when the PPX writes the binding and the spec, its file or its
+     package's [src/Roles.res] declares the plugin's roles;
+   - [Reventless.Role.name] otherwise — no roles to name, or a binding written
+     by hand, which is written over the framework's [permission]. *)
+
+let declares_type name (body : structure) =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.exists (fun (td : type_declaration) -> String.equal td.ptype_name.txt name) decls
+    | _ -> false
+  ) body
+
+let declares_module name (body : structure) =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module { pmb_name = { txt = Some n; _ }; _ } -> String.equal n name
+    | _ -> false
+  ) body
+
+let package_declares_roles loc =
+  match ModuleUrl.find_package_for loc with
+  | Some pkg ->
+    Sys.file_exists (Filename.concat (Filename.concat pkg.root "src") "Roles.res")
+  | None -> false
+
+let role_type_item ~loc ~plugin_roles =
+  let manifest =
+    if plugin_roles then Ldot (Lident "Roles", "t")
+    else Ldot (Ldot (Lident "Reventless", "Role"), "name")
+  in
+  let decl = {
+    ptype_name = { txt = "role"; loc };
+    ptype_params = [];
+    ptype_cstrs = [];
+    ptype_kind = Ptype_abstract;
+    ptype_private = Public;
+    ptype_manifest = Some (Ast_builder.Default.ptyp_constr ~loc { txt = manifest; loc } []);
+    ptype_attributes = [];
+    ptype_loc = loc;
+  } in
+  { pstr_desc = Pstr_type (Nonrecursive, [decl]); pstr_loc = loc }
+
+(* [type role = …] for a spec body that does not declare one; [] when it does.
+   [generated] says the PPX writes the rule binding; [roles_in_scope] that the
+   enclosing file (or inline module) declares a [module Roles]. *)
+let role_type_suffix ~loc ~generated ~roles_in_scope (body : structure) =
+  if declares_type "role" body then []
+  else
+    let plugin_roles =
+      generated
+      && (roles_in_scope || declares_module "Roles" body || package_declares_roles loc)
+    in
+    [role_type_item ~loc ~plugin_roles]
+
+(* [rule] constrained to [Reventless.Authorization.rule<role>]. *)
+let as_rule ~loc rule =
+  let rule_t =
+    Ast_builder.Default.ptyp_constr ~loc
+      { txt = Ldot (Ldot (Lident "Reventless", "Authorization"), "rule"); loc }
+      [ Ast_builder.Default.ptyp_constr ~loc { txt = Lident "role"; loc } [] ]
+  in
+  Ast_builder.Default.pexp_constraint ~loc rule rule_t
 
 (* @@reventless.authorize(<expr>) extraction --------------------------------- *)
 
@@ -102,7 +175,7 @@ let arity1_fun ~loc pat body =
 (* let commandAuthorization = _ => <rule> *)
 let gen_command_authorization ~loc rule =
   let wildcard = Ast_builder.Default.ppat_any ~loc in
-  let fn = arity1_fun ~loc wildcard rule in
+  let fn = arity1_fun ~loc wildcard (as_rule ~loc rule) in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
@@ -144,7 +217,7 @@ let gen_command_authorization_switch
     Ast_builder.Default.pexp_ident ~loc { txt = Lident "command"; loc }
   in
   let switch = Ast_builder.Default.pexp_match ~loc cmd_var_ident cases in
-  let fn = arity1_fun ~loc cmd_var_pat switch in
+  let fn = arity1_fun ~loc cmd_var_pat (as_rule ~loc switch) in
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
@@ -246,7 +319,7 @@ let strip_authorize_attrs_from_command (body : structure) : structure =
 let gen_authorization ~loc rule =
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "authorization"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
-    [Ast_builder.Default.value_binding ~loc ~pat ~expr:rule]
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:(as_rule ~loc rule)]
 
 (* Top-level injection helper used from ReventlessPpx.ml's Spec branch.
    Returns the (prefix_items, body, suffix_items) to splice into the spec
@@ -334,24 +407,22 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
     let body = strip_authorize_attrs_from_command body in
     let (prefix, default_rule) = pick ~per_constructor_rules user_rule body in
     let exhaustive = rules_are_exhaustive body per_constructor_rules in
-    let suffix =
-      if Util.has_let_binding "commandAuthorization" body
+    let generated = not (Util.has_let_binding "commandAuthorization" body) in
+    let binding =
+      if not generated
       then []
       else if List.length per_constructor_rules > 0
       then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule ~exhaustive]
       else [gen_command_authorization ~loc default_rule]
     in
-    (prefix, body, suffix)
+    (prefix, body, role_type_suffix ~loc ~generated ~roles_in_scope:false body @ binding)
   | QueryCarrier ->
     let user_rule = extract_file_rule body in
     let body = strip_file_authorize_attrs body in
     let (prefix, rule) = pick ~per_constructor_rules:[] user_rule body in
-    let suffix =
-      if Util.has_let_binding "authorization" body
-      then []
-      else [gen_authorization ~loc rule]
-    in
-    (prefix, body, suffix)
+    let generated = not (Util.has_let_binding "authorization" body) in
+    let binding = if generated then [gen_authorization ~loc rule] else [] in
+    (prefix, body, role_type_suffix ~loc ~generated ~roles_in_scope:false body @ binding)
 
 (* externalSystem auto-injection for translation slices ---------------------- *)
 (* [let externalSystem = None] — the opt-in display name of the foreign system a
@@ -631,11 +702,14 @@ let inject_external_system_into_inner_module ~loc (mb : module_binding) : module
 let inject_into_inner_module
     ~loc
     ~(is_command_carrier : bool)
+    ~(roles_in_scope : bool)
     (mb : module_binding) : module_binding =
   match mb.pmb_expr.pmod_desc with
   | Pmod_structure body ->
     let field_name = if is_command_carrier then "commandAuthorization" else "authorization" in
-    if Util.has_let_binding field_name body then mb
+    if Util.has_let_binding field_name body then
+      let role = role_type_suffix ~loc ~generated:false ~roles_in_scope body in
+      { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure (body @ role) } }
     else
       let user_rule = extract_file_rule body in
       let per_constructor_rules =
@@ -666,7 +740,8 @@ let inject_into_inner_module
           else gen_command_authorization ~loc default_rule
         else gen_authorization ~loc default_rule
       in
-      let new_body = prefix @ body @ [injection] in
+      let role = role_type_suffix ~loc ~generated:true ~roles_in_scope body in
+      let new_body = prefix @ body @ role @ [injection] in
       { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
   | _ -> mb
 
@@ -681,6 +756,7 @@ let walk_inline_specs (str : structure) : structure =
   in
   if in_spec_pkg then str
   else
+  let roles_in_scope = declares_module "Roles" str in
   List.map (fun (item : structure_item) ->
     let loc = item.pstr_loc in
     match item.pstr_desc with
@@ -688,7 +764,7 @@ let walk_inline_specs (str : structure) : structure =
       (* Inbound translation specs also match the aggregate shape (they declare a
          command): inject commandAuthorization AND, when it's a translation,
          externalSystem. *)
-      let mb' = inject_into_inner_module ~loc ~is_command_carrier:true mb in
+      let mb' = inject_into_inner_module ~loc ~is_command_carrier:true ~roles_in_scope mb in
       let mb' = inject_command_transition_into_inner_module ~loc mb' in
       let mb' = inject_traits_into_inner_module ~loc mb' in
       let mb' =
@@ -698,7 +774,7 @@ let walk_inline_specs (str : structure) : structure =
       in
       { item with pstr_desc = Pstr_module mb' }
     | Pstr_module mb when inner_module_is_readmodel_spec mb ->
-      let mb' = inject_into_inner_module ~loc ~is_command_carrier:false mb in
+      let mb' = inject_into_inner_module ~loc ~is_command_carrier:false ~roles_in_scope mb in
       { item with pstr_desc = Pstr_module mb' }
     | Pstr_module mb when inner_module_is_translation_spec mb ->
       (* Outbound translation specs (outboundItem, no command): externalSystem only. *)

@@ -254,7 +254,9 @@ let guards: array<guard> = [
     recordFields: schemaKeys(commandDefSchema),
     wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeCommandDef(cmd)),
     wireOnly: [],
-    recordOnly: [],
+    // The roles behind `requiredAccess`, read by the deploy check in-process.
+    // A client gates on the mapped groups and has no use for role names.
+    recordOnly: ["requiredRoles"],
   },
   {
     gqlType: "Platform_EventDef",
@@ -286,7 +288,9 @@ let guards: array<guard> = [
     recordFields: schemaKeys(queryableDefSchema),
     wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeQueryableDef(queryable)),
     wireOnly: [],
-    recordOnly: [],
+    // The roles behind `requiredAccess`, read by the deploy check in-process.
+    // A client gates on the mapped groups and has no use for role names.
+    recordOnly: ["requiredRoles"],
   },
   {
     gqlType: "Platform_AutomationSliceDef",
@@ -314,7 +318,9 @@ let guards: array<guard> = [
       Platform_ComponentDefinitionsApi.encodeInboundTranslationSliceDef(inbound),
     ),
     wireOnly: [],
-    recordOnly: [],
+    // The roles behind `requiredAccess`, read by the deploy check in-process.
+    // A client gates on the mapped groups and has no use for role names.
+    recordOnly: ["requiredRoles"],
   },
   {
     gqlType: "Platform_ExtensionDef",

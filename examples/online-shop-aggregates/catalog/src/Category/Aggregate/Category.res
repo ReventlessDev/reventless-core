@@ -9,7 +9,7 @@ module Id = CategoryId
 type command =
   | Add({name: string})
   | Rename({name: string})
-  | @authorize(AllowGroups(["Admin"])) Archive
+  | @authorize(AllowRoles([Admin])) Archive
 
 @schema
 type event =

@@ -78,7 +78,7 @@ and the parsed target stays in `ref` beside it.
 - `test_sidecar.ml`: `fragment_json` takes `~src`. Cases:
   - a bare `@owner` is the string `"owner"`;
   - `@storageRef("Catalog.images")` is `{name, args: "\"Catalog.images\""}`;
-  - `@authorize(AllowGroups(["Admin", "Merchandiser"]))`, an argument with spaces, brackets and
+  - `@authorize(AllowRoles([Admin, Merchandiser]))`, an argument with spaces, brackets and
     commas, round-trips exactly;
   - `@default(1)`;
   - a field after `—` on the same line gets the right argument;
@@ -117,7 +117,7 @@ sidecar-assembled model.
   annotation those versions act on is `res.optional`, which stays a string, so nothing they do
   changes. Nothing in core reads the sidecar's `annotations`.
 - **The argument is source text, not a value.** `"\"Catalog.images\""` includes its quotes, and
-  `AllowGroups([...])` is an expression. That is intended: a reader writes it back as it came.
+  `AllowRoles([...])` is an expression. That is intended: a reader writes it back as it came.
   A reader that wants the value parses it, as `ReferenceInference` does for `@ref`, and should
   get a key of its own, as `ref` did.
 - **Two cutters drift.** This is why S1 moves the reader's cutter into `SidecarEmit` rather than

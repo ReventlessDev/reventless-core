@@ -38,7 +38,7 @@ let queryEntries: array<querySchemaEntry> = [
     // read: the entry path uses only the group, and the per-`@index` auth-table
     // pipeline params come from `indexConfig.authorization`, which is untouched.
     authorization: None,
-    permission: PluginsReadModelSpec.authorization,
+    permission: PluginsReadModelSpec.authorization->Reventless.Authorization.named,
     // No `excludeFields`: the three fields this entry used to name are declared
     // `@internal` on the spec, and `deriveObjectTypeWithNested` reads that off the
     // schema itself.

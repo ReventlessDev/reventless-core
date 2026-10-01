@@ -80,7 +80,8 @@ module ProductDelegate = {
   @schema type event = ProductAdded({productId: string, name: string, price: float})
   @schema type error = NoError
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -119,7 +120,8 @@ module OrderDelegate = {
   @schema type event = OrderPlaced({orderId: string, productIds: array<string>})
   @schema type error = NoError
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -156,7 +158,8 @@ module RecordDemandSlice = {
   type event =
     DemandRecorded({productId: @s.matches(Reventless.DcbTag.string) string, orderId: string})
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -216,7 +219,8 @@ module SyncProductSlice = {
         price: float,
       })
   let moduleUrl = ""
-  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+  type role = Reventless.Role.name
+  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }

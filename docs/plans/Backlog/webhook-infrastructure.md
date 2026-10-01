@@ -178,7 +178,7 @@ handle these rather than discover them:
   a default `commandAuthorization` of `AllowAuthenticated` can still be handed a
   forged payment confirmation by any signed-in caller through the mutation. A
   slice that has a URL should set `commandAuthorization` deliberately —
-  `AllowGroups([...])` for an operator-only replay door, or `@noApi` for none at
+  `AllowRoles([...])` for an operator-only replay door, or `@noApi` for none at
   all. Consider warning at build time when a slice declares `SignedBody` and
   leaves `commandAuthorization` at the default.
 - **The audit log sees both.** The audit row must record which door the input

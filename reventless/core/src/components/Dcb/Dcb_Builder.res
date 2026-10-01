@@ -534,7 +534,8 @@ module Make = (
                 ~commandSchema,
               )->Array.map(((f, _)) => f),
               ~commandSchema,
-              ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
+              ~commandAuthorization=command =>
+                S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
             )
           }
         })
@@ -549,7 +550,8 @@ module Make = (
                 ~commandSchema,
               )->Array.map(((f, _)) => f),
               ~commandSchema,
-              ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
+              ~commandAuthorization=command =>
+                S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
             )
           }
         })
@@ -1076,8 +1078,8 @@ module Make = (
               )
             // One SDL field per constructor, each with its own constructor's args and
             // its own per-constructor authorization rule.
-            let commandAuthorization: unknown => Reventless.Authorization.permission =
-              S.Spec.commandAuthorization->Obj.magic
+            let commandAuthorization: unknown => Reventless.Authorization.permission = command =>
+              S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named
             let fieldPermissions = Dict.make()
             fieldSpecs->Array.forEach(((fieldName, ctor)) => {
               let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(
@@ -1108,7 +1110,8 @@ module Make = (
           let fieldPermissions = Dict.make()
           switch permissionForFirstConstructor(
             ~commandSchema=ITS.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
-            ~commandAuthorization=ITS.Spec.commandAuthorization->Obj.magic,
+            ~commandAuthorization=command =>
+              ITS.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
           ) {
           | Some(rule) => fieldPermissions->Dict.set(fieldName, rule)
           | None => ()
@@ -1142,7 +1145,7 @@ module Make = (
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
           authorization: None,
-          permission: V.Spec.authorization,
+          permission: V.Spec.authorization->Reventless.Authorization.named,
           systemCallable: systemCallableComponents->Array.includes(V.Spec.name),
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,

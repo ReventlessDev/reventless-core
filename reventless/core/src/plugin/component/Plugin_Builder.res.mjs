@@ -14,7 +14,9 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as RoleCoverage$Reventless from "@reventlessdev/reventless-spec/src/types/RoleCoverage.res.mjs";
 import * as Aggregate$ReventlessCore from "../../components/Aggregate/Aggregate.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../../components/ReadModel/ReadModel.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
@@ -124,6 +126,7 @@ function Make(Spec) {
       let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
       let componentRuntime = componentRuntimeOpt !== undefined ? componentRuntimeOpt : ({});
       PluginRuntimeBuilder.registerPluginName(name);
+      Stdlib_Option.forEach(pluginStructure, s => RoleCoverage$Reventless.check(s, name));
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let _prevPluginName = Logger$ReventlessCore.currentPluginName.contents;
@@ -173,7 +176,7 @@ function Make(Spec) {
           if (fieldNames.length === 0) {
             return [];
           }
-          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
+          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, command => Authorization$Reventless.named(M.Spec.commandAuthorization(command))));
           let aggDef = Stdlib_Option.flatMap(pluginStructure, s => s.aggregates.find(d => d.name === M.Spec.name));
           let fieldPermissions = {};
           filteredConstructorNames.forEach((cname, idx) => {
@@ -182,7 +185,7 @@ function Make(Spec) {
             let syntheticCmd = hasPayload ? ({
                 TAG: cname
               }) : cname;
-            let rule = M.Spec.commandAuthorization(syntheticCmd);
+            let rule = Authorization$Reventless.named(M.Spec.commandAuthorization(syntheticCmd));
             fieldPermissions[fieldName] = rule;
           });
           return [{
@@ -205,7 +208,7 @@ function Make(Spec) {
             returnTypeName: qn.returnTypeName,
             stateSchema: R.Spec.stateSchema,
             authorization: undefined,
-            permission: R.Spec.authorization,
+            permission: Authorization$Reventless.named(R.Spec.authorization),
             connectionSpec: true,
             subIdField: subIdField,
             indexQueries: indexes.length !== 0 ? indexes : undefined,

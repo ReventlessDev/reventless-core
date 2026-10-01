@@ -222,7 +222,9 @@ describe("InboundTranslationSlice Callback", () => {
             ),
           )
 
-          let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+          type role = Reventless.Role.name
+
+          let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
           type lifecycleState = unit
           let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>
@@ -289,7 +291,9 @@ describe("InboundTranslationSlice Callback", () => {
 
           let translate = (_input: externalInput) => Ok([])
 
-          let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+          type role = Reventless.Role.name
+
+          let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
           type lifecycleState = unit
           let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>

@@ -84,7 +84,7 @@ let all : entry list =
     e ~args:Required ~ex:"Internal" "reventless.visibility" [ File ]
       "Hides a read model or state view from the generated UI (`Internal`); the default is `Public`."
       [ "VisibilityInjection" ];
-    e ~args:Required ~ex:{|AllowGroups(["Admin"])|} "reventless.authorize" [ File ]
+    e ~args:Required ~ex:{|AllowRoles([Admin])|} "reventless.authorize" [ File ]
       "Who may call this component, in place of the default: any signed-in user."
       [ "AuthorizationInjection" ];
     e ~args:Required ~ex:"AlwaysStrong" "reventless.consistency" [ File ]
@@ -105,7 +105,7 @@ let all : entry list =
     e "noApi" [ Type Command; Case Command ]
       "Keeps this command, or every command of the type, off the GraphQL and MCP APIs."
       [ "NoApiAnnotation"; "ReventlessPpx" ];
-    e ~args:Required ~ex:{|AllowGroups(["Admin"])|} "authorize" [ Case Command ]
+    e ~args:Required ~ex:{|AllowRoles([Merchandiser, Admin])|} "authorize" [ Case Command ]
       "Who may issue this one command, in place of the file's rule."
       [ "AuthorizationInjection" ];
     e ~args:Required ~ex:"false" "live" [ Type State ] "Whether the view offers live updates by default."

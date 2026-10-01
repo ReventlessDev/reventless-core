@@ -43,3 +43,37 @@ describe("UnarchiveProduct StateChangeSlice", () => {
     ->thenError(ProductIsDiscontinued)
   )
 })
+
+describe("Who may UnarchiveProduct", () => {
+  // scenario-id: 43d3a3ff-7755-403f-8647-c3528bbed51e
+  test("a Merchandiser may unarchive a product", () =>
+    givenEvents([ProductAdded, ProductArchived])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(UnarchiveProduct({productId: p1}))
+    ->thenEvent(ProductUnarchived({productId: p1}))
+  )
+
+  // scenario-id: e9a48279-08c9-4d27-bcca-573d4aa581aa
+  test("an Admin may unarchive a product", () =>
+    givenEvents([ProductAdded, ProductArchived])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(UnarchiveProduct({productId: p1}))
+    ->thenEvent(ProductUnarchived({productId: p1}))
+  )
+
+  // scenario-id: bd55609a-1195-4312-b196-d777d8cb3905
+  test("a shopper may not unarchive a product", () =>
+    givenEvents([ProductAdded, ProductArchived])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(UnarchiveProduct({productId: p1}))
+    ->thenRefused
+  )
+
+  // scenario-id: 47797f62-337a-47c4-9bb4-56a19cf120af
+  test("an anonymous caller may not unarchive a product", () =>
+    givenEvents([ProductAdded, ProductArchived])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(UnarchiveProduct({productId: p1}))
+    ->thenRefused
+  )
+})

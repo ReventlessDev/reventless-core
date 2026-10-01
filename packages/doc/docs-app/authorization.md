@@ -24,12 +24,72 @@ The four rules:
 | Rule | Allows |
 |---|---|
 | `AllowAuthenticated` | Any caller who signed in. The default. |
-| `AllowGroups(["Admin", "Merchandiser"])` | Callers in at least one of the named groups. |
+| `AllowRoles([Admin, Merchandiser])` | Callers holding at least one of the named roles. |
 | `AllowAnonymous` | Everybody, signed in or not. Use deliberately. |
 | `DenyAll` | Nobody. For a command only another component may issue. |
 
-Groups are plain strings, not a framework enum, so your application's group
-vocabulary stays yours.
+## Roles and groups
+
+Two words, with two meanings:
+
+- A **role** is a job someone does, such as `Merchandiser`, `Fulfilment` or
+  `Admin`. Rules name roles. A role belongs to the plugin.
+- A **group** is how an identity provider records that a person has a role: the
+  `groups` in a sign-in token, the groups of a user pool, the `groups` of an
+  account in `users.yaml`. Groups belong to the deployment.
+
+A plugin declares the roles its rules use, as a variant in `src/Roles.res`:
+
+```rescript
+// src/Roles.res
+type t =
+  | Admin
+  | Merchandiser
+```
+
+Rules then name its cases. A misspelled role does not compile:
+
+```text
+The constructor Merchandisr does not belong to type Roles.t
+Hint: Did you mean Merchandiser?
+```
+
+`Admin` is the framework's own administrator role. A plugin that lists it means
+the same role, because roles are joined by name: two plugins that each declare
+`Fulfilment` mean one role, and neither needs a shared package for it.
+
+By default each role is the group of the same name, so a deployment that names
+its groups after its roles configures nothing. Where they differ, the platform
+root says so, before the platform is built:
+
+```rescript
+ReventlessAws.Platform.roleGroups([
+  (Reventless.Role.make((CatalogPlugin.Roles.Merchandiser :> string)), "shop-merch-team"),
+])
+module Platform = ReventlessAws.Platform.Make()
+```
+
+The resolver, the AppSync directives, the published `requiredAccess` and the
+elevated list all use the group a role maps to. `Platform.groupOf(role)` and
+`Platform.adminGroup()` give a platform root the same answer, for anything it
+grants by group itself. A mapping stated after the platform is built is refused,
+because part of the deployment would already be using the old one.
+
+### Every role must have a group
+
+When a plugin is built, at deploy (preview included) and at local start, the
+platform checks that every role its rules name, and every elevated role, maps to
+a group it provides. Otherwise the rule would refuse everybody it was written
+for, and only a deployed stack would show it. The groups it provides are:
+
+- the administrator group,
+- the groups of the accounts manifest (`.reventless/users.yaml`, or the
+  `users.example.yaml` it is made from), and the built-in local accounts,
+- the groups the role mapping names,
+- the groups a platform root declares with `Platform.providedGroups([...])`, for a
+  user pool the deployment did not create.
+
+A missing one fails with the plugin, the command or view, and the role named.
 
 ## Narrowing a whole file
 
@@ -37,11 +97,11 @@ Put the rule at the top of the spec file:
 
 ```rescript
 @@reventless.spec
-@@reventless.authorize(AllowGroups(["Admin"]))
+@@reventless.authorize(AllowRoles([Admin]))
 ```
 
 Every command in that file (or the whole view, for a query component) now
-requires the named group.
+requires the named role.
 
 ## Narrowing one command
 
@@ -51,11 +111,11 @@ the annotation **before the constructor name**:
 ```rescript
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddCategory({
+  | @authorize(AllowRoles([Admin, Merchandiser])) AddCategory({
       categoryId: string,
       name: string,
     })
-  | @authorize(AllowGroups(["Admin"])) PurgeCategory({categoryId: string})
+  | @authorize(AllowRoles([Admin])) PurgeCategory({categoryId: string})
 ```
 
 Anything left unannotated keeps the file-level rule, or the framework default if
@@ -111,21 +171,24 @@ already confines every command to the caller's partition.
 
 Some roles exist precisely to read across owners — a fulfilment desk works other
 people's orders. That exemption is **deployment configuration**, never part of an
-annotation, so two views cannot disagree about who an operator is:
+annotation, so two views cannot disagree about who an operator is. A platform
+root states it as roles, before the plugins are built:
+
+```rescript
+Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedRoles)
+```
+
+or as groups, with `setElevatedGroups`, or in the environment:
 
 ```bash
 REVENTLESS_ELEVATED_GROUPS=Admin,Fulfilment
 ```
 
-or, in a platform root, before the plugins are built:
-
-```rescript
-Reventless.OwnerScope.setElevatedGroups(["Admin", "Fulfilment"])
-```
-
-An explicit call wins over the environment, and either counts as an answer — a
-deployment that names its operators is never overridden, including when it names
-nobody.
+Roles are resolved to their groups, and the environment variable always carries
+groups, so the processes that never see the role mapping read the same list. An
+explicit call wins over the environment (roles and groups stated together are
+joined), and either counts as an answer — a deployment that names its operators
+is never overridden, including when it names nobody.
 
 Say nothing and the answer depends on the platform. A cloud platform defaults the
 list to the administrator group it declares, so the account made by

@@ -236,7 +236,7 @@ This step asked whether to extend the manifest, on the grounds that it "carries
 no notion of a door at all. "Door" is this repo's prose, not its schema.
 
 The declaration it was reaching for exists somewhere else and has all along:
-`Authorization.permission` publishes **`AllowAnonymous`** beside `AllowAuthenticated`, `AllowGroups`
+`Authorization.permission` publishes **`AllowAnonymous`** beside `AllowAuthenticated`, `AllowRoles`
 and `DenyAll`, and it is `@schema`'d, so it already persists and already travels.
 
 That answers the delegated question — *is an unauthenticated door's auth posture a trait declaration or

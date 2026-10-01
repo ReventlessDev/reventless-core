@@ -13,7 +13,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   ChangeProductName({
       productId: CatalogSpec.ProductId.t,
       name: string,

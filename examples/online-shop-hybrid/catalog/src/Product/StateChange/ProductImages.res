@@ -38,23 +38,23 @@ let selected = Reventless.MemberRef.of_(
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   AttachProductImage({
       productId: CatalogSpec.ProductId.t,
       productImage: Reventless.UploadableImage.t,
       altText?: string,
     })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   RemoveProductImage({
       productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,
     })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   SetPrimaryProductImage({
       productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,
     })
-  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  | @authorize(AllowRoles([Admin, Merchandiser]))
   SetProductImageAltText({
       productId: CatalogSpec.ProductId.t,
       productImage: @s.matches(selected) string,

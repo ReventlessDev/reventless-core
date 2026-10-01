@@ -6,7 +6,7 @@
 // ([Auth_ActiveRoleTrigger.res] bundles it and attaches it to the user pool).
 //
 // The narrowing has to happen here rather than in our own enforcement code
-// because `@authorize(AllowGroups([...]))` compiles to a field directive AppSync
+// because `@authorize(AllowRoles([...]))` compiles to a field directive AppSync
 // evaluates against `cognito:groups` **before any of our code executes**. A
 // request header we invent could scope reads correctly and still leave every
 // group-gated mutation callable — right about the data, wrong about the writes.

@@ -58,7 +58,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
 });
 
 let authorization = {
-  TAG: "AllowGroups",
+  TAG: "AllowRoles",
   _0: [
     "Admin",
     "Merchandiser"

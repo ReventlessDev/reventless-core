@@ -27,7 +27,7 @@ let commandNamed = (name: string): commandDef =>
 let activate = () => commandNamed("Activate")
 
 describe("the Plugins read model declares its lifecycle", () => {
-  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel
+  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel()
 
   testSync("names the field commands branch on", () =>
     expect(rm.lifecycleField)->toEqual(Some("status"))
@@ -206,24 +206,27 @@ describe("the internal commands declare the edges they move rows along", () => {
 // was open to everyone and the server refused anyone outside `Admin`. The
 // mismatch is invisible until a non-admin clicks the page.
 describe("the Plugins view publishes the rule the server enforces", () => {
-  // 🚨 **This is also the only check `Reventless.AdminGroup.name` can carry.** A
-  // PPX annotation takes a literal, so `@@reventless.authorize(AllowGroups(
-  // ["Admin"]))` above cannot reference the constant — the constant's job is to
-  // make everything *else* agree with the annotation, and nothing in the compiler
-  // spans that gap. The actual side here comes from the expanded annotation and
-  // the expected side from the constant, so the two are compared rather than
-  // restated. Writing the literal on both sides would pass while they diverged.
-  testSync("the spec declares the group, and it is the one the constant names", () =>
+  // The annotation names the role, so a renamed administrator group follows it
+  // without anyone editing the spec.
+  testSync("the spec declares the administrator role", () =>
     expect(PluginsReadModelSpec.authorization)->toEqual(
-      Reventless.Authorization.AllowGroups([Reventless.AdminGroup.name]),
+      Reventless.Authorization.AllowRoles([Reventless.Role.admin]),
     )
   )
 
-  testSync("and the published access keys are derived from it", () =>
-    expect(Platform_Admin_Structure.pluginReadModel.requiredAccess)->toEqual(
-      Some([Reventless.AdminGroup.name]),
+  testSync("and the published access keys are the group it maps to", () =>
+    expect(Platform_Admin_Structure.pluginReadModel().requiredAccess)->toEqual(
+      Some([Reventless.Role.adminGroup()]),
     )
   )
+
+  testSync("a renamed administrator group reaches the access keys", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.admin, "ops")])
+    let keys = Platform_Admin_Structure.pluginReadModel().requiredAccess
+    Reventless.Role.clearGroups()
+    expect(keys)->toEqual(Some(["ops"]))
+  })
 
   // The API entry reads the same binding rather than restating it, so the two
   // cannot be edited apart.
@@ -243,7 +246,7 @@ describe("the Plugins view publishes the rule the server enforces", () => {
 // looked special. Asserted rather than assumed — the whole case for deriving
 // rests on the generic helpers reaching the same answers.
 describe("the Plugins queryableDef is what the generic helpers produce", () => {
-  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel
+  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel()
 
   testSync("the field names are the generic ones", () =>
     expect((rm.queryField, rm.singleQueryField))->toEqual((

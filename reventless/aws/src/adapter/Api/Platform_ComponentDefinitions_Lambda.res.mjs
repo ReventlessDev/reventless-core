@@ -107,7 +107,7 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
         encodeSelections(j.selections)
       ]
     ]))) : "";
-  let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, Platform_Admin_Structure$ReventlessCore.structure));
+  let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, Platform_Admin_Structure$ReventlessCore.structure()));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")

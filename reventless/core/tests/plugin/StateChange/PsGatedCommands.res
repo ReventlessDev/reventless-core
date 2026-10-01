@@ -4,6 +4,14 @@
 
 @@reventless.spec("GatedCommands")
 
+// Declared here rather than in the package's `Roles.res`: the rule resolves
+// `Roles` by ordinary scoping, so a spec can name roles its package does not.
+module Roles = {
+  type t =
+    | Admin
+    | Ops
+}
+
 type state = bool
 let initialState = false
 
@@ -14,7 +22,7 @@ let evolve = (_state, _event) => true
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Ops"])) Restock({productId: string})
+  | @authorize(AllowRoles([Admin, Ops])) Restock({productId: string})
   | RequestRestock({productId: string})
 
 @schema

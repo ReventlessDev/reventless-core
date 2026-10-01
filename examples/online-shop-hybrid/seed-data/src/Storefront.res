@@ -188,5 +188,16 @@ other name was routed to a door it could not open. The two questions now come
 apart: the shell reads the admin gate from the group the server actually
 enforces, and a role with a journey discovers from that journey's own file. So
 naming a second group here answers only the question this list asks.
+
+Stated as roles, the ordering plugin's own, for a root to pass to
+`OwnerScope.setElevatedRoles`.
 */
-let elevatedGroups = ["Admin", "Fulfilment"]
+let elevatedRoles: array<Reventless.Role.name> =
+  [OrderingPlugin.Roles.Admin, Fulfilment]->Array.map(role =>
+    Reventless.Role.make((role :> string))
+  )
+
+/** The same list as the groups that stand for those roles where a deployment
+    renames none — for a root that states its elevated list as groups. */
+let elevatedGroups: array<string> =
+  elevatedRoles->Array.map(role => (role :> string))

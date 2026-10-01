@@ -29,7 +29,7 @@ type consumedEvent =
   | OrderReopened
 
 @schema
-type command = | @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: OrderId.t})
+type command = | @authorize(AllowRoles([Admin, Fulfilment])) ShipOrder({orderId: OrderId.t})
 
 @schema
 type error =

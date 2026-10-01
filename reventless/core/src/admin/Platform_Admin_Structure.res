@@ -37,7 +37,8 @@ let pluginCommands: array<commandDef> = Plugin_Structure.extractCommandDefs(
   ~isAggregate=true,
   ~mutationFieldFor=variantName =>
     Api_Naming.adminField(~name=PluginSpec.name ++ "_" ++ variantName),
-  ~commandAuthorization=PluginSpec.commandAuthorization->Obj.magic,
+  ~commandAuthorization=command =>
+    PluginSpec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
   ~commandTransition=PluginSpec.commandTransition->Obj.magic,
   commandSchema,
 )
@@ -57,16 +58,19 @@ let pluginAggregate: writableDef = {
   chapter: None,
 }
 
-let pluginReadModel: queryableDef = Plugin_Structure.queryableDefFromSpec(
-  ~plugin=pluginId,
-  ~name=PluginsReadModelSpec.name,
-  ~stateSchema=PluginsReadModelSpec.stateSchema->S.castToUnknown,
-  ~authorization=PluginsReadModelSpec.authorization,
-  ~linkedWriteSide=["Plugin"],
-)
+// Functions, not values: the view's access keys are the group the platform maps
+// the administrator role to, and this module is evaluated before a root maps it.
+let pluginReadModel = (): queryableDef =>
+  Plugin_Structure.queryableDefFromSpec(
+    ~plugin=pluginId,
+    ~name=PluginsReadModelSpec.name,
+    ~stateSchema=PluginsReadModelSpec.stateSchema->S.castToUnknown,
+    ~authorization=PluginsReadModelSpec.authorization->Reventless.Authorization.named,
+    ~linkedWriteSide=["Plugin"],
+  )
 
-let structure: pluginStructure = {
-  readModels: [pluginReadModel],
+let structure = (): pluginStructure => {
+  readModels: [pluginReadModel()],
   stateViewSlices: [],
   stateChangeSlices: [],
   aggregates: [pluginAggregate],

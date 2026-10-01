@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 
 function injectAwsSubscribe(sdl, sources) {
@@ -65,7 +66,7 @@ function permissionToGate(permission) {
         };
     }
   } else {
-    let groups = permission._0;
+    let groups = Authorization$Reventless.groupsOf(permission);
     if (groups.length !== 0) {
       return {
         TAG: "Groups",
@@ -81,7 +82,7 @@ function permissionToGate(permission) {
 }
 
 function refuseAnonymousFields(fieldNames) {
-  return Stdlib_JsError.throwWithMessage(`Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` + (`  ` + fieldNames.length.toString() + ` field(s) declare AllowAnonymous:\n`) + (`    ` + fieldNames.join(", ") + `\n\n`) + `AppSync has no anonymous authorization mode. This API is provisioned with\nAMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\ndirective available is @aws_cognito_user_pools — which means ANY\nAUTHENTICATED caller, the opposite of what the spec declares. Mutations have\nno runtime authorization check to correct it: on this platform the directive\nis the whole enforcement.\n\nThe local platform DOES honour AllowAnonymous (its resolvers call\nAuthorization.isAllowed), so a spec that passes locally can still not be\ndeployable here. That divergence is the reason this refuses instead of\nemitting a directive that reads as gated and is not.\n\nAnonymous fields on AWS are deferred. When they land it will be as a separate\nAPI carrying only the unauthenticated fields. Do not add API_KEY to this one:\nevery field here would then have to say whether the key reaches it, and one\nthat forgot would be open. Until then, declare the field AllowAuthenticated\n(or AllowGroups) and mean it.`);
+  return Stdlib_JsError.throwWithMessage(`Refusing to push an AppSync schema that cannot honour AllowAnonymous.\n\n` + (`  ` + fieldNames.length.toString() + ` field(s) declare AllowAnonymous:\n`) + (`    ` + fieldNames.join(", ") + `\n\n`) + `AppSync has no anonymous authorization mode. This API is provisioned with\nAMAZON_COGNITO_USER_POOLS primary and AWS_IAM additional, so the only\ndirective available is @aws_cognito_user_pools — which means ANY\nAUTHENTICATED caller, the opposite of what the spec declares. Mutations have\nno runtime authorization check to correct it: on this platform the directive\nis the whole enforcement.\n\nThe local platform DOES honour AllowAnonymous (its resolvers call\nAuthorization.isAllowed), so a spec that passes locally can still not be\ndeployable here. That divergence is the reason this refuses instead of\nemitting a directive that reads as gated and is not.\n\nAnonymous fields on AWS are deferred. When they land it will be as a separate\nAPI carrying only the unauthenticated fields. Do not add API_KEY to this one:\nevery field here would then have to say whether the key reaches it, and one\nthat forgot would be open. Until then, declare the field AllowAuthenticated\n(or AllowRoles) and mean it.`);
 }
 
 function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
@@ -388,4 +389,4 @@ export {
   canonicalTypeNames,
   stampCanonicalTypes,
 }
-/* GraphQL_Stitcher-ReventlessCore Not a pure module */
+/* Authorization-Reventless Not a pure module */

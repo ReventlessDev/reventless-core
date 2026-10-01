@@ -29,7 +29,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 3
   },
   {
     "component": "Category",

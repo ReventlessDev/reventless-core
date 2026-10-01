@@ -13,25 +13,84 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 
-function owner(id) {
+function roleNames(roles) {
+  return roles.map(role => {
+    if (OwnerScope$Reventless.isJsString(role)) {
+      return role;
+    } else {
+      return Stdlib_JsError.throwWithMessage("Caller: expected roles of the plugin's Roles.t (payload-less, so strings at runtime)");
+    }
+  });
+}
+
+function owner(id, rolesOpt) {
+  let roles = rolesOpt !== undefined ? rolesOpt : [];
   if (OwnerScope$Reventless.isJsString(id)) {
     return {
-      TAG: "Owned",
-      userId: id
+      claim: {
+        TAG: "Owned",
+        userId: id
+      },
+      roles: roleNames(roles),
+      signedIn: true
     };
   } else {
     return Stdlib_JsError.throwWithMessage("Caller.owner: expected an id (a string at runtime, such as an Id.Make identity)");
   }
 }
 
-let Caller = {
-  owner: owner,
-  operator: "Exempt",
-  anonymous: "Unidentified"
+function inRoles(roles) {
+  return {
+    claim: {
+      TAG: "Owned",
+      userId: "caller-in-roles"
+    },
+    roles: roleNames(roles),
+    signedIn: true
+  };
+}
+
+let operator_roles = [];
+
+let operator = {
+  claim: "Exempt",
+  roles: operator_roles,
+  signedIn: true
 };
+
+let anonymous_roles = [];
+
+let anonymous = {
+  claim: "Unidentified",
+  roles: anonymous_roles,
+  signedIn: false
+};
+
+let Caller = {
+  roleNames: roleNames,
+  owner: owner,
+  inRoles: inRoles,
+  operator: operator,
+  anonymous: anonymous
+};
+
+function Callers(R) {
+  let owner$1 = (id, rolesOpt) => {
+    let roles = rolesOpt !== undefined ? rolesOpt : [];
+    return owner(id, roles);
+  };
+  let inRoles$1 = inRoles;
+  return {
+    owner: owner$1,
+    inRoles: inRoles$1,
+    operator: operator,
+    anonymous: anonymous
+  };
+}
 
 function Acting(Spec) {
   let caller = {
@@ -41,14 +100,30 @@ function Acting(Spec) {
     contents: undefined
   };
   let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.historySchema);
-  let asCaller = (history, claim) => {
-    caller.contents = claim;
+  let asCaller = (history, who) => {
+    caller.contents = who;
     return history;
   };
+  let commandName = command => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema));
+  let refusedByRule = (who, command) => {
+    if (Authorization$Reventless.admits(Authorization$Reventless.named(Spec.commandAuthorization(command)), who.signedIn, role => who.roles.includes(role))) {
+      return false;
+    } else {
+      refusal.contents = {
+        errorCode: "Forbidden",
+        errorDetail: Spec.name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema)) + `: the caller holds no role this command's rule admits`
+      };
+      return true;
+    }
+  };
   let refuses = (history, command) => {
-    let claim = caller.contents;
+    let who = caller.contents;
     caller.contents = undefined;
     refusal.contents = undefined;
+    let claim = Stdlib_Option.map(who, w => w.claim);
+    if (Stdlib_Option.mapOr(who, false, __x => refusedByRule(__x, command))) {
+      return true;
+    }
     if (Object.keys(ownerFieldsByEventType).length === 0) {
       return false;
     }
@@ -101,6 +176,8 @@ function Acting(Spec) {
     refusal: refusal,
     ownerFieldsByEventType: ownerFieldsByEventType,
     asCaller: asCaller,
+    commandName: commandName,
+    refusedByRule: refusedByRule,
     refuses: refuses,
     encRefusal: encRefusal,
     unexpectedRefusal: unexpectedRefusal,
@@ -285,9 +362,21 @@ function Make(Spec) {
         });
       }
     };
+    let owner$1 = (id, rolesOpt) => {
+      let roles = rolesOpt !== undefined ? rolesOpt : [];
+      return owner(id, roles);
+    };
+    let inRoles$1 = inRoles;
+    let Caller = {
+      owner: owner$1,
+      inRoles: inRoles$1,
+      operator: operator,
+      anonymous: anonymous
+    };
     let name = Spec.name;
     let historySchema = Spec.consumedEventSchema;
     let commandSchema = Spec.commandSchema;
+    let commandAuthorization = Spec.commandAuthorization;
     let caller = {
       contents: undefined
     };
@@ -295,14 +384,28 @@ function Make(Spec) {
       contents: undefined
     };
     let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(historySchema);
-    let asCaller = (history, claim) => {
-      caller.contents = claim;
+    let asCaller = (history, who) => {
+      caller.contents = who;
       return history;
     };
     let refuses = (history, command) => {
-      let claim = caller.contents;
+      let who = caller.contents;
       caller.contents = undefined;
       refusal.contents = undefined;
+      let claim = Stdlib_Option.map(who, w => w.claim);
+      if (Stdlib_Option.mapOr(who, false, __x => {
+          if (Authorization$Reventless.admits(Authorization$Reventless.named(commandAuthorization(command)), __x.signedIn, role => __x.roles.includes(role))) {
+            return false;
+          } else {
+            refusal.contents = {
+              errorCode: "Forbidden",
+              errorDetail: name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)) + `: the caller holds no role this command's rule admits`
+            };
+            return true;
+          }
+        })) {
+        return true;
+      }
       if (Object.keys(ownerFieldsByEventType).length === 0) {
         return false;
       }
@@ -630,9 +733,21 @@ function MakeFromAggregate(Spec) {
         });
       }
     };
+    let owner$1 = (id, rolesOpt) => {
+      let roles = rolesOpt !== undefined ? rolesOpt : [];
+      return owner(id, roles);
+    };
+    let inRoles$1 = inRoles;
+    let Caller = {
+      owner: owner$1,
+      inRoles: inRoles$1,
+      operator: operator,
+      anonymous: anonymous
+    };
     let name = Spec.name;
     let historySchema = Spec.eventSchema;
     let commandSchema = Spec.commandSchema;
+    let commandAuthorization = Spec.commandAuthorization;
     let caller = {
       contents: undefined
     };
@@ -640,14 +755,28 @@ function MakeFromAggregate(Spec) {
       contents: undefined
     };
     let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(historySchema);
-    let asCaller = (history, claim) => {
-      caller.contents = claim;
+    let asCaller = (history, who) => {
+      caller.contents = who;
       return history;
     };
     let refuses = (history, command) => {
-      let claim = caller.contents;
+      let who = caller.contents;
       caller.contents = undefined;
       refusal.contents = undefined;
+      let claim = Stdlib_Option.map(who, w => w.claim);
+      if (Stdlib_Option.mapOr(who, false, __x => {
+          if (Authorization$Reventless.admits(Authorization$Reventless.named(commandAuthorization(command)), __x.signedIn, role => __x.roles.includes(role))) {
+            return false;
+          } else {
+            refusal.contents = {
+              errorCode: "Forbidden",
+              errorDetail: name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)) + `: the caller holds no role this command's rule admits`
+            };
+            return true;
+          }
+        })) {
+        return true;
+      }
       if (Object.keys(ownerFieldsByEventType).length === 0) {
         return false;
       }
@@ -772,6 +901,7 @@ function MakeFromAggregate(Spec) {
 
 export {
   Caller,
+  Callers,
   Acting,
   encodeTag,
   encodeQueryItem,

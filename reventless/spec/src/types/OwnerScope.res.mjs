@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Role$Reventless from "./Role.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "./Identity.res.mjs";
 
@@ -14,16 +15,34 @@ let explicitElevatedGroups = {
   contents: undefined
 };
 
+let explicitElevatedRoles = {
+  contents: undefined
+};
+
 function setElevatedGroups(groups) {
   explicitElevatedGroups.contents = groups;
 }
 
+function setElevatedRoles(roles) {
+  explicitElevatedRoles.contents = roles;
+}
+
 function clearElevatedGroups() {
   explicitElevatedGroups.contents = undefined;
+  explicitElevatedRoles.contents = undefined;
+}
+
+function explicitElevated() {
+  let match = explicitElevatedGroups.contents;
+  let match$1 = explicitElevatedRoles.contents;
+  if (match === undefined && match$1 === undefined) {
+    return;
+  }
+  return Array.from(new Set(Stdlib_Option.getOr(match, []).concat(Stdlib_Option.getOr(match$1, []).map(Role$Reventless.groupOf))).values());
 }
 
 function defaultElevatedGroups(groups) {
-  let match = explicitElevatedGroups.contents;
+  let match = explicitElevated();
   let match$1 = process.env.REVENTLESS_ELEVATED_GROUPS;
   if (match !== undefined || match$1 !== undefined) {
     return;
@@ -33,12 +52,23 @@ function defaultElevatedGroups(groups) {
   }
 }
 
+function defaultElevatedRoles(roles) {
+  let match = explicitElevated();
+  let match$1 = process.env.REVENTLESS_ELEVATED_GROUPS;
+  if (match !== undefined || match$1 !== undefined) {
+    return;
+  } else {
+    explicitElevatedRoles.contents = roles;
+    return;
+  }
+}
+
 function parseElevatedGroups(raw) {
   return raw.split(",").map(prim => prim.trim()).filter(part => part.length > 0);
 }
 
 function elevatedGroups() {
-  let groups = explicitElevatedGroups.contents;
+  let groups = explicitElevated();
   if (groups !== undefined) {
     return groups;
   }
@@ -305,9 +335,13 @@ export {
   isJsString,
   systemProviders,
   explicitElevatedGroups,
+  explicitElevatedRoles,
   setElevatedGroups,
+  setElevatedRoles,
   clearElevatedGroups,
+  explicitElevated,
   defaultElevatedGroups,
+  defaultElevatedRoles,
   parseElevatedGroups,
   elevatedGroups,
   classify,
@@ -323,4 +357,4 @@ export {
   retiredScopeOf,
   isRetiredValue,
 }
-/* Identity-Reventless Not a pure module */
+/* Role-Reventless Not a pure module */

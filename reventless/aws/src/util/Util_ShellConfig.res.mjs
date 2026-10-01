@@ -5,6 +5,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
+import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
 let journeyManifestsKey = "journeyManifestUrls";
@@ -59,6 +60,9 @@ function subscriptionEndpoint(httpsEndpoint) {
 
 function fields(computed, viewModes, bakedManifest, uiSlotsFile, shellConfig) {
   let out = Object.fromEntries(computed);
+  Stdlib_Option.forEach(Platform_AdminGroup$ReventlessCore.configEntry(), param => {
+    out[param[0]] = param[1];
+  });
   Stdlib_Option.forEach(uiSlotsFile, param => {
     out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
   });
@@ -103,4 +107,4 @@ export {
   subscriptionEndpoint,
   fields,
 }
-/* No side effect */
+/* Platform_AdminGroup-ReventlessCore Not a pure module */

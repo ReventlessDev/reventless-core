@@ -132,3 +132,173 @@ describe("ProductImages StateChangeSlice", () => {
     ->thenError(ProductIsDiscontinued)
   )
 })
+
+describe("Who may AttachProductImage", () => {
+  // scenario-id: cbd4db0d-a33f-4c04-b64a-e9d417328ccc
+  test("a Merchandiser may attach a product image", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
+    ->thenEvents([
+      ProductImageAttached({productId: p1, productImage: img}),
+      ProductEffectiveImageChanged({productId: p1, productImage: img}),
+    ])
+  )
+
+  // scenario-id: 390a7edc-ce12-48d6-8722-ed6d242df2be
+  test("an Admin may attach a product image", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
+    ->thenEvents([
+      ProductImageAttached({productId: p1, productImage: img}),
+      ProductEffectiveImageChanged({productId: p1, productImage: img}),
+    ])
+  )
+
+  // scenario-id: e79cedd2-56cf-4af2-a006-b2ca131d8a80
+  test("a shopper may not attach a product image", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
+    ->thenRefused
+  )
+
+  // scenario-id: 4e820975-a1fd-43a4-96b4-424d51c7b95c
+  test("an anonymous caller may not attach a product image", () =>
+    givenEvents([ProductAdded])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
+    ->thenRefused
+  )
+})
+
+describe("Who may RemoveProductImage", () => {
+  // scenario-id: 17606490-372a-42bd-8af8-09648e8d29c6
+  test("a Merchandiser may remove a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
+    ->thenEvents([
+      ProductImageRemoved({productId: p1, productImage: img}),
+      ProductEffectiveImageChanged({productId: p1}),
+    ])
+  )
+
+  // scenario-id: d4142113-2fc9-4c88-b813-ec53318201c8
+  test("an Admin may remove a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
+    ->thenEvents([
+      ProductImageRemoved({productId: p1, productImage: img}),
+      ProductEffectiveImageChanged({productId: p1}),
+    ])
+  )
+
+  // scenario-id: b746119c-e521-42ea-8a62-9864b70d95b3
+  test("a shopper may not remove a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
+    ->thenRefused
+  )
+
+  // scenario-id: f2f8bc52-4f59-4e0f-894b-23a0d3a5a2f7
+  test("an anonymous caller may not remove a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
+    ->thenRefused
+  )
+})
+
+describe("Who may SetPrimaryProductImage", () => {
+  // scenario-id: 882944d0-2498-414a-82d7-1a4c978ca326
+  test("a Merchandiser may choose a product's primary image", () =>
+    givenEvents([
+      ProductAdded,
+      ProductImageAttached({productImage: img}),
+      ProductImageAttached({productImage: sideImage}),
+    ])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
+    ->thenEvents([
+      ProductPrimaryImageSet({productId: p1, productImage: sideImage}),
+      ProductEffectiveImageChanged({productId: p1, productImage: sideImage}),
+    ])
+  )
+
+  // scenario-id: 850e46c2-737f-4fd1-b088-5bd541fc2a42
+  test("an Admin may choose a product's primary image", () =>
+    givenEvents([
+      ProductAdded,
+      ProductImageAttached({productImage: img}),
+      ProductImageAttached({productImage: sideImage}),
+    ])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
+    ->thenEvents([
+      ProductPrimaryImageSet({productId: p1, productImage: sideImage}),
+      ProductEffectiveImageChanged({productId: p1, productImage: sideImage}),
+    ])
+  )
+
+  // scenario-id: 38bf2639-636e-484a-971f-92888b49e850
+  test("a shopper may not choose a product's primary image", () =>
+    givenEvents([
+      ProductAdded,
+      ProductImageAttached({productImage: img}),
+      ProductImageAttached({productImage: sideImage}),
+    ])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
+    ->thenRefused
+  )
+
+  // scenario-id: 077c7398-42a7-4aec-ba83-d817c94f6fcd
+  test("an anonymous caller may not choose a product's primary image", () =>
+    givenEvents([
+      ProductAdded,
+      ProductImageAttached({productImage: img}),
+      ProductImageAttached({productImage: sideImage}),
+    ])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
+    ->thenRefused
+  )
+})
+
+describe("Who may SetProductImageAltText", () => {
+  // scenario-id: e733e3fa-9924-4101-8554-e7d9dcbe087c
+  test("a Merchandiser may caption a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
+    ->thenEvent(ProductImageAltTextSet({productId: p1, productImage: img, altText: frontAlt}))
+  )
+
+  // scenario-id: d7be6c4a-edc3-4239-90b3-61623a94b95f
+  test("an Admin may caption a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
+    ->thenEvent(ProductImageAltTextSet({productId: p1, productImage: img, altText: frontAlt}))
+  )
+
+  // scenario-id: 1dd6dc06-303d-446e-a5e1-f653f2cfa944
+  test("a shopper may not caption a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
+    ->thenRefused
+  )
+
+  // scenario-id: 62779937-b3b4-4e35-8d47-5c2b86b454c4
+  test("an anonymous caller may not caption a product image", () =>
+    givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
+    ->thenRefused
+  )
+})

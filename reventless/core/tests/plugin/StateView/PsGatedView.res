@@ -1,7 +1,7 @@
 // Test fixture spec: a view whose module-level rule restricts who may read it.
 
 @@reventless.spec("GatedView")
-@@reventless.authorize(AllowGroups(["Admin"]))
+@@reventless.authorize(AllowRoles([Admin]))
 
 @schema
 type consumedEvent = OrderPlaced({orderId: string, customerName: string})

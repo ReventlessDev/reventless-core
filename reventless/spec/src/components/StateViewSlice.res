@@ -73,11 +73,14 @@ module type Spec = {
   /** Optional composite-key configuration. `None` for single-key tables. */
   let subIdConfig: option<ReadModel.subIdConfig<state>>
 
+  /** The roles this spec's rules name: its plugin's `Roles.t`, which the PPX
+      supplies; `Role.name` where the plugin declares none. */
+  type role
   /** Authorization rule evaluated at the GraphQL resolver entry before any
       query is resolved. Auto-injected by `@@reventless.spec` and on
       structurally-detected inline spec modules — defaults to
       `AllowAuthenticated`. */
-  let authorization: Authorization.permission
+  let authorization: Authorization.rule<role>
 
   /** AutoUI visibility hint. Auto-injected by `@@reventless.spec` and on
       structurally-detected inline spec modules — defaults to

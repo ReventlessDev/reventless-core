@@ -183,20 +183,16 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     ?permission,
   }
 
-  testSync("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
+  testSync("AllowRoles with several roles emits comma-separated groups", () => {
     let fp = Dict.fromArray([
-      ("catalog_Category_Archive", Reventless.Authorization.AllowGroups(["Admin"])),
+      (
+        "p_X",
+        Reventless.Authorization.AllowRoles([
+          Reventless.Role.make("Admin"),
+          Reventless.Role.make("Editor"),
+        ]),
+      ),
     ])
-    let entry = mutationEntry(~fieldNames=["catalog_Category_Archive"], ~fieldPermissions=fp)
-    let frag = makeFragment(["catalog_Category_Archive(id: ID!): String"], [])
-    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
-    let parts = decodeFragment(aug)
-    let m = parts.mutations->Array.getUnsafe(0)
-    expect(m)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
-  })
-
-  testSync("AllowGroups multi-group emits comma-separated groups", () => {
-    let fp = Dict.fromArray([("p_X", Reventless.Authorization.AllowGroups(["Admin", "Editor"]))])
     let entry = mutationEntry(~fieldNames=["p_X"], ~fieldPermissions=fp)
     let frag = makeFragment(["p_X(id: ID!): String"], [])
     let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
@@ -204,6 +200,29 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(
       parts.mutations->Array.getUnsafe(0),
     )->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin", "Editor"])`)
+  })
+
+  // The deploy program knows the mapping, so the directive carries the group a
+  // role maps to — never the role, which no token carries.
+  testSync("AllowRoles emits the groups its roles map to", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.make("Merchandiser"), "shop-merch-team")])
+    let fp = Dict.fromArray([
+      (
+        "p_Rename",
+        Reventless.Authorization.AllowRoles([
+          Reventless.Role.make("Admin"),
+          Reventless.Role.make("Merchandiser"),
+        ]),
+      ),
+    ])
+    let entry = mutationEntry(~fieldNames=["p_Rename"], ~fieldPermissions=fp)
+    let frag = makeFragment(["p_Rename(id: ID!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+    Reventless.Role.clearGroups()
+    expect(
+      decodeFragment(aug).mutations->Array.getUnsafe(0),
+    )->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin", "shop-merch-team"])`)
   })
 
   testSync("AllowAuthenticated emits the group-less Cognito directive", () => {
@@ -230,7 +249,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
 
   testSync("Per-field permissions: only annotated fields get directives", () => {
     let fp = Dict.fromArray([
-      ("p_Archive", Reventless.Authorization.AllowGroups(["Admin"])),
+      ("p_Archive", Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")])),
       ("p_Add", Reventless.Authorization.AllowAuthenticated),
     ])
     let entry = mutationEntry(~fieldNames=["p_Archive", "p_Add"], ~fieldPermissions=fp)
@@ -255,7 +274,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let entry = queryEntry(
       ~single="p_Item",
       ~list="p_Items",
-      ~permission=Some(Reventless.Authorization.AllowGroups(["Manager"])),
+      ~permission=Some(Reventless.Authorization.AllowRoles([Reventless.Role.make("Manager")])),
     )
     // Production query SDL emitted by GraphQL_FragmentGenerator always has an
     // arg list (Relay pagination on the list field), so extractLeadingName's
@@ -362,7 +381,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
   testSync("Spec-level permission wins over legacy authorization field", () => {
     // Legacy {tableName, group} says "Admin"; spec-level says "Manager".
     // Spec-level must win.
-    let fp = Dict.fromArray([("p_X", Reventless.Authorization.AllowGroups(["Manager"]))])
+    let fp = Dict.fromArray([
+      ("p_X", Reventless.Authorization.AllowRoles([Reventless.Role.make("Manager")])),
+    ])
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_X"],
       commandSchema: S.unknown,
@@ -427,7 +448,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([
-        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
+        ("p_Sync", Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")])),
       ]),
       systemCallable: true,
     }
@@ -464,8 +485,8 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       fieldNames: ["p_Sync", "p_Other"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([
-        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
-        ("p_Other", Reventless.Authorization.AllowGroups(["Admin"])),
+        ("p_Sync", Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")])),
+        ("p_Other", Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")])),
       ]),
       // systemCallable applies to every field in the entry; split the fields so only
       // p_Sync opts in.
@@ -475,7 +496,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([
-        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
+        ("p_Sync", Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")])),
       ]),
       systemCallable: true,
     }
@@ -501,7 +522,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       returnTypeName: "p_Item",
       stateSchema: S.unknown,
       authorization: None,
-      permission: Reventless.Authorization.AllowGroups(["Admin"]),
+      permission: Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")]),
       systemCallable: true,
     }
     let frag = makeFragment(
@@ -532,7 +553,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
         returnTypeName: "p_Item",
         stateSchema: S.unknown,
         authorization: None,
-        permission: Reventless.Authorization.AllowGroups(["Admin"]),
+        permission: Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")]),
         systemCallable: true,
       }
       let frag = makeFragment(
@@ -583,7 +604,7 @@ describe("AppSync_Adapter — type-level dual-auth", () => {
     returnTypeName: "p_Item",
     stateSchema: S.unknown,
     authorization: None,
-    permission: Reventless.Authorization.AllowGroups(["Admin"]),
+    permission: Reventless.Authorization.AllowRoles([Reventless.Role.make("Admin")]),
     systemCallable: true,
   }
 
@@ -958,7 +979,9 @@ describe("AppSync_Adapter.injectAwsAuth — subscriptions", () => {
   })
 
   testSync("a subscription named like a gated mutation inherits its groups", () => {
-    let fp = Dict.fromArray([("p_Ship", Reventless.Authorization.AllowGroups(["Fulfilment"]))])
+    let fp = Dict.fromArray([
+      ("p_Ship", Reventless.Authorization.AllowRoles([Reventless.Role.make("Fulfilment")])),
+    ])
     let frag = makeFragment(["p_Ship: CommandResult"])
     let aug = AppSync_Adapter.injectAwsAuth(
       frag,

@@ -174,7 +174,7 @@ owner-scoped reads, `CommandGenerator_Callback`, the `QueryDb_Callback`
 interceptor — and it is still wrong, because what it reaches is not everything
 that runs.
 
-`@authorize(AllowGroups(["Admin"]))` compiles to `@aws_auth`. AppSync evaluates
+`@authorize(AllowRoles([Admin]))` compiles to `@aws_auth`. AppSync evaluates
 that against `cognito:groups` **before any of our code executes**, so no header we
 invent can narrow it. The result is the worst state available: reads correctly
 scoped, `addProduct` still callable. A mode that is right about the data and wrong

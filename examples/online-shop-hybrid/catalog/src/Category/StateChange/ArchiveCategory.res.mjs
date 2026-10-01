@@ -32,7 +32,7 @@ function commandTransition(command) {
 
 function commandAuthorization(command) {
   return {
-    TAG: "AllowGroups",
+    TAG: "AllowRoles",
     _0: [
       "Admin",
       "Merchandiser"

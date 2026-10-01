@@ -1150,7 +1150,8 @@ let registerAdminAggregateMutations = (
             ~kind=Aggregate,
             ~fields=fieldNames,
             ~commandSchema,
-            ~commandAuthorization=M.Spec.commandAuthorization->Obj.magic,
+            ~commandAuthorization=command =>
+              M.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
           )
         )
       }

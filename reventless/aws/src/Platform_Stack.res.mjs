@@ -5,7 +5,7 @@ import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as AdminGroup$Reventless from "@reventlessdev/reventless-spec/src/types/AdminGroup.res.mjs";
+import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
@@ -133,7 +133,7 @@ function _resolveUncached() {
       mfaConfiguration: "OFF",
       tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined)
     });
-    Util_CognitoGroupUser$ReventlessAws.addUserGroup(AdminGroup$Reventless.name, pool.id);
+    Util_CognitoGroupUser$ReventlessAws.addUserGroup(Role$Reventless.adminGroup(), pool.id);
     let tokenUnits2_accessToken = "minutes";
     let tokenUnits2_idToken = "minutes";
     let tokenUnits2_refreshToken = "days";
@@ -181,7 +181,7 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("cognitoUserPoolArn", result.poolArn);
   Pulumi$Pulumi.$$export("cognitoRegion", regionOutput);
   Pulumi$Pulumi.$$export("cognitoUserPoolManaged", managedStr);
-  Pulumi$Pulumi.$$export("identityProviderAdminGroup", Pulumi.output(AdminGroup$Reventless.name));
+  Pulumi$Pulumi.$$export("identityProviderAdminGroup", Pulumi.output(Role$Reventless.adminGroup()));
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   return result;
 }

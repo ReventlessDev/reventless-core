@@ -175,7 +175,8 @@ module type Spec = {
   type command
 
   let targetName: string
-  // commandAuthorization is injected by @@reventless.spec (default AllowAuthenticated)
+  // commandAuthorization and `type role` are injected by @@reventless.spec
+  // (default AllowAuthenticated)
 }
 ```
 

@@ -35,7 +35,7 @@ let errorSchema = Sury.union([
 function commandAuthorization(command) {
   if (typeof command !== "object") {
     return {
-      TAG: "AllowGroups",
+      TAG: "AllowRoles",
       _0: ["Admin"]
     };
   } else {

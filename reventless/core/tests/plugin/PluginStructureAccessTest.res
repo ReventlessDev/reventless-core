@@ -76,7 +76,7 @@ let viewNamed = name =>
   ->Option.flatMap(q => q.requiredAccess)
 
 describe("requiredAccess derived from the authorization rule", () => {
-  testSync("an AllowGroups command publishes its groups", () =>
+  testSync("an AllowRoles command publishes its groups", () =>
     expect(commandNamed("Restock"))->toEqual(Some(["Admin", "Ops"]))
   )
 
@@ -108,4 +108,33 @@ describe("requiredAccess derived from the authorization rule", () => {
       json->String.includes(`"requiredAccess":[]`),
     ))->toEqual((true, true, false))
   })
+
+  // The access keys are compared with a token's groups, so they are the groups
+  // the roles map to; the roles themselves travel beside them for the deploy
+  // check.
+  testSync("a renamed role publishes its group as the key and its role as the role", () => {
+    Reventless.Role.clearGroups()
+    Reventless.Role.setGroups([(Reventless.Role.make("Ops"), "shop-ops")])
+    let renamed = Plugin_Structure.make(
+      ~name="AccessPlugin",
+      ~stateChangeSlices=[module(PsGatedCommandsSlice)],
+    )
+    Reventless.Role.clearGroups()
+    let restock =
+      renamed.stateChangeSlices
+      ->Array.flatMap(w => w.commands)
+      ->Array.find(c => c.name === "Restock")
+    expect(restock->Option.map(c => (c.requiredAccess, c.requiredRoles)))->toEqual(
+      Some((Some(["Admin", "shop-ops"]), Some(["Admin", "Ops"]))),
+    )
+  })
+
+  testSync("a command that names no role publishes no roles", () =>
+    expect(
+      structure.stateChangeSlices
+      ->Array.flatMap(w => w.commands)
+      ->Array.find(c => c.name === "RequestRestock")
+      ->Option.flatMap(c => c.requiredRoles),
+    )->toEqual(None)
+  )
 })

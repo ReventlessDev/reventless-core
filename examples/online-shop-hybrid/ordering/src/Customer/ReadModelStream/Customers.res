@@ -7,7 +7,7 @@ module Id = CustomerId
 
 // Operator surface: everyone's profile, so operator-only. A shopper reads their
 // own orders instead.
-@@reventless.authorize(AllowGroups(["Admin", "Fulfilment"]))
+@@reventless.authorize(AllowRoles([Admin, Fulfilment]))
 
 // A state rather than a flag beside one, so a command can say where it belongs:
 // `Moves([Deactivated], Active)` on `Reactivate`. `@retired` withdraws

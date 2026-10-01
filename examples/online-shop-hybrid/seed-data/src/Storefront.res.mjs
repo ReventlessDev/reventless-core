@@ -84,15 +84,18 @@ let uiHintsFile = Nodepath.resolve(import.meta.dirname, "../ui-hints.json");
 
 let uiSlotsFile = Nodepath.resolve(import.meta.dirname, "../dist/storefront-slots.js");
 
-let elevatedGroups = [
+let elevatedRoles = [
   "Admin",
   "Fulfilment"
-];
+].map(role => role);
+
+let elevatedGroups = elevatedRoles.map(role => role);
 
 export {
   manifest,
   uiHintsFile,
   uiSlotsFile,
+  elevatedRoles,
   elevatedGroups,
 }
 /* uiHintsFile Not a pure module */

@@ -13,7 +13,7 @@ LocalPlatformStart$ReventlessLocal.orAddressRunning(undefined, undefined);
 
 let Platform = Platform$ReventlessLocal.Make({});
 
-OwnerScope$Reventless.setElevatedGroups(Storefront$OnlineShopHybridSeed.elevatedGroups);
+OwnerScope$Reventless.setElevatedRoles(Storefront$OnlineShopHybridSeed.elevatedRoles);
 
 let messagingSender = Capability_Messaging_Log$ReventlessLocal.make();
 
@@ -44,7 +44,7 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
     ],
     [
       "elevatedGroups",
-      Storefront$OnlineShopHybridSeed.elevatedGroups.map(prim => prim)
+      OwnerScope$Reventless.elevatedGroups().map(prim => prim)
     ]
   ])
 });

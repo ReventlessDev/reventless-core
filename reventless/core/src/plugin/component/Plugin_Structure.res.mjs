@@ -21,6 +21,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as Transition$Reventless from "@reventlessdev/reventless-spec/src/types/Transition.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.mjs";
@@ -617,12 +618,29 @@ function commandLevelAndId(isAggregate, partitionKey, variantName, properties) {
 }
 
 function accessKeysFor(rule) {
-  if (typeof rule !== "object") {
-    return;
-  }
-  let groups = rule._0;
+  let groups = Authorization$Reventless.groupsOf(rule);
   if (groups.length !== 0) {
     return groups;
+  }
+}
+
+function nonEmpty(xs) {
+  if (xs.length !== 0) {
+    return xs;
+  }
+}
+
+function rolesFor(rule) {
+  return nonEmpty(Authorization$Reventless.rolesOf(rule).map(role => role));
+}
+
+function syntheticCommand(schema, variantName) {
+  if (DcbTag$Reventless.isVariantPayloadBearing(schema, variantName)) {
+    return {
+      TAG: variantName
+    };
+  } else {
+    return variantName;
   }
 }
 
@@ -644,10 +662,8 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
     let aggregateIdField = match[1];
-    let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
-        TAG: variantName
-      }) : variantName;
-    let declared = commandTransition(syntheticCommand);
+    let syntheticCommand$1 = syntheticCommand(parentSchema, variantName);
+    let declared = commandTransition(syntheticCommand$1);
     let derived = derivedEdgeFor(variantName);
     let unrestricted = Transition$Reventless.isUnrestricted(declared);
     let match$1 = unrestricted ? undefined : Stdlib_Option.flatMap(derived, d => {
@@ -684,7 +700,8 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
       apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
     }
-    let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
+    let rule = commandAuthorization(syntheticCommand$1);
+    let requiredAccess = accessKeysFor(rule);
     let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
     let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(apiExposed, mutationField, v);
     let annotatedSchema = apiExposed ? Stdlib_Option.mapOr(GraphQL_FragmentGenerator$ReventlessCore.mutationArgTypes(mutationField, v), jsonSchema, __x => annotateArgTypes(jsonSchema, __x)) : jsonSchema;
@@ -700,6 +717,7 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
       allowedStatesSource: match$3[1],
       apiExposed: apiExposed,
       requiredAccess: requiredAccess,
+      requiredRoles: rolesFor(rule),
       ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
     };
   };
@@ -770,7 +788,8 @@ function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibili
     singleQueryField: qf.singleFieldName,
     idField: Stdlib_Option.map(keyField, param => param[0]),
     idFieldSource: Stdlib_Option.map(keyField, param => param[1]),
-    requiredAccess: accessKeysFor(authorization)
+    requiredAccess: accessKeysFor(authorization),
+    requiredRoles: rolesFor(authorization)
   };
 }
 
@@ -1080,7 +1099,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       singleQueryField: qf.singleFieldName,
       idField: Stdlib_Option.map(keyField, param => param[0]),
       idFieldSource: Stdlib_Option.map(keyField, param => param[1]),
-      requiredAccess: accessKeysFor(R.Spec.authorization)
+      requiredAccess: accessKeysFor(Authorization$Reventless.named(R.Spec.authorization)),
+      requiredRoles: rolesFor(Authorization$Reventless.named(R.Spec.authorization))
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -1112,7 +1132,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       singleQueryField: qf.singleFieldName,
       idField: Stdlib_Option.map(keyField, param => param[0]),
       idFieldSource: Stdlib_Option.map(keyField, param => param[1]),
-      requiredAccess: accessKeysFor(SVS.Spec.authorization)
+      requiredAccess: accessKeysFor(Authorization$Reventless.named(SVS.Spec.authorization)),
+      requiredRoles: rolesFor(Authorization$Reventless.named(SVS.Spec.authorization))
     };
   });
   let dcbSliceSchemas = stateChangeSlices.map(SCS => ({
@@ -1197,7 +1218,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), command => Authorization$Reventless.named(SCS.Spec.commandAuthorization(command)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1212,7 +1233,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), command => Authorization$Reventless.named(A.Spec.commandAuthorization(command)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
@@ -1246,7 +1267,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     commandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema)),
     targetName: ITS.Spec.targetName,
     externalSystem: ITS.Spec.externalSystem,
-    chapter: componentChapters[ITS.Spec.name]
+    chapter: componentChapters[ITS.Spec.name],
+    requiredRoles: nonEmpty(Array.from(new Set(DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema).flatMap(variantName => Authorization$Reventless.rolesOf(Authorization$Reventless.named(ITS.Spec.commandAuthorization(syntheticCommand(ITS.Spec.commandSchema, variantName)))).map(role => role))).values()))
   }));
   let tableFailures = [];
   let tableWarnings = [];
@@ -1549,6 +1571,9 @@ export {
   isCreateCommandName,
   commandLevelAndId,
   accessKeysFor,
+  nonEmpty,
+  rolesFor,
+  syntheticCommand,
   annotateArgTypes,
   toCommandDef,
   extractCommandDefs,

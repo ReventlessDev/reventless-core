@@ -140,7 +140,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
+  | @authorize(AllowRoles([Admin, Merchandiser])) AddProduct({
       productId: string,
       name: string,
       description: string,

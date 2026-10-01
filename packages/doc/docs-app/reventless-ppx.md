@@ -408,6 +408,39 @@ Notes and constraints:
 
 ---
 
+### `@authorize`, `@@reventless.authorize` — who may call
+
+`@@reventless.authorize(<rule>)` at the top of a spec file sets the rule for the
+whole component; `@authorize(<rule>)` before a command constructor sets it for
+that one command. Without either, the rule is `AllowAuthenticated`.
+
+```rescript
+// src/Roles.res — the roles this plugin's rules name
+type t =
+  | Admin
+  | Merchandiser
+
+// src/Product/StateChange/AddProduct.res
+@schema
+type command =
+  | @authorize(AllowRoles([Admin, Merchandiser])) AddProduct({productId: ProductId.t, name: string})
+```
+
+The PPX copies the rule unchanged into a generated binding, `commandAuthorization`
+for a command carrier and `authorization` for a view, typed
+`Reventless.Authorization.rule<role>`. Beside it, it declares `type role`:
+
+| Spec | `type role` |
+| --- | --- |
+| declares its own `type role` | left alone |
+| PPX writes the rule, and the plugin has `src/Roles.res` (or the file a `module Roles`) | `Roles.t` |
+| any other — no roles, or a rule written by hand over `Reventless.Authorization.permission` | `Reventless.Role.name` |
+
+Because the binding is typed by the plugin's `Roles.t`, the cases are written bare
+and a misspelled one fails at the case: "The constructor Merchandisr does not
+belong to type Roles.t". See [Authorization](./authorization.md) for how a role
+maps to a group and what the platform checks at deploy.
+
 ### `@noApi` — exclude commands from GraphQL/MCP exposure
 
 Use on command types or individual command variants to exclude them from automatic GraphQL mutation and MCP tool generation.

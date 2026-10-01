@@ -38,3 +38,37 @@ describe("ChangeProductName StateChangeSlice", () => {
     ->thenError(ProductIsDiscontinued)
   )
 })
+
+describe("Who may ChangeProductName", () => {
+  // scenario-id: bc2866fa-c059-4c90-88ab-c0f80c0ecf4a
+  test("a Merchandiser may rename a product", () =>
+    givenEvents([ProductAdded({name: laptop})])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
+    ->thenEvent(ProductNameChanged({productId: p1, name: gamingLaptop}))
+  )
+
+  // scenario-id: 3177d029-611b-4b27-81eb-f36d89e20e5d
+  test("an Admin may rename a product", () =>
+    givenEvents([ProductAdded({name: laptop})])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
+    ->thenEvent(ProductNameChanged({productId: p1, name: gamingLaptop}))
+  )
+
+  // scenario-id: 7c7aac9f-6b51-46e5-bafe-ed5900926ad2
+  test("a shopper may not rename a product", () =>
+    givenEvents([ProductAdded({name: laptop})])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
+    ->thenRefused
+  )
+
+  // scenario-id: 5160f7b6-8c80-4eac-b3ab-f68051f10bd8
+  test("an anonymous caller may not rename a product", () =>
+    givenEvents([ProductAdded({name: laptop})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
+    ->thenRefused
+  )
+})

@@ -6,7 +6,7 @@ module Platform = ReventlessLocal.Platform.Make()
 
 // Before the plugins are built, because component construction is where the
 // owner-scoped resolvers read it. Set afterwards it would be set for nothing.
-Reventless.OwnerScope.setElevatedGroups(OnlineShopHybridSeed.Storefront.elevatedGroups)
+Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedRoles)
 
 // Backs the notification competency's email channel, the way the AWS root backs
 // it with SES — same helper shape, same `~messagingSender` field, same injected
@@ -51,7 +51,8 @@ Platform.makePlatform(
       ("home", JSON.Encode.string("/Catalog/Products")),
       (
         "elevatedGroups",
-        OnlineShopHybridSeed.Storefront.elevatedGroups
+        // The groups the server resolved the roles to, so the two cannot differ.
+        Reventless.OwnerScope.elevatedGroups()
         ->Array.map(JSON.Encode.string)
         ->JSON.Encode.array,
       ),

@@ -26,7 +26,7 @@ let commandSchema = Sury.$schema(s => ({
 
 function commandAuthorization(command) {
   return {
-    TAG: "AllowGroups",
+    TAG: "AllowRoles",
     _0: [
       "Admin",
       "Merchandiser"

@@ -8,7 +8,7 @@ reads it and writes back into it.
 
 Here rather than in either platform package because a manifest that works on one
 platform and silently fails on the other is the whole cost being avoided. It sits
-beside [Identity] and [AdminGroup] for the same reason those do: the vocabulary
+beside [Identity] and [Role] for the same reason those do: the vocabulary
 the two platforms share about who is signed in.
 
 🚨 **The password field is a bootstrap credential, not a stored secret.** The file
@@ -236,6 +236,28 @@ let locate = (~given: option<string>=?, ()): result<located, string> =>
       }
     }
   }
+
+/**
+The groups the accounts here belong to: the manifest's, else the template's, else
+none. What a platform provides beyond its administrator group, for the check that
+every role a plugin needs has a group.
+
+Read, never seeded — this runs in a deploy or a start, which must not write the
+file `locate` would. The template counts because it is the cast a fresh clone
+provisions; a deploy from CI has no manifest and the same accounts to come.
+*/
+let declaredGroups = (): array<string> => {
+  let template = NodePath.join([NodeProcess.cwd(), templateName])
+  let file = NodeFs.existsSync(defaultPath())
+    ? Some(defaultPath())
+    : NodeFs.existsSync(template)
+    ? Some(template)
+    : None
+  switch file->Option.map(parseFile) {
+  | Some(Ok(entries)) => entries->Array.flatMap(e => e.groups)
+  | Some(Error(_)) | None => []
+  }
+}
 
 // ── Preparing ────────────────────────────────────────────────────────────────
 

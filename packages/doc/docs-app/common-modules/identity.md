@@ -109,7 +109,7 @@ Cognito groups are available via AppSync directives for field-level authorizatio
 
 A user whose account holds several groups can choose to act as just one of them. The narrowing happens in the **token's own group claim**, so every enforcement point in the system agrees with the choice without knowing that roles exist: owner-scoped reads, command authorization, and field-level directives all read the same groups they always read.
 
-That placement is the whole design. On AWS, `@authorize(AllowGroups([...]))` compiles to `@aws_auth`, which AppSync evaluates against `cognito:groups` *before any application code runs* — so a request header naming the desired role could scope reads correctly and still leave every group-gated mutation callable. Narrowing the claim itself avoids a mode that is right about the data and wrong about the writes.
+That placement is the whole design. On AWS, `@authorize(AllowRoles([...]))` compiles to a Cognito group directive, which AppSync evaluates against `cognito:groups` *before any application code runs* — so a request header naming the desired role could scope reads correctly and still leave every group-gated mutation callable. Narrowing the claim itself avoids a mode that is right about the data and wrong about the writes.
 
 ### The rule
 

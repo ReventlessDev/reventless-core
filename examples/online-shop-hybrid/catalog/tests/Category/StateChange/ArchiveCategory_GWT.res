@@ -24,3 +24,37 @@ describe("ArchiveCategory StateChangeSlice", () => {
     ->thenNoEvent
   )
 })
+
+describe("Who may ArchiveCategory", () => {
+  // scenario-id: 6c720a08-7706-44dc-9c3c-6cf8b88076ce
+  test("a Merchandiser may archive a category", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.inRoles([Merchandiser]))
+    ->whenCmd(ArchiveCategory({categoryId: c1}))
+    ->thenEvent(CategoryArchived({categoryId: c1}))
+  )
+
+  // scenario-id: fdf2d54d-2db9-4ebc-a875-6ab8efbd2b5a
+  test("an Admin may archive a category", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.inRoles([Admin]))
+    ->whenCmd(ArchiveCategory({categoryId: c1}))
+    ->thenEvent(CategoryArchived({categoryId: c1}))
+  )
+
+  // scenario-id: 2527b3f1-a0fd-4d9a-a194-8b245b8ed9af
+  test("a shopper may not archive a category", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.owner(shopper))
+    ->whenCmd(ArchiveCategory({categoryId: c1}))
+    ->thenRefused
+  )
+
+  // scenario-id: c48b1b53-1710-49a8-9016-963b9324bb64
+  test("an anonymous caller may not archive a category", () =>
+    givenEvents([CategoryAdded])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(ArchiveCategory({categoryId: c1}))
+    ->thenRefused
+  )
+})

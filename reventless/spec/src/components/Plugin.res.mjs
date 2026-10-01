@@ -102,6 +102,7 @@ let commandDefSchema = Sury.$schema(s => ({
   allowedStatesSource: s.m(Sury.$option(Sury.string)),
   apiExposed: s.m(Sury.$option(Sury.boolean)),
   requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),
+  requiredRoles: s.m(Sury.$option(Sury.array(Sury.string))),
   ownerField: s.m(Sury.$option(Sury.string))
 }));
 
@@ -124,7 +125,8 @@ let queryableDefSchema = Sury.$schema(s => ({
   singleQueryField: s.m(Sury.$option(Sury.string)),
   idField: s.m(Sury.$option(Sury.string)),
   idFieldSource: s.m(Sury.$option(Sury.string)),
-  requiredAccess: s.m(Sury.$option(Sury.array(Sury.string)))
+  requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),
+  requiredRoles: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 
 let eventDefSchema = Sury.$schema(s => ({
@@ -174,7 +176,8 @@ let inboundTranslationSliceDefSchema = Sury.$schema(s => ({
   commandTypes: s.m(Sury.array(Sury.string)),
   targetName: s.m(Sury.string),
   externalSystem: s.m(Sury.$option(Sury.string)),
-  chapter: s.m(Sury.$option(Sury.string))
+  chapter: s.m(Sury.$option(Sury.string)),
+  requiredRoles: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 
 let publishedEventDefSchema = Sury.$schema(s => ({
