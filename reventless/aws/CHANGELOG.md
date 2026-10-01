@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.369 (2026-10-01)
+
+### Features
+
+* **spec, aws, core, local:** an app declares its environments, and every deployment records its commit ([c7cc925](https://github.com/ReventlessDev/reventless-core/commit/c7cc92573e97742b681a9000cea0bdfd6e9a33fc))
+
+
 # 3.0.0-alpha.368 (2026-09-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

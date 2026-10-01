@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.232 (2026-10-01)
+
+### Features
+
+* **spec, core, gwt, ppx:** a command acts only on what its caller owns ([2636f0e](https://github.com/ReventlessDev/reventless-core/commit/2636f0ee44797ee2c0b0c40a7107cf306113173f))
+
+
 # 1.0.0-alpha.231 (2026-09-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
