@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-01
+- feat(spec, core, gwt, ppx): a command acts only on what its caller owns ([2636f0e](https://github.com/ReventlessDev/reventless-core/commit/2636f0ee44797ee2c0b0c40a7107cf306113173f))
 ### 2026-09-27
 - feat(gwt): a view's failing scenario points at project, not evolve ([1cb5cd3](https://github.com/ReventlessDev/reventless-core/commit/1cb5cd3651ec9830abac2676142a40d311d0b77c))
 ### 2026-09-25
