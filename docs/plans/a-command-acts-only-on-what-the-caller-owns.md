@@ -273,9 +273,12 @@ What is missing is proof on a deployed stack.
 - `online-shop-hybrid` is the only example or trait using `@owner`. Of its
   commands that act on an existing partition:
   - `CancelOrder` was open. It is now marked.
-  - `ShipOrder` is left unmarked on purpose. Its `@authorize` admits only
-    `Admin` and `Fulfilment`, and a `Fulfilment` caller who is not in the
-    elevated list would be refused on every order.
+  - `ShipOrder` is left unmarked because marking it would change nothing. Its
+    `@authorize` admits only `Admin` and `Fulfilment`, and the example lists
+    both as elevated (`Storefront.elevatedGroups`), so every caller who passes
+    `@authorize` is exempt anyway. A deployment that kept `Fulfilment` but took
+    it off the elevated list would need to decide again: marked, its staff could
+    no longer ship other customers' orders.
   - `ReopenOrder` is `@noApi`, so only internal routes reach it.
   - `Subscribe` and `Unsubscribe` (`NotificationPreferences`) were already safe,
     because the owner field is the partition key.

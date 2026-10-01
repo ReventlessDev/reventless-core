@@ -133,10 +133,38 @@ list to the administrator group it declares, so the account made by
 default is **empty**, which shows operators too little rather than showing
 customers each other — the direction a wrong guess should fail in.
 
-Note that elevation and authorization are independent. Being elevated lifts
-owner scoping; it does not grant a command whose rule you fail. They are also the
+An exempt caller is one of two kinds:
+
+- **an operator**: a signed-in person in a group on that list, and
+- **the platform itself**: its own service traffic, such as an IAM-signed call
+  between components, or a command an automation issues.
+
+Exempt callers are treated the same way by every `@owner` rule. Their commands
+are not stamped, so an operator can place an order for a customer. Their reads
+are not narrowed, so they see every owner's rows. And they may act on things
+other people own, so an operator can cancel any customer's order.
+
+An administrator is an operator only because the administrator group is on the
+list. On a cloud platform it is there by default. Locally, or once a deployment
+states its own list, it is there only if that list names it. Other roles can be
+operators too: the shop example lists `Fulfilment` beside `Admin`, because
+working other customers' orders is that role's ordinary job.
+
+Note that elevation and authorization are independent. They answer two
+questions:
+
+| Question | Answered by | Example |
+| --- | --- | --- |
+| May this caller issue this command at all? | `@authorize` on the command | `ShipOrder` admits `Admin` and `Fulfilment` |
+| May this caller see, or act on, what other people own? | the elevated-groups list | an operator cancels any customer's order |
+
+Being elevated does not grant a command whose rule you fail, and passing a
+command's rule does not let you act on someone else's thing. They are also the
 two halves of "who is an administrator", and a deployment that narrows one should
 narrow the other — see [The first administrator](./first-admin.md).
+
+In a GWT scenario, `Caller.operator` stands for an exempt caller — see
+[Who may act](./given-when-then.md#who-may-act-ascaller-and-thenrefused).
 
 ## Index-scoped queries
 

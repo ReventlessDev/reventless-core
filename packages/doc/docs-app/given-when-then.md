@@ -191,6 +191,17 @@ test("an operator may cancel any customer's order", () =>
 )
 ```
 
+The three callers:
+
+- `Caller.owner(id)`: a signed-in person who owns only what records `id`. It
+  takes the scenario's typed id (`Caller.owner(c1)` with `c1: CustomerId.t`) or a
+  plain string.
+- `Caller.operator`: a caller the ownership rule does not apply to. In a
+  deployment that is someone in an elevated group, such as an administrator
+  where the administrator group is on the list, or the platform's own traffic.
+  See [Who is exempt](./authorization.md#who-is-exempt).
+- `Caller.anonymous`: a caller with no identity, refused on anything owned.
+
 A scenario without `asCaller` names no caller, which the handler reads as the
 platform acting for itself, so it is never refused. Any other `then*` after a
 refusal fails, because `decide` never ran. The lifecycle check leaves
