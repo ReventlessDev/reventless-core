@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.265 (2026-10-01)
+
+* feat!: roles a plugin declares, groups a platform provides ([43daace](https://github.com/ReventlessDev/reventless-core/commit/43daace6ca588afe22562d079af1e6f1da81942e))
+
+### BREAKING CHANGES
+
+* AllowGroups and AdminGroup are removed — write AllowRoles over
+the plugin's Roles.t, and use Role.admin / Platform.adminGroup(). Spec module
+types declare `type role`, and their rules are Authorization.rule<role>; a spec
+that writes its own rule declares `type role` (Reventless.Role.name for a rule
+over Authorization.permission). Role.name is a private string: make one from a
+string with Role.make.
+
+
+
 # 1.0.0-alpha.264 (2026-10-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
