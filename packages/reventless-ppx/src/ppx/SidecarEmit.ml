@@ -576,7 +576,10 @@ let step_names =
        and produced nothing. Pipe-first still makes it an apply — the argument is
        the chain it is piped from, not an element — so it needs its own case
        below rather than the payload walk the others share. *)
-    "thenNoEvent" ]
+    "thenNoEvent";
+    (* Payload-less like `thenNoEvent`: the caller named by `asCaller` does not
+       own what the command acts on, so it was refused before `decide` ran. *)
+    "thenRefused" ]
 
 (* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`
    — which is the only form available to a multi-source read model, where one
@@ -590,6 +593,14 @@ let step_name_of (lid : Longident.t) : string =
 let rec collect_applies (e : expression) (acc : (string * expression list) list) :
     (string * expression list) list =
   match e.pexp_desc with
+  (* `chain->thenNoEvent` reaches a PPX as `|.`(chain, thenNoEvent): the step
+     is a bare identifier, not an apply, so the case below never sees it. Read
+     it as the call it stands for. *)
+  | Pexp_apply
+      ( { pexp_desc = Pexp_ident { txt = Lident "|."; _ }; _ },
+        [ (_, lhs); (_, { pexp_desc = Pexp_ident { txt; _ }; _ }) ] )
+    when List.mem (step_name_of txt) step_names ->
+    collect_applies lhs ((step_name_of txt, [ lhs ]) :: acc)
   | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) ->
     let name = step_name_of txt in
     let arg_exprs = List.map snd args in
@@ -698,7 +709,7 @@ let extract_steps ?src (body : expression) :
       find
         [ "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
           "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenCommand";
-          "thenSideEffect"; "thenNoEvent" ]
+          "thenSideEffect"; "thenNoEvent"; "thenRefused" ]
     with
     (* "Accepted, and emitted nothing." There is no element to name and no
        payload to walk, so it is emitted as a kind on its own. Recorded rather
@@ -711,6 +722,9 @@ let extract_steps ?src (body : expression) :
        `thenNoEvent` it names no element, and like it the absence is the
        assertion — a scenario asserting a deletion is exactly this. *)
     | Some ("thenNoState", _) -> [ step_json ~kind:"noState" ~element:"" ~values:[] ]
+    (* Its own kind, not `error`: who may act is not something the lifecycle
+       decides, so a reader of the lifecycle must be able to leave it out. *)
+    | Some ("thenRefused", _) -> [ step_json ~kind:"forbidden" ~element:"" ~values:[] ]
     | Some (name, args) -> (
       match last args with
       | Some payload -> (

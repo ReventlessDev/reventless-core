@@ -6,6 +6,19 @@ import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
 let serviceSchema = Sury.string;
 
+let schema = Sury.union([
+  Sury.$schema(s => ({
+    TAG: "Owned",
+    userId: s.m(Sury.string)
+  })),
+  Sury.literal("Exempt"),
+  Sury.literal("Unidentified")
+]);
+
+let CallerClaim = {
+  schema: schema
+};
+
 let metaSchema = Sury.$schema(s => ({
   service: s.m(serviceSchema),
   time: s.m(Sury.string),
@@ -16,7 +29,8 @@ let metaSchema = Sury.$schema(s => ({
   causationId: s.m(Sury.$option(Sury.string)),
   traceparent: s.m(Sury.$option(Sury.string)),
   schemaVersion: s.m(Sury.$option(Sury.string)),
-  headers: s.m(Sury.$option(Sury.record(Sury.string)))
+  headers: s.m(Sury.$option(Sury.record(Sury.string))),
+  callerClaim: s.m(Sury.$option(schema))
 }));
 
 let contextSchema = Sury.$schema(s => ({
@@ -189,6 +203,7 @@ function composeEventJson$p(id, meta, eventJson) {
 
 export {
   serviceSchema,
+  CallerClaim,
   metaSchema,
   contextSchema,
   statusChangeSchema,

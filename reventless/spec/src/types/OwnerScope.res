@@ -208,6 +208,78 @@ let isExempt = (scope: t): bool =>
   }
 
 /**
+The classification as it travels on a command's envelope.
+
+`System` and `Elevated` collapse into `Exempt` here, unlike in `t`: the handler
+that reads the claim only asks whether the caller may act for anyone, and the
+audit distinction is already on the envelope as `meta.user`.
+*/
+let toClaim = (scope: t): Message.CallerClaim.t =>
+  switch scope {
+  | Owned({userId}) => Owned({userId: userId})
+  | System | Elevated(_) => Exempt
+  | Unidentified(_) => Unidentified
+  }
+
+/**
+Whether a command may act on a partition whose history records an owner.
+
+`ConflictingOwners` comes first and holds for every caller: two owners in one
+partition is a data defect, and picking either would be guessing whose thing it
+is. `CallerUnidentified` holds even on an empty history — a creating command
+from nobody has no owner to stamp.
+*/
+type acting =
+  | MayAct
+  | NotTheOwner({owner: string})
+  | CallerUnidentified
+  | ConflictingOwners(array<string>)
+  | OwnerUnreadable
+
+/**
+Apply the rule to a command's claim and the distinct owners its partition records.
+
+`recordedOwners: None` says the handler could not name the partition the command
+acts on, so it could not read who owns it. That refuses an owned caller rather
+than reading as "no owner yet", which would let anyone act.
+
+A missing claim is the platform acting for itself: the generator writes one on
+every command it issues, so a command without one reached the handler by an
+internal route — the same routes `@authorize` already trusts.
+*/
+let decideActing = (
+  ~claim: option<Message.CallerClaim.t>,
+  ~recordedOwners: option<array<string>>,
+): acting =>
+  switch (recordedOwners, claim) {
+  | (Some(owners), _) if owners->Array.length > 1 => ConflictingOwners(owners)
+  | (_, None | Some(Exempt)) => MayAct
+  | (_, Some(Unidentified)) => CallerUnidentified
+  | (None, Some(Owned(_))) => OwnerUnreadable
+  | (Some(owners), Some(Owned({userId}))) =>
+    switch owners[0] {
+    | Some(owner) if owner != userId => NotTheOwner({owner: owner})
+    | Some(_) | None => MayAct
+    }
+  }
+
+/**
+Add the owners one recorded event names to the ones already folded.
+
+`fields` are that event type's `@owner` fields (`Owner.fieldNamesByVariant`).
+Distinct, so a partition whose every event repeats the same owner folds to one.
+*/
+let recordOwners = (owners: array<string>, ~fields: array<string>, data: dict<JSON.t>): array<
+  string,
+> =>
+  fields->Array.reduce(owners, (acc, field) =>
+    switch data->Dict.get(field)->Option.flatMap(JSON.Decode.string) {
+    | Some(owner) if !(acc->Array.includes(owner)) => acc->Array.concat([owner])
+    | _ => acc
+    }
+  )
+
+/**
 What owner scoping does to one read of one view.
 
 `RefuseOwned` is kept apart from "scope to a value nobody holds" because the two

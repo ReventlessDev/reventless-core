@@ -840,12 +840,13 @@ type event =
 
 ### `@owner` — the field that ties a row to its caller
 
-`@owner` names the field holding the id of the principal a record belongs to. It goes on a field of a `@schema type command` variant, a `@schema type state`, or both. Place it **before the field name**, like the other field markers.
+`@owner` names the field holding the id of the principal a record belongs to. It goes on a field of a `@schema type command` variant, a `@schema type state`, a variant of a slice's `@schema type consumedEvent` (or an aggregate's `@schema type event`), or several of these. Place it **before the field name**, like the other field markers.
 
-Two things follow, both enforced server-side:
+Three things follow, all enforced server-side:
 
 - **On a command:** the framework **overwrites** the field with the authenticated caller's id before publishing. An absent field and a forged field therefore produce the same row — the client's value is ignored, not trusted.
 - **On a queryable's state:** reads of that view are narrowed to the caller's own rows, on every transport.
+- **On a consumed event:** the field names the owner of what the slice's commands act on. Before `decide`, the handler reads that owner from the events of the command's own partition (events read across partitions do not count) and refuses a caller who is not the owner with `errorCode: "Forbidden"`. Exempt callers and commands the platform issues itself are not refused. Two different owners in one partition refuse everyone, as a data defect. An aggregate that marks an owner on its events skips persisted snapshots, which hold its state but not its owner.
 
 ```rescript
 // StateChange/PlaceOrder.res

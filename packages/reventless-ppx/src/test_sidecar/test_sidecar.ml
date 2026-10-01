@@ -88,6 +88,25 @@ let () =
                 (whenCmd
                    (givenEvents [| ProductAdded { productId = "prod-1" } |])
                    (RenameProduct { productId = "prod-1" })));
+          (* `asCaller` is not a step: the walk passes through it, so the
+             scenario keeps its given and when, and `thenRefused` records a
+             kind of its own that a lifecycle reader can leave out. *)
+          (* What ReScript hands a PPX for `chain->thenRefused`: the step is a
+             bare identifier on the right of `|.`, not an apply. *)
+          test "A stranger cannot archive the product" (fun () ->
+              whenCmd
+                (asCaller
+                   (givenEvents [| ProductAdded { productId = "prod-1" } |])
+                   (Caller.owner "u-2"))
+                (ArchiveProduct { productId = "prod-1" })
+              |. thenRefused);
+          test "A stranger cannot rename the product" (fun () ->
+              thenRefused
+                (whenCmd
+                   (asCaller
+                      (givenEvents [| ProductAdded { productId = "prod-1" } |])
+                      (Caller.owner "u-2"))
+                   (RenameProduct { productId = "prod-1" })));
           (* The plural form. `thenEvents([A, B])` is the only way to assert
              more than one event, and it used to record an EMPTY `then` —
              `element_of_constructor` answers None for an array literal, so the
@@ -127,6 +146,9 @@ let () =
   gmust "then event element" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
   gmust "then error element" "\"kind\":\"error\",\"element\":\"ProductAlreadyExists\"";
   gmust "then no-event step" "\"kind\":\"noEvent\",\"element\":\"\"";
+  gmust "then refused step" "\"kind\":\"forbidden\",\"element\":\"\"";
+  gmust "a piped payload-less step is read"
+    "\"element\":\"ArchiveProduct\",\"values\":[[\"productId\",{\"kind\":\"string\",\"value\":\"prod-1\"}]]}],\"then\":[{\"kind\":\"forbidden\"";
   (* Both of them, in order: a plural assertion that recorded only its first
      event would still under-report what the scenario says. *)
   gmust "then events — first" "\"kind\":\"event\",\"element\":\"ProductImageAttached\"";

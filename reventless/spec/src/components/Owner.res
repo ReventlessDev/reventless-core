@@ -138,3 +138,33 @@ let variantFieldNames = (schema: S.t<unknown>, ~variant: string): array<string> 
   | _ => []
   }
 }
+
+/**
+The owner fields of every constructor that declares one, keyed by its tag.
+
+Read off a slice's consumed events, this says which recorded facts name the
+owner of the partition a command acts on. An empty dict means the union records
+no owner, and the handler then has nothing to enforce — so, as with every reader
+here, it must be handed the real schema: a permissive stand-in answers empty.
+*/
+let fieldNamesByVariant = (schema: S.t<unknown>): dict<array<string>> => {
+  let byVariant = Dict.make()
+  let visit = (properties: dict<S.t<unknown>>) =>
+    switch (properties->Dict.get("TAG"), fieldNamesOfProperties(properties)) {
+    | (_, []) => ()
+    | (Some(String({const: ?Some(name)})), fields) => byVariant->Dict.set(name, fields)
+    | _ => ()
+    }
+  switch schema {
+  | AnyOf({anyOf}) =>
+    anyOf->Array.forEach(v =>
+      switch v {
+      | Object({properties}) => visit(properties)
+      | _ => ()
+      }
+    )
+  | Object({properties}) => visit(properties)
+  | _ => ()
+  }
+  byVariant
+}

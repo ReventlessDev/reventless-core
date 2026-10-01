@@ -4,6 +4,7 @@ let p1: CatalogSpec.ProductId.t = CatalogSpec.ProductId.makeFromString("p1")
 let p2: CatalogSpec.ProductId.t = CatalogSpec.ProductId.makeFromString("p2")
 
 let c1: CustomerId.t = CustomerId.makeFromString("c1")
+let c2: CustomerId.t = CustomerId.makeFromString("c2")
 let id: CustomerId.t = CustomerId.makeFromString("id")
 
 let o1: OrderId.t = OrderId.makeFromString("o1")

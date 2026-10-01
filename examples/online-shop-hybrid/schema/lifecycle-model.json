@@ -53,7 +53,7 @@
     "targets": [
       "Cancelled"
     ],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "CancelOrder",

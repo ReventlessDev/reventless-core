@@ -256,3 +256,93 @@ describe("the schema a generator is built with must answer for its commands:", (
     },
   )
 })
+
+// The claim a handler checks ownership against. It is written from the same
+// classification the stamp uses, on every command, whether or not the command
+// itself records an owner: the command that needs it most (`CancelOrder`) names
+// no owner of its own.
+describe("the caller claim on the envelope:", () => {
+  let claimOf = (cmd: Message.commandJson) => cmd.meta.callerClaim
+
+  let cancel = (~identity) =>
+    payload(
+      ~command="ImportProducts",
+      ~args=Dict.fromArray([("batchId", str("b-1")), ("source", str("acme"))]),
+      ~identity,
+    )
+
+  testPromise("an owned caller is claimed as that owner", async () => {
+    let _ = await generate(
+      cancel(~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
+    expect(lastPublished()->claimOf)->toEqual(Some(Message.CallerClaim.Owned({userId: "cust-A"})))
+  })
+
+  testPromise("an elevated caller and a system caller are claimed exempt", async () => {
+    let _ = await generate(
+      cancel(~identity=cognito(~userId="ops-1", ~groups=["Admin"])),
+    )->Effect.runPromise
+    let elevated = lastPublished()->claimOf
+    let _ = await generate(cancel(~identity=iam))->Effect.runPromise
+    expect((elevated, lastPublished()->claimOf))->toEqual((
+      Some(Message.CallerClaim.Exempt),
+      Some(Message.CallerClaim.Exempt),
+    ))
+  })
+
+  // Not refused here — the command records no owner, so `AllowAnonymous` still
+  // admits it. The claim is what lets the handler refuse it on an owned partition.
+  testPromise("an anonymous caller of an unowned command is claimed unidentified", async () => {
+    let _ = await generate(cancel(~identity=Reventless.Identity.anonymous))->Effect.runPromise
+    expect(lastPublished()->claimOf)->toEqual(Some(Message.CallerClaim.Unidentified))
+  })
+
+  // A client controls the arguments and nothing else. Naming the claim among them
+  // must neither reach the envelope nor survive into the command.
+  testPromise("a claim sent among the arguments is ignored", async () => {
+    let _ = await generate(
+      payload(
+        ~command="ImportProducts",
+        ~args=Dict.fromArray([
+          ("batchId", str("b-1")),
+          ("source", str("acme")),
+          ("callerClaim", str("Exempt")),
+          ("meta", JSON.Encode.object(Dict.fromArray([("callerClaim", str("Exempt"))]))),
+        ]),
+        ~identity=cognito(~userId="cust-A", ~groups=["User"]),
+      ),
+    )->Effect.runPromise
+    expect(lastPublished()->claimOf)->toEqual(Some(Message.CallerClaim.Owned({userId: "cust-A"})))
+  })
+
+  // Unlike the stamp, the claim needs no schema: the permissive generator that
+  // stamps nothing still classifies the caller.
+  testPromise("a permissive-schema generator still writes the claim", async () => {
+    let permissive = CommandGenerator_Callback.makeGenerateCommand(
+      ~publishJsons=async cmds => published := published.contents->Array.concat(cmds),
+      ~serviceName="Ordering",
+      ~commandSchema=S.json->S.castToUnknown,
+      ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+      ~stripIdFromParams=false,
+    )
+    let _ = await permissive(
+      cancel(~identity=cognito(~userId="cust-A", ~groups=["User"])),
+    )->Effect.runPromise
+    expect(lastPublished()->claimOf)->toEqual(Some(Message.CallerClaim.Owned({userId: "cust-A"})))
+  })
+
+  // The claim belongs to the command alone. An event the command produces, and a
+  // command an automation issues in reaction to it, derive their envelope from
+  // it and must not inherit the caller.
+  testSync("a derived envelope does not inherit the claim", () => {
+    let parent: Message.meta = {
+      service: "Ordering",
+      time: "2024-01-01T00:00:00Z",
+      msgId: "m-1",
+      correlationId: "m-1",
+      user: "cust-A",
+      callerClaim: Message.CallerClaim.Owned({userId: "cust-A"}),
+    }
+    expect(Message.deriveMeta(~parent).callerClaim)->toEqual(None)
+  })
+})

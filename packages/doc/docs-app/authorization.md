@@ -86,6 +86,27 @@ view's state, reads narrow to the caller's own rows on every transport. The two
 halves are the point: a client cannot place an order as somebody else, and
 cannot read one either.
 
+A third case needs one more declaration: a command that acts on something that
+already exists. `CancelOrder` carries only `{orderId}`, so stamping has nothing
+to overwrite, and a caller who knows another shopper's order id could cancel it.
+Mark the owner on the event the slice consumes:
+
+```rescript
+@schema
+type consumedEvent =
+  | OrderPlaced({productIds: array<string>, @owner customerId: string})
+```
+
+The framework then reads who owns the order from the order's own history and
+refuses a caller who is not that owner, before `decide` runs. The refusal has the
+same shape as an authorization refusal (`CommandRejected`, `errorCode:
+"Forbidden"`). Exempt callers, described below, still act on anyone's order, and
+so does a command the platform issues itself, such as an automation's.
+
+A slice keyed by its owner needs none of this. When the owner field is the
+slice's partition, as with a caller's own notification preferences, stamping
+already confines every command to the caller's partition.
+
 ## Who is exempt
 
 Some roles exist precisely to read across owners — a fulfilment desk works other

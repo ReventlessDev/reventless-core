@@ -1,8 +1,9 @@
 # Plan: a command acts only on what the caller owns
 
 **Date:** 2026-09-30<br/>
-**Status:** Proposed. Nothing built. Planned after a code survey of the stamping
-path, the two command handlers and the command envelope.<br/>
+**Status:** Steps 1–5 built and tested in-process (2026-10-01). Steps 4 and 6
+still need a deployed stack: the §7 prerequisite acceptance and this plan's own
+acceptance have not run. See §11.<br/>
 **Relates to:** `done/owner-scoped-identity-and-reads.md` (the feature this
 completes: it stamps an owner on the way in and scopes reads on the way out),
 `owner-enforcement-gaps-on-appsync.md` (the two AppSync-only gaps in that
@@ -256,3 +257,90 @@ below, not after.
    example can pin its ownership rule next to its behaviour, or whether that stays
    a framework concern tested once.
 3. **Refusal wording**, pending `appsync-refusal-vocabulary.md`.
+
+## §11 — Progress (2026-10-01)
+
+In plain words: the generator now writes who the caller is onto every command,
+and both command handlers read the owner out of the history and refuse a
+non-owner before `decide` runs. `CancelOrder` in the hybrid example uses it.
+What is missing is proof on a deployed stack.
+
+**Step 1, survey.**
+
+- Nothing read `@owner` from a consumed-event or aggregate-event schema before
+  this change. The PPX already accepted the marker there, because it transforms
+  every type declaration in a spec file.
+- `online-shop-hybrid` is the only example or trait using `@owner`. Of its
+  commands that act on an existing partition:
+  - `CancelOrder` was open. It is now marked.
+  - `ShipOrder` is left unmarked on purpose. Its `@authorize` admits only
+    `Admin` and `Fulfilment`, and a `Fulfilment` caller who is not in the
+    elevated list would be refused on every order.
+  - `ReopenOrder` is `@noApi`, so only internal routes reach it.
+  - `Subscribe` and `Unsubscribe` (`NotificationPreferences`) were already safe,
+    because the owner field is the partition key.
+  - The `Customer` aggregate's `UpdateEmail` and the address commands act on a
+    customer whose history records **no** owner, so this mechanism cannot cover
+    them. That is a separate gap: the customer record would first have to state
+    who it belongs to.
+
+**Step 2, the claim.** `Message.meta.callerClaim?: CallerClaim.t`, with the cases
+`Owned({userId}) | Exempt | Unidentified`. It is a typed field (open question 1).
+`makeGenerateCommand` classifies the caller once, uses that classification for
+the stamp and for the claim, and writes the claim on every command, including
+commands that record no owner and commands built by the permissive `S.json`
+generator. `deriveMeta` does not copy the claim, so an event, or an automation's
+follow-up command, never carries the claim of the command that caused it.
+
+**Step 3, the guard.** `OwnerScope.decideActing` implements §4's table, and
+`CommandTopic_Helpers.ownershipRefusal` turns its answer into the refusal both
+handlers report. Two rules were added while building it:
+
+- A partition the handler cannot name refuses an owned caller
+  (`OwnerUnreadable`). Treating it as "no owner yet" would admit everybody.
+- Two recorded owners refuse every caller, exempt callers included. This is the
+  table's "any" taken literally.
+
+The DCB handler keeps only owners whose event carries the command's partition
+value. Both handlers keep the folded owners in their in-process caches. An
+aggregate that marks an owner skips persisted snapshots, because a snapshot
+holds the state but not the owner. A refusal is `CommandRejected` with
+`errorCode: "Forbidden"`, the code an `@authorize` refusal uses (open question
+3, pending `appsync-refusal-vocabulary.md`), with the new outcome cause
+`AccessRefusal`.
+
+**Step 4, AWS.** No AWS-specific code was needed:
+`DcbCommandTopicEntryPoint_Ops.buildSliceHandler` and `AggregateEntryPoint_Ops`
+both run the core callbacks, and every hop encodes `meta` through `metaSchema`.
+The elevated-groups dependency in §6 has landed: `Util_OwnerScopeEnv` puts
+`REVENTLESS_ELEVATED_GROUPS` into every runtime built through
+`RuntimeEnvironment_Lambda`. The deployed half of this step is still open.
+
+**Step 5, example.** `CancelOrder` marks `@owner customerId` on its consumed
+`OrderPlaced`. Open question 2 is answered both ways:
+
+- The framework's conformance table,
+  `reventless/core/tests/commandgenerator/OwnerActingTest.res`, runs every
+  caller class through the generator, both envelope encodings (inline and
+  queued) and both handlers. It also covers the cross-partition, warm-cache,
+  conflicting-owner, unnameable-partition, same-batch and snapshot cases.
+  Disabling the guard fails 13 of its 34 tests. Counting owners from every
+  partition fails the cross-partition test.
+- The GWT DSL gained `asCaller(Caller.owner(id) | Caller.operator |
+  Caller.anonymous)` before `whenCmd`, and `thenRefused`. Both run the same
+  `decideActing` the handlers run. `CancelOrder_GWT` uses them: the owner and an
+  operator may cancel, another customer and an anonymous caller are refused.
+  Removing `@owner` from the slice fails exactly the two refusal scenarios.
+- The PPX records `thenRefused` in the GWT sidecar as its own kind,
+  `forbidden`, and the lifecycle harvest leaves those scenarios out. Building
+  this exposed an older gap: a bare piped step (`->thenNoEvent`) reached the
+  sidecar walk as `|.`(chain, step) and was recorded as an empty `then`. The walk
+  now reads it; `thenNoEvent` was harmless (an empty `then` already meant "no
+  change"), but an unread `thenRefused` would have counted as an accepted no-op.
+
+**Still open.**
+
+1. The §7 prerequisite: run and record the acceptance of
+   `owner-enforcement-gaps-on-appsync.md` on a deployed stack.
+2. Step 6: this plan's acceptance on a deployed stack, items 1–6.
+3. The `Customer` gap from the step 1 survey, as its own plan if wanted.

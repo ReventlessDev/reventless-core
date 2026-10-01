@@ -12,35 +12,35 @@ describe("CancelOrder StateChangeSlice", () => {
 
   // scenario-id: 44e2fd1b-d3da-4581-b102-0ccb47e004eb
   test("placed order produces OrderCancelled with productIds carried over", () =>
-    givenEvents([OrderPlaced({productIds: [p1, p2]})])
+    givenEvents([OrderPlaced({productIds: [p1, p2], customerId: c1})])
     ->whenCmd(CancelOrder({orderId: o1}))
     ->thenEvent(OrderCancelled({orderId: o1, productIds: [p1, p2]}))
   )
 
   // scenario-id: 36e7a929-73a3-48ad-96bf-98265877dd9f
   test("already cancelled order produces no events for CancelOrder (idempotent)", () =>
-    givenEvents([OrderPlaced({productIds: [p1]}), OrderCancelled])
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1}), OrderCancelled])
     ->whenCmd(CancelOrder({orderId: o1}))
     ->thenNoEvent
   )
 
   // scenario-id: a8adfaaf-2a97-487d-b80b-34b2e79a621d
   test("shipped order returns OrderAlreadyShipped for CancelOrder", () =>
-    givenEvents([OrderPlaced({productIds: [p1]}), OrderShipped])
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1}), OrderShipped])
     ->whenCmd(CancelOrder({orderId: o1}))
     ->thenError(OrderAlreadyShipped)
   )
 
   // scenario-id: da5c2d1d-adaf-412c-ba71-293158b29841
   test("ReopenOrder on cancelled order produces OrderReopened", () =>
-    givenEvents([OrderPlaced({productIds: [p1]}), OrderCancelled])
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1}), OrderCancelled])
     ->whenCmd(ReopenOrder({orderId: o1}))
     ->thenEvent(OrderReopened({orderId: o1}))
   )
 
   // scenario-id: edebec12-a5ec-4f71-a1fc-f1db65108db9
   test("ReopenOrder on a placed order produces no events (idempotent)", () =>
-    givenEvents([OrderPlaced({productIds: [p1]})])
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
     ->whenCmd(ReopenOrder({orderId: o1}))
     ->thenNoEvent
   )
@@ -50,7 +50,7 @@ describe("CancelOrder StateChangeSlice", () => {
   // shipped — the case no test covered, which is how it survived.
   // scenario-id: 96bdee04-7518-4297-81f5-7242a0cffa9f
   test("ReopenOrder on a shipped order returns OrderAlreadyShipped", () =>
-    givenEvents([OrderPlaced({productIds: [p1]}), OrderShipped])
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1}), OrderShipped])
     ->whenCmd(ReopenOrder({orderId: o1}))
     ->thenError(OrderAlreadyShipped)
   )
@@ -60,5 +60,40 @@ describe("CancelOrder StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(ReopenOrder({orderId: o1}))
     ->thenError(OrderNotFound)
+  )
+
+  // Only the customer who placed an order may cancel it. The slice says so by
+  // marking `@owner` on the `customerId` its `OrderPlaced` carries; an operator
+  // still cancels on anyone's behalf.
+  // scenario-id: 80c0ad21-a352-43d6-862c-74c5250991d1
+  test("the customer who placed the order may cancel it", () =>
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+    ->asCaller(Caller.owner(c1))
+    ->whenCmd(CancelOrder({orderId: o1}))
+    ->thenEvent(OrderCancelled({orderId: o1, productIds: [p1]}))
+  )
+
+  // scenario-id: 48fc5fa8-449d-40df-b58d-e87f0acea478
+  test("another customer cannot cancel the order", () =>
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+    ->asCaller(Caller.owner(c2))
+    ->whenCmd(CancelOrder({orderId: o1}))
+    ->thenRefused
+  )
+
+  // scenario-id: e7561ebf-5566-4a4e-87c0-9aa403d68310
+  test("an operator may cancel any customer's order", () =>
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+    ->asCaller(Caller.operator)
+    ->whenCmd(CancelOrder({orderId: o1}))
+    ->thenEvent(OrderCancelled({orderId: o1, productIds: [p1]}))
+  )
+
+  // scenario-id: e0df85d2-f997-4833-816e-39ddce5c895e
+  test("a caller who is not signed in cannot cancel an order", () =>
+    givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(CancelOrder({orderId: o1}))
+    ->thenRefused
   )
 })

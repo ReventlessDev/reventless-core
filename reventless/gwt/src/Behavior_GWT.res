@@ -23,6 +23,121 @@ open ReventlessCore
 // differs). Pick the matching entry point.
 
 // ---------------------------------------------------------------------------
+// Who issues the command, for slices and aggregates that mark `@owner` on the
+// events they decide on. `asCaller` names the caller before `whenCmd`; the
+// command is then checked against the owners the given events record, exactly
+// as the handler checks it before `decide`. Without `asCaller` the command
+// carries no caller claim, which the handler reads as the platform acting for
+// itself — so every scenario written before this existed is unchanged.
+// ---------------------------------------------------------------------------
+module Caller = {
+  external unsafeAsString: 'id => string = "%identity"
+
+  /**
+  A caller who owns only what records their id.
+
+  Takes the id as the scenario has it — `Caller.owner(c1)` with `c1: CustomerId.t`,
+  or a plain string — because every `Id.Make` identity is a string on the wire.
+  The type is not checked, and need not be: an id of the wrong entity matches no
+  recorded owner, so it can only be refused, which fails the scenario that
+  expected the owner to act. A value that is not a string at all is refused here.
+  */
+  let owner = (id: 'id): Message.CallerClaim.t =>
+    if Reventless.OwnerScope.isJsString(id) {
+      Owned({userId: id->unsafeAsString})
+    } else {
+      JsError.throwWithMessage(
+        "Caller.owner: expected an id (a string at runtime, such as an Id.Make identity)",
+      )
+    }
+  /** A caller in an elevated group, acting on anyone's behalf. */
+  let operator: Message.CallerClaim.t = Exempt
+  /** A caller with no identity. */
+  let anonymous: Message.CallerClaim.t = Unidentified
+}
+
+module type ActingSpec = {
+  let name: string
+  @schema
+  type history
+  @schema
+  type command
+}
+
+module Acting = (Spec: ActingSpec) => {
+  let caller: ref<option<Message.CallerClaim.t>> = ref(None)
+  let refusal: ref<option<CommandTopic_Helpers.rejectedResult>> = ref(None)
+
+  let ownerFieldsByEventType = Reventless.Owner.fieldNamesByVariant(
+    Spec.historySchema->S.castToUnknown,
+  )
+
+  let asCaller = (history, claim) => {
+    caller := Some(claim)
+    history
+  }
+
+  // Every given event is the command's own history here, so all of them count.
+  // The caller is consumed: the next scenario starts with no claim.
+  let refuses = (history: array<Spec.history>, command: Spec.command): bool => {
+    let claim = caller.contents
+    caller := None
+    refusal := None
+    if ownerFieldsByEventType->Dict.keysToArray->Array.length == 0 {
+      false
+    } else {
+      let owners = history->Array.reduce([], (owners, event) => {
+        let (eventType, data) = event->Message.encode(Spec.historySchema)->Message.splitMessage
+        switch ownerFieldsByEventType->Dict.get(eventType) {
+        | Some(fields) => owners->Reventless.OwnerScope.recordOwners(~fields, data)
+        | None => owners
+        }
+      })
+      refusal :=
+        Reventless.OwnerScope.decideActing(~claim, ~recordedOwners=Some(owners))
+        ->CommandTopic_Helpers.ownershipRefusal(
+          ~component=Spec.name,
+          ~command=command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson,
+        )
+        ->Option.map(r => r.rejected)
+      refusal.contents->Option.isSome
+    }
+  }
+
+  let encRefusal = (r: CommandTopic_Helpers.rejectedResult) =>
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("errorCode", JSON.Encode.string(r.errorCode)),
+        ("errorDetail", JSON.Encode.string(r.errorDetail)),
+      ]),
+    )
+
+  // Any other `then*` after a refused command fails: `decide` never ran, so
+  // there is nothing for it to compare.
+  let unexpectedRefusal = (): option<Outcome.outcome> =>
+    refusal.contents->Option.map(r =>
+      Outcome.fail(
+        ErrorMismatch({expected: JSON.Encode.null, actual: Some(encRefusal(r)), actualEvents: []}),
+      )
+    )
+
+  let thenRefused = (~encEvents, ~decided: option<JSON.t>, events) =>
+    switch refusal.contents {
+    | Some(_) => Outcome.pass
+    | None =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: JSON.Encode.object(
+            Dict.fromArray([("errorCode", JSON.Encode.string("Forbidden"))]),
+          ),
+          actual: decided,
+          actualEvents: encEvents(events),
+        }),
+      )
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Slice form — replaces the legacy `StateChangeSlice_GWT`.
 // ---------------------------------------------------------------------------
 
@@ -60,6 +175,10 @@ module type T = {
 
   let givenEvents: array<Spec.consumedEvent> => array<Spec.consumedEvent>
 
+  // Who issues the next `whenCmd`; see `Caller`.
+  module Caller: module type of Caller
+  let asCaller: (array<Spec.consumedEvent>, Message.CallerClaim.t) => array<Spec.consumedEvent>
+
   let whenCmd: (array<Spec.consumedEvent>, Spec.command) => array<Spec.event>
 
   let thenEvent: (array<Spec.event>, Spec.event) => Outcome.outcome
@@ -68,6 +187,8 @@ module type T = {
   let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Outcome.outcome
   let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
+  // Refused before `decide` because the caller does not own what it acts on.
+  let thenRefused: array<Spec.event> => Outcome.outcome
 
   // DCB optimistic-concurrency assertions.
   let thenAppendsConditionedOn: (array<Spec.event>, Reventless.DcbTag.query) => Outcome.outcome
@@ -242,6 +363,16 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
   module Core = AssertionCore(Spec)
   let errors = Core.errors
 
+  module Caller = Caller
+  module Guard = Acting({
+    let name = Spec.name
+    type history = Spec.consumedEvent
+    let historySchema = Spec.consumedEventSchema
+    type command = Spec.command
+    let commandSchema = Spec.commandSchema
+  })
+  let asCaller = Guard.asCaller
+
   // DCB append-condition derived inside [whenCmd]; [None] until first call.
   let derivedCondition: ref<option<Reventless.DcbTag.appendCondition>> = ref(None)
 
@@ -379,12 +510,15 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
       }
     }
 
-    let state = currentState(history)
-    switch Behavior.decide(state, command) {
-    | Ok(events) => events
-    | Error(error) =>
-      errors := [error]
+    if Guard.refuses(history, command) {
       []
+    } else {
+      switch Behavior.decide(currentState(history), command) {
+      | Ok(events) => events
+      | Error(error) =>
+        errors := [error]
+        []
+      }
     }
   }
 
@@ -392,7 +526,17 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
   let whenCmd = (history, cmd) => history->exec(cmd)
 
   let checkAppendCondition = (): option<Outcome.outcome> =>
-    appendConditionFailure.contents->Option.map(m => Outcome.fail(m))
+    switch appendConditionFailure.contents {
+    | Some(m) => Some(Outcome.fail(m))
+    | None => Guard.unexpectedRefusal()
+    }
+
+  let thenRefused = events =>
+    Guard.thenRefused(
+      ~encEvents=Core.encEvents,
+      ~decided=errors.contents->Array.get(0)->Option.map(Core.encError),
+      events,
+    )
 
   // The append-condition footgun is surfaced before the shared comparison core
   // runs; `thenAppends*` below bypass it deliberately.
@@ -503,6 +647,10 @@ module type AggregateT = {
 
   let givenEvents: array<Spec.event> => array<Spec.event>
 
+  // Who issues the next `whenCmd`; see `Caller`.
+  module Caller: module type of Caller
+  let asCaller: (array<Spec.event>, Message.CallerClaim.t) => array<Spec.event>
+
   let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
 
   let thenEvent: (array<Spec.event>, Spec.event) => Outcome.outcome
@@ -521,6 +669,8 @@ module type AggregateT = {
   ) => Outcome.outcome
   let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
+  // Refused before `decide` because the caller does not own what it acts on.
+  let thenRefused: array<Spec.event> => Outcome.outcome
 }
 
 module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with module Spec = Spec): (
@@ -536,14 +686,27 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
   module Core = AssertionCore(Spec)
   let errors = Core.errors
 
+  module Caller = Caller
+  module Guard = Acting({
+    let name = Spec.name
+    type history = Spec.event
+    let historySchema = Spec.eventSchema
+    type command = Spec.command
+    let commandSchema = Spec.commandSchema
+  })
+  let asCaller = Guard.asCaller
+
   let exec = (history, command): array<Spec.event> => {
     errors := []
-    let state = currentState(history)
-    switch Behavior.decide(state, command) {
-    | Ok(events) => events
-    | Error(error) =>
-      errors := [error]
+    if Guard.refuses(history, command) {
       []
+    } else {
+      switch Behavior.decide(currentState(history), command) {
+      | Ok(events) => events
+      | Error(error) =>
+        errors := [error]
+        []
+      }
     }
   }
 
@@ -551,20 +714,34 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
   let whenCmd = (history, cmd) => history->exec(cmd)
 
   // The aggregate flavour has no append-condition footgun, so the shared core's
-  // comparisons are exposed directly; only `thenCompare*` (custom equality) is
-  // specific to this surface.
-  let thenEvents = Core.compareEvents
-  let thenCompareEvents = Core.compareEventsWith
+  // comparisons are exposed directly once a refusal has been ruled out; only
+  // `thenCompare*` (custom equality) is specific to this surface.
+  let unlessRefused = (events, compare) =>
+    switch Guard.unexpectedRefusal() {
+    | Some(o) => o
+    | None => compare(events)
+    }
+  let thenEvents = (events, expected) => events->unlessRefused(Core.compareEvents(_, expected))
+  let thenCompareEvents = (events, expected, cmp) =>
+    events->unlessRefused(Core.compareEventsWith(_, expected, cmp))
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     thenCompareEvents(events, [expectedEvent], cmp)
-  let thenNoEvent = Core.compareNoEvent
+  let thenNoEvent = events => events->unlessRefused(Core.compareNoEvent)
 
-  let thenError = (events, expectedError) => Core.matchesError(events, [], expectedError)
+  let thenError = (events, expectedError) =>
+    events->unlessRefused(Core.matchesError(_, [], expectedError))
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
-    Core.matchesError(events, [expectedEvent], expectedError)
+    events->unlessRefused(Core.matchesError(_, [expectedEvent], expectedError))
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    Core.matchesError(events, expectedEvents, expectedError)
+    events->unlessRefused(Core.matchesError(_, expectedEvents, expectedError))
+
+  let thenRefused = events =>
+    Guard.thenRefused(
+      ~encEvents=Core.encEvents,
+      ~decided=errors.contents->Array.get(0)->Option.map(Core.encError),
+      events,
+    )
 }

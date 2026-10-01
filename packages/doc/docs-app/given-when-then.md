@@ -108,6 +108,7 @@ Every DSL uses the same verbs for the same roles:
 | Verb                                  | Meaning                                         |
 |---------------------------------------|-------------------------------------------------|
 | `givenEvents([...])` / `givenEvent(e)`| prior events on the entity (sets up `evolve`)   |
+| `asCaller(c)`                         | name who issues the next `whenCmd` (`Caller.owner(id)`, `Caller.operator`, `Caller.anonymous`) |
 | `whenCmd(c)`                          | dispatch a command to `decide`                  |
 | `whenEvent(e)` / `whenEvents([...])`  | push an event through `project` / `map`         |
 | `whenInput(i)`                        | feed external input to a translation slice      |
@@ -115,6 +116,7 @@ Every DSL uses the same verbs for the same roles:
 | `thenEvent(e)` / `thenEvents([...])`  | assert `decide` emitted exactly these events    |
 | `thenNoEvent` / `thenNoCommand`       | assert idempotency (nothing produced)           |
 | `thenError(e)`                        | assert `decide` returned `Error(e)`             |
+| `thenRefused`                         | assert the caller was refused before `decide`, as not owning what the command acts on |
 | `thenEventWithError(e, err)`          | `decide` returned `Ok([e])` then later errored  |
 | `thenState(s)` / `thenStateWithId(id, s)` | assert the projected state for one key      |
 | `thenAllStates([...])`                | assert the full projection store               |
@@ -165,6 +167,35 @@ describe("Category Behavior", () => {
 
 Real example:
 [`examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res).
+
+#### Who may act: `asCaller` and `thenRefused`
+
+When a slice marks `@owner` on an event it consumes (or an aggregate on one of
+its events), its commands may act only on what the caller owns. `asCaller`
+names the caller before `whenCmd`, and the command is checked against the
+owners the given events record, as the handler checks it before `decide`:
+
+```rescript
+test("another customer cannot cancel the order", () =>
+  givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+  ->asCaller(Caller.owner(c2))
+  ->whenCmd(CancelOrder({orderId: o1}))
+  ->thenRefused
+)
+
+test("an operator may cancel any customer's order", () =>
+  givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
+  ->asCaller(Caller.operator)
+  ->whenCmd(CancelOrder({orderId: o1}))
+  ->thenEvent(OrderCancelled({orderId: o1, productIds: [p1]}))
+)
+```
+
+A scenario without `asCaller` names no caller, which the handler reads as the
+platform acting for itself, so it is never refused. Any other `then*` after a
+refusal fails, because `decide` never ran. The lifecycle check leaves
+`thenRefused` scenarios out: who may act says nothing about which states a
+command is legal in.
 
 ### 4.2 `StateChangeSlice_GWT` — DCB command slice
 

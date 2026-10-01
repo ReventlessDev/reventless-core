@@ -520,3 +520,106 @@ describe("OwnerScope.isRetiredValue:", () => {
     ))->toEqual((false, false))
   )
 })
+
+// Acting on something that already exists: the claim a command carries against
+// the owners its partition's history records. Each row of the plan's table is a
+// case here, including the two that must fail closed rather than read as "no
+// owner yet".
+describe("acting on an owned partition:", () => {
+  let owned = (userId): Message.CallerClaim.t => Owned({userId: userId})
+  let act = (~claim, ~owners) => OwnerScope.decideActing(~claim, ~recordedOwners=owners)
+
+  testSync("the owner may act on their own partition", () =>
+    expect(act(~claim=Some(owned("u-1")), ~owners=Some(["u-1"])))->toEqual(OwnerScope.MayAct)
+  )
+
+  testSync("another owned caller is refused, naming the recorded owner", () =>
+    expect(act(~claim=Some(owned("u-2")), ~owners=Some(["u-1"])))->toEqual(
+      OwnerScope.NotTheOwner({owner: "u-1"}),
+    )
+  )
+
+  // Nothing created yet: a creating command stamps its own owner, so there is
+  // nobody whose thing this could be.
+  testSync("an empty history admits an identified caller", () =>
+    expect(act(~claim=Some(owned("u-2")), ~owners=Some([])))->toEqual(OwnerScope.MayAct)
+  )
+
+  testSync("an exempt caller acts for anyone", () =>
+    expect(act(~claim=Some(Exempt), ~owners=Some(["u-1"])))->toEqual(OwnerScope.MayAct)
+  )
+
+  // The trust model `@authorize` already has: only the generator writes a claim,
+  // so a command without one arrived by an internal route.
+  testSync("a command with no claim is the platform acting for itself", () =>
+    expect(act(~claim=None, ~owners=Some(["u-1"])))->toEqual(OwnerScope.MayAct)
+  )
+
+  testSync("an unidentified caller is refused even on an empty history", () =>
+    expect((
+      act(~claim=Some(Unidentified), ~owners=Some([])),
+      act(~claim=Some(Unidentified), ~owners=Some(["u-1"])),
+    ))->toEqual((OwnerScope.CallerUnidentified, OwnerScope.CallerUnidentified))
+  )
+
+  // Never pick one: whichever was chosen, the other owner's thing is exposed.
+  testSync("two recorded owners refuse every caller, the exempt included", () =>
+    expect((
+      act(~claim=Some(owned("u-1")), ~owners=Some(["u-1", "u-2"])),
+      act(~claim=Some(Exempt), ~owners=Some(["u-1", "u-2"])),
+      act(~claim=None, ~owners=Some(["u-1", "u-2"])),
+    ))->toEqual((
+      OwnerScope.ConflictingOwners(["u-1", "u-2"]),
+      OwnerScope.ConflictingOwners(["u-1", "u-2"]),
+      OwnerScope.ConflictingOwners(["u-1", "u-2"]),
+    ))
+  )
+
+  // The case that would fail open if `None` were read as "no owner recorded".
+  testSync("an owner that could not be read refuses an owned caller", () =>
+    expect((
+      act(~claim=Some(owned("u-1")), ~owners=None),
+      act(~claim=Some(Exempt), ~owners=None),
+    ))->toEqual((OwnerScope.OwnerUnreadable, OwnerScope.MayAct))
+  )
+
+  testSync("the claim keeps an owner's id and collapses the exempt cases", () =>
+    expect(
+      [
+        OwnerScope.Owned({userId: "u-1"}),
+        OwnerScope.Elevated({userId: "ops"}),
+        OwnerScope.System,
+        OwnerScope.Unidentified("anonymous"),
+      ]->Array.map(OwnerScope.toClaim),
+    )->toEqual([owned("u-1"), Exempt, Exempt, Unidentified])
+  )
+
+  testSync("recorded owners fold distinct, from the marked fields only", () => {
+    let data = Dict.fromArray([
+      ("customerId", JSON.Encode.string("u-1")),
+      ("note", JSON.Encode.string("u-9")),
+    ])
+    let once = []->OwnerScope.recordOwners(~fields=["customerId"], data)
+    expect(once->OwnerScope.recordOwners(~fields=["customerId"], data))->toEqual(["u-1"])
+  })
+})
+
+@schema
+type ownedEvent =
+  | Placed({orderId: string, customerId: @s.matches(Owner.string) string})
+  | Annotated({orderId: string, author: string})
+  | Closed
+
+describe("Owner.fieldNamesByVariant:", () => {
+  testSync("names the owner fields of each constructor that declares one", () =>
+    expect(Owner.fieldNamesByVariant(ownedEventSchema->S.castToUnknown)->Dict.toArray)->toEqual([
+      ("Placed", ["customerId"]),
+    ])
+  )
+
+  // The trap the AppSync stamping gap fell into: a stand-in schema reads as a
+  // union that records no owner, and a handler given it enforces nothing.
+  testSync("a permissive schema answers empty", () =>
+    expect(Owner.fieldNamesByVariant(S.json->S.castToUnknown)->Dict.toArray)->toEqual([])
+  )
+})

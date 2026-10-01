@@ -451,6 +451,25 @@ describe("a step the sidecar could not read", () => {
     ->(observations => Check.deriveCommands(~component="Product", ~observations, ~labelled=false))
     ->Array.map(d => (d.command, d.level))
 
+  // A command refused because the caller does not own the row was refused for
+  // who asked, not for the state the row is in. Read as "accepted, changed
+  // nothing", it would contradict every from-set the command declares.
+  testSync("an ownership refusal is no evidence about the lifecycle", () =>
+    expect(
+      Check.observe(
+        ~scenarios=[
+          scenario(
+            ~given=[step("event", "OrderPlaced")],
+            ~when_=[step("command", "CancelOrder")],
+            ~then_=[step("forbidden", "")],
+          ),
+        ],
+        ~map=Dict.make(),
+        ~idFieldFor=_ => None,
+      )->Array.length,
+    )->toBe(0)
+  )
+
   testSync("an unread history is not an empty one", () =>
     expect(
       levels([

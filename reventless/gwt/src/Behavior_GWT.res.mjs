@@ -2,15 +2,111 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+
+function owner(id) {
+  if (OwnerScope$Reventless.isJsString(id)) {
+    return {
+      TAG: "Owned",
+      userId: id
+    };
+  } else {
+    return Stdlib_JsError.throwWithMessage("Caller.owner: expected an id (a string at runtime, such as an Id.Make identity)");
+  }
+}
+
+let Caller = {
+  owner: owner,
+  operator: "Exempt",
+  anonymous: "Unidentified"
+};
+
+function Acting(Spec) {
+  let caller = {
+    contents: undefined
+  };
+  let refusal = {
+    contents: undefined
+  };
+  let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.historySchema);
+  let asCaller = (history, claim) => {
+    caller.contents = claim;
+    return history;
+  };
+  let refuses = (history, command) => {
+    let claim = caller.contents;
+    caller.contents = undefined;
+    refusal.contents = undefined;
+    if (Object.keys(ownerFieldsByEventType).length === 0) {
+      return false;
+    }
+    let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
+      let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, Spec.historySchema));
+      let fields = ownerFieldsByEventType[match[0]];
+      if (fields !== undefined) {
+        return OwnerScope$Reventless.recordOwners(owners, fields, match[1]);
+      } else {
+        return owners;
+      }
+    });
+    refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), Spec.name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema))), r => r.rejected);
+    return Stdlib_Option.isSome(refusal.contents);
+  };
+  let encRefusal = r => Object.fromEntries([
+    [
+      "errorCode",
+      r.errorCode
+    ],
+    [
+      "errorDetail",
+      r.errorDetail
+    ]
+  ]);
+  let unexpectedRefusal = () => Stdlib_Option.map(refusal.contents, r => Outcome$ReventlessGwt.fail({
+    TAG: "ErrorMismatch",
+    expected: null,
+    actual: encRefusal(r),
+    actualEvents: []
+  }));
+  let thenRefused = (encEvents, decided, events) => {
+    let match = refusal.contents;
+    if (match !== undefined) {
+      return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "ErrorMismatch",
+        expected: Object.fromEntries([[
+            "errorCode",
+            "Forbidden"
+          ]]),
+        actual: decided,
+        actualEvents: encEvents(events)
+      });
+    }
+  };
+  return {
+    caller: caller,
+    refusal: refusal,
+    ownerFieldsByEventType: ownerFieldsByEventType,
+    asCaller: asCaller,
+    refuses: refuses,
+    encRefusal: encRefusal,
+    unexpectedRefusal: unexpectedRefusal,
+    thenRefused: thenRefused
+  };
+}
 
 function encodeTag(t) {
   let d = {};
@@ -149,6 +245,7 @@ function Make(Spec) {
       contents: []
     };
     let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
+    let encEvents = evs => evs.map(encEvent);
     let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
     let unexpectedError = events => {
       let actual = Stdlib_Option.map(errors.contents[0], encError);
@@ -188,6 +285,55 @@ function Make(Spec) {
         });
       }
     };
+    let name = Spec.name;
+    let historySchema = Spec.consumedEventSchema;
+    let commandSchema = Spec.commandSchema;
+    let caller = {
+      contents: undefined
+    };
+    let refusal = {
+      contents: undefined
+    };
+    let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(historySchema);
+    let asCaller = (history, claim) => {
+      caller.contents = claim;
+      return history;
+    };
+    let refuses = (history, command) => {
+      let claim = caller.contents;
+      caller.contents = undefined;
+      refusal.contents = undefined;
+      if (Object.keys(ownerFieldsByEventType).length === 0) {
+        return false;
+      }
+      let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
+        let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, historySchema));
+        let fields = ownerFieldsByEventType[match[0]];
+        if (fields !== undefined) {
+          return OwnerScope$Reventless.recordOwners(owners, fields, match[1]);
+        } else {
+          return owners;
+        }
+      });
+      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
+      return Stdlib_Option.isSome(refusal.contents);
+    };
+    let encRefusal = r => Object.fromEntries([
+      [
+        "errorCode",
+        r.errorCode
+      ],
+      [
+        "errorDetail",
+        r.errorDetail
+      ]
+    ]);
+    let unexpectedRefusal = () => Stdlib_Option.map(refusal.contents, r => Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: null,
+      actual: encRefusal(r),
+      actualEvents: []
+    }));
     let derivedCondition = {
       contents: undefined
     };
@@ -270,15 +416,41 @@ function Make(Spec) {
           };
         }
       }
-      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
-      let events = Behavior.decide(state, cmd);
+      if (refuses(history, cmd)) {
+        return [];
+      }
+      let events = Behavior.decide(Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve), cmd);
       if (events.TAG === "Ok") {
         return events._0;
       }
       errors.contents = [events._0];
       return [];
     };
-    let checkAppendCondition = () => Stdlib_Option.map(appendConditionFailure.contents, Outcome$ReventlessGwt.fail);
+    let checkAppendCondition = () => {
+      let m = appendConditionFailure.contents;
+      if (m !== undefined) {
+        return Outcome$ReventlessGwt.fail(m);
+      } else {
+        return unexpectedRefusal();
+      }
+    };
+    let thenRefused = events => {
+      let decided = Stdlib_Option.map(errors.contents[0], encError);
+      let match = refusal.contents;
+      if (match !== undefined) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: Object.fromEntries([[
+              "errorCode",
+              "Forbidden"
+            ]]),
+          actual: decided,
+          actualEvents: encEvents(events)
+        });
+      }
+    };
     let thenEvents = (events, expectedEvents) => {
       let o = checkAppendCondition();
       if (o !== undefined) {
@@ -383,6 +555,8 @@ function Make(Spec) {
       todo: JestBind$ReventlessGwt.todo,
       test: test,
       givenEvents: givenEvents,
+      Caller: Caller,
+      asCaller: asCaller,
       whenCmd: whenCmd,
       thenEvent: thenEvent,
       thenEvents: thenEvents,
@@ -390,6 +564,7 @@ function Make(Spec) {
       thenEventWithError: thenEventWithError,
       thenEventsWithError: thenEventsWithError,
       thenError: thenError,
+      thenRefused: thenRefused,
       thenAppendsConditionedOn: thenAppendsConditionedOn,
       thenAppendsConditionedOnExactly: thenAppendsConditionedOnExactly
     };
@@ -403,6 +578,7 @@ function MakeFromAggregate(Spec) {
       contents: []
     };
     let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
+    let encEvents = evs => evs.map(encEvent);
     let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
     let unexpectedError = events => {
       let actual = Stdlib_Option.map(errors.contents[0], encError);
@@ -412,32 +588,6 @@ function MakeFromAggregate(Spec) {
         actual: actual,
         actualEvents: events.map(encEvent)
       });
-    };
-    let compareEvents = (events, expectedEvents) => {
-      if (errors.contents.length !== 0) {
-        return unexpectedError(events);
-      } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
-        return Outcome$ReventlessGwt.pass;
-      } else {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "EventsMismatch",
-          expected: expectedEvents.map(encEvent),
-          actual: events.map(encEvent)
-        });
-      }
-    };
-    let compareEventsWith = (events, expectedEvents, cmp) => {
-      if (errors.contents.length !== 0) {
-        return unexpectedError(events);
-      } else if (events.length === expectedEvents.length && Stdlib_Array.zip(events, expectedEvents).every(param => cmp(param[0], param[1]))) {
-        return Outcome$ReventlessGwt.pass;
-      } else {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "EventsMismatch",
-          expected: expectedEvents.map(encEvent),
-          actual: events.map(encEvent)
-        });
-      }
     };
     let compareNoEvent = events => {
       if (errors.contents.length !== 0) {
@@ -480,41 +630,149 @@ function MakeFromAggregate(Spec) {
         });
       }
     };
+    let name = Spec.name;
+    let historySchema = Spec.eventSchema;
+    let commandSchema = Spec.commandSchema;
+    let caller = {
+      contents: undefined
+    };
+    let refusal = {
+      contents: undefined
+    };
+    let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(historySchema);
+    let asCaller = (history, claim) => {
+      caller.contents = claim;
+      return history;
+    };
+    let refuses = (history, command) => {
+      let claim = caller.contents;
+      caller.contents = undefined;
+      refusal.contents = undefined;
+      if (Object.keys(ownerFieldsByEventType).length === 0) {
+        return false;
+      }
+      let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
+        let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, historySchema));
+        let fields = ownerFieldsByEventType[match[0]];
+        if (fields !== undefined) {
+          return OwnerScope$Reventless.recordOwners(owners, fields, match[1]);
+        } else {
+          return owners;
+        }
+      });
+      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
+      return Stdlib_Option.isSome(refusal.contents);
+    };
+    let encRefusal = r => Object.fromEntries([
+      [
+        "errorCode",
+        r.errorCode
+      ],
+      [
+        "errorDetail",
+        r.errorDetail
+      ]
+    ]);
+    let unexpectedRefusal = () => Stdlib_Option.map(refusal.contents, r => Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: null,
+      actual: encRefusal(r),
+      actualEvents: []
+    }));
     let givenEvents = events => events;
     let whenCmd = (history, cmd) => {
       errors.contents = [];
-      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
-      let events = Behavior.decide(state, cmd);
+      if (refuses(history, cmd)) {
+        return [];
+      }
+      let events = Behavior.decide(Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve), cmd);
       if (events.TAG === "Ok") {
         return events._0;
       }
       errors.contents = [events._0];
       return [];
     };
-    let thenEvent = (events, expectedEvent) => compareEvents(events, [expectedEvent]);
-    let thenCompareEvent = (events, expectedEvent, cmp) => compareEventsWith(events, [expectedEvent], cmp);
-    let thenError = (events, expectedError) => matchesError(events, [], expectedError);
-    let thenEventWithError = (events, expectedEvent, expectedError) => matchesError(events, [expectedEvent], expectedError);
-    let thenEventsWithError = matchesError;
+    let unlessRefused = (events, compare) => {
+      let o = unexpectedRefusal();
+      if (o !== undefined) {
+        return o;
+      } else {
+        return compare(events);
+      }
+    };
+    let thenEvents = (events, expected) => unlessRefused(events, __x => {
+      if (errors.contents.length !== 0) {
+        return unexpectedError(__x);
+      } else if (Primitive_object.equal(__x.map(encEvent), expected.map(encEvent))) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expected.map(encEvent),
+          actual: __x.map(encEvent)
+        });
+      }
+    });
+    let thenCompareEvents = (events, expected, cmp) => unlessRefused(events, __x => {
+      if (errors.contents.length !== 0) {
+        return unexpectedError(__x);
+      } else if (__x.length === expected.length && Stdlib_Array.zip(__x, expected).every(param => cmp(param[0], param[1]))) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expected.map(encEvent),
+          actual: __x.map(encEvent)
+        });
+      }
+    });
+    let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent]);
+    let thenCompareEvent = (events, expectedEvent, cmp) => thenCompareEvents(events, [expectedEvent], cmp);
+    let thenNoEvent = events => unlessRefused(events, compareNoEvent);
+    let thenError = (events, expectedError) => unlessRefused(events, __x => matchesError(__x, [], expectedError));
+    let thenEventWithError = (events, expectedEvent, expectedError) => unlessRefused(events, __x => matchesError(__x, [expectedEvent], expectedError));
+    let thenEventsWithError = (events, expectedEvents, expectedError) => unlessRefused(events, __x => matchesError(__x, expectedEvents, expectedError));
+    let thenRefused = events => {
+      let decided = Stdlib_Option.map(errors.contents[0], encError);
+      let match = refusal.contents;
+      if (match !== undefined) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: Object.fromEntries([[
+              "errorCode",
+              "Forbidden"
+            ]]),
+          actual: decided,
+          actualEvents: encEvents(events)
+        });
+      }
+    };
     return {
       Spec: Spec,
       describe: JestBind$ReventlessGwt.describe,
       test: test,
       givenEvents: givenEvents,
+      Caller: Caller,
+      asCaller: asCaller,
       whenCmd: whenCmd,
       thenEvent: thenEvent,
       thenCompareEvent: thenCompareEvent,
-      thenNoEvent: compareNoEvent,
+      thenNoEvent: thenNoEvent,
       thenEventWithError: thenEventWithError,
-      thenEvents: compareEvents,
-      thenCompareEvents: compareEventsWith,
+      thenEvents: thenEvents,
+      thenCompareEvents: thenCompareEvents,
       thenEventsWithError: thenEventsWithError,
-      thenError: thenError
+      thenError: thenError,
+      thenRefused: thenRefused
     };
   };
 }
 
 export {
+  Caller,
+  Acting,
   encodeTag,
   encodeQueryItem,
   encodeQuery,
@@ -523,4 +781,4 @@ export {
   Make,
   MakeFromAggregate,
 }
-/* DcbTag-Reventless Not a pure module */
+/* Owner-Reventless Not a pure module */

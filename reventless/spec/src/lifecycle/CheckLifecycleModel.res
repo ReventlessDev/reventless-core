@@ -687,6 +687,9 @@ let observe = (
 
   scenarios->Array.filterMap(s =>
     switch s.whenElements->Array.get(0) {
+    // `thenRefused`: the caller did not own the row, which says nothing about
+    // the states the command is legal in.
+    | Some(_) if s.thenKind == "forbidden" => None
     | Some(command) if s.whenKind == "command" =>
       let idField = idFieldFor(command.name)
       let idValue = idField->Option.flatMap(field => command.values->valueOf(~field))

@@ -27,26 +27,25 @@ function clearCommandInterceptor() {
   commandInterceptorHook.contents = undefined;
 }
 
-function stampOwnerFields(obj, commandSchema, command, identity, serviceName) {
+function stampOwnerFields(obj, commandSchema, command, scope, serviceName) {
   let ownerFields = Owner$Reventless.variantFieldNames(commandSchema, command);
   if (ownerFields.length === 0) {
     return;
   }
-  let why = OwnerScope$Reventless.resolve(identity, undefined);
-  if (typeof why !== "object") {
+  if (typeof scope !== "object") {
     return;
   }
-  switch (why.TAG) {
+  switch (scope.TAG) {
     case "Elevated" :
       return;
     case "Owned" :
-      let userId = why.userId;
+      let userId = scope.userId;
       ownerFields.forEach(field => {
         obj[field] = userId;
       });
       return;
     case "Unidentified" :
-      return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Forbidden: ` + serviceName + `.` + command + ` records an owner, but the caller could not be identified (` + why._0 + `)`);
+      return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Forbidden: ` + serviceName + `.` + command + ` records an owner, but the caller could not be identified (` + scope._0 + `)`);
   }
 }
 
@@ -63,19 +62,22 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
   let stripIdFromParams = stripIdFromParamsOpt !== undefined ? stripIdFromParamsOpt : true;
   return payload => Effect.flatMap(Effect.tap(Effect.sync(() => {
     let msgId = Message$ReventlessCore.uuid();
+    let scope = OwnerScope$Reventless.resolve(payload.identity, undefined);
     let meta_time = Message$ReventlessCore.nowAsISOString();
     let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
     let meta_user = payload.meta.user;
+    let meta_callerClaim = OwnerScope$Reventless.toClaim(scope);
     let meta = {
       service: serviceName,
       time: meta_time,
       ip: meta_ip,
       user: meta_user,
       msgId: msgId,
-      correlationId: msgId
+      correlationId: msgId,
+      callerClaim: meta_callerClaim
     };
     let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-    let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, scope, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
     let commandStr = payload.command;
     let match = params.length;
     let commandJson = match !== 0 ? Object.fromEntries([[

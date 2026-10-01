@@ -381,6 +381,8 @@ function combineMessage(typ, data) {
 
 let serviceSchema = Message$Reventless.serviceSchema;
 
+let CallerClaim = Message$Reventless.CallerClaim;
+
 let metaSchema = Message$Reventless.metaSchema;
 
 let contextSchema = Message$Reventless.contextSchema;
@@ -402,6 +404,7 @@ let InvalidEvent = Message$Reventless.InvalidEvent;
 export {
   logger,
   serviceSchema,
+  CallerClaim,
   metaSchema,
   contextSchema,
   statusChangeSchema,

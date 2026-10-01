@@ -46,6 +46,34 @@ let rejectedResultChannel = {
   contents: undefined
 };
 
+function ownershipRefusal(verdict, component, command) {
+  let refuse = (isDefectOpt, why) => {
+    let isDefect = isDefectOpt !== undefined ? isDefectOpt : false;
+    return {
+      rejected: {
+        errorCode: "Forbidden",
+        errorDetail: component + `.` + command + `: ` + why
+      },
+      isDefect: isDefect
+    };
+  };
+  if (typeof verdict === "object") {
+    if (verdict.TAG === "NotTheOwner") {
+      return refuse(undefined, "the caller does not own what this command acts on");
+    } else {
+      return refuse(true, `the history records ` + verdict._0.length.toString() + ` different owners`);
+    }
+  }
+  switch (verdict) {
+    case "MayAct" :
+      return;
+    case "CallerUnidentified" :
+      return refuse(undefined, "the caller could not be identified");
+    case "OwnerUnreadable" :
+      return refuse(true, "the partition this command acts on could not be named");
+  }
+}
+
 function reportAccepted(component, reference, result) {
   Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
   fireCommandOutcome(component, reference, {
@@ -227,6 +255,7 @@ export {
   fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,
+  ownershipRefusal,
   reportAccepted,
   reportRejected,
   commandOutcomeToJson,

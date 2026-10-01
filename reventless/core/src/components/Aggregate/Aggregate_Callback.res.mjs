@@ -8,9 +8,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Lru$ReventlessCore from "../../util/Lru.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -29,21 +31,55 @@ function Make(Spec) {
       Spec.Id.makeFromString(param[0]),
       param[1]
     ]));
+    let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.eventSchema);
+    let actsOnOwned = Object.keys(ownerFieldsByEventType).length !== 0;
+    let recordEventOwners = (owners, event) => {
+      if (!actsOnOwned) {
+        return owners;
+      }
+      let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, Spec.eventSchema));
+      let fields = ownerFieldsByEventType[match[0]];
+      if (fields !== undefined) {
+        return OwnerScope$Reventless.recordOwners(owners, fields, match[1]);
+      } else {
+        return owners;
+      }
+    };
     let processCommand = seq => ((param, topicItem) => {
       let reference = topicItem.reference;
       let command$p = topicItem.command;
-      let outcomes = param[1];
+      let outcomes = param[2];
+      let owners = param[1];
       let state = param[0];
       let meta = Message$ReventlessCore.deriveMeta(command$p.meta, undefined);
       let id = Spec.Id.toString(command$p.id);
-      let cmdName = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command$p.command, Spec.commandSchema)));
+      let cmdVariant = Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command$p.command, Spec.commandSchema));
+      let cmdName = LogFormat$ReventlessCore.bold(cmdVariant);
       Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + id + ` seq=` + seq.toString() + ` cmd=` + cmdName));
+      let refusal = actsOnOwned ? CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, owners), Spec.name, cmdVariant) : undefined;
+      if (refusal !== undefined) {
+        let line = `refused: ` + refusal.rejected.errorDetail + ` id=` + id;
+        Effect.runSync(refusal.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, line));
+        return [
+          state,
+          owners,
+          outcomes.concat([[
+              reference,
+              {
+                TAG: "CmdRefused",
+                _0: refusal
+              },
+              meta
+            ]])
+        ];
+      }
       let generatedEvents = Behavior.decide(state, command$p.command);
       if (generatedEvents.TAG === "Ok") {
         let generatedEvents$1 = generatedEvents._0;
         let newState = Stdlib_Array.reduce(generatedEvents$1, state, Behavior.evolve);
         return [
           newState,
+          Stdlib_Array.reduce(generatedEvents$1, owners, recordEventOwners),
           outcomes.concat([[
               reference,
               {
@@ -62,6 +98,7 @@ function Make(Spec) {
       Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail + ` id=` + id));
       return [
         state,
+        owners,
         outcomes.concat([[
             reference,
             {
@@ -75,7 +112,10 @@ function Make(Spec) {
     });
     let replayCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(replayCache);
-    let snapshotConfig = Behavior.snapshot;
+    let snapshotConfig = actsOnOwned ? undefined : Behavior.snapshot;
+    if (actsOnOwned && Stdlib_Option.isSome(Behavior.snapshot)) {
+      Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry"));
+    }
     let stateSchemaHash = snapshotConfig !== undefined ? HashObject(Object.fromEntries([[
           "state",
           SchemaWalker$ReventlessCore.describeSchema(snapshotConfig.stateSchema)
@@ -151,10 +191,12 @@ function Make(Spec) {
         let seedSeq = param[1];
         return Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id, seedSeq), [
           param[0],
-          seedSeq
+          seedSeq,
+          []
         ], (param, ev) => [
           Behavior.evolve(param[0], ev),
-          param[1] + 1 | 0
+          param[1] + 1 | 0,
+          recordEventOwners(param[2], ev)
         ]), param => {
           let n = param[1];
           let detail = seedSeq > 0 ? `(snapshot@` + seedSeq.toString() + `, ` + (n - seedSeq | 0).toString() + ` delta event(s))` : n.toString() + ` event(s)`;
@@ -199,35 +241,43 @@ function Make(Spec) {
       return outcomes.map(param => {
         let outcome = param[1];
         let reference = param[0];
-        if (outcome.TAG === "CmdOk") {
-          if (appendSucceeded) {
-            CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, reference, {
-              entityId: entityId,
-              eventCount: appendedEventCount
+        switch (outcome.TAG) {
+          case "CmdOk" :
+            if (appendSucceeded) {
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, reference, {
+                entityId: entityId,
+                eventCount: appendedEventCount
+              });
+              return {
+                TAG: "Ok",
+                _0: reference
+              };
+            } else {
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", reference, {
+                errorCode: "AppendFailed",
+                errorDetail: appendErrorDetail
+              });
+              return {
+                TAG: "Error",
+                _0: reference
+              };
+            }
+          case "CmdRejected" :
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", reference, {
+              errorCode: outcome.errorCode,
+              errorDetail: outcome.errorDetail
             });
             return {
               TAG: "Ok",
               _0: reference
             };
-          } else {
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", reference, {
-              errorCode: "AppendFailed",
-              errorDetail: appendErrorDetail
-            });
+          case "CmdRefused" :
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", reference, outcome._0.rejected);
             return {
-              TAG: "Error",
+              TAG: "Ok",
               _0: reference
             };
-          }
         }
-        CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", reference, {
-          errorCode: outcome.errorCode,
-          errorDetail: outcome.errorDetail
-        });
-        return {
-          TAG: "Ok",
-          _0: reference
-        };
       });
     };
     let replayProcessAppend = (id, topicItemsForId) => {
@@ -235,35 +285,42 @@ function Make(Spec) {
       let match = Lru$ReventlessCore.get(replayCache, idStr);
       let readState;
       if (match !== undefined) {
+        let owners = match[2];
         let seqNr = match[1];
         let state = match[0];
         readState = Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay skipped (cached): id=` + idStr + `, seq=` + seqNr.toString()), () => [
           state,
-          seqNr
+          seqNr,
+          owners
         ]);
       } else {
         readState = coldReadState(id);
       }
       return Effect.flatMap(readState, param => {
+        let initialOwners = param[2];
         let sequenceNr = param[1];
         let initialState = param[0];
         let match = Stdlib_Array.reduce(topicItemsForId, [
           initialState,
+          initialOwners,
           []
         ], processCommand(sequenceNr));
-        let outcomes = match[1];
+        let outcomes = match[2];
+        let finalOwners = match[1];
         let finalState = match[0];
         let eventsToAppend = outcomes.map(param => {
           let meta = param[2];
           let outcome = param[1];
-          if (outcome.TAG === "CmdOk") {
-            return outcome._0.map(event => ({
-              id: id,
-              meta: meta,
-              event: event
-            }));
-          } else {
-            return [];
+          switch (outcome.TAG) {
+            case "CmdOk" :
+              return outcome._0.map(event => ({
+                id: id,
+                meta: meta,
+                event: event
+              }));
+            case "CmdRejected" :
+            case "CmdRefused" :
+              return [];
           }
         }).flat();
         if (eventsToAppend.length !== 0) {
@@ -280,7 +337,8 @@ function Make(Spec) {
               let newSeq = sequenceNr + eventsToAppend.length | 0;
               Lru$ReventlessCore.put(replayCache, idStr, [
                 finalState,
-                newSeq
+                newSeq,
+                finalOwners
               ]);
               maybeWriteSnapshot(id, idStr, sequenceNr, newSeq, finalState);
               let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length, undefined);
@@ -308,7 +366,8 @@ function Make(Spec) {
         }
         Lru$ReventlessCore.put(replayCache, idStr, [
           initialState,
-          sequenceNr
+          sequenceNr,
+          initialOwners
         ]);
         let perRef = reportFinalOutcomes(outcomes, idStr, true, 0, undefined);
         return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({

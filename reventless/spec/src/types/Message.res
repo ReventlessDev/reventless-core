@@ -3,6 +3,23 @@
 type service = string
 
 /**
+The issuing caller, classified for `@owner` enforcement (`OwnerScope.toClaim`).
+
+Written only by the command generator, from the authenticated identity, so a
+handler can tell an owner from an operator without seeing the caller's groups.
+Absent on every command that did not come through the generator — an
+automation's follow-up, an internal dispatch — which a handler reads as the
+platform acting for itself.
+*/
+module CallerClaim = {
+  @schema
+  type t =
+    | Owned({userId: string})
+    | Exempt
+    | Unidentified
+}
+
+/**
 Envelope metadata attached to every event and command.
 
 Every message that flows through Reventless carries this metadata so that
@@ -50,6 +67,10 @@ type meta = {
   /** Extensible header bag for cross-cutting context (tenantId, feature flags, etc.).
       Absent when empty — consumers normalise with `->Option.getOr(Dict.make())`. */
   headers?: dict<string>,
+  /** Commands only: the caller as the generator classified it. Deliberately not
+      inherited by `deriveMeta`, so an event or a follow-up command never carries
+      the claim of the command that caused it. */
+  callerClaim?: CallerClaim.t,
 }
 
 /**

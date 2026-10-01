@@ -72,6 +72,7 @@ let seen = () =>
         switch cause {
         | DomainRejection => "rejected/domain"
         | InfrastructureFailure => "rejected/infrastructure"
+        | AccessRefusal => "rejected/access"
         },
         errorCode,
         0,

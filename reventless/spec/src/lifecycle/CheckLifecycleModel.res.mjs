@@ -503,6 +503,9 @@ function observe(scenarios, map, idFieldFor) {
     if (command === undefined) {
       return;
     }
+    if (s.thenKind === "forbidden") {
+      return;
+    }
     if (s.whenKind !== "command") {
       return;
     }

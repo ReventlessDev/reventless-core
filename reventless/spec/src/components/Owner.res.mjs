@@ -90,6 +90,41 @@ function variantFieldNames(schema, variant) {
   }
 }
 
+function fieldNamesByVariant(schema) {
+  let byVariant = {};
+  let visit = properties => {
+    let match = properties["TAG"];
+    let match$1 = fieldNamesOfProperties(properties);
+    if (match$1.length === 0) {
+      return;
+    }
+    if (match === undefined) {
+      return;
+    }
+    if (match.type !== "string") {
+      return;
+    }
+    let name = match.const;
+    if (name !== undefined) {
+      byVariant[name] = match$1;
+      return;
+    }
+  };
+  switch (schema.type) {
+    case "object" :
+      visit(schema.properties);
+      break;
+    case "anyOf" :
+      schema.anyOf.forEach(v => {
+        if (v.type === "object") {
+          return visit(v.properties);
+        }
+      });
+      break;
+  }
+  return byVariant;
+}
+
 export {
   ownerId,
   mark,
@@ -100,5 +135,6 @@ export {
   fieldNamesOfProperties,
   fieldNames,
   variantFieldNames,
+  fieldNamesByVariant,
 }
 /* ownerId Not a pure module */

@@ -18,6 +18,8 @@ let acceptedResultChannel = CommandTopic$ReventlessCore.acceptedResultChannel;
 
 let rejectedResultChannel = CommandTopic$ReventlessCore.rejectedResultChannel;
 
+let ownershipRefusal = CommandTopic$ReventlessCore.ownershipRefusal;
+
 let reportAccepted = CommandTopic$ReventlessCore.reportAccepted;
 
 let reportRejected = CommandTopic$ReventlessCore.reportRejected;
@@ -51,6 +53,7 @@ export {
   fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,
+  ownershipRefusal,
   reportAccepted,
   reportRejected,
   commandOutcomeToJson,

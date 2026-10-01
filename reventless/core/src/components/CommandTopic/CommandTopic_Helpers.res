@@ -25,8 +25,11 @@ Why a command was refused.
 which is the model working. `InfrastructureFailure` is the decision never landing: an event-log
 append that failed outright or exhausted its conflict retries. Both arrive on `reportRejected`,
 so without this a consumer would read a broken event log as a business rejection.
+
+`AccessRefusal` is the handler refusing before `decide` runs, because the caller does not
+own what the command acts on (`OwnerScope.decideActing`).
 */
-type refusalCause = DomainRejection | InfrastructureFailure
+type refusalCause = DomainRejection | InfrastructureFailure | AccessRefusal
 
 /**
 What became of one command. Constructors are prefixed to stay clear of `commandOutcome`'s
@@ -92,6 +95,39 @@ let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(N
 // `Behavior.decide` returns `Error`. Read by runInlineAndCollect to build
 // `Rejected` outcomes that carry the real error code and detail.
 let rejectedResultChannel: ref<option<(string, rejectedResult) => unit>> = ref(None)
+
+/**
+Turn an `acting` verdict into the refusal a command handler reports, or `None` to let
+`decide` run.
+
+Shared by both handlers so they refuse in the same words. `errorCode` is `"Forbidden"`,
+the code an `@authorize` refusal carries, so a client handles both alike. `isDefect` marks
+a refusal that is the data's or the slice's fault rather than the caller's.
+*/
+type ownershipRefusal = {rejected: rejectedResult, isDefect: bool}
+
+let ownershipRefusal = (
+  verdict: Reventless.OwnerScope.acting,
+  ~component: string,
+  ~command: string,
+): option<ownershipRefusal> => {
+  let refuse = (~isDefect=false, why) => Some({
+    rejected: {errorCode: "Forbidden", errorDetail: `${component}.${command}: ${why}`},
+    isDefect,
+  })
+  switch verdict {
+  | MayAct => None
+  | NotTheOwner(_) => refuse("the caller does not own what this command acts on")
+  | CallerUnidentified => refuse("the caller could not be identified")
+  | ConflictingOwners(owners) =>
+    refuse(
+      ~isDefect=true,
+      `the history records ${owners->Array.length->Int.toString} different owners`,
+    )
+  | OwnerUnreadable =>
+    refuse(~isDefect=true, "the partition this command acts on could not be named")
+  }
+}
 
 // `~component` is the owning component's `Spec.name`: an outcome isn't interpretable without
 // knowing which component produced it, and the side-channel (keyed per inline dispatch) never

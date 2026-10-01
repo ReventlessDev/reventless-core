@@ -57,10 +57,29 @@ module Make = (
   let updateMeta = (command': Message.command'<'id, 'command>) =>
     Message.deriveMeta(~parent=command'.meta)
 
+  // The events whose `@owner` field names who owns this aggregate. Empty for an
+  // aggregate that marks none, and then nothing is enforced.
+  let ownerFieldsByEventType = Reventless.Owner.fieldNamesByVariant(
+    Spec.eventSchema->S.castToUnknown,
+  )
+  let actsOnOwned = ownerFieldsByEventType->Dict.keysToArray->Array.length > 0
+
+  let recordEventOwners = (owners, event: Spec.event) =>
+    if actsOnOwned {
+      let (eventType, data) = event->Message.encode(Spec.eventSchema)->Message.splitMessage
+      switch ownerFieldsByEventType->Dict.get(eventType) {
+      | Some(fields) => owners->Reventless.OwnerScope.recordOwners(~fields, data)
+      | None => owners
+      }
+    } else {
+      owners
+    }
+
   // Per-command outcome carried through the fold, paired with the originating reference and meta.
   type cmdOutcome =
     | CmdOk(array<Spec.event>)
     | CmdRejected({errorCode: string, errorDetail: string})
+    | CmdRefused(CommandTopic_Helpers.ownershipRefusal)
 
   // Folds a single command into the running accumulator: (currentState, perCommandOutcomes).
   // A domain rejection from Behavior.decide is recorded as `CmdRejected` (no state change,
@@ -69,9 +88,16 @@ module Make = (
   //
   // `~seq` is the replayed sequence number the batch decides from, carried in so
   // the line below can name the state rather than serialise it.
+  //
+  // `owners` are the distinct owners the stream records so far, including any a
+  // command earlier in the same batch just recorded.
   let processCommand = (~seq: int) =>
     (
-      (state, outcomes): (Behavior.state, array<(string, cmdOutcome, Message.meta)>),
+      (state, owners, outcomes): (
+        Behavior.state,
+        array<string>,
+        array<(string, cmdOutcome, Message.meta)>,
+      ),
       topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
     ) => {
       let {reference, command: command'} = topicItem
@@ -81,33 +107,57 @@ module Make = (
       // history, so serialising it here makes the line's size a function of how
       // long the system has been in use. The state at decision time is a
       // debugger's subject, not a log's.
-      let cmdName =
-        command'.command
-        ->Message.encode(Spec.commandSchema)
-        ->Message.variantNameOfJson
-        ->LogFormat.bold
+      let cmdVariant =
+        command'.command->Message.encode(Spec.commandSchema)->Message.variantNameOfJson
+      let cmdName = cmdVariant->LogFormat.bold
       EffectLogger.logDebug(
         ~comp,
         `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
       )->Effect.runSync
-      switch Behavior.decide(state, command'.command) {
-      | Ok(generatedEvents) =>
-        let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
-        (newState, Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]))
-      | Error(error) =>
-        let errorJson = error->Message.encode(Spec.errorSchema)
-        let errorCode = errorJson->Message.variantNameOfJson
-        // Strip the TAG so detail carries only the rejection payload (empty for unit errors).
-        let (_, payloadDict) = errorJson->Message.splitMessage
-        let errorDetail =
-          payloadDict->Dict.toArray->Array.length == 0
-            ? ""
-            : payloadDict->JSON.Encode.object->JSON.stringify
-        EffectLogger.logError(
-          ~comp,
-          `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
+      // Before `decide`: an owner-marked aggregate refuses a caller who does not
+      // own the stream.
+      let refusal = actsOnOwned
+        ? Reventless.OwnerScope.decideActing(
+            ~claim=command'.meta.callerClaim,
+            ~recordedOwners=Some(owners),
+          )->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=cmdVariant)
+        : None
+      switch refusal {
+      | Some(refused) =>
+        let line = `refused: ${refused.rejected.errorDetail} id=${id}`
+
+        (
+          refused.isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
         )->Effect.runSync
-        (state, Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]))
+        (state, owners, Array.concat(outcomes, [(reference, CmdRefused(refused), meta)]))
+      | None =>
+        switch Behavior.decide(state, command'.command) {
+        | Ok(generatedEvents) =>
+          let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
+          (
+            newState,
+            generatedEvents->Array.reduce(owners, recordEventOwners),
+            Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]),
+          )
+        | Error(error) =>
+          let errorJson = error->Message.encode(Spec.errorSchema)
+          let errorCode = errorJson->Message.variantNameOfJson
+          // Strip the TAG so detail carries only the rejection payload (empty for unit errors).
+          let (_, payloadDict) = errorJson->Message.splitMessage
+          let errorDetail =
+            payloadDict->Dict.toArray->Array.length == 0
+              ? ""
+              : payloadDict->JSON.Encode.object->JSON.stringify
+          EffectLogger.logError(
+            ~comp,
+            `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
+          )->Effect.runSync
+          (
+            state,
+            owners,
+            Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]),
+          )
+        }
       }
     }
 
@@ -115,8 +165,8 @@ module Make = (
 
   // In-process replay cache (per warm Lambda instance, per aggregate — the
   // functor instance owns the cache, so the event log is implicit and the key
-  // is just the aggregate id). Holds the `(state, sequenceNr)` the previous
-  // command batch for that id left behind.
+  // is just the aggregate id). Holds the `(state, sequenceNr, owners)` the
+  // previous command batch for that id left behind.
   //
   // On a hit, `replayProcessAppend` skips the event-log replay entirely and
   // decides on the cached state; after a successful append it stores the
@@ -129,7 +179,9 @@ module Make = (
   // the fixed capacity (a per-aggregate knob is a future refinement — see
   // docs/plans/done/aggregate-snapshotting.md).
   let replayCacheCapacity = 100
-  let replayCache: Lru.t<string, (Behavior.state, int)> = Lru.make(~capacity=replayCacheCapacity)
+  let replayCache: Lru.t<string, (Behavior.state, int, array<string>)> = Lru.make(
+    ~capacity=replayCacheCapacity,
+  )
 
   let resetCache = () => replayCache->Lru.clear
 
@@ -139,7 +191,17 @@ module Make = (
   // one every `interval` events. Snapshots are a read optimization only — the
   // OCC append remains the sole consistency primitive, so a missing, drifted,
   // or corrupt snapshot degrades silently to full replay.
-  let snapshotConfig = Behavior.snapshot
+  //
+  // Off for an owner-marked aggregate: a snapshot holds the state alone, so a
+  // replay seeded from one would never see the event that recorded the owner,
+  // and the ownership check would pass every caller.
+  let snapshotConfig = actsOnOwned ? None : Behavior.snapshot
+  if actsOnOwned && Behavior.snapshot->Option.isSome {
+    EffectLogger.logWarn(
+      ~comp,
+      "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry",
+    )->Effect.runSync
+  }
 
   // Structural hash of the state schema, computed once. Stored on every written
   // snapshot and compared on read: a snapshot whose hash differs from the
@@ -183,8 +245,8 @@ module Make = (
 
   // Cold read (in-process cache miss): when snapshots are enabled, seed from the
   // latest persisted snapshot (hash-gated) and replay only the events after it;
-  // otherwise replay full history from seq 0. Returns `(state, sequenceNr)` where
-  // sequenceNr is the total event count (the OCC condition for the next append).
+  // otherwise replay full history from seq 0. Returns `(state, sequenceNr, owners)`
+  // where sequenceNr is the total event count (the OCC condition for the next append).
   let coldReadState = id => {
     let idStr = id->Spec.Id.toString
     let seedEffect = switch snapshotConfig {
@@ -220,8 +282,12 @@ module Make = (
     }
     seedEffect->Effect.flatMap(((seedState, seedSeq)) =>
       Ops.eventLog.replayStream(id, ~fromSeq=seedSeq)
-      ->Stream.runFold((seedState, seedSeq), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
-      ->Effect.tap(((_, n)) => {
+      ->Stream.runFold((seedState, seedSeq, []), ((st, n, owners), ev) => (
+        Behavior.evolve(st, ev),
+        n + 1,
+        owners->recordEventOwners(ev),
+      ))
+      ->Effect.tap(((_, n, _)) => {
         let detail =
           seedSeq > 0
             ? `(snapshot@${seedSeq->Int.toString}, ${(n - seedSeq)->Int.toString} delta event(s))`
@@ -305,6 +371,14 @@ module Make = (
           {errorCode, errorDetail},
         )
         Ok(reference)
+      | CmdRefused({rejected}) =>
+        CommandTopic_Helpers.reportRejected(
+          ~component=Spec.name,
+          ~cause=AccessRefusal,
+          reference,
+          rejected,
+        )
+        Ok(reference)
       | CmdOk(_) if appendSucceeded =>
         CommandTopic_Helpers.reportAccepted(
           ~component=Spec.name,
@@ -339,24 +413,27 @@ module Make = (
     // path (`coldReadState`): seed from the persisted snapshot when enabled, else
     // full replay.
     let readState = switch replayCache->Lru.get(idStr) {
-    | Some((state, seqNr)) =>
+    | Some((state, seqNr, owners)) =>
       EffectLogger.logInfo(
         ~comp,
         `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
-      )->Effect.map(_ => (state, seqNr))
+      )->Effect.map(_ => (state, seqNr, owners))
     | None => coldReadState(id)
     }
 
-    readState->Effect.flatMap(((initialState, sequenceNr)) => {
-      let (finalState, outcomes) =
-        topicItemsForId->Array.reduce((initialState, []), processCommand(~seq=sequenceNr))
+    readState->Effect.flatMap(((initialState, sequenceNr, initialOwners)) => {
+      let (finalState, finalOwners, outcomes) =
+        topicItemsForId->Array.reduce(
+          (initialState, initialOwners, []),
+          processCommand(~seq=sequenceNr),
+        )
 
       let eventsToAppend =
         outcomes
         ->Array.map(((_reference, outcome, meta)) =>
           switch outcome {
           | CmdOk(events) => events->Array.map(event => {Message.id, meta, event})
-          | CmdRejected(_) => []
+          | CmdRejected(_) | CmdRefused(_) => []
           }
         )
         ->Array.flat
@@ -365,7 +442,7 @@ module Make = (
       | [] =>
         // Nothing appended, but the read snapshot is valid — keep it warm for
         // the next command (also refreshes recency on a cache hit).
-        replayCache->Lru.put(idStr, (initialState, sequenceNr))
+        replayCache->Lru.put(idStr, (initialState, sequenceNr, initialOwners))
         let perRef = reportFinalOutcomes(
           outcomes,
           ~entityId=idStr,
@@ -392,7 +469,7 @@ module Make = (
             // The post-decide fold state IS the post-append replay result;
             // cache it so the next command for this id skips the replay.
             let newSeq = sequenceNr + generatedEvents'->Array.length
-            replayCache->Lru.put(idStr, (finalState, newSeq))
+            replayCache->Lru.put(idStr, (finalState, newSeq, finalOwners))
             // Persist a snapshot if this append crossed an interval boundary
             // (fire-and-forget — never blocks or fails the command).
             maybeWriteSnapshot(id, idStr, ~oldSeq=sequenceNr, ~newSeq, finalState)

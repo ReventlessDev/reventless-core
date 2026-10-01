@@ -55,13 +55,13 @@ let stampOwnerFields = (
   obj: dict<JSON.t>,
   ~commandSchema: S.t<unknown>,
   ~command: string,
-  ~identity: Reventless.Identity.t,
+  ~scope: Reventless.OwnerScope.t,
   ~serviceName: string,
 ) =>
   switch Reventless.Owner.variantFieldNames(commandSchema, ~variant=command) {
   | [] => ()
   | ownerFields =>
-    switch identity->Reventless.OwnerScope.resolve {
+    switch scope {
     | System | Elevated(_) => ()
     | Owned({userId}) =>
       ownerFields->Array.forEach(field => obj->Dict.set(field, JSON.Encode.string(userId)))
@@ -118,6 +118,11 @@ let makeGenerateCommand = (
   (payload: CommandGenerator.payload) =>
     Effect.sync(() => {
       let msgId = Message.uuid()
+      // One classification for the stamp below and for the claim the handler
+      // checks ownership against, so the two cannot disagree about the caller.
+      // The claim is built here and nowhere from the payload, which is all a
+      // client controls.
+      let scope = payload.identity->Reventless.OwnerScope.resolve
       let meta = {
         {
           Message.service: serviceName,
@@ -126,6 +131,7 @@ let makeGenerateCommand = (
           time: Message.nowAsISOString(),
           msgId,
           correlationId: msgId,
+          callerClaim: scope->Reventless.OwnerScope.toClaim,
         }
       }
       let params = switch payload.arguments
@@ -136,12 +142,7 @@ let makeGenerateCommand = (
             obj->Dict.delete("id")
           }
           obj->dropNullArguments
-          obj->stampOwnerFields(
-            ~commandSchema,
-            ~command=payload.command,
-            ~identity=payload.identity,
-            ~serviceName,
-          )
+          obj->stampOwnerFields(~commandSchema, ~command=payload.command, ~scope, ~serviceName)
           obj->Dict.toArray
         }
       | None =>

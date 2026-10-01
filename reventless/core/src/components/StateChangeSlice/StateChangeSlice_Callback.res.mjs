@@ -8,10 +8,12 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Lru$ReventlessCore from "../../util/Lru.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Metrics$ReventlessCore from "../../util/Metrics.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
@@ -37,6 +39,8 @@ function Make(Spec) {
       }
     });
     let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas(Spec.name, Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
+    let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.consumedEventSchema);
+    let actsOnOwned = Object.keys(ownerFieldsByEventType).length !== 0;
     let readEventId = (partitionTag, tags) => {
       let ownTagValues = () => {
         let vals = Stdlib_Array.reduce(tags, [], (acc, t) => {
@@ -104,6 +108,26 @@ function Make(Spec) {
       } else {
         entityId = undefined;
       }
+      let ownerFieldsOf = raw => {
+        if (partitionTag !== undefined) {
+          if (entityId !== undefined) {
+            if (actsOnOwned && DcbTag$Reventless.partitionValueOfTags(raw.tags, partitionTag) === entityId) {
+              return Stdlib_Option.getOr(ownerFieldsByEventType[raw.eventType], []);
+            } else {
+              return [];
+            }
+          } else {
+            return [];
+          }
+        } else {
+          return [];
+        }
+      };
+      let ownershipRefusal = owners => {
+        if (actsOnOwned) {
+          return CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, Stdlib_Option.map(entityId, param => owners)), Spec.name, Message$ReventlessCore.variantNameOfJson(cmdJson.commandJson));
+        }
+      };
       let cacheKey = JSON.stringify(query);
       let cacheGet = () => {
         if (cacheKey !== undefined) {
@@ -128,10 +152,12 @@ function Make(Spec) {
         let match = seed.contents;
         let match$1 = match !== undefined ? [
             match[0],
-            match[1]
+            match[1],
+            match[2]
           ] : [
             Behavior.initialState,
-            undefined
+            undefined,
+            []
           ];
         let afterPos = match$1[1];
         let cacheHit = Stdlib_Option.isSome(seed.contents);
@@ -148,12 +174,17 @@ function Make(Spec) {
             break;
         }
         return Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, afterPos, strongConsistency), raw => {
-          let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
+          let data = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {});
+          let decoded = decoder.decode(raw.eventType, data);
           return Stdlib_Option.map(decoded, event => [
             event,
             raw.position,
             raw.eventType,
-            readEventId(partitionTag, raw.tags)
+            readEventId(partitionTag, raw.tags),
+            [
+              ownerFieldsOf(raw),
+              data
+            ]
           ]);
         }), opt => {
           if (opt !== undefined) {
@@ -164,14 +195,17 @@ function Make(Spec) {
         }), [
           match$1[0],
           afterPos,
-          []
+          [],
+          match$1[2]
         ], (param, param$1) => {
+          let match = param$1[4];
           let eventId = param$1[3];
           let eventType = param$1[2];
           return [
             Behavior.evolve(param[0], param$1[0]),
             param$1[1],
-            param[2].concat([eventId !== undefined ? LogFormat$ReventlessCore.bold(eventType) + `(` + eventId + `)` : LogFormat$ReventlessCore.bold(eventType)])
+            param[2].concat([eventId !== undefined ? LogFormat$ReventlessCore.bold(eventType) + `(` + eventId + `)` : LogFormat$ReventlessCore.bold(eventType)]),
+            OwnerScope$Reventless.recordOwners(param[3], match[0], match[1])
           ];
         }), param => {
           let reads = param[2];
@@ -184,16 +218,33 @@ function Make(Spec) {
             reads.length === 0 ? "" : ` [` + reads.join(", ") + `]`
           ));
         }), param => {
+          let owners = param[3];
           let headPosition = param[1];
           let state = param[0];
           return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
+            let match = ownershipRefusal(owners);
+            if (match !== undefined) {
+              let rejected = match.rejected;
+              cachePut([
+                state,
+                headPosition,
+                owners
+              ]);
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.msgId, rejected);
+              let line = `refused: ` + rejected.errorDetail + ` id=` + Stdlib_Option.getOr(entityId, "-");
+              return Effect.map(match.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, line), () => ({
+                TAG: "Ok",
+                _0: "rejected"
+              }));
+            }
             let newEvents = Behavior.decide(state, command$p.command);
             if (newEvents.TAG === "Ok") {
               let newEvents$1 = newEvents._0;
               if (newEvents$1.length === 0) {
                 cachePut([
                   state,
-                  headPosition
+                  headPosition,
+                  owners
                 ]);
                 CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.msgId, entityId !== undefined ? ({
                     entityId: entityId,
@@ -243,7 +294,8 @@ function Make(Spec) {
                 if (appendResult.TAG === "Ok") {
                   cachePut([
                     state,
-                    headPosition
+                    headPosition,
+                    owners
                   ]);
                   CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.msgId, entityId !== undefined ? ({
                       entityId: entityId,
@@ -270,7 +322,8 @@ function Make(Spec) {
                 if (retries > 0) {
                   seed.contents = [
                     state,
-                    headPosition
+                    headPosition,
+                    owners
                   ];
                   Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
                   return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + errDetail), () => attempt(retries - 1 | 0));
@@ -292,12 +345,13 @@ function Make(Spec) {
             }
             cachePut([
               state,
-              headPosition
+              headPosition,
+              owners
             ]);
             let errorJson = Util_Sury$Reventless.toJson(newEvents._0, Spec.errorSchema);
             let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
-            let match = Message$ReventlessCore.splitMessage(errorJson);
-            let payloadDict = match[1];
+            let match$1 = Message$ReventlessCore.splitMessage(errorJson);
+            let payloadDict = match$1[1];
             let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
             CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.msgId, {
               errorCode: errorCode,

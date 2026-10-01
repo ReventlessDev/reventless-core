@@ -3,9 +3,12 @@
 
 @@reventless.spec
 
+// `@owner` on the consumed `customerId` says whose order this is. The framework
+// reads it before `decide` and refuses a shopper cancelling someone else's order;
+// an operator, or an automation, still acts on anyone's.
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<CatalogSpec.ProductId.t>})
+  | OrderPlaced({productIds: array<CatalogSpec.ProductId.t>, @owner customerId: CustomerId.t})
   | OrderShipped
   | OrderCancelled
   | OrderReopened
