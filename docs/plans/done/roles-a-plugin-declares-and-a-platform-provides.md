@@ -440,7 +440,9 @@ them on top of the roles this plan introduces (§2).
    them (§3).
 2. **Supplied user pools** declare their groups with `providedGroups`, and the
    check fails by default (§5). *Open:* whether to add, later, a deploy-time
-   comparison of the declared list with the pool's real groups.
+   comparison of the declared list with the pool's real groups. Taken up in
+   `groups-checked-against-the-pool.md`, after plugin stacks turned out to
+   have no manifest to read.
 3. **Old names.** `AllowGroups` and `AdminGroup` are removed in this change
    (§6).
    `REVENTLESS_ELEVATED_GROUPS` stays as the only environment variable; there is

@@ -107,12 +107,9 @@ module MakeWithConfig = (
   let _ = Config.commandHandlerConfig
 
   // What this platform provides for the roles its plugins need: every account it
-  // can sign in as, built-in and manifest alike. The manifest is read here rather
-  // than from the user store, which loads only when the servers start — after
-  // the plugins are built and checked.
-  Reventless.Role.provideGroupsFrom(() =>
-    LocalAuth.knownGroups()->Array.concat(Reventless.AccountsManifest.declaredGroups())
-  )
+  // can sign in as, built-in and loaded alike, or the file the store will load
+  // when the servers start — after the plugins are built and checked.
+  Reventless.Role.provideGroupsFrom(UserStore.providedGroups)
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
   let _ = TestRunner.setup()
@@ -2447,6 +2444,10 @@ module MakeWithConfig = (
         | Platform => "Platform"
         }}`,
     )
+
+    // The role check below reads the accounts as they stand; a user store
+    // loaded from elsewhere after this would leave it compared with the wrong ones.
+    UserStore.pluginChecked := true
 
     // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
     // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.

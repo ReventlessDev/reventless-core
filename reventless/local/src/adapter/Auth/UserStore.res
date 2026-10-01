@@ -56,12 +56,35 @@ type resolution =
 // auto-discovery before `Platform.startServers`.
 let resolved: ref<bool> = ref(false)
 
-let resetResolution = (): unit => resolved := false
+/** Set once a plugin has been built, and with it the check that every role it
+    needs has a group among these accounts. */
+let pluginChecked: ref<bool> = ref(false)
+
+let resetResolution = (): unit => {
+  resolved := false
+  pluginChecked := false
+}
+
+/**
+The groups the store's accounts will belong to, for the role check, which runs
+before the servers start and load it: the loaded accounts once `load` has run,
+otherwise the default file `autoLoadOnce` will read (or the template `setup`
+makes it from). Never the working directory once another source was loaded.
+*/
+let providedGroups = (): array<string> =>
+  LocalAuth.knownGroups()->Array.concat(resolved.contents ? [] : AccountsManifest.declaredGroups())
 
 let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): result<
   resolution,
   string,
 > => {
+  // The default file is what the check already read; any other source arrives
+  // after it, and the check would have compared the plugins with other accounts.
+  if pluginChecked.contents && (users->Option.isSome || usersFile->Option.isSome) {
+    JsError.throwWithMessage(
+      "UserStore.load(~users / ~usersFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call UserStore.load before deploying plugins.",
+    )
+  }
   resolved := true
   switch users {
   | Some(entries) =>

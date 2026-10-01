@@ -85,23 +85,60 @@ let groupSources = {
   contents: []
 };
 
+let declaredGroups = {
+  contents: []
+};
+
+let listing = {
+  contents: undefined
+};
+
 function provideGroupsFrom(source) {
   groupSources.contents = groupSources.contents.concat([source]);
 }
 
 function provideGroups(groups) {
+  declaredGroups.contents = declaredGroups.contents.concat(groups);
   provideGroupsFrom(() => groups);
+}
+
+function provideListedGroups(source, groups) {
+  listing.contents = {
+    source: source,
+    groups: groups
+  };
 }
 
 function clearProvidedGroups() {
   groupSources.contents = [];
+  declaredGroups.contents = [];
+  listing.contents = undefined;
+}
+
+function _distinct(groups) {
+  return Array.from(new Set(groups).values());
 }
 
 function providedGroups() {
-  let sources = groupSources.contents;
-  if (sources.length !== 0) {
-    return Array.from(new Set(sources.flatMap(source => source()).concat(renamed().map(param => param[1]))).values());
+  let match = listing.contents;
+  let match$1 = groupSources.contents;
+  if (match !== undefined) {
+    return Array.from(new Set(match.groups).values());
   }
+  if (match$1.length === 0) {
+    return;
+  }
+  let groups = match$1.flatMap(source => source()).concat(renamed().map(param => param[1]));
+  return Array.from(new Set(groups).values());
+}
+
+function declaredButMissing() {
+  let match = listing.contents;
+  if (match === undefined) {
+    return [];
+  }
+  let groups = match.groups;
+  return declaredGroups.contents.filter(g => !groups.includes(g));
 }
 
 let envKey = "REVENTLESS_ROLE_GROUPS";
@@ -121,9 +158,14 @@ export {
   groupOf,
   adminGroup,
   groupSources,
+  declaredGroups,
+  listing,
   provideGroupsFrom,
   provideGroups,
+  provideListedGroups,
   clearProvidedGroups,
+  _distinct,
   providedGroups,
+  declaredButMissing,
 }
 /* nameSchema Not a pure module */

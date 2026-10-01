@@ -3,6 +3,7 @@
 import * as Nodefs from "node:fs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as LocalAuth$ReventlessLocal from "./LocalAuth.res.mjs";
 import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
 
@@ -25,11 +26,23 @@ let resolved = {
   contents: false
 };
 
+let pluginChecked = {
+  contents: false
+};
+
 function resetResolution() {
   resolved.contents = false;
+  pluginChecked.contents = false;
+}
+
+function providedGroups() {
+  return LocalAuth$ReventlessLocal.knownGroups().concat(resolved.contents ? [] : AccountsManifest$Reventless.declaredGroups());
 }
 
 function load(users, usersFile, param) {
+  if (pluginChecked.contents && (Stdlib_Option.isSome(users) || Stdlib_Option.isSome(usersFile))) {
+    Stdlib_JsError.throwWithMessage("UserStore.load(~users / ~usersFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call UserStore.load before deploying plugins.");
+  }
   resolved.contents = true;
   if (users !== undefined) {
     _registerEntries(users);
@@ -84,7 +97,9 @@ export {
   _registerEntries,
   _defaultPath,
   resolved,
+  pluginChecked,
   resetResolution,
+  providedGroups,
   load,
   autoLoadOnce,
 }

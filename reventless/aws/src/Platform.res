@@ -112,10 +112,33 @@ let messagingEmailProviderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.
     resolves roles while it is built, and a mapping stated later is refused. */
 let roleGroups = Reventless.Role.setGroups
 
-/** The groups of a user pool this deployment did not create, which no accounts
-    manifest names. They count as provided by the check that every role a plugin
-    needs has a group. */
+/** Groups a root says its identity provider has, for a provider the platform
+    cannot list. Where it can (`loadProvidedGroups`), the listing decides, and a
+    declared group the pool lacks fails the deploy. */
 let providedGroups = Reventless.Role.provideGroups
+
+/** The platform stack a plugin stack deploys against (`platform:stack`), or
+    `None` in a program that is its own platform. One reference per program:
+    a second with the same name is a duplicate resource. */
+let platformStackRefCache: ref<option<option<Pulumi.StackReference.t>>> = ref(None)
+
+let platformStackReference = (): option<Pulumi.StackReference.t> =>
+  switch platformStackRefCache.contents {
+  | Some(stackRef) => stackRef
+  | None =>
+    let stackRef =
+      Pulumi.Config.make(Some("platform"))
+      ->Pulumi.Config.get("stack")
+      ->Option.map(stack => Pulumi.StackReference.make(stack))
+    platformStackRefCache := Some(stackRef)
+    stackRef
+  }
+
+/** Ask the user pool which groups it has, so the role check compares each
+    plugin's roles with the pool. A plugin's deploy program calls `deployPlugin`
+    once this resolves; see [Platform_ProvidedGroups]. */
+let loadProvidedGroups = (): promise<unit> =>
+  Platform_ProvidedGroups.load(~stackRef=platformStackReference())
 
 /** The group a role resolves to — the name this platform writes into its
     directives, its shell configuration and the elevated groups. For code that
@@ -164,10 +187,10 @@ module MakeWithConfig = (
   // [Reventless.OwnerScope.defaultElevatedGroups].
   Reventless.OwnerScope.defaultElevatedRoles([Reventless.Role.admin])
 
-  // What this deployment provides for the roles its plugins need: the
-  // administrator group the stack declares, and the groups of the accounts
-  // provisioning creates. Read when each plugin is built, after the root has
-  // mapped its roles.
+  // What this deployment provides for the roles its plugins need, where the pool
+  // was not listed (`loadProvidedGroups`): the administrator group the stack
+  // declares, and the groups of the accounts provisioning creates. Read when each
+  // plugin is built, after the root has mapped its roles.
   Reventless.Role.provideGroupsFrom(() =>
     [Reventless.Role.adminGroup()]->Array.concat(Reventless.AccountsManifest.declaredGroups())
   )
@@ -228,10 +251,7 @@ module MakeWithConfig = (
   // Determine API source based on platform:stack config.
   // - Platform/monolithic mode (no config): create a real AppSync API resource.
   // - Plugin mode (config set): reference the platform's shared API via StackReference.
-  let platformStackRef =
-    Pulumi.Config.make(Some("platform"))
-    ->Pulumi.Config.get("stack")
-    ->Option.map(stack => Pulumi.StackReference.make(stack))
+  let platformStackRef = platformStackReference()
 
   // The declared object stores, as the upload claimer needs them: qualified
   // name, physical bucket, served prefix.

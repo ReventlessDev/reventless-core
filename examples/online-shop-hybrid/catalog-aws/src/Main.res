@@ -6,6 +6,8 @@ ReventlessInfra.DeployBootstrap.run(PreDeploy)
 module Platform = ReventlessAws.Platform.Make()
 module Catalog = Plugin.Make(Platform)
 
-let default = Platform.deployPlugin(~plugin=module(Catalog))
-
-ReventlessInfra.DeployBootstrap.run(PostDeploy)
+let default = ReventlessAws.Platform.loadProvidedGroups()->Promise.thenResolve(() => {
+  let deployed = Platform.deployPlugin(~plugin=module(Catalog))
+  ReventlessInfra.DeployBootstrap.run(PostDeploy)
+  deployed
+})

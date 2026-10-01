@@ -567,12 +567,17 @@ let renderMain = (~config: Config.config): string => {
     "module Platform = ReventlessAws.Platform.Make()",
     "module " ++ name ++ " = Plugin.Make(Platform)",
     "",
-    "let default = Platform.deployPlugin(",
-    "  ~plugin=module(" ++ name ++ "),",
-    ")",
-    "",
+    // The plugin is deployed once the user pool's groups are in, for the check
+    // that every role it needs has one, which runs while `deployPlugin` builds
+    // it. A promise rather than a top-level await: Pulumi `require`s the
+    // program, which Node refuses for a module that awaits at the top level.
+    // Pulumi resolves the promise in the stack outputs.
+    "let default = ReventlessAws.Platform.loadProvidedGroups()->Promise.thenResolve(() => {",
+    "  let deployed = Platform.deployPlugin(~plugin=module(" ++ name ++ "))",
     // PostDeploy runs after the graph is registered (exports, cross-stack output).
-    "ReventlessInfra.DeployBootstrap.run(PostDeploy)",
+    "  ReventlessInfra.DeployBootstrap.run(PostDeploy)",
+    "  deployed",
+    "})",
     "",
   ]->Array.join("\n")
 }

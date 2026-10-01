@@ -221,6 +221,34 @@ describe("RoleCoverage.check", () => {
     ])
   })
 
+  testSync("a listing is the whole answer: a mapped group the provider lacks is missing", () => {
+    Role.provideGroups(["Admin"])
+    Role.setGroups([(role(Merchandiser), "shop-merch-team")])
+    Role.provideListedGroups(~source="user pool p1", ["Admin"])
+    expect(
+      refusal(() => RoleCoverage.check(gated, ~plugin="Catalog"))->Option.map(
+        m =>
+          m->String.includes("needs the role Merchandiser (mapped to the group shop-merch-team)") &&
+            m->String.includes("  User pool p1 has the groups: Admin"),
+      ),
+    )->toEqual(Some(true))
+  })
+
+  testSync("passes when the provider lists every group", () => {
+    Role.provideListedGroups(~source="user pool p1", ["Admin", "Merchandiser", "Shopper"])
+    expect(refusal(() => RoleCoverage.check(gated, ~plugin="Catalog")))->toEqual(None)
+  })
+
+  testSync("a declared group the provider does not have is refused", () => {
+    Role.provideGroups(["Merchandiser", "Fulfilment"])
+    Role.provideListedGroups(~source="user pool p1", ["Admin", "Merchandiser"])
+    expect(
+      refusal(() => RoleCoverage.check(gated, ~plugin="Catalog"))->Option.map(
+        m => m->String.includes("that user pool p1 does not have: Fulfilment"),
+      ),
+    )->toEqual(Some(true))
+  })
+
   testSync("an elevated role nobody provides is refused too", () => {
     Role.provideGroups(["Admin", "Merchandiser"])
     OwnerScope.setElevatedRoles([role(Fulfilment)])

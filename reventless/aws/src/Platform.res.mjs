@@ -80,6 +80,7 @@ import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/Eve
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
+import * as Platform_ProvidedGroups$ReventlessAws from "./Platform_ProvidedGroups.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
@@ -152,6 +153,24 @@ let messagingEmailProviderRef = {
   contents: Pulumi.output("")
 };
 
+let platformStackRefCache = {
+  contents: undefined
+};
+
+function platformStackReference() {
+  let stackRef = platformStackRefCache.contents;
+  if (stackRef !== undefined) {
+    return Primitive_option.valFromOption(stackRef);
+  }
+  let stackRef$1 = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+  platformStackRefCache.contents = Primitive_option.some(stackRef$1);
+  return stackRef$1;
+}
+
+function loadProvidedGroups() {
+  return Platform_ProvidedGroups$ReventlessAws.load(platformStackReference());
+}
+
 function MakeWithConfig(Config) {
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   Role$Reventless.provideGroupsFrom(() => [Role$Reventless.adminGroup()].concat(AccountsManifest$Reventless.declaredGroups()));
@@ -183,7 +202,7 @@ function MakeWithConfig(Config) {
   let currentDeployTarget = {
     contents: "Domain"
   };
-  let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+  let platformStackRef = platformStackReference();
   let claimStores = () => {
     if (platformStackRef !== undefined) {
       return Primitive_option.valFromOption(platformStackRef).getOutput("objectStores").apply(objectStores => Stdlib_Array.filterMap(Object.entries(Stdlib_Option.getOr(Stdlib_Option.flatMap(objectStores, Stdlib_JSON.Decode.object), {})), param => {
@@ -1599,7 +1618,7 @@ function Make($star) {
   let currentDeployTarget = {
     contents: "Domain"
   };
-  let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+  let platformStackRef = platformStackReference();
   let claimStores = () => {
     if (platformStackRef !== undefined) {
       return Primitive_option.valFromOption(platformStackRef).getOutput("objectStores").apply(objectStores => Stdlib_Array.filterMap(Object.entries(Stdlib_Option.getOr(Stdlib_Option.flatMap(objectStores, Stdlib_JSON.Decode.object), {})), param => {
@@ -2984,6 +3003,9 @@ export {
   messagingEmailProviderRef,
   roleGroups,
   providedGroups,
+  platformStackRefCache,
+  platformStackReference,
+  loadProvidedGroups,
   groupOf,
   adminGroup,
   MakeWithConfig,

@@ -291,6 +291,37 @@ module AdminListGroupsForUserCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module ListGroupsCommand = {
+  type t
+
+  /** A page holds at most 60 groups; follow `NextToken` for the rest. */
+  type input = {
+    @as("UserPoolId") userPoolId: string,
+    @as("Limit") limit?: int,
+    @as("NextToken") nextToken?: string,
+  }
+
+  type group = {@as("GroupName") groupName?: string}
+
+  type output = {
+    @as("Groups") groups?: array<group>,
+    @as("NextToken") nextToken?: string,
+  }
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "ListGroupsCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/ListGroupsCommand/
+    */
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 module CreateUserPoolCommand = {
   type t
 

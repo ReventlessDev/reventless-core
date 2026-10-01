@@ -15,6 +15,11 @@ external getOutput: (t, string) => Output.t<option<'a>> = "getOutput"
 @send
 external requireOutput: (t, Input.t<string>) => Output.t<'a> = "requireOutput"
 
+/** The output's plain value, `undefined` when the stack does not export it.
+    Readable in a preview, and outside any `Output.apply`. */
+@send
+external getOutputValue: (t, string) => promise<option<'a>> = "getOutputValue"
+
 @send @deprecated("JS Api deprecated this function")
 external getOutputSync: (t, string) => option<'a> = "getOutputSync"
 

@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "./Role.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as OwnerScope$Reventless from "./OwnerScope.res.mjs";
 
 function needsOf(structure, plugin) {
@@ -45,8 +46,21 @@ function describe(n) {
   }
 }
 
-function unmetMessage(missing, provided) {
-  return `Roles this platform cannot provide — every caller would be refused:\n` + missing.map(n => `  ` + describe(n)).join("\n") + (`\n  The platform provides the groups: ` + provided.join(", ") + `.\n`) + `  Add an account in that group to the accounts manifest (.reventless/users.yaml), map the role to a group that exists (Platform.roleGroups), or declare the groups of a user pool this deployment did not create (Platform.providedGroups).`;
+function remedy(provided, listing) {
+  if (listing === undefined) {
+    return `  The platform provides the groups: ` + provided.join(", ") + `.\n  Add an account in that group to the accounts manifest (.reventless/users.yaml), map the role to a group that exists (Platform.roleGroups), or declare the groups of a user pool this deployment did not create (Platform.providedGroups).`;
+  }
+  let source = listing.source;
+  let source$1 = source.charAt(0).toUpperCase() + source.slice(1);
+  return `  ` + source$1 + ` has the groups: ` + provided.join(", ") + `.\n  Create the group there (provision-accounts creates the groups of the accounts manifest), or map the role to a group it has (Platform.roleGroups).`;
+}
+
+function unmetMessage(missing, provided, listing) {
+  return `Roles this platform cannot provide — every caller would be refused:\n` + missing.map(n => `  ` + describe(n)).join("\n") + "\n" + remedy(provided, listing);
+}
+
+function contradictedMessage(groups, listing) {
+  return `Groups declared with Platform.providedGroups that ` + listing.source + ` does not have: ` + (groups.join(", ") + `.\n`) + (`  It has: ` + listing.groups.join(", ") + `. Create them there or remove the declaration.`);
 }
 
 function check(structure, plugin) {
@@ -54,10 +68,15 @@ function check(structure, plugin) {
   if (provided === undefined) {
     return;
   }
+  let listing = Role$Reventless.listing.contents;
+  let match = Role$Reventless.declaredButMissing();
+  if (listing !== undefined && Primitive_object.notequal(match, [])) {
+    Stdlib_JsError.throwWithMessage(contradictedMessage(match, listing));
+  }
   let elevated = Stdlib_Option.getOr(OwnerScope$Reventless.explicitElevatedRoles.contents, []);
   let missing = unmet(needsOf(structure, plugin).concat(elevatedNeeds(elevated)), provided);
   if (missing.length !== 0) {
-    return Stdlib_JsError.throwWithMessage(unmetMessage(missing, provided));
+    return Stdlib_JsError.throwWithMessage(unmetMessage(missing, provided, listing));
   }
 }
 
@@ -66,7 +85,9 @@ export {
   elevatedNeeds,
   unmet,
   describe,
+  remedy,
   unmetMessage,
+  contradictedMessage,
   check,
 }
 /* Role-Reventless Not a pure module */

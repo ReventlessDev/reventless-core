@@ -10,11 +10,13 @@ let Platform = Platform$ReventlessAws.Make({});
 
 let Catalog = Plugin.Make(Platform);
 
-let $$default = Platform.deployPlugin({
-  make: Catalog.make
-}, undefined);
-
-DeployBootstrap$ReventlessInfra.run("PostDeploy");
+let $$default = Platform$ReventlessAws.loadProvidedGroups().then(() => {
+  let deployed = Platform.deployPlugin({
+    make: Catalog.make
+  }, undefined);
+  DeployBootstrap$ReventlessInfra.run("PostDeploy");
+  return deployed;
+});
 
 export {
   Platform,

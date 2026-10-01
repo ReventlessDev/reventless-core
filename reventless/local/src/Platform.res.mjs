@@ -26,12 +26,10 @@ import * as UiSlots$ReventlessLocal from "./UiSlots.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
-import * as LocalAuth$ReventlessLocal from "./adapter/Auth/LocalAuth.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
-import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
@@ -143,7 +141,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 }
 
 function MakeWithConfig(Config) {
-  Role$Reventless.provideGroupsFrom(() => LocalAuth$ReventlessLocal.knownGroups().concat(AccountsManifest$Reventless.declaredGroups()));
+  Role$Reventless.provideGroupsFrom(UserStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
   if (typeof match !== "object") {
@@ -1757,6 +1755,7 @@ function MakeWithConfig(Config) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform", undefined, `deployPlugin target=` + tmp);
+    UserStore$ReventlessLocal.pluginChecked.contents = true;
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp$1;
@@ -1909,7 +1908,7 @@ function MakeWithConfig(Config) {
 
 function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
-  Role$Reventless.provideGroupsFrom(() => LocalAuth$ReventlessLocal.knownGroups().concat(AccountsManifest$Reventless.declaredGroups()));
+  Role$Reventless.provideGroupsFrom(UserStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();
@@ -3502,6 +3501,7 @@ function Make($star) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform", undefined, `deployPlugin target=` + tmp);
+    UserStore$ReventlessLocal.pluginChecked.contents = true;
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp$1;

@@ -365,11 +365,11 @@ function renderMain(config) {
     "module Platform = ReventlessAws.Platform.Make()",
     "module " + name + " = Plugin.Make(Platform)",
     "",
-    "let default = Platform.deployPlugin(",
-    "  ~plugin=module(" + name + "),",
-    ")",
-    "",
-    "ReventlessInfra.DeployBootstrap.run(PostDeploy)",
+    "let default = ReventlessAws.Platform.loadProvidedGroups()->Promise.thenResolve(() => {",
+    "  let deployed = Platform.deployPlugin(~plugin=module(" + name + "))",
+    "  ReventlessInfra.DeployBootstrap.run(PostDeploy)",
+    "  deployed",
+    "})",
     ""
   ].join("\n");
 }

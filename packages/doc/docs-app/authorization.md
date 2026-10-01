@@ -80,16 +80,38 @@ because part of the deployment would already be using the old one.
 When a plugin is built, at deploy (preview included) and at local start, the
 platform checks that every role its rules name, and every elevated role, maps to
 a group it provides. Otherwise the rule would refuse everybody it was written
-for, and only a deployed stack would show it. The groups it provides are:
+for, and only a deployed stack would show it.
+
+**On AWS, the user pool is asked.** A plugin's deploy program lists the pool's
+groups before it builds the plugin (`Platform.loadProvidedGroups()`, which the
+generated `Main.res` calls), and those groups are the whole answer. A role mapped
+to a group the pool does not have is missing like any other: naming a group does
+not create it. A group declared with `Platform.providedGroups` that the pool does
+not have fails the deploy too. The deploying principal needs
+`cognito-idp:ListGroups` on the pool. A pool the platform stack created has only
+the administrator group until `provision-accounts` creates the manifest's groups,
+so on a fresh stack, provision before deploying a plugin that needs another role.
+
+Where there is no pool to ask (a program that creates its pool in the same run,
+or a root that does not call `loadProvidedGroups`), the groups provided are:
 
 - the administrator group,
 - the groups of the accounts manifest (`.reventless/users.yaml`, or the
-  `users.example.yaml` it is made from), and the built-in local accounts,
+  `users.example.yaml` it is made from), read from the directory the deploy runs in,
 - the groups the role mapping names,
-- the groups a platform root declares with `Platform.providedGroups([...])`, for a
-  user pool the deployment did not create.
+- the groups a platform root declares with `Platform.providedGroups([...])`, for an
+  identity provider that cannot be listed.
 
-A missing one fails with the plugin, the command or view, and the role named.
+**Locally,** the groups provided are those of the accounts the platform can sign
+in as: the built-in ones, plus the accounts manifest (or its template) that the
+servers load at start. A root that loads other accounts with `UserStore.load(~users)`
+or `UserStore.load(~usersFile)` must do it before deploying plugins. Then those
+accounts count, and the working directory's manifest does not. Loading them after
+a plugin has been built is refused, since the check would have compared the plugin
+with other accounts.
+
+A missing group fails with the plugin, the command or view, the role, and what to
+do about it.
 
 ## Narrowing a whole file
 

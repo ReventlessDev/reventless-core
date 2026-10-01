@@ -160,3 +160,76 @@ testPromise("autoLoadOnce is a no-op after an explicit load", async () => {
   | None => JsError.throwWithMessage("autoLoadOnce wiped explicit registration")
   }
 })
+
+// What the role check counts as provided, before the servers load the store.
+describe("UserStore.providedGroups", () => {
+  // Runs `f` in a directory holding `files` (path relative to it → contents).
+  let inDir = (files: array<(string, string)>, f) => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-provided-"]))
+    files->Array.forEach(((file, contents)) => {
+      let path = NodePath.join([dir, file])
+      NodeFs.mkdirSync(NodePath.dirname(path), {recursive: true})
+      NodeFs.writeFileSync(path, contents)
+    })
+    let cwd = NodeProcess.cwd()
+    NodeProcess.chdir(dir)
+    let result = try f() catch {
+    | exn =>
+      NodeProcess.chdir(cwd)
+      throw(exn)
+    }
+    NodeProcess.chdir(cwd)
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+    result
+  }
+  let manifest = group => `- username: m\n  password: m\n  groups: [${group}]\n`
+  let has = (group, groups) => groups->Array.includes(group)
+
+  testSync("counts the default file the servers will load", () => {
+    resetAll()
+    let groups = inDir(
+      [(".reventless/users.yaml", manifest("Merchandiser"))],
+      () => UserStore.providedGroups(),
+    )
+    expect(has("Merchandiser", groups))->toBe(true)
+  })
+
+  testSync("counts the template where setup has not made the file yet", () => {
+    resetAll()
+    let groups = inDir(
+      [("users.example.yaml", manifest("Fulfilment"))],
+      () => UserStore.providedGroups(),
+    )
+    expect(has("Fulfilment", groups))->toBe(true)
+  })
+
+  testSync("once loaded from elsewhere, counts those accounts and not the directory's", () => {
+    resetAll()
+    let _ = UserStore.load(~users=[{username: "i", password: "i", groups: ["Inline"]}], ())
+    let groups = inDir(
+      [(".reventless/users.yaml", manifest("Merchandiser"))],
+      () => UserStore.providedGroups(),
+    )
+    expect((has("Inline", groups), has("Merchandiser", groups)))->toEqual((true, false))
+  })
+
+  testSync("loading other accounts after a plugin was checked is refused", () => {
+    resetAll()
+    UserStore.pluginChecked := true
+    let refused = switch UserStore.load(
+      ~users=[{username: "late", password: "l", groups: ["Late"]}],
+      (),
+    ) {
+    | _ => false
+    | exception JsExn(_) => true
+    }
+    expect(refused)->toBe(true)
+  })
+
+  testSync("the default load after a plugin was checked is the one the check read", () => {
+    resetAll()
+    UserStore.pluginChecked := true
+    let loaded = inDir([], () => UserStore.load()->Result.isOk)
+    expect(loaded)->toBe(true)
+  })
+})

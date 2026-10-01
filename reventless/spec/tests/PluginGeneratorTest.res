@@ -28,3 +28,28 @@ describe("PluginGenerator.parseArgs", () => {
     expect(PluginGenerator.parseArgs(["--aws", "CatalogPlugin"])->Result.isError)->toBe(true)
   )
 })
+
+describe("Codegen.renderMain", () => {
+  let main = Codegen.renderMain(
+    ~config={
+      name: "Catalog",
+      heartbeatInterval: 60,
+      exclude: [],
+      componentRuntime: Dict.make(),
+      variant: Config.Aws({compositionNamespace: "CatalogPlugin"}),
+    },
+  )
+  let at = needle => main->String.indexOf(needle)
+
+  // The role check runs while `deployPlugin` builds the plugin, so the pool's
+  // groups must be in before it.
+  testSync("deploys the plugin once the user pool's groups are in", () =>
+    expect(
+      at("ReventlessAws.Platform.loadProvidedGroups()->Promise.thenResolve(") > -1 &&
+        at("ReventlessAws.Platform.loadProvidedGroups()") < at("Platform.deployPlugin("),
+    )->toBe(true)
+  )
+
+  // Pulumi `require`s the program; Node refuses that for a top-level await.
+  testSync("does not await at the top level", () => expect(at("\nawait "))->toBe(-1))
+})

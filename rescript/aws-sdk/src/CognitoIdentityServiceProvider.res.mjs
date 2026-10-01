@@ -120,7 +120,7 @@ function send$8(command) {
   return client().send(command);
 }
 
-let CreateUserPoolCommand = {
+let ListGroupsCommand = {
   Raw: Raw$9,
   send: send$8
 };
@@ -131,7 +131,7 @@ function send$9(command) {
   return client().send(command);
 }
 
-let ListUserPoolsCommand = {
+let CreateUserPoolCommand = {
   Raw: Raw$10,
   send: send$9
 };
@@ -142,9 +142,20 @@ function send$10(command) {
   return client().send(command);
 }
 
-let DescribeUserPoolCommand = {
+let ListUserPoolsCommand = {
   Raw: Raw$11,
   send: send$10
+};
+
+let Raw$12 = {};
+
+function send$11(command) {
+  return client().send(command);
+}
+
+let DescribeUserPoolCommand = {
+  Raw: Raw$12,
+  send: send$11
 };
 
 export {
@@ -159,6 +170,7 @@ export {
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminListGroupsForUserCommand,
+  ListGroupsCommand,
   CreateUserPoolCommand,
   ListUserPoolsCommand,
   DescribeUserPoolCommand,

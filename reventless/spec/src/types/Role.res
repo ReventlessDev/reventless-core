@@ -107,9 +107,9 @@ let groupOf = (role: name): string =>
 let adminGroup = (): string => groupOf(admin)
 
 /**
-Where the groups this deployment provides come from: the administrator group and
-accounts manifest a platform finds for itself, and the groups of a user pool it
-did not create, which the platform root declares.
+Where the groups this deployment provides come from: what the identity provider
+reports where the platform can ask it, else the administrator group and accounts
+manifest a platform finds for itself and the groups a platform root declares.
 
 Sources rather than values, read when the check runs: a platform states them
 while its functor is applied, before the root has said how its roles map. Empty
@@ -118,26 +118,61 @@ has an answer to compare against.
 */
 let groupSources: ref<array<unit => array<string>>> = ref([])
 
+/** The groups a root declared with `provideGroups`, kept apart so a listing can
+    contradict them. */
+let declaredGroups: ref<array<string>> = ref([])
+
+/** The groups the identity provider itself reported, and which provider that was. */
+type listing = {source: string, groups: array<string>}
+
+let listing: ref<option<listing>> = ref(None)
+
 let provideGroupsFrom = (source: unit => array<string>) =>
   groupSources := groupSources.contents->Array.concat([source])
 
-let provideGroups = (groups: array<string>) => provideGroupsFrom(() => groups)
+let provideGroups = (groups: array<string>) => {
+  declaredGroups := declaredGroups.contents->Array.concat(groups)
+  provideGroupsFrom(() => groups)
+}
 
-let clearProvidedGroups = () => groupSources := []
+/**
+Record what the identity provider says it has. A platform that can ask (the AWS
+user pool) does, before its plugins are built. The listing is then the whole
+answer: a group a manifest names, a root declares or the mapping points to is
+provided only if the provider has it, since a group it lacks refuses everybody.
+*/
+let provideListedGroups = (~source: string, groups: array<string>) =>
+  listing := Some({source, groups})
 
-/** The groups a deployment provides: every source plus every group the mapping
-    names. `None` when nothing was provided — a process that is not a platform (a
-    unit test, a function runtime) has no answer to give. */
+let clearProvidedGroups = () => {
+  groupSources := []
+  declaredGroups := []
+  listing := None
+}
+
+let _distinct = (groups: array<string>) => groups->Set.fromArray->Set.values->Array.fromIterator
+
+/** The groups a deployment provides: the provider's listing where there is one,
+    else every source plus every group the mapping names. `None` when nothing was
+    provided — a process that is not a platform (a unit test, a function runtime)
+    has no answer to give. */
 let providedGroups = (): option<array<string>> =>
-  switch groupSources.contents {
-  | [] => None
-  | sources =>
+  switch (listing.contents, groupSources.contents) {
+  | (Some({groups}), _) => Some(_distinct(groups))
+  | (None, []) => None
+  | (None, sources) =>
     Some(
       sources
       ->Array.flatMap(source => source())
       ->Array.concat(renamed()->Array.map(((_, group)) => group))
-      ->Set.fromArray
-      ->Set.values
-      ->Array.fromIterator,
+      ->_distinct,
     )
+  }
+
+/** The declared groups the provider's listing does not have. Empty without a
+    listing, when there is nothing to contradict them. */
+let declaredButMissing = (): array<string> =>
+  switch listing.contents {
+  | None => []
+  | Some({groups}) => declaredGroups.contents->Array.filter(g => !(groups->Array.includes(g)))
   }
