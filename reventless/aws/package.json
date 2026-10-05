@@ -9,7 +9,8 @@
     "provision-accounts": "./run-provision-accounts.mjs",
     "bake-manifest": "./run-bake-manifest.mjs",
     "deploy-app": "./run-deploy-app.mjs",
-    "resolve-environment": "./run-resolve-environment.mjs"
+    "resolve-environment": "./run-resolve-environment.mjs",
+    "clear-pending-creates": "./run-clear-pending-creates.mjs"
   },
   "scripts": {
     "build": "rescript build",

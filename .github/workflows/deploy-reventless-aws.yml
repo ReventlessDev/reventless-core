@@ -450,7 +450,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
+        # This repository's own; a caller without one keeps its workspace as it is.
+        run: |
+          if [[ -f scripts/workspace-setup.mjs ]]; then
+            node scripts/workspace-setup.mjs
+          else
+            echo "No scripts/workspace-setup.mjs: the workspace is used as checked out"
+          fi
 
       - name: Install dependencies
         # All @reventlessdev/* deps (and the host-shell tarball) are public on
@@ -480,7 +486,12 @@ jobs:
       # already has, and skips itself where there are none. The templates are
       # shared with the plugin deploys, so validating them once covers those too.
       - name: Validate AppSync resolver code
-        run: pnpm run check:resolvers
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.['check:resolvers'] ? 0 : 1)"; then
+            pnpm run check:resolvers
+          else
+            echo "No check:resolvers script: the published templates were validated where they were built"
+          fi
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
@@ -652,14 +663,11 @@ jobs:
                 pulumi config set "$key" "$value" --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive < /dev/null
               done
           fi
-          # Surgical recovery for interrupted deploys: cancel any stale lock,
-          # selectively clear known-safe pending-creates (e.g. ACM
-          # CertificateValidation timing out at 1h15m), then refresh. Fails
-          # loud on unknown pending-creates rather than silently orphaning
-          # AWS resources the way the prior unconditional
-          # `--clear-pending-creates` flag did.
-          python3 "${{ github.workspace }}/.github/scripts/clear-safe-pending-creates.py" \
-            --stack "$STACK" --cwd "$DEPLOY_DIR"
+          # Recovery for an interrupted deploy: cancel a stale lock, drop the
+          # pending creates with nothing in AWS behind them (an ACM validation
+          # that timed out), refuse any other rather than orphan it, refresh.
+          # From reventless-aws, so a caller of this workflow has it too.
+          (cd "$DEPLOY_DIR" && pnpm exec clear-pending-creates --stack "$STACK")
           pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
       # EventBridge allows 300 rules per bus. The plugin disconnect mechanism
@@ -670,7 +678,12 @@ jobs:
       - name: Report EventBridge rule count
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        run: node scripts/eventbridge-rules.mjs
+        run: |
+          if [[ -f scripts/eventbridge-rules.mjs ]]; then
+            node scripts/eventbridge-rules.mjs
+          else
+            echo "No scripts/eventbridge-rules.mjs: the rule count is not reported"
+          fi
 
   # ---------------------------------------------------------------------------
   # Job 3: Deploy changed plugins (matrix, respecting depends-on ordering)
@@ -773,7 +786,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
+        # This repository's own; a caller without one keeps its workspace as it is.
+        run: |
+          if [[ -f scripts/workspace-setup.mjs ]]; then
+            node scripts/workspace-setup.mjs
+          else
+            echo "No scripts/workspace-setup.mjs: the workspace is used as checked out"
+          fi
 
       - name: Install dependencies
         # All @reventlessdev/* deps (and the host-shell tarball) are public on
@@ -1011,11 +1030,8 @@ jobs:
                 pulumi config set "$key" "$value" --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive < /dev/null
               done
           fi
-          # Surgical recovery for interrupted deploys — same as deploy-platform
-          # above. See .github/scripts/clear-safe-pending-creates.py for
-          # rationale and the maintainable list of known-safe synthetic types.
-          python3 "${{ github.workspace }}/.github/scripts/clear-safe-pending-creates.py" \
-            --stack "$STACK" --cwd "$DEPLOY_DIR"
+          # Recovery for an interrupted deploy — same as deploy-platform above.
+          (cd "$DEPLOY_DIR" && pnpm exec clear-pending-creates --stack "$STACK")
           pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
   # ---------------------------------------------------------------------------
@@ -1115,7 +1131,13 @@ jobs:
 
       - name: Setup workspace (pnpm-workspace.yaml)
         if: steps.platform.outputs.deployed == 'true'
-        run: node scripts/workspace-setup.mjs
+        # This repository's own; a caller without one keeps its workspace as it is.
+        run: |
+          if [[ -f scripts/workspace-setup.mjs ]]; then
+            node scripts/workspace-setup.mjs
+          else
+            echo "No scripts/workspace-setup.mjs: the workspace is used as checked out"
+          fi
 
       - name: Install dependencies
         if: steps.platform.outputs.deployed == 'true'
@@ -1229,7 +1251,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
+        # This repository's own; a caller without one keeps its workspace as it is.
+        run: |
+          if [[ -f scripts/workspace-setup.mjs ]]; then
+            node scripts/workspace-setup.mjs
+          else
+            echo "No scripts/workspace-setup.mjs: the workspace is used as checked out"
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
