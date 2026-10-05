@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-05
+- feat(deploy): a caller's private registry and its own change detection ([1675b64](https://github.com/ReventlessDev/reventless-core/commit/1675b645c5f3cd5fb9e9a425efedfb7ea7730e1e))
+### 2026-10-05
 - feat(deploy): a plugin names its own region, and can stay out of review environments ([7edd318](https://github.com/ReventlessDev/reventless-core/commit/7edd3187f51f74e57c331b1cb417b17de8067b58))
 - fix(deploy): a review stack deploys against its own stacks, not its base's ([a581331](https://github.com/ReventlessDev/reventless-core/commit/a581331c87f9565a5d20f1f8da12ac21d4b9b995))
 - feat(deploy): the deploy workflow names its state backend ([a370346](https://github.com/ReventlessDev/reventless-core/commit/a3703461bae9dc22c098315a09bbabcf0c5816b1))
