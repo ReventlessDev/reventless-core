@@ -142,12 +142,20 @@ message name `pulumi login s3://…` too, and change anything the check finds.
   reference. Checked against a `file://` backend: own references retargeted, a foreign
   project, a near-miss name (`…/devX`) and a secret untouched. Checked on the hybrid example's
   real project names as well.
-- **Checked against the business repo's S3 estate (read-only):** its stacks use
-  `awskms://alias/reventless-pulumi-alpha?region=eu-central-1`, one key per stack name, which
-  is what `{stack}` is for. Its own migration from Pulumi Cloud found the same order as S3
-  (change the provider on Pulumi Cloud first). It also found the org rewrite
-  (`<org>/` → `organization/`) the guide now covers. It deploys from a fork of this workflow
-  with the URL hard-coded, waiting for `pulumi-backend-url`.
-- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. The
-  business estate has no review environment and no `pull_request` trigger, so running S2 there
-  means first moving it onto this workflow.
+- **Checked against a live estate on an S3 backend (read-only):** its stacks use one KMS key per
+  stack name (`awskms://alias/<prefix>-<stack>`), which is what `{stack}` is for. Its own move
+  from Pulumi Cloud found the same order as S3 (change the provider on Pulumi Cloud first). It
+  also found the org rewrite (`<org>/` → `organization/`) that the guide now covers.
+- **Open, found on that estate:**
+  - **No way to keep a stack out of review environments.** A stack that owns a singleton
+    outside itself, such as the one notification an S3 bucket can have, would be taken over by
+    its review copy and removed when the pull request closes. That calls for a per-plugin
+    manifest flag (`review: false`, say).
+  - **The workflow runs files from the caller's checkout:**
+    `.github/scripts/clear-safe-pending-creates.py` (the up step fails without it),
+    `pnpm run check:resolvers` and `scripts/eventbridge-rules.mjs`. Outside this repository
+    they are missing. The workflow should check out its own copy, or carry them inline.
+  - **Per-plugin `region:`** in the manifest is not read. Only the top-level region is.
+- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. It is
+  planned as the first review pull request of an estate moving onto this workflow, after the
+  items above.
