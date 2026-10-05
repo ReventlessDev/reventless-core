@@ -628,6 +628,29 @@ jobs:
           pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
           if [[ "$COPY_CONFIG" == "true" ]]; then
             pulumi config cp --stack "${{ steps.env.outputs.base-stack }}" --dest "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+            # A copied reference to a stack of this app (`platform:stack`,
+            # `interstack:dependencies`, …) still names the base environment's,
+            # and would deploy this review against it. Point each at the review's.
+            # References to stacks the app does not deploy stay shared.
+            MANIFEST="${{ inputs.manifest }}"
+            PROJECTS=$(for p in $(yq '.platform.path, .plugins[].path' "$MANIFEST"); do
+              yq '.name' "$(dirname "$MANIFEST")/${p}/Pulumi.yaml"; done | paste -sd, -)
+            pulumi config --stack "$STACK" --cwd "$DEPLOY_DIR" --json |
+              PROJECTS="$PROJECTS" BASE="${{ steps.env.outputs.base-stack }}" REVIEW="$STACK" python3 -c '
+          import json, os, re, sys
+          projects = "|".join(re.escape(p) for p in os.environ["PROJECTS"].split(",") if p)
+          ref = re.compile(r"([^\s\"\x27/\[\],]+/(?:%s)/)%s(?![\w.-])" % (projects, re.escape(os.environ["BASE"])))
+          for key, entry in json.load(sys.stdin).items():
+              value = entry.get("value")
+              if projects and not entry.get("secret") and isinstance(value, str):
+                  retargeted = ref.sub(lambda m: m.group(1) + os.environ["REVIEW"], value)
+                  if retargeted != value:
+                      print(key + "\t" + retargeted)
+          ' |
+              while IFS=$'\t' read -r key value; do
+                echo "${key}: ${value}"
+                pulumi config set "$key" "$value" --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive < /dev/null
+              done
           fi
           # Surgical recovery for interrupted deploys: cancel any stale lock,
           # selectively clear known-safe pending-creates (e.g. ACM
@@ -964,6 +987,29 @@ jobs:
           pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
           if [[ "$COPY_CONFIG" == "true" ]]; then
             pulumi config cp --stack "${{ steps.env.outputs.base-stack }}" --dest "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+            # A copied reference to a stack of this app (`platform:stack`,
+            # `interstack:dependencies`, …) still names the base environment's,
+            # and would deploy this review against it. Point each at the review's.
+            # References to stacks the app does not deploy stay shared.
+            MANIFEST="${{ inputs.manifest }}"
+            PROJECTS=$(for p in $(yq '.platform.path, .plugins[].path' "$MANIFEST"); do
+              yq '.name' "$(dirname "$MANIFEST")/${p}/Pulumi.yaml"; done | paste -sd, -)
+            pulumi config --stack "$STACK" --cwd "$DEPLOY_DIR" --json |
+              PROJECTS="$PROJECTS" BASE="${{ steps.env.outputs.base-stack }}" REVIEW="$STACK" python3 -c '
+          import json, os, re, sys
+          projects = "|".join(re.escape(p) for p in os.environ["PROJECTS"].split(",") if p)
+          ref = re.compile(r"([^\s\"\x27/\[\],]+/(?:%s)/)%s(?![\w.-])" % (projects, re.escape(os.environ["BASE"])))
+          for key, entry in json.load(sys.stdin).items():
+              value = entry.get("value")
+              if projects and not entry.get("secret") and isinstance(value, str):
+                  retargeted = ref.sub(lambda m: m.group(1) + os.environ["REVIEW"], value)
+                  if retargeted != value:
+                      print(key + "\t" + retargeted)
+          ' |
+              while IFS=$'\t' read -r key value; do
+                echo "${key}: ${value}"
+                pulumi config set "$key" "$value" --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive < /dev/null
+              done
           fi
           # Surgical recovery for interrupted deploys — same as deploy-platform
           # above. See .github/scripts/clear-safe-pending-creates.py for

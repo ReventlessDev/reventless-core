@@ -133,4 +133,21 @@ message name `pulumi login s3://…` too, and change anything the check finds.
   creates use the passphrase that check asks for. Not run: an `up` against a real bucket.
 - **Not built:** a passphrase input. A self-managed stack on the passphrase provider cannot be
   deployed by the workflow; the guide says to change it to a key.
-- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS.
+- **Found and fixed in E3, any backend:** a review plugin stack deployed against the *base*
+  platform. `config cp` copies `platform:stack: <org>/<platform>/<base>` verbatim, so a pull
+  request would have registered its plugins on the shared environment's API. After the copy,
+  the up step now rewrites every plain setting naming `<org>/<project>/<base-stack>`, for a
+  project in the deploy manifest, to the review stack. That covers `platform:stack` and
+  JSON lists such as `interstack:dependencies`. A stack the app does not deploy keeps its
+  reference. Checked against a `file://` backend: own references retargeted, a foreign
+  project, a near-miss name (`…/devX`) and a secret untouched. Checked on the hybrid example's
+  real project names as well.
+- **Checked against the business repo's S3 estate (read-only):** its stacks use
+  `awskms://alias/reventless-pulumi-alpha?region=eu-central-1`, one key per stack name, which
+  is what `{stack}` is for. Its own migration from Pulumi Cloud found the same order as S3
+  (change the provider on Pulumi Cloud first). It also found the org rewrite
+  (`<org>/` → `organization/`) the guide now covers. It deploys from a fork of this workflow
+  with the URL hard-coded, waiting for `pulumi-backend-url`.
+- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. The
+  business estate has no review environment and no `pull_request` trigger, so running S2 there
+  means first moving it onto this workflow.

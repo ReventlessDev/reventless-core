@@ -206,6 +206,8 @@ is merged either way.
   provider writes the stack file, `config cp` was skipped, because the step tested for the file
   after `stack select --create` had written it
   ([the-deploy-workflow-names-its-state-backend](the-deploy-workflow-names-its-state-backend.md)).
+  **Fixed the same day:** a review plugin stack kept its base's `platform:stack` and deployed
+  against the shared platform; copied references to the app's own stacks now name the review's.
   **Not yet run:** a real pull request opening,
   updating and closing a review environment on AWS.
 - **E4** `Reventless.DeploymentProvenance` in spec (9 tests), used by `exportDeploymentMetadata`,

@@ -537,23 +537,28 @@ A team whose keys are not named after the stack sets `secretsprovider` in each
 `Pulumi.<stack>.yaml` itself and leaves the input empty.
 
 **Moving stacks from Pulumi Cloud to a bucket.** Once per stack, in each `-aws` package,
-platform and plugins alike. Change the provider *before* leaving Pulumi Cloud: the new
-backend takes the encryption settings from `Pulumi.<stack>.yaml`, and it cannot decrypt
-secrets that Pulumi Cloud encrypted.
+platform and plugins alike. Change the provider *before* leaving Pulumi Cloud: a bucket
+cannot decrypt secrets that Pulumi Cloud encrypted.
 
 ```bash
 pulumi stack select alpha
 pulumi stack change-secrets-provider "awskms://alias/my-app-pulumi-alpha?region=eu-west-1"
 pulumi stack export --file alpha.json
 pulumi login s3://my-app-pulumi-state?region=eu-west-1
-pulumi stack init alpha
+pulumi stack init alpha --secrets-provider "awskms://alias/my-app-pulumi-alpha?region=eu-west-1"
 pulumi stack import --file alpha.json
 pulumi preview          # should show no changes
 ```
 
-Commit the rewritten `Pulumi.alpha.yaml`, which now names the key, and then switch the
-workflow inputs. Delete `alpha.json`, because it holds the stack's state. The stack on Pulumi
-Cloud stays until you remove it (`pulumi stack rm` while logged in there).
+**References between stacks change their first part.** A bucket has no Pulumi Cloud
+organization, so its stacks are all `organization/<project>/<stack>`. Every setting that names
+another stack (`platform:stack: myorg/my-app-platform/alpha`, and any of your own) becomes
+`organization/my-app-platform/alpha`. Rewrite them all before the first `pulumi preview`.
+
+Commit the rewritten `Pulumi.alpha.yaml` files, which now name the key and the new
+references, and then switch the workflow inputs. Keep the stack on Pulumi Cloud, untouched,
+until the bucket has deployed: it is the way back. `alpha.json` holds the stack's state, so
+keep it out of the repository.
 
 ## 5. Multi-Repository Setup
 

@@ -55,7 +55,10 @@ file exactly as the deploy does.
 
 A review stack takes its configuration from the stack of the branch it targets, through
 `pulumi config cp`, so its secrets are re-encrypted for it. Its stack config file exists only
-in the runner.
+in the runner. A copied setting that names another stack of the app (`platform:stack`, or
+any value naming `<org>/<project>/<base-stack>` for a project in the deploy manifest) is
+pointed at the review stack, so a review plugin deploys against the review platform, not the
+shared one. A setting naming a stack the app does not deploy keeps pointing at it.
 
 **On a self-managed backend** (the workflow's `pulumi-backend-url` input), a stack the
 workflow creates would otherwise be encrypted with a passphrase the workflow does not have.
