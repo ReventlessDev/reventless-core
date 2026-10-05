@@ -137,6 +137,12 @@ on:
       # the existing pool, on a deploy that reports success.
       COGNITO_USER_POOL_ID:
         required: false
+      # Optional. A token for a private package registry the caller installs from,
+      # given to every install as GITHUB_TOKEN: the name an `.npmrc` line such as
+      # `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` reads. Unset, installs
+      # stay anonymous, which is all the public @reventlessdev/* packages need.
+      PACKAGES_TOKEN:
+        required: false
 
 # A Pulumi Cloud *individual* account permits one running update per ACCOUNT —
 # the "Individual user accounts do not support concurrent updates" 409 names
@@ -229,6 +235,14 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # A caller's own change detection runs on plain node; pin it rather than take the
+      # runner's, since a detect step that fails quietly deploys nothing.
+      - name: Set up Node
+        if: hashFiles('scripts/deploy-affected.mjs') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
       - name: Parse manifest and detect changes
         id: changes
         env:
@@ -314,6 +328,7 @@ jobs:
 
           # Parse plugins from manifest
           PLUGIN_COUNT=$(yq '.plugins | length' "$MANIFEST")
+          TARGET_ARGS=(--target "__platform__=${PLATFORM_PATH}")
           ALL_PLUGINS="[]"
           CHANGED_PLUGINS="[]"
 
@@ -331,6 +346,7 @@ jobs:
               --argjson deps "$PLUGIN_DEPS" \
               --argjson review "$PLUGIN_REVIEW" \
               '. + [{"name": $name, "path": $path, "depends-on": $deps, "review": $review}]')
+            TARGET_ARGS+=(--target "${PLUGIN_NAME}=${PLUGIN_PATH}")
 
             # Check if this plugin changed
             PLUGIN_CHANGED="false"
@@ -348,6 +364,25 @@ jobs:
                 '. + [$name]')
             fi
           done
+
+          # A caller that knows its own dependency graph decides instead. The rule above
+          # treats any change under reventless/ or rescript/ as reaching every stack, which
+          # holds for this repository's framework packages and not for an app's own workspace
+          # packages there. The script prints {"affected": [names]}, "__platform__" for the
+          # platform; the manifest is passed because no package directory owns it.
+          if [[ -f scripts/deploy-affected.mjs ]]; then
+            printf '%s\n' "$CHANGED_FILES" > /tmp/changed-files.txt
+            AFFECTED=$(node scripts/deploy-affected.mjs --changed /tmp/changed-files.txt \
+              --manifest "$MANIFEST" "${TARGET_ARGS[@]}" | jq -c '.affected')
+            echo "Affected targets (scripts/deploy-affected.mjs): $AFFECTED"
+            if jq -e 'index("__platform__")' <<< "$AFFECTED" > /dev/null; then
+              PLATFORM_CHANGED="true"
+            else
+              PLATFORM_CHANGED="false"
+            fi
+            CHANGED_PLUGINS=$(jq -c --argjson all "$ALL_PLUGINS" \
+              '[.[] | select(. as $n | $all | map(.name) | index($n))]' <<< "$AFFECTED")
+          fi
 
           if [[ "${{ steps.environments.outputs.review-candidate }}" == "true" ]]; then
             echo "A pull request in an app with environments: a review stack starts empty, so all of it deploys"
@@ -462,8 +497,11 @@ jobs:
 
       - name: Install dependencies
         # All @reventlessdev/* deps (and the host-shell tarball) are public on
-        # npmjs — anonymous install, no auth token needed.
+        # npmjs — anonymous install, no auth token needed. A caller's private
+        # scope reads PACKAGES_TOKEN.
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
       # Build the PPX from source and stage it as the bin resolver's local
       # fallback, so the deploy compiles annotated spec sources with the
@@ -778,8 +816,11 @@ jobs:
 
       - name: Install dependencies
         # All @reventlessdev/* deps (and the host-shell tarball) are public on
-        # npmjs — anonymous install, no auth token needed.
+        # npmjs — anonymous install, no auth token needed. A caller's private
+        # scope reads PACKAGES_TOKEN.
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
       # Build the PPX from source and stage it as the bin resolver's local
       # fallback, so the deploy compiles annotated spec sources with the
@@ -1158,6 +1199,8 @@ jobs:
       - name: Install dependencies
         if: steps.platform.outputs.deployed == 'true'
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
       - name: Install Pulumi CLI
         if: steps.platform.outputs.deployed == 'true'
@@ -1277,6 +1320,8 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2

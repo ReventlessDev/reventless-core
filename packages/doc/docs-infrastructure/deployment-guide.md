@@ -839,11 +839,13 @@ Go to your GitHub repo Settings, then Secrets and variables, then Actions, then 
 | `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication for resource creation | yes |
 | `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication for resource creation | yes |
 | `IDENTITY_PROVIDER_ID` | An existing user pool id, e.g. `eu-west-1_AbCdEfGhI` | Deploy against an identity provider you own instead of provisioning one | no — see below |
+| `PACKAGES_TOKEN` | A token that can read your private package registry | Given to every install as `GITHUB_TOKEN`, the variable an `.npmrc` line such as `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` reads | only if you install from a private registry |
 
 These are the defaults used by the platform and all plugins unless overridden.
 
-**No npm token is needed.** `@reventlessdev/*` are public on npmjs, so every
-install is anonymous. Publishing is the only thing that authenticates, and that
+**No npm token is needed** for the framework. `@reventlessdev/*` are public on npmjs, so
+an install is anonymous unless your app also installs from a private registry
+(`PACKAGES_TOKEN` above). Publishing is the only thing that authenticates, and that
 belongs to the release workflow rather than to a deploy.
 
 #### `IDENTITY_PROVIDER_ID` is configuration, not a credential

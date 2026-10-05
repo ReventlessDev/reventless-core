@@ -236,6 +236,19 @@ it on close.
     exists only in the runner that created it, so the bake job finds none and bakes at once.
   - **The recovery runs only from a `reventless-aws` release that has it.** A caller installs
     `reventless-aws` itself, so it pins that release or a later one.
+- **Added for the first estate to move (2026-10-05):** two things that estate's copy of the
+  workflow had and this one lacked.
+  - **`PACKAGES_TOKEN`**, an optional secret, given to every install as `GITHUB_TOKEN`. The
+    estate installs a private scope from GitHub Packages, and every install here was anonymous.
+  - **The caller's change detection.** Where the caller has `scripts/deploy-affected.mjs`,
+    detect-changes runs it (on a pinned Node) and its answer replaces the `^reventless/` rule.
+    That rule holds for this repository's framework packages; in an app those directories are
+    its own workspace packages, so any change there redeployed every stack. The script takes
+    `--changed`, `--manifest` and `--target name=path` (`__platform__` for the platform) and
+    prints `{"affected": [...]}`. A review deploy still deploys everything. Checked by running
+    the step locally against the estate: a console-only change, an inspector change (the
+    inspector stacks and the two plugins that depend on it), a docs-only change (nothing), and
+    this repository without the script (the old rule, unchanged).
 - **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. It is
   planned as the first review pull request of an estate moving onto this workflow, after the
   items above.
