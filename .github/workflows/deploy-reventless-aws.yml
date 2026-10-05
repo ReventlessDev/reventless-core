@@ -1,5 +1,9 @@
 # Reusable workflow for deploying Reventless applications with per-plugin Pulumi stacks.
 #
+# Pulumi state lives on Pulumi Cloud (pass PULUMI_ACCESS_TOKEN) or in a
+# self-managed backend (set the pulumi-backend-url input, and usually
+# pulumi-secrets-provider and pulumi-concurrent-updates; no token).
+#
 # Secrets resolution (per-plugin override with platform-wide fallback):
 #   - PULUMI_ACCESS_TOKEN passed here is the platform-wide default.
 #   - To use a different token for a specific plugin, create a GitHub environment
@@ -66,6 +70,27 @@ on:
         required: false
         type: string
         default: ""
+      pulumi-backend-url:
+        description: >
+          The self-managed backend the app's Pulumi state lives in, e.g.
+          s3://my-app-pulumi-state?region=eu-west-1. Exported as PULUMI_BACKEND_URL
+          in every job that runs Pulumi, and no PULUMI_ACCESS_TOKEN is then needed.
+          Leave empty for Pulumi Cloud. Set pulumi-concurrent-updates too.
+        required: false
+        type: string
+        default: ""
+      pulumi-secrets-provider:
+        description: >
+          The secrets provider a stack this workflow creates is given (a review
+          stack, or an environment deployed for the first time), e.g.
+          awskms://alias/my-app-pulumi?region=eu-west-1. "{stack}" is replaced by
+          the stack's name, and for a review stack by its base environment's stack,
+          so one key per environment works. Leave empty for Pulumi's default, which
+          on a self-managed backend is a passphrase this workflow does not have.
+          Stacks that already exist keep the provider they have.
+        required: false
+        type: string
+        default: ""
       pulumi-concurrent-updates:
         description: "Whether the Pulumi backend tolerates more than one update in flight. Leave false for a Pulumi Cloud individual account, whose one-update limit is per ACCOUNT, not per stack. Set true for a Pulumi organization or a self-managed (S3/DIY) backend."
         required: false
@@ -90,8 +115,10 @@ on:
         type: string
         default: ""
     secrets:
+      # Pulumi Cloud only. With pulumi-backend-url set it is not needed; a job
+      # given neither fails before it runs Pulumi.
       PULUMI_ACCESS_TOKEN:
-        required: true
+        required: false
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
@@ -348,6 +375,8 @@ jobs:
     env:
       # Environment "deploy-platform" secrets override these defaults if set.
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      # Empty → Pulumi Cloud, logged in with the token above.
+      PULUMI_BACKEND_URL: ${{ inputs.pulumi-backend-url }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
@@ -378,6 +407,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.detect-changes.outputs.review-candidate == 'true' && github.event.pull_request.head.sha || '' }}
+
+      # Pulumi Cloud needs the token; a self-managed backend needs only its URL.
+      # Neither, and every Pulumi command below fails with a login prompt it
+      # cannot answer, so say which is missing before anything is installed.
+      - name: Check the Pulumi backend
+        run: |
+          if [[ -z "${PULUMI_ACCESS_TOKEN:-}" && -z "${PULUMI_BACKEND_URL:-}" ]]; then
+            echo "::error::No Pulumi backend: pass the PULUMI_ACCESS_TOKEN secret for Pulumi Cloud, or set the pulumi-backend-url input to a self-managed backend (s3://…)."
+            exit 1
+          fi
+          echo "Pulumi backend: ${PULUMI_BACKEND_URL:-Pulumi Cloud}"
 
       - name: Resolve Lambda Layer ARN
         run: |
@@ -522,6 +562,21 @@ jobs:
           fi
           echo "$OUT"
 
+      # The secrets provider a stack created below is given. `{stack}` names the
+      # stack whose key it uses: a review stack shares its base environment's,
+      # so `config cp` from the base stays within one key.
+      - name: Resolve secrets provider
+        id: secrets
+        env:
+          TEMPLATE: ${{ inputs.pulumi-secrets-provider }}
+          KEY_STACK: ${{ steps.env.outputs.base-stack || steps.env.outputs.stack }}
+        run: |
+          if [[ -n "$TEMPLATE" && -n "$KEY_STACK" ]]; then
+            PROVIDER="${TEMPLATE//\{stack\}/$KEY_STACK}"
+            echo "provider=${PROVIDER}" >> "$GITHUB_OUTPUT"
+            echo "A stack this run creates is encrypted with ${PROVIDER}"
+          fi
+
       - name: Check stack config exists
         id: check-config
         run: |
@@ -551,7 +606,8 @@ jobs:
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
-          pulumi stack select --create "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+          PROVIDER="${{ steps.secrets.outputs.provider }}"
+          pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
           pulumi refresh --stack "$STACK" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive
           pulumi preview --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
 
@@ -562,8 +618,15 @@ jobs:
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
-          pulumi stack select --create "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+          PROVIDER="${{ steps.secrets.outputs.provider }}"
+          # Asked before the select: creating a stack with any secrets provider
+          # but Pulumi Cloud's writes its config file, salt or key in it.
+          COPY_CONFIG=false
           if [[ "${{ steps.env.outputs.mode }}" == "review" && ! -f "${DEPLOY_DIR}/Pulumi.${STACK}.yaml" ]]; then
+            COPY_CONFIG=true
+          fi
+          pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
+          if [[ "$COPY_CONFIG" == "true" ]]; then
             pulumi config cp --stack "${{ steps.env.outputs.base-stack }}" --dest "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
           fi
           # Surgical recovery for interrupted deploys: cancel any stale lock,
@@ -615,6 +678,8 @@ jobs:
       # Environment "deploy-<plugin>" secrets override these defaults if set.
       # E.g. "deploy-catalog" can have its own PULUMI_ACCESS_TOKEN.
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      # Empty → Pulumi Cloud, logged in with the token above.
+      PULUMI_BACKEND_URL: ${{ inputs.pulumi-backend-url }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
@@ -642,6 +707,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.detect-changes.outputs.review-candidate == 'true' && github.event.pull_request.head.sha || '' }}
+
+      # Pulumi Cloud needs the token; a self-managed backend needs only its URL.
+      # Neither, and every Pulumi command below fails with a login prompt it
+      # cannot answer, so say which is missing before anything is installed.
+      - name: Check the Pulumi backend
+        run: |
+          if [[ -z "${PULUMI_ACCESS_TOKEN:-}" && -z "${PULUMI_BACKEND_URL:-}" ]]; then
+            echo "::error::No Pulumi backend: pass the PULUMI_ACCESS_TOKEN secret for Pulumi Cloud, or set the pulumi-backend-url input to a self-managed backend (s3://…)."
+            exit 1
+          fi
+          echo "Pulumi backend: ${PULUMI_BACKEND_URL:-Pulumi Cloud}"
 
       - name: Resolve Lambda Layer ARN
         run: |
@@ -783,6 +859,21 @@ jobs:
           fi
           echo "$OUT"
 
+      # The secrets provider a stack created below is given. `{stack}` names the
+      # stack whose key it uses: a review stack shares its base environment's,
+      # so `config cp` from the base stays within one key.
+      - name: Resolve secrets provider
+        id: secrets
+        env:
+          TEMPLATE: ${{ inputs.pulumi-secrets-provider }}
+          KEY_STACK: ${{ steps.env.outputs.base-stack || steps.env.outputs.stack }}
+        run: |
+          if [[ -n "$TEMPLATE" && -n "$KEY_STACK" ]]; then
+            PROVIDER="${TEMPLATE//\{stack\}/$KEY_STACK}"
+            echo "provider=${PROVIDER}" >> "$GITHUB_OUTPUT"
+            echo "A stack this run creates is encrypted with ${PROVIDER}"
+          fi
+
       - name: Check stack config exists
         id: check-config
         run: |
@@ -813,7 +904,8 @@ jobs:
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
-          pulumi stack select --create "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+          PROVIDER="${{ steps.secrets.outputs.provider }}"
+          pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
           pulumi refresh --stack "$STACK" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive
           OUTPUT=$(pulumi preview --stack "$STACK" --cwd "$DEPLOY_DIR" --non-interactive 2>&1) || true
           echo "$OUTPUT"
@@ -862,8 +954,15 @@ jobs:
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
-          pulumi stack select --create "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
+          PROVIDER="${{ steps.secrets.outputs.provider }}"
+          # Asked before the select: creating a stack with any secrets provider
+          # but Pulumi Cloud's writes its config file, salt or key in it.
+          COPY_CONFIG=false
           if [[ "${{ steps.env.outputs.mode }}" == "review" && ! -f "${DEPLOY_DIR}/Pulumi.${STACK}.yaml" ]]; then
+            COPY_CONFIG=true
+          fi
+          pulumi stack select --create "$STACK" ${PROVIDER:+--secrets-provider "$PROVIDER"} --cwd "$DEPLOY_DIR" --non-interactive
+          if [[ "$COPY_CONFIG" == "true" ]]; then
             pulumi config cp --stack "${{ steps.env.outputs.base-stack }}" --dest "$STACK" --cwd "$DEPLOY_DIR" --non-interactive
           fi
           # Surgical recovery for interrupted deploys — same as deploy-platform
@@ -907,6 +1006,8 @@ jobs:
     environment: deploy-platform
     env:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      # Empty → Pulumi Cloud, logged in with the token above.
+      PULUMI_BACKEND_URL: ${{ inputs.pulumi-backend-url }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
@@ -942,6 +1043,18 @@ jobs:
       # The bake is `bake-manifest` from @reventlessdev/reventless-aws — the same
       # command a hand deploy runs — so the job installs the app's dependencies.
       # Nothing is built: the command ships compiled.
+      # Pulumi Cloud needs the token; a self-managed backend needs only its URL.
+      # Neither, and every Pulumi command below fails with a login prompt it
+      # cannot answer, so say which is missing before anything is installed.
+      - name: Check the Pulumi backend
+        if: steps.platform.outputs.deployed == 'true'
+        run: |
+          if [[ -z "${PULUMI_ACCESS_TOKEN:-}" && -z "${PULUMI_BACKEND_URL:-}" ]]; then
+            echo "::error::No Pulumi backend: pass the PULUMI_ACCESS_TOKEN secret for Pulumi Cloud, or set the pulumi-backend-url input to a self-managed backend (s3://…)."
+            exit 1
+          fi
+          echo "Pulumi backend: ${PULUMI_BACKEND_URL:-Pulumi Cloud}"
+
       - name: Setup pnpm
         if: steps.platform.outputs.deployed == 'true'
         uses: pnpm/action-setup@v4
@@ -1039,12 +1152,25 @@ jobs:
     environment: deploy-platform
     env:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      # Empty → Pulumi Cloud, logged in with the token above.
+      PULUMI_BACKEND_URL: ${{ inputs.pulumi-backend-url }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Pulumi Cloud needs the token; a self-managed backend needs only its URL.
+      # Neither, and every Pulumi command below fails with a login prompt it
+      # cannot answer, so say which is missing before anything is installed.
+      - name: Check the Pulumi backend
+        run: |
+          if [[ -z "${PULUMI_ACCESS_TOKEN:-}" && -z "${PULUMI_BACKEND_URL:-}" ]]; then
+            echo "::error::No Pulumi backend: pass the PULUMI_ACCESS_TOKEN secret for Pulumi Cloud, or set the pulumi-backend-url input to a self-managed backend (s3://…)."
+            exit 1
+          fi
+          echo "Pulumi backend: ${PULUMI_BACKEND_URL:-Pulumi Cloud}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

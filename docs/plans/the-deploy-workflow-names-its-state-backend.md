@@ -1,7 +1,8 @@
 # Plan: the deploy workflow names its state backend
 
 **Date:** 2026-10-05<br/>
-**Status:** 📝 Drafted, not started.<br/>
+**Status:** 🚧 S1, S3 and S4 built 2026-10-05; S2 (a real pull request on an S3 backend) is
+open. See *As built*.<br/>
 **Touches:** `.github/workflows/deploy-reventless-aws.yml` (the reusable deploy workflow),
 `docs/guides/deploy-environments.md`, and a new section of the deploy guide. `reventless/aws`
 only if a check of the local deploy finds it needs one (S4).<br/>
@@ -99,3 +100,37 @@ message name `pulumi login s3://…` too, and change anything the check finds.
 - Which backend an app should choose.
 - Reading Pulumi state after a deploy: whoever reads it, reads it from the backend the app
   chose.
+
+## As built (2026-10-05)
+
+- **S1** as planned: `pulumi-backend-url`, `pulumi-secrets-provider`, and an optional
+  `PULUMI_ACCESS_TOKEN`. Each job that runs Pulumi starts with *Check the Pulumi backend*. A
+  *Resolve secrets provider* step after *Resolve environment* replaces `{stack}`, using the
+  base stack for a review. Both `stack select --create` steps pass the result. The workflow has
+  no `stack init`. Checked locally: the YAML parses, and all 40 `run:` scripts pass `bash -n`.
+  The platform job's steps were taken from the YAML and run against a `file://` backend through
+  a `pulumi` shim that logs each call. Five cases: a new environment stack (`{stack}` replaced),
+  a review stack (the base's provider, configuration copied, secret readable), a second push
+  from a fresh runner, no inputs (the command line is the same as before), and neither token nor
+  URL (the job fails, naming both). The shim ran `awskms://` as `passphrase`. Run directly,
+  `stack select --create --secrets-provider awskms://…` calls KMS for a new stack and ignores
+  the flag for an existing one.
+- **Found and fixed in E3:** a review stack's configuration was never copied on any backend
+  whose secrets provider writes the stack file. `stack select --create` writes
+  `Pulumi.<stack>.yaml` (the salt or the KMS key), and only after that did the step test
+  whether the file was missing. The test now runs before the select. On Pulumi Cloud's default
+  provider no file is written, which is why E3's check did not see it.
+- **S3** *4i. A self-managed state backend* in `docs-infrastructure/deployment-guide.md`, the
+  secrets table updated, and a paragraph in `deploy-environments.md`. **Changed from the plan:**
+  the migration changes the secrets provider *before* the export, not after the import.
+  `stack init` on the new backend reuses the encryption settings in `Pulumi.<stack>.yaml`
+  (observed against `file://` backends), so a stack imported first is left with secrets the new
+  backend cannot decrypt. Not run end-to-end: that needs a real KMS key.
+- **S4** the "not logged in" message names `pulumi login s3://<bucket>`, and so does the
+  tutorial. Checked by running `deploy-app up` not logged in, and against a `file://` backend
+  without a passphrase: both stop at the check with the right message. Nothing else needed
+  changing. An `s3://` URL takes the same path as `file://`, and the stacks `deploy-app`
+  creates use the passphrase that check asks for. Not run: an `up` against a real bucket.
+- **Not built:** a passphrase input. A self-managed stack on the passphrase provider cannot be
+  deployed by the workflow; the guide says to change it to a key.
+- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS.

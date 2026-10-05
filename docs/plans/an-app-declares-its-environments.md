@@ -202,7 +202,11 @@ is merged either way.
   locally: the YAML parses, all 34 `run:` scripts pass `bash -n`, and the resolve step, run
   with the real CLI, gives the intended mode and stack for nine cases (no file on a push and a
   pull request, a branch, a tag, an unnamed branch, a pull request, a draft, a pull request into
-  a branch with no review environment, a fork). **Not yet run:** a real pull request opening,
+  a branch with no review environment, a fork). **Fixed 2026-10-05:** on a backend whose secrets
+  provider writes the stack file, `config cp` was skipped, because the step tested for the file
+  after `stack select --create` had written it
+  ([the-deploy-workflow-names-its-state-backend](the-deploy-workflow-names-its-state-backend.md)).
+  **Not yet run:** a real pull request opening,
   updating and closing a review environment on AWS.
 - **E4** `Reventless.DeploymentProvenance` in spec (9 tests), used by `exportDeploymentMetadata`,
   the plugin-deployed hook, and the local platform's hook. `environment` is the resolved

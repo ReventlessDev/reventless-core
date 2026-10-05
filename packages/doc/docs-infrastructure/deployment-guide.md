@@ -46,7 +46,7 @@ No platform redeployment is needed when plugins change.
 |---|---|
 | AWS account | With IAM credentials that have permissions to create DynamoDB, Lambda, SQS, SNS, S3, AppSync, and IAM resources |
 | Pulumi CLI | Installed locally (`brew install pulumi` or `curl -fsSL https://get.pulumi.com \| sh`) |
-| Pulumi state backend | Pulumi Cloud account (free tier) or self-managed S3 backend |
+| Pulumi state backend | Pulumi Cloud account (free tier) or self-managed S3 backend — see [A self-managed state backend](#4i-a-self-managed-state-backend) |
 | Node.js v22+ | See `.node-version` in the project root |
 | npm access to `@reventlessdev/*` | None needed — the packages are public on npmjs |
 | Lambda layer | Published once in your account and region — see [The Lambda layer](./aws/get-started.md#the-lambda-layer) |
@@ -487,6 +487,74 @@ jobs:
 
 The reusable workflow handles change detection, environment selection, deployment ordering, and secret resolution automatically.
 
+### 4i. A self-managed state backend
+
+In plain words: Pulumi keeps a record of every stack (its *state*) somewhere. By default
+that is Pulumi Cloud, reached with an access token. It can also be a bucket you own, a
+*self-managed backend*. The workflow deploys to either. For a bucket, name it, and name the
+key that encrypts the stacks' secrets:
+
+```yaml
+jobs:
+  deploy:
+    uses: ReventlessDev/reventless-core/.github/workflows/deploy-reventless-aws.yml@main
+    with:
+      manifest: deploy-manifest.yaml
+      pulumi-backend-url: s3://my-app-pulumi-state?region=eu-west-1
+      pulumi-secrets-provider: awskms://alias/my-app-pulumi-{stack}?region=eu-west-1
+      pulumi-concurrent-updates: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+| Input | What it does |
+|---|---|
+| `pulumi-backend-url` | Exported as `PULUMI_BACKEND_URL` in every job that runs Pulumi. No `PULUMI_ACCESS_TOKEN` is needed. A job given neither the URL nor the token fails before it runs Pulumi, saying which is missing |
+| `pulumi-secrets-provider` | Given to every stack the workflow **creates**: a review stack, or an environment deployed for the first time. `{stack}` is replaced by the stack's name, so one key per environment works. A review stack uses its base environment's stack name, so it shares the base's key |
+| `pulumi-concurrent-updates` | `true`: a bucket locks each stack on its own, so plugins deploy in parallel and runs on different branches do not wait for each other |
+
+**Why the secrets provider matters.** On a self-managed backend a new stack is encrypted
+with a passphrase by default. The workflow has no passphrase, so a stack created that way
+cannot be deployed, and a review stack cannot copy its base's configuration. Name a provider
+(`awskms://…`, or another Pulumi supports) and every stack the workflow creates uses it.
+
+**What the deploy identity needs.** Besides what the deploy itself creates:
+
+- on the state bucket: `s3:ListBucket` on the bucket, and `s3:GetObject`, `s3:PutObject`
+  and `s3:DeleteObject` on its objects (Pulumi writes a lock object per update and deletes
+  it after);
+- on each KMS key the provider names: `kms:Encrypt` and `kms:Decrypt`.
+
+**Existing stacks keep their provider.** The input applies only to stacks the workflow
+creates. A stack created earlier with a passphrase keeps it until you change it:
+
+```bash
+pulumi stack change-secrets-provider "awskms://alias/my-app-pulumi-alpha?region=eu-west-1" --stack alpha
+```
+
+A team whose keys are not named after the stack sets `secretsprovider` in each
+`Pulumi.<stack>.yaml` itself and leaves the input empty.
+
+**Moving stacks from Pulumi Cloud to a bucket.** Once per stack, in each `-aws` package,
+platform and plugins alike. Change the provider *before* leaving Pulumi Cloud: the new
+backend takes the encryption settings from `Pulumi.<stack>.yaml`, and it cannot decrypt
+secrets that Pulumi Cloud encrypted.
+
+```bash
+pulumi stack select alpha
+pulumi stack change-secrets-provider "awskms://alias/my-app-pulumi-alpha?region=eu-west-1"
+pulumi stack export --file alpha.json
+pulumi login s3://my-app-pulumi-state?region=eu-west-1
+pulumi stack init alpha
+pulumi stack import --file alpha.json
+pulumi preview          # should show no changes
+```
+
+Commit the rewritten `Pulumi.alpha.yaml`, which now names the key, and then switch the
+workflow inputs. Delete `alpha.json`, because it holds the stack's state. The stack on Pulumi
+Cloud stays until you remove it (`pulumi stack rm` while logged in there).
+
 ## 5. Multi-Repository Setup
 
 The same architecture works when plugins live in separate repositories. Each plugin repo contains its agnostic package and its `-aws` package. The platform lives in its own repo.
@@ -748,7 +816,7 @@ Go to your GitHub repo Settings, then Secrets and variables, then Actions, then 
 
 | Name | Value | Purpose | Required |
 |---|---|---|---|
-| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI (default for all stacks) | yes |
+| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI (default for all stacks) | on Pulumi Cloud; not with a [self-managed backend](#4i-a-self-managed-state-backend) |
 | `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication for resource creation | yes |
 | `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication for resource creation | yes |
 | `IDENTITY_PROVIDER_ID` | An existing user pool id, e.g. `eu-west-1_AbCdEfGhI` | Deploy against an identity provider you own instead of provisioning one | no — see below |

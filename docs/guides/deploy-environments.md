@@ -57,6 +57,13 @@ A review stack takes its configuration from the stack of the branch it targets, 
 `pulumi config cp`, so its secrets are re-encrypted for it. Its stack config file exists only
 in the runner.
 
+**On a self-managed backend** (the workflow's `pulumi-backend-url` input), a stack the
+workflow creates would otherwise be encrypted with a passphrase the workflow does not have.
+Set `pulumi-secrets-provider` and every review stack, and every environment deployed for the
+first time, is created with that provider. For a review stack, `{stack}` in the provider is
+the base environment's stack, so the review stack uses the same key as the stack it copies
+from. See the deployment guide's *A self-managed state backend*.
+
 **The caller's triggers.** For tags to deploy, add them to the calling workflow's `push`
 trigger. For review environments, the calling workflow needs:
 

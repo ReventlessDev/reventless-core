@@ -19,7 +19,7 @@ Budget about twenty minutes for a first run, most of it waiting for AWS.
   deployed there.
 - **The [Pulumi CLI](https://www.pulumi.com/docs/install/)**, logged in. A free
   Pulumi Cloud account works (`pulumi login`), and so does a backend of your own
-  (`pulumi login --local`); on your own backend, also set
+  (`pulumi login s3://<bucket>`, or `pulumi login --local`); on your own backend, also set
   `PULUMI_CONFIG_PASSPHRASE` (it may be empty).
 - **Node 22.17.1 and pnpm 10**, and a checkout of this repository:
 

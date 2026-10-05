@@ -201,7 +201,7 @@ let check = async (~projects: array<project>): result<ready, array<string>> => {
         }
       | exception _ =>
         problems->Array.push(
-          "Pulumi is not logged in. Run `pulumi login` (Pulumi Cloud) or `pulumi login --local`, and try again.",
+          "Pulumi is not logged in. Run `pulumi login` (Pulumi Cloud), `pulumi login s3://<bucket>` (a bucket of your own) or `pulumi login --local`, and try again.",
         )
       }
     | exception _ =>

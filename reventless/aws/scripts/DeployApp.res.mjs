@@ -243,7 +243,7 @@ async function check(projects) {
         who = await workspace.whoAmI();
         exit$3 = 2;
       } catch (exn$3) {
-        problems.push("Pulumi is not logged in. Run `pulumi login` (Pulumi Cloud) or `pulumi login --local`, and try again.");
+        problems.push("Pulumi is not logged in. Run `pulumi login` (Pulumi Cloud), `pulumi login s3://<bucket>` (a bucket of your own) or `pulumi login --local`, and try again.");
       }
       if (exit$3 === 2) {
         if (backendNeedsPassphrase(who.url, process.env)) {
