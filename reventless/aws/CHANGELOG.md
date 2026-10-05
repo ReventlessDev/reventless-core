@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.372 (2026-10-05)
+
+### Bug Fixes
+
+* **deploy:** the pending-creates recovery runs from reventless-aws, and works ([b9e749e](https://github.com/ReventlessDev/reventless-core/commit/b9e749eb09354a559505fa6facc7f58e38afd2a9))
+### Features
+
+* **deploy:** a plugin names its own region, and can stay out of review environments ([7edd318](https://github.com/ReventlessDev/reventless-core/commit/7edd3187f51f74e57c331b1cb417b17de8067b58))
+* **deploy:** the deploy workflow names its state backend ([a370346](https://github.com/ReventlessDev/reventless-core/commit/a3703461bae9dc22c098315a09bbabcf0c5816b1))
+
+
 # 3.0.0-alpha.371 (2026-10-01)
 
 ### Bug Fixes
