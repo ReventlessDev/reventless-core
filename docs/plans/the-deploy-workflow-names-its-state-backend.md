@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-05<br/>
 **Status:** 🚧 S1 and S3–S7 built 2026-10-05; S2 (a real pull request on an S3 backend) runs
-last, as the first review pull request of an estate moving onto this workflow.
+last, on the first caller that deploys a self-managed backend through this workflow.
 See *As built*.<br/>
 **Touches:** `.github/workflows/deploy-reventless-aws.yml` (the reusable deploy workflow),
 `docs/guides/deploy-environments.md`, and a new section of the deploy guide. `reventless/aws`
@@ -201,10 +201,10 @@ it on close.
   reference. Checked against a `file://` backend: own references retargeted, a foreign
   project, a near-miss name (`…/devX`) and a secret untouched. Checked on the hybrid example's
   real project names as well.
-- **Checked against a live estate on an S3 backend (read-only):** its stacks use one KMS key per
-  stack name (`awskms://alias/<prefix>-<stack>`), which is what `{stack}` is for. Its own move
-  from Pulumi Cloud found the same order as S3 (change the provider on Pulumi Cloud first). It
-  also found the org rewrite (`<org>/` → `organization/`) that the guide now covers.
+- **The `{stack}` placeholder** fits the common layout of one KMS key per stack name
+  (`awskms://alias/<prefix>-<stack>`). A move from Pulumi Cloud changes the provider on Pulumi
+  Cloud first (S3's order) and rewrites stack references from `<org>/` to `organization/`;
+  the guide covers both.
 - **S5** `clear-pending-creates` in `reventless-aws` (9 tests) replaces the Python script, and
   the three steps that run this repository's own scripts skip, saying so, where the caller has
   none. **Found while porting:** the Python script never did what it said. It read
@@ -236,19 +236,18 @@ it on close.
     exists only in the runner that created it, so the bake job finds none and bakes at once.
   - **The recovery runs only from a `reventless-aws` release that has it.** A caller installs
     `reventless-aws` itself, so it pins that release or a later one.
-- **Added for the first estate to move (2026-10-05):** two things that estate's copy of the
-  workflow had and this one lacked.
-  - **`PACKAGES_TOKEN`**, an optional secret, given to every install as `GITHUB_TOKEN`. The
-    estate installs a private scope from GitHub Packages, and every install here was anonymous.
+- **Added 2026-10-05 for callers with their own packages:** two optional extensions. A
+  caller that sets neither behaves exactly as before.
+  - **`PACKAGES_TOKEN`**, an optional secret, given to every install as `GITHUB_TOKEN`, for a
+    caller that also installs from a private registry. Unset, installs stay anonymous.
   - **The caller's change detection.** Where the caller has `scripts/deploy-affected.mjs`,
     detect-changes runs it (on a pinned Node) and its answer replaces the `^reventless/` rule.
     That rule holds for this repository's framework packages; in an app those directories are
     its own workspace packages, so any change there redeployed every stack. The script takes
     `--changed`, `--manifest` and `--target name=path` (`__platform__` for the platform) and
     prints `{"affected": [...]}`. A review deploy still deploys everything. Checked by running
-    the step locally against the estate: a console-only change, an inspector change (the
-    inspector stacks and the two plugins that depend on it), a docs-only change (nothing), and
-    this repository without the script (the old rule, unchanged).
-- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. It is
-  planned as the first review pull request of an estate moving onto this workflow, after the
-  items above.
+    the step locally: in a caller with the script, a change to one workspace package reached
+    only the stacks depending on it and a docs-only change reached none; in this repository,
+    without the script, the old rule is unchanged.
+- **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS, on the
+  first caller that deploys a self-managed backend through this workflow.
