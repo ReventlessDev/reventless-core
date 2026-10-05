@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-05
+- feat(deploy): a plugin names its own region, and can stay out of review environments ([7edd318](https://github.com/ReventlessDev/reventless-core/commit/7edd3187f51f74e57c331b1cb417b17de8067b58))
+- fix(deploy): a review stack deploys against its own stacks, not its base's ([a581331](https://github.com/ReventlessDev/reventless-core/commit/a581331c87f9565a5d20f1f8da12ac21d4b9b995))
+- feat(deploy): the deploy workflow names its state backend ([a370346](https://github.com/ReventlessDev/reventless-core/commit/a3703461bae9dc22c098315a09bbabcf0c5816b1))
 ### 2026-10-01
 - fix: check a plugin's roles against the user pool's groups ([ddb3c42](https://github.com/ReventlessDev/reventless-core/commit/ddb3c422b7226a19800e781abd5f03af18867007))
 - docs: automation and translation slices no longer decide Aggregate vs DCB ([bf0cd2e](https://github.com/ReventlessDev/reventless-core/commit/bf0cd2e93a2f26f90f5f7499283647ed6d6ed821))
