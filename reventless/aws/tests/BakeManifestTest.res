@@ -39,6 +39,7 @@ plugins:
           dir: "/repo/shop/platform-aws",
           stackDefaults: Dict.fromArray([("platform:messagingEmailProvider", "log")]),
           region: None,
+          review: true,
         },
         plugins: [
           {
@@ -46,12 +47,14 @@ plugins:
             dir: "/repo/shop/catalog-aws",
             stackDefaults: Dict.make(),
             region: None,
+            review: true,
           },
           {
             name: "ordering",
             dir: "/repo/shop/ordering-aws",
             stackDefaults: Dict.make(),
             region: Some("eu-central-1"),
+            review: false,
           },
         ],
       }),
@@ -79,6 +82,7 @@ describe("BakeManifest.parseArgs", () => {
         Bake.manifest: Some("m.yaml"),
         stack: Some("alpha"),
         since: Some("2026-09-16T10:00:00Z"),
+        review: false,
         help: false,
       }),
     )
@@ -89,9 +93,42 @@ describe("BakeManifest.parseArgs", () => {
     expect(Bake.parseArgs(["--since", ""])->Result.map(a => a.since))->toEqual(Ok(None))
   )
 
+  testSync("--review says the stack is a review environment", () =>
+    expect(
+      Bake.parseArgs(["--stack", "review-pr-7", "--review"])->Result.map(a => a.review),
+    )->toEqual(Ok(true))
+  )
+
   testSync("an unknown flag refuses", () =>
     expect(Bake.parseArgs(["--stak", "alpha"]))->toEqual(Error(`unknown argument "--stak"`))
   )
+})
+
+describe("BakeManifest.pluginsToRead", () => {
+  let plugin = (name, ~review) => {
+    DeployManifest.name,
+    dir: `/repo/shop/${name}-aws`,
+    stackDefaults: Dict.make(),
+    region: None,
+    review,
+  }
+  let plugins = [plugin("catalog", ~review=true), plugin("ingest", ~review=false)]
+  let names = ps => ps->Array.map((p: DeployManifest.project) => p.name)
+
+  testSync("outside a review, the plugins whose stack has a settings file here", () => {
+    let hasStackFile = (~dir, ~stack as _) => dir == "/repo/shop/ingest-aws"
+    expect(
+      plugins->Bake.pluginsToRead(~stack="alpha", ~review=false, ~hasStackFile)->names,
+    )->toEqual(["ingest"])
+  })
+
+  // A review stack's settings exist only in the runner that created it.
+  testSync("in a review, every plugin with a review stack, files or not", () => {
+    let hasStackFile = (~dir as _, ~stack as _) => false
+    expect(
+      plugins->Bake.pluginsToRead(~stack="review-pr-7", ~review=true, ~hasStackFile)->names,
+    )->toEqual(["catalog"])
+  })
 })
 
 describe("BakeManifest reads the stacks", () => {

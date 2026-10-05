@@ -718,7 +718,7 @@ async function up(manifest, stack) {
     return e$4;
   }
   console.log("\n── Baking the component manifest ──\n");
-  let e$5 = await BakeManifest$ReventlessAws.bake(manifest, stack, startedAt);
+  let e$5 = await BakeManifest$ReventlessAws.bake(manifest, stack, startedAt, false);
   if (e$5.TAG !== "Ok") {
     return e$5;
   }

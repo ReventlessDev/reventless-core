@@ -570,7 +570,12 @@ let up = async (~manifest: DeployManifest.resolved, ~stack: string): result<unit
               | Error(_) as e => e
               | Ok() =>
                 Console.log("\n── Baking the component manifest ──\n")
-                switch await BakeManifest.bake(~manifest, ~stack, ~since=Some(startedAt)) {
+                switch await BakeManifest.bake(
+                  ~manifest,
+                  ~stack,
+                  ~since=Some(startedAt),
+                  ~review=false,
+                ) {
                 | Error(_) as e => e
                 | Ok() =>
                   let accounts = switch (

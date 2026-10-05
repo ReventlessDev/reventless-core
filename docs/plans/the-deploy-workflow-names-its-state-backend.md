@@ -231,11 +231,18 @@ it on close.
   flag per entry and by name (absent, `true`, `false`); retargeting and the destroy loop leave
   the stack out; the plugin job's check skips it only in review mode.
 - **Open:**
-  - **The bake waits for no plugin in a review environment.** `bake-manifest` reads a
-    plugin's stack only where `Pulumi.<stack>.yaml` is in the checkout. A review stack's file
-    exists only in the runner that created it, so the bake job finds none and bakes at once.
   - **The recovery runs only from a `reventless-aws` release that has it.** A caller installs
     `reventless-aws` itself, so it pins that release or a later one.
+- **Fixed 2026-10-06, the bake in a review environment:** it waited for no plugin.
+  `bake-manifest` reads a plugin's stack only where `Pulumi.<stack>.yaml` is in the checkout,
+  and a review stack's file exists only in the runner that created it. The bake job now passes
+  `--review` for a pull request, and the command then waits for every plugin with a review
+  stack (`pluginsToRead`, 2 tests; all but `review: false`). Checked by running the bake job's
+  resolve step locally: a pull request bakes with `--review`, a push as before.
+- **Fixed 2026-10-06, a bake after a cancelled deploy:** the bake ran unless a deploy job had
+  *failed*, so a plugin job cancelled for want of a runner (a GitHub incident on 2026-10-05
+  cancelled three) let it bake over stacks that had not deployed. It now runs only after
+  `success` or `skipped`, like the plugin job's own condition on the platform.
 - **Added 2026-10-05 for callers with their own packages:** two optional extensions. A
   caller that sets neither behaves exactly as before.
   - **`PACKAGES_TOKEN`**, an optional secret, given to every install as `GITHUB_TOKEN`, for a

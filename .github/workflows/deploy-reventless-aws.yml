@@ -1112,16 +1112,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [detect-changes, deploy-platform, deploy-plugins]
     # Runs when either half deployed (or was skipped as unchanged), never on a
-    # PR, and never after a failure — baking off a half-deployed platform would
-    # publish a shop missing whatever did not land.
+    # PR, and never after a failure or a cancellation — baking off a
+    # half-deployed platform would publish a shop missing whatever did not land.
+    # A cancelled plugin job is one: GitHub cancels a job no runner picks up.
     if: |
       always() &&
       github.event.action != 'closed' &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.review-candidate == 'true') &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.skip-deploy != 'true' &&
-      needs.deploy-platform.result != 'failure' &&
-      needs.deploy-plugins.result != 'failure'
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
+      (needs.deploy-plugins.result == 'success' || needs.deploy-plugins.result == 'skipped')
     environment: deploy-platform
     env:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
@@ -1237,7 +1238,13 @@ jobs:
           if [[ "$(field matched "$OUT")" != "true" ]]; then
             echo "Nothing was deployed for this run: nothing to bake."
             echo "bake=false" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "pull_request" ]] || [[ -f "Pulumi.${STACK}.yaml" ]]; then
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # A review stack's settings file exists only in the runner that
+            # created it, so the bake is told which plugins to wait for.
+            echo "bake=true" >> "$GITHUB_OUTPUT"
+            echo "stack=${STACK}" >> "$GITHUB_OUTPUT"
+            echo "review=true" >> "$GITHUB_OUTPUT"
+          elif [[ -f "Pulumi.${STACK}.yaml" ]]; then
             echo "bake=true" >> "$GITHUB_OUTPUT"
             echo "stack=${STACK}" >> "$GITHUB_OUTPUT"
           else
@@ -1258,7 +1265,8 @@ jobs:
           pnpm exec bake-manifest \
             --manifest "${GITHUB_WORKSPACE}/${{ inputs.manifest }}" \
             --stack "${{ steps.env.outputs.stack }}" \
-            --since "${DEPLOY_STARTED_AT:-}"
+            --since "${DEPLOY_STARTED_AT:-}" \
+            ${{ steps.env.outputs.review == 'true' && '--review' || '' }}
 
   # ---------------------------------------------------------------------------
   # Job 5: Remove a pull request's review environment when it closes

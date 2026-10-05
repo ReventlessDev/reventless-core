@@ -60,13 +60,15 @@ function resolve(manifest, file) {
       name: Stdlib_Option.getOr(manifest.platform.name, "platform"),
       dir: Nodepath.resolve(base, manifest.platform.path),
       stackDefaults: Stdlib_Option.getOr(manifest.platform["stack-defaults"], {}),
-      region: undefined
+      region: undefined,
+      review: true
     },
     plugins: Stdlib_Option.getOr(manifest.plugins, []).map(p => ({
       name: p.name,
       dir: Nodepath.resolve(base, p.path),
       stackDefaults: Stdlib_Option.getOr(p["stack-defaults"], {}),
-      region: p.region
+      region: p.region,
+      review: Stdlib_Option.getOr(p.review, true)
     }))
   };
 }

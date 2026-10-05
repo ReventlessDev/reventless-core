@@ -38,7 +38,14 @@ type t = {
 }
 
 /** One stack folder, with its path made absolute. */
-type project = {name: string, dir: string, stackDefaults: dict<string>, region: option<string>}
+type project = {
+  name: string,
+  dir: string,
+  stackDefaults: dict<string>,
+  region: option<string>,
+  /** Whether a review environment deploys it: false only on a plugin marked so. */
+  review: bool,
+}
 
 type resolved = {
   file: string,
@@ -65,6 +72,7 @@ let resolve = (manifest: t, ~file: string): resolved => {
       dir: NodePath.resolve([base, manifest.platform.path]),
       stackDefaults: manifest.platform.stackDefaults->Option.getOr(Dict.make()),
       region: None,
+      review: true,
     },
     plugins: manifest.plugins
     ->Option.getOr([])
@@ -73,6 +81,7 @@ let resolve = (manifest: t, ~file: string): resolved => {
       dir: NodePath.resolve([base, p.path]),
       stackDefaults: p.stackDefaults->Option.getOr(Dict.make()),
       region: p.region,
+      review: p.review->Option.getOr(true),
     }),
   }
 }

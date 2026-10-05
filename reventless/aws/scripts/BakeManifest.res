@@ -27,21 +27,23 @@ type args = {
   manifest: option<string>,
   stack: option<string>,
   since: option<string>,
+  review: bool,
   help: bool,
 }
 
 let parseArgs = (argv: array<string>): result<args, string> =>
-  Reventless.CliArgs.parse(~strings=["manifest", "stack", "since"], argv)
+  Reventless.CliArgs.parse(~strings=["manifest", "stack", "since"], ~bools=["review"], argv)
   ->Result.flatMap(Reventless.CliArgs.noPositionals)
   ->Result.map(a => {
     manifest: a->Reventless.CliArgs.string("manifest"),
     stack: a->Reventless.CliArgs.string("stack"),
     since: a->Reventless.CliArgs.string("since")->Option.flatMap(v => v == "" ? None : Some(v)),
+    review: a->Reventless.CliArgs.bool("review"),
     help: a->Reventless.CliArgs.help,
   })
 
 let usage = `
-Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>]
+Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>] [--review]
 
 Bake the component manifest of a deployed platform.
 
@@ -51,6 +53,9 @@ Bake the component manifest of a deployed platform.
                       platform's folder.
   --since <instant>   When this deploy started (ISO 8601). Lets the report tell a
                       plugin that re-registered from one that was unchanged.
+  --review            The stack is a pull request's review environment. Its stacks'
+                      settings are not in this checkout, so every plugin with a
+                      review stack is waited for, not only those with a file here.
 
 Reads the bake function from the platform stack and each plugin's structure key
 from its stack, then asks the function to bake — again every
@@ -60,6 +65,17 @@ waiting, so that stops the run at once.
 `
 
 // ── What the stacks say ──────────────────────────────────────────────────────
+
+/** The plugins whose registration the bake waits for. A stack with no settings
+    file here was never deployed, except in a review environment, whose settings
+    exist only in the runner that created it: there it is every plugin with a
+    review stack. */
+let pluginsToRead = (
+  plugins: array<DeployManifest.project>,
+  ~stack: string,
+  ~review: bool,
+  ~hasStackFile: (~dir: string, ~stack: string) => bool,
+) => plugins->Array.filter(p => review ? p.review : hasStackFile(~dir=p.dir, ~stack))
 
 type target = {functionName: string, bucket: string, key: string}
 
@@ -278,7 +294,12 @@ let invokeWith = (client: Lambda.client, ~functionName: string, ~payload: JSON.t
     | exception exn => Error(`could not invoke ${functionName}: ${Util_AwsError.describe(exn)}`)
     }
 
-let bake = async (~manifest: DeployManifest.resolved, ~stack: string, ~since: option<string>) =>
+let bake = async (
+  ~manifest: DeployManifest.resolved,
+  ~stack: string,
+  ~since: option<string>,
+  ~review: bool,
+) =>
   switch PulumiCli.stackOutputs(~dir=manifest.platform.dir, ~stack) {
   | Error(_) as e => e
   | Ok(outputs) =>
@@ -288,12 +309,12 @@ let bake = async (~manifest: DeployManifest.resolved, ~stack: string, ~since: op
       Ok()
     | Some(target) =>
       let refs = []
-      manifest.plugins->Array.forEach(p =>
-        if PulumiCli.hasStackFile(~dir=p.dir, ~stack) {
-          switch PulumiCli.stackOutputs(~dir=p.dir, ~stack) {
-          | Ok(o) => o->structureRefOf->Option.forEach(r => refs->Array.push(r))
-          | Error(message) => Console.error(`${p.name}: ${message} — not waited for`)
-          }
+      manifest.plugins
+      ->pluginsToRead(~stack, ~review, ~hasStackFile=PulumiCli.hasStackFile)
+      ->Array.forEach(p =>
+        switch PulumiCli.stackOutputs(~dir=p.dir, ~stack) {
+        | Ok(o) => o->structureRefOf->Option.forEach(r => refs->Array.push(r))
+        | Error(message) => Console.error(`${p.name}: ${message} — not waited for`)
         }
       )
       let expect = refs->Dict.fromArray
@@ -352,7 +373,7 @@ let run = async (args: args): result<unit, string> =>
   | Ok(manifest) =>
     switch args.stack->Option.orElse(PulumiCli.selectedStack(~dir=manifest.platform.dir)) {
     | None => Error(`no stack selected in ${manifest.platform.dir} — pass --stack`)
-    | Some(stack) => await bake(~manifest, ~stack, ~since=args.since)
+    | Some(stack) => await bake(~manifest, ~stack, ~since=args.since, ~review=args.review)
     }
   }
 

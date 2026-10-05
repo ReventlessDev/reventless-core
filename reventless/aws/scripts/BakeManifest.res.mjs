@@ -19,7 +19,7 @@ function parseArgs(argv) {
     "manifest",
     "stack",
     "since"
-  ], undefined, undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => ({
+  ], ["review"], undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => ({
     manifest: CliArgs$Reventless.string(a, "manifest"),
     stack: CliArgs$Reventless.string(a, "stack"),
     since: Stdlib_Option.flatMap(CliArgs$Reventless.string(a, "since"), v => {
@@ -29,12 +29,13 @@ function parseArgs(argv) {
         return v;
       }
     }),
+    review: CliArgs$Reventless.bool(a, "review"),
     help: CliArgs$Reventless.help(a)
   }));
 }
 
 let usage = `
-Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>]
+Usage: bake-manifest [--manifest <path>] [--stack <name>] [--since <instant>] [--review]
 
 Bake the component manifest of a deployed platform.
 
@@ -44,6 +45,9 @@ Bake the component manifest of a deployed platform.
                       platform's folder.
   --since <instant>   When this deploy started (ISO 8601). Lets the report tell a
                       plugin that re-registered from one that was unchanged.
+  --review            The stack is a pull request's review environment. Its stacks'
+                      settings are not in this checkout, so every plugin with a
+                      review stack is waited for, not only those with a file here.
 
 Reads the bake function from the platform stack and each plugin's structure key
 from its stack, then asks the function to bake — again every
@@ -51,6 +55,16 @@ from its stack, then asks the function to bake — again every
 not arrived. A registration this deploy wrote with another key cannot arrive by
 waiting, so that stops the run at once.
 `;
+
+function pluginsToRead(plugins, stack, review, hasStackFile) {
+  return plugins.filter(p => {
+    if (review) {
+      return p.review;
+    } else {
+      return hasStackFile(p.dir, stack);
+    }
+  });
+}
 
 function targetOf(outputs) {
   let match = PulumiCli$ReventlessAws.stringOutput(outputs, "bakedManifestFunction");
@@ -269,7 +283,7 @@ function invokeWith(client, functionName, payload) {
   };
 }
 
-async function bake(manifest, stack, since) {
+async function bake(manifest, stack, since, review) {
   let e = PulumiCli$ReventlessAws.stackOutputs(manifest.platform.dir, stack);
   if (e.TAG !== "Ok") {
     return e;
@@ -277,10 +291,7 @@ async function bake(manifest, stack, since) {
   let target = targetOf(e._0);
   if (target !== undefined) {
     let refs = [];
-    manifest.plugins.forEach(p => {
-      if (!PulumiCli$ReventlessAws.hasStackFile(p.dir, stack)) {
-        return;
-      }
+    pluginsToRead(manifest.plugins, stack, review, PulumiCli$ReventlessAws.hasStackFile).forEach(p => {
       let o = PulumiCli$ReventlessAws.stackOutputs(p.dir, stack);
       if (o.TAG === "Ok") {
         return Stdlib_Option.forEach(structureRefOf(o._0), r => {
@@ -336,7 +347,7 @@ async function run(args) {
   let manifest = e._0;
   let stack = Stdlib_Option.orElse(args.stack, PulumiCli$ReventlessAws.selectedStack(manifest.platform.dir));
   if (stack !== undefined) {
-    return await bake(manifest, stack, args.since);
+    return await bake(manifest, stack, args.since, args.review);
   } else {
     return {
       TAG: "Error",
@@ -381,6 +392,7 @@ export {
   Lambda,
   parseArgs,
   usage,
+  pluginsToRead,
   targetOf,
   structureRefOf,
   payload,
