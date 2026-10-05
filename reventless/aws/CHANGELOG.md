@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.373 (2026-10-05)
+
+### Bug Fixes
+
+* **deploy:** the bake waits for a review's plugins, and never follows a cancelled deploy ([84bdfbd](https://github.com/ReventlessDev/reventless-core/commit/84bdfbd13a892ceb9741a573e7928328e45f9d79))
+
+
 # 3.0.0-alpha.372 (2026-10-05)
 
 ### Bug Fixes
