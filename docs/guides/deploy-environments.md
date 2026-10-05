@@ -60,6 +60,10 @@ any value naming `<org>/<project>/<base-stack>` for a project in the deploy mani
 pointed at the review stack, so a review plugin deploys against the review platform, not the
 shared one. A setting naming a stack the app does not deploy keeps pointing at it.
 
+A plugin marked `review: false` in the deploy manifest gets no review stack: the review uses
+the base environment's, and settings naming it keep pointing there. It is for a stack holding
+something only one stack can hold, which a review copy would take over and remove on close.
+
 **On a self-managed backend** (the workflow's `pulumi-backend-url` input), a stack the
 workflow creates would otherwise be encrypted with a passphrase the workflow does not have.
 Set `pulumi-secrets-provider` and every review stack, and every environment deployed for the

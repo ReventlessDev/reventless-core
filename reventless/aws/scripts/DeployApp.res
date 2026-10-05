@@ -86,6 +86,7 @@ type project = {
   projectName: string,
   program: string,
   stackDefaults: dict<string>,
+  region: option<string>,
 }
 
 @module("yaml") external parseYaml: string => JSON.t = "parse"
@@ -111,6 +112,7 @@ let projectOf = (p: DeployManifest.project): result<project, string> => {
         projectName,
         program: NodePath.join([p.dir, field("main")->Option.getOr("index.js")]),
         stackDefaults: p.stackDefaults,
+        region: p.region,
       })
     }
   }
@@ -149,6 +151,19 @@ let backendNeedsPassphrase = (~url: option<string>, ~env: dict<string>): bool =>
       env->Dict.get("PULUMI_CONFIG_PASSPHRASE_FILE") == None
   | _ => false
   }
+
+/** A manifest that puts a stack in another region than the one `up` deploys
+    every stack to. */
+let regionProblems = (~projects: array<project>, ~region: string): array<string> =>
+  projects->Array.filterMap(p =>
+    switch p.region {
+    | Some(own) if own != region =>
+      Some(
+        `${p.label} deploys to ${own} in the manifest, and deploy-app deploys every stack to one region, ${region}. Deploy it with the deploy workflow, or from a manifest without that region.`,
+      )
+    | _ => None
+    }
+  )
 
 let unbuilt = (projects: array<project>): array<project> =>
   projects->Array.filter(p => !NodeFs.existsSync(p.program))
@@ -210,6 +225,9 @@ let check = async (~projects: array<project>): result<ready, array<string>> => {
       )
     }
   }
+  region->Option.forEach(region =>
+    regionProblems(~projects, ~region)->Array.forEach(p => problems->Array.push(p))
+  )
   unbuilt(projects)->Array.forEach(p =>
     problems->Array.push(
       `${p.label} is not built: ${p.program} is missing. Run \`pnpm run build\` and try again.`,

@@ -134,7 +134,8 @@ function projectOf(p) {
         dir: p.dir,
         projectName: projectName,
         program: Nodepath.join(p.dir, Stdlib_Option.getOr(field("main"), "index.js")),
-        stackDefaults: p.stackDefaults
+        stackDefaults: p.stackDefaults,
+        region: p.region
       }
     };
   } else {
@@ -181,6 +182,15 @@ function backendNeedsPassphrase(url, env) {
   } else {
     return false;
   }
+}
+
+function regionProblems(projects, region) {
+  return Stdlib_Array.filterMap(projects, p => {
+    let own = p.region;
+    if (own !== undefined && own !== region) {
+      return p.label + ` deploys to ` + own + ` in the manifest, and deploy-app deploys every stack to one region, ` + region + `. Deploy it with the deploy workflow, or from a manifest without that region.`;
+    }
+  });
 }
 
 function unbuilt(projects) {
@@ -252,6 +262,11 @@ async function check(projects) {
       }
     }
   }
+  Stdlib_Option.forEach(region, region => {
+    regionProblems(projects, region).forEach(p => {
+      problems.push(p);
+    });
+  });
   unbuilt(projects).forEach(p => {
     problems.push(p.label + ` is not built: ` + p.program + ` is missing. Run \`pnpm run build\` and try again.`);
   });
@@ -917,6 +932,7 @@ export {
   requiredNodeMajor,
   checkNode,
   backendNeedsPassphrase,
+  regionProblems,
   unbuilt,
   check,
   layerName,

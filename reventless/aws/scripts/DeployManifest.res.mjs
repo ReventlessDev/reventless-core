@@ -18,7 +18,9 @@ let pluginSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   path: s.m(Sury.string),
   "depends-on": s.m(Sury.$option(Sury.array(Sury.string))),
-  "stack-defaults": s.m(Sury.$option(Sury.record(Sury.string)))
+  "stack-defaults": s.m(Sury.$option(Sury.record(Sury.string))),
+  region: s.m(Sury.$option(Sury.string)),
+  review: s.m(Sury.$option(Sury.boolean))
 }));
 
 let schema = Sury.$schema(s => ({
@@ -57,12 +59,14 @@ function resolve(manifest, file) {
     platform: {
       name: Stdlib_Option.getOr(manifest.platform.name, "platform"),
       dir: Nodepath.resolve(base, manifest.platform.path),
-      stackDefaults: Stdlib_Option.getOr(manifest.platform["stack-defaults"], {})
+      stackDefaults: Stdlib_Option.getOr(manifest.platform["stack-defaults"], {}),
+      region: undefined
     },
     plugins: Stdlib_Option.getOr(manifest.plugins, []).map(p => ({
       name: p.name,
       dir: Nodepath.resolve(base, p.path),
-      stackDefaults: Stdlib_Option.getOr(p["stack-defaults"], {})
+      stackDefaults: Stdlib_Option.getOr(p["stack-defaults"], {}),
+      region: p.region
     }))
   };
 }

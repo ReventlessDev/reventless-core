@@ -21,6 +21,8 @@ plugins:
     depends-on: []
   - name: ordering
     path: ordering-aws
+    region: eu-central-1
+    review: false
 `
 
   testSync("resolves every folder against the manifest's own folder", () => {
@@ -36,10 +38,21 @@ plugins:
           name: "shop-platform",
           dir: "/repo/shop/platform-aws",
           stackDefaults: Dict.fromArray([("platform:messagingEmailProvider", "log")]),
+          region: None,
         },
         plugins: [
-          {name: "catalog", dir: "/repo/shop/catalog-aws", stackDefaults: Dict.make()},
-          {name: "ordering", dir: "/repo/shop/ordering-aws", stackDefaults: Dict.make()},
+          {
+            name: "catalog",
+            dir: "/repo/shop/catalog-aws",
+            stackDefaults: Dict.make(),
+            region: None,
+          },
+          {
+            name: "ordering",
+            dir: "/repo/shop/ordering-aws",
+            stackDefaults: Dict.make(),
+            region: Some("eu-central-1"),
+          },
         ],
       }),
     )

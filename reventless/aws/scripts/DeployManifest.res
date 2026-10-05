@@ -7,6 +7,8 @@ it here. Paths in the file are relative to the file's own folder.
 
 `stack-defaults` on an entry are the settings `deploy-app` gives a stack it
 creates for that folder — what a new stack of this app cannot deploy without.
+A plugin's `region` overrides the file's for that stack; `review: false` keeps it
+out of a pull request's review environment.
 */
 
 @module("yaml") external parseYaml: string => JSON.t = "parse"
@@ -24,6 +26,8 @@ type plugin = {
   path: string,
   @as("depends-on") dependsOn?: array<string>,
   @as("stack-defaults") stackDefaults?: dict<string>,
+  region?: string,
+  review?: bool,
 }
 
 @schema
@@ -34,7 +38,7 @@ type t = {
 }
 
 /** One stack folder, with its path made absolute. */
-type project = {name: string, dir: string, stackDefaults: dict<string>}
+type project = {name: string, dir: string, stackDefaults: dict<string>, region: option<string>}
 
 type resolved = {
   file: string,
@@ -60,6 +64,7 @@ let resolve = (manifest: t, ~file: string): resolved => {
       name: manifest.platform.name->Option.getOr("platform"),
       dir: NodePath.resolve([base, manifest.platform.path]),
       stackDefaults: manifest.platform.stackDefaults->Option.getOr(Dict.make()),
+      region: None,
     },
     plugins: manifest.plugins
     ->Option.getOr([])
@@ -67,6 +72,7 @@ let resolve = (manifest: t, ~file: string): resolved => {
       name: p.name,
       dir: NodePath.resolve([base, p.path]),
       stackDefaults: p.stackDefaults->Option.getOr(Dict.make()),
+      region: p.region,
     }),
   }
 }

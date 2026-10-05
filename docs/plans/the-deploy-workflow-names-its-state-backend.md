@@ -1,8 +1,9 @@
 # Plan: the deploy workflow names its state backend
 
 **Date:** 2026-10-05<br/>
-**Status:** 🚧 S1, S3 and S4 built 2026-10-05; S2 (a real pull request on an S3 backend) is
-open. See *As built*.<br/>
+**Status:** 🚧 S1 and S3–S7 built 2026-10-05; S2 (a real pull request on an S3 backend) runs
+last, as the first review pull request of an estate moving onto this workflow.
+See *As built*.<br/>
 **Touches:** `.github/workflows/deploy-reventless-aws.yml` (the reusable deploy workflow),
 `docs/guides/deploy-environments.md`, and a new section of the deploy guide. `reventless/aws`
 only if a check of the local deploy finds it needs one (S4).<br/>
@@ -87,6 +88,64 @@ The deploy guide gets a section *A self-managed state backend*. It covers:
 names only Pulumi Cloud and `--local`. Check a local deploy against an S3 backend. Make the
 message name `pulumi login s3://…` too, and change anything the check finds.
 
+## S5 — The workflow runs only what it ships
+
+The workflow is called from other repositories, but it runs files from the caller's checkout
+that only this repository has. It needs a way to run each of them, or to do without:
+
+- **The pending-creates recovery** (`.github/scripts/clear-safe-pending-creates.py`, run
+  before every `pulumi up`) becomes `clear-pending-creates` in `reventless-aws`, beside
+  `resolve-environment` and `bake-manifest`. A caller has that package installed when the step
+  runs. It keeps the same steps and the same allow-list: cancel a stale lock, clear the
+  pending creates known to be safe, fail on any other, refresh. The Python script goes.
+- **`check:resolvers`** validates this repository's resolver templates. A caller deploys the
+  published templates, which this repository's own deploy already validated. It runs only
+  where the caller defines the script.
+- **The EventBridge rule report** and **`scripts/workspace-setup.mjs`** run only where the file
+  exists.
+
+A caller needs a `reventless-aws` that has the command. The release that carries it is the
+earliest a caller can pin.
+
+### Tests
+
+- The command's classification of pending operations: none, a safe one, an unsafe one, a mix.
+- Its arguments, through `CliArgs.observe`.
+- Against a `file://` backend: a stack with no pending operations is refreshed and the step
+  goes on.
+- The workflow parses, and every `run:` script passes `bash -n`. Each guarded step, run in a
+  directory without the file, skips and says so.
+
+## S6 — A plugin deploys to its own region
+
+`region` on a plugin entry of `deploy-manifest.yaml` overrides the manifest's top-level
+`region` for that stack. The plugin job sets `AWS_REGION` from it, so the layer ARN is looked
+up in that region as well. Where no layer is published there, the stack deploys without one.
+`DeployManifest` describes the field.
+
+### Tests
+
+- The plugin job's path step, run locally: an entry with a region and an entry without.
+
+## S7 — A stack can stay out of review environments
+
+`review: false` on a plugin entry: a pull request's review environment does not deploy that
+stack. It is for a stack that owns something outside itself which only one stack can hold,
+such as the one notification an S3 bucket allows. A review copy would take it over and remove
+it on close.
+
+- `detect-changes` leaves the entry out of a review deploy.
+- `destroy-review` does not look for its stack.
+- A review stack's references to it keep naming the base stack, which is the one that exists.
+- The platform cannot opt out: a review environment without its own platform is the bug
+  `a581331c8` fixed.
+
+### Tests
+
+- `detect-changes`' review branch, run locally with such an entry: the matrix leaves it out.
+- The retargeting, with a reference to such a stack: unchanged.
+- The destroy loop leaves it out.
+
 ## Risks
 
 - **A wrong provider on an existing stack is not touched.** The input applies only to stacks
@@ -146,16 +205,37 @@ message name `pulumi login s3://…` too, and change anything the check finds.
   stack name (`awskms://alias/<prefix>-<stack>`), which is what `{stack}` is for. Its own move
   from Pulumi Cloud found the same order as S3 (change the provider on Pulumi Cloud first). It
   also found the org rewrite (`<org>/` → `organization/`) that the guide now covers.
-- **Open, found on that estate:**
-  - **No way to keep a stack out of review environments.** A stack that owns a singleton
-    outside itself, such as the one notification an S3 bucket can have, would be taken over by
-    its review copy and removed when the pull request closes. That calls for a per-plugin
-    manifest flag (`review: false`, say).
-  - **The workflow runs files from the caller's checkout:**
-    `.github/scripts/clear-safe-pending-creates.py` (the up step fails without it),
-    `pnpm run check:resolvers` and `scripts/eventbridge-rules.mjs`. Outside this repository
-    they are missing. The workflow should check out its own copy, or carry them inline.
-  - **Per-plugin `region:`** in the manifest is not read. Only the top-level region is.
+- **S5** `clear-pending-creates` in `reventless-aws` (9 tests) replaces the Python script, and
+  the three steps that run this repository's own scripts skip, saying so, where the caller has
+  none. **Found while porting:** the Python script never did what it said. It read
+  `pendingOperations`, and Pulumi's export spells it `pending_operations`, so it saw no pending
+  operation, cleared nothing and refused nothing. Had it seen one, it would still have failed:
+  `pulumi state delete` cannot remove a pending create, which has no resource in the state.
+  Now, once every pending operation is known to be safe, the refresh runs with
+  `--clear-pending-creates`. Any other operation stops the deploy first. The export is read
+  without `--show-secrets`, since only the operations are needed. Checked against a `file://`
+  backend with operations written into the checkpoint: a safe one is cleared (exit 0, none
+  left), an unsafe one and a mix are refused (exit 1, both left), none just refreshes. Each
+  guard, run in this repository and in an empty directory, runs the tool and skips
+  respectively.
+- **S6** the plugin job reads its entry's `region` in *Resolve plugin path*. The layer lookup
+  moved after that step, and it, the preview and the up take that region as `AWS_REGION`.
+  `DeployManifest` has `region` and `review` on a plugin, and `deploy-app` refuses a manifest
+  that puts a stack in another region than the one it deploys to (`regionProblems`, 1 test;
+  the manifest test covers both fields). Checked with the real `yq`: an entry with a region,
+  one without, and the hybrid example's manifest.
+- **S7 changed from the plan:** a `review: false` plugin stays in the matrix, and its job
+  skips itself in review mode. `detect-changes` is left as it was, so a pull request whose
+  base has no review environment still gets the plugin's dry run. `all-plugins` carries the
+  flag, and the destroy loop and the retargeting both read it. Checked with the real `yq`: the
+  flag per entry and by name (absent, `true`, `false`); retargeting and the destroy loop leave
+  the stack out; the plugin job's check skips it only in review mode.
+- **Open:**
+  - **The bake waits for no plugin in a review environment.** `bake-manifest` reads a
+    plugin's stack only where `Pulumi.<stack>.yaml` is in the checkout. A review stack's file
+    exists only in the runner that created it, so the bake job finds none and bakes at once.
+  - **The recovery runs only from a `reventless-aws` release that has it.** A caller installs
+    `reventless-aws` itself, so it pins that release or a later one.
 - **S2 open:** a pull request opened, updated and closed against an S3 backend on AWS. It is
   planned as the first review pull request of an estate moving onto this workflow, after the
   items above.

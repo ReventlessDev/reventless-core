@@ -55,7 +55,18 @@ describe("DeployApp stacks and layer", () => {
     projectName: "shop-platform-aws",
     program: "/app/platform-aws/src/Main.res.mjs",
     stackDefaults: Dict.fromArray([("aws:region", "us-east-1"), ("platform:x", "y")]),
+    region: None,
   }
+
+  testSync("a stack the manifest puts in another region is refused", () => {
+    let ingest = {...project, label: "ingest", region: Some("eu-central-1")}
+    expect(
+      DeployApp.regionProblems(~projects=[project, ingest], ~region="eu-west-1")->Array.length,
+    )->toBe(1)
+    expect(
+      DeployApp.regionProblems(~projects=[project, ingest], ~region="eu-central-1"),
+    )->toEqual([])
+  })
 
   // The region and the try-out flag come last, so an app default cannot turn a
   // try-out into a stack `down` refuses to remove.

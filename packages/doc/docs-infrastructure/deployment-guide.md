@@ -459,6 +459,20 @@ plugins:
 - `path` points to the `-aws` package root (relative to repo root).
 - `name` matches the Pulumi project name (without the org prefix).
 - `depends-on` declares deployment ordering.
+- `region` (top level) is where the stacks deploy. On a plugin, `region` overrides it for
+  that stack only, and the Lambda layer is looked up there; where none is published, the stack
+  deploys without one. `deploy-app` deploys every stack to one region, so it refuses a
+  manifest that names another.
+- `review: false` on a plugin keeps it out of a pull request's
+  [review environment](https://github.com/ReventlessDev/reventless-core/blob/alpha/docs/guides/deploy-environments.md):
+  the review uses the base environment's stack, and settings naming it keep pointing there.
+  Set it on a stack that holds something only one stack can hold, such as an S3 bucket's
+  notification, which a review copy would take over and then remove on close.
+
+The workflow runs only what it brings with it, plus commands from
+`@reventlessdev/reventless-aws`, which the `-aws` packages already depend on. The recovery
+before each `pulumi up` is `clear-pending-creates` from that package, so the version your
+packages install decides which recovery runs.
 
 ### 4h. Add the GitHub Actions workflow
 

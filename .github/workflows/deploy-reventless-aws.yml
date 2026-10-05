@@ -322,13 +322,15 @@ jobs:
             PLUGIN_REL=$(yq ".plugins[$i].path" "$MANIFEST")
             PLUGIN_PATH="${MANIFEST_DIR}${PLUGIN_REL}"
             PLUGIN_DEPS=$(yq -o=json ".plugins[$i].depends-on // []" "$MANIFEST")
+            PLUGIN_REVIEW=$(yq ".plugins[$i].review != false" "$MANIFEST")
 
             # Build all-plugins entry (store resolved path for --cwd)
             ALL_PLUGINS=$(echo "$ALL_PLUGINS" | jq \
               --arg name "$PLUGIN_NAME" \
               --arg path "$PLUGIN_PATH" \
               --argjson deps "$PLUGIN_DEPS" \
-              '. + [{"name": $name, "path": $path, "depends-on": $deps}]')
+              --argjson review "$PLUGIN_REVIEW" \
+              '. + [{"name": $name, "path": $path, "depends-on": $deps, "review": $review}]')
 
             # Check if this plugin changed
             PLUGIN_CHANGED="false"
@@ -642,9 +644,9 @@ jobs:
             # A copied reference to a stack of this app (`platform:stack`,
             # `interstack:dependencies`, …) still names the base environment's,
             # and would deploy this review against it. Point each at the review's.
-            # References to stacks the app does not deploy stay shared.
+            # References to stacks the review does not deploy stay shared.
             MANIFEST="${{ inputs.manifest }}"
-            PROJECTS=$(for p in $(yq '.platform.path, .plugins[].path' "$MANIFEST"); do
+            PROJECTS=$(for p in $(yq '.platform.path, (.plugins[] | select(.review != false) | .path)' "$MANIFEST"); do
               yq '.name' "$(dirname "$MANIFEST")/${p}/Pulumi.yaml"; done | paste -sd, -)
             pulumi config --stack "$STACK" --cwd "$DEPLOY_DIR" --json |
               PROJECTS="$PROJECTS" BASE="${{ steps.env.outputs.base-stack }}" REVIEW="$STACK" python3 -c '
@@ -755,26 +757,6 @@ jobs:
           fi
           echo "Pulumi backend: ${PULUMI_BACKEND_URL:-Pulumi Cloud}"
 
-      - name: Resolve Lambda Layer ARN
-        run: |
-          # Input takes precedence, then the per-stack SSM parameter, then empty
-          # (no layer). SSM parameters are regional — read using AWS_REGION (the
-          # manifest region), matching where build-lambda-layer.yml wrote it.
-          ARN="${{ inputs.layer-arn }}"
-          if [[ -z "$ARN" ]]; then
-            BRANCH="${{ needs.detect-changes.outputs.branch }}"
-            case "$BRANCH" in
-              main)  STACK="main"  ;;
-              beta)  STACK="beta"  ;;
-              alpha) STACK="alpha" ;;
-              *)     STACK="alpha" ;;
-            esac
-            ARN=$(aws ssm get-parameter --name "/reventless/layer-arn/${STACK}" \
-              --query Parameter.Value --output text 2>/dev/null || echo "")
-          fi
-          echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
-          echo "Layer ARN: ${ARN:-(none)}"
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -831,8 +813,35 @@ jobs:
           [[ "$MANIFEST_DIR" == "." ]] && MANIFEST_DIR="" || MANIFEST_DIR="${MANIFEST_DIR}/"
           PLUGIN_REL=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .path' "$MANIFEST")
           PLUGIN_DEPS=$(yq -o=json '.plugins[] | select(.name == "${{ matrix.plugin }}") | .depends-on // []' "$MANIFEST")
+          # A plugin's own `region` overrides the manifest's for this stack.
+          PLUGIN_REGION=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .region // ""' "$MANIFEST")
           echo "path=${MANIFEST_DIR}${PLUGIN_REL}" >> "$GITHUB_OUTPUT"
           echo "deps=${PLUGIN_DEPS}" >> "$GITHUB_OUTPUT"
+          echo "region=${PLUGIN_REGION:-${{ needs.detect-changes.outputs.region }}}" >> "$GITHUB_OUTPUT"
+          # `review: false` keeps the stack out of a pull request's review environment.
+          echo "review=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .review != false' "$MANIFEST")" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Lambda Layer ARN
+        env:
+          AWS_REGION: ${{ steps.plugin.outputs.region }}
+        run: |
+          # Input takes precedence, then the per-stack SSM parameter, then empty
+          # (no layer). SSM parameters are regional — read in the plugin's region,
+          # so a plugin in a region with no layer deploys without one.
+          ARN="${{ inputs.layer-arn }}"
+          if [[ -z "$ARN" ]]; then
+            BRANCH="${{ needs.detect-changes.outputs.branch }}"
+            case "$BRANCH" in
+              main)  STACK="main"  ;;
+              beta)  STACK="beta"  ;;
+              alpha) STACK="alpha" ;;
+              *)     STACK="alpha" ;;
+            esac
+            ARN=$(aws ssm get-parameter --name "/reventless/layer-arn/${STACK}" \
+              --query Parameter.Value --output text 2>/dev/null || echo "")
+          fi
+          echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
+          echo "Layer ARN: ${ARN:-(none)}"
 
       - name: Wait for dependencies
         if: steps.plugin.outputs.deps != '[]'
@@ -924,6 +933,9 @@ jobs:
           CONFIG_FILE="${DEPLOY_DIR}/Pulumi.${STACK}.yaml"
           if [[ "${{ steps.env.outputs.mode }}" == "none" ]]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.env.outputs.mode }}" == "review" && "${{ steps.plugin.outputs.review }}" == "false" ]]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "${{ matrix.plugin }} says review: false — the review uses the base environment's stack"
           elif [[ -f "$CONFIG_FILE" ]]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Stack config found: $CONFIG_FILE"
@@ -943,6 +955,8 @@ jobs:
           github.event_name == 'pull_request' &&
           steps.env.outputs.mode != 'review' &&
           steps.check-config.outputs.exists == 'true'
+        env:
+          AWS_REGION: ${{ steps.plugin.outputs.region }}
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
@@ -993,6 +1007,8 @@ jobs:
         if: |
           (github.event_name != 'pull_request' || steps.env.outputs.mode == 'review') &&
           steps.check-config.outputs.exists == 'true'
+        env:
+          AWS_REGION: ${{ steps.plugin.outputs.region }}
         run: |
           STACK="${{ steps.env.outputs.stack }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
@@ -1009,9 +1025,9 @@ jobs:
             # A copied reference to a stack of this app (`platform:stack`,
             # `interstack:dependencies`, …) still names the base environment's,
             # and would deploy this review against it. Point each at the review's.
-            # References to stacks the app does not deploy stay shared.
+            # References to stacks the review does not deploy stay shared.
             MANIFEST="${{ inputs.manifest }}"
-            PROJECTS=$(for p in $(yq '.platform.path, .plugins[].path' "$MANIFEST"); do
+            PROJECTS=$(for p in $(yq '.platform.path, (.plugins[] | select(.review != false) | .path)' "$MANIFEST"); do
               yq '.name' "$(dirname "$MANIFEST")/${p}/Pulumi.yaml"; done | paste -sd, -)
             pulumi config --stack "$STACK" --cwd "$DEPLOY_DIR" --json |
               PROJECTS="$PROJECTS" BASE="${{ steps.env.outputs.base-stack }}" REVIEW="$STACK" python3 -c '
@@ -1305,7 +1321,7 @@ jobs:
           }
           while read -r plugin_path; do
             [[ -n "$plugin_path" ]] && remove "$plugin_path"
-          done < <(echo '${{ needs.detect-changes.outputs.all-plugins }}' | jq -r 'reverse | .[].path')
+          done < <(echo '${{ needs.detect-changes.outputs.all-plugins }}' | jq -r 'reverse | .[] | select(.review) | .path')
           remove "$PLATFORM_PATH"
 
           if [[ -n "$FAILED" ]]; then
