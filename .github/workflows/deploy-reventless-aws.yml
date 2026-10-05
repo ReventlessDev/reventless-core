@@ -853,7 +853,7 @@ jobs:
           MANIFEST_DIR=$(dirname "$MANIFEST")
           [[ "$MANIFEST_DIR" == "." ]] && MANIFEST_DIR="" || MANIFEST_DIR="${MANIFEST_DIR}/"
           PLUGIN_REL=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .path' "$MANIFEST")
-          PLUGIN_DEPS=$(yq -o=json '.plugins[] | select(.name == "${{ matrix.plugin }}") | .depends-on // []' "$MANIFEST")
+          PLUGIN_DEPS=$(yq -o=json -I=0 '.plugins[] | select(.name == "${{ matrix.plugin }}") | .depends-on // []' "$MANIFEST")
           # A plugin's own `region` overrides the manifest's for this stack.
           PLUGIN_REGION=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .region // ""' "$MANIFEST")
           echo "path=${MANIFEST_DIR}${PLUGIN_REL}" >> "$GITHUB_OUTPUT"
