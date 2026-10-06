@@ -144,20 +144,26 @@ let realpathSync: string => string
 
 let readFileSync: string => string           // UTF-8 baked in
 let readFileSyncBuffer: string => Uint8Array.t
+let readFileSyncFd: int => string            // a file descriptor; 0 is stdin
 let writeFileSync: (string, string) => unit  // UTF-8 baked in
 let writeFileSyncBuffer: (string, Uint8Array.t) => unit
+let appendFileSync: (string, string) => unit // UTF-8 baked in
+let chmodSync: (string, int) => unit
 
 type dirent
 let isDirectory: dirent => bool
 let isFile: dirent => bool
 let direntName: dirent => string
+let direntParentPath: dirent => string
 
-type readdirOptions = {withFileTypes: bool}
+type readdirOptions = {withFileTypes: bool, recursive?: bool}
+type readdirNamesOptions = {recursive?: bool}
 type mkdirOptions = {recursive?: bool}
 type rmOptions = {recursive?: bool, force?: bool}
 type cpOptions = {recursive?: bool}
 
 let readdirSync: (string, readdirOptions) => array<dirent>
+let readdirSyncNames: (string, readdirNamesOptions) => array<string>
 let mkdirSync: (string, mkdirOptions) => unit
 let mkdtempSync: string => string
 let unlinkSync: string => unit
@@ -165,8 +171,20 @@ let rmSync: (string, rmOptions) => unit
 let cpSync: (string, string, cpOptions) => unit
 
 module Promises = {
+  let access: string => promise<unit>
+  let stat: string => promise<stats>
+  let lstat: string => promise<stats>
+  let readFile: string => promise<string>    // UTF-8 baked in
   let writeFile: (string, string) => promise<unit>
+  let readdir: (string, readdirOptions) => promise<array<dirent>>
+  let readdirNames: (string, readdirNamesOptions) => promise<array<string>>
   let mkdir: (string, mkdirOptions) => promise<Nullable.t<string>>
+  let mkdtemp: string => promise<string>
+  let unlink: string => promise<unit>
+  let rename: (string, string) => promise<unit>
+  let copyFile: (string, string) => promise<unit>
+  let symlink: (string, string) => promise<unit>
+  let symlinkDir: (string, string) => promise<unit> // a junction on Windows
   let rm: (string, rmOptions) => promise<unit>
 }
 ```

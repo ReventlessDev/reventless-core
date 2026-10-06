@@ -59,6 +59,10 @@ external readFileSync: (string, @as("utf8") _) => string = "readFileSync"
 @module("node:fs")
 external readFileSyncBuffer: string => Uint8Array.t = "readFileSync"
 
+/** A whole open file descriptor as text, to its end: `0` reads standard input. */
+@module("node:fs")
+external readFileSyncFd: (int, @as("utf8") _) => string = "readFileSync"
+
 // ── Writing ──────────────────────────────────────────────────────────────────
 
 @module("node:fs")
@@ -69,6 +73,14 @@ external writeFileSync: (string, string, @as("utf8") _) => unit = "writeFileSync
     already bytes. */
 @module("node:fs")
 external writeFileSyncBuffer: (string, Uint8Array.t) => unit = "writeFileSync"
+
+/** Add text to the end of a file, creating it when missing. */
+@module("node:fs")
+external appendFileSync: (string, string, @as("utf8") _) => unit = "appendFileSync"
+
+/** Set a path's permission bits, e.g. `0o444` for read-only. */
+@module("node:fs")
+external chmodSync: (string, int) => unit = "chmodSync"
 
 // ── Watching ─────────────────────────────────────────────────────────────────
 
@@ -105,10 +117,22 @@ type dirent
 @send external isFile: dirent => bool = "isFile"
 @get external direntName: dirent => string = "name"
 
-type readdirOptions = {withFileTypes: bool}
+/** The folder an entry sits in. In a `recursive` listing that is the entry's own
+    folder, not the one the listing started from. */
+@get external direntParentPath: dirent => string = "parentPath"
+
+/** `recursive` lists every entry under the folder, at any depth. */
+type readdirOptions = {withFileTypes: bool, recursive?: bool}
 
 @module("node:fs")
 external readdirSync: (string, readdirOptions) => array<dirent> = "readdirSync"
+
+type readdirNamesOptions = {recursive?: bool}
+
+/** Entry names rather than entries; `recursive` gives every path under the
+    folder, relative to it. */
+@module("node:fs")
+external readdirSyncNames: (string, readdirNamesOptions) => array<string> = "readdirSync"
 
 type mkdirOptions = {recursive?: bool}
 
@@ -143,8 +167,49 @@ external cpSync: (string, string, cpOptions) => unit = "cpSync"
     A separate module specifier, so a separate module here — the promise API is
     not a wrapper this package adds over the sync one. */
 module Promises = {
+  /** Rejects when nothing is there, as {!statSync} throws. */
+  @module("node:fs/promises")
+  external access: string => promise<unit> = "access"
+
+  @module("node:fs/promises")
+  external stat: string => promise<stats> = "stat"
+
+  /** See {!lstatSync}: the entry itself, a dangling link included. */
+  @module("node:fs/promises")
+  external lstat: string => promise<stats> = "lstat"
+
+  @module("node:fs/promises")
+  external readFile: (string, @as("utf8") _) => promise<string> = "readFile"
+
   @module("node:fs/promises")
   external writeFile: (string, string) => promise<unit> = "writeFile"
+
+  @module("node:fs/promises")
+  external readdir: (string, readdirOptions) => promise<array<dirent>> = "readdir"
+
+  @module("node:fs/promises")
+  external readdirNames: (string, readdirNamesOptions) => promise<array<string>> = "readdir"
+
+  @module("node:fs/promises")
+  external mkdtemp: string => promise<string> = "mkdtemp"
+
+  @module("node:fs/promises")
+  external unlink: string => promise<unit> = "unlink"
+
+  /** See {!renameSync}. */
+  @module("node:fs/promises")
+  external rename: (string, string) => promise<unit> = "rename"
+
+  @module("node:fs/promises")
+  external copyFile: (string, string) => promise<unit> = "copyFile"
+
+  /** A link at the second path to the first. */
+  @module("node:fs/promises")
+  external symlink: (string, string) => promise<unit> = "symlink"
+
+  /** A link to a folder, which Windows makes as a junction. */
+  @module("node:fs/promises")
+  external symlinkDir: (string, string, @as("dir") _) => promise<unit> = "symlink"
 
   @module("node:fs/promises")
   external mkdir: (string, mkdirOptions) => promise<Nullable.t<string>> = "mkdir"
