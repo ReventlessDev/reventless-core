@@ -1,10 +1,10 @@
 # Plan: the groups a deployment provides, read from the user pool
 
 **Date:** 2026-10-01<br/>
-**Status:** Done (2026-10-01). Built as described, except where §10 says how
+**Status:** Done (2026-10-01). Built as described, except where [§10](#10--as-built) says how
 and why the build departed from it.<br/>
 **Follows:** `roles-a-plugin-declares-and-a-platform-provides.md`. This plan
-fixes a gap in that plan's §5 check and settles its open item §11.2 ("a
+fixes a gap in that plan's [§5](roles-a-plugin-declares-and-a-platform-provides.md#5--a-check-that-the-platform-can-provide-every-role) check and settles its open item [§11.2](roles-a-plugin-declares-and-a-platform-provides.md#11--decisions-and-what-is-still-open) ("a
 deploy-time comparison of the declared list with the pool's real groups").<br/>
 **Relates to:** `../identity-is-a-capability-not-a-cognito-handle.md` (pool
 resolution, and the identity provider as a capability),
@@ -67,7 +67,7 @@ mistake, and it is not this check's business.
 
 Locally the manifest *is* the user store, so the groups it names exist by
 construction. A root that loads the store from somewhere else can still make
-the check read the wrong file (§9).
+the check read the wrong file ([§9](#9--the-local-platform-the-stores-source-not-the-working-directory)).
 
 ## §3 — The check reads the pool
 
@@ -86,7 +86,7 @@ A declaration that contradicts the pool is the same mistake the check exists to
 catch.
 
 The manifest no longer counts on AWS. It describes what provisioning will
-create, and §5 handles the pool that provisioning has not reached yet.
+create, and [§5](#5--a-pool-the-platform-creates) handles the pool that provisioning has not reached yet.
 
 **Pool id and region.** These resolve the same way the plugin stack already
 resolves them for its resolvers:
@@ -134,7 +134,7 @@ before the plugin is built. In order of preference:
 When the platform stack creates the pool, it creates the `Admin` group itself
 (`Util_CognitoGroupUser.addUserGroup` in `Platform_Stack`). Every other group
 appears only when a provisioning run (`ProvisionCognito.ensureGroup`) reads the
-manifest. Provisioning happens after the deploy, so on a fresh stack §3 would
+manifest. Provisioning happens after the deploy, so on a fresh stack [§3](#3--the-check-reads-the-pool) would
 find only `Admin` and refuse every plugin before anyone could provision.
 
 The deployment owns that pool, so it should create the groups its plugins need.
@@ -155,23 +155,23 @@ Options:
 where the stack that owns the pool owns its groups.
 
 A supplied pool is outside all of this. Its groups belong to whoever supplied it,
-and §3's listing is the whole answer.
+and [§3](#3--the-check-reads-the-pool)'s listing is the whole answer.
 
 ## §6 — Interim for alpha
 
 Alpha's pool is supplied (`cognitoUserPoolManaged: false`), and its groups
 (`Merchandiser`, `Fulfilment`, `Shopper`) exist. Its plugin deploys stay red
-until §3 lands. A `platform:providedGroups` config key in each plugin stack
+until [§3](#3--the-check-reads-the-pool) lands. A `platform:providedGroups` config key in each plugin stack
 gets them green and was tried locally (both previews pass), but it is the
-unverified list §1 argues against, so it is not committed. If alpha must deploy
-before §3, it can go in on a temporary basis and be removed in the commit that
-lands §3.
+unverified list [§1](#1--why-the-check-matters-and-why-it-must-ask-the-pool) argues against, so it is not committed. If alpha must deploy
+before [§3](#3--the-check-reads-the-pool), it can go in on a temporary basis and be removed in the commit that
+lands [§3](#3--the-check-reads-the-pool).
 
 ## §7 — Order of work
 
 1. **Spike.** Can top-level `await` be emitted from the generated `Main.res`
-   (§4.1)? Does `getOutputValue` resolve in a preview for a created pool? Does
-   the CI deployer have `ListGroups`? Decide §5.
+   ([§4.1](#4--where-the-await-goes))? Does `getOutputValue` resolve in a preview for a created pool? Does
+   the CI deployer have `ListGroups`? Decide [§5](#5--a-pool-the-platform-creates).
 2. **Binding.** `ListGroupsCommand` (paginated) in `rescript-aws-sdk`'s
    `CognitoIdentityServiceProvider`.
 3. **Provided groups on AWS.** `Platform.loadProvidedGroups()` resolves the pool
@@ -180,7 +180,7 @@ lands §3.
    fails.
 4. **Codegen.** The AWS `Main` emits the awaited call before `deployPlugin`.
    Refresh the generated `Main.res` / `.res.mjs` of every example.
-5. **§5's group creation** for a created pool.
+5. **[§5](#5--a-pool-the-platform-creates)'s group creation** for a created pool.
 6. **Tests.** `RoleCoverage` keeps its pure tests. Add tests for the provided
    set from a listing (listed, mapped-but-missing, declared-but-missing, denied
    call), with the client stubbed. Run a local `pulumi preview` of a plugin
@@ -191,9 +191,9 @@ lands §3.
 
 ## §8 — What this does not do
 
-- It does not check that a group has members (§1).
+- It does not check that a group has members ([§1](#1--why-the-check-matters-and-why-it-must-ask-the-pool)).
 - It does not ask anything outside the process on the local platform. There the
-  user store is the identity provider, so its groups exist by construction; §9
+  user store is the identity provider, so its groups exist by construction; [§9](#9--the-local-platform-the-stores-source-not-the-working-directory)
   makes the check read the store's actual source.
 - It does not compare groups at runtime. A group deleted from the pool after the
   deploy refuses its callers until the next deploy says so.
@@ -247,7 +247,7 @@ second read of the working directory:
 `LocalAuthUserStoreTest` already loads from `~users` and `~usersFile` and can host
 them.
 
-**Order.** Independent of §3–§5. It can land first, as a small change on its own.
+**Order.** Independent of [§3](#3--the-check-reads-the-pool)–[§5](#5--a-pool-the-platform-creates). It can land first, as a small change on its own.
 
 ## §10 — As built
 
@@ -256,7 +256,7 @@ them.
 - *Top-level await.* ReScript emits it, and it runs under plain `node`. But
   Pulumi loads a program whose package is not `"type": "module"` with
   `require()`, and Node refuses `require()` of a module graph that awaits at the
-  top level. The first preview failed on exactly that. So §4.1 is built without
+  top level. The first preview failed on exactly that. So [§4.1](#4--where-the-await-goes) is built without
   the await: the generated `Main` exports
   `default = loadProvidedGroups()->Promise.thenResolve(() => deployPlugin(…))`,
   and `PostDeploy` runs inside it, after the plugin is registered. Pulumi
@@ -277,13 +277,13 @@ them.
   need no listing. Only the generated plugin `Main`s (and the scaffold template
   `docs/templates/deploy-aws/plugin-Main.res`) call `loadProvidedGroups`.
 
-**§3, departure.** The manifest still counts on AWS where nothing was listed: a
+**[§3](#3--the-check-reads-the-pool), departure.** The manifest still counts on AWS where nothing was listed: a
 program that creates its pool in the same run, or a hand-written root that does
 not call `loadProvidedGroups`. Refusing those outright would have broken every
 hand-written root on upgrade, for a case the generated roots no longer hit.
 `Role.listing`, once set, replaces every other source, the mapping included.
 
-**§5, decided.** No automatic group creation. On a pool the platform created,
+**[§5](#5--a-pool-the-platform-creates), decided.** No automatic group creation. On a pool the platform created,
 the listing finds the administrator group, plus whatever `provision-accounts`
 has created. A plugin needing another role fails until provisioning has run,
 and the message says so. That failure is correct, because callers would be
@@ -292,12 +292,12 @@ groups provisioning already created on existing stacks (`GroupExistsException`).
 this repository runs on a pool it created. Revisit if a fresh-stack first deploy
 becomes a common path.
 
-**§6.** No longer needed: the alpha plugin stacks pass with no config change
+**[§6](#6--interim-for-alpha).** No longer needed: the alpha plugin stacks pass with no config change
 (local `pulumi preview`, both stacks). Mapping `Merchandiser` to a group the pool
 lacks (`REVENTLESS_ROLE_GROUPS=Merchandiser=NoSuchGroup`) fails the catalog
 preview with the pool's real groups named, which shows the listing decides.
 
-**§9, as planned.** `UserStore.providedGroups` is the local platform's source.
+**[§9](#9--the-local-platform-the-stores-source-not-the-working-directory), as planned.** `UserStore.providedGroups` is the local platform's source.
 `UserStore.pluginChecked` is set when `deployPlugin` starts, and an explicit
 `load(~users | ~usersFile)` after it throws. The default `load()` stays allowed,
 because it reads the file the check read.
@@ -314,5 +314,5 @@ because it reads the file the check read.
 
 Tests: `RoleTest` (listing, mapped-but-missing, declared-but-missing),
 `Platform_ProvidedGroupsTest` (pagination, exports, nesting), `PluginGeneratorTest`
-(the generated `Main`), and `LocalAuthUserStoreTest` (the rows of §9's table, and
+(the generated `Main`), and `LocalAuthUserStoreTest` (the rows of [§9](#9--the-local-platform-the-stores-source-not-the-working-directory)'s table, and
 the template).

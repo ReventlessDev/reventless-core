@@ -261,7 +261,7 @@ let infer: array<sliceShape> => derived
    elimination: `ProductAdded({productId, categoryId})` — `categoryId` already owned by
    Category ⇒ `productId` is Product's partition, Product owns `productId`. A producer
    left with ≥2 unowned keys, or 0 own keys (pure join), → `ambiguities` (caller
-   requires explicit `@partitionTag`; never guess — Open-questions §1).
+   requires explicit `@partitionTag`; never guess — Open-questions [§1](#open-questions--risks)).
 2. **Cross-partition** = a key on a *consumed foreign* event that is *another* slice's
    partition (per the owner map). `categoryId` ∈ `AddProduct.consumed` ∧ owned by
    Category ∧ `AddProduct` partitioned by `productId` ⇒ `crossPartitionTagKeys += categoryId`.
@@ -436,19 +436,19 @@ over to the derived values.
 
      **Why the partition tag is consistency-critical, not cosmetic/perf.** The storage
      partition key `id` chosen by `derivePartitionTag`
-     ([`DcbTag.res:1211-1312`](../../reventless/reventless-spec/src/components/DcbTag.res))
+     ([`DcbTag.res:1211-1312`](../../../reventless/spec/src/components/DcbTag.res))
      is on the **decision READ path**, not just a distribution knob. A wrong choice is a
      *silent consistency bug* in two independent ways:
 
      1. **Missed events → silent invariant violation.** A plain (non-`@crossPartition`)
         single-tag decision clause is served by a **base-table Query on
         `id = "<key>:<value>"`** —
-        [`buildQueryByPartitionKeyInput`, `DcbEventLogStorage_DynamoDb_Runtime.res:276-300`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)
+        [`buildQueryByPartitionKeyInput`, `DcbEventLogStorage_DynamoDb_Runtime.res:276-300`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)
         — **not** a GSI (GSIs back only `@crossPartition` and composite clauses). The
         **write** picks `id` from the partition tag
-        ([`derivePartitionKey`, same file `:41-62`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res));
+        ([`derivePartitionKey`, same file `:41-62`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res));
         the **read** picks its partition from *the clause's own tag*
-        ([`buildQueryFromCommand`, `DcbTag.res:793-829`](../../reventless/reventless-spec/src/components/DcbTag.res)),
+        ([`buildQueryFromCommand`, `DcbTag.res:793-829`](../../../reventless/spec/src/components/DcbTag.res)),
         which never consults the partition tag. They agree **only by construction.** If
         an event is stored under partition **A** but a slice reads it by tag **B**, the
         read hits `id="B:..."`, the event lives in `A:...`, and `decide` folds an
@@ -457,7 +457,7 @@ over to the derived values.
      2. **Lost update / double-create.** The partition tag also selects which
         `fence#<key>:<value>` item carries the OCC bump and the `after=None` **create
         guard**
-        ([fence builders `DcbEventLogStorage_DynamoDb_Runtime.res:600-832`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res);
+        ([fence builders `DcbEventLogStorage_DynamoDb_Runtime.res:600-832`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res);
         `eventPartitionTags` `:916-961`). A wrong key routes two concurrent first-writers'
         `attribute_not_exists` guards to **different fence items** ⇒ both commit ⇒
         lost-update / double-create — exactly what the create guard exists to prevent.
@@ -473,10 +473,10 @@ over to the derived values.
      the second:
      - The genuinely ambiguous case **throws, it doesn't guess**: `derivePartitionTag`
        errors when a multi-`*Id` variant has no clear partition
-       ([`DcbTag.res:1296-1303`](../../reventless/reventless-spec/src/components/DcbTag.res)),
+       ([`DcbTag.res:1296-1303`](../../../reventless/spec/src/components/DcbTag.res)),
        forcing an explicit decision. The only *silent*-divergence spot is the
        multi-entity single-tag-per-variant case picking "first field alphabetically"
-       ([`:1306-1307`](../../reventless/reventless-spec/src/components/DcbTag.res)).
+       ([`:1306-1307`](../../../reventless/spec/src/components/DcbTag.res)).
      - **`@partitionTag` is the ground-truth oracle that makes inference verifiable.**
        Phase 1's zero-diff gate works *precisely because* the annotation states intent and
        inference can be diffed against it (and it confirmed `partitionBySlice` ==

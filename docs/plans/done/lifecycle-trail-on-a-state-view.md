@@ -13,7 +13,7 @@ state and without a line of per-domain code.
 - [`docs/plans/done/semantic-date-time.md`](./semantic-date-time.md) — **builds on it.**
   An entry's instant is a `Reventless.DateTime.t`, written bare, which is the
   spelling that plan's step 5 introduces. Its D4 also retires the `""` sentinel,
-  and §1 below is what a domain declares once that admission is made.
+  and [§1](#1-the-shape-an-ordered-trail-of-the-domains-own-states) below is what a domain declares once that admission is made.
 - [`docs/plans/done/lifecycle-model-harvest.md`](./lifecycle-model-harvest.md)
   — derives each command's `allowedStates` / `targetState` from the GWT corpus.
   That is the lifecycle as *declared*; this is the lifecycle as *travelled*.
@@ -30,7 +30,7 @@ every event envelope as `meta.time` and the projection drops it.
 
 Domains work around this one field at a time. `Orders` declares `placedAt` and
 `shippedAt`, both filled by hand in
-[`Orders_Projection.res`](../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders_Projection.res):
+[`Orders_Projection.res`](../../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders_Projection.res):
 
 ```rescript
 | OrderShipped({orderId}) => [
@@ -172,7 +172,7 @@ record and resolves the field's declared type `Trail.t<lifecycle>` to
 `Trail.schema(lifecycleSchema)` by its own `X.t` → `X.schema` convention. So the
 line above is the whole of the domain's work: no `@s.matches`, no annotation, and
 no change to reventless-ppx. Neither fallback (a `@trailed` marker, a per-view
-entry type) was needed, and a trail of strings — the thing §1 rejects — was never
+entry type) was needed, and a trail of strings — the thing [§1](#1-the-shape-an-ordered-trail-of-the-domains-own-states) rejects — was never
 reached for.
 
 Automatic for every stateful view was considered and is rejected: it would change
@@ -327,7 +327,7 @@ On the wire the entry's `state` emits the record's **own** lifecycle enum —
 the trail's field path. `SchemaType.fromSuryObject` is the one place a record's
 properties are walked, so it resolves the lifecycle field there and walks the
 trail's `state` under that field's name; `seenTypes` then dedupes the enum to one
-definition. That is §1's "one vocabulary, published once", checked by the golden.
+definition. That is [§1](#1-the-shape-an-ordered-trail-of-the-domains-own-states)'s "one vocabulary, published once", checked by the golden.
 
-`afterGap?: bool` is on the entry from the start, unused, so §4's middle-dropping
+`afterGap?: bool` is on the entry from the start, unused, so [§4](#4-growth-and-where-it-is-capped)'s middle-dropping
 cap is an implementation rather than a contract change.

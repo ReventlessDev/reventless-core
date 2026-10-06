@@ -154,8 +154,8 @@ reader must learn `null`/absent before the writer stops sending `""`. It already
 plan checked the path and found that stamp resolution "decodes a string and yields nothing for `null`
 or an absent key, by the same path that yields nothing for `\"\"` — so there is no blocker here, only
 a missing assertion"
-([reventless-ui `a-strip-reads-the-trail-it-was-given.md`](../../../../reventless-ui/docs/plans/a-strip-reads-the-trail-it-was-given.md),
-§4). What the other repo owes is a sibling test for `null` beside the existing empty-string one, and
+([reventless-ui `a-strip-reads-the-trail-it-was-given.md`](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/docs/plans/done/a-strip-reads-the-trail-it-was-given.md),
+[§4](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/docs/plans/done/a-strip-reads-the-trail-it-was-given.md#4-what-the-semantic-instant-changes-here-nothing-and-one-test)). What the other repo owes is a sibling test for `null` beside the existing empty-string one, and
 that test is what lets step 3 land here without waiting on anything.
 
 So step 3 is its own step for the reason below it — a golden and an SDL nullability change should not
@@ -353,7 +353,7 @@ worse than none.
 **The reader must be separated first, and this is a real prerequisite.** `AutoSemantics` folds the
 two formats into one semantic today —
 `| Some("date-time") | Some("date") => Some((DateTime, "format:date-time"))`
-([AutoSemantics.res:896](../../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)) —
+([AutoSemantics.res:896](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/reventless/ui/src/auto/AutoSemantics.res#L896)) —
 so a `CalendarDate` field emitted with `format: "date"` renders as an instant, which is the midnight
 bug this type exists to prevent, arriving through the type meant to prevent it. Separating the two
 semantics in `reventless-ui` ships before any adopter, per the reader-first rule. Its natural home is
@@ -397,7 +397,7 @@ All of it ran. What each one said:
   both an instant and an absence through the refined schema with no projection error.
 - **`CalendarDate` has no adopter, and must not get one here first.** `reventless-ui` folds
   `format: "date"` into its date-time semantic
-  ([`AutoSemantics.res:896`](../../../../reventless-ui/reventless/ui/src/auto/AutoSemantics.res#L896)),
+  ([`AutoSemantics.res:896`](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/reventless/ui/src/auto/AutoSemantics.res#L896)),
   so the first field to declare a day would render as an instant — the midnight bug arriving through
   the type that exists to prevent it. Landing the type alone changes nothing emitted, which is why it
   is safe now and why the gate is on the adopter, not on the module. That repo's

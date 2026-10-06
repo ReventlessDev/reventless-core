@@ -59,7 +59,7 @@ Mirror the geocoding capability end to end:
 ## Part 2 — the `Geocoding` module split
 
 🚨 **[2026-08-30] Cancelled — do not do this split.** See
-[trait-address-geocoding.md](./trait-address-geocoding.md) §1.
+[trait-address-geocoding.md](./trait-address-geocoding.md) [§1](./trait-address-geocoding.md#1-what-the-package-owns-and-what-it-does-not).
 
 `Capabilities.t.geocode` names `Geocoding.search`, so the *port* half stays in spec — that part
 was right. But the *policy* half must stay too. `Geolocation.ofSearch` calls `Geocoding.assess`

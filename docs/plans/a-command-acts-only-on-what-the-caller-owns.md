@@ -2,12 +2,12 @@
 
 **Date:** 2026-09-30<br/>
 **Status:** Steps 1–5 built and tested in-process (2026-10-01). Steps 4 and 6
-still need a deployed stack: the §7 prerequisite acceptance and this plan's own
-acceptance have not run. See §11.<br/>
+still need a deployed stack: the [§7](#7--state-of-the-prerequisite-plan) prerequisite acceptance and this plan's own
+acceptance have not run. See [§11](#11--progress-2026-10-01).<br/>
 **Relates to:** `done/owner-scoped-identity-and-reads.md` (the feature this
 completes: it stamps an owner on the way in and scopes reads on the way out),
 `owner-enforcement-gaps-on-appsync.md` (the two AppSync-only gaps in that
-feature, and the lesson §5 below is built on), `appsync-refusal-vocabulary.md`
+feature, and the lesson [§5](#5--what-a-refused-command-answers) below is built on), `appsync-refusal-vocabulary.md`
 (what a refusal says), `Backlog/denied-query-returns-empty.md`.
 
 **Goal.** A slice can state which field of its history names the owner of the
@@ -17,7 +17,7 @@ anyone's behalf. One declaration, enforced server-side, on every command path.
 
 **Non-goal.** Anything beyond *this field equals this caller*. Team ownership,
 delegation and grants stay with the ABAC package, exactly as
-`owner-scoped-identity-and-reads.md` §8 draws the line.
+`owner-scoped-identity-and-reads.md` [§8](done/owner-scoped-identity-and-reads.md#8--what-this-does-not-do) draws the line.
 
 ---
 
@@ -97,7 +97,7 @@ What travels between them today is the envelope `Message.meta`, which carries
   Rejected: it couples a command to a view that need not exist, and a view lags
   the log, so a caller would be refused on their own order until it projects.
   Two sources of truth for one rule.
-- **C. Hand the caller to `decide`.** Rejected for the reasons in §2: every spec
+- **C. Hand the caller to `decide`.** Rejected for the reasons in [§2](#2--why-a-specification-cannot-close-it-alone): every spec
   re-implements the comparison and the exemption, and every scenario has to name
   a caller. Aggregates already receive `meta.user` in their context, which is
   this option half-built; it does not carry the classification either.
@@ -212,7 +212,7 @@ below, not after.
 - **It does not scope subscriptions or event history**, the known gap the read
   plan names; nothing here changes it.
 - **It does not guard automation.** A command an automation dispatches is
-  `System` by construction (§3). An automation that acts for a user is trusted to
+  `System` by construction ([§3](#3--the-two-halves-of-the-answer-live-in-different-places)). An automation that acts for a user is trusted to
   have been triggered by something that was itself checked.
 - **It does not check references.** A command that *names* another owner's thing
   in a field (not its partition) is not covered; that is a reference-level rule
@@ -223,16 +223,16 @@ below, not after.
 1. **Survey.** Confirm no code reads `@owner` from a consumed-event schema. List
    every example and trait command that acts on an existing partition whose
    history records an owner, and mark which are already safe because the owner is
-   the partition key (§1).
+   the partition key ([§1](#1--the-gap-in-the-example-that-shows-it)).
 2. **The claim, in-process.** `makeGenerateCommand` writes the classification
    into the envelope, overwriting anything sent; unit tests for each caller class
    and for a payload that tries to forge it.
-3. **The guard, in-process.** Evaluate §4's table in `StateChangeSlice_Callback`
+3. **The guard, in-process.** Evaluate [§4](#4--how-a-slice-declares-whose-thing-it-acts-on)'s table in `StateChangeSlice_Callback`
    and `Aggregate_Callback` before `decide`, reading the marker from the real
    schema. Conformance table green in-process.
-4. **AWS.** After the prerequisite acceptance (§7): the claim through the topic
+4. **AWS.** After the prerequisite acceptance ([§7](#7--state-of-the-prerequisite-plan)): the claim through the topic
    and Lambda hops, the guard in both Lambda handlers, the exempt-group
-   dependency (§6). Conformance table green on every path.
+   dependency ([§6](#6--every-command-path-and-the-lesson-from-the-appsync-gaps)). Conformance table green on every path.
 5. **Example.** `CancelOrder` marks `@owner customerId` on its consumed
    `OrderPlaced`. Decide whether GWT scenarios gain a way to state the caller, or
    whether the guard is pinned only by the framework's conformance table (open
@@ -295,7 +295,7 @@ commands that record no owner and commands built by the permissive `S.json`
 generator. `deriveMeta` does not copy the claim, so an event, or an automation's
 follow-up command, never carries the claim of the command that caused it.
 
-**Step 3, the guard.** `OwnerScope.decideActing` implements §4's table, and
+**Step 3, the guard.** `OwnerScope.decideActing` implements [§4](#4--how-a-slice-declares-whose-thing-it-acts-on)'s table, and
 `CommandTopic_Helpers.ownershipRefusal` turns its answer into the refusal both
 handlers report. Two rules were added while building it:
 
@@ -315,7 +315,7 @@ holds the state but not the owner. A refusal is `CommandRejected` with
 **Step 4, AWS.** No AWS-specific code was needed:
 `DcbCommandTopicEntryPoint_Ops.buildSliceHandler` and `AggregateEntryPoint_Ops`
 both run the core callbacks, and every hop encodes `meta` through `metaSchema`.
-The elevated-groups dependency in §6 has landed: `Util_OwnerScopeEnv` puts
+The elevated-groups dependency in [§6](#6--every-command-path-and-the-lesson-from-the-appsync-gaps) has landed: `Util_OwnerScopeEnv` puts
 `REVENTLESS_ELEVATED_GROUPS` into every runtime built through
 `RuntimeEnvironment_Lambda`. The deployed half of this step is still open.
 
@@ -343,7 +343,7 @@ The elevated-groups dependency in §6 has landed: `Util_OwnerScopeEnv` puts
 
 **Still open.**
 
-1. The §7 prerequisite: run and record the acceptance of
+1. The [§7](#7--state-of-the-prerequisite-plan) prerequisite: run and record the acceptance of
    `owner-enforcement-gaps-on-appsync.md` on a deployed stack.
 2. Step 6: this plan's acceptance on a deployed stack, items 1–6.
 3. The `Customer` gap from the step 1 survey, as its own plan if wanted.

@@ -105,7 +105,7 @@ once the GWT reads the name.
 ## §3 — The framework side
 
 - `~commandAuthorization: unknown => permission` becomes
-  `~authorizationOf: string => permission` at every receiving site in §1. Each
+  `~authorizationOf: string => permission` at every receiving site in [§1](#1--what-is-there-today). Each
   call site passes `name => M.Spec.authorizationOf(name)->Authorization.named`,
   which erases the role (see the roles plan) explicitly rather than inside a cast.
 - The four fake-command builders are deleted. Their callers already hold the
@@ -126,7 +126,7 @@ once the GWT reads the name.
    `commandAuthorization` is emitted.
 3. Spec module types and the hand-written specs: `ExtensionMapping`, the GWT
    fixtures, and the test and integration fixtures that declare their own.
-4. The receiving sites and the deleted fake builders (§3); the GWT's `Acting`.
+4. The receiving sites and the deleted fake builders ([§3](#3--the-framework-side)); the GWT's `Acting`.
 5. Tests: the local resolver test (`CommandAuthorizationTest`) and
    `PluginStructureAccessTest` exercise the same behaviour through the new
    member; a grep in the review confirms no `Obj.magic` remains on an

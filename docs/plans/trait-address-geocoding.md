@@ -59,13 +59,13 @@ pair.
 ## 2. Shape
 
 **Shape A: a scaffold plus a conformance suite.** The package holds no runtime policy — that is the
-consequence of §1, not a shortfall. Contents:
+consequence of [§1](#1-what-the-package-owns-and-what-it-does-not), not a shortfall. Contents:
 
 1. **Scaffold templates** emitting into the host: the two `@noApi` commands, the three events, the
    two state fields, the guard arms in `decide`, the `evolve` arms, and the outbound translation
    slice.
 2. **The conformance suite**, run by the host against its own graft.
-3. **The host-contract declaration** — the five points of §3.
+3. **The host-contract declaration** — the five points of [§3](#3-the-host-contract).
 
 ## 3. The host contract
 
@@ -97,8 +97,8 @@ Three of the four assertions already exist as example GWTs in
 - **G1** — create `traits/address-geocoding` as `@reventlessdev/trait-address-geocoding`, packaged
   per the open-source packaging rules: `.res`/`.resi` + in-source `.res.mjs` + `rescript.json`, an
   explicit `files` allowlist, `rescript` as a pinned peerDependency, never `lib/`.
-- **G2** — write the host contract (§3) from the working implementation. Transcription, not design.
-- **G3** — build the scaffold templates and the conformance suite (§2, §4).
+- **G2** — write the host contract ([§3](#3-the-host-contract)) from the working implementation. Transcription, not design.
+- **G3** — build the scaffold templates and the conformance suite ([§2](#2-shape), [§4](#4-the-conformance-suite)).
 
   🔑 **Build the conformance runner as reusable machinery, and build only that.** A prior generality
   review across three worked competencies reached one recommendation: do **not** build a trait
@@ -129,7 +129,7 @@ A package this is the only thing that proves the boundary is real, since there i
   slice spec + `translate`, its triggers, and `standsDownOn` — the pair-supplying event names.
 - **G3** — `src/AddressGeocoding_Conformance.res`: `Make(Binding).register()` registers one
   `describe` with 13 assertions (7 aggregate, 6 slice) built on `Behavior_GWT.MakeFromAggregate` and
-  `OutboundTranslation_GWT.Make`. The stand-down is the contract check of §4: the consumed set
+  `OutboundTranslation_GWT.Make`. The stand-down is the contract check of [§4](#4-the-conformance-suite): the consumed set
   decoded from `consumedEventSchema` must equal the binding's triggers and contain none of
   `standsDownOn`. The scaffold is five hand-applied `templates/*.res.tpl` files — no engine.
 - **G4/G5** — under Shape A the strip and the transplant produce the same source: the templates
@@ -168,7 +168,7 @@ calibration against the live Esri index. Neither is re-decided here.
 
 - **R1 — the specimen is one host.** Every rule here is validated against `Customer` only. The
   host-swap test is real only when a second host exists; until then, write the contract over the
-  abstract subject (§3) and treat single-host validation as provisional.
+  abstract subject ([§3](#3-the-host-contract)) and treat single-host validation as provisional.
 - **R2 — do not generalise, in either direction, yet.** Two temptations: a resolver primitive (this
   shape is the reusable middle of translation, currency conversion, enrichment and OCR), and a
   generic scaffold engine. Both are premature for the same reason — see G3. Write the contract down

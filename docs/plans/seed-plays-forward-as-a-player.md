@@ -11,7 +11,7 @@ public GraphQL API**, with
 depends on, and nothing here weakens it.
 
 Related: [online-shop-seed-over-days.md](online-shop-seed-over-days.md) — a different problem
-(one domain's multi-day narrative), but the source of the constraint in §2.
+(one domain's multi-day narrative), but the source of the constraint in [§2](#2-the-constraint-that-shapes-this-forward-only).
 
 ---
 
@@ -84,11 +84,11 @@ about the domain, not a reason to fake the state.
   the schedule removed produces an identical final state.
 - A player looping is stopped cleanly and leaves no half-finished workflow.
 - A generated adapter and a hand-written one for the same plugin produce the same mutations.
-- No event carries a caller-claimed time. §2 is checked, not assumed.
+- No event carries a caller-claimed time. [§2](#2-the-constraint-that-shapes-this-forward-only) is checked, not assumed.
 
 ## 6. Out of scope
 
-- **Backdating.** §2. Not deferred — refused.
+- **Backdating.** [§2](#2-the-constraint-that-shapes-this-forward-only). Not deferred — refused.
 - **Scheduling a player run.** Starting it is a separate concern, as the sibling plan says of
   its own follow-ups.
 - **A UI for it.** The surface that offers this to someone who is not running a CLI belongs

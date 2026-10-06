@@ -1,7 +1,7 @@
 # Plan: read the lifecycle machine off the GWT corpus, and check `@transition` against it
 
 **Status.** 2026-09-06. **Done.** Phase 0 came back negative and was fixed
-(see §2); Phase 1 ships the checker; Phase 2 publishes the derived model.
+(see [§2](#2--phase-0-does-the-sidecar-cover-the-projection-dsl)); Phase 1 ships the checker; Phase 2 publishes the derived model.
 
 **Goal.** Derive each command's `allowedStates` / `targetState` /
 Collection-vs-Instance from the GWT scenarios that already exist, and report
@@ -13,13 +13,13 @@ obligation*.
 **Relates to:**
 
 - [`docs/analysis/lifecycle-model-from-gwt-corpus.md`](../../analysis/lifecycle-model-from-gwt-corpus.md)
-  — the argument and the evidence. This plan implements its §7.
+  — the argument and the evidence. This plan implements its [§7](../../analysis/lifecycle-model-from-gwt-corpus.md#7-recommendation).
 - [`docs/analysis/given-when-then-specifications.md`](../../analysis/given-when-then-specifications.md)
-  §5.6 — the closed-world gate, which constrains the *generation* pipeline and is
+  [§5.6](../../analysis/given-when-then-specifications.md#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product) — the closed-world gate, which constrains the *generation* pipeline and is
   explicitly out of scope here.
 - [`docs/plans/lifecycle-transition-annotation.md`](../lifecycle-transition-annotation.md)
   — built `@transition` and its name check. This plan adds the behaviour check
-  that plan's §6 called for and could not build.
+  that plan's [§6](../lifecycle-transition-annotation.md#6--risks) called for and could not build.
 - [`docs/analysis/rejected/command-lifecycle-guard-defaults.md`](../../analysis/rejected/command-lifecycle-guard-defaults.md)
   — the four options this supersedes.
 
@@ -58,7 +58,7 @@ row. The corpus gets it right because it reads behaviour rather than a proxy.
 ## Non-goals
 
 - **The closed-world gate.** It belongs to the generation pipeline (GWT analysis
-  §5.4), which does not exist — there is no CLI runner and Stages A–E are
+  [§5.4](../../analysis/given-when-then-specifications.md#54-generation-pipeline)), which does not exist — there is no CLI runner and Stages A–E are
   unbuilt. Recorded there as a binding constraint on that future work; nothing
   here depends on it.
 - **Generating `decide` / `evolve` / `project`.** Out of scope entirely.
@@ -348,7 +348,7 @@ runs the same ordered chain as `pnpm run build`.
    Step 4 sharpens this: with the level heuristic retired there is nothing left
    to cover a blank derived level either.
 
-   This is not hypothetical. The `thenEvents` gap in §3 erased `allowedStates` to
+   This is not hypothetical. The `thenEvents` gap in [§3](#3--phase-1-the-checker-report-only) erased `allowedStates` to
    `[]` and `level` to `""` for all five image commands, and a corpus *did* exist
    — it read as empty. Published under the rule as first written, `Attach` /
    `Remove` / `SetPrimaryProductImage` and both `CategoryImages` commands would

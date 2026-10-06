@@ -9,7 +9,7 @@ authorization path that remain are planned away in
 `Caller` this extends), `active-role-narrows-the-token.md` (the "active role" a
 person picks), `generated-surfaces-state-required-access.md` (what
 `requiredAccess` holds and who compares it), `identity-is-a-capability-not-a-cognito-handle.md`
-(the deploy gate §5 joins), `model-sidecar-annotation-arguments.md` (what the
+(the deploy gate [§5](#5--a-check-that-the-platform-can-provide-every-role) joins), `model-sidecar-annotation-arguments.md` (what the
 model sidecar records, for the spike), `appsync-refusal-vocabulary.md` (what a
 refusal says on each transport).
 
@@ -100,7 +100,7 @@ which roles may issue it and which are refused.
 - **A role here is the coarse gate** on who may issue a command or read a view.
   A later permissions or accounts layer may add permission sets, nested groups or
   per-tenant roles *on top of* it; this plan neither builds nor forecloses that,
-  which is why §10 lists those as out of scope rather than rejected.
+  which is why [§10](#10--what-this-does-not-do) lists those as out of scope rather than rejected.
 
 ## §3 — A plugin declares its roles
 
@@ -147,9 +147,9 @@ A misspelled case fails to compile as "constructor not found in `Roles.t`".
   `Role.make("…")`.
 
 **Roles are joined by name.** Two plugins that each declare `Fulfilment` mean the
-same role, and §5 compares names, so each plugin declares only the roles it uses
+same role, and [§5](#5--a-check-that-the-platform-can-provide-every-role) compares names, so each plugin declares only the roles it uses
 and no shared package is needed. A shared spec package is for roles that become
-part of a contract between plugins, and none do yet (§11, decision 4).
+part of a contract between plugins, and none do yet ([§11](#11--decisions-and-what-is-still-open), decision 4).
 
 **The administrator.** The framework's own administrator role is `Role.admin`
 (named `Admin`), replacing `AdminGroup.name`. A plugin that lists `Admin` in its
@@ -234,7 +234,7 @@ everyone" this plan exists to remove. A plain declared list also works in a
 preview, locally and in tests, where no call to the provider is possible; a
 check that runs only when the deploy has applied resources is skipped by a
 preview. Comparing the declared list with the pool's real groups can come later
-as an extra check (§11).
+as an extra check ([§11](#11--decisions-and-what-is-still-open)).
 
 ## §6 — `AllowGroups` becomes `AllowRoles`
 
@@ -251,7 +251,7 @@ as an extra check (§11).
   wedged plugin registration before): `requiredRoles` is optional, and the
   required-scalars tripwire lists its elements beside `requiredAccess`'s.
 - `REVENTLESS_ELEVATED_GROUPS` stays the runtime carrier of the elevated list
-  (§4).
+  ([§4](#4--a-platform-provides-groups-for-those-roles)).
 - `Role.admin`, resolved through the mapping like any role, replaces the
   administrator's name at every site that hard-coded it: the admin API's group
   decoration on both platforms, the local built-in `admin` account, the Cognito
@@ -318,7 +318,7 @@ Every command in the examples whose rule is not the default gets scenarios in it
 - **`DenyAll`**: refused for every caller, `Admin` included;
 - **`AllowAnonymous`**: accepted for `Caller.anonymous`.
 
-Scope, from §1:
+Scope, from [§1](#1--what-is-there-today):
 
 - **hybrid catalog**: the `Admin` / `Merchandiser` commands (adding, renaming,
   archiving and unarchiving products and categories, their images);
@@ -345,7 +345,7 @@ pass that export to `setElevatedGroups`.
 
 ## §9 — Order of work
 
-1. **Spike.** Decide §3's surface, answering separately:
+1. **Spike.** Decide [§3](#3--a-plugin-declares-its-roles)'s surface, answering separately:
    - what compiles in an annotation, and what the PPX copies into
      `commandAuthorization`;
    - the model sidecar: it records no constructor attributes today
@@ -357,12 +357,12 @@ pass that export to `setElevatedGroups`.
    - tools that read and write `@authorize` as text: a bare `Merchandiser`
      survives a text round trip, but resolving it to a name needs the plugin's
      `Roles` module;
-   - that the `Roles.res` convention and the generated coercion (§3) compile,
+   - that the `Roles.res` convention and the generated coercion ([§3](#3--a-plugin-declares-its-roles)) compile,
      and give a readable error for a misspelled role.
    Record the answers here before step 2.
 
-   **Answers (2026-10-01).** §3's surface holds; the fallback is not needed. The
-   first answer was later revised (see §3): the rule is no longer converted.
+   **Answers (2026-10-01).** [§3](#3--a-plugin-declares-its-roles)'s surface holds; the fallback is not needed. The
+   first answer was later revised (see [§3](#3--a-plugin-declares-its-roles)): the rule is no longer converted.
    - *The annotation and the copy.* `AllowRoles([Merchandiser, Admin])` is
      copied unchanged; the generated binding is annotated
      `Reventless.Authorization.rule<role>`, with `type role = Roles.t` beside
@@ -389,15 +389,15 @@ pass that export to `setElevatedGroups`.
    - *Text tools.* The VS Code authoring round trip in the tools repository reads
      and writes the annotation as text, and a bare `Merchandiser` survives that.
      Offering a role picker needs the plugin's `Roles.res`, which that tool
-     reads off disk like any source file (§11, decision 5).
+     reads off disk like any source file ([§11](#11--decisions-and-what-is-still-open), decision 5).
    - *One carrier the plan did not list.* A table-backed view read on AWS through
      the Postgres resolver Lambda evaluates `isAllowed` at run time, so that
      runtime needs the role mapping too. It gets it through the environment,
      like the elevated groups: `REVENTLESS_ROLE_GROUPS` carries only the renamed
      roles (`Merchandiser=shop-merch-team`) and is written by the same function
      that writes `REVENTLESS_ELEVATED_GROUPS`. That is a different fact from
-     elevation, so §4's "one variable for one fact" still holds.
-   - *Where §5 runs.* `Plugin_Builder.make` receives the plugin structure
+     elevation, so [§4](#4--a-platform-provides-groups-for-those-roles)'s "one variable for one fact" still holds.
+   - *Where [§5](#5--a-check-that-the-platform-can-provide-every-role) runs.* `Plugin_Builder.make` receives the plugin structure
      synchronously on both platforms. The check runs there, outside any
      `Output.apply`, so a preview runs it too.
 2. **Spec and PPX.** `Role.name`, `rule<'role>` with `AllowRoles`, `named`,
@@ -407,12 +407,12 @@ pass that export to `setElevatedGroups`.
    `REVENTLESS_ELEVATED_GROUPS`, `providedGroups`, on both platforms; the AppSync
    directives written from mapped groups. The local resolver test and the directive test extended with a
    mapping that renames a group.
-4. **The check (§5).** At deploy and at start, with a test per failure it names.
-5. **GWT (§7).** `Caller` with roles; authorization before ownership; tests in
+4. **The check ([§5](#5--a-check-that-the-platform-can-provide-every-role)).** At deploy and at start, with a test per failure it names.
+5. **GWT ([§7](#7--gwt-scenarios-state-the-callers-roles)).** `Caller` with roles; authorization before ownership; tests in
    `reventless/gwt/tests`.
 6. **Examples.** Migrate annotations to `AllowRoles` with a `Roles` module per
-   plugin; add the §8 scenarios; refresh lifecycle models.
-7. **Docs** as in §6, and the terminology of §2 applied to existing comments
+   plugin; add the [§8](#8--role-based-scenarios-in-the-examples) scenarios; refresh lifecycle models.
+7. **Docs** as in [§6](#6--allowgroups-becomes-allowroles), and the terminology of [§2](#2--the-two-words) applied to existing comments
    where "role" and "group" are mixed.
 
 Steps 2 to 7 can ship in one commit or in several; step 6 should not land before
@@ -421,13 +421,13 @@ step 5.
 ## §10 — What this does not do
 
 These are out of scope here, not rejected; a later permissions layer may add
-them on top of the roles this plan introduces (§2).
+them on top of the roles this plan introduces ([§2](#2--the-two-words)).
 
 - **No permissions model.** A role grants what the annotations say it grants;
   there is no separate list of permissions per role.
 - **No role hierarchy or nested groups.** `Admin` is not implicitly a
   `Merchandiser`; a rule that should admit both names both, as today.
-- **No per-tenant roles** (§11, item 6).
+- **No per-tenant roles** ([§11](#11--decisions-and-what-is-still-open), item 6).
 - **No change to how a provider issues groups**, to the active-role mechanism, or
   to AWS IAM roles.
 - **No change to what a refusal looks like on the wire**; that stays with
@@ -437,16 +437,16 @@ them on top of the roles this plan introduces (§2).
 
 1. **The annotation syntax** is `@authorize(AllowRoles([Merchandiser]))`, with
    the plugin's roles in a `Roles.res` found by convention and the rule typed by
-   them (§3).
+   them ([§3](#3--a-plugin-declares-its-roles)).
 2. **Supplied user pools** declare their groups with `providedGroups`, and the
-   check fails by default (§5). *Open:* whether to add, later, a deploy-time
+   check fails by default ([§5](#5--a-check-that-the-platform-can-provide-every-role)). *Open:* whether to add, later, a deploy-time
    comparison of the declared list with the pool's real groups. Taken up in
    `groups-checked-against-the-pool.md`, after plugin stacks turned out to
    have no manifest to read.
 3. **Old names.** `AllowGroups` and `AdminGroup` are removed in this change
-   (§6).
+   ([§6](#6--allowgroups-becomes-allowroles)).
    `REVENTLESS_ELEVATED_GROUPS` stays as the only environment variable; there is
-   no `REVENTLESS_ELEVATED_ROLES` (§4).
+   no `REVENTLESS_ELEVATED_ROLES` ([§4](#4--a-platform-provides-groups-for-those-roles)).
 4. **Shared roles.** Each example plugin declares its own roles; they are joined
    by name, and the hybrid example's roles do not overlap anyway (`Merchandiser`
    in catalog, `Fulfilment` in ordering, `Admin` from the framework). A shared

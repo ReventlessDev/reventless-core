@@ -3,7 +3,7 @@
 **Scope.** Why every optional field on `pluginDefinition` / `pluginStructure` carries an
 `@s.matches(...OptionSchema)` annotation, whether sury or sury-ppx can be configured to avoid
 that (they cannot), and what actually stands in the way of deleting all 47. Answer: the wire
-format, and one line of the schema healer. Written 2026-09-04 against `sury@11.0.0-rc.2`; §6
+format, and one line of the schema healer. Written 2026-09-04 against `sury@11.0.0-rc.2`; [§6](#6-three-blockers-that-are-not-real-and-the-half-of-one-that-is)
 records three blockers this analysis first claimed and then disproved, because the instrument
 that produced them is an easy one to reach for again — and, since execution, how the first of
 those disproofs was itself half wrong.
@@ -35,16 +35,16 @@ annotations and their four helper bindings rather than by adding a feature. It a
 repo internally consistent: 53 optional-schema constructions already use the default form
 against 15 that do not.
 
-**Exactly one thing blocks it: the wire format** (§5). Stored payloads carry explicit `null`,
+**Exactly one thing blocks it: the wire format** ([§5](#5-the-one-real-blocker--wire-format)). Stored payloads carry explicit `null`,
 which the default encoding cannot parse. Discarding alpha data and redeploying the fleet removes
 it.
 
-Nothing else does. In particular there is **no** UI work and **no** golden refresh (§6) — verified
+Nothing else does. In particular there is **no** UI work and **no** golden refresh ([§6](#6-three-blockers-that-are-not-real-and-the-half-of-one-that-is)) — verified
 in execution, `check:graphql` did not move. A one-line healer fix *was* required after all, for
-`option<record>` and `option<enum>` only; §6.1 records what the first measurement missed.
+`option<record>` and `option<enum>` only; [§6.1](#61-the-healer-does-not-fabricate--for-absent-optionals--but-it-did-invent-for-optionrecord) records what the first measurement missed.
 
 If the null encoding were instead kept, per-field annotation would be unavoidable — there is no
-configuration at any level (§3).
+configuration at any level ([§3](#3-there-is-no-sury-configuration--three-places-checked)).
 
 ## 3. There is no sury configuration — three places checked
 
@@ -119,7 +119,7 @@ event log and replayed, and `pluginDefinition` also travels in the `ConnectPlugi
 between separately deployed plugins and the admin. `reventless-spec` is published on every alpha
 push, so external consumers compile against whichever shape they installed.
 
-This blocks the change **only** while old data and old deployments exist. See §7 for what has to
+This blocks the change **only** while old data and old deployments exist. See [§7](#7-what-has-to-be-wiped) for what has to
 go.
 
 ## 6. Three blockers that are not real (and the half of one that is)
@@ -177,7 +177,7 @@ been a solution to nothing, and is not implementable besides: sury's internal `r
 every declared property, optionals included (`["name","opt"]` for both encodings above).
 
 The same blind spot lived in `PluginDefinitionScalars`, whose walker also defined optional as
-`has.null`; it now reads both. **Lesson for §10:** measuring through the real function was
+`has.null`; it now reads both. **Lesson for [§10](#10-method-note--measure-through-the-repos-own-path):** measuring through the real function was
 necessary but not sufficient — the input has to cover the type shapes the change actually reaches,
 and `S.option(S.string)` was one probe standing in for four.
 
@@ -201,7 +201,7 @@ IDENTICAL
 ### 6.3 No UI work, and no golden refresh
 
 Both follow from 6.2. `reventless-ui` reads schemas at runtime and
-[`SchemaShape.res`](../../../reventless-ui/reventless/ui/src/auto/SchemaShape.res) is built on
+[`SchemaShape.res`](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/reventless/ui/src/auto/SchemaShape.res) is built on
 "sury renders an optional field as a composition rather than a type" — which stays true, because
 the composition is produced by *core's emitter*, not by sury's raw encoding. `AutoUI.res:452`
 names the Plugin read model's `dcbEventLog` as its worked example of `anyOf:[<object>, null]`;
@@ -239,7 +239,7 @@ keeps its TODO list in a module-level dict and re-saves every row at the end of 
 ### 7.3 Not affected
 
 Domain plugin EventLogs, the DcbEventLog, and domain QueryDb tables carry domain events, not
-`pluginDefinition`. This holds only while the change is confined to `Plugin.res`; the §9 sweep
+`pluginDefinition`. This holds only while the change is confined to `Plugin.res`; the [§9](#9-follow-on-optiona-fields--optional--fields) sweep
 would pull them in.
 
 Domain plugins' own `pluginStructures` / `pluginApiFragments` prefixes survive a platform-scoped
@@ -269,7 +269,7 @@ ppx-less test fixtures.
 Exposure is rebuild-and-repin only: consumers depending on published core packages must be
 rebuilt against the `feat!` release, and any that pin published core deps in release-mode CI
 move that pin with it. The `@reventlessdev/reventless-ui` package needs nothing — it has no
-sury dependency, and per §6.3 the schema shape it reads does not change, so there is no UI
+sury dependency, and per [§6.3](#63-no-ui-work-and-no-golden-refresh) the schema shape it reads does not change, so there is no UI
 change and no deploy ordering constraint.
 
 ## 9. Follow-on: `option<'a>` fields → optional (`?:`) fields
@@ -291,7 +291,7 @@ arm, so it is not the same evidence.
 
 ## 10. Method note — measure through the repo's own path
 
-Every false blocker in §6 came from measuring a hand-built schema with `Sury.toJSONSchema`, a
+Every false blocker in [§6](#6-three-blockers-that-are-not-real-and-the-half-of-one-that-is) came from measuring a hand-built schema with `Sury.toJSONSchema`, a
 function this repo never calls. The corrections came from importing the real
 `fillMissingDefaults` and the real `deriveObjectSchema` and running both encodings through them.
 
@@ -300,8 +300,8 @@ re-running on the next sury bump:
 
 - **Encode probe** — bare `S.option` vs `S.nullAsOption` vs `S.nullableAsOption`, as a record
   field and inside a positional variant payload, absent and present, to `S.json` and
-  `S.jsonString`, plus round-trip. Establishes §4.
+  `S.jsonString`, plus round-trip. Establishes [§4](#4-the-rationale-in-the-file-is-stale).
 - **Wire-compat probe** — cross-parsing a legacy `null`-carrying payload and an omitted-key
-  payload against both schemas. Establishes §5.
+  payload against both schemas. Establishes [§5](#5-the-one-real-blocker--wire-format).
 - **Emitter probe** — `deriveObjectSchema` and `fillMissingDefaults` imported from the built
-  `.res.mjs`, both encodings compared. Establishes §6.
+  `.res.mjs`, both encodings compared. Establishes [§6](#6-three-blockers-that-are-not-real-and-the-half-of-one-that-is).

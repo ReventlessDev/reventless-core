@@ -14,7 +14,7 @@ Analysis of the framework's Given-When-Then (GWT) specification support for Even
 
 ## 1. What Event Modeling expects from a GWT layer
 
-Event Modeling, as captured in [`event-modeling-comparison.md`](./event-modeling-comparison.md), reduces every information system to four slice patterns. Each pattern has a canonical Given-When-Then shape:
+Event Modeling reduces every information system to four slice patterns. Each pattern has a canonical Given-When-Then shape:
 
 | Slice | Given | When | Then |
 |-------|-------|------|------|
@@ -41,7 +41,7 @@ A complete GWT layer needs a DSL for **every cell of that table**, with consiste
 
 All three existing DSLs live in [`reventless-core/tests/`](../../reventless/core/tests/), with near-duplicates of `BehaviorTest`/`ProjectionTest`/`AsyncTest` in [`reventless-local/src/test/`](../../reventless/local/src/test/).
 
-### 2.1 [BehaviorTest](../../reventless/core/tests/BehaviorTest.res) — Aggregate command slice
+### 2.1 [BehaviorTest](https://github.com/ReventlessDev/reventless-core/blob/563970a25c8845d0aabdf8ce35c794e3ea57ff4c/reventless/reventless-core/tests/BehaviorTest.res) — Aggregate command slice
 
 Pure synchronous DSL. Functor over `(Spec, Behavior)`:
 
@@ -59,7 +59,7 @@ Combinators: `givenEvents`, `whenCmd`, `thenEvent`, `thenEvents`, `thenNoEvent`,
 Strengths: idiomatic, matches Behavior shape exactly, no async overhead.
 Limitations: only one entity stream; no notion of multiple `id`s in the history.
 
-### 2.2 [EventMappingTest](../../reventless/core/tests/EventMappingTest.res) — Aggregate→Aggregate automation
+### 2.2 [EventMappingTest](https://github.com/ReventlessDev/reventless-core/blob/563970a25c8845d0aabdf8ce35c794e3ea57ff4c/reventless/reventless-core/tests/EventMappingTest.res) — Aggregate→Aggregate automation
 
 Async DSL composing two aggregates and one `EventMapping`. Functor over `(Source, SourceBehavior, Target, TargetBehavior, EventMapping)`:
 
@@ -73,7 +73,7 @@ givenSourceEvents([CategoryArchived(...)])
 Strengths: covers cross-aggregate flow including the QueryEngine stub; respects target-aggregate behavior so target invariants are enforced.
 Limitations: only `Aggregate→Aggregate`; no support for `PublishDelayed` time travel; `thenTargetError` family commented out, never finished; no integration with DCB sources or targets.
 
-### 2.3 [ProjectionTest](../../reventless/core/tests/ProjectionTest.res) — ReadModel projection
+### 2.3 [ProjectionTest](https://github.com/ReventlessDev/reventless-core/blob/563970a25c8845d0aabdf8ce35c794e3ea57ff4c/reventless/reventless-core/tests/ProjectionTest.res) — ReadModel projection
 
 Async DSL with a synthetic in-memory store. Functor over `Projection.Mapping`:
 
@@ -147,7 +147,7 @@ Rough summary of what needs fixing:
 4. **Finish the error combinators in `EventMapping_GWT`.** The commented-out `thenTargetError`, `thenTargetEventsWithError` are still missing.
 5. **Promote `describeWithId` and `*WithTime`** to all DSLs — useful in every context.
 6. **Standardise `Spec` parameterisation.** Every Make functor takes `(Spec, Behavior?)` directly. Improves both human reading and AI generation.
-7. **Delete the `reventless-local/src/test/*` copies.** They exist purely to dodge a `@send external` resolution issue across packages — see §6.1.1.
+7. **Delete the `reventless-local/src/test/*` copies.** They exist purely to dodge a `@send external` resolution issue across packages — see [§6.1.1](#611-stage-1-detail-removing-the-reventless-local-re-exports).
 
 ---
 
@@ -1213,7 +1213,7 @@ These must be in the GWT corpus or generation will fail / hallucinate:
 
 - **Cross-entity invariants** that aren't exercised by any example — there's no way to know "you cannot place an order for an archived product" without a scenario that demonstrates it.
 - **Side-effect contracts** beyond what's recorded in events.
-- **Read model query patterns** — these are not implied by Given/When/Then on the projection. They need their own `Query_GWT` corpus (§4.8).
+- **Read model query patterns** — these are not implied by Given/When/Then on the projection. They need their own `Query_GWT` corpus ([§4.8](#48-query_gwt--read-model-query-patterns)).
 
 ### 5.4 Generation pipeline
 
@@ -1249,7 +1249,7 @@ Per slice, LLM receives:
 - The GWT corpus for that slice.
 - Relevant CLAUDE.md / rules excerpts.
 
-Emits a candidate `evolve` and `decide` body, runs the slice's GWT through `reventless-gwt run --format=json`, feeds the Outcome JSON back. If every `then*` is `Ok`, accept. Otherwise the structured mismatches name exactly which branch is wrong (§3.2 hint table) and the LLM iterates.
+Emits a candidate `evolve` and `decide` body, runs the slice's GWT through `reventless-gwt run --format=json`, feeds the Outcome JSON back. If every `then*` is `Ok`, accept. Otherwise the structured mismatches name exactly which branch is wrong ([§3.2](#32-the-outcome-algebra) hint table) and the LLM iterates.
 
 Termination conditions: all scenarios pass → done. N iterations without progress → escalate (corpus likely incomplete or contradictory).
 
@@ -1263,7 +1263,7 @@ Edge case: ambiguity between `Set` and `UpdateWithDefault` when the corpus only 
 
 #### Stage D — LLM synthesises read model query infrastructure
 
-Uses `Query_GWT` corpus (§4.8). LLM derives `ReadModel.config` (indexes, idResolvers, idsResolvers, subIdConfig) by working backward from query examples. "Bounded creativity" means: the LLM may propose an index, but it must justify it from at least one Query_GWT scenario.
+Uses `Query_GWT` corpus ([§4.8](#48-query_gwt--read-model-query-patterns)). LLM derives `ReadModel.config` (indexes, idResolvers, idsResolvers, subIdConfig) by working backward from query examples. "Bounded creativity" means: the LLM may propose an index, but it must justify it from at least one Query_GWT scenario.
 
 #### Stage E — mechanical acceptance gate
 
@@ -1286,16 +1286,16 @@ If all pass, accept. If any fail, re-invoke the LLM at the relevant stage (B for
 | D | `Query_GWT` corpus | Wrong indexes → ReadModel won't satisfy required queries |
 | E | All of the above | Build fails → human investigation |
 
-The Outcome algebra (§3.2) is the load-bearing invariant for stages B–D. Without it, every iteration parses test runner stdout, which dilutes the signal and makes long iteration loops infeasible.
+The Outcome algebra ([§3.2](#32-the-outcome-algebra)) is the load-bearing invariant for stages B–D. Without it, every iteration parses test runner stdout, which dilutes the signal and makes long iteration loops infeasible.
 
 ### 5.5 What unlocks the highest leverage
 
 In priority order:
 
-1. **Build the missing DCB DSLs (§4.2–4.7).** Without them, the GWT corpus can only describe Aggregate slices — half the framework is invisible to the AI loop.
-2. **Adopt the `Outcome` algebra (§3.2).** Without structured failures, AI iteration depends on parsing test output.
-3. **Add `Query_GWT` (§4.8).** Closes the index/resolver design gap.
-4. **Encode the GWT shapes as a JSON schema.** Lets AI tools accept declarative inputs (or Event Modeler exports) and emit ReScript GWT files. Pairs with [`event-modeling-json-reventless-conversion.md`](./event-modeling-json-reventless-conversion.md).
+1. **Build the missing DCB DSLs ([§4.2](#42-statechangeslice_gwt)–4.7).** Without them, the GWT corpus can only describe Aggregate slices — half the framework is invisible to the AI loop.
+2. **Adopt the `Outcome` algebra ([§3.2](#32-the-outcome-algebra)).** Without structured failures, AI iteration depends on parsing test output.
+3. **Add `Query_GWT` ([§4.8](#48-query_gwt--read-model-query-patterns)).** Closes the index/resolver design gap.
+4. **Encode the GWT shapes as a JSON schema.** Lets AI tools accept declarative inputs (or Event Modeler exports) and emit ReScript GWT files. Pairs with a conversion between Event Modeling JSON and Reventless.
 5. **PPX `@@reventless.gwt`** to remove the `include ...GWT.Make(...)` boilerplate and lock the convention down.
 
 With all five in place, "I provide the spec and the GWT" → "framework runs, passes" becomes a closed AI iteration loop with the Outcome algebra serving as the fitness function.
@@ -1349,12 +1349,12 @@ A staged, additive migration. Each stage is one PR that keeps every test green v
 
 ### 6.1 Phased migration
 
-1. **Stage 1 — Consolidate.** Create `reventless-gwt` package. Move `BehaviorTest`, `EventMappingTest`, `ProjectionTest`, `AsyncTest` from `reventless-core/tests/` into it. Delete the duplicates in `reventless-local/src/test/` (see §6.1.1). Codemod example tests to `ReventlessGwt.*` imports. Keep current `Jest.assertion` return type to minimize churn.
+1. **Stage 1 — Consolidate.** Create `reventless-gwt` package. Move `BehaviorTest`, `EventMappingTest`, `ProjectionTest`, `AsyncTest` from `reventless-core/tests/` into it. Delete the duplicates in `reventless-local/src/test/` (see [§6.1.1](#611-stage-1-detail-removing-the-reventless-local-re-exports)). Codemod example tests to `ReventlessGwt.*` imports. Keep current `Jest.assertion` return type to minimize churn.
 2. **Stage 2 — Outcome algebra.** Refactor combinators to return `Outcome.outcome`. Add `JestBind` adapter so existing test files compile unchanged (the adapter wraps the outcome at the `test(...)` boundary, not in `then*` calls).
 3. **Stage 3 — DCB DSLs.** Add `StateChangeSlice_GWT`, `StateViewSlice_GWT`, `AutomationSlice_GWT`, `InboundTranslationSlice_GWT`, `OutboundTranslationSlice_GWT`. Each mirrors the existing DSL shape so users learn one vocabulary.
-4. **Stage 4 — `thenAppendsConditionedOn`.** Add the implicit + explicit append-condition assertion to `StateChangeSlice_GWT` (§4.2).
-5. **Stage 5 — Cross-pattern `Mapping_GWT`.** Generalise `EventMapping_GWT` so source and target can be Behavior or StateChangeSlice (§4.7).
-6. **Stage 6 — `Query_GWT`.** Add the read-model query DSL (§4.8).
+4. **Stage 4 — `thenAppendsConditionedOn`.** Add the implicit + explicit append-condition assertion to `StateChangeSlice_GWT` ([§4.2](#42-statechangeslice_gwt)).
+5. **Stage 5 — Cross-pattern `Mapping_GWT`.** Generalise `EventMapping_GWT` so source and target can be Behavior or StateChangeSlice ([§4.7](#47-mapping_gwt--cross-pattern-automation)).
+6. **Stage 6 — `Query_GWT`.** Add the read-model query DSL ([§4.8](#48-query_gwt--read-model-query-patterns)).
 7. **Stage 7 — CLI runner.** Build `reventless-gwt` CLI with `--format=human|json|tap|junit|vscode`. At this point Jest is one of multiple runners.
 8. **Stage 8 — `reventless-vscode` extension.** Ship the VS Code extension as a separate marketplace package.
 9. **Stage 9 — `@@reventless.gwt` PPX.** File-level annotation that auto-injects `include ...GWT.Make(...)` based on folder convention (mirrors `@@reventless.spec`/`@@reventless.behavior`). Eliminates the boilerplate first lines of every test file.
@@ -1412,7 +1412,7 @@ Mechanical:
 
 Plus optional file rename: `CategoryBehaviorTest.res` → `CategoryBehavior_GWT.res`. Combinator names stay the same — every `givenEvents/whenCmd/thenEvent` call works as-is. With deprecation aliases in place, this can land in any order. ~1 hour to write the codemod, then auto-applies.
 
-If the harmonisation work (§2.6 item 3) drops `plainPartial` in favour of a synchronous chain, the projection codemod also rewrites `whenEvent(...)->thenState(...)` from `Jest.Expect.plainPartial<...>` to a regular value chain. Slightly bigger but still mechanical (LHS/RHS shapes are deterministic).
+If the harmonisation work ([§2.6](#26-duplication-and-inconsistency-audit) item 3) drops `plainPartial` in favour of a synchronous chain, the projection codemod also rewrites `whenEvent(...)->thenState(...)` from `Jest.Expect.plainPartial<...>` to a regular value chain. Slightly bigger but still mechanical (LHS/RHS shapes are deterministic).
 
 #### Semi-automatic LLM rewrite for DCB hand-rolled tests
 
@@ -1425,7 +1425,7 @@ For the monorepo's ~8 DCB hand-rolled files, manual is realistic for a single af
 
 #### E2E tests — unchanged
 
-E2E tests dispatch real commands through an in-memory bus and count events. They are *integration* tests, not GWTs. Stay as-is. Long term they could be expressed as `Mapping_GWT` scenarios (§4.7) but that's a separate effort.
+E2E tests dispatch real commands through an in-memory bus and count events. They are *integration* tests, not GWTs. Stay as-is. Long term they could be expressed as `Mapping_GWT` scenarios ([§4.7](#47-mapping_gwt--cross-pattern-automation)) but that's a separate effort.
 
 ### 6.3 Deprecation strategy
 
@@ -1459,15 +1459,15 @@ For DCB slices that today have **no** GWT (raw `expect`), migration is net-new a
 
 ## 7. Summary of recommendations
 
-- **One package: `reventless-gwt`** (§3.1). Houses every GWT DSL, the `Outcome` algebra, the CLI runner, the optional `JestBind` adapter, and the `AsyncTest` Jest-binding helper. `reventless-spec` stays runtime-free.
-- **Refactor `then*` to return `Outcome.outcome`** (§3.2). Structured outcomes drive every consumer (Jest, AI loop, CLI runner, IDE) and the precomputed `hint` field tells consumers exactly which function to fix.
-- **Build the `reventless-gwt` CLI runner** (§3.3) with `--format=human|json|tap|junit|vscode`. Replaces Jest for GWT files, produces ReScript-aware diffs, gives the AI loop and the IDE the same structured data without parsing test output.
-- **Add five missing DSLs** (§4.2–4.6): `StateChangeSlice_GWT`, `StateViewSlice_GWT`, `AutomationSlice_GWT`, `InboundTranslationSlice_GWT`, `OutboundTranslationSlice_GWT`.
-- **Generalise `EventMapping_GWT` to `Mapping_GWT`** (§4.7) so source and target can each be Behavior or StateChangeSlice — closes the cross-pattern gap.
-- **Add `thenAppendsConditionedOn` with auto-derivation** (§4.2.1) so the DCB optimistic-concurrency contract is checked implicitly and documentable explicitly.
-- **Add `Query_GWT`** (§4.8) so read model index/resolver/subId design is specifiable, closing the only major gap for full AI generation of read models.
-- **Rename and harmonise the existing DSLs** (§4.1, §2.6): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-local/src/test/*` modules.
-- **Migration is fully additive** (§6): codemods for the existing rename, semi-automatic LLM rewrite for the few DCB hand-rolled tests, deprecation aliases keep every PR green.
-- **AI generation is feasible to a high ceiling** (§5) but only if the GWT corpus covers every cross-entity invariant. The two non-derivable areas — invariants without examples, read-model query patterns — must be made explicit as `_GWT` or `Query_GWT` scenarios. Otherwise an LLM will under-constrain `decide` and over-fit on the supplied examples.
-- **Make the acceptance gate closed-world** (§5.6). "All scenarios pass" is a lower bound; uncovered `(state, command)` cells must refuse explicitly, or generated behaviour exceeds what anyone specified and anything derived from the corpus is unsound.
-- **Harvest the lifecycle state machine from the corpus** (§5.6). With the gate in place, `allowedStates` / `targetState` / Collection-vs-Instance are corpus by-products, and `@transition` becomes a coverage obligation rather than an unverifiable claim. Requires recording the passing `(givenEvents, command, producedEvents)` triple in the Outcome algebra (§3.2).
+- **One package: `reventless-gwt`** ([§3.1](#31-one-package-reventless-gwt)). Houses every GWT DSL, the `Outcome` algebra, the CLI runner, the optional `JestBind` adapter, and the `AsyncTest` Jest-binding helper. `reventless-spec` stays runtime-free.
+- **Refactor `then*` to return `Outcome.outcome`** ([§3.2](#32-the-outcome-algebra)). Structured outcomes drive every consumer (Jest, AI loop, CLI runner, IDE) and the precomputed `hint` field tells consumers exactly which function to fix.
+- **Build the `reventless-gwt` CLI runner** ([§3.3](#33-the-reventless-gwt-cli-runner)) with `--format=human|json|tap|junit|vscode`. Replaces Jest for GWT files, produces ReScript-aware diffs, gives the AI loop and the IDE the same structured data without parsing test output.
+- **Add five missing DSLs** ([§4.2](#42-statechangeslice_gwt)–4.6): `StateChangeSlice_GWT`, `StateViewSlice_GWT`, `AutomationSlice_GWT`, `InboundTranslationSlice_GWT`, `OutboundTranslationSlice_GWT`.
+- **Generalise `EventMapping_GWT` to `Mapping_GWT`** ([§4.7](#47-mapping_gwt--cross-pattern-automation)) so source and target can each be Behavior or StateChangeSlice — closes the cross-pattern gap.
+- **Add `thenAppendsConditionedOn` with auto-derivation** ([§4.2.1](#auto-deriving-thenappendsconditionedon)) so the DCB optimistic-concurrency contract is checked implicitly and documentable explicitly.
+- **Add `Query_GWT`** ([§4.8](#48-query_gwt--read-model-query-patterns)) so read model index/resolver/subId design is specifiable, closing the only major gap for full AI generation of read models.
+- **Rename and harmonise the existing DSLs** ([§4.1](#41-renaming-the-existing-dsls), [§2.6](#26-duplication-and-inconsistency-audit)): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-local/src/test/*` modules.
+- **Migration is fully additive** ([§6](#6-implementation-plan)): codemods for the existing rename, semi-automatic LLM rewrite for the few DCB hand-rolled tests, deprecation aliases keep every PR green.
+- **AI generation is feasible to a high ceiling** ([§5](#5-ai-assisted-generation)) but only if the GWT corpus covers every cross-entity invariant. The two non-derivable areas — invariants without examples, read-model query patterns — must be made explicit as `_GWT` or `Query_GWT` scenarios. Otherwise an LLM will under-constrain `decide` and over-fit on the supplied examples.
+- **Make the acceptance gate closed-world** ([§5.6](#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product)). "All scenarios pass" is a lower bound; uncovered `(state, command)` cells must refuse explicitly, or generated behaviour exceeds what anyone specified and anything derived from the corpus is unsound.
+- **Harvest the lifecycle state machine from the corpus** ([§5.6](#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product)). With the gate in place, `allowedStates` / `targetState` / Collection-vs-Instance are corpus by-products, and `@transition` becomes a coverage obligation rather than an unverifiable claim. Requires recording the passing `(givenEvents, command, producedEvents)` triple in the Outcome algebra ([§3.2](#32-the-outcome-algebra)).

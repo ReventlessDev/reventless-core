@@ -4,12 +4,12 @@
 > as `@reventlessdev/trait-attachments` (`traits/attachments`, namespace
 > `TraitAttachments`) — an attachment *set*, which reads no bytes. Part B, scanning and
 > retention, keeps the `FileAttachment` name every analysis uses for it and is unbuilt. This file
-> stays whole because the split it makes in §1 is the reason the two names exist.
+> stays whole because the split it makes in [§1](#1-the-split-this-plan-makes) is the reason the two names exist.
 
 **Date:** 2026-08-30
 **Repo:** reventless-core — the `online-shop-hybrid` catalog plugin, one capability seam, and the
 trait package that comes out of it.
-**Status:** Part A done 2026-08-30 (A1–A3, A5; A4 as auto-UI only — see the note under §3). Part B is
+**Status:** Part A done 2026-08-30 (A1–A3, A5; A4 as auto-UI only — see the note under [§3](#3-part-a--the-attachment-set-no-framework-dependency)). Part B is
 gated on one seam and one decision.
 **Builds on:**
 [done/upload-release-path.md](./done/upload-release-path.md) (mint and release behind the platform
@@ -30,7 +30,7 @@ The competency has been carried as one blocked unit. It is two, and only the sec
 | | Reads stored bytes? | Gated on |
 |---|---|---|
 | **Part A — the attachment set**: multiple images per host, primary selection, alt text, attach/remove as domain facts, gallery UI | no | nothing |
-| **Part B — scan and retention**: scanning an uploaded file, disposing of removed ones | yes | one capability seam + one decision (§4) |
+| **Part B — scan and retention**: scanning an uploaded file, disposing of removed ones | yes | one capability seam + one decision ([§4](#4-part-b--scan-and-retention-gated)) |
 
 Everything in Part A is domain state and presentation. Nothing in it opens a file, so nothing in it
 needs the object store's plugin door. **Part A can be built and extracted today.**

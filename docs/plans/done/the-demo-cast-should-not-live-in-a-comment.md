@@ -9,16 +9,16 @@ sign-ins, with passwords generated rather than typed and written where they can 
 
 **One manifest format for both platforms, and different defaults in their templates.** The format, the
 schema and the fill-in rules are shared; what a *committed template* ships for a password is a
-per-platform choice, and the two answers differ for reasons §3 sets out. Sharing the mechanism without
+per-platform choice, and the two answers differ for reasons [§3](#3-steps) sets out. Sharing the mechanism without
 forcing the values is the point — the alternative makes local development worse for no gain.
 
-**Follows on from** [done/the-first-admin-should-not-need-the-console.md](done/the-first-admin-should-not-need-the-console.md),
+**Follows on from** [done/the-first-admin-should-not-need-the-console.md](the-first-admin-should-not-need-the-console.md),
 which landed the *first* administrator. That plan deliberately stopped there. This one is the rest of
 the cast — and it needs the administrator to exist first, so the order is forced rather than chosen.
 
 **Non-goal.** Ongoing user administration. An operator adding a colleague from inside the running
 product is what `IdentityProvider.createPrincipal` / `addToGroup` are for; see
-[identity-is-a-capability-not-a-cognito-handle.md](identity-is-a-capability-not-a-cognito-handle.md).
+[identity-is-a-capability-not-a-cognito-handle.md](../identity-is-a-capability-not-a-cognito-handle.md).
 This is a provisioning tool, and it should be shaped so that it becomes a *caller* of that capability
 rather than a thing to delete.
 
@@ -204,7 +204,7 @@ following the demo actually is.
 
 ## 5. Honesty ledger
 
-- **Read off code, and it is what settles §3's asymmetry:** `LocalAuth.Login` stores a password
+- **Read off code, and it is what settles [§3](#3-steps)'s asymmetry:** `LocalAuth.Login` stores a password
   plaintext in an in-memory `Dict` and authenticates with `stored === password` — no hash, no salt,
   discarded on restart. That is a development fixture, not a security boundary, which is why generating
   a password for it would buy nothing and cost a copy-paste per sign-in.

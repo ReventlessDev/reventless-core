@@ -5,11 +5,11 @@
 **built 2026-08-13**, unit-tested, and **not yet deploy-verified** — see "What is
 still open" below before treating the AWS half as done.
 
-§6 was **rewritten 2026-08-13** before any of it was built. The original design —
+[§6](#6--the-aws-half) was **rewritten 2026-08-13** before any of it was built. The original design —
 a `custom:activeRole` attribute read by the trigger — does not survive contact
 with what the service documents: the channel it needed is closed on the refresh
 path, and the attribute it wanted is a permanent amendment to the customer's user
-pool. What replaced it is smaller and touches the pool once. Read §6 before step
+pool. What replaced it is smaller and touches the pool once. Read [§6](#6--the-aws-half) before step
 3; the two hazards it names are both quiet ones.
 
 ### What step 3 built
@@ -34,7 +34,7 @@ Three decisions worth carrying forward, none of them foreseen here:
   it into a cycle. Both are provisioned unconditionally — see the next section
   for the version of this that did not survive a preview.
 - **The merge uses a denylist, not an allowlist.** An allowlist that missed a
-  field would omit it and silently reset it — the exact failure §6 flags. A
+  field would omit it and silently reset it — the exact failure [§6](#6--the-aws-half) flags. A
   denylist that misses a read-only field makes AWS reject the call instead. Given
   the choice between "a customer's pool quietly loses a setting" and "the deploy
   fails loudly", the second is the one to design for.
@@ -43,10 +43,10 @@ Three decisions worth carrying forward, none of them foreseen here:
 
 Everything below is built and unit-tested; none of it has met a live pool.
 
-- **Nothing here has been deployed.** §8's Cognito acceptance list is satisfied
+- **Nothing here has been deployed.** [§8](#8--acceptance)'s Cognito acceptance list is satisfied
   against the pure decision functions (`decide`/`respond`/`mergedUpdateInput`),
   not against a running pool. The settings-survive-the-attach case is asserted
-  against a described pool the test did not create, which is the shape §6 asked
+  against a described pool the test did not create, which is the shape [§6](#6--the-aws-half) asked
   for — but a real `UpdateUserPool` round trip has not been made.
 - **Trigger cold start is unmeasured.** It sits in the critical path of every
   token the pool mints. 256 MB / 5 s is a guess chosen to fail inside Cognito's
@@ -62,7 +62,7 @@ workflow sets `REVENTLESS_COGNITO_USER_POOL_ID` from a secret
 the env var precedence over stack config — so every deployed stack is in **BYO
 mode**, not auto. The next push therefore fires `Auth_ActiveRolePoolAttachment` —
 describe, merge, `UpdateUserPool` — against the live pool, as a side effect of a
-push rather than as a deliberate act. That inverts the ordering §7 chose, where
+push rather than as a deliberate act. That inverts the ordering [§7](#7--steps) chose, where
 3.3 lands last precisely so the two steps before it make it the only unknown.
 
 Capture the pool's current state **before** pushing, or the merge has nothing to
@@ -74,7 +74,7 @@ aws cognito-idp describe-user-pool --user-pool-id <id> > pool-before.json
 
 Then diff it against the same call after the deploy. The expected difference is
 exactly one added key: `LambdaConfig.PreTokenGeneration`. Any second difference
-is the reset-by-omission failure §6 warns about, and it is the kind that succeeds
+is the reset-by-omission failure [§6](#6--the-aws-half) warns about, and it is the kind that succeeds
 quietly — nothing errors, a setting simply goes back to its default.
 
 **Dry-run against the live alpha pool, 2026-08-13 — the payload is verified up to
@@ -141,7 +141,7 @@ Repeat the preview before any future push that touches this area; it costs about
 a minute and it is the only check that catches a resource which simply is not
 there.
 
-**A V1_0 nuance §8's "identity and access tokens agree" turns on.** Group
+**A V1_0 nuance [§8](#8--acceptance)'s "identity and access tokens agree" turns on.** Group
 override applies to both the ID and the access token, but `claimsToAddOrOverride`
 is **ID-token only** — so `activeRole` / `availableRoles` will appear on the ID
 token alone. Nothing in the design depends on them being anywhere else: every
@@ -149,7 +149,7 @@ enforcement point reads `cognito:groups`, which is overridden in both. But the
 acceptance criterion says the two tokens agree, so decode both and confirm it
 rather than assuming it. If a consumer ever needs the custom claims on the access
 token, that is the one thing `V2_0` buys — and it is gated behind the Essentials
-feature plan, which is the trade §6 declined on purpose.
+feature plan, which is the trade [§6](#6--the-aws-half) declined on purpose.
 
 **Sibling plans:**
 - `docs/plans/done/curated-manifest-per-journey.md` — what each role *sees*. Independent
@@ -161,7 +161,7 @@ feature plan, which is the trade §6 declined on purpose.
 **Goal.** A user whose account holds several groups can act as one of them, and
 every enforcement point in the system agrees with the choice.
 
-**Non-goal.** Revocation. See §5 — this is a safety mechanism, and calling it
+**Non-goal.** Revocation. See [§5](#5--what-this-is-not) — this is a safety mechanism, and calling it
 anything else would be a lie a reader could act on.
 
 ---
@@ -270,7 +270,7 @@ that looks purpose-built for this is closed on exactly the path we need.
 
 **Actual membership arrives in the event.** The trigger receives
 `request.groupConfiguration.groupsToOverride` — the groups the user is really in,
-supplied by the pool itself. §3's subset check therefore needs no lookup and no
+supplied by the pool itself. [§3](#3--the-rule-that-carries-the-security)'s subset check therefore needs no lookup and no
 IAM to perform one: the authority is already in the payload, and the check is a
 containment test against it. This is a stronger position than the local path,
 where membership has to be re-read from the store deliberately.
@@ -355,13 +355,13 @@ alternative reading is a token narrowed to a group the pool no longer grants.
    1. The role-state table and the mutation that writes it, authorized on the
       caller's own subject. Testable with no trigger in existence.
    2. The trigger itself, against the same subset table as step 1, plus the
-      stale-role case §6 names. Its event shape is fixed and documented, so it
+      stale-role case [§6](#6--the-aws-half) names. Its event shape is fixed and documented, so it
       is unit-testable before any pool is attached to it.
    3. The attach resource: describe, merge, update — with the
-      settings-survive-the-attach test §6 asks for. Last, because it is the step
+      settings-survive-the-attach test [§6](#6--the-aws-half) asks for. Last, because it is the step
       that touches a pool the framework may not own, and the two above make it
       the only unknown left when it runs.
-4. Reference docs: §5's distinction, stated where someone reading about roles
+4. Reference docs: [§5](#5--what-this-is-not)'s distinction, stated where someone reading about roles
    will meet it. — **built**, as an "Acting as one of your roles" section on
    `packages/doc/docs-app/common-modules/identity.md`, the page where someone
    reading about groups and claims already is.
@@ -393,4 +393,4 @@ On the Cognito path specifically:
   attached — asserted against a pool the test did not create, because that is the
   case the merge exists for.
 - No user pool schema is amended by any of this. If a step needs a custom
-  attribute, the design has regressed to the one §6 replaced.
+  attribute, the design has regressed to the one [§6](#6--the-aws-half) replaced.

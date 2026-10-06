@@ -3,14 +3,14 @@
 **Status.** Done 2026-09-07. Scoped to `examples/online-shop-hybrid` — this is
 domain modelling in the example, not a framework capability.
 
-Two things went further than §4 said, both because the field they served left
+Two things went further than [§4](#4--the-change) said, both because the field they served left
 with `categoryName`: `CategoryAdded`'s `name` is gone from `AddProduct`'s
 `consumedEvent` (the `naming` fold was its only reader), and the GWT case
 "a category renamed before the product is added is captured under the new name"
 is deleted rather than shrunk — `CategoryRenamed` is no longer a consumed
 constructor, so the scenario has no `given` to write. The other `AddProduct`
-cases shrank as §6 asked. The derived lifecycle edge is unchanged
-(`AddProduct → Listed`); only its scenario count moved, 6 → 5, which is §6's
+cases shrank as [§6](#6--verification) asked. The derived lifecycle edge is unchanged
+(`AddProduct → Listed`); only its scenario count moved, 6 → 5, which is [§6](#6--verification)'s
 "no decision outcome changed" confirmed by the artifact.
 
 **Goal.** `Products` names its category by the id it already holds. The
@@ -21,13 +21,13 @@ cases shrank as §6 asked. The derived lifecycle edge is unchanged
 
 ## §1 — What the field is
 
-[`Products.res`](../../examples/online-shop-hybrid/catalog/src/Product/StateViewSliceStream/Products.res)
+[`Products.res`](../../../examples/online-shop-hybrid/catalog/src/Product/StateViewStream/Products.res)
 declares `@groupBy categoryName: option<string>` beside `@index categoryId`. It
 is written once, from `ProductAdded`, and never again — no other consumed
 constructor touches it.
 
 The value comes from a fold in
-[`AddProduct_Behavior.res`](../../examples/online-shop-hybrid/catalog/src/Product/StateChangeSlice/AddProduct_Behavior.res):
+[`AddProduct_Behavior.res`](../../../examples/online-shop-hybrid/catalog/src/Product/StateChange/AddProduct_Behavior.res):
 the decision model consumes `CategoryAdded` and `CategoryRenamed` to maintain a
 `categoryNames` association list, and `decide` copies the current name onto the
 emitted event. Its own comment is explicit that this is not a decision input —
@@ -48,7 +48,7 @@ correction to a label, which is the case where the new value should be visible
 everywhere rather than preserved.
 
 **The genuine freeze already exists elsewhere and stays.**
-[`Orders.res`](../../examples/online-shop-hybrid/ordering/src/Order/StateViewSliceStream/Orders.res)
+[`Orders.res`](../../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders.res)
 freezes `orderLine.name` and `unitPrice` at placement, and that is correct: those
 are terms of a transaction, and the view must not go and ask the catalog what
 anything is called or costs now. `categoryName` is not a term of anything — and
@@ -76,7 +76,7 @@ live classification, not a recorded fact about a purchase.
 | `Products.model.json` | Nothing to do: the ppx emits it as a build sidecar and it is untracked, so it was already stale for other reasons and the build rewrites it. |
 
 `@groupBy` and `@index` on one field is legal: the ppx's only rule is at most one
-`@groupBy` per record ([`StateAnnotations.ml:1892-1901`](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml#L1892-L1901)),
+`@groupBy` per record ([`StateAnnotations.ml:1892-1901`](../../../packages/reventless-ppx/src/ppx/StateAnnotations.ml#L1892-L1901)),
 and it places no constraint on the field's type.
 
 **Old events keep an ignored field.** Dropping `categoryName` from the payload
@@ -110,6 +110,6 @@ honours it by omitting the field from its query no longer receives the value
 grouping depends on. So `@hidden` and `@groupBy` on one field is a contradiction:
 the annotations instruct a consumer to drop a value and to section rows by it.
 The ppx validates only that at most one `@groupBy` exists per record
-([`StateAnnotations.ml:1892-1901`](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml#L1892-L1901))
+([`StateAnnotations.ml:1892-1901`](../../../packages/reventless-ppx/src/ppx/StateAnnotations.ml#L1892-L1901))
 — the combination is unguarded. Worth a rejection at annotation time, in its own
 plan.

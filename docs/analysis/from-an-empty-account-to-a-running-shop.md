@@ -32,7 +32,7 @@ and [platform-stack-creates-the-lambda-layer.md](../plans/platform-stack-creates
 
 - **Following the tutorial today does not give you a working shop.** Three problems
   stand in the way. Each one looks fine at the step that causes it and only shows up
-  later, as something that seems unrelated (§2):
+  later, as something that seems unrelated ([§2](#2-the-three-problems-that-stop-the-shop-from-working)):
   1. A new account has **no Lambda layer**. Functions without it fail with
      `Cannot find package` the first time they run, even though the deploy reported
      success.
@@ -45,17 +45,17 @@ and [platform-stack-creates-the-lambda-layer.md](../plans/platform-stack-creates
   tools.** It also needs knowledge no page gives you: which Pulumi organization to
   write, that the AWS CLI's default region decides where the layer is looked up,
   that `alpha` is a protected stack name, and that the seed always reads Pulumi
-  Cloud (§1, §3).
+  Cloud ([§1](#1-the-path-today-step-by-step), [§3](#3-things-that-work-but-cost-steps-or-knowledge)).
 - **The goal is four commands after setting up your machine:** clone, `pnpm run
   setup`, one command that deploys everything and prints the web address and
-  sign-ins, and optionally one that adds demo data (§4).
+  sign-ins, and optionally one that adds demo data ([§4](#4-the-goal)).
 - **Most of the pieces already exist.** The bake is already a function, creating
   users is already a command, and the deploy order is already written down in
   `deploy-manifest.yaml`. What is new is a command that runs them in order, a way to
   find the Pulumi organization automatically, and a decision about who creates the
-  layer (§5).
+  layer ([§5](#5-what-it-takes)).
 - **Nothing here has been tried in a new account.** The three problems come from
-  reading the code and are clear. The account-level risks in §3.3 are general AWS
+  reading the code and are clear. The account-level risks in [§3.3](#33-the-aws-account) are general AWS
   behaviour and need a real empty account to confirm.
 
 ---
@@ -271,17 +271,17 @@ The command names are placeholders. `shop:up` has to do these things, in order, 
 safe to run again:
 
 1. **Check first:** Node version, AWS credentials and region, Pulumi login, and the
-   new-account limits from §3.3. Each failure says how to fix it, before anything is
+   new-account limits from [§3.3](#33-the-aws-account). Each failure says how to fix it, before anything is
    created.
 2. **Stacks:** select or create one stack per project in `deploy-manifest.yaml`, under
    the organization you are logged into, with the region and `platform:stack` filled
    in. No file edits.
 3. **Layer:** make sure a layer for the installed `reventless-aws` version exists in
-   this account and region (§5.1).
+   this account and region ([§5.1](#51-who-creates-the-lambda-layer)).
 4. **Deploy** in the order `deploy-manifest.yaml` gives, without questions.
 5. **Bake** the manifest, with the same "has every plugin caught up?" check CI uses
-   (§5.2).
-6. **Users:** create the four demo users (§5.3).
+   ([§5.2](#52-a-manifest-bake-for-every-way-of-deploying)).
+6. **Users:** create the four demo users ([§5.3](#53-demo-users-the-default-user-pool-accepts)).
 7. **Print** the web address and the sign-ins.
 
 `shop:down` does the reverse. Try-out stacks are created as disposable, so there is
@@ -472,15 +472,15 @@ if the "which deploy is this?" question gets a good answer.
   [prebuilt-binaries plan](../plans/prebuilt-binaries-out-of-repo.md) already describes
   an Intel Mac route). When setup builds the PPX from source, install the OCaml packages
   first. Check the Node version at the start.
-- Find out whether the committed JavaScript is enough to deploy (§3.1). If it is, add a
+- Find out whether the committed JavaScript is enough to deploy ([§3.1](#31-your-machine-and-the-tools)). If it is, add a
   CI check that it matches its sources, and let people who only deploy skip the build
   and the PPX completely.
 - Later: deploying without cloning the repository needs published deploy packages or a
-  template. That is a bigger change and not needed to reach the goal in §4.
+  template. That is a bigger change and not needed to reach the goal in [§4](#4-the-goal).
 
 ### 5.7 Keep it working
 
-Each of the three problems in §2 hides behind a step that reports success, and the
+Each of the three problems in [§2](#2-the-three-problems-that-stop-the-shop-from-working) hides behind a step that reports success, and the
 maintainers' own deploys cannot catch any of them: their account already has the SSM
 parameter, CI bakes the manifest, and nobody creates the demo users again. **A deploy
 from scratch on a schedule** — a throwaway stack with no SSM parameter, run by the same
@@ -495,7 +495,7 @@ without anyone noticing.
 | 1 | Stop the deploy when no layer is found | the silent layer problem | small |
 | 2 | Check the pool before writing the file; email addresses in the AWS template; a field for the demo person | the user problem | small–medium |
 | 3 | Shared bake command, also used by CI | the manifest problem, for anyone who runs it | medium |
-| 4 | Deploy command `shop:up` / `shop:down` over `deploy-manifest.yaml`: checks, stacks, layer, deploy, bake, users | steps 2–10 in §1 | medium |
+| 4 | Deploy command `shop:up` / `shop:down` over `deploy-manifest.yaml`: checks, stacks, layer, deploy, bake, users | steps 2–10 in [§1](#1-the-path-today-step-by-step) | medium |
 | 5 | Find the Pulumi organization; error when `platform:stack` is missing; fix `Pulumi.main.yaml`; remove `interstack:dependencies` | file edits | small |
 | 6 | Disposable try-out stacks | removing a try-out by hand | small |
 | 7 | Helper scripts follow the Pulumi login | the need for a Pulumi account | small |
@@ -505,7 +505,7 @@ without anyone noticing.
 | 11 | Replace `verify-subscriptions.mjs` with `verify:client-publish`; fix old seed docs | leftovers | small |
 | 12 | Deploy without cloning the repository | the clone | large |
 
-Items 1–4 make the tutorial work at all and shrink it to the goal in §4. Items 5–7 remove
+Items 1–4 make the tutorial work at all and shrink it to the goal in [§4](#4-the-goal). Items 5–7 remove
 the remaining file edits and requirements. Items 8–12 make it reliable and easier to
 start with. Items 1–7, 9 and 11 are in
 [shop-from-an-empty-aws-account.md](../plans/shop-from-an-empty-aws-account.md); item 8
@@ -522,12 +522,12 @@ is in [platform-stack-creates-the-lambda-layer.md](../plans/platform-stack-creat
   OCaml install step.
 - **Measured:** the release zip size (about 16 MB, `3.0.0-alpha.346`) and the number of
   alpha releases (346).
-- **Not tried:** none of this has been run in a new account. The results in §2 follow
+- **Not tried:** none of this has been run in a new account. The results in [§2](#2-the-three-problems-that-stop-the-shop-from-working) follow
   directly from the code, but nobody has seen them happen.
 - **General AWS behaviour, not checked here:** CloudFront verification of new accounts,
   Lambda memory limits of new accounts, and whether Amazon Location is available in a
-  region. For §5.1: who a layer can be shared with, that the storage limit applies per
+  region. For [§5.1](#51-who-creates-the-lambda-layer): who a layer can be shared with, that the storage limit applies per
   region, the `lambda:Layer` condition, and that functions keep a deleted layer version
   until their next update.
-- **Still open:** whether the committed JavaScript is enough to deploy (§3.1), and whether
-  a platform that bakes by itself can tell which deploy it belongs to (§5.2).
+- **Still open:** whether the committed JavaScript is enough to deploy ([§3.1](#31-your-machine-and-the-tools)), and whether
+  a platform that bakes by itself can tell which deploy it belongs to ([§5.2](#52-a-manifest-bake-for-every-way-of-deploying)).

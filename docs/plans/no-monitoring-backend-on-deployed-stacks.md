@@ -1,8 +1,8 @@
 # Plan: a seam that announces every execution unit, and nothing listening
 
 **Date:** 2026-09-05
-**Status:** **§1 implemented 2026-09-07** (the announcement is buffered until a backend registers).
-§2 proposed. Found while tracing a dead-letter loop back to its cause and discovering that nothing
+**Status:** **[§1](#1--the-announcement-that-arrives-before-anyone-is-listening) implemented 2026-09-07** (the announcement is buffered until a backend registers).
+[§2](#2--the-stacks-this-repo-deploys-itself) proposed. Found while tracing a dead-letter loop back to its cause and discovering that nothing
 had reported the incident at any point in its 12-hour life.
 **Repos:** `reventless-core` only.
 
@@ -10,8 +10,8 @@ had reported the incident at any point in its 12-hour life.
 > argument on that. Reading the estate says otherwise: **28 alarms exist**, 26 of them created
 > through this seam by a deploy program outside this repo, covering command handlers, event
 > collectors, projections, reactors, schedulers, tasks and query interceptors. The seam works and is
-> in production use. What is true is narrower, and in two parts — §1, the one unit kind a registered
-> backend cannot see; and §2, the stacks this repo deploys itself, which register nothing.
+> in production use. What is true is narrower, and in two parts — [§1](#1--the-announcement-that-arrives-before-anyone-is-listening), the one unit kind a registered
+> backend cannot see; and [§2](#2--the-stacks-this-repo-deploys-itself), the stacks this repo deploys itself, which register nothing.
 
 **Goal.** A stack deployed from this repo tells someone when one of its execution units stops
 working, rather than being found later in a bill.
@@ -83,14 +83,14 @@ What did **not** happen, in order:
 2. No alarm when messages began arriving on the dead-letter queue — the queue whose entire purpose is
    to be empty in normal operation.
 3. No alarm on the dead-letter handler's own invocations, which by design fails on every one — and on
-   *no* stack in the estate, monitored or not, for §1's reason.
+   *no* stack in the estate, monitored or not, for [§1](#1--the-announcement-that-arrives-before-anyone-is-listening)'s reason.
 4. The cause was fixed the same evening by an unrelated migration step. Seven stranded messages kept
    cycling for **twelve hours past the fix**, and nothing said so.
 
 The alarm history is empty for the whole window: no state change on any of the 28 alarms between
 18:00Z and 02:00Z. It was found instead by attributing a CloudWatch bill to log groups.
 
-One trap for whoever builds §2, learned from this incident: **do not alarm a dead-letter queue on
+One trap for whoever builds [§2](#2--the-stacks-this-repo-deploys-itself), learned from this incident: **do not alarm a dead-letter queue on
 depth.** A consumer that keeps failing keeps its messages *in flight*, so the queue read
 `0 visible, 7 not visible` throughout — `ApproximateNumberOfMessagesVisible` never left zero.
 `Invocations` on the handler is the metric that matches this topology, which is what the seam's
@@ -117,7 +117,7 @@ that has not run since Tuesday). Two of this repo's open plans were opened from 
 
 ## Decided: an alert does not travel through the system it is about
 
-Asked while §2 was being scoped: should alarm notification reuse the Notification trait, so
+Asked while [§2](#2--the-stacks-this-repo-deploys-itself) was being scoped: should alarm notification reuse the Notification trait, so
 operational alerts reach admins through the channel the domain already has? **No — not for
 delivery.** Recorded here because it will be asked again, and because the reasoning constrains what
 step 1 may do.
@@ -186,10 +186,10 @@ alarms.
 
 | # | Change | Effort | State |
 |---|--------|--------|-------|
-| 0 | §1 — buffer announcements made before a backend registers, replay them to the first one, capture the owner at announcement rather than at delivery; `reset` for test isolation | small | **done 2026-09-07** |
+| 0 | [§1](#1--the-announcement-that-arrives-before-anyone-is-listening) — buffer announcements made before a backend registers, replay them to the first one, capture the owner at announcement rather than at delivery; `reset` for test isolation | small | **done 2026-09-07** |
 
 Step 0 stands alone and is worth having whatever is decided below: it is what makes a dead-letter
-sink monitorable *at all*, on this repo's stacks and on anyone else's. The rest is §2.
+sink monitorable *at all*, on this repo's stacks and on anyone else's. The rest is [§2](#2--the-stacks-this-repo-deploys-itself).
 
 | # | Change | Effort | State |
 |---|--------|--------|-------|
@@ -238,10 +238,10 @@ is *never*, with a floor set by how long it takes someone to read a bill.
 
 Second check, cheaper and worth having permanently: after a deploy, assert that the count of alarms
 in the stack equals the count of provisioned execution units. A unit that is provisioned without an
-alarm is the silent case coming back — and §1 is precisely that check failing by one, undetected for
+alarm is the silent case coming back — and [§1](#1--the-announcement-that-arrives-before-anyone-is-listening) is precisely that check failing by one, undetected for
 as long as the seam has existed.
 
-For §1 specifically, the check is a single query against a monitored stack: an alarm whose name or
+For [§1](#1--the-announcement-that-arrives-before-anyone-is-listening) specifically, the check is a single query against a monitored stack: an alarm whose name or
 description carries `kind=deadlettersink`. There were none before this change on any stack in the
 estate; there should be one per platform after the next deploy that registers a backend.
 

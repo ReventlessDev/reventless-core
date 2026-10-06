@@ -2,15 +2,15 @@
 
 **Date:** 2026-09-05
 
-**Status.** Written and landed in full; **two of §7's three verifications are
+**Status.** Written and landed in full; **two of [§7](#7--verification)'s three verifications are
 outstanding, and one of them is now known to be blocked rather than merely
 unrun.** Both platforms take the declaration, serve the module and name it; the
 hybrid example declares one and registers **six** renderers — every region the
 shipped modes offer that this shop has something to say about; the guides carry
-the vocabulary. What has not happened is a deploy carrying any of it (§7) and a
-browser session switching role against it (§7).
+the vocabulary. What has not happened is a deploy carrying any of it ([§7](#7--verification)) and a
+browser session switching role against it ([§7](#7--verification)).
 
-§6's "`slots` per view" turned out not to exist and should not: a region is
+[§6](#6--the-guide)'s "`slots` per view" turned out not to exist and should not: a region is
 offered by a **mode**, so a hint choosing `gallery` is what puts a tile on
 screen. That is what lets one module answer differently per audience, and it is
 documented as the mechanism rather than as a missing key.
@@ -25,7 +25,7 @@ is computed on both platforms and refuses a `shellConfig` redirect, like
 `ReventlessCore.Platform_UiSlots` so the four places that must agree cannot
 drift.
 
-**§5 is done.** `reventless-host-shell@3.0.0-alpha.95` carries the loader, the
+**[§5](#5--the-example-earns-the-seam) is done.** `reventless-host-shell@3.0.0-alpha.95` carries the loader, the
 hybrid example is pinned to it, and `storefront-slots.js` is declared, served,
 watched and named on both roots. Verified against the running platform: the boot
 writes `config.json` with `uiSlotsUrl: "/ui-slots.js"`, serves the module
@@ -36,7 +36,7 @@ reason — the payload did not carry what drawing them would need. All three are
 now drawn**, because the contract grew the fields rather than the example
 growing a workaround (`@reventlessdev/reventless-ui-slots@3.0.0-alpha.6`):
 
-- **The tracker's step strip.** §5 asks for "a tracker step label", but a
+- **The tracker's step strip.** [§5](#5--the-example-earns-the-seam) asks for "a tracker step label", but a
   tracker's steps come from the lifecycle's *declared transitions* and the row
   payload did not carry them. Registering `tracker.steps` would have meant
   writing the path out as a list in the renderer, which drifts the day a
@@ -60,8 +60,8 @@ growing a workaround (`@reventlessdev/reventless-ui-slots@3.0.0-alpha.6`):
   offering no picking is handed none, and a button that cannot work is still
   worse than none.
 
-All three were the §5 rule ("keep the example honest about what it does not
-have") applied to cases §5 did not anticipate, and the record of them is worth
+All three were the [§5](#5--the-example-earns-the-seam) rule ("keep the example honest about what it does not
+have") applied to cases [§5](#5--the-example-earns-the-seam) did not anticipate, and the record of them is worth
 keeping: each was a payload gap that the example declining to draw made visible.
 An example that had faked any of the three would have produced a renderer that
 worked until a transition, an asset origin or a selection changed under it.
@@ -81,7 +81,7 @@ means: the shell serves the module the deployment named, editing it is a browser
 refresh locally, and a deployment that names none behaves exactly as it does
 today.
 
-**One correction to §2–§4 as written below:** they describe the file and say
+**One correction to [§2](#2--the-declaration)–[§4](#4--aws-one-more-bucketobject) as written below:** they describe the file and say
 nothing about naming it, which is a whole half of the seam. `uiHintsFile` is
 served at a fixed URL the shell already knows; a slot module is imported from
 whatever `config.uiSlotsUrl` names, so declaring the file has to write that key
@@ -303,19 +303,19 @@ explicitly, because both are load-bearing and neither is guessable:
   `config.json` holds `manifestUrl` and `journeyManifestUrls` and no
   `uiSlotsUrl`, exactly as an undeclared deployment should.
 
-  **What that accidentally verified is the §4 hazard, and it is real.** Asking
+  **What that accidentally verified is the [§4](#4--aws-one-more-bucketobject) hazard, and it is real.** Asking
   the live distribution for `/ui-slots.js` returns **`200 text/html`** whose body
   begins `<!doctype html>` — the SPA fallback, not a 404. So this plan's own
   prose is wrong wherever it says the shell "treats the 404 as no slots": on this
   deploy there is no 404 to treat, and a shell that only checked the status code
-  would hand `<!doctype` to the module parser. The content-type check §4 asks for
+  would hand `<!doctype` to the module parser. The content-type check [§4](#4--aws-one-more-bucketobject) asks for
   is not a precaution against a rare policy-clobber; it is the **ordinary** path
   for every undeclared deployment. Worth writing down before the deploy, because
   after it the case stops being reproducible on demand.
 
   Two other places inherited the same wrong sentence and should be corrected with
   the deploy that settles this: the `uiSlotsFile` comment on
-  `reventless/infra/src/types/Platform.res`, and `ui-configuration.md`'s §4.1.
+  `reventless/infra/src/types/Platform.res`, and `ui-configuration.md`'s [§4.1](../../packages/doc/docs-app/ui-configuration.md#41-when-a-hint-cannot-say-it--uislotsfile).
   Neither changes behaviour; both tell a reader to expect a status code that does
   not arrive.
 
@@ -351,11 +351,11 @@ explicitly, because both are load-bearing and neither is guessable:
 
 ## Sequencing and dependencies
 
-1. §2 declaration — self-contained, and it is what the other two halves read.
-2. §3 local, then §4 AWS. Local first because the example is developed against it
+1. [§2](#2--the-declaration) declaration — self-contained, and it is what the other two halves read.
+2. [§3](#3--local-serve-it-and-reload-it-on-save) local, then [§4](#4--aws-one-more-bucketobject) AWS. Local first because the example is developed against it
    and because the watch is where a mistake shows up immediately.
-3. §5 example — needs the UI repo's registry released and the example's pin
+3. [§5](#5--the-example-earns-the-seam) example — needs the UI repo's registry released and the example's pin
    bumped to a version containing it. Until that pin lands, a slots file here
    registers into nothing and the example would look broken for a reason that has
    nothing to do with this repo.
-4. §6 guide, last, once the key names have stopped moving.
+4. [§6](#6--the-guide) guide, last, once the key names have stopped moving.

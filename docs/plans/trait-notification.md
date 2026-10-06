@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Repo:** reventless-core — a new package under `traits/`, a new `Messaging` capability, and the
 `online-shop-hybrid` ordering plugin.
-**Status:** **Part 1 DELIVERED. Part 2 is the open work.** Everything §1–§6 called blocking has
+**Status:** **Part 1 DELIVERED. Part 2 is the open work.** Everything [§1](#1-why-this-is-last)–[§6](#6-why-it-is-still-worth-doing) called blocking has
 shipped — see the correction box below. Part 2 turns the competency's wording from code into data,
 and lets a second producer take over one stream of occurrences at a time.
 **Builds on:**
@@ -12,29 +12,29 @@ Part 1 (the messaging capability — a hard dependency) ·
 [trait-address-geocoding.md](./trait-address-geocoding.md) (retry-vs-verdict failure split, the
 capability-port shape this copies) ·
 [done/monitoring-hook-seam.md](./done/monitoring-hook-seam.md) (the default-implementation seam
-shape Part 2 §9 measures itself against)
+shape Part 2 [§9](#9-the-constraint-that-decides-the-shape) measures itself against)
 
 ---
 
 ## 0. 🚨 [2026-09-02] Correction: §1–§6 below are history
 
-Every blocker §1 names is cleared and the competency is built and published as
-`@reventlessdev/trait-notification@1.0.0-alpha.3` (Apache-2.0). Read §1–§6 as the record of how it
+Every blocker [§1](#1-why-this-is-last) names is cleared and the competency is built and published as
+`@reventlessdev/trait-notification@1.0.0-alpha.3` (Apache-2.0). Read [§1](#1-why-this-is-last)–[§6](#6-why-it-is-still-worth-doing) as the record of how it
 was designed, not as work to do:
 
-- **§1 "its substrate does not exist"** — superseded. The `Messaging` capability shipped, with the
+- **[§1](#1-why-this-is-last) "its substrate does not exist"** — superseded. The `Messaging` capability shipped, with the
   provider publishing its channel list at runtime rather than a deploy-time modality system.
-  `Capabilities.none` answers `Unavailable` as §5 required.
-- **§4 D1** — decided, and **the recommendation in this file was wrong.** Option 2 (a `recipientOf`
+  `Capabilities.none` answers `Unavailable` as [§5](#5-capability-layer-prerequisite) required.
+- **[§4](#4-d1--the-open-question-the-slice-cannot-resolve-a-recipient) D1** — decided, and **the recommendation in this file was wrong.** Option 2 (a `recipientOf`
   member on the host contract) is unbuildable: `OutboundTranslationSlice.Translation.translate`
   receives `(id, item, ~capabilities)` and nothing else, so there is no door a lookup could go
   through. The decision is **option 1, extended** — the trait's own preferences component *is* the
   recipient registry, populated by folding host events rather than only by explicit subscription,
-  which removes the unregistered-recipient case §4 raised against option 1. "A trait grafts by
+  which removes the unregistered-recipient case [§4](#4-d1--the-open-question-the-slice-cannot-resolve-a-recipient) raised against option 1. "A trait grafts by
   reading host events alone" therefore survives.
-- **§2's correction** — held. The trait writes nothing back to the host, and `posture` is carried on
+- **[§2](#2--correction-to-carry-forward--this-trait-does-not-write-back-to-the-host)'s correction** — held. The trait writes nothing back to the host, and `posture` is carried on
   the host contract as an explicit member rather than assumed.
-- **§5's ⚠️ at-least-one-channel gap** — resolved the way that paragraph's second option suggests,
+- **[§5](#5-capability-layer-prerequisite)'s ⚠️ at-least-one-channel gap** — resolved the way that paragraph's second option suggests,
   as a runtime channel list (`Reventless.Messaging.provider.channels`) that a deploy gate and a
   preference screen both read.
 
@@ -175,7 +175,7 @@ knows nothing about orders; the channel is already a per-recipient runtime prefe
 the host's. **The competency's delivery half is data-driven and its intake half is hand-written**,
 and that asymmetry is the whole subject of Part 2.
 
-**[2026-09-03] Four of those six rows are now data** (P0, §10). What remains in code is the first —
+**[2026-09-03] Four of those six rows are now data** (P0, [§10](#10-p0--the-rule-becomes-a-value)). What remains in code is the first —
 which host events are notifiable — because `AutomationSlice` consumes through a closed `@schema`
 variant and cannot do otherwise until 15.2; and the last, the category vocabulary, which is P4. The
 idempotency key stopped being hand-written without becoming configuration: it is derived from the
@@ -194,9 +194,9 @@ Both are worth doing on their own terms:
 - **Provenance** answers a question nothing can answer today: which wording was in force when this
   message was sent. One field, useful whether or not anything else in Part 2 is ever built.
 
-How a *second* producer takes over part of that array without double-sending is §13; why the
-decision has to live where it does is §9; and the simpler design that was weighed against it is
-§13b.
+How a *second* producer takes over part of that array without double-sending is [§13](#13-p3--the-handover); why the
+decision has to live where it does is [§9](#9-the-constraint-that-decides-the-shape); and the simpler design that was weighed against it is
+[§13b](#13b-rejected--one-table-per-deployment).
 
 ## 9. The constraint that decides the shape
 
@@ -209,18 +209,18 @@ values, nothing more.
 
 So a compiled composer has no door through which to ask "is somebody else handling this one?". Any
 design in which it *stands aside* has to move that decision downstream into the slice, and paying
-for that is what turned an earlier draft of this plan into a claim protocol (§13b).
+for that is what turned an earlier draft of this plan into a claim protocol ([§13b](#13b-rejected--one-table-per-deployment)).
 
 **So the decision to stand aside has to be made downstream, by the component that already decides.**
 `NotificationPreferences` folds its own log before every decision; it is the one place that can know
-both that a request arrived and that somebody else owns the source it came from. That is what §13
+both that a request arrived and that somebody else owns the source it came from. That is what [§13](#13-p3--the-handover)
 builds, and the constraint above is the whole reason it is built there rather than in the composer
 where it would read more naturally.
 
 The alternative is to never ask the question — one rule table per deployment, chosen when the
 deployment is assembled, with per-notification granularity living inside that table. That is the
 shape `done/monitoring-hook-seam.md` established for this repository, and it is genuinely simpler.
-It was weighed and not taken; §13b records why.
+It was weighed and not taken; [§13b](#13b-rejected--one-table-per-deployment) records why.
 
 ## 10. P0 — the rule becomes a value
 
@@ -231,10 +231,10 @@ unchanged, and so are their reference keys. Six corrections to what is written b
 
 - **`recipientSource` collapsed to a `recipientPath: string`.** `FixedAddress` was dropped:
   `RequestNotification` addresses a *recipient* and the directory resolves the address, so a fixed
-  address is a different door — alerting, §5 — and an arm the host cannot honour is worse than an
+  address is a different door — alerting, [§5](#5-capability-layer-prerequisite) — and an arm the host cannot honour is worse than an
   absent one. With one arm left, the variant was noise.
-- **The rule carries four fields §10 did not name**, each because something concrete needed it:
-  `version`, because §12's `Configured({ruleId, ruleVersion})` has nowhere else to read one;
+- **The rule carries four fields [§10](#10-p0--the-rule-becomes-a-value) did not name**, each because something concrete needed it:
+  `version`, because [§12](#12-p2--provenance-and-a-fourth-outcome)'s `Configured({ruleId, ruleVersion})` has nowhere else to read one;
   `subjectType` and `subjectPath`, which is §14b.3's own note made real (a per-rule constant and a
   field path); and `locale` on each `content`, which `contentFor` selects on.
 - **A rule's id *is* the namespace of the references it writes.** §14b.3 says the reference key
@@ -255,7 +255,7 @@ unchanged, and so are their reference keys. Six corrections to what is written b
   wrong** — it said such a row "is abandoned in `onExhausted`". It is not: a `None` from `process`
   spends no retry budget (`AutomationSlice_Callback.res` increments `retryCount` only on an encode
   or publish failure), so the row stays `Pending` and is re-swept forever. Corrected in the source
-  comment and the GWT. The behaviour itself is left alone — §19 explains why it is load-bearing.
+  comment and the GWT. The behaviour itself is left alone — [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) explains why it is load-bearing.
 
 Fixed in passing: the scaffold emitted an automation `collect` of the wrong arity
 (`(event, _ctx)` rather than `(event, ~sourceId as _, _ctx)`), so an emitted intake relay would not
@@ -305,8 +305,8 @@ are the check.
 `reventless/spec/src/semantic/Template.res`, with 30 assertions in
 `reventless/spec/tests/TemplateTest.res`. Four corrections to what is written below:
 
-- **It reads the sury schema, not a derived JSON Schema.** §11 said the default formatter comes
-  from what `SuryToJsonSchema.deriveObjectSchema` carries. That is the same mistake §15.1 already
+- **It reads the sury schema, not a derived JSON Schema.** [§11](#11-p1--the-renderer) said the default formatter comes
+  from what `SuryToJsonSchema.deriveObjectSchema` carries. That is the same mistake [§15.1](#151-sensitive--a-field-says-it-must-not-leave) already
   corrected for `@sensitive`, and for the same reason: `deriveObjectSchema`'s annotation path reads
   `StateAnnotations`, which exists only for a queryable's `@schema type state`, while the renderer
   reads **event payloads**. `Semantic.getFrom` and `Sensitive.isFieldSensitive` read the field's own
@@ -315,12 +315,12 @@ are the check.
 - **There is no locale or zone handling, and `dateTime` renders as stored.** Formatting is
   locale-independent, which is the rule `Money.format` already states for every formatter here.
   Nothing in the framework carries a recipient timezone, so "a `dateTime` in the recipient's zone"
-  had no input to read. Locale belongs where §10 already puts it — choosing which `content` entry
+  had no input to read. Locale belongs where [§10](#10-p0--the-rule-becomes-a-value) already puts it — choosing which `content` entry
   is rendered, not how a number is shaped — so the renderer takes no locale argument at all.
-- **The override vocabulary *is* the semantic vocabulary**, so §11's sketched `| currency` is
+- **The override vocabulary *is* the semantic vocabulary**, so [§11](#11-p1--the-renderer)'s sketched `| currency` is
   `| money`: the formatter names are `Semantic.Id.*` plus `raw`. A second table of formatter names
   is a second thing to drift, and `currency` already means `Currency.t` in this repo.
-- **Withholding shipped with it**, per §16's ordering rule. A path whose schema is marked
+- **Withholding shipped with it**, per [§16](#16-order-and-the-one-deadline)'s ordering rule. A path whose schema is marked
   `@sensitive` — or carries the `email`/`phone` semantic — renders `[withheld: <path>]`. A *guard*
   on such a field still renders its body: it emits no value, and refusing it would silently drop
   the body of `{{# if customer.email }}`.
@@ -369,7 +369,7 @@ origin = Default | Configured({ruleId: string, ruleVersion: string})
 ```
 
 carried onto `NotificationRequested` and onto the delivery row. `Default` means the compiled array
-of §10 produced this message; `Configured` names the rule and the version of it that did.
+of [§10](#10-p0--the-rule-becomes-a-value) produced this message; `Configured` names the rule and the version of it that did.
 
 **Why it earns its place independently of everything else here.** A delivery row today says a
 notification happened, to whom, on which channel and how it ended. It cannot say *what it said*, or
@@ -395,15 +395,15 @@ why.
 A produced `sourceId` here would give the slice two candidate partitions — it already produces
 `recipientId` — so it would resolve to neither; and worse, it would stop `sourceId` counting as a
 *consumed-but-not-produced* key, which is precisely what makes the claim read cross partitions at
-all (§13). The value is identical; only the fact is descriptive. Same class of trap as `subjectRef`
-in §14b.
+all ([§13](#13-p3--the-handover)). The value is identical; only the fact is descriptive. Same class of trap as `subjectRef`
+in [§14b](#14b-p5--the-delivery-row-stops-carrying-an-address-and-starts-naming-its-subject).
 
 ## 13. P3 — the handover
 
-**Status: substantially built [2026-09-02], one gap open — §13.4.**
+**Status: substantially built [2026-09-02], one gap open — [§13.4](#134--open-nothing-releases-a-claim).**
 
 A second producer of notification requests takes over a *stream of occurrences* — one
-`"<log>:<eventType>"` at a time — and the compiled table of §10 stands aside for exactly that stream
+`"<log>:<eventType>"` at a time — and the compiled table of [§10](#10-p0--the-rule-becomes-a-value) stands aside for exactly that stream
 and no other. Everything unclaimed keeps being served by the compiled table, with no configuration
 anywhere and no behavioural change.
 
@@ -433,8 +433,8 @@ host.
 |---|---|---|
 | `ClaimNotificationSource({sourceId, by})` | claims slice, `@noApi` | A second producer takes over a source. `by` is provenance |
 | `ReleaseNotificationSource({sourceId})` | claims slice, `@noApi` | Hands it back; the compiled table resumes on the next occurrence |
-| `origin` on the request | preferences slice | `Default` (compiled table) or `Configured({ruleId, ruleVersion})` — §12 |
-| `NotificationDeferred` | preferences slice | The compiled table standing aside, as a fact — §12 |
+| `origin` on the request | preferences slice | `Default` (compiled table) or `Configured({ruleId, ruleVersion})` — [§12](#12-p2--provenance-and-a-fourth-outcome) |
+| `NotificationDeferred` | preferences slice | The compiled table standing aside, as a fact — [§12](#12-p2--provenance-and-a-fourth-outcome) |
 
 `decide` answers a `Default`-origin request for a claimed source with `Deferred`; a `Configured`
 request always goes through. Both claim commands are idempotent — re-claiming what you hold and
@@ -465,12 +465,12 @@ triggers for the same reason.
 
 **Do this before the mechanism is used for anything.**
 
-⚠️ **[2026-09-04] Nothing will use it.** §19.1 settled routing on the rule table, so the claim
+⚠️ **[2026-09-04] Nothing will use it.** [§19.1](#191-the-fork-18-set-up-has-already-resolved) settled routing on the rule table, so the claim
 mechanism has no counterparty and, on that design, never acquires one. It is **dormant, not
 incomplete**: `ClaimNotificationSource` / `ReleaseNotificationSource` stay built, tested and inert,
 and the four `Notification_Conformance` assertions still hold. Do **not** build a release trigger
 for it — that would be lifecycle machinery guarding nothing. Reopen this only if a producer in a
-*foreign* plugin ever needs a source, which is the case §13a's missing door describes.
+*foreign* plugin ever needs a source, which is the case [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions)'s missing door describes.
 
 ### 13.5 Do not grow it
 
@@ -483,34 +483,34 @@ key.
 
 ## 13a. 🚨 [2026-09-03] The two designs answer different questions
 
-§13 and §13b read as if only one of them can be right, and the record disagrees with itself about
-which: the commit that introduced §13b (*"the wording table is a deployment's choice, not a
+[§13](#13-p3--the-handover) and [§13b](#13b-rejected--one-table-per-deployment) read as if only one of them can be right, and the record disagrees with itself about
+which: the commit that introduced [§13b](#13b-rejected--one-table-per-deployment) (*"the wording table is a deployment's choice, not a
 negotiation between two producers"*) rejected the claim protocol, while the text below rejects the
 table. Both were written in good faith about **different questions**, and neither wins outright:
 
-- **Where the wording comes from** — §13b's answer, and it is the right one. §9's constraint holds:
+- **Where the wording comes from** — [§13b](#13b-rejected--one-table-per-deployment)'s answer, and it is the right one. [§9](#9-the-constraint-that-decides-the-shape)'s constraint holds:
   a composing automation cannot read configuration, so per-notification granularity belongs *inside*
   one table rather than between two producers. Nothing to arbitrate.
-- **How a scheduler-driven producer stands down the per-event sends** — §13's answer, and the table
+- **How a scheduler-driven producer stands down the per-event sends** — [§13](#13-p3--the-handover)'s answer, and the table
   cannot give it. `admin-configurable-notifications.md` §8.1 is explicit: *"a digest cannot simply be
   another row in the rule table — it is scheduler-driven rather than event-driven, so it is
   necessarily a separate component."*
 
-So "one producer, always" is true for rules and false once digests exist. §13 stands as built; §13b's
-argument is carried into P0, where it belongs. Read §13b as *rejected for the wording table*, not as
+So "one producer, always" is true for rules and false once digests exist. [§13](#13-p3--the-handover) stands as built; [§13b](#13b-rejected--one-table-per-deployment)'s
+argument is carried into P0, where it belongs. Read [§13b](#13b-rejected--one-table-per-deployment) as *rejected for the wording table*, not as
 a rejection of the claim protocol.
 
 ⚠️ **The prerequisite neither section names: there is no door.** The competency exposes no
 ExtensionPoint — *no trait in the repo ships one* — `RequestNotification` is `@noApi`, and an
 Extension's write actions reach only its own plugin's delegate. Nothing in any of the four repos
 designs how a foreign plugin issues a `Configured` request, and nothing constructs one outside tests.
-So the claim mechanism has no possible counterparty today, and **the door comes before §13.4**:
+So the claim mechanism has no possible counterparty today, and **the door comes before [§13.4](#134--open-nothing-releases-a-claim)**:
 releasing claims that nothing can make guards nothing.
 
 ## 13b. Rejected — one table per deployment
 
 The simpler design, weighed and not taken. Recorded because it is the obvious question to ask of
-§13, and because it would have been the right answer at a different moment.
+[§13](#13-p3--the-handover), and because it would have been the right answer at a different moment.
 
 **What it was.** No claims, no `Deferred`, no `sourceKey`. A deployment composes from the compiled
 array *or* from a configured table, never both, decided when the deployment is assembled — the
@@ -519,7 +519,7 @@ configured table starts as a copy of the compiled defaults, and per-notification
 inside it: an administrator edits one row and leaves the rest at their seeded values.
 
 **Why it is attractive.** It reaches the same administrator experience — the two are indistinguishable
-from the console — with none of §13's surface: no fourth outcome, no fourth arm on the relay's
+from the console — with none of [§13](#13-p3--the-handover)'s surface: no fourth outcome, no fourth arm on the relay's
 `resolve`, no second slice, no cross-partition read, no claim events. Fewer concepts for every future
 reader of the trait.
 
@@ -528,17 +528,17 @@ reader of the trait.
 - **It needs a seeding mechanism that does not exist.** The compiled array lives in the host plugin
   and cannot be imported across a plugin boundary, so the defaults would have to be published as data
   at connect time. Without that, a switchover silently stops every notification the deployment used
-  to send — the same silence §13.4 warns about, but by construction rather than by omission.
+  to send — the same silence [§13.4](#134--open-nothing-releases-a-claim) warns about, but by construction rather than by omission.
 - **It needs an assembly-time check that does not exist.** Two producers wired at once means
   duplicate notifications with nothing to stop them, so the invariant "compiled intake *or* configured
   composer, never both" needs a fail-fast to be real.
 - **Seeded rows drift.** A copied rule stops tracking later improvements to the compiled default;
-  under §13 an unclaimed source keeps tracking it forever, with no bookkeeping.
-- **§13 was already built and correct** when the comparison was made. Replacing working, tested code
+  under [§13](#13-p3--the-handover) an unclaimed source keeps tracking it forever, with no bookkeeping.
+- **[§13](#13-p3--the-handover) was already built and correct** when the comparison was made. Replacing working, tested code
   with a design carrying two unbuilt pieces and one unenforced invariant is more work for a slightly
   smaller concept count.
 
-**The honest summary:** greenfield, this was the better call — §13 solves a harder problem than the
+**The honest summary:** greenfield, this was the better call — [§13](#13-p3--the-handover) solves a harder problem than the
 requirement, and the extra capability (per-entry switching at runtime, reversible with no redeploy)
 is invisible to an administrator. It lost on cost-to-finish, not on merit.
 
@@ -564,7 +564,7 @@ auditable. Do not ship the vocabulary as configuration without that.
 
 ## 14b. P5 — the delivery row stops carrying an address, and starts naming its subject
 
-**Status: ✅ DELIVERED [2026-09-02].** Both halves shipped, with the two §17 assertions, the
+**Status: ✅ DELIVERED [2026-09-02].** Both halves shipped, with the two [§17](#17-verification) assertions, the
 scaffold emitting the same shape, and the GraphQL and lifecycle goldens refreshed alongside.
 Two corrections to what is written below:
 
@@ -669,7 +669,7 @@ naming preference.
 
 **P0 interaction:** with rules as data, `subjectType` is a per-rule constant and `subjectId` is a
 field path into the event, so both are rule fields rather than anything the graft writes by hand.
-The reference key stays derived (§13).
+The reference key stays derived ([§13](#13-p3--the-handover)).
 
 ## 15. Framework items this depends on
 
@@ -709,16 +709,16 @@ without an annotation being added.
 
 ### 15.2 A raw-consumption posture on `OutboundTranslationSlice`
 
-**Status: ◐ the metadata half is DONE [2026-09-04]; the posture itself is deferred — see §18.**
+**Status: ◐ the metadata half is DONE [2026-09-04]; the posture itself is deferred — see [§18](#18--2026-09-04-the-door-13a-asks-for-may-not-be-needed--build-the-digest-instead).**
 `outboundTranslationSliceDef.consumedSources` publishes `Spec.sourceNames` verbatim, `[]` included,
 and `[]` keeps its declared meaning of "this plugin's own DCB log". Two things follow:
 
-- **The third of §15.2's three work items is now a slot that already exists**, so the raw posture
+- **The third of [§15.2](#152-a-raw-consumption-posture-on-outboundtranslationslice)'s three work items is now a slot that already exists**, so the raw posture
   no longer has to invent a shape for a consumer in another repository at the same time as it
   changes the decoder. That was the whole reason to split it out — the Event Graph consumer lives
   outside this repository, and a shape it cannot be tested against is the risky half.
 - **It earns its place without the raw posture.** `consumedEventTypes` names event types and not
-  where they came from, and §15.2 already notes that two sources sharing an event-type name are
+  where they came from, and [§15.2](#152-a-raw-consumption-posture-on-outboundtranslationslice) already notes that two sources sharing an event-type name are
   indistinguishable. In `online-shop-hybrid/ordering` that is not hypothetical:
   `AnnounceRecipientContact` and `GeocodeCustomerAddress` both consume `Ordering.Registered`, one
   from the `Customer` aggregate's topic — and `SendNotification` reads `[]`, its own DCB log.
@@ -789,7 +789,7 @@ P5 address out / subject in                ✅ DONE [2026-09-02]
 ```
 
 **P0's dependency on P1 was settled by shipping P1 first**, and no stopgap interpolator was needed.
-§10's deliverable was that the two notifications are unchanged, and their wording moved from a
+[§10](#10-p0--the-rule-becomes-a-value)'s deliverable was that the two notifications are unchanged, and their wording moved from a
 ReScript template literal (`Your order ${item.orderId} is confirmed`) to a rule's `content` string
 (`Your order {{ orderId }} is confirmed`) rendered by `Reventless.Template` — same sentence, same
 delivery rows, same reference keys.
@@ -806,12 +806,12 @@ host outside this repository grafts it, the same three become migrations with ev
 projection rebuild.
 
 **P0, P1, P5 and 15.1 are done, and P2+P3 are substantially built** — wired into `Plugin.res` on
-both paths, with the conformance assertions written. **What is still open on the handover is §13.4:
+both paths, with the conformance assertions written. **What is still open on the handover is [§13.4](#134--open-nothing-releases-a-claim):
 nothing releases a claim.** Finish that
 before the mechanism is used for anything; a claimant that disappears currently takes its
 notifications silent with it.
 
-**P4 stays blocked** until §14's ⚠️ is answered: who may write `posture`, and how that write is
+**P4 stays blocked** until [§14](#14-p4--the-category-vocabulary-opens)'s ⚠️ is answered: who may write `posture`, and how that write is
 audited. That is a decision, not code, and it is not specified anywhere here.
 
 ## 17. Verification
@@ -841,7 +841,7 @@ audited. That is a decision, not code, and it is not specified anywhere here.
   claimed source defers a `Default` request, a claim on one source leaves others alone, and a
   `Configured` request goes through a claimed source. The first is the acceptance criterion; the
   third is what proves the mechanism is per source rather than a table-wide off switch.
-- For §13.4, when it lands: assert that a claimant disconnecting releases its claims and the compiled
+- For [§13.4](#134--open-nothing-releases-a-claim), when it lands: assert that a claimant disconnecting releases its claims and the compiled
   table resumes. Test the **timeout** path as well as the graceful one — a producer that crashes is
   the case the release exists for, and it is the one a graceful-disconnect-only test will not
   reach.
@@ -865,51 +865,51 @@ audited. That is a decision, not code, and it is not specified anywhere here.
   throw) and **withholding** (an annotated field, an annotated *optional* field whose marker sits
   inside sury's wrapper, an unannotated `email`, and one arm of an event union). The formatter
   assertions drive `Money` / `Percent` / `Bytes` / `Duration` through a template with no formatter
-  written, which is the claim §11 makes about rendering on an annotated schema.
+  written, which is the claim [§11](#11-p1--the-renderer) makes about rendering on an annotated schema.
 
 ---
 
 ## 18. 🚨 [2026-09-04] The door §13a asks for may not be needed — build the digest instead
 
-**Status: superseded by §19 the same day.** Its reasoning about the door holds and is not withdrawn.
-Its instruction — *build the digest next* — does not: §19 reports the rails, and the digest as scoped
-here needs two new components the section did not account for. Read §18 for the argument, §19 for
+**Status: superseded by [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) the same day.** Its reasoning about the door holds and is not withdrawn.
+Its instruction — *build the digest next* — does not: [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) reports the rails, and the digest as scoped
+here needs two new components the section did not account for. Read [§18](#18--2026-09-04-the-door-13a-asks-for-may-not-be-needed--build-the-digest-instead) for the argument, [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) for
 what was built.
 
-§13a stopped the P2/P3 line on one observation: nothing can issue a `Configured` request, because
+[§13a](#13a--2026-09-03-the-two-designs-answer-different-questions) stopped the P2/P3 line on one observation: nothing can issue a `Configured` request, because
 the competency exposes no ExtensionPoint. That is true and the conclusion drawn from it is too
 strong. **A second producer inside the same plugin needs no door at all.**
 
 `RequestNotification` is `@noApi`, which closes the *client* door and nothing else. The intake relay
 already publishes it to `NotificationPreferences` from inside the ordering plugin; a digest
 component would publish it the same way, and claim its source through `NotificationSourceClaims`
-exactly as §13.2 describes. The door §13a names is needed only for a producer in a **foreign**
-plugin — and the feature the claim mechanism was built for (§13.5: batching) is a digest of *this*
+exactly as [§13.2](#132-what-each-piece-does) describes. The door [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions) names is needed only for a producer in a **foreign**
+plugin — and the feature the claim mechanism was built for ([§13.5](#135-do-not-grow-it): batching) is a digest of *this*
 plugin's own notifications, which belongs in this plugin.
 
 **So the next step is the digest, not the door.** It is the only remaining item that is neither
 blocked on a decision nor speculative:
 
-- It gives the claim mechanism its first real counterparty, which is what §13a says has to come
-  before §13.4.
-- It makes the release question concrete, and it will probably **contradict §13.4's assumption**.
+- It gives the claim mechanism its first real counterparty, which is what [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions) says has to come
+  before [§13.4](#134--open-nothing-releases-a-claim).
+- It makes the release question concrete, and it will probably **contradict [§13.4](#134--open-nothing-releases-a-claim)'s assumption**.
   That section borrows the plugin-lifecycle shape — graceful disconnect plus heartbeat timeout — but
   a same-plugin producer never disconnects; its claim outlives it as a fact in the log. The trigger
-  is more likely a lease or a re-assertion, which §13.5's "no claim expiry" would have to bend for.
+  is more likely a lease or a re-assertion, which [§13.5](#135-do-not-grow-it)'s "no claim expiry" would have to bend for.
   Better to learn that from a claimant than to design a release for a lifecycle that does not apply.
 
-⚠️ **Watch for the outcome that vindicates §13b** — §19 reports that it arrived before the first
+⚠️ **Watch for the outcome that vindicates [§13b](#13b-rejected--one-table-per-deployment)** — [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) reports that it arrived before the first
 line of the digest was written. The digest may never need to claim anything: with
 rules as data (P0), a rule can say a source is the digest's and the per-event relay simply does not
 fire for it. Being scheduler-driven makes the digest a separate *component*; it does not stop the
-table from deciding whether the event-driven half runs — which is the step §13a's defence of §13
+table from deciding whether the event-driven half runs — which is the step [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions)'s defence of [§13](#13-p3--the-handover)
 skips. If that is what building it shows, the claim mechanism can be left dormant rather than
-extended, and §13.4 becomes a bug in unused code rather than a gap to close.
+extended, and [§13.4](#134--open-nothing-releases-a-claim) becomes a bug in unused code rather than a gap to close.
 
 **And 15.2 moves to last.** A same-plugin digest is compiled alongside the events it reads, so it
 needs no raw consumption. The only thing that does is a rule table arriving at runtime naming event
-types nobody compiled — which needs both the door *and* §14's vocabulary decision first. The
-metadata half shipped (§15.2) precisely so the posture, whenever it comes, lands in a slot that has
+types nobody compiled — which needs both the door *and* [§14](#14-p4--the-category-vocabulary-opens)'s vocabulary decision first. The
+metadata half shipped ([§15.2](#152-a-raw-consumption-posture-on-outboundtranslationslice)) precisely so the posture, whenever it comes, lands in a slot that has
 already been checked against its out-of-repo consumer.
 
 ---
@@ -917,14 +917,14 @@ already been checked against its out-of-repo consumer.
 ## 19. 🚨 [2026-09-04] What the rails actually allow the digest to be
 
 Investigated before building anything. Three facts about the framework, each read out of source,
-and together they change §18's shape.
+and together they change [§18](#18--2026-09-04-the-door-13a-asks-for-may-not-be-needed--build-the-digest-instead)'s shape.
 
 **1. No scheduler reaches a slice.** `Task_Builder` resolves the targets of `Task.PublishCommands`
 from `allAggregates->Aggregate.allCommandTopics` (`Task_Builder.res:124,141`), so a Task can address
 an Aggregate and nothing else. `NotificationPreferences` is a StateChangeSlice. A scheduled fire also
 arrives as an *event* on the side-effect handler's collector channel
-(`LocalScheduledPublisher.res`), never as a command. So the scheduler-driven producer §13a quotes has
-no rail into the competency's decision point at all. Building one is framework work, and §18 did not
+(`LocalScheduledPublisher.res`), never as a command. So the scheduler-driven producer [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions) quotes has
+no rail into the competency's decision point at all. Building one is framework work, and [§18](#18--2026-09-04-the-door-13a-asks-for-may-not-be-needed--build-the-digest-instead) did not
 scope it.
 
 **2. An AutomationSlice TODO row cannot accumulate.** `collect` is first-writer-wins — a second item
@@ -934,7 +934,7 @@ one after it, which is exactly the half that makes a digest a digest.
 
 **3. But a TODO row can wait indefinitely, for free.** A `None` from `process` leaves the row
 `Pending` and spends no retry budget, and `phase2` runs after every event batch on the slice's topics
-(`AutomationSlice_Builder.res:159`). That is the same fact §10's corrected bullet reports as a
+(`AutomationSlice_Builder.res:159`). That is the same fact [§10](#10-p0--the-rule-becomes-a-value)'s corrected bullet reports as a
 defect, and it is also the only clock a same-plugin component has: a row carrying a `windowEndsAt`
 returns `None` until the window elapses and then emits its command. ⚠️ **So do not "fix" the
 forever-`Pending` row by charging it retry budget** without putting something else in its place —
@@ -962,7 +962,7 @@ their reference keys and delivery rows are untouched. Three notes on what was bu
 
 - **`Digest` carries `windowSeconds` and nothing else.** Where a window *starts and ends* is the
   gathering component's own — aligning to a local midnight is a decision the table has no input for,
-  and guessing it here would be the premature choice §19 was written to avoid.
+  and guessing it here would be the premature choice [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) was written to avoid.
 - **The relay passes over a digest rule in two places, and neither is silent by accident.**
   `todosFor` opens no row for one, and `process` guards the lookup with `Option.filter(isImmediate)`
   so a rule that *became* a digest under an already-open row is not sent by the old path either.
@@ -970,19 +970,19 @@ their reference keys and delivery rows are untouched. Three notes on what was bu
   refused table, not a quiet drop.
 - **⚠️ `validate` is the only guard, and it is a test-time one.** Nothing at deploy or boot rereads
   it, so a table edited to `Digest` without a gathering component fails the host's GWT and nothing
-  else. That is enough while the table is compiled; it stops being enough the moment §14's
+  else. That is enough while the table is compiled; it stops being enough the moment [§14](#14-p4--the-category-vocabulary-opens)'s
   configured vocabulary lets a table arrive at runtime.
 
 Routing to the digest is a `delivery: Immediate | Digest({windowSeconds})` field on `Notification_Rule.t`:
 the relay reads it and publishes one command or the other. **No claim is made, nothing is deferred,
-and `NotificationSourceClaims` stays inert.** That is §18's own ⚠️ — *"a rule can say a source is the
+and `NotificationSourceClaims` stays inert.** That is [§18](#18--2026-09-04-the-door-13a-asks-for-may-not-be-needed--build-the-digest-instead)'s own ⚠️ — *"a rule can say a source is the
 digest's and the per-event relay simply does not fire for it"* — and nothing found above argues
 against it. Being scheduler-driven makes the digest a separate component; it does not give it
 anything to negotiate.
 
-**Consequence, stated plainly:** §13.4 is a gap in code that has no counterparty and, on this
+**Consequence, stated plainly:** [§13.4](#134--open-nothing-releases-a-claim) is a gap in code that has no counterparty and, on this
 design, never acquires one. The honest response is to leave the claim mechanism dormant and say so,
-not to grow a release trigger for it. §13a's *"the door comes before §13.4"* stands, and so does the
+not to grow a release trigger for it. [§13a](#13a--2026-09-03-the-two-designs-answer-different-questions)'s *"the door comes before [§13.4](#134--open-nothing-releases-a-claim)"* stands, and so does the
 observation that no door exists.
 
 **So the open question is no longer "claims or rules".** It is whether the digest earns two new

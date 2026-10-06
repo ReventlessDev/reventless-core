@@ -5,15 +5,15 @@ store and alpha: the annotations are gone, both wire migrations ran, and the fle
 redeployed and re-registered clean. Step 5 stays open as the separate follow-on it
 was always scoped as. Re-scoped once before execution after measuring through the
 repo's own emitter rather than sury's; then corrected twice *during* execution —
-one of the three blockers §6 of the analysis disproved turns out to be half real
+one of the three blockers [§6](../../analysis/sury-per-field-optional-annotation.md#6-three-blockers-that-are-not-real-and-the-half-of-one-that-is) of the analysis disproved turns out to be half real
 (see "What execution changed"), and step 2's ordering and blast radius were both
 wrong for AWS (see the two sections under step 2).
 
 **What execution changed**
 
-- **§6.1 is right for scalars and wrong for records.** The healer's `anyOf` branch
+- **[§6.1](../../analysis/sury-per-field-optional-annotation.md#61-the-healer-does-not-fabricate--for-absent-optionals--but-it-did-invent-for-optionrecord) is right for scalars and wrong for records.** The healer's `anyOf` branch
   reaches `return undefined` only after two arms above it: an enum's first const,
-  and an object member filled with zeros. `S.option(S.string)` — the shape §6.1
+  and an object member filled with zeros. `S.option(S.string)` — the shape [§6.1](../../analysis/sury-per-field-optional-annotation.md#61-the-healer-does-not-fabricate--for-absent-optionals--but-it-did-invent-for-optionrecord)
   measured — passes both and heals to `None`. `option<record>` does not. Measured
   on the real `pluginDefinitionSchema`, `dcbEventLog` healed to
   `Some({name: "", eventTopicArn: ""})`, which `manageSubscriptions` would have
@@ -29,7 +29,7 @@ wrong for AWS (see the two sections under step 2).
   null encoding. Null-valued keys were stripped mechanically and the README's
   Provenance section records it as a second transformation; see the note there for
   why that is not a regeneration.
-- **`check:graphql` did not move**, confirming §6.2.
+- **`check:graphql` did not move**, confirming [§6.2](../../analysis/sury-per-field-optional-annotation.md#62-the-emitted-json-schema-does-not-change).
 - **The stale-store failure is loud, and it is not the healer's to catch.**
   `fillMissingDefaults` fills keys that are *absent*; a key present with `null` is
   not absent, so no heal is attempted and the original error is re-thrown. Measured
@@ -51,12 +51,12 @@ not.
 
 **Relates to:**
 
-- [`sury-per-field-optional-annotation.md`](../analysis/sury-per-field-optional-annotation.md)
+- [`sury-per-field-optional-annotation.md`](../../analysis/sury-per-field-optional-annotation.md)
   — the analysis this plan executes, with every measurement, the three false
   blockers, and the method note explaining how they arose
-- [`plugin-definition-schema-evolution-wedge.md`](../analysis/plugin-definition-schema-evolution-wedge.md)
+- [`plugin-definition-schema-evolution-wedge.md`](../../analysis/plugin-definition-schema-evolution-wedge.md)
   — the incident behind the guidance step 4 rewrites
-- [`clearing-aws-eventlog-querydb-tables.md`](../analysis/clearing-aws-eventlog-querydb-tables.md)
+- [`clearing-aws-eventlog-querydb-tables.md`](../../analysis/clearing-aws-eventlog-querydb-tables.md)
   — the Pulumi-targeted alternative to step 2's wipe, for when tables must be
   recreated rather than emptied
 
@@ -64,8 +64,8 @@ not.
 
 ## Why — the annotations survive a bug that no longer exists
 
-The rationale at [`Plugin.res:76-77`](../../reventless/spec/src/components/Plugin.res#L76-L77),
-duplicated verbatim at [`Resource.res:5-10`](../../reventless/interop/src/Resource.res#L5-L10),
+The rationale at [`Plugin.res:76-77`](../../../reventless/spec/src/components/Plugin.res#L76-L77),
+duplicated verbatim at [`Resource.res:5-10`](../../../reventless/interop/src/Resource.res#L5-L10),
 says an undefined-based optional fails sury's jsonable validation inside a union
 variant payload. Measured on `sury@11.0.0-rc.2`, reproducing that exact shape, all
 twenty cells pass. The failure was real on alpha.10 and was fixed by #311 in
@@ -90,20 +90,20 @@ Confirmed in execution: `check:graphql` did not move.
 
 ## Step 1 — delete the annotations ✅ DONE
 
-- [`Plugin.res`](../../reventless/spec/src/components/Plugin.res): removed 45
+- [`Plugin.res`](../../../reventless/spec/src/components/Plugin.res): removed 45
   `@s.matches(...)` and 12 helper bindings; `uiFragmentManifestOptionSchema` is
   used as a value elsewhere, so it stayed as a binding and moved to `S.option`.
 - **Left the two `Offload` fields alone** — those carry the inline-or-reference
   union codec, not an optional wrapper, and `Offload.optionSchema` builds both
   arms. It keeps `nullAsOption`, so its fields keep writing `null`.
-- [`PluginsReadModelSpec.res`](../../reventless/core/src/plugin/lifecycle/PluginsReadModelSpec.res):
+- [`PluginsReadModelSpec.res`](../../../reventless/core/src/plugin/lifecycle/PluginsReadModelSpec.res):
   the 48th site, reached through `Plugin.dcbEventLogOptionSchema`.
-- [`Resource.res`](../../reventless/interop/src/Resource.res): its single site.
+- [`Resource.res`](../../../reventless/interop/src/Resource.res): its single site.
 - Rewrote the stale comment in both files, plus the schema-evolution guidance on
   `pluginStructure` and in `pluginDefinitionRequiredScalars.txt` (step 4), which
   told an author to reach for `js_nullable`.
-- [`Message.res`](../../reventless/spec/src/types/Message.res): the healer guard,
-  and [`PluginDefinitionScalars.res`](../../reventless/core/tests/plugin/PluginDefinitionScalars.res):
+- [`Message.res`](../../../reventless/spec/src/types/Message.res): the healer guard,
+  and [`PluginDefinitionScalars.res`](../../../reventless/core/tests/plugin/PluginDefinitionScalars.res):
   the matching one in the tripwire's walker.
 - Test-side wire goldens that moved with the encoding: `LogFormatTest`'s encoded
   `Connect`, two `Platform_PluginStructuresApiTest` decode cases, and the five
@@ -144,7 +144,7 @@ aggregate. Deploy, let it fail loud, then wipe.
 
    **No second deploy is needed to re-register.** The wipe leaves the aggregate
    with no known versions, so the next `Heartbeat(v)` takes
-   [`PluginBehavior.res`](../../reventless/core/src/plugin/lifecycle/PluginBehavior.res#L129-L135)'s
+   [`PluginBehavior.res`](../../../reventless/core/src/plugin/lifecycle/PluginBehavior.res#L129-L135)'s
    `None => VersionDetected(v)` arm and re-runs the whole connect handshake. Both
    plugins come back in the new encoding on their own, within one heartbeat
    interval.
@@ -180,7 +180,7 @@ aggregate. Deploy, let it fail loud, then wipe.
    This is why that migration cost an hour instead of a command. It no longer
    applies: the runner and `pnpm run serve` now share `./.reventless/local.db`,
    so a directory holds one store — see
-   [`one-local-platform-one-store.md`](done/one-local-platform-one-store.md). The
+   [`one-local-platform-one-store.md`](one-local-platform-one-store.md). The
    mechanism above is still true for anyone who deliberately puts two db files in
    one directory.
 
@@ -300,14 +300,14 @@ give it the `js_nullable` (`T | null`) shape"* — becomes wrong; the answer is 
 required scalars and stay off the list either way. Check whether the golden list
 moves and regenerate only if it should.
 
-Expect `pnpm run check:graphql` **not** to move. If it does, the reasoning in §6.2
+Expect `pnpm run check:graphql` **not** to move. If it does, the reasoning in [§6.2](../../analysis/sury-per-field-optional-annotation.md#62-the-emitted-json-schema-does-not-change)
 of the analysis is wrong somewhere and the change should stop until that is
 understood.
 
 ## Step 5 (follow-on, separate) — `option<'a>` fields → optional (`?:`) fields
 
 **Identical on the wire.** Both spellings derive `S.option(...)`;
-[`StoredEvent.res:25`](../../reventless/spec/src/types/StoredEvent.res#L25) already
+[`StoredEvent.res:25`](../../../reventless/spec/src/types/StoredEvent.res#L25) already
 demonstrates it. Reads are unaffected (`r.foo` still yields an `option`); only
 construction changes — `{foo: None}` becomes an omitted field and
 `{foo: someOption}` becomes `{foo: ?someOption}`. There are ~137 `: None` sites
@@ -341,7 +341,7 @@ compile-and-diff on one type settles it.
 
 ## What would stop this
 
-- **A `check:graphql` diff.** Per §6.2 of the analysis the emitted schema is
+- **A `check:graphql` diff.** Per [§6.2](../../analysis/sury-per-field-optional-annotation.md#62-the-emitted-json-schema-does-not-change) of the analysis the emitted schema is
   byte-identical; a moved golden means that measurement does not hold for some
   field shape in the real specs, and the difference has to be understood before
   proceeding.

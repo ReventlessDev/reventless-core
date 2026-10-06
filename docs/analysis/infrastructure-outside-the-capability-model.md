@@ -18,63 +18,63 @@ monitoring.
 - **Two of the eight things surveyed belong in the model; the rest correctly do
   not.** The scheduler and MCP are capabilities built before there was a model to
   put them in. Auth is a separate question, and the task bucket, live updates,
-  counters, the query store and monitoring are substrate or seams — §5 gives the
+  counters, the query store and monitoring are substrate or seams — [§5](#5-the-survey-everything-else-the-framework-provisions) gives the
   rule that separates them.
 - **The scheduler fits precisely, and is the closest thing to a capability that is
   not one.** It already has the hard half — a provider-neutral port with two
   implementations behind it. What it lacks is the half the capability model adds:
-  a declaration, a deploy gate, a modelled failure, and provenance (§2).
+  a declaration, a deploy gate, a modelled failure, and provenance ([§2](#2-does-it-fit-the-capability-model)).
 - **The gap is not cosmetic.** Because nothing declares it, it is provisioned
   unconditionally — every deployment carries an IAM role granting `events:*` on
-  every resource, whether or not anything is ever scheduled (§3.1). Because
+  every resource, whether or not anything is ever scheduled ([§3.1](#31-provisioned-always-because-nothing-declares-it)). Because
   nothing gates it, a task that cannot schedule logs at `info` and continues
-  (§3.2).
+  ([§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for)).
 - **The two implementations disagree about what the vocabulary means**, which is
   the property the capability model exists to protect. `Single` fires at an
   absolute time on AWS and **immediately** in local; `Daily`/`Weekdays` ignore the
-  wall clock entirely in local, firing 24h after creation (§3.3). This is a defect
+  wall clock entirely in local, firing 24h after creation ([§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary)). This is a defect
   today, independent of any model change, and should be fixed first.
 - **One latent defect falls out of the reading.** The AWS arm emits
   `cron(m h * * * *)` for `Daily`, with `*` in both day-of-month and day-of-week —
   a form EventBridge rejects, and one its own sibling arms avoid by using `?`.
   Unexercised: no example or test uses `Daily`, `Weekdays` or
-  `WeekdaysAndSaturday` (§3.4).
+  `WeekdaysAndSaturday` ([§3.4](#34-a-latent-defect-in-the-aws-arm)).
 - **There is one genuine structural mismatch**, and it is worth being honest
   about: capabilities are called *outward* from a slice's `translate`, and the
   scheduler is wired *inward* into components that fire events. The declaration
   and gate transfer cleanly; putting `schedule` on `Capabilities.t` does not
-  (§4.3).
+  ([§4.3](#43-should-it-go-on-capabilitiest--no)).
 - **`Capabilities.t` is misnamed and should be `OutboundCapabilities.t`.** It
   reads as the roster; it is the two capabilities an outbound translation can
   call, and it is handed to exactly one thing. Direction is the membership rule
-  §4.3 arrived at, it predicts the whole roster, and unlike the current name it
-  cannot over-claim as the set grows (§6).
+  [§4.3](#43-should-it-go-on-capabilitiest--no) arrived at, it predicts the whole roster, and unlike the current name it
+  cannot over-claim as the set grows ([§6](#6-the-record-is-misnamed)).
 - **Three things belong on that record that are not there.** The object store's
   read half (already owed, and the type says so), secrets (no runtime seam exists
   at all), and outbound HTTP — the last scoped as a *broker* rather than a
   provider, because it fails the swap-the-supplier test but would make
-  `externalSystem` an enforced declaration instead of a diagram label (§8).
+  `externalSystem` an enforced declaration instead of a diagram label ([§8](#8-what-else-belongs-on-the-record)).
 - **The word "capability" carries four meanings in this repository and two more
   outside it**, and only one is a problem. Inside: "platform capability" is
   established (37 uses) and the domain sense is already "competency". Outside, the
   commercial analysis calls the same thing an **infrastructure capability** —
   a deliberate second register for an EA audience, not drift. What needs fixing is
   `GraphQL_FragmentGenerator`'s `serverCapability`, a pure homonym, plus glossary
-  entries so nothing arbitrates by accident (§7).
+  entries so nothing arbitrates by accident ([§7](#7-the-word-capability-carries-four-meanings)).
 - **The strongest other candidate is MCP**, which is a per-platform boolean
   (`mcpSupported`) where it wants to be a declared need. Auth, the task bucket,
-  live updates and counters are surveyed in §5; monitoring is the useful
+  live updates and counters are surveyed in [§5](#5-the-survey-everything-else-the-framework-provisions); monitoring is the useful
   counter-example of something correctly kept out.
 
 ---
 
 **How this is organised.** §§1–4 work the scheduler end to end, because it is the
 richest case and the one that exercises every part of the model — declaration,
-gate, provisioning, failure vocabulary, and the one place the analogy breaks. §5
+gate, provisioning, failure vocabulary, and the one place the analogy breaks. [§5](#5-the-survey-everything-else-the-framework-provisions)
 applies the same tests to everything else the framework provisions and says where
 the boundary falls. §§6–8 are about naming and growth, all three falling out of
-§4.3: §6 argues that `Capabilities.t` is misnamed, §7 cleans up the four senses of
-"capability" across the repository, and §8 proposes what else belongs on the
+[§4.3](#43-should-it-go-on-capabilitiest--no): [§6](#6-the-record-is-misnamed) argues that `Capabilities.t` is misnamed, [§7](#7-the-word-capability-carries-four-meanings) cleans up the four senses of
+"capability" across the repository, and [§8](#8-what-else-belongs-on-the-record) proposes what else belongs on the
 record. §§9–10 are the recommendation and its risks.
 
 ---
@@ -122,12 +122,12 @@ Testing it against each property the model asserts:
 |---|---|
 | Infrastructure a plugin needs but does not provision | **Yes** — the plugin asks for a schedule; the platform owns the scheduling service |
 | A provider-neutral port, so swapping the implementation is a change of supplier | **Yes, already** — `Scheduler_Adapter.ScheduledPublisher`, two implementations |
-| …and the *semantics* survive the swap | **No** — see §3.3 |
+| …and the *semantics* survive the swap | **No** — see [§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary) |
 | Declared by the component that needs it | **No** — nothing declares it |
 | Carried to the platform as provenance (`capabilities.json`) | **No** |
 | Refused at deploy when declared and unprovisioned | **No** |
 | Failure is modelled, with a retry rule stated once | **No** — `promise<unit>`, throws |
-| Absence degrades visibly rather than silently | **No** — §3.2 |
+| Absence degrades visibly rather than silently | **No** — [§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for) |
 
 So it satisfies the two properties the adapter pattern already gave it and fails
 every property the *capability* model adds. That is the answer to "does it fit at
@@ -269,7 +269,7 @@ Give `rate` one interpretation both implementations derive from, the way
 `fromHeader` and `retriable` are stated once. Concretely: a
 `Schedule.nextFireAfter(~rate, ~from)` in the spec package that the local timer
 drives from, and a cron/rate renderer beside it that the AWS arm calls. Fix the
-`Daily` expression (§3.4) at the same time, and cover all seven arms with tests —
+`Daily` expression ([§3.4](#34-a-latent-defect-in-the-aws-arm)) at the same time, and cover all seven arms with tests —
 the four that are currently unexercised are unexercised in both providers.
 
 **This has no dependency on the capability model and should not wait for it.**
@@ -280,7 +280,7 @@ Add a `Schedule.failure` mirroring `Messaging.failure` — `Unavailable` (retry)
 `Refused` (a rate the provider will not accept), and probably
 `UnsupportedRate(rate)` for a provider whose vocabulary is narrower — plus a
 `retriable` stated once. Change `create`/`delete` to return
-`result<_, failure>`. This is what turns §3.2's `info` line into something a caller
+`result<_, failure>`. This is what turns [§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for)'s `info` line into something a caller
 can act on.
 
 ### Stage 3 — Declare it
@@ -315,7 +315,7 @@ from almost verbatim.
 
 Once declared, `CapabilityNeed.unmet` covers it with no new gate code, and
 `makeScheduler()` becomes conditional on the platform's capability list. That is
-what retires §3.1's unconditional wildcard role.
+what retires [§3.1](#31-provisioned-always-because-nothing-declares-it)'s unconditional wildcard role.
 
 Note the ordering hazard the model already documents: the platform deploys first
 and cannot read plugin schemas, so this only works through the committed
@@ -371,11 +371,11 @@ provision, and could plausibly be absent.
 ### Ranking
 
 1. **MCP** — the clearest case after the scheduler, and cheaper: it has no runtime
-   vocabulary to converge (no §3.3 problem) and no injection question (no §4.3
+   vocabulary to converge (no [§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary) problem) and no injection question (no [§4.3](#43-should-it-go-on-capabilitiest--no)
    problem). It needs a declaration, a manifest arm and a gate, and it is done.
    Today a plugin exposing MCP-shaped surface on a platform built with
    `McpNotSupported` simply has no server, with nothing said at deploy.
-2. **Scheduler** — this document. Highest value because of §3.1 and §3.3, but the
+2. **Scheduler** — this document. Highest value because of [§3.1](#31-provisioned-always-because-nothing-declares-it) and [§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary), but the
    most work.
 3. **Auth** — worth a separate analysis rather than a capability arm. The question
    there is whether "bring your own identity provider" wants to be a declared
@@ -391,7 +391,7 @@ a declaration meaningful and a refusal possible.
 
 ## 6. The record is misnamed
 
-§4.3 concluded that the scheduler should adopt the declaration and the gate but
+[§4.3](#43-should-it-go-on-capabilitiest--no) concluded that the scheduler should adopt the declaration and the gate but
 not go on `Capabilities.t`. That conclusion exposes a naming problem that is
 already true, before anything moves.
 
@@ -424,9 +424,9 @@ It predicts the rest of the roster correctly and without special pleading:
 |---|---|---|
 | `geocode` | outward — a call, then an answer | yes |
 | `messaging` | outward | yes |
-| Object store *read* (`Offload.resolve`) | outward | **should be** (§8 #1) |
+| Object store *read* (`Offload.resolve`) | outward | **should be** ([§8](#8-what-else-belongs-on-the-record) #1) |
 | Object store *write* (presign) | outward, but the **browser** makes it | no — no translation calls it |
-| Scheduler | inward — fires events later | no (§4.3) |
+| Scheduler | inward — fires events later | no ([§4.3](#43-should-it-go-on-capabilitiest--no)) |
 | MCP | inbound — an agent calls the deployment | no |
 
 ### Proposal
@@ -471,14 +471,14 @@ that annotates it — a `major`, or a deprecating alias for one release.
 
 ## 7. The word "capability" carries four meanings
 
-Renaming one type (§6) does not fix the vocabulary around it. A survey of every
+Renaming one type ([§6](#6-the-record-is-misnamed)) does not fix the vocabulary around it. A survey of every
 `capabilit*` identifier in `reventless/` and `traits/`, and of the prose in
 `docs/` and the doc site, finds four unrelated senses plus one borrowed one.
 
 | Sense | Where it lives | Weight | Verdict |
 |---|---|---|---|
 | **A. The declared, provisioned thing** | `Platform.capability`, `CapabilityNeed`, `CapabilityManifest`, `Capability_*` provisioning modules, `capabilities.json`, `capabilityNeeds`, `requiredCapabilities` | 253 `capability` + 176 `capabilities` occurrences; **37** uses of the phrase "platform capability" in prose | **The primary sense.** Keep |
-| **B. The record a translation is handed** | `Capabilities.t` | 43 | A *subset* of A → `OutboundCapabilities.t` (§6) |
+| **B. The record a translation is handed** | `Capabilities.t` | 43 | A *subset* of A → `OutboundCapabilities.t` ([§6](#6-the-record-is-misnamed)) |
 | **C. What a domain does** | "competency", in the traits docs | 33 uses, all trait-related. **"business capability" appears zero times anywhere** | **Already solved** — just not written down |
 | **D. What a generated query supports** | `GraphQL_FragmentGenerator.serverCapability` = `{filterFields, sortFields}`, plus `emptyCapability`, `deriveServerCapability` | 15 + 2 + 2 | **An unrelated homonym.** Rename |
 | **E. The MCP protocol's own field** | `{capabilities: {tools, resources}}` in the MCP server instances | 2 sites | Borrowed vocabulary. **Leave alone** |
@@ -580,13 +580,13 @@ cross-links, is the whole enforcement mechanism:
 
 Rule 4 is the only code change: three files, ~19 identifier sites, no published
 type. Rules 1–3 and 5 are prose and glossary. None of it blocks or is blocked by
-§6, and none of it touches the capability model's behaviour.
+[§6](#6-the-record-is-misnamed), and none of it touches the capability model's behaviour.
 
 ---
 
 ## 8. What else belongs on the record
 
-The membership rule from §6 — *a translation calls out to it* — screens
+The membership rule from [§6](#6-the-record-is-misnamed) — *a translation calls out to it* — screens
 candidates.
 The two current members share four properties worth testing against: called
 **outward** during a translation, **provider-specific with a neutral port**, the
@@ -647,7 +647,7 @@ brokered credentials is not usable anyway.
 | **Push / SMS** | Not new capabilities. They are channels of `Messaging`, and the model already says one need however many channels |
 | **Queue / event publishing** | The framework's own substrate, not something a plugin reaches outward for |
 
-The pattern matches §5's: a capability is something the deployment can coherently
+The pattern matches [§5](#5-the-survey-everything-else-the-framework-provisions)'s: a capability is something the deployment can coherently
 not have, and something the framework can stand in the middle of. A domain
 competency that happens to call an API is a trait; substrate every plugin needs is
 substrate.
@@ -658,7 +658,7 @@ Growth here is cheap by construction — the record's own comment explains that
 adding a field breaks only the platforms that construct it and leaves every
 `translate` untouched. So the order is driven by dependency, not by cost:
 **#1** (already owed), then **#2**, then **#3** (which wants #2 to be useful),
-with **#4** left open. Do the §6 rename first if it is going to happen at all: it
+with **#4** left open. Do the [§6](#6-the-record-is-misnamed) rename first if it is going to happen at all: it
 is a one-time breaking change, and doing it before three new members land is
 cheaper than after.
 
@@ -666,24 +666,24 @@ cheaper than after.
 
 ## 9. Recommendation
 
-- **Do Stage 1 now, on its own.** The semantics divergence (§3.3) and the `Daily`
-  cron (§3.4) are defects in shipped code and have no dependency on anything here.
+- **Do Stage 1 now, on its own.** The semantics divergence ([§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary)) and the `Daily`
+  cron ([§3.4](#34-a-latent-defect-in-the-aws-arm)) are defects in shipped code and have no dependency on anything here.
 - **Do Stage 2 next.** A modelled failure is worth having even if the scheduler
-  never becomes a declared capability, and it is what makes §3.2 fixable.
+  never becomes a declared capability, and it is what makes [§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for) fixable.
 - **Take Stages 3–4 together, after MCP.** MCP is the cheaper proof that the
   declaration path generalises beyond `OutboundTranslationSlice`; doing it first
   de-risks the surface change that Stage 3 Option A requires.
-- **Do not put `schedule` on `Capabilities.t`** (§4.3).
-- **Rename the record before growing it** (§6). It is a one-time breaking change
+- **Do not put `schedule` on `Capabilities.t`** ([§4.3](#43-should-it-go-on-capabilitiest--no)).
+- **Rename the record before growing it** ([§6](#6-the-record-is-misnamed)). It is a one-time breaking change
   and it is cheapest now — six sites in core, and no slice author affected.
-- **Write the vocabulary down** (§7). Three glossary entries and one homonym
+- **Write the vocabulary down** ([§7](#7-the-word-capability-carries-four-meanings)). Three glossary entries and one homonym
   rename (`serverCapability` → `queryFeatures`); no behaviour, no published type,
   and it stops a second phrase for sense A from taking hold.
-- **Close the object store's read half** (§8 #1). It is already owed, the type
+- **Close the object store's read half** ([§8](#8-what-else-belongs-on-the-record) #1). It is already owed, the type
   says so, and it removes the exception the doc-site page currently has to
   explain.
-- **Treat secrets as the next real member** (§8 #2), and outbound HTTP after it,
-  scoped as a broker rather than a provider (§8 #3).
+- **Treat secrets as the next real member** ([§8](#8-what-else-belongs-on-the-record) #2), and outbound HTTP after it,
+  scoped as a broker rather than a provider ([§8](#8-what-else-belongs-on-the-record) #3).
 
 ## 10. Risks
 
@@ -697,13 +697,13 @@ cheaper than after.
   (unknowingly) calibrated against. A `Daily` that starts firing at the configured
   hour instead of 24h after boot is a fix, but it will look like a regression to
   anyone who built around the old reading.
-- **§3.4 is read from source, not reproduced.** Confirm against EventBridge before
+- **[§3.4](#34-a-latent-defect-in-the-aws-arm) is read from source, not reproduced.** Confirm against EventBridge before
   writing the fix.
-- **The §6 rename is a published-type break.** `Capabilities.t` ships in
+- **The [§6](#6-the-record-is-misnamed) rename is a published-type break.** `Capabilities.t` ships in
   `reventless-spec`; the six sites are the ones in this repo, and any downstream
   that annotates the type breaks with them. A deprecating alias for one release
   costs little and removes the argument for never doing it.
-- **§8 #3 invites scope creep.** A brokered HTTP client is a small thing that
+- **[§8](#8-what-else-belongs-on-the-record) #3 invites scope creep.** A brokered HTTP client is a small thing that
   wants to become a large one — connection pools, circuit breakers, a
   request-signing framework. The scope that earns its place is the four things
   named: one timeout/retry policy, egress keyed by `externalSystem`, attribution,

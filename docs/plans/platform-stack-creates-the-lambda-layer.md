@@ -3,7 +3,7 @@
 **Date:** 2026-09-16
 **Status:** PROPOSED — nothing built yet.
 **Repos:** `reventless-core` only.
-**Based on:** §5.1 of [from-an-empty-account-to-a-running-shop.md](../analysis/from-an-empty-account-to-a-running-shop.md),
+**Based on:** [§5.1](../analysis/from-an-empty-account-to-a-running-shop.md#51-who-creates-the-lambda-layer) of [from-an-empty-account-to-a-running-shop.md](../analysis/from-an-empty-account-to-a-running-shop.md),
 which compares the ways to get a layer into a new account.
 **Companion plan:** [shop-from-an-empty-aws-account.md](./shop-from-an-empty-aws-account.md).
 

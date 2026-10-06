@@ -29,11 +29,11 @@ mixes both forms inside the same record.
 
 | verdict | fields | what |
 |---|---|---|
-| ✅ **Refactor** | **125** | §8 lists them as five independent steps. Every one meets at least one of the four inclusion tests in §8.1. |
-| ⚠️ **Real bug, different fix** | 16 | `option<Pulumi.Output.t<'a>>` silently destroys the value at runtime — but **`?:` does not fix it** (§4). These need one of three other treatments and do not belong in this refactor. |
+| ✅ **Refactor** | **125** | [§8](#8-the-recommended-refactor--125-fields-five-steps) lists them as five independent steps. Every one meets at least one of the four inclusion tests in [§8.1](#81-what-makes-a-field-recommended-rather-than-opportunistic). |
+| ⚠️ **Real bug, different fix** | 16 | `option<Pulumi.Output.t<'a>>` silently destroys the value at runtime — but **`?:` does not fix it** ([§4](#4-tier-2--optionpulumioutputta--16-fields---real-bug-but--is-not-the-fix)). These need one of three other treatments and do not belong in this refactor. |
 | 🟡 **Opportunistic** | 62 | Tier-3 fields that meet none of the four tests — no mirror, no repeated shape, no behavioural consequence. Convert when you are already in the file; a dedicated sweep costs more review than it returns. |
-| ⏸️ **Decide first** | 7 | The example *view state* fields. Safe on the wire, but a convention decision already went the other way — §3. |
-| ❌ **Leave** | 30 | 24 inbound binding fields (no behavioural difference at all), 4 healer regression-test fields, 2 doc-comment samples — §6, §7. |
+| ⏸️ **Decide first** | 7 | The example *view state* fields. Safe on the wire, but a convention decision already went the other way — [§3](#3-tier-1--schema-types--67-matches--54-recommended). |
+| ❌ **Leave** | 30 | 24 inbound binding fields (no behavioural difference at all), 4 healer regression-test fields, 2 doc-comment samples — [§6](#6--do-not-convert--6-fields), [§7](#7-tier-4--binding-packages--28-fields--4-recommended-24-left-alone). |
 
 ---
 
@@ -53,7 +53,7 @@ allowedStatesSource: s.m(Sury.$option(Sury.string)),              // allowedStat
 
 Identical. So for schema types the conversion changes no JSON, no emitted JSON Schema, no SDL, and
 no golden. This only became true after the per-field `@s.matches(...OptionSchema)` annotations were
-removed — see [`sury-per-field-optional-annotation.md`](./sury-per-field-optional-annotation.md) §6.2,
+removed — see [`sury-per-field-optional-annotation.md`](./sury-per-field-optional-annotation.md) [§6.2](./sury-per-field-optional-annotation.md#62-the-emitted-json-schema-does-not-change),
 where the same equivalence was measured through the repo's own emitter.
 
 **(b) For a plain ReScript record the emitted JS object differs.** Key present-and-`undefined` versus
@@ -86,7 +86,7 @@ optionality is not a durable absence guarantee for a mutable field.
 **(d) None of this touches a value whose runtime representation is a `Proxy`.** For
 `option<Pulumi.Output.t<'a>>` the corruption is not in the field declaration at all — it is in the
 generic option combinators that run over the field — so *both* forms are equally exposed and `?:`
-fixes nothing. That is §4, and it is the one place in this inventory where the obvious refactor is
+fixes nothing. That is [§4](#4-tier-2--optionpulumioutputta--16-fields---real-bug-but--is-not-the-fix), and it is the one place in this inventory where the obvious refactor is
 the wrong one.
 
 ---
@@ -99,14 +99,14 @@ Free by fact (a): no wire change, no `check:graphql` movement, no consumer impac
 |---|---|---|---|
 | ✅ | [reventless/spec/src/components/Plugin.res](../../reventless/spec/src/components/Plugin.res) | **45** | `pluginStructure` / `pluginDefinition` and everything reachable from them. Already mixes styles (`allowedStatesSource?`). Highest-value single file in the repo. |
 | ✅ | [reventless/core/src/plugin/lifecycle/PluginsReadModelSpec.res](../../reventless/core/src/plugin/lifecycle/PluginsReadModelSpec.res) | 4 | `apiSchemaFragment`, `structure`, `dcbEventLog`, `kind` on `type state`. Its `queryResult` mirror (4 more, Tier 3) converts with it — 8 in the file. |
-| ✅ | [examples/…/ordering/…/Orders.res](../../examples/online-shop-hybrid/ordering/src/Order/StateViewSliceStream/Orders.res) `consumedEvent` | 2 | `deliveryWindow`, `firstProductName`. **Event** fields — the convention below already says these should be `?`. |
+| ✅ | [examples/…/ordering/…/Orders.res](../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders.res) `consumedEvent` | 2 | `deliveryWindow`, `firstProductName`. **Event** fields — the convention below already says these should be `?`. |
 | ✅ | [reventless/core/src/plugin/lifecycle/PluginBehavior.res](../../reventless/core/src/plugin/lifecycle/PluginBehavior.res) | 1 | `current: option<version>` |
 | ✅ | [reventless/local/src/LocalPlatformRegistry.res](../../reventless/local/src/LocalPlatformRegistry.res) | 1 | `path` on `type store` |
 | ✅ | [reventless/core/tests/fixtures/TaggedUnionFixtures.res](../../reventless/core/tests/fixtures/TaggedUnionFixtures.res) | 1 | `lastSeen: option<geolocation>` |
 | ⏸️ | [examples/…/ordering/…/Customer_Behavior.res](../../examples/online-shop-hybrid/ordering/src/Customer/Aggregate/Customer_Behavior.res) | 4 | `location`, `locationResolvedFrom` × 2 `type state` — see caveat |
-| ⏸️ | [examples/…/ordering/…/Orders.res](../../examples/online-shop-hybrid/ordering/src/Order/StateViewSliceStream/Orders.res) `state` | 2 | same two fields on the view state |
-| ⏸️ | [examples/…/catalog/…/Products.res](../../examples/online-shop-hybrid/catalog/src/Product/StateViewSliceStream/Products.res) | 1 | `@groupBy categoryName` on `type state` |
-| ❌ | — *excluded* — | 6 | §6 |
+| ⏸️ | [examples/…/ordering/…/Orders.res](../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders.res) `state` | 2 | same two fields on the view state |
+| ⏸️ | [examples/…/catalog/…/Products.res](../../examples/online-shop-hybrid/catalog/src/Product/StateViewStream/Products.res) | 1 | `@groupBy categoryName` on `type state` |
+| ❌ | — *excluded* — | 6 | [§6](#6--do-not-convert--6-fields) |
 
 **Caveat on the example view states.** [`semantic-date-range.md`](../plans/semantic-date-range.md)
 set a deliberate convention while adding `deliveryWindow`: *the command/event field is an optional
@@ -186,7 +186,7 @@ is a type variable inside `Stdlib_Option` and the runtime helpers must be used.
 
 That is why `?:` fixes nothing: **it changes the declaration, and the declaration was never the site
 of the bug.** Both forms compile identically and safely at construction, and both stay equally
-exposed to whatever combinator runs downstream. These 16 fields are **excluded from the §8 plan** —
+exposed to whatever combinator runs downstream. These 16 fields are **excluded from the [§8](#8-the-recommended-refactor--125-fields-five-steps) plan** —
 converting them would be motion without a fix, and would look like the bug had been addressed.
 
 It also explains the field-by-field inconsistency: whether a given `option<Output>` has ever
@@ -244,7 +244,7 @@ outright rather than audited case by case.
 These are the 16 that fall inside this inventory's scope — *record fields*, the thing being counted
 everywhere else in this document. The guard's population is larger (**30**), because it also picks up
 `ref<option<Pulumi.Output.t<_>>>` bindings, `let` bindings and labelled arguments (`~x: option<…>=?`),
-which carry the identical hazard but are not record fields and so never entered the §1 count.
+which carry the identical hazard but are not record fields and so never entered the [§1](#1-headline) count.
 
 | file | fields |
 |---|---|
@@ -303,7 +303,7 @@ cluster and negligible where they don't, which is the whole split:
   same doc comment, same cited plan. Converting one copy and not the other is how two declarations of
   one shape start to drift.
 
-Plus the 4 `queryResult` fields in `PluginsReadModelSpec.res`, counted with that file in §3.
+Plus the 4 `queryResult` fields in `PluginsReadModelSpec.res`, counted with that file in [§3](#3-tier-1--schema-types--67-matches--54-recommended).
 
 **🟡 Opportunistic — 62, across 37 files.** One to three fields each, no mirror elsewhere, nothing
 structural: `reventless/gwt/` (7 — `Flow_GWT` 3, `Query_GWT` 2, `Hint`, `Outcome`),
@@ -319,7 +319,7 @@ sweep of its own.
 
 | file | fields | why |
 |---|---|---|
-| [reventless/spec/tests/MessageHealTest.res:19-22](../../reventless/spec/tests/MessageHealTest.res) | 4 | `healOptionals` exists **to exercise the `option<>` decode/heal path** — `optStr`, `optArr`, `optRec`, `optEnum`, one per shape the healer branches on. `option<record>` and `option<enum>` are precisely the two the healer got wrong once (`sury-per-field-optional-annotation.md` §6.1). Converting deletes the regression test. |
+| [reventless/spec/tests/MessageHealTest.res:19-22](../../reventless/spec/tests/MessageHealTest.res) | 4 | `healOptionals` exists **to exercise the `option<>` decode/heal path** — `optStr`, `optArr`, `optRec`, `optEnum`, one per shape the healer branches on. `option<record>` and `option<enum>` are precisely the two the healer got wrong once (`sury-per-field-optional-annotation.md` [§6.1](sury-per-field-optional-annotation.md#61-the-healer-does-not-fabricate--for-absent-optionals--but-it-did-invent-for-optionrecord)). Converting deletes the regression test. |
 | [reventless/spec/src/semantic/GeoPoint.res:54](../../reventless/spec/src/semantic/GeoPoint.res) | 1 | inside a module doc comment, not code |
 | [reventless/spec/src/semantic/DateRange.res:57](../../reventless/spec/src/semantic/DateRange.res) | 1 | ditto |
 
@@ -362,7 +362,7 @@ so they are outliers within their own files.
 Every one of the 240 fields is the same two-line edit. What differs is not the edit's cost but
 **whether leaving it undone costs anything.** A field is recommended if at least one of these holds:
 
-1. **Behaviour** — the emitted JS actually differs in a way something downstream can see (§2b). Fully
+1. **Behaviour** — the emitted JS actually differs in a way something downstream can see ([§2b](#2-the-mechanics-measured)). Fully
    objective; applies to 8 fields.
 2. **Same record** — it sits in a type graph where the rest is being converted anyway, so the marginal
    cost is zero and a partial conversion leaves one record in two styles.
@@ -404,8 +404,8 @@ Only step 1 crosses a package boundary that matters — `reventless/spec` publis
 push — and by fact (a) that publish carries no wire change for an installed consumer.
 
 **Not in the plan, deliberately:** the 16 `option<Pulumi.Output.t<'a>>` fields, which need one of the
-§4.3 fixes and not this one; the 62 opportunistic Tier-3 fields (§5); the 7 view-state fields awaiting
-the §3 convention call; and the 30 in §6/§7. That is 115 of the 240 left where they are.
+[§4.3](#43-the-three-fixes-the-repo-actually-uses) fixes and not this one; the 62 opportunistic Tier-3 fields ([§5](#5-tier-3--internal-plain-records--129-fields--67-recommended-62-opportunistic)); the 7 view-state fields awaiting
+the [§3](#3-tier-1--schema-types--67-matches--54-recommended) convention call; and the 30 in [§6](#6--do-not-convert--6-fields)/§7. That is 115 of the 240 left where they are.
 
 The Tier-2 sixteen are worth a **separate** piece of work, sequenced ahead of this one on severity —
 they are a live correctness bug, not a style question. But it is a different refactor with a different

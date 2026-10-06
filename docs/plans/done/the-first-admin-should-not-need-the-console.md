@@ -55,7 +55,7 @@ everything. Today they deploy, cannot sign in, and are told nothing about why.
 
 **Non-goal.** Administering users *after* the first one. Creating the second and hundredth account is
 what `IdentityProvider` is being built for — see
-[identity-is-a-capability-not-a-cognito-handle.md](identity-is-a-capability-not-a-cognito-handle.md) —
+[identity-is-a-capability-not-a-cognito-handle.md](../identity-is-a-capability-not-a-cognito-handle.md) —
 and a runtime console for it is a separate concern again. This plan is about the bootstrap only: the
 step that has to happen before anything else can, and that currently has no owner.
 
@@ -256,7 +256,7 @@ It must cover, in this order:
     permanent password *unconditionally*, which is correct whether or not the assertion holds: if
     the account was in `FORCE_CHANGE_PASSWORD` this clears it, and if it never was, the call is a
     harmless password set. So the assertion decides nothing that is now load-bearing. What remains
-    genuinely unexercised is §4's first verification bullet — a fresh auto deploy, the one command,
+    genuinely unexercised is [§4](#4-verification)'s first verification bullet — a fresh auto deploy, the one command,
     a successful sign-in, and an administrator reading an `@owner`-scoped row belonging to somebody
     else. Every part of that path is unit-covered; the path itself has not been run end to end.
 - **Not investigated:** whether the host UI's sign-in flow handles a password-change challenge at all.

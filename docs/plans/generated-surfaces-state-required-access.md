@@ -3,7 +3,7 @@
 **Status.** Core half landed — 2026-08-11. `commandDef` and `queryableDef` carry
 derived `requiredAccess`, encoded into both admin queries and inherited by the
 baked manifest. What remains is the consumer: a shell that reads the keys, and
-the policy for what it does with a denied surface (§8).
+the policy for what it does with a denied surface ([§8](#8--what-landed-and-what-is-left)).
 
 **Goal.** A generated page or panel carries the access its own authorization rule
 already implies, so a shell can stop advertising surfaces the server will refuse.
@@ -111,7 +111,7 @@ reverse.
 
 ## §7 — Tests
 
-- Each `permission` arm maps to the keys in §3's table; `DenyAll` yields no
+- Each `permission` arm maps to the keys in [§3](#3--the-mapping)'s table; `DenyAll` yields no
   surface at all.
 - A command whose rule is `AllowRoles([Admin])` produces a page entry whose
   `requiredAccess` names `Admin`; a sibling command with no annotation in the same
@@ -138,7 +138,7 @@ demand view and the customer list publish `["Admin"]`; the shop's own commands
 publish null. The baked storefront manifest is all-null, which is the right
 answer for a file that only contains surfaces open to any signed-in caller.
 
-**One shape adjustment against §3.** The plan said `DenyAll` should make the
+**One shape adjustment against [§3](#3--the-mapping).** The plan said `DenyAll` should make the
 enumerating side *omit* the surface. The derivation publishes no keys for it
 instead, because omission is a decision for whoever builds pages — a structure is
 also read by tooling that wants the whole picture, and dropping a component from

@@ -126,7 +126,7 @@ consumer that uses the value as a dictionary key** — `AutoUI.resolveExplicitRe
 does exactly that (`Js.Dict.get(propsObj, r.fieldName)`), and it will simply miss
 and warn. Missing is the correct degradation (text input, warning logged) but it
 is a degradation, so the emission of nested refs and the consumption of them are
-sequenced together in §6.
+sequenced together in [§6](#6--easy-wins-each-independently-landable).
 
 ## §3 — The three walks, made path-aware
 
@@ -224,7 +224,7 @@ into a variable declaration without knowing the rule.
 
 ## §5 — The example: an order that says how many and what it cost
 
-With §3 landed, the domain change is small and entirely conventional.
+With [§3](#3--the-three-walks-made-path-aware) landed, the domain change is small and entirely conventional.
 
 **`PlaceOrder`** (`ordering/src/Order/StateChangeSlice/PlaceOrder.res`)
 
@@ -278,7 +278,7 @@ behaviour from the merged lines). It is redundant on purpose:
   shop show quantities. A cross-plugin contract change is a separate decision
   from a domain enrichment, and this plan does not need one.
 - It is a second, independent carrier of the `productId` tags, which means the
-  slice keeps working even if §3.1 has a gap. That is a crutch, so §8 asserts the
+  slice keeps working even if [§3.1](#31-tag-extraction-the-correctness-blocker) has a gap. That is a crutch, so [§8](#8--acceptance) asserts the
   nested tags directly rather than through the slice's behaviour.
 
 **`Orders` view and projection** gain `lines`, `total`, and `itemCount` (the
@@ -288,7 +288,7 @@ list view can show in a column). `productIds` stays on the state as-is.
 **`ProductDemand`** currently counts orders (`orderCount`, incremented once per
 `ItemOrdered`). With quantities the honest counter is units. Extending
 `Orders_ExtensionPoint.ItemOrdered` with `quantity` *is* a public contract
-change, so it is scoped **out** of this plan and recorded in §9; `orderCount`
+change, so it is scoped **out** of this plan and recorded in [§9](#9--deferred-recorded-so-it-is-not-re-derived); `orderCount`
 keeps counting orders and its docstring is corrected to say so, since today it
 reads as if it were demand.
 
@@ -296,7 +296,7 @@ reads as if it were demand.
 `productIds`; it produces `lineItems` with a small weighted quantity instead
 (mostly 1, occasionally 2–3, so the totals in the demo are not all identical).
 The seed is deterministic (`Seed.Random.make(~seed=0x5eed)`), so this changes
-every seeded order — expected, and the reason §8 asserts a known total rather
+every seeded order — expected, and the reason [§8](#8--acceptance) asserts a known total rather
 than a snapshot.
 
 **Tests.** `PlaceOrder_GWT` (all cases restated in the new command shape, plus
@@ -333,18 +333,18 @@ another.
   answer and belongs in a comment, not in a projection fan-out (a projection
   keyed by `productId` cannot rewrite every row of a renamed category — the
   reason the tempting version of this is not the cheap one). *Small; example only.*
-- **W3 — an order shows what was ordered.** Falls out of §5: `orderLine.name` is
+- **W3 — an order shows what was ordered.** Falls out of [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost): `orderLine.name` is
   captured at placement, so "My Orders" reads *Fathom Dock 4-Port × 2* instead of
-  a uuid. No extra work beyond §5; listed because it is the largest visible
+  a uuid. No extra work beyond [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost); listed because it is the largest visible
   change and should be named in acceptance.
 - **W4 — the list view says how many.** `@summary` on `Orders.itemCount` and
   `Orders.total`, `@hidden` on `Orders.productIds` (the redundant tag carrier
-  from §5 — correct on the event, noise in a grid). Schema-only, no runtime
+  from [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost) — correct on the event, noise in a grid). Schema-only, no runtime
   change. *Trivial; example only.*
 - **W5 — `@live(true)` on `Orders`.** An order list is operational, an
   `AutoShipOrder` flips a row while the shopper watches, and the hint is one
   type-level annotation. *Trivial; example only.*
-- **W6 — refuse an empty order.** Part of §5's behaviour, called out because it
+- **W6 — refuse an empty order.** Part of [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost)'s behaviour, called out because it
   is the one validation a shopper can trip today: `PlaceOrder` with `productIds:
   []` currently succeeds and produces an order for nothing.
 
@@ -374,7 +374,7 @@ another.
 - **Owner-scoped reads are in flight in this tree.** `Owner.res`,
   `OwnerScope.res` and the `QueryDbListQuery` / sqlite / Postgres push-downs are
   modified and uncommitted. `Orders.state` is where an `@owner` marker lands, and
-  this plan edits the same record. Land or park that work before starting §5, and
+  this plan edits the same record. Land or park that work before starting [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost), and
   do not renumber or reshape `Orders.state` fields while it is open.
 - **Do not "fix" `getFieldTarget` by making it descend.** Its contract — the
   reference a *field* declares — is relied on where attributing a nested marker
