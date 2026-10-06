@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.21 (2026-10-06)
+
+### Features
+
+* **node:** the rest of node:fs a code generator reaches for ([e343209](https://github.com/ReventlessDev/reventless-core/commit/e343209dd5c014c4de25da3484da40c8ee8c5193))
+
+
 # 2.0.0-alpha.20 (2026-09-29)
 
 ### Features

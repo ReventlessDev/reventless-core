@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.267 (2026-10-06)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
+
+
+
+
+
 # 1.0.0-alpha.266 (2026-10-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
