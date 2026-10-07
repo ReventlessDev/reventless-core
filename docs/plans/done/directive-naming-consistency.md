@@ -166,4 +166,4 @@ Tests:
 - `pnpm test` — 195 suites / 1501 tests pass.
 - Sweep grep for `\| Call(`, `AbstractCall`, `callHandler`, `calling handler`, `Call directive` — zero remaining hits in `reventless/`, `examples/`, `packages/` source (excluding build artefacts under `lib/ocaml/` and `lib/bs/`, which regenerate, and the unrelated `CommandTopic_Helpers.callHandlerWithArray` value binding).
 
-**Docs touched**: none. The only doc-side hits were in an in-progress plan (`docs/plans/plugin-eventcollector-runtime-rewire-cross-plugin.md`) that documents a separate migration's historical state — left untouched. Published docs under `packages/doc/docs/` had no hits on the old terminology.
+**Docs touched**: none. The only doc-side hits were in an in-progress plan (`docs/plans/done/plugin-eventcollector-runtime-rewire-cross-plugin.md`) that documents a separate migration's historical state — left untouched. Published docs under `packages/doc/docs/` had no hits on the old terminology.

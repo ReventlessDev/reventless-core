@@ -1,5 +1,5 @@
 // Checks reventless-ppx-read over examples/online-shop-hybrid
-// (docs/plans/source-reader-with-spans.md, S1 and S2 exits).
+// (docs/plans/done/source-reader-with-spans.md, S1 and S2 exits).
 //
 //   node test/reader-spans.mjs <read.exe> <repo-root>
 //

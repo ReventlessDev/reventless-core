@@ -16,7 +16,7 @@
 // is the only thing that proves the fence-scope model (Issue 1 fix) and the
 // optimistic-concurrency guarantees end-to-end. See
 // `docs/analysis/dcb-consistency-check-issues.md` and
-// `docs/plans/dcb-consistency-hardening.md` (Phase 1).
+// `docs/plans/done/dcb-consistency-hardening.md` (Phase 1).
 
 open JestGlobals
 

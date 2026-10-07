@@ -6,7 +6,7 @@
 **Companion:** reventless-tools `docs/plans/authoring-follows-the-framework-vocabulary.md`,
 decision D3 ("the understood set is sourced, not typed") and its "Open, upstream" items. Also
 reventless-tools `docs/plans/forms-as-views-of-the-source.md` L5a, where a field's attributes
-are shown and edited in a form. Builds on [source-reader-with-spans](../source-reader-with-spans.md).
+are shown and edited in a form. Builds on [source-reader-with-spans](source-reader-with-spans.md).
 
 ## Goal
 
@@ -228,7 +228,7 @@ constant; and the names in `TaggedUnionInference.refused_field_attrs`,
 
 ## S3 — Release
 
-The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](../gwt-sidecar-refs-and-examples.md)
+The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](gwt-sidecar-refs-and-examples.md)
 R3. **Exit:** the published PPX prints its vocabulary. The companion plans then close their
 upstream item, and replace their transcribed lists with this output.
 

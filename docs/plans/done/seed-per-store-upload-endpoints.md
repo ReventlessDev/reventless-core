@@ -10,7 +10,7 @@ are now subsumed by that plan's acceptance check 7 (seeding end-to-end through t
 awaits the same deploy.
 **Repos:** `reventless-core` only.
 **Analysis:** [platform-main-capability-provisioning.md](../../analysis/platform-main-capability-provisioning.md) §7 Stage 2.
-**Builds on:** [declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md)
+**Builds on:** [declared-object-stores-without-host-ui-bundle.md](declared-object-stores-without-host-ui-bundle.md)
 (the `uploadEndpoints` / `objectStores` outputs this plan consumes).
 
 ## The gap

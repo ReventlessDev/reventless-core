@@ -49,7 +49,7 @@ let tagToAttributeName = (tagKey: string) => `tag_${tagKey}`
 // reads resolve events directly from it. The per-tag `tag_<key>` GSIs are
 // `KEYS_ONLY` — no reader today, and Phase 7's cross-partition read goes
 // `Query`(keys) → `BatchGetItem`(payloads). Pure predicate so it is unit-testable
-// without the Pulumi deploy layer. See docs/plans/dcb-consistency-hardening.md Phase 3.
+// without the Pulumi deploy layer. See docs/plans/done/dcb-consistency-hardening.md Phase 3.
 let compositeIndexName = "tag_composite"
 let indexKeepsFullProjection = (indexName: string): bool => indexName == compositeIndexName
 

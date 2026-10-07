@@ -1,5 +1,5 @@
 // The cross-provider contract for "which refusal did I just get" — see
-// [docs/plans/appsync-refusal-vocabulary.md].
+// [docs/plans/done/appsync-refusal-vocabulary.md].
 //
 // An authorization gate has two ways to refuse and they ask the caller for
 // opposite things. A caller whose credentials did not verify should present new

@@ -8,9 +8,9 @@
 **Phase B (the registration chapter) and Phase C (extraction) not started.**
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
-**Builds on:** [trait-address-geocoding.md](./trait-address-geocoding.md) and
+**Builds on:** [trait-address-geocoding.md](done/trait-address-geocoding.md) and
 [trait-file-attachment.md](./trait-file-attachment.md) — the two extractions whose shape this follows ·
-[domain-trait-extraction-online-shop-hybrid.md](./domain-trait-extraction-online-shop-hybrid.md)
+[domain-trait-extraction-online-shop-hybrid.md](done/domain-trait-extraction-online-shop-hybrid.md)
 (framework seams) · [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
 — **not a dependency**; verification never calls it, and the two run in parallel.
 

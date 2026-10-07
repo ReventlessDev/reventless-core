@@ -14,7 +14,7 @@ interim sweep was never re-run, exactly as its own caveat warned.
 
 The deferral rested on the cutover needing a risky local `pulumi up` to beat a
 recreate race. That race was removed on 2026-08-08 by
-[log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md),
+[log-group-ownership-without-a-race.md](done/log-group-ownership-without-a-race.md),
 so the cutover is now "delete two env-var lines and let CI deploy". Step 8 is
 rewritten accordingly and carries the ordered remaining work.
 
@@ -174,7 +174,7 @@ Chosen path — **decouple landing the code from cutting alpha over**:
    (`scratchpad/migrate-alpha-log-groups.sh APPLY=1`), so the managed creates land
    seconds later and beat the ~minute heartbeat window; re-delete + up for any
    group that races.~~ **Rewritten 2026-08-20 — the procedure is obsolete.**
-   [log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md)
+   [log-group-ownership-without-a-race.md](done/log-group-ownership-without-a-race.md)
    (implemented 2026-08-08) removed the race this dance existed to beat: the group
    is now named by us, created **before** the function, and the function is pointed
    at it with `loggingConfig`, so there is no window for an invocation to take the

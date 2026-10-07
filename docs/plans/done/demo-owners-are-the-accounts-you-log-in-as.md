@@ -48,7 +48,7 @@ re-seed) is still the right recovery.<br/>
   nothing matches, not because it looks in the wrong place.
 - [online-shop-hybrid-demo-data.md](online-shop-hybrid-demo-data.md) —
   where `demoShopperId`/`demoOperatorId` were introduced.
-- [active-role-narrows-the-token.md](../active-role-narrows-the-token.md) — why the
+- [active-role-narrows-the-token.md](active-role-narrows-the-token.md) — why the
   seeding run and the browsing session can hold different exemptions.
 
 ---

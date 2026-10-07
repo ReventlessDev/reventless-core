@@ -352,7 +352,7 @@ it.
 
 ## 7. Prior art in this repo
 
-- [`docs/plans/lifecycle-transition-annotation.md`](../../plans/lifecycle-transition-annotation.md)
+- [`docs/plans/done/lifecycle-transition-annotation.md`](../../plans/done/lifecycle-transition-annotation.md)
   — built the annotation and its assembly-time name check. §4 records the Product
   finding cited above, and states the rule this analysis takes as its premise:
   *"a from-set is a claim about `decide`, so it is read off `decide` or it is not

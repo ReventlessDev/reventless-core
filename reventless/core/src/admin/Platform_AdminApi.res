@@ -119,7 +119,7 @@ let geocodeTypes = [
 
 let geocodeQueryFields = [`  geocode(text: String!): [GeocodeCandidate!]`]
 
-// Acting as one of the roles you hold (docs/plans/active-role-narrows-the-token.md).
+// Acting as one of the roles you hold (docs/plans/done/active-role-narrows-the-token.md).
 //
 // The write door for the caller's chosen role. Like uploads and geocoding this is
 // an ordinary authenticated-user operation, so it belongs on the **domain** base

@@ -13,7 +13,7 @@ Against the [Recommendation](#recommendation):
   handed to the function via `loggingConfig.logGroup`. Deriving the name from the
   physical `lambda.name` forced the group to be created second, which lost a race
   against Lambda's lazy auto-create; see
-  [../plans/log-group-ownership-without-a-race.md](../plans/log-group-ownership-without-a-race.md).
+  [../plans/log-group-ownership-without-a-race.md](../plans/done/log-group-ownership-without-a-race.md).
 - ✅ **1. `Util_LogRetention.res`** — new, beside `Util_StoreLayout` /
   `Util_HostUiDomain`, with the tier functions + the `managesLogGroup` gate.
   Unit-tested (`Util_LogRetentionTest.res`, 24 cases).

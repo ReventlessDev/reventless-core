@@ -43,7 +43,7 @@ name: Publish Reventless PPX
 # completing a half-published version would ship whatever binaries it already has.
 # The per-platform scaffolds' versions are generated from the resolved one, so the
 # two can never desync (see the cutover runbook in
-# docs/plans/prebuilt-binaries-out-of-repo.md). Bump only the main package.
+# docs/plans/done/prebuilt-binaries-out-of-repo.md). Bump only the main package.
 #
 # The main package's optionalDependencies pin is what lets EXTERNAL consumers
 # install the new binary. It is NOT a prerequisite for keeping this repo green:

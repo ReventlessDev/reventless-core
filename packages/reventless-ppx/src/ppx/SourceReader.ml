@@ -16,7 +16,7 @@
    the printer writes OCaml syntax, not ReScript.
 
    The parse is the compiler's. `read/read.ml` has bsc hand the tree over as it
-   does to the PPX (see docs/plans/source-reader-with-spans.md, S0 verdict). *)
+   does to the PPX (see docs/plans/done/source-reader-with-spans.md, S0 verdict). *)
 
 open Ppxlib
 

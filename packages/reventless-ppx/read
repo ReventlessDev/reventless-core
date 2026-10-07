@@ -4,7 +4,7 @@
 #   reventless-ppx-read [--bsc <path-to-bsc>] <file.res>
 #
 # Prints the file's declarations with their spans as JSON
-# (docs/plans/source-reader-with-spans.md). The binary ships beside ppx.exe in the
+# (docs/plans/done/source-reader-with-spans.md). The binary ships beside ppx.exe in the
 # per-platform package, and is found the way `bin` finds ppx.exe: sibling,
 # nested, or hoisted to an ancestor node_modules, then a local dune build.
 DIR="$(cd "$(dirname "$0")" && pwd)"

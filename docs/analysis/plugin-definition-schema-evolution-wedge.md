@@ -183,7 +183,7 @@ A payload written under an **older** schema does not: the stored form lacks keys
 writes as `null`. The idempotency branch would then emit one redundant `VersionConnected`, whose own
 payload is current-shaped, so the next deploy compares equal again — one extra event per plugin per
 schema change, self-correcting, and avoidable by decoding both sides at that one branch. Detail in
-[plugin-definition-schema-evolution-guards.md](../plans/plugin-definition-schema-evolution-guards.md).*
+[plugin-definition-schema-evolution-guards.md](../plans/done/plugin-definition-schema-evolution-guards.md).*
 
 ### E. Stop persisting derived metadata as event payload
 

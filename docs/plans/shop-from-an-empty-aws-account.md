@@ -30,7 +30,7 @@ The command names are placeholders until step 4 settles them.
   companion plan. Until it lands, this plan publishes the layer from the release
   download.
 - **Prebuilt compiler plugin (PPX) binaries for Intel Macs and Linux arm64.** That
-  belongs to [prebuilt-binaries-out-of-repo.md](./prebuilt-binaries-out-of-repo.md).
+  belongs to [prebuilt-binaries-out-of-repo.md](done/prebuilt-binaries-out-of-repo.md).
 - **The race where a plugin answers with its old definition during a deploy.** That
   belongs to [a-stale-handshake-answer-asks-again.md](./a-stale-handshake-answer-asks-again.md).
 - **Deploying without cloning the whole repository.** Worth doing later; not needed

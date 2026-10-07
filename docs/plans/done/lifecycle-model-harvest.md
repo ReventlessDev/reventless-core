@@ -17,9 +17,9 @@ obligation*.
 - [`docs/analysis/given-when-then-specifications.md`](../../analysis/given-when-then-specifications.md)
   [§5.6](../../analysis/given-when-then-specifications.md#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product) — the closed-world gate, which constrains the *generation* pipeline and is
   explicitly out of scope here.
-- [`docs/plans/lifecycle-transition-annotation.md`](../lifecycle-transition-annotation.md)
+- [`docs/plans/done/lifecycle-transition-annotation.md`](lifecycle-transition-annotation.md)
   — built `@transition` and its name check. This plan adds the behaviour check
-  that plan's [§6](../lifecycle-transition-annotation.md#6--risks) called for and could not build.
+  that plan's [§6](lifecycle-transition-annotation.md#6--risks) called for and could not build.
 - [`docs/analysis/rejected/command-lifecycle-guard-defaults.md`](../../analysis/rejected/command-lifecycle-guard-defaults.md)
   — the four options this supersedes.
 

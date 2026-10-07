@@ -19,7 +19,7 @@ copy of another's.
 - `docs/plans/done/ui-manifest-baked-emission.md` — the single-manifest bake this
   generalises. Read it first; everything here is its declaration growing a
   dimension.
-- `docs/plans/active-role-narrows-the-token.md` — decides what a role *may do*.
+- `docs/plans/done/active-role-narrows-the-token.md` — decides what a role *may do*.
   Independent of this plan and buildable in either order, but see §5: without it,
   this one curates a menu the server does not agree with.
 

@@ -20,7 +20,7 @@ acceptance checks and risks below are all written for B.
 **Builds on:** [served-buckets.md](./served-buckets.md) (the mint → store → serve
 loop), [platform-capability-provisioning-stage-2.md](./platform-capability-provisioning-stage-2.md)
 (declaration-driven object stores),
-[declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md)
+[declared-object-stores-without-host-ui-bundle.md](declared-object-stores-without-host-ui-bundle.md)
 (store endpoints as first-class outputs).
 
 ## The gap

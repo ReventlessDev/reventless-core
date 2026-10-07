@@ -24,7 +24,7 @@
     writes — every role switch reporting success and doing nothing. So the
     describe this already performs is also read for *what is attached*, and a
     slot held by anything else fails the deploy naming it. See [classifySlot] and
-    [docs/plans/active-role-store-scoped-to-the-pool.md].
+    [docs/plans/done/active-role-store-scoped-to-the-pool.md].
 
     🚨 **`UpdateUserPool` resets by omission.** The API requires "a value for all
     parameters that you don't want set to a default value". An attach that sends

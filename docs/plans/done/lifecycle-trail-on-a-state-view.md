@@ -17,7 +17,7 @@ state and without a line of per-domain code.
 - [`docs/plans/done/lifecycle-model-harvest.md`](./lifecycle-model-harvest.md)
   — derives each command's `allowedStates` / `targetState` from the GWT corpus.
   That is the lifecycle as *declared*; this is the lifecycle as *travelled*.
-- [`docs/plans/lifecycle-transition-annotation.md`](../lifecycle-transition-annotation.md)
+- [`docs/plans/done/lifecycle-transition-annotation.md`](lifecycle-transition-annotation.md)
   — `@transition` names the edges. Nothing yet records that a row took one.
 
 ---

@@ -79,7 +79,7 @@ describe("Auth_ActiveRoleStore_Ops.cognitoLookupName", () => {
 // Which store this deployment reads and writes. Two cases and no third: a stack
 // that creates its own provider owns everything attached to it, and a stack given
 // a provider owns none of it. See
-// [docs/plans/active-role-store-scoped-to-the-pool.md].
+// [docs/plans/done/active-role-store-scoped-to-the-pool.md].
 describe("Auth_ActiveRoleStore.chooseStore", () => {
   testSync("a stack that creates its own provider keeps its own table", () =>
     expect(Auth_ActiveRoleStore.chooseStore(~identityProviderId=None))->toEqual(

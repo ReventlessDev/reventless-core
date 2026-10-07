@@ -55,7 +55,7 @@ Two gaps in `SidecarEmit`, both found on `examples/online-shop-hybrid/ordering`'
 
 ## S2 — Release
 
-The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](../gwt-sidecar-refs-and-examples.md)
+The PPX release procedure, as in [gwt-sidecar-refs-and-examples.md](gwt-sidecar-refs-and-examples.md)
 R3. **Exit:** the published PPX writes `ref` and nested roles; the companion plan's E7d may rely
 on them.
 

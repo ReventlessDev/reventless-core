@@ -4,7 +4,7 @@
 // `.res.mjs` test outputs are absent, the project resolves to zero suites and
 // jest **exits 0** — a silent pass. That is how `reventless/core` (49 suites,
 // 518 tests) and `reventless/aws` (21 suites, 280 tests) went unrun in CI
-// without anything going red. See docs/plans/ci-unit-test-coverage-gap.md.
+// without anything going red. See docs/plans/done/ci-unit-test-coverage-gap.md.
 //
 // Projects listed in KNOWN_EMPTY are the documented remainder of that gap. They
 // are expected to be zero today; the check fails if one of them starts
@@ -64,7 +64,7 @@ const rows = projects.map((project) => {
     failures.push(
       `${project.displayName}: discovers 0 suites. Its test outputs are missing, ` +
         `so jest would silently pass. Build the package, or add it to KNOWN_EMPTY ` +
-        `with a note in docs/plans/ci-unit-test-coverage-gap.md.`,
+        `with a note in docs/plans/done/ci-unit-test-coverage-gap.md.`,
     );
   }
   if (count > 0 && expectedEmpty) {

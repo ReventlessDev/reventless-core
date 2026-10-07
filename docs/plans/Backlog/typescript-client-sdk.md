@@ -152,7 +152,7 @@ Steps:
 
 The SDK's subscription API is a thin wrapper around the framework's
 GraphQL subscription transport once that lands
-(`docs/plans/graphql-subscriptions-appsync.md`). Out of scope for this v1.
+(`docs/plans/done/graphql-subscriptions-appsync.md`). Out of scope for this v1.
 
 ### Phase 5 — Type generation from spec packages (optional)
 

@@ -2,7 +2,7 @@
 // and Pulumi-free so it ships as an EntryPoint module (`Auth_ActiveRoleStore`
 // bundles it and attaches it as the domain API's Lambda data source). See
 // [Upload_Presign_S3_Ops.res] for why an EntryPoint rather than a serialized
-// closure, and [docs/plans/active-role-narrows-the-token.md] §6 for the design.
+// closure, and [docs/plans/done/active-role-narrows-the-token.md] §6 for the design.
 //
 // What this writes is a *preference*, not a token. Cognito mints the token, and
 // the pre-token-generation trigger ([Auth_ActiveRoleTrigger_Ops.res]) reads this

@@ -19,7 +19,7 @@ semantic-type analysis.
 **Builds on:** [done/semantic-type-marker-and-storage-ref.md](./semantic-type-marker-and-storage-ref.md)
 — `Semantic.mark` / `Semantic.refined` are the mechanism — and
 [done/semantic-branded-scalars.md](./semantic-branded-scalars.md), whose module shape this
-follows exactly. [semantic-date-range.md](../semantic-date-range.md) is the consumer: its two parts
+follows exactly. [semantic-date-range.md](semantic-date-range.md) is the consumer: its two parts
 are `DateTime` fields and change with it.
 **Defers:** [Backlog/semantic-time-of-day.md](../Backlog/semantic-time-of-day.md) — the third member
 of the trio, held back on the two blockers stated in D6.
@@ -200,7 +200,7 @@ short `"date"`; only the module name carries the qualifier.
   exists to avoid.
 - **A wall-clock time is meaningless without a zone, and nothing here carries one.** The notification
   trait already records this gap in its own words: "Nothing in the framework carries a recipient
-  timezone" ([trait-notification.md:317](../trait-notification.md#L317)). A `TimeOfDay` would declare
+  timezone" ([trait-notification.md:317](trait-notification.md#L317)). A `TimeOfDay` would declare
   a value the platform cannot correctly render or compare — a type whose whole promise is that the
   declaration is trustworthy.
 

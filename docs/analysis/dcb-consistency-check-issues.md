@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-20
 **Scope**: correctness/robustness issues in the DCB optimistic-concurrency check enforced by the AWS `DcbEventLogStorage` adapter's per-tag fence sentinels. Companion to the historical options doc [dcb-dynamodb-consistency-check.md](dcb-dynamodb-consistency-check.md); this file is the live inventory.
-**Related**: plans [dcb-fence-scope-alignment.md](../plans/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/done/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/Backlog/dcb-monotonic-position-generation.md)
+**Related**: plans [dcb-fence-scope-alignment.md](../plans/done/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/done/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/Backlog/dcb-monotonic-position-generation.md)
 
 ## How the check works (one paragraph)
 
@@ -72,7 +72,7 @@ Align fence-bump scope with read scope. In `DcbEventLogStorage_DynamoDb_Runtime.
 - **Composite (multi-tag) clauses keep check+bump on all tags** (option B — see plan for why composite is left alone).
 - Unconditional bumps are restricted to partition tags (+ composite query tags), so secondary tags like `customerId` are never fenced.
 
-Verified with red→green unit tests on the built `TransactWriteItems` shape in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`. Remaining: live DynamoDB integration test (Issue 3) and an alpha `fence#*` row wipe on deploy (stale `fence#productId:*` rows still hold high positions from the old behaviour). Plan: [dcb-fence-scope-alignment.md](../plans/dcb-fence-scope-alignment.md).
+Verified with red→green unit tests on the built `TransactWriteItems` shape in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`. Remaining: live DynamoDB integration test (Issue 3) and an alpha `fence#*` row wipe on deploy (stale `fence#productId:*` rows still hold high positions from the old behaviour). Plan: [dcb-fence-scope-alignment.md](../plans/done/dcb-fence-scope-alignment.md).
 
 ---
 
@@ -88,7 +88,7 @@ Today the hole is masked only when the command topic FIFO-serializes commands pe
 
 **Fix direction**: at `after=None`, emit `attribute_not_exists(lastPosition)` as a conditional `Update` on the partition tag(s); keep non-partition single-tag reads as read-only `ConditionCheck` (`attribute_not_exists`); keep composite as-is. Add a red→green unit test (two concurrent `after=None` appends to the same partition — second must fail).
 
-### Fix (shipped 2026-06-20 — Phase 2 of [dcb-consistency-hardening](../plans/dcb-consistency-hardening.md))
+### Fix (shipped 2026-06-20 — Phase 2 of [dcb-consistency-hardening](../plans/done/dcb-consistency-hardening.md))
 
 The partition-tag `attribute_not_exists` variant above was **rejected** because it reintroduces Issue 4: a slice reading only a *subset* of a partition's event types sees `after=None`, but `fence#<key>` already exists (created by a different event type), so it would false-conflict. Shipped **option B** instead — a **per-(eventType, partition value) create guard**:
 
@@ -140,7 +140,7 @@ type filter (flattened `pos#<eventType>` attributes on the one fence item per pa
 check consumed types, bump produced types). Adapter-local — `cond.query` already carries the
 per-clause `eventTypes`. Plan: [dcb-fence-event-type-granularity.md](../plans/done/dcb-fence-event-type-granularity.md).
 This reverses the "per-(tag, event-type) fences are a non-goal" call in
-[dcb-fence-scope-alignment](../plans/dcb-fence-scope-alignment.md), which held only while no
+[dcb-fence-scope-alignment](../plans/done/dcb-fence-scope-alignment.md), which held only while no
 entity used one-event-type-per-attribute slices.
 
 ---
@@ -207,7 +207,7 @@ After [primary-tag partitioning](../plans/done/dcb-eventlog-primary-tag-partitio
 | Some([tag]) => queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, …)
 ```
 
-That returns only events whose **primary/partition** tag is `tag` (the events physically stored under `id="<key>:<value>"`). An event carrying `tag` as a **secondary** tag lives in a *different* partition (keyed by *its* primary tag) and is **not** returned. So a single-tag clause cannot read "every event tagged `T`" — only "every event *partitioned by* `T`". The per-tag `tag_<key>` GSIs that could answer the cross-partition form were disconnected by the partitioning change (`queryBySingleTag`/`queryBySingleTagStream` now have zero callers — see Perf lever #1 / [`dcb-consistency-hardening`](../plans/dcb-consistency-hardening.md) Phase 3) and the framework exposes no other path to it.
+That returns only events whose **primary/partition** tag is `tag` (the events physically stored under `id="<key>:<value>"`). An event carrying `tag` as a **secondary** tag lives in a *different* partition (keyed by *its* primary tag) and is **not** returned. So a single-tag clause cannot read "every event tagged `T`" — only "every event *partitioned by* `T`". The per-tag `tag_<key>` GSIs that could answer the cross-partition form were disconnected by the partitioning change (`queryBySingleTag`/`queryBySingleTagStream` now have zero callers — see Perf lever #1 / [`dcb-consistency-hardening`](../plans/done/dcb-consistency-hardening.md) Phase 3) and the framework exposes no other path to it.
 
 This is currently *intentional*: single-tag reads being partition-scoped is exactly what keeps **read-scope = fence-scope** (Issue 1). But it blocks a class of DCB decisions that is not exotic — it's the **canonical** DCB shape.
 

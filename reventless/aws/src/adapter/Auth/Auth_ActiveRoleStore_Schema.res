@@ -1,5 +1,5 @@
 // The active-role store's identity: what it is called, and how its rows are
-// keyed. See [docs/plans/active-role-store-scoped-to-the-pool.md].
+// keyed. See [docs/plans/done/active-role-store-scoped-to-the-pool.md].
 //
 // 🚨 **One definition, four consumers, and that is the whole reason this file
 // exists.** The deploy creates or looks the table up ([Auth_ActiveRoleStore]),

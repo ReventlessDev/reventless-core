@@ -135,7 +135,7 @@ housekeeping commit. C is subsumed by A.
    `optionalDependencies` bump + relock. Must not re-trigger a release loop —
    follow the existing `[skip ci]` convention used by
    `chore(release): version packages`.
-6. ✅ **Update the runbook.** `docs/plans/prebuilt-binaries-out-of-repo.md` and the
+6. ✅ **Update the runbook.** `docs/plans/done/prebuilt-binaries-out-of-repo.md` and the
    PPX guidance describe the two-step dance as mandatory; both need revising
    once phases 1–5 land.
 

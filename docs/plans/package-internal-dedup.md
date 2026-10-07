@@ -1,6 +1,6 @@
 # Plan: Package-internal dedup (five structural steps)
 
-**Status**: Proposed (2026-07-15). Split out of [quality-performance-hardening.md](quality-performance-hardening.md) Phase C4 — the remaining dedup items each carry enough risk or need a distinct decision that they don't belong in a single "cleanup" commit. Each is its own scoped, independently-verifiable step.
+**Status**: Proposed (2026-07-15). Split out of [quality-performance-hardening.md](done/quality-performance-hardening.md) Phase C4 — the remaining dedup items each carry enough risk or need a distinct decision that they don't belong in a single "cleanup" commit. Each is its own scoped, independently-verifiable step.
 
 **Not in scope (rejected from C4):**
 - **`Util_Adapter`/`Util_AdapterRuntime` merge** — rejected. Both are Pulumi-entangled (`Util_Adapter` carries `Pulumi.Output.all`/`apply` throughout; `Util_AdapterRuntime` is the leaner variant). The split is a deliberate runtime/deploy seam; merging risks reintroducing deploy-time Pulumi into the runtime graph — the exact regression the `*_Ops` split fixed. No safe dedup here.

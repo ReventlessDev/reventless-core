@@ -1,6 +1,6 @@
 # Analysis: DCB high-contention handling
 
-**Status**: Analysis (2026-06-21). Companion to [dcb-consistency-check-issues.md](dcb-consistency-check-issues.md) and the [dcb-consistency-hardening](../plans/dcb-consistency-hardening.md) roadmap (Phase 5a opt-in strong reads, Phase 6 / Issue 10 hot-tag contention).
+**Status**: Analysis (2026-06-21). Companion to [dcb-consistency-check-issues.md](dcb-consistency-check-issues.md) and the [dcb-consistency-hardening](../plans/done/dcb-consistency-hardening.md) roadmap (Phase 5a opt-in strong reads, Phase 6 / Issue 10 hot-tag contention).
 **Purpose**: treat *high contention* as a first-class concern rather than a side-effect of one knob. Enumerate the contention regimes a DCB slice can hit, the knobs available to relieve each, the sync→async lever specifically, and the control surfaces that could apply these knobs — including automatically. Grounds the decision to keep Phase 5a's strong-read flag build-time-only for now, and the decision *not* to close a naive auto-tuning loop.
 
 ---

@@ -6,7 +6,7 @@
 fix (this plan) not started.
 
 **Relates to:**
-[aws-platform-bundled-lambda-config-wiring.md](aws-platform-bundled-lambda-config-wiring.md)
+[aws-platform-bundled-lambda-config-wiring.md](done/aws-platform-bundled-lambda-config-wiring.md)
 (same "config outgrew the env var" shape, solved there for *static* plugin
 definition by bundling a `pluginDefinition.json` asset — that approach does **not**
 transfer here; see Background).

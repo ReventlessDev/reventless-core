@@ -4181,7 +4181,7 @@ fi
 
 # ─── The source reader (reventless-ppx-read) ─────────────────────────
 #
-# docs/plans/source-reader-with-spans.md. The reader is built by the dune build
+# docs/plans/done/source-reader-with-spans.md. The reader is built by the dune build
 # above; bsc is the workspace's own.
 
 echo ""

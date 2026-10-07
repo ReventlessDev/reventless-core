@@ -469,7 +469,7 @@ if the "which deploy is this?" question gets a good answer.
 ### 5.6 Tools on your machine
 
 - Publish PPX binaries for Intel Macs and Linux arm64 (the
-  [prebuilt-binaries plan](../plans/prebuilt-binaries-out-of-repo.md) already describes
+  [prebuilt-binaries plan](../plans/done/prebuilt-binaries-out-of-repo.md) already describes
   an Intel Mac route). When setup builds the PPX from source, install the OCaml packages
   first. Check the Node version at the start.
 - Find out whether the committed JavaScript is enough to deploy ([§3.1](#31-your-machine-and-the-tools)). If it is, add a

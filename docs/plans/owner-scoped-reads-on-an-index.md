@@ -25,7 +25,7 @@ through an authenticated GraphQL call — Acceptance 1, 2 and 4.<br/>
   Stays backlogged; shares the cursor path-tag and the keyset-cursor design below.
 - [owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md) —
   where `ownerField` is resolved and which doors consume it.
-- [active-role-narrows-the-token.md](active-role-narrows-the-token.md) — a
+- [active-role-narrows-the-token.md](done/active-role-narrows-the-token.md) — a
   narrowed token changes `_exempt`, which after this plan selects a *different
   physical read*, not just a different predicate.
 - [Backlog/denied-query-returns-empty.md](Backlog/denied-query-returns-empty.md),

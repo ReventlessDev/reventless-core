@@ -8,7 +8,7 @@ decision rather than from the module.
 `DateTime` and `CalendarDate` and explains why the third member of the trio does not follow them.
 **Prior art:** [done/semantic-branded-scalars.md](../done/semantic-branded-scalars.md) — the module
 template and the one-grammar rule this type cannot currently satisfy;
-[semantic-date-range.md](../semantic-date-range.md) — the composite template, and its *Out of scope*
+[semantic-date-range.md](../done/semantic-date-range.md) — the composite template, and its *Out of scope*
 entry on named zones, which is the same wall this hits.
 
 ## What it would be
@@ -44,7 +44,7 @@ job as putting the type on a view.
 `timezone` / `time zone` / `tzid` / `IANA` returns nothing at all. The notification trait already
 recorded this from the other side — "Nothing in the framework carries a recipient timezone, so 'a
 `dateTime` in the recipient's zone' had no input to read"
-([trait-notification.md:317](../trait-notification.md#L317)) — and the date-range plan put named
+([trait-notification.md:317](../done/trait-notification.md#L317)) — and the date-range plan put named
 zones out of scope for the same reason.
 
 **The UI has no reader.** `AutoSemantics` parses no time semantic, and `format: "time"` is not

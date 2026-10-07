@@ -1,5 +1,5 @@
 // The cross-provider contract for "a caller holding several roles acting as one
-// of them" — see [docs/plans/active-role-narrows-the-token.md].
+// of them" — see [docs/plans/done/active-role-narrows-the-token.md].
 //
 // The narrowing itself is minted in two places that cannot share code: the local
 // platform signs its own tokens (`LocalAuth.Login`), and on AWS the minting point
@@ -56,7 +56,7 @@ let staleRoleClaim = "activeRoleStale"
 // `platform:activeRoleStore` that follows it; elsewhere the shape differs and the
 // rule does not. It cannot be a `conformanceCases` entry — those are
 // `(membership, requested) → expected`, and this is about *where two deployments
-// keep state*. See [docs/plans/active-role-store-scoped-to-the-pool.md].
+// keep state*. See [docs/plans/done/active-role-store-scoped-to-the-pool.md].
 
 /**
 The conformance table §6 of the plan requires: the same (membership, requested,

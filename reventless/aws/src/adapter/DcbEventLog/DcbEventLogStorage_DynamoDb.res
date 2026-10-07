@@ -29,7 +29,7 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   // partition), and a future cross-partition secondary-tag read (Phase 7) goes
   // `Query` (keys) → `BatchGetItem` (payloads against the base table). KEYS_ONLY
   // drops the per-GSI event-payload storage multiplier and most of the per-write
-  // WCU while keeping the index queryable. See docs/plans/dcb-consistency-hardening.md
+  // WCU while keeping the index queryable. See docs/plans/done/dcb-consistency-hardening.md
   // Phase 3.
   let globalSecondaryIndexes =
     indexes

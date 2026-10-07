@@ -58,7 +58,7 @@ schemas, so:
 - Custom scalars (DateTime, Json, etc.) beyond the standard GraphQL ones —
   emit as `String` initially; richer mapping is a follow-on.
 - Subscription type derivation — subscriptions follow a different shape;
-  see `docs/plans/graphql-subscriptions-appsync.md`.
+  see `docs/plans/done/graphql-subscriptions-appsync.md`.
 - GraphQL federation — out of scope for v1; the derived SDL is a single
   schema per platform.
 

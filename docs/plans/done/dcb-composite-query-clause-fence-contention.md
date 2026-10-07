@@ -13,7 +13,7 @@ for the provenance/`meta.service` follow-up.
 **Status (original):** Proposed (evidence-gated, opened 2026-07-08) — real-DynamoDB burst trace in hand.
 **Builds on:** [done/dcb-composite-fence-residual-burst-contention.md](dcb-composite-fence-residual-burst-contention.md)
 (collapsed per-*member* fences to one synthetic composite fence and closed the deployed-Lambda
-`partitionTag` wiring gap) and [dcb-fence-scope-alignment.md](../dcb-fence-scope-alignment.md)
+`partitionTag` wiring gap) and [dcb-fence-scope-alignment.md](dcb-fence-scope-alignment.md)
 (which deferred the composite sentinel as *"only needed if a slice writes a >1-tag event but
 queries a subset of those tags, which no current slice does"* — that case now exists).
 

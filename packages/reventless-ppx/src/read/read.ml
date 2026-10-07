@@ -13,7 +13,7 @@
      read --emit <out.json> --source <file.res> <input.ast> <output.ast>
 
    writes the JSON, and passes the tree through unchanged. See
-   docs/plans/source-reader-with-spans.md. *)
+   docs/plans/done/source-reader-with-spans.md. *)
 
 let read_file path =
   let ic = open_in_bin path in

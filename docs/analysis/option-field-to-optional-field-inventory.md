@@ -108,7 +108,7 @@ Free by fact (a): no wire change, no `check:graphql` movement, no consumer impac
 | ⏸️ | [examples/…/catalog/…/Products.res](../../examples/online-shop-hybrid/catalog/src/Product/StateViewStream/Products.res) | 1 | `@groupBy categoryName` on `type state` |
 | ❌ | — *excluded* — | 6 | [§6](#6--do-not-convert--6-fields) |
 
-**Caveat on the example view states.** [`semantic-date-range.md`](../plans/semantic-date-range.md)
+**Caveat on the example view states.** [`semantic-date-range.md`](../plans/done/semantic-date-range.md)
 set a deliberate convention while adding `deliveryWindow`: *the command/event field is an optional
 field (`?`); the view state stays `option<>`*. Seven of the Tier-1 example rows (`Customer_Behavior`
 ×4, `Orders` state ×2, `Products` ×1) are exactly those view states. Converting them is safe on the

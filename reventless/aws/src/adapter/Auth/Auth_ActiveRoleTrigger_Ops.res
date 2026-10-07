@@ -1,6 +1,6 @@
 // Runtime handler for the Cognito **pre token generation** trigger — the AWS
 // minting point for "acting as one of the roles you hold". See
-// [docs/plans/active-role-narrows-the-token.md] §6.
+// [docs/plans/done/active-role-narrows-the-token.md] §6.
 //
 // Compiled, type-checked and Pulumi-free so it ships as an EntryPoint module
 // ([Auth_ActiveRoleTrigger.res] bundles it and attaches it to the user pool).

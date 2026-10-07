@@ -10,7 +10,7 @@ gives an id only to the test directly below its marker; the guide says so. C4 (s
 which renames "specification" to "scenario" throughout the codegen and the VS Code extension.
 Its Phase 5 switches the marker the codegen writes, and it must not start before this plan's
 release. Both are sequenced by reventless-tools `docs/plans/scenario-authoring-orchestrator.md`,
-which ships this plan in one core release with `docs/plans/semantic-value-types.md`.
+which ships this plan in one core release with `docs/plans/done/semantic-value-types.md`.
 
 ## Goal
 

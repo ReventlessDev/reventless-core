@@ -9,7 +9,7 @@ crash with a silently missing Lambda, and the deeper truth was that a side-effec
 blocker to recorded latent race. None of this affects an existing stack.
 
 **Found by:** the first-ever deploy of `online-shop-aggregates`, standing up the `PlatformOwned`
-serving arm — see [declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md).
+serving arm — see [declared-object-stores-without-host-ui-bundle.md](declared-object-stores-without-host-ui-bundle.md).
 
 **Verification loop is much cheaper than recorded.** `pulumi preview` against a warm `pr-verify`
 stack reproduces the export-serialization failures in ~40s with no AWS writes; the plan previously

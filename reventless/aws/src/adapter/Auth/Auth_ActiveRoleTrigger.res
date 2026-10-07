@@ -1,7 +1,7 @@
 // Deploy-time half of the Cognito pre-token-generation trigger — the Lambda that
 // narrows `cognito:groups` to the role a caller chose. Runtime logic lives in
 // [Auth_ActiveRoleTrigger_Ops.res]; see
-// [docs/plans/active-role-narrows-the-token.md] §6.
+// [docs/plans/done/active-role-narrows-the-token.md] §6.
 //
 // `make` provisions the function and its execution role (Logs + a read of the
 // one role-state table). It does **not** attach itself to a user pool, and does

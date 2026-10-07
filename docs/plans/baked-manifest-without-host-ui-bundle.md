@@ -6,7 +6,7 @@
 **Builds on:** [ui-manifest-baked-emission.md](./done/ui-manifest-baked-emission.md) (the bake itself,
 landed) and [done/curated-manifest-per-journey.md](./done/curated-manifest-per-journey.md)
 (per-audience files).
-**Same shape as:** [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md)
+**Same shape as:** [declared-object-stores-without-host-ui-bundle.md](done/declared-object-stores-without-host-ui-bundle.md)
 — a capability whose provisioning is unconditional and whose *consumers* all sit inside
 `switch hostUiBundle`. That plan settled the principle this one reuses, and the one place it
 does not apply is called out in [The decision](#the-decision-this-plan-turns-on).
@@ -152,7 +152,7 @@ consumer to read rather than two.
 
 The choice between "platform hosts the shell" and "shell ships from its own stack" now has a
 consequence for discovery, next to the one it already has for stores. Record in
-[host-ui-shell-config-choices.md](./host-ui-shell-config-choices.md) which side writes which key
+[host-ui-shell-config-choices.md](done/host-ui-shell-config-choices.md) which side writes which key
 in each case, and that a shell stack must not derive manifest URLs itself.
 
 ## Verification

@@ -1,5 +1,5 @@
 // The role a caller chose to act as, as server-side state — and the one door
-// that writes it. See [docs/plans/active-role-narrows-the-token.md] §6.
+// that writes it. See [docs/plans/done/active-role-narrows-the-token.md] §6.
 //
 // Why state rather than a parameter on the token request: Cognito "doesn't
 // include data from the ClientMetadata parameter in AdminInitiateAuth and
@@ -32,7 +32,7 @@
 //
 // 🚨 **The rows follow the identity provider, not the stack** — see
 // [ReventlessCore.Auth_ActiveRole] for the contract and
-// [docs/plans/active-role-store-scoped-to-the-pool.md] for the defect that
+// [docs/plans/done/active-role-store-scoped-to-the-pool.md] for the defect that
 // produced it. A pool holds one pre-token-generation trigger, so two stacks
 // sharing a pool with a table each have the winning trigger reading rows the
 // serving resolver never wrote: every switch succeeds and does nothing.

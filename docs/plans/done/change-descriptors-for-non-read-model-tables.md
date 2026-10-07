@@ -6,8 +6,8 @@
 `reventless/aws/src/adapter/StateTopic/`. No behavior change for read models —
 the existing entry point is reimplemented as a caller of the generalized one,
 so an unchanged stack must preview as zero changes. Extends the publish chain
-built in [graphql-subscriptions-appsync.md](../graphql-subscriptions-appsync.md);
-orthogonal to [realtime-change-descriptors.md](../realtime-change-descriptors.md),
+built in [graphql-subscriptions-appsync.md](graphql-subscriptions-appsync.md);
+orthogonal to [realtime-change-descriptors.md](realtime-change-descriptors.md),
 which reshapes the payload and channel layout for read models and applies to
 whatever registers, including anything this plan admits.
 

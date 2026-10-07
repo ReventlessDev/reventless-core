@@ -29,7 +29,7 @@ Remaining (carved out — this plan is complete):
   [Backlog/dcb-fence-granularity-integration-test.md](../Backlog/dcb-fence-granularity-integration-test.md)
   (needs DynamoDB Local; the existing suite is marked PENDING REWRITE at its header).
 **Analysis**: [dcb-consistency-check-issues.md](../../analysis/dcb-consistency-check-issues.md) — Issue 4 (upgraded severity).
-**Sibling plans**: [dcb-fence-scope-alignment.md](../dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](dcb-hot-tag-fence-contention.md).
+**Sibling plans**: [dcb-fence-scope-alignment.md](dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](dcb-hot-tag-fence-contention.md).
 
 ## Symptom (live, 2026-06-23)
 
@@ -89,7 +89,7 @@ is exactly the Issue 3 backend divergence; fence-shape bugs are invisible to GWT
 
 ### Relationship to the Issue 1 fix
 
-[dcb-fence-scope-alignment](../dcb-fence-scope-alignment.md) fixed the cross-partition
+[dcb-fence-scope-alignment](dcb-fence-scope-alignment.md) fixed the cross-partition
 *secondary*-tag case (PlaceOrder/`productId`) by bumping `fence#T` only when `T` is the
 event's **partition** tag. That does not help here: `productId` **is** the partition tag for
 all four Product slices, so all four legitimately bump `fence#productId:P`. The remaining

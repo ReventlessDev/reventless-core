@@ -149,7 +149,7 @@ let _resolveUncached = (): cognitoUserPool => {
   // Provisioned ahead of the pool in both pool modes: the pre-token-generation
   // trigger reads these rows, and in auto mode the pool is declared carrying the
   // trigger's ARN — so table → trigger → pool is a forced order, not a choice.
-  // See [docs/plans/active-role-narrows-the-token.md] §6.
+  // See [docs/plans/done/active-role-narrows-the-token.md] §6.
   //
   // Unconditional, including for a unified-API platform that mounts no
   // `Platform_SetActiveRole` and so can never write a row.
@@ -174,7 +174,7 @@ let _resolveUncached = (): cognitoUserPool => {
   // provider: named by derivation from the provider id, looked up rather than
   // created, and provisioned outside every stack alongside the pool itself. See
   // [Auth_ActiveRoleStore.chooseStore] and
-  // [docs/plans/active-role-store-scoped-to-the-pool.md].
+  // [docs/plans/done/active-role-store-scoped-to-the-pool.md].
   let activeRoleTable = Auth_ActiveRoleStore.resolveTable(
     ~choice=Auth_ActiveRoleStore.chooseStore(~identityProviderId=existingPoolId),
     ~opts={},
@@ -363,7 +363,7 @@ let _resolveUncached = (): cognitoUserPool => {
   //
   // `Arn` survives the rename on purpose — the value *is* an ARN, and `urn` in a
   // Pulumi codebase already means the Pulumi URN every resource carries. See
-  // [docs/plans/active-role-store-scoped-to-the-pool.md] step 7.
+  // [docs/plans/done/active-role-store-scoped-to-the-pool.md] step 7.
   let managedStr = Pulumi.Output.make(result.managed ? "true" : "false")
   let regionOutput = Pulumi.Output.make(regionStr)
 

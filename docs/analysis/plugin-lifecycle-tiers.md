@@ -13,7 +13,7 @@ precise slot.
 
 This document captures the conceptual model. The implementation lives in
 `PluginSpec` / `PluginBehavior`; the AWS workstream that operationalises
-the admin tier is [docs/plans/aws-plugin-activate-deactivate-resolver.md](../plans/aws-plugin-activate-deactivate-resolver.md).
+the admin tier is [docs/plans/done/aws-plugin-activate-deactivate-resolver.md](../plans/done/aws-plugin-activate-deactivate-resolver.md).
 
 ## The three tiers
 
@@ -205,7 +205,7 @@ GraphQL "unknown field" error.
   — preserves `apiSchemaFragment` / `uiFragments` across status
   transitions via `UpdateWithDefault`.
 - **Admin tier workstream**:
-  [docs/plans/aws-plugin-activate-deactivate-resolver.md](../plans/aws-plugin-activate-deactivate-resolver.md)
+  [docs/plans/done/aws-plugin-activate-deactivate-resolver.md](../plans/done/aws-plugin-activate-deactivate-resolver.md)
   — implements the tier 2 surface contract end-to-end.
 - **UI fragment lifecycle**:
   [docs/plans/ui-fragment-registry.md](../plans/ui-fragment-registry.md)

@@ -81,7 +81,7 @@ not derived from annotations on the spec like every other aggregate (harmonizati
 analysis §1).
 
 **The annotation is `@transition`, not `@allowedStates`.** This item was written
-before [lifecycle-transition-annotation.md](../lifecycle-transition-annotation.md)
+before [lifecycle-transition-annotation.md](../done/lifecycle-transition-annotation.md)
 replaced the `@allowedStates` / `@targetState` pair with the single `@transition`
 attribute; the removed attributes are now a hard PPX error. The distinction matters
 here rather than being cosmetic: `@allowedStates` carried only the from-set, and it

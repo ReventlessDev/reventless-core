@@ -59,7 +59,7 @@ sub-builds — no manual `git checkout` restore is needed anymore.
 **Status:** Ready to execute (2026-07-25). Spike done; mechanism decided. **This is the single
 active plan** for the whole workstream — self-contained (background folded into Appendix C).
 **Owner:** Martin
-**Supersedes `docs/plans/ci-unit-test-coverage-gap.md`**, now an **archived reference** (its
+**Supersedes `docs/plans/done/ci-unit-test-coverage-gap.md`**, now an **archived reference** (its
 Option C decision, its dark-coverage diagnosis, and its completed **aws slice (2026-07-22)** are
 summarized in Appendix C; the `check-jest-projects.mjs` guard it shipped is this plan's
 acceptance harness). Do not execute that doc — execute this one.
@@ -293,7 +293,7 @@ spike, carries no release-mode consumer risk, and touches the least surface.
 
 Everything needed to execute is above; this preserves the diagnosis and history so this plan
 stands alone. Full detail (incl. diagnostic war-stories) remains in the archived
-`docs/plans/ci-unit-test-coverage-gap.md`.
+`docs/plans/done/ci-unit-test-coverage-gap.md`.
 
 **How the gap was found (2026-07-22).** While verifying a rename, `CommandAuthorizationTest`
 and `Auth_CognitoTest` couldn't be run via root `pnpm test` — they exist and pass, CI just

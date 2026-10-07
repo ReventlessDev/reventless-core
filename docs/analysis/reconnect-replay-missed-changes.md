@@ -484,7 +484,7 @@ matters.
 ## Cross-References
 
 - [`docs/guides/appsync-events-live-updates.md`](../guides/appsync-events-live-updates.md) — current live-update wire contract.
-- [`docs/plans/realtime-change-descriptors.md`](../plans/realtime-change-descriptors.md) — §3 (position), §4 (BulkInvalidated coalescer), §8 (OnSubscribe hook) — supplies infrastructure this plan can build on.
+- [`docs/plans/done/realtime-change-descriptors.md`](../plans/done/realtime-change-descriptors.md) — §3 (position), §4 (BulkInvalidated coalescer), §8 (OnSubscribe hook) — supplies infrastructure this plan can build on.
 - [`docs/plans/Backlog/reventless-client-transport.md`](../plans/Backlog/reventless-client-transport.md) — `pullEvents` (Option D substrate; useful for DCB plugins).
 - [`docs/analysis/rescript-client-architecture.md`](rescript-client-architecture.md) — online-first vs offline-first; the latter sidesteps this problem by treating disconnect as the normal mode.
 - [`docs/analysis/reventless-livestore-integration.md`](reventless-livestore-integration.md) — full client-side event log alternative.

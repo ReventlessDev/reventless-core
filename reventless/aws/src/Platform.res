@@ -2543,7 +2543,7 @@ module MakeWithConfig = (
     }
 
     // Where a caller records the role they want to act as
-    // (docs/plans/active-role-narrows-the-token.md §6). The mutation only writes
+    // (docs/plans/done/active-role-narrows-the-token.md §6). The mutation only writes
     // a preference; the pre-token-generation trigger reads the row and re-checks
     // it against real membership before narrowing anything, so this door grants
     // nobody anything on its own.

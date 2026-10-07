@@ -18,7 +18,7 @@ GraphQL API) ·
 claim-on-commit → expire-what-stays-pending; **this is the disposal mechanism, and it already
 exists**) ·
 [done/product-image-optional-storage-ref.md](./done/product-image-optional-storage-ref.md) ·
-[domain-trait-extraction-online-shop-hybrid.md](./domain-trait-extraction-online-shop-hybrid.md)
+[domain-trait-extraction-online-shop-hybrid.md](done/domain-trait-extraction-online-shop-hybrid.md)
 (the framework seams this workstream needs)
 
 ---

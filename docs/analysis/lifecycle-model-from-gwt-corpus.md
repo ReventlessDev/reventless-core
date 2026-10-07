@@ -404,7 +404,7 @@ no comments.
   its four options are answered by §7.2 above. Its closing note — that a GWT
   helper checking from-sets against `decide` "is worth more than any of items
   1–4" — is what this document builds out.
-- [`lifecycle-transition-annotation.md`](../plans/lifecycle-transition-annotation.md) —
+- [`lifecycle-transition-annotation.md`](../plans/done/lifecycle-transition-annotation.md) —
   built the annotation and its assembly-time name check, and states the premise
   this analysis takes as given: *"a from-set is a claim about `decide`, so it is
   read off `decide` or it is not read at all."*

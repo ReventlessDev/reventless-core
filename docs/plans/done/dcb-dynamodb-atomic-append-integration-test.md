@@ -1,6 +1,6 @@
 # Plan: AWS Integration Test for DCB Atomic Append
 
-**Status**: **Done (2026-06-20)** — implemented as Phase 1 of [dcb-consistency-hardening.md](../dcb-consistency-hardening.md); see that plan's Phase 1 section for the shipped artefacts and scenario coverage.
+**Status**: **Done (2026-06-20)** — implemented as Phase 1 of [dcb-consistency-hardening.md](dcb-consistency-hardening.md); see that plan's Phase 1 section for the shipped artefacts and scenario coverage.
 **Parent plan**: [dcb-dynamodb-atomic-append.md](dcb-dynamodb-atomic-append.md)
 **Analysis**: [dcb-dynamodb-consistency-check.md](../../analysis/dcb-dynamodb-consistency-check.md)
 

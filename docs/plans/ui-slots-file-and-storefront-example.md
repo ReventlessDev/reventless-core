@@ -70,7 +70,7 @@ This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
 be tested and be documented before the consumer exists.
 
-**Sibling work:** [`local-ui-hints-emission.md`](./local-ui-hints-emission.md) —
+**Sibling work:** [`local-ui-hints-emission.md`](done/local-ui-hints-emission.md) —
 the same seam, one file over. That plan taught the in-memory platform to serve
 the `ui-hints.json` a deployment declares (`b29b1044f`, `8258c8581`), including
 the baseline handling and the watch that reloads it on save. This plan adds the

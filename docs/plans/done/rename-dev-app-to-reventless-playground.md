@@ -77,7 +77,7 @@ Bump the package version (`1.0.0-alpha.27` or whatever is next in the alpha trai
 
 These are decision documents (no code refs into the package). Update prose only:
 
-- [docs/plans/entity-reference-dropdowns.md](entity-reference-dropdowns.md)
+- [docs/plans/done/entity-reference-dropdowns.md](entity-reference-dropdowns.md)
 - [docs/plans/online-shop-hybrid-autoui-local-e2e.md](online-shop-hybrid-autoui-local-e2e.md)
 - [docs/plans/pnpm-migration.md](pnpm-migration.md)
 - [docs/plans/done/online-shop-hybrid-autoui-devapp.md](done/online-shop-hybrid-autoui-devapp.md) — done plans are historical; leave as-is.
