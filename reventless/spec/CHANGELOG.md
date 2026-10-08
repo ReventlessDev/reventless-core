@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.159 (2026-10-08)
+
+### Bug Fixes
+
+* **spec:** check-lifecycle leaves an app's lifecycle-model.json alone when a plugin could not be read ([70202bc](https://github.com/ReventlessDev/reventless-core/commit/70202bc78491e797638919e649238690e8466e27))
+
+
 # 3.0.0-alpha.158 (2026-10-06)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec
