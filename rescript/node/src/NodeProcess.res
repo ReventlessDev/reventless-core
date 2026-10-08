@@ -23,6 +23,11 @@ external exit: int => unit = "exit"
 @val @scope("process")
 external pid: int = "pid"
 
+/** The pid of the process that started this one: a process sure to be alive
+    while this one runs, and to outlive it. */
+@val @scope("process")
+external ppid: int = "ppid"
+
 /** The absolute path of the running `node` binary — what a test spawns a script
     with, so the child runs on the same Node as the parent rather than whichever
     `node` is first on `PATH`. */
