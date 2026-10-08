@@ -1504,6 +1504,7 @@ let main = () =>
         let exampleDir = root.dir
         let derived = []
         let dirs = pluginDirsIn(exampleDir)
+        let failedBefore = Array.length(failures)
 
         for j in 0 to Array.length(dirs) - 1 {
           switch dirs->Array.get(j) {
@@ -1531,7 +1532,10 @@ let main = () =>
           }
         }
 
-        if Array.length(dirs) > 0 && !json {
+        // A plugin that could not be read derived nothing, so the golden would lose its commands
+        // without a scenario having changed: it is left as it is until every plugin reads.
+        let complete = Array.length(failures) == failedBefore
+        if Array.length(dirs) > 0 && complete && !json {
           let dir = NodePath.join([exampleDir, "schema"])
           if !(dir->NodeFs.existsSync) {
             NodeFs.mkdirSync(dir, {recursive: true})

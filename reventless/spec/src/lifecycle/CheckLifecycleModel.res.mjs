@@ -1243,6 +1243,7 @@ function main() {
         let exampleDir = root.dir;
         let derived = [];
         let dirs = pluginDirsIn(exampleDir);
+        let failedBefore = failures.length;
         for (let j = 0, j_finish = dirs.length; j < j_finish; ++j) {
           let pluginDir = dirs[j];
           if (pluginDir !== undefined) {
@@ -1266,7 +1267,8 @@ function main() {
             }
           }
         }
-        if (dirs.length !== 0 && !json) {
+        let complete = failures.length === failedBefore;
+        if (dirs.length !== 0 && complete && !json) {
           let dir = Nodepath.join(exampleDir, "schema");
           if (!Nodefs.existsSync(dir)) {
             Nodefs.mkdirSync(dir, {
