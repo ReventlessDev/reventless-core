@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.22 (2026-10-08)
+
+### Features
+
+* **node:** bind worker threads, interval timers and the parent pid ([8d25034](https://github.com/ReventlessDev/reventless-core/commit/8d2503404fd33f585c41082bd5622d08e85637e3))
+
+
 # 2.0.0-alpha.21 (2026-10-06)
 
 ### Features
