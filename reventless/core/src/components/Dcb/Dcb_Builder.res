@@ -89,6 +89,16 @@ let emptyResult: dcbResult = {
   eventLogEntries: [],
 }
 
+// An inbound slice's door rule, read off its spec.
+let inboundDoorPermission = (
+  commandSchema: S.t<'command>,
+  commandAuthorization: 'command => Reventless.Authorization.rule<'role>,
+) =>
+  Plugin_Structure.inboundDoorPermission(
+    ~commandSchema=commandSchema->S.castToUnknown,
+    ~commandAuthorization=cmd => cmd->commandAuthorization->Reventless.Authorization.named,
+  )
+
 module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
@@ -749,6 +759,10 @@ module Make = (
             registerResolver(
               ~fieldName,
               ~externalInputSchema=ITS.Spec.externalInputSchema->S.castToUnknown,
+              ~permission=?inboundDoorPermission(
+                ITS.Spec.commandSchema,
+                ITS.Spec.commandAuthorization,
+              ),
             )
           | None => ()
           }
@@ -865,16 +879,14 @@ module Make = (
             let raw: dict<JSON.t> = event->Obj.magic
             switch raw->Dict.get("__inboundTranslation") {
             | Some(_) =>
-              let fieldName =
-                raw
-                ->Dict.get("fieldName")
-                ->Option.flatMap(JSON.Decode.string)
-                ->Option.getOr("")
-              let args = raw->Dict.get("arguments")->Option.getOr(JSON.Encode.null)
-              switch receivers->Dict.get(fieldName) {
+              let invocation: InboundTranslationSlice_Callback.doorInvocation = event->Obj.magic
+              switch receivers->Dict.get(invocation.fieldName) {
               | Some(receiveFn) =>
                 Effect.promise(async () => {
-                  let result = await receiveFn(args)
+                  let result = await receiveFn(
+                    invocation.arguments,
+                    ~caller=InboundTranslationSlice_Callback.doorCaller(invocation.identity),
+                  )
                   let response =
                     result
                     ->InboundTranslationSlice_Callback.receiveResultToOutcome
@@ -1034,33 +1046,9 @@ module Make = (
         })
       }
 
-      // DCB-specific API schema entries
-      //
-      // Stage E2: a DCB StateChangeSlice has a single GraphQL field but its
-      // command type may declare multiple constructors with different
-      // authorization rules. The Cognito group directive operates at field
-      // granularity, so we read the auth for the first constructor (matching
-      // the existing dcbTags convention at line 549 above). When all
-      // constructors share the file-level default, this is exact; when they
-      // differ, resolver-level enforcement still fires inside the per-slice
-      // handler (the file-level rule applied here is the least-restrictive
-      // bound).
-      let permissionForFirstConstructor = (
-        ~commandSchema: S.t<unknown>,
-        ~commandAuthorization: unknown => Reventless.Authorization.permission,
-      ): option<Reventless.Authorization.permission> => {
-        let names = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
-        switch names->Array.get(0) {
-        | None => None
-        | Some(first) =>
-          let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(
-            commandSchema->Obj.magic,
-            first,
-          )
-          let syntheticCmd: unknown = hasPayload ? {"TAG": first}->Obj.magic : first->Obj.magic
-          Some(commandAuthorization(syntheticCmd))
-        }
-      }
+      // DCB-specific API schema entries. A state change slice has one field per
+      // constructor, each gated by its own rule; an inbound slice has one field,
+      // gated by `inboundDoorPermission`, and checks each command in `receive`.
       let mutationEntriesFromSlices =
         stateChangeSlices->Array.filterMap((module(S: StateChangeSlice.T)) => {
           let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
@@ -1108,14 +1096,10 @@ module Make = (
         inboundTranslationSlices->Array.map((module(ITS: InboundTranslationSlice.T)) => {
           let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
           let fieldPermissions = Dict.make()
-          switch permissionForFirstConstructor(
-            ~commandSchema=ITS.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
-            ~commandAuthorization=command =>
-              ITS.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
-          ) {
-          | Some(rule) => fieldPermissions->Dict.set(fieldName, rule)
-          | None => ()
-          }
+          inboundDoorPermission(
+            ITS.Spec.commandSchema,
+            ITS.Spec.commandAuthorization,
+          )->Option.forEach(rule => fieldPermissions->Dict.set(fieldName, rule))
           {
             ReventlessInfra.Api.fieldNames: [fieldName],
             commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,

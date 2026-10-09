@@ -1140,6 +1140,23 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
+let callerIdentity = `identity: isCognito
+        ? {
+            userId: id.sub,
+            username: id.username,
+            groups: id.claims?.['cognito:groups'] ?? [],
+            claims: id.claims,
+            provider: 'Cognito'
+          }
+        : id != null
+          ? {
+              userArn: id.userArn ?? null,
+              accountId: id.accountId ?? null,
+              username: id.username ?? null,
+              provider: 'IAM'
+            }
+          : null`;
+
 function invokeCommandGenerator(command) {
   return importUtil + `
 export function request(ctx) {
@@ -1155,22 +1172,7 @@ export function request(ctx) {
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: isCognito
-        ? {
-            userId: id.sub,
-            username: id.username,
-            groups: id.claims?.['cognito:groups'] ?? [],
-            claims: id.claims,
-            provider: 'Cognito'
-          }
-        : id != null
-          ? {
-              userArn: id.userArn ?? null,
-              accountId: id.accountId ?? null,
-              username: id.username ?? null,
-              provider: 'IAM'
-            }
-          : null
+      ` + callerIdentity + `
     }
   };
 }
@@ -1193,22 +1195,7 @@ export function request(ctx) {
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: isCognito
-        ? {
-            userId: id.sub,
-            username: id.username,
-            groups: id.claims?.['cognito:groups'] ?? [],
-            claims: id.claims,
-            provider: 'Cognito'
-          }
-        : id != null
-          ? {
-              userArn: id.userArn ?? null,
-              accountId: id.accountId ?? null,
-              username: id.username ?? null,
-              provider: 'IAM'
-            }
-          : null
+      ` + callerIdentity + `
     }
   };
 }
@@ -1219,12 +1206,15 @@ export function request(ctx) {
 function invokeInboundTranslation(fieldName) {
   return importUtil + `
 export function request(ctx) {
+  const id = ctx.identity;
+  const isCognito = id != null && id.sub != null;
   return {
     operation: 'Invoke',
     payload: {
       __inboundTranslation: true,
       fieldName: '` + fieldName + `',
-      arguments: ctx.args
+      arguments: ctx.args,
+      ` + callerIdentity + `
     }
   };
 }
@@ -1355,6 +1345,7 @@ export {
   putItem,
   addItemToList,
   deleteItem,
+  callerIdentity,
   invokeCommandGenerator,
   invokeDcbMutation,
   invokeInboundTranslation,

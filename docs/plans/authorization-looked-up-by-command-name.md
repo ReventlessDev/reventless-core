@@ -47,7 +47,8 @@ The receiving side is typed `~commandAuthorization: unknown => permission` in
 
 The fakes are built in four places, each with its own `Obj.magic`:
 `Plugin_Structure.syntheticCommand`, `Plugin_Builder` (line 238),
-`Dcb_Builder.permissionForFirstConstructor` and its sibling loop, and
+`Plugin_Structure.constructorPermissions` (inbound translations' door), the
+`Dcb_Builder` slice loop, and
 `CommandGeneratorResolvers_GraphQL.syntheticCommand`. The same files also cast
 `commandSchema` to `S.t<unknown>` with `Obj.magic` where `S.castToUnknown` would
 do.
@@ -113,8 +114,8 @@ once the GWT reads the name.
   than authorization needs it.
 - The `commandSchema->Obj.magic` casts in the same functions become
   `S.castToUnknown`.
-- `Dcb_Builder.permissionForFirstConstructor` keeps its "first constructor"
-  semantics, now as `authorizationOf(first)`.
+- `Plugin_Structure.inboundDoorPermission` keeps its "any constructor" semantics,
+  now as `Authorization.anyOf` over `authorizationOf` of every constructor.
 
 ## §4 — Order of work
 

@@ -33,6 +33,27 @@ function admits(rule, signedIn, holds) {
   }
 }
 
+function anyOf(rules) {
+  if (rules.length === 0) {
+    return;
+  }
+  if (rules.some(r => r === "AllowAnonymous")) {
+    return "AllowAnonymous";
+  }
+  if (rules.some(r => r === "AllowAuthenticated")) {
+    return "AllowAuthenticated";
+  }
+  let roles = Array.from(new Set(rules.flatMap(rolesOf)).values());
+  if (roles.length !== 0) {
+    return {
+      TAG: "AllowRoles",
+      _0: roles
+    };
+  } else {
+    return "DenyAll";
+  }
+}
+
 function isAllowed(rule, identity) {
   return admits(rule, identity.userId !== "anonymous", role => identity.groups.includes(Role$Reventless.groupOf(role)));
 }
@@ -42,6 +63,7 @@ export {
   rolesOf,
   groupsOf,
   admits,
+  anyOf,
   isAllowed,
 }
 /* Role-Reventless Not a pure module */

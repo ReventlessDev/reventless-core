@@ -181,6 +181,13 @@ handle these rather than discover them:
   `AllowRoles([...])` for an operator-only replay door, or `@noApi` for none at
   all. Consider warning at build time when a slice declares `SignedBody` and
   leaves `commandAuthorization` at the default.
+- **The mutation door checks twice.** Before translating, the caller must satisfy at
+  least one constructor's rule, since no command exists yet. After translating, each
+  command is checked against its own rule, and one refused refuses the whole input
+  ([the inbound gate plan](../done/an-inbound-translation-is-gated-and-encoded-like-a-command.md#the-rule-at-the-door-and-the-rule-per-command)).
+  A URL has no Cognito caller, so its authentication replaces the first check. The
+  second still needs a caller to check: the leaning is that the webhook config names
+  the role the URL stands for, and the per-command check runs against it.
 - **The audit log sees both.** The audit row must record which door the input
   arrived through, or the log cannot answer "did the provider actually call us?"
 - `requestId` must stay unique across both.

@@ -249,7 +249,7 @@ sidecar. It is a new suffix, because readers take every `.model.json` for a comp
 **4c. Out of scope here:** `commandAuthorization` and the other file-level attributes. They are
 injected after the capture, and inbound authorization is read three different ways today
 ([analysis §3.1](../../analysis/testing-translation-slices.md#31-inbound-commandauthorization-is-enforced-only-on-aws-and-only-for-the-first-constructor)).
-[Its own plan](../an-inbound-translation-is-gated-and-encoded-like-a-command.md) settles that first.
+[Its own plan](an-inbound-translation-is-gated-and-encoded-like-a-command.md) settles that first.
 
 **4d. Tests.** A golden beside `RegisterShelf.model.golden.json` for an outbound spec with
 every new key, and one golden `.wiring.json` for a two-source automation.
@@ -267,9 +267,9 @@ every new key, and one golden `.wiring.json` for a two-source automation.
    messaging capability. Write the missing AnnounceRecipientContact scenarios. Commit the
    regenerated `.gwt.json` files and the recompiled outputs together.
 3. **Document.**
-   - `docs/guides/given-when-then.md` §4.8 and §4.9: the adapter-free form and the new verbs;
+   - [the given-when-then guide](../../../packages/doc/docs-app/given-when-then.md) [§4.8](../../../packages/doc/docs-app/given-when-then.md#48-inboundtranslation_gwt--external--internal-translation) and [§4.9](../../../packages/doc/docs-app/given-when-then.md#49-outboundtranslation_gwt--internal--external-translation): the adapter-free form and the new verbs;
      remove the claim that the real `translate` is tested elsewhere.
-   - `docs/guides/reverse-codegen-pipeline.md` §Sidecars: `componentKind`, `steps`, the new
+   - [`docs/guides/reverse-codegen-pipeline.md` §Sidecars](../../guides/reverse-codegen-pipeline.md#sidecars): `componentKind`, `steps`, the new
      kinds, `.wiring.json`.
    - [given-when-then-specifications §2.5](../../analysis/given-when-then-specifications.md#25-coverage-matrix)
      and the OutboundStep claim in
@@ -361,7 +361,7 @@ every new key, and one golden `.wiring.json` for a two-source automation.
 ## Not in this plan
 
 - Inbound `commandAuthorization` the same at every door, and inbound commands encoded with
-  their schema: [an-inbound-translation-is-gated-and-encoded-like-a-command.md](../an-inbound-translation-is-gated-and-encoded-like-a-command.md).
+  their schema: [an-inbound-translation-is-gated-and-encoded-like-a-command.md](an-inbound-translation-is-gated-and-encoded-like-a-command.md).
 - Idempotency of repeated deliveries, in and out.
 - The webhook URL ([Backlog/webhook-infrastructure.md](../Backlog/webhook-infrastructure.md)).
 - The tools' readers (companion plan in reventless-tools).

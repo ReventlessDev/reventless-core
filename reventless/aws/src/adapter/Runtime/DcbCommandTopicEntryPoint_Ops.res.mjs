@@ -120,8 +120,8 @@ function buildSliceHandler(spec, behavior, scope, dcbEventLog) {
 
 function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) {
   let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
-  return async args => {
-    let result = await callback.receive(publishJsons, args);
+  return async (args, identity) => {
+    let result = await callback.receive(publishJsons, args, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity));
     if (auditQueryDbOps !== undefined) {
       let id = InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result);
       let row = InboundTranslationSlice_Callback$ReventlessCore.takeAuditRow(callback.auditLog, id);

@@ -43,6 +43,21 @@ let admits = (rule: permission, ~signedIn: bool, ~holds: Role.name => bool): boo
   | AllowRoles(roles) => roles->Array.some(holds)
   }
 
+/** The rule a caller satisfies when they satisfy any of `rules`; `None` for none. */
+let anyOf = (rules: array<permission>): option<permission> =>
+  if rules->Array.length == 0 {
+    None
+  } else if rules->Array.some(r => r == AllowAnonymous) {
+    Some(AllowAnonymous)
+  } else if rules->Array.some(r => r == AllowAuthenticated) {
+    Some(AllowAuthenticated)
+  } else {
+    switch rules->Array.flatMap(rolesOf)->Set.fromArray->Set.values->Array.fromIterator {
+    | [] => Some(DenyAll)
+    | roles => Some(AllowRoles(roles))
+    }
+  }
+
 let isAllowed = (rule: permission, identity: Identity.t): bool =>
   admits(rule, ~signedIn=identity.userId !== "anonymous", ~holds=role =>
     identity.groups->Array.includes(Role.groupOf(role))

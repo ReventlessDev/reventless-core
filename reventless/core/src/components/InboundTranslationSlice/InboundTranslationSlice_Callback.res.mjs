@@ -3,11 +3,17 @@
 import * as Sury from "sury";
 import * as Uuid from "uuid";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 let auditStatusSchema = Sury.union([
@@ -49,7 +55,7 @@ function receiveResultToOutcome(result) {
   return {
     TAG: "Rejected",
     msgId: match$1.requestId,
-    errorCode: "TranslationFailed",
+    errorCode: Stdlib_Option.getOr(match$1.errorCode, "TranslationFailed"),
     errorDetail: match$1.error
   };
 }
@@ -64,158 +70,141 @@ function takeAuditRow(auditLog, requestId) {
   return row;
 }
 
+function callerAdmits(rule, caller) {
+  if (caller === undefined) {
+    return true;
+  }
+  let match = OwnerScope$Reventless.classify(caller, []);
+  if (typeof match !== "object") {
+    return true;
+  } else {
+    return Authorization$Reventless.isAllowed(rule, caller);
+  }
+}
+
+function doorCaller(identity) {
+  return Stdlib_Option.getOr((identity == null) ? undefined : Primitive_option.some(identity), Identity$Reventless.anonymous);
+}
+
 function Make(Spec) {
   return Translation => {
     let auditLog = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let receive = async (publishJsons, inputJson) => {
-      let requestId = Uuid.v4();
-      let input;
+    let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
+    let succeed = (requestId, inputJson, targetIds) => {
+      let commandCount = targetIds.length;
+      auditLog[requestId] = {
+        input: JSON.stringify(inputJson),
+        status: "Success",
+        targetIds: targetIds,
+        commandCount: commandCount,
+        receivedAt: new Date().toISOString()
+      };
+      return {
+        TAG: "Ok",
+        _0: {
+          requestId: requestId,
+          targetIds: targetIds,
+          commandCount: commandCount
+        }
+      };
+    };
+    let encode = param => {
       try {
-        input = {
+        return {
           TAG: "Ok",
-          _0: Sury.parseOrThrow(inputJson, Spec.externalInputSchema)
+          _0: {
+            id: param[0],
+            meta: makeMeta(),
+            commandJson: Util_Sury$Reventless.toJson(param[1], Spec.commandSchema)
+          }
         };
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "invalid input");
-        input = {
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + messageOf(exn, "unknown")));
+        return {
           TAG: "Error",
-          _0: msg
+          _0: "failed to encode command"
         };
       }
-      if (input.TAG === "Ok") {
-        let pairs = Translation.translate(input._0);
-        if (pairs.TAG === "Ok") {
-          let pairs$1 = pairs._0;
-          if (pairs$1.length === 0) {
-            auditLog[requestId] = {
-              input: JSON.stringify(inputJson),
-              status: "Success",
-              targetIds: [],
-              commandCount: 0,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Ok",
-              _0: {
-                requestId: requestId,
-                targetIds: [],
-                commandCount: 0
-              }
-            };
-          }
-          let msgs = {
-            contents: []
-          };
-          let encodeError = {
-            contents: undefined
-          };
-          pairs$1.forEach(pair => {
-            if (!Stdlib_Option.isNone(encodeError.contents)) {
-              return;
-            }
-            try {
-              let commandJson = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(pair[1]), undefined));
-              let msg_id = pair[0];
-              let msg_meta = makeMeta();
-              let msg = {
-                id: msg_id,
-                meta: msg_meta,
-                commandJson: commandJson
-              };
-              msgs.contents = msgs.contents.concat([msg]);
-              return;
-            } catch (raw_exn) {
-              let exn = Primitive_exceptions.internalToException(raw_exn);
-              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
-              encodeError.contents = "failed to encode command";
-              return;
-            }
-          });
-          let msg$1 = encodeError.contents;
-          if (msg$1 !== undefined) {
-            auditLog[requestId] = {
-              input: JSON.stringify(inputJson),
-              status: "Failure",
-              error: msg$1,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Error",
-              _0: {
-                requestId: requestId,
-                error: msg$1
-              }
-            };
-          }
-          try {
-            await publishJsons(msgs.contents);
-            let targetIds = pairs$1.map(pair => pair[0]);
-            auditLog[requestId] = {
-              input: JSON.stringify(inputJson),
-              status: "Success",
-              targetIds: targetIds,
-              commandCount: pairs$1.length,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Ok",
-              _0: {
-                requestId: requestId,
-                targetIds: targetIds,
-                commandCount: pairs$1.length
-              }
-            };
-          } catch (raw_exn$1) {
-            let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-            let msg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "publish failed");
-            auditLog[requestId] = {
-              input: JSON.stringify(inputJson),
-              status: "Failure",
-              error: msg$2,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Error",
-              _0: {
-                requestId: requestId,
-                error: msg$2
-              }
-            };
-          }
-        } else {
-          let msg$3 = pairs._0;
-          auditLog[requestId] = {
-            input: JSON.stringify(inputJson),
-            status: "Failure",
-            error: msg$3,
-            receivedAt: new Date().toISOString()
-          };
-          return {
-            TAG: "Error",
-            _0: {
-              requestId: requestId,
-              error: msg$3
-            }
-          };
-        }
-      } else {
-        let msg$4 = input._0;
+    };
+    let receive = async (publishJsons, inputJson, caller) => {
+      let requestId = Uuid.v4();
+      let fail = (errorCode, error) => {
         auditLog[requestId] = {
           input: JSON.stringify(inputJson),
           status: "Failure",
-          error: msg$4,
+          error: error,
           receivedAt: new Date().toISOString()
         };
         return {
           TAG: "Error",
           _0: {
             requestId: requestId,
-            error: msg$4
+            error: error,
+            errorCode: errorCode
           }
         };
+      };
+      let parsed;
+      try {
+        parsed = {
+          TAG: "Ok",
+          _0: Sury.parseOrThrow(inputJson, Spec.externalInputSchema)
+        };
+      } catch (raw_exn) {
+        let exn = Primitive_exceptions.internalToException(raw_exn);
+        parsed = {
+          TAG: "Error",
+          _0: messageOf(exn, "invalid input")
+        };
+      }
+      if (parsed.TAG !== "Ok") {
+        return fail(undefined, parsed._0);
+      }
+      let msg = Translation.translate(parsed._0);
+      if (msg.TAG !== "Ok") {
+        return fail(undefined, msg._0);
+      }
+      let pairs = msg._0;
+      let refused = pairs.find(param => !callerAdmits(Authorization$Reventless.named(Spec.commandAuthorization(param[1])), caller));
+      if (refused !== undefined) {
+        return fail("Forbidden", Spec.name + `: the caller is not authorized for every command this input translates into`);
+      }
+      let msg$1 = Stdlib_Array.reduce(pairs, {
+        TAG: "Ok",
+        _0: []
+      }, (acc, pair) => {
+        let match = encode(pair);
+        if (acc.TAG === "Ok") {
+          if (match.TAG === "Ok") {
+            return {
+              TAG: "Ok",
+              _0: acc._0.concat([match._0])
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: match._0
+            };
+          }
+        } else {
+          return acc;
+        }
+      });
+      if (msg$1.TAG !== "Ok") {
+        return fail(undefined, msg$1._0);
+      }
+      let msgs = msg$1._0;
+      if (msgs.length === 0) {
+        return succeed(requestId, inputJson, []);
+      }
+      try {
+        await publishJsons(msgs);
+        return succeed(requestId, inputJson, pairs.map(param => param[0]));
+      } catch (raw_exn$1) {
+        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+        return fail(undefined, messageOf(exn$1, "publish failed"));
       }
     };
     return {
@@ -232,6 +221,8 @@ export {
   receiveResultToOutcome,
   requestIdOf,
   takeAuditRow,
+  callerAdmits,
+  doorCaller,
   Make,
 }
 /* auditStatusSchema Not a pure module */

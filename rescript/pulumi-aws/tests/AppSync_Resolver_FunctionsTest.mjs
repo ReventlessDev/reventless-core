@@ -757,6 +757,28 @@ describe('invokeInboundTranslation', () => {
     expect(result.payload.fieldName).toBe('importProduct')
     expect(result.payload.arguments).toEqual({ csv: 'data' })
   })
+
+  // The Lambda checks each translated command against the caller's groups.
+  test('request carries the Cognito caller and its groups', () => {
+    const ctx = makeCtx({
+      identity: { username: 'alice', sub: 's1', sourceIp: [], claims: { 'cognito:groups': ['Merchandiser'] } },
+    })
+    const { payload } = request(ctx)
+    expect(payload.identity.userId).toBe('s1')
+    expect(payload.identity.groups).toEqual(['Merchandiser'])
+    expect(payload.identity.provider).toBe('Cognito')
+  })
+
+  test('request carries an IAM caller as IAM', () => {
+    const ctx = makeCtx({ identity: { userArn: 'arn:aws:iam::123:role/Sync', accountId: '123' } })
+    const { payload } = request(ctx)
+    expect(payload.identity.provider).toBe('IAM')
+  })
+
+  test('request emits null identity when ctx.identity is null', () => {
+    const { payload } = request(makeCtx({ identity: null }))
+    expect(payload.identity).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------

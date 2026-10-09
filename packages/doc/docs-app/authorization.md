@@ -147,6 +147,21 @@ The rule is evaluated at the API resolver, before the command is published — a
 refused command never reaches the queue, never reaches your `decide`, and never
 appears in the log.
 
+### Inbound translations
+
+An InboundTranslationSlice has one mutation for all its commands, and the API
+cannot know which commands an input will turn into until `translate` has run. So
+it checks twice:
+
+1. **At the mutation**, the caller must satisfy at least one command's rule.
+2. **After `translate`**, each command the input produced is checked against its
+   own rule. If any one is refused, none is sent: the mutation answers
+   `CommandRejected` with `errorCode: "Forbidden"`, and the slice's audit log
+   records the failure.
+
+Where every command shares one rule, the second check never refuses anything the
+first let through.
+
 ## Rows that belong to a caller
 
 Authorization answers *may this caller do this*. A separate question is *whose

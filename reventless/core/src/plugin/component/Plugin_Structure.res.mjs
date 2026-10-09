@@ -644,6 +644,14 @@ function syntheticCommand(schema, variantName) {
   }
 }
 
+function constructorPermissions(commandSchema, commandAuthorization) {
+  return DcbTag$Reventless.extractAllVariantNames(commandSchema).map(variantName => commandAuthorization(syntheticCommand(commandSchema, variantName)));
+}
+
+function inboundDoorPermission(commandSchema, commandAuthorization) {
+  return Authorization$Reventless.anyOf(constructorPermissions(commandSchema, commandAuthorization));
+}
+
 function annotateArgTypes(schema, argTypes) {
   Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(schema), o => o["properties"]), Stdlib_JSON.Decode.object), props => {
     Object.entries(props).forEach(param => {
@@ -1268,7 +1276,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     targetName: ITS.Spec.targetName,
     externalSystem: ITS.Spec.externalSystem,
     chapter: componentChapters[ITS.Spec.name],
-    requiredRoles: nonEmpty(Array.from(new Set(DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema).flatMap(variantName => Authorization$Reventless.rolesOf(Authorization$Reventless.named(ITS.Spec.commandAuthorization(syntheticCommand(ITS.Spec.commandSchema, variantName)))).map(role => role))).values()))
+    requiredRoles: nonEmpty(Array.from(new Set(constructorPermissions(ITS.Spec.commandSchema, cmd => Authorization$Reventless.named(ITS.Spec.commandAuthorization(cmd))).flatMap(Authorization$Reventless.rolesOf).map(role => role)).values()))
   }));
   let tableFailures = [];
   let tableWarnings = [];
@@ -1574,6 +1582,8 @@ export {
   nonEmpty,
   rolesFor,
   syntheticCommand,
+  constructorPermissions,
+  inboundDoorPermission,
   annotateArgTypes,
   toCommandDef,
   extractCommandDefs,

@@ -178,8 +178,8 @@ The inbound spec's `lifecycleState` and `commandTransition` are not read at all.
 `ImportProduct` is gated correctly (`AllowRoles([Admin, Merchandiser])`). Locally anyone who can
 reach the server can call it, and a test of the gate on the local platform would pass while
 proving nothing. A slice whose command has two constructors with different rules is gated, on
-AWS, by whichever comes first. It is a defect, not a test gap, and it needs its own plan:
-[an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md).
+AWS, by whichever comes first. It is a defect, not a test gap, and its own plan fixed it (2026-10-09):
+[an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/done/an-inbound-translation-is-gated-and-encoded-like-a-command.md).
 
 ### 3.2 Inbound commands are encoded without their schema
 
@@ -191,7 +191,8 @@ the encode loop). This is the runtime representation of the ReScript value, not
 agree for the plain shapes the examples use. They need not agree for a semantic type, an
 option or a custom tag, and the target decodes with its own schema. A scenario that compares
 typed values cannot catch this. Encoding with the schema fixes it, and the inbound scenario
-layer should round-trip through it ([§4.1](#41-the-scenario-the-slices-contract)).
+layer should round-trip through it ([§4.1](#41-the-scenario-the-slices-contract)). The same plan
+switched the callback to the schema.
 
 ---
 
@@ -315,6 +316,6 @@ plan already lists its own door tests: signature, replay, both doors giving the 
 |---|---|
 | DSLs that take the slice as written; the scenario sidecar reads these tests; model sidecars carry the wiring | [plans/the-sidecars-read-automations-and-translations.md](../plans/done/the-sidecars-read-automations-and-translations.md) |
 | Recording capability fakes, `whenTranslated`, `thenSent`, `whenExhausted`, statuses and retry budget aligned, `whenReceived`, flow inbound step | the same plan's second phase; the verbs are listed there |
-| Inbound authorization the same at every door; commands encoded with their schema | [plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md) |
+| Inbound authorization the same at every door; commands encoded with their schema | [plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/done/an-inbound-translation-is-gated-and-encoded-like-a-command.md) |
 | Idempotency in and out | open ([§5](#5-open-questions)); inbound with [webhook-infrastructure](../plans/Backlog/webhook-infrastructure.md) |
-| Stale documentation | `given-when-then.md` §4.8 and §4.9 (the real `translate` is not exercised in component tests); [given-when-then-specifications §2.5](./given-when-then-specifications.md#25-coverage-matrix) ("no DSL"); the OutboundStep claim in [gwt-flow-and-extension-test-kinds](../plans/done/gwt-flow-and-extension-test-kinds.md). Fix when the plan lands |
+| Stale documentation | the [given-when-then guide](../../packages/doc/docs-app/given-when-then.md) [§4.8](../../packages/doc/docs-app/given-when-then.md#48-inboundtranslation_gwt--external--internal-translation) and [§4.9](../../packages/doc/docs-app/given-when-then.md#49-outboundtranslation_gwt--internal--external-translation) (the real `translate` is not exercised in component tests); [given-when-then-specifications §2.5](./given-when-then-specifications.md#25-coverage-matrix) ("no DSL"); the OutboundStep claim in [gwt-flow-and-extension-test-kinds](../plans/done/gwt-flow-and-extension-test-kinds.md). Fix when the plan lands |

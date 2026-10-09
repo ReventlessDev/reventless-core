@@ -314,10 +314,11 @@ module MakeWithConfig = (
     // Phase 2: bind generateCommand when Output.apply resolves.
     mutationBindHook: CommandGeneratorResolvers_GraphQL.bindHandler,
     // InboundTranslationSlice hooks — pass resolved server for correct target routing.
-    inboundMutationResolverHook: (~fieldName, ~externalInputSchema) =>
+    inboundMutationResolverHook: (~fieldName, ~externalInputSchema, ~permission=?) =>
       InboundTranslationResolvers_GraphQL.register(
         ~fieldName,
         ~externalInputSchema,
+        ~permission?,
         ~server=resolveTargetGraphQL(),
       ),
     inboundMutationBindReceiveHook: InboundTranslationResolvers_GraphQL.bindReceive,

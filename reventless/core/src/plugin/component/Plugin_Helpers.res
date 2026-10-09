@@ -1017,12 +1017,20 @@ type platformHooks = {
   ) => unit,
   // Phase 2: bind generateCommand inside Output.apply.
   mutationBindHook?: (~field: string, ~generateCommand: CommandGenerator.commandGenerator) => unit,
-  // InboundTranslationSlice — phase 1: register SDL + stub.
-  inboundMutationResolverHook?: (~fieldName: string, ~externalInputSchema: S.t<unknown>) => unit,
+  // InboundTranslationSlice — phase 1: register SDL + stub. `permission` is the
+  // door's rule (`Plugin_Structure.inboundDoorPermission`); `None` admits nobody.
+  inboundMutationResolverHook?: (
+    ~fieldName: string,
+    ~externalInputSchema: S.t<unknown>,
+    ~permission: Reventless.Authorization.permission=?,
+  ) => unit,
   // InboundTranslationSlice — phase 2: bind receive.
   inboundMutationBindReceiveHook?: (
     ~fieldName: string,
-    ~receive: JSON.t => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
+    ~receive: (
+      JSON.t,
+      ~caller: Reventless.Identity.t=?,
+    ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
   ) => unit,
   // GraphQL type definitions.
   schemaTypeRegistrationHook?: array<string> => unit,

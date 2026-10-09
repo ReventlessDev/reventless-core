@@ -55,8 +55,8 @@ function Make(QueryDbStorage) {
           let publishJsonsFn = param[1];
           let queryDbOps = param[0];
           return {
-            receive: async inputJson => {
-              let result = await Callback.receive(publishJsonsFn, inputJson);
+            receive: async (inputJson, caller) => {
+              let result = await Callback.receive(publishJsonsFn, inputJson, caller);
               await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
               return result;
             }

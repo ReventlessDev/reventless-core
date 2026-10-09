@@ -1,39 +1,35 @@
-// GraphQL mutation resolvers for in-memory InboundTranslationSlices.
-// Registers one GraphQL mutation field per InboundTranslationSlice.
-// Each resolver calls `receive(argsJson)` directly — the InboundTranslationSlice
-// handles parsing, validation, translation, and command publishing internally.
+// GraphQL mutation resolvers for in-memory InboundTranslationSlices: one field per
+// slice, gated by the door's rule and handing the caller on to `receive`.
 
 @@warning("-44")
 open ReventlessCore
 
-// Mutable registry: fieldName → receive function.
-// Pre-populated synchronously in Phase 1 via a queuing forwarder so callers
-// (e.g. PlatformInspector's onPlatformDeployedHook) can invoke receive before
-// Phase 2 bindReceive runs. Calls park in a Promise queue and drain once bound.
-let receiveRegistry: dict<
-  JSON.t => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
-> = Dict.make()
+type receive = (
+  JSON.t,
+  ~caller: Reventless.Identity.t=?,
+) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
+
+// fieldName → receive. Pre-populated with a queuing forwarder so a call made
+// before `bindReceive` parks until it runs.
+let receiveRegistry: dict<receive> = Dict.make()
 
 type pendingCall = {
   inputJson: JSON.t,
+  caller: option<Reventless.Identity.t>,
   resolve: ReventlessInfra.InboundTranslationSlice.receiveResult => unit,
 }
 
-// Per-field pending-call queues — drained when bindReceive fires.
 let pendingQueueRegistry: dict<ref<array<pendingCall>>> = Dict.make()
 
-// Phase 1: Register SDL + resolver stub synchronously (before server starts).
-// Also pre-registers a queuing forwarder in receiveRegistry so callers can
-// invoke receive immediately; calls are parked until bindReceive drains them.
+// Phase 1: register SDL + resolver stub synchronously (before server starts).
+// `permission` is the door's rule; without one the field admits nobody.
 let register = (
   ~fieldName: string,
   ~externalInputSchema: S.t<unknown>,
+  ~permission: option<Reventless.Authorization.permission>=?,
   ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
 ) => {
-  // The mutation field returns CommandResult, so its union members must exist in
-  // this scope's document. Registered here rather than relying on a plugin's
-  // command handlers having registered them first — a plugin whose only mutation
-  // is an inbound translation must not depend on registration order.
+  // Registered here, so a plugin whose only mutation is inbound has its result union.
   CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(server)
 
   let sdlFields = switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
@@ -46,28 +42,32 @@ let register = (
   | None => [`  ${fieldName}: CommandResult!`]
   }
 
-  // Queue of pending calls when receive is not yet bound.
   let pendingQueue: ref<array<pendingCall>> = ref([])
   pendingQueueRegistry->Dict.set(fieldName, pendingQueue)
 
-  // Queuing forwarder: parks calls until bindReceive populates receiveRegistry.
-  let queuingReceive = (inputJson: JSON.t) =>
+  let queuingReceive: receive = (inputJson, ~caller=?) =>
     Promise.make((resolve, _reject) => {
-      pendingQueue.contents->Array.push({inputJson, resolve})
+      pendingQueue.contents->Array.push({inputJson, caller, resolve})
     })
   receiveRegistry->Dict.set(fieldName, queuingReceive)
 
   let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
     _root,
     args,
-    _ctx,
+    ctx,
   ) => {
-    let inputJson: JSON.t = args->Obj.magic
-    let receive = receiveRegistry->Dict.getUnsafe(fieldName)
-    let result = await receive(inputJson)
-    result
-    ->InboundTranslationSlice_Callback.receiveResultToOutcome
-    ->CommandTopic.commandOutcomeToJson
+    let caller = CommandGeneratorResolvers_GraphQL.extractIdentity(ctx)
+    let admitted =
+      permission->Option.mapOr(false, rule => Reventless.Authorization.isAllowed(rule, caller))
+    if !admitted {
+      CommandGeneratorResolvers_GraphQL.rejectForbidden(~field=fieldName)
+    } else {
+      let receive = receiveRegistry->Dict.getUnsafe(fieldName)
+      let result = await receive(args->Obj.magic, ~caller)
+      result
+      ->InboundTranslationSlice_Callback.receiveResultToOutcome
+      ->CommandTopic.commandOutcomeToJson
+    }
   }
 
   let resolvers = Dict.make()
@@ -75,19 +75,15 @@ let register = (
   server.registerMutations(~sdlFields, ~resolvers)
 }
 
-// Phase 2: Bind the real receive function once Output.apply resolves.
-// Replaces the queuing forwarder in receiveRegistry and drains pending calls.
-let bindReceive = (
-  ~fieldName: string,
-  ~receive: JSON.t => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
-) => {
+// Phase 2: bind the real receive, replacing the forwarder and draining its queue.
+let bindReceive = (~fieldName: string, ~receive: receive) => {
   receiveRegistry->Dict.set(fieldName, receive)
   switch pendingQueueRegistry->Dict.get(fieldName) {
   | Some(pendingQueue) =>
     let pending = pendingQueue.contents
     pendingQueue.contents = []
-    pending->Array.forEach(({inputJson, resolve}) => {
-      let _ = receive(inputJson)->Promise.thenResolve(result => resolve(result))
+    pending->Array.forEach(({inputJson, caller, resolve}) => {
+      let _ = receive(inputJson, ~caller?)->Promise.thenResolve(result => resolve(result))
     })
   | None => ()
   }

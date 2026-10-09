@@ -138,3 +138,59 @@ describe("requiredAccess derived from the authorization rule", () => {
     )->toEqual(None)
   )
 })
+
+module PsTwoRuleFeed = {
+  let name = "PsTwoRuleFeed"
+  let moduleUrl = "ps-two-rule-feed://spec"
+  @schema type externalInput = {sku: string}
+  @schema type command = AddProduct({sku: string}) | AddCategory({sku: string})
+  let targetName = "AddProduct"
+  let externalSystem = None
+  type role = Reventless.Role.name
+  let commandAuthorization = (command: command): Reventless.Authorization.rule<role> =>
+    switch command {
+    | AddProduct(_) => AllowRoles([Reventless.Role.make("Merchandiser")])
+    | AddCategory(_) => AllowRoles([Reventless.Role.make("Admin")])
+    }
+}
+
+module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
+  module Spec = PsTwoRuleFeed
+  module Translation = {
+    let translate = (_: PsTwoRuleFeed.externalInput) => Ok([])
+    let moduleUrl = PsTwoRuleFeed.moduleUrl
+  }
+  type component = Component.t<
+    ReventlessInfra.InboundTranslationSlice.t,
+    ReventlessInfra.InboundTranslationSlice.outputs,
+    ReventlessInfra.InboundTranslationSlice.operations,
+  >
+  let queryDbName = "PsTwoRuleFeedAudit"
+  let make = (~publishJsons as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
+describe("an inbound slice's roles", () => {
+  let door = Dcb_Builder.inboundDoorPermission(
+    PsTwoRuleFeed.commandSchema,
+    PsTwoRuleFeed.commandAuthorization,
+  )
+
+  testSync("the door admits any constructor's roles", () =>
+    expect(door->Option.map(Reventless.Authorization.rolesOf))->toEqual(
+      Some([Reventless.Role.make("Merchandiser"), Reventless.Role.make("Admin")]),
+    )
+  )
+
+  testSync("requiredRoles are the door's roles", () => {
+    let inbound =
+      Plugin_Structure.make(
+        ~name="AccessPlugin",
+        ~inboundTranslationSlices=[module(PsTwoRuleFeedSlice)],
+      ).inboundTranslationSlices->Array.get(0)
+    let doorRoles =
+      door->Option.map(
+        rule => rule->Reventless.Authorization.rolesOf->Array.map(r => (r :> string)),
+      )
+    expect(inbound->Option.flatMap(s => s.requiredRoles))->toEqual(doorRoles)
+  })
+})

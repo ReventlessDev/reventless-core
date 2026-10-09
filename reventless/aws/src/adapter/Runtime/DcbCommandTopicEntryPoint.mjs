@@ -168,7 +168,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
 
   // Route 0 registry: InboundTranslationSlice receive handlers keyed by their
   // AppSync mutation field name. The resolver invokes this Lambda with
-  // {__inboundTranslation, fieldName, arguments}; the field name is
+  // {__inboundTranslation, fieldName, arguments, identity}; the field name is
   // `<pluginName>_<sliceName>` (Api_Naming.sliceMutationField — the deploy side
   // uses the same `name` that HANDLER_CONFIG.pluginName carries). The spec +
   // translation modules are the one untyped seam (dynamic import); the typed
@@ -316,11 +316,8 @@ export async function handler(event, context) {
   const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers] = await initPromise;
 
   // Route 0: InboundTranslationSlice mutation — the AppSync resolver invokes this
-  // Lambda with `{__inboundTranslation: true, fieldName, arguments}` (no `command`,
-  // no `Records`). Dispatch to the field's receive handler, which translates +
-  // publishes and returns a commandOutcome JSON byte-compatible with Route 1's
-  // `commandOutcomeToJson`. Without this branch the payload fell through to Route 2
-  // and crashed on `event.records` being undefined.
+  // Lambda with `{__inboundTranslation: true, fieldName, arguments, identity}`.
+  // The field's receiver checks each translated command against `identity`.
   if (event.__inboundTranslation === true) {
     const fieldName = event.fieldName;
     const receiver = (inboundReceivers || {})[fieldName];
@@ -329,7 +326,7 @@ export async function handler(event, context) {
       throw new Error("no inbound translation receiver for field: " + fieldName);
     }
     log.debug("InboundTranslation invocation (" + fieldName + ")", { comp: "DcbCommandTopicRuntime" });
-    return await receiver(event.arguments);
+    return await receiver(event.arguments, event.identity ?? null);
   }
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload

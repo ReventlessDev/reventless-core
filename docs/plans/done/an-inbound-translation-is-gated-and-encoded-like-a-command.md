@@ -1,13 +1,13 @@
 # Plan: an inbound translation is gated the same way at every door, and sends commands encoded by their schema
 
-**Status:** Proposed 2026-10-09. Nothing built.<br/>
+**Status:** Done 2026-10-09. See [Outcome](#outcome).<br/>
 **Repos:** `reventless-core` only. `reventless/core` (`Dcb_Builder`, `Plugin_Helpers`,
 `InboundTranslationSlice_Callback`, `Plugin_Structure`), `reventless/local`
 (`InboundTranslationResolvers_GraphQL`, `Platform`), `reventless/aws`
 (`InboundTranslationResolvers_AppSync`, the resolver function `invokeInboundTranslation`,
 `DcbCommandTopicEntryPoint_Ops`), `reventless/spec` (`InboundTranslationSlice`).<br/>
-**Found by:** [analysis/testing-translation-slices.md §3](../analysis/testing-translation-slices.md#3-two-findings-that-are-not-about-tests).<br/>
-**Before:** [the-sidecars-read-automations-and-translations.md](done/the-sidecars-read-automations-and-translations.md),
+**Found by:** [analysis/testing-translation-slices.md §3](../../analysis/testing-translation-slices.md#3-two-findings-that-are-not-about-tests).<br/>
+**Before:** [the-sidecars-read-automations-and-translations.md](the-sidecars-read-automations-and-translations.md),
 so that its door tests test a gate that exists everywhere.
 
 ## Goal
@@ -105,7 +105,7 @@ Encode with `Util_Sury.toJson(Spec.commandSchema)`. An encode failure keeps toda
 | 4 | AWS: identity into the payload, through the entry point into `receive` | `reventless/aws` |
 | 5 | Encode with `commandSchema` | `InboundTranslationSlice_Callback` |
 | 6 | Remove `lifecycleState` / `commandTransition` from the inbound spec and its PPX injection | `reventless/spec`, `packages/reventless-ppx` |
-| 7 | Correct the comment above `permissionForFirstConstructor`, the spec's doc comment, and the webhook plan's [Consequences of two doors](Backlog/webhook-infrastructure.md#consequences-of-two-doors) | docs and comments |
+| 7 | Correct the comment above `permissionForFirstConstructor`, the spec's doc comment, and the webhook plan's [Consequences of two doors](../Backlog/webhook-infrastructure.md#consequences-of-two-doors) | docs and comments |
 
 Step 6 changes the PPX, so it goes out with the next PPX release by the usual procedure. Steps
 1 to 5 do not depend on it, and can ship first.
@@ -126,7 +126,7 @@ Step 6 changes the PPX, so it goes out with the next PPX release by the usual pr
 - **Plugin structure:** `requiredRoles` equals the door permission's roles, from the same
   helper.
 
-## Decisions (proposed)
+## Decisions
 
 | # | Decision | Why |
 |---|---|---|
@@ -140,7 +140,7 @@ Step 6 changes the PPX, so it goes out with the next PPX release by the usual pr
 1. **The webhook door.** A webhook caller has no Cognito groups. Its authentication (signature,
    key) replaces check 1. Is check 2 then skipped, or does the webhook config name the roles
    it stands for? Leaning: the webhook config names a role, and check 2 runs against it. Decide
-   in [webhook-infrastructure](Backlog/webhook-infrastructure.md).
+   in [webhook-infrastructure](../Backlog/webhook-infrastructure.md).
 2. **Does the target check its own authorization and transition** when a command arrives from a
    translation rather than from its own mutation? Today a published command bypasses the
    target's resolver. This plan does not change that.
@@ -153,3 +153,34 @@ Step 6 changes the PPX, so it goes out with the next PPX release by the usual pr
 - `requiredRoles` and the deployed gate come from one helper.
 - Inbound commands are encoded with `commandSchema`; the round-trip test passes.
 - Full build and root `pnpm test` pass.
+
+## Outcome
+
+All seven steps landed in one commit. Where the build differs from the design above:
+
+- **The refusal code is `Forbidden`, not `Unauthorized`.** `Forbidden` is the code an
+  `@authorize` refusal already carries on the local server and in the ownership check, so a
+  client handles every refused command alike.
+- **The local hook is handed the door's rule, not the rule function.** `Dcb_Builder` computes
+  `inboundDoorPermission` once and passes it as `~permission`, so the local resolver and the
+  AppSync gate cannot read the rules differently. A field registered without one admits nobody.
+- **`requiredRoles` lists every role any constructor names.** When every constructor is gated
+  by roles, which is the case the test pins, that is exactly the door's roles. Where one
+  constructor is `AllowAuthenticated` the door names no role, yet the per-command check still
+  reads the others, and the deploy check must see them to map them to groups.
+- **System callers (step 3).** An AWS state change mutation has no runtime check; an IAM caller
+  on a `systemCallable` field passes the `@aws_iam` arm whatever its groups. Check 2 treats a
+  system caller the same way. No inbound field is `systemCallable` today
+  (`@@reventless.systemCallable` applies to state change and state view slices only), so on AWS
+  no IAM caller reaches an inbound mutation. The system pass serves direct callers, which pass
+  no caller.
+- **A door that identified nobody refuses.** A resolver payload with a null identity becomes
+  the anonymous caller, never the platform itself (`InboundTranslationSlice_Callback.doorCaller`).
+- **The encoding test uses an `@s.null` option.** The semantic types are refined primitives with
+  the same runtime and wire form, so they cannot show the difference. An absent option the
+  schema writes as `null` does.
+- **The AWS schema test** runs `Dcb_Builder.inboundDoorPermission` into
+  `AppSync_Adapter.injectAwsAuth` (`AppSync_AdapterTest`), rather than building a whole plugin.
+- **The PPX** no longer injects `lifecycleState` / `commandTransition` into a spec in an
+  `InboundTranslation/` folder, or into an inline spec declaring `externalInput`. A spec that
+  still declares them compiles, since a module may carry more than its type asks for.

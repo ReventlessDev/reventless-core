@@ -226,9 +226,6 @@ describe("InboundTranslationSlice Callback", () => {
 
           let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
-          type lifecycleState = unit
-          let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>
-            Unrestricted
         }
 
         module MultiTranslation = {
@@ -295,9 +292,6 @@ describe("InboundTranslationSlice Callback", () => {
 
           let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
-          type lifecycleState = unit
-          let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> =>
-            Unrestricted
         }
 
         module EmptyTranslation = {
@@ -327,5 +321,119 @@ describe("InboundTranslationSlice Callback", () => {
         expect(publishedCommands.contents->Array.length)->toBe(0)
       },
     )
+  })
+})
+
+module CatalogFeedTranslation = {
+  let translate = CatalogFeedSpec.translate
+  let moduleUrl = CatalogFeedSpec.moduleUrl
+}
+module CatalogFeedCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+  CatalogFeedSpec,
+  CatalogFeedTranslation,
+)
+
+let caller = (groups): Reventless.Identity.t => {
+  userId: "u-1",
+  username: "alice",
+  groups,
+  provider: InMemory,
+}
+
+let catalogInput = (kind): JSON.t =>
+  Dict.fromArray([
+    ("kind", JSON.Encode.string(kind)),
+    ("id", JSON.Encode.string("x-1")),
+  ])->JSON.Encode.object
+
+describe("receive checks each command against its own rule", () => {
+  let published = ref([])
+  let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds =>
+    published := published.contents->Array.concat(cmds)
+  let _ = beforeEach(() => published := [])
+
+  testPromise(
+    "a caller lacking one command's role is refused, and nothing is published",
+    async () => {
+      let result = await CatalogFeedCallback.receive(
+        publish,
+        catalogInput("both"),
+        ~caller=caller(["Merchandiser"]),
+      )
+      switch result {
+      | Error({requestId, ?errorCode}) =>
+        expect(errorCode)->toEqual(Some("Forbidden"))
+        let row = CatalogFeedCallback.auditLog->Dict.get(requestId)
+        expect(row->Option.map(r => r.status))->toEqual(
+          Some(ReventlessCore.InboundTranslationSlice_Callback.Failure),
+        )
+      | Ok(_) => expect(true)->toBe(false)
+      }
+      expect(published.contents->Array.length)->toBe(0)
+    },
+  )
+
+  testPromise("a caller holding every command's role publishes them all", async () => {
+    let result = await CatalogFeedCallback.receive(
+      publish,
+      catalogInput("both"),
+      ~caller=caller(["Merchandiser", "Admin"]),
+    )
+    expect(result->Result.isOk)->toBe(true)
+    expect(published.contents->Array.length)->toBe(2)
+  })
+
+  testPromise("the role one command needs is enough when the input yields only it", async () => {
+    let result = await CatalogFeedCallback.receive(
+      publish,
+      catalogInput("product"),
+      ~caller=caller(["Merchandiser"]),
+    )
+    expect(result->Result.isOk)->toBe(true)
+    expect(published.contents->Array.length)->toBe(1)
+  })
+
+  testPromise("no caller is the platform itself, and publishes", async () => {
+    let result = await CatalogFeedCallback.receive(publish, catalogInput("both"))
+    expect(result->Result.isOk)->toBe(true)
+    expect(published.contents->Array.length)->toBe(2)
+  })
+
+  testPromise("a refusal answers CommandRejected with Forbidden", async () => {
+    let result = await CatalogFeedCallback.receive(
+      publish,
+      catalogInput("both"),
+      ~caller=Reventless.Identity.anonymous,
+    )
+    switch result->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome {
+    | Rejected({errorCode}) => expect(errorCode)->toBe("Forbidden")
+    | _ => expect(true)->toBe(false)
+    }
+  })
+})
+
+module NoteFeedTranslation = {
+  let translate = NoteFeedSpec.translate
+  let moduleUrl = NoteFeedSpec.moduleUrl
+}
+module NoteFeedCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+  NoteFeedSpec,
+  NoteFeedTranslation,
+)
+
+describe("receive encodes commands with their schema", () => {
+  testPromise("an absent option the schema writes as null decodes at the target", async () => {
+    let published = ref([])
+    let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds => published := cmds
+    let _ = await NoteFeedCallback.receive(
+      publish,
+      Dict.fromArray([("orderId", JSON.Encode.string("ord-1"))])->JSON.Encode.object,
+    )
+
+    let commandJson = (published.contents->Array.getUnsafe(0)).commandJson
+    // The target decodes with the same schema; the runtime value would omit `note`.
+    let decoded = commandJson->S.parseOrThrow(~to=NoteFeedSpec.commandSchema)
+    expect(decoded)->toEqual(NoteFeedSpec.Annotate({orderId: "ord-1", note: None}))
+    expect(commandJson->JSON.stringify->String.includes(`"note":null`))->toBe(true)
   })
 })

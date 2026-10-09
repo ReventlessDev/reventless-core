@@ -1671,6 +1671,24 @@ ${resultResponseCode}
 // Lambda invocations
 // ---------------------------------------------------------------------------
 
+// The caller as a command Lambda reads it: a Cognito user, an IAM principal, or null.
+let callerIdentity = `identity: isCognito
+        ? {
+            userId: id.sub,
+            username: id.username,
+            groups: id.claims?.['cognito:groups'] ?? [],
+            claims: id.claims,
+            provider: 'Cognito'
+          }
+        : id != null
+          ? {
+              userArn: id.userArn ?? null,
+              accountId: id.accountId ?? null,
+              username: id.username ?? null,
+              provider: 'IAM'
+            }
+          : null`
+
 /** Invoke a CommandGenerator Lambda. `command` is the Aggregate command name. */
 let invokeCommandGenerator = (command: string) =>
   `${importUtil}
@@ -1687,22 +1705,7 @@ export function request(ctx) {
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: isCognito
-        ? {
-            userId: id.sub,
-            username: id.username,
-            groups: id.claims?.['cognito:groups'] ?? [],
-            claims: id.claims,
-            provider: 'Cognito'
-          }
-        : id != null
-          ? {
-              userArn: id.userArn ?? null,
-              accountId: id.accountId ?? null,
-              username: id.username ?? null,
-              provider: 'IAM'
-            }
-          : null
+      ${callerIdentity}
     }
   };
 }
@@ -1725,22 +1728,7 @@ export function request(ctx) {
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: isCognito
-        ? {
-            userId: id.sub,
-            username: id.username,
-            groups: id.claims?.['cognito:groups'] ?? [],
-            claims: id.claims,
-            provider: 'Cognito'
-          }
-        : id != null
-          ? {
-              userArn: id.userArn ?? null,
-              accountId: id.accountId ?? null,
-              username: id.username ?? null,
-              provider: 'IAM'
-            }
-          : null
+      ${callerIdentity}
     }
   };
 }
@@ -1751,12 +1739,15 @@ ${resultResponseCode}
 let invokeInboundTranslation = (fieldName: string) =>
   `${importUtil}
 export function request(ctx) {
+  const id = ctx.identity;
+  const isCognito = id != null && id.sub != null;
   return {
     operation: 'Invoke',
     payload: {
       __inboundTranslation: true,
       fieldName: '${fieldName}',
-      arguments: ctx.args
+      arguments: ctx.args,
+      ${callerIdentity}
     }
   };
 }

@@ -819,6 +819,20 @@ let syntheticCommand = (~schema: S.t<unknown>, variantName: string): 'command =>
     ? {"TAG": variantName}->Obj.magic
     : variantName->Obj.magic
 
+// Each constructor's rule, read off its stand-in.
+let constructorPermissions = (
+  ~commandSchema: S.t<unknown>,
+  ~commandAuthorization: 'command => Reventless.Authorization.permission,
+): array<Reventless.Authorization.permission> =>
+  Reventless.DcbTag.extractAllVariantNames(commandSchema)->Array.map(variantName =>
+    syntheticCommand(~schema=commandSchema, variantName)->commandAuthorization
+  )
+
+// An inbound slice's gate where no command exists yet: any constructor's rule.
+// Both the deployed gate and the local resolver apply this one.
+let inboundDoorPermission = (~commandSchema, ~commandAuthorization) =>
+  constructorPermissions(~commandSchema, ~commandAuthorization)->Reventless.Authorization.anyOf
+
 // Each mutation argument's GraphQL type onto its property, so a consumer declares
 // the variable the server expects. Mutates the freshly derived schema in place.
 let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
@@ -1815,17 +1829,16 @@ let make = (
       targetName: ITS.Spec.targetName,
       externalSystem: ITS.Spec.externalSystem,
       chapter: chapterOf(ITS.Spec.name),
-      // Per command, as the resolver evaluates the rule, then joined: the slice
-      // publishes no command defs to carry them.
+      // Every role a constructor names: the door's, plus those only the
+      // per-command check reads, which must map to a group all the same.
       requiredRoles: ?(
-        Reventless.DcbTag.extractAllVariantNames(ITS.Spec.commandSchema)
-        ->Array.flatMap(variantName =>
-          syntheticCommand(~schema=ITS.Spec.commandSchema->S.castToUnknown, variantName)
-          ->ITS.Spec.commandAuthorization
-          ->Reventless.Authorization.named
-          ->Reventless.Authorization.rolesOf
-          ->Array.map(role => (role :> string))
+        constructorPermissions(
+          ~commandSchema=ITS.Spec.commandSchema->S.castToUnknown,
+          ~commandAuthorization=cmd =>
+            ITS.Spec.commandAuthorization(cmd)->Reventless.Authorization.named,
         )
+        ->Array.flatMap(Reventless.Authorization.rolesOf)
+        ->Array.map(role => (role :> string))
         ->Set.fromArray
         ->Set.values
         ->Array.fromIterator

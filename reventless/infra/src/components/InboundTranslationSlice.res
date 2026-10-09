@@ -24,15 +24,17 @@ type acceptedResult = {
 }
 
 /**
-A translation that was rejected -- by input parsing, by `translate`, by command
-encoding or by the publish itself.
+A translation that was rejected -- by input parsing, by `translate`, by an
+authorization check, by command encoding or by the publish itself.
 
 - `requestId` -- the key the audit row is stored under
 - `error` -- the rejection message
+- `errorCode` -- `"Forbidden"` for a refused caller; absent for a failed translation
 */
 type rejectedResult = {
   requestId: string,
   error: string,
+  errorCode?: string,
 }
 
 /**
@@ -45,10 +47,11 @@ type receiveResult = result<acceptedResult, rejectedResult>
 /**
 Runtime operations exposed by an `InboundTranslationSlice` component.
 
-- `receive` -- accept external input, translate it, and publish a command
+- `receive` -- accept external input, translate it, and publish its commands.
+  `caller` is who sent it; absent means the platform itself.
 */
 type operations = {
-  receive: JSON.t => promise<receiveResult>,
+  receive: (JSON.t, ~caller: Reventless.Identity.t=?) => promise<receiveResult>,
 }
 
 /**

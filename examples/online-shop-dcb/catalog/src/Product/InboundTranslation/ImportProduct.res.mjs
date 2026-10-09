@@ -24,10 +24,6 @@ function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
 
-function commandTransition(param) {
-  return "Undeclared";
-}
-
 let traits = [];
 
 let name = "ImportProduct";
@@ -49,7 +45,6 @@ export {
   externalSystem,
   moduleUrl,
   commandAuthorization,
-  commandTransition,
   traits,
 }
 /* externalInputSchema Not a pure module */

@@ -44,16 +44,36 @@ let selection = `__typename
   ... on CommandAccepted { msgId entityId eventCount }
   ... on CommandRejected { msgId errorCode errorDetail }`
 
-let runMutation = async (~status: string) => {
-  let source = `mutation {
-    r: ${fieldName}(paymentId: "pay-1", orderId: "ord-1", status: "${status}") { ${selection} }
-  }`
+let signedIn = (groups): Reventless.Identity.t => {
+  userId: "u-1",
+  username: "alice",
+  groups,
+  provider: InMemory,
+}
+
+let contextOf = (identity: option<Reventless.Identity.t>): JSON.t =>
+  switch identity {
+  | Some(identity) =>
+    Dict.fromArray([
+      ("identity", identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)),
+    ])->JSON.Encode.object
+  | None => JSON.Encode.null
+  }
+
+let execute = async (~caller, source) =>
   await GraphqlYoga.graphql({
     "schema": DomainGraphQL_Server.composeSchema(),
     "source": source,
-    "contextValue": JSON.Encode.null,
+    "contextValue": contextOf(caller),
   })
-}
+
+let runMutation = async (~status: string) =>
+  await execute(
+    ~caller=Some(signedIn([])),
+    `mutation {
+    r: ${fieldName}(paymentId: "pay-1", orderId: "ord-1", status: "${status}") { ${selection} }
+  }`,
+  )
 
 let errorMessages = (result: GraphqlYoga.executionResult): array<string> =>
   result.errors
@@ -86,13 +106,14 @@ describe("InboundTranslationSlice mutation — response envelope", () => {
     InboundTranslationResolvers_GraphQL.register(
       ~fieldName,
       ~externalInputSchema=PaymentWebhookSpec.externalInputSchema->S.castToUnknown,
+      ~permission=AllowAuthenticated,
       ~server=DomainGraphQL_Server.asInterface,
     )
     DomainGraphQL_Server.resetScope()
 
     InboundTranslationResolvers_GraphQL.bindReceive(
       ~fieldName,
-      ~receive=inputJson => Callback.receive(publishJsons, inputJson),
+      ~receive=(inputJson, ~caller=?) => Callback.receive(publishJsons, inputJson, ~caller?),
     )
   })
 
@@ -138,5 +159,72 @@ describe("InboundTranslationSlice mutation — response envelope", () => {
       ->String.split("\n")
       ->Array.find(line => line->String.includes(fieldName))
     expect(fieldLine->Option.map(l => l->String.endsWith(": CommandResult!")))->toEqual(Some(true))
+  })
+})
+
+module CatalogFeedTranslation = {
+  let translate = CatalogFeedSpec.translate
+  let moduleUrl = CatalogFeedSpec.moduleUrl
+}
+module CatalogFeedCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+  CatalogFeedSpec,
+  CatalogFeedTranslation,
+)
+
+let feedField = "Catalog_CatalogFeed"
+
+let runFeed = async (~caller, ~kind) =>
+  await execute(
+    ~caller,
+    `mutation { r: ${feedField}(kind: "${kind}", id: "x-1") { ${selection} } }`,
+  )
+
+describe("InboundTranslationSlice mutation — the door", () => {
+  beforeEach(() => {
+    DomainGraphQL_Server.asInterface.reset()
+    published.contents = []
+
+    DomainGraphQL_Server.setScope("Catalog")
+    InboundTranslationResolvers_GraphQL.register(
+      ~fieldName=feedField,
+      ~externalInputSchema=CatalogFeedSpec.externalInputSchema->S.castToUnknown,
+      ~permission=?ReventlessCore.Dcb_Builder.inboundDoorPermission(
+        CatalogFeedSpec.commandSchema,
+        CatalogFeedSpec.commandAuthorization,
+      ),
+      ~server=DomainGraphQL_Server.asInterface,
+    )
+    DomainGraphQL_Server.resetScope()
+
+    InboundTranslationResolvers_GraphQL.bindReceive(
+      ~fieldName=feedField,
+      ~receive=(inputJson, ~caller=?) =>
+        CatalogFeedCallback.receive(publishJsons, inputJson, ~caller?),
+    )
+  })
+
+  testPromise("a caller holding none of the commands' roles is refused", async () => {
+    let node = payload(await runFeed(~caller=Some(signedIn(["Ops"])), ~kind="product"))
+    expect(node->str("errorCode"))->toEqual(Some("Forbidden"))
+    expect(published.contents->Array.length)->toBe(0)
+  })
+
+  testPromise("an unauthenticated caller is refused", async () => {
+    let node = payload(await runFeed(~caller=None, ~kind="product"))
+    expect(node->str("errorCode"))->toEqual(Some("Forbidden"))
+    expect(published.contents->Array.length)->toBe(0)
+  })
+
+  testPromise("a caller holding a command's role is let through", async () => {
+    let node = payload(await runFeed(~caller=Some(signedIn(["Merchandiser"])), ~kind="product"))
+    expect(node->str("__typename"))->toEqual(Some("CommandAccepted"))
+    expect(published.contents->Array.length)->toBe(1)
+  })
+
+  // The caller reaches `receive`, which refuses the command the door could not see.
+  testPromise("the caller reaches the per-command check", async () => {
+    let node = payload(await runFeed(~caller=Some(signedIn(["Merchandiser"])), ~kind="both"))
+    expect(node->str("errorCode"))->toEqual(Some("Forbidden"))
+    expect(published.contents->Array.length)->toBe(0)
   })
 })

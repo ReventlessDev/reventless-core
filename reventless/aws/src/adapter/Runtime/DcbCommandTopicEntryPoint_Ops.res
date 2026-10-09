@@ -246,13 +246,8 @@ let buildSliceHandler = (
 }
 
 // ── Inbound translation receiver wiring (Route 0) ───────────────────────────
-// The DCB command Lambda is also the target of every InboundTranslationSlice
-// mutation on the plugin's API — its AppSync resolver invokes this Lambda with an
-// `{__inboundTranslation, fieldName, arguments}` payload. Building the per-field
-// `receive` here keeps the curried `InboundTranslationSlice_Callback.Make` functor
-// call compiler-checked (same rationale as `buildSliceHandler`) and mirrors the
-// in-process composite handler in `Dcb_Builder.res`, so the deployed surface and
-// the local surface encode the same `commandOutcome`.
+// Every inbound mutation's resolver invokes this Lambda with a `doorInvocation`.
+// The functor call lives here to be compiler-checked, as in `buildSliceHandler`.
 
 // The dynamically-imported Translation module — opaque; a clean pass-through to
 // the functor (only `translate` is read, inside the compiled callback).
@@ -262,6 +257,7 @@ type inboundCallback = {
   receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
+    ~caller: Reventless.Identity.t=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
   auditLog: dict<ReventlessCore.InboundTranslationSlice_Callback.auditRow>,
 }
@@ -270,12 +266,9 @@ type inboundCallback = {
 )
 external makeInboundCallback: specModule => translationModule => inboundCallback = "Make"
 
-// Builds the inbound receive handler: run the slice's `receive` (which validates
-// the external input against the spec schema, translates, and publishes the mapped
-// commands via `publishJsons`), then — when an audit table name was threaded —
-// drain the in-memory audit log to that table (best-effort, matching
-// `InboundTranslationSlice_Builder`'s inline `syncToQueryDb`). Returns the
-// `commandOutcome` JSON, byte-compatible with the AppSync direct-invocation route.
+// Builds the inbound receive handler: `receive` for the resolver's caller, then
+// the request's audit row to its table when one was threaded. Answers the
+// `commandOutcome` JSON the AppSync direct-invocation route answers with.
 let buildInboundReceiver = (
   spec: specModule,
   translation: translationModule,
@@ -283,8 +276,12 @@ let buildInboundReceiver = (
   ~auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
 ) => {
   let callback = makeInboundCallback(spec)(translation)
-  async (args: JSON.t): JSON.t => {
-    let result = await callback.receive(publishJsons, args)
+  async (args: JSON.t, identity: Nullable.t<Reventless.Identity.t>): JSON.t => {
+    let result = await callback.receive(
+      publishJsons,
+      args,
+      ~caller=ReventlessCore.InboundTranslationSlice_Callback.doorCaller(identity),
+    )
     switch auditQueryDbOps {
     | Some(ops) =>
       let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
@@ -294,12 +291,8 @@ let buildInboundReceiver = (
           row->Reventless.Util_Sury.toJson(
             ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
           )
-        // A failed audit write must not fail the mutation (the command was
-        // already published), but it must not vanish either. `save` RESOLVES
-        // with `Error(_)` on a storage failure (it does not throw), so the
-        // result must be inspected — a bare `let _ = await ops.save(...)` would
-        // swallow the failure and leave the audit view permanently, silently
-        // empty. `try` still guards an unexpected reject.
+        // A failed audit write is logged, not raised: the commands are published.
+        // `save` resolves `Error(_)` rather than throwing, so its result is read.
         try {
           switch await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None) {
           | Ok() => ()
@@ -324,9 +317,7 @@ let buildInboundReceiver = (
     }
     result
     ->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome
-    // `CommandTopic_Helpers`, not `CommandTopic`: the latter imports `Adapter`
-    // (→ `@pulumi/pulumi`) for a deploy-time helper, which would crash this
-    // runtime Lambda's cold start. The encoder itself lives in the pure Helpers.
+    // `CommandTopic_Helpers`, not `CommandTopic`, which imports `@pulumi/pulumi`.
     ->ReventlessCore.CommandTopic_Helpers.commandOutcomeToJson
   }
 }

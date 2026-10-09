@@ -39,9 +39,32 @@ let routeInbound: JSON.t => promise<JSON.t> = %raw(`
     // Mirror handler's Route 0 dispatch.
     const receiver = (inboundReceivers || {})[event.fieldName];
     if (receiver === undefined) throw new Error("no inbound receiver for " + event.fieldName);
-    return await receiver(event.arguments);
+    return await receiver(event.arguments, event.identity ?? null);
   }
 `)
+
+// The receiver over the fixture modules with a publish that records, so an
+// admitted caller's commands are seen without SQS.
+@module("./DcbInboundReceiverStub.mjs")
+external receiveWithStubPublish: (
+  JSON.t,
+  Nullable.t<Reventless.Identity.t>,
+) => promise<(JSON.t, int)> = "receiveWithStubPublish"
+
+let usdArguments: JSON.t =
+  Dict.fromArray([
+    ("sku", "SKU-1"->JSON.Encode.string),
+    ("currency", "USD"->JSON.Encode.string),
+  ])->JSON.Encode.object
+
+let cognito = (groups): Reventless.Identity.t => {
+  userId: "u-1",
+  username: "alice",
+  groups,
+  provider: Cognito,
+}
+
+let typenameOf = (outcome: JSON.t) => outcome->JSON.stringify
 
 let inboundEvent = (~fieldName, ~currency): JSON.t => {
   let arguments = Dict.fromArray([
@@ -70,4 +93,29 @@ describe("DcbCommandTopicEntryPoint Route 0 (InboundTranslation)", () => {
       expect(s->String.includes("Unsupported currency"))->toBe(true)
     },
   )
+
+  test("the payload's caller reaches the per-command check", async () => {
+    let (outcome, count) = await receiveWithStubPublish(
+      usdArguments,
+      Nullable.make(cognito(["Ops"])),
+    )
+    expect(typenameOf(outcome)->String.includes("Forbidden"))->toBe(true)
+    expect(count)->toBe(0)
+  })
+
+  test("a caller holding the command's role publishes", async () => {
+    let (outcome, count) = await receiveWithStubPublish(
+      usdArguments,
+      Nullable.make(cognito(["Admin"])),
+    )
+    expect(typenameOf(outcome)->String.includes("CommandAccepted"))->toBe(true)
+    expect(count)->toBe(1)
+  })
+
+  // A resolver that identified nobody must not be taken for the platform itself.
+  test("a payload with no identity is refused", async () => {
+    let (outcome, count) = await receiveWithStubPublish(usdArguments, Nullable.null)
+    expect(typenameOf(outcome)->String.includes("Forbidden"))->toBe(true)
+    expect(count)->toBe(0)
+  })
 })

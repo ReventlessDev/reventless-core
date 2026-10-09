@@ -149,6 +149,20 @@ describe("AppSync_Adapter.generateFragment", () => {
 // `@authorize` PPX annotations) into `@aws_cognito_user_pools(cognito_groups: [...])`
 // directives on the corresponding SDL fields.
 
+// Two constructors under different roles, the case one field gate must widen for.
+module TwoRuleFeed = {
+  @schema
+  type command = AddProduct({sku: string}) | AddCategory({sku: string})
+
+  let commandAuthorization = (command: command): Reventless.Authorization.rule<
+    Reventless.Role.name,
+  > =>
+    switch command {
+    | AddProduct(_) => AllowRoles([Reventless.Role.make("Merchandiser")])
+    | AddCategory(_) => AllowRoles([Reventless.Role.make("Admin")])
+    }
+}
+
 describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => {
   // Minimal mutation fragment with two fields. Field names must match what
   // the entries declare so the stitcher's extractLeadingName can pair them.
@@ -223,6 +237,22 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(
       decodeFragment(aug).mutations->Array.getUnsafe(0),
     )->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin", "shop-merch-team"])`)
+  })
+
+  // An inbound slice has one field for every constructor, so its gate admits any
+  // constructor's roles; each command is checked against its own in `receive`.
+  testSync("an inbound slice's field carries every constructor's groups", () => {
+    let permission = ReventlessCore.Dcb_Builder.inboundDoorPermission(
+      TwoRuleFeed.commandSchema,
+      TwoRuleFeed.commandAuthorization,
+    )
+    let fp = Dict.fromArray(permission->Option.mapOr([], p => [("p_TwoRuleFeed", p)]))
+    let entry = mutationEntry(~fieldNames=["p_TwoRuleFeed"], ~fieldPermissions=fp)
+    let frag = makeFragment(["p_TwoRuleFeed(sku: String!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+    expect(
+      decodeFragment(aug).mutations->Array.getUnsafe(0),
+    )->toContain(`@aws_cognito_user_pools(cognito_groups: ["Merchandiser", "Admin"])`)
   })
 
   testSync("AllowAuthenticated emits the group-less Cognito directive", () => {

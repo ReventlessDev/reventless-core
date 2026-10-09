@@ -3021,6 +3021,12 @@ else
 fi
 
 echo ""
+echo "=== Test: an inbound translation spec takes no commandTransition ==="
+# Its target owns the lifecycle, so the inbound Spec declares no edge.
+assert_js_not_contains "$PLUGIN/src/InboundTranslation/Hook.res.mjs" 'commandTransition' \
+  "no commandTransition injected on an inbound translation spec"
+
+echo ""
 echo "=== Test: a spliced command type must declare commandTransition ==="
 # The default is NOT injected for a spliced type: it would leave the spliced
 # commands with no policy and say nothing. Refused instead, and the message has

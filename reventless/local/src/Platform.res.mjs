@@ -233,7 +233,7 @@ function MakeWithConfig(Config) {
     fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, commandAuthorization, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessLocal.bindHandler;
-  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, resolveTargetGraphQL());
+  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema, permission) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, permission, resolveTargetGraphQL());
   let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessLocal.bindReceive;
   let hooks_schemaTypeRegistrationHook = sdlTypes => resolveTargetGraphQL().registerTypes(sdlTypes);
   let hooks_mcpSchemaRegistrationHook = param => {
@@ -1993,7 +1993,7 @@ function Make($star) {
     fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, commandAuthorization, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessLocal.bindHandler;
-  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, resolveTargetGraphQL());
+  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema, permission) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, permission, resolveTargetGraphQL());
   let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessLocal.bindReceive;
   let hooks_schemaTypeRegistrationHook = sdlTypes => resolveTargetGraphQL().registerTypes(sdlTypes);
   let hooks_mcpSchemaRegistrationHook = param => {

@@ -539,8 +539,22 @@ let raise_spread_needs_transition ~loc =
     \    }\n\
     \  }"
 
+(* An inbound translation moves no lifecycle of its own — its target owns it — so
+   its spec takes no transition. Known by folder, or by its [externalInput]. *)
+let declares_external_input (body : structure) : bool =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.exists (fun (td : type_declaration) ->
+        String.equal td.ptype_name.txt "externalInput"
+        && Util.has_attr "schema" td.ptype_attributes) decls
+    | _ -> false
+  ) body
+
 let command_transition_suffix ~loc fname (body : structure) : structure_item list =
   if is_spec_namespace_pkg loc then []
+  else if Util.is_in_slice_folder_named fname "InboundTranslation"
+       || declares_external_input body then []
   else
     let kind = match detect_kind fname with
       | Other -> detect_kind_by_structure body
@@ -554,7 +568,9 @@ let command_transition_suffix ~loc fname (body : structure) : structure_item lis
 
 let inject_command_transition_into_inner_module ~loc (mb : module_binding) : module_binding =
   match mb.pmb_expr.pmod_desc with
-  | Pmod_structure body when not (Util.has_let_binding "commandTransition" body) ->
+  | Pmod_structure body
+    when not (Util.has_let_binding "commandTransition" body)
+         && not (declares_external_input body) ->
     if command_type_spreads body then raise_spread_needs_transition ~loc;
     let new_body = body @ [gen_lifecycle_state_type ~loc; gen_command_transition ~loc] in
     { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }

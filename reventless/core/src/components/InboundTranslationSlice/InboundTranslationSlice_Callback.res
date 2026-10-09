@@ -1,6 +1,6 @@
-// InboundTranslationSlice callback — receives external input and translates to commands.
-//
-// Maintains an audit log QueryDb and delegates translation to Translation.translate.
+// InboundTranslationSlice callback: parses external input, translates it into
+// commands, checks each against its own rule, and publishes them. Runtime-pure,
+// since the deployed DCB command Lambda imports it.
 
 @schema
 type auditStatus =
@@ -17,21 +17,8 @@ type auditRow = {
   receivedAt: string,
 }
 
-/**
-Map a `receive` outcome onto the `CommandResult` union the slice's mutation field
-declares, so both surfaces feed `CommandTopic.commandOutcomeToJson` rather than
-hand-rolling a second `__typename` writer.
-
-A translation can fan out across several targets; the mutation response reports
-the first target as `entityId` and the fan-out count as `eventCount`. The
-per-target detail stays queryable through the slice's audit read model. When the
-translation legitimately produced no command, `entityId` is omitted (encoding as
-`null`) rather than reporting a target that does not exist.
-
-Lives here rather than in `InboundTranslationSlice.res` because the deployed DCB
-command Lambda calls it at runtime, and the base module imports `@pulumi/pulumi`
-at deploy time — keeping this runtime-pure keeps Pulumi out of the Lambda graph.
-*/
+/** The `CommandResult` a `receive` outcome answers with: the first target as
+    `entityId` (omitted when nothing was produced), the fan-out as `eventCount`. */
 let receiveResultToOutcome = (
   result: ReventlessInfra.InboundTranslationSlice.receiveResult,
 ): CommandTopic.commandOutcome =>
@@ -41,36 +28,53 @@ let receiveResultToOutcome = (
     | Some(entityId) => Accepted({msgId: requestId, entityId, eventCount: commandCount})
     | None => Accepted({msgId: requestId, eventCount: commandCount})
     }
-  | Error({requestId, error}) =>
-    Rejected({msgId: requestId, errorCode: "TranslationFailed", errorDetail: Some(error)})
+  | Error({requestId, error, ?errorCode}) =>
+    Rejected({
+      msgId: requestId,
+      errorCode: errorCode->Option.getOr("TranslationFailed"),
+      errorDetail: Some(error),
+    })
   }
 
-/**
-The request a `receive` outcome belongs to, from either arm. Both carry the id
-that keys the outcome's audit row, so a caller draining the log does not have to
-match on the result to find its own row.
-*/
+/** The request a `receive` outcome belongs to, from either arm. */
 let requestIdOf = (result: ReventlessInfra.InboundTranslationSlice.receiveResult): string =>
   switch result {
   | Ok({requestId}) | Error({requestId}) => requestId
   }
 
-/**
-Remove one request's audit row from the in-memory log and hand it back.
-
-`auditLog` is a hand-off buffer between `receive` and whoever persists the row,
-not a log in its own right — the QueryDb it drains into is the durable one. It
-has to be emptied as it drains: the dict lives as long as the process (a warm
-Lambda container serves many requests), so a drain that walked the whole dict
-would rewrite every row the container had ever seen on every request — quadratic
-writes, unbounded retention, and, because the write is an overwrite by row id,
-resurrection of rows deleted from the table since.
-*/
+/** Remove one request's audit row from the in-memory log and hand it back. The
+    log outlives a request in a warm process, so draining all of it would rewrite
+    every row it ever held. */
 let takeAuditRow = (auditLog: Dict.t<auditRow>, requestId: string): option<auditRow> => {
   let row = auditLog->Dict.get(requestId)
   auditLog->Dict.delete(requestId)
   row
 }
+
+/** Whether `caller` may send a command under `rule`. No caller, or a system
+    (IAM) caller, is the platform acting for itself and passes every rule. */
+let callerAdmits = (rule: Reventless.Authorization.permission, caller) =>
+  switch caller {
+  | None => true
+  | Some(identity) =>
+    switch Reventless.OwnerScope.classify(identity, ~elevated=[]) {
+    | System => true
+    | _ => Reventless.Authorization.isAllowed(rule, identity)
+    }
+  }
+
+/** What an inbound mutation's resolver sends a deployed handler. `identity` is
+    built by the resolver, and is null where the transport identified nobody. */
+type doorInvocation = {
+  fieldName: string,
+  arguments: JSON.t,
+  identity: Nullable.t<Reventless.Identity.t>,
+}
+
+/** The caller a door hands on: what its transport identified, else anonymous, so
+    a door that lost the identity refuses rather than acts as the platform. */
+let doorCaller = (identity: Nullable.t<Reventless.Identity.t>): Reventless.Identity.t =>
+  identity->Nullable.toOption->Option.getOr(Reventless.Identity.anonymous)
 
 module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
@@ -83,6 +87,7 @@ module type T = {
   let receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
+    ~caller: Reventless.Identity.t=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
 }
 
@@ -97,149 +102,102 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  // InboundTranslationSlice ingests external (non-Reventless) messages — there's
-  // no upstream Reventless meta to derive from, so emitted commands are roots
-  // of a fresh correlation chain. `traceparent` populated from an inbound HTTP
-  // header would need to be threaded in here by the API/ingress adapter.
-  // `service` names the command's TARGET, as on the API path — see the note in
-  // `AutomationSlice_Callback`. The target's events are dispatched on it.
+  // External input has no upstream meta, so each command starts a correlation
+  // chain. `service` names the command's target, on which its events dispatch.
   let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
+
+  let messageOf = (exn, fallback) =>
+    exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
+
+  // One audit row per request, whatever the outcome.
+  let failWith = (~requestId, ~inputJson, ~errorCode=?, error) => {
+    auditLog->Dict.set(
+      requestId,
+      {input: inputJson->JSON.stringify, status: Failure, error, receivedAt: now()},
+    )
+    Error({ReventlessInfra.InboundTranslationSlice.requestId, error, ?errorCode})
+  }
+
+  let succeed = (~requestId, ~inputJson, targetIds) => {
+    let commandCount = targetIds->Array.length
+    auditLog->Dict.set(
+      requestId,
+      {
+        input: inputJson->JSON.stringify,
+        status: Success,
+        targetIds,
+        commandCount,
+        receivedAt: now(),
+      },
+    )
+    Ok({ReventlessInfra.InboundTranslationSlice.requestId, targetIds, commandCount})
+  }
+
+  // Encoded with the command's schema, the one its target decodes with.
+  let encode = ((targetId, cmd): (string, Spec.command)): result<
+    Reventless.Message.commandJson,
+    string,
+  > =>
+    try Ok({
+      id: targetId,
+      meta: makeMeta(),
+      commandJson: cmd->Reventless.Util_Sury.toJson(Spec.commandSchema),
+    }) catch {
+    | exn =>
+      EffectLogger.logError(
+        ~comp=`InboundTranslationSlice(${Spec.name})`,
+        `failed to encode command: ${messageOf(exn, "unknown")}`,
+      )->Effect.runSync
+      Error("failed to encode command")
+    }
 
   let receive = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     inputJson: JSON.t,
+    ~caller: option<Reventless.Identity.t>=?,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
     let requestId = Uuid.v4()
-
-    // Parse the external input
-    let input = try inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)->Ok catch {
-    | exn =>
-      let msg =
-        exn
-        ->JsExn.fromException
-        ->Option.flatMap(JsExn.message)
-        ->Option.getOr("invalid input")
-      Error(msg)
+    let fail = (~errorCode=?, error) => failWith(~requestId, ~inputJson, ~errorCode?, error)
+    let parsed = try Ok(inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)) catch {
+    | exn => Error(messageOf(exn, "invalid input"))
     }
 
-    switch input {
-    | Error(msg) =>
-      auditLog->Dict.set(
-        requestId,
-        {
-          input: inputJson->JSON.stringify,
-          status: Failure,
-          error: msg,
-          receivedAt: now(),
-        },
-      )
-      Error({requestId, error: msg})
-
+    switch parsed {
+    | Error(msg) => fail(msg)
     | Ok(input) =>
       switch Translation.translate(input) {
+      | Error(msg) => fail(msg)
       | Ok(pairs) =>
-        if pairs->Array.length === 0 {
-          auditLog->Dict.set(
-            requestId,
-            {
-              input: inputJson->JSON.stringify,
-              status: Success,
-              targetIds: [],
-              commandCount: 0,
-              receivedAt: now(),
-            },
+        // Each command against its own rule; one refused refuses the message.
+        let refused =
+          pairs->Array.find(((_, cmd)) =>
+            !callerAdmits(Spec.commandAuthorization(cmd)->Reventless.Authorization.named, caller)
           )
-          Ok({requestId, targetIds: [], commandCount: 0})
-        } else {
-          // Encode all commands; abort on first encoding failure
-          let msgs = ref([])
-          let encodeError = ref(None)
-          pairs->Array.forEach(pair => {
-            let (targetId, cmd) = pair
-            if encodeError.contents->Option.isNone {
-              try {
-                let commandJson = cmd->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
-                let msg: Reventless.Message.commandJson = {
-                  id: targetId,
-                  meta: makeMeta(),
-                  commandJson,
-                }
-                msgs.contents = msgs.contents->Array.concat([msg])
-              } catch {
-              | exn =>
-                let errMsg =
-                  exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-                EffectLogger.logError(
-                  ~comp=`InboundTranslationSlice(${Spec.name})`,
-                  `failed to encode command: ${errMsg}`,
-                )->Effect.runSync
-                encodeError := Some("failed to encode command")
-              }
+        switch refused {
+        | Some(_) =>
+          fail(
+            ~errorCode="Forbidden",
+            `${Spec.name}: the caller is not authorized for every command this input translates into`,
+          )
+        | None =>
+          switch pairs->Array.reduce(Ok([]), (acc, pair) =>
+            switch (acc, encode(pair)) {
+            | (Ok(msgs), Ok(msg)) => Ok(msgs->Array.concat([msg]))
+            | (Error(_) as failed, _) => failed
+            | (_, Error(msg)) => Error(msg)
             }
-          })
-
-          switch encodeError.contents {
-          | Some(msg) =>
-            auditLog->Dict.set(
-              requestId,
-              {
-                input: inputJson->JSON.stringify,
-                status: Failure,
-                error: msg,
-                receivedAt: now(),
-              },
-            )
-            Error({requestId, error: msg})
-          | None =>
+          ) {
+          | Error(msg) => fail(msg)
+          | Ok([]) => succeed(~requestId, ~inputJson, [])
+          | Ok(msgs) =>
             try {
-              await publishJsons(msgs.contents)
-              let targetIds = pairs->Array.map(pair => {
-                let (targetId, _) = pair
-                targetId
-              })
-              auditLog->Dict.set(
-                requestId,
-                {
-                  input: inputJson->JSON.stringify,
-                  status: Success,
-                  targetIds,
-                  commandCount: pairs->Array.length,
-                  receivedAt: now(),
-                },
-              )
-              Ok({requestId, targetIds, commandCount: pairs->Array.length})
+              await publishJsons(msgs)
+              succeed(~requestId, ~inputJson, pairs->Array.map(((targetId, _)) => targetId))
             } catch {
-            | exn =>
-              let msg =
-                exn
-                ->JsExn.fromException
-                ->Option.flatMap(JsExn.message)
-                ->Option.getOr("publish failed")
-              auditLog->Dict.set(
-                requestId,
-                {
-                  input: inputJson->JSON.stringify,
-                  status: Failure,
-                  error: msg,
-                  receivedAt: now(),
-                },
-              )
-              Error({requestId, error: msg})
+            | exn => fail(messageOf(exn, "publish failed"))
             }
           }
         }
-
-      | Error(msg) =>
-        auditLog->Dict.set(
-          requestId,
-          {
-            input: inputJson->JSON.stringify,
-            status: Failure,
-            error: msg,
-            receivedAt: now(),
-          },
-        )
-        Error({requestId, error: msg})
       }
     }
   }
