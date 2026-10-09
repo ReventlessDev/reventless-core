@@ -26,7 +26,16 @@ open Ppxlib
     {ul
       {- [Automation]                 ([Automation/] folder)}
       {- [InboundTranslation]         ([InboundTranslation/] folder)}
-      {- [OutboundTranslation]        ([OutboundTranslation/] folder)}
+      {- [OutboundTranslation]        ([OutboundTranslation/] folder).
+                                       For these three, the bare form takes
+                                       the slice as written: [open <Spec>],
+                                       [open <Spec>_Automation] (or
+                                       [_Translation]) and
+                                       [include <Kind>_GWT.FromSlice(<Spec>,
+                                       <Body>)]. Only a local
+                                       [module X = { ... }] (an adapter)
+                                       selects [Make(X)]; an alias or a
+                                       functor application does not.}
       {- [Behavior]                   (Aggregate folder uses
                                        [MakeFromAggregate]; [StateChange/]
                                        folder uses [Make])}
@@ -175,6 +184,24 @@ let find_first_top_modules (n : int) (str : structure) : string list =
        | _ -> scan acc count rest)
   in
   scan [] 0 str
+
+(** The first top-level module written as a structure literal
+    ([module X = { ... }], possibly constrained). An alias or a functor
+    application is not an adapter, so it does not count. *)
+let find_first_structure_module (str : structure) : string option =
+  let rec is_literal (me : module_expr) =
+    match me.pmod_desc with
+    | Pmod_structure _ -> true
+    | Pmod_constraint (inner, _) -> is_literal inner
+    | _ -> false
+  in
+  List.find_map
+    (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_module { pmb_name = { txt = Some name; _ }; pmb_expr; _ }
+        when is_literal pmb_expr -> Some name
+      | _ -> None)
+    str
 
 (** When the file being processed lives inside the reventless-gwt package
     itself, emit unqualified module references. In-package references don't
@@ -377,6 +404,45 @@ let transform (str : structure) : structure =
       (open_item :: fixtures_open) @ body
     end
     else
+    let slice_body =
+      match payload, Util.slice_body_suffix kind with
+      | Empty, Some suffix when find_first_structure_module body = None ->
+        Option.map (fun spec -> (spec, spec ^ suffix)) (Util.spec_name_from_gwt_filename fname)
+      | _ -> None
+    in
+    match slice_body with
+    | Some (spec_name, body_name) ->
+      (* The slice as written: [FromSlice(<Spec>, <Spec>_<Body>)], both opened. *)
+      let loc = attr_loc in
+      (* A test need not name anything from either module itself — the functor
+         takes both — so an unused open is not a warning here. *)
+      let quiet (item : structure_item) =
+        match item.pstr_desc with
+        | Pstr_open od ->
+          let warning =
+            { attr_name = { txt = "warning"; loc };
+              attr_payload =
+                PStr [ { pstr_desc = Pstr_eval (Ast_builder.Default.estring ~loc "-33", []); pstr_loc = loc } ];
+              attr_loc = loc }
+          in
+          { item with pstr_desc = Pstr_open { od with popen_attributes = [ warning ] } }
+        | _ -> item
+      in
+      let opens =
+        List.filter_map
+          (fun name -> if Util.has_open name body then None else Some (quiet (gen_open ~loc name)))
+          [ spec_name; body_name ]
+      in
+      let fixtures_open =
+        match companion_fixtures_module fname with
+        | Some name when not (Util.has_open name body) -> [gen_open ~loc name]
+        | _ -> []
+      in
+      opens @ fixtures_open
+      @ [ gen_include_two ~loc ~kind ~functor_name:"FromSlice" ~spec_module:spec_name
+            ~impl_module:body_name ]
+      @ body
+    | None ->
     let functor_name = functor_name_for ~kind ~fname in
     (* Resolution order:
        1. Two-arg payload: Behavior / Projection DSL only, two-module form.
@@ -429,7 +495,12 @@ let transform (str : structure) : structure =
            bare form has no way to pick which mapping inside the \
            Projections file to test."
       | Empty, false ->
-        (match find_first_top_modules 1 body with
+        let local =
+          if Util.slice_body_suffix kind <> None then
+            Option.to_list (find_first_structure_module body)
+          else find_first_top_modules 1 body
+        in
+        (match local with
          | [name] -> (name, None, false)
          | _ ->
            (match Util.spec_name_from_gwt_filename fname with

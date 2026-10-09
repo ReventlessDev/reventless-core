@@ -475,138 +475,160 @@ Aggregate/DCB combinations live in
 
 ### 4.7 `Automation_GWT` — DCB automation
 
-Three loop steps (`collect` / `resolve` / `process`) plus a scenario-style
-`sweep`.
+An automation test is written against the slice as it is in `src/`: its spec
+(`AutoShipOrder.res`) and its body (`AutoShipOrder_Automation.res`, with the
+per-source mappings, `process` and `onExhausted`). With no module of its own in
+the test file, `@@reventless.gwt` opens both and includes
+`Automation_GWT.FromSlice(AutoShipOrder, AutoShipOrder_Automation)`.
+
+A mapping's event type is hidden inside `mappings`, so the per-source verbs come
+from `Mapping(M)`. A single-source slice includes it; a multi-source slice names
+one module per source (`module Orders = Mapping(FromOrders)`) and qualifies the
+calls.
 
 ```rescript
+// tests/Order/Automation/AutoShipOrder_GWT.res
 @@reventless.gwt
 
-module ShipOrderSlice = {
-  let name = "ShipOrder"
+include Mapping(FromOrderingDcb)
 
-  @schema
-  type consumedEvent =
-    | OrderPlaced({orderId: string, shippingAddress: string})
-    | ShipmentCreated({orderId: string})
-
-  @schema type todoItem = {orderId: string, shippingAddress: string}
-
-  @schema type command = CreateShipment({orderId: string, address: string})
-
-  let collect = event =>
-    switch event {
-    | OrderPlaced({orderId, shippingAddress}) => [(orderId, {orderId, shippingAddress})]
-    | _ => []
-    }
-
-  let resolve = event =>
-    switch event {
-    | ShipmentCreated({orderId}) => Some(orderId)
-    | _ => None
-    }
-
-  let process = (_id, item) =>
-    Some((item.orderId, CreateShipment({orderId: item.orderId, address: item.shippingAddress})))
-}
-
-describe("ShipOrder AutomationSlice", () => {
-  test("collect: OrderPlaced creates a pending TODO", () =>
-    givenEvent(OrderPlaced({orderId: "o1", shippingAddress: "1 Main St"}))
+describe("AutoShipOrder AutomationSlice", () => {
+  test("collect: an Express OrderPlaced creates a pending TODO", () =>
+    givenEvent(OrderPlaced({orderId: o1, shippingMethod: Express}))
     ->whenCollect
-    ->thenTodos([("o1", {orderId: "o1", shippingAddress: "1 Main St"})]))
+    ->thenTodos([("o1", {orderId: o1})]))
 
-  test("resolve: ShipmentCreated marks the TODO done", () =>
-    givenEvent(ShipmentCreated({orderId: "o1"}))
-    ->whenResolve
-    ->thenResolved(Some("o1")))
+  test("resolve: OrderShipped marks the TODO done", () =>
+    givenEvent(OrderShipped({orderId: o1}))->whenResolve->thenResolved(Some("o1")))
 
-  test("process: pending TODO emits CreateShipment", () =>
-    givenTodo("o1", {orderId: "o1", shippingAddress: "1 Main St"})
-    ->whenProcess
-    ->thenCommand("o1", CreateShipment({orderId: "o1", address: "1 Main St"})))
+  test("process: pending TODO emits ShipOrder", () =>
+    givenTodo("o1", {orderId: o1})->whenProcess->thenCommand("o1", ShipOrder({orderId: o1})))
+
+  test("exhausted: nothing is said", () =>
+    givenTodo("o1", {orderId: o1})->whenExhausted->thenNoCommand)
+
+  test("sweep: an Express order ships, a shipped one is closed", () =>
+    givenEvents([
+      event(OrderPlaced({orderId: o1, shippingMethod: Express})),
+      event(OrderPlaced({orderId: o2, shippingMethod: Express})),
+      event(OrderShipped({orderId: o2})),
+    ])
+    ->whenSweep
+    ->thenCommands([("o1", ShipOrder({orderId: o1}))]))
 })
 ```
 
-Runnable copy:
-[`reventless/gwt/tests/AutomationGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/AutomationGwtTest.res).
+| Verb | Does |
+|---|---|
+| `givenEvent(e)` → `whenCollect` / `whenResolve` | one mapping's `collect` / `resolve`. `whenCollect` takes `~sourceId` (an aggregate source's entity id) and `~context`, both defaulted |
+| `thenTodos(items)`, `thenResolved(id)` | the rows collected, the id resolved |
+| `givenTodo(id, item)` → `whenProcess` / `whenExhausted` | `process`, or `onExhausted` once the budget is spent |
+| `thenCommand(id, cmd)`, `thenNoCommand` | what either one publishes |
+| `givenEvents([event(e), …])` → `whenSweep` | every event routed by its source's name and decoded, exactly as the runtime does; `event(e, ~sourceId)` wraps a typed event |
+| `thenCommands(pairs)`, `andThenEvents([…])`, `thenScenarioTodos(items)` | the commands the sweep issues; later events that resolve rows; the rows still open |
+
+The sweep applies events in order, as the runtime's to-do list does: the first
+writer of an id wins, and a resolve completes only a row that already exists.
+`thenScenarioTodos` compares the **whole** open list, in that order — a sweep
+that opens an extra row fails it.
+
+Runnable copy, with two sources:
+[`reventless/gwt/tests/AutomationFromSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/AutomationFromSliceGwtTest.res).
 
 ### 4.8 `InboundTranslation_GWT` — external → internal translation
 
-No `given` clause (translation is pure over its input).
+No `given` clause (translation is pure over its input). With no module of its
+own, the test includes `InboundTranslation_GWT.FromSlice(<Spec>, <Spec>_Translation)`.
 
 ```rescript
+// tests/Product/InboundTranslation/ImportProduct_GWT.res
 @@reventless.gwt
 
-module PaymentWebhookSlice = {
-  let name = "PaymentWebhook"
+describe("ImportProduct InboundTranslationSlice", () => {
+  test("a USD payload translates to AddProduct", () =>
+    whenInput({sku, title: laptop, desc: highEnd, unitPrice: 99999, currency: usd})
+    ->thenCommand("p-1", AddProduct({productId: pid("p-1"), name: laptop, description: highEnd, price: 999.99})))
 
-  @schema type externalInput = {paymentId: string, orderId: string, status: string}
+  test("a payload missing its title is refused before translation", () =>
+    whenReceived(JSON.parseOrThrow(`{"sku": "SKU-1"}`))->thenRefusedInput("title"))
 
-  @schema type command = ConfirmPayment({orderId: string, paymentId: string})
-
-  let translate = input =>
-    switch input.status {
-    | "completed" =>
-      Ok([(input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId}))])
-    | _ => Error("Unknown payment status: " ++ input.status)
-    }
-}
-
-describe("PaymentWebhook InboundTranslationSlice", () => {
-  test("completed status emits ConfirmPayment", () =>
-    whenInput({paymentId: "p1", orderId: "o1", status: "completed"})
-    ->thenCommand("o1", ConfirmPayment({orderId: "o1", paymentId: "p1"})))
-
-  test("unknown status surfaces translate error", () =>
-    whenInput({paymentId: "p1", orderId: "o1", status: "garbage"})
-    ->thenTranslateError("Unknown payment status: garbage"))
+  test("an empty SKU is not understood", () =>
+    whenInput({...valid, sku: ""})->thenNotUnderstood("SKU is required"))
 })
 ```
+
+| Verb | Does |
+|---|---|
+| `whenInput(record)` | the slice's `translate` on a typed input |
+| `whenReceived(json)` | input as it arrives: decoded through `externalInputSchema` first |
+| `thenCommands(pairs)`, `thenCommand(id, cmd)`, `thenNoCommand` | the commands; each must also encode and decode through `commandSchema` |
+| `thenNotUnderstood(msg)` | `translate` returned `Error(msg)`. `thenTranslateError` is the older name |
+| `thenRefusedInput(reason)` | the input did not decode; passes when the decoder's message contains `reason` |
 
 ### 4.9 `OutboundTranslation_GWT` — internal → external translation
 
-Combines a `collect` pipeline (same shape as `AutomationSlice`) with a
-`translate` pipeline whose actual implementation is **mocked** by the test
-body — the spec's real `translate` is exercised in component callback tests
-elsewhere.
+A `collect` pipeline (same shape as an automation's) and a `translate` pipeline
+that runs the slice's **own** `translate` against recording capability fakes.
+With no module of its own, the test includes
+`OutboundTranslation_GWT.FromSlice(<Spec>, <Spec>_Translation)`.
 
 ```rescript
+// tests/Customer/OutboundTranslation/GeocodeCustomerAddress_GWT.res
 @@reventless.gwt
 
-module SendTrackingEmailSlice = {
-  let name = "SendTrackingEmail"
+let geocoder = answer => fakes(~geocode=async (~text as _) => answer, ())
 
-  @schema type consumedEvent = OrderShipped({orderId: string, email: string})
-  @schema type outboundItem = {orderId: string, email: string}
-  @schema type inboundCommand = NoOp
+describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
+  testSync("collect keys by entity and address", () =>
+    givenEvent(AddressUpdated({address: viennaAddress}))
+    ->whenCollect(~sourceId="cust-1")
+    ->thenTodos([("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})]))
 
-  let collect = event =>
-    switch event {
-    | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
-    }
-}
+  test("the geocoder is asked for the address as written", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
+    ->givenCapabilities(geocoder(Ok([])))
+    ->whenTranslated
+    ->thenSent([Geocoded({text: viennaAddress})]))
 
-describe("SendTrackingEmail OutboundTranslationSlice", () => {
-  test("collect: OrderShipped queues an outbound TODO", () =>
-    givenEvent(OrderShipped({orderId: "o1", email: "x@y"}))
-    ->whenCollect
-    ->thenTodos([("o1", {orderId: "o1", email: "x@y"})]))
-
-  test("translate success is fire-and-forget → #Completed", () =>
-    givenTodo("o1", {orderId: "o1", email: "x@y"})
-    ->whenTranslateMocked((_id, _item) => Promise.resolve(Ok(None)))
-    ->thenTodoStatus("o1", #Completed))
-
-  test("translate failure records a retry → #Pending", () =>
-    givenTodo("o1", {orderId: "o1", email: "x@y"})
-    ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
-    ->thenTodoStatus("o1", #Pending))
+  test("a geocoder that is down leaves the row to be retried", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
+    ->givenCapabilities(geocoder(Error(Unavailable("timeout"))))
+    ->whenTranslated
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Failed))
 })
 ```
 
+| Verb | Does |
+|---|---|
+| `givenEvent(e)` → `whenCollect(~sourceId=?)` → `thenTodos(items)` | `collect` |
+| `givenTodo(id, item)`, `givenCapabilities(fakes(...))` | the row, and the capabilities `translate` is handed. Unscripted capabilities answer with a plain success |
+| `whenTranslated` | one attempt of the real `translate`; a throw is a failed attempt |
+| `whenTranslateMocked(mock)` | one attempt answered by `mock` — for a slice that calls a service the framework does not broker |
+| `whenTranslateRetrying(~maxRetries=?, mock)` | attempts until one succeeds or `maxRetries` (the Spec's by default) have failed |
+| `whenExhausted(~lastError=?)` | what `onExhausted` publishes once the budget is spent |
+| `thenCommand(id, cmd)`, `thenNoCommand` | the command published back, if any |
+| `thenSent(calls)`, `thenNothingSent` | every capability call, in order (`Sent`, `Geocoded`, `TokenDrawn`, …; see `Capabilities_Fake.call`) |
+| `thenTodoStatus(id, s)` | `#Completed`, `#Failed` (to be retried) or `#Abandoned`, counted as the runtime counts: `maxRetries` failed attempts abandon the row. `#Pending` is the older name for `#Failed` |
+| `thenRetryRecorded(n)` | the row's `retryCount`: attempts that failed |
+
+Runnable copy:
+[`reventless/gwt/tests/OutboundFromSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/OutboundFromSliceGwtTest.res).
+
+**The flat form.** A test file that declares a `module X = { … }` keeps today's
+`<Kind>_GWT.Make(X)`, which takes an adapter module that flattens the slice. It
+is deprecated and goes one release after the examples have moved; a module
+alias (`module Rule = …`) or a functor application (`module Orders = Mapping(…)`)
+does not count as one.
+
+**In a flow.** `Flow_GWT.AutomationSlice(Spec, Automation)`,
+`Flow_GWT.OutboundSlice(Spec, Translation)` and
+`Flow_GWT.InboundSlice(Spec, Translation)` take the same two modules, with
+`whenReacts` / `thenIssuesCommand(s)`, `thenOutbound(items)` and
+`whenReceived(json)` / `thenIssuesCommand(s)`.
+
 ### 4.10 Testing external slice modules (the consumer pattern)
 
-The worked examples in §§ 4.1–4.9 are **inline** — the spec module is defined
+The worked examples in §§ 4.1–4.6 are **inline** — the spec module is defined
 in the same file as the tests. This is the pattern used inside the
 `reventless-gwt` package itself, where each test file documents one DSL.
 
@@ -660,7 +682,9 @@ Conventions to follow:
 
 The same pattern applies to every DSL. Behavior is the one exception to the
 zero-payload form: the two-arg functor needs both modules named —
-`@@reventless.gwt(CategorySpec, CategoryBehavior)`.
+`@@reventless.gwt(CategorySpec, CategoryBehavior)`. Automations and
+translations pair the spec with its body file by name — `<Spec>_Automation` or
+`<Spec>_Translation` — so they keep the bare form (§§ 4.7–4.9).
 
 ### 4.11 Companion fixtures module (`<Stem>_Fixtures.res`)
 

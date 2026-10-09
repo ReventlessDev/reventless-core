@@ -1,26 +1,7 @@
-// `Automation_GWT.Make` expects a single SliceSpec with `collect`, `resolve`
-// and `process` as top-level bindings. Compose them onto the spec module
-// locally — the production split form keeps `collect`/`resolve` inside the
-// per-source mapping.
-
-let testContext: Reventless.AutomationSlice.context = {
-  environment: "test",
-  platformName: "test",
-  pluginName: "ordering",
-  sliceName: "AutoShipOrder",
-}
-
-module AutoShipOrderSlice = {
-  include AutoShipOrder
-  type consumedEvent = AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
-  let consumedEventSchema = AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-
-  let collect = e => AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
-  let resolve = AutoShipOrder_Automation.FromOrderingDcb.resolve
-  let process = AutoShipOrder_Automation.process
-}
-
 @@reventless.gwt
+
+// One source: the ordering plugin's own DCB log.
+include Mapping(FromOrderingDcb)
 
 open Ordering_Examples
 
@@ -72,5 +53,19 @@ describe("AutoShipOrder AutomationSlice", () => {
     givenTodo("o1", {orderId: o1})
     ->whenProcess
     ->thenCommand("o1", ShipOrder({orderId: o1}))
+  )
+
+  test("exhausted: a Placed order that never shipped is already visible, so nothing is said", () =>
+    givenTodo("o1", {orderId: o1})->whenExhausted->thenNoCommand
+  )
+
+  test("sweep: an Express order ships, a shipped one is closed", () =>
+    givenEvents([
+      event(OrderPlaced({orderId: o1, shippingMethod: Express})),
+      event(OrderPlaced({orderId: o2, shippingMethod: Express})),
+      event(OrderShipped({orderId: o2})),
+    ])
+    ->whenSweep
+    ->thenCommands([("o1", ShipOrder({orderId: o1}))])
   )
 })

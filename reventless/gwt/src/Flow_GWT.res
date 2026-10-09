@@ -20,7 +20,7 @@ open ReventlessCore
 // pipe-first so it reads top-to-bottom:
 //
 //   module Place = Flow_GWT.CommandStep(PlaceOrder, PlaceOrder_Behavior)
-//   module Auto  = Flow_GWT.AutomationStep(AutoShipOrderSlice)
+//   module Auto  = Flow_GWT.AutomationSlice(AutoShipOrder, AutoShipOrder_Automation)
 //   module Ship  = Flow_GWT.CommandStep(ShipOrder, ShipOrder_Behavior)
 //   module View  = Flow_GWT.ViewStep(Orders, Orders_Projection)
 //
@@ -77,6 +77,8 @@ type flowState = {
   // step falls back to the synthetic `gwt-id` so the existing DCB Flow tests
   // are unchanged.
   lastAggregateId: option<string>,
+  // Why the last inbound step produced no commands, when it was refused.
+  lastRefusal: option<string>,
 }
 
 type flow = promise<flowState>
@@ -89,6 +91,7 @@ let emptyState = {
   lastCommands: [],
   lastPublic: [],
   lastAggregateId: None,
+  lastRefusal: None,
 }
 
 // Entry point for a chain — an empty flow with no prior history.
@@ -489,6 +492,8 @@ module AggregateCommandStep = (
 
 // -- AutomationStep: a policy that reacts to log events and issues a command --
 
+// Deprecated: takes an adapter. Use `AutomationSlice`; this goes one release
+// after the examples have moved.
 module AutomationStep = (Spec: Automation_GWT.SliceSpec) => {
   let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
 
@@ -558,6 +563,8 @@ module ViewStep = (
 
 // -- OutboundStep: an OutboundTranslationSlice's `collect` over the log -------
 
+// Deprecated: takes an adapter. Use `OutboundSlice`; this goes one release
+// after the examples have moved.
 module OutboundStep = (Spec: OutboundTranslation_GWT.SliceSpec) => {
   let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
 
@@ -585,6 +592,110 @@ module OutboundStep = (Spec: OutboundTranslation_GWT.SliceSpec) => {
   }
 
   let thenOutboundNothing = flowP => thenOutbound(flowP, [])
+}
+
+// -- Slice-as-written steps --------------------------------------------------
+//
+// The same steps over a slice's `Spec` and body, with no adapter. The log keeps
+// no source name, so every mapping is offered every entry; the source id is the
+// producing aggregate's, or "" for a DCB event, which names its own subject.
+
+let sourceIdOf = (entry: logEntry) => entry.aggregateId->Option.getOr("")
+
+let encodedCommandsMatch = async (flowP: flow, expJson: array<JSON.t>) => {
+  let s = await flowP
+  let o = switch s.lastRefusal {
+  | Some(reason) => Outcome.fail(TranslateError({expected: "(commands)", actual: Some(reason)}))
+  | None =>
+    s.lastCommands == expJson
+      ? Outcome.pass
+      : Outcome.fail(EventsMismatch({expected: expJson, actual: s.lastCommands}))
+  }
+  s->recordOutcome(o)
+}
+
+module AutomationSlice = (
+  Spec: Reventless.AutomationSlice.Spec,
+  Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+) => {
+  module A = Automation_GWT.FromSlice(Spec, Automation)
+
+  let whenReacts = async (flowP: flow) => {
+    let s = await flowP
+    let routed =
+      s.log->Array.flatMap(entry =>
+        A.Route.dispatches->Array.filterMap(d =>
+          d.handle(entry.json, ~sourceId=entry->sourceIdOf, A.testContext)
+        )
+      )
+    let {commands, _} = A.sweep(routed)
+    {
+      ...s,
+      lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
+      lastRefusal: None,
+    }
+  }
+
+  let thenIssuesCommands = (flowP, expected: array<Spec.command>) =>
+    encodedCommandsMatch(flowP, expected->Array.map(c => c->Message.encode(Spec.commandSchema)))
+  let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command])
+  let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
+}
+
+module OutboundSlice = (
+  Spec: Reventless.OutboundTranslationSlice.Spec,
+  Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
+) => {
+  let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
+
+  let encItems = (arr: array<(string, Spec.outboundItem)>) =>
+    arr->Array.map(((id, item)) => (id, item->Message.encode(Spec.outboundItemSchema)))
+
+  // Asserts what `collect` queues; `translate` is the slice test's to run.
+  let thenOutbound = async (flowP: flow, expected: array<(string, Spec.outboundItem)>) => {
+    let s = await flowP
+    let collected =
+      s.log->Array.flatMap(entry =>
+        decodeMatching([entry], consumedDecoder, [])->Array.flatMap(e =>
+          Translation.collect(e, ~sourceId=entry->sourceIdOf)
+        )
+      )
+    let actual = encItems(collected)
+    let expectedJson = encItems(expected)
+    let o =
+      actual == expectedJson
+        ? Outcome.pass
+        : Outcome.fail(TodoMismatch({expected: expectedJson, actual}))
+    s->recordOutcome(o)
+  }
+
+  let thenOutboundNothing = flowP => thenOutbound(flowP, [])
+}
+
+module InboundSlice = (
+  Spec: Reventless.InboundTranslationSlice.Spec,
+  Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
+) => {
+  module I = InboundTranslation_GWT.FromSlice(Spec, Translation)
+
+  // Received input becomes the flow's next commands, as an automation's do.
+  let whenReceived = async (flowP: flow, json: JSON.t) => {
+    let s = await flowP
+    switch I.whenReceived(json) {
+    | Translated(pairs) => {
+        ...s,
+        lastCommands: pairs->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
+        lastRefusal: None,
+      }
+    | NotUnderstood(msg) => {...s, lastCommands: [], lastRefusal: Some(`not understood: ${msg}`)}
+    | InputRefused(msg) => {...s, lastCommands: [], lastRefusal: Some(`input refused: ${msg}`)}
+    }
+  }
+
+  let thenIssuesCommands = (flowP, expected: array<Spec.command>) =>
+    encodedCommandsMatch(flowP, expected->Array.map(c => c->Message.encode(Spec.commandSchema)))
+  let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command])
+  let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
 }
 
 // -- Cross-plugin boundary steps (Phase 3) -----------------------------------

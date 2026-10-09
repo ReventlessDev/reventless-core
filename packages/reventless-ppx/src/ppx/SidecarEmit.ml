@@ -11,8 +11,8 @@
    captured as a list of "elements" (variant constructors, or the record
    itself) whose fields carry the exact `Model.field` JSON shape — name, kind,
    isId / isIndex / isCompositeTag, and the resolved DCB-tag `dcbRole` — so the
-   assembler can decode it with `Model.fieldFromJson` directly. `let` config
-   constants (targetName / maxRetries / heartbeatInterval) are captured too.
+   assembler can decode it with `Model.fieldFromJson` directly. The `let`
+   config values (see `config_keys`) are captured too, as source text.
 
    This module reads the spec body *before* `DcbTagInference` rewrites the
    field annotations into `@s.matches(...)`, so the original `@partitionTag` /
@@ -316,32 +316,92 @@ let type_entry ?src ?(nested = []) (td : type_declaration) : Yojson.Safe.t optio
            ("elements", `List [ element_json ~name:type_name ~fields ]) ])
   | _ -> None
 
-(* ── config constants (let targetName / maxRetries / heartbeatInterval) ──── *)
+(* The source text an expression was parsed from, cut by its byte offsets. None
+   when there is no source, or the location is one the parser did not set or
+   that does not fit the file — the value is then dropped, as before code
+   values existed. *)
+let text_at ?src (loc : Location.t) : string option =
+  match src with
+  | None -> None
+  | Some text ->
+    let a = byte_offset text loc.loc_start and b = byte_offset text loc.loc_end in
+    if a >= 0 && b > a && b <= String.length text then Some (String.sub text a (b - a))
+    else None
 
-let config_keys = [ "targetName"; "maxRetries"; "heartbeatInterval" ]
+let source_text ?src (e : expression) : string option = text_at ?src e.pexp_loc
 
-let literal_value (e : expression) : string option =
-  match e.pexp_desc with
-  | Pexp_constant (Pconst_integer (s, _)) -> Some s
-  | Pexp_constant (Pconst_float (s, _)) -> Some s
-  | Pexp_constant (Pconst_string (s, _, _)) -> Some ("\"" ^ s ^ "\"")
-  | Pexp_construct ({ txt = Lident "true"; _ }, None) -> Some "true"
-  | Pexp_construct ({ txt = Lident "false"; _ }, None) -> Some "false"
+let strip_poly (ct : core_type) : core_type =
+  match ct.ptyp_desc with Ptyp_poly ([], t) -> t | _ -> ct
+
+(* A binding of a single name → (name, annotation, value). The annotation sits on
+   the pattern (`let x: t = e`), on the expression (`let x = (e: t)`), or on both
+   — the parsers disagree on which, so all three are read. *)
+let named_binding (vb : value_binding) :
+    (string * core_type option * expression) option =
+  let unconstrain (e : expression) =
+    match e.pexp_desc with
+    | Pexp_constraint (inner, ct) -> (inner, Some ct)
+    | _ -> (e, None)
+  in
+  match vb.pvb_pat.ppat_desc with
+  | Ppat_var { txt; _ } ->
+    let e, ct = unconstrain vb.pvb_expr in
+    Some (txt, ct, e)
+  | Ppat_constraint ({ ppat_desc = Ppat_var { txt; _ }; _ }, ct) ->
+    let e, _ = unconstrain vb.pvb_expr in
+    Some (txt, Some (strip_poly ct), e)
   | _ -> None
 
-let config_entries (str : structure) : Yojson.Safe.t list =
+(* ── config constants ─────────────────────────────────────────────────── *)
+
+let config_keys =
+  [ "targetName"; "maxRetries"; "heartbeatInterval"; "externalSystem"; "sourceNames";
+    "capabilityNeeds"; "traits" ]
+
+(* A string literal as ReScript writes it. The ReScript parser keeps a "…"
+   string's escapes as written (delimiter "*j"), so quoting it again restores the
+   literal; content from anywhere else is escaped. *)
+let string_literal_text (s : string) (delim : string option) : string =
+  match delim with
+  | Some "*j" -> "\"" ^ s ^ "\""
+  | _ -> Yojson.Safe.to_string (`String s)
+
+(* A config value as the source writes it: a literal (the file's own spelling
+   when at hand), a name, a payload-less constructor, `Some` of one (recorded as
+   the value), or an array of them. None for anything else, and for `None`: an
+   absent value is no entry, so an outbound slice without a target still reads
+   as fire-and-forget. *)
+let rec config_value ?src (e : expression) : string option =
+  match e.pexp_desc with
+  | Pexp_constraint (inner, _) -> config_value ?src inner
+  | Pexp_constant (Pconst_integer (s, _) | Pconst_float (s, _)) -> Some s
+  | Pexp_constant (Pconst_string (s, _, delim)) -> (
+    match source_text ?src e with
+    | Some t when String.length t >= 2 && (t.[0] = '"' || t.[0] = '`') -> Some t
+    | _ -> Some (string_literal_text s delim))
+  | Pexp_construct ({ txt = Lident "None"; _ }, None) -> None
+  | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> config_value ?src inner
+  | Pexp_construct ({ txt = (Lident _ | Ldot _) as lid; _ }, None)
+  | Pexp_ident { txt = (Lident _ | Ldot _) as lid; _ } -> Some (flatten_longident lid)
+  | Pexp_array els ->
+    let items = List.map (config_value ?src) els in
+    if List.for_all Option.is_some items then
+      Some ("[" ^ String.concat ", " (List.filter_map Fun.id items) ^ "]")
+    else None
+  | _ -> None
+
+let config_entries ?src (str : structure) : Yojson.Safe.t list =
   List.concat_map
     (fun (item : structure_item) ->
       match item.pstr_desc with
       | Pstr_value (_, vbs) ->
         List.filter_map
           (fun (vb : value_binding) ->
-            match vb.pvb_pat.ppat_desc with
-            | Ppat_var { txt; _ } when List.mem txt config_keys -> (
-              match literal_value vb.pvb_expr with
-              | Some v ->
-                Some (`Assoc [ ("key", `String txt); ("value", `String v) ])
-              | None -> None)
+            match named_binding vb with
+            | Some (name, _, e) when List.mem name config_keys ->
+              Option.map
+                (fun v -> `Assoc [ ("key", `String name); ("value", `String v) ])
+                (config_value ?src e)
             | _ -> None)
           vbs
       | _ -> [])
@@ -393,7 +453,7 @@ let fragment_json ?src ~spec_name ~fname (body : structure) : Yojson.Safe.t =
       ("stem", `String (filename_stem fname));
       ("file", `String (repo_relative fname));
       ("types", `List types);
-      ("config", `List (config_entries body)) ]
+      ("config", `List (config_entries ?src body)) ]
 
 let sidecar_path (fname : string) : string =
   if Filename.check_suffix fname ".res" then
@@ -419,6 +479,151 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
   if is_enabled () && fname <> "" then write_sidecar ~spec_name ~fname body
 
 (* ════════════════════════════════════════════════════════════════════════
+   Automation wiring — emit <Stem>.wiring.json for a `@@reventless.automation`
+   body: each mapping of `let mappings`, in its order, with the slice it feeds
+   and the source it reads. A source declared in the file carries its events;
+   one declared elsewhere is a `ref` to resolve through that module's sidecar.
+   Not `.model.json`: every reader of those takes the file for a component.
+   ════════════════════════════════════════════════════════════════════════ *)
+
+let schema_types_of (str : structure) : type_declaration list =
+  List.concat_map
+    (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_type (_, tds) -> List.filter is_schema_type tds
+      | _ -> [])
+    str
+
+let module_path (me : module_expr) : string option =
+  match me.pmod_desc with
+  | Pmod_ident { txt; _ } -> ( try Some (flatten_longident txt) with _ -> None)
+  | _ -> None
+
+(* `F(A, B, C)` → (F, [A; B; C]). *)
+let rec functor_args (me : module_expr) : module_expr * module_expr list =
+  match me.pmod_desc with
+  | Pmod_apply (f, a) ->
+    let head, args = functor_args f in
+    (head, args @ [ a ])
+  | Pmod_constraint (inner, _) -> functor_args inner
+  | _ -> (me, [])
+
+let rec structure_of (me : module_expr) : structure option =
+  match me.pmod_desc with
+  | Pmod_structure str -> Some str
+  | Pmod_constraint (inner, _) -> structure_of inner
+  | _ -> None
+
+let source_json ?src ~(inline : (string * structure) list) (path : string) : Yojson.Safe.t =
+  match List.assoc_opt path inline with
+  | None -> `Assoc [ ("ref", `String path) ]
+  | Some str ->
+    let schema = schema_types_of str in
+    let nested = nested_type_names schema in
+    let events, others = List.partition (fun td -> String.equal td.ptype_name.txt "event") schema in
+    let source_name =
+      List.find_map
+        (fun (item : structure_item) ->
+          match item.pstr_desc with
+          | Pstr_value (_, vbs) ->
+            List.find_map
+              (fun vb ->
+                match named_binding vb with
+                | Some ("name", _, e) -> config_value ?src e
+                | _ -> None)
+              vbs
+          | _ -> None)
+        str
+    in
+    `Assoc
+      [ ("module", `String path);
+        ("sourceName", match source_name with Some s -> `String s | None -> `Null);
+        ( "events",
+          match events with
+          | td :: _ -> Option.value (type_entry ?src ~nested td) ~default:`Null
+          | [] -> `Null );
+        ("types", `List (List.filter_map (type_entry ?src ~nested) others)) ]
+
+let wiring_fragment_json ?src ~spec_name ~fname (body : structure) : Yojson.Safe.t =
+  let modules =
+    List.filter_map
+      (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_module { pmb_name = { txt = Some name; _ }; pmb_expr; _ } -> Some (name, pmb_expr)
+        | _ -> None)
+      body
+  in
+  let inline = List.filter_map (fun (n, me) -> Option.map (fun s -> (n, s)) (structure_of me)) modules in
+  (* `module F = Mapping.Make(Source, Target, {…})` *)
+  let made =
+    List.filter_map
+      (fun (n, me) ->
+        match functor_args me with
+        | head, (_ :: _ as args)
+          when (match module_path head with
+                | Some p -> String.equal p "Make" || ends_with p ".Make"
+                | None -> false) ->
+          Some (n, args)
+        | _ -> None)
+      modules
+  in
+  let mapping_names =
+    let rec packed (e : expression) =
+      match e.pexp_desc with
+      | Pexp_pack me -> module_path me
+      | Pexp_constraint (inner, _) -> packed inner
+      | _ -> None
+    in
+    List.concat_map
+      (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_value (_, vbs) ->
+          List.concat_map
+            (fun vb ->
+              match named_binding vb with
+              | Some ("mappings", _, { pexp_desc = Pexp_array els; _ }) -> List.filter_map packed els
+              | _ -> [])
+            vbs
+        | _ -> [])
+      body
+  in
+  let path_json = function Some p -> `String p | None -> `Null in
+  let mapping_json name =
+    match List.assoc_opt name made with
+    | Some args ->
+      let arg i = Option.bind (List.nth_opt args i) module_path in
+      `Assoc
+        [ ("module", `String name);
+          ("target", path_json (arg 1));
+          ("source", match arg 0 with Some p -> source_json ?src ~inline p | None -> `Null) ]
+    | None -> `Assoc [ ("module", `String name); ("target", `Null); ("source", `Null) ]
+  in
+  `Assoc
+    [ ("specName", `String spec_name);
+      ("stem", `String (filename_stem fname));
+      ("file", `String (repo_relative fname));
+      ("mappings", `List (List.map mapping_json mapping_names)) ]
+
+let wiring_sidecar_path (fname : string) : string =
+  if Filename.check_suffix fname ".res" then
+    Filename.chop_suffix fname ".res" ^ ".wiring.json"
+  else fname ^ ".wiring.json"
+
+(* Public entry — called from the dispatcher for a `@@reventless.automation`
+   body, captured before the DCB-tag passes rewrite its sources' annotations. *)
+let maybe_emit_wiring ~spec_name ~fname (body : structure) : unit =
+  if is_enabled () && fname <> "" then
+    try
+      let json = wiring_fragment_json ?src:(read_source fname) ~spec_name ~fname body in
+      let oc = open_out (wiring_sidecar_path fname) in
+      output_string oc (Yojson.Safe.pretty_to_string json);
+      output_char oc '\n';
+      close_out oc
+    with exn ->
+      Printf.eprintf "[reventless-ppx] wiring sidecar emit failed for %s: %s\n" fname
+        (Printexc.to_string exn)
+
+(* ════════════════════════════════════════════════════════════════════════
    GWT extraction (Plan 06 Phase 2) — emit <Stem>.gwt.json for @@reventless.gwt
    files whose `test` bodies use the inline-literal shape the forward emitter
    writes:
@@ -432,27 +637,17 @@ let maybe_emit ~spec_name ~fname (body : structure) : unit =
        )
      })
 
-   ReScript desugars `a->f(b)` to `f(a, b)`, so the body is a nest of applies;
-   we walk it and pick the given / when / then calls by function name. The
-   `// scenario-id:` lives in a comment (ppxlib drops comments) so it is recovered
-   from the source text by line, correlated to each `test(...)` location.
+   The body is a nest of applies (and pipes); we walk it in written order and
+   read each step by its verb. Every scenario records its `steps`
+   (`{group, verb, kind, element, values, via?}`) and, from the same walk, the
+   lossy `given` / `when` / `then` groups older readers take. The file records
+   its `componentKind`. The `// scenario-id:` lives in a comment (ppxlib drops
+   comments) so it is recovered from the source text by line, correlated to
+   each `test(...)` / `testSync(...)` location.
    ════════════════════════════════════════════════════════════════════════ *)
 
 (* ── source text (read once per sidecar) ─────────────────────────────── *)
 
-(* The source text an expression was parsed from, cut by its byte offsets. None
-   when there is no source, or the location is one the parser did not set or
-   that does not fit the file — the value is then dropped, as before code
-   values existed. *)
-let text_at ?src (loc : Location.t) : string option =
-  match src with
-  | None -> None
-  | Some text ->
-    let a = byte_offset text loc.loc_start and b = byte_offset text loc.loc_end in
-    if a >= 0 && b > a && b <= String.length text then Some (String.sub text a (b - a))
-    else None
-
-let source_text ?src (e : expression) : string option = text_at ?src e.pexp_loc
 
 (* ── example values from expressions (→ Model.exampleValue JSON) ──────── *)
 
@@ -559,194 +754,367 @@ let element_of_constructor ?src (e : expression) :
     Some (name, values)
   | _ -> None
 
-(* ── collect named applies anywhere in a test body ──────────────────────── *)
+(* ── the steps of a test body, in written order ─────────────────────────── *)
 
+(* The verbs the scenario walk records. A verb not listed is still a step to
+   the ordered walk below (it keeps the chain together) but records nothing. *)
 let step_names =
-  [ "givenEvents"; "givenEvent"; "whenCmd"; "whenCommand"; "whenInput";
+  [ "givenEvents"; "givenEvent"; "givenTodo"; "givenCapabilities";
+    "whenCmd"; "whenCommand"; "whenInput"; "whenReceived"; "whenEvent"; "whenEvents";
+    "whenCollect"; "whenResolve"; "whenSweep"; "whenReacts"; "whenPublishedThrough";
+    "whenExtensionReacts"; "whenProcess"; "whenTranslated"; "whenTranslateMocked";
+    "whenTranslateRetrying"; "whenExhausted"; "andThenEvents";
     "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
-    "thenCommand"; "thenSideEffect";
-    (* The projection DSLs (`Projection_GWT`, `MultiSourceProjection_GWT`, and
-       the StateViewSlice forms built on them) drive a fold with an event and
-       assert a row, so their when/then verbs are not the command verbs above.
-       Without them a projection scenario records its `given` and nothing else,
-       which reads as a scenario that asserts nothing. *)
-    "whenEvent"; "whenEvents"; "thenStateWithId"; "thenStatesWithId";
-    "thenNoState";
-    (* Carries no payload: `->thenNoEvent` asserts that a command was accepted
-       and produced nothing. Pipe-first still makes it an apply — the argument is
-       the chain it is piped from, not an element — so it needs its own case
-       below rather than the payload walk the others share. *)
-    "thenNoEvent";
-    (* Payload-less like `thenNoEvent`: the caller named by `asCaller` does not
-       own what the command acts on, so it was refused before `decide` ran. *)
-    "thenRefused" ]
+    "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenViewState"; "thenViewStates";
+    "thenCommand"; "thenCommands"; "thenIssuesCommand"; "thenIssuesCommands";
+    "thenNoCommand"; "thenIssuesNoCommand"; "thenSideEffect"; "thenNoEvent"; "thenRefused";
+    "thenTodos"; "thenScenarioTodos"; "thenResolved"; "thenTranslateError";
+    "thenNotUnderstood"; "thenRefusedInput"; "thenSent"; "thenNothingSent"; "thenOutbound";
+    "thenOutboundNothing"; "thenTodoStatus"; "thenRetryRecorded"; "thenPublicEvent";
+    "thenPublicEvents" ]
 
-(* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`
-   — which is the only form available to a multi-source read model, where one
-   file wires one GWT module per source mapping. The step is the same step, so
-   the last segment is what identifies it. *)
+(* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`,
+   `Auto.thenIssuesCommand` — and the step is the same step, so the last segment
+   is what identifies it. *)
 let step_name_of (lid : Longident.t) : string =
   match Longident.flatten_exn lid with
   | [] -> ""
   | segments -> List.nth segments (List.length segments - 1)
+  | exception _ -> ""
 
-let rec collect_applies (e : expression) (acc : (string * expression list) list) :
-    (string * expression list) list =
+(* The module a qualified step is called through: `Auto` in
+   `Auto.thenIssuesCommand`. *)
+let step_via (lid : Longident.t) : string option =
+  match Longident.flatten_exn lid with
+  | ([] | [ _ ]) -> None
+  | segments ->
+    let n = List.length segments in
+    Some (String.concat "." (List.filteri (fun i _ -> i < n - 1) segments))
+  | exception _ -> None
+
+(* A step is any `given…` / `when…` / `then…` call, not only the verbs above:
+   a DSL has its own (`whenIncomingEvent`), and a reader reports what is
+   written. *)
+let is_verb (lid : Longident.t) =
+  let name = step_name_of lid in
+  List.mem name step_names
+  || List.exists
+       (fun prefix ->
+         let lp = String.length prefix in
+         String.length name > lp
+         && String.equal (String.sub name 0 lp) prefix
+         && Char.uppercase_ascii name.[lp] = name.[lp]
+         && Char.lowercase_ascii name.[lp] <> name.[lp])
+       [ "given"; "when"; "then" ]
+
+let rec holds_step (e : expression) =
   match e.pexp_desc with
-  (* `chain->thenNoEvent` reaches a PPX as `|.`(chain, thenNoEvent): the step
-     is a bare identifier, not an apply, so the case below never sees it. Read
-     it as the call it stands for. *)
-  | Pexp_apply
-      ( { pexp_desc = Pexp_ident { txt = Lident "|."; _ }; _ },
-        [ (_, lhs); (_, { pexp_desc = Pexp_ident { txt; _ }; _ }) ] )
-    when List.mem (step_name_of txt) step_names ->
-    collect_applies lhs ((step_name_of txt, [ lhs ]) :: acc)
   | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) ->
-    let name = step_name_of txt in
-    let arg_exprs = List.map snd args in
-    let acc =
-      if List.mem name step_names then (name, arg_exprs) :: acc else acc
-    in
-    List.fold_left (fun a ae -> collect_applies ae a) acc arg_exprs
-  | Pexp_construct (_, Some inner) -> collect_applies inner acc
-  | Pexp_array els ->
-    List.fold_left (fun a ae -> collect_applies ae a) acc els
-  (* A test body is a block whenever the author names a value first — building a
-     date range, say — and the chain is then the block's last expression rather
-     than the body itself. Walking only the head left those scenarios recorded
-     with an empty when and then, which reads as a scenario that asserts
-     nothing rather than as one this walk could not see. *)
+    is_verb txt || List.exists (fun (_, a) -> holds_step a) args
+  | Pexp_constraint (inner, _) -> holds_step inner
+  | _ -> false
+
+(* The step calls of one test body, in the order they run, last first. The
+   chain so far is an argument of each step (or of the pipe around it), so an
+   argument that holds a step is the chain and the others are the step's values.
+   Any other call is walked left to right, which keeps the written order.
+   `chain->thenNoEvent` has no parentheses: the pipe's right side is the verb
+   itself, a step with no values. [deep] also walks `let` bindings, arrays and
+   constructor payloads, where a test may build part of its chain. *)
+let rec ordered_steps ?(deep = false) (e : expression)
+    (acc : (Longident.t * (arg_label * expression) list) list) :
+    (Longident.t * (arg_label * expression) list) list =
+  let walk acc e = ordered_steps ~deep e acc in
+  match e.pexp_desc with
+  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) when is_verb txt ->
+    let acc = List.fold_left (fun acc (_, a) -> if holds_step a then walk acc a else acc) acc args in
+    (txt, List.filter (fun (_, a) -> not (holds_step a)) args) :: acc
+  | Pexp_ident { txt; _ } when is_verb txt -> (txt, []) :: acc
+  | Pexp_apply (_, args) -> List.fold_left (fun acc (_, a) -> walk acc a) acc args
   | Pexp_let (_, vbs, cont) ->
     let acc =
-      List.fold_left (fun a (vb : value_binding) -> collect_applies vb.pvb_expr a) acc vbs
+      if deep then List.fold_left (fun acc (vb : value_binding) -> walk acc vb.pvb_expr) acc vbs
+      else acc
     in
-    collect_applies cont acc
-  | Pexp_sequence (a, b) -> collect_applies b (collect_applies a acc)
-  | Pexp_constraint (inner, _) -> collect_applies inner acc
+    walk acc cont
+  | Pexp_sequence (a, b) -> walk (walk acc a) b
+  | Pexp_constraint (inner, _) -> walk acc inner
+  | Pexp_construct (_, Some inner) when deep -> walk acc inner
+  | Pexp_array els when deep -> List.fold_left walk acc els
   | _ -> acc
 
 let last = function [] -> None | xs -> Some (List.nth xs (List.length xs - 1))
 
+(* One asserted thing: `{kind, element, values}`, or `opaque` `of` the kind a
+   step this walk cannot read stands in for, named by its source text. Dropped,
+   `given: []` read as a history with nothing in it. *)
+type entry = { kind : string; of_ : string option; element : string; values : Yojson.Safe.t list }
+
+let entry ~kind ?(element = "") ?(values = []) () = { kind; of_ = None; element; values }
+
+let opaque ?src ~(kind : string) (e : expression) : entry =
+  { kind = "opaque"; of_ = Some kind;
+    element = Option.value (source_text ?src e) ~default:""; values = [] }
+
+let entry_fields (en : entry) : (string * Yojson.Safe.t) list =
+  [ ("kind", `String en.kind) ]
+  @ (match en.of_ with Some k -> [ ("of", `String k) ] | None -> [])
+  @ [ ("element", `String en.element); ("values", `List en.values) ]
+
 let step_json ~kind ~element ~values : Yojson.Safe.t =
-  `Assoc
-    [ ("kind", `String kind); ("element", `String element); ("values", `List values) ]
+  `Assoc (entry_fields (entry ~kind ~element ~values ()))
 
-(* One step verb's payload → the steps it asserts.
+(* The thing a payload stands for: the second of an `(id, X)` pair, and the
+   event inside `event(e)` / `Dcb.event(e, ~sourceId)`, which wraps a source's
+   typed event for a sweep. *)
+let rec payload_of (e : expression) : expression =
+  match e.pexp_desc with
+  | Pexp_tuple [ _; x ] -> payload_of x
+  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args)
+    when String.equal (step_name_of txt) "event" -> (
+    match List.find_map (function (Nolabel, a) -> Some a | _ -> None) args with
+    | Some a -> payload_of a
+    | None -> e)
+  | Pexp_constraint (inner, _) -> payload_of inner
+  | _ -> e
 
-   An array literal is N steps of the same kind: `givenEvents([A, B])` and
-   `thenEvents([A, B])` are the same shape, and the plural form of a verb is the
-   only way to assert more than one. Stated once here because the `then` walk did
-   not have it — `element_of_constructor` answers None for an array, so a
-   `thenEvents` scenario recorded an EMPTY `then`, which downstream reads as a
-   command that ran and produced nothing. That is the opposite of what it
-   asserts, and it is why the lifecycle check called such a scenario a
-   contradiction of the transition the command declares. *)
-(* A step this walk cannot read — `givenEvents([added])`, `thenEvent(made())` —
-   is kept as `opaque`, `of` the kind it stands in for, named by its source
-   text. Dropped, `given: []` read as a history with nothing in it, and a command
-   that only runs on an existing row as one that creates it. *)
-let opaque_step_json ?src ~(kind : string) (e : expression) : Yojson.Safe.t =
-  `Assoc
-    [ ("kind", `String "opaque"); ("of", `String kind);
-      ("element", `String (Option.value (source_text ?src e) ~default:""));
-      ("values", `List []) ]
+(* A short value as text: an id, a message, a status. A string is its content,
+   `#Completed` its name, `Some(x)` x, `None` nothing; anything else its source. *)
+let rec text_value ?src (e : expression) : string =
+  match e.pexp_desc with
+  | Pexp_constant (Pconst_string (s, _, _)) -> s
+  | Pexp_constant (Pconst_integer (s, _) | Pconst_float (s, _)) -> s
+  | Pexp_construct ({ txt = Lident "None"; _ }, None) -> ""
+  | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> text_value ?src inner
+  | Pexp_construct ({ txt; _ }, None) -> flatten_longident txt
+  | Pexp_variant (label, None) -> label
+  | Pexp_ident { txt = (Lident _ | Ldot _) as lid; _ } -> flatten_longident lid
+  | Pexp_constraint (inner, _) -> text_value ?src inner
+  | _ -> Option.value (source_text ?src e) ~default:""
 
-let steps_of_payload ?src ~(kind : string) (payload : expression) :
-    Yojson.Safe.t list =
-  let one el =
-    match element_of_constructor ?src el with
-    | Some (element, values) -> step_json ~kind ~element ~values
-    | None -> opaque_step_json ?src ~kind el
+(* A record literal's entries: a record, a JS object literal (`{"sku": …}`,
+   which reaches a PPX as `%obj`), or a constructor's record payload. *)
+let rec entries_of ?src (e : expression) : Yojson.Safe.t list =
+  match e.pexp_desc with
+  | Pexp_record _ -> record_entries ?src e
+  | Pexp_extension ({ txt = "obj"; _ }, PStr [ { pstr_desc = Pstr_eval (r, _); _ } ]) ->
+    entries_of ?src r
+  | Pexp_construct (_, Some inner) -> entries_of ?src inner
+  | Pexp_constraint (inner, _) -> entries_of ?src inner
+  | _ -> []
+
+let is_record_like (e : expression) =
+  match e.pexp_desc with
+  | Pexp_record _ | Pexp_extension ({ txt = "obj"; _ }, _) -> true
+  | _ -> false
+
+(* A JSON payload written as a literal, `JSON.parseOrThrow(`{"sku": "x"}`)`:
+   its object's entries, as example values. *)
+let json_literal_entries (e : expression) : Yojson.Safe.t list =
+  let rec value (j : Yojson.Safe.t) : Yojson.Safe.t =
+    match j with
+    | `String s -> `Assoc [ ("kind", `String "string"); ("value", `String s) ]
+    | `Int i -> `Assoc [ ("kind", `String "int"); ("value", `Int i) ]
+    | `Intlit s -> `Assoc [ ("kind", `String "code"); ("value", `String s) ]
+    | `Float f -> `Assoc [ ("kind", `String "float"); ("value", `Float f) ]
+    | `Bool b -> `Assoc [ ("kind", `String "bool"); ("value", `Bool b) ]
+    | `Null -> `Assoc [ ("kind", `String "null") ]
+    | `List xs | `Tuple xs -> `Assoc [ ("kind", `String "list"); ("items", `List (List.map value xs)) ]
+    | `Assoc kvs -> `Assoc [ ("kind", `String "record"); ("entries", `List (entries kvs)) ]
+    | `Variant _ -> `Assoc [ ("kind", `String "null") ]
+  and entries kvs = List.map (fun (k, v) -> `List [ `String k; value v ]) kvs in
+  let literal =
+    match e.pexp_desc with
+    | Pexp_constant (Pconst_string (s, _, _)) -> Some s
+    | Pexp_apply (_, [ (Nolabel, { pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ }) ]) ->
+      Some s
+    | _ -> None
   in
-  match payload.pexp_desc with
-  | Pexp_array els -> List.map one els
-  | _ -> [ one payload ]
+  match Option.map Yojson.Safe.from_string literal with
+  | Some (`Assoc kvs) -> entries kvs
+  | _ | (exception _) -> []
 
-(* The same, for the verbs whose payload is a record rather than a constructor:
-   a projection asserts the row itself, so there is no element name to read and
-   `state` stands for every one of them. *)
-let state_steps_of_payload ?src (payload : expression) : Yojson.Safe.t list =
-  let one el =
-    step_json ~kind:"state" ~element:"state" ~values:(record_entries ?src el)
-  in
-  match payload.pexp_desc with
-  | Pexp_array els -> List.map one els
-  | _ -> [ one payload ]
+(* `Ctor({..})` → the constructor and its entries. *)
+let ctor_entry ?src ~kind (e : expression) : entry =
+  let p = payload_of e in
+  match element_of_constructor ?src p with
+  | Some (element, values) -> entry ~kind ~element ~values ()
+  | None -> opaque ?src ~kind p
 
-(* Build the given / when / then arrays for one test body. *)
-let extract_steps ?src (body : expression) :
-    Yojson.Safe.t list * Yojson.Safe.t list * Yojson.Safe.t list =
-  let calls = collect_applies body [] in
-  let find names =
-    List.find_opt (fun (n, _) -> List.mem n names) calls
+(* `(id, {..})` → the id and the record's entries; a bare record has no id. *)
+let row_entry ?src ~kind (e : expression) : entry =
+  match e.pexp_desc with
+  | Pexp_tuple [ id; item ] -> entry ~kind ~element:(text_value ?src id) ~values:(entries_of ?src item) ()
+  | _ when is_record_like e -> entry ~kind ~values:(entries_of ?src e) ()
+  | Pexp_construct (_, Some _) -> ctor_entry ?src ~kind e
+  | _ -> opaque ?src ~kind e
+
+(* An array literal is N entries of one kind; `[]` is the [none] kind when the
+   verb has one (`thenCommands([])` asserts that nothing was issued), else
+   nothing. Anything else is one entry. *)
+let each ?none (f : expression -> entry) (payload : expression) : entry list =
+  match payload.pexp_desc, none with
+  | Pexp_array [], Some k -> [ entry ~kind:k () ]
+  | Pexp_array els, _ -> List.map f els
+  | _ -> [ f payload ]
+
+let state_entry ?src (e : expression) : entry =
+  entry ~kind:"state" ~element:"state" ~values:(record_entries ?src e) ()
+
+(* One step call as written. [grouped] is false for a step that has no place in
+   the three groups: a second act (`andThenEvents`) or the capabilities a
+   translation runs against. *)
+type call = { group : string; verb : string; via : string option; grouped : bool; entries : entry list }
+
+(* What one verb asserts. None for a verb this walk does not know. *)
+let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : call option =
+  let verb = step_name_of lid in
+  let pos = List.filter_map (function (Nolabel, e) -> Some e | _ -> None) args in
+  let on_last f = match last pos with Some p -> f p | None -> [] in
+  let labelled name =
+    List.find_map
+      (function ((Labelled l | Optional l), e) when String.equal l name -> Some e | _ -> None)
+      args
   in
-  let given =
-    match find [ "givenEvents"; "givenEvent" ] with
-    | Some (_, args) -> (
-      match last args with
-      | Some payload -> steps_of_payload ?src ~kind:"event" payload
-      | None -> [])
-    | None -> []
+  let one kind ?element ?values () = [ entry ~kind ?element ?values () ] in
+  let mk ?(grouped = true) group entries =
+    Some { group; verb; via = step_via lid; grouped; entries }
   in
-  let when_ =
-    match find [ "whenCmd"; "whenCommand"; "whenInput"; "whenEvent"; "whenEvents" ] with
-    | Some (name, args) -> (
-      let kind =
-        match name with
-        | "whenInput" -> "input"
-        | "whenEvent" | "whenEvents" -> "event"
-        | _ -> "command"
+  let input p =
+    match element_of_constructor ?src p with
+    | Some (element, values) -> [ entry ~kind:"input" ~element ~values () ]
+    | None ->
+      let values = if is_record_like p then entries_of ?src p else json_literal_entries p in
+      [ entry ~kind:"input" ~element:"externalInput" ~values () ]
+  in
+  match verb with
+  (* given *)
+  | "givenEvents" | "givenEvent" -> mk "given" (on_last (each (ctor_entry ?src ~kind:"event")))
+  | "givenTodo" -> (
+    match List.rev pos with
+    | item :: id :: _ ->
+      mk "given" (one "todo" ~element:(text_value ?src id) ~values:(entries_of ?src item) ())
+    | _ -> mk "given" (on_last (fun p -> [ row_entry ?src ~kind:"todo" p ])))
+  | "givenCapabilities" -> mk ~grouped:false "given" (one "capabilities" ())
+  (* when *)
+  | "whenCmd" | "whenCommand" -> mk "when" (on_last (each (ctor_entry ?src ~kind:"command")))
+  | "whenInput" -> (
+    match last pos with
+    | Some p when is_record_like p -> mk "when" (input p)
+    | Some p -> mk "when" [ ctor_entry ?src ~kind:"input" p ]
+    | None -> mk "when" [])
+  | "whenReceived" -> mk "when" (on_last input)
+  | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:"event")))
+  (* The event a collect or resolve reacts to is the given one, moved here. *)
+  | "whenCollect" | "whenResolve" -> mk "when" (one "event" ())
+  | "whenSweep" | "whenReacts" | "whenPublishedThrough" | "whenExtensionReacts" ->
+    mk "when" (one "sweep" ())
+  | "whenProcess" | "whenTranslated" | "whenTranslateMocked" | "whenTranslateRetrying" ->
+    mk "when" (one "process" ())
+  | "whenExhausted" ->
+    let element = match labelled "lastError" with Some e -> text_value ?src e | None -> "" in
+    mk "when" (one "exhausted" ~element ())
+  | "andThenEvents" -> mk ~grouped:false "when" (on_last (each (ctor_entry ?src ~kind:"event")))
+  (* then *)
+  | "thenEvent" | "thenEvents" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"event")))
+  | "thenError" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"error")))
+  | "thenSideEffect" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"sideEffect")))
+  (* `thenStateWithId(id, record)` names the row; the id routes the fold and is
+     not part of the row's value. *)
+  | "thenState" | "thenStates" | "thenStateWithId" | "thenStatesWithId" | "thenViewState"
+  | "thenViewStates" ->
+    mk "then" (on_last (each (state_entry ?src)))
+  (* No element and no payload: the absence is the assertion. *)
+  | "thenNoEvent" -> mk "then" (one "noEvent" ())
+  | "thenNoState" -> mk "then" (one "noState" ())
+  (* Not `error`: who may act is not something the lifecycle decides. *)
+  | "thenRefused" -> mk "then" (one "forbidden" ())
+  | "thenCommand" | "thenIssuesCommand" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"command")))
+  | "thenCommands" | "thenIssuesCommands" ->
+    mk "then" (on_last (each ~none:"noCommand" (ctor_entry ?src ~kind:"command")))
+  | "thenNoCommand" | "thenIssuesNoCommand" -> mk "then" (one "noCommand" ())
+  | "thenTodos" | "thenScenarioTodos" ->
+    mk "then" (on_last (each ~none:"noTodo" (row_entry ?src ~kind:"todo")))
+  | "thenResolved" -> mk "then" (on_last (fun p -> one "resolved" ~element:(text_value ?src p) ()))
+  | "thenTranslateError" | "thenNotUnderstood" ->
+    mk "then" (on_last (fun p -> one "notUnderstood" ~element:(text_value ?src p) ()))
+  | "thenRefusedInput" ->
+    mk "then" (on_last (fun p -> one "inputRefused" ~element:(text_value ?src p) ()))
+  | "thenSent" -> mk "then" (on_last (each ~none:"nothingSent" (ctor_entry ?src ~kind:"sent")))
+  | "thenOutbound" -> mk "then" (on_last (each ~none:"nothingSent" (row_entry ?src ~kind:"sent")))
+  | "thenNothingSent" | "thenOutboundNothing" -> mk "then" (one "nothingSent" ())
+  | "thenTodoStatus" -> (
+    match List.rev pos with
+    | status :: id :: _ ->
+      let values =
+        Option.to_list
+          (Option.map (fun v -> `List [ `String "id"; v ]) (example_of_expr ?src id))
       in
-      match last args with
-      (* `whenEvents([..])` drives the fold with several events in order; each is
-         a step of its own, the same way `givenEvents` expands. *)
-      | Some payload -> steps_of_payload ?src ~kind payload
-      | None -> [])
-    | None -> []
+      mk "then" (one "todoStatus" ~element:(text_value ?src status) ~values ())
+    | _ -> mk "then" (on_last (fun p -> one "todoStatus" ~element:(text_value ?src p) ())))
+  | "thenRetryRecorded" -> mk "then" (on_last (fun p -> one "retries" ~element:(text_value ?src p) ()))
+  | "thenPublicEvent" | "thenPublicEvents" ->
+    mk "then" (on_last (each (ctor_entry ?src ~kind:"publicEvent")))
+  | _ -> None
+
+(* `givenEvent(e)->whenCollect`: the event the slice reacts to is the when, as
+   for a view, so the given step is folded into the step that consumes it. *)
+let absorb_reacted_events (calls : call list) : call list =
+  List.rev
+    (List.fold_left
+       (fun acc (c : call) ->
+         match acc with
+         | (p : call) :: rest
+           when (String.equal c.verb "whenCollect" || String.equal c.verb "whenResolve")
+                && String.equal p.verb "givenEvent" ->
+           { c with entries = p.entries } :: rest
+         | _ -> c :: acc)
+       [] calls)
+
+let calls_of_body ?src (body : expression) : call list =
+  ordered_steps ~deep:true body []
+  |> List.rev
+  |> List.filter_map (fun (lid, args) -> call_of ?src lid args)
+  |> absorb_reacted_events
+
+let steps_json (calls : call list) : Yojson.Safe.t list =
+  List.concat_map
+    (fun (c : call) ->
+      List.map
+        (fun en ->
+          `Assoc
+            ([ ("group", `String c.group); ("verb", `String c.verb) ]
+             @ entry_fields en
+             @ match c.via with Some v -> [ ("via", `String v) ] | None -> []))
+        c.entries)
+    calls
+
+(* The three groups, read off the same calls: every given; the last when, since
+   a group holds one act; and the thens written after it (all of them when
+   there is no when). [steps] keeps every act, in order. *)
+let extract_groups (calls : call list) :
+    Yojson.Safe.t list * Yojson.Safe.t list * Yojson.Safe.t list =
+  let indexed = List.mapi (fun i c -> (i, c)) (List.filter (fun (c : call) -> c.grouped) calls) in
+  let last_when =
+    List.fold_left (fun acc (i, (c : call)) -> if String.equal c.group "when" then Some i else acc)
+      None indexed
   in
+  let pick f =
+    List.concat_map (fun (i, (c : call)) -> if f i c then List.map (fun en -> `Assoc (entry_fields en)) c.entries else [])
+      indexed
+  in
+  let given = pick (fun _ c -> String.equal c.group "given") in
+  let when_ = pick (fun i _ -> Some i = last_when) in
   let then_ =
-    match
-      find
-        [ "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
-          "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenCommand";
-          "thenSideEffect"; "thenNoEvent"; "thenRefused" ]
-    with
-    (* "Accepted, and emitted nothing." There is no element to name and no
-       payload to walk, so it is emitted as a kind on its own. Recorded rather
-       than dropped because the absence IS the assertion: a command declaring it
-       guards a state without moving a row is claiming exactly this, and a step
-       the sidecar cannot see is one a round trip silently rewrites into
-       something else. *)
-    | Some ("thenNoEvent", _) -> [ step_json ~kind:"noEvent" ~element:"" ~values:[] ]
-    (* The projection counterpart: the fold ran and wrote no row. Like
-       `thenNoEvent` it names no element, and like it the absence is the
-       assertion — a scenario asserting a deletion is exactly this. *)
-    | Some ("thenNoState", _) -> [ step_json ~kind:"noState" ~element:"" ~values:[] ]
-    (* Its own kind, not `error`: who may act is not something the lifecycle
-       decides, so a reader of the lifecycle must be able to leave it out. *)
-    | Some ("thenRefused", _) -> [ step_json ~kind:"forbidden" ~element:"" ~values:[] ]
-    | Some (name, args) -> (
-      match last args with
-      | Some payload -> (
-        match name with
-        (* `thenStateWithId(id, record)` names the row it asserts. `last` picks
-           the record either way, so the two share a case; the id is a routing
-           detail of the fold, not part of the row's value. *)
-        | "thenState" | "thenStateWithId" | "thenStates" | "thenStatesWithId" ->
-          state_steps_of_payload ?src payload
-        | _ ->
-          let kind =
-            match name with
-            | "thenError" -> "error"
-            | "thenCommand" -> "command"
-            | "thenSideEffect" -> "sideEffect"
-            | _ -> "event"
-          in
-          steps_of_payload ?src ~kind payload)
-      | None -> [])
-    | None -> []
+    pick (fun i c ->
+        String.equal c.group "then"
+        && match last_when with Some w -> i > w | None -> true)
   in
   (given, when_, then_)
+
+let extract_steps ?src (body : expression) :
+    Yojson.Safe.t list * Yojson.Safe.t list * Yojson.Safe.t list =
+  extract_groups (calls_of_body ?src body)
 
 (* ── scenario-id comments (recovered from source text) ──────────────────── *)
 
@@ -826,9 +1194,11 @@ let rec collect_tests (e : expression)
     (Location.t * string * expression) list =
   match e.pexp_desc with
   | Pexp_sequence (a, b) -> collect_tests b (collect_tests a acc)
+  (* `testSync` is a test too; `~timeout` and other labels are not its title
+     or body. *)
   | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args)
-    when String.equal (step_name_of txt) "test" -> (
-    let arg_exprs = List.map snd args in
+    when List.mem (step_name_of txt) [ "test"; "testSync" ] -> (
+    let arg_exprs = List.filter_map (function (Nolabel, a) -> Some a | _ -> None) args in
     match arg_exprs with
     | title_e :: fn :: _ -> (
       match (string_of_expr title_e, fun_body fn) with
@@ -887,7 +1257,8 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
                 | Some id -> id
                 | None -> ""
               in
-              let given, when_, then_ = extract_steps ?src body in
+              let calls = calls_of_body ?src body in
+              let given, when_, then_ = extract_groups calls in
               (* `specId` repeats the id for the released codegen, which reads
                  only that key; it goes once the codegen reads `scenarioId`. *)
               `Assoc
@@ -896,7 +1267,8 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
                   ("title", `String title);
                   ("given", `List given);
                   ("when", `List when_);
-                  ("then", `List then_) ])
+                  ("then", `List then_);
+                  ("steps", `List (steps_json calls)) ])
             tests)
         describes
     in
@@ -905,6 +1277,8 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
          [ ("specName", `String spec_name);
            ("stem", `String (filename_stem fname));
            ("file", `String (repo_relative fname));
+           ( "componentKind",
+             match Util.derive_gwt_kind fname with Some k -> `String k | None -> `Null );
            ("scenarios", `List scenarios) ])
 
 let gwt_sidecar_path (fname : string) : string =
@@ -989,28 +1363,6 @@ let rec type_to_string (ct : core_type) : string =
    printed form above. *)
 let type_text ?src (ct : core_type) : string =
   match text_at ?src ct.ptyp_loc with Some t -> t | None -> type_to_string ct
-
-let strip_poly (ct : core_type) : core_type =
-  match ct.ptyp_desc with Ptyp_poly ([], t) -> t | _ -> ct
-
-(* A binding of a single name → (name, annotation, value). The annotation sits on
-   the pattern (`let x: t = e`), on the expression (`let x = (e: t)`), or on both
-   — the parsers disagree on which, so all three are read. *)
-let named_binding (vb : value_binding) :
-    (string * core_type option * expression) option =
-  let unconstrain (e : expression) =
-    match e.pexp_desc with
-    | Pexp_constraint (inner, ct) -> (inner, Some ct)
-    | _ -> (e, None)
-  in
-  match vb.pvb_pat.ppat_desc with
-  | Ppat_var { txt; _ } ->
-    let e, ct = unconstrain vb.pvb_expr in
-    Some (txt, ct, e)
-  | Ppat_constraint ({ ppat_desc = Ppat_var { txt; _ }; _ }, ct) ->
-    let e, _ = unconstrain vb.pvb_expr in
-    Some (txt, Some (strip_poly ct), e)
-  | _ -> None
 
 let unknown_kind : Yojson.Safe.t =
   `Assoc [ ("kind", `String "custom"); ("name", `String "Unknown") ]

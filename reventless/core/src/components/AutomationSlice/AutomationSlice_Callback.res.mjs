@@ -8,11 +8,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
-import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as AutomationSlice_Route$ReventlessCore from "./AutomationSlice_Route.res.mjs";
 
 let todoStatusSchema = Sury.union([
   Sury.literal("Pending"),
@@ -55,59 +55,40 @@ function Make(Spec) {
       newrecord.status = retryCount >= Spec.maxRetries ? "Abandoned" : "Failed";
       return newrecord;
     };
-    let dispatches = Automation.mappings.map(M => {
-      let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
-      let handle = (json, sourceId, ctx) => {
-        let match = Message$ReventlessCore.splitMessage(json);
-        let event = decoder.decode(match[0], match[1]);
-        if (event === undefined) {
+    let Route = AutomationSlice_Route$ReventlessCore.Make(Spec)(Automation);
+    let apply = param => {
+      param.collected.forEach(param => {
+        let id = param[0];
+        let match = todoItems[id];
+        if (match !== undefined) {
           return;
         }
-        let event$1 = Primitive_option.valFromOption(event);
-        M.collect(event$1, sourceId, ctx).forEach(param => {
-          let id = param[0];
-          let match = todoItems[id];
-          if (match !== undefined) {
-            return;
-          }
-          let row_item = Util_Sury$Reventless.toJson(param[1], Spec.todoItemSchema);
-          let row_createdAt = new Date().toISOString();
-          let row_maxRetries = Spec.maxRetries;
-          let row = {
-            item: row_item,
-            status: "Pending",
-            createdAt: row_createdAt,
-            retryCount: 0,
-            maxRetries: row_maxRetries
-          };
-          todoItems[id] = row;
-        });
-        let id = M.resolve(event$1);
-        if (id !== undefined) {
-          return Stdlib_Option.forEach(todoItems[id], row => {
-            let newrecord = {...row};
-            newrecord.completedAt = new Date().toISOString();
-            newrecord.status = "Completed";
-            todoItems[id] = newrecord;
-          });
-        }
-      };
-      return {
-        sourceName: M.sourceName,
-        handle: handle
-      };
-    });
+        let row_item = Util_Sury$Reventless.toJson(param[1], Spec.todoItemSchema);
+        let row_createdAt = new Date().toISOString();
+        let row_maxRetries = Spec.maxRetries;
+        let row = {
+          item: row_item,
+          status: "Pending",
+          createdAt: row_createdAt,
+          retryCount: 0,
+          maxRetries: row_maxRetries
+        };
+        todoItems[id] = row;
+      });
+      Stdlib_Option.forEach(param.resolved, id => Stdlib_Option.forEach(todoItems[id], row => {
+        let newrecord = {...row};
+        newrecord.completedAt = new Date().toISOString();
+        newrecord.status = "Completed";
+        todoItems[id] = newrecord;
+      }));
+    };
     let phase1 = (events, ctx) => {
       events.forEach(json => {
         let context = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema);
         let sourceName = context.meta.service;
         let dict = Stdlib_JSON.Decode.object(json);
         let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
-        dispatches.forEach(d => {
-          if (d.sourceName === sourceName) {
-            return d.handle(eventPayload, context.id, ctx);
-          }
-        });
+        Route.route(eventPayload, sourceName, context.id, ctx).forEach(apply);
       });
     };
     let phase2 = async publishJsons => {

@@ -16,30 +16,6 @@
 
 open PlatformLocal_Examples
 
-// Compose the automation onto a flat slice — the production split keeps
-// collect/resolve inside the per-source mapping; the GWT needs them together.
-let testContext: Reventless.AutomationSlice.context = {
-  environment: "test",
-  platformName: "test",
-  pluginName: "ordering",
-  sliceName: "AutoShipOrder",
-}
-
-module AutoShipOrderSlice = {
-  include OrderingPlugin.AutoShipOrder
-  type consumedEvent = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
-  let consumedEventSchema = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e =>
-    OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
-  let resolve = OrderingPlugin.AutoShipOrder_Automation.FromOrderingDcb.resolve
-  let process = OrderingPlugin.AutoShipOrder_Automation.process
-}
-
-module ConfirmSlice = {
-  include OrderingPlugin.SendOrderConfirmation
-  let collect = OrderingPlugin.SendOrderConfirmation_Translation.collect
-}
-
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
@@ -52,9 +28,12 @@ module Register = CommandStep(
   OrderingPlugin.RegisterCustomer_Behavior,
 )
 module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Behavior)
-module Auto = AutomationStep(AutoShipOrderSlice)
+module Auto = AutomationSlice(OrderingPlugin.AutoShipOrder, OrderingPlugin.AutoShipOrder_Automation)
 module Ship = CommandStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Behavior)
-module Confirm = OutboundStep(ConfirmSlice)
+module Confirm = OutboundSlice(
+  OrderingPlugin.SendOrderConfirmation,
+  OrderingPlugin.SendOrderConfirmation_Translation,
+)
 
 describe("DCB cross-plugin flow", () => {
   // scenario-id: bc4ba8e3-3d3d-4ba9-b3ec-a0dfe07bdf4b

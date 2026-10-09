@@ -2,11 +2,6 @@
 // answer is worth another attempt or is the final word — so that is what this
 // asserts. Who to write to and whether to write at all were settled upstream.
 
-module SendNotificationSlice = {
-  include SendNotification
-  let collect = SendNotification_Translation.collect
-}
-
 @@reventless.gwt
 
 open Ordering_Examples
@@ -20,24 +15,16 @@ let item: SendNotification.outboundItem = {
   body: "Thanks.",
 }
 
-// The real `translate`, driven by a stub provider. Spreads `none` so the test
-// says nothing about capabilities it is not exercising.
-let withProvider = (answer: result<Reventless.Messaging.receipt, Reventless.Messaging.failure>) => {
-  let capabilities: Reventless.Capabilities.t = {
-    ...Reventless.Capabilities.none,
-    messaging: Reventless.Messaging.makeProvider(~emailAndSms=[Email], ~pushServices=[], ~send=(
-      ~recipient as _,
-      ~message as _,
-    ) => Promise.resolve(answer)),
-  }
-  (id, item) => SendNotification_Translation.translate(id, item, ~capabilities)
-}
+// The real `translate`, against a provider that answers `answer`.
+let provider = answer =>
+  fakes(~channels=[Email], ~send=async (~recipient as _, ~message as _) => answer, ())
 
 describe("SendNotification OutboundTranslationSlice", () => {
   // scenario-id: 7c7c7c18-4d41-49de-a8c9-812e75014235
   test("an accepted message reports the provider's own id back", () =>
     givenTodo("confirm:o1", item)
-    ->whenTranslateMocked(withProvider(Ok({ref: "ses-123"})))
+    ->givenCapabilities(provider(Ok({ref: "ses-123"})))
+    ->whenTranslated
     ->thenCommand(
       "c1",
       RecordDelivery({recipientId: customerRef, reference: confirmReference, providerRef: sesRef}),
@@ -48,10 +35,11 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // this recipient, and writing the message off would lose a confirmation over a
   // network blip.
   // scenario-id: 21b64329-72c5-45bb-8b35-35dc28e928e9
-  test("an outage leaves the TODO pending", () =>
+  test("an outage leaves the TODO to be retried", () =>
     givenTodo("confirm:o1", item)
-    ->whenTranslateMocked(withProvider(Error(Unavailable("502"))))
-    ->thenTodoStatus("confirm:o1", #Pending)
+    ->givenCapabilities(provider(Error(Unavailable("502"))))
+    ->whenTranslated
+    ->thenTodoStatus("confirm:o1", #Failed)
   )
 
   // The half that must settle. Two more attempts would learn the same thing, and
@@ -59,7 +47,8 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // scenario-id: aa45c5c6-42f8-4337-9d8a-10be3a73ca6f
   test("a refused address is recorded as failed rather than retried", () =>
     givenTodo("confirm:o1", item)
-    ->whenTranslateMocked(withProvider(Error(Refused("address on the suppression list"))))
+    ->givenCapabilities(provider(Error(Refused("address on the suppression list"))))
+    ->whenTranslated
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
@@ -75,7 +64,8 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // scenario-id: c7e99104-adf7-4c0b-b0ec-02b512d4cce1
   test("a channel the platform does not provision is recorded, not retried", () =>
     givenTodo("confirm:o1", item)
-    ->whenTranslateMocked(withProvider(Error(UnsupportedChannel(Sms))))
+    ->givenCapabilities(provider(Error(UnsupportedChannel(Sms))))
+    ->whenTranslated
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
@@ -93,7 +83,8 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // scenario-id: 95991b91-05fe-4888-85eb-686a58b591fe
   test("a push preference the directory cannot address is recorded, not sent", () =>
     givenTodo("confirm:o1", {...item, channel: Push, address: "device-token"})
-    ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
+    ->givenCapabilities(provider(Ok({ref: "must-not-be-used"})))
+    ->whenTranslated
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({
@@ -109,7 +100,8 @@ describe("SendNotification OutboundTranslationSlice", () => {
   // scenario-id: b511e8dc-3962-4819-ace8-f8a833e5a538
   test("an address its channel cannot parse is recorded without asking the provider", () =>
     givenTodo("confirm:o1", {...item, address: "not-an-address"})
-    ->whenTranslateMocked(withProvider(Ok({ref: "must-not-be-used"})))
+    ->givenCapabilities(provider(Ok({ref: "must-not-be-used"})))
+    ->whenTranslated
     ->thenCommand(
       "c1",
       RecordDeliveryFailure({

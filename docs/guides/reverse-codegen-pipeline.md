@@ -40,8 +40,29 @@ modules of shared @schema types ─────────────► <Stem
 
 ### Sidecars
 
-- `<Stem>.model.json` — for every `@@reventless.spec` file: each `@schema type` (command / event / consumedEvent / error / state) as a list of elements whose fields carry name, kind, identity flags, and the resolved DCB-tag **`dcbRole`**.
-- `<Stem>.gwt.json` — for every `@@reventless.gwt` file: per scenario its id (`scenarioId`), title, and given/when/then steps with their example values. A step whose payload is not a constructor literal (`givenEvents([added])`, `thenEvent(made())`) is kept as `{"kind": "opaque", "of": <the kind it stands in for>, "element": <its source text>, "values": []}`, so a reader can tell a step it cannot see from no step at all; a reader that knows no `opaque` kind skips it.
+- `<Stem>.model.json` — for every `@@reventless.spec` file: each `@schema type` (command / event / consumedEvent / error / state) as a list of elements whose fields carry name, kind, identity flags, and the resolved DCB-tag **`dcbRole`**. Its `config` holds the slice's constants as source text — `targetName`, `maxRetries`, `heartbeatInterval`, `sourceNames`, `externalSystem`, `capabilityNeeds` and `traits` — with `Some(x)` recorded as `x` and `None` left out, so an outbound slice with no `targetName` is fire-and-forget.
+- `<Stem>.gwt.json` — for every `@@reventless.gwt` file: per scenario its id (`scenarioId`), title, and given/when/then steps with their example values. A step whose payload is not a constructor literal (`givenEvents([added])`, `thenEvent(made())`) is kept as `{"kind": "opaque", "of": <the kind it stands in for>, "element": <its source text>, "values": []}`, so a reader can tell a step it cannot see from no step at all; a reader that knows no `opaque` kind skips it. Both `test` and `testSync` are read. The file names its DSL as `componentKind` (`"Automation"`, `"OutboundTranslation"`, `"Flow"`, …; `null` when it cannot be derived).
+
+  Each scenario also carries `steps`: every verb in the order written, as `{group, verb, kind, element, values, of?, via?}`, where `via` is the module a qualified call goes through (`Auto` in `Auto.thenIssuesCommand`). `given` / `when` / `then` are built from the same walk and keep their shape, but they cannot hold a chain with two *when* verbs or a second act (`andThenEvents`): a reader that needs the order reads `steps`.
+
+  The automation, translation and flow verbs write these kinds. None reuses a *when* kind with a new meaning, so a reader that keys command outcomes on `when: command` never mistakes one for a command scenario.
+
+  | Kind | Group | From |
+  |---|---|---|
+  | `event` | when | `whenCollect` / `whenResolve`: the given event moves to *when*, as for a view |
+  | `sweep` | when | `whenSweep`, `whenReacts`, `whenPublishedThrough`, `whenExtensionReacts` |
+  | `process` | when | `whenProcess`, `whenTranslated`, `whenTranslateMocked`, `whenTranslateRetrying` |
+  | `exhausted` | when | `whenExhausted`; `element` is the `~lastError` text |
+  | `input` | when | `whenInput(record)`, `whenReceived(json)`, with the record's entries |
+  | `todo` / `noTodo` | given, then | `givenTodo`, `thenTodos`, `thenScenarioTodos` |
+  | `capabilities` | given | `givenCapabilities` (in `steps` only) |
+  | `command` / `noCommand` | then | `thenCommand(s)`, `thenIssuesCommand(s)`, `thenNoCommand`, `thenIssuesNoCommand` |
+  | `resolved` | then | `thenResolved` |
+  | `notUnderstood` / `inputRefused` | then | `thenNotUnderstood` (and `thenTranslateError`) / `thenRefusedInput` |
+  | `sent` / `nothingSent` | then | `thenSent`, `thenOutbound` / their empty forms |
+  | `todoStatus`, `retries` | then | `thenTodoStatus` (status without `#`), `thenRetryRecorded` |
+  | `publicEvent` | then | `thenPublicEvent(s)` |
+- `<Stem>.wiring.json` — for every `@@reventless.automation` body: what starts the slice. `{specName, stem, file, mappings}`, one mapping per entry of `let mappings`, in its order: `{module, target, source}`. A source defined in the file is `{module, sourceName, events, types}`, with `events` in the `.model.json` encoding; one defined elsewhere is `{"ref": "<module path>"}`, for the reader to resolve through `.types.json` or that module's `.model.json`. Its own suffix because readers take every `.model.json` for a component.
 - `<Stem>.examples.json` — for every `@@reventless.examples` file (a module of named example values): its `module` (the file stem), `file`, and per top-level `let` of a single name its `name`, `type` (the annotation as written, `""` when there is none), `kind` (as for a spec field; `custom Unknown` when unannotated), `line`, and `value`. The attribute selects no mode; the PPX removes it and compiles the file as written.
 - `<Stem>.types.json` — for every plain module that declares `@schema` types for components to share (`DeliveryOption.t`): its `module` (the file stem), `file`, and `types`, each top-level `@schema` type in the `.model.json` encoding (`typeName`, `shape`, `elements`). A spec field typed `DeliveryOption.t` reads `{"kind": "custom", "name": "DeliveryOption.t"}`; a reader resolves it as the entry `typeName: "t"` of the sidecar whose `module` is `DeliveryOption`. A module is selected by what it is, with no attribute: it carries no `@@reventless.*` mode (spec, behavior, projection, automation, translation, mappings, extension, task), no `@@reventless.gwt` or `@@reventless.examples`, is not a GWT file by name, and declares at least one top-level `@schema` type. So an identity module (`include Reventless.Id.Make(...)`) gets none. A spec's own types need no such file: they are already in its `.model.json`, where a reader resolves `RegisterOrder.shippingMethod` the same way.
 

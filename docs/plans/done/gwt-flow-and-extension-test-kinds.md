@@ -231,6 +231,9 @@ declarative chain.
     `collect`/`process`; `Ship.thenIssuesCommand(flow, command)` asserts the emitted command.
   - `Orders.thenViewState(flow, id, state)` (from `ViewStep(Spec, Projection)`) — folds `project`, asserts state (`StateMismatch`).
   - `Confirm.thenOutbound(flow, expected)` (from `OutboundStep(Spec, Translation)`) — runs `collect`/`translate` (async), asserts the effect.
+    *As built, the step runs `collect` only, and takes one adapter module; `translate`
+    is tested by `OutboundTranslation_GWT.FromSlice`. `Flow_GWT.OutboundSlice(Spec, Translation)`
+    replaces the adapter form.*
   - `describe`/`test(~timeout)` re-exported from `JestBind` (`testPromise`).
   The pipe threads `flow` across the heterogeneous per-slice step modules — each step
   takes and returns `flow`, so a multi-slice chain reads top-to-bottom in one expression.

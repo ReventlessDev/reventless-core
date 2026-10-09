@@ -166,50 +166,33 @@ module Make = (
       None
     }
 
-  // Per-source erased dispatch — pre-compile decoders once at module init.
-  type dispatch = {
-    sourceName: string,
-    handle: (JSON.t, ~sourceId: string, Reventless.AutomationSlice.context) => unit,
-  }
+  module Route = AutomationSlice_Route.Make(Spec, Automation)
 
-  let dispatches: array<
-    dispatch,
-  > = Automation.mappings->Array.map((module(M: Automation.Mapping)) => {
-    let decoder = Reventless.DcbDecode.makeDecoder(M.sourceEventSchema)
-    let handle = (json: JSON.t, ~sourceId: string, ctx: Reventless.AutomationSlice.context) => {
-      let (eventType, dataDict) = json->Message.splitMessage
-      switch decoder.decode(~eventType, ~data=dataDict) {
-      | Some(event) =>
-        // Collect — append new items keyed by ID; first writer wins (idempotent).
-        M.collect(event, ~sourceId, ctx)->Array.forEach(((id, item)) => {
-          switch todoItems->Dict.get(id) {
-          | Some(_) => () // Already exists — skip
-          | None =>
-            let row: todoRow = {
-              item: item->Reventless.Util_Sury.toJson(Spec.todoItemSchema),
-              status: Pending,
-              createdAt: now(),
-              retryCount: 0,
-              maxRetries: Spec.maxRetries,
-            }
-            todoItems->Dict.set(id, row)
-          }
-        })
-        // Resolve — mark a pending item as completed.
-        switch M.resolve(event) {
-        | Some(id) =>
-          todoItems
-          ->Dict.get(id)
-          ->Option.forEach(row => {
-            todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
-          })
-        | None => ()
+  let apply = ({collected, resolved}: AutomationSlice_Route.routed<Spec.todoItem>) => {
+    // Collect — append new items keyed by ID; first writer wins (idempotent).
+    collected->Array.forEach(((id, item)) => {
+      switch todoItems->Dict.get(id) {
+      | Some(_) => () // Already exists — skip
+      | None =>
+        let row: todoRow = {
+          item: item->Reventless.Util_Sury.toJson(Spec.todoItemSchema),
+          status: Pending,
+          createdAt: now(),
+          retryCount: 0,
+          maxRetries: Spec.maxRetries,
         }
-      | None => ()
+        todoItems->Dict.set(id, row)
       }
-    }
-    {sourceName: M.sourceName, handle}
-  })
+    })
+    // Resolve — mark a pending item as completed.
+    resolved->Option.forEach(id =>
+      todoItems
+      ->Dict.get(id)
+      ->Option.forEach(row => {
+        todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+      })
+    )
+  }
 
   let phase1 = (events: array<JSON.t>, ctx: Reventless.AutomationSlice.context) => {
     events->Array.forEach(json => {
@@ -223,11 +206,7 @@ module Make = (
       | None => json
       }
       // Multiple mappings can share a sourceName; all matching dispatches run.
-      dispatches->Array.forEach(d => {
-        if d.sourceName == sourceName {
-          d.handle(eventPayload, ~sourceId=context.id, ctx)
-        }
-      })
+      Route.route(eventPayload, ~sourceName, ~sourceId=context.id, ctx)->Array.forEach(apply)
     })
   }
 

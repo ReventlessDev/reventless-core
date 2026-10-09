@@ -994,6 +994,12 @@ let transform (str : structure) : structure =
            | Some n -> n
            | None -> derive_impl_spec_name ~kind fname
          in
+         (* <Stem>.wiring.json: the automation's mappings and their sources, read
+            before the sources' annotations are rewritten. *)
+         let () =
+           if kind = Automation then
+             SidecarEmit.maybe_emit_wiring ~spec_name ~fname raw_spec_body
+         in
          (* Inject type annotations on recognised function bindings. The split
             form's Spec puts both [consumedEvent] and [event] in the impl file's
             scope (via [open Spec]); without explicit annotations the merged

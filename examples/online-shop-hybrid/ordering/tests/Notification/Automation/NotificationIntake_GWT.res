@@ -3,27 +3,11 @@
 // compiles perfectly and sends the wrong thing — these scenarios are what makes
 // that loud.
 
-let testContext: Reventless.AutomationSlice.context = {
-  environment: "test",
-  platformName: "test",
-  pluginName: "ordering",
-  sliceName: "NotificationIntake",
-}
+@@reventless.gwt
 
-module NotificationIntakeSlice = {
-  include NotificationIntake
-  type consumedEvent = NotificationIntake_Automation.FromOrderingDcb.sourceEvent
-  let consumedEventSchema = NotificationIntake_Automation.FromOrderingDcb.sourceEventSchema
-
-  let collect = e =>
-    NotificationIntake_Automation.FromOrderingDcb.collect(e, ~sourceId="", testContext)
-  let resolve = NotificationIntake_Automation.FromOrderingDcb.resolve
-  let process = NotificationIntake_Automation.process
-}
+include Mapping(FromOrderingDcb)
 
 module Rule = TraitNotification.Notification_Rule
-
-@@reventless.gwt
 
 open Ordering_Examples
 

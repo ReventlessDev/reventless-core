@@ -1,0 +1,94 @@
+{
+  "specName": "Restock",
+  "stem": "Restock_Automation",
+  "mappings": [
+    {
+      "module": "FromShelving",
+      "target": "Restock",
+      "source": {
+        "module": "ShelvingDcbSource",
+        "sourceName": "\"ShelvingDcbEventLog\"",
+        "events": {
+          "typeName": "event",
+          "shape": "variant",
+          "elements": [
+            {
+              "name": "ShelfEmptied",
+              "payloadless": false,
+              "fields": [
+                {
+                  "name": "shelfId",
+                  "kind": { "kind": "string" },
+                  "isId": false,
+                  "isIndex": false,
+                  "isCompositeTag": false,
+                  "dcbRole": { "role": "autoString" },
+                  "example": null,
+                  "annotations": []
+                }
+              ]
+            },
+            {
+              "name": "ShelfRestocked",
+              "payloadless": false,
+              "fields": [
+                {
+                  "name": "shelfId",
+                  "kind": { "kind": "string" },
+                  "isId": false,
+                  "isIndex": false,
+                  "isCompositeTag": false,
+                  "dcbRole": { "role": "autoString" },
+                  "example": null,
+                  "annotations": []
+                }
+              ]
+            }
+          ]
+        },
+        "types": []
+      }
+    },
+    {
+      "module": "FromCatalog",
+      "target": "Restock",
+      "source": {
+        "module": "CatalogDcbSource",
+        "sourceName": "\"CatalogDcbEventLog\"",
+        "events": {
+          "typeName": "event",
+          "shape": "variant",
+          "elements": [
+            {
+              "name": "ProductDelisted",
+              "payloadless": false,
+              "fields": [
+                {
+                  "name": "shelfId",
+                  "kind": { "kind": "string" },
+                  "isId": false,
+                  "isIndex": false,
+                  "isCompositeTag": false,
+                  "dcbRole": { "role": "autoString" },
+                  "example": null,
+                  "annotations": []
+                },
+                {
+                  "name": "sku",
+                  "kind": { "kind": "string" },
+                  "isId": false,
+                  "isIndex": false,
+                  "isCompositeTag": false,
+                  "dcbRole": { "role": "noTag" },
+                  "example": null,
+                  "annotations": []
+                }
+              ]
+            }
+          ]
+        },
+        "types": []
+      }
+    }
+  ]
+}

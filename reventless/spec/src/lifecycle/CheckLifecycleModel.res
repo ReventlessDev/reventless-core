@@ -233,6 +233,10 @@ let elementsOf = (steps: array<dict<JSON.t>>): array<element> =>
 
 let isOpaque = (e: element) => e.opaque == Some(true)
 
+/** A step of a kind the sidecar knows. A `when` of `process`, `sweep` or
+    `exhausted` names no element, and is readable all the same. */
+let readableStep = (e: element) => !isOpaque(e)
+
 let kindOf = (steps: array<dict<JSON.t>>): string =>
   steps->Array.get(0)->Option.flatMap(s => s->getStr("kind"))->Option.getOr("")
 
@@ -262,6 +266,9 @@ let scenarioOf = (j: JSON.t): option<scenario> =>
       thenValues: then_->Array.get(0)->Option.map(valuesOf)->Option.getOr([]),
     }
   })
+
+/** No `when` step of a known kind: the walk has nothing to exercise. */
+let isUnreadable = (s: scenario) => !(s.whenElements->Array.some(readableStep))
 
 let readCorpus = (path: string): option<corpus> =>
   switch path->NodeFs.readFileSync->JSON.parseOrThrow->asObj {
@@ -759,10 +766,10 @@ let deriveCommands = (
     than guessed from names. It needs no lifecycle labelling, so every corpus a
     plugin has is read, though only its command scenarios count.
 
-    An empty `then` is skipped rather than read as "accepted, nothing happened".
-    The PPX currently writes `then: []` for `thenNoEvent`, so an empty `then` is
-    indistinguishable from one the sidecar could not read, and an outcome shown
-    here has to be one a scenario actually states. */
+    An empty `then` is skipped rather than read as "accepted, nothing happened":
+    `thenNoEvent` is written as `noEvent`, so an empty `then` is one the sidecar
+    could not read (or an older sidecar's `noEvent`), and an outcome shown here
+    has to be one a scenario actually states. */
 type shownOutcome = {
   kind: string, // "event" | "error" | "noEvent"
   /** The whole `then`, in order: `thenEvents([A, B])` is one outcome of two
@@ -858,11 +865,11 @@ type finding = {
 
 /** A corpus the walk can only partly read.
 
-    Several DSL verbs record their `given` and nothing else — `thenIssuesCommand`,
-    `whenReacts`, `whenPublishedThrough` and the rest — and so does a readable
-    verb handed a let-bound value rather than a literal, since the sidecar records
-    the constructor application it can see. Either way the scenario reaches here
-    with an empty `when`, and the walk has nothing to exercise.
+    A readable verb handed a let-bound value rather than a literal records it as
+    `opaque`, since the sidecar records the constructor application it can see,
+    and a verb the sidecar has no reading for records nothing. Either way the
+    scenario reaches here with no `when` step of a known kind, and the walk has
+    nothing to exercise.
 
     Counted per component and published, because the distinction a consumer MUST
     keep is "not covered" against "not analysed": a slice with twenty thorough
@@ -1118,7 +1125,7 @@ let runPlugin = async (
     // slices — are exactly the ones that sit outside the view/writable folders
     // below, and they are the ones a coverage UI would otherwise slander.
     corpora->Array.forEach(c => {
-      let unreadable = c.scenarios->Array.filter(s => Array.length(s.whenElements) == 0)
+      let unreadable = c.scenarios->Array.filter(isUnreadable)
       if Array.length(unreadable) > 0 {
         opaque
         ->Array.push({

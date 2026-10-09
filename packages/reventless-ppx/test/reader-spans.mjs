@@ -82,7 +82,7 @@ const report = (label, bad) => {
   for (const file of gwts) {
     const j = read(file);
     const base = path.basename(file);
-    const written = (fs.readFileSync(file, "utf8").match(/^\s*test\(/gm) ?? []).length;
+    const written = (fs.readFileSync(file, "utf8").match(/^\s*test(Sync)?\(/gm) ?? []).length;
     const found = j.describes.flatMap((d) => d.tests);
     tests += found.length;
     if (found.length !== written) bad.push(`${base}: ${found.length} tests read, ${written} written`);
@@ -175,7 +175,7 @@ const report = (label, bad) => {
       .join(" ");
   // `refuses` returns a function: its parameters read as one list, unlabelled first.
   for (const [name, want] of [
-    ["accepts", "~recipient= ~message="],
+    ["withSecrets", "?send= null="],
     ["refuses", "null= ~recipient= ~message="],
   ])
     if (params(name) !== want) bad.push(`${name}'s parameters: ${params(name)}`);

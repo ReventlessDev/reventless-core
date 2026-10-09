@@ -475,6 +475,17 @@ let derive_gwt_kind fname : string option =
   | Some _ as k -> k
   | None -> dsl_kind_of_segment stem
 
+(* The body file a slice of these kinds is written in, beside its spec:
+   [<Spec>_Automation] / [<Spec>_Translation]. The same suffixes the
+   implementation PPX strips to find the spec. *)
+let slice_body_suffixes = [
+  ("Automation",          "_Automation");
+  ("InboundTranslation",  "_Translation");
+  ("OutboundTranslation", "_Translation");
+]
+
+let slice_body_suffix kind = List.assoc_opt kind slice_body_suffixes
+
 (* GWT test filename suffixes — stripped to derive the external Spec module
    name from files with no local Spec binding. Order matters: longest match
    wins so "GwtTest" is tried before "Gwt". *)

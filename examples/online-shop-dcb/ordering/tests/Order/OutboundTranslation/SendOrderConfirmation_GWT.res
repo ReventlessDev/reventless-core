@@ -1,14 +1,5 @@
-// `OutboundTranslation_GWT.Make` expects a single SliceSpec with `collect` at
-// the top level. The split-form production layout keeps `collect` in the
-// translation body file, so we compose it onto the spec module locally.
-//
-// `translate` is supplied at test time via `whenTranslateMocked`; the real
-// `translate` (which calls `EmailService`) is exercised in component tests.
-
-module SendOrderConfirmationSlice = {
-  include SendOrderConfirmation
-  let collect = SendOrderConfirmation_Translation.collect
-}
+// `translate` calls a mailer the framework does not broker, so these scenarios
+// answer for it with `whenTranslateMocked`.
 
 @@reventless.gwt
 
@@ -29,9 +20,9 @@ describe("SendOrderConfirmation OutboundTranslationSlice", () => {
   )
 
   // scenario-id: a4563058-8777-4756-8e12-983fcd0e8f20
-  test("translate failure leaves the TODO Pending for retry", () =>
+  test("translate failure leaves the TODO Failed for retry", () =>
     givenTodo("o1", {orderId: o1, customerId: c1})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
-    ->thenTodoStatus("o1", #Pending)
+    ->thenTodoStatus("o1", #Failed)
   )
 })

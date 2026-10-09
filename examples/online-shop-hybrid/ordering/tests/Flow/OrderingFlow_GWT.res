@@ -18,47 +18,12 @@
 
 open Ordering_Examples
 
-// Compose the automation onto a flat slice — the production split keeps
-// collect/resolve inside the per-source mapping; the GWT needs them together.
-let contextFor = (sliceName): Reventless.AutomationSlice.context => {
-  environment: "test",
-  platformName: "test",
-  pluginName: "ordering",
-  sliceName,
-}
-
-module AutoShipOrderSlice = {
-  include AutoShipOrder
-  type consumedEvent = AutoShipOrder_Automation.FromOrderingDcb.sourceEvent
-  let consumedEventSchema = AutoShipOrder_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e =>
-    AutoShipOrder_Automation.FromOrderingDcb.collect(e, ~sourceId="", contextFor("AutoShipOrder"))
-  let resolve = AutoShipOrder_Automation.FromOrderingDcb.resolve
-  let process = AutoShipOrder_Automation.process
-}
-
-// The DCB half of the intake relay. Its Customer-aggregate half announces
-// contacts and has nothing to do with an order, so this flow does not thread it.
-module NotificationIntakeSlice = {
-  include NotificationIntake
-  type consumedEvent = NotificationIntake_Automation.FromOrderingDcb.sourceEvent
-  let consumedEventSchema = NotificationIntake_Automation.FromOrderingDcb.sourceEventSchema
-  let collect = e =>
-    NotificationIntake_Automation.FromOrderingDcb.collect(
-      e,
-      ~sourceId="",
-      contextFor("NotificationIntake"),
-    )
-  let resolve = NotificationIntake_Automation.FromOrderingDcb.resolve
-  let process = NotificationIntake_Automation.process
-}
-
 module Sync = CommandStep(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 module Place = CommandStep(PlaceOrder, PlaceOrder_Behavior)
-module Auto = AutomationStep(AutoShipOrderSlice)
+module Auto = AutomationSlice(AutoShipOrder, AutoShipOrder_Automation)
 module Ship = CommandStep(ShipOrder, ShipOrder_Behavior)
 module OrdersView = ViewStep(Orders, Orders_Projection)
-module Notify = AutomationStep(NotificationIntakeSlice)
+module Notify = AutomationSlice(NotificationIntake, NotificationIntake_Automation)
 
 // Prices are money, so a test writes the amount a person would say and converts
 // it once. `ofMajor` scales by the currency's own exponent, which is what keeps

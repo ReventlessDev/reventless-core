@@ -1,12 +1,3 @@
-// `InboundTranslation_GWT.Make` expects a single SliceSpec carrying both the
-// types (from the spec file) and the `translate` function (from the body
-// file). Compose them locally before handing the result to the DSL.
-
-module ImportProductSlice = {
-  include ImportProduct
-  let translate = ImportProduct_Translation.translate
-}
-
 @@reventless.gwt
 
 open Catalog_Examples
@@ -138,5 +129,10 @@ describe("ImportProduct InboundTranslationSlice", () => {
       currency: usd,
       category: "",
     })->thenTranslateError("Category is required")
+  )
+
+  // A payload the feed's contract does not describe never reaches `translate`.
+  test("a payload missing its title is refused before translation", () =>
+    whenReceived(JSON.parseOrThrow(`{"sku": "SKU-1"}`))->thenRefusedInput("title")
   )
 })

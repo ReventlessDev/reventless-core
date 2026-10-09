@@ -145,6 +145,23 @@ let constant_span ~src (loc : Location.t) (value : string) : int * int =
     | Some i -> (i, b)
     | None -> (a, b)
 
+(* The unit a call `f()` is given is spanned by the parser as the `)` alone; its
+   span reaches back to the `(`, over any space between. *)
+let unit_span ~src (loc : Location.t) : int * int =
+  let a, b = span_of ~src loc in
+  if a >= String.length src || src.[a] <> ')' then (a, b)
+  else
+    let rec back i =
+      if i < 0 then None
+      else match src.[i] with
+        | ' ' | '\t' | '\n' | '\r' -> back (i - 1)
+        | '(' -> Some i
+        | _ -> None
+    in
+    match back (a - 1) with
+    | Some i -> (i, b)
+    | None -> (a, b)
+
 (* An outline of an expression: what a value is built from, each part with its
    span. Anything this walk does not name is `other`, with its text. *)
 let rec expr_json ~src (e : expression) : Yojson.Safe.t =
@@ -160,6 +177,9 @@ let rec expr_json ~src (e : expression) : Yojson.Safe.t =
     node ~span:(constant_span ~src e.pexp_loc s) "float" [ ("value", `String s) ]
   | Pexp_construct ({ txt = Lident "Function$"; _ }, Some inner) -> function_json ~src ~outer:e inner
   | Pexp_fun _ -> function_json ~src ~outer:e e
+  | Pexp_construct ({ txt = Lident "()"; _ }, None) ->
+    node ~span:(unit_span ~src e.pexp_loc) "constructor"
+      [ ("name", `String "()"); ("payload", `Null) ]
   | Pexp_construct ({ txt; _ }, payload) ->
     node "constructor"
       [ ("name", `String (flatten txt));
@@ -248,51 +268,17 @@ let open_json ~src (od : open_declaration) : Yojson.Safe.t option =
 
 (* ── GWT tests ──────────────────────────────────────────────────────────── *)
 
-(* The step calls of one test body, in the order they run. The chain so far is
-   an argument of each step (pipe-first) or of the pipe around it, so an
-   argument that holds a step is the chain, not a value; the others are the
-   step's values. Any other call is walked left to right, which keeps the order
-   the steps are written in. *)
-(* A step is any `given…` / `when…` / `then…` call, not only the verbs the
-   sidecar knows: a translation's GWT module has its own (`whenIncomingEvent`,
-   `thenPublishesCommand`), and a reader reports what is written. *)
-let is_verb (lid : Longident.t) =
-  let name = SidecarEmit.step_name_of lid in
-  List.mem name SidecarEmit.step_names
-  || List.exists
-       (fun prefix ->
-         let lp = String.length prefix in
-         String.length name > lp
-         && String.equal (String.sub name 0 lp) prefix
-         && Char.uppercase_ascii name.[lp] = name.[lp]
-         && Char.lowercase_ascii name.[lp] <> name.[lp])
-       [ "given"; "when"; "then" ]
-
-let rec holds_step (e : expression) =
-  match e.pexp_desc with
-  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) ->
-    is_verb txt || List.exists (fun (_, a) -> holds_step a) args
-  | Pexp_constraint (inner, _) -> holds_step inner
-  | _ -> false
-
-let rec collect_steps ~src (e : expression) (acc : Yojson.Safe.t list) : Yojson.Safe.t list =
-  match e.pexp_desc with
-  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args) when is_verb txt ->
-    let acc = List.fold_left (fun acc (_, a) -> if holds_step a then collect_steps ~src a acc else acc) acc args in
-    let values = List.filter (fun (_, a) -> not (holds_step a)) args in
-    `Assoc
-      [ ("verb", `String (SidecarEmit.step_name_of txt));
-        ("args", `List (List.map (fun (_, a) -> expr_json ~src a) values)) ]
-    :: acc
-  (* `->thenNoEvent` has no parentheses: the pipe's right side is the verb
-     itself, a step with no values. *)
-  | Pexp_ident { txt; _ } when is_verb txt ->
-    `Assoc [ ("verb", `String (SidecarEmit.step_name_of txt)); ("args", `List []) ] :: acc
-  | Pexp_apply (_, args) -> List.fold_left (fun acc (_, a) -> collect_steps ~src a acc) acc args
-  | Pexp_let (_, _, cont) -> collect_steps ~src cont acc
-  | Pexp_sequence (a, b) -> collect_steps ~src b (collect_steps ~src a acc)
-  | Pexp_constraint (inner, _) -> collect_steps ~src inner acc
-  | _ -> acc
+(* The step calls of one test body, in the order they run: the walk the GWT
+   sidecar records its steps from ([SidecarEmit.ordered_steps]), each reported
+   with the source of its values. *)
+let collect_steps ~src (e : expression) (acc : Yojson.Safe.t list) : Yojson.Safe.t list =
+  List.map
+    (fun (lid, values) ->
+      `Assoc
+        [ ("verb", `String (SidecarEmit.step_name_of lid));
+          ("args", `List (List.map (fun (_, a) -> expr_json ~src a) values)) ])
+    (SidecarEmit.ordered_steps e [])
+  @ acc
 
 let describe_json ~src ~scenario_ids ~test_lines (item : structure_item) : Yojson.Safe.t option =
   match SidecarEmit.describe_of_item item with

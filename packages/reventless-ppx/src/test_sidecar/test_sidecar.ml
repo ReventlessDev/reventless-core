@@ -745,4 +745,367 @@ let () =
        [ "[@@@reventless.examples]"; "type line = { n : int } [@@schema]" ]) ];
   ignore (Sys.command (Printf.sprintf "rm -rf %s" (Filename.quote dir)));
 
+  (* ── Config values: annotated, Some(literal), arrays, paths, None ─────── *)
+  let config_body : structure =
+    [%str
+      let maxRetries : int = 3
+      let targetName : string option = Some "Customer"
+      let sourceNames : string array = [| "Customer"; "Order" |]
+      let externalSystem = Some "Aws \"Location\""
+      let capabilityNeeds = [| Reventless.CapabilityNeed.Messaging |]
+      let traits = [| TraitGeo.Geocoding.declaration |]
+      let heartbeatInterval = None]
+  in
+  let cfg =
+    ReventlessPpx__SidecarEmit.fragment_json ~spec_name:"Geocode" ~fname:"Geocode.res" config_body
+    |> Yojson.Safe.Util.member "config" |> Yojson.Safe.to_string
+  in
+  let cmust label needle =
+    let contains hay sub =
+      let lh = String.length hay and ls = String.length sub in
+      let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+      ls = 0 || go 0
+    in
+    if contains cfg needle then Printf.printf "  ok(config): %s\n" label
+    else (Printf.printf "  FAIL(config): %s\n    missing %S in:\n%s\n" label needle cfg; exit 1)
+  in
+  cmust "an annotated let" "{\"key\":\"maxRetries\",\"value\":\"3\"}";
+  cmust "Some(literal) is the literal" "{\"key\":\"targetName\",\"value\":\"\\\"Customer\\\"\"}";
+  cmust "an array of literals" "{\"key\":\"sourceNames\",\"value\":\"[\\\"Customer\\\", \\\"Order\\\"]\"}";
+  cmust "a string is escaped" "{\"key\":\"externalSystem\",\"value\":\"\\\"Aws \\\\\\\"Location\\\\\\\"\\\"\"}";
+  cmust "an array of constructors" "{\"key\":\"capabilityNeeds\",\"value\":\"[Reventless.CapabilityNeed.Messaging]\"}";
+  cmust "an array of module paths" "{\"key\":\"traits\",\"value\":\"[TraitGeo.Geocoding.declaration]\"}";
+  let has hay sub =
+    let lh = String.length hay and ls = String.length sub in
+    let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+    ls = 0 || go 0
+  in
+  if not (has cfg "heartbeatInterval") then print_endline "  ok(config): None is omitted"
+  else (Printf.printf "  FAIL(config): None recorded in %s\n" cfg; exit 1);
+
+  (* ── Scenario steps for the automation, translation and flow verbs ───── *)
+  let scenarios_of (fname : string) (body : structure) : Yojson.Safe.t =
+    match ReventlessPpx__SidecarEmit.gwt_fragment_json ~fname body with
+    | Some j -> j
+    | None -> (Printf.printf "  FAIL(steps): %s extracted nothing\n" fname; exit 1)
+  in
+  let scenario (j : Yojson.Safe.t) (title : string) : Yojson.Safe.t =
+    let open Yojson.Safe.Util in
+    match
+      List.find_opt (fun s -> member "title" s = `String title) (j |> member "scenarios" |> to_list)
+    with
+    | Some s -> s
+    | None -> (Printf.printf "  FAIL(steps): no scenario %S\n" title; exit 1)
+  in
+  let smust (j : Yojson.Safe.t) title key label needle =
+    let got = Yojson.Safe.to_string (Yojson.Safe.Util.member key (scenario j title)) in
+    let contains hay sub =
+      let lh = String.length hay and ls = String.length sub in
+      let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+      ls = 0 || go 0
+    in
+    if contains got needle then Printf.printf "  ok(steps): %s\n" label
+    else (Printf.printf "  FAIL(steps): %s\n    %s.%s missing %S in:\n%s\n" label title key needle got; exit 1)
+  in
+  let sequal (j : Yojson.Safe.t) title key label expected =
+    let got = Yojson.Safe.to_string (Yojson.Safe.Util.member key (scenario j title)) in
+    if String.equal got expected then Printf.printf "  ok(steps): %s\n" label
+    else (Printf.printf "  FAIL(steps): %s\n    %s.%s = %s\n    expected %s\n" label title key got expected; exit 1)
+  in
+  let auto_body : structure =
+    [%str
+      describe "AutoShipOrder" (fun () ->
+          test "collect" (fun () ->
+              Dcb.thenTodos
+                (Dcb.whenCollect (Dcb.givenEvent (OrderPlaced { orderId = "o1" })))
+                [| ("o1", { orderId = "o1" }) |]);
+          test "collect nothing" (fun () ->
+              thenTodos (whenCollect ~sourceId:"s1" (givenEvent (OrderShipped { orderId = "o1" }))) [||]);
+          testSync "resolve" (fun () ->
+              thenResolved (whenResolve (givenEvent (OrderShipped { orderId = "o1" }))) (Some "o1"));
+          test "process" (fun () ->
+              thenCommand (whenProcess (givenTodo "o1" { orderId = "o1" })) "o1"
+                (ShipOrder { orderId = "o1" }));
+          test "exhausted" (fun () -> thenNoCommand (whenExhausted (givenTodo "o1" { orderId = "o1" })));
+          test "sweep" (fun () ->
+              thenScenarioTodos
+                (andThenEvents
+                   (thenCommands
+                      (whenSweep
+                         (givenEvents
+                            [| Dcb.event (OrderPlaced { orderId = "o1" }) ~sourceId:"s1";
+                               event (OrderShipped { orderId = "o2" }) |]))
+                      [| ("o1", ShipOrder { orderId = "o1" }) |])
+                   [| Dcb.event (OrderShipped { orderId = "o1" }) |])
+                [||]);
+          test "sweep issues nothing" (fun () -> thenCommands (whenSweep (givenEvents [||])) [||]))]
+  in
+  let aj = scenarios_of "tests/Order/Automation/AutoShipOrder_GWT.res" auto_body in
+  (match Yojson.Safe.Util.member "componentKind" aj with
+   | `String "Automation" -> print_endline "  ok(steps): componentKind from the folder"
+   | other -> Printf.printf "  FAIL(steps): componentKind %s\n" (Yojson.Safe.to_string other); exit 1);
+  (match
+     ReventlessPpx__SidecarEmit.gwt_fragment_json ~fname:"Unrelated.res" auto_body
+     |> Option.map (Yojson.Safe.Util.member "componentKind")
+   with
+   | Some `Null -> print_endline "  ok(steps): componentKind is null when underivable"
+   | _ -> print_endline "  FAIL(steps): componentKind for an underivable file"; exit 1);
+  sequal aj "collect" "given" "the collected event leaves given" "[]";
+  sequal aj "collect" "when" "…and is the when"
+    "[{\"kind\":\"event\",\"element\":\"OrderPlaced\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  sequal aj "collect" "then" "thenTodos: one todo per item, keyed by its id"
+    "[{\"kind\":\"todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  smust aj "collect" "steps" "a qualified step names its module"
+    "{\"group\":\"when\",\"verb\":\"whenCollect\",\"kind\":\"event\",\"element\":\"OrderPlaced\"";
+  smust aj "collect" "steps" "via" "\"via\":\"Dcb\"";
+  sequal aj "collect nothing" "then" "thenTodos([]) is noTodo"
+    "[{\"kind\":\"noTodo\",\"element\":\"\",\"values\":[]}]";
+  sequal aj "resolve" "when" "testSync is harvested; whenResolve takes the event"
+    "[{\"kind\":\"event\",\"element\":\"OrderShipped\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  sequal aj "resolve" "then" "thenResolved" "[{\"kind\":\"resolved\",\"element\":\"o1\",\"values\":[]}]";
+  sequal aj "process" "given" "givenTodo"
+    "[{\"kind\":\"todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  sequal aj "process" "when" "whenProcess" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+  smust aj "process" "then" "thenCommand(id, cmd) is the command" "\"kind\":\"command\",\"element\":\"ShipOrder\"";
+  sequal aj "exhausted" "when" "whenExhausted with no error" "[{\"kind\":\"exhausted\",\"element\":\"\",\"values\":[]}]";
+  sequal aj "exhausted" "then" "thenNoCommand" "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+  smust aj "sweep" "given" "event(e) is unwrapped" "{\"kind\":\"event\",\"element\":\"OrderPlaced\"";
+  smust aj "sweep" "given" "…qualified or not" "{\"kind\":\"event\",\"element\":\"OrderShipped\"";
+  sequal aj "sweep" "when" "whenSweep" "[{\"kind\":\"sweep\",\"element\":\"\",\"values\":[]}]";
+  smust aj "sweep" "then" "thenCommands: the pair's command" "{\"kind\":\"command\",\"element\":\"ShipOrder\"";
+  smust aj "sweep" "then" "thenScenarioTodos([]) is noTodo" "{\"kind\":\"noTodo\"";
+  smust aj "sweep" "steps" "…and is a step of its own"
+    "{\"group\":\"when\",\"verb\":\"andThenEvents\",\"kind\":\"event\",\"element\":\"OrderShipped\"";
+  sequal aj "sweep issues nothing" "then" "thenCommands([]) is noCommand"
+    "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+
+  let outbound_body : structure =
+    [%str
+      describe "GeocodeCustomerAddress" (fun () ->
+          test "translated" (fun () ->
+              thenSent
+                (whenTranslated (givenCapabilities (givenTodo "c1" { address = "Main St" }) fakes))
+                [| Geocoded { address = "Main St" }; Sent { channel = "Email" } |]);
+          test "nothing sent" (fun () -> thenNothingSent (whenTranslateMocked (givenTodo "c1" item) mock));
+          test "retried" (fun () ->
+              thenRetryRecorded
+                (thenTodoStatus (whenTranslateRetrying ~maxRetries:3 (givenTodo "c1" item) mock) "c1" `Failed)
+                2);
+          test "exhausted" (fun () ->
+              thenCommand (whenExhausted ~lastError:"timeout" (givenTodo "c1" item)) "c1"
+                (MarkAddressUnresolvable { reason = "timeout" })))]
+  in
+  let oj = scenarios_of "tests/Customer/OutboundTranslation/Geocode_GWT.res" outbound_body in
+  sequal oj "translated" "given" "givenCapabilities stays out of given"
+    "[{\"kind\":\"todo\",\"element\":\"c1\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]}]";
+  smust oj "translated" "steps" "…and is a step"
+    "{\"group\":\"given\",\"verb\":\"givenCapabilities\",\"kind\":\"capabilities\",\"element\":\"\",\"values\":[]}";
+  sequal oj "translated" "when" "whenTranslated" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+  smust oj "translated" "then" "thenSent: one per call, by constructor"
+    "{\"kind\":\"sent\",\"element\":\"Geocoded\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]},{\"kind\":\"sent\",\"element\":\"Sent\"";
+  sequal oj "nothing sent" "when" "whenTranslateMocked" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+  sequal oj "nothing sent" "then" "thenNothingSent" "[{\"kind\":\"nothingSent\",\"element\":\"\",\"values\":[]}]";
+  sequal oj "retried" "when" "whenTranslateRetrying" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+  smust oj "retried" "then" "thenTodoStatus: the status name"
+    "{\"kind\":\"todoStatus\",\"element\":\"Failed\",\"values\":[[\"id\",{\"kind\":\"string\",\"value\":\"c1\"}]]}";
+  smust oj "retried" "then" "thenRetryRecorded" "{\"kind\":\"retries\",\"element\":\"2\",\"values\":[]}";
+  sequal oj "exhausted" "when" "whenExhausted(~lastError)" "[{\"kind\":\"exhausted\",\"element\":\"timeout\",\"values\":[]}]";
+
+  let inbound_body : structure =
+    [%str
+      describe "ImportProduct" (fun () ->
+          test "input" (fun () ->
+              thenCommands (whenInput { sku = "SKU-1"; unitPrice = 1999 }) [| AddProduct { name = "Book" } |]);
+          test "received" (fun () ->
+              thenRefusedInput (whenReceived (JSON.parseOrThrow "{\"sku\": \"SKU-1\", \"n\": 2}")) "title");
+          test "not understood" (fun () -> thenNotUnderstood (whenInput { sku = "" }) "SKU is required");
+          test "translate error" (fun () -> thenTranslateError (whenInput { sku = "" }) "SKU is required");
+          test "no command" (fun () -> thenNoCommand (whenInput { sku = "" })))]
+  in
+  let ij = scenarios_of "tests/Product/InboundTranslation/ImportProduct_GWT.res" inbound_body in
+  sequal ij "input" "when" "whenInput(record) records its entries"
+    "[{\"kind\":\"input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"unitPrice\",{\"kind\":\"int\",\"value\":1999}]]}]";
+  smust ij "input" "then" "inbound thenCommands" "{\"kind\":\"command\",\"element\":\"AddProduct\"";
+  sequal ij "received" "when" "whenReceived(JSON literal) records its entries"
+    "[{\"kind\":\"input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"n\",{\"kind\":\"int\",\"value\":2}]]}]";
+  sequal ij "received" "then" "thenRefusedInput" "[{\"kind\":\"inputRefused\",\"element\":\"title\",\"values\":[]}]";
+  sequal ij "not understood" "then" "thenNotUnderstood"
+    "[{\"kind\":\"notUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
+  sequal ij "translate error" "then" "thenTranslateError"
+    "[{\"kind\":\"notUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
+  sequal ij "no command" "then" "inbound thenNoCommand" "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+
+  (* A flow: two whenCommands, a reaction, a view, an outbound and a port. The
+     groups keep the last act; steps keep them all, in order. *)
+  let flow_body : structure =
+    [%str
+      describe "Ordering flow" (fun () ->
+          test "place and ship" (fun () ->
+              Notify.thenIssuesNoCommand
+                (Notify.whenReacts
+                   (Out.thenOutbound
+                      (View.thenViewState
+                         (Ship.thenEvent
+                            (Ship.whenCommand
+                               (Auto.thenIssuesCommand
+                                  (Auto.whenReacts
+                                     (Place.thenEvent
+                                        (Place.whenCommand
+                                           (Sync.givenEvents start [| Synced { productId = "p1" } |])
+                                           (PlaceOrder { orderId = "o1" }))
+                                        (OrderPlaced { orderId = "o1" })))
+                                  (ShipOrder { orderId = "o1" }))
+                               (ShipOrder { orderId = "o1" }))
+                            (OrderShipped { orderId = "o1" }))
+                         "o1" { orderId = "o1" })
+                      [| ("o1", { orderId = "o1" }) |])));
+          test "publish" (fun () ->
+              Ext.thenIssuesCommands
+                (Ext.whenExtensionReacts
+                   (Pub.thenPublicEvent (Pub.whenPublishedThrough start) (ProductListed { productId = "p1" })))
+                [| SyncProduct { productId = "p1" } |]);
+          test "nothing out" (fun () ->
+              Out.thenOutboundNothing (Auto.thenIssuesCommands (Auto.whenReacts start) [||])))]
+  in
+  let fj = scenarios_of "tests/Flow/OrderingFlow_GWT.res" flow_body in
+  let verbs title =
+    let open Yojson.Safe.Util in
+    scenario fj title |> member "steps" |> to_list
+    |> List.map (fun s ->
+           let via = match member "via" s with `String v -> v ^ "." | _ -> "" in
+           via ^ to_string (member "verb" s) ^ ":" ^ to_string (member "kind" s) ^ ":"
+           ^ to_string (member "element" s))
+    |> String.concat " "
+  in
+  let vequal title label expected =
+    let got = verbs title in
+    if String.equal got expected then Printf.printf "  ok(steps): %s\n" label
+    else (Printf.printf "  FAIL(steps): %s\n    got      %s\n    expected %s\n" label got expected; exit 1)
+  in
+  vequal "place and ship" "both whenCommands, in written order, each with its module"
+    "Sync.givenEvents:event:Synced Place.whenCommand:command:PlaceOrder Place.thenEvent:event:OrderPlaced \
+     Auto.whenReacts:sweep: Auto.thenIssuesCommand:command:ShipOrder Ship.whenCommand:command:ShipOrder \
+     Ship.thenEvent:event:OrderShipped View.thenViewState:state:state Out.thenOutbound:sent:o1 \
+     Notify.whenReacts:sweep: Notify.thenIssuesNoCommand:noCommand:";
+  sequal fj "place and ship" "when" "the groups keep the last act's when"
+    "[{\"kind\":\"sweep\",\"element\":\"\",\"values\":[]}]";
+  sequal fj "place and ship" "then" "…and the thens written after it"
+    "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+  vequal "publish" "the port steps"
+    "Pub.whenPublishedThrough:sweep: Pub.thenPublicEvent:publicEvent:ProductListed \
+     Ext.whenExtensionReacts:sweep: Ext.thenIssuesCommands:command:SyncProduct";
+  vequal "nothing out" "thenIssuesCommands([]) and thenOutboundNothing"
+    "Auto.whenReacts:sweep: Auto.thenIssuesCommands:noCommand: Out.thenOutboundNothing:nothingSent:";
+
+  (* ── The automation wiring sidecar ─────────────────────────────────────── *)
+  let wiring_body : structure =
+    [%str
+      module OrderingDcbSource = struct
+        let name = "OrderingDcbEventLog"
+        type shippingMethod = Standard | Express [@@schema]
+        type event =
+          | OrderPlaced of { orderId : OrderId.t; shippingMethod : shippingMethod }
+          | OrderShipped of { orderId : OrderId.t }
+        [@@schema]
+      end
+
+      module FromOrderingDcb =
+        Mapping.Make (OrderingDcbSource) (AutoShipOrder)
+          (struct
+            let collect _ ~sourceId:_ _ = [||]
+            let resolve _ = None
+          end)
+
+      module FromCustomers = Mapping.Make (CustomerSpec.Customers) (AutoShipOrder) (struct end)
+      module Rule = Trait.Rule
+
+      let mappings : (module Mapping) array = [| (module FromOrderingDcb); (module FromCustomers) |]
+      let process _ _ = None]
+  in
+  let wj =
+    ReventlessPpx__SidecarEmit.wiring_fragment_json ~spec_name:"AutoShipOrder"
+      ~fname:"AutoShipOrder_Automation.res" wiring_body
+  in
+  let wmust label at expected =
+    let open Yojson.Safe.Util in
+    let rec go j = function [] -> j | `I i :: rest -> go (List.nth (to_list j) i) rest | `K k :: rest -> go (member k j) rest in
+    let got = Yojson.Safe.to_string (go wj at) in
+    if String.equal got expected then Printf.printf "  ok(wiring): %s\n" label
+    else (Printf.printf "  FAIL(wiring): %s\n    got      %s\n    expected %s\n" label got expected; exit 1)
+  in
+  wmust "specName" [ `K "specName" ] "\"AutoShipOrder\"";
+  wmust "stem" [ `K "stem" ] "\"AutoShipOrder_Automation\"";
+  wmust "mappings in `let mappings` order" [ `K "mappings"; `I 0; `K "module" ] "\"FromOrderingDcb\"";
+  wmust "the slice it feeds" [ `K "mappings"; `I 0; `K "target" ] "\"AutoShipOrder\"";
+  wmust "an inline source" [ `K "mappings"; `I 0; `K "source"; `K "module" ] "\"OrderingDcbSource\"";
+  wmust "its source name" [ `K "mappings"; `I 0; `K "source"; `K "sourceName" ] "\"\\\"OrderingDcbEventLog\\\"\"";
+  wmust "its events" [ `K "mappings"; `I 0; `K "source"; `K "events"; `K "elements"; `I 1; `K "name" ]
+    "\"OrderShipped\"";
+  wmust "its other @schema types" [ `K "mappings"; `I 0; `K "source"; `K "types"; `I 0; `K "typeName" ]
+    "\"shippingMethod\"";
+  wmust "a source declared elsewhere is a ref" [ `K "mappings"; `I 1; `K "source" ]
+    "{\"ref\":\"CustomerSpec.Customers\"}";
+  (match List.length (Yojson.Safe.Util.to_list (Yojson.Safe.Util.member "mappings" wj)) with
+   | 2 -> print_endline "  ok(wiring): an alias is not a mapping"
+   | n -> Printf.printf "  FAIL(wiring): %d mappings\n" n; exit 1);
+
+  (* ── GWT inference: an automation or translation test takes the slice ── *)
+  let infer path lines =
+    let lexbuf = Lexing.from_string (String.concat "\n" lines) in
+    Lexing.set_filename lexbuf path;
+    Format.asprintf "%a" Pprintast.structure
+      (ReventlessPpx__GwtInference.transform (Parse.implementation lexbuf))
+  in
+  (* The printer's parentheses and line breaks are not what is being tested. *)
+  let flat s = String.concat "" (String.split_on_char ' ' (String.map (function '(' | ')' | '\n' -> ' ' | c -> c) s)) in
+  let imust label out needle =
+    let out = flat out and needle = flat needle in
+    let has hay sub =
+      let lh = String.length hay and ls = String.length sub in
+      let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+      ls = 0 || go 0
+    in
+    if has out needle then Printf.printf "  ok(infer): %s\n" label
+    else (Printf.printf "  FAIL(infer): %s\n    missing %S in:\n%s\n" label needle out; exit 1)
+  in
+  let auto_out =
+    infer "/nowhere/tests/Order/Automation/AutoShipOrder_GWT.res"
+      [ "[@@@reventless.gwt]"; "module Rule = Trait.Rule"; "module Dcb = Mapping (FromOrderingDcb)" ]
+  in
+  imust "no adapter: the slice as written" auto_out
+    "include ReventlessGwt.Automation_GWT.FromSlice(AutoShipOrder)(AutoShipOrder_Automation)";
+  imust "…with the spec opened" auto_out "open AutoShipOrder";
+  imust "…and the body" auto_out "open AutoShipOrder_Automation";
+  imust "an outbound body is a _Translation"
+    (infer "/nowhere/tests/OutboundTranslation/Geocode_GWT.res" [ "[@@@reventless.gwt]" ])
+    "include ReventlessGwt.OutboundTranslation_GWT.FromSlice(Geocode)(Geocode_Translation)";
+  imust "…and so is an inbound one"
+    (infer "/nowhere/tests/InboundTranslation/ImportProduct_GWT.res"
+       [ "open ImportProduct_Translation"; "[@@@reventless.gwt]" ])
+    "include ReventlessGwt.InboundTranslation_GWT.FromSlice(ImportProduct)(ImportProduct_Translation)";
+  imust "an adapter module keeps Make"
+    (infer "/nowhere/tests/Automation/AutoShipOrder_GWT.res"
+       [ "module Rule = Trait.Rule"; "module Slice = struct include AutoShipOrder end"; "[@@@reventless.gwt]" ])
+    "include ReventlessGwt.Automation_GWT.Make(Slice)";
+  imust "an explicit payload keeps Make"
+    (infer "/nowhere/tests/Automation/AutoShipOrder_GWT.res" [ "[@@@reventless.gwt Other]" ])
+    "include ReventlessGwt.Automation_GWT.Make(Other)";
+  (let out =
+     infer "/nowhere/tests/InboundTranslation/ImportProduct_GWT.res"
+       [ "open ImportProduct_Translation"; "[@@@reventless.gwt]" ]
+     |> flat
+   in
+   let count sub =
+     let rec go i n =
+       match String.index_from_opt out i 'o' with
+       | None -> n
+       | Some j ->
+         let n = if j + String.length sub <= String.length out && String.sub out j (String.length sub) = sub then n + 1 else n in
+         go (j + 1) n
+     in
+     go 0 0
+   in
+   if count "openImportProduct_Translation" = 1 then print_endline "  ok(infer): an open already written is not repeated"
+   else (Printf.printf "  FAIL(infer): open repeated in:\n%s\n" out; exit 1));
+
   print_endline "ALL SIDECAR CHECKS PASSED"

@@ -492,6 +492,30 @@ describe("a step the sidecar could not read", () => {
     expect(levels([s]))->toEqual([("Add", "Collection")])
   })
 
+  // An automation or translation scenario: its `when` names no element and is
+  // still a step the walk knows; it is no command outcome either.
+  testSync("a process when is readable, and no command outcome", () => {
+    let s = scenario(~given=[], ~when_=[step("process", "")], ~then_=[step("command", "ShipOrder")])
+    expect((
+      Check.isUnreadable(s),
+      Check.commandOutcomes(
+        ~plugin="p",
+        ~corpora=[{component: "C", path: "", scenarios: [s]}],
+      )->Array.length,
+    ))->toEqual((false, 0))
+  })
+
+  testSync("an opaque when, or none, is unreadable", () =>
+    expect([
+      scenario(
+        ~given=[],
+        ~when_=[opaque(~of_="command", "renamed")],
+        ~then_=[],
+      )->Check.isUnreadable,
+      scenario(~given=[], ~when_=[], ~then_=[])->Check.isUnreadable,
+    ])->toEqual([true, true])
+  )
+
   testSync("an unread when names no command", () =>
     expect(
       levels([

@@ -120,6 +120,14 @@ Boilerplate-heavy, hand-evolved state, no `givenEvents` (state built directly wi
 | OutboundTranslationSlice | **no** | no | needs translate + retry semantics |
 | Cross-pattern automation (Aggregate↔DCB) | **no** | no | needs dual-source handling |
 
+*Since this matrix was drawn:* the three DCB loop slices have DSLs that take the
+slice as written — `Automation_GWT.FromSlice` (every mapping, `process`,
+`onExhausted`, and a sweep routed as the runtime routes it),
+`InboundTranslation_GWT.FromSlice` (input decoded through its schema) and
+`OutboundTranslation_GWT.FromSlice` (the real `translate` against recording
+capability fakes, with the runtime's retry count). Their scenarios reach the
+`.gwt.json` sidecar.
+
 ### 2.6 Duplication and inconsistency audit
 
 The three existing DSLs were written at different times and accreted different shapes:

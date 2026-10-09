@@ -1,0 +1,114 @@
+{
+  "specName": "ShelfGeocode",
+  "stem": "ShelfGeocode",
+  "types": [
+    {
+      "typeName": "consumedEvent",
+      "shape": "variant",
+      "elements": [
+        {
+          "name": "ShelfRegistered",
+          "payloadless": false,
+          "fields": [
+            {
+              "name": "shelfId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "partition" },
+              "example": null,
+              "annotations": [ "partitionTag" ]
+            },
+            {
+              "name": "address",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeName": "outboundItem",
+      "shape": "record",
+      "elements": [
+        {
+          "name": "outboundItem",
+          "payloadless": false,
+          "fields": [
+            {
+              "name": "shelfId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            },
+            {
+              "name": "address",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeName": "inboundCommand",
+      "shape": "variant",
+      "elements": [
+        {
+          "name": "MarkShelfUnlocatable",
+          "payloadless": false,
+          "fields": [
+            {
+              "name": "shelfId",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "autoString" },
+              "example": null,
+              "annotations": []
+            },
+            {
+              "name": "reason",
+              "kind": { "kind": "string" },
+              "isId": false,
+              "isIndex": false,
+              "isCompositeTag": false,
+              "dcbRole": { "role": "noTag" },
+              "example": null,
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "config": [
+    { "key": "maxRetries", "value": "3" },
+    { "key": "heartbeatInterval", "value": "60" },
+    { "key": "targetName", "value": "\"Shelf\"" },
+    { "key": "sourceNames", "value": "[\"Shelf\", \"Aisle\"]" },
+    { "key": "externalSystem", "value": "\"Shelf \\\"Scanner\\\"\"" },
+    {
+      "key": "capabilityNeeds",
+      "value": "[Reventless.CapabilityNeed.Geocoding, Reventless.CapabilityNeed.Messaging]"
+    },
+    { "key": "traits", "value": "[ShelfTraits.declaration]" }
+  ]
+}

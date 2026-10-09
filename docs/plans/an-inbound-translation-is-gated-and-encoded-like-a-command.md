@@ -7,7 +7,7 @@
 (`InboundTranslationResolvers_AppSync`, the resolver function `invokeInboundTranslation`,
 `DcbCommandTopicEntryPoint_Ops`), `reventless/spec` (`InboundTranslationSlice`).<br/>
 **Found by:** [analysis/testing-translation-slices.md §3](../analysis/testing-translation-slices.md#3-two-findings-that-are-not-about-tests).<br/>
-**Before:** [the-sidecars-read-automations-and-translations.md](the-sidecars-read-automations-and-translations.md),
+**Before:** [the-sidecars-read-automations-and-translations.md](done/the-sidecars-read-automations-and-translations.md),
 so that its door tests test a gate that exists everywhere.
 
 ## Goal

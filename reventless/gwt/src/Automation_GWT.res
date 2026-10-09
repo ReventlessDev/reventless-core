@@ -56,6 +56,9 @@ module type T = {
   let thenScenarioTodos: (scenario, array<(string, Spec.todoItem)>) => Outcome.outcome
 }
 
+/** Deprecated: takes an adapter module that flattens one mapping. Use
+    `FromSlice`, which takes the slice as written; this goes one release after
+    the examples have moved. */
 module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -192,5 +195,132 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     {...scenario, todos: remaining}
   }
 
+  let thenScenarioTodos = (scenario, expected) => thenTodos(scenario.todos, expected)
+}
+
+// The slice as written: its `Spec` and its `_Automation` body, with every
+// mapping, `process` and `onExhausted`. Per-source verbs come from
+// `Mapping(M)`, because a mapping's event type is hidden inside `mappings`.
+module FromSlice = (
+  Spec: Reventless.AutomationSlice.Spec,
+  Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+) => {
+  module Route = AutomationSlice_Route.Make(Spec, Automation)
+
+  let describe = JestBind.describe
+  let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
+
+  let testContext: Reventless.AutomationSlice.context = {
+    environment: "test",
+    platformName: "test",
+    pluginName: "test",
+    sliceName: Spec.name,
+  }
+
+  /** A source event as the runtime receives it: encoded, and addressed by its
+      source's name. Built with `Mapping(M).event`. */
+  type sourced = {sourceName: string, sourceId: string, payload: JSON.t}
+
+  type scenario = {
+    todos: array<(string, Spec.todoItem)>,
+    commands: array<(string, Spec.command)>,
+  }
+
+  let encTodos = (arr: array<(string, Spec.todoItem)>) =>
+    arr->Array.map(((id, t)) => (id, t->Message.encode(Spec.todoItemSchema)))
+  let encPair = ((id, cmd): (string, Spec.command)) => {
+    let d = Dict.make()
+    d->Dict.set("id", JSON.Encode.string(id))
+    d->Dict.set("command", cmd->Message.encode(Spec.commandSchema))
+    JSON.Encode.object(d)
+  }
+
+  let thenTodos = (actual, expected) =>
+    actual == expected
+      ? Outcome.pass
+      : Outcome.fail(TodoMismatch({expected: encTodos(expected), actual: encTodos(actual)}))
+
+  let thenResolved = (actual: option<string>, expected: option<string>) => {
+    let asPair = opt => opt->Option.mapOr([], id => [(id, JSON.Encode.null)])
+    actual == expected
+      ? Outcome.pass
+      : Outcome.fail(TodoMismatch({expected: asPair(expected), actual: asPair(actual)}))
+  }
+
+  module Mapping = (M: Automation.Mapping) => {
+    let event = (e: M.sourceEvent, ~sourceId="") => {
+      sourceName: M.sourceName,
+      sourceId,
+      payload: e->Message.encode(M.sourceEventSchema),
+    }
+    let givenEvent = (e: M.sourceEvent) => e
+    let whenCollect = (e, ~sourceId="", ~context=testContext) => M.collect(e, ~sourceId, context)
+    let whenResolve = M.resolve
+  }
+
+  // Unit: process and abandonment
+  let givenTodo = (id: string, item: Spec.todoItem) => (id, item)
+  let whenProcess = ((id, item)) => Automation.process(id, item)
+  let whenExhausted = ((id, item)) => Automation.onExhausted(id, item)
+  let thenCommand = (actual, expectedId, expectedCmd) =>
+    switch actual {
+    | Some((id, cmd)) if id == expectedId && cmd == expectedCmd => Outcome.pass
+    | actual =>
+      Outcome.fail(
+        EventsMismatch({
+          expected: [encPair((expectedId, expectedCmd))],
+          actual: actual->Option.mapOr([], p => [encPair(p)]),
+        }),
+      )
+    }
+  let thenNoCommand = actual =>
+    switch actual {
+    | None => Outcome.pass
+    | Some(p) => Outcome.fail(NoEventExpected({actual: [encPair(p)]}))
+    }
+
+  // Scenario: a sweep routes each event in turn, as phase 1 does, so to-dos keep
+  // the order the events produced them.
+  let givenEvents = (es: array<sourced>) => es
+  let routeAll = (events: array<sourced>, context) =>
+    events->Array.flatMap(e =>
+      Route.route(e.payload, ~sourceName=e.sourceName, ~sourceId=e.sourceId, context)
+    )
+  /** Applies routed events as the runtime's to-do list does: the first writer of
+      an id wins, and a resolve completes only a row that already exists. */
+  let sweep = (routed: array<AutomationSlice_Route.routed<Spec.todoItem>>) => {
+    let rows: array<(string, Spec.todoItem, ref<bool>)> = []
+    routed->Array.forEach(r => {
+      r.collected->Array.forEach(((id, item)) =>
+        if !(rows->Array.some(((seen, _, _)) => seen == id)) {
+          rows->Array.push((id, item, ref(false)))
+        }
+      )
+      r.resolved->Option.forEach(id =>
+        rows->Array.forEach(
+          ((seen, _, done)) =>
+            if seen == id {
+              done := true
+            },
+        )
+      )
+    })
+    let todos = rows->Array.filterMap(((id, item, done)) => done.contents ? None : Some((id, item)))
+    {todos, commands: todos->Array.filterMap(((id, item)) => Automation.process(id, item))}
+  }
+  let whenSweep = (events, ~context=testContext) => sweep(routeAll(events, context))
+  let thenCommands = (scenario, expected) =>
+    scenario.commands == expected
+      ? Outcome.pass
+      : Outcome.fail(
+          EventsMismatch({
+            expected: expected->Array.map(encPair),
+            actual: scenario.commands->Array.map(encPair),
+          }),
+        )
+  let andThenEvents = (scenario, events, ~context=testContext) => {
+    let resolved = routeAll(events, context)->Array.filterMap(r => r.resolved)
+    {...scenario, todos: scenario.todos->Array.filter(((id, _)) => !(resolved->Array.includes(id)))}
+  }
   let thenScenarioTodos = (scenario, expected) => thenTodos(scenario.todos, expected)
 }

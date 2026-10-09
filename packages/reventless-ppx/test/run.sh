@@ -4157,6 +4157,99 @@ type event = ShelfStocked({@partitionTag shelfId: string, productId: string, qua
 type error = ShelfUnknown
 EOF
 
+# An outbound spec with every config key, and an automation body reading two
+# sources: test/golden holds both sidecars, less their machine-local `file`.
+mkdir -p "$SPEC_SIDECARS/src/Automation"
+cat > "$SPEC_SIDECARS/src/ShelfTraits.res" <<'EOF'
+let declaration = "shelf-scanning"
+EOF
+cat > "$SPEC_SIDECARS/src/ShelfGeocode.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type consumedEvent = ShelfRegistered({@partitionTag shelfId: string, address: string})
+
+@schema
+type outboundItem = {shelfId: string, address: string}
+
+@schema
+type inboundCommand = MarkShelfUnlocatable({shelfId: string, reason: string})
+
+let maxRetries: int = 3
+let heartbeatInterval = 60
+let targetName = Some("Shelf")
+let sourceNames: array<string> = ["Shelf", "Aisle"]
+let externalSystem = Some("Shelf \"Scanner\"")
+let capabilityNeeds = [Reventless.CapabilityNeed.Geocoding, Reventless.CapabilityNeed.Messaging]
+let traits = [ShelfTraits.declaration]
+EOF
+cat > "$SPEC_SIDECARS/src/Automation/Restock.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type todoItem = {shelfId: string}
+@schema
+type command = Restock({shelfId: string})
+
+let maxRetries = 1
+let heartbeatInterval = 1
+let targetName = "Restock"
+EOF
+cat > "$SPEC_SIDECARS/src/Automation/Restock_Automation.res" <<'EOF'
+@@reventless.automation
+
+module ShelvingDcbSource = {
+  let name = "ShelvingDcbEventLog"
+  @schema
+  type event =
+    | ShelfEmptied({shelfId: string})
+    | ShelfRestocked({shelfId: string})
+}
+
+module CatalogDcbSource = {
+  let name = "CatalogDcbEventLog"
+  @schema
+  type event = ProductDelisted({shelfId: string, sku: string})
+}
+
+module FromShelving = Mapping.Make(
+  ShelvingDcbSource,
+  Restock,
+  {
+    open ShelvingDcbSource
+    let collect = (event, ~sourceId as _, _ctx) =>
+      switch event {
+      | ShelfEmptied({shelfId}) => [(shelfId, ({shelfId: shelfId}: Restock.todoItem))]
+      | ShelfRestocked(_) => []
+      }
+    let resolve = event =>
+      switch event {
+      | ShelfRestocked({shelfId}) => Some(shelfId)
+      | ShelfEmptied(_) => None
+      }
+  },
+)
+
+module FromCatalog = Mapping.Make(
+  CatalogDcbSource,
+  Restock,
+  {
+    open CatalogDcbSource
+    let collect = (_event, ~sourceId as _, _ctx) => []
+    let resolve = event =>
+      switch event {
+      | ProductDelisted({shelfId}) => Some(shelfId)
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(FromShelving), module(FromCatalog)]
+
+let process = (id, item: Restock.todoItem) => Some((id, Restock({shelfId: item.shelfId})))
+
+let onExhausted = (_id, _item) => None
+EOF
+
 echo ""
 echo "=== Test: a spec sidecar keeps annotation arguments ==="
 if ! (cd "$SPEC_SIDECARS" && REVENTLESS_EMIT_SIDECAR=1 npx rescript build 2>&1); then
@@ -4177,6 +4270,338 @@ else
   else
     fail "spec sidecars" "RegisterShelf.model.json differs from test/golden"
   fi
+  # Config values as written: `Some(literal)` as the literal, arrays of literals
+  # and of paths, an annotated let, a string escaped once.
+  if diff <(grep -v '"file":' "$SPEC_SIDECARS/src/ShelfGeocode.model.json") \
+       "$PPX_DIR/test/golden/ShelfGeocode.model.golden.json"; then
+    pass "an outbound spec's config carries every key"
+  else
+    fail "spec sidecars" "ShelfGeocode.model.json differs from test/golden"
+  fi
+  if diff <(grep -v '"file":' "$SPEC_SIDECARS/src/Automation/Restock_Automation.wiring.json") \
+       "$PPX_DIR/test/golden/Restock_Automation.wiring.golden.json"; then
+    pass "an automation body's wiring: two mappings, their sources and events"
+  else
+    fail "wiring sidecar" "Restock_Automation.wiring.json differs from test/golden"
+  fi
+  if [ -e "$SPEC_SIDECARS/src/Automation/Restock.wiring.json" ] \
+     || [ -e "$SPEC_SIDECARS/src/Automation/Restock_Automation.model.json" ]; then
+    fail "wiring sidecar" "written for a spec, or a model sidecar for an automation body"
+  else
+    pass "only the automation body gets a wiring sidecar"
+  fi
+fi
+
+# ─── Scenario sidecars for automation, translation and flow tests ───
+#
+# The DSLs are stood in for by a local `ReventlessGwt` whose verbs take anything:
+# what is tested is that the bare `@@reventless.gwt` takes the slice as written
+# (FromSlice over <Spec> and its body, no adapter) and what the sidecar reads.
+SLICE_GWT="$TMPDIR/slice-gwt"
+mkdir -p "$SLICE_GWT/src/Automation" "$SLICE_GWT/src/OutboundTranslation" \
+  "$SLICE_GWT/src/InboundTranslation" "$SLICE_GWT/src/Flow"
+cat > "$SLICE_GWT/package.json" <<'EOF'
+{ "name": "@test/slice-gwt" }
+EOF
+cat > "$SLICE_GWT/rescript.json" <<EOF
+{
+  "name": "@test/slice-gwt",
+  "ppx-flags": ["$PPX_BIN"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": []
+}
+EOF
+link_node_modules "$SLICE_GWT"
+cat > "$SLICE_GWT/src/ReventlessGwt.res" <<'EOF'
+// Stand-ins for the GWT DSLs: what these cases test is the PPX's inference and
+// sidecar, not the DSLs, so every verb takes anything and asserts nothing.
+module Verbs = {
+  let describe = (_: string, f: unit => unit) => f()
+  let test = (_: string, f: unit => unit) => f()
+  let testSync = test
+  let givenEvent = (_: 'e) => ()
+  let givenEvents = (_: array<'e>) => ()
+  let givenTodo = (_: string, _: 'i) => ()
+  let givenCapabilities = ((), _: 'f) => ()
+  let whenCollect = ((), ~sourceId as _: string="", ~context as _: unit=()) => ()
+  let whenResolve = () => ()
+  let whenProcess = () => ()
+  let whenExhausted = ((), ~lastError as _: string="") => ()
+  let whenSweep = ((), ~context as _: unit=()) => ()
+  let whenTranslated = () => ()
+  let whenTranslateMocked = ((), _: 'm) => ()
+  let whenTranslateRetrying = ((), ~maxRetries as _: int=3, _: 'm) => ()
+  let whenInput = (_: 'r) => ()
+  let whenReceived = (_: JSON.t) => ()
+  let thenTodos = ((), _: array<'t>) => ()
+  let thenScenarioTodos = ((), _: array<'t>) => ()
+  let thenResolved = ((), _: option<string>) => ()
+  let thenCommand = ((), _: string, _: 'c) => ()
+  let thenCommands = ((), _: array<'c>) => ()
+  let thenNoCommand = () => ()
+  let andThenEvents = ((), _: array<'e>) => ()
+  let thenSent = ((), _: array<'s>) => ()
+  let thenNothingSent = () => ()
+  let thenTodoStatus = ((), _: string, _: [#Completed | #Failed | #Abandoned | #Pending]) => ()
+  let thenRetryRecorded = ((), _: int) => ()
+  let thenNotUnderstood = ((), _: string) => ()
+  let thenTranslateError = ((), _: string) => ()
+  let thenRefusedInput = ((), _: string) => ()
+}
+
+module FromSlice = (Spec: {let name: string}, Body: {let name: string}) => {
+  include Verbs
+  module Mapping = (M: {let name: string}) => {
+    include Verbs
+    let event = (_: 'e, ~sourceId as _: string="") => ()
+  }
+}
+
+module Automation_GWT = {
+  module FromSlice = FromSlice
+}
+module OutboundTranslation_GWT = {
+  module FromSlice = FromSlice
+}
+module InboundTranslation_GWT = {
+  module FromSlice = FromSlice
+}
+
+module Flow_GWT = {
+  let describe = Verbs.describe
+  let test = Verbs.test
+  let start = ()
+  module Step = (S: {let name: string}) => {
+    let givenEvents = ((), _: array<'e>) => ()
+    let whenCommand = ((), _: 'c) => ()
+    let thenEvent = ((), _: 'e) => ()
+    let whenReacts = () => ()
+    let thenIssuesCommand = ((), _: 'c) => ()
+    let thenIssuesCommands = ((), _: array<'c>) => ()
+  }
+}
+EOF
+cat > "$SLICE_GWT/src/Automation/AutoShip.res" <<'EOF'
+let name = "AutoShip"
+type todoItem = {orderId: string}
+type command = ShipOrder({orderId: string})
+EOF
+cat > "$SLICE_GWT/src/Automation/AutoShip_Automation.res" <<'EOF'
+let name = "AutoShip_Automation"
+type event =
+  | OrderPlaced({orderId: string})
+  | OrderShipped({orderId: string})
+module FromOrderingDcb = {
+  let name = "OrderingDcbEventLog"
+}
+EOF
+cat > "$SLICE_GWT/src/Automation/AutoShip_GWT.res" <<'EOF'
+@@reventless.gwt
+
+module Dcb = Mapping(FromOrderingDcb)
+
+describe("AutoShip", () => {
+  test("collect", () =>
+    Dcb.givenEvent(OrderPlaced({orderId: "o1"}))
+    ->Dcb.whenCollect(~sourceId="s1")
+    ->Dcb.thenTodos([("o1", {orderId: "o1"})])
+  )
+  testSync("resolve", () =>
+    Dcb.givenEvent(OrderShipped({orderId: "o1"}))->Dcb.whenResolve->Dcb.thenResolved(Some("o1"))
+  )
+  test("process", () =>
+    givenTodo("o1", {orderId: "o1"})->whenProcess->thenCommand("o1", ShipOrder({orderId: "o1"}))
+  )
+  test("exhausted", () => givenTodo("o1", {orderId: "o1"})->whenExhausted->thenNoCommand)
+  test("sweep", () =>
+    givenEvents([
+      Dcb.event(OrderPlaced({orderId: "o1"}), ~sourceId="s1"),
+      Dcb.event(OrderShipped({orderId: "o2"})),
+    ])
+    ->whenSweep
+    ->thenCommands([("o1", ShipOrder({orderId: "o1"}))])
+    ->andThenEvents([Dcb.event(OrderShipped({orderId: "o1"}))])
+    ->thenScenarioTodos([])
+  )
+})
+EOF
+cat > "$SLICE_GWT/src/OutboundTranslation/Geocode.res" <<'EOF'
+let name = "Geocode"
+type outboundItem = {address: string}
+type inboundCommand = MarkUnresolvable({reason: string})
+EOF
+cat > "$SLICE_GWT/src/OutboundTranslation/Geocode_Translation.res" <<'EOF'
+let name = "Geocode_Translation"
+type call = Geocoded({address: string})
+EOF
+cat > "$SLICE_GWT/src/OutboundTranslation/Geocode_GWT.res" <<'EOF'
+@@reventless.gwt
+
+let item = {address: "Main St"}
+
+describe("Geocode", () => {
+  test("translated", () =>
+    givenTodo("c1", {address: "Main St"})
+    ->givenCapabilities("fakes")
+    ->whenTranslated
+    ->thenSent([Geocoded({address: "Main St"})])
+    ->thenTodoStatus("c1", #Completed)
+  )
+  test("retried", () =>
+    givenTodo("c1", item)
+    ->whenTranslateRetrying(~maxRetries=2, "mock")
+    ->thenTodoStatus("c1", #Failed)
+    ->thenRetryRecorded(2)
+  )
+  test("mocked", () => givenTodo("c1", item)->whenTranslateMocked("mock")->thenNothingSent)
+  test("exhausted", () =>
+    givenTodo("c1", item)
+    ->whenExhausted(~lastError="timeout")
+    ->thenCommand("c1", MarkUnresolvable({reason: "timeout"}))
+  )
+})
+EOF
+cat > "$SLICE_GWT/src/InboundTranslation/Import.res" <<'EOF'
+let name = "Import"
+type externalInput = {sku: string, unitPrice: int}
+type command = AddProduct({name: string})
+EOF
+cat > "$SLICE_GWT/src/InboundTranslation/Import_Translation.res" <<'EOF'
+let name = "Import_Translation"
+EOF
+cat > "$SLICE_GWT/src/InboundTranslation/Import_GWT.res" <<'EOF'
+@@reventless.gwt
+
+describe("Import", () => {
+  test("input", () =>
+    whenInput({sku: "SKU-1", unitPrice: 1999})->thenCommands([AddProduct({name: "Book"})])
+  )
+  test("received", () =>
+    whenReceived(JSON.parseOrThrow(`{"sku": "SKU-1"}`))->thenRefusedInput("title")
+  )
+  test("not understood", () => whenInput({sku: "", unitPrice: 1})->thenNotUnderstood("SKU is required"))
+  test("no command", () => whenInput({sku: "x", unitPrice: 1})->thenNoCommand)
+})
+EOF
+cat > "$SLICE_GWT/src/Flow/ShopFlow_GWT.res" <<'EOF'
+@@reventless.gwt
+
+type command = PlaceOrder({orderId: string}) | ShipOrder({orderId: string})
+type event = OrderPlaced({orderId: string}) | OrderShipped({orderId: string})
+
+module Place = Step({let name = "PlaceOrder"})
+module Auto = Step({let name = "AutoShip"})
+module Ship = Step({let name = "ShipOrder"})
+
+describe("Shop flow", () => {
+  test("place and ship", () =>
+    start
+    ->Place.givenEvents([])
+    ->Place.whenCommand(PlaceOrder({orderId: "o1"}))
+    ->Place.thenEvent(OrderPlaced({orderId: "o1"}))
+    ->Auto.whenReacts
+    ->Auto.thenIssuesCommand(ShipOrder({orderId: "o1"}))
+    ->Ship.whenCommand(ShipOrder({orderId: "o1"}))
+    ->Ship.thenEvent(OrderShipped({orderId: "o1"}))
+  )
+})
+EOF
+
+# `steps` of one scenario as `via.verb:kind:element`, space-separated.
+slice_steps() {
+  node -e '
+    const j = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const s = j.scenarios.find((x) => x.title === process.argv[2]);
+    if (!s) { console.log("<no scenario>"); process.exit(0); }
+    console.log(s.steps.map((t) => (t.via ? t.via + "." : "") + t.verb + ":" + t.kind + ":" + t.element).join(" "));
+  ' "$1" "$2"
+}
+# One group of one scenario as `kind:element`, space-separated.
+slice_group() {
+  node -e '
+    const j = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const s = j.scenarios.find((x) => x.title === process.argv[2]);
+    console.log(s ? s[process.argv[3]].map((t) => t.kind + ":" + t.element).join(" ") : "<no scenario>");
+  ' "$1" "$2" "$3"
+}
+expect_steps() {
+  local file="$1" title="$2" expected="$3" label="$4" got
+  got=$(slice_steps "$file" "$title")
+  if [ "$got" = "$expected" ]; then pass "$label"; else fail "$label" "got '$got'"; fi
+}
+expect_group() {
+  local file="$1" title="$2" group="$3" expected="$4" label="$5" got
+  got=$(slice_group "$file" "$title" "$group")
+  if [ "$got" = "$expected" ]; then pass "$label"; else fail "$label" "got '$got'"; fi
+}
+
+echo ""
+echo "=== Test: an automation, translation or flow test compiles with no adapter ==="
+if ! (cd "$SLICE_GWT" && REVENTLESS_EMIT_SIDECAR=1 npx rescript build 2>&1); then
+  fail "slice GWT" "the package did not compile"
+else
+  pass "FromSlice(<Spec>, <Spec>_Automation / _Translation) is inferred and compiles"
+  AJ="$SLICE_GWT/src/Automation/AutoShip_GWT.gwt.json"
+  OJ="$SLICE_GWT/src/OutboundTranslation/Geocode_GWT.gwt.json"
+  IJ="$SLICE_GWT/src/InboundTranslation/Import_GWT.gwt.json"
+  FJ="$SLICE_GWT/src/Flow/ShopFlow_GWT.gwt.json"
+  assert_js_contains "$AJ" '"componentKind": "Automation"' "componentKind is the folder's kind"
+  assert_js_contains "$FJ" '"componentKind": "Flow"' "…for a flow too"
+
+  echo ""
+  echo "=== Test: the scenario sidecar reads the automation verbs ==="
+  expect_steps "$AJ" "collect" "Dcb.whenCollect:event:OrderPlaced Dcb.thenTodos:todo:o1" \
+    "givenEvent → whenCollect: the event moves to when; a to-do per item"
+  expect_group "$AJ" "collect" "given" "" "…and leaves given"
+  expect_steps "$AJ" "resolve" "Dcb.whenResolve:event:OrderShipped Dcb.thenResolved:resolved:o1" \
+    "testSync is harvested; whenResolve → thenResolved"
+  expect_steps "$AJ" "process" "givenTodo:todo:o1 whenProcess:process: thenCommand:command:ShipOrder" \
+    "givenTodo → whenProcess → thenCommand"
+  expect_steps "$AJ" "exhausted" "givenTodo:todo:o1 whenExhausted:exhausted: thenNoCommand:noCommand:" \
+    "whenExhausted → thenNoCommand"
+  expect_steps "$AJ" "sweep" \
+    "givenEvents:event:OrderPlaced givenEvents:event:OrderShipped whenSweep:sweep: thenCommands:command:ShipOrder andThenEvents:event:OrderShipped thenScenarioTodos:noTodo:" \
+    "a sweep: event(e) unwrapped, a second act in steps only"
+  expect_group "$AJ" "sweep" "when" "sweep:" "…and the when group is the sweep"
+
+  echo ""
+  echo "=== Test: the scenario sidecar reads the outbound verbs ==="
+  expect_steps "$OJ" "translated" \
+    "givenTodo:todo:c1 givenCapabilities:capabilities: whenTranslated:process: thenSent:sent:Geocoded thenTodoStatus:todoStatus:Completed" \
+    "givenCapabilities → whenTranslated → thenSent, thenTodoStatus"
+  expect_group "$OJ" "translated" "given" "todo:c1" "capabilities stay out of the given group"
+  expect_steps "$OJ" "retried" \
+    "givenTodo:todo:c1 whenTranslateRetrying:process: thenTodoStatus:todoStatus:Failed thenRetryRecorded:retries:2" \
+    "whenTranslateRetrying → thenRetryRecorded"
+  expect_steps "$OJ" "mocked" "givenTodo:todo:c1 whenTranslateMocked:process: thenNothingSent:nothingSent:" \
+    "whenTranslateMocked → thenNothingSent"
+  expect_steps "$OJ" "exhausted" \
+    "givenTodo:todo:c1 whenExhausted:exhausted:timeout thenCommand:command:MarkUnresolvable" \
+    "whenExhausted(~lastError) names the error"
+
+  echo ""
+  echo "=== Test: the scenario sidecar reads the inbound verbs ==="
+  expect_steps "$IJ" "input" "whenInput:input:externalInput thenCommands:command:AddProduct" \
+    "whenInput(record) → thenCommands"
+  assert_js_contains "$IJ" '\[ "unitPrice", { "kind": "int", "value": 1999 } \]' \
+    "whenInput records the record's entries, not opaque"
+  assert_js_not_contains "$IJ" '"opaque"' "nothing in an inbound test is opaque"
+  expect_steps "$IJ" "received" "whenReceived:input:externalInput thenRefusedInput:inputRefused:title" \
+    "whenReceived(json) → thenRefusedInput"
+  assert_js_contains "$IJ" '\[ "sku", { "kind": "string", "value": "SKU-1" } \]' \
+    "a JSON literal's entries are read"
+  expect_steps "$IJ" "not understood" "whenInput:input:externalInput thenNotUnderstood:notUnderstood:SKU is required" \
+    "thenNotUnderstood"
+  expect_steps "$IJ" "no command" "whenInput:input:externalInput thenNoCommand:noCommand:" "thenNoCommand"
+
+  echo ""
+  echo "=== Test: a flow with two whenCommands keeps both, in order ==="
+  expect_steps "$FJ" "place and ship" \
+    "Place.whenCommand:command:PlaceOrder Place.thenEvent:event:OrderPlaced Auto.whenReacts:sweep: Auto.thenIssuesCommand:command:ShipOrder Ship.whenCommand:command:ShipOrder Ship.thenEvent:event:OrderShipped" \
+    "every act of the flow, each with the module it runs through"
+  expect_group "$FJ" "place and ship" "when" "command:ShipOrder" "the when group keeps the last act"
 fi
 
 # ─── The source reader (reventless-ppx-read) ─────────────────────────

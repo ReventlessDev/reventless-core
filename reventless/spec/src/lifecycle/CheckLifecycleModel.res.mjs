@@ -132,6 +132,10 @@ function isOpaque(e) {
   return Primitive_object.equal(e.opaque, true);
 }
 
+function readableStep(e) {
+  return !Primitive_object.equal(e.opaque, true);
+}
+
 function kindOf(steps) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(steps[0], s => getStr(s, "kind")), "");
 }
@@ -160,6 +164,10 @@ function scenarioOf(j) {
       thenValues: Stdlib_Option.getOr(Stdlib_Option.map(then_[0], valuesOf), [])
     };
   });
+}
+
+function isUnreadable(s) {
+  return !s.whenElements.some(readableStep);
 }
 
 function readCorpus(path) {
@@ -853,7 +861,7 @@ async function runPlugin(plugin, pluginDir, findings, opaque, outcomes) {
   let corpora = Stdlib_Array.filterMap(filesUnder(Nodepath.join(pluginDir, "tests"), ".gwt.json"), readCorpus);
   outcomes.push(...commandOutcomes(plugin, corpora));
   corpora.forEach(c => {
-    let unreadable = c.scenarios.filter(s => s.whenElements.length === 0);
+    let unreadable = c.scenarios.filter(isUnreadable);
     if (unreadable.length !== 0) {
       opaque.push({
         plugin: plugin,
@@ -1337,9 +1345,11 @@ export {
   valuesOf,
   elementsOf,
   isOpaque,
+  readableStep,
   kindOf,
   thenKindOf,
   scenarioOf,
+  isUnreadable,
   readCorpus,
   filesUnder,
   gwtSources,

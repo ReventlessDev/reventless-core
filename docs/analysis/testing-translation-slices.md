@@ -27,7 +27,7 @@
 >    - the deployed door, the mutation now and the webhook later, with its authorization.
 >
 >    The scenario layer needs a DSL that takes the slice as written. The plan
->    [the-sidecars-read-automations-and-translations.md](../plans/the-sidecars-read-automations-and-translations.md)
+>    [the-sidecars-read-automations-and-translations.md](../plans/done/the-sidecars-read-automations-and-translations.md)
 >    builds that, and makes the scenarios readable by tools.
 
 **Related:**
@@ -313,7 +313,7 @@ plan already lists its own door tests: signature, replay, both doors giving the 
 
 | What | Where |
 |---|---|
-| DSLs that take the slice as written; the scenario sidecar reads these tests; model sidecars carry the wiring | [plans/the-sidecars-read-automations-and-translations.md](../plans/the-sidecars-read-automations-and-translations.md) |
+| DSLs that take the slice as written; the scenario sidecar reads these tests; model sidecars carry the wiring | [plans/the-sidecars-read-automations-and-translations.md](../plans/done/the-sidecars-read-automations-and-translations.md) |
 | Recording capability fakes, `whenTranslated`, `thenSent`, `whenExhausted`, statuses and retry budget aligned, `whenReceived`, flow inbound step | the same plan's second phase; the verbs are listed there |
 | Inbound authorization the same at every door; commands encoded with their schema | [plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md) |
 | Idempotency in and out | open ([§5](#5-open-questions)); inbound with [webhook-infrastructure](../plans/Backlog/webhook-infrastructure.md) |

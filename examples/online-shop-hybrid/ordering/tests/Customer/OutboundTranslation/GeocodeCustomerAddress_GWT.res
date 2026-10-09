@@ -2,15 +2,9 @@
 // log, which is what makes `~sourceId` load-bearing: an aggregate's event payload
 // does not name its own subject.
 //
-// `OutboundTranslation_GWT.Make` expects a single SliceSpec with `collect` at the
-// top level, so compose it on locally. The graft rules — keying, outage-vs-verdict —
-// are asserted by the trait's suite in `AddressGeocodingConformance_GWT.res`; what
-// stays here is the host-specific wording of the answers.
-
-module GeocodeCustomerAddressSlice = {
-  include GeocodeCustomerAddress
-  let collect = GeocodeCustomerAddress_Translation.collect
-}
+// The graft rules — keying, outage-vs-verdict — are asserted by the trait's suite
+// in `AddressGeocodingConformance_GWT.res`; what stays here is the host-specific
+// wording of the answers.
 
 @@reventless.gwt
 
@@ -18,20 +12,8 @@ open Ordering_Examples
 
 let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}
 
-// The real `translate`, driven by a stub geocoder. `whenTranslateMocked` takes any
-// (id, item) => promise<translateResult>, so no DSL verb is needed to reach it.
-let withGeocoder = (
-  answer: result<array<Reventless.Geocoding.candidate>, Reventless.Geocoding.failure>,
-) => {
-  // Spread `none` and override the one capability under test: a literal record
-  // would have to name every other capability the framework grows, and this test
-  // has nothing to say about them.
-  let capabilities: Reventless.Capabilities.t = {
-    ...Reventless.Capabilities.none,
-    geocode: (~text as _) => Promise.resolve(answer),
-  }
-  (id, item) => GeocodeCustomerAddress_Translation.translate(id, item, ~capabilities)
-}
+// The real `translate`, against a geocoder that answers `answer`.
+let geocoder = answer => fakes(~geocode=async (~text as _) => answer, ())
 
 describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
   // scenario-id: 8b319e75-7826-4d3d-bd88-a43a197fb014
@@ -63,8 +45,8 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
         address: viennaAddress,
       },
     )
-    ->whenTranslateMocked(
-      withGeocoder(
+    ->givenCapabilities(
+      geocoder(
         Ok([
           {
             label: "Stephansplatz 1, Vienna",
@@ -74,6 +56,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
         ]),
       ),
     )
+    ->whenTranslated
     ->thenCommand("cust-1", SetLocation({location: vienna, resolvedFrom: viennaAddress}))
   )
 
@@ -82,8 +65,8 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
   // scenario-id: 93103dd6-1304-42b1-83f9-fd4ac4a90160
   test("translate: an ambiguous answer produces a reason naming the candidates", () =>
     givenTodo("cust-1:Springfield", {customerId: cust1, address: "Springfield"})
-    ->whenTranslateMocked(
-      withGeocoder(
+    ->givenCapabilities(
+      geocoder(
         Ok([
           {
             label: "Springfield, IL",
@@ -98,11 +81,42 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
         ]),
       ),
     )
+    ->whenTranslated
     ->thenCommand(
       "cust-1",
       MarkAddressUnresolvable({
         address: "Springfield",
         reason: `"Springfield" matched "Springfield, IL" and "Springfield, MA" about equally well`,
+      }),
+    )
+  )
+
+  // The address is what is asked, as written.
+  test("translate: the geocoder is asked for the address as written", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
+    ->givenCapabilities(geocoder(Ok([])))
+    ->whenTranslated
+    ->thenSent([Geocoded({text: viennaAddress})])
+  )
+
+  // An outage is not a verdict: the row stays open for the next sweep.
+  test("translate: a geocoder that is down leaves the row to be retried", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
+    ->givenCapabilities(geocoder(Error(Unavailable("timeout"))))
+    ->whenTranslated
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Failed)
+  )
+
+  // The budget ran out with the geocoder never answering: the verdict is recorded
+  // rather than leaving the row pending forever.
+  test("exhausted: the address is recorded as unresolvable", () =>
+    givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
+    ->whenExhausted(~lastError="timeout")
+    ->thenCommand(
+      "cust-1",
+      MarkAddressUnresolvable({
+        address: viennaAddress,
+        reason: GeocodeCustomerAddress_Translation.Geocode.exhaustedReason(Some("timeout")),
       }),
     )
   )
