@@ -10,7 +10,7 @@ public GraphQL API**, with
 `http://localhost:4000/graphql`. Going through the front door is the property everything below
 depends on, and nothing here weakens it.
 
-Related: [online-shop-seed-over-days.md](online-shop-seed-over-days.md) — a different problem
+Related: [online-shop-seed-over-days.md](done/online-shop-seed-over-days.md) — a different problem
 (one domain's multi-day narrative), but the source of the constraint in [§2](#2-the-constraint-that-shapes-this-forward-only).
 
 ---
@@ -33,7 +33,7 @@ from the deployed schema — the same schema a generated command form is built f
 
 ## 2. The constraint that shapes this: forward only
 
-[online-shop-seed-over-days.md](online-shop-seed-over-days.md) puts backdating explicitly out
+[online-shop-seed-over-days.md](done/online-shop-seed-over-days.md) puts backdating explicitly out
 of scope, on a stated design ground: *"It would turn the recorded time into a claim made by the
 caller, and automations would still react at today's time, so a backdated order's trail would
 read out of order."*

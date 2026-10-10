@@ -12,7 +12,7 @@ AWS with Pulumi, exercising commands, events, projections, live subscriptions,
 and cross-plugin extension points end to end.
 
 This is the package behind the documentation
-[Tutorial spine](../../packages/doc/docs-tutorials/get-started.md).
+[tutorials](../../packages/doc/docs-tutorials/overview.md).
 
 ## Packages
 
@@ -182,12 +182,15 @@ run makes ids like `ord-20260924-001`, a second one `ord-20260924-r2-001`, and
 its random choices follow from both. It refuses an empty store. Several runs on
 one day add more data but no more spread, since the shop dates every event when
 it happens. `SEED_RUN_DATE=YYYY-MM-DD` runs it as another date, which changes
-the ids and the choices, never the times the shop records. Locally, keep the SQLite store (the default) so the data is still
-there on the next day.
+the ids and the choices, never the times the shop records. Locally, keep the
+SQLite store (the default) so the data is still there on the next day.
 
 For a non-interactive run (CI), set `SEED_SET` (`full`, `sample` or `next`) plus
 `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt — those
-two together bypass the accounts file entirely, so CI needs no copy of it. Add
+two together bypass the accounts file entirely, so CI needs no copy of it. On
+AWS, also set `SEED_ROLE=Admin`: a sign-in can arrive narrowed to one role the
+account chose earlier, and without a terminal to ask, the run keeps that role
+and is refused at its first read. Add
 `SEED_SKIP_UPLOADS=1` to seed the domain data without product images (the
 optional `imageUrl` is then simply absent) — handy when a deployment serves no
 upload endpoint.

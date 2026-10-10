@@ -1,8 +1,8 @@
 # Plan: seed the online shop over several days
 
 **Date:** 2026-09-17
-**Status:** IN PROGRESS — steps 1 to 6 done and tried on a local platform (2026-09-17);
-step 7 (trying it on AWS on later days) remains. See [Progress](#progress).
+**Status:** DONE (2026-10-10) — steps 1 to 6 built and tried locally on 2026-09-17; step 7
+tried on the `alpha` stack over four days. See [Progress](#progress).
 **Repos:** `reventless-core` only.
 
 ## In plain words
@@ -62,14 +62,14 @@ over those days — for real, because the events really happened then.
 
 ## How the seed works today
 
-All in [`seed-data`](../../examples/online-shop-hybrid/seed-data):
+All in [`seed-data`](../../../examples/online-shop-hybrid/seed-data):
 
-- **Data sets.** [`HybridSeedData.res`](../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res)
+- **Data sets.** [`HybridSeedData.res`](../../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res)
   exports `full` (60 products, 20 customers, 150 orders) and `sample` (16, 8, 40), plus an
   authorization check. `SEED_SET` picks one; otherwise a menu asks.
 - **Empty-shop check.** Before sending anything, the runner reads a list of views
   (`probeViews`) and refuses if any holds a row.
-- **Fixed data.** [`DemoData.res`](../../examples/online-shop-hybrid/seed-data/src/DemoData.res)
+- **Fixed data.** [`DemoData.res`](../../../examples/online-shop-hybrid/seed-data/src/DemoData.res)
   draws everything from one random generator with a fixed seed, and names things by
   position: `cat-01`, `prd-001`, `cust-01`, `ord-001`. The same run twice gives the same
   commands. Delivery windows are the exception: they fall 1–21 days after the run date.
@@ -274,8 +274,24 @@ day.
 numbers (D3). Tried on an isolated local platform: `sample`, then `next` three times on
 one day — runs 1, 2 and 3, orders 40 → 45 → 50 → 55.
 
-**Next:** step 7 on AWS — `shop:seed` with `full`, then `SEED_SET=next` on two later days, and a
-look at the Ordering dashboard and the Orders calendar.
+**2026-10-10 — step 7 done, on `alpha` rather than `dev`.** No `dev` stack was deployed, and
+the hybrid example's `alpha` stack already held a `sample` first run (2026-09-17) and two
+follow-ups (2026-09-23, 2026-09-30). A third follow-up today, as `admin`, passed: 2 repriced,
+3 redescribed, 1 customer registered and 1 moved, orders 51 → 56, 2 Standard orders shipped
+and 2 cancelled, and the demo-account checks held. The Ordering event log now records orders
+placed, shipped and cancelled, and notifications delivered, on all four days, which meets
+Goal 3. The spread was checked by counting events per day in the event log, not by looking at
+the dashboard.
+
+- **A non-interactive run on AWS needs `SEED_ROLE=Admin`.** The first try was refused at its
+  first read: the `admin` sign-in arrived narrowed to Shopper, and with no terminal to ask,
+  the runner keeps that role. The [README](../../../examples/online-shop-hybrid/README.md#adding-a-day-of-activity-next) now says so beside the other variables for an
+  unattended run.
+- **Few orders wait between runs.** After each of the four days, 3 orders were still
+  `Placed`: a follow-up ships or cancels about as many as it places. So an order mostly ships
+  on the run after the one that placed it, rarely later. Enough for the trail to show a gap
+  between "placed" and "shipped"; adjust the shares in `DemoFollowUp.res` if a longer wait is
+  wanted.
 
 ## Risks and open questions
 
