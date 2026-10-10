@@ -2,13 +2,13 @@
 
 **Date:** 2026-09-05
 
-**Status.** Written and landed in full; **two of [§7](#7--verification)'s three verifications are
-outstanding, and one of them is now known to be blocked rather than merely
-unrun.** Both platforms take the declaration, serve the module and name it; the
-hybrid example declares one and registers **six** renderers — every region the
-shipped modes offer that this shop has something to say about; the guides carry
-the vocabulary. What has not happened is a deploy carrying any of it ([§7](#7--verification)) and a
-browser session switching role against it ([§7](#7--verification)).
+**Status.** Done. Landed in full, and all three of [§7](#7--verification)'s verifications have run
+(2026-10-11). Both platforms take the declaration, serve the module and name it;
+the hybrid example declares one and registers **five** renderers, with a sixth
+(`trackerSteps`) written and parked while the shell's own strip is preferred;
+the guides carry the vocabulary. The alpha deploy of 2026-10-10 serves the module
+beside `config.json` as JavaScript, and one local login switching role redraws
+the same views with no reload.
 
 [§6](#6--the-guide)'s "`slots` per view" turned out not to exist and should not: a region is
 offered by a **mode**, so a hint choosing `gallery` is what puts a tile on
@@ -70,7 +70,7 @@ This is the deliberate shape of the seam, not an accident of ordering: the file
 is served whether or not anything imports it, so the deployment half can land,
 be tested and be documented before the consumer exists.
 
-**Sibling work:** [`local-ui-hints-emission.md`](done/local-ui-hints-emission.md) —
+**Sibling work:** [`local-ui-hints-emission.md`](local-ui-hints-emission.md) —
 the same seam, one file over. That plan taught the in-memory platform to serve
 the `ui-hints.json` a deployment declares (`b29b1044f`, `8258c8581`), including
 the baseline handling and the watch that reloads it on save. This plan adds the
@@ -216,7 +216,8 @@ change and run, which is the whole reason the seam is public rather than private
   published `@reventlessdev/reventless-ui-slots` contract, with
   `scripts/bundle-slot-modules.mjs` producing the file the declaration names.
 
-  **What it registers, which is six rather than the four listed above.**
+  **What it was written to register, which is six rather than the four listed
+  above** (five are registered today; see the `trackerSteps` note below).
   `RowSlot.galleryTile` (the category tile), `RowSlot.cardsFace` (the card face,
   written against the *row* rather than against Products, so Orders in Cards
   mode gets something truthful), `RowSlot.detailMedia` (the picture set,
@@ -228,6 +229,11 @@ change and run, which is the whole reason the seam is public rather than private
   shopper picks rows out of the product grid and one command takes the lot,
   drawn from `picked` because a list's window is replaced page by page and the
   ids alone would leave it nothing to name.
+
+  `trackerSteps` was later commented out (`f8bb286c3`), so tracker rows draw the
+  shell's own strip while the two are compared. The `trackerSummary` renderer
+  beside it stays registered, which shows that one region can be taken over
+  while the region next to it is not.
 
   The payload shapes are what this file is easiest to get wrong —
   `CaptionedImage` is `{ref, altText?, caption?}` where `ref` is a storage ref
@@ -297,8 +303,7 @@ explicitly, because both are load-bearing and neither is guessable:
 - **AWS.** Declared file present beside `config.json` after a deploy and served
   with a JavaScript content type; undeclared → absent; the HTML-instead-of-404
   case above exercised deliberately, since it will not occur on demand later.
-  **Not yet run, and now known to be blocked on a deploy rather than on
-  attention.** The live alpha stack was built from `fd35e2aa8`, which predates
+  *Before the deploy (September):* the live alpha stack was built from `fd35e2aa8`, which predates
   `b43828ca5` — so the deployment carrying this work has never gone out. Its
   `config.json` holds `manifestUrl` and `journeyManifestUrls` and no
   `uiSlotsUrl`, exactly as an undeclared deployment should.
@@ -313,14 +318,17 @@ explicitly, because both are load-bearing and neither is guessable:
   for every undeclared deployment. Worth writing down before the deploy, because
   after it the case stops being reproducible on demand.
 
-  Two other places inherited the same wrong sentence and should be corrected with
-  the deploy that settles this: the `uiSlotsFile` comment on
-  `reventless/infra/src/types/Platform.res`, and `ui-configuration.md`'s [§4.1](../../packages/doc/docs-app/ui-configuration.md#41-when-a-hint-cannot-say-it--uislotsfile).
-  Neither changes behaviour; both tell a reader to expect a status code that does
-  not arrive.
+  Two other places had the same wrong sentence: the `uiSlotsFile` comment on
+  `reventless/infra/src/types/Platform.res`, and `ui-configuration.md`'s [§4.1](../../../packages/doc/docs-app/ui-configuration.md#41-when-a-hint-cannot-say-it--uislotsfile).
+  Both were corrected in `7134c55df`.
 
-  Still unobserved: "present beside `config.json`, and served as JavaScript",
-  which needs the deploy that carries the example.
+  **Done** (2026-10-11), against the alpha deploy of 2026-10-10 (built from
+  `bb723ea19`). The live `config.json` carries `uiSlotsUrl: "/ui-slots.js"`, and
+  `/ui-slots.js` answers `200 application/javascript; charset=utf-8`,
+  byte-identical to `seed-data/dist/storefront-slots.js` at that commit. The
+  stack holds it as `host-ui-ui-slots-js` beside `host-ui-config-json`. A file
+  the deploy did not write still answers `200 text/html`, which is the
+  undeclared path recorded above.
 - **The example, by hand.** One deployment, one login, one data set: switch role
   and watch the same views redraw. Then delete the audience block and save — the
   surface returns to the generated console with no reload and no deploy. That
@@ -337,8 +345,29 @@ explicitly, because both are load-bearing and neither is guessable:
   selection region handed no `clear`, and a step whose `state` is a string this
   renderer does not know.
 
-  What is *not* verified is the part needing a browser and a login: switching
-  role and watching the views redraw.
+  **The browser half is done** (2026-10-11): host shell `3.0.0-alpha.109` against
+  the local platform, signed in once as `merch` (Merchandiser + Shopper), with
+  no page reload between steps:
+
+  | Acting as | Products | Categories |
+  |---|---|---|
+  | Shopper | Cards, every face from `cardsFace` | Gallery, every tile from `galleryTile` |
+  | Merchandiser | Table, no slot output | Table, no slot output |
+
+  Switching back and forth redraws both views each way. As Shopper, picking a
+  card brings up the `listSelection` basket bar, and its Clear empties the
+  selection and removes the bar. My Orders shows `trackerSummary` beside the
+  shell's own strip. Deleting the base `"mode": "cards"` from Products in
+  `ui-hints.json` turned the Shopper's Products back into the generated table
+  within 1.5 s in the same document, and restoring the line brought the cards
+  back the same way.
+
+  One thing got in the way and is worth knowing before repeating this: **a mode
+  the viewer chose earlier outranks the hints.** The shell keeps it per view in
+  `localStorage` (`autoui.viewmode.<Plugin>.<View>`). Leftovers from older
+  sessions kept Products as a table for the Shopper until those keys were
+  cleared. This is meant to work this way, since a viewer's own choice should
+  win, but it means a test browser must start with no such keys.
 
   And the audience block is the wrong thing to delete. A storefront shopper acts
   as no role, so it reads the **base** block — which is where the shop's modes
