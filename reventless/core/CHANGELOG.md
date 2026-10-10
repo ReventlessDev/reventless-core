@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.292 (2026-10-10)
+
+### Bug Fixes
+
+* an inbound translation is gated alike on every door, and encodes its commands by schema ([6ec3ce6](https://github.com/ReventlessDev/reventless-core/commit/6ec3ce672e53e2c162c64a90d103be691391be5e))
+### Features
+
+* **gwt:** automation and translation tests take the slice as written, and the sidecars read them ([93a0919](https://github.com/ReventlessDev/reventless-core/commit/93a0919a0d66730cf9bf89144ad8fba3cb025332))
+
+
 # 3.0.0-alpha.291 (2026-10-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

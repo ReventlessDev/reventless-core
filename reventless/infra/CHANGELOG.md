@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.189 (2026-10-10)
+
+### Bug Fixes
+
+* an inbound translation is gated alike on every door, and encodes its commands by schema ([6ec3ce6](https://github.com/ReventlessDev/reventless-core/commit/6ec3ce672e53e2c162c64a90d103be691391be5e))
+
+
 # 3.0.0-alpha.188 (2026-10-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra
