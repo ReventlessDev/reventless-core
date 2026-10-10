@@ -1,20 +1,22 @@
 # Plan: close the two owner-scoping gaps that only exist on AppSync
 
 **Date:** 2026-08-16<br/>
-**Status:** found by running the owner-scoping acceptance against a deployed
-stack for the first time. Both defects were **live**, both are **AppSync-only**,
-and the in-process platform passes the same assertions — so every test and every
-browser run to date had been green while a deployed shop trusted the client.
-✅ **Both are fixed and released** (updated 2026-09-30): the DCB stamping fix
-(`6edbdf468`) and the by-key read fix (`8232fd4c09`) both shipped in
-`@reventlessdev/reventless-aws` 3.0.0-alpha.306 (release `51e7166fe7`, 2026-08-16).
-⚠️ **The acceptance below has not been recorded against a deployed stack**, so
-neither is called closed yet: a deployment older than that release still carries
-both gaps. `a-command-acts-only-on-what-the-caller-owns.md` builds on this
-acceptance and waits on it before its AWS half.<br/>
-**Relates to:** `owner-scoped-identity-and-reads.md` (the feature these two sites
-were missed by), `denied-query-returns-empty.md` (why the read gap is hard to
-notice from outside).
+**Status:** ✅ **Closed 2026-10-11.** Both fixes shipped in
+`@reventlessdev/reventless-aws` 3.0.0-alpha.306 (release `51e7166fe7`,
+2026-08-16): the DCB stamping fix (`6edbdf468`) and the by-key read fix
+(`8232fd4c09`). The acceptance passed against the deployed alpha stack on
+2026-10-11; see [Acceptance, recorded](#acceptance-recorded-2026-10-11).
+
+Found by running the owner-scoping acceptance against a deployed stack for the
+first time. Both defects were **live**, both were **AppSync-only**, and the
+in-process platform passed the same assertions. Every test and every browser run
+had been green while a deployed shop trusted the client.<br/>
+**Relates to:** [owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md)
+(the feature these two sites were missed by),
+[denied-query-returns-empty.md](../Backlog/denied-query-returns-empty.md) (why the
+read gap is hard to notice from outside),
+[a-command-acts-only-on-what-the-caller-owns.md](a-command-acts-only-on-what-the-caller-owns.md)
+(builds on this acceptance).
 
 The two are independent and can land in either order. The write gap is the
 serious one: it is the difference between a row that records who placed an order
@@ -55,7 +57,7 @@ validates input against the SDL"* — and as an argument about **validation** it
 still holds. Owner stamping then gave the schema a second job: it is now also
 where the `@owner` marker is read from. A schema swapped out for one job silently
 lost the other. This is the same shape as the visibility filter that doubled as a
-ref-resolution gate (`internal-views-referenceable.md`); the lesson that
+ref-resolution gate ([internal-views-referenceable.md](internal-views-referenceable.md)); the lesson that
 generalises is that a permissive stand-in is only safe while the thing it stands
 in for is consulted for exactly one question.
 
@@ -103,7 +105,7 @@ any row whose id they can guess or has ever been shown to them.
 into both `getItemById` and `queryByIdSort`, refusing (not emptying) a row whose
 owner is not the caller when the caller is not exempt. A single-row read is the
 one place a refusal can be honest without the ambiguity
-`denied-query-returns-empty.md` describes: there is no "you own nothing" reading
+[denied-query-returns-empty.md](../Backlog/denied-query-returns-empty.md) describes: there is no "you own nothing" reading
 of a request for one named row.
 
 **`queryItemsWithSortConditions` (`:190`) is the third site** and needs the same
@@ -172,3 +174,37 @@ Run against a deployed stack, not only in-process — that is the whole finding.
 5. The conformance table from defect 1 runs green on every command path, and
    fails if any path is handed a schema that answers `[]` for a command whose
    spec marks an owner.
+
+## Acceptance, recorded 2026-10-11
+
+In plain words: on the deployed shop, a shopper who names somebody else as an
+order's owner still gets an order recorded as their own, and cannot read another
+shopper's order by its id. Staff accounts keep the owner they send and read
+everything.
+
+Run against the alpha stack of `online-shop-hybrid`, deploy `bb723ea19`
+(2026-10-10), through the merged domain API with real Cognito tokens. Four
+accounts: `shopper` and `merch` are scoped (`merch` holds Merchandiser and
+Shopper, neither elevated); `admin` (narrowed to its Admin role) and `fulfil`
+(Fulfilment) are elevated.
+
+| # | What was done | Observed |
+| --- | --- | --- |
+| 1 | `shopper` sends `PlaceOrder` (a DCB slice) with `customerId` = `merch`'s id | Accepted; the stored row's `customerId` is `shopper`'s id |
+| 2 | `merch` reads that order through `Ordering_Order(id:)` and `Ordering_OrdersByIds` | `null` and `[]`; `shopper` reads it by id |
+| 3 | `admin` and `fulfil` each place an order naming another customer | Both stored with the id they sent; `fulfil` reads `shopper`'s row by id |
+| 4 | A request with no token | AppSync refuses it before any resolver: `UnauthorizedException` |
+| 5 | `OwnerStampingTest` and `OwnerActingTest`, in-process | 19 and 34 tests green |
+
+Two gaps in what this could cover, both stated rather than papered over:
+
+- **Item 1 on an aggregate could not be run here.** No aggregate in any example
+  marks `@owner`, so the deployed stack has no aggregate path to send it through.
+  The aggregate shell passes the real schema (the table in defect 1), and
+  `OwnerStampingTest` covers it in-process.
+- **Item 4's "unidentified" caller cannot reach an owner-marked field on
+  AppSync.** A Cognito token always carries a `sub`, and none of the hybrid's
+  owner-marked mutations is `@@reventless.systemCallable`: the deployed source
+  API declares `Ordering_PlaceOrder` and `Ordering_CancelOrder` with
+  `@aws_cognito_user_pools` alone, so no IAM caller is admitted to them. The
+  refusal inside the generator is pinned in-process by `OwnerStampingTest`.

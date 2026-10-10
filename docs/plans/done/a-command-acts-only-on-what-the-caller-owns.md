@@ -1,14 +1,17 @@
 # Plan: a command acts only on what the caller owns
 
 **Date:** 2026-09-30<br/>
-**Status:** Steps 1–5 built and tested in-process (2026-10-01). Steps 4 and 6
-still need a deployed stack: the [§7](#7--state-of-the-prerequisite-plan) prerequisite acceptance and this plan's own
-acceptance have not run. See [§11](#11--progress-2026-10-01).<br/>
-**Relates to:** `done/owner-scoped-identity-and-reads.md` (the feature this
-completes: it stamps an owner on the way in and scopes reads on the way out),
-`owner-enforcement-gaps-on-appsync.md` (the two AppSync-only gaps in that
-feature, and the lesson [§5](#5--what-a-refused-command-answers) below is built on), `appsync-refusal-vocabulary.md`
-(what a refusal says), `Backlog/denied-query-returns-empty.md`.
+**Status:** ✅ **Closed 2026-10-11.** Steps 1–5 were built and tested in-process
+on 2026-10-01 (`2636f0ee4`). The [§7](#7--state-of-the-prerequisite-plan)
+prerequisite and this plan's own acceptance both passed against the deployed
+alpha stack on 2026-10-11; see [§12](#12--acceptance-recorded-2026-10-11).<br/>
+**Relates to:** [owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md)
+(the feature this completes: it stamps an owner on the way in and scopes reads on
+the way out), [owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md)
+(the two AppSync-only gaps in that feature, and the lesson
+[§5](#5--what-a-refused-command-answers) below is built on),
+[appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md) (what a refusal
+says), [denied-query-returns-empty.md](../Backlog/denied-query-returns-empty.md).
 
 **Goal.** A slice can state which field of its history names the owner of the
 thing a command acts on, and the framework then refuses a command from a caller
@@ -17,7 +20,7 @@ anyone's behalf. One declaration, enforced server-side, on every command path.
 
 **Non-goal.** Anything beyond *this field equals this caller*. Team ownership,
 delegation and grants stay with the ABAC package, exactly as
-`owner-scoped-identity-and-reads.md` [§8](done/owner-scoped-identity-and-reads.md#8--what-this-does-not-do) draws the line.
+[owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md) [§8](owner-scoped-identity-and-reads.md#8--what-this-does-not-do) draws the line.
 
 ---
 
@@ -62,7 +65,7 @@ It works for a shopper and fails in two ways that make it the wrong place:
   every spec as a convention.
 - **It fails open, one slice at a time.** Every slice that acts on an owned thing
   would have to remember the three steps. A slice that forgets is silently open,
-  which is the failure mode `owner-scoped-identity-and-reads.md` was written to
+  which is the failure mode [owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md) was written to
   remove from reads.
 
 ## §3 — The two halves of the answer live in different places
@@ -93,7 +96,7 @@ What travels between them today is the envelope `Message.meta`, which carries
   acting, which is the property the read plan insisted on.
 - **B. Check at the resolver against the owner-scoped view.** Before publishing,
   read the view row by id with the caller's scope; since the by-id fix in
-  `owner-enforcement-gaps-on-appsync.md`, a foreign row reads as `null`.
+  [owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md), a foreign row reads as `null`.
   Rejected: it couples a command to a view that need not exist, and a view lags
   the log, so a caller would be refused on their own order until it projects.
   Two sources of truth for one rule.
@@ -148,7 +151,7 @@ catalog's products) must not have those events consulted for ownership.
 ## §5 — What a refused command answers
 
 **Refuse explicitly, with the `@authorize` refusal's shape**, aligned with
-whatever `appsync-refusal-vocabulary.md` settles.
+whatever [appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md) settles.
 
 The obvious alternative is to decide as if the history were empty, mirroring the
 by-id read that answers `null` for a foreign row so as not to confirm the row
@@ -164,7 +167,7 @@ tension with the read side's `null` is deliberate rather than an oversight.
 
 ## §6 — Every command path, and the lesson from the AppSync gaps
 
-`owner-enforcement-gaps-on-appsync.md` found stamping silently off on the
+[owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md) found stamping silently off on the
 AppSync DCB path because the generator there was handed a permissive `S.json`
 schema, which answers "no owner fields" for every command. Each call site was
 individually correct about the schema it was given. The same trap applies here
@@ -192,19 +195,18 @@ against every path, failing if any path is handed a schema or an envelope that
 answers differently.
 
 **Inherited dependency.** Classification needs the exempt-group list wherever the
-generator runs. `owner-scoped-identity-and-reads.md` records that the AWS runtime
+generator runs. [owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md) records that the AWS runtime
 builder must pass `REVENTLESS_ELEVATED_GROUPS` to every Lambda; confirm that has
 landed before the AWS half of this plan is accepted, or an operator acting on a
 customer's behalf will be refused.
 
 ## §7 — State of the prerequisite plan
 
-Both fixes in `owner-enforcement-gaps-on-appsync.md` are released: the DCB
+Both fixes in [owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md) are released: the DCB
 stamping fix (`6edbdf468`) and the by-key read fix (`8232fd4c09`) shipped in
-`@reventlessdev/reventless-aws` 3.0.0-alpha.306. Its own acceptance, run against
-a deployed stack, is not recorded. This plan builds directly on AppSync stamping
-being correct, so that acceptance should run and be recorded **before** step 4
-below, not after.
+`@reventlessdev/reventless-aws` 3.0.0-alpha.306. Its own acceptance passed
+against the deployed alpha stack on 2026-10-11, in the same run as this plan's
+([§12](#12--acceptance-recorded-2026-10-11)).
 
 ## §8 — What this does not do
 
@@ -256,7 +258,11 @@ below, not after.
 2. **GWT.** Whether scenarios get an optional caller step (`->asCaller(...)`) so an
    example can pin its ownership rule next to its behaviour, or whether that stays
    a framework concern tested once.
-3. **Refusal wording**, pending `appsync-refusal-vocabulary.md`.
+3. **Refusal wording.** Answered: a refused command answers `CommandRejected`
+   with `errorCode: "Forbidden"`, the code an `@authorize` refusal uses.
+   [appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md) closed on the
+   transport's own refusals (a field the caller may not call) and left command
+   results alone, so there was nothing to align beyond that code.
 
 ## §11 — Progress (2026-10-01)
 
@@ -288,7 +294,7 @@ What is missing is proof on a deployed stack.
     who it belongs to.
 
 **Step 2, the claim.** `Message.meta.callerClaim?: CallerClaim.t`, with the cases
-`Owned({userId}) | Exempt | Unidentified`. It is a typed field (open question 1).
+`Owned({userId}) | Exempt | Unidentified`. It is a typed field ([open question 1](#10--open-questions)).
 `makeGenerateCommand` classifies the caller once, uses that classification for
 the stamp and for the claim, and writes the claim on every command, including
 commands that record no owner and commands built by the permissive `S.json`
@@ -308,8 +314,8 @@ The DCB handler keeps only owners whose event carries the command's partition
 value. Both handlers keep the folded owners in their in-process caches. An
 aggregate that marks an owner skips persisted snapshots, because a snapshot
 holds the state but not the owner. A refusal is `CommandRejected` with
-`errorCode: "Forbidden"`, the code an `@authorize` refusal uses (open question
-3, pending `appsync-refusal-vocabulary.md`), with the new outcome cause
+`errorCode: "Forbidden"`, the code an `@authorize` refusal uses
+([open question 3](#10--open-questions)), with the new outcome cause
 `AccessRefusal`.
 
 **Step 4, AWS.** No AWS-specific code was needed:
@@ -320,7 +326,7 @@ The elevated-groups dependency in [§6](#6--every-command-path-and-the-lesson-fr
 `RuntimeEnvironment_Lambda`. The deployed half of this step is still open.
 
 **Step 5, example.** `CancelOrder` marks `@owner customerId` on its consumed
-`OrderPlaced`. Open question 2 is answered both ways:
+`OrderPlaced`. [Open question 2](#10--open-questions) is answered both ways:
 
 - The framework's conformance table,
   `reventless/core/tests/commandgenerator/OwnerActingTest.res`, runs every
@@ -341,9 +347,33 @@ The elevated-groups dependency in [§6](#6--every-command-path-and-the-lesson-fr
   now reads it; `thenNoEvent` was harmless (an empty `then` already meant "no
   change"), but an unread `thenRefused` would have counted as an accepted no-op.
 
-**Still open.**
+**Left open on purpose.** The `Customer` gap from the step 1 survey: its
+commands act on a customer whose history records no owner. It needs its own plan
+if wanted, because the customer record would first have to say who it belongs
+to.
 
-1. The [§7](#7--state-of-the-prerequisite-plan) prerequisite: run and record the acceptance of
-   `owner-enforcement-gaps-on-appsync.md` on a deployed stack.
-2. Step 6: this plan's acceptance on a deployed stack, items 1–6.
-3. The `Customer` gap from the step 1 survey, as its own plan if wanted.
+## §12 — Acceptance, recorded 2026-10-11
+
+In plain words: on the deployed shop, a shopper can cancel their own order and
+not anybody else's, staff can cancel anyone's, and nothing a client sends can
+make it look like staff.
+
+Run against the alpha stack of `online-shop-hybrid`, deploy `bb723ea19`
+(2026-10-10), which contains `2636f0ee4`. Same accounts as
+[owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md#acceptance-recorded-2026-10-11):
+`shopper` and `merch` are scoped, `admin` and `fulfil` are elevated.
+
+| # | What was done | Observed |
+| --- | --- | --- |
+| 1 | `shopper` cancels their own order | `CommandAccepted`, one event; the order reads `Cancelled` |
+| 2 | `merch` cancels `shopper`'s order (tried before item 1, on the same order) | `CommandRejected`, `Forbidden`, "the caller does not own what this command acts on"; the order still reads `Placed`, and its partition in `OrderingDcbEventLog` holds only `OrderPlaced` until `shopper`'s own cancel |
+| 3 | `admin` cancels `merch`'s order | `CommandAccepted`; the order reads `Cancelled` |
+| 4 | Orders placed by `shopper`, `merch`, `admin` and `fulfil` | All accepted |
+| 5 | `merch` places an Express order | `AutoShipOrder` ships it: the order reads `Shipped` |
+| 6 | `merch` sends `callerClaim: "Exempt"`, or a `meta` argument, on `Ordering_CancelOrder` | Refused by validation (`UnknownArgument`): the claim is not part of any input. `merch` is still refused on another customer's order |
+
+Item 5 shows less than its wording suggests: `AutoShipOrder` dispatches
+`ShipOrder`, which marks no owner, so the guard was never asked. What it does show
+is that a follow-up command from an automation passes through unharmed. The
+`System` case for an owner-marked command is pinned in-process by
+`OwnerActingTest`.
