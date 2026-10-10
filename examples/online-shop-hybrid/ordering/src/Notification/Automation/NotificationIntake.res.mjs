@@ -24,7 +24,7 @@ let commandSchema = Sury.$schema(s => ({
   origin: s.m(NotificationPreferences$OrderingPlugin.originSchema)
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -55,7 +55,7 @@ export {
   heartbeatInterval,
   targetName,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   commandTransition,
   traits,
 }

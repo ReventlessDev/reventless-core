@@ -93,16 +93,6 @@ function checkPluginStatus(field) {
   }
 }
 
-function syntheticCommand(cname, hasPayload) {
-  if (hasPayload) {
-    return {
-      TAG: cname
-    };
-  } else {
-    return cname;
-  }
-}
-
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -156,7 +146,7 @@ async function runCommand(generateCommand, payload) {
   }
 }
 
-function register(fields, commandSchema, commandAuthorization, server) {
+function register(fields, commandSchema, authorizationOf, server) {
   server.registerTypes([commandResultSdl]);
   let sdlFields = fields.map(field => {
     let variantIndex = variantIndexForField(commandSchema, field);
@@ -173,10 +163,6 @@ function register(fields, commandSchema, commandAuthorization, server) {
       contents: undefined
     };
     handlerRefs[field] = handlerRef;
-    let variantIndex = variantIndexForField(commandSchema, field);
-    let match = extractVariantSchema(commandSchema, variantIndex);
-    let hasPayload;
-    hasPayload = match.type === "object";
     let commandName = extractCommandName(field);
     let resolver = async (_root, args, ctx) => {
       let generateCommand = handlerRef.contents;
@@ -188,7 +174,7 @@ function register(fields, commandSchema, commandAuthorization, server) {
         return rejected;
       }
       let identity = extractIdentity(ctx);
-      let rule = commandAuthorization(syntheticCommand(commandName, hasPayload));
+      let rule = authorizationOf(commandName);
       if (!Authorization$Reventless.isAllowed(rule, identity)) {
         return rejectForbidden(field);
       }
@@ -210,14 +196,13 @@ function register(fields, commandSchema, commandAuthorization, server) {
   server.registerMutations(sdlFields, resolvers);
 }
 
-function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
+function registerDcb(fieldName, commandSchema, authorizationOf, server) {
   server.registerTypes([commandResultSdl]);
   let constructorNames = DcbTag$Reventless.extractAllVariantNames(commandSchema);
   let variantIndex = variantIndexForField(commandSchema, fieldName);
   let variantSchema = extractVariantSchema(commandSchema, variantIndex >= 0 ? variantIndex : 0);
   let sdlFields = [deriveSdlField(fieldName, variantSchema)];
   let tag = Stdlib_Option.getOr(variantIndex >= 0 ? constructorNames[variantIndex] : constructorNames[0], fieldName);
-  let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, tag);
   let handlerRef = {
     contents: undefined
   };
@@ -232,7 +217,7 @@ function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
       return rejected;
     }
     let identity = extractIdentity(ctx);
-    let rule = commandAuthorization(syntheticCommand(tag, hasPayload));
+    let rule = authorizationOf(tag);
     if (!Authorization$Reventless.isAllowed(rule, identity)) {
       return rejectForbidden(fieldName);
     }
@@ -296,7 +281,6 @@ export {
   resetPluginStatusGate,
   rejectPluginStatus,
   checkPluginStatus,
-  syntheticCommand,
   capitalize,
   commandResultSdl,
   ensureCommandResultTypes,

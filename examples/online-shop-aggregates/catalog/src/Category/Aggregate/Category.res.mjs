@@ -32,8 +32,8 @@ let errorSchema = Sury.union([
   Sury.literal("CategoryAlreadyArchived")
 ]);
 
-function commandAuthorization(command) {
-  if (typeof command !== "object") {
+function authorizationOf(name) {
+  if (name === "Archive") {
     return {
       TAG: "AllowRoles",
       _0: ["Admin"]
@@ -62,7 +62,7 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   commandTransition,
   traits,
 }

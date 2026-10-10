@@ -1860,8 +1860,10 @@ assert_js_contains "$JS" '"Admin"'                         "@authorize: per-ctor
 assert_js_contains "$JS" 'AllowRoles'                      "@authorize: AllowRoles constructor used"
 # The coercion is type-level only: no `Roles` import or lookup survives
 assert_js_not_contains "$JS" 'Roles.res.mjs'               "@authorize: a role is its name at runtime"
-# Generated switch retains a `command` parameter (not wildcard `_`)
-assert_js_contains "$JS" 'function commandAuthorization(command)' "@authorize: switch lambda parameter"
+# Generated switch is keyed by the constructor's name, not by a command value
+assert_js_contains "$JS" 'function authorizationOf(name)'  "@authorize: switch on the constructor name"
+assert_js_contains "$JS" 'name === "Archive"'                "@authorize: per-ctor case keyed by its name"
+assert_js_not_contains "$JS" 'commandAuthorization'        "@authorize: the replaced member is not emitted"
 # Sanity: @authorize attribute stripped from the AST so sury-ppx doesn't see it
 assert_js_not_contains "$JS" 'authorize'                   "@authorize: attribute stripped from output"
 
@@ -2925,6 +2927,30 @@ fi
 rm -f "$ERROR/src/ReadModel/NonStringId.res"
 
 echo ""
+echo "=== Test: PPX error — a spec still writing commandAuthorization ==="
+
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/OldAuth.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Add({name: string})
+
+let commandAuthorization = (_: command) => Reventless.Authorization.AllowAuthenticated
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "commandAuthorization refused" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "is replaced by .authorizationOf."; then
+    pass "commandAuthorization → error naming authorizationOf"
+  else
+    fail "commandAuthorization refused" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/OldAuth.res"
+
+echo ""
 echo "=== Test: PPX error — @indexSubId without matching @index ==="
 
 cat > "$ERROR/src/ReadModel/OrphanSkReadModel.res" <<'EOF'
@@ -2979,19 +3005,20 @@ echo "=== Test: both command-policy seams reach a spliced constructor ==="
 JS="$PLUGIN/src/Aggregate/TransitionOrder.res.mjs"
 PJS="$PLUGIN/src/Aggregate/SpreadOrder.res.mjs"
 
-# The authorization switch is generated ReScript matching real constructors, so
-# the compiler resolves the spliced members and they get the file default.
-AUTH_BLOCK=$(sed -n '/function commandAuthorization/,/^}/p' "$PJS")
-if echo "$AUTH_BLOCK" | grep -q '"Reported"' && echo "$AUTH_BLOCK" | grep -q '"Failed"'; then
-  pass "spliced constructors reach commandAuthorization"
+# The authorization switch is keyed by name, so a spliced constructor — named
+# nowhere in it — falls to the file default through the wildcard.
+AUTH_BLOCK=$(sed -n '/function authorizationOf/,/^}/p' "$PJS")
+if echo "$AUTH_BLOCK" | grep -q '"Ship"' && echo "$AUTH_BLOCK" | grep -q '"AllowAuthenticated"' \
+   && ! echo "$AUTH_BLOCK" | grep -q '"Reported"'; then
+  pass "spliced constructors fall to the default in authorizationOf"
 else
-  fail "spread authorization" "commandAuthorization does not answer for the spliced constructors"
+  fail "spread authorization" "authorizationOf does not give the spliced constructors the default"
 fi
 # The plugin's role case, written bare in the annotation, is its name at run time.
 if echo "$AUTH_BLOCK" | grep -q '"Admin"'; then
   pass "a role case compiles to its name"
 else
-  fail "role case" "commandAuthorization does not carry the role's name"
+  fail "role case" "authorizationOf does not carry the role's name"
 fi
 
 # The host's own switch reaches them because it is exhaustive over the command,

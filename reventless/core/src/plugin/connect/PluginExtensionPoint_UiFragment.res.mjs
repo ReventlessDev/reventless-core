@@ -72,7 +72,7 @@ let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
     moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
-    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    authorizationOf: UiFragmentRegistry$ReventlessCore.authorizationOf,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     traits: UiFragmentRegistry$ReventlessCore.traits
   },

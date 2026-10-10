@@ -40,7 +40,7 @@ let eventSchema = Sury.$schema(s => ({
   productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)))
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -66,7 +66,7 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

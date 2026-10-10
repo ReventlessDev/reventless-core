@@ -46,7 +46,7 @@ module ProductDelegate = {
 
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -134,7 +134,7 @@ module OrderDelegate = {
 
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -204,7 +204,7 @@ module SyncDelegate = {
 
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -283,7 +283,7 @@ module StockDelegate = {
 
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -346,7 +346,7 @@ module SyncedDelegate = {
 
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }

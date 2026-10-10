@@ -106,7 +106,7 @@ function Acting(Spec) {
   };
   let commandName = command => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema));
   let refusedByRule = (who, command) => {
-    if (Authorization$Reventless.admits(Authorization$Reventless.named(Spec.commandAuthorization(command)), who.signedIn, role => who.roles.includes(role))) {
+    if (Authorization$Reventless.admits(Authorization$Reventless.named(Spec.authorizationOf(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema)))), who.signedIn, role => who.roles.includes(role))) {
       return false;
     } else {
       refusal.contents = {
@@ -376,7 +376,7 @@ function Make(Spec) {
     let name = Spec.name;
     let historySchema = Spec.consumedEventSchema;
     let commandSchema = Spec.commandSchema;
-    let commandAuthorization = Spec.commandAuthorization;
+    let authorizationOf = Spec.authorizationOf;
     let caller = {
       contents: undefined
     };
@@ -394,7 +394,7 @@ function Make(Spec) {
       refusal.contents = undefined;
       let claim = Stdlib_Option.map(who, w => w.claim);
       if (Stdlib_Option.mapOr(who, false, __x => {
-          if (Authorization$Reventless.admits(Authorization$Reventless.named(commandAuthorization(command)), __x.signedIn, role => __x.roles.includes(role))) {
+          if (Authorization$Reventless.admits(Authorization$Reventless.named(authorizationOf(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)))), __x.signedIn, role => __x.roles.includes(role))) {
             return false;
           } else {
             refusal.contents = {
@@ -747,7 +747,7 @@ function MakeFromAggregate(Spec) {
     let name = Spec.name;
     let historySchema = Spec.eventSchema;
     let commandSchema = Spec.commandSchema;
-    let commandAuthorization = Spec.commandAuthorization;
+    let authorizationOf = Spec.authorizationOf;
     let caller = {
       contents: undefined
     };
@@ -765,7 +765,7 @@ function MakeFromAggregate(Spec) {
       refusal.contents = undefined;
       let claim = Stdlib_Option.map(who, w => w.claim);
       if (Stdlib_Option.mapOr(who, false, __x => {
-          if (Authorization$Reventless.admits(Authorization$Reventless.named(commandAuthorization(command)), __x.signedIn, role => __x.roles.includes(role))) {
+          if (Authorization$Reventless.admits(Authorization$Reventless.named(authorizationOf(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)))), __x.signedIn, role => __x.roles.includes(role))) {
             return false;
           } else {
             refusal.contents = {

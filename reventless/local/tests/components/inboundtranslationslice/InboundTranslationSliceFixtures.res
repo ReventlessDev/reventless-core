@@ -56,10 +56,11 @@ module CatalogFeedSpec = {
   type role = Reventless.Role.name
   let merchandiser = Reventless.Role.make("Merchandiser")
   let admin = Reventless.Role.make("Admin")
-  let commandAuthorization = (command: command): Reventless.Authorization.rule<role> =>
-    switch command {
-    | AddProduct(_) => AllowRoles([merchandiser])
-    | AddCategory(_) => AllowRoles([admin])
+  let authorizationOf = (name: string): Reventless.Authorization.rule<role> =>
+    switch name {
+    | "AddProduct" => AllowRoles([merchandiser])
+    | "AddCategory" => AllowRoles([admin])
+    | _ => DenyAll
     }
 
   let translate = (input: externalInput) =>

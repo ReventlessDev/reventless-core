@@ -51,7 +51,7 @@ and four schema-carrying types. `consumedEvent` names the events the slice reads
 to build its decision state (payload-less where only existence matters);
 `command`, `error`, and `event` describe what it accepts, refuses, and emits. It
 also carries `commandSchema` (the DCB tags for the conditional read are extracted
-from it), `commandAuthorization` with the `role` type its rule names, and
+from it), `authorizationOf` with the `role` type its rule names, and
 `readConsistency` — all injected by `@@reventless.spec` with defaults, so a spec
 file states only its types.
 

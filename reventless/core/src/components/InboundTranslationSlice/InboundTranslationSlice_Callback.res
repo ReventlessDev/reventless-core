@@ -168,34 +168,37 @@ module Make = (
       switch Translation.translate(input) {
       | Error(msg) => fail(msg)
       | Ok(pairs) =>
-        // Each command against its own rule; one refused refuses the message.
-        let refused =
-          pairs->Array.find(((_, cmd)) =>
-            !callerAdmits(Spec.commandAuthorization(cmd)->Reventless.Authorization.named, caller)
-          )
-        switch refused {
-        | Some(_) =>
+        switch pairs->Array.reduce(Ok([]), (acc, pair) =>
+          switch (acc, encode(pair)) {
+          | (Ok(msgs), Ok(msg)) => Ok(msgs->Array.concat([msg]))
+          | (Error(_) as failed, _) => failed
+          | (_, Error(msg)) => Error(msg)
+          }
+        ) {
+        | Error(msg) => fail(msg)
+        // Each command against its own rule, read by the name it encodes to; one
+        // refused refuses the message.
+        | Ok(msgs)
+          if msgs->Array.some(({commandJson}) =>
+            !callerAdmits(
+              commandJson
+              ->Reventless.Message.variantNameOfJson
+              ->Spec.authorizationOf
+              ->Reventless.Authorization.named,
+              caller,
+            )
+          ) =>
           fail(
             ~errorCode="Forbidden",
             `${Spec.name}: the caller is not authorized for every command this input translates into`,
           )
-        | None =>
-          switch pairs->Array.reduce(Ok([]), (acc, pair) =>
-            switch (acc, encode(pair)) {
-            | (Ok(msgs), Ok(msg)) => Ok(msgs->Array.concat([msg]))
-            | (Error(_) as failed, _) => failed
-            | (_, Error(msg)) => Error(msg)
-            }
-          ) {
-          | Error(msg) => fail(msg)
-          | Ok([]) => succeed(~requestId, ~inputJson, [])
-          | Ok(msgs) =>
-            try {
-              await publishJsons(msgs)
-              succeed(~requestId, ~inputJson, pairs->Array.map(((targetId, _)) => targetId))
-            } catch {
-            | exn => fail(messageOf(exn, "publish failed"))
-            }
+        | Ok([]) => succeed(~requestId, ~inputJson, [])
+        | Ok(msgs) =>
+          try {
+            await publishJsons(msgs)
+            succeed(~requestId, ~inputJson, pairs->Array.map(((targetId, _)) => targetId))
+          } catch {
+          | exn => fail(messageOf(exn, "publish failed"))
           }
         }
       }

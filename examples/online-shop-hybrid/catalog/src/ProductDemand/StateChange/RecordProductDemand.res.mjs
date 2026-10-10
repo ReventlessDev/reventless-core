@@ -46,7 +46,7 @@ let eventSchema = Sury.union([
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApi(commandSchema);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -72,7 +72,7 @@ export {
   eventSchema,
   commandSchema$1 as commandSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

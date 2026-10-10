@@ -29,8 +29,8 @@
 // generated module imports nothing from the view — which is also why it cannot
 // cycle: a view spec holds no reference back to the aggregate it projects.
 //
-// Read the same way `commandAuthorization` is: `Plugin_Structure.toCommandDef`
-// evaluates it against a synthetic value per constructor.
+// `Plugin_Structure.toCommandDef` evaluates it against a synthetic value per
+// constructor.
 //
 // No `@schema`: nothing serialises a transition. It is read once, while the
 // plugin structure is assembled, and what leaves is the pair of names the

@@ -82,7 +82,7 @@ let eventSchema = Sury.union([
   }))
 ]);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -108,7 +108,7 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

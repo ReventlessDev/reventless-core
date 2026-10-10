@@ -541,7 +541,7 @@ function registerAdminAggregateMutations(aggregates, hooks) {
     let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.adminField(M.Spec.name + "_" + cname));
     aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
     if (fieldNames.length !== 0) {
-      return Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, command => Authorization$Reventless.named(M.Spec.commandAuthorization(command))));
+      return Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, name => Authorization$Reventless.named(M.Spec.authorizationOf(name))));
     }
   });
 }

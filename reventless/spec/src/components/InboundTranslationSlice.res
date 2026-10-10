@@ -29,10 +29,11 @@ module type Spec = {
   /** The roles this spec's rules name: its plugin's `Roles.t`, which the PPX
       supplies; `Role.name` where the plugin declares none. */
   type role
-  /** Each command's rule. The door admits a caller satisfying any command's
-      rule; each command the input translates into is then checked against its
-      own, and one refused refuses the whole input. Defaults to `AllowAuthenticated`. */
-  let commandAuthorization: command => Authorization.rule<role>
+  /** Each command's rule, by constructor name. The door admits a caller
+      satisfying any command's rule; each command the input translates into is
+      then checked against its own, and one refused refuses the whole input.
+      Defaults to `AllowAuthenticated`. */
+  let authorizationOf: string => Authorization.rule<role>
 }
 
 /** The synchronous translate function. */

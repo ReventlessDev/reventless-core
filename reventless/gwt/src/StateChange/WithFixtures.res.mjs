@@ -19,7 +19,7 @@ let eventSchema = Sury.$schema(s => ({
   name: s.m(Sury.string)
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -31,6 +31,6 @@ export {
   commandSchema,
   errorSchema,
   eventSchema,
-  commandAuthorization,
+  authorizationOf,
 }
 /* consumedEventSchema Not a pure module */

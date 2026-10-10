@@ -3,8 +3,8 @@
 **Date:** 2026-10-01<br/>
 **Status:** Done (2026-10-01). Built as described below; where the build departed
 from the first draft, the section says how and why. The casts on the
-authorization path that remain are planned away in
-`../authorization-looked-up-by-command-name.md`.<br/>
+authorization path that remained were removed by
+[authorization-looked-up-by-command-name.md](authorization-looked-up-by-command-name.md).<br/>
 **Relates to:** `a-command-acts-only-on-what-the-caller-owns.md` (the GWT
 `Caller` this extends), `active-role-narrows-the-token.md` (the "active role" a
 person picks), `generated-surfaces-state-required-access.md` (what

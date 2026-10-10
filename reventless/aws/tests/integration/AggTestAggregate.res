@@ -5,7 +5,7 @@
 // wired into reventless-core's rescript.json, not reventless-aws's), exposing
 // exactly the fields the compiled `@@reventless.spec` output would: name, Id
 // (patched in at runtime by patchSpecId), commandSchema/eventSchema/errorSchema
-// (via sury-ppx), moduleUrl, commandAuthorization.
+// (via sury-ppx), moduleUrl, authorizationOf.
 
 @schema
 type command = Add({name: string})
@@ -19,6 +19,6 @@ type error = AlreadyExists
 let name = "AggTestAggregate"
 let moduleUrl = "agg-test://AggTestAggregate"
 type role = Reventless.Role.name
-let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAnonymous
+let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAnonymous
 type lifecycleState = unit
 let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted

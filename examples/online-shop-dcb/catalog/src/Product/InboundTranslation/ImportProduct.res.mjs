@@ -20,7 +20,7 @@ let commandSchema = Sury.$schema(s => ({
   price: s.m(Sury.number)
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -44,7 +44,7 @@ export {
   targetName,
   externalSystem,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   traits,
 }
 /* externalInputSchema Not a pure module */

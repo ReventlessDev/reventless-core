@@ -147,10 +147,11 @@ module PsTwoRuleFeed = {
   let targetName = "AddProduct"
   let externalSystem = None
   type role = Reventless.Role.name
-  let commandAuthorization = (command: command): Reventless.Authorization.rule<role> =>
-    switch command {
-    | AddProduct(_) => AllowRoles([Reventless.Role.make("Merchandiser")])
-    | AddCategory(_) => AllowRoles([Reventless.Role.make("Admin")])
+  let authorizationOf = (name: string): Reventless.Authorization.rule<role> =>
+    switch name {
+    | "AddProduct" => AllowRoles([Reventless.Role.make("Merchandiser")])
+    | "AddCategory" => AllowRoles([Reventless.Role.make("Admin")])
+    | _ => DenyAll
     }
 }
 
@@ -172,7 +173,7 @@ module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
 describe("an inbound slice's roles", () => {
   let door = Dcb_Builder.inboundDoorPermission(
     PsTwoRuleFeed.commandSchema,
-    PsTwoRuleFeed.commandAuthorization,
+    PsTwoRuleFeed.authorizationOf,
   )
 
   testSync("the door admits any constructor's roles", () =>

@@ -41,14 +41,18 @@ function commandTransition(command) {
   };
 }
 
-function commandAuthorization(command) {
-  return {
-    TAG: "AllowRoles",
-    _0: [
-      "Admin",
-      "Fulfilment"
-    ]
-  };
+function authorizationOf(name) {
+  if (name === "ShipOrder") {
+    return {
+      TAG: "AllowRoles",
+      _0: [
+        "Admin",
+        "Fulfilment"
+      ]
+    };
+  } else {
+    return "AllowAuthenticated";
+  }
 }
 
 let traits = [];
@@ -70,7 +74,7 @@ export {
   eventSchema,
   commandTransition,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   traits,
 }

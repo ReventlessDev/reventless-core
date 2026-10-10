@@ -31,7 +31,7 @@ function Make(Platform) {
     errorSchema: Category$CatalogPlugin.errorSchema,
     commandSchema: Category$CatalogPlugin.commandSchema,
     moduleUrl: Category$CatalogPlugin.moduleUrl,
-    commandAuthorization: Category$CatalogPlugin.commandAuthorization,
+    authorizationOf: Category$CatalogPlugin.authorizationOf,
     commandTransition: Category$CatalogPlugin.commandTransition,
     traits: Category$CatalogPlugin.traits
   })({
@@ -52,7 +52,7 @@ function Make(Platform) {
     errorSchema: Product$CatalogPlugin.errorSchema,
     commandSchema: Product$CatalogPlugin.commandSchema,
     moduleUrl: Product$CatalogPlugin.moduleUrl,
-    commandAuthorization: Product$CatalogPlugin.commandAuthorization,
+    authorizationOf: Product$CatalogPlugin.authorizationOf,
     commandTransition: Product$CatalogPlugin.commandTransition,
     traits: Product$CatalogPlugin.traits
   })({
@@ -73,7 +73,7 @@ function Make(Platform) {
     errorSchema: ProductDemand$CatalogPlugin.errorSchema,
     commandSchema: ProductDemand$CatalogPlugin.commandSchema,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
-    commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization,
+    authorizationOf: ProductDemand$CatalogPlugin.authorizationOf,
     commandTransition: ProductDemand$CatalogPlugin.commandTransition,
     traits: ProductDemand$CatalogPlugin.traits
   })({
@@ -146,7 +146,7 @@ function Make(Platform) {
       errorSchema: Product$CatalogPlugin.errorSchema,
       commandSchema: Product$CatalogPlugin.commandSchema,
       moduleUrl: Product$CatalogPlugin.moduleUrl,
-      commandAuthorization: Product$CatalogPlugin.commandAuthorization,
+      authorizationOf: Product$CatalogPlugin.authorizationOf,
       commandTransition: Product$CatalogPlugin.commandTransition,
       traits: Product$CatalogPlugin.traits
     },
@@ -171,7 +171,7 @@ function Make(Platform) {
       errorSchema: ProductDemand$CatalogPlugin.errorSchema,
       commandSchema: ProductDemand$CatalogPlugin.commandSchema,
       moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
-      commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization,
+      authorizationOf: ProductDemand$CatalogPlugin.authorizationOf,
       commandTransition: ProductDemand$CatalogPlugin.commandTransition,
       traits: ProductDemand$CatalogPlugin.traits
     },
@@ -205,7 +205,7 @@ function Make(Platform) {
         errorSchema: Product$CatalogPlugin.errorSchema,
         commandSchema: Product$CatalogPlugin.commandSchema,
         moduleUrl: Product$CatalogPlugin.moduleUrl,
-        commandAuthorization: Product$CatalogPlugin.commandAuthorization,
+        authorizationOf: Product$CatalogPlugin.authorizationOf,
         commandTransition: Product$CatalogPlugin.commandTransition,
         traits: Product$CatalogPlugin.traits
       },

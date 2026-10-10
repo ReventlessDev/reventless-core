@@ -3,7 +3,7 @@
 // constructor `Add({name})` defaulting to AllowAuthenticated, plus a
 // payload-less `Archive` constrained to AllowRoles([Admin]).
 //
-// The PPX emits a `commandAuthorization` switch at compile time (see
+// The PPX emits an `authorizationOf` switch at compile time (see
 // examples/online-shop-hybrid/catalog/.../Category.res.mjs). This test hand-
 // writes an equivalent switch and feeds it through the live resolver path
 // (CommandGeneratorResolvers_GraphQL.register), so the test covers the same
@@ -25,11 +25,10 @@ type command =
 
 // Matches the shape the PPX emits for `@authorize(AllowRoles([Admin]))` on
 // the payload-less `Archive` constructor with a file-level default.
-let commandAuthorization = (cmd: unknown): Reventless.Authorization.permission =>
-  if (cmd->Obj.magic: 'a) === "Archive" {
-    AllowRoles([Reventless.Role.make("Admin")])
-  } else {
-    AllowAuthenticated
+let authorizationOf = (name: string): Reventless.Authorization.permission =>
+  switch name {
+  | "Archive" => AllowRoles([Reventless.Role.make("Admin")])
+  | _ => AllowAuthenticated
   }
 
 // ── Identity fixtures ────────────────────────────────────────────────────────
@@ -84,7 +83,7 @@ let buildFixture = (~namespace: string) => {
   CommandGeneratorResolvers_GraphQL.register(
     ~fields=[addField, renameField, archiveField],
     ~commandSchema=commandSchema->S.castToUnknown,
-    ~commandAuthorization,
+    ~authorizationOf,
     ~server,
   )
 
@@ -242,7 +241,7 @@ let failingFixture = (~namespace: string, ~failWith: unit => unit) => {
   CommandGeneratorResolvers_GraphQL.register(
     ~fields=[field],
     ~commandSchema=commandSchema->S.castToUnknown,
-    ~commandAuthorization,
+    ~authorizationOf,
     ~server,
   )
   let generateCommand: ReventlessCore.CommandGenerator.commandGenerator = _payload =>

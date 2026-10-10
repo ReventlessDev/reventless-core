@@ -20,5 +20,5 @@ type event = CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) str
 
 // What `@@reventless.spec` injects into a real spec: the default rule.
 type role = Reventless.Role.name
-let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
+let authorizationOf = (_: string): Reventless.Authorization.rule<role> =>
   Reventless.Authorization.AllowAuthenticated

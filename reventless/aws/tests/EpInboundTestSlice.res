@@ -17,6 +17,6 @@ let targetName = "AddThing"
 let externalSystem: option<string> = Some("TestFeed")
 
 type role = Reventless.Role.name
-let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowRoles([
+let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowRoles([
   Reventless.Role.make("Admin"),
 ])

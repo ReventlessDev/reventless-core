@@ -119,7 +119,7 @@ module type ActingSpec = {
   @schema
   type command
   type role
-  let commandAuthorization: command => Reventless.Authorization.rule<role>
+  let authorizationOf: string => Reventless.Authorization.rule<role>
 }
 
 module Acting = (Spec: ActingSpec) => {
@@ -142,7 +142,7 @@ module Acting = (Spec: ActingSpec) => {
   // a role maps to is a deployment's fact, not the scenario's.
   let refusedByRule = (who: Caller.t, command: Spec.command): bool =>
     if (
-      Spec.commandAuthorization(command)
+      Spec.authorizationOf(commandName(command))
       ->Reventless.Authorization.named
       ->Reventless.Authorization.admits(~signedIn=who.signedIn, ~holds=role =>
         who.roles->Array.includes(role)
@@ -240,7 +240,7 @@ module type BehaviorSpec = {
   type event
 
   type role
-  let commandAuthorization: command => Reventless.Authorization.rule<role>
+  let authorizationOf: string => Reventless.Authorization.rule<role>
 }
 
 module type Behavior = {
@@ -460,7 +460,7 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
     type command = Spec.command
     let commandSchema = Spec.commandSchema
     type role = Spec.role
-    let commandAuthorization = Spec.commandAuthorization
+    let authorizationOf = Spec.authorizationOf
   })
   let asCaller = Guard.asCaller
 
@@ -729,7 +729,7 @@ module type AggregateSpec = {
   @schema
   type error
   type role
-  let commandAuthorization: command => Reventless.Authorization.rule<role>
+  let authorizationOf: string => Reventless.Authorization.rule<role>
 }
 
 module type AggregateT = {
@@ -790,7 +790,7 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
     type command = Spec.command
     let commandSchema = Spec.commandSchema
     type role = Spec.role
-    let commandAuthorization = Spec.commandAuthorization
+    let authorizationOf = Spec.authorizationOf
   })
   let asCaller = Guard.asCaller
 

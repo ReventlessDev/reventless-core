@@ -8,7 +8,7 @@ import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/Plugin
 
 let pluginId = "Platform";
 
-let pluginCommands = Plugin_Structure$ReventlessCore.extractCommandDefs(undefined, true, undefined, variantName => Api_Naming$ReventlessCore.adminField(PluginSpec$ReventlessCore.name + "_" + variantName), command => Authorization$Reventless.named(PluginSpec$ReventlessCore.commandAuthorization(command)), PluginSpec$ReventlessCore.commandTransition, undefined, PluginSpec$ReventlessCore.commandSchema);
+let pluginCommands = Plugin_Structure$ReventlessCore.extractCommandDefs(undefined, true, undefined, variantName => Api_Naming$ReventlessCore.adminField(PluginSpec$ReventlessCore.name + "_" + variantName), name => Authorization$Reventless.named(PluginSpec$ReventlessCore.authorizationOf(name)), PluginSpec$ReventlessCore.commandTransition, undefined, PluginSpec$ReventlessCore.commandSchema);
 
 let pluginAggregate_producedEventTypes = [];
 

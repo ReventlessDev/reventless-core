@@ -24,7 +24,7 @@ let eventSchema = Sury.union([
 
 let errorSchema = Sury.$unit;
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -41,7 +41,7 @@ let Delegate = {
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   moduleUrl: "@reventlessdev/online-shop-dcb-ordering/src/ExtensionPoint/Orders_ExtensionPointMapping.res.mjs",
-  commandAuthorization: commandAuthorization,
+  authorizationOf: authorizationOf,
   commandTransition: commandTransition,
   traits: traits
 };

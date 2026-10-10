@@ -64,7 +64,7 @@ type event =
 let name = "EpCompositeSlice"
 let moduleUrl = "ep-test://EpCompositeSlice"
 type role = Reventless.Role.name
-let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAnonymous
+let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAnonymous
 type lifecycleState = unit
 let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 let readConsistency = Reventless.ReadConsistency.EscalateOnRetry

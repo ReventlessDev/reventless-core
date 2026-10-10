@@ -225,12 +225,12 @@ function MakeWithConfig(Config) {
     }
   };
   let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
-  let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema, authorizationOf) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessLocal.register(fields, commandSchema, commandAuthorization, server);
+      return CommandGeneratorResolvers_GraphQL$ReventlessLocal.register(fields, commandSchema, authorizationOf, server);
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, commandAuthorization, server));
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, authorizationOf, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessLocal.bindHandler;
   let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema, permission) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, permission, resolveTargetGraphQL());
@@ -649,7 +649,7 @@ function MakeWithConfig(Config) {
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    authorizationOf: UiFragmentRegistry$ReventlessCore.authorizationOf,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
@@ -761,7 +761,7 @@ function MakeWithConfig(Config) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    authorizationOf: PluginSpec$ReventlessCore.authorizationOf,
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
@@ -1985,12 +1985,12 @@ function Make($star) {
     }
   };
   let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
-  let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema, authorizationOf) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessLocal.register(fields, commandSchema, commandAuthorization, server);
+      return CommandGeneratorResolvers_GraphQL$ReventlessLocal.register(fields, commandSchema, authorizationOf, server);
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, commandAuthorization, server));
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessLocal.registerDcb(field, commandSchema, authorizationOf, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessLocal.bindHandler;
   let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema, permission) => InboundTranslationResolvers_GraphQL$ReventlessLocal.register(fieldName, externalInputSchema, permission, resolveTargetGraphQL());
@@ -2409,7 +2409,7 @@ function Make($star) {
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    authorizationOf: UiFragmentRegistry$ReventlessCore.authorizationOf,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
@@ -2521,7 +2521,7 @@ function Make($star) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    authorizationOf: PluginSpec$ReventlessCore.authorizationOf,
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({

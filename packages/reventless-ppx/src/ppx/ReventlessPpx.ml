@@ -264,7 +264,7 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
       @ (if not (Util.has_type_binding "command" body) then [gen_schema_unit_type ~loc "command"] else [])
     in
     let auth_suffix =
-      if Util.has_let_binding "commandAuthorization" body then []
+      if Util.has_let_binding "authorizationOf" body then []
       else
         (* A delegate's commands are `unit`, so it names no roles. *)
         AuthorizationInjection.role_type_suffix ~loc ~generated:false ~roles_in_scope:false body
@@ -918,7 +918,7 @@ let transform (str : structure) : structure =
           [ModuleUrl.gen_module_url ~loc specifier]
         else []
       in
-      (* Authorization auto-injection (Aggregate / *Slice → commandAuthorization,
+      (* Authorization auto-injection (Aggregate / *Slice → authorizationOf,
          ReadModel / StateViewSlice → authorization). Consumes a file-level
          @@reventless.authorize(<rule>) attribute and falls back to the framework
          default AllowAuthenticated. Idempotent on bodies already declaring the

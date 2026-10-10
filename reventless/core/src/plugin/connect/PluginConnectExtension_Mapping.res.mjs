@@ -75,7 +75,7 @@ function Make(Spec) {
       errorSchema: ExtensionMapping$ReventlessInfra.NoDelegate.errorSchema,
       commandSchema: ExtensionMapping$ReventlessInfra.NoDelegate.commandSchema,
       moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl,
-      commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization,
+      authorizationOf: ExtensionMapping$ReventlessInfra.NoDelegate.authorizationOf,
       commandTransition: ExtensionMapping$ReventlessInfra.NoDelegate.commandTransition,
       traits: ExtensionMapping$ReventlessInfra.NoDelegate.traits
     },

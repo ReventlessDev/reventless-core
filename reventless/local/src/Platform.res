@@ -290,14 +290,14 @@ module MakeWithConfig = (
     deployTarget: ref("Domain"),
     // Phase 1: register SDL + resolver stub synchronously.
     // Pass the resolved server so the correct target (domain or platform) receives the schema.
-    mutationResolverHook: (~kind, ~fields, ~commandSchema, ~commandAuthorization) => {
+    mutationResolverHook: (~kind, ~fields, ~commandSchema, ~authorizationOf) => {
       let server = resolveTargetGraphQL()
       switch kind {
       | ReventlessCore.Plugin_Helpers.Aggregate =>
         CommandGeneratorResolvers_GraphQL.register(
           ~fields,
           ~commandSchema,
-          ~commandAuthorization,
+          ~authorizationOf,
           ~server,
         )
       | Dcb =>
@@ -305,7 +305,7 @@ module MakeWithConfig = (
           CommandGeneratorResolvers_GraphQL.registerDcb(
             ~fieldName=field,
             ~commandSchema,
-            ~commandAuthorization,
+            ~authorizationOf,
             ~server,
           )
         )

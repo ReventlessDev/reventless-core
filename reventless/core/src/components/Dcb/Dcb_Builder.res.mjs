@@ -118,8 +118,8 @@ let emptyResult = {
   eventLogEntries: emptyResult_eventLogEntries
 };
 
-function inboundDoorPermission(commandSchema, commandAuthorization) {
-  return Plugin_Structure$ReventlessCore.inboundDoorPermission(commandSchema, cmd => Authorization$Reventless.named(commandAuthorization(cmd)));
+function inboundDoorPermission(commandSchema, authorizationOf) {
+  return Plugin_Structure$ReventlessCore.inboundDoorPermission(commandSchema, name => Authorization$Reventless.named(authorizationOf(name)));
 }
 
 function Make(DcbEventLogStorage) {
@@ -295,13 +295,13 @@ function Make(DcbEventLogStorage) {
         syncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, command => Authorization$Reventless.named(S.Spec.commandAuthorization(command)));
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, name => Authorization$Reventless.named(S.Spec.authorizationOf(name)));
           }
         });
         asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, command => Authorization$Reventless.named(S.Spec.commandAuthorization(command)));
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, name => Authorization$Reventless.named(S.Spec.authorizationOf(name)));
           }
         });
       }
@@ -397,7 +397,7 @@ function Make(DcbEventLogStorage) {
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let registerResolver = HooksConfig.hooks.inboundMutationResolverHook;
         if (registerResolver !== undefined) {
-          registerResolver(fieldName, ITS.Spec.externalInputSchema, inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.commandAuthorization));
+          registerResolver(fieldName, ITS.Spec.externalInputSchema, inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf));
         }
         let bindReceive = HooksConfig.hooks.inboundMutationBindReceiveHook;
         if (bindReceive !== undefined) {
@@ -554,12 +554,7 @@ function Make(DcbEventLogStorage) {
         let sliceDef = Stdlib_Option.flatMap(pluginStructure, s => s.stateChangeSlices.find(d => d.name === S.Spec.name));
         let fieldPermissions = {};
         fieldSpecs.forEach(param => {
-          let ctor = param[1];
-          let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, ctor);
-          let syntheticCmd = hasPayload ? ({
-              TAG: ctor
-            }) : ctor;
-          fieldPermissions[param[0]] = Authorization$Reventless.named(S.Spec.commandAuthorization(syntheticCmd));
+          fieldPermissions[param[0]] = Authorization$Reventless.named(S.Spec.authorizationOf(param[1]));
         });
         return {
           fieldNames: fieldSpecs.map(param => param[0]),
@@ -574,7 +569,7 @@ function Make(DcbEventLogStorage) {
       let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => {
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let fieldPermissions = {};
-        Stdlib_Option.forEach(inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.commandAuthorization), rule => {
+        Stdlib_Option.forEach(inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf), rule => {
           fieldPermissions[fieldName] = rule;
         });
         return {

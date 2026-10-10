@@ -92,11 +92,11 @@ let emptyResult: dcbResult = {
 // An inbound slice's door rule, read off its spec.
 let inboundDoorPermission = (
   commandSchema: S.t<'command>,
-  commandAuthorization: 'command => Reventless.Authorization.rule<'role>,
+  authorizationOf: string => Reventless.Authorization.rule<'role>,
 ) =>
   Plugin_Structure.inboundDoorPermission(
     ~commandSchema=commandSchema->S.castToUnknown,
-    ~commandAuthorization=cmd => cmd->commandAuthorization->Reventless.Authorization.named,
+    ~authorizationOf=name => name->authorizationOf->Reventless.Authorization.named,
   )
 
 module Make = (
@@ -544,8 +544,7 @@ module Make = (
                 ~commandSchema,
               )->Array.map(((f, _)) => f),
               ~commandSchema,
-              ~commandAuthorization=command =>
-                S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
+              ~authorizationOf=name => S.Spec.authorizationOf(name)->Reventless.Authorization.named,
             )
           }
         })
@@ -560,8 +559,7 @@ module Make = (
                 ~commandSchema,
               )->Array.map(((f, _)) => f),
               ~commandSchema,
-              ~commandAuthorization=command =>
-                S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
+              ~authorizationOf=name => S.Spec.authorizationOf(name)->Reventless.Authorization.named,
             )
           }
         })
@@ -759,10 +757,7 @@ module Make = (
             registerResolver(
               ~fieldName,
               ~externalInputSchema=ITS.Spec.externalInputSchema->S.castToUnknown,
-              ~permission=?inboundDoorPermission(
-                ITS.Spec.commandSchema,
-                ITS.Spec.commandAuthorization,
-              ),
+              ~permission=?inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf),
             )
           | None => ()
           }
@@ -1066,17 +1061,13 @@ module Make = (
               )
             // One SDL field per constructor, each with its own constructor's args and
             // its own per-constructor authorization rule.
-            let commandAuthorization: unknown => Reventless.Authorization.permission = command =>
-              S.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named
             let fieldPermissions = Dict.make()
-            fieldSpecs->Array.forEach(((fieldName, ctor)) => {
-              let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(
-                commandSchema->Obj.magic,
-                ctor,
+            fieldSpecs->Array.forEach(((fieldName, ctor)) =>
+              fieldPermissions->Dict.set(
+                fieldName,
+                S.Spec.authorizationOf(ctor)->Reventless.Authorization.named,
               )
-              let syntheticCmd: unknown = hasPayload ? {"TAG": ctor}->Obj.magic : ctor->Obj.magic
-              fieldPermissions->Dict.set(fieldName, commandAuthorization(syntheticCmd))
-            })
+            )
             Some({
               ReventlessInfra.Api.fieldNames: fieldSpecs->Array.map(((f, _)) => f),
               commandSchema,
@@ -1098,7 +1089,7 @@ module Make = (
           let fieldPermissions = Dict.make()
           inboundDoorPermission(
             ITS.Spec.commandSchema,
-            ITS.Spec.commandAuthorization,
+            ITS.Spec.authorizationOf,
           )->Option.forEach(rule => fieldPermissions->Dict.set(fieldName, rule))
           {
             ReventlessInfra.Api.fieldNames: [fieldName],

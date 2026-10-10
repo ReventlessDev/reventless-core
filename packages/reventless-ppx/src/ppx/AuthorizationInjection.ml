@@ -3,7 +3,7 @@
    Two injection paths share the same generator helpers:
 
    1. File-level (top-level `Spec` mode driven by `@@reventless.spec`):
-      synthesises `let commandAuthorization` / `let authorization` at the
+      synthesises `let authorizationOf` / `let authorization` at the
       end of the file, based on folder kind. See [inject].
 
    2. Inline-module (test fixtures, framework-internal Counter_Builder,
@@ -17,8 +17,12 @@
    overrides the framework default ([AllowAuthenticated]). The PPX
    synthesises one of:
 
-     let commandAuthorization = _ => (<rule> : rule<role>)   (* Aggregate, StateChangeSlice, InboundTranslationSlice *)
-     let authorization        = (<rule> : rule<role>)        (* ReadModel, StateViewSlice, StateViewSliceStream *)
+     let authorizationOf = name => (switch name { | "Ctor" => … | _ => <rule> } : rule<role>)
+                                                        (* Aggregate, StateChangeSlice, InboundTranslationSlice *)
+     let authorization   = (<rule> : rule<role>)        (* ReadModel, StateViewSlice, StateViewSliceStream *)
+
+   [authorizationOf] is keyed by the constructor's wire name, because the
+   framework asks "who may issue [ArchiveProduct]?" before any command exists.
 
    beside [type role], unless the spec declares one (see "The spec's role
    type"). No injection happens if the user already declared the binding. Adds
@@ -31,7 +35,7 @@ open Ppxlib
 (* Folder-based file kind ----------------------------------------------------- *)
 
 type kind =
-  | CommandCarrier   (* injects [let commandAuthorization] *)
+  | CommandCarrier   (* injects [let authorizationOf] *)
   | QueryCarrier     (* injects [let authorization] *)
   | Other            (* no injection *)
 
@@ -172,62 +176,67 @@ let arity1_fun ~loc pat body =
   { (Ast_builder.Default.pexp_construct ~loc { txt = Lident "Function$"; loc } (Some fn))
     with pexp_attributes = [arity] }
 
-(* let commandAuthorization = _ => <rule> *)
+(* let authorizationOf = _ => <rule> *)
 let gen_command_authorization ~loc rule =
   let wildcard = Ast_builder.Default.ppat_any ~loc in
   let fn = arity1_fun ~loc wildcard (as_rule ~loc rule) in
-  let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "authorizationOf"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
 
-(* let commandAuthorization = command => switch command { … | _ => default }.
-   Per-constructor rules become explicit cases; un-annotated constructors
-   fall through to the default. When [exhaustive] (every constructor of the
-   command type carries a rule), the wildcard default case is omitted — a
-   wildcard after an exhaustive set of explicit cases is unused and trips
-   ReScript's warning 11 (e.g. a single-constructor [@authorize] command). *)
+(* let authorizationOf = name => switch name { | "Ctor" => rule … | _ => default }.
+   A string switch always keeps its wildcard: a name the spec does not declare —
+   a spliced constructor among them — gets the file default. *)
 let gen_command_authorization_switch
     ~loc
-    ~(per_constructor_rules : (string * bool * expression) list)
-    ~(default_rule : expression)
-    ~(exhaustive : bool) =
+    ~(per_constructor_rules : (string * expression) list)
+    ~(default_rule : expression) =
   let cases =
-    List.map (fun (name, has_payload, rule) ->
-      let cstr_lid = { txt = Lident name; loc } in
-      let lhs =
-        if has_payload
-        then Ast_builder.Default.ppat_construct ~loc cstr_lid (Some (Ast_builder.Default.ppat_any ~loc))
-        else Ast_builder.Default.ppat_construct ~loc cstr_lid None
-      in
-      { pc_lhs = lhs; pc_guard = None; pc_rhs = rule }
-    ) per_constructor_rules
-  in
-  let cases =
-    if exhaustive then cases
-    else
-      let wildcard_case = {
-        pc_lhs = Ast_builder.Default.ppat_any ~loc;
+    List.map (fun (name, rule) ->
+      { pc_lhs = Ast_builder.Default.ppat_constant ~loc (Pconst_string (name, loc, None));
         pc_guard = None;
-        pc_rhs = default_rule;
-      } in
-      cases @ [wildcard_case]
+        pc_rhs = rule }
+    ) per_constructor_rules
+    @ [{ pc_lhs = Ast_builder.Default.ppat_any ~loc; pc_guard = None; pc_rhs = default_rule }]
   in
-  let cmd_var_pat = Ast_builder.Default.ppat_var ~loc { txt = "command"; loc } in
-  let cmd_var_ident =
-    Ast_builder.Default.pexp_ident ~loc { txt = Lident "command"; loc }
-  in
-  let switch = Ast_builder.Default.pexp_match ~loc cmd_var_ident cases in
-  let fn = arity1_fun ~loc cmd_var_pat (as_rule ~loc switch) in
-  let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
+  let name_pat = Ast_builder.Default.ppat_var ~loc { txt = "name"; loc } in
+  let name_ident = Ast_builder.Default.pexp_ident ~loc { txt = Lident "name"; loc } in
+  let switch = Ast_builder.Default.pexp_match ~loc name_ident cases in
+  let fn = arity1_fun ~loc name_pat (as_rule ~loc switch) in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "authorizationOf"; loc } in
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
+
+(* The member this one replaced. A spec still writing it would compile with the
+   binding ignored and every command on the default rule, so it is refused. *)
+let refuse_command_authorization ~loc (body : structure) =
+  if Util.has_let_binding "commandAuthorization" body then
+    Location.raise_errorf ~loc
+      "[reventless-ppx] `commandAuthorization` is replaced by `authorizationOf`, \
+       keyed by the command's constructor name:\n\n\
+      \  let authorizationOf = (name: string): Reventless.Authorization.rule<role> =>\n\
+      \    switch name {\n\
+      \    | \"ArchiveProduct\" => AllowRoles([Admin])\n\
+      \    | _ => AllowAuthenticated\n\
+      \    }\n\n\
+       Or drop it and annotate the constructors with `@authorize(...)`."
 
 (* Per-constructor `@authorize(rule)` extraction --------------------------- *)
 (* Scans the `command` variant type for `@authorize(rule)` constructor
-   attributes. Returns [(constructor_name, has_payload, rule_expression)]
-   for each annotated constructor. Empty list when no constructor carries
-   the annotation — caller falls back to the constant-lambda form. *)
-let extract_constructor_rules (body : structure) : (string * bool * expression) list =
+   attributes. Returns [(wire_name, rule_expression)] for each annotated
+   constructor — the name an encoded command carries, so an [@as("…")] wins
+   over the constructor's own. Empty list when no constructor carries the
+   annotation — caller falls back to the constant-lambda form. *)
+let wire_name (cd : constructor_declaration) =
+  List.find_map (fun (attr : attribute) ->
+    match attr.attr_name.txt, attr.attr_payload with
+    | "as", PStr [{ pstr_desc = Pstr_eval ({ pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ }, _); _ }] ->
+      Some s
+    | _ -> None
+  ) cd.pcd_attributes
+  |> Option.value ~default:cd.pcd_name.txt
+
+let extract_constructor_rules (body : structure) : (string * expression) list =
   List.concat_map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_type (_, decls) ->
@@ -248,11 +257,7 @@ let extract_constructor_rules (body : structure) : (string * bool * expression) 
               | Some attr ->
                 (match attr.attr_payload with
                  | PStr [{ pstr_desc = Pstr_eval (expr, _); _ }] ->
-                   let has_payload = match cd.pcd_args with
-                     | Pcstr_tuple [] -> false
-                     | _ -> true
-                   in
-                   Some (cd.pcd_name.txt, has_payload, expr)
+                   Some (wire_name cd, expr)
                  | _ -> None)
             ) ctors
           | _ -> []
@@ -260,34 +265,6 @@ let extract_constructor_rules (body : structure) : (string * bool * expression) 
       ) decls
     | _ -> []
   ) body
-
-(* Total number of constructors in the `@schema type command` variant. Used to
-   decide whether the per-constructor rules are exhaustive (every constructor
-   annotated) and the switch can drop its wildcard default. Returns 0 when
-   `command` is absent or not a variant (record/abstract) — callers then keep
-   the wildcard. *)
-let count_command_constructors (body : structure) : int =
-  List.fold_left (fun acc (item : structure_item) ->
-    match item.pstr_desc with
-    | Pstr_type (_, decls) ->
-      List.fold_left (fun acc (td : type_declaration) ->
-        if String.equal td.ptype_name.txt "command"
-           && Util.has_attr "schema" td.ptype_attributes
-        then
-          match td.ptype_kind with
-          | Ptype_variant ctors -> acc + List.length ctors
-          | _ -> acc
-        else acc
-      ) acc decls
-    | _ -> acc
-  ) 0 body
-
-(* Per-constructor rules are exhaustive when every constructor of the command
-   variant carries one — then the switch needs no wildcard default. *)
-let rules_are_exhaustive (body : structure)
-    (per_constructor_rules : (string * bool * expression) list) : bool =
-  let total = count_command_constructors body in
-  total > 0 && List.length per_constructor_rules = total
 
 (* Strip `@authorize` from constructor declarations in the `command` type so
    sury-ppx (which runs after us) doesn't see an unknown attribute. *)
@@ -377,7 +354,7 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
   if is_spec_namespace_pkg loc then ([], body, [])
   else
   let pick
-      ~(per_constructor_rules : (string * bool * expression) list)
+      ~(per_constructor_rules : (string * expression) list)
       (user_rule : expression option)
       (body_after_strip : structure) =
     let has_user_payload =
@@ -406,13 +383,13 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
     let body = strip_file_authorize_attrs body in
     let body = strip_authorize_attrs_from_command body in
     let (prefix, default_rule) = pick ~per_constructor_rules user_rule body in
-    let exhaustive = rules_are_exhaustive body per_constructor_rules in
-    let generated = not (Util.has_let_binding "commandAuthorization" body) in
+    refuse_command_authorization ~loc body;
+    let generated = not (Util.has_let_binding "authorizationOf" body) in
     let binding =
       if not generated
       then []
       else if List.length per_constructor_rules > 0
-      then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule ~exhaustive]
+      then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule]
       else [gen_command_authorization ~loc default_rule]
     in
     (prefix, body, role_type_suffix ~loc ~generated ~roles_in_scope:false body @ binding)
@@ -655,7 +632,7 @@ let external_system_suffix ~loc fname (body : structure) : structure_item list =
      }
 
    The file-level PPX driver doesn't visit those, so without a separate
-   walk they'd be missing [commandAuthorization] / [authorization] and
+   walk they'd be missing [authorizationOf] / [authorization] and
    fail signature checks against the Aggregate.Spec / ReadModel.Spec
    module types.
 
@@ -696,7 +673,7 @@ let inner_module_is_readmodel_spec (mb : module_binding) : bool =
 (* Inbound translation specs carry [@schema type externalInput]; outbound ones
    [@schema type outboundItem] — either marks a translation spec needing the
    optional [externalSystem] field. (Inbound also has [@schema type command], so it
-   ALSO matches the aggregate shape and gets commandAuthorization; the two
+   ALSO matches the aggregate shape and gets authorizationOf; the two
    injections compose.) *)
 let inner_module_is_translation_spec (mb : module_binding) : bool =
   match mb.pmb_expr.pmod_desc with
@@ -722,7 +699,8 @@ let inject_into_inner_module
     (mb : module_binding) : module_binding =
   match mb.pmb_expr.pmod_desc with
   | Pmod_structure body ->
-    let field_name = if is_command_carrier then "commandAuthorization" else "authorization" in
+    if is_command_carrier then refuse_command_authorization ~loc body;
+    let field_name = if is_command_carrier then "authorizationOf" else "authorization" in
     if Util.has_let_binding field_name body then
       let role = role_type_suffix ~loc ~generated:false ~roles_in_scope body in
       { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure (body @ role) } }
@@ -750,9 +728,7 @@ let inject_into_inner_module
       let injection =
         if is_command_carrier then
           if List.length per_constructor_rules > 0
-          then
-            let exhaustive = rules_are_exhaustive body per_constructor_rules in
-            gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule ~exhaustive
+          then gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule
           else gen_command_authorization ~loc default_rule
         else gen_authorization ~loc default_rule
       in
@@ -778,7 +754,7 @@ let walk_inline_specs (str : structure) : structure =
     match item.pstr_desc with
     | Pstr_module mb when inner_module_is_aggregate_spec mb ->
       (* Inbound translation specs also match the aggregate shape (they declare a
-         command): inject commandAuthorization AND, when it's a translation,
+         command): inject authorizationOf AND, when it's a translation,
          externalSystem. *)
       let mb' = inject_into_inner_module ~loc ~is_command_carrier:true ~roles_in_scope mb in
       let mb' = inject_command_transition_into_inner_module ~loc mb' in

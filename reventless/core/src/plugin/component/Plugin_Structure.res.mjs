@@ -644,12 +644,12 @@ function syntheticCommand(schema, variantName) {
   }
 }
 
-function constructorPermissions(commandSchema, commandAuthorization) {
-  return DcbTag$Reventless.extractAllVariantNames(commandSchema).map(variantName => commandAuthorization(syntheticCommand(commandSchema, variantName)));
+function constructorPermissions(commandSchema, authorizationOf) {
+  return DcbTag$Reventless.extractAllVariantNames(commandSchema).map(authorizationOf);
 }
 
-function inboundDoorPermission(commandSchema, commandAuthorization) {
-  return Authorization$Reventless.anyOf(constructorPermissions(commandSchema, commandAuthorization));
+function inboundDoorPermission(commandSchema, authorizationOf) {
+  return Authorization$Reventless.anyOf(DcbTag$Reventless.extractAllVariantNames(commandSchema).map(authorizationOf));
 }
 
 function annotateArgTypes(schema, argTypes) {
@@ -666,7 +666,7 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, parentSchema, commandAuthorization, commandTransition, derivedEdgeFor, v) {
+function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, parentSchema, authorizationOf, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
     let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
     let aggregateIdField = match[1];
@@ -708,7 +708,7 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
       let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
       apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
     }
-    let rule = commandAuthorization(syntheticCommand$1);
+    let rule = authorizationOf(variantName);
     let requiredAccess = accessKeysFor(rule);
     let mutationField = apiExposed ? mutationFieldFor(variantName) : "";
     let jsonSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(apiExposed, mutationField, v);
@@ -753,12 +753,12 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
   }
 }
 
-function extractCommandDefs(identityViews, isAggregate, partitionKey, mutationFieldFor, commandAuthorization, commandTransition, derivedEdgeForOpt, commandSchema) {
+function extractCommandDefs(identityViews, isAggregate, partitionKey, mutationFieldFor, authorizationOf, commandTransition, derivedEdgeForOpt, commandSchema) {
   let derivedEdgeFor = derivedEdgeForOpt !== undefined ? derivedEdgeForOpt : param => {};
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, commandAuthorization, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
   }
 }
 
@@ -1226,7 +1226,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), command => Authorization$Reventless.named(SCS.Spec.commandAuthorization(command)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), name => Authorization$Reventless.named(SCS.Spec.authorizationOf(name)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1241,7 +1241,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), command => Authorization$Reventless.named(A.Spec.commandAuthorization(command)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), name => Authorization$Reventless.named(A.Spec.authorizationOf(name)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
@@ -1276,7 +1276,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     targetName: ITS.Spec.targetName,
     externalSystem: ITS.Spec.externalSystem,
     chapter: componentChapters[ITS.Spec.name],
-    requiredRoles: nonEmpty(Array.from(new Set(constructorPermissions(ITS.Spec.commandSchema, cmd => Authorization$Reventless.named(ITS.Spec.commandAuthorization(cmd))).flatMap(Authorization$Reventless.rolesOf).map(role => role)).values()))
+    requiredRoles: nonEmpty(Array.from(new Set(DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema).map(name => Authorization$Reventless.named(ITS.Spec.authorizationOf(name))).flatMap(Authorization$Reventless.rolesOf).map(role => role)).values()))
   }));
   let tableFailures = [];
   let tableWarnings = [];

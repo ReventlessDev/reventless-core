@@ -81,7 +81,7 @@ module ProductDelegate = {
   @schema type error = NoError
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -121,7 +121,7 @@ module OrderDelegate = {
   @schema type error = NoError
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -159,7 +159,7 @@ module RecordDemandSlice = {
     DemandRecorded({productId: @s.matches(Reventless.DcbTag.string) string, orderId: string})
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
@@ -220,7 +220,7 @@ module SyncProductSlice = {
       })
   let moduleUrl = ""
   type role = Reventless.Role.name
-  let commandAuthorization = (_: command): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
   type lifecycleState = unit
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }

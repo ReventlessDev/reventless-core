@@ -190,7 +190,7 @@ describe("InboundTranslationSlice mutation — the door", () => {
       ~externalInputSchema=CatalogFeedSpec.externalInputSchema->S.castToUnknown,
       ~permission=?ReventlessCore.Dcb_Builder.inboundDoorPermission(
         CatalogFeedSpec.commandSchema,
-        CatalogFeedSpec.commandAuthorization,
+        CatalogFeedSpec.authorizationOf,
       ),
       ~server=DomainGraphQL_Server.asInterface,
     )

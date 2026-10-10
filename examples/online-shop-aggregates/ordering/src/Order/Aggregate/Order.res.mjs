@@ -73,7 +73,7 @@ function commandTransition(command) {
   }
 }
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -93,7 +93,7 @@ export {
   errorSchema,
   commandTransition,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   traits,
 }
 /* commandSchema Not a pure module */

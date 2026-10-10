@@ -111,14 +111,22 @@ function commandTransition(command) {
 
 let traits = [Attachments$TraitAttachments.declaration];
 
-function commandAuthorization(command) {
-  return {
-    TAG: "AllowRoles",
-    _0: [
-      "Admin",
-      "Merchandiser"
-    ]
-  };
+function authorizationOf(name) {
+  switch (name) {
+    case "AttachProductImage" :
+    case "RemoveProductImage" :
+    case "SetPrimaryProductImage" :
+    case "SetProductImageAltText" :
+      return {
+        TAG: "AllowRoles",
+        _0: [
+          "Admin",
+          "Merchandiser"
+        ]
+      };
+    default:
+      return "AllowAuthenticated";
+  }
 }
 
 let name = "ProductImages";
@@ -140,7 +148,7 @@ export {
   commandTransition,
   traits,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
 }
 /* consumedEventSchema Not a pure module */

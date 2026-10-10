@@ -1,9 +1,11 @@
 # Plan: a command's rule looked up by its name, without a cast
 
 **Date:** 2026-10-01<br/>
-**Status:** Proposed. Nothing built.<br/>
-**Relates to:** `done/roles-a-plugin-declares-and-a-platform-provides.md` (the rule
-type this changes, `rule<'role>`), `generated-surfaces-state-required-access.md`
+**Status:** Done (2026-10-10). Built as described; see [§6](#6--as-built) for where
+the build departed from the text.<br/>
+**Relates to:** [roles-a-plugin-declares-and-a-platform-provides.md](roles-a-plugin-declares-and-a-platform-provides.md)
+(the rule type this changes, `rule<'role>`),
+[generated-surfaces-state-required-access.md](generated-surfaces-state-required-access.md)
 (what `requiredAccess` is derived from).
 
 **In plain words.** Every command spec has a function that says who may issue
@@ -144,3 +146,27 @@ switch is written by the host, not generated, so there is no PPX-owned list of
 constructor-to-answer pairs to emit by name. Removing that cast needs its own
 design (for example, the PPX wrapping the host's switch in a by-name lookup over
 the declared constructors), and is left to a plan of its own.
+
+## §6 — As built
+
+- **The name is the wire name.** The PPX keys each case by the name an encoded
+  command carries, so a constructor with `@as("…")` is matched under its alias —
+  the same name `DcbTag.extractAllVariantNames` and `Message.variantNameOfJson`
+  return, which is what every caller passes.
+- **A string switch always keeps its wildcard**, so the PPX's "exhaustive rules
+  drop the default" special case (written to avoid warning 11 on a constructor
+  switch) is gone.
+- **A spec still declaring `commandAuthorization` is a compile error** naming the
+  replacement, rather than compiling with the binding ignored and every command
+  on the default rule.
+- **The inbound callback checks a real command by its encoded name.** It encodes
+  the translated commands first and reads each one's rule off its `commandJson`,
+  so the check and the message published agree on the name.
+- **The fake builders are not all deleted.** `Plugin_Structure.syntheticCommand`
+  stays, because `commandTransition` is still evaluated against a stand-in
+  ([§5](#5--the-same-shape-not-covered-here)). The three used only for
+  authorization (in `Plugin_Builder`, `Dcb_Builder` and
+  `CommandGeneratorResolvers_GraphQL`) are gone.
+- **`AuthzProbe` reads its command rules off the specs.** Its four restated rules
+  existed because the PPX lambda carried no arity and could not be applied from
+  ReScript; it does now, so the probe calls `authorizationOf` like the framework.

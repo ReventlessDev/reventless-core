@@ -8,6 +8,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
@@ -167,10 +168,6 @@ function Make(Spec) {
         return fail(undefined, msg._0);
       }
       let pairs = msg._0;
-      let refused = pairs.find(param => !callerAdmits(Authorization$Reventless.named(Spec.commandAuthorization(param[1])), caller));
-      if (refused !== undefined) {
-        return fail("Forbidden", Spec.name + `: the caller is not authorized for every command this input translates into`);
-      }
       let msg$1 = Stdlib_Array.reduce(pairs, {
         TAG: "Ok",
         _0: []
@@ -196,6 +193,9 @@ function Make(Spec) {
         return fail(undefined, msg$1._0);
       }
       let msgs = msg$1._0;
+      if (msgs.some(param => !callerAdmits(Authorization$Reventless.named(Spec.authorizationOf(Message$Reventless.variantNameOfJson(param.commandJson))), caller))) {
+        return fail("Forbidden", Spec.name + `: the caller is not authorized for every command this input translates into`);
+      }
       if (msgs.length === 0) {
         return succeed(requestId, inputJson, []);
       }

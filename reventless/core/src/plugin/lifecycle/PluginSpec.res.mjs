@@ -146,7 +146,7 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Disconnect"
 ]);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -170,7 +170,7 @@ export {
   commandTransition,
   commandSchema$1 as commandSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   traits,
 }
 /* commandSchema Not a pure module */

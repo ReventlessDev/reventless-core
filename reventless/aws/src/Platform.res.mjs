@@ -485,7 +485,7 @@ function MakeWithConfig(Config) {
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    authorizationOf: UiFragmentRegistry$ReventlessCore.authorizationOf,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
@@ -682,7 +682,7 @@ function MakeWithConfig(Config) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    authorizationOf: PluginSpec$ReventlessCore.authorizationOf,
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
@@ -1901,7 +1901,7 @@ function Make($star) {
     errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
     eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
     commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    authorizationOf: UiFragmentRegistry$ReventlessCore.authorizationOf,
     commandTransition: UiFragmentRegistry$ReventlessCore.commandTransition,
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
@@ -2098,7 +2098,7 @@ function Make($star) {
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
-    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization,
+    authorizationOf: PluginSpec$ReventlessCore.authorizationOf,
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({

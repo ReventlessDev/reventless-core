@@ -9,10 +9,14 @@ import * as Products$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catal
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as CategoryId$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/CategoryId.res.mjs";
 import * as Customers$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers.res.mjs";
+import * as ShipOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChange/ShipOrder.res.mjs";
+import * as CancelOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChange/CancelOrder.res.mjs";
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as ProductDemand$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateViewStream/ProductDemand.res.mjs";
 import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
+import * as ArchiveProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChange/ArchiveProduct.res.mjs";
+import * as RenameCategory$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChange/RenameCategory.res.mjs";
 import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
 
 function permits(rule, groups) {
@@ -33,28 +37,16 @@ function describeRule(rule) {
   }
 }
 
-let catalogOperator = Authorization$Reventless.named({
-  TAG: "AllowRoles",
-  _0: [
-    "Admin",
-    "Merchandiser"
-  ]
-});
-
-let orderFulfilment = Authorization$Reventless.named({
-  TAG: "AllowRoles",
-  _0: [
-    "Admin",
-    "Fulfilment"
-  ]
-});
+function commandRule(authorizationOf, name) {
+  return Authorization$Reventless.named(authorizationOf(name));
+}
 
 let missing = "probe-does-not-exist";
 
 let cases = [
   {
     name: "Catalog_ArchiveProduct",
-    rule: catalogOperator,
+    rule: Authorization$Reventless.named(ArchiveProduct$CatalogPlugin.authorizationOf("ArchiveProduct")),
     subject: {
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.archiveProduct({
@@ -65,7 +57,7 @@ let cases = [
   },
   {
     name: "Catalog_RenameCategory",
-    rule: catalogOperator,
+    rule: Authorization$Reventless.named(RenameCategory$CatalogPlugin.authorizationOf("RenameCategory")),
     subject: {
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.renameCategory({
@@ -77,7 +69,7 @@ let cases = [
   },
   {
     name: "Ordering_ShipOrder",
-    rule: orderFulfilment,
+    rule: Authorization$Reventless.named(ShipOrder$OrderingPlugin.authorizationOf("ShipOrder")),
     subject: {
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.shipOrder({
@@ -88,7 +80,7 @@ let cases = [
   },
   {
     name: "Ordering_CancelOrder",
-    rule: "AllowAuthenticated",
+    rule: Authorization$Reventless.named(CancelOrder$OrderingPlugin.authorizationOf("CancelOrder")),
     subject: {
       TAG: "Command",
       _0: DemoCommands$OnlineShopHybridSeed.cancelOrder({
@@ -256,14 +248,10 @@ let dataSet = {
   seed: run
 };
 
-let anyCaller = "AllowAuthenticated";
-
 export {
   permits,
   describeRule,
-  catalogOperator,
-  orderFulfilment,
-  anyCaller,
+  commandRule,
   missing,
   cases,
   ask,
@@ -271,4 +259,4 @@ export {
   run,
   dataSet,
 }
-/* catalogOperator Not a pure module */
+/* cases Not a pure module */

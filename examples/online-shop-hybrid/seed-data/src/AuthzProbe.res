@@ -16,27 +16,8 @@
 // a payload the domain refuses anyway — so a door that opens answers
 // `CommandRejected`, which appends no events.
 //
-// **Queryable rules are derived; command rules are written out here.** That split
-// is not a preference, it is a limit:
-//
-//   - A queryable's rule is a plain value (`Products.authorization`), so this
-//     file reads it and a re-annotation moves the check automatically.
-//   - A command's rule is only reachable through the `commandAuthorization`
-//     function the PPX injects, and that function cannot be called from ReScript
-//     at all: a `pexp_fun` synthesised by a ppxlib PPX carries no arity — ReScript
-//     stores that on its own AST node — so every application of it is refused,
-//     `f(x)` and `x->f` alike. The framework's own call sites never noticed,
-//     because they launder it through `Obj.magic` first.
-//
-// So the four command rules below are stated rather than read, and the drift that
-// costs is worth naming: change an `@authorize` without changing them and this
-// check FAILS, loudly, with an explanation pointing at the wrong culprit. That is
-// noise in a check you run deliberately — annoying, and visible. It is a smaller
-// price than the alternative that was tried and reverted: having the PPX emit the
-// rules as data on every command-carrying spec in the repo, which is a permanent
-// export on ~50 files to serve four lines here. `Plugin.commandDef.requiredAccess`
-// already publishes this for consumers that can reach a plugin structure; this
-// package cannot, having no Platform instance.
+// **Every rule is read off its spec**, so a re-annotation moves the check with
+// it: a queryable's `authorization`, a command's `authorizationOf(name)`.
 
 open ReventlessSeed
 
@@ -69,21 +50,9 @@ type probeCase = {
   subject: subject,
 }
 
-// The two rules the catalog and ordering commands are annotated with, named once
-// so the cases below read as "this command, that rule" rather than repeating a
-// group list four times. Keep these in step with the `@authorize` attributes on
-// the command constructors — see the note at the top of this file for why they
-// cannot be read from the spec. Typed by each plugin's own roles, so a role either
-// plugin stops declaring fails to compile here.
-let catalogOperator: Reventless.Authorization.permission =
-  (
-    AllowRoles([Admin, Merchandiser]): Reventless.Authorization.rule<CatalogPlugin.Roles.t>
-  )->Reventless.Authorization.named
-let orderFulfilment: Reventless.Authorization.permission =
-  (
-    AllowRoles([Admin, Fulfilment]): Reventless.Authorization.rule<OrderingPlugin.Roles.t>
-  )->Reventless.Authorization.named
-let anyCaller: Reventless.Authorization.permission = AllowAuthenticated
+// A command's rule, by the constructor name the spec answers for.
+let commandRule = (authorizationOf: string => Reventless.Authorization.rule<'role>, name) =>
+  name->authorizationOf->Reventless.Authorization.named
 
 // Commands are sent with payloads the domain refuses anyway — ids that cannot
 // exist — so an authorized caller is rejected by the domain rather than served.
@@ -96,14 +65,14 @@ let cases: array<probeCase> = [
   // Catalog: gated on Admin | Merchandiser.
   {
     name: "Catalog_ArchiveProduct",
-    rule: catalogOperator,
+    rule: commandRule(CatalogPlugin.ArchiveProduct.authorizationOf, "ArchiveProduct"),
     subject: Command(
       DemoCommands.archiveProduct(ArchiveProduct({productId: CatalogSpec.ProductId.make(missing)})),
     ),
   },
   {
     name: "Catalog_RenameCategory",
-    rule: catalogOperator,
+    rule: commandRule(CatalogPlugin.RenameCategory.authorizationOf, "RenameCategory"),
     subject: Command(
       DemoCommands.renameCategory(
         RenameCategory({categoryId: CatalogPlugin.CategoryId.make(missing), name: "probe"}),
@@ -114,7 +83,7 @@ let cases: array<probeCase> = [
   // roles are not interchangeable.
   {
     name: "Ordering_ShipOrder",
-    rule: orderFulfilment,
+    rule: commandRule(OrderingPlugin.ShipOrder.authorizationOf, "ShipOrder"),
     subject: Command(
       DemoCommands.shipOrder(ShipOrder({orderId: OrderingPlugin.OrderId.make(missing)})),
     ),
@@ -124,13 +93,13 @@ let cases: array<probeCase> = [
   // that expects refusal.
   {
     name: "Ordering_CancelOrder",
-    rule: anyCaller,
+    rule: commandRule(OrderingPlugin.CancelOrder.authorizationOf, "CancelOrder"),
     subject: Command(
       DemoCommands.cancelOrder(CancelOrder({orderId: OrderingPlugin.OrderId.make(missing)})),
     ),
   },
-  // The two gated views, read off their specs, and the ungated control for the
-  // same reason as the command one.
+  // The two gated views, and the ungated control for the same reason as the
+  // command one.
   {
     name: "Catalog_ProductDemands",
     rule: CatalogPlugin.ProductDemand.authorization->Reventless.Authorization.named,

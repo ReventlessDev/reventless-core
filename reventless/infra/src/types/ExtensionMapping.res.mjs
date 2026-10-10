@@ -30,7 +30,7 @@ let commandSchema = Sury.$unit;
 
 let moduleUrl = import.meta.url;
 
-function commandAuthorization() {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -47,7 +47,7 @@ let NoDelegate = {
   errorSchema: errorSchema,
   commandSchema: commandSchema,
   moduleUrl: moduleUrl,
-  commandAuthorization: commandAuthorization,
+  authorizationOf: authorizationOf,
   commandTransition: commandTransition,
   traits: traits
 };

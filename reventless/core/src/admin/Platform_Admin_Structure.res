@@ -37,8 +37,7 @@ let pluginCommands: array<commandDef> = Plugin_Structure.extractCommandDefs(
   ~isAggregate=true,
   ~mutationFieldFor=variantName =>
     Api_Naming.adminField(~name=PluginSpec.name ++ "_" ++ variantName),
-  ~commandAuthorization=command =>
-    PluginSpec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
+  ~authorizationOf=name => PluginSpec.authorizationOf(name)->Reventless.Authorization.named,
   ~commandTransition=PluginSpec.commandTransition->Obj.magic,
   commandSchema,
 )

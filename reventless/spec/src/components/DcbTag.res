@@ -698,8 +698,8 @@ Returns `true` if the given variant constructor (by name) carries a record
 payload (compiled to `{TAG, ...}`), `false` if payload-less (compiled to a
 bare string literal). Returns `false` for names not found in the schema.
 
-Used by resolver shims to synthesize the correct runtime shape when feeding
-a command value into the PPX-generated `commandAuthorization` switch.
+Used to synthesize the correct runtime shape when feeding a stand-in command
+into a spec's `commandTransition` switch.
 */
 let isVariantPayloadBearing = (schema: S.t<'a>, name: string): bool => {
   // Returns true iff a record-payload variant in the schema has TAG === name.

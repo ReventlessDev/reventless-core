@@ -214,32 +214,22 @@ module Make = (
                 ~kind=Aggregate,
                 ~fields=fieldNames,
                 ~commandSchema,
-                ~commandAuthorization=command =>
-                  M.Spec.commandAuthorization(command->Obj.magic)->Reventless.Authorization.named,
+                ~authorizationOf=name =>
+                  M.Spec.authorizationOf(name)->Reventless.Authorization.named,
               )
             )
             let aggDef =
               pluginStructure->Option.flatMap(s =>
                 s.aggregates->Array.find(d => d.name == M.Spec.name)
               )
-            // Stage E2 (host-ui-login-core): derive per-field permissions by
-            // evaluating the PPX-generated `commandAuthorization` against a
-            // synthetic command value per constructor. Mirrors the resolver-time
-            // shape from `CommandGeneratorResolvers_GraphQL.syntheticCommand` —
-            // payload-bearing variants compile to `{TAG, ...}`, payload-less to
-            // bare strings.
+            // Each field gated by its own constructor's rule.
             let fieldPermissions = Dict.make()
-            filteredConstructorNames->Array.forEachWithIndex((cname, idx) => {
-              let fieldName = fieldNames->Array.getUnsafe(idx)
-              let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(
-                M.Spec.commandSchema->Obj.magic,
-                cname,
+            filteredConstructorNames->Array.forEachWithIndex((cname, idx) =>
+              fieldPermissions->Dict.set(
+                fieldNames->Array.getUnsafe(idx),
+                M.Spec.authorizationOf(cname)->Reventless.Authorization.named,
               )
-              let syntheticCmd: unknown = hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
-              let rule =
-                M.Spec.commandAuthorization(syntheticCmd->Obj.magic)->Reventless.Authorization.named
-              fieldPermissions->Dict.set(fieldName, rule)
-            })
+            )
             [
               {
                 ReventlessInfra.Api.fieldNames,

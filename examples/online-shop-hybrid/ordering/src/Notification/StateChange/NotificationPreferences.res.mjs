@@ -180,7 +180,7 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "RecordDeliveryFailure"
 ]);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -208,7 +208,7 @@ export {
   traits,
   commandSchema$1 as commandSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
 }

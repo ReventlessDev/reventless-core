@@ -23,14 +23,18 @@ let eventSchema = Sury.$schema(s => ({
   name: s.m(Sury.string)
 }));
 
-function commandAuthorization(command) {
-  return {
-    TAG: "AllowRoles",
-    _0: [
-      "Admin",
-      "Merchandiser"
-    ]
-  };
+function authorizationOf(name) {
+  if (name === "AddCategory") {
+    return {
+      TAG: "AllowRoles",
+      _0: [
+        "Admin",
+        "Merchandiser"
+      ]
+    };
+  } else {
+    return "AllowAuthenticated";
+  }
 }
 
 function commandTransition(param) {
@@ -55,7 +59,7 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

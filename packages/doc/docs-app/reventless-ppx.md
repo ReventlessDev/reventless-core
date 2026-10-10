@@ -426,9 +426,23 @@ type command =
   | @authorize(AllowRoles([Admin, Merchandiser])) AddProduct({productId: ProductId.t, name: string})
 ```
 
-The PPX copies the rule unchanged into a generated binding, `commandAuthorization`
-for a command carrier and `authorization` for a view, typed
-`Reventless.Authorization.rule<role>`. Beside it, it declares `type role`:
+The PPX copies the rule unchanged into a generated binding, typed
+`Reventless.Authorization.rule<role>`: `authorization` for a view, and
+`authorizationOf` for a command carrier — a switch on the constructor's name, so
+the framework can ask who may issue `AddProduct` before any command exists:
+
+```rescript
+let authorizationOf = (name): Reventless.Authorization.rule<role> =>
+  switch name {
+  | "AddProduct" => AllowRoles([Admin, Merchandiser])
+  | _ => AllowAuthenticated // the file's @@reventless.authorize, or this default
+  }
+```
+
+A constructor without `@authorize` — a spliced one among them — gets the default.
+A spec that writes the binding by hand writes the same switch on names; one still
+declaring the older `commandAuthorization` is a compile error naming this one.
+Beside the binding, the PPX declares `type role`:
 
 | Spec | `type role` |
 | --- | --- |

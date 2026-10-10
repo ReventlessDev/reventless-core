@@ -62,7 +62,8 @@ pnpm exec graft-trait @reventlessdev/trait-address-geocoding \
    you declare beside it — the compiler resolves the constructors, the switch is
    exhaustive so it names any spliced command you have not answered for, and every
    arm has to draw on that one lifecycle. Who may send the commands goes in
-   `commandAuthorization` the same way.
+   `@@reventless.authorize`, or in an `authorizationOf` switch on their names for a
+   rule per command.
 
    A host whose subject is not called `address`, or is not a `string`, gets the same
    graft with the constructors spelled out instead of spliced — pass `--subject`, and

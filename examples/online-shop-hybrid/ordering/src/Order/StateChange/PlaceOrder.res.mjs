@@ -109,7 +109,7 @@ let eventSchema = Sury.$schema(s => ({
   firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -138,7 +138,7 @@ export {
   orderLineSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

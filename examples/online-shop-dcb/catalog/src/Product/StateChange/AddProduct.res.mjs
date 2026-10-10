@@ -24,7 +24,7 @@ let eventSchema = Sury.$schema(s => ({
   price: s.m(Sury.number)
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -50,7 +50,7 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

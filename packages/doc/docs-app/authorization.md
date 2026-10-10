@@ -13,7 +13,7 @@ to exercise the result locally.
 ## The default is "any authenticated caller"
 
 Every command-carrying component (aggregate, StateChangeSlice,
-InboundTranslationSlice) gets a `commandAuthorization` binding, and every
+InboundTranslationSlice) gets an `authorizationOf` binding, and every
 query-carrying one (ReadModel, StateViewSlice) gets an `authorization` binding,
 injected for you with the rule `AllowAuthenticated`. So a spec that says nothing
 about authorization is already closed to anonymous callers — you narrow from

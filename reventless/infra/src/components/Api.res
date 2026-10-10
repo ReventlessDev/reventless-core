@@ -93,11 +93,11 @@ type mutationSchemaEntry = {
   fieldNames: array<string>,
   commandSchema: S.t<unknown>,
   authorization?: Reventless.ReadModel.authorization,
-  /** Spec-level per-field authorization derived from `Spec.commandAuthorization`,
+  /** Spec-level per-field authorization derived from `Spec.authorizationOf`,
       keyed by mutation field name. Used by AWS to inject
       `@aws_cognito_user_pools(cognito_groups: ...)` per field (Stage E2 in
       `docs/plans/done/host-ui-login-core.md`). In-memory enforcement still happens
-      at the resolver layer via the same `commandAuthorization` function. */
+      at the resolver layer via the same `authorizationOf` function. */
   fieldPermissions?: dict<Reventless.Authorization.permission>,
   /** Opt a mutation field into deploy-time IAM (SigV4) invocation in addition to
       its Cognito authorization. When `true`, the AWS provider emits the

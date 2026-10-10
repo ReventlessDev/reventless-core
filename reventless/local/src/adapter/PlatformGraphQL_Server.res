@@ -21,7 +21,7 @@
 // failure, and cannot afford to read it as a session that has ended.
 //
 // Mutations are wrapped (in addition to their per-command
-// `commandAuthorization` rule inside `CommandGeneratorResolvers_GraphQL.register`)
+// `authorizationOf` rule inside `CommandGeneratorResolvers_GraphQL.register`)
 // because the per-command rule defaults to `AllowAuthenticated` and the
 // in-memory adapter falls back to `defaultUser` on missing-bearer requests
 // — without the wrapper, anonymous callers could trigger admin mutations

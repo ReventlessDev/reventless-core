@@ -28,10 +28,10 @@ let check label (item : structure_item) =
 
 let () =
   let rule = [%expr Reventless.Authorization.AllowAuthenticated] in
-  check "commandAuthorization (constant)"
+  check "authorizationOf (constant)"
     (ReventlessPpx__AuthorizationInjection.gen_command_authorization ~loc rule);
-  check "commandAuthorization (switch)"
+  check "authorizationOf (switch)"
     (ReventlessPpx__AuthorizationInjection.gen_command_authorization_switch ~loc
-       ~per_constructor_rules:[ ("Add", true, rule) ] ~default_rule:rule ~exhaustive:false);
+       ~per_constructor_rules:[ ("Add", rule) ] ~default_rule:rule);
   check "commandTransition" (ReventlessPpx__AuthorizationInjection.gen_command_transition ~loc);
   if !failures > 0 then exit 1 else print_endline "ALL ARITY CHECKS PASSED"

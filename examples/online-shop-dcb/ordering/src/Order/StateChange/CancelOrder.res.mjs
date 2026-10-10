@@ -38,7 +38,7 @@ function commandTransition(command) {
   };
 }
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -61,7 +61,7 @@ export {
   eventSchema,
   commandTransition,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   traits,
 }

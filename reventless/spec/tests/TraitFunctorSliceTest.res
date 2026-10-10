@@ -130,7 +130,7 @@ module MakeAttachmentSlice = (H: GraftConfig) => {
   let consumedEventSchema = eventSchema
 
   type role = H.role
-  let commandAuthorization = _ => H.authorize
+  let authorizationOf = _ => H.authorize
   type lifecycleState = H.lifecycleState
   let commandTransition = _ => H.guard
   let traits: array<Trait.t> = []
@@ -295,18 +295,8 @@ describe("P4 — a functor-produced module IS a StateChangeSlice spec", () => {
   // abstract, which is right — the runtime only ever decodes one off the wire.
   testSync("each graft keeps its own authorization", () =>
     expect((
-      ProductImagesSpec.commandAuthorization(
-        ProductImagesSpec.Attach({
-          entityId: "p1",
-          ref: "r",
-        }),
-      ),
-      CategoryImagesSpec.commandAuthorization(
-        CategoryImagesSpec.Attach({
-          entityId: "c1",
-          ref: "r",
-        }),
-      ),
+      ProductImagesSpec.authorizationOf("Attach"),
+      CategoryImagesSpec.authorizationOf("Attach"),
     ))->toEqual((
       Authorization.AllowRoles([Roles.Admin, Merchandiser]),
       Authorization.AllowRoles([Roles.Admin]),

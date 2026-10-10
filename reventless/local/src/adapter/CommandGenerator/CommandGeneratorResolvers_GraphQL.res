@@ -83,17 +83,6 @@ let checkPluginStatus = (~field: string): option<JSON.t> =>
   | None => None
   }
 
-// Build a synthetic command value sufficient for evaluating
-// `commandAuthorization`. ReScript variants with record payloads compile to
-// `{TAG: cname, ...payload}` and the PPX-generated switch matches `Ctor(_)`
-// which only checks `command.TAG === cname`. Payload-less constructors
-// compile to bare string literals and the switch matches them with
-// `command === "Cname"`, so the synthetic value must be a bare string in
-// that case — otherwise the wildcard branch (file-level default) wins
-// instead of the per-constructor rule.
-let syntheticCommand = (cname: string, ~hasPayload: bool): unknown =>
-  hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
-
 let capitalize = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
 // -- CommandResult SDL types --------------------------------------------------
@@ -139,7 +128,7 @@ let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
 // stale `_0` payload arg into the SDL. Looking up by name avoids that.
 let variantIndexForField = (commandSchema: S.t<unknown>, ~field: string): int => {
   let cname = extractCommandName(field)
-  let allNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+  let allNames = Reventless.DcbTag.extractAllVariantNames(commandSchema)
   allNames->Array.indexOf(cname)
 }
 
@@ -188,7 +177,7 @@ let runCommand = async (
 let register = (
   ~fields: array<string>,
   ~commandSchema: S.t<unknown>,
-  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ~authorizationOf: string => Reventless.Authorization.permission,
   ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
 ) => {
   ensureCommandResultTypes(server)
@@ -210,13 +199,6 @@ let register = (
   fields->Array.forEach(field => {
     let handlerRef = ref(None)
     handlerRefs->Dict.set(field, handlerRef)
-    // hasPayload is fixed per field — capture once at registration time so
-    // the resolver doesn't re-walk the schema per request.
-    let variantIndex = variantIndexForField(commandSchema, ~field)
-    let hasPayload = switch extractVariantSchema(commandSchema, ~index=variantIndex) {
-    | Object(_) => true
-    | _ => false
-    }
     let commandName = extractCommandName(field)
     let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
       _root,
@@ -229,7 +211,7 @@ let register = (
         | Some(rejected) => rejected
         | None =>
           let identity = extractIdentity(ctx)
-          let rule = commandAuthorization(syntheticCommand(commandName, ~hasPayload))
+          let rule = authorizationOf(commandName)
           if !Reventless.Authorization.isAllowed(rule, identity) {
             rejectForbidden(~field)
           } else {
@@ -262,7 +244,7 @@ let register = (
 let registerDcb = (
   ~fieldName: string,
   ~commandSchema: S.t<unknown>,
-  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ~authorizationOf: string => Reventless.Authorization.permission,
   ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
 ) => {
   ensureCommandResultTypes(server)
@@ -271,7 +253,7 @@ let registerDcb = (
   // constructor (slice name == constructor); a multi-command slice's `Plugin_Ctor`
   // resolves to `Ctor`. Position 0 was previously hardcoded, which dropped every
   // non-first constructor of a multi-command slice.
-  let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+  let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema)
   let variantIndex = variantIndexForField(commandSchema, ~field=fieldName)
   let variantSchema = extractVariantSchema(
     commandSchema,
@@ -284,7 +266,6 @@ let registerDcb = (
     (
       variantIndex >= 0 ? constructorNames->Array.get(variantIndex) : constructorNames->Array.get(0)
     )->Option.getOr(fieldName)
-  let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(commandSchema->Obj.magic, tag)
 
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
@@ -300,7 +281,7 @@ let registerDcb = (
       | Some(rejected) => rejected
       | None =>
         let identity = extractIdentity(ctx)
-        let rule = commandAuthorization(syntheticCommand(tag, ~hasPayload))
+        let rule = authorizationOf(tag)
         if !Reventless.Authorization.isAllowed(rule, identity) {
           rejectForbidden(~field=fieldName)
         } else {

@@ -21,7 +21,7 @@ let eventSchema = Sury.$schema(s => ({
   customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -47,7 +47,7 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   commandTransition,
   traits,

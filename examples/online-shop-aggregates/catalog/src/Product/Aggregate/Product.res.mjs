@@ -60,7 +60,7 @@ let errorSchema = Sury.union([
   Sury.literal("ProductNotFound")
 ]);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -83,7 +83,7 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   commandTransition,
   traits,
 }

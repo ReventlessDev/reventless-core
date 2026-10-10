@@ -9,7 +9,7 @@
 // aggregate; the two run side by side on the same EP.
 //
 // A StateChangeSlice Spec structurally satisfies Reventless.Aggregate.Spec (name, Id,
-// command/event/error + schemas, commandSchema, commandAuthorization, moduleUrl), which is all
+// command/event/error + schemas, commandSchema, authorizationOf, moduleUrl), which is all
 // ExtensionPointMapping.Make consumes from a Delegate.
 
 open ReventlessInfra.ExtensionPointMapping

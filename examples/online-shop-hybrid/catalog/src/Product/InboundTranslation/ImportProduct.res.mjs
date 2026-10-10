@@ -24,14 +24,18 @@ let commandSchema = Sury.$schema(s => ({
   categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
 }));
 
-function commandAuthorization(command) {
-  return {
-    TAG: "AllowRoles",
-    _0: [
-      "Admin",
-      "Merchandiser"
-    ]
-  };
+function authorizationOf(name) {
+  if (name === "AddProduct") {
+    return {
+      TAG: "AllowRoles",
+      _0: [
+        "Admin",
+        "Merchandiser"
+      ]
+    };
+  } else {
+    return "AllowAuthenticated";
+  }
 }
 
 let traits = [];
@@ -54,7 +58,7 @@ export {
   targetName,
   externalSystem,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   traits,
 }
 /* externalInputSchema Not a pure module */

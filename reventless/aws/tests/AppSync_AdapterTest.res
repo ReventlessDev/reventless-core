@@ -154,12 +154,11 @@ module TwoRuleFeed = {
   @schema
   type command = AddProduct({sku: string}) | AddCategory({sku: string})
 
-  let commandAuthorization = (command: command): Reventless.Authorization.rule<
-    Reventless.Role.name,
-  > =>
-    switch command {
-    | AddProduct(_) => AllowRoles([Reventless.Role.make("Merchandiser")])
-    | AddCategory(_) => AllowRoles([Reventless.Role.make("Admin")])
+  let authorizationOf = (name: string): Reventless.Authorization.rule<Reventless.Role.name> =>
+    switch name {
+    | "AddProduct" => AllowRoles([Reventless.Role.make("Merchandiser")])
+    | "AddCategory" => AllowRoles([Reventless.Role.make("Admin")])
+    | _ => DenyAll
     }
 }
 
@@ -244,7 +243,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
   testSync("an inbound slice's field carries every constructor's groups", () => {
     let permission = ReventlessCore.Dcb_Builder.inboundDoorPermission(
       TwoRuleFeed.commandSchema,
-      TwoRuleFeed.commandAuthorization,
+      TwoRuleFeed.authorizationOf,
     )
     let fp = Dict.fromArray(permission->Option.mapOr([], p => [("p_TwoRuleFeed", p)]))
     let entry = mutationEntry(~fieldNames=["p_TwoRuleFeed"], ~fieldPermissions=fp)

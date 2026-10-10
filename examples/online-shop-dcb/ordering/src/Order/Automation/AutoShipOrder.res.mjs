@@ -13,7 +13,7 @@ let commandSchema = Sury.$schema(s => ({
   orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema))
 }));
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -44,7 +44,7 @@ export {
   heartbeatInterval,
   targetName,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   commandTransition,
   traits,
 }

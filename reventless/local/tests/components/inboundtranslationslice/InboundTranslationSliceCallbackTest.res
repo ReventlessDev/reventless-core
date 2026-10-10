@@ -224,7 +224,7 @@ describe("InboundTranslationSlice Callback", () => {
 
           type role = Reventless.Role.name
 
-          let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
+          let authorizationOf = (_: string): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
         }
 
@@ -290,7 +290,7 @@ describe("InboundTranslationSlice Callback", () => {
 
           type role = Reventless.Role.name
 
-          let commandAuthorization = (_: command): Reventless.Authorization.rule<role> =>
+          let authorizationOf = (_: string): Reventless.Authorization.rule<role> =>
             AllowAuthenticated
         }
 

@@ -156,7 +156,7 @@ function Make(Platform) {
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
     eventSchema: AddCategory$CatalogPlugin.eventSchema,
     commandSchema: AddCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: AddCategory$CatalogPlugin.commandAuthorization,
+    authorizationOf: AddCategory$CatalogPlugin.authorizationOf,
     commandTransition: AddCategory$CatalogPlugin.commandTransition,
     traits: AddCategory$CatalogPlugin.traits,
     readConsistency: AddCategory$CatalogPlugin.readConsistency
@@ -173,7 +173,7 @@ function Make(Platform) {
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     eventSchema: AddProduct$CatalogPlugin.eventSchema,
     commandSchema: AddProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: AddProduct$CatalogPlugin.commandAuthorization,
+    authorizationOf: AddProduct$CatalogPlugin.authorizationOf,
     commandTransition: AddProduct$CatalogPlugin.commandTransition,
     traits: AddProduct$CatalogPlugin.traits,
     readConsistency: AddProduct$CatalogPlugin.readConsistency
@@ -190,7 +190,7 @@ function Make(Platform) {
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
     eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: ArchiveCategory$CatalogPlugin.commandAuthorization,
+    authorizationOf: ArchiveCategory$CatalogPlugin.authorizationOf,
     commandTransition: ArchiveCategory$CatalogPlugin.commandTransition,
     traits: ArchiveCategory$CatalogPlugin.traits,
     readConsistency: ArchiveCategory$CatalogPlugin.readConsistency
@@ -207,7 +207,7 @@ function Make(Platform) {
     errorSchema: ArchiveProduct$CatalogPlugin.errorSchema,
     eventSchema: ArchiveProduct$CatalogPlugin.eventSchema,
     commandSchema: ArchiveProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: ArchiveProduct$CatalogPlugin.commandAuthorization,
+    authorizationOf: ArchiveProduct$CatalogPlugin.authorizationOf,
     commandTransition: ArchiveProduct$CatalogPlugin.commandTransition,
     traits: ArchiveProduct$CatalogPlugin.traits,
     readConsistency: ArchiveProduct$CatalogPlugin.readConsistency
@@ -224,7 +224,7 @@ function Make(Platform) {
     errorSchema: CategoryImages$CatalogPlugin.errorSchema,
     eventSchema: CategoryImages$CatalogPlugin.eventSchema,
     commandSchema: CategoryImages$CatalogPlugin.commandSchema,
-    commandAuthorization: CategoryImages$CatalogPlugin.commandAuthorization,
+    authorizationOf: CategoryImages$CatalogPlugin.authorizationOf,
     commandTransition: CategoryImages$CatalogPlugin.commandTransition,
     traits: CategoryImages$CatalogPlugin.traits,
     readConsistency: CategoryImages$CatalogPlugin.readConsistency
@@ -241,7 +241,7 @@ function Make(Platform) {
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductDescription$CatalogPlugin.commandAuthorization,
+    authorizationOf: ChangeProductDescription$CatalogPlugin.authorizationOf,
     commandTransition: ChangeProductDescription$CatalogPlugin.commandTransition,
     traits: ChangeProductDescription$CatalogPlugin.traits,
     readConsistency: ChangeProductDescription$CatalogPlugin.readConsistency
@@ -258,7 +258,7 @@ function Make(Platform) {
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductName$CatalogPlugin.commandAuthorization,
+    authorizationOf: ChangeProductName$CatalogPlugin.authorizationOf,
     commandTransition: ChangeProductName$CatalogPlugin.commandTransition,
     traits: ChangeProductName$CatalogPlugin.traits,
     readConsistency: ChangeProductName$CatalogPlugin.readConsistency
@@ -275,7 +275,7 @@ function Make(Platform) {
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductPrice$CatalogPlugin.commandAuthorization,
+    authorizationOf: ChangeProductPrice$CatalogPlugin.authorizationOf,
     commandTransition: ChangeProductPrice$CatalogPlugin.commandTransition,
     traits: ChangeProductPrice$CatalogPlugin.traits,
     readConsistency: ChangeProductPrice$CatalogPlugin.readConsistency
@@ -292,7 +292,7 @@ function Make(Platform) {
     errorSchema: DiscontinueProduct$CatalogPlugin.errorSchema,
     eventSchema: DiscontinueProduct$CatalogPlugin.eventSchema,
     commandSchema: DiscontinueProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: DiscontinueProduct$CatalogPlugin.commandAuthorization,
+    authorizationOf: DiscontinueProduct$CatalogPlugin.authorizationOf,
     commandTransition: DiscontinueProduct$CatalogPlugin.commandTransition,
     traits: DiscontinueProduct$CatalogPlugin.traits,
     readConsistency: DiscontinueProduct$CatalogPlugin.readConsistency
@@ -309,7 +309,7 @@ function Make(Platform) {
     errorSchema: ProductImages$CatalogPlugin.errorSchema,
     eventSchema: ProductImages$CatalogPlugin.eventSchema,
     commandSchema: ProductImages$CatalogPlugin.commandSchema,
-    commandAuthorization: ProductImages$CatalogPlugin.commandAuthorization,
+    authorizationOf: ProductImages$CatalogPlugin.authorizationOf,
     commandTransition: ProductImages$CatalogPlugin.commandTransition,
     traits: ProductImages$CatalogPlugin.traits,
     readConsistency: ProductImages$CatalogPlugin.readConsistency
@@ -326,7 +326,7 @@ function Make(Platform) {
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
-    commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization,
+    authorizationOf: RecordProductDemand$CatalogPlugin.authorizationOf,
     commandTransition: RecordProductDemand$CatalogPlugin.commandTransition,
     traits: RecordProductDemand$CatalogPlugin.traits,
     readConsistency: RecordProductDemand$CatalogPlugin.readConsistency
@@ -343,7 +343,7 @@ function Make(Platform) {
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
     eventSchema: RenameCategory$CatalogPlugin.eventSchema,
     commandSchema: RenameCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: RenameCategory$CatalogPlugin.commandAuthorization,
+    authorizationOf: RenameCategory$CatalogPlugin.authorizationOf,
     commandTransition: RenameCategory$CatalogPlugin.commandTransition,
     traits: RenameCategory$CatalogPlugin.traits,
     readConsistency: RenameCategory$CatalogPlugin.readConsistency
@@ -360,7 +360,7 @@ function Make(Platform) {
     errorSchema: UnarchiveCategory$CatalogPlugin.errorSchema,
     eventSchema: UnarchiveCategory$CatalogPlugin.eventSchema,
     commandSchema: UnarchiveCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: UnarchiveCategory$CatalogPlugin.commandAuthorization,
+    authorizationOf: UnarchiveCategory$CatalogPlugin.authorizationOf,
     commandTransition: UnarchiveCategory$CatalogPlugin.commandTransition,
     traits: UnarchiveCategory$CatalogPlugin.traits,
     readConsistency: UnarchiveCategory$CatalogPlugin.readConsistency
@@ -377,7 +377,7 @@ function Make(Platform) {
     errorSchema: UnarchiveProduct$CatalogPlugin.errorSchema,
     eventSchema: UnarchiveProduct$CatalogPlugin.eventSchema,
     commandSchema: UnarchiveProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: UnarchiveProduct$CatalogPlugin.commandAuthorization,
+    authorizationOf: UnarchiveProduct$CatalogPlugin.authorizationOf,
     commandTransition: UnarchiveProduct$CatalogPlugin.commandTransition,
     traits: UnarchiveProduct$CatalogPlugin.traits,
     readConsistency: UnarchiveProduct$CatalogPlugin.readConsistency
@@ -436,7 +436,7 @@ function Make(Platform) {
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
     targetName: ImportProduct$CatalogPlugin.targetName,
     externalSystem: ImportProduct$CatalogPlugin.externalSystem,
-    commandAuthorization: ImportProduct$CatalogPlugin.commandAuthorization
+    authorizationOf: ImportProduct$CatalogPlugin.authorizationOf
   })({
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl
@@ -461,7 +461,7 @@ function Make(Platform) {
       errorSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.errorSchema,
       commandSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandSchema,
       moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl,
-      commandAuthorization: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandAuthorization,
+      authorizationOf: Products_ExtensionPointMapping$CatalogPlugin.Delegate.authorizationOf,
       commandTransition: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandTransition,
       traits: Products_ExtensionPointMapping$CatalogPlugin.Delegate.traits
     },
@@ -486,7 +486,7 @@ function Make(Platform) {
       errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
       commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
       moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
-      commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization,
+      authorizationOf: RecordProductDemand$CatalogPlugin.authorizationOf,
       commandTransition: RecordProductDemand$CatalogPlugin.commandTransition,
       traits: RecordProductDemand$CatalogPlugin.traits
     },
@@ -531,7 +531,7 @@ function Make(Platform) {
         errorSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.errorSchema,
         commandSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandSchema,
         moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl,
-        commandAuthorization: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandAuthorization,
+        authorizationOf: Products_ExtensionPointMapping$CatalogPlugin.Delegate.authorizationOf,
         commandTransition: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandTransition,
         traits: Products_ExtensionPointMapping$CatalogPlugin.Delegate.traits
       },

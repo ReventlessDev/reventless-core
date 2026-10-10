@@ -79,13 +79,13 @@ module type Spec = {
 
   let targetName: string
   type role
-  let commandAuthorization: command => Authorization.rule<role>
+  let authorizationOf: string => Authorization.rule<role>
 }
 ```
 
 `translate` lives on the `Translation` module.
 There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
-`moduleUrl`, a default `commandAuthorization` (`AllowAuthenticated`), and
+`moduleUrl`, a default `authorizationOf` (`AllowAuthenticated`), and
 `type role`, the plugin's `Roles.t` when it declares one (see
 [Authorization](../authorization.md#roles-and-groups)).
 
@@ -299,7 +299,7 @@ for the full mapping.
 There is no opt-out. Unlike a StateChangeSlice command, an inbound slice honours
 no `@noApi` — every declared slice gets its mutation.
 
-The field answers under the slice's `commandAuthorization`, which defaults to
+The field answers under the slice's `authorizationOf`, which defaults to
 `AllowAuthenticated` (see [Authorization](../authorization.md)). A caller that
 must reach it without signing in needs `AllowAnonymous` written on the spec.
 
@@ -330,7 +330,7 @@ Both arms carry a `requestId` that correlates the response with the slice's
 
 Two things to settle in any transport you write yourself, because the mutation
 handles them for you and a URL does not: **authentication** — the mutation answers
-under `commandAuthorization`, whereas a public URL has no authenticated caller, so
+under `authorizationOf`, whereas a public URL has no authenticated caller, so
 verify a provider signature (HMAC over the raw body plus a timestamp) *before*
 parsing; and **cost** — every rejected request still runs your handler and writes
 an audit row.

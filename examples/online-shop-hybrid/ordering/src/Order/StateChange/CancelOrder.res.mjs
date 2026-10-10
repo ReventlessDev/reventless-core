@@ -65,7 +65,7 @@ function commandTransition(command) {
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, ["ReopenOrder"]);
 
-function commandAuthorization(param) {
+function authorizationOf(param) {
   return "AllowAuthenticated";
 }
 
@@ -88,7 +88,7 @@ export {
   commandTransition,
   commandSchema$1 as commandSchema,
   moduleUrl,
-  commandAuthorization,
+  authorizationOf,
   readConsistency,
   traits,
 }
