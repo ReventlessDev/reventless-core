@@ -1,10 +1,10 @@
 # Plan: Environment-tiered log retention and levels
 
-Source analysis: [../analysis/log-retention-and-levels-per-environment.md](../analysis/log-retention-and-levels-per-environment.md).
+Source analysis: [../analysis/log-retention-and-levels-per-environment.md](../../analysis/log-retention-and-levels-per-environment.md).
 
-**Status: code complete (2026-08-02) — Steps 1–7 + Step 9 (bespoke-builder
-coverage gap) done and committed. **Step 8** (the alpha managed-group cutover)
-is outstanding and is no longer "low value, deferred".**
+**Status: Closed 2026-10-11.** Steps 1–7 and 9 shipped 2026-08-02; Step 8's cutover
+took effect with the deploys after 2026-08-20 and is verified below (Step 8 §
+*Verified 2026-10-11*). The paragraphs that follow record the state before it.
 
 **Re-measured on alpha 2026-08-20** (see Step 8 § Field state): the escape hatch
 is still set while adoption is partial, so **48 of 83 Lambdas — 43 of them
@@ -14,7 +14,7 @@ interim sweep was never re-run, exactly as its own caveat warned.
 
 The deferral rested on the cutover needing a risky local `pulumi up` to beat a
 recreate race. That race was removed on 2026-08-08 by
-[log-group-ownership-without-a-race.md](done/log-group-ownership-without-a-race.md),
+[log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md),
 so the cutover is now "delete two env-var lines and let CI deploy". Step 8 is
 rewritten accordingly and carries the ordered remaining work.
 
@@ -174,7 +174,7 @@ Chosen path — **decouple landing the code from cutting alpha over**:
    (`scratchpad/migrate-alpha-log-groups.sh APPLY=1`), so the managed creates land
    seconds later and beat the ~minute heartbeat window; re-delete + up for any
    group that races.~~ **Rewritten 2026-08-20 — the procedure is obsolete.**
-   [log-group-ownership-without-a-race.md](done/log-group-ownership-without-a-race.md)
+   [log-group-ownership-without-a-race.md](log-group-ownership-without-a-race.md)
    (implemented 2026-08-08) removed the race this dance existed to beat: the group
    is now named by us, created **before** the function, and the function is pointed
    at it with `loggingConfig`, so there is no window for an invocation to take the
@@ -185,10 +185,31 @@ Chosen path — **decouple landing the code from cutting alpha over**:
    `deploy-reventless-aws.yml`. It takes effect on the next deploy, which is when
    the 43 get their managed groups — so item 3's verification is the thing that
    closes this, not the edit.
-3. ⬜ **Verify** the managed group + its `retentionInDays` actually exist after
-   the cutover — not merely that it went green.
+3. ✅ **Verify** the managed group + its `retentionInDays` actually exist after
+   the cutover — not merely that it went green. Done 2026-10-11, below.
 
 Needs AWS account access + touches deploy state → operator-driven.
+
+### Verified 2026-10-11
+
+| | 2026-08-20 | 2026-10-11 |
+| --- | --- | --- |
+| Lambda functions | 83 | 82 |
+| → writing to a managed `<project>-<stack>-<name>` group | 35 | **75** |
+| → writing to an auto-created group | 48 | 7 |
+| `/aws/lambda/` groups with no retention | 27 | 20 → **6** after the sweep |
+
+Every function this repository builds now writes to a managed group with
+retention. The seven that do not are built outside it, by deployments that
+reuse this account, and six of them write to groups without retention; their
+owners' builders need the same treatment, which is not work in this repo.
+
+The sweep this plan's Option A kept deferring was run the same day: **14
+auto-created groups** whose functions had moved to managed groups, none written
+since 2026-09-05 at the latest, 1.32 GB in all — most of it three dead-letter
+groups (583, 605 and 132 MB) — were deleted. They were not orphans of a deleted
+function, so no Pulumi stack owned them; the functions still exist and log
+elsewhere.
 
 ### Field state, measured 2026-08-20
 

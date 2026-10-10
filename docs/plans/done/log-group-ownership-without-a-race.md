@@ -1,6 +1,6 @@
 # Plan: Own a runtime's log group from birth, not after the fact
 
-**Closed 2026-10-07.** The create-first ownership and the adoption path shipped and passed the on-AWS acceptance run except for the one-time sweep of old auto-created log groups, which is operational work rather than code. Leftovers: that sweep, owned by [../env-tiered-log-retention-and-levels.md](../env-tiered-log-retention-and-levels.md) (Step 8).
+**Closed 2026-10-07.** The create-first ownership and the adoption path shipped and passed the on-AWS acceptance run except for the one-time sweep of old auto-created log groups, which is operational work rather than code. Leftovers: that sweep, owned by [../env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md) (Step 8).
 
 **Status.** Implemented — 2026-08-08. Written after a managed-log-group rollout deadlocked in the
 field: three groups could not be adopted because the runtimes they belong to kept recreating them
@@ -11,7 +11,7 @@ outstanding item is the **sweep**, and it is blocked rather than forgotten: the 
 cannot be swept while their functions are still writing to them, and those functions have no managed
 group because `unmanagedLogGroupStacks: alpha` suppressed it. Removing that var landed in
 `0bc73d444`; the sweep is runnable one deploy later. Tracked from the other side in
-[env-tiered-log-retention-and-levels.md](../env-tiered-log-retention-and-levels.md).
+[env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md).
 
 **Goal.** A framework-provisioned runtime's CloudWatch log group is created and owned by the
 deploy, with no window in which AWS can create it first — and an estate whose groups AWS already

@@ -4,7 +4,7 @@
 
 The framework machinery is implemented and managed groups now default for
 **every** stack. Implementation plan:
-[../plans/env-tiered-log-retention-and-levels.md](../plans/env-tiered-log-retention-and-levels.md).
+[../plans/env-tiered-log-retention-and-levels.md](../plans/done/env-tiered-log-retention-and-levels.md).
 Against the [Recommendation](#recommendation):
 
 - ✅ **0. Managed log-group name fix** — superseded. The group is now created

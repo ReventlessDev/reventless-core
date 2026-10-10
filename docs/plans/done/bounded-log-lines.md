@@ -1,7 +1,8 @@
 # Plan: a framework log line's size must not grow with the data it describes
 
 **Date:** 2026-09-04
-**Status:** **All five steps implemented (1–4 on 2026-09-04, 5 on 2026-09-05), none deploy-verified.**
+**Status:** **Closed 2026-10-11.** All five steps implemented (1–4 on 2026-09-04, 5 on
+2026-09-05) and verified on alpha against the ratio below — see *Verified on alpha*.
 Found by attributing a deployed alpha estate's CloudWatch bill to log groups and dividing by
 invocation count. Steps 1–4: full build warning-free, 387 suites / 4169 tests green. Step 5 was
 verified against the `reventless-aws` package alone (69 suites / 814 tests) because an unrelated
@@ -15,7 +16,7 @@ sequence, type, size — not its serialisation.
 **Non-goal.** Changing log *levels* or *retention* — those are tiered by
 [env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md) and the
 tiering is correct. Also not the `comp` vocabulary or the fields around a line, which is
-[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md).
+[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
 Both of those plans declare log *content* out of scope; this is the plan that owns it.
 
 ---
@@ -41,8 +42,8 @@ use*; the second by *how long a failure is left unattended*.
 
 Two call sites, same shape:
 
-- [Aggregate_Callback.res:77](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L77)
-- [StateChangeSlice_Callback.res:318](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L318)
+- [Aggregate_Callback.res:77](../../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L77)
+- [StateChangeSlice_Callback.res:318](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L318)
 
 ```rescript
 EffectLogger.logDebug(
@@ -97,7 +98,7 @@ Any log line interpolating a whole `state`, `event`, `command` or `payload` is i
 
 ## Defect B — the dead-letter handler dumps the full record, and re-dumps it forever
 
-[Util_DeadLetterQueue.res:70-76](../../reventless/aws/src/util/Util_DeadLetterQueue.res#L70-L76):
+[Util_DeadLetterQueue.res:70-76](../../../reventless/aws/src/util/Util_DeadLetterQueue.res#L70-L76):
 
 ```js
 export const handler = async (event) => {
@@ -179,7 +180,7 @@ Steps 1–3 are independent and each ships on its own.
 directions on the body — option 1 removes it entirely, option 2 keeps it on the first delivery —
 and option 2's own text resolves it: the first delivery carries the diagnostic, every redelivery
 after it carries one identity line. So
-[Util_DeadLetterQueue.res](../../reventless/aws/src/util/Util_DeadLetterQueue.res) now loops the
+[Util_DeadLetterQueue.res](../../../reventless/aws/src/util/Util_DeadLetterQueue.res) now loops the
 records, and per record emits either `DEAD LETTER ITEM: <identity> <full record>` (when
 `ApproximateReceiveCount <= 1`) or `DEAD LETTER REDELIVERY: <identity>`, where identity is
 `messageId`, `DeadLetterQueueSourceArn` (falling back to `eventSourceARN`), `receiveCount` and the
@@ -191,8 +192,8 @@ diagnostic the queue exists to preserve, but it is not nothing for anything pers
 step 5's retention half is what bounds how long it stays.
 
 **Step 3** replaces both lines with `deciding: id=… seq=… cmd=…`
-([Aggregate_Callback.res](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res),
-[StateChangeSlice_Callback.res](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)).
+([Aggregate_Callback.res](../../../reventless/core/src/components/Aggregate/Aggregate_Callback.res),
+[StateChangeSlice_Callback.res](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)).
 The aggregate's fold needed the sequence number carried in — `processCommand` takes `~seq` and is
 applied at the reduce — because the replayed seq is what makes the line say *which* state was
 decided against. The slice's equivalent of a sequence is the DCB head position, so it logs
@@ -221,8 +222,8 @@ once rather than per invocation, so neither of this plan's two shapes applies.
 
 **Option 3's first half is not available.** `maximumRetryAttempts` is a stream-only event-source
 mapping parameter — this repo's two uses of it
-([StateTopic_AppSync.res:402](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L402),
-[Upload_Claim_S3.res:330](../../reventless/aws/src/adapter/Upload/Upload_Claim_S3.res#L330)) are both
+([StateTopic_AppSync.res:402](../../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L402),
+[Upload_Claim_S3.res:330](../../../reventless/aws/src/adapter/Upload/Upload_Claim_S3.res#L330)) are both
 DynamoDB stream mappings. For an SQS source the redelivery count is governed by the *queue's*
 `RedrivePolicy.maxReceiveCount`, and this queue deliberately has no redrive target. So step 5 is
 `visibilityTimeoutSeconds`, raised 180 s → **900 s** on both dead-letter queues: ~480 redeliveries per
@@ -238,7 +239,7 @@ dead-letter queue.
 Three things follow, and the third is why step 5 is not symptom-treatment:
 
 1. **The cause was already fixed** the previous evening, by the platform wipe in
-   [done/optional-fields-without-annotations.md](done/optional-fields-without-annotations.md). No
+   [done/optional-fields-without-annotations.md](optional-fields-without-annotations.md). No
    decode failure in the aggregate's log since; the plugins heartbeat normally.
 2. **Seven messages stranded during the broken window were still cycling twelve hours later** — 0
    visible, 7 in flight, receive counts 234–236, one redelivery each per 3 minutes — and would have
@@ -278,10 +279,10 @@ consuming the seam already maps `DeadLetterSink` to.
 
 So the loop is bounded in cost rather than in count, and ending it early is an operator's job — for
 which they must first be told. That they currently are not is
-[no-monitoring-backend-on-deployed-stacks.md](no-monitoring-backend-on-deployed-stacks.md).
+[no-monitoring-backend-on-deployed-stacks.md](../no-monitoring-backend-on-deployed-stacks.md).
 
 Nothing alarmed at any point in those twelve hours, which is a separate and larger finding:
-[no-monitoring-backend-on-deployed-stacks.md](no-monitoring-backend-on-deployed-stacks.md).
+[no-monitoring-backend-on-deployed-stacks.md](../no-monitoring-backend-on-deployed-stacks.md).
 
 ## Verification
 
@@ -299,6 +300,22 @@ IncomingBytes (AWS/Logs, per group) ÷ Invocations (AWS/Lambda, same window)
 Re-measure over a window containing at least one full day of heartbeat traffic. For the
 aggregate handler, the stronger check is that the ratio is **stable across two releases** —
 the defect is that it climbs, so a single low reading proves nothing.
+
+### Verified on alpha, 2026-10-11
+
+Daily `IncomingBytes ÷ Invocations` over 2026-09-26 … 2026-10-09:
+
+| Handler | Measured | Target |
+|---------|----------|--------|
+| Aggregate command handler, platform stack (~580 invocations/day) | 2,442 – 2,597 B | < 5,000 B |
+| Aggregate command handler, second platform stack (~864/day) | 2,451 – 2,520 B | < 5,000 B |
+| Dead-letter handlers (three stacks) | no invocations in the window | < 400 B |
+
+The aggregate ratio is flat across every alpha release in those fourteen days, which is
+the stronger check: the defect was a ratio that climbed. The dead-letter target could
+not be measured because nothing reached a dead-letter queue — which is itself the
+evidence that the fail-and-retry loop is gone, since that loop invoked the handler
+continuously.
 
 ## Why this matters beyond cost
 

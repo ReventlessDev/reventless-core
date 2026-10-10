@@ -97,7 +97,7 @@ depth.** A consumer that keeps failing keeps its messages *in flight*, so the qu
 `DeadLetterSink` kind exists to let a backend choose.
 
 This is worth separating from the two defects in
-[bounded-log-lines.md](bounded-log-lines.md). Those were about the size of what gets written when
+[bounded-log-lines.md](done/bounded-log-lines.md). Those were about the size of what gets written when
 something goes wrong. This is about whether anyone finds out. Bounding the lines would have made that
 incident 400× cheaper and equally silent.
 
