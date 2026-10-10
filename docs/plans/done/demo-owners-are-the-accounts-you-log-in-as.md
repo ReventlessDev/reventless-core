@@ -43,7 +43,7 @@ re-seed) is still the right recovery.<br/>
 **Relates to:**
 - [owner-scoped-identity-and-reads.md](owner-scoped-identity-and-reads.md)
   — the feature this misses; the read narrowing works exactly as specified.
-- [owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md) — the
+- [owner-scoped-reads-on-an-index.md](owner-scoped-reads-on-an-index.md) — the
   physical read a narrowed caller takes. Unaffected: it returns nothing because
   nothing matches, not because it looks in the wrong place.
 - [online-shop-hybrid-demo-data.md](online-shop-hybrid-demo-data.md) —

@@ -31,7 +31,7 @@ That boundary is a scaling limit: every view on alpha fits inside one window
 (largest is 151 rows / 29 KB against a 1 MB page), so it is thousands of rows
 away, and `hasPreviousPage` now reports only what the door can serve rather than
 promising the unreachable page. For an **owned** view the cheap answer is Step 5
-of [../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md),
+of [../done/owner-scoped-reads-on-an-index.md](../done/owner-scoped-reads-on-an-index.md),
 whose index already exists; for an unowned one the cheap answer is a client-side
 cursor trail in the host shell. Both are weighed there. Pull *this* plan for
 ordering, not for Prev.
@@ -61,7 +61,7 @@ prefer a purpose-built read model or accept per-page ordering.
 **Re-scope check before starting:** if the qualifying table is *also* write-hot or very
 large, the single-partition GSI in the design below will throttle (it is weakest exactly
 where the multi-page case is most likely). That case needs the sharded-Lambda variant
-(§5) — a bigger project — so confirm the table fits a single-partition GSI first, or plan
+([Design](#design), item 5) — a bigger project — so confirm the table fits a single-partition GSI first, or plan
 for the shard from the outset.
 
 ---
@@ -202,7 +202,7 @@ table into a single Query-able, globally-ordered partition.
   Scan per-page sort already zero-pads numerics to 22 chars; match it so lex order = sort
   order).
 - ~~**Cursor path-tag format**~~ — **settled** by
-  [../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md), which
+  [../done/owner-scoped-reads-on-an-index.md](../done/owner-scoped-reads-on-an-index.md), which
   needed the same discriminator first: the cursor JSON carries `p`, one character —
   `s` the full-list Scan, `q` the owner-index Query. Absent reads as `s`, because every
   cursor minted before the tag existed came off a Scan. `cursorDecode` /

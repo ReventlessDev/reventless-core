@@ -2,11 +2,11 @@
 
 **Date:** 2026-08-23<br/>
 **Status:** Backlog — extracted from
-[../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md) as
+[../done/owner-scoped-reads-on-an-index.md](../done/owner-scoped-reads-on-an-index.md) as
 its Step 3, on the finding below: the work is correct and has **no beneficiary in
 this repo today**. It is not blocked, it is unwanted until a view asks for it.<br/>
 **Relates to:**
-- [../owner-scoped-reads-on-an-index.md](../owner-scoped-reads-on-an-index.md) —
+- [../done/owner-scoped-reads-on-an-index.md](../done/owner-scoped-reads-on-an-index.md) —
   the parent. Its Steps 1–2 shipped the derived `_owner` index and the list
   door's Query branch; this is the half that was left.
 - [aws-fulllist-ordered-index-promotion.md](aws-fulllist-ordered-index-promotion.md)
