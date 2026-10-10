@@ -912,16 +912,19 @@ let is_record_like (e : expression) =
    its object's entries, as example values. *)
 let json_literal_entries (e : expression) : Yojson.Safe.t list =
   let rec value (j : Yojson.Safe.t) : Yojson.Safe.t =
-    match j with
+    (* The last case is yojson 2's `Tuple and `Variant, which plain JSON never parses to.
+       yojson 3 has neither, so there the case is unused (warning 11): one source builds
+       against both. *)
+    match[@warning "-11"] j with
     | `String s -> `Assoc [ ("kind", `String "string"); ("value", `String s) ]
     | `Int i -> `Assoc [ ("kind", `String "int"); ("value", `Int i) ]
     | `Intlit s -> `Assoc [ ("kind", `String "code"); ("value", `String s) ]
     | `Float f -> `Assoc [ ("kind", `String "float"); ("value", `Float f) ]
     | `Bool b -> `Assoc [ ("kind", `String "bool"); ("value", `Bool b) ]
     | `Null -> `Assoc [ ("kind", `String "null") ]
-    | `List xs | `Tuple xs -> `Assoc [ ("kind", `String "list"); ("items", `List (List.map value xs)) ]
+    | `List xs -> `Assoc [ ("kind", `String "list"); ("items", `List (List.map value xs)) ]
     | `Assoc kvs -> `Assoc [ ("kind", `String "record"); ("entries", `List (entries kvs)) ]
-    | `Variant _ -> `Assoc [ ("kind", `String "null") ]
+    | _ -> `Assoc [ ("kind", `String "null") ]
   and entries kvs = List.map (fun (k, v) -> `List [ `String k; value v ]) kvs in
   let literal =
     match e.pexp_desc with
