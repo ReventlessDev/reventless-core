@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.240 (2026-10-10)
+
+* feat!: a command's rule is looked up by its name, without a cast ([5f02c40](https://github.com/ReventlessDev/reventless-core/commit/5f02c4081d077bf4a6951d8c9b2b16553a8ca87b))
+
+### BREAKING CHANGES
+
+* a spec that writes `commandAuthorization` by hand writes
+`authorizationOf = (name: string) => …` instead; the PPX refuses the old name.
+
+
+
 # 1.0.0-alpha.239 (2026-10-10)
 
 ### Bug Fixes

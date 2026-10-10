@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.379 (2026-10-10)
+
+### Bug Fixes
+
+* **pulumi-aws:** a list's last page no longer promises another ([00b141f](https://github.com/ReventlessDev/reventless-core/commit/00b141fbfdbf44544fbea8ab979356831381f48a))
+* feat!: a command's rule is looked up by its name, without a cast ([5f02c40](https://github.com/ReventlessDev/reventless-core/commit/5f02c4081d077bf4a6951d8c9b2b16553a8ca87b))
+
+### BREAKING CHANGES
+
+* a spec that writes `commandAuthorization` by hand writes
+`authorizationOf = (name: string) => …` instead; the PPX refuses the old name.
+
+
+
 # 3.0.0-alpha.378 (2026-10-10)
 
 ### Bug Fixes

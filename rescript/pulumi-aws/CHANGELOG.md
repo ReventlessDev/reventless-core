@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.27 (2026-10-10)
+
+### Bug Fixes
+
+* **pulumi-aws:** a list's last page no longer promises another ([00b141f](https://github.com/ReventlessDev/reventless-core/commit/00b141fbfdbf44544fbea8ab979356831381f48a))
+
+
 # 3.0.0-alpha.26 (2026-10-10)
 
 ### Bug Fixes
