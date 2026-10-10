@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-09
+- fix: an inbound translation is gated alike on every door, and encodes its commands by schema ([6ec3ce6](https://github.com/ReventlessDev/reventless-core/commit/6ec3ce672e53e2c162c64a90d103be691391be5e))
+- feat(gwt): automation and translation tests take the slice as written, and the sidecars read them ([93a0919](https://github.com/ReventlessDev/reventless-core/commit/93a0919a0d66730cf9bf89144ad8fba3cb025332))
 ### 2026-10-05
 - feat(deploy): a caller's private registry and its own change detection ([1675b64](https://github.com/ReventlessDev/reventless-core/commit/1675b645c5f3cd5fb9e9a425efedfb7ea7730e1e))
 ### 2026-10-05
