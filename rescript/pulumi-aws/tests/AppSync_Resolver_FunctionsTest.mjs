@@ -158,7 +158,7 @@ describe('listAllItemsConnection', () => {
       const ctx = makeCtx({ args: {} })
       const result = request(ctx)
       expect(result.operation).toBe('Scan')
-      expect(result.limit).toBe(50)
+      expect(result.limit).toBe(51)
       expect(result.nextToken).toBeNull()
       expect(result.filter).toBeUndefined()
     })
@@ -317,10 +317,11 @@ describe('listAllItemsConnection', () => {
       F.listAllItemsConnection('name', [], [], [], undefined, 'customerId', ['Admin']),
     )
 
-    test('an unfiltered read examines exactly the page it serves', () => {
+    // One row past the page: it is what says a next page exists.
+    test('an unfiltered read examines one row past the page it serves', () => {
       const req = request(makeCtx({ args: { first: 25 }, identity: null }))
       expect(req.filter).toBeUndefined()
-      expect(req.limit).toBe(25)
+      expect(req.limit).toBe(26)
     })
 
     test('a filtered read examines a wider window than the page', () => {
@@ -330,7 +331,7 @@ describe('listAllItemsConnection', () => {
     })
 
     test('a caller asking for more than the window gets what it asked for', () => {
-      expect(request(makeCtx({ args: { first: 5000 } })).limit).toBe(5000)
+      expect(request(makeCtx({ args: { first: 5000 } })).limit).toBe(5001)
     })
 
     // The user-visible bug: one matching row must be one page, not three.
@@ -371,6 +372,34 @@ describe('listAllItemsConnection', () => {
       expect(
         request(makeCtx({ args: { first: 2, after: page3.pageInfo.endCursor } })).nextToken,
       ).toBe('W2')
+    })
+
+    // DynamoDB hands back a token whenever a read stops AT its limit, whether or
+    // not anything follows. A read of exactly the page therefore claimed a next
+    // page after the last full one, and it came back blank — found on a deployed
+    // list paged one row at a time. The mock pages a table the way DynamoDB does.
+    test('paging to the end serves no blank page, whatever the page size', () => {
+      const rows = ['a', 'b', 'c', 'd'].map(id => ({ id }))
+      const dynamo = req => {
+        const start = req.nextToken === null ? 0 : +req.nextToken
+        const items = rows.slice(start, start + req.limit)
+        const stoppedAtLimit = items.length === req.limit
+        return { items, nextToken: stoppedAtLimit ? String(start + req.limit) : null }
+      }
+      ;[1, 2, 4].map(first => {
+        const pages = []
+        let after
+        for (let i = 0; i < 10; i++) {
+          const args = after === undefined ? { first } : { first, after }
+          const r = response(makeCtx({ args, result: dynamo(request(makeCtx({ args, identity: null }))) }))
+          pages.push(r.edges.map(e => e.node.id))
+          if (!r.pageInfo.hasNextPage) break
+          after = r.pageInfo.endCursor
+        }
+        expect(pages.flat()).toEqual(['a', 'b', 'c', 'd'])
+        expect(pages.every(p => p.length > 0)).toBe(true)
+        expect(pages).toHaveLength(Math.ceil(4 / first))
+      })
     })
 
     // Without this the final row of a window resumes into a window with nothing
@@ -587,7 +616,7 @@ describe('queryByIndexSortFiltered', () => {
     expect(result.query.expression).toBe('#ownerId = :ownerId')
     expect(result.filter).toBeUndefined()
     expect(result.index).toBe('ownerId')
-    expect(result.limit).toBe(50)
+    expect(result.limit).toBe(51)
   })
 
   test('query includes sortField when present', () => {
@@ -974,11 +1003,11 @@ describe('listAllItemsConnection — owner scoping', () => {
 
   // The read window exists because a FilterExpression cuts rows AFTER `Limit`.
   // A key condition does not, so a scoped caller with no filter of their own
-  // examines exactly the page they asked for — the arithmetic the window was
-  // hiding, gone rather than papered over.
-  test('a scoped caller with no filter examines exactly the page', () => {
+  // examines the page they asked for and the one row that says whether another
+  // follows — the arithmetic the window was hiding, gone rather than papered over.
+  test('a scoped caller with no filter examines only the page, plus one', () => {
     const { request } = indexed()
-    expect(request(makeCtx({ args: { first: 25 }, identity: asUser('cust-a') })).limit).toBe(25)
+    expect(request(makeCtx({ args: { first: 25 }, identity: asUser('cust-a') })).limit).toBe(26)
   })
 
   test("a scoped caller's own filter still widens the window", () => {

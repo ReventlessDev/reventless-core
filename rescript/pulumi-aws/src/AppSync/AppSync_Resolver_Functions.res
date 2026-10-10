@@ -564,19 +564,24 @@ the survivors serves short — usually empty — pages under a selective filter.
 no loops in APPSYNC_JS the door reads wider instead and addresses the surplus by
 position. 1 MB caps a page anyway, hence 1000; `filtered` is the JS expression
 saying whether a filter was pushed down.
+
+An unfiltered read takes one row past the page. DynamoDB hands back a token
+whenever it stops AT the limit, end of data or not, so a read of exactly the page
+reports a next page that comes back blank; the extra row is what says one exists.
 */
 let pageWindowBudget = (~filtered: string) =>
-  `(${filtered} ? (_first > 1000 ? _first : 1000) : _first + _from)`
+  `(${filtered} ? (_first > 1000 ? _first : 1000) : _first + _from + 1)`
 
 /**
 The same budget for the full-list door, which may also read backward.
 
 A backward page is the slice `[_from, _upTo)` of the window, so the read has to
 reach `_upTo` rows into it — `_first + _from` would stop short and hand back a
-page with its tail missing.
+page with its tail missing. Forward reads one row past the page, for the reason
+`pageWindowBudget` gives; a backward page needs none, as one provably follows it.
 */
 let listPageWindowBudget = {
-  let need = "(_backward ? _upTo : _first + _from)"
+  let need = "(_backward ? _upTo : _first + _from + 1)"
   `(parts.length > 0 ? (${need} > 1000 ? ${need} : 1000) : ${need})`
 }
 

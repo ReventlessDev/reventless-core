@@ -6,8 +6,14 @@ the list resolver branches on it, and both warnings say something true. Step 3
 was extracted to
 [Backlog/retirement-folded-into-the-owner-index.md](Backlog/retirement-folded-into-the-owner-index.md):
 no spec in the repo declares `@owner` and `@retired` together, so it has no
-beneficiary yet. Step 5 is deferred by design. Remaining before this closes:
-Acceptance 1, 2 and 4, which need an authenticated call against the deployed API.
+beneficiary yet. Step 5 is deferred by design.
+
+**Acceptance run against the deployed API 2026-10-11**, see
+[Acceptance, recorded](#acceptance-recorded-2026-10-11). Items 2, 3, 4 and 6
+pass. **Item 1 failed**: paging a scoped list one row at a time ended on a blank
+page. The cause is not the owner index but the page budget every unfiltered list
+read shares, and it is fixed in the tree. **Remaining before this closes:**
+deploy that fix and re-run item 1.
 
 **Verified on alpha 2026-08-23**, deploy `4b643e1f1`: the `_owner` GSI is
 `ACTIVE` on `Orders-10f6a39` with the `ALL` projection; all 151 pre-existing rows
@@ -23,7 +29,7 @@ through an authenticated GraphQL call — Acceptance 1, 2 and 4.<br/>
 - [Backlog/aws-fulllist-ordered-index-promotion.md](Backlog/aws-fulllist-ordered-index-promotion.md)
   — the *elevated* half of the same problem (constant-PK GSI, whole-table ordering).
   Stays backlogged; shares the cursor path-tag and the keyset-cursor design below.
-- [owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md) —
+- [owner-enforcement-gaps-on-appsync.md](done/owner-enforcement-gaps-on-appsync.md) —
   where `ownerField` is resolved and which doors consume it.
 - [active-role-narrows-the-token.md](done/active-role-narrows-the-token.md) — a
   narrowed token changes `_exempt`, which after this plan selects a *different
@@ -240,6 +246,12 @@ problem in
 [Backlog/aws-fulllist-ordered-index-promotion.md](Backlog/aws-fulllist-ordered-index-promotion.md),
 not this one.
 
+**Corrected 2026-10-11:** the two sets are no longer disjoint.
+`NotificationDeliveries` (hybrid ordering, since `b850ce3d3`) declares
+`@owner recipientId` and retires its `Suppressed` outcome. The step still has no
+beneficiary: on alpha that view holds 104 rows and none is `Suppressed`, so there
+is no archive to fold away. The backlog plan's trigger is unchanged.
+
 ---
 
 ## Step 4 — make the warnings true ✅ done
@@ -427,7 +439,7 @@ when it keys on an attribute the projection did not already write.**
 5. **Owner-scoping conformance** — extend the existing (identity, view, expected
    rows) table rather than adding a parallel one, and assert it passes on both
    branches. The defect class this plan is closest to
-   ([owner-enforcement-gaps-on-appsync.md](owner-enforcement-gaps-on-appsync.md))
+   ([owner-enforcement-gaps-on-appsync.md](done/owner-enforcement-gaps-on-appsync.md))
    was invisible precisely because each path was individually correct.
 
 ---
@@ -450,6 +462,47 @@ Against a deployed stack, not only in-process.
    is **absent** before it. The order of those two observations is the test.
 6. Deploy logs carry no `@owner … is not the key of any index` warning for any
    view that did not opt out.
+
+### Acceptance, recorded 2026-10-11
+
+In plain words: on the deployed shop, a shopper's order list is now read from an
+index holding only their rows, and costs a twelfth of what it did on today's
+data. One defect turned up: the last page of a list could claim another page
+after it, which then came back empty.
+
+Run against the alpha stack of `online-shop-hybrid`, deploy `bb723ea19`
+(2026-10-10), with real Cognito tokens. `Orders-10f6a39` holds 60 rows across 13
+owners. `merch` and `shopper` are scoped and own 4 and 7 of them; `admin` and
+`fulfil` are elevated.
+
+| # | Observed | Result |
+| --- | --- | --- |
+| 1 | `first: 50` returns each scoped caller's own rows, `hasNextPage: false`. Paging `first: 1`: `shopper` gets 7 pages, but `merch` gets 4 rows and then a **fifth, blank page**. `first: 2` shows the same: 2 pages, then a blank one | ❌, fixed below |
+| 2 | The same 4 rows cost 0.5 read units through the `_owner` Query and 6.0 through the old Scan with its filter, which examined all 60 rows. CloudWatch agrees: 31 scoped list requests during the run consumed 15.5 units on `_owner`, the minimum of 0.5 each | ✅ |
+| 3 | `admin` lists all 60 rows across 13 owners | ✅ |
+| 4 | A cursor from an elevated read replayed by a scoped caller, and the reverse, both answer `CursorPathMismatch: This cursor belongs to a different read of this list; restart from the first page.` A different caller stands in for the role switch: the path tag is the same test either way | ✅ |
+| 5 | Not re-run. The index was created on 2026-08-23 and every pre-existing row answered through it (see the status note). The "absent before" half is gone for good: [Backfill and migration](#backfill-and-migration) explains why DynamoDB populates this index at creation | — |
+| 6 | The deploy log of `bb723ea19` carries no `@owner … keys no index` warning | ✅ |
+
+**The defect in item 1, and its fix.** DynamoDB returns a continuation token
+whenever a read stops *at* its limit, whether or not anything follows. Checked on
+the same partition: a Query with `Limit: 4` over `merch`'s 4 rows returns a
+`LastEvaluatedKey`, and one with `Limit: 5` does not. The unfiltered budget asked
+for exactly `first + _from` rows, so the response could never see a row past the
+page, and `hasNextPage` fell back on that token. `shopper`'s run escaped only
+because of how its last window happened to end.
+
+It is not specific to the owner Query. The elevated Scan and both by-index doors
+share the budget and had the same edge. Step 2 item 1 above said "a page is
+exactly `first` rows", which is where it came from.
+
+The fix reads one row past the page on every forward, unfiltered read
+(`pageWindowBudget` and `listPageWindowBudget` in `AppSync_Resolver_Functions.res`).
+`_more` in `connectionPageResponse` then sees the extra row, and the token only
+matters where DynamoDB stopped for another reason. A backward read needs no extra
+row: a page provably follows it. The test that would have caught it pages a mock
+that hands back tokens the way DynamoDB does, at page sizes 1, 2 and 4. It fails
+on the old budget.
 
 ---
 

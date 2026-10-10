@@ -42,6 +42,13 @@ something else supplies. Where nothing supplies one, the list read is a
 whole-table Scan and the answer is a reshaped view or
 [aws-fulllist-ordered-index-promotion.md](aws-fulllist-ordered-index-promotion.md).
 
+**Update 2026-10-11:** the table above is out of date. `NotificationDeliveries`
+(hybrid ordering) has declared `@owner recipientId` and a retired `Suppressed`
+outcome since `b850ce3d3` (2026-09-01), so the first condition below now holds
+for one view. The second does not: on alpha it holds 104 rows and none is
+`Suppressed`. Its deploy warning already says the scoped read pays only for the
+caller's own rows.
+
 ## When to pull this from Backlog
 
 When a single view declares **`@owner` and `@retired` together** and its archive

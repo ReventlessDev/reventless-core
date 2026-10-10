@@ -58,9 +58,9 @@ describe("listAllItemsConnection — paging", () => {
 
   testSync("a filtered read examines more rows than it serves", () => {
     // The budget reads as deep as the page needs, which for a backward cut is
-    // `_upTo` rather than `_first + _from`.
+    // `_upTo` rather than one row past `_first + _from`.
     expect(
-      code->String.includes("parts.length > 0 ? ((_backward ? _upTo : _first + _from) > 1000"),
+      code->String.includes("parts.length > 0 ? ((_backward ? _upTo : _first + _from + 1) > 1000"),
     )->toBe(true)
     expect(
       code->String.includes("const _page = _backward ? _rest : _rest.slice(0, _first);"),

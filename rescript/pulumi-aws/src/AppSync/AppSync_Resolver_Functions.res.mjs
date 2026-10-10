@@ -389,10 +389,10 @@ export function request(ctx) {
 }
 
 function pageWindowBudget(filtered) {
-  return `(` + filtered + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`;
+  return `(` + filtered + ` ? (_first > 1000 ? _first : 1000) : _first + _from + 1)`;
 }
 
-let need = "(_backward ? _upTo : _first + _from)";
+let need = "(_backward ? _upTo : _first + _from + 1)";
 
 let listPageWindowBudget = `(parts.length > 0 ? (` + need + ` > 1000 ? ` + need + ` : 1000) : ` + need + `)`;
 
@@ -528,7 +528,7 @@ export function request(ctx) {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from + 1)`) + `,
     nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
@@ -585,7 +585,7 @@ export function request(ctx) {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from)`) + `,
+    limit: ` + (`(` + "expression" + ` ? (_first > 1000 ? _first : 1000) : _first + _from + 1)`) + `,
     nextToken: _window,
     scanIndexForward: (args.forward ?? true)
   };
