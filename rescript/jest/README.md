@@ -48,6 +48,35 @@ describe("widget", () => {
 `afterAll` are synchronous; `beforeAllAsync` / `afterAllAsync` await a returned
 promise. Matchers are available both flat and under `module Expect`.
 
+## Moving a glennsl suite over
+
+The package also has a `Jest` module with glennsl's names and types
+(`test`, `testPromise`, `testAsync`, `testAll`, `describe`, the hooks, `Skip`,
+`Only`, `Todo`, `pass`, `fail`, `Expect` with `not_` and its matchers, and the
+timer functions under `Jest.Jest`). A suite written against
+`@glennsl/rescript-jest` moves over without editing a test file:
+
+1. In `package.json`, replace `@glennsl/rescript-jest` with
+   `@reventlessdev/rescript-jest`.
+2. In `rescript.json`, do the same in `dependencies` or `dev-dependencies`.
+   Don't list both: each one has a top-level `Jest` module.
+3. If Jest runs the suite through babel, add `@reventlessdev` wherever
+   `transformIgnorePatterns` lets `@glennsl` through. This package ships ES modules.
+
+`open Jest` and `open Expect` keep working. What changes is that every assertion
+is now checked:
+
+- An assertion that isn't the test's return value runs where it is written. If
+  it fails, the test fails at that line instead of passing.
+- `testPromise` hands its promise to Jest, which awaits it. A test that passed
+  only because its body never finished now fails or times out.
+- An error thrown after the test body returns lands in that test, not in an
+  unhandled rejection after the run.
+
+Each test that starts failing was passing without checking anything.
+
+Not covered yet: snapshot matchers, `ExpectJs`, `MockJs` and `JestJs`.
+
 ## Links
 
 - 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)

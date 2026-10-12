@@ -29,6 +29,13 @@ module.exports = {
       },
     },
     {
+      displayName: "rescript-jest",
+      rootDir: "./rescript/jest",
+      testMatch: ["<rootDir>/tests/*Test.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "reventless-aws",
       rootDir: "./reventless/aws",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],

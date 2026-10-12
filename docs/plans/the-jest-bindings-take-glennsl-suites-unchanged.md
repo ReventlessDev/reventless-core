@@ -1,6 +1,7 @@
 # Plan: the Jest bindings take glennsl suites unchanged
 
-**Status.** Planned 2026-10-12. Nothing built.
+**Status.** Planned 2026-10-12. J1 and J2 built 2026-10-12; J3 (release) waits on a push to
+`alpha`.
 
 **In plain words.** [`@reventlessdev/rescript-jest`](../../rescript/jest/) binds Jest's globals
 directly: every `expect` runs at its line, and an `async` test body is awaited. Test suites
@@ -75,6 +76,11 @@ The package has `namespace: false`, so the module is the top-level `Jest` a suit
 Every global is bound with `@scope("globalThis")`, as `JestGlobals` already is, so a local
 binding of the same name can't capture it.
 
+The timer functions are the exception. Jest's `jest` object is not a global: under ESM it is
+missing from `globalThis`, and under CommonJS it is only a parameter of each test module's
+wrapper. They read it off `@jest/globals` instead, which Jest's module registry serves in both
+modes without installing anything.
+
 ## 3. The behaviour change a suite will see
 
 The only difference a suite should notice is the one this plan exists for: assertions that were
@@ -98,6 +104,12 @@ those, not this package.
 
 **Exit:** a glennsl suite compiles against it with only its dependency changed.
 
+**Result.** The UI repository's `reventless/ui` package was copied with only `rescript.json`
+changed: its 124 test files compile against `Jest`, and 2,463 of its 2,464 tests pass with every
+assertion checked. The one remaining suite fails to load in the copy because it reads a file
+relative to the repository, not because of `Jest`. No test in that package was passing without
+checking anything.
+
 ### J2: the package gets tests
 
 The package has none today. Add a Jest project to it, with one test per promise in [§3](#3-the-behaviour-change-a-suite-will-see).
@@ -110,6 +122,17 @@ checked:
 - `Skip.test` doesn't run, and `Todo.test` reports as a todo.
 
 **Exit:** each item above fails exactly when it should.
+
+**Result.** [`tests/JestTest.mjs`](../../rescript/jest/tests/JestTest.mjs) runs
+[`tests/fixtures/`](../../rescript/jest/tests/fixtures/) once per Jest major and checks every
+test's outcome and, for the failing ones, their own failure message. One check was added beyond
+the list. On Jest 30, a `testPromise` whose promise is never awaited still fails the right
+test, because Jest 30 attributes a late rejection to the test that caused it. So a fixture
+test also checks that the next test starts only after the promise has settled. That check
+fails on both majors when `testPromise` drops its promise, as glennsl's did.
+
+The root build runs `rescript build rescript/jest` last, so the other build roots don't orphan
+the fixtures' compiled output.
 
 ### J3: release
 
@@ -124,7 +147,9 @@ This repository and its consumers run Jest 29.7.0. Jest 30.5.2 is current (2026-
 Jest 30 needs Node 18.14 or later (we run 22), and `jest-environment-jsdom` moves from jsdom 20 to
 jsdom 26. The globals this package binds are unchanged in 30, so the bindings don't depend on the
 Jest major. J2's test project runs on 29 and on 30, and the package declares a peer of
-`jest: ^29.7.0 || ^30.0.0`. Moving this repository's own suites to 30 is a separate piece of work.
+`jest: ^29.7.0 || ^30.0.0`. Jest 30 is installed as its `@jest/core` alone, under the alias
+`jest-core-30`. An alias of `jest` itself also ships a `jest` bin, and with the hoisted linker
+that bin replaced the root's, which would have moved the whole repository onto 30. Moving this repository's own suites to 30 is a separate piece of work.
 
 ## 6. Open questions
 
