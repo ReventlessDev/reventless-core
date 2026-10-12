@@ -1163,6 +1163,10 @@ importers:
         version: 12.3.1
 
   rescript/jest:
+    dependencies:
+      jest:
+        specifier: ^29.7.0 || ^30.0.0
+        version: 29.7.0(@types/node@25.6.0)(babel-plugin-macros@3.1.0)
     devDependencies:
       jest-core-30:
         specifier: npm:@jest/core@^30.5.2
