@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-jest",
-  "version": "1.0.0-alpha.11",
+  "version": "1.0.0-alpha.12",
   "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies, plus glennsl's `Jest` API on the same behaviour",
   "license": "Apache-2.0",
   "scripts": {
@@ -16,8 +16,8 @@
     "rescript": "12.3.1"
   },
   "peerDependencies": {
-    "rescript": "^12.3.1",
-    "jest": "^29.7.0 || ^30.0.0"
+    "jest": "^29.7.0 || ^30.0.0",
+    "rescript": "^12.3.1"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"

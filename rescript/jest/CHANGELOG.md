@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-10-12)
+
+### Features
+
+* **rescript-jest:** add a Jest module with glennsl's API on checked assertions ([17c0e99](https://github.com/ReventlessDev/reventless-core/commit/17c0e999838152f45fa797a5ce5f93ffccc97876))
+
+
 # 1.0.0-alpha.11 (2026-09-21)
 
 ### Bug Fixes
