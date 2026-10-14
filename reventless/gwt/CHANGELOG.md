@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.242 (2026-10-14)
+
+### Bug Fixes
+
+* **gwt:** thenStateWithId checks the rows under its id, not that they are the only ones ([279d298](https://github.com/ReventlessDev/reventless-core/commit/279d298866fec60d976f0f8c8a247f684e600ba2))
+
+
 # 1.0.0-alpha.241 (2026-10-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
