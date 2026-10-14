@@ -254,10 +254,10 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
 
   let thenStatesWithId = async (thunk, id, expectedStates) => {
     let store = await thunk()
-    let keys = store->Dict.keysToArray
-    let actualId = keys->Array.get(0)
-    let actualStates = store->Dict.valuesToArray->Array.get(0)->Option.getOr([])
-    if keys->Array.length == 1 && actualId == Some(id) && statesEq(actualStates, expectedStates) {
+
+    // The rows under that id: rows the given events filed under other ids are another
+    // expectation's (`thenAllStates` checks them all).
+    if store->Dict.get(id)->Option.mapOr(false, actual => statesEq(actual, expectedStates)) {
       Outcome.pass
     } else {
       Outcome.fail(

@@ -50,4 +50,11 @@ describe("CategoriesView StateViewSlice", () => {
     ->whenEvent(CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}))
     ->thenStateWithId("c1", {categoryId: "c1", name: "Consumer Electronics", archived: false})
   )
+
+  // The rows under that id: another category's row, from a given event, is not this one's.
+  test("a second category gets its own row, the first one's left as it is", () =>
+    givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
+    ->whenEvent(CategoryAdded({categoryId: "c2", name: "Garden"}))
+    ->thenStateWithId("c2", {categoryId: "c2", name: "Garden", archived: false})
+  )
 })

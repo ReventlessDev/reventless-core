@@ -238,10 +238,7 @@ function Make(Spec) {
     };
     let thenStatesWithId = async (thunk, id, expectedStates) => {
       let store = await thunk();
-      let keys = Object.keys(store);
-      let actualId = keys[0];
-      let actualStates = Stdlib_Option.getOr(Object.values(store)[0], []);
-      if (keys.length === 1 && Primitive_object.equal(actualId, id) && statesEq(actualStates, expectedStates)) {
+      if (Stdlib_Option.mapOr(store[id], false, actual => statesEq(actual, expectedStates))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
