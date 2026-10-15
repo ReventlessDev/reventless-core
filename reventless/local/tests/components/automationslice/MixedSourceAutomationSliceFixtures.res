@@ -123,7 +123,7 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
 // ─────────────────────────────────────────────────────────────
 
 module AutoFulfillAutomation: AutomationSlice.Automation with module Spec := AutoFulfillSpec = {
-  let process = (id, item: AutoFulfillSpec.todoItem) => Some((
+  let process = (id, item: AutoFulfillSpec.todoItem, ~now as _) => Some((
     id,
     AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId}),
   ))

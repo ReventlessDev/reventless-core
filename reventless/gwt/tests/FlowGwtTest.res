@@ -73,7 +73,7 @@ module AutoShipSlice = {
     | OrderPlaced(_) => None
     }
 
-  let process = (id, _todo) => Some((id, ShipOrder({orderId: id})))
+  let process = (id, _todo, ~now as _) => Some((id, ShipOrder({orderId: id})))
   let onExhausted = (_id, _todo) => None
 }
 

@@ -151,7 +151,7 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 
 let mappings = [FromOrderingDcb];
 
-function process(id, item) {
+function process(id, item, param) {
   let rule = Stdlib_Option.filter(Notification_Rule$TraitNotification.byId(defaultRules, item.ruleId), Notification_Rule$TraitNotification.isImmediate);
   if (rule === undefined) {
     return;

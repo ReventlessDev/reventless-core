@@ -406,7 +406,8 @@ function AutomationStep(Spec) {
     let collected = events.map(e => Spec.collect(e)).flat();
     let resolvedIds = Stdlib_Array.filterMap(events, e => Spec.resolve(e));
     let pending = collected.filter(param => !resolvedIds.includes(param[0]));
-    let commands = Stdlib_Array.filterMap(pending, param => Spec.process(param[0], param[1]));
+    let now = Automation_GWT$ReventlessGwt.clockNow();
+    let commands = Stdlib_Array.filterMap(pending, param => Spec.process(param[0], param[1], now));
     return {
       log: s.log,
       outcome: s.outcome,
@@ -524,7 +525,7 @@ function AutomationSlice(Spec) {
     let whenReacts = async flowP => {
       let s = await flowP;
       let routed = s.log.flatMap(entry => Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, Stdlib_Option.getOr(entry.aggregateId, ""), A.testContext)));
-      let match = A.sweep(routed);
+      let match = A.sweep(routed, Automation_GWT$ReventlessGwt.clockNow());
       return {
         log: s.log,
         outcome: s.outcome,

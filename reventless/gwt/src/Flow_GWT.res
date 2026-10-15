@@ -505,7 +505,8 @@ module AutomationStep = (Spec: Automation_GWT.SliceSpec) => {
     let collected = events->Array.map(e => e->Spec.collect)->Array.flat
     let resolvedIds = events->Array.filterMap(e => e->Spec.resolve)
     let pending = collected->Array.filter(((id, _)) => !(resolvedIds->Array.includes(id)))
-    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo))
+    let now = Automation_GWT.clockNow()
+    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo, ~now))
     {
       ...s,
       lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
@@ -628,7 +629,7 @@ module AutomationSlice = (
           d.handle(entry.json, ~sourceId=entry->sourceIdOf, A.testContext)
         )
       )
-    let {commands, _} = A.sweep(routed)
+    let {commands, _} = A.sweep(routed, ~now=Automation_GWT.clockNow())
     {
       ...s,
       lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),

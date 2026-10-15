@@ -31,7 +31,7 @@ module ShipOrderSlice = {
     | _ => None
     }
 
-  let process = (_id, item) => Some((
+  let process = (_id, item, ~now as _) => Some((
     item.orderId,
     CreateShipment({orderId: item.orderId, address: item.shippingAddress}),
   ))

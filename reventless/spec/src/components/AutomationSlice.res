@@ -111,6 +111,10 @@ type context = {
   platformName: string,
   pluginName: string,
   sliceName: string,
+  /** When the source event was recorded, in milliseconds since 1970 (UTC): what a
+      due time is counted from. The runtime sets it for every event it delivers;
+      it is absent only in a context built by hand. */
+  recordedAt?: float,
 }
 
 /**
@@ -166,9 +170,14 @@ module type Automation = {
   /**
   Process: given a pending TODO item, produce a command.
   The processor calls this for each pending item. Returns the target ID and command.
-  May return `None` to skip processing (e.g., wait for more data).
+  May return `None` to skip processing (e.g., wait for more data, or a due time
+  not yet reached); the item stays pending and the sweep offers it again.
+
+  `~now` is the current time in milliseconds since 1970 (UTC), from Effect's
+  `Clock`, so a test can fix it. The `@@reventless.automation` PPX adds `~now as _`
+  to a `process` written without it.
   */
-  let process: (string, Spec.todoItem) => option<(string, Spec.command)>
+  let process: (string, Spec.todoItem, ~now: float) => option<(string, Spec.command)>
 
   /**
   The retry budget is spent: this item will never be processed again.

@@ -520,11 +520,12 @@ describe("AutoShipOrder AutomationSlice", () => {
 
 | Verb | Does |
 |---|---|
-| `givenEvent(e)` → `whenCollect` / `whenResolve` | one mapping's `collect` / `resolve`. `whenCollect` takes `~sourceId` (an aggregate source's entity id) and `~context`, both defaulted |
+| `givenEvent(e)` → `whenCollect` / `whenResolve` | one mapping's `collect` / `resolve`. `whenCollect` takes `~sourceId` (an aggregate source's entity id), `~context` and `~recordedAt` (the event's recorded time), all defaulted |
 | `thenTodos(items)`, `thenResolved(id)` | the rows collected, the id resolved |
-| `givenTodo(id, item)` → `whenProcess` / `whenExhausted` | `process`, or `onExhausted` once the budget is spent |
+| `givenTodo(id, item)` → `whenProcess` / `whenExhausted` | `process`, or `onExhausted` once the budget is spent. `whenProcess(~now)` fixes the time `process` is given; left out, it is the clock's |
 | `thenCommand(id, cmd)`, `thenNoCommand` | what either one publishes |
-| `givenEvents([event(e), …])` → `whenSweep` | every event routed by its source's name and decoded, exactly as the runtime does; `event(e, ~sourceId)` wraps a typed event |
+| `givenEvents([event(e), …])` → `whenSweep` | every event routed by its source's name and decoded, exactly as the runtime does; `event(e, ~sourceId, ~recordedAt)` wraps a typed event |
+| `->atTime(t)` → `whenSweep(~now)` | the events without a time of their own were recorded at `t`; the sweep runs at `~now`, or, left out, at the latest recorded time. A deadline reads `givenEvents([placed])->atTime(day0)->whenSweep(~now=day3)` |
 | `thenCommands(pairs)`, `andThenEvents([…])`, `thenScenarioTodos(items)` | the commands the sweep issues; later events that resolve rows; the rows still open |
 
 The sweep applies events in order, as the runtime's to-do list does: the first

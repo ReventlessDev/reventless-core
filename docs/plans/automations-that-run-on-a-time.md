@@ -3,7 +3,8 @@
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built 2026-10-16; its check on a deployed
-stack waits for the next deploy. [S2](#s2-the-local-platform-sweeps) built 2026-10-16.
+stack waits for the next deploy. [S2](#s2-the-local-platform-sweeps) and
+[S3](#s3-the-time-inside-the-functions) built 2026-10-16.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -366,6 +367,35 @@ as two scenarios, *at day 3 then `CancelOrder`* and *shipped on day 2 then nothi
 existing automation's suite unchanged and green.
 
 **Exit:** a deadline is testable at a fixed time; no existing automation changed.
+
+### What S3 did
+
+Built 2026-10-16; the exit holds. The deadline runs as GWT scenarios
+([AutomationDeadlineGwtTest.res](../../reventless/gwt/tests/AutomationDeadlineGwtTest.res)) and
+on the local runtime ([AutomationSweepTest.res](../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
+The three example automations compile unchanged.
+
+- **`process` takes `~now`.** The runtime reads it from Effect's `Clock` once per `phase2`. The
+  PPX's new pass ([NowInjection.ml](../../packages/reventless-ppx/src/ppx/NowInjection.ml)) adds
+  `~now as _` to a `process` literal without it. The trial ran as fixtures in the PPX's test
+  script rather than a JSON golden: one `process` without `~now`, one that reads its own.
+- **`recordedAt` on the context**, from the envelope's `meta.time`, for every event the runtime
+  delivers.
+
+Where it departs from the plan above:
+
+- **`recordedAt` is optional and reaches `collect` only.** It is optional so that a context
+  built by hand, in tests or by other code, still compiles. `resolve` takes no context, and
+  giving it one would change every mapping's signature for a need nothing names.
+- **`atTime(t)` fixes when the events happened, and `~now` when the sweep runs.** One time cannot
+  serve both, because a deadline needs the events on day 0 and the sweep on day 3. Without `~now`
+  the sweep runs at the latest recorded time, so `givenEvents(es)->atTime(t)->whenSweep` still
+  runs wholly at `t`. `Mapping(M).event(e, ~recordedAt)` dates a single event, and
+  `whenProcess(~now)` and `whenCollect(~recordedAt)` cover the unit steps.
+- **Code the PPX does not see must take `~now` itself.** That is a `process` in an `Automation`
+  module written by hand, or in a `SliceSpec` given to the deprecated `Automation_GWT.Make` or
+  `Flow_GWT.AutomationStep`. In this repository that meant seven test fixtures; for anyone else
+  it is the one breaking part of this phase.
 
 ## S4: declared schedules
 

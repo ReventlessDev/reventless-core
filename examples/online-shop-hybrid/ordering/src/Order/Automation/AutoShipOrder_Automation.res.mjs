@@ -90,7 +90,7 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
 
 let mappings = [FromOrderingDcb];
 
-function process(id, item) {
+function process(id, item, param) {
   return [
     id,
     {

@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Clock from "effect/Clock";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -56,6 +57,14 @@ function Make(Spec) {
       return newrecord;
     };
     let Route = AutomationSlice_Route$ReventlessCore.Make(Spec)(Automation);
+    let recordedAtOf = time => {
+      let millis = new Date(time).getTime();
+      if (Number.isNaN(millis)) {
+        return;
+      } else {
+        return millis;
+      }
+    };
     let apply = param => {
       param.collected.forEach(param => {
         let id = param[0];
@@ -82,9 +91,18 @@ function Make(Spec) {
         todoItems[id] = newrecord;
       }));
     };
-    let phase1 = (events, ctx) => {
+    let phase1 = (events, sliceCtx) => {
       events.forEach(json => {
         let context = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema);
+        let recordedAt = recordedAtOf(context.meta.time);
+        let ctx;
+        if (recordedAt !== undefined) {
+          let newrecord = {...sliceCtx};
+          newrecord.recordedAt = recordedAt;
+          ctx = newrecord;
+        } else {
+          ctx = sliceCtx;
+        }
         let sourceName = context.meta.service;
         let dict = Stdlib_JSON.Decode.object(json);
         let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
@@ -92,6 +110,7 @@ function Make(Spec) {
       });
     };
     let phase2 = async publishJsons => {
+      let currentTime = await Effect.runPromise(Clock.currentTimeMillis);
       let newlyAbandoned = [];
       Object.entries(todoItems).forEach(param => {
         let row = param[1];
@@ -128,7 +147,7 @@ function Make(Spec) {
           item = undefined;
         }
         Stdlib_Option.forEach(item, item => {
-          let match = Automation.process(id, item);
+          let match = Automation.process(id, item, currentTime);
           if (match === undefined) {
             return;
           }

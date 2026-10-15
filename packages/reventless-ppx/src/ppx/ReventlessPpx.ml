@@ -1011,6 +1011,8 @@ let transform (str : structure) : structure =
              TypeAnnotationInjection.transform_structure ~kind:inj_kind body
            | None -> body
          in
+         (* An automation's [process] takes [~now]; one written without it gets it. *)
+         let body = if kind = Automation then NowInjection.inject body else body in
          (* @@reventless.automation: in the merged AutomationSlice file shape
             (process + per-source Mapping.Make + let mappings), inject the
             AutomationSlice.Mappings.Make wrapper and scan inner DCB Source

@@ -1728,6 +1728,47 @@ let process = (id, item: MergedAutomation.todoItem) =>
   Some((id, MergedDo({mergedId: item.mergedId})))
 EOF
 
+# A process that already takes ~now keeps its own, and is not given a second.
+cat > "$PLUGIN/src/Automation/NowAware.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type todoItem = { nowId: string, dueAt: float }
+@schema
+type command = NowDo({nowId: string})
+
+let maxRetries = 1
+let heartbeatInterval = 1
+let targetName = "NowTarget"
+EOF
+
+cat > "$PLUGIN/src/Automation/NowAware_Automation.res" <<'EOF'
+@@reventless.automation
+
+module NowAwareDcbSource = {
+  let name = "NowAwareDcbEventLog"
+  @schema
+  type event = | Due({nowId: string, dueAt: float})
+}
+
+module FromDcb = Mapping.Make(
+  NowAwareDcbSource,
+  NowAware,
+  {
+    open NowAwareDcbSource
+    let collect = (event, ~sourceId as _, _ctx) => switch event {
+      | Due({nowId, dueAt}) => [(nowId, ({nowId, dueAt}: NowAware.todoItem))]
+    }
+    let resolve = _event => None
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(FromDcb)]
+
+let process = (id, item: NowAware.todoItem, ~now) =>
+  now >= item.dueAt ? Some((id, NowDo({nowId: item.nowId}))) : None
+EOF
+
 # ─── Fixture: @@reventless.extension — Extension/<Name>_Extension.res ─
 
 mkdir -p "$DCB/src/Extension"
@@ -2598,6 +2639,10 @@ echo ""
 echo "=== Test: @@reventless.automation (merged form — Mappings.Make wrapper auto-injected) ==="
 JS="$PLUGIN/src/Automation/MergedAutomation_Automation.res.mjs"
 assert_js_contains "$JS" 'Automation/MergedAutomation_Automation.res.mjs' "merged automation: moduleUrl injected"
+assert_js_contains "$JS" 'function process(id, item, param)' "merged automation: process given a ~now it does not take"
+JS="$PLUGIN/src/Automation/NowAware_Automation.res.mjs"
+assert_js_contains "$JS" 'function process(id, item, now)' "automation: a process taking ~now keeps its own"
+assert_js_contains "$JS" 'now >= item.dueAt' "automation: a process taking ~now reads it"
 assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"
 pass "merged automation: file compiles with one Mapping.Make + let mappings + process (Mappings.Make wrapper auto-injected)"
 

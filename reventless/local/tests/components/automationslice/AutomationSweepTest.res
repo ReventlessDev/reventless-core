@@ -1,5 +1,5 @@
-// The local platform sweeps pending automation items as AWS does: a deadline
-// passes without another event, a failed command is retried up to maxRetries,
+// The local platform sweeps pending automation items as AWS does: a deadline,
+// counted from its event's recorded time, passes without another event, a failed command is retried up to maxRetries,
 // and what the sweep moved is written back to the query store.
 
 open JestGlobals
@@ -7,9 +7,38 @@ open AutomationSweepFixtures
 
 module Callback = ReventlessCore.AutomationSlice_Callback
 
+// Only Date is faked, so `process` sees the time a test sets while Effect's own
+// scheduling still runs on real timers.
+type jestObj
+type fakeTimersConfig = {doNotFake: array<string>}
+@module("@jest/globals") external jest: jestObj = "jest"
+@send external useFakeTimers: (jestObj, fakeTimersConfig) => unit = "useFakeTimers"
+@send external useRealTimers: jestObj => unit = "useRealTimers"
+@send external setSystemTime: (jestObj, float) => unit = "setSystemTime"
+
+let setNow = millis => jest->setSystemTime(millis)
+
 let commandIds = () => publishedCommands.contents->Array.map(c => c.id)
 
 describe("the local automation sweep", () => {
+  let _ = beforeAll(() =>
+    jest->useFakeTimers({
+      doNotFake: [
+        "hrtime",
+        "nextTick",
+        "performance",
+        "queueMicrotask",
+        "setImmediate",
+        "clearImmediate",
+        "setInterval",
+        "clearInterval",
+        "setTimeout",
+        "clearTimeout",
+      ],
+    })
+  )
+  let _ = afterAll(() => jest->useRealTimers)
+
   let _ = beforeAllAsync(async () => {
     let _ = await slice->ReventlessCore.Component.operations->TestRunner.resolve
     let _ = await orderResource.name->TestRunner.resolve
@@ -20,34 +49,34 @@ describe("the local automation sweep", () => {
   let _ = beforeEach(() => {
     publishedCommands := []
     failPublish := false
-    clock := 0.
+    setNow(0.)
   })
 
   testPromise("sends a deadline's command once it is due, with no further event", async () => {
-    await placeOrder("o1", ~dueAt=100.)
+    await placeOrder("o1", ~within=100.)
     expect(commandIds())->toEqual([])
 
     await LocalAutomationSweep.sweepOnce()
     expect(commandIds())->toEqual([])
 
-    clock := 100.
+    setNow(100.)
     await LocalAutomationSweep.sweepOnce()
     expect(commandIds())->toEqual(["o1"])
   })
 
   testPromise("writes what it moved back to the query store", async () => {
-    await placeOrder("o2", ~dueAt=100.)
+    await placeOrder("o2", ~within=100.)
     expect(storedRow("o2")->Option.map(row => row.status))->toEqual(Some(Callback.Pending))
 
-    clock := 100.
+    setNow(100.)
     await LocalAutomationSweep.sweepOnce()
     expect(storedRow("o2")->Option.map(row => row.status))->toEqual(Some(Callback.Processing))
   })
 
   testPromise("retries a failed command up to maxRetries, then abandons it", async () => {
-    clock := 100.
+    setNow(100.)
     failPublish := true
-    await placeOrder("o3", ~dueAt=0.)
+    await placeOrder("o3", ~within=0.)
     expect(storedRow("o3")->Option.map(row => (row.status, row.retryCount)))->toEqual(
       Some((Callback.Failed, 1)),
     )

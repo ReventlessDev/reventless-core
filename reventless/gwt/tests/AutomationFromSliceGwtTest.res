@@ -79,7 +79,10 @@ module ShipPaid_Automation = {
 
   let mappings: array<module(Mapping)> = [module(FromOrders), module(FromPayments)]
 
-  let process = (id, _item: ShipPaid.todoItem) => Some((id, ShipPaid.Ship({orderId: id})))
+  let process = (id, _item: ShipPaid.todoItem, ~now as _) => Some((
+    id,
+    ShipPaid.Ship({orderId: id}),
+  ))
   let onExhausted = (id, _item: ShipPaid.todoItem) => Some((id, ShipPaid.GiveUp({orderId: id})))
 }
 

@@ -168,6 +168,13 @@ module Make = (
 
   module Route = AutomationSlice_Route.Make(Spec, Automation)
 
+  // An event's recorded time, from its envelope's ISO `meta.time`.
+  let recordedAtOf = time =>
+    switch Date.fromString(time)->Date.getTime {
+    | millis if Float.isNaN(millis) => None
+    | millis => Some(millis)
+    }
+
   let apply = ({collected, resolved}: AutomationSlice_Route.routed<Spec.todoItem>) => {
     // Collect — append new items keyed by ID; first writer wins (idempotent).
     collected->Array.forEach(((id, item)) => {
@@ -194,9 +201,13 @@ module Make = (
     )
   }
 
-  let phase1 = (events: array<JSON.t>, ctx: Reventless.AutomationSlice.context) => {
+  let phase1 = (events: array<JSON.t>, sliceCtx: Reventless.AutomationSlice.context) => {
     events->Array.forEach(json => {
       let context = json->Message.decode(Reventless.Message.contextSchema)
+      let ctx = switch recordedAtOf(context.meta.time) {
+      | Some(recordedAt) => {...sliceCtx, recordedAt}
+      | None => sliceCtx
+      }
       let sourceName = context.meta.service
       // Events arrive as `{id, meta, event}` envelopes (see Message.composeEventJson').
       // Per-mapping decoders work on the inner `event` payload (TAG + fields at
@@ -211,6 +222,7 @@ module Make = (
   }
 
   let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
+    let currentTime = await Clock.currentTimeMillis->Effect.runPromise
     // A `Failed` row at or past the ceiling is one an older build left stranded,
     // or one whose Spec lowered `maxRetries` under it. Either way it is abandoned
     // in fact, so say so rather than letting it sit in a status that promises a
@@ -247,7 +259,7 @@ module Make = (
       }
 
       item->Option.forEach(item => {
-        switch Automation.process(id, item) {
+        switch Automation.process(id, item, ~now=currentTime) {
         | Some((targetId, command)) =>
           todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
           let commandJson = try command

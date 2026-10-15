@@ -1,5 +1,13 @@
 open ReventlessCore
 
+// The current time when a scenario fixes none, from Effect's Clock.
+let clockNow = () => Clock.currentTimeMillis->Effect.runSync
+let nowOr = now =>
+  switch now {
+  | Some(now) => now
+  | None => clockNow()
+  }
+
 // Minimal inline spec for AutomationSlice — mirrors the pattern used by
 // the other GWT DSLs so sury-ppx processes the @schema attributes in this
 // compilation unit.
@@ -17,7 +25,7 @@ module type SliceSpec = {
 
   let collect: consumedEvent => array<(string, todoItem)>
   let resolve: consumedEvent => option<string>
-  let process: (string, todoItem) => option<(string, command)>
+  let process: (string, todoItem, ~now: float) => option<(string, command)>
 }
 
 module type T = {
@@ -44,13 +52,13 @@ module type T = {
 
   // Unit combinators — process
   let givenTodo: (string, Spec.todoItem) => (string, Spec.todoItem)
-  let whenProcess: ((string, Spec.todoItem)) => option<(string, Spec.command)>
+  let whenProcess: ((string, Spec.todoItem), ~now: float=?) => option<(string, Spec.command)>
   let thenCommand: (option<(string, Spec.command)>, string, Spec.command) => Outcome.outcome
   let thenNoCommand: option<(string, Spec.command)> => Outcome.outcome
 
   // Scenario combinators — full sweep
   let givenEvents: array<Spec.consumedEvent> => array<Spec.consumedEvent>
-  let whenSweep: array<Spec.consumedEvent> => scenario
+  let whenSweep: (array<Spec.consumedEvent>, ~now: float=?) => scenario
   let thenCommands: (scenario, array<(string, Spec.command)>) => Outcome.outcome
   let andThenEvents: (scenario, array<Spec.consumedEvent>) => scenario
   let thenScenarioTodos: (scenario, array<(string, Spec.todoItem)>) => Outcome.outcome
@@ -111,7 +119,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
 
   // Unit: process
   let givenTodo = (id, todo) => (id, todo)
-  let whenProcess = ((id, todo)) => Spec.process(id, todo)
+  let whenProcess = ((id, todo), ~now=?) => Spec.process(id, todo, ~now=nowOr(now))
   let thenCommand = (actual, expectedId, expectedCmd) =>
     switch actual {
     | Some((id, cmd)) if id == expectedId && cmd == expectedCmd => Outcome.pass
@@ -157,7 +165,8 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
 
   // Scenario: full sweep
   let givenEvents = es => es
-  let whenSweep = events => {
+  let whenSweep = (events, ~now=?) => {
+    let now = nowOr(now)
     // Build the todo list by running collect, then drain any items that are
     // completed by resolve in the same input stream.
     let collected = events->Array.map(e => e->Spec.collect)->Array.flat
@@ -165,7 +174,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     let pending = collected->Array.filter(((id, _)) => !Array.includes(resolvedIds, id))
 
     // Process each pending todo to produce commands.
-    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo))
+    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo, ~now))
 
     {todos: pending, commands}
   }
@@ -217,9 +226,13 @@ module FromSlice = (
     sliceName: Spec.name,
   }
 
-  /** A source event as the runtime receives it: encoded, and addressed by its
-      source's name. Built with `Mapping(M).event`. */
-  type sourced = {sourceName: string, sourceId: string, payload: JSON.t}
+  /** A source event as the runtime receives it: encoded, addressed by its
+      source's name, and recorded at a time when the scenario gives one. Built
+      with `Mapping(M).event`. */
+  type sourced = {sourceName: string, sourceId: string, payload: JSON.t, recordedAt: option<float>}
+
+  let withRecordedAt = (context: Reventless.AutomationSlice.context, recordedAt) =>
+    recordedAt->Option.mapOr(context, recordedAt => {...context, recordedAt})
 
   type scenario = {
     todos: array<(string, Spec.todoItem)>,
@@ -248,19 +261,21 @@ module FromSlice = (
   }
 
   module Mapping = (M: Automation.Mapping) => {
-    let event = (e: M.sourceEvent, ~sourceId="") => {
+    let event = (e: M.sourceEvent, ~sourceId="", ~recordedAt=?) => {
       sourceName: M.sourceName,
       sourceId,
       payload: e->Message.encode(M.sourceEventSchema),
+      recordedAt,
     }
     let givenEvent = (e: M.sourceEvent) => e
-    let whenCollect = (e, ~sourceId="", ~context=testContext) => M.collect(e, ~sourceId, context)
+    let whenCollect = (e, ~sourceId="", ~context=testContext, ~recordedAt=?) =>
+      M.collect(e, ~sourceId, context->withRecordedAt(recordedAt))
     let whenResolve = M.resolve
   }
 
   // Unit: process and abandonment
   let givenTodo = (id: string, item: Spec.todoItem) => (id, item)
-  let whenProcess = ((id, item)) => Automation.process(id, item)
+  let whenProcess = ((id, item), ~now=?) => Automation.process(id, item, ~now=nowOr(now))
   let whenExhausted = ((id, item)) => Automation.onExhausted(id, item)
   let thenCommand = (actual, expectedId, expectedCmd) =>
     switch actual {
@@ -282,13 +297,30 @@ module FromSlice = (
   // Scenario: a sweep routes each event in turn, as phase 1 does, so to-dos keep
   // the order the events produced them.
   let givenEvents = (es: array<sourced>) => es
+  /** The events happened at `time`: each one the scenario gave no time of its
+      own is recorded then. A sweep given no `~now` runs at the latest of them. */
+  let atTime = (events: array<sourced>, time) =>
+    events->Array.map(e => e.recordedAt->Option.isSome ? e : {...e, recordedAt: Some(time)})
+  let latestRecorded = (events: array<sourced>) =>
+    events->Array.reduce(None, (latest, e) =>
+      switch (latest, e.recordedAt) {
+      | (Some(l), Some(r)) => Some(Math.max(l, r))
+      | (None, r) => r
+      | (l, None) => l
+      }
+    )
   let routeAll = (events: array<sourced>, context) =>
     events->Array.flatMap(e =>
-      Route.route(e.payload, ~sourceName=e.sourceName, ~sourceId=e.sourceId, context)
+      Route.route(
+        e.payload,
+        ~sourceName=e.sourceName,
+        ~sourceId=e.sourceId,
+        context->withRecordedAt(e.recordedAt),
+      )
     )
   /** Applies routed events as the runtime's to-do list does: the first writer of
       an id wins, and a resolve completes only a row that already exists. */
-  let sweep = (routed: array<AutomationSlice_Route.routed<Spec.todoItem>>) => {
+  let sweep = (routed: array<AutomationSlice_Route.routed<Spec.todoItem>>, ~now) => {
     let rows: array<(string, Spec.todoItem, ref<bool>)> = []
     routed->Array.forEach(r => {
       r.collected->Array.forEach(((id, item)) =>
@@ -306,9 +338,16 @@ module FromSlice = (
       )
     })
     let todos = rows->Array.filterMap(((id, item, done)) => done.contents ? None : Some((id, item)))
-    {todos, commands: todos->Array.filterMap(((id, item)) => Automation.process(id, item))}
+    {todos, commands: todos->Array.filterMap(((id, item)) => Automation.process(id, item, ~now))}
   }
-  let whenSweep = (events, ~context=testContext) => sweep(routeAll(events, context))
+  let whenSweep = (events, ~context=testContext, ~now=?) =>
+    sweep(
+      routeAll(events, context),
+      ~now=switch (now, latestRecorded(events)) {
+      | (Some(now), _) | (None, Some(now)) => now
+      | (None, None) => clockNow()
+      },
+    )
   let thenCommands = (scenario, expected) =>
     scenario.commands == expected
       ? Outcome.pass

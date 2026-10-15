@@ -28,7 +28,7 @@ Automation/
 ```
 
 - **Spec** (`AutoFulfill.res`, `@@reventless.spec`) — `todoItem`, `command`, `maxRetries`, `heartbeatInterval`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
-- **Automation** (`AutoFulfill_Automation.res`, `@@reventless.automation`) — holds everything else inline: any DCB `Source` modules, one `Mapping.Make` instance per source, the `mappings` array, and `process: (string, todoItem) => option<(string, command)>`. The `@@reventless.automation` PPX auto-injects `open Reventless.AutomationSlice`, `module Spec`, the `Mappings.Make` wrapper (`module M` / `module type Mapping`), `let moduleUrl`, and `module Id = Reventless.Id.String` + dcbTags on each Source module — you don't write those by hand. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
+- **Automation** (`AutoFulfill_Automation.res`, `@@reventless.automation`) — holds everything else inline: any DCB `Source` modules, one `Mapping.Make` instance per source, the `mappings` array, and `process: (string, todoItem, ~now: float) => option<(string, command)>` (the PPX adds `~now as _` when `process` does not take it). The `@@reventless.automation` PPX auto-injects `open Reventless.AutomationSlice`, `module Spec`, the `Mappings.Make` wrapper (`module M` / `module type Mapping`), `let moduleUrl`, and `module Id = Reventless.Id.String` + dcbTags on each Source module — you don't write those by hand. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
 
 ## Per-source mapping
 
@@ -102,7 +102,7 @@ The slice fails plugin assembly with a clear error if any mapping's `sourceName`
 
 ### Ambient context
 
-`collect` and `resolve` receive an ambient `Reventless.AutomationSlice.context`:
+`collect` receives an ambient `Reventless.AutomationSlice.context`:
 
 ```rescript
 type context = {
@@ -110,10 +110,13 @@ type context = {
   platformName: string,
   pluginName: string,
   sliceName: string,
+  recordedAt?: float,
 }
 ```
 
 `Plugin_Builder` constructs this per slice from its existing `~environment` and plugin `name` parameters and threads it through. Use it to complete partial event payloads (e.g., when a DCB tag field is supplied by deployment metadata rather than the source event).
+
+`recordedAt` is when the source event was recorded, in milliseconds since 1970 (UTC). The runtime sets it for every event it delivers, so a deadline counts its due time from it rather than from a field of the payload; it is absent only in a context built by hand.
 
 The `context` record is intentionally narrow. Extending it requires an explicit framework PR — runtime registry lookups and open dicts are deliberately out of scope.
 

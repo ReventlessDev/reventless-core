@@ -1,7 +1,7 @@
-// A deadline, as an automation writes one today: `collect` records when an order
-// is due, and `process` sends nothing until then. Only a sweep moves the item
-// once its time has come, since no further event arrives. `clock` stands in
-// for the wall clock `process` reads.
+// A deadline: `collect` counts when an order is due from the time its event was
+// recorded, and `process` sends nothing until `~now` reaches it. Only a sweep
+// moves the item once its time has come, since no further event arrives. The
+// tests fix the time with Jest's fake Date.
 
 open TestFixtures
 open Reventless
@@ -10,7 +10,7 @@ module OrderSource = {
   module Id = Id.String
   let name = "DeadlineOrderEventTopic"
   @schema
-  type event = OrderPlaced({orderId: string, dueAt: float})
+  type event = OrderPlaced({orderId: string, within: float})
 }
 
 module CancelUnshippedSpec = {
@@ -32,24 +32,21 @@ module FromOrders = AutomationSlice.Mapping.Make(
   OrderSource,
   CancelUnshippedSpec,
   {
-    let collect = (event: OrderSource.event, ~sourceId as _, _ctx) =>
-      switch event {
-      | OrderPlaced({orderId, dueAt}) => [
-          (orderId, ({orderId, dueAt}: CancelUnshippedSpec.todoItem)),
+    let collect = (event: OrderSource.event, ~sourceId as _, ctx: AutomationSlice.context) =>
+      switch (event, ctx.recordedAt) {
+      | (OrderPlaced({orderId, within}), Some(placedAt)) => [
+          (orderId, ({orderId, dueAt: placedAt +. within}: CancelUnshippedSpec.todoItem)),
         ]
+      | (OrderPlaced(_), None) => []
       }
     let resolve = (_event: OrderSource.event) => None
   },
 )
 
-let clock = ref(0.)
-
 module CancelUnshippedAutomation: AutomationSlice.Automation
   with module Spec := CancelUnshippedSpec = {
-  let process = (id, item: CancelUnshippedSpec.todoItem) =>
-    clock.contents >= item.dueAt
-      ? Some((id, CancelUnshippedSpec.CancelOrder({orderId: item.orderId})))
-      : None
+  let process = (id, item: CancelUnshippedSpec.todoItem, ~now) =>
+    now >= item.dueAt ? Some((id, CancelUnshippedSpec.CancelOrder({orderId: item.orderId}))) : None
   let onExhausted = (_id, _item: CancelUnshippedSpec.todoItem) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(CancelUnshippedSpec)
@@ -95,15 +92,19 @@ let slice = CancelUnshipped.make(
   },
 )
 
-let placeOrder = async (orderId, ~dueAt) => {
-  let meta = makeTestMeta(~service=OrderSource.name)
+/** Places an order now, as the fake Date has it, due `within` milliseconds later. */
+let placeOrder = async (orderId, ~within) => {
+  let meta = {
+    ...makeTestMeta(~service=OrderSource.name),
+    time: Date.now()->Date.fromTime->Date.toISOString,
+  }
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", orderId->JSON.Encode.string),
       ("meta", meta->Reventless.Util_Sury.toJson(Message.metaSchema)),
       (
         "event",
-        OrderSource.OrderPlaced({orderId, dueAt})->Reventless.Util_Sury.toJson(
+        OrderSource.OrderPlaced({orderId, within})->Reventless.Util_Sury.toJson(
           OrderSource.eventSchema,
         ),
       ),

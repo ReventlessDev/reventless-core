@@ -105,11 +105,11 @@ filename — you don't write them):
 `_Automation.res` file; `process` is source-agnostic and lives at the top level
 of that same file.
 
-**`collect`** -- `(sourceEvent, ctx) => array<(string, todoItem)>`. When an event arrives, `collect` decides whether it creates new TODO items. Each item has a string `id` (used as a deduplication key) and a `todoItem` payload. Returns an empty array for irrelevant events. If an item with the same id already exists, it is skipped (idempotent).
+**`collect`** -- `(sourceEvent, ~sourceId, ctx) => array<(string, todoItem)>`. When an event arrives, `collect` decides whether it creates new TODO items. `ctx.recordedAt` is when the event was recorded, the time a due time is counted from. Each item has a string `id` (used as a deduplication key) and a `todoItem` payload. Returns an empty array for irrelevant events. If an item with the same id already exists, it is skipped (idempotent).
 
 **`resolve`** -- `sourceEvent => option<string>`. When an event arrives, `resolve` checks if it marks an existing TODO item as completed. Returns `Some(itemId)` to mark that item done, or `None` to skip. This closes the automation loop -- the command produced by `process` eventually causes events that `resolve` recognizes.
 
-**`process`** -- `(string, todoItem) => option<(string, command)>`. For each pending item, `process` decides what command to issue. Returns `Some((targetId, command))` to publish a command, or `None` to skip processing (e.g., waiting for more data). Skipped items remain pending for the next heartbeat sweep.
+**`process`** -- `(string, todoItem, ~now) => option<(string, command)>`. For each pending item, `process` decides what command to issue. Returns `Some((targetId, command))` to publish a command, or `None` to skip processing (e.g., waiting for more data, or a due time `~now` has not reached). Skipped items remain pending for the next sweep. `~now` is the current time in milliseconds, from Effect's `Clock`; a `process` written without it is given `~now as _` by the `@@reventless.automation` PPX.
 
 ## Usage Pattern
 
