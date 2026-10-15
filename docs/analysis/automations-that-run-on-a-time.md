@@ -538,7 +538,7 @@ the automation's runtime needs them too, and the deploy-time rule of
 
 **On AWS this wants EventBridge Scheduler, not classic rules.** Classic rules are limited to a
 few hundred per event bus by default, so one schedule per customer would hit the limit; EventBridge
-Scheduler holds up to a million schedules per account and region by default, takes a time zone
+Scheduler holds up to ten million schedules per account and region by default, takes a time zone
 per schedule ([T1](#9-open-questions)), and can fire once at a time, which also suits a deadline
 with a precise time. The quotas are the documented defaults and want confirming for the account
 used. Locally the timer keeps one handle per key.
@@ -1164,10 +1164,10 @@ time rather than a timestamp: a timestamp (milliseconds since 1970, a `float` in
 say whose wall clock was meant, is unreadable in an event or a schedule row, and is not what
 EventBridge Scheduler takes, whose `at(...)` is a local date and time plus a zone. An `After` is
 resolved, when the schedule is set, to an `At` in the schedule's zone, so the row shows exactly
-what the platform was given. A local time that falls into the hour skipped by daylight saving
-fires at the next valid minute, one that occurs twice fires at the first: one rule for both
-platforms, to confirm against EventBridge Scheduler's own handling when built
-([T1](#9-open-questions)).
+what the platform was given. A calendar time that falls into the hour skipped by daylight
+saving does not fire that day, and one that occurs twice fires once, at the first: EventBridge
+Scheduler's documented rule, which the local timer follows
+([the plan's S0](../plans/automations-that-run-on-a-time.md#what-s0-found), [T1](#9-open-questions)).
 
 The cost of B is mostly code that changes anyway: moving AWS to EventBridge Scheduler and giving
 the local timers a real `nextFiring` ([§7](#7-order-of-work)) rewrites every place that reads the

@@ -1,7 +1,8 @@
 # Plan: automations that run on a time
 
-**Status.** Planned 2026-10-15. Nothing built yet; [S0](#s0-check-what-the-analysis-assumes) comes
-first.
+**Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
+including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
+Nothing built yet; [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) is next.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -68,17 +69,143 @@ No code. The analysis rests on facts read from code or documentation and not yet
 checked, and the result written into this section with its date; a phase whose premise fails is
 changed before it starts.
 
-| # | Assumption | How it is checked | If it fails |
-|---|---|---|---|
-| 1 | The local platform has no automation sweep ([§2](../analysis/automations-that-run-on-a-time.md#2-what-exists-today)) | read the local platform's wiring; run an automation whose `process` returns `None` and watch whether it is retried | [S2](#s2-the-local-platform-sweeps) is dropped |
-| 2 | The PPX can inject `let schedule = None`, a default `reschedule` into `Mapping.Make`, and `~now` into a `process` that does not take it ([T4](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | read the `@@reventless.spec` and `@@reventless.automation` transforms in [reventless-ppx](../../packages/reventless-ppx); try it on one golden | `~now` becomes a required argument with a codemod over the examples |
-| 3 | EventBridge Scheduler: names of 1 to 64 characters from letters, digits, `-`, `_`, `.`; schedule groups; the `<aws.scheduler.scheduled-time>` input placeholder; *delete after completion*; a zone per schedule; how a local time in a skipped or repeated hour fires; the default quotas ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)) | the AWS documentation, then one schedule created by hand in a test account | the naming or the daylight-saving rule in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) changes |
-| 4 | The Pulumi AWS provider has the Scheduler's schedule group, and the IAM it needs; `rescript/pulumi-aws` can bind them | the provider's docs and the existing bindings | bindings are added in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
-| 5 | Effect 3.22's `DateTime` (`zoneMakeNamed`, `makeZoned`, `add`) and `Cron` (`make`, `next`) do what [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs, including month ends and daylight saving; their Effect 4 names | a scratch script against each; the Effect 4 changelog | another library is chosen, behind the same bindings |
-| 6 | The only callers of `Schedule.rate` are the spec, the two adapters, `ScheduleOps` and a few tests ([T10](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | a search across core, the examples and the published packages that depend on core | the callers found join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
+| # | Assumption | How it is checked | If it fails | Result, 2026-10-15 |
+|---|---|---|---|---|
+| 1 | The local platform has no automation sweep ([§2](../analysis/automations-that-run-on-a-time.md#2-what-exists-today)) | read the local platform's wiring; run an automation whose `process` returns `None` and watch whether it is retried | [S2](#s2-the-local-platform-sweeps) is dropped | **Holds.** [S2](#s2-the-local-platform-sweeps) stays, with two additions |
+| 2 | The PPX can inject `let schedule = None`, a default `reschedule` into `Mapping.Make`, and `~now` into a `process` that does not take it ([T4](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | read the `@@reventless.spec` and `@@reventless.automation` transforms in [reventless-ppx](../../packages/reventless-ppx); try it on one golden | `~now` becomes a required argument with a codemod over the examples | **Holds, by reading.** Each injection has a precedent; the trial on a golden moves to the first phase that needs it ([S3](#s3-the-time-inside-the-functions)) |
+| 3 | EventBridge Scheduler: names of 1 to 64 characters from letters, digits, `-`, `_`, `.`; schedule groups; the `<aws.scheduler.scheduled-time>` input placeholder; *delete after completion*; a zone per schedule; how a local time in a skipped or repeated hour fires; the default quotas ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)) | the AWS documentation, then one schedule created by hand in a test account | the naming or the daylight-saving rule in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) changes | **Partly fails: the daylight-saving rule.** Naming, groups, placeholder, deletion and zones hold, by the documentation and by hand. A `rate` needs a `StartDate` |
+| 4 | The Pulumi AWS provider has the Scheduler's schedule group, and the IAM it needs; `rescript/pulumi-aws` can bind them | the provider's docs and the existing bindings | bindings are added in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) | **Fails as expected.** The provider has both resources, but nothing binds them. The runtime SDK client is missing too. Both go into [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
+| 5 | Effect 3.22's `DateTime` (`zoneMakeNamed`, `makeZoned`, `add`) and `Cron` (`make`, `next`) do what [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs, including month ends and daylight saving; their Effect 4 names | a scratch script against each; the Effect 4 changelog | another library is chosen, behind the same bindings | **Holds, with two traps** that [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) has to avoid |
+| 6 | The only callers of `Schedule.rate` are the spec, the two adapters, `ScheduleOps` and a few tests ([T10](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | a search across core, the examples and the published packages that depend on core | the callers found join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) | **Holds for `rate`.** The AWS permissions are spread further than assumed; they join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
 
 **Exit:** the table's last column is filled in for all six, dated, and any phase it changes is
 updated.
+
+### What S0 found
+
+**1. The local sweep.** Nothing sweeps locally. The local AutomationSlice builder passes the
+core maker through unchanged
+([AutomationSlice_Builder.res](../../reventless/local/src/components/AutomationSlice_Builder.res)).
+Core runs `phase2` only inside the event handler. It exposes `processPending`, but nothing in
+the local platform calls it. The only local timers are the plugin heartbeat
+([LocalHeartbeatRunner.res](../../reventless/local/src/adapter/Heartbeat/LocalHeartbeatRunner.res)) and
+the scheduled publisher. No test retries an item that `process` left pending; the tests call
+`phase2` twice by hand. Two things for [S2](#s2-the-local-platform-sweeps):
+
+- `processPending` does not write the to-do list back to the query store afterwards, as the event
+  path does. The AWS sweep does all three steps (load, `phase2`, sync); the local one must too.
+- A slice's `heartbeatInterval` is read nowhere, on either platform. Its spec documents it in
+  seconds, while the plugin heartbeat counts its own `heartbeatInterval` in minutes. This is
+  [T6](../analysis/automations-that-run-on-a-time.md#9-open-questions), still open.
+
+**2. The PPX.** All three injections are feasible:
+
+- `let schedule = None` follows `externalSystem = None`, a folder-gated suffix injected only when
+  absent (`AuthorizationInjection.ml`).
+- `~now` follows `TypeAnnotationInjection`, which already walks `process` through its
+  `Function$` wrapper. Adding a labelled layer raises the arity from 2 to 3.
+- `reschedule` is the one with no pass to extend. Today only the wiring sidecar's emitter
+  recognises `Mapping.Make(Source, Target, {...})`. A new walk has to append to the third
+  argument, the way `inject_external_system_into_inner_module` appends to an inner module. The
+  older three-file `_Mappings.res` form goes through a different path and needs the same walk.
+- Both sidecars are written from the source *before* any injection. `.model.json` keeps only the
+  keys in `config_keys`, so `schedule` has to be added there. Otherwise the declared time never
+  reaches the sidecar ([S4](#s4-declared-schedules)).
+
+**3. EventBridge Scheduler** (the
+[schedule types](https://docs.aws.amazon.com/scheduler/latest/UserGuide/schedule-types.html),
+[CreateSchedule](https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html),
+[context attributes](https://docs.aws.amazon.com/scheduler/latest/UserGuide/managing-schedule-context-attributes.html)
+and [quotas](https://docs.aws.amazon.com/scheduler/latest/UserGuide/scheduler-quotas.html) pages):
+
+- **Names hold.** A schedule's name and a group's name are each 1 to 64 characters matching
+  `[0-9a-zA-Z-_.]+`.
+- **Deletion holds.** `ActionAfterCompletion: DELETE` exists. A completed one-time schedule
+  counts against the quota until it is deleted.
+- **Zones hold.** `ScheduleExpressionTimezone` takes an IANA name, for `cron` and `at` only.
+- **The placeholder holds.** `<aws.scheduler.scheduled-time>` is filled in as
+  `2022-03-22T18:59:43Z`.
+- **The daylight-saving rule fails.** When a `cron` time falls in the hour skipped in spring, AWS
+  **skips that firing** and runs normally the next day. A time that occurs twice in autumn runs
+  once, at the first occurrence. The analysis's rule "the next valid minute" is wrong for
+  `Calendar`, and the local `nextFiring` must skip as AWS does. The documentation does not say
+  how `at(...)` treats a skipped local time. The hand test shows only that such a schedule is
+  accepted; when it fires cannot be seen before the next spring change. Until then, a `Once`
+  resolved into a skipped hour is moved forward by the gap. That is what Effect does (item 5).
+- **`rate` has a start rule.** `rate(...)` knows minutes, hours and days, and `rate(n days)` is
+  24 hours, so `Every` stays zone-free as planned. Without a `StartDate`, a `rate` schedule fires
+  as soon as it is created. AWS is given a `StartDate` one interval after creation, and the local
+  timer waits the same interval.
+- **The quotas** are higher than the analysis assumed: 10,000,000 schedules per region, not a
+  million. Groups are limited to **500 per region**. With one group per scheduled slice and
+  stack, that limit is the one to watch ([Risks](#risks)).
+
+**The hand test** (2026-10-15, eu-central-1). One schedule group held probe schedules that sent
+their input to an SQS queue; everything was deleted afterwards.
+
+- **The `at(...)` time and the placeholder.** An `at(...)` at 00:06 in Europe/Berlin fired at
+  22:06Z, and its input held `"at": "2026-10-15T22:06:00Z"`. The placeholder is UTC, to the
+  second, with a `Z`. With `DELETE`, the schedule was gone after it fired.
+- **A `rate` without `StartDate` fires within a minute** of being created. Its scheduled time is
+  the moment of creation, to the second (`22:03:31Z`), so its later firings are not on the minute
+  either. With `StartDate`, it first fired exactly then and on the minute after that. That
+  confirms the `StartDate` rule above. `Clock.itemId` cuts `at` to the minute, so either way a
+  retried tick names the same item.
+- **Delivery lag.** Messages arrived 4 to 41 seconds after their scheduled time, within the
+  documented 60-second precision. `<aws.scheduler.attempt-number>` was `1`.
+- **Names.** A 64-character name was accepted; 65 characters and a name containing `:` were
+  refused.
+- **Daylight saving.** An `at(2027-03-28T02:30:00)` in Europe/Berlin, inside the skipped hour,
+  was accepted.
+- **Today's `Daily` expression** (`cron(0 6 * * * *)`) is refused outright. The same time
+  with `?` as the day-of-week field is accepted.
+
+**4. Pulumi and the SDK.** `@pulumi/aws` 7.19.0 ships `aws.scheduler.Schedule` and
+`aws.scheduler.ScheduleGroup`. [rescript/pulumi-aws](../../rescript/pulumi-aws/) binds neither;
+the layout to follow is one file per resource (`Cloudwatch_EventRule.res`). The runtime creates
+schedules through the SDK, and `@aws-sdk/client-scheduler` is neither installed nor bound in
+[rescript/aws-sdk](../../rescript/aws-sdk/). Only the CloudWatch Events client is.
+
+**5. Effect** (3.22.2; 4.0.5 is now `latest`):
+
+- Month ends work: 31 January plus a month is 28 February.
+- An unknown zone is `None`.
+- A cron time in the repeated hour fires once.
+- `Monthly` on the 31st skips the short months. AWS's `L` covers "the last day".
+- Effect 4 renames `unsafeMakeZoned` to `makeZonedUnsafe`, `zoneUnsafeMakeNamed` to
+  `zoneMakeNamedUnsafe` and `Cron.unsafeParse` to `parseUnsafe`. Its `Cron.parse` returns a
+  `Result` instead of an `Either`.
+
+Two traps:
+
+- **A `Cron` without a zone uses the machine's zone.** The bindings always pass one, UTC when the
+  time has none.
+- **`DateTime.add` on a zoned value treats `hours: 24` as wall-clock time.** It gives 23 elapsed
+  hours across the spring change, while `hours: 1` is elapsed time. `After(Minutes | Hours)` is
+  therefore added to the instant, and `Days` and longer in the zone.
+
+In a skipped hour, Effect's `Cron` moves a firing forward by the gap (02:30 becomes 03:30)
+rather than skipping it, unlike AWS (item 3). `nextFiring` checks the wall-clock time of
+`Cron.next`'s answer and moves on to the next day when it differs.
+
+**6. The callers.**
+
+- `Schedule.rate` and its constructors are read only where the plan assumed:
+  [Schedule.res](../../reventless/spec/src/types/Schedule.res), the two adapters,
+  [ScheduleOps.res](../../reventless/core/src/util/ScheduleOps.res) and the local tests (plus
+  one in `reventless/aws/tests`).
+- `ScheduleOps.nextTime` has no caller and goes.
+- The AWS `Daily` expression is confirmed malformed: it has `*` in both day fields.
+- The Task directive, the extension-point directive handler, the SideEffectHandler, the GWT stub
+  runtime and the scaffold in the tools repository pass a whole `schedule` through without
+  reading it. They need no change beyond the record's field.
+- Nothing in the UI, tools or business repositories builds a `rate`.
+- The AWS permissions reach further than the adapter:
+  - `events:*` on all resources is granted three times: the scheduler role, the Task bucket's
+    Lambda policy, and the command topic's Lambda policy.
+  - Each command topic's SQS queue policy admits the `events` principal, on a condition naming
+    `rule/*`.
+  - All four change with the move to Scheduler.
 
 ## S1: one type for a time, and the schedulers agree
 
@@ -91,23 +218,38 @@ The analysis's [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-sh
   `calendar`, `period`, `localTime`, `moment`, `zone` and
   `time = Every | Calendar | Once`; the schedule record becomes `{name, time, payload}`.
 - **The bindings.** `DateTime` and `Cron` in `rescript/effect`, as far as
-  [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs them.
+  [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs them. A
+  `Cron` is always built with a zone, UTC when the time has none
+  ([S0](#what-s0-found) item 5). In `rescript/pulumi-aws`: `Scheduler_Schedule` and
+  `Scheduler_ScheduleGroup`. In `rescript/aws-sdk`: the `@aws-sdk/client-scheduler` commands the
+  runtime uses (create, update, delete, get, list).
 - **The shared reading.** One module in core, beside `ScheduleOps`, with `nextFiring(time,
   ~after)`, `resolveOnce(time, ~from)` (an `After` to an `At` in the schedule's zone, from a
   given instant), the zone check, and the AWS expression of a time (`rate(...)`, `cron(...)` or
   `at(...)`, with its zone).
+  - **The daylight-saving rule is AWS's** ([S0](#what-s0-found) item 3). A `Calendar` time in
+    the skipped hour does not fire that day. One in the repeated hour fires once, at the first
+    occurrence. A `Once` in the skipped hour is moved forward by the gap; AWS accepts such a
+    time, but its firing is not observable before the next spring change.
+  - **`After(Minutes | Hours)` is added to the instant**, and `Days` and longer in the zone
+    ([S0](#what-s0-found) item 5).
+  - **An `Every` first fires one interval after it is set**, on both platforms. On AWS that is the
+    schedule's `StartDate`.
 - **Local.** `LocalScheduledPublisher` waits for `nextFiring` and waits again after each firing;
   a once-only time fires one timer. The 24-hour interval goes.
 - **AWS.** The scheduled publisher moves from CloudWatch Events rules to EventBridge Scheduler:
   one schedule group per owner, the target input carrying the scheduled time, *delete after
-  completion* for a once-only time. The role's `events:*` on all resources gives way to the
-  Scheduler actions on the platform's own groups.
+  completion* for a once-only time. The `events:*` grants give way to the Scheduler actions on
+  the platform's own groups, in all three places that hold them: the scheduler role, the Task
+  bucket's Lambda policy and the command topic's Lambda policy. The command topic's queue policy
+  admits the Scheduler's role instead of the `events` principal ([S0](#what-s0-found) item 6).
 - **Callers.** `ScheduleOps.minutesFromNow` becomes `Once({moment: After(Minutes(n))})`; the
   plugin connect timeout, the Task, extension-point and side-effect-handler paths, and their
-  tests follow.
+  tests follow. `ScheduleOps.nextTime`, which nothing calls, goes.
 
 **Tests:** `nextFiring` for each shape, with a zone, across a daylight-saving change in both
-directions, on the 29th to 31st of a month, for `Monthly` with `every` and for `Yearly`; the
+directions (a calendar time in the skipped hour skipped for that day), on the 29th to 31st of a
+month, for `Monthly` with `every` and for `Yearly`; the
 resolution of `After` across a month's end; the AWS expression of each shape; **the agreement
 test**: for a set of times, the AWS expression parsed by Effect's `Cron` and the local
 `nextFiring` give the same next ten firings; the local publisher firing at a calendar time under
@@ -118,10 +260,12 @@ timeout work on a deployed stack, by hand.
 
 ## S2: the local platform sweeps
 
-Only if [S0](#s0-check-what-the-analysis-assumes) item 1 confirms it. The local platform runs the
-automation sweep as AWS does, every five minutes, over every automation's pending and failed
-items, through the same entry the AWS sweep uses. The interval can be shortened for development
-([P3](#open-questions)).
+[S0](#what-s0-found) item 1 confirmed it. The local platform runs the automation sweep as AWS
+does, every five minutes, over every automation's pending and failed items. Like the AWS sweep,
+it loads the to-do list, runs `phase2` and writes the list back to the query store; core's
+`processPending` does only the middle step and gains the other two. The interval can be
+shortened for development ([P3](#open-questions)). A slice's `heartbeatInterval` stays unread
+([T6](../analysis/automations-that-run-on-a-time.md#9-open-questions)).
 
 **Tests:** an item `process` left pending is retried by the local sweep; a failed item is retried
 up to `maxRetries`.
@@ -135,7 +279,8 @@ The analysis's [§6](../analysis/automations-that-run-on-a-time.md#6-the-time-in
 
 - `collect` and `resolve` get the source event's recorded time on their `context`.
 - `process` gets `~now`, from Effect's `Clock`; the PPX supplies it to a `process` that does not
-  take it ([S0](#s0-check-what-the-analysis-assumes) item 2).
+  take it ([S0](#what-s0-found) item 2). That rewrite is tried on one PPX golden first. If it
+  fails, `~now` becomes a required argument, with a codemod over the examples.
 - The GWT DSL gains `atTime(t)`, which fixes `now` and the recorded time of the events a
   scenario gives.
 
@@ -151,7 +296,8 @@ The analysis's [§5.1 to §5.5](../analysis/automations-that-run-on-a-time.md#51
 [§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
 
 - **The spec** gains `let schedule: option<Schedule.time>`; the PPX injects `None` when absent and
-  writes the declared time into `.model.json`.
+  writes the declared time into `.model.json`, which needs `schedule` among the sidecar's
+  `config_keys` ([S0](#what-s0-found) item 2).
 - **The `Clock` source**, `Reventless.Clock`: `name`, `@schema type event = Tick({key, at})`,
   `itemId(key, at)`.
 - **The runtime** turns a Scheduler invocation (`{slice, key, at}`) into `Tick({key, at})` for
@@ -181,7 +327,9 @@ The analysis's [§5.6](../analysis/automations-that-run-on-a-time.md#56-schedule
 the once-only part of [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time).
 
 - **`reschedule`** on `Mapping`, returning `Set({key, time})` or `Clear({key})`; the PPX injects
-  `_ => []` where absent and marks the mapping in `.wiring.json`.
+  `_ => []` where absent and marks the mapping in `.wiring.json`. This takes a new walk into the
+  third argument of `Mapping.Make`, in the merged `_Automation.res` form and the older
+  `_Mappings.res` form ([S0](#what-s0-found) item 2).
 - **The runtime** writes each change to the schedule rows first, then to the platform; an
   `After` is resolved with the event's recorded time; a once-only key is cleared when its tick
   arrives.
@@ -234,8 +382,14 @@ replaced by `Schedule.time`, and callers of `createSchedule` change their schedu
   notes their Effect 4 names, so whichever lands second has one package to follow.
 - **Daylight saving.** Local and AWS could still disagree on a skipped or repeated local time;
   the agreement test of [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) covers both
-  changes of the year, and [S0](#s0-check-what-the-analysis-assumes) item 3 fixes AWS's rule
-  first.
+  changes of the year, and [S0](#what-s0-found) item 3 took AWS's rule from its documentation.
+  The rule for a one-time `at(...)` in a skipped hour is undocumented. AWS accepts such a
+  schedule, but when it fires can only be seen at the next spring change, on 2027-03-28 in
+  Europe.
+- **Schedule groups.** EventBridge Scheduler allows 500 groups per region by default, and the
+  design takes one per scheduled slice and stack. A region holding several stacks with many
+  scheduled slices would need the quota raised, or one group per plugin
+  ([S0](#what-s0-found) item 3).
 - **A deploy that changes every scheduled caller at once** ([S1](#s1-one-type-for-a-time-and-the-schedulers-agree)):
   the move to EventBridge Scheduler replaces the platform's scheduling resources. A schedule made
   at run time by an older version is not carried over; [S1](#s1-one-type-for-a-time-and-the-schedulers-agree)'s
