@@ -2,199 +2,63 @@
 title: "ScheduledPublisher → EventBridge Scheduler"
 ---
 
-:::note EventBridge, formerly CloudWatch Events
-AWS renamed CloudWatch Events to **EventBridge**; the Pulumi resource is still
-called `aws.cloudwatch.EventRule`. This page says EventBridge throughout and
-names the Pulumi resource where it matters.
-:::
+## ScheduledPublisher → EventBridge Scheduler
 
-## ScheduledPublisher → EventBridge
+The ScheduledPublisher adapter creates and deletes schedules at run time in
+[Amazon EventBridge Scheduler](https://docs.aws.amazon.com/scheduler/latest/UserGuide/what-is-scheduler.html).
+When a schedule fires, Scheduler sends its payload to a queue, usually a command topic.
 
-The ScheduledPublisher adapter provides time-based event publishing capabilities using Amazon EventBridge (now Amazon EventBridge), enabling scheduled workflows, periodic tasks, and cron-like event generation.
+**Source:** `reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler.res`
+(deploy time) and `ScheduledPublisher_EventBridgeScheduler_Runtime.res` (run time).
 
-## IAM Role Configuration
+## What is deployed
 
-The ScheduledPublisher adapter creates an IAM role with permissions for EventBridge to manage scheduled rules:
+| Resource | Purpose |
+|---|---|
+| IAM role `SchedulerRole-<suffix>` | assumed by Scheduler (`scheduler.amazonaws.com`) to deliver a payload; may `sqs:SendMessage` |
+| Schedule group, named after the role | holds every schedule the platform creates |
 
-```rescript
-let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
-  ~name="CloudWatchEventsRole",
-  ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
-  ~opts,
-)
+The group carries the role's name, so the role ARN that every runtime already receives
+also names the group. No schedule is made at deploy time.
 
-let _policy = PulumiAws.IAM.Policy.make(
-  ~name=name++"CloudWatchEventsPolicy",
-  ~args={
-    PulumiAws.IAM.Policy.policy: role.arn
-    ->Pulumi.Output.apply(roleArn => {
-      open PulumiAws.PolicyDocument
-      PulumiAws.PolicyDocument.make(
-        ~id = name ++ "CloudWatchEventsPolicy",
-        ~statements=[
-          {
-            sid: "AllowCloudWatchEvents",
-            effect: Allow,
-            actions: Action("events:*"),
-            resources: AllResources,
-          },
-          {
-            sid: "AllowPassRole",
-            effect: Allow,
-            actions: Action("iam:PassRole"),
-            resources: Resource(`${roleArn}`),
-          },
-        ],
-      )->toJsonString
-    })
-    ->Pulumi.Output.asInput,
-  },
-  ~opts,
-)
-```
+The Lambdas that create schedules (the extension points, the plugin connect timeout, Tasks
+with side effects) may `scheduler:CreateSchedule`, `UpdateSchedule` and `DeleteSchedule`
+on the schedules of that group, and `iam:PassRole` the role to Scheduler. A command topic's
+queue policy needs no entry for Scheduler: it sends as the role.
 
-**IAM configuration details:**
+## How a time becomes a schedule
 
-- **Service Principal** - EventBridge service (`events.amazonaws.com`) is granted AssumeRole permissions
-- **`events:*` permissions** - Full access to EventBridge operations
-  - Create, update, and delete event rules
-  - Add and remove targets from rules
-  - Enable and disable rules
-- **`iam:PassRole` permission** - Allows EventBridge to pass the role to targets (e.g., Lambda, ECS)
-  - Required when event rules invoke services on behalf of the role
-  - Scoped to the specific role ARN for security
+`createSchedule` turns the schedule's `Schedule.time` into Scheduler's expression with
+`ScheduleTime.toAws`, the same reading of a time the local timers use:
 
-**Key features:**
+| `Schedule.time` | Expression | Also set |
+|---|---|---|
+| `Every(Minutes(5))` | `rate(5 minutes)` | `StartDate` one interval after creation; `Weeks(n)` becomes `rate(7n days)` |
+| `Calendar({calendar: Daily({hour: 6, minute: 0})})` | `cron(0 6 * * ? *)` | `ScheduleExpressionTimezone`, `UTC` when the time has no zone |
+| `Calendar({calendar: Weekly({days: [Mon, Fri], …})})` | `cron(30 7 ? * MON,FRI *)` | the zone |
+| `Calendar({calendar: Monthly({day: 1, every: 3, …})})` | `cron(0 6 1 1/3 ? *)` | the zone |
+| `Once({moment: After(Minutes(10))})` | `at(2026-10-15T14:12:00)`, counted from creation | the zone; `ActionAfterCompletion: DELETE` |
 
-- **Deploy-time role creation** - IAM role and policies are provisioned during deployment
-- **Least privilege principle** - Role is scoped to EventBridge service only
-- **Target invocation** - PassRole permission enables EventBridge to invoke configured targets
+- **`StartDate` on an interval.** Without it, Scheduler fires a `rate` schedule as soon as
+  it is created.
+- **Daylight saving.** Scheduler skips a `cron` time in the hour that daylight saving
+  skips, and runs one in the repeated hour once.
+- **The time is validated before the call**: an unknown zone, an hour of 24 or a weekly
+  time without days is refused with `ScheduleTime.InvalidTime`.
 
-## Runtime Operations
+A FIFO queue target (`*.fifo`) gets the schedule's name as its message group; the command
+topics deduplicate by content.
 
-The ScheduledPublisher adapter provides two runtime operations for managing scheduled events:
+## Operations
 
-## Create Schedule Operation
+| Operation | Behaviour |
+|---|---|
+| `createSchedule` | `CreateSchedule` in the group; when one of that name exists, `UpdateSchedule` replaces it |
+| `deleteSchedule` | `DeleteSchedule`; a schedule already gone, such as a once-only one that fired, is no error |
 
-The `createSchedule` operation dynamically creates EventBridge rules at runtime:
+Both target the first channel resource they are given, by its ARN.
 
-```rescript
-createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role)
-```
+## Limits
 
-**Key features:**
-
-- **Dynamic rule creation** - Create event rules programmatically from Lambda or application code
-- **Flexible scheduling** - Supports cron expressions and rate expressions
-  - Cron: `cron(0 12 * * ? *)` - Daily at 12:00 PM UTC
-  - Rate: `rate(5 minutes)` - Every 5 minutes
-- **Target configuration** - Configure which resources (Lambda, SQS, etc.) receive scheduled events
-- **Role binding** - Uses the EventBridge role created at deploy-time
-
-**Use cases:**
-
-- Create temporary schedules based on business logic
-- Schedule tasks with dynamic intervals (e.g., user-configured reminder times)
-- Enable/disable scheduled workflows programmatically
-
-## Delete Schedule Operation
-
-The `deleteSchedule` operation removes EventBridge rules at runtime:
-
-```rescript
-deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule
-```
-
-**Key features:**
-
-- **Dynamic rule deletion** - Remove event rules when no longer needed
-- **Cleanup automation** - Automatically remove temporary schedules after completion
-- **Resource management** - Prevent accumulation of unused event rules
-
-**Use cases:**
-
-- Remove schedules when users unsubscribe from notifications
-- Clean up temporary workflows after task completion
-- Disable periodic checks when conditions are met
-
-## Deploy-time to Runtime Flow
-
-The ScheduledPublisher adapter follows a simplified deploy-time/runtime pattern focused on IAM setup:
-
-```rescript
-let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) => {
-  // Deploy-time: Create IAM role and policy for EventBridge
-  let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
-    ~name="CloudWatchEventsRole",
-    ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
-    ~opts,
-  )
-
-  let _policy = PulumiAws.IAM.Policy.make(/* ... */)
-
-  {
-    resource: {
-      Reventless.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
-      name: ""->Pulumi.Output.make,
-      id: ""->Pulumi.Output.make,
-      urn: ""->Pulumi.Output.make,
-      info: ""->Pulumi.Output.make,
-    },
-    operations: {
-      Reventless.Scheduler.createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role),
-      deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-    }->Pulumi.Output.make,
-  }
-}
-```
-
-**Flow steps:**
-
-1. **Create IAM role** - Pulumi provisions role with EventBridge service principal
-2. **Attach policies** - Policy document grants `events:*` and `iam:PassRole` permissions
-3. **Bind runtime functions** - `createSchedule` receives role for target configuration
-4. **Lambda execution** - Runtime functions execute in Lambda, using EventBridge SDK
-
-**Differences from other adapters:**
-
-- **No resource metadata extraction** - Unlike DynamoDB/SQS adapters, no `toRuntime*Output` conversion
-- **Role-based binding** - Runtime functions receive the IAM role itself, not metadata
-- **Dynamic resource creation** - EventBridge rules are created at runtime, not deploy-time
-- **Operations wrapped directly** - No `Pulumi.Output.apply` needed for operations binding
-
-## When to Use ScheduledPublisher
-
-**Use ScheduledPublisher for:**
-
-- **Periodic event generation** - Trigger workflows at fixed intervals
-  - Daily report generation
-  - Hourly data synchronization
-  - Weekly cleanup tasks
-- **Cron-like scheduling** - Complex time-based patterns
-  - Business day processing (Monday-Friday only)
-  - Monthly billing runs (first day of each month)
-  - Quarterly reports
-- **Time-based commands** - Publish commands on a schedule
-  - Send reminder commands
-  - Trigger health checks
-  - Initiate batch processing
-- **Dynamic scheduling** - Create/delete schedules based on business logic
-  - User-configured notification times
-  - Temporary event monitoring windows
-  - Conditional polling intervals
-
-**Common patterns:**
-
-- **Scheduled Commands** - CloudWatch Event → Lambda → CommandTopic → Aggregate
-  - Event rule triggers Lambda
-  - Lambda publishes command to CommandTopic
-  - Aggregate processes command
-- **Periodic Queries** - CloudWatch Event → Lambda → QueryDb → EventTopic
-  - Event rule triggers Lambda
-  - Lambda queries read models
-  - Lambda publishes events based on query results
-- **Batch Processing** - CloudWatch Event → Lambda → S3 Task Bucket
-  - Event rule triggers Lambda
-  - Lambda generates batch task files
-  - S3 upload triggers processing pipeline
-
+EventBridge Scheduler holds 10,000,000 schedules per region by default, and 500 schedule
+groups. A schedule fires within a minute of its time.

@@ -10,7 +10,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 import * as Util_PluginMessage_Runtime$ReventlessAws from "../../plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
 import * as PluginExtensionPoint_Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/connect/PluginExtensionPoint_Plugin.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
-import * as ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function setRequestId(prim) {
   HandlerFactoryHelpersMjs.setRequestId(prim);
@@ -93,11 +93,15 @@ let queryEngine = {
   query: queryEngine_query
 };
 
-let scheduler_createSchedule = ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(Stdlib_Option.getOr(config.schedulerRoleArn, ""));
+let roleArn = Stdlib_Option.getOr(config.schedulerRoleArn, "");
+
+let scheduler_createSchedule = ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.createSchedule(roleArn);
+
+let scheduler_deleteSchedule = ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.deleteSchedule(roleArn);
 
 let scheduler = {
   createSchedule: scheduler_createSchedule,
-  deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
+  deleteSchedule: scheduler_deleteSchedule
 };
 
 let schedulerQueueArn = Stdlib_Option.getOr(config.schedulerQueueArn, "");

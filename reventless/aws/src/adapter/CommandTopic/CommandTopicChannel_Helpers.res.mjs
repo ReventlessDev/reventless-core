@@ -12,11 +12,10 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function createQueuePolicyDocument(name, queueArn, lambdaArn) {
-  let accountId = Adapter_Helpers$ReventlessAws.accountIdOfQueueArn(queueArn);
-  return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
-    {
+  return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
       Sid: "AllowLambdaToAccessQueue",
       Principal: {
         Service: AWS$ReventlessAws.Lambda.principal
@@ -34,27 +33,7 @@ function createQueuePolicyDocument(name, queueArn, lambdaArn) {
             lambdaArn
           ]])
       }
-    },
-    {
-      Sid: "AllowCloudWatchEventsToSendToQueue",
-      Principal: {
-        Service: AWS$ReventlessAws.CloudwatchEventRule.principal
-      },
-      Effect: "Allow",
-      Action: ["sqs:SendMessage"],
-      Resource: queueArn,
-      Condition: {
-        StringEquals: Object.fromEntries([[
-            "aws:SourceAccount",
-            accountId
-          ]]),
-        ArnLike: Object.fromEntries([[
-            "aws:SourceArn",
-            `arn:aws:events:*:` + accountId + `:rule/*`
-          ]])
-      }
-    }
-  ]));
+    }]));
 }
 
 function createQueuePolicy(queue, name, lambda, opts) {
@@ -74,6 +53,7 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
     Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[1];
+    let queueArn = param[0];
     let allowSQSSendLambda = Adapter_Helpers$ReventlessAws.sqsResources(resources).length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "RemoteSQSLambdaPolicy", [{
           Sid: "AllowLambdaSendMessageSQS",
           Effect: "Allow",
@@ -99,16 +79,11 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
             dynamoDbResource.urn + "/index/*"
           ])
         }]) : undefined;
-    let allowLambdaWriteCloudWatchEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaCloudWatchEventsPolicy", [{
-        Sid: "AllowLambdaWriteCloudWatchEvents",
+    let allowLambdaManageSchedules = PolicyDocument$PulumiAws.make(undefined, name + "LambdaSchedulerPolicy", [{
+        Sid: "AllowLambdaManageSchedules",
         Effect: "Allow",
-        Action: [
-          "events:PutRule",
-          "events:PutTargets",
-          "events:DeleteRule",
-          "events:RemoveTargets"
-        ],
-        Resource: "*"
+        Action: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.manageActions,
+        Resource: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.schedulesOfAccount(Adapter_Helpers$ReventlessAws.accountIdOfQueueArn(queueArn))
       }]);
     let allowLambdaReceiveSQS = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
         Sid: "AllowLambdaReceiveSQS",
@@ -119,17 +94,17 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
           "sqs:GetQueueAttributes",
           "sqs:ChangeMessageVisibility"
         ],
-        Resource: param[0]
+        Resource: queueArn
       }]);
-    let allowLambdaPassRoleToEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaPassRoleToCloudWatchEventsRule", [{
-        Sid: "AllowLambdaPassRoleToEvents",
+    let allowLambdaPassRoleToScheduler = PolicyDocument$PulumiAws.make(undefined, name + "LambdaPassRoleToScheduler", [{
+        Sid: "AllowLambdaPassRoleToScheduler",
         Effect: "Allow",
         Action: "iam:PassRole",
         Resource: "*",
         Condition: {
           StringEquals: Object.fromEntries([[
               "iam:PassedToService",
-              "events.amazonaws.com"
+              AWS$ReventlessAws.EventBridgeScheduler.principal
             ]])
         }
       }]);
@@ -137,8 +112,8 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
       policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Stdlib_Array.keepSome([
         Lambda$PulumiAws.defaultLoggingPolicyDocument,
         allowLambdaReceiveSQS,
-        allowLambdaWriteCloudWatchEvents,
-        allowLambdaPassRoleToEvents,
+        allowLambdaManageSchedules,
+        allowLambdaPassRoleToScheduler,
         allowLambdaReadWriteDynamoDb,
         allowSQSSendLambda
       ])),

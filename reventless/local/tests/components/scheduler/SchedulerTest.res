@@ -21,10 +21,10 @@ describe("Scheduler_Builder.Make:", () => {
             count := count.contents + 1
           },
         )
-        // createSchedule async body has no await — setInterval registered synchronously
+        // createSchedule async body has no await — the timer is set synchronously
         let _ = ops.createSchedule(
           [makeTopicResource("sched-recurring")],
-          {name: "test-recurring", rate: Reventless.Schedule.Minutes(1), payload: "{}"},
+          {name: "test-recurring", time: Every(Minutes(1)), payload: "{}"},
         )
         // Two microtask ticks: publishEvent uses Effect.all(concurrency=unbounded) which forks
         // child fibers via startFork — one tick runs the child fiber (Queue.offer),
@@ -55,11 +55,11 @@ describe("Scheduler_Builder.Make:", () => {
           [makeTopicResource("sched-single")],
           {
             name: "test-single",
-            rate: Reventless.Schedule.Single(2024, 1, 1, 0, 0),
+            time: Once({moment: After(Minutes(1))}),
             payload: "{}",
           },
         )
-        jest->advanceTimersByTime(0)
+        jest->advanceTimersByTime(60 * 1000)
         let _ = await Promise.resolve()
         let _ = await Promise.resolve()
         expect(count.contents)->toBe(1)
@@ -83,7 +83,7 @@ describe("Scheduler_Builder.Make:", () => {
         )
         let _ = ops.createSchedule(
           [makeTopicResource("sched-delete")],
-          {name: "test-delete", rate: Reventless.Schedule.Minutes(2), payload: "{}"},
+          {name: "test-delete", time: Every(Minutes(2)), payload: "{}"},
         )
         let _ = ops.deleteSchedule([], "test-delete")
         jest->advanceTimersByTime(2 * 60 * 1000)

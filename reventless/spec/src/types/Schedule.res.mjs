@@ -12,15 +12,7 @@ let hourSchema = Sury.int32;
 
 let minuteSchema = Sury.int32;
 
-let rateSchema = Sury.union([
-  Sury.$schema(s => ({
-    TAG: "Single",
-    _0: s.m(yearSchema),
-    _1: s.m(monthSchema),
-    _2: s.m(daySchema),
-    _3: s.m(hourSchema),
-    _4: s.m(minuteSchema)
-  })),
+let intervalSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Minutes",
     _0: s.m(Sury.int32)
@@ -34,25 +26,117 @@ let rateSchema = Sury.union([
     _0: s.m(Sury.int32)
   })),
   Sury.$schema(s => ({
+    TAG: "Weeks",
+    _0: s.m(Sury.int32)
+  }))
+]);
+
+let weekdaySchema = Sury.union([
+  Sury.literal("Mon"),
+  Sury.literal("Tue"),
+  Sury.literal("Wed"),
+  Sury.literal("Thu"),
+  Sury.literal("Fri"),
+  Sury.literal("Sat"),
+  Sury.literal("Sun")
+]);
+
+let calendarSchema = Sury.union([
+  Sury.$schema(s => ({
     TAG: "Daily",
-    _0: s.m(hourSchema),
-    _1: s.m(minuteSchema)
+    hour: s.m(hourSchema),
+    minute: s.m(minuteSchema)
   })),
   Sury.$schema(s => ({
-    TAG: "Weekdays",
-    _0: s.m(hourSchema),
-    _1: s.m(minuteSchema)
+    TAG: "Weekly",
+    days: s.m(Sury.array(weekdaySchema)),
+    hour: s.m(hourSchema),
+    minute: s.m(minuteSchema)
   })),
   Sury.$schema(s => ({
-    TAG: "WeekdaysAndSaturday",
-    _0: s.m(hourSchema),
-    _1: s.m(minuteSchema)
+    TAG: "Monthly",
+    day: s.m(daySchema),
+    hour: s.m(hourSchema),
+    minute: s.m(minuteSchema),
+    every: s.m(Sury.$option(Sury.int32))
+  })),
+  Sury.$schema(s => ({
+    TAG: "Yearly",
+    month: s.m(monthSchema),
+    day: s.m(daySchema),
+    hour: s.m(hourSchema),
+    minute: s.m(minuteSchema)
+  }))
+]);
+
+let periodSchema = Sury.union([
+  Sury.$schema(s => ({
+    TAG: "Minutes",
+    _0: s.m(Sury.int32)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Hours",
+    _0: s.m(Sury.int32)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Days",
+    _0: s.m(Sury.int32)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Weeks",
+    _0: s.m(Sury.int32)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Months",
+    _0: s.m(Sury.int32)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Years",
+    _0: s.m(Sury.int32)
+  }))
+]);
+
+let localTimeSchema = Sury.$schema(s => ({
+  year: s.m(yearSchema),
+  month: s.m(monthSchema),
+  day: s.m(daySchema),
+  hour: s.m(hourSchema),
+  minute: s.m(minuteSchema)
+}));
+
+let momentSchema = Sury.union([
+  Sury.$schema(s => ({
+    TAG: "At",
+    _0: s.m(localTimeSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "After",
+    _0: s.m(periodSchema)
+  }))
+]);
+
+let zoneSchema = Sury.string;
+
+let timeSchema = Sury.union([
+  Sury.$schema(s => ({
+    TAG: "Every",
+    _0: s.m(intervalSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "Calendar",
+    calendar: s.m(calendarSchema),
+    zone: s.m(Sury.$option(zoneSchema))
+  })),
+  Sury.$schema(s => ({
+    TAG: "Once",
+    moment: s.m(momentSchema),
+    zone: s.m(Sury.$option(zoneSchema))
   }))
 ]);
 
 let scheduleSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  rate: s.m(rateSchema),
+  time: s.m(timeSchema),
   payload: s.m(Sury.string)
 }));
 
@@ -62,7 +146,14 @@ export {
   daySchema,
   hourSchema,
   minuteSchema,
-  rateSchema,
+  intervalSchema,
+  weekdaySchema,
+  calendarSchema,
+  periodSchema,
+  localTimeSchema,
+  momentSchema,
+  zoneSchema,
+  timeSchema,
   scheduleSchema,
 }
 /* yearSchema Not a pure module */

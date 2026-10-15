@@ -575,10 +575,12 @@ let makeQueryEngine = (pluginReadModelTableName: string): Reventless.QueryEngine
 }
 
 let makeScheduler = (schedulerRoleArn: string): ReventlessCore.Scheduler.operations => {
-  createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(
+  createSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime.createSchedule(
     ~roleArn=schedulerRoleArn,
   ),
-  deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
+  deleteSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime.deleteSchedule(
+    ~roleArn=schedulerRoleArn,
+  ),
 }
 
 let makeCommandTopicResources = (config: handlerConfig): array<

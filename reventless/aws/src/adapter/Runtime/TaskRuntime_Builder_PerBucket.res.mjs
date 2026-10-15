@@ -8,6 +8,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, callbackModulePath, publishToAggregatesQueueUrls, schedulerConfig, task) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 4096;
@@ -38,10 +39,10 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, call
       new (Aws.iam.RolePolicy)(fullName + `SchedulerPolicy`, {
         policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, fullName + `SchedulerPolicy`, [
           {
-            Sid: "AllowCloudWatchEvents",
+            Sid: "AllowManageSchedules",
             Effect: "Allow",
-            Action: "events:*",
-            Resource: "*"
+            Action: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.manageActions,
+            Resource: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.schedulesOfRoleArn(arn)
           },
           {
             Sid: "AllowPassSchedulerRole",

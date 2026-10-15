@@ -1,8 +1,9 @@
 open PulumiAws.PolicyDocument
 open Adapter_Helpers
 
-let createQueuePolicyDocument = (~name, ~queueArn: string, ~lambdaArn: string) => {
-  let accountId = queueArn->accountIdOfQueueArn
+// EventBridge Scheduler delivers to the queue as the scheduler role, which holds
+// sqs:SendMessage itself, so the queue's own policy admits only its Lambda.
+let createQueuePolicyDocument = (~name, ~queueArn: string, ~lambdaArn: string) =>
   PulumiAws.PolicyDocument.make(
     ~id=name ++ "QueuePolicy",
     ~statements=[
@@ -18,30 +19,8 @@ let createQueuePolicyDocument = (~name, ~queueArn: string, ~lambdaArn: string) =
           arnEquals: [("AWS:SourceArn", ConditionValue(lambdaArn))]->Dict.fromArray,
         },
       },
-      {
-        // ScheduledPublisher creates EventBridge rules at runtime
-        // (PutRule/PutTargets) targeting this queue directly, and EventBridge
-        // authorises SQS targets against the queue's resource policy — so the
-        // grant cannot name a single rule ARN. Scope it to rules in this
-        // account instead: SourceAccount closes the cross-account hole,
-        // ArnLike narrows the in-account surface to Events rules.
-        sid: "AllowCloudWatchEventsToSendToQueue",
-        effect: Allow,
-        principal: Principals({
-          service: PrincipalId(AWS.CloudwatchEventRule.principal),
-        }),
-        actions: Actions(["sqs:SendMessage"]),
-        resources: Resource(queueArn),
-        conditions: {
-          stringEquals: [("aws:SourceAccount", ConditionValue(accountId))]->Dict.fromArray,
-          arnLike: [
-            ("aws:SourceArn", ConditionValue(`arn:aws:events:*:${accountId}:rule/*`)),
-          ]->Dict.fromArray,
-        },
-      },
     ],
   )->toJsonString
-}
 
 let createQueuePolicy = (
   queue: PulumiAws.SQS.Queue.t,
@@ -138,19 +117,20 @@ let createLambdaPolicy = (
             )
           : None
 
-      let allowLambdaWriteCloudWatchEvents = PulumiAws.PolicyDocument.make(
-        ~id=name ++ "LambdaCloudWatchEventsPolicy",
+      // The scheduler role is not known here, so the grant names every
+      // scheduler group in the account rather than this platform's one.
+      let allowLambdaManageSchedules = PulumiAws.PolicyDocument.make(
+        ~id=name ++ "LambdaSchedulerPolicy",
         ~statements=[
           {
-            sid: "AllowLambdaWriteCloudWatchEvents",
+            sid: "AllowLambdaManageSchedules",
             effect: Allow,
-            actions: Actions([
-              "events:PutRule",
-              "events:PutTargets",
-              "events:DeleteRule",
-              "events:RemoveTargets",
-            ]),
-            resources: Resource("*"),
+            actions: Actions(ScheduledPublisher_EventBridgeScheduler_Runtime.manageActions),
+            resources: Resource(
+              queueArn
+              ->accountIdOfQueueArn
+              ->ScheduledPublisher_EventBridgeScheduler_Runtime.schedulesOfAccount,
+            ),
           },
         ],
       )
@@ -172,17 +152,17 @@ let createLambdaPolicy = (
         ],
       )
 
-      let allowLambdaPassRoleToEvents = PulumiAws.PolicyDocument.make(
-        ~id=name ++ "LambdaPassRoleToCloudWatchEventsRule",
+      let allowLambdaPassRoleToScheduler = PulumiAws.PolicyDocument.make(
+        ~id=name ++ "LambdaPassRoleToScheduler",
         ~statements=[
           {
-            sid: "AllowLambdaPassRoleToEvents",
+            sid: "AllowLambdaPassRoleToScheduler",
             effect: Allow,
             actions: Action("iam:PassRole"),
             resources: Resource("*"),
             conditions: {
               stringEquals: Dict.fromArray([
-                ("iam:PassedToService", ConditionValue("events.amazonaws.com")),
+                ("iam:PassedToService", ConditionValue(AWS.EventBridgeScheduler.principal)),
               ]),
             },
           },
@@ -197,8 +177,8 @@ let createLambdaPolicy = (
             [
               Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
               Some(allowLambdaReceiveSQS),
-              Some(allowLambdaWriteCloudWatchEvents),
-              Some(allowLambdaPassRoleToEvents),
+              Some(allowLambdaManageSchedules),
+              Some(allowLambdaPassRoleToScheduler),
               allowLambdaReadWriteDynamoDb,
               allowSQSSendLambda,
             ]->Array.keepSome,

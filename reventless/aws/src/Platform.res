@@ -1108,9 +1108,9 @@ module MakeWithConfig = (
 
   let makeScheduler = () => {
     let component = Scheduler.make()
-    // Surface the IAM role ARN so bundled Task Lambdas can call PutRule with
-    // the right `roleArn`. ScheduledPublisher_CloudWatchEvents stashes it as
-    // `outputs.resource.urn` (no dedicated field on Scheduler.outputs).
+    // Surface the scheduler role ARN, which also names the schedule group, so
+    // bundled Lambdas can create schedules. ScheduledPublisher_EventBridgeScheduler
+    // stashes it as `outputs.resource.urn` (no dedicated field on Scheduler.outputs).
     let outputs = component->ReventlessCore.Component.outputs
     hooks.schedulerRoleUrn := outputs.resource.urn
     component->ReventlessCore.Component.operations

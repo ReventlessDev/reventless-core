@@ -62,7 +62,7 @@ describe("TaskBucketEntryPoint_Ops.buildPublishCommands", () => {
 describe("TaskBucketEntryPoint_Ops.dispatchTaskActions", () => {
   let schedule: Reventless.Schedule.schedule = {
     name: "sweep",
-    rate: Reventless.Schedule.Minutes(5),
+    time: Reventless.Schedule.Every(Minutes(5)),
     payload: "{}",
   }
 

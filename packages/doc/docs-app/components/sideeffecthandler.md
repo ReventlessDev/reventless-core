@@ -191,16 +191,20 @@ type operations = {
 
 #### Schedule Types
 
+A schedule's `time` has one constructor per shape: an interval, a wall-clock time that
+recurs, or a single moment. `zone` is an IANA name (`Europe/Berlin`) and defaults to UTC;
+an interval takes none.
+
 ```rescript
-type rate =
-  | Single(year, month, day, hour, minute)  // One-time execution
-  | Minutes(int)                             // Every N minutes
-  | Hours(int)                               // Every N hours
-  | Days(int)                                // Every N days
-  | Daily(hour, minute)                      // Daily at specific time
-  | Weekdays(hour, minute)                   // Weekdays at specific time
-  | WeekdaysAndSaturday(hour, minute)        // Weekdays + Saturday
+type time =
+  | Every(interval)                                 // Minutes(n) | Hours(n) | Days(n) | Weeks(n)
+  | Calendar({calendar: calendar, zone?: zone})     // Daily | Weekly | Monthly | Yearly
+  | Once({moment: moment, zone?: zone})             // At(localTime) | After(period)
 ```
+
+A calendar time in the hour skipped by daylight saving does not fire that day; one in
+the repeated hour fires once. `Once({moment: After(...)})` is counted from the moment the
+schedule is created; a once-only time already past never fires.
 
 #### Creating Schedules
 
@@ -208,14 +212,14 @@ type rate =
 // Schedule a daily report
 await sideEffectHandler.operations.createSchedule({
   name: "daily-report",
-  rate: Daily(9, 0),  // 9:00 AM daily
+  time: Calendar({calendar: Daily({hour: 9, minute: 0})}),  // 09:00 UTC daily
   payload: "generate-daily-report",
 })
 
 // Schedule a one-time reminder
 await sideEffectHandler.operations.createSchedule({
   name: "reminder-123",
-  rate: Single(2026, 1, 30, 14, 0),  // Jan 30, 2026 at 2:00 PM
+  time: Once({moment: At({year: 2026, month: 1, day: 30, hour: 14, minute: 0})}),  // 30 Jan 2026, 14:00 UTC
   payload: "send-reminder-123",
 })
 
@@ -379,12 +383,15 @@ let execute = async (appointmentId, meta, event, queryEngine) =>
       
       await scheduler.createSchedule({
         name: `reminder-${appointmentId->Appointment.Id.toString}`,
-        rate: Single(
-          reminderDate->Date.getFullYear,
-          reminderDate->Date.getMonth,
-          reminderDate->Date.getDate,
-          9, 0  // 9:00 AM
-        ),
+        time: Once({
+          moment: At({
+            year: reminderDate->Date.getFullYear,
+            month: reminderDate->Date.getMonth + 1,
+            day: reminderDate->Date.getDate,
+            hour: 9,
+            minute: 0,
+          }),
+        }),
         payload: Js.Json.stringify({
           "type": "appointment-reminder",
           "appointmentId": appointmentId->Appointment.Id.toString,

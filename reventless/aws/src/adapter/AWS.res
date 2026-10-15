@@ -4,6 +4,7 @@ type service =
   | AppSync
   | IAM
   | CloudwatchEventRule
+  | EventBridgeScheduler
   | DynamoDb
   | DynamoDbStream
   | SQS
@@ -27,6 +28,7 @@ let toString: service => string = service =>
   | AppSync => "aws:AppSync"
   | IAM => "aws:IAM"
   | CloudwatchEventRule => "aws:CloudwatchEventRule"
+  | EventBridgeScheduler => "aws:EventBridgeScheduler"
   | S3 => "aws:S3"
   }
 
@@ -43,6 +45,7 @@ let toPrincipal: service => string = service =>
   | AppSync => "appsync.amazonaws.com"
   | IAM => "iam.amazonaws.com"
   | CloudwatchEventRule => "events.amazonaws.com"
+  | EventBridgeScheduler => "scheduler.amazonaws.com"
   | S3 => "s3.amazonaws.com"
   }
 
@@ -89,6 +92,10 @@ module IAM = {
 module CloudwatchEventRule = {
   let service = CloudwatchEventRule->toString
   let principal = CloudwatchEventRule->toPrincipal
+}
+module EventBridgeScheduler = {
+  let service = EventBridgeScheduler->toString
+  let principal = EventBridgeScheduler->toPrincipal
 }
 module S3 = {
   let service = S3->toString

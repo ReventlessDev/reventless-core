@@ -18,7 +18,7 @@ import * as Util_PluginMessage_Runtime$ReventlessAws from "../../plugin/runtime/
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as EventTopicPublisher_SNS_Runtime$ReventlessAws from "../EventTopic/EventTopicPublisher_SNS_Runtime.res.mjs";
 import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "../EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
-import * as ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function setRequestId(prim) {
   HandlerFactoryHelpersMjs.setRequestId(prim);
@@ -445,8 +445,8 @@ function makeQueryEngine(pluginReadModelTableName) {
 
 function makeScheduler(schedulerRoleArn) {
   return {
-    createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(schedulerRoleArn),
-    deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
+    createSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.createSchedule(schedulerRoleArn),
+    deleteSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.deleteSchedule(schedulerRoleArn)
   };
 }
 

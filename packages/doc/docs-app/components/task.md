@@ -208,7 +208,7 @@ let documentCallback = (~eventName, ~key) =>
     [
       Task.CreateSchedule({
         name: `process-document-${key}`,
-        rate: Minutes(5), // Process in 5 minutes
+        time: Once({moment: After(Minutes(5))}), // Process in 5 minutes
         payload: `{"documentKey": "${key}", "action": "process"}`,
       }),
     ]->Promise.resolve
@@ -266,7 +266,7 @@ Target: Target Service { class: external-system }
 
 S3 -> Lambda: File event
 Lambda -> Scheduler: CreateSchedule action
-Scheduler -> Scheduler: Create CloudWatch rule
+Scheduler -> Scheduler: Create EventBridge schedule
 Scheduler -> Target: "Trigger scheduled action (executes later)"
 ```
 
@@ -293,7 +293,7 @@ Aggregate -> EventTopic: events { class: event-flow }
 // Task can create dynamic schedules
 let scheduleCleanup = Task.CreateSchedule({
   name: "cleanup-temp-files",
-  rate: Daily(2, 0), // 2:00 AM daily
+  time: Calendar({calendar: Daily({hour: 2, minute: 0})}), // 02:00 UTC daily
   payload: `{"action": "cleanup", "target": "temp-files"}`,
 })
 
@@ -366,7 +366,7 @@ let documentCallback = (~eventName, ~key) =>
       // Scheduled follow-up
       Task.CreateSchedule({
         name: `document-followup-${key}`,
-        rate: Hours(24), // Check status after 24 hours
+        time: Once({moment: After(Hours(24))}), // Check status after 24 hours
         payload: `{"documentKey": "${key}", "action": "checkStatus"}`,
       }),
     ]->Promise.resolve
@@ -396,7 +396,7 @@ let batchCallback = (~eventName, ~key) =>
       // Schedule batch processing if queue is full
       Task.CreateSchedule({
         name: "process-batch",
-        rate: Minutes(5), // Process batch every 5 minutes
+        time: Every(Minutes(5)), // Process batch every 5 minutes
         payload: `{"action": "processBatch"}`,
       }),
     ]->Promise.resolve

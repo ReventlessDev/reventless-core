@@ -13,7 +13,7 @@
 | CommandGenerator | AppSync | `CommandGeneratorResolvers_AppSync` |
 | Task (buckets) | S3 | `TaskBucket_S3` |
 | Heartbeat | CloudWatch Events | `HeartbeatRunner_CloudWatchEvents` |
-| Scheduler | CloudWatch Events | `ScheduledPublisher_CloudWatchEvents` |
+| Scheduler | EventBridge Scheduler | `ScheduledPublisher_EventBridgeScheduler` |
 | MCP Server | Lambda Function URL | `MCP_Lambda` |
 | Cloner | Fargate | `ClonerRunner_Fargate` |
 

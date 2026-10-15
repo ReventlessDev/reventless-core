@@ -45,7 +45,7 @@ The bus acts as the glue: aggregates publish events to the bus, and read models 
 | **Counter** | `LocalCounterHandler` | `Dict<string, int>` via STM TRef |
 | **Heartbeat** | `LocalHeartbeatRunner` | `setInterval` timer |
 | **QueryEngine** | `LocalQueryEngine` | In-memory scan + filter over QueryDb |
-| **ScheduledPublisher** | `LocalScheduledPublisher` | `setInterval` timer + Bus dispatch |
+| **ScheduledPublisher** | `LocalScheduledPublisher` | a timer to each `ScheduleTime.nextFiring` + Bus dispatch |
 | **SideEffectHandler** | `LocalSideEffectHandler` | Bus event subscription with handler callback |
 | **DcbEventLog** | `DcbEventLogStorage_InMemory` | `array<event>` with tag-based filtering |
 

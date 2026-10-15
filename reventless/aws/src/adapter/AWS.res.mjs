@@ -9,6 +9,8 @@ function toString(service) {
       return "aws:IAM";
     case "CloudwatchEventRule" :
       return "aws:CloudwatchEventRule";
+    case "EventBridgeScheduler" :
+      return "aws:EventBridgeScheduler";
     case "DynamoDb" :
       return "aws:DynamoDb";
     case "DynamoDbStream" :
@@ -38,6 +40,8 @@ function toPrincipal(service) {
       return "iam.amazonaws.com";
     case "CloudwatchEventRule" :
       return "events.amazonaws.com";
+    case "EventBridgeScheduler" :
+      return "scheduler.amazonaws.com";
     case "DynamoDb" :
     case "DynamoDbStream" :
       return "dynamodb.amazonaws.com";
@@ -155,13 +159,22 @@ let CloudwatchEventRule = {
   principal: principal$10
 };
 
-let service$11 = "aws:S3";
+let service$11 = "aws:EventBridgeScheduler";
 
-let principal$11 = "s3.amazonaws.com";
+let principal$11 = "scheduler.amazonaws.com";
 
-let S3 = {
+let EventBridgeScheduler = {
   service: service$11,
   principal: principal$11
+};
+
+let service$12 = "aws:S3";
+
+let principal$12 = "s3.amazonaws.com";
+
+let S3 = {
+  service: service$12,
+  principal: principal$12
 };
 
 let Tags;
@@ -181,6 +194,7 @@ export {
   AppSync,
   IAM,
   CloudwatchEventRule,
+  EventBridgeScheduler,
   S3,
 }
 /* No side effect */

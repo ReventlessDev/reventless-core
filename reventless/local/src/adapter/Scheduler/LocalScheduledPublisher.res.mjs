@@ -4,26 +4,35 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
+import * as ScheduleTime$ReventlessCore from "@reventlessdev/reventless-core/src/util/ScheduleTime.res.mjs";
 
 function Make(Bus) {
   let activeTimers = {
     contents: {}
   };
-  let rateToMs = rate => {
-    switch (rate.TAG) {
-      case "Single" :
-        return 0;
-      case "Minutes" :
-        return (rate._0 * 60 | 0) * 1000 | 0;
-      case "Hours" :
-        return ((rate._0 * 60 | 0) * 60 | 0) * 1000 | 0;
-      case "Days" :
-        return (((rate._0 * 24 | 0) * 60 | 0) * 60 | 0) * 1000 | 0;
-      default:
-        return 86400000;
+  let stop = name => {
+    let handle = activeTimers.contents[name];
+    if (handle !== undefined) {
+      clearTimeout(Primitive_option.valFromOption(handle));
+      return Stdlib_Dict.$$delete(activeTimers.contents, name);
     }
   };
-  let isSingleShot = rate => rate.TAG === "Single";
+  let waitUntil = (name, at, fire) => {
+    let delay = at - Date.now();
+    let handle = delay > 86400000 ? setTimeout(() => waitUntil(name, at, fire), 86400000) : setTimeout(fire, Math.max(delay, 0));
+    activeTimers.contents[name] = handle;
+  };
+  let arm = (name, time, after, publish) => {
+    let at = ScheduleTime$ReventlessCore.nextFiring(time, after);
+    if (at !== undefined) {
+      return waitUntil(name, at, () => {
+        publish();
+        arm(name, time, at, publish);
+      });
+    } else {
+      return Stdlib_Dict.$$delete(activeTimers.contents, name);
+    }
+  };
   let scheduleMeta = {
     service: "Scheduler",
     time: "",
@@ -34,6 +43,7 @@ function Make(Bus) {
   };
   let make = (param, param$1) => {
     let createSchedule = async (channelResources, schedule) => {
+      ScheduleTime$ReventlessCore.validate(schedule.time);
       let topicName = channelResources.length !== 0 ? channelResources[0].name : "";
       let payloadJson;
       try {
@@ -41,19 +51,14 @@ function Make(Bus) {
       } catch (exn) {
         payloadJson = schedule.payload;
       }
-      let fire = () => {
+      let publish = () => {
         Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson);
       };
-      let handle = isSingleShot(schedule.rate) ? setTimeout(fire, 0) : setInterval(fire, rateToMs(schedule.rate));
-      activeTimers.contents[schedule.name] = handle;
+      let setAt = Date.now();
+      stop(schedule.name);
+      return arm(schedule.name, ScheduleTime$ReventlessCore.resolveOnce(schedule.time, setAt), setAt, publish);
     };
-    let deleteSchedule = async (param, name) => {
-      let handle = activeTimers.contents[name];
-      if (handle !== undefined) {
-        clearTimeout(Primitive_option.valFromOption(handle));
-        return Stdlib_Dict.$$delete(activeTimers.contents, name);
-      }
-    };
+    let deleteSchedule = async (param, name) => stop(name);
     return {
       resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined),
       operations: Pulumi.output({
@@ -70,8 +75,10 @@ function Make(Bus) {
   };
   return {
     activeTimers: activeTimers,
-    rateToMs: rateToMs,
-    isSingleShot: isSingleShot,
+    maxWaitMs: 86400000,
+    stop: stop,
+    waitUntil: waitUntil,
+    arm: arm,
     scheduleMeta: scheduleMeta,
     make: make,
     reset: reset

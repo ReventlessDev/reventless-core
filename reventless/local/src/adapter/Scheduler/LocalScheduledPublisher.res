@@ -1,10 +1,9 @@
 // In-memory ScheduledPublisher — satisfies Scheduler_Adapter.ScheduledPublisher.
 //
-// createSchedule: sets up a setInterval that fires Bus.publishEvent when the schedule triggers.
-// deleteSchedule: clears the interval.
-//
-// The schedule.payload is published as the event body. For Single(…) schedules a
-// one-shot setTimeout is used; all recurring rates use setInterval.
+// createSchedule waits for each firing `ScheduleTime.nextFiring` names and publishes the
+// payload as an event on the first channel resource; a once-only time fires once, one
+// already past never. A second createSchedule under the same name replaces the first,
+// as on AWS. deleteSchedule stops it.
 //
 // Usage: create a Scheduler with Scheduler_Builder.Make(LocalScheduledPublisher.Make(Bus))
 // and pass the resulting component to Plugin_Builder or Task_Builder.
@@ -13,29 +12,40 @@ module Make = (Bus: LocalBus.T) => {
   type timerHandle
 
   @val
-  external setIntervalJs: (unit => unit, int) => timerHandle = "setInterval"
-  @val
-  external setTimeoutJs: (unit => unit, int) => timerHandle = "setTimeout"
+  external setTimeoutJs: (unit => unit, float) => timerHandle = "setTimeout"
   @val
   external clearTimerJs: timerHandle => unit = "clearTimeout"
 
   let activeTimers: ref<dict<timerHandle>> = ref(Dict.make())
 
-  let rateToMs = (rate: Reventless.Schedule.rate) =>
-    switch rate {
-    | Minutes(n) => n * 60 * 1000
-    | Hours(n) => n * 60 * 60 * 1000
-    | Days(n) => n * 24 * 60 * 60 * 1000
-    | Daily(_, _) => 24 * 60 * 60 * 1000
-    | Weekdays(_, _) => 24 * 60 * 60 * 1000
-    | WeekdaysAndSaturday(_, _) => 24 * 60 * 60 * 1000
-    | Single(_, _, _, _, _) => 0
+  // Node fires a delay above 2^31 - 1 ms at once, so a far firing is reached a day at a time.
+  let maxWaitMs = 86_400_000.
+
+  let stop = name =>
+    switch activeTimers.contents->Dict.get(name) {
+    | Some(handle) =>
+      clearTimerJs(handle)
+      activeTimers.contents->Dict.delete(name)
+    | None => ()
     }
 
-  let isSingleShot = rate =>
-    switch rate {
-    | Reventless.Schedule.Single(_, _, _, _, _) => true
-    | _ => false
+  let rec waitUntil = (name, at, fire) => {
+    let delay = at -. Date.now()
+    let handle =
+      delay > maxWaitMs
+        ? setTimeoutJs(() => waitUntil(name, at, fire), maxWaitMs)
+        : setTimeoutJs(fire, Math.max(delay, 0.))
+    activeTimers.contents->Dict.set(name, handle)
+  }
+
+  let rec arm = (name, time, ~after, ~publish) =>
+    switch ReventlessCore.ScheduleTime.nextFiring(time, ~after) {
+    | None => activeTimers.contents->Dict.delete(name)
+    | Some(at) =>
+      waitUntil(name, at, () => {
+        publish()
+        arm(name, time, ~after=at, ~publish)
+      })
     }
 
   let scheduleMeta: ReventlessCore.Message.meta = {
@@ -52,6 +62,7 @@ module Make = (Bus: LocalBus.T) => {
       channelResources,
       schedule,
     ) => {
+      ReventlessCore.ScheduleTime.validate(schedule.time)
       let topicName = switch channelResources {
       | [] => ""
       | resources => (resources->Array.getUnsafe(0)).name
@@ -60,23 +71,19 @@ module Make = (Bus: LocalBus.T) => {
       | json => json
       | exception _ => schedule.payload->JSON.Encode.string
       }
-      let fire = () => Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson)->ignore
-      let handle = if schedule.rate->isSingleShot {
-        setTimeoutJs(fire, 0)
-      } else {
-        setIntervalJs(fire, rateToMs(schedule.rate))
-      }
-      activeTimers.contents->Dict.set(schedule.name, handle)
+      let publish = () =>
+        Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson)->ignore
+      let setAt = Date.now()
+      stop(schedule.name)
+      arm(
+        schedule.name,
+        schedule.time->ReventlessCore.ScheduleTime.resolveOnce(~from=setAt),
+        ~after=setAt,
+        ~publish,
+      )
     }
 
-    let deleteSchedule: ReventlessInfra.Scheduler.deleteSchedule = async (_, name) => {
-      switch activeTimers.contents->Dict.get(name) {
-      | Some(handle) =>
-        clearTimerJs(handle)
-        activeTimers.contents->Dict.delete(name)
-      | None => ()
-      }
-    }
+    let deleteSchedule: ReventlessInfra.Scheduler.deleteSchedule = async (_, name) => stop(name)
 
     {
       resource: ReventlessInfra.Adapter.make(

@@ -15,7 +15,7 @@ The Scheduler component provides time-based command publishing capabilities, ena
 ```d2
 Application: Application Code { class: client }
 Scheduler: Scheduler { class: scheduler }
-CloudWatch: EventBridge { class: aws-service }
+CloudWatch: EventBridge Scheduler { class: aws-service }
 CommandTopic: Command Topic { class: command-topic }
 
 Application -> Scheduler: createSchedule { class: command-flow }
@@ -36,44 +36,64 @@ The Scheduler uses a flexible schedule specification that supports various timin
 
 ### Schedule Types
 
+`Schedule.time` has one constructor per shape of a time:
+
 ```rescript
-type rate =
-  | Single(year, month, day, hour, minute)     // One-time execution
-  | Minutes(int)                               // Every N minutes
-  | Hours(int)                                 // Every N hours  
-  | Days(int)                                  // Every N days
-  | Daily(hour, minute)                        // Daily at specific time
-  | Weekdays(hour, minute)                     // Monday-Friday at specific time
-  | WeekdaysAndSaturday(hour, minute)          // Monday-Saturday at specific time
+type interval = Minutes(int) | Hours(int) | Days(int) | Weeks(int)
+type weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
+type calendar =
+  | Daily({hour: hour, minute: minute})
+  | Weekly({days: array<weekday>, hour: hour, minute: minute})
+  | Monthly({day: day, hour: hour, minute: minute, every?: int}) // every: 3 is quarterly
+  | Yearly({month: month, day: day, hour: hour, minute: minute})
+type period = Minutes(int) | Hours(int) | Days(int) | Weeks(int) | Months(int) | Years(int)
+type localTime = {year: year, month: month, day: day, hour: hour, minute: minute}
+type moment = At(localTime) | After(period)
+type zone = string // an IANA name such as "Europe/Berlin"; absent means UTC
+
+type time =
+  | Every(interval)                              // a fixed length, from the previous firing
+  | Calendar({calendar: calendar, zone?: zone})  // a wall-clock time that recurs
+  | Once({moment: moment, zone?: zone})          // a single moment
 
 type schedule = {
   name: string,      // Unique identifier for the schedule
-  rate: rate,        // Timing pattern
-  payload: string,   // Data to publish when schedule triggers
+  time: time,        // When it fires
+  payload: string,   // Data to publish when the schedule fires
 }
 ```
+
+- **Daylight saving.** A calendar time in the hour daylight saving skips does not fire
+  that day; one in the repeated hour fires once. Both platforms follow this rule.
+- **Months and years are not intervals.** *Every month* is a calendar time (`Monthly`).
+  A `Monthly` day that a month lacks (the 31st) is skipped in that month.
+- **`After` is counted from the moment the schedule is created**, by the calendar of its
+  zone: a month from 31 January is the last day of February. A once-only time already
+  past never fires.
+- **An invalid time is refused** when the schedule is created: an unknown zone, an hour
+  of 24 or a weekly time without days.
 
 ### Example Schedule Definitions
 
 ```rescript
-// Daily report generation at 9:00 AM
+// Daily report generation at 09:00 in Berlin
 let dailyReport = {
   Reventless.Schedule.name: "daily-report",
-  rate: Daily(9, 0),
+  time: Calendar({calendar: Daily({hour: 9, minute: 0}), zone: "Europe/Berlin"}),
   payload: `{"type": "GenerateReport", "reportType": "daily"}`,
 }
 
 // Cleanup task every 6 hours
 let cleanupTask = {
   name: "cleanup-task", 
-  rate: Hours(6),
+  time: Every(Hours(6)),
   payload: `{"type": "CleanupTempFiles"}`,
 }
 
 // One-time reminder
 let reminder = {
   name: "meeting-reminder",
-  rate: Single(2024, 12, 25, 14, 30),
+  time: Once({moment: At({year: 2026, month: 12, day: 25, hour: 14, minute: 30})}),
   payload: `{"type": "SendReminder", "meetingId": "abc123"}`,
 }
 ```
@@ -99,7 +119,7 @@ module MyPlugin = {
 let createDailyBackup = async () => {
   let schedule = {
     Reventless.Schedule.name: "daily-backup",
-    rate: Daily(2, 0), // 2:00 AM daily
+    time: Calendar({calendar: Daily({hour: 2, minute: 0})}), // 02:00 UTC daily
     payload: `{"type": "StartBackup", "target": "database"}`,
   }
   
@@ -123,14 +143,12 @@ shape: sequence_diagram
 
 App: Application { class: external-system }
 Sched: Scheduler { class: scheduler }
-CW: EventBridge { class: aws-service }
+CW: EventBridge Scheduler { class: aws-service }
 Target: Target Service { class: external-system }
 
 App -> Sched: "createSchedule(schedule)"
-Sched -> CW: Create Event Rule
-Sched -> CW: Configure Schedule Expression
-Sched -> CW: Add Target Configuration
-CW --> Sched: Rule Created
+Sched -> CW: "CreateSchedule (rate, cron or at, with its zone and target)"
+CW --> Sched: Schedule Created
 Sched --> App: Schedule Active
 CW -> Target: "Trigger on Schedule (schedule runs automatically)"
 Target -> Target: Process Payload
@@ -143,12 +161,11 @@ shape: sequence_diagram
 
 App: Application { class: external-system }
 Sched: Scheduler { class: scheduler }
-CW: EventBridge { class: aws-service }
+CW: EventBridge Scheduler { class: aws-service }
 
 App -> Sched: "deleteSchedule(name)"
-Sched -> CW: Remove Targets
-Sched -> CW: Delete Event Rule
-CW --> Sched: Rule Deleted
+Sched -> CW: DeleteSchedule
+CW --> Sched: Schedule Deleted
 Sched --> App: Schedule Removed
 ```
 
@@ -177,7 +194,7 @@ EventTopic -> ReadModel: events { class: projection-flow }
 // Scheduler publishes to CommandTopic for aggregate processing
 let scheduleAggregateCommand = {
   name: "process-orders",
-  rate: Hours(1),
+  time: Every(Hours(1)),
   payload: `{"aggregateId": "order-processor", "command": "ProcessPendingOrders"}`,
 }
 ```
@@ -188,7 +205,7 @@ let scheduleAggregateCommand = {
 // Scheduler can trigger event publication for system monitoring
 let healthCheckSchedule = {
   name: "health-check",
-  rate: Minutes(5),
+  time: Every(Minutes(5)),
   payload: `{"type": "HealthCheckEvent", "timestamp": "${Date.now()}"}`,
 }
 ```
@@ -201,7 +218,7 @@ let healthCheckSchedule = {
 // Process batch data every hour
 let batchProcessor = {
   name: "batch-processor",
-  rate: Hours(1),
+  time: Every(Hours(1)),
   payload: `{"type": "ProcessBatch", "batchSize": 1000}`,
 }
 ```
@@ -212,7 +229,7 @@ let batchProcessor = {
 // Send daily reports only on weekdays
 let businessReport = {
   name: "business-report",
-  rate: Weekdays(17, 0), // 5:00 PM on weekdays
+  time: Calendar({calendar: Weekly({days: [Mon, Tue, Wed, Thu, Fri], hour: 17, minute: 0})}),
   payload: `{"type": "GenerateBusinessReport"}`,
 }
 ```
@@ -223,7 +240,7 @@ let businessReport = {
 // Daily cleanup at midnight
 let dailyCleanup = {
   name: "daily-cleanup",
-  rate: Daily(0, 0),
+  time: Calendar({calendar: Daily({hour: 0, minute: 0})}),
   payload: `{"type": "CleanupExpiredData"}`,
 }
 ```
@@ -232,11 +249,10 @@ let dailyCleanup = {
 
 ```rescript
 // Create user-specific reminder schedules
-let createUserReminder = async (userId, reminderTime) => {
+let createUserReminder = async (userId, reminderTime: Reventless.Schedule.localTime, zone) => {
   let schedule = {
     name: `user-reminder-${userId}`,
-    rate: Single(reminderTime.year, reminderTime.month, reminderTime.day, 
-                reminderTime.hour, reminderTime.minute),
+    time: Once({moment: At(reminderTime), zone}),
     payload: `{"type": "UserReminder", "userId": "${userId}"}`,
   }
   
@@ -246,10 +262,10 @@ let createUserReminder = async (userId, reminderTime) => {
 
 ## Pulumi
 
-The Scheduler component is deployed as infrastructure that creates the necessary IAM roles and permissions for EventBridge management. The actual event rules are created dynamically at runtime through the component's operations.
+The Scheduler component is deployed as infrastructure that creates the IAM role EventBridge Scheduler delivers with, and the schedule group the platform's schedules go into. The schedules themselves are created at run time through the component's operations.
 
 ```rescript
-// Deployment creates IAM role with EventBridge permissions
+// Deployment creates the scheduler role and its schedule group
 let scheduler = Reventless.Scheduler.make(~opts=pulumiOpts)
 
 // Runtime operations use the deployed role to manage schedules

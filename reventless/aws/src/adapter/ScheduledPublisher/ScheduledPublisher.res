@@ -1,2 +1,2 @@
-module CloudWatchEvents = ScheduledPublisher_CloudWatchEvents
-module CloudWatchEvents_Runtime = ScheduledPublisher_CloudWatchEvents_Runtime
+module EventBridgeScheduler = ScheduledPublisher_EventBridgeScheduler
+module EventBridgeScheduler_Runtime = ScheduledPublisher_EventBridgeScheduler_Runtime

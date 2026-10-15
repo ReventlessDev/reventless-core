@@ -131,10 +131,11 @@ let queryEngine: Reventless.QueryEngine.operations = {
 
 // Reconstruct scheduler
 let scheduler: ReventlessCore.Scheduler.operations = {
-  createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(
-    ~roleArn=config.schedulerRoleArn->Option.getOr(""),
-  ),
-  deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
+  let roleArn = config.schedulerRoleArn->Option.getOr("")
+  {
+    createSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime.createSchedule(~roleArn),
+    deleteSchedule: ScheduledPublisher_EventBridgeScheduler_Runtime.deleteSchedule(~roleArn),
+  }
 }
 
 // CommandTopic resources for scheduler targets

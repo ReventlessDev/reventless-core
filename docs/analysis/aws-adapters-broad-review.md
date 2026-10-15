@@ -428,43 +428,43 @@ Both handlers call `fetch(...)` with no timeout. A stuck connection blocks until
 ## 9. Heartbeat / ScheduledPublisher (CloudWatch Events)
 
 ### 9.1 — **Critical, Correctness** — `Daily(hour, minute)` cron expression is invalid
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:19`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L19). Emits `cron(M H * * * *)`. CloudWatch Events cron requires *exactly one* of day-of-month and day-of-week to be `?`. AWS rejects with `Cron expressions must have exactly one of D or DOW must be ?`. The `Daily` schedule simply does not work.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:19`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L19). Emits `cron(M H * * * *)`. CloudWatch Events cron requires *exactly one* of day-of-month and day-of-week to be `?`. AWS rejects with `Cron expressions must have exactly one of D or DOW must be ?`. The `Daily` schedule simply does not work.
 
 **Fix:** `Daily(h, m) => cron(${m} ${h} * * ? *)`.
 **Effort:** Tiny.
 
 ### 9.2 — **Critical, Correctness** — `role.arn->Pulumi.Output.get` at Lambda runtime
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:42`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L42). `Pulumi.Output.get` is a deploy-time extraction. The runtime function `createSchedule` is called from a Lambda creating CloudWatch rules dynamically — the role binding is no longer a Pulumi.Output. Same dead-code risk pattern as Cloner 6.1.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:42`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L42). `Pulumi.Output.get` is a deploy-time extraction. The runtime function `createSchedule` is called from a Lambda creating CloudWatch rules dynamically — the role binding is no longer a Pulumi.Output. Same dead-code risk pattern as Cloner 6.1.
 
 **Fix:** thread role ARN through environment variables; read `process.env.SCHEDULER_ROLE_ARN` in the runtime.
 **Effort:** Small.
 
 ### 9.3 — **Major, Correctness** — `PutRule` + `PutTargets` not atomic
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:37-63`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L37-L63). PutRule succeeds, PutTargets fails (throttling, network) → ghost rule with no targets, accruing `events.RuleEvaluations` charges and never firing. No rollback.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:37-63`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L37-L63). PutRule succeeds, PutTargets fails (throttling, network) → ghost rule with no targets, accruing `events.RuleEvaluations` charges and never firing. No rollback.
 
 **Fix:** wrap PutTargets in try/catch; on failure call `DeleteRuleCommand`. Add `Effect.retry`.
 **Effort:** Small.
 
 ### 9.4 — **Major, Correctness / Cost** — `deleteSchedule` partial failure window
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:67-97`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L67-L97). RemoveTargets fails → `Effect.runPromise` throws, rule + targets stay. DeleteRule won't succeed while targets are attached.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:67-97`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L67-L97). RemoveTargets fails → `Effect.runPromise` throws, rule + targets stay. DeleteRule won't succeed while targets are attached.
 
 **Fix:** treat `ResourceNotFoundException` from RemoveTargets as success; retry DeleteRule; surface as a periodic reaper for orphaned rules.
 **Effort:** Small.
 
 ### 9.5 — **Major, Security** — `events:*` over-permission
-[`ScheduledPublisher_CloudWatchEvents.res:16-22`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L16-L22). Grants `events:*` cluster-wide; only `PutRule`, `DeleteRule`, `PutTargets`, `RemoveTargets` are needed. A compromised runtime can manipulate any rule in the account.
+[`ScheduledPublisher_CloudWatchEvents.res:16-22`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L16-L22). Grants `events:*` cluster-wide; only `PutRule`, `DeleteRule`, `PutTargets`, `RemoveTargets` are needed. A compromised runtime can manipulate any rule in the account.
 
 **Fix:** narrow actions; restrict resource to `arn:aws:events:*:*:rule/<stack-prefix>-*`.
 **Effort:** Tiny.
 
 ### 9.6 — **Major, Correctness** — `// FIXME` `Array.getUnsafe(0)` on queue resources
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:36, 77`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L36). Multi-queue Schedulers silently target only the first queue.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:36, 77`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L36). Multi-queue Schedulers silently target only the first queue.
 
 **Fix:** create one EventTarget per queue, or assert single-queue at deploy time.
 **Effort:** Small.
 
 ### 9.7 — **Critical, Correctness/Operational** — `resolvedResource.urn` carries an ARN by convention
-[`HeartbeatRunner_CloudWatchEvents.res:55`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L55), [`ScheduledPublisher_CloudWatchEvents.res:43`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L43). The field name is `urn`; the value is an ARN by convention (cross-checked with `Util_SQS.findResolvedResource`). A Pulumi URN cannot match an IAM ARN; if the convention ever drifts the IAM grants silently fail to match. No type-level enforcement.
+[`HeartbeatRunner_CloudWatchEvents.res:55`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L55), [`ScheduledPublisher_CloudWatchEvents.res:43`](https://github.com/ReventlessDev/reventless-core/blob/75db685119f924c533541aae31550f71f1522d4d/reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L43). The field name is `urn`; the value is an ARN by convention (cross-checked with `Util_SQS.findResolvedResource`). A Pulumi URN cannot match an IAM ARN; if the convention ever drifts the IAM grants silently fail to match. No type-level enforcement.
 
 **Fix:** rename `urn → arn`, or wrap in a phantom-typed `Arn.t`. Add a deploy-time assert that the value starts with `arn:`.
 **Effort:** Medium.

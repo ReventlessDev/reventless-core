@@ -108,7 +108,7 @@ function Make(Spec) {
         let id = directive._0;
         return await createSchedule({
           name: disconnectScheduleName(id),
-          rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
+          time: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
             id: id,
             meta: Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),

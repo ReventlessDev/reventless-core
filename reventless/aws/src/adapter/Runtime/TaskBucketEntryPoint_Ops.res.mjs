@@ -6,7 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as TaskBucket_S3_Runtime$ReventlessAws from "../Task/TaskBucket_S3_Runtime.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
-import * as ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function logWarn(prim0, prim1) {
   HandlerFactoryHelpersMjs.log.warn(prim0, prim1);
@@ -80,8 +80,8 @@ function makeSchedulerOps(config) {
         configuration: {},
         tags: {}
       }];
-    let ops_createSchedule = schedule => ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(match$1)(resources, schedule);
-    let ops_deleteSchedule = name => ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule(resources, name);
+    let ops_createSchedule = schedule => ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.createSchedule(match$1)(resources, schedule);
+    let ops_deleteSchedule = name => ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.deleteSchedule(match$1)(resources, name);
     let ops = {
       createSchedule: ops_createSchedule,
       deleteSchedule: ops_deleteSchedule

@@ -2,7 +2,7 @@
 
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
-Nothing built yet; [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) is next.
+[S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built 2026-10-16; its check on a deployed stack waits for the next deploy.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -257,6 +257,50 @@ test**: for a set of times, the AWS expression parsed by Effect's `Cron` and the
 
 **Exit:** all suites green on in-memory, SQLite and AWS; a Task schedule and the plugin connect
 timeout work on a deployed stack, by hand.
+
+### What S1 did
+
+Built 2026-10-16. All suites pass (457 suites, 5184 tests), and `pulumi preview` of the
+hybrid example's platform stack creates the role, the group and its policy. The check on a
+deployed stack waits for the deploy that follows a push.
+
+- **The shared reading** is
+  [ScheduleTime.res](../../reventless/core/src/util/ScheduleTime.res): `nextFiring`,
+  `resolveOnce`, `validate` (every problem of a time in one message) and `toAws`. Its tests
+  include the agreement test, eight calendar times in six zones
+  ([ScheduleTimeTest.res](../../reventless/core/tests/util/ScheduleTimeTest.res)).
+- **The bindings:**
+  - `DateTime`, `Cron` and `Clock` in [rescript/effect](../../rescript/effect/src/).
+  - `EventBridgeScheduler` (create, update, delete) in [rescript/aws-sdk](../../rescript/aws-sdk/src/).
+    The client is pinned to the other clients' release, so the Lambda layer carries one SDK core.
+  - `Scheduler.ScheduleGroup` in [rescript/pulumi-aws](../../rescript/pulumi-aws/src/Scheduler/).
+- **The documentation** of the Scheduler, the Task, the SideEffectHandler and both
+  ScheduledPublisher adapters now uses `Schedule.time`.
+
+Where it departs from the plan above:
+
+- **No Pulumi `Schedule` binding, and no `get` or `list` command.** Schedules are made at run
+  time ([P1](#open-questions) recommends the same for declared ones), and nothing reads one back
+  until the reconcile of [S5](#s5-schedules-set-by-events), which adds what it needs.
+- **One group per platform scheduler, named after its role.** The runtime already receives the
+  role's ARN in about fifteen places. Naming the group after the role gives the runtime the group
+  too, without a second value threaded through all of them. The groups per scheduled slice of
+  [§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)
+  come with [S4](#s4-declared-schedules).
+- **The target input is the payload, unchanged.** Today's callers deliver their own payloads,
+  and adding the scheduled time to them would change what their consumers receive. The time
+  comes with the framework's own input, `{slice, key, at}`, in [S4](#s4-declared-schedules).
+- **The command topic's Lambda may manage the schedules of every scheduler group in the
+  account** (`SchedulerRole-*`). Its policy is built without the scheduler role, unlike the Task
+  bucket's, which is scoped to the one group.
+- **The local publisher runs on plain timers, tested under Jest's fake clock rather than
+  `TestClock`.** Every time it waits for comes from `ScheduleTime`, so the date work still goes
+  through Effect ([Rules](#rules-every-phase-keeps) 5). Effect's fibers under fake timers would
+  make the tests depend on Effect's internal scheduling.
+- **Effect never wakes from a sleep longer than 2³¹ ms, and Node fires such a timer at once.**
+  The local publisher waits at most a day at a time.
+- **A once-only time already past never fires**, locally as on AWS. Before, the local platform
+  fired a `Single` at once, whatever its date.
 
 ## S2: the local platform sweeps
 

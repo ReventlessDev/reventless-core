@@ -82,9 +82,9 @@ let forBucketCallback = (
     ~opts={Pulumi.ComponentResource.parent: resource},
   )
 
-  // Grant the Task Lambda role permission to manage CloudWatch Events rules
-  // and pass the scheduler role to events. Only needed when a schedulerConfig
-  // is present (Tasks with side effects).
+  // Grant the Task Lambda role permission to manage the schedules in the
+  // scheduler's group and pass the scheduler role to them. Only needed when a
+  // schedulerConfig is present (Tasks with side effects).
   switch schedulerConfig {
   | None => ()
   | Some({schedulerRoleUrn}) =>
@@ -97,10 +97,12 @@ let forBucketCallback = (
             ~id=`${fullName}SchedulerPolicy`,
             ~statements=[
               {
-                sid: "AllowCloudWatchEvents",
+                sid: "AllowManageSchedules",
                 effect: Allow,
-                actions: Action("events:*"),
-                resources: AllResources,
+                actions: Actions(ScheduledPublisher_EventBridgeScheduler_Runtime.manageActions),
+                resources: Resource(
+                  arn->ScheduledPublisher_EventBridgeScheduler_Runtime.schedulesOfRoleArn,
+                ),
               },
               {
                 sid: "AllowPassSchedulerRole",

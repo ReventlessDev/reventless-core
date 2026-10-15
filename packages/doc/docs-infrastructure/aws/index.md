@@ -157,7 +157,7 @@ Reventless components map to AWS services as follows:
 | **Task** | S3 | Stores task data; S3 events trigger Lambda on object create/delete |
 | **CommandGenerator** | AppSync | GraphQL API for command generation with DynamoDB resolvers |
 | **Counter** | DynamoDB Streams | Atomic counter updates triggered by DynamoDB stream events |
-| **ScheduledPublisher** | EventBridge | Time-based event publishing using EventBridge rules |
+| **ScheduledPublisher** | EventBridge Scheduler | Time-based event publishing using EventBridge Scheduler schedules |
 | **Heartbeat** | EventBridge | Periodic heartbeat signals using EventBridge |
 | **Runtime** | Lambda | Execution environment for all runtime operations |
 
@@ -180,7 +180,7 @@ The following AWS adapters are available. For how adapters are structured intern
 
 ### Supporting Adapters
 
-- **[ScheduledPublisher → EventBridge](./adapters/scheduledpublisher)** - Scheduled command execution
+- **[ScheduledPublisher → EventBridge Scheduler](./adapters/scheduledpublisher)** - Scheduled command execution
 - **[Heartbeat → EventBridge](./adapters/heartbeat)** - Health check and keep-alive monitoring
 - **[Counter → DynamoDB Streams](./adapters/counter)** - Atomic counting via change data capture
 - **[StateTopic → DynamoDB Streams](./adapters/statetopic)** - State change publishing via DynamoDB Streams
@@ -205,7 +205,7 @@ reventless-aws/src/adapter/
 ├── QueryDb/                    # DynamoDB read model storage
 ├── QueryEngine/                # DynamoDB query execution
 ├── Runtime/                    # Lambda runtime environment
-├── ScheduledPublisher/         # EventBridge scheduled publishing
+├── ScheduledPublisher/         # EventBridge Scheduler publishing
 ├── StateTopic/                 # DynamoDB Stream state publishing
 └── Task/                       # S3 task buckets
 ```

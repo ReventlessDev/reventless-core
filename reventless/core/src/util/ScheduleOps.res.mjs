@@ -6,70 +6,25 @@ import * as Exit$1 from "effect/Exit";
 import * as Cause from "effect/Cause";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
-import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Error$ReventlessCore from "./Util_Error.res.mjs";
 import * as EffectLogger$ReventlessCore from "./EffectLogger.res.mjs";
-
-function addMinutes(date, minutes) {
-  let result = new Date(date);
-  result.setUTCMinutes(result.getUTCMinutes() + minutes | 0);
-  return result;
-}
-
-function addDays(date, days) {
-  let result = new Date(date);
-  result.setUTCDate(result.getUTCDate() + days | 0);
-  return result;
-}
-
-let DateCalc = {
-  addMinutes: addMinutes,
-  addDays: addDays
-};
 
 function forChannel(name, channelId, resourceNaming) {
   return resourceNaming.validateName(name) + ("-" + channelId.split("-")[1]);
 }
 
 function minutesFromNow(minutes) {
-  let m = addMinutes(new Date(), minutes);
   return {
-    TAG: "Single",
-    _0: m.getUTCFullYear(),
-    _1: m.getUTCMonth() + 1 | 0,
-    _2: m.getUTCDate(),
-    _3: m.getUTCHours(),
-    _4: m.getUTCMinutes()
+    TAG: "Once",
+    moment: {
+      TAG: "After",
+      _0: {
+        TAG: "Minutes",
+        _0: minutes
+      }
+    }
   };
-}
-
-function nextTime(h, m) {
-  let now = new Date();
-  let epoch = new Date();
-  epoch.setUTCHours(h);
-  epoch.setUTCMinutes(m);
-  epoch.setUTCSeconds(0);
-  let tomorrow = addDays(epoch, 1);
-  if (Primitive_object.lessthan(epoch, now)) {
-    return {
-      TAG: "Single",
-      _0: tomorrow.getUTCFullYear(),
-      _1: tomorrow.getUTCMonth() + 1 | 0,
-      _2: tomorrow.getUTCDate(),
-      _3: tomorrow.getUTCHours(),
-      _4: tomorrow.getUTCMinutes()
-    };
-  } else {
-    return {
-      TAG: "Single",
-      _0: epoch.getUTCFullYear(),
-      _1: epoch.getUTCMonth() + 1 | 0,
-      _2: epoch.getUTCDate(),
-      _3: epoch.getUTCHours(),
-      _4: epoch.getUTCMinutes()
-    };
-  }
 }
 
 let ScheduleNotCreated = /* @__PURE__ */Primitive_exceptions.create("ScheduleOps-ReventlessCore.ScheduleNotCreated");
@@ -79,11 +34,11 @@ let ScheduleNotDeleted = /* @__PURE__ */Primitive_exceptions.create("ScheduleOps
 function create(scheduler, channelResources, resourceNaming) {
   return async schedule => {
     let name = resourceNaming.validateName(schedule.name);
-    let schedule_rate = schedule.rate;
+    let schedule_time = schedule.time;
     let schedule_payload = schedule.payload;
     let schedule$1 = {
       name: name,
-      rate: schedule_rate,
+      time: schedule_time,
       payload: schedule_payload
     };
     let createSchedule = scheduler.createSchedule;
@@ -120,10 +75,8 @@ function $$delete(scheduler, channelResources, resourceNaming) {
 }
 
 export {
-  DateCalc,
   forChannel,
   minutesFromNow,
-  nextTime,
   ScheduleNotCreated,
   ScheduleNotDeleted,
   create,

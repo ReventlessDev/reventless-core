@@ -6,13 +6,8 @@
 // the read of its `callback` export. HANDLER_CONFIG parsing, the S3-event →
 // task-action dispatch (an exhaustive match over Reventless.Task.taskAction —
 // the former JS `switch (action.TAG)` with its unreachable "unknown TAG" arm), the
-// per-aggregate command publishing, and the CloudWatch Events scheduler ops
+// per-aggregate command publishing, and the EventBridge Scheduler ops
 // live here, fully type-checked.
-//
-// The former `.mjs` carried a hand-maintained mirror of
-// `toScheduleExpression` ("kept in sync manually"); typed code calls
-// ScheduledPublisher_CloudWatchEvents_Runtime directly — the layer ships it —
-// so the mirror is gone.
 
 @module("./HandlerFactoryHelpers.mjs") @scope("log")
 external logWarn: (string, StreamRoutedEntryPoint_Ops.dispatchOpts) => unit = "warn"
@@ -80,9 +75,9 @@ let buildPublishCommands = (map: dict<string>): dict<ReventlessCore.CommandTopic
   )
   ->Dict.fromArray
 
-// ── Scheduler ops (CloudWatch Events) ───────────────────────────────────────
+// ── Scheduler ops (EventBridge Scheduler) ───────────────────────────────────────
 // Resolved lazily on the first schedule action (tasks without schedules never
-// touch the CloudWatch client) and cached for the container lifetime.
+// touch the Scheduler client) and cached for the container lifetime.
 
 type schedulerOps = {
   createSchedule: Reventless.Schedule.schedule => promise<unit>,
@@ -103,8 +98,8 @@ let makeSchedulerOps = (config: option<schedulerEnvConfig>): option<schedulerOps
     ) {
     | (Some(roleArn), Some(targetArn), Some(targetName))
       if roleArn != "" && targetArn != "" && targetName != "" =>
-      // The single resolved resource the shared CloudWatch Events runtime
-      // targets: `urn` is the PutTargets ARN, `name` the target id.
+      // The single resolved resource the shared scheduler runtime
+      // targets: `urn` is the target queue ARN.
       let resources: array<ReventlessInfra.Adapter.resolvedResource> = [
         {
           name: targetName,
@@ -121,9 +116,12 @@ let makeSchedulerOps = (config: option<schedulerEnvConfig>): option<schedulerOps
       ]
       let ops = {
         createSchedule: schedule =>
-          ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(~roleArn)(resources, schedule),
+          ScheduledPublisher_EventBridgeScheduler_Runtime.createSchedule(~roleArn)(
+            resources,
+            schedule,
+          ),
         deleteSchedule: name =>
-          ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule(resources, name),
+          ScheduledPublisher_EventBridgeScheduler_Runtime.deleteSchedule(~roleArn)(resources, name),
       }
       schedulerOpsCache := Some(ops)
       Some(ops)
