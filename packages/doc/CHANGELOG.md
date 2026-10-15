@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-16
+- feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))
+- feat(local): sweep pending automation items, as AWS does ([96acec0](https://github.com/ReventlessDev/reventless-core/commit/96acec0ba226ee560790bd14b6fd38e44328a47c))
+- feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
 ### 2026-10-10
 - feat!: a command's rule is looked up by its name, without a cast ([5f02c40](https://github.com/ReventlessDev/reventless-core/commit/5f02c4081d077bf4a6951d8c9b2b16553a8ca87b))
 ### 2026-10-09
