@@ -24,6 +24,18 @@ let parseArgs = (argv: array<string>): result<args, string> =>
 
 let cli: CliArgs.cli<args> = {bin: "generate-plugin", usage, parse: parseArgs}
 
+/** The generated files sit in the plugin's source tree, so they face its format
+    gate like any other source. Codegen lays text out for reading, not for the
+    formatter, so the formatter settles the layout before the file is written.
+    Raising beats falling back: unformatted output would build and then fail the
+    format gate on every regeneration. */
+let formatted = (source: string, ~cwd: string): string =>
+  NodeChildProcess.execFileSync(
+    "pnpm",
+    ["exec", "rescript", "format", "--stdin", ".res"],
+    {cwd, encoding: "utf8", input: source},
+  )
+
 // A usage mistake exits non-zero, so `prebuild` (and CI) fail instead of
 // continuing green with no Plugin.res generated.
 let main = () =>
@@ -46,7 +58,7 @@ let main = () =>
     }
 
     let pluginPath = NodePath.join([outputDir, "Plugin.res"])
-    NodeFs.writeFileSync(pluginPath, source)
+    NodeFs.writeFileSync(pluginPath, source->formatted(~cwd=outputDir))
     Console.log("Generated: " ++ pluginPath)
 
     switch variant {
@@ -54,7 +66,7 @@ let main = () =>
     | Config.Aws(_) =>
       let mainSource = Codegen.renderMain(~config)
       let mainPath = NodePath.join([outputDir, "Main.res"])
-      NodeFs.writeFileSync(mainPath, mainSource)
+      NodeFs.writeFileSync(mainPath, mainSource->formatted(~cwd=outputDir))
       Console.log("Generated: " ++ mainPath)
     }
   })

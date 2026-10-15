@@ -7,6 +7,7 @@ import * as Config$Reventless from "./Config.res.mjs";
 import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Codegen$Reventless from "./Codegen.res.mjs";
 import * as Pairing$Reventless from "./Pairing.res.mjs";
+import * as Nodechild_process from "node:child_process";
 import * as Discovery$Reventless from "./Discovery.res.mjs";
 
 let usage = `Usage: generate-plugin [--aws <Namespace>] <srcDir>
@@ -62,6 +63,20 @@ let cli = {
   parse: parseArgs
 };
 
+function formatted(source, cwd) {
+  return Nodechild_process.execFileSync("pnpm", [
+    "exec",
+    "rescript",
+    "format",
+    "--stdin",
+    ".res"
+  ], {
+    cwd: cwd,
+    encoding: "utf8",
+    input: source
+  });
+}
+
 function main() {
   return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
     let variant = param.variant;
@@ -86,14 +101,14 @@ function main() {
     let outputDir;
     outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
     let pluginPath = Nodepath.join(outputDir, "Plugin.res");
-    Nodefs.writeFileSync(pluginPath, source, "utf8");
+    Nodefs.writeFileSync(pluginPath, formatted(source, outputDir), "utf8");
     console.log("Generated: " + pluginPath);
     if (typeof variant !== "object") {
       return;
     }
     let mainSource = Codegen$Reventless.renderMain(config);
     let mainPath = Nodepath.join(outputDir, "Main.res");
-    Nodefs.writeFileSync(mainPath, mainSource, "utf8");
+    Nodefs.writeFileSync(mainPath, formatted(mainSource, outputDir), "utf8");
     console.log("Generated: " + mainPath);
   });
 }
@@ -102,6 +117,7 @@ export {
   usage,
   parseArgs,
   cli,
+  formatted,
   main,
 }
 /* node:fs Not a pure module */
