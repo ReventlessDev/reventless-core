@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.192 (2026-10-15)
+
+### Features
+
+* **local:** sweep pending automation items, as AWS does ([96acec0](https://github.com/ReventlessDev/reventless-core/commit/96acec0ba226ee560790bd14b6fd38e44328a47c))
+
+
 # 3.0.0-alpha.191 (2026-10-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

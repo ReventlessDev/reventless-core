@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.295 (2026-10-15)
+
+* feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))
+* feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
+### Features
+
+* **local:** sweep pending automation items, as AWS does ([96acec0](https://github.com/ReventlessDev/reventless-core/commit/96acec0ba226ee560790bd14b6fd38e44328a47c))
+
+### BREAKING CHANGES
+
+* a process the PPX does not see — in an Automation module
+written by hand, or a SliceSpec given to the deprecated Automation_GWT.Make
+or Flow_GWT.AutomationStep — must take ~now.
+* Schedule.rate is replaced by Schedule.time, and a
+schedule's `rate` field is now `time`. A once-only time already past
+never fires, locally as on AWS.
+
+
+
 # 3.0.0-alpha.294 (2026-10-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

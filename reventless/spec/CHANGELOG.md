@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.164 (2026-10-15)
+
+### Bug Fixes
+
+* **spec:** generate-plugin writes Plugin.res as the formatter prints it ([3fcfd2b](https://github.com/ReventlessDev/reventless-core/commit/3fcfd2b38632bb9550413f88f410766934b6f609))
+* feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))
+* feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
+
+### BREAKING CHANGES
+
+* a process the PPX does not see — in an Automation module
+written by hand, or a SliceSpec given to the deprecated Automation_GWT.Make
+or Flow_GWT.AutomationStep — must take ~now.
+* Schedule.rate is replaced by Schedule.time, and a
+schedule's `rate` field is now `time`. A once-only time already past
+never fires, locally as on AWS.
+
+
+
 # 3.0.0-alpha.163 (2026-10-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

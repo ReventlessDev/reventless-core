@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.243 (2026-10-15)
+
+* feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))
+
+### BREAKING CHANGES
+
+* a process the PPX does not see — in an Automation module
+written by hand, or a SliceSpec given to the deprecated Automation_GWT.Make
+or Flow_GWT.AutomationStep — must take ~now.
+
+
+
 # 1.0.0-alpha.242 (2026-10-14)
 
 ### Bug Fixes

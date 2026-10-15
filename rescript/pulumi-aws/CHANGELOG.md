@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.28 (2026-10-15)
+
+* feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
+
+### BREAKING CHANGES
+
+* Schedule.rate is replaced by Schedule.time, and a
+schedule's `rate` field is now `time`. A once-only time already past
+never fires, locally as on AWS.
+
+
+
 # 3.0.0-alpha.27 (2026-10-10)
 
 ### Bug Fixes
