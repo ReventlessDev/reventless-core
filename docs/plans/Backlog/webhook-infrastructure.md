@@ -3,6 +3,10 @@
 **Status:** Backlog. Refreshed 2026-08-31 against the current tree — the original
 draft predates the repo split, the two-file slice spec, and the generated inbound
 mutation, and several of its steps were either already done or would now be wrong.
+Checked again 2026-10-16: the design holds; step 14's file reference and the PPX
+precedent for step 3 are updated, and its place after
+[automations that run on a time](../automations-that-run-on-a-time.md) is set out in
+[Sequencing](#sequencing).
 **Depends on:** [done/translation-slice.md](../done/translation-slice.md)
 **Prior art:** [done/inbound-translation-slice-api-mutation.md](../done/inbound-translation-slice-api-mutation.md),
 [done/aws-inbound-translation-lambda-routing.md](../done/aws-inbound-translation-lambda-routing.md),
@@ -48,6 +52,27 @@ without giving up the mutation it already has.
 | Lambdas via `aws.lambda.CallbackFunction` | **Must not** — see [Do not use CallbackFunction](#do-not-use-callbackfunction) |
 | `reventless/reventless-spec`, `reventless-in-memory`, `rescript/rescript-pulumi-aws` | `reventless/spec`, `reventless/local`, `rescript/pulumi-aws` |
 | `examples/dcb/ordering/src/Slices/` | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` |
+
+---
+
+## Sequencing
+
+**After [automations that run on a time](../automations-that-run-on-a-time.md), except
+step 1.** Both plans add an optional value to a slice spec that the PPX injects when it
+is absent (`let endpoint = None` here, `let schedule = None` there), and both need the
+PPX republished in lockstep with the spec module type (step 3 below). Run side by side
+they would edit the same spec pass and the same release; one after the other they do
+not.
+
+**Step 1 can be settled now.** The shape of `SignedBody` (header, algorithm, timestamp
+tolerance, where the secret lives) and `let endpoint` versus an attribute are decisions,
+not code, and they block steps 2–3 and 8–9. Taking them ahead, as a short analysis, means
+the work is ready when an application first needs a sender that only posts to a URL — a
+payment provider, a carrier, a grid operator.
+
+**When it becomes urgent:** before an application goes live with such a sender. Until
+then the generated mutation is the only door, and a relay that signs in on the sender's
+behalf, or entry by hand, bridges the gap.
 
 ---
 
@@ -324,7 +349,7 @@ GraphQL server's port) can come later if anyone needs to point a tunnel at it.
 |---|---|---|---|
 | 1 | Decide `SignedBody`'s shape, and `let endpoint` vs `@@reventless.webhook` | — | **Blocks 2–3 and 8–9** |
 | 2 | Add `endpointConfig` + `let endpoint` to the Spec | `reventless/spec/src/components/InboundTranslationSlice.res` | |
-| 3 | Inject `let endpoint = None` by default (or read the attribute, per step 1) | `reventless-ppx` (spec pass) | Republish in lockstep — an older published ppx omits the injection and every spec fails to compile against the new module type |
+| 3 | Inject `let endpoint = None` by default (or read the attribute, per step 1) | `reventless-ppx` (spec pass) | Republish in lockstep — an older published ppx omits the injection and every spec fails to compile against the new module type. Precedent: `let externalSystem = None`, injected only when absent and gated on the translation folder (`AuthorizationInjection.ml`); follow it. After the time plan's `let schedule = None` ([Sequencing](#sequencing)) |
 | 4 | Add `endpointUrl?` to outputs | `reventless/infra/src/components/InboundTranslationSlice.res` | |
 | 5 | `Lambda.FunctionUrl` bindings | `rescript/pulumi-aws/src/Lambda/FunctionUrl.res` | **Done** |
 | 6 | `ApiGatewayV2` bindings (`Api`, `Integration`, `Route`, `Stage`) | `rescript/pulumi-aws/src/ApiGatewayV2/` | Only for transport B |
@@ -335,7 +360,7 @@ GraphQL server's port) can come later if anyone needs to point a tunnel at it.
 | 11 | Thread the provider through the core builder | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Note the **nested** `Make` and the `unit => api` thunks on the `Api` parameter |
 | 12 | Wire AWS | `reventless/aws/src/components/InboundTranslationSlice_Builder.res`, `reventless/aws/src/Platform.res` | Shared HTTP API created once per plugin, only if some slice asks for transport B |
 | 13 | Wire local | `reventless/local/src/components/InboundTranslationSlice_Builder.res`, `reventless/local/src/Platform.res` | |
-| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, `mutationEntriesFromInboundSlices` — neither filters today) | |
+| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, which now builds each slice's mutation field itself, through `Api_Naming.sliceMutationField`, with `inboundDoorPermission` from the slice's `authorizationOf`; `mutationEntriesFromInboundSlices` no longer exists. Nothing filters today) | |
 | 15 | Record the door on the audit row | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res` | |
 | 16 | Example slice with an endpoint | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` | Two files: `<Name>.res` + `<Name>_Translation.res` |
 | 17 | Tests | | See below |
