@@ -96,7 +96,7 @@ filename — you don't write them):
 | `todoItem` | `@schema type` | Data accumulated for each pending work item |
 | `command` | `@schema type` | Command type produced by the processor |
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
-| `heartbeatInterval` | `int` | Seconds between heartbeat sweeps for pending/failed items |
+| `heartbeatInterval` | `int` | Reserved: not read today; the sweep runs every five minutes for every automation |
 | `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
 
 ### The Three Functions
@@ -279,11 +279,14 @@ Each TODO item moves through these statuses:
 
 ### Heartbeat Handler
 
-A periodic heartbeat (configurable via `heartbeatInterval`) runs **Phase 2 only**, catching:
+A sweep runs **Phase 2 only** every five minutes, one for all automations, on AWS
+and locally (where `REVENTLESS_LOCAL_SWEEP_SECONDS` shortens it). It picks up:
 
 - Items collected in a previous batch where `process` returned `None` (waiting for more data)
 - Failed items eligible for retry (`retryCount < maxRetries`)
-- Items stuck in `Processing` beyond a timeout
+
+An item whose command was published but whose resolving event never came stays
+`Processing`; the sweep does not send it again.
 
 ## When an item runs out of retries
 
@@ -340,7 +343,7 @@ AutomationSlice and EventMapper both react to events and produce commands, but t
 | **Completion Tracking** | None -- fire and forget | Yes -- resolution events mark items done |
 | **Retry** | Relies on EventCollector retry | Built-in per-item retry with configurable max |
 | **Visibility** | No queryable state | TODO list queryable via QueryDb |
-| **Heartbeat** | None | Periodic sweep for stuck/failed items |
+| **Heartbeat** | None | Periodic sweep for pending and failed items |
 | **Use When** | Simple, direct event-to-command reactions | Complex workflows needing tracking and reliability |
 
 **Choose EventMapper** when you need a simple, direct transformation from events to commands (e.g., "when customer created, create welcome order").

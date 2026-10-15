@@ -1,5 +1,6 @@
 // In-memory AutomationSlice builder.
-// Wires in-memory adapters and delegates to the core ReventlessCore.AutomationSlice_Builder.
+// Wires in-memory adapters and delegates to the core ReventlessCore.AutomationSlice_Builder;
+// each slice it makes joins the local automation sweep.
 
 module Make = (Bus: LocalBus.T) => {
   module RuntimeEnvironment = LocalRuntimeEnvironment
@@ -36,6 +37,13 @@ module Make = (Bus: LocalBus.T) => {
     type component = Inner.component
     let queryDbName = Inner.queryDbName
     let sourceNames = Inner.sourceNames
-    let make = Inner.make
+    let make = (~allEventTopics, ~publishJsons, ~context, ~runtime=?, ~opts=?) => {
+      let component = Inner.make(~allEventTopics, ~publishJsons, ~context, ~runtime?, ~opts?)
+      LocalAutomationSweep.register(~name=Spec.name, async () => {
+        let ops = await component->ReventlessCore.Component.operations->TestRunner.resolve
+        await ops.processPending()
+      })
+      component
+    }
   }
 }

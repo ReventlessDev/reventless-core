@@ -190,12 +190,20 @@ module Make = (
         })
 
       self->Component.setOperations(
-        (eventCollector->Pulumi.Output.flatMap(ec => ec->Component.operations), publishJsons)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((ecOps, publishJsonsFn)) => {
+        (
+          eventCollector->Pulumi.Output.flatMap(ec => ec->Component.operations),
+          publishJsons,
+          queryDb->Component.operations,
+        )
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((ecOps, publishJsonsFn, queryDbOps)) => {
           let ops: AutomationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn),
+            // As the AWS sweep does: the rows phase 2 moved are written back.
+            processPending: async () => {
+              await Callback.phase2(publishJsonsFn)
+              await syncToQueryDb(queryDbOps)
+            },
           }
           ops
         }),

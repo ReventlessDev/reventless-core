@@ -13,7 +13,7 @@ type outputs = {
 Runtime operations exposed by an `AutomationSlice` component.
 
 - `enqueueEvent` — push events into the slice's projection queue
-- `processPending` — manually trigger Phase 2 (useful in tests and for heartbeat)
+- `processPending` — run Phase 2 over the pending and failed items and write the TODO list back; what a sweep runs
 */
 type operations = {
   enqueueEvent: EventCollector.enqueueEvent,

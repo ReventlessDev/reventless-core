@@ -2,6 +2,7 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as DomainGraphQL_Server$ReventlessLocal from "../adapter/DomainGraphQL_Server.res.mjs";
+import * as LocalAutomationSweep$ReventlessLocal from "../components/LocalAutomationSweep.res.mjs";
 import * as LocalHeartbeatRunner$ReventlessLocal from "../adapter/Heartbeat/LocalHeartbeatRunner.res.mjs";
 
 function setup() {
@@ -28,6 +29,10 @@ function resetGraphQLServer() {
 
 function resetHeartbeatRunner() {
   LocalHeartbeatRunner$ReventlessLocal.reset();
+}
+
+function resetAutomationSweep() {
+  LocalAutomationSweep$ReventlessLocal.reset();
 }
 
 function collectNEvents(subscribeToEvents, topicName, n) {
@@ -66,6 +71,7 @@ export {
   stopGraphQLServer,
   resetGraphQLServer,
   resetHeartbeatRunner,
+  resetAutomationSweep,
   collectNEvents,
 }
 /* @pulumi/pulumi Not a pure module */

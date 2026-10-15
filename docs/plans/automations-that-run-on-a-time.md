@@ -2,7 +2,8 @@
 
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
-[S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built 2026-10-16; its check on a deployed stack waits for the next deploy.
+[S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built 2026-10-16; its check on a deployed
+stack waits for the next deploy. [S2](#s2-the-local-platform-sweeps) built 2026-10-16.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -317,6 +318,38 @@ up to `maxRetries`.
 **Exit:** a deadline written as in [§3](../analysis/automations-that-run-on-a-time.md#3-deadlines-today)
 passes locally without another event.
 
+### What S2 did
+
+Built 2026-10-16; the exit holds
+([AutomationSweepTest.res](../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
+
+- **One local sweep for every automation**, as on AWS:
+  [LocalAutomationSweep.res](../../reventless/local/src/components/LocalAutomationSweep.res).
+  - Each slice the local builder makes registers its `processPending`.
+  - Every five minutes the sweep runs them one after another. A failing slice is logged and the
+    rest still run.
+  - `REVENTLESS_LOCAL_SWEEP_SECONDS` shortens the interval ([P3](#open-questions), as
+    recommended).
+  - The timer is `unref`ed, so it never keeps a process or a test run alive.
+- **`processPending` writes the to-do list back** to the query store after `phase2`, on both
+  platforms.
+- **A sweep and an event's own `phase2` can overlap safely.** `phase2` marks an item
+  `Processing` before its first `await`, so the two never send the same command.
+
+Two findings change what the plan assumed:
+
+- **No load.** The local sweep does not load the to-do list from the store, unlike AWS. The core
+  `QueryDb` operations have no scan, and while the process runs, the slice's in-memory list is
+  already current. After a restart on SQLite, pending rows stay unswept until an event reaches
+  the slice. That gap predates the sweep.
+- **The sweep never resends an item stuck in `Processing`.** `phase2` takes only `Pending` items,
+  and `Failed` items under `maxRetries`, on both platforms. The analysis
+  ([§5.2](../analysis/automations-that-run-on-a-time.md#52-the-tick-is-a-source)) and the
+  component guide counted on the sweep to send again a command that was published but never
+  answered. The guide is corrected. A tick's item, whose resolving event may never come, needs
+  that resend, so [S4](#s4-declared-schedules) adds it: a timeout after which a `Processing`
+  item counts as pending again.
+
 ## S3: the time inside the functions
 
 The analysis's [§6](../analysis/automations-that-run-on-a-time.md#6-the-time-inside-the-functions).
@@ -344,6 +377,8 @@ The analysis's [§5.1 to §5.5](../analysis/automations-that-run-on-a-time.md#51
   `config_keys` ([S0](#what-s0-found) item 2).
 - **The `Clock` source**, `Reventless.Clock`: `name`, `@schema type event = Tick({key, at})`,
   `itemId(key, at)`.
+- **A `Processing` item counts as pending again after a timeout**, so the sweep resends a
+  tick's command that no event answered ([What S2 did](#what-s2-did)).
 - **The runtime** turns a Scheduler invocation (`{slice, key, at}`) into `Tick({key, at})` for
   the slice's mappings, then runs `process` as for an event batch. The automation runtime is
   given the scheduler's operations.

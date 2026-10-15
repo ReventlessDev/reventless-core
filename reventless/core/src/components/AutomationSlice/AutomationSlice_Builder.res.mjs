@@ -95,12 +95,17 @@ function Make(RuntimeEnvironment) {
         });
         Component$ReventlessCore.setOperations(extra, Pulumi.all([
           Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
-          publishJsons
+          publishJsons,
+          Component$ReventlessCore.operations(queryDb)
         ]).apply(param => {
+          let queryDbOps = param[2];
           let publishJsonsFn = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn)
+            processPending: async () => {
+              await Callback.phase2(publishJsonsFn);
+              return await syncToQueryDb(queryDbOps);
+            }
           };
         }));
         let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
