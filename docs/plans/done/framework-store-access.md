@@ -1,9 +1,8 @@
 # Plan: who may read the framework's own stores
 
 **Status.** Planned 2026-10-16, from a finding of the deployed check in
-[the automations-on-a-time plan](done/automations-that-run-on-a-time.md#the-deployed-check-2026-10-16).
-[O0](#o0-check-what-the-plan-assumes) done 2026-10-16. [O1](#o1-operators-only) and
-[O2](#o2-the-guide-and-the-release) written and tested locally; their exits wait for a push.
+[the automations-on-a-time plan](automations-that-run-on-a-time.md#the-deployed-check-2026-10-16).
+Done 2026-10-16: every phase's exit is met. [Q1](#open-questions) is left open.
 
 **In plain words.** Some components keep a store of their own beside the ones an application
 declares: an automation keeps its to-do list and its schedules, an outbound translation its
@@ -35,15 +34,15 @@ not a principal.
 
 | Store | Made by | List query today | After |
 |---|---|---|---|
-| `<Slice>Todo` | [AutomationSlice_Builder.res](../../reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res) | any signed-in caller | operators |
+| `<Slice>Todo` | [AutomationSlice_Builder.res](../../../reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res) | any signed-in caller | operators |
 | `<Slice>Schedule` | the same | any signed-in caller | operators |
-| `<Slice>Todo` | [OutboundTranslationSlice_Builder.res](../../reventless/core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Builder.res) | any signed-in caller | operators |
-| `<Slice>Audit` | [InboundTranslationSlice_Builder.res](../../reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res) | any signed-in caller | operators |
-| `<Counter>References`, `<Counter>Counts` | [Counter_Builder.res](../../reventless/core/src/components/Counter/Counter_Builder.res) | none (`NoResolvers`) | unchanged |
+| `<Slice>Todo` | [OutboundTranslationSlice_Builder.res](../../../reventless/core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Builder.res) | any signed-in caller | operators |
+| `<Slice>Audit` | [InboundTranslationSlice_Builder.res](../../../reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res) | any signed-in caller | operators |
+| `<Counter>References`, `<Counter>Counts` | [Counter_Builder.res](../../../reventless/core/src/components/Counter/Counter_Builder.res) | none (`NoResolvers`) | unchanged |
 
 **Operators** are the deployment's elevated groups: the same list that lifts `@owner` and
 `@retired` for a caller, set by `REVENTLESS_ELEVATED_GROUPS` or by the platform root
-([OwnerScope.res](../../reventless/spec/src/types/OwnerScope.res)). One list, so two parts of
+([OwnerScope.res](../../../reventless/spec/src/types/OwnerScope.res)). One list, so two parts of
 the system cannot disagree about who an operator is.
 
 ## O0: check what the plan assumes
@@ -54,7 +53,7 @@ No code. Each result is written into this section with its date.
    resolvers are made: at deploy on AWS, at start locally. On AWS the list may be set in the
    Lambda's environment and not in the deploy runner's; then the deploy cannot gate on it.
 2. **An empty list denies, rather than allows.** `AllowRoles([])` renders as the `__deny_all__`
-   sentinel group on AppSync ([AppSync_SdlDecorate.res](../../reventless/aws/src/components/Api/AppSync_SdlDecorate.res));
+   sentinel group on AppSync ([AppSync_SdlDecorate.res](../../../reventless/aws/src/components/Api/AppSync_SdlDecorate.res));
    the local resolvers must refuse it too.
 3. **The elevated list is groups, and a rule names roles.** `Role.groupOf` maps a role to its
    group; the reverse has to be exact, or a deployment whose operator group is not named after a
@@ -121,9 +120,15 @@ not an error, which is why the check needed rows to be meaningful.
 **Exit:** on the deployed alpha stack, `shopper` is refused `Ordering_MarketingDigestSchedules`
 and `Ordering_NotificationIntakeTodos`, and `admin` reads both.
 
+**Met 2026-10-16**, on the hybrid shop's alpha merged API with the `shopper` and `admin` accounts.
+Before the deploy, `shopper` read rows from both stores and from `Catalog_ImportProductAudits`,
+and was answered by `Ordering_CustomersByIds`, a door of a view open to `Admin` and `Fulfilment`
+only. After it, `shopper` is refused (`Unauthorized`) on each store's list, by-ids and `…Refs`
+fields, on the audits, and on `Ordering_CustomersByIds`; `admin` is served all of them.
+
 ## O2: the guide and the release
 
-- **The authorization guide** ([authorization.md](../../packages/doc/docs-app/authorization.md))
+- **The authorization guide** ([authorization.md](../../../packages/doc/docs-app/authorization.md))
   gains *The framework's own stores*: which they are, who may read them, and why.
 - **The changelog** names the breaking change: a non-operator client reading one of these
   stores is refused, and on AWS a roles-gated view's `…ByIds`, `…Refs`, `…Items` and
@@ -131,6 +136,10 @@ and `Ordering_NotificationIntakeTodos`, and `admin` reads both.
   `BREAKING CHANGE` footer.
 
 **Exit:** published with the next core alpha.
+
+**Met 2026-10-16:** `reventless-core` 3.0.0-alpha.297, `reventless-spec` 3.0.0-alpha.166 and
+`reventless-aws` 3.0.0-alpha.384 are on npm, and each changelog lists the change under
+*BREAKING CHANGES*.
 
 ## Open questions
 

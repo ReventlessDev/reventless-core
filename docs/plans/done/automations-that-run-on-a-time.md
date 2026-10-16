@@ -6,7 +6,7 @@ including a hand test of EventBridge Scheduler; its findings are folded into the
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) and
 [S5](#s5-schedules-set-by-events) built, with the digest in the shop, and checked on the deployed
 alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); its open finding moved to
-[its own plan](../framework-store-access.md). [S6](#s6-the-guide-the-words-and-the-examples) built
+[its own plan](framework-store-access.md). [S6](#s6-the-guide-the-words-and-the-examples) built
 2026-10-16 ([what it did](#what-s6-did)), and [S7](#s7-release) checked
 ([what it did](#what-s7-did)): the plan is done.
 
@@ -709,7 +709,7 @@ Two findings:
 - **The schedules store is readable by every signed-in caller**, so `shopper` reads `admin`'s
   digest time. It says who receives messages and when, which is what [D1](#decisions-2026-10-16)
   expected might need a narrower rule. Every store the framework makes is open the same way, so
-  it is [a plan of its own](../framework-store-access.md).
+  it is [a plan of its own](framework-store-access.md).
 - **A recipient who never subscribed to `Marketing` still got a schedule.** `Marketing` is
   off unless chosen, so each day's digest was suppressed. Their `Unsubscribe` recorded nothing,
   since nothing changed, and so it never cleared the schedule either: the first `Unsubscribe`
