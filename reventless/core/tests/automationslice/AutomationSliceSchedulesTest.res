@@ -5,7 +5,7 @@
 
 open JestGlobals
 
-module Schedules = ReventlessCore.AutomationSlice_Schedules
+module Schedules = AutomationSlice_Schedules
 
 let at = iso => Date.fromString(iso)->Date.getTime
 let daily6 = Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})})
