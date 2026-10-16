@@ -136,10 +136,16 @@ function reschedule$1(event) {
         case "ShippingUpdate" :
           return [];
         case "Marketing" :
-          return [{
-              TAG: "Clear",
-              key: event.recipientId
-            }];
+          switch (event.channel) {
+            case "Email" :
+              return [{
+                  TAG: "Clear",
+                  key: event.recipientId
+                }];
+            case "Sms" :
+            case "Push" :
+              return [];
+          }
       }
     default:
       return [];

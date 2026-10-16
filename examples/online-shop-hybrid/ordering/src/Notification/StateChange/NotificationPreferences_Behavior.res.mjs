@@ -223,7 +223,7 @@ function decide(state, command) {
           TAG: "Error",
           _0: "DigestTimeInvalid"
         };
-      } else {
+      } else if (Notification_Rules$TraitNotification.enabled(state, posture, "Marketing", "Email")) {
         return {
           TAG: "Ok",
           _0: [{
@@ -233,6 +233,11 @@ function decide(state, command) {
               minute: minute,
               zone: command.zone
             }]
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "MarketingNotSubscribed"
         };
       }
     case "RequestNotification" :

@@ -29,21 +29,26 @@ describe("MarketingDigest AutomationSlice", () => {
   )
 
   // scenario-id: 91a7e28a-0364-4e92-a53f-07f48643937e
-  test("unsubscribing from marketing stops the recipient's digest; another category does not", () =>
-    givenEvents([
-      Ordering.event(DigestTimeChosen({recipientId: "c1", hour: 18, minute: 0, zone: ""})),
-      Ordering.event(
-        DigestTimeChosen({recipientId: "c2", hour: 7, minute: 30, zone: "Europe/Berlin"}),
-      ),
-      Ordering.event(
-        NotificationUnsubscribed({recipientId: "c1", category: Marketing, channel: Email}),
-      ),
-      Ordering.event(
-        NotificationUnsubscribed({recipientId: "c2", category: ShippingUpdate, channel: Email}),
-      ),
-    ])
-    ->whenSweep
-    ->thenSchedules([("c2", berlin730)])
+  test(
+    "unsubscribing from marketing by email stops the digest; another channel or category does not",
+    () =>
+      givenEvents([
+        Ordering.event(DigestTimeChosen({recipientId: "c1", hour: 18, minute: 0, zone: ""})),
+        Ordering.event(
+          DigestTimeChosen({recipientId: "c2", hour: 7, minute: 30, zone: "Europe/Berlin"}),
+        ),
+        Ordering.event(
+          NotificationUnsubscribed({recipientId: "c1", category: Marketing, channel: Email}),
+        ),
+        Ordering.event(
+          NotificationUnsubscribed({recipientId: "c2", category: ShippingUpdate, channel: Email}),
+        ),
+        Ordering.event(
+          NotificationUnsubscribed({recipientId: "c2", category: Marketing, channel: Sms}),
+        ),
+      ])
+      ->whenSweep
+      ->thenSchedules([("c2", berlin730)]),
   )
 
   // scenario-id: 2052c29a-9548-4b87-8838-38b450d07e95

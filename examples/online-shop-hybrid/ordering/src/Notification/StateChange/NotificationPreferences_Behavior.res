@@ -216,12 +216,15 @@ let decide = (state, command) =>
     )
 
   // Not the trait's: when a digest comes is this shop's offer, and the trait holds
-  // no time. Only a recipient the directory knows may choose one.
+  // no time. Only a recipient the directory knows, who takes marketing by email,
+  // may choose one; unsubscribing from it is then what stops the digest.
   | ChooseDigestTime({recipientId, hour, minute, zone}) =>
     if state.contacts->Array.length == 0 {
       Error(RecipientUnknown)
     } else if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
       Error(DigestTimeInvalid)
+    } else if !(state->Rules.enabled(~posture, "Marketing", Email)) {
+      Error(MarketingNotSubscribed)
     } else {
       Ok([DigestTimeChosen({recipientId, hour, minute, zone})])
     }

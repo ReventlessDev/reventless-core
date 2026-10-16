@@ -109,7 +109,8 @@ let commandSchema = Sury.union([
 
 let errorSchema = Sury.union([
   Sury.literal("RecipientUnknown"),
-  Sury.literal("DigestTimeInvalid")
+  Sury.literal("DigestTimeInvalid"),
+  Sury.literal("MarketingNotSubscribed")
 ]);
 
 let eventSchema = Sury.union([

@@ -58,15 +58,17 @@ module FromOrderingDcb = Mapping.Make(
         None
       }
 
-    // Unsubscribing from marketing on any channel stops the digest: the request
-    // would be suppressed anyway, and a schedule that only ever sends nothing is a
-    // schedule nobody should pay for.
+    // Unsubscribing from marketing by email stops the digest: a time can only be
+    // chosen while it is on, and a schedule that only ever sends nothing is one
+    // nobody should pay for.
     let reschedule = event =>
       switch event {
       | DigestTimeChosen({recipientId, hour, minute, zone}) => [
           Set({key: recipientId, time: dailyAt(~hour, ~minute, ~zone)}),
         ]
-      | NotificationUnsubscribed({recipientId, category: Marketing}) => [Clear({key: recipientId})]
+      | NotificationUnsubscribed({recipientId, category: Marketing, channel: Email}) => [
+          Clear({key: recipientId}),
+        ]
       | _ => []
       }
   },

@@ -120,6 +120,10 @@ type error =
   | RecipientUnknown
   // An hour outside 0 to 23 or a minute outside 0 to 59.
   | DigestTimeInvalid
+  // A digest time for a recipient who does not take marketing by email: every
+  // digest would be suppressed, and their unsubscribing, which changes nothing,
+  // could never stop the schedule.
+  | MarketingNotSubscribed
 
 @schema
 type event =

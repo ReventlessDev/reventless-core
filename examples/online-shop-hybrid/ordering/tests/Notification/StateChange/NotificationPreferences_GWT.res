@@ -125,8 +125,12 @@ describe("NotificationPreferences StateChangeSlice", () => {
   // The time a recipient chooses for the marketing digest is recorded as they gave
   // it; `MarketingDigest` turns it into their schedule.
   // scenario-id: f5727c49-9c2f-4369-905f-95f7feeff996
-  test("a known recipient chooses when their digest comes", () =>
-    givenEvents(announced)
+  test("a recipient who takes marketing by email chooses when their digest comes", () =>
+    givenEvents(
+      announced->Array.concat([
+        NotificationSubscribed({recipientId: customerRef, category: Marketing, channel: Email}),
+      ]),
+    )
     ->whenCmd(
       ChooseDigestTime({recipientId: customerRef, hour: 7, minute: 30, zone: "Europe/Berlin"}),
     )
@@ -140,6 +144,19 @@ describe("NotificationPreferences StateChangeSlice", () => {
     givenEvents([])
     ->whenCmd(ChooseDigestTime({recipientId: customerRef, hour: 7, minute: 30, zone: ""}))
     ->thenError(RecipientUnknown)
+  )
+
+  // Marketing is off unless chosen, so without this every digest would be
+  // suppressed, and an unsubscribe that changes nothing could never stop it.
+  // scenario-id: 4ef71cf6-5290-4edf-8a5f-cadd573ed841
+  test("a recipient who does not take marketing by email cannot choose one", () =>
+    givenEvents(
+      announced->Array.concat([
+        NotificationSubscribed({recipientId: customerRef, category: Marketing, channel: Sms}),
+      ]),
+    )
+    ->whenCmd(ChooseDigestTime({recipientId: customerRef, hour: 7, minute: 30, zone: ""}))
+    ->thenError(MarketingNotSubscribed)
   )
 
   // scenario-id: 1aa9178d-50b2-4c70-a255-e56e9aae9ac4

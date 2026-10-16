@@ -5,7 +5,7 @@ including a hand test of EventBridge Scheduler; its findings are folded into the
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) and
 [S5](#s5-schedules-set-by-events) built, with the digest in the shop, and checked on the deployed
-alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); two findings are open.
+alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); one finding is open.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -701,17 +701,17 @@ was created in 3 s, and fails the deploy if the Lambda throws), and ticks reach 
 - **Clear.** `shopper`'s `Unsubscribe` from `Marketing` removed the schedule from the group and
   its row from the store within seconds. `admin`'s stayed.
 
-Two findings, both left open:
+Two findings:
 
 - **The schedules store is readable by every signed-in caller**, so `shopper` reads `admin`'s
   digest time. It says who receives messages and when, which is what [D1](#decisions-2026-10-16)
   expected might need a narrower rule.
-- **A recipient who never subscribed to `Marketing` still gets a schedule.** `Marketing` is
-  off unless chosen, so each day's digest is suppressed. Their `Unsubscribe` records nothing,
-  since nothing changes, and so it never clears the schedule either: the first `Unsubscribe`
-  above returned `eventCount: 0`, and the clear was checked after a `Subscribe`. Either
-  `ChooseDigestTime` should be refused, or the schedule should wait, until the recipient
-  subscribes.
+- **A recipient who never subscribed to `Marketing` still got a schedule.** `Marketing` is
+  off unless chosen, so each day's digest was suppressed. Their `Unsubscribe` recorded nothing,
+  since nothing changed, and so it never cleared the schedule either: the first `Unsubscribe`
+  above returned `eventCount: 0`, and the clear was checked after a `Subscribe`. **Fixed the
+  same day:** `ChooseDigestTime` is refused (`MarketingNotSubscribed`) unless the recipient
+  takes `Marketing` by email, and only unsubscribing from it by email clears the schedule.
 
 ## S6: the guide, the words and the examples
 
