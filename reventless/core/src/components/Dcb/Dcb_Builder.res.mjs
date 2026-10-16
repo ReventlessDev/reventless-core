@@ -13,6 +13,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
@@ -612,6 +613,7 @@ function Make(DcbEventLogStorage) {
           resolvedFields: resolvedFields
         };
       });
+      let operators = OwnerScope$Reventless.operators();
       let automationEntries = automationSlices.map(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName, undefined);
         return {
@@ -620,6 +622,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchemaFor(A.Spec.todoItemSchema),
           authorization: undefined,
+          permission: operators,
           connectionSpec: true
         };
       });
@@ -631,6 +634,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: AutomationSlice_Schedules$ReventlessCore.rowSchema,
           authorization: undefined,
+          permission: operators,
           connectionSpec: true
         };
       }));
@@ -642,6 +646,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchemaFor(O.Spec.outboundItemSchema),
           authorization: undefined,
+          permission: operators,
           connectionSpec: true
         };
       });
@@ -653,6 +658,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
           authorization: undefined,
+          permission: operators,
           connectionSpec: true
         };
       });

@@ -2,7 +2,8 @@
 
 **Status.** Planned 2026-10-16, from a finding of the deployed check in
 [the automations-on-a-time plan](done/automations-that-run-on-a-time.md#the-deployed-check-2026-10-16).
-Not started.
+[O0](#o0-check-what-the-plan-assumes) done 2026-10-16. [O1](#o1-operators-only) and
+[O2](#o2-the-guide-and-the-release) written and tested locally; their exits wait for a push.
 
 **In plain words.** Some components keep a store of their own beside the ones an application
 declares: an automation keeps its to-do list and its schedules, an outbound translation its
@@ -63,18 +64,59 @@ No code. Each result is written into this section with its date.
 
 **Exit:** all four answered; a failed premise changes [O1](#o1-operators-only) before it starts.
 
+### Results (2026-10-16)
+
+1. **Holds.** The AWS deploy program has a list of its own: `REVENTLESS_ELEVATED_GROUPS` (both
+   deploy jobs of `deploy-reventless-aws.yml` set it), else the `Admin` default that
+   `ReventlessAws.Platform.Make` states before any plugin is built. The same program writes that
+   list into every Lambda (`Util_OwnerScopeEnv.applyElevatedGroupsDefault`), so the directive and
+   the runtimes read one value. They differ only where a deployment pins the variable in one
+   Lambda's own environment. Locally the list is whatever the root states before the plugins are
+   built. The **local platform states no default**, so the DCB and aggregates examples, which state
+   none, will have no operator. That is the empty case of the next answer.
+2. **Holds.** `AllowRoles([])` becomes the `__deny_all__` group on AppSync, and locally
+   `Authorization.isAllowed` answers `false` for it.
+3. **Holds, with one case to refuse.** `elevatedGroups()` already turns roles into groups. Going
+   back, a group `g` is named by the role mapped to it (`roleGroups`), else by the role `g`
+   itself, which maps to `g` unless it was renamed. Only that last case has no exact role: an
+   operator group `Admin` while the role `Admin` stands for another group. It is refused at
+   deploy and start, not dropped. So no new rule is needed: operators are
+   `AllowRoles` of the roles that stand for the elevated groups.
+4. **Only the hybrid seed** reads these stores over GraphQL (its view sweep in
+   `HybridSeedData.res`), and it signs in as `admin`, which is elevated. The UI and tools
+   repositories never name one. The GWT `thenTodos` / `thenSchedules` read the store directly,
+   not through a query.
+
+**Two findings change [O1](#o1-operators-only):**
+
+- **AWS gates only two of a store's fields.** The query permission is stamped on the single
+  and list fields. `…ByIds`, `…Refs`, `…Items` and `…By<Index>` get the open Cognito directive,
+  and the AppSync resolvers ignore `authorization`. So on AWS **any** `AllowRoles` view, an
+  application's included, can be read by any signed-in caller through those doors. The local
+  resolvers check every door. Gating the framework's stores without closing this leaves them
+  readable, so [O1](#o1-operators-only) closes it.
+- **The domain API golden does not change.** It is an introspection of the local server, and
+  introspection carries no directives. The gate is pinned by the `AppSync_Adapter` test.
+
 ## O1: operators only
 
-- **One permission for operators**, in [Authorization.res](../../reventless/spec/src/types/Authorization.res)
-  or beside the elevated list: the deployment's elevated groups as a `permission`. Whether
-  that is a new rule (`AllowOperators`) or `AllowRoles` of the elevated roles is [O0](#o0-check-what-the-plan-assumes)'s third
-  answer.
-- **The four stores use it**, in place of `AllowAuthenticated`.
-- **The goldens** of the hybrid shop's domain API change in the same commit: each of those
-  stores' fields is gated on the operator groups.
+- **One permission for operators**, `OwnerScope.operators()` beside the elevated list:
+  `AllowRoles` of the roles that stand for the elevated groups, refusing a group no role can
+  name ([O0](#o0-check-what-the-plan-assumes)'s third answer).
+- **The four stores use it**, in place of `AllowAuthenticated`: in their store specs (what the
+  local resolvers check) and in their query entries (what AWS stamps).
+- **Every door of a query entry is gated on AWS**: the permission reaches `…ByIds`, `…Refs`,
+  `…Items` and `…By<Index>`, named by the same function the SDL generator uses.
 
-**Tests:** a shopper is refused each store's list query and an operator served, locally and in
-the AWS directive; an empty elevated list refuses everyone; the domain API golden.
+**Tests:** operators resolved from groups, from renamed roles, empty, and the refused case
+(`OwnerScopeTest`); the AWS directive on every door the SDL generator emits for a roles-gated
+entry (`AppSync_AdapterTest`). The domain API golden is unchanged.
+
+**Checked locally, 2026-10-16**, on the hybrid shop (in memory, isolated ports): after a customer
+registration and a product import, `shopper` and `merch` read no rows from
+`Ordering_AnnounceRecipientContactTodos` or `Catalog_ImportProductAudits`, nor through the by-id,
+by-ids and `…Refs` doors; `fulfil` and `admin` read them. Locally a refusal is an empty answer,
+not an error, which is why the check needed rows to be meaningful.
 
 **Exit:** on the deployed alpha stack, `shopper` is refused `Ordering_MarketingDigestSchedules`
 and `Ordering_NotificationIntakeTodos`, and `admin` reads both.
@@ -84,7 +126,9 @@ and `Ordering_NotificationIntakeTodos`, and `admin` reads both.
 - **The authorization guide** ([authorization.md](../../packages/doc/docs-app/authorization.md))
   gains *The framework's own stores*: which they are, who may read them, and why.
 - **The changelog** names the breaking change: a non-operator client reading one of these
-  stores is refused.
+  stores is refused, and on AWS a roles-gated view's `…ByIds`, `…Refs`, `…Items` and
+  `…By<Index>` doors now refuse callers outside its roles. Both go in the commit's
+  `BREAKING CHANGE` footer.
 
 **Exit:** published with the next core alpha.
 

@@ -36,7 +36,7 @@ module Make = (
       let config = Reventless.ReadModel.config()
       let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
       type role = Reventless.Role.name
-      let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
+      let authorization: Reventless.Authorization.rule<role> = Reventless.OwnerScope.operators()
       let visibility: Reventless.Visibility.t = Public
     }
 

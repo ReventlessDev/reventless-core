@@ -180,6 +180,30 @@ let elevatedGroups = (): array<string> =>
     }
   }
 
+/** The role that stands for an elevated group: the one mapped to it, else the
+    role of the same name. Refused when that role was mapped elsewhere, since no
+    role then names the group and a rule would silently admit someone else. */
+let roleForGroup = (group: string): Role.name =>
+  switch Role.renamed()->Array.find(((_, g)) => g == group) {
+  | Some((role, _)) => role
+  | None if Role.groupOf(Role.make(group)) == group => Role.make(group)
+  | None =>
+    JsError.throwWithMessage(
+      `Elevated group "${group}" has no role standing for it: role "${group}" stands for ` ++
+      `group "${Role.groupOf(Role.make(group))}". Map a role to "${group}" with roleGroups.`,
+    )
+  }
+
+/**
+The deployment's operators as a rule: the roles standing for the elevated
+groups. For what the framework keeps for itself, such as an automation's to-do
+list. An empty list admits nobody. Read when called, after the root has stated
+its operators and its role mapping.
+*/
+let operators = (): Authorization.permission => AllowRoles(
+  elevatedGroups()->Array.map(roleForGroup),
+)
+
 // Order matters: the provider is examined before `userId`, because the IAM
 // caller fails the `userId` test for a reason that has nothing to do with being
 // anonymous and must not be refused as though it did.

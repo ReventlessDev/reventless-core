@@ -123,7 +123,8 @@ Put the rule at the top of the spec file:
 ```
 
 Every command in that file (or the whole view, for a query component) now
-requires the named role.
+requires the named role. For a view that means every query it has: the list, one
+row by id, rows by ids, the reference door (`…Refs`) and each `@index` door.
 
 ## Narrowing one command
 
@@ -265,6 +266,30 @@ narrow the other — see [The first administrator](./first-admin.md).
 
 In a GWT scenario, `Caller.operator` stands for an exempt caller — see
 [Who may act](./given-when-then.md#who-may-act-ascaller-and-thenrefused).
+
+## The framework's own stores
+
+Some components keep a store beside the ones your plugin declares, so an operator
+can see what the component is doing:
+
+| Store | Kept by | Holds |
+| --- | --- | --- |
+| `<Slice>Todo` | an automation, an outbound translation | the work it has still to do |
+| `<Slice>Schedule` | an automation that runs on a time | when it runs next, for each key |
+| `<Slice>Audit` | an inbound translation | what it received, and what came of it |
+
+Each one has a list query, such as `Ordering_NotificationIntakeTodos`. These rows
+name your customers, your orders and the times your customers are written to, so
+**only operators may read them**: the callers on the elevated list described
+above. Everyone else is refused: an error on AWS, an empty answer locally.
+
+The rule follows the list, so it needs no annotation. Two consequences:
+
+- **A deployment that names no operators lets nobody read these stores.** Locally
+  that is the default, so state the list in the platform root to see them there.
+- **An elevated group must be one a role can name.** If a deployment maps the role
+  `Admin` to the group `ops` and also lists `Admin` as an elevated group, no role
+  stands for the group `Admin`. The platform refuses to deploy or start rather than guess.
 
 ## Index-scoped queries
 

@@ -15,6 +15,7 @@ import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -36,6 +37,7 @@ function Make(RuntimeEnvironment) {
       let readsClock = mappedSources.includes(Clock$Reventless.name);
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+      let authorization = OwnerScope$Reventless.operators();
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: queryDbName,
@@ -43,13 +45,14 @@ function Make(RuntimeEnvironment) {
         stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated",
+        authorization: authorization,
         visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let schedulesStoreName = Spec.name + "Schedule";
       let schedulesDbName = readsClock ? schedulesStoreName : undefined;
       let moduleUrl$1 = import.meta.url;
       let config$1 = ReadModel$Reventless.config(undefined, undefined, undefined);
+      let authorization$1 = OwnerScope$Reventless.operators();
       let SchedulesQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: schedulesStoreName,
@@ -57,7 +60,7 @@ function Make(RuntimeEnvironment) {
         stateSchema: AutomationSlice_Schedules$ReventlessCore.rowSchema,
         config: config$1,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated",
+        authorization: authorization$1,
         visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let syncSchedules = async (ops, stored) => {

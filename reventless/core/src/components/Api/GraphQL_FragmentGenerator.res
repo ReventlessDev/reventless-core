@@ -777,6 +777,21 @@ let mutationArgTypes = (~fieldName: string, variantSchema: S.t<unknown>): option
     out
   })
 
+/** Every query field `generate` emits for an entry, under the same conditions.
+    A platform gating an entry gates each of them: a door left out is open. */
+let queryFieldNamesOf = (entry: querySchemaEntry): array<string> => {
+  let byIds = entry.includeIdParam->Option.getOr(true) && entry.subIdField === None
+  let indexFields =
+    entry.indexQueries
+    ->Option.getOr([])
+    ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+    ->Array.map(ic => indexQueryFieldName(~singleFieldName=entry.singleFieldName, ~index=ic.index))
+  [entry.singleFieldName, entry.listFieldName]
+  ->Array.concat(byIds ? [entry.listFieldName ++ "ByIds", entry.listFieldName ++ "Refs"] : [])
+  ->Array.concat(entry.subIdField->Option.isSome ? [entry.singleFieldName ++ "Items"] : [])
+  ->Array.concat(indexFields)
+}
+
 // ── Main generate function ─────────────────────────────────────────────────
 
 let generate = (

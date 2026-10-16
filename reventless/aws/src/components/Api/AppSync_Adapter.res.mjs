@@ -154,11 +154,13 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
       iamQueryFieldPrefixes.push(entry.listFieldName);
       iamTypePrefixes.push(entry.returnTypeName);
     }
+    let fieldNames = GraphQL_FragmentGenerator$ReventlessCore.queryFieldNamesOf(entry);
     let match = entry.authorization;
     if (match !== undefined) {
       let group = match.group;
-      queryAuthMap[entry.singleFieldName] = [group];
-      queryAuthMap[entry.listFieldName] = [group];
+      fieldNames.forEach(f => {
+        queryAuthMap[f] = [group];
+      });
     }
     let permission = entry.permission;
     if (permission === undefined) {
@@ -167,16 +169,17 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     let groups = AppSync_SdlDecorate$ReventlessAws.permissionToGate(permission);
     if (typeof groups !== "object") {
       if (groups === "AnyAuthenticated") {
-        Stdlib_Dict.$$delete(queryAuthMap, entry.singleFieldName);
-        return Stdlib_Dict.$$delete(queryAuthMap, entry.listFieldName);
+        fieldNames.forEach(f => Stdlib_Dict.$$delete(queryAuthMap, f));
+        return;
       }
       anonymousFields.push(entry.singleFieldName);
       anonymousFields.push(entry.listFieldName);
       return;
     } else {
       let groups$1 = groups._0;
-      queryAuthMap[entry.singleFieldName] = groups$1;
-      queryAuthMap[entry.listFieldName] = groups$1;
+      fieldNames.forEach(f => {
+        queryAuthMap[f] = groups$1;
+      });
       return;
     }
   });

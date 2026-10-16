@@ -273,6 +273,68 @@ describe("OwnerScope:", () => {
     )
   })
 
+  // The rule the framework's own stores are read under. It must admit exactly the
+  // callers `resolve` calls elevated, whatever the role mapping says.
+  describe("the operators rule names the elevated groups:", () => {
+    let withSetup = (~elevated, ~renamed=[], fn) => {
+      OwnerScope.clearElevatedGroups()
+      Role.clearGroups()
+      Role.setGroups(renamed->Array.map(((r, g)) => (Role.make(r), g)))
+      OwnerScope.setElevatedGroups(elevated)
+      let result = try Ok(fn()) catch {
+      | JsExn(e) => Error(e->JsExn.message->Option.getOr(""))
+      }
+      Role.clearGroups()
+      OwnerScope.setElevatedGroups([])
+      result
+    }
+    let admitted = (~groups) =>
+      Authorization.isAllowed(OwnerScope.operators(), cognito(~userId="u-1", ~groups))
+
+    testSync(
+      "an elevated group admits its members and nobody else",
+      () =>
+        expect(
+          withSetup(
+            ~elevated=["Admin", "Ops"],
+            () => (admitted(~groups=["Ops"]), admitted(~groups=["User"])),
+          ),
+        )->toEqual(Ok((true, false))),
+    )
+
+    testSync(
+      "a group a role is mapped to is named by that role",
+      () =>
+        expect(
+          withSetup(
+            ~elevated=["shop-ops"],
+            ~renamed=[("Fulfilment", "shop-ops")],
+            () => (OwnerScope.operators(), admitted(~groups=["shop-ops"])),
+          ),
+        )->toEqual(Ok((Authorization.AllowRoles([Role.make("Fulfilment")]), true))),
+    )
+
+    testSync(
+      "an empty list admits nobody",
+      () => expect(withSetup(~elevated=[], () => admitted(~groups=["Admin"])))->toEqual(Ok(false)),
+    )
+
+    // The role `Admin` stands for `ops`, so no role names the group `Admin`;
+    // naming the role anyway would admit `ops` instead.
+    testSync(
+      "a group whose namesake role was mapped elsewhere is refused",
+      () =>
+        switch withSetup(
+          ~elevated=["Admin"],
+          ~renamed=[("Admin", "ops")],
+          () => OwnerScope.operators(),
+        ) {
+        | Error(message) => expect(message)->toContain(`Elevated group "Admin"`)
+        | Ok(_) => JsError.throwWithMessage("expected a refusal")
+        },
+    )
+  })
+
   // A platform that declares an administrator group has every reason to exempt
   // it, and no business overruling a deployment that named different operators.
   // The distinction these pin is between silence and an answer — including the

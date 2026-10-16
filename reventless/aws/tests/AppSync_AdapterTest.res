@@ -606,6 +606,58 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       )
     },
   )
+
+  // The resolvers check no rule, so a door the gate misses reads the gated rows.
+  // Run through the real generator, so a door it adds later is covered too.
+  testSync("a roles-gated entry's every generated door carries its groups", () => {
+    let byCategory: Reventless.ReadModel.indexConfig = {
+      index: "byCategory",
+      type_: "S",
+      idField: "categoryId",
+      projectionType: ALL,
+    }
+    let gated = (
+      ~single,
+      ~list,
+      ~subIdField=?,
+      ~indexQueries=?,
+    ): ReventlessInfra.Api.querySchemaEntry => {
+      singleFieldName: single,
+      listFieldName: list,
+      returnTypeName: single,
+      stateSchema: S.unknown,
+      authorization: None,
+      permission: AllowRoles([Reventless.Role.make("Admin")]),
+      ?subIdField,
+      ?indexQueries,
+    }
+    let entries = [
+      gated(~single="p_Item", ~list="p_Items", ~indexQueries=[byCategory]),
+      gated(~single="p_Line", ~list="p_Lines", ~subIdField="lineId"),
+    ]
+    let frag = ReventlessCore.GraphQL_FragmentGenerator.generate(
+      ~mutationEntries=[],
+      ~queryEntries=entries,
+    )
+    let queries = (
+      AppSync_Adapter.injectAwsAuth(
+        frag,
+        ~mutationEntries=[],
+        ~queryEntries=entries,
+      )->decodeFragment
+    ).queries
+    let names = queries->Array.map(ReventlessCore.GraphQL_Stitcher.extractLeadingName)
+    expect(
+      ["p_ItemsByIds", "p_ItemsRefs", "p_ItemByCategory", "p_LineItems"]->Array.every(
+        door => names->Array.includes(door),
+      ),
+    )->toBe(true)
+    expect(
+      queries->Array.filter(
+        field => !(field->String.includes(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)),
+      ),
+    )->toEqual([])
+  })
 })
 
 // ── Type-level dual-auth ─────────────────────────────────────────────────────

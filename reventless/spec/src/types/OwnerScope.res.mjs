@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "./Role.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "./Identity.res.mjs";
@@ -78,6 +79,24 @@ function elevatedGroups() {
   } else {
     return [];
   }
+}
+
+function roleForGroup(group) {
+  let match = Role$Reventless.renamed().find(param => param[1] === group);
+  if (match !== undefined) {
+    return match[0];
+  } else if (Role$Reventless.groupOf(group) === group) {
+    return group;
+  } else {
+    return Stdlib_JsError.throwWithMessage(`Elevated group "` + group + `" has no role standing for it: role "` + group + `" stands for ` + (`group "` + Role$Reventless.groupOf(group) + `". Map a role to "` + group + `" with roleGroups.`));
+  }
+}
+
+function operators() {
+  return {
+    TAG: "AllowRoles",
+    _0: elevatedGroups().map(roleForGroup)
+  };
 }
 
 function classify(identity, elevated) {
@@ -344,6 +363,8 @@ export {
   defaultElevatedRoles,
   parseElevatedGroups,
   elevatedGroups,
+  roleForGroup,
+  operators,
   classify,
   resolve,
   ownerId,

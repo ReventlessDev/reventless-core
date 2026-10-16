@@ -17,6 +17,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
@@ -35,6 +36,7 @@ function Make(RuntimeEnvironment) {
       let queryDbName = Spec.name + "Todo";
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+      let authorization = OwnerScope$Reventless.operators();
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: queryDbName,
@@ -42,7 +44,7 @@ function Make(RuntimeEnvironment) {
         stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated",
+        authorization: authorization,
         visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);

@@ -3,6 +3,7 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
@@ -16,6 +17,7 @@ function Make(QueryDbStorage) {
       let queryDbName = Spec.name + "Audit";
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+      let authorization = OwnerScope$Reventless.operators();
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: queryDbName,
@@ -23,7 +25,7 @@ function Make(QueryDbStorage) {
         stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated",
+        authorization: authorization,
         visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let syncToQueryDb = async (queryDbOps, requestId) => {

@@ -1138,6 +1138,9 @@ module Make = (
         }
       })
 
+      // What the framework keeps for a slice is read by the deployment's operators.
+      let operators = Reventless.OwnerScope.operators()
+
       let automationEntries = automationSlices->Array.map((module(A: AutomationSlice.T)) => {
         let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
         {
@@ -1148,6 +1151,7 @@ module Make = (
             A.Spec.todoItemSchema,
           )->S.castToUnknown,
           authorization: None,
+          permission: operators,
           connectionSpec: true,
         }
       })
@@ -1162,6 +1166,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: AutomationSlice_Schedules.rowSchema->S.castToUnknown,
             authorization: None,
+            permission: operators,
             connectionSpec: true,
           }
         })
@@ -1181,6 +1186,7 @@ module Make = (
               O.Spec.outboundItemSchema,
             )->S.castToUnknown,
             authorization: None,
+            permission: operators,
             connectionSpec: true,
           }
         })
@@ -1197,6 +1203,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
             authorization: None,
+            permission: operators,
             connectionSpec: true,
           }
         })

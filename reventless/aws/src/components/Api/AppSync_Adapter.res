@@ -309,21 +309,18 @@ let injectAwsAuth = (
       iamQueryFieldPrefixes->Array.push(entry.listFieldName)
       iamTypePrefixes->Array.push(entry.returnTypeName)
     }
+    // Every door the entry emits: the resolvers here do not check the rule, so a
+    // by-ids or by-index field left to the open directive reads the gated rows.
+    let fieldNames = ReventlessCore.GraphQL_FragmentGenerator.queryFieldNamesOf(entry)
     switch entry.authorization {
-    | Some({group}) =>
-      queryAuthMap->Dict.set(entry.singleFieldName, [group])
-      queryAuthMap->Dict.set(entry.listFieldName, [group])
+    | Some({group}) => fieldNames->Array.forEach(f => queryAuthMap->Dict.set(f, [group]))
     | None => ()
     }
     switch entry.permission {
     | Some(permission) =>
       switch AppSync_SdlDecorate.permissionToGate(permission) {
-      | Groups(groups) =>
-        queryAuthMap->Dict.set(entry.singleFieldName, groups)
-        queryAuthMap->Dict.set(entry.listFieldName, groups)
-      | AnyAuthenticated =>
-        queryAuthMap->Dict.delete(entry.singleFieldName)
-        queryAuthMap->Dict.delete(entry.listFieldName)
+      | Groups(groups) => fieldNames->Array.forEach(f => queryAuthMap->Dict.set(f, groups))
+      | AnyAuthenticated => fieldNames->Array.forEach(f => queryAuthMap->Dict.delete(f))
       | Anonymous =>
         // Both derived field names, because the spec declares one permission and
         // the generator emits two fields from it; naming only one would send the

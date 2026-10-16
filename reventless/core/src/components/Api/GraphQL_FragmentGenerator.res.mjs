@@ -529,6 +529,18 @@ function mutationArgTypes(fieldName, variantSchema) {
   });
 }
 
+function queryFieldNamesOf(entry) {
+  let byIds = Stdlib_Option.getOr(entry.includeIdParam, true) && entry.subIdField === undefined;
+  let indexFields = Stdlib_Option.getOr(entry.indexQueries, []).filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(ic => indexQueryFieldName(entry.singleFieldName, ic.index));
+  return [
+    entry.singleFieldName,
+    entry.listFieldName
+  ].concat(byIds ? [
+      entry.listFieldName + "ByIds",
+      entry.listFieldName + "Refs"
+    ] : []).concat(Stdlib_Option.isSome(entry.subIdField) ? [entry.singleFieldName + "Items"] : []).concat(indexFields);
+}
+
 function generate(mutationEntries, queryEntries) {
   let types = [];
   let mutations = [];
@@ -729,6 +741,7 @@ export {
   deriveIndexQueryField,
   deriveMutationFieldFromObject,
   mutationArgTypes,
+  queryFieldNamesOf,
   generate,
 }
 /* log Not a pure module */
