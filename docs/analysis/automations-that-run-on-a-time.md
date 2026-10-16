@@ -2,8 +2,8 @@
 
 **Status:** Analysis. Its decisions and [T1](#9-open-questions) to [T11](#9-open-questions) were
 agreed on 2026-10-15 ([T10](#9-open-questions) as version B); carried out by
-[the plan](../plans/automations-that-run-on-a-time.md). The plan's
-[decisions of 2026-10-16](../plans/automations-that-run-on-a-time.md#decisions-2026-10-16) change
+[the plan](../plans/done/automations-that-run-on-a-time.md). The plan's
+[decisions of 2026-10-16](../plans/done/automations-that-run-on-a-time.md#decisions-2026-10-16) change
 three of them: schedule rows get a store of their own, so [T11](#9-open-questions) and the
 to-do-store layout of [§5.8](#58-keys-and-rows-in-the-query-store-and-the-platforms-names) fall
 away; a deploy-time invocation reconciles the declared schedules; and a stack keeps one schedule
@@ -1172,7 +1172,7 @@ resolved, when the schedule is set, to an `At` in the schedule's zone, so the ro
 what the platform was given. A calendar time that falls into the hour skipped by daylight
 saving does not fire that day, and one that occurs twice fires once, at the first: EventBridge
 Scheduler's documented rule, which the local timer follows
-([the plan's S0](../plans/automations-that-run-on-a-time.md#what-s0-found), [T1](#9-open-questions)).
+([the plan's S0](../plans/done/automations-that-run-on-a-time.md#what-s0-found), [T1](#9-open-questions)).
 
 The cost of B is mostly code that changes anyway: moving AWS to EventBridge Scheduler and giving
 the local timers a real `nextFiring` ([§7](#7-order-of-work)) rewrites every place that reads the

@@ -1,7 +1,7 @@
 # Plan: who may read the framework's own stores
 
 **Status.** Planned 2026-10-16, from a finding of the deployed check in
-[the automations-on-a-time plan](automations-that-run-on-a-time.md#the-deployed-check-2026-10-16).
+[the automations-on-a-time plan](done/automations-that-run-on-a-time.md#the-deployed-check-2026-10-16).
 Not started.
 
 **In plain words.** Some components keep a store of their own beside the ones an application

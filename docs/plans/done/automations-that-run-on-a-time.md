@@ -6,14 +6,15 @@ including a hand test of EventBridge Scheduler; its findings are folded into the
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) and
 [S5](#s5-schedules-set-by-events) built, with the digest in the shop, and checked on the deployed
 alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); its open finding moved to
-[its own plan](framework-store-access.md). [S6](#s6-the-guide-the-words-and-the-examples) built
-2026-10-16 ([what it did](#what-s6-did)).
+[its own plan](../framework-store-access.md). [S6](#s6-the-guide-the-words-and-the-examples) built
+2026-10-16 ([what it did](#what-s6-did)), and [S7](#s7-release) checked
+([what it did](#what-s7-did)): the plan is done.
 
-**Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
+**Analysis:** [automations-that-run-on-a-time.md](../../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
-[T1](../analysis/automations-that-run-on-a-time.md#9-open-questions) to
-[T11](../analysis/automations-that-run-on-a-time.md#9-open-questions) were agreed on 2026-10-15,
-[T10](../analysis/automations-that-run-on-a-time.md#9-open-questions) as its version B.
+[T1](../../analysis/automations-that-run-on-a-time.md#9-open-questions) to
+[T11](../../analysis/automations-that-run-on-a-time.md#9-open-questions) were agreed on 2026-10-15,
+[T10](../../analysis/automations-that-run-on-a-time.md#9-open-questions) as its version B.
 
 **In plain words.** An `AutomationSlice` today reacts to events only. This plan lets the same
 slice run on a time: a time written in its spec (*every morning at 06:00*), a time an event sets
@@ -21,26 +22,26 @@ or clears (*at the hour each customer chose*), or once (*ten minutes after an or
 The platform's Scheduler only fires; it sends the slice a `Tick` from a framework `Clock` source,
 and what the tick means stays in the slice's mappings and `process`, exactly as for an event. No
 new component type and no new spec type: a *scheduled automation* is an automation with a
-`schedule` or a `reschedule` ([§5](../analysis/automations-that-run-on-a-time.md#5-the-design-of-a)).
+`schedule` or a `reschedule` ([§5](../../analysis/automations-that-run-on-a-time.md#5-the-design-of-a)).
 
 **Why now.** Recurring work cannot be written as an automation at all today: schedules are only
 made at run time, by a Task, an extension point or a side-effect handler, and fire a payload on
 a queue rather than an automation's run
-([§2](../analysis/automations-that-run-on-a-time.md#2-what-exists-today)). The two scheduler
+([§2](../../analysis/automations-that-run-on-a-time.md#2-what-exists-today)). The two scheduler
 adapters also disagree on every wall-clock time, and the AWS `Daily` expression is malformed
-([the scheduler analysis §3.3](../analysis/infrastructure-outside-the-capability-model.md#33-the-two-implementations-do-not-agree-about-the-vocabulary),
-[§3.4](../analysis/infrastructure-outside-the-capability-model.md#34-a-latent-defect-in-the-aws-arm)).
+([the scheduler analysis §3.3](../../analysis/infrastructure-outside-the-capability-model.md#33-the-two-implementations-do-not-agree-about-the-vocabulary),
+[§3.4](../../analysis/infrastructure-outside-the-capability-model.md#34-a-latent-defect-in-the-aws-arm)).
 
-**Goal.** The four cases of [§8](../analysis/automations-that-run-on-a-time.md#8-examples-from-the-online-shop)
+**Goal.** The four cases of [§8](../../analysis/automations-that-run-on-a-time.md#8-examples-from-the-online-shop)
 can be written as automations, tested with the GWT DSL at a fixed time, run locally and on AWS
 with the same firing times, and read back from the plugin's structure.
 
 **Non-goals.** A slice type of its own for time
-([§4](../analysis/automations-that-run-on-a-time.md#4-three-ways-to-run-on-a-recurring-time)).
+([§4](../../analysis/automations-that-run-on-a-time.md#4-three-ways-to-run-on-a-recurring-time)).
 Making the scheduler a declared platform capability (the scheduler analysis's later stages).
 Replaying ticks missed while an application was down
-([T5](../analysis/automations-that-run-on-a-time.md#9-open-questions)). The move to Effect 4
-([its plan](effect-v4-migration.md)), with which this plan only has to stay compatible
+([T5](../../analysis/automations-that-run-on-a-time.md#9-open-questions)). The move to Effect 4
+([its plan](../effect-v4-migration.md)), with which this plan only has to stay compatible
 ([Risks](#risks)).
 
 **Phases** are numbered S0 to S7 (S for *schedule*). The plan's own open questions are numbered
@@ -52,17 +53,17 @@ P1 to P3 ([Open questions](#open-questions)).
 
 1. **One mechanism.** Every schedule, declared or set, recurring or once, is a key and a
    `Schedule.time` in the slice's query store, and reaches the slice as `Tick({key, at})`
-   ([§5.6](../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events)).
+   ([§5.6](../../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events)).
 2. **The platform knows only when.** Nothing about a slice's work is given to the Scheduler but
-   the slice's name and the key ([§5](../analysis/automations-that-run-on-a-time.md#5-the-design-of-a)).
+   the slice's name and the key ([§5](../../analysis/automations-that-run-on-a-time.md#5-the-design-of-a)).
 3. **Local and AWS agree by test**, not by reading: every shape of time has a test that builds
    both platforms' forms from one value and compares the firings.
 4. **Existing automations compile unchanged.** Everything added to a spec or a mapping is
    optional and defaulted by the PPX.
 5. **Date and time work goes through Effect's `DateTime`, `Cron` and `Clock`**, bound in
-   [`rescript/effect`](../../rescript/effect/); nothing else calls them directly, so the Effect 4
+   [`rescript/effect`](../../../rescript/effect); nothing else calls them directly, so the Effect 4
    move stays inside that package
-   ([§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time)).
+   ([§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time)).
 6. **ReScript, closed sets as regular variants**, `rescript format` after every edited file.
 7. **One commit per phase**, once its tests pass.
 
@@ -76,12 +77,12 @@ changed before it starts.
 
 | # | Assumption | How it is checked | If it fails | Result, 2026-10-15 |
 |---|---|---|---|---|
-| 1 | The local platform has no automation sweep ([§2](../analysis/automations-that-run-on-a-time.md#2-what-exists-today)) | read the local platform's wiring; run an automation whose `process` returns `None` and watch whether it is retried | [S2](#s2-the-local-platform-sweeps) is dropped | **Holds.** [S2](#s2-the-local-platform-sweeps) stays, with two additions |
-| 2 | The PPX can inject `let schedule = None`, a default `reschedule` into `Mapping.Make`, and `~now` into a `process` that does not take it ([T4](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | read the `@@reventless.spec` and `@@reventless.automation` transforms in [reventless-ppx](../../packages/reventless-ppx); try it on one golden | `~now` becomes a required argument with a codemod over the examples | **Holds, by reading.** Each injection has a precedent; the trial on a golden moves to the first phase that needs it ([S3](#s3-the-time-inside-the-functions)) |
-| 3 | EventBridge Scheduler: names of 1 to 64 characters from letters, digits, `-`, `_`, `.`; schedule groups; the `<aws.scheduler.scheduled-time>` input placeholder; *delete after completion*; a zone per schedule; how a local time in a skipped or repeated hour fires; the default quotas ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)) | the AWS documentation, then one schedule created by hand in a test account | the naming or the daylight-saving rule in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) changes | **Partly fails: the daylight-saving rule.** Naming, groups, placeholder, deletion and zones hold, by the documentation and by hand. A `rate` needs a `StartDate` |
+| 1 | The local platform has no automation sweep ([§2](../../analysis/automations-that-run-on-a-time.md#2-what-exists-today)) | read the local platform's wiring; run an automation whose `process` returns `None` and watch whether it is retried | [S2](#s2-the-local-platform-sweeps) is dropped | **Holds.** [S2](#s2-the-local-platform-sweeps) stays, with two additions |
+| 2 | The PPX can inject `let schedule = None`, a default `reschedule` into `Mapping.Make`, and `~now` into a `process` that does not take it ([T4](../../analysis/automations-that-run-on-a-time.md#9-open-questions)) | read the `@@reventless.spec` and `@@reventless.automation` transforms in [reventless-ppx](../../../packages/reventless-ppx); try it on one golden | `~now` becomes a required argument with a codemod over the examples | **Holds, by reading.** Each injection has a precedent; the trial on a golden moves to the first phase that needs it ([S3](#s3-the-time-inside-the-functions)) |
+| 3 | EventBridge Scheduler: names of 1 to 64 characters from letters, digits, `-`, `_`, `.`; schedule groups; the `<aws.scheduler.scheduled-time>` input placeholder; *delete after completion*; a zone per schedule; how a local time in a skipped or repeated hour fires; the default quotas ([§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)) | the AWS documentation, then one schedule created by hand in a test account | the naming or the daylight-saving rule in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) changes | **Partly fails: the daylight-saving rule.** Naming, groups, placeholder, deletion and zones hold, by the documentation and by hand. A `rate` needs a `StartDate` |
 | 4 | The Pulumi AWS provider has the Scheduler's schedule group, and the IAM it needs; `rescript/pulumi-aws` can bind them | the provider's docs and the existing bindings | bindings are added in [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) | **Fails as expected.** The provider has both resources, but nothing binds them. The runtime SDK client is missing too. Both go into [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
-| 5 | Effect 3.22's `DateTime` (`zoneMakeNamed`, `makeZoned`, `add`) and `Cron` (`make`, `next`) do what [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs, including month ends and daylight saving; their Effect 4 names | a scratch script against each; the Effect 4 changelog | another library is chosen, behind the same bindings | **Holds, with two traps** that [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) has to avoid |
-| 6 | The only callers of `Schedule.rate` are the spec, the two adapters, `ScheduleOps` and a few tests ([T10](../analysis/automations-that-run-on-a-time.md#9-open-questions)) | a search across core, the examples and the published packages that depend on core | the callers found join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) | **Holds for `rate`.** The AWS permissions are spread further than assumed; they join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
+| 5 | Effect 3.22's `DateTime` (`zoneMakeNamed`, `makeZoned`, `add`) and `Cron` (`make`, `next`) do what [§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs, including month ends and daylight saving; their Effect 4 names | a scratch script against each; the Effect 4 changelog | another library is chosen, behind the same bindings | **Holds, with two traps** that [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) has to avoid |
+| 6 | The only callers of `Schedule.rate` are the spec, the two adapters, `ScheduleOps` and a few tests ([T10](../../analysis/automations-that-run-on-a-time.md#9-open-questions)) | a search across core, the examples and the published packages that depend on core | the callers found join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) | **Holds for `rate`.** The AWS permissions are spread further than assumed; they join [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) |
 
 **Exit:** the table's last column is filled in for all six, dated, and any phase it changes is
 updated.
@@ -90,10 +91,10 @@ updated.
 
 **1. The local sweep.** Nothing sweeps locally. The local AutomationSlice builder passes the
 core maker through unchanged
-([AutomationSlice_Builder.res](../../reventless/local/src/components/AutomationSlice_Builder.res)).
+([AutomationSlice_Builder.res](../../../reventless/local/src/components/AutomationSlice_Builder.res)).
 Core runs `phase2` only inside the event handler. It exposes `processPending`, but nothing in
 the local platform calls it. The only local timers are the plugin heartbeat
-([LocalHeartbeatRunner.res](../../reventless/local/src/adapter/Heartbeat/LocalHeartbeatRunner.res)) and
+([LocalHeartbeatRunner.res](../../../reventless/local/src/adapter/Heartbeat/LocalHeartbeatRunner.res)) and
 the scheduled publisher. No test retries an item that `process` left pending; the tests call
 `phase2` twice by hand. Two things for [S2](#s2-the-local-platform-sweeps):
 
@@ -101,7 +102,7 @@ the scheduled publisher. No test retries an item that `process` left pending; th
   path does. The AWS sweep does all three steps (load, `phase2`, sync); the local one must too.
 - A slice's `heartbeatInterval` is read nowhere, on either platform. Its spec documents it in
   seconds, while the plugin heartbeat counts its own `heartbeatInterval` in minutes. This is
-  [T6](../analysis/automations-that-run-on-a-time.md#9-open-questions), still open.
+  [T6](../../analysis/automations-that-run-on-a-time.md#9-open-questions), still open.
 
 **2. The PPX.** All three injections are feasible:
 
@@ -166,10 +167,10 @@ their input to an SQS queue; everything was deleted afterwards.
   with `?` as the day-of-week field is accepted.
 
 **4. Pulumi and the SDK.** `@pulumi/aws` 7.19.0 ships `aws.scheduler.Schedule` and
-`aws.scheduler.ScheduleGroup`. [rescript/pulumi-aws](../../rescript/pulumi-aws/) binds neither;
+`aws.scheduler.ScheduleGroup`. [rescript/pulumi-aws](../../../rescript/pulumi-aws) binds neither;
 the layout to follow is one file per resource (`Cloudwatch_EventRule.res`). The runtime creates
 schedules through the SDK, and `@aws-sdk/client-scheduler` is neither installed nor bound in
-[rescript/aws-sdk](../../rescript/aws-sdk/). Only the CloudWatch Events client is.
+[rescript/aws-sdk](../../../rescript/aws-sdk). Only the CloudWatch Events client is.
 
 **5. Effect** (3.22.2; 4.0.5 is now `latest`):
 
@@ -196,8 +197,8 @@ rather than skipping it, unlike AWS (item 3). `nextFiring` checks the wall-clock
 **6. The callers.**
 
 - `Schedule.rate` and its constructors are read only where the plan assumed:
-  [Schedule.res](../../reventless/spec/src/types/Schedule.res), the two adapters,
-  [ScheduleOps.res](../../reventless/core/src/util/ScheduleOps.res) and the local tests (plus
+  [Schedule.res](../../../reventless/spec/src/types/Schedule.res), the two adapters,
+  [ScheduleOps.res](../../../reventless/core/src/util/ScheduleOps.res) and the local tests (plus
   one in `reventless/aws/tests`).
 - `ScheduleOps.nextTime` has no caller and goes.
 - The AWS `Daily` expression is confirmed malformed: it has `*` in both day fields.
@@ -214,16 +215,16 @@ rather than skipping it, unlike AWS (item 3). `nextFiring` checks the wall-clock
 
 ## S1: one type for a time, and the schedulers agree
 
-The analysis's [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) and
-[T10](../analysis/automations-that-run-on-a-time.md#9-open-questions); stage 1 of
-[the scheduler analysis](../analysis/infrastructure-outside-the-capability-model.md#stage-1--converge-the-semantics-a-bug-fix-not-a-model-change).
+The analysis's [§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) and
+[T10](../../analysis/automations-that-run-on-a-time.md#9-open-questions); stage 1 of
+[the scheduler analysis](../../analysis/infrastructure-outside-the-capability-model.md#stage-1--converge-the-semantics-a-bug-fix-not-a-model-change).
 
 - **The type.** `Schedule.time` replaces `Schedule.rate` in
-  [Schedule.res](../../reventless/spec/src/types/Schedule.res): `interval`, `weekday`,
+  [Schedule.res](../../../reventless/spec/src/types/Schedule.res): `interval`, `weekday`,
   `calendar`, `period`, `localTime`, `moment`, `zone` and
   `time = Every | Calendar | Once`; the schedule record becomes `{name, time, payload}`.
 - **The bindings.** `DateTime` and `Cron` in `rescript/effect`, as far as
-  [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs them. A
+  [§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) needs them. A
   `Cron` is always built with a zone, UTC when the time has none
   ([S0](#what-s0-found) item 5). In `rescript/pulumi-aws`: `Scheduler_Schedule` and
   `Scheduler_ScheduleGroup`. In `rescript/aws-sdk`: the `@aws-sdk/client-scheduler` commands the
@@ -284,15 +285,15 @@ hybrid example's platform stack creates the role, the group and its policy.
   the 500 groups a region allows ([Risks](#risks)).
 
 - **The shared reading** is
-  [ScheduleTime.res](../../reventless/core/src/util/ScheduleTime.res): `nextFiring`,
+  [ScheduleTime.res](../../../reventless/core/src/util/ScheduleTime.res): `nextFiring`,
   `resolveOnce`, `validate` (every problem of a time in one message) and `toAws`. Its tests
   include the agreement test, eight calendar times in six zones
-  ([ScheduleTimeTest.res](../../reventless/core/tests/util/ScheduleTimeTest.res)).
+  ([ScheduleTimeTest.res](../../../reventless/core/tests/util/ScheduleTimeTest.res)).
 - **The bindings:**
-  - `DateTime`, `Cron` and `Clock` in [rescript/effect](../../rescript/effect/src/).
-  - `EventBridgeScheduler` (create, update, delete) in [rescript/aws-sdk](../../rescript/aws-sdk/src/).
+  - `DateTime`, `Cron` and `Clock` in [rescript/effect](../../../rescript/effect/src).
+  - `EventBridgeScheduler` (create, update, delete) in [rescript/aws-sdk](../../../rescript/aws-sdk/src).
     The client is pinned to the other clients' release, so the Lambda layer carries one SDK core.
-  - `Scheduler.ScheduleGroup` in [rescript/pulumi-aws](../../rescript/pulumi-aws/src/Scheduler/).
+  - `Scheduler.ScheduleGroup` in [rescript/pulumi-aws](../../../rescript/pulumi-aws/src/Scheduler).
 - **The documentation** of the Scheduler, the Task, the SideEffectHandler and both
   ScheduledPublisher adapters now uses `Schedule.time`.
 
@@ -304,7 +305,7 @@ Where it departs from the plan above:
 - **One group per platform scheduler, named after its role.** The runtime already receives the
   role's ARN in about fifteen places. Naming the group after the role gives the runtime the group
   too, without a second value threaded through all of them. The groups per scheduled slice of
-  [§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)
+  [§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)
   come with [S4](#s4-declared-schedules).
 - **The target input is the payload, unchanged.** Today's callers deliver their own payloads,
   and adding the scheduled time to them would change what their consumers receive. The time
@@ -328,21 +329,21 @@ does, every five minutes, over every automation's pending and failed items. Like
 it loads the to-do list, runs `phase2` and writes the list back to the query store; core's
 `processPending` does only the middle step and gains the other two. The interval can be
 shortened for development ([P3](#open-questions)). A slice's `heartbeatInterval` stays unread
-([T6](../analysis/automations-that-run-on-a-time.md#9-open-questions)).
+([T6](../../analysis/automations-that-run-on-a-time.md#9-open-questions)).
 
 **Tests:** an item `process` left pending is retried by the local sweep; a failed item is retried
 up to `maxRetries`.
 
-**Exit:** a deadline written as in [§3](../analysis/automations-that-run-on-a-time.md#3-deadlines-today)
+**Exit:** a deadline written as in [§3](../../analysis/automations-that-run-on-a-time.md#3-deadlines-today)
 passes locally without another event.
 
 ### What S2 did
 
 Built 2026-10-16; the exit holds
-([AutomationSweepTest.res](../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
+([AutomationSweepTest.res](../../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
 
 - **One local sweep for every automation**, as on AWS:
-  [LocalAutomationSweep.res](../../reventless/local/src/components/LocalAutomationSweep.res).
+  [LocalAutomationSweep.res](../../../reventless/local/src/components/LocalAutomationSweep.res).
   - Each slice the local builder makes registers its `processPending`.
   - Every five minutes the sweep runs them one after another. A failing slice is logged and the
     rest still run.
@@ -362,7 +363,7 @@ Two findings change what the plan assumed:
   the slice. That gap predates the sweep.
 - **The sweep never resends an item stuck in `Processing`.** `phase2` takes only `Pending` items,
   and `Failed` items under `maxRetries`, on both platforms. The analysis
-  ([§5.2](../analysis/automations-that-run-on-a-time.md#52-the-tick-is-a-source)) and the
+  ([§5.2](../../analysis/automations-that-run-on-a-time.md#52-the-tick-is-a-source)) and the
   component guide counted on the sweep to send again a command that was published but never
   answered. The guide is corrected. A tick's item, whose resolving event may never come, needs
   that resend, so [S4](#s4-declared-schedules) adds it: a timeout after which a `Processing`
@@ -370,7 +371,7 @@ Two findings change what the plan assumed:
 
 ## S3: the time inside the functions
 
-The analysis's [§6](../analysis/automations-that-run-on-a-time.md#6-the-time-inside-the-functions).
+The analysis's [§6](../../analysis/automations-that-run-on-a-time.md#6-the-time-inside-the-functions).
 
 - `collect` and `resolve` get the source event's recorded time on their `context`.
 - `process` gets `~now`, from Effect's `Clock`; the PPX supplies it to a `process` that does not
@@ -379,7 +380,7 @@ The analysis's [§6](../analysis/automations-that-run-on-a-time.md#6-the-time-in
 - The GWT DSL gains `atTime(t)`, which fixes `now` and the recorded time of the events a
   scenario gives.
 
-**Tests:** the deadline of [§8.1](../analysis/automations-that-run-on-a-time.md#81-a-deadline-an-order-not-shipped-in-three-days-is-cancelled)
+**Tests:** the deadline of [§8.1](../../analysis/automations-that-run-on-a-time.md#81-a-deadline-an-order-not-shipped-in-three-days-is-cancelled)
 as two scenarios, *at day 3 then `CancelOrder`* and *shipped on day 2 then nothing*; every
 existing automation's suite unchanged and green.
 
@@ -388,12 +389,12 @@ existing automation's suite unchanged and green.
 ### What S3 did
 
 Built 2026-10-16; the exit holds. The deadline runs as GWT scenarios
-([AutomationDeadlineGwtTest.res](../../reventless/gwt/tests/AutomationDeadlineGwtTest.res)) and
-on the local runtime ([AutomationSweepTest.res](../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
+([AutomationDeadlineGwtTest.res](../../../reventless/gwt/tests/AutomationDeadlineGwtTest.res)) and
+on the local runtime ([AutomationSweepTest.res](../../../reventless/local/tests/components/automationslice/AutomationSweepTest.res)).
 The three example automations compile unchanged.
 
 - **`process` takes `~now`.** The runtime reads it from Effect's `Clock` once per `phase2`. The
-  PPX's new pass ([NowInjection.ml](../../packages/reventless-ppx/src/ppx/NowInjection.ml)) adds
+  PPX's new pass ([NowInjection.ml](../../../packages/reventless-ppx/src/ppx/NowInjection.ml)) adds
   `~now as _` to a `process` literal without it. The trial ran as fixtures in the PPX's test
   script rather than a JSON golden: one `process` without `~now`, one that reads its own.
 - **`recordedAt` on the context**, from the envelope's `meta.time`, for every event the runtime
@@ -416,8 +417,8 @@ Where it departs from the plan above:
 
 ## S4: declared schedules
 
-The analysis's [§5.1 to §5.5](../analysis/automations-that-run-on-a-time.md#51-the-spec) and
-[§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
+The analysis's [§5.1 to §5.5](../../analysis/automations-that-run-on-a-time.md#51-the-spec) and
+[§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
 
 - **The spec** gains `let schedule: option<Schedule.time>`; the PPX injects `None` when absent and
   writes the declared time into `.model.json`, which needs `schedule` among the sidecar's
@@ -440,7 +441,7 @@ The analysis's [§5.1 to §5.5](../analysis/automations-that-run-on-a-time.md#51
 - **The plugin's structure** carries the declared time.
 - **The GWT DSL** gains `whenTick(key, at)`, through the same path as `whenSweep`.
 
-**Tests:** the demand report of [§8.2](../analysis/automations-that-run-on-a-time.md#82-a-declared-schedule-the-demand-report-every-morning)
+**Tests:** the demand report of [§8.2](../../analysis/automations-that-run-on-a-time.md#82-a-declared-schedule-the-demand-report-every-morning)
 end to end in memory: the tick makes the day's item, `process` sends `RequestDemandReport`, the
 returned event resolves it; the same tick delivered twice adds one item; the assembly check;
 the declared time in `.model.json`; a `Processing` item sent again after the timeout.
@@ -456,8 +457,8 @@ to D3.
 **D1. Schedule rows get a store of their own, `<Slice>Schedules`, made only for a scheduled
 slice.** (Built as `<Slice>Schedule`, listed as `<Slice>Schedules`: see
 [the digest in the shop](#the-digest-in-the-online-shop-2026-10-16).) The analysis put them in the to-do store
-([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names),
-[T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)), so that every stored row
+([§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names),
+[T11](../../analysis/automations-that-run-on-a-time.md#9-open-questions)), so that every stored row
 still decodes. It would not:
 
 - A to-do row requires `item`, `status`, `createdAt` and `retryCount`, and the store's GraphQL
@@ -485,10 +486,10 @@ declared schedule changes, and a failure fails the deploy. The alternatives:
 
 **D3. One schedule group per stack, the one its Scheduler already has**, not one per scheduled
 slice as in
-[§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
+[§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
 A region allows 500 groups by default, and alpha already holds three: the platform and each
 plugin stack. A schedule is named `<slice>.<key>`, hashed when it is too long or holds other
-characters ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)'s
+characters ([§5.8](../../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)'s
 rule). Reconcile lists the group by the slice's name prefix, once
 [S5](#s5-schedules-set-by-events) adds the list.
 
@@ -511,11 +512,11 @@ own tests pass, 450 checks. Only the deployed check of the exit is left
   - No reserved item ids ([D1](#decisions-2026-10-16)).
 - **Local:** `LocalTimers`, shared by the scheduled publisher and the new
   `LocalAutomationSchedules`, which ticks a slice's declared schedule
-  ([AutomationScheduleTest.res](../../reventless/local/tests/components/automationslice/AutomationScheduleTest.res)).
+  ([AutomationScheduleTest.res](../../../reventless/local/tests/components/automationslice/AutomationScheduleTest.res)).
 - **AWS:**
   - The automation Lambda takes a tick as a third kind of invocation without records, beside
     the sweep: `{"reventlessTick": {slice, key, at}}`, with `at` filled in by the Scheduler
-    ([AutomationSliceEntryPoint_Ops.res](../../reventless/aws/src/adapter/Runtime/AutomationSliceEntryPoint_Ops.res)).
+    ([AutomationSliceEntryPoint_Ops.res](../../../reventless/aws/src/adapter/Runtime/AutomationSliceEntryPoint_Ops.res)).
     It runs as an event batch does: load, phase 1, sync, phase 2, sync. A tick for a slice the
     Lambda does not host throws, so the Scheduler retries and the error is logged.
   - The Lambda gets the stack's scheduler role as `SCHEDULER_ROLE_ARN`, may manage the schedules
@@ -552,8 +553,8 @@ Where it departs from the plan above:
 
 ## S5: schedules set by events
 
-The analysis's [§5.6](../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events) and
-the once-only part of [§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time).
+The analysis's [§5.6](../../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events) and
+the once-only part of [§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time).
 
 - **`reschedule`** on `Mapping`, returning `Set({key, time})` or `Clear({key})`; the PPX injects
   `_ => []` where absent and marks the mapping in `.wiring.json`. This takes a new walk into the
@@ -568,19 +569,19 @@ the once-only part of [§5.7](../analysis/automations-that-run-on-a-time.md#57-t
 - **Rebuild and reconcile**: rebuilding a slice replays `reschedule` over its source events in
   order, writes the declared default unless `default` is set, and brings the platform's group in
   line; a once-only time already past is not made again
-  ([T7](../analysis/automations-that-run-on-a-time.md#9-open-questions)).
+  ([T7](../../analysis/automations-that-run-on-a-time.md#9-open-questions)).
 - **The schedules store's own list query** answers *when does it run, and who set it*. The
-  to-do store is unchanged, so [T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)'s
+  to-do store is unchanged, so [T11](../../analysis/automations-that-run-on-a-time.md#9-open-questions)'s
   `rowKind` falls away ([D1](#decisions-2026-10-16)).
 - **The declared default is written into the schedules store** by the reconcile of
   [D2](#decisions-2026-10-16), unless an event has set `default`.
 - **The GWT DSL** gains `thenSchedules`.
 
-**Tests:** the moved report of [§8.3](../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)
+**Tests:** the moved report of [§8.3](../../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)
 (an event replaces the declared default, and a later deploy keeps it); the digest of
-[§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest)
+[§8.4](../../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest)
 (set, fire, resolve by `reference`, clear on unsubscribe); the reminder of
-[§5.7](../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) (set ten minutes
+[§5.7](../../analysis/automations-that-run-on-a-time.md#57-three-shapes-of-a-time) (set ten minutes
 after the recorded time, cleared when the order ships, cleared after it fires); a rebuild that
 reproduces the rows and removes a stray platform schedule.
 
@@ -597,11 +598,11 @@ checked on the deployed stack ([the check](#the-deployed-check-2026-10-16)).
 
 - **Spec:** `scheduleChange = Set({key, time}) | Clear({key})`, and `reschedule` on `Mapping`
   and `MappingImpl`.
-- **PPX:** [RescheduleInjection.ml](../../packages/reventless-ppx/src/ppx/RescheduleInjection.ml)
+- **PPX:** [RescheduleInjection.ml](../../../packages/reventless-ppx/src/ppx/RescheduleInjection.ml)
   adds `let reschedule = _ => []` to a `Mapping.Make` third argument without one, in the merged
   `_Automation.res` form and the older `_Mappings.res` form. `.wiring.json` records
   `reschedules` per mapping, as written.
-- **Core:** [AutomationSlice_Schedules.res](../../reventless/core/src/components/AutomationSlice/AutomationSlice_Schedules.res),
+- **Core:** [AutomationSlice_Schedules.res](../../../reventless/core/src/components/AutomationSlice/AutomationSlice_Schedules.res),
   shared by the runtime and the GWT DSL:
   - A row per key: `key`, `time`, `setBy` (the event's `msgId`, or `declared`) and `setAt`.
   - `apply` folds one change. An `After` is counted from the event's recorded time, and a time
@@ -615,27 +616,27 @@ checked on the deployed stack ([the check](#the-deployed-check-2026-10-16)).
 - **The schedules store** `<Slice>Schedule` is made for a slice that maps the `Clock`, with its
   own list query, and is registered beside the to-do store.
 - **The platform's side** is `platformSchedules` (`put`, `removeName`, `names`, `nameOf`):
-  - Locally, [LocalAutomationSchedules.res](../../reventless/local/src/components/LocalAutomationSchedules.res)
+  - Locally, [LocalAutomationSchedules.res](../../../reventless/local/src/components/LocalAutomationSchedules.res)
     holds the timers, and each slice reconciles when it is made.
   - On AWS, the automation Lambda loads and syncs the rows, follows them with EventBridge
     Scheduler, and lists the group with `ListSchedules`, which the Lambda is granted on every
     resource. The deploy's reconcile now runs on every build as well as on a changed time.
 - **GWT:** a scenario folds `reschedule` after the declared time; `thenSchedules` compares the
-  rows by key ([AutomationRescheduleGwtTest.res](../../reventless/gwt/tests/AutomationRescheduleGwtTest.res),
-  and the moved report in [AutomationScheduleGwtTest.res](../../reventless/gwt/tests/AutomationScheduleGwtTest.res)).
+  rows by key ([AutomationRescheduleGwtTest.res](../../../reventless/gwt/tests/AutomationRescheduleGwtTest.res),
+  and the moved report in [AutomationScheduleGwtTest.res](../../../reventless/gwt/tests/AutomationScheduleGwtTest.res)).
 - **Tests:**
   - The moved report, the digest and the reminder as GWT scenarios.
   - The digest on the local runtime, two recipients in two zones, with a rebuild that removes
-    a stray timer ([AutomationRescheduleTest.res](../../reventless/local/tests/components/automationslice/AutomationRescheduleTest.res)).
+    a stray timer ([AutomationRescheduleTest.res](../../../reventless/local/tests/components/automationslice/AutomationRescheduleTest.res)).
   - The rows and the reconcile against a fake platform
-    ([AutomationSliceSchedulesTest.res](../../reventless/core/tests/automationslice/AutomationSliceSchedulesTest.res)).
+    ([AutomationSliceSchedulesTest.res](../../../reventless/core/tests/automationslice/AutomationSliceSchedulesTest.res)).
   - The AWS names, and the order of steps in the Lambda.
 
 Where it departs from the plan above:
 
 - **Clearing `default` leaves a row** with no time, so a later deploy does not put the
   declared time back (the stopped report of
-  [§8.3](../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)).
+  [§8.3](../../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)).
   Any other key's row is removed.
 - **No `platformName` on the row.** The name follows from the slice and the key, and the
   platform's side gives it (`nameOf`), so storing it would be a second copy.
@@ -667,7 +668,7 @@ chose:
 - Scenarios in `MarketingDigest_GWT.res` and `NotificationPreferences_GWT.res`; the domain API
   golden, the lifecycle model and the DCB-scope golden are refreshed.
 
-Where it departs from [§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest):
+Where it departs from [§8.4](../../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest):
 
 - **The command and event carry an hour, a minute and a zone, not a `Schedule.time`.** A
   person picks a time of day, and a GraphQL input cannot carry a tagged union. The automation
@@ -708,7 +709,7 @@ Two findings:
 - **The schedules store is readable by every signed-in caller**, so `shopper` reads `admin`'s
   digest time. It says who receives messages and when, which is what [D1](#decisions-2026-10-16)
   expected might need a narrower rule. Every store the framework makes is open the same way, so
-  it is [a plan of its own](framework-store-access.md).
+  it is [a plan of its own](../framework-store-access.md).
 - **A recipient who never subscribed to `Marketing` still got a schedule.** `Marketing` is
   off unless chosen, so each day's digest was suppressed. Their `Unsubscribe` recorded nothing,
   since nothing changed, and so it never cleared the schedule either: the first `Unsubscribe`
@@ -718,11 +719,11 @@ Two findings:
 
 ## S6: the guide, the words and the examples
 
-- **The component guide** ([automationslice.md](../../packages/doc/docs-app/components/automationslice.md))
+- **The component guide** ([automationslice.md](../../../packages/doc/docs-app/components/automationslice.md))
   gains *Running on a time*: the three shapes, declared and set schedules, the `Clock` mapping,
   why `resolve` still matters, which to use (the analysis's flowchart).
-- **The terminology guide** ([terminology-guide.md](../guides/terminology-guide.md)) takes the
-  analysis's [Words](../analysis/automations-that-run-on-a-time.md#words).
+- **The terminology guide** ([terminology-guide.md](../../guides/terminology-guide.md)) takes the
+  analysis's [Words](../../analysis/automations-that-run-on-a-time.md#words).
 - **The online shop** gains the examples [P2](#open-questions) chooses, with their GWT
   scenarios.
 
@@ -732,7 +733,7 @@ Two findings:
 
 Built 2026-10-16.
 
-- **The component guide** ([automationslice.md](../../packages/doc/docs-app/components/automationslice.md))
+- **The component guide** ([automationslice.md](../../../packages/doc/docs-app/components/automationslice.md))
   gains *Running on a time*:
   - the three ways (a due time, a declared schedule, schedules set by events) and the words;
   - an example of each, a once-only time, why `resolve` still matters, where the schedules
@@ -742,9 +743,9 @@ Built 2026-10-16.
 - **The guide's older parts** are brought up to date: the spec's `schedule`, the mapping's
   `reschedule`, `collect`'s `~sourceId`, the 15-minute resend of a `Processing` item (the guide
   still said the sweep never resends one), and the new operations and store.
-- **The words** go to two places: the published [glossary](../../packages/doc/docs-app/glossary.md#schedule)
+- **The words** go to two places: the published [glossary](../../../packages/doc/docs-app/glossary.md#schedule)
   for an application developer (Clock, Schedule, Scheduler, Sweep, Tick), and the
-  [terminology guide](../guides/terminology-guide.md#timing-vocabulary) for the rule that keeps
+  [terminology guide](../../guides/terminology-guide.md#timing-vocabulary) for the rule that keeps
   them apart.
 - **The online shop** has both of [P2](#open-questions)'s examples: the digest
   ([above](#the-digest-in-the-online-shop-2026-10-16)) and the deadline, `CancelUnshippedOrder`.
@@ -766,11 +767,31 @@ replaced by `Schedule.time`, and callers of `createSchedule` change their schedu
 
 **Exit:** published, and the online shop builds against the published packages.
 
+### What S7 did
+
+Checked 2026-10-16. Every alpha push publishes, so there was no release of its own to make.
+
+- **The changelogs name every breaking change**, each carried by its commit's
+  `BREAKING CHANGE` footer:
+  - `Schedule.rate` became `Schedule.time` (S1);
+  - a `process` the PPX does not see takes `~now` (S3);
+  - a spec it does not see declares `schedule` (S4);
+  - a `Mapping.Make` it does not see defines `reschedule` (S5).
+
+  The released `reventless-spec` and `reventless-core` changelogs carry them.
+- **Published:** `reventless-spec` 3.0.0-alpha.165, `reventless-core` 3.0.0-alpha.296 and
+  `reventless-ppx` 1.0.0-alpha.102 are the registry's `latest`.
+- **The online shop builds against them.** The hybrid shop's ordering plugin was copied out of
+  the workspace, its ten workspace dependencies pinned to their published versions, installed
+  from npm and built: 855 modules, no warning. The generated `Plugin.res` matched the
+  repository's. The PPX that ran was the published one, since `CancelUnshippedOrder` was given
+  the `reschedule` that only that release injects.
+
 ---
 
 ## Risks
 
-- **Effect 4.** [Its migration](effect-v4-migration.md) is planned for when 4.0 has settled. The
+- **Effect 4.** [Its migration](../effect-v4-migration.md) is planned for when 4.0 has settled. The
   new `DateTime` and `Cron` bindings are kept inside `rescript/effect`
   ([Rules](#rules-every-phase-keeps) 5), and [S0](#s0-check-what-the-analysis-assumes) item 5
   notes their Effect 4 names, so whichever lands second has one package to follow.
@@ -794,7 +815,7 @@ replaced by `Schedule.time`, and callers of `createSchedule` change their schedu
 **P1. How is the declared default put on the platform after a deploy?** A Pulumi resource per
 declared schedule, or the runtime's reconcile run after the deploy?
 **Recommendation: the runtime's reconcile.** The schedule rows are the truth
-([§5.6](../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events)); if Pulumi
+([§5.6](../../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events)); if Pulumi
 also made schedules, two owners would fight over the same group. Pulumi creates the group and the
 permissions only, and the deploy ends by asking each scheduled slice to reconcile, as it already
 asks plugins to reconnect. **Decided 2026-10-16:** a deploy-time Lambda invocation does the
@@ -802,8 +823,8 @@ asking ([D2](#decisions-2026-10-16)).
 
 **P2. Which examples go into the online shop?**
 **Recommendation: the deadline
-([§8.1](../analysis/automations-that-run-on-a-time.md#81-a-deadline-an-order-not-shipped-in-three-days-is-cancelled))
-and the digest ([§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest)).**
+([§8.1](../../analysis/automations-that-run-on-a-time.md#81-a-deadline-an-order-not-shipped-in-three-days-is-cancelled))
+and the digest ([§8.4](../../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest)).**
 Between them they exercise the sweep, `~now`, the `Clock`, `reschedule`, a key per customer and
 `resolve` by reference. The demand report and the reminder stay as compiled snippets in the
 guide; adding them would add two decisions the shop does not otherwise need.
