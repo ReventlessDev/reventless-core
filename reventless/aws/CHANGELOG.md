@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.384 (2026-10-16)
+
+* fix(auth)!: only operators read the framework's own stores ([a2fd202](https://github.com/ReventlessDev/reventless-core/commit/a2fd2022b6876dae855b185df7f8263353fc971d))
+
+### BREAKING CHANGES
+
+* a caller outside the elevated groups is refused the
+framework's to-do, schedule and audit stores. On AWS, a roles-gated
+view's …ByIds, …Refs, …Items and …By<Index> fields refuse callers
+outside its roles.
+
+
+
 # 3.0.0-alpha.383 (2026-10-16)
 
 * feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))

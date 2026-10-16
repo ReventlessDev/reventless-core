@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.245 (2026-10-16)
+
+**Note:** Version bump only for package @reventlessdev/reventless-gwt
+
+
+
+
+
 # 1.0.0-alpha.244 (2026-10-16)
 
 * feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))
