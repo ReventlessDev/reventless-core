@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.287 (2026-10-16)
+
+* feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))
+* feat!(automation): declared schedules tick an automation ([420acd2](https://github.com/ReventlessDev/reventless-core/commit/420acd2233aadf700141a31d9d3e0fdc8074bef7))
+### Features
+
+* **examples:** a marketing digest at the time each customer chooses ([3521b10](https://github.com/ReventlessDev/reventless-core/commit/3521b10c4f3ff64f3e4561e94e051892cdfe5d5f))
+
+### BREAKING CHANGES
+
+* a hand-written AutomationSlice.Mapping.Make the PPX does
+not see must define `let reschedule = _ => []`.
+* a hand-written AutomationSlice spec the PPX does not see must
+declare `let schedule = None`.
+
+
+
 # 3.0.0-alpha.286 (2026-10-15)
 
 * feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))

@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.383 (2026-10-16)
+
+* feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))
+* feat!(automation): declared schedules tick an automation ([420acd2](https://github.com/ReventlessDev/reventless-core/commit/420acd2233aadf700141a31d9d3e0fdc8074bef7))
+
+### BREAKING CHANGES
+
+* a hand-written AutomationSlice.Mapping.Make the PPX does
+not see must define `let reschedule = _ => []`.
+* a hand-written AutomationSlice spec the PPX does not see must
+declare `let schedule = None`.
+
+
+
 # 3.0.0-alpha.382 (2026-10-16)
 
 ### Bug Fixes

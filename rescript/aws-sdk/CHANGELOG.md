@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.32 (2026-10-16)
+
+* feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))
+
+### BREAKING CHANGES
+
+* a hand-written AutomationSlice.Mapping.Make the PPX does
+not see must define `let reschedule = _ => []`.
+
+
+
 # 3.0.0-alpha.31 (2026-10-15)
 
 * feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
