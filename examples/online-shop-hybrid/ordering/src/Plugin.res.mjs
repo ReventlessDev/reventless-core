@@ -13,6 +13,7 @@ import * as PlaceOrder$OrderingPlugin from "./Order/StateChange/PlaceOrder.res.m
 import * as CancelOrder$OrderingPlugin from "./Order/StateChange/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/Automation/AutoShipOrder.res.mjs";
 import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
+import * as MarketingDigest$OrderingPlugin from "./Notification/Automation/MarketingDigest.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as SendNotification$OrderingPlugin from "./Notification/OutboundTranslation/SendNotification.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewStream/AvailableProducts.res.mjs";
@@ -35,6 +36,7 @@ import * as AnnounceRecipientContact$OrderingPlugin from "./Notification/Outboun
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/Automation/AutoShipOrder_Automation.res.mjs";
 import * as NotificationSourceClaims$OrderingPlugin from "./Notification/StateChange/NotificationSourceClaims.res.mjs";
 import * as NotificationSubscriptions$OrderingPlugin from "./Notification/StateViewStream/NotificationSubscriptions.res.mjs";
+import * as MarketingDigest_Automation$OrderingPlugin from "./Notification/Automation/MarketingDigest_Automation.res.mjs";
 import * as EmailVerificationChallenges$OrderingPlugin from "./Customer/StateChange/EmailVerificationChallenges.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct_Behavior.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewStream/AvailableProducts_Projection.res.mjs";
@@ -305,6 +307,21 @@ function Make(Platform) {
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
+  let MarketingDigestSlice = Platform.AutomationSlice.Make({
+    name: MarketingDigest$OrderingPlugin.name,
+    moduleUrl: MarketingDigest$OrderingPlugin.moduleUrl,
+    todoItemSchema: MarketingDigest$OrderingPlugin.todoItemSchema,
+    commandSchema: MarketingDigest$OrderingPlugin.commandSchema,
+    maxRetries: MarketingDigest$OrderingPlugin.maxRetries,
+    heartbeatInterval: MarketingDigest$OrderingPlugin.heartbeatInterval,
+    targetName: MarketingDigest$OrderingPlugin.targetName,
+    schedule: undefined
+  })({
+    process: MarketingDigest_Automation$OrderingPlugin.process,
+    onExhausted: MarketingDigest_Automation$OrderingPlugin.onExhausted,
+    moduleUrl: MarketingDigest_Automation$OrderingPlugin.moduleUrl,
+    mappings: MarketingDigest_Automation$OrderingPlugin.mappings
+  });
   let NotificationIntakeSlice = Platform.AutomationSlice.Make({
     name: NotificationIntake$OrderingPlugin.name,
     moduleUrl: NotificationIntake$OrderingPlugin.moduleUrl,
@@ -496,6 +513,7 @@ function Make(Platform) {
     SyncCatalogProductSlice
   ], [
     AutoShipOrderSlice,
+    MarketingDigestSlice,
     NotificationIntakeSlice
   ], [
     AnnounceRecipientContactSlice,
@@ -560,6 +578,10 @@ function Make(Platform) {
       "Customer"
     ],
     [
+      "MarketingDigest",
+      "Notification"
+    ],
+    [
       "NotificationDeliveries",
       "Notification"
     ],
@@ -622,6 +644,7 @@ function Make(Platform) {
     OrdersStreamSlice
   ], [
     AutoShipOrderSlice,
+    MarketingDigestSlice,
     NotificationIntakeSlice
   ], [
     AnnounceRecipientContactSlice,
@@ -671,6 +694,7 @@ function Make(Platform) {
     NotificationSubscriptionsStreamSlice: NotificationSubscriptionsStreamSlice,
     OrdersStreamSlice: OrdersStreamSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
+    MarketingDigestSlice: MarketingDigestSlice,
     NotificationIntakeSlice: NotificationIntakeSlice,
     AnnounceRecipientContactSlice: AnnounceRecipientContactSlice,
     GeocodeCustomerAddressSlice: GeocodeCustomerAddressSlice,

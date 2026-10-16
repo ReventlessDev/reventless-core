@@ -46,7 +46,7 @@ function Make(RuntimeEnvironment) {
         authorization: "AllowAuthenticated",
         visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
-      let schedulesStoreName = Spec.name + "Schedules";
+      let schedulesStoreName = Spec.name + "Schedule";
       let schedulesDbName = readsClock ? schedulesStoreName : undefined;
       let moduleUrl$1 = import.meta.url;
       let config$1 = ReadModel$Reventless.config(undefined, undefined, undefined);

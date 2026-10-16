@@ -93,6 +93,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
+  module MarketingDigestSlice = Platform.AutomationSlice.Make(
+    MarketingDigest,
+    MarketingDigest_Automation,
+  )
   module NotificationIntakeSlice = Platform.AutomationSlice.Make(
     NotificationIntake,
     NotificationIntake_Automation,
@@ -151,7 +155,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(ShipOrderSlice),
       module(SyncCatalogProductSlice),
     ],
-    ~automationSlices=[module(AutoShipOrderSlice), module(NotificationIntakeSlice)],
+    ~automationSlices=[
+      module(AutoShipOrderSlice),
+      module(MarketingDigestSlice),
+      module(NotificationIntakeSlice),
+    ],
     ~outboundTranslationSlices=[
       module(AnnounceRecipientContactSlice),
       module(GeocodeCustomerAddressSlice),
@@ -169,6 +177,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("Customers", "Customer"),
       ("EmailVerificationChallenges", "Customer"),
       ("GeocodeCustomerAddress", "Customer"),
+      ("MarketingDigest", "Notification"),
       ("NotificationDeliveries", "Notification"),
       ("NotificationIntake", "Notification"),
       ("NotificationPreferences", "Notification"),
@@ -208,7 +217,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(NotificationSubscriptionsStreamSlice),
         module(OrdersStreamSlice),
       ],
-      ~automationSlices=[module(AutoShipOrderSlice), module(NotificationIntakeSlice)],
+      ~automationSlices=[
+        module(AutoShipOrderSlice),
+        module(MarketingDigestSlice),
+        module(NotificationIntakeSlice),
+      ],
       ~outboundTranslationSlices=[
         module(AnnounceRecipientContactSlice),
         module(GeocodeCustomerAddressSlice),

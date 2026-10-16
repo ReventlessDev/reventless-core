@@ -382,7 +382,7 @@ module Make = (
     // and idResolver paths). Slice output dicts are keyed by Spec.name; the
     // queryDb name appends a suffix per slice kind:
     //   StateViewSlice           — no suffix
-    //   AutomationSlice          — "Todo", and "Schedules" when it maps the Clock
+    //   AutomationSlice          — "Todo", and "Schedule" when it maps the Clock
     //   OutboundTranslationSlice — "Todo"
     //   InboundTranslationSlice  — "Audit"
     dcbResult.stateViewSlicesOutputs
@@ -395,7 +395,7 @@ module Make = (
     ->Dict.toArray
     ->Array.forEach(((k, v)) => {
       allQueryDbs->Dict.set(k ++ "Todo", v.queryDb)
-      v.schedulesDb->Option.forEach(db => allQueryDbs->Dict.set(k ++ "Schedules", db))
+      v.schedulesDb->Option.forEach(db => allQueryDbs->Dict.set(k ++ "Schedule", db))
     })
     dcbResult.outboundTranslationSlicesOutputs
     ->Dict.toArray
@@ -469,9 +469,13 @@ module Make = (
       let extractEventTypes = schema => Reventless.DcbTag.extractVariantNames(schema)
       let routingSchemas: Dict.t<Plugin_Helpers.pluginDeployedSchema> = Dict.make()
       automationSlices->Array.forEach((module(As: ReventlessInfra.AutomationSlice.T)) => {
-        // Union of source-event variants across every per-source mapping.
+        // Union of source-event variants across every per-source mapping. The
+        // Clock's tick is no event of the plugin's; its schedule says when it comes.
         let consumedEventTypes =
           As.Automation.mappings
+          ->Array.filter((module(M: As.Automation.Mapping)) =>
+            M.sourceName != Reventless.Clock.name
+          )
           ->Array.flatMap((module(M: As.Automation.Mapping)) =>
             extractEventTypes(M.sourceEventSchema->S.castToUnknown)
           )

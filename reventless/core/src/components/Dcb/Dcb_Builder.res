@@ -188,11 +188,13 @@ module Make = (
           // its own `sourceEventSchema`. Validation contributes one entry per
           // (slice, source) pair so unknown variants surface against the right
           // mapping context.
+          // The Clock's ticks come from the slice's schedules, not from a slice.
           automationSlices->Array.flatMap((module(A: AutomationSlice.T)) =>
-            A.Automation.mappings->Array.map((module(M: A.Automation.Mapping)) => (
-              A.Spec.name,
-              M.sourceEventSchema->S.castToUnknown,
-            ))
+            A.Automation.mappings->Array.filterMap((module(M: A.Automation.Mapping)) =>
+              M.sourceName == Reventless.Clock.name
+                ? None
+                : Some((A.Spec.name, M.sourceEventSchema->S.castToUnknown))
+            )
           ),
         )
         ->Array.concat(
@@ -664,6 +666,12 @@ module Make = (
       automationSlices->Array.forEach((module(A: AutomationSlice.T)) => {
         let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
         Plugin_Helpers.queryFieldNamesRegistry->Dict.set(A.queryDbName, qn)
+        A.schedulesDbName->Option.forEach(queryDbName =>
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(
+            queryDbName,
+            Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName),
+          )
+        )
       })
 
       outboundTranslationSlices->Array.forEach((module(O: OutboundTranslationSlice.T)) => {

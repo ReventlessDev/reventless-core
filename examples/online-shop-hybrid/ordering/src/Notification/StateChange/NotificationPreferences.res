@@ -68,6 +68,12 @@ type command =
   // the field with the authenticated caller before the command is published.
   | Subscribe({@owner recipientId: string, category: category, channel: channel})
   | Unsubscribe({@owner recipientId: string, category: category, channel: channel})
+  // When in the day the recipient wants the marketing digest, on their own clock:
+  // an hour and minute, read in `zone` (an IANA name such as "Europe/Berlin"; empty
+  // is UTC). Plain fields rather than a `Schedule.time`, because a person picks a
+  // time of day, and an input cannot carry a tagged union. `MarketingDigest` turns
+  // it into the recipient's schedule.
+  | ChooseDigestTime({@owner recipientId: string, hour: int, minute: int, zone: string})
   // Also relayed: a notifiable thing happened. `reference` is the requester's own
   // key for it, echoed back on whichever outcome follows, so the automation that
   // asked can tell its work is finished. Opaque here on purpose — this slice must
@@ -112,12 +118,15 @@ type error =
   // refusal, unlike the relayed commands, which record a fact instead: a person
   // is at the other end of this one and can be told.
   | RecipientUnknown
+  // An hour outside 0 to 23 or a minute outside 0 to 59.
+  | DigestTimeInvalid
 
 @schema
 type event =
   | RecipientAnnounced({recipientId: string, email: string})
   | NotificationSubscribed({recipientId: string, category: category, channel: channel})
   | NotificationUnsubscribed({recipientId: string, category: category, channel: channel})
+  | DigestTimeChosen({recipientId: string, hour: int, minute: int, zone: string})
   // The addressed message. `address` is the snapshot the send slice delivers to,
   // and the reason this event exists rather than the send slice reading state.
   | NotificationRequested({

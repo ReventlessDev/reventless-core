@@ -5,7 +5,8 @@ including a hand test of EventBridge Scheduler; its findings are folded into the
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) is built
 and committed, its deployed check moved to [S5](#s5-schedules-set-by-events). S5's framework half is
-built, uncommitted ([where it stands](#where-s5-stands-2026-10-16)).
+committed; the digest is in the shop, uncommitted, and the deployed check is open
+([where it stands](#where-s5-stands-2026-10-16)).
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -452,7 +453,8 @@ Three changes to the analysis's design, taken while building this phase. They ar
 to D3.
 
 **D1. Schedule rows get a store of their own, `<Slice>Schedules`, made only for a scheduled
-slice.** The analysis put them in the to-do store
+slice.** (Built as `<Slice>Schedule`, listed as `<Slice>Schedules`: see
+[the digest in the shop](#the-digest-in-the-online-shop-2026-10-16).) The analysis put them in the to-do store
 ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names),
 [T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)), so that every stored row
 still decodes. It would not:
@@ -609,7 +611,7 @@ tests, 451 checks. Left: the digest in the online shop and the deployed check
   - The callback folds `reschedule` in phase 1 and queues the platform's changes; its driver
     stores the rows first, then tells the platform. `rebuildSchedules` folds a list of events
     into empty rows.
-- **The schedules store** `<Slice>Schedules` is made for a slice that maps the `Clock`, with its
+- **The schedules store** `<Slice>Schedule` is made for a slice that maps the `Clock`, with its
   own list query, and is registered beside the to-do store.
 - **The platform's side** is `platformSchedules` (`put`, `removeName`, `names`, `nameOf`):
   - Locally, [LocalAutomationSchedules.res](../../reventless/local/src/components/LocalAutomationSchedules.res)
@@ -649,13 +651,46 @@ Where it departs from the plan above:
 - **Locally, a restart reads no rows back**, the gap [What S2 did](#what-s2-did) noted for
   the to-do list.
 
+### The digest in the online shop, 2026-10-16
+
+Pulled forward from [S6](#s6-the-guide-the-words-and-the-examples), as [P2](#open-questions)
+chose:
+
+- `NotificationPreferences` takes `ChooseDigestTime({recipientId, hour, minute, zone})` from the
+  recipient (`@owner`) and records `DigestTimeChosen`. It refuses an unknown recipient, and an
+  hour or minute that does not exist (`DigestTimeInvalid`).
+- `MarketingDigest` (`ordering/src/Notification/Automation/`) turns each choice into a daily
+  schedule keyed by the recipient, clears it when they unsubscribe from `Marketing`, and on
+  each tick requests their digest. Any outcome of the request finishes the day's item, as in
+  `NotificationIntake`.
+- Scenarios in `MarketingDigest_GWT.res` and `NotificationPreferences_GWT.res`; the domain API
+  golden, the lifecycle model and the DCB-scope golden are refreshed.
+
+Where it departs from [§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest):
+
+- **The command and event carry an hour, a minute and a zone, not a `Schedule.time`.** A
+  person picks a time of day, and a GraphQL input cannot carry a tagged union. The automation
+  builds the `Calendar` time.
+- **It is not the notification trait's `Digest` delivery**, which gathers a rule's
+  occurrences per window. The two share a word and nothing else, and the spec says so.
+
+Building it in a real plugin found three gaps the framework's own tests had not:
+
+- **DCB validation counted `Tick` as an event some slice must produce.** A `Clock` mapping is
+  left out of the produced/consumed check, and out of the slice's `consumedEventTypes` in the
+  structure and the deploy hook.
+- **The schedules store's query names were never registered**, so its fields came out
+  unprefixed and typed `String`. They are registered beside the to-do store's.
+- **`<Slice>Schedules` collides with its own list field**, whose plural is the same word. The
+  store is `<Slice>Schedule`, listed as `<Slice>Schedules`, as `<Slice>Todo` is listed as
+  `<Slice>Todos` ([D1](#decisions-2026-10-16) named it otherwise).
+
 ### What is left of S5
 
-- **The digest in the online shop**, pulled forward from [S6](#s6-the-guide-the-words-and-the-examples):
-  `ChooseDigestTime` on `NotificationPreferences` and the `MarketingDigest` automation of
-  [§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest),
-  with its GWT scenarios.
-- **The deployed check**, which also covers [S4](#s4-declared-schedules)'s exit.
+- **The deployed check**, which also covers [S4](#s4-declared-schedules)'s exit: after a
+  push to alpha, two recipients in different zones choose a time, their schedules appear in
+  the plugin's scheduler group as `MarketingDigest.<recipientId>`, each tick requests their
+  digest, and unsubscribing removes the schedule.
 
 ## S6: the guide, the words and the examples
 

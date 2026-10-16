@@ -361,6 +361,7 @@ type Mutation {
   Ordering_CancelOrder(orderId: ID!): CommandResult!
   Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Ordering_ChangeSyncedProductImage(productId: ID!, productImage: String): CommandResult!
+  Ordering_ChooseDigestTime(hour: Int!, minute: Int!, recipientId: ID!, zone: String!): CommandResult!
   Ordering_Customer_Deactivate(id: ID!): CommandResult!
   Ordering_Customer_Reactivate(id: ID!): CommandResult!
   Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
@@ -651,6 +652,85 @@ type Ordering_GeocodeCustomerAddressTodoRef {
 }
 
 enum Ordering_GeocodeCustomerAddressTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+type Ordering_MarketingDigestSchedule implements Node {
+  id: ID!
+  key: String!
+  setAt: String!
+  setBy: String!
+  time: String
+}
+
+type Ordering_MarketingDigestScheduleConnection {
+  edges: [Ordering_MarketingDigestScheduleEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_MarketingDigestScheduleEdge {
+  cursor: String!
+  node: Ordering_MarketingDigestSchedule!
+}
+
+input Ordering_MarketingDigestScheduleFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_MarketingDigestScheduleRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+type Ordering_MarketingDigestTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_MarketingDigestTodoItem!
+  maxRetries: Int
+  processedAt: String
+  retryCount: Int!
+  status: Ordering_MarketingDigestTodoStatus!
+}
+
+type Ordering_MarketingDigestTodoConnection {
+  edges: [Ordering_MarketingDigestTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_MarketingDigestTodoEdge {
+  cursor: String!
+  node: Ordering_MarketingDigestTodo!
+}
+
+input Ordering_MarketingDigestTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_MarketingDigestTodoItem {
+  recipientId: ID!
+}
+
+type Ordering_MarketingDigestTodoRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Ordering_MarketingDigestTodoStatus {
   Abandoned
   Completed
   Failed
@@ -1271,6 +1351,14 @@ type Query {
   Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
   Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_GeocodeCustomerAddressTodo!]!
   Ordering_GeocodeCustomerAddressTodosRefs(ids: [ID!]!): [Ordering_GeocodeCustomerAddressTodoRef!]!
+  Ordering_MarketingDigestSchedule(id: ID!, includeRetired: Boolean): Ordering_MarketingDigestSchedule
+  Ordering_MarketingDigestSchedules(after: String, before: String, filter: Ordering_MarketingDigestScheduleFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_MarketingDigestScheduleConnection!
+  Ordering_MarketingDigestSchedulesByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_MarketingDigestSchedule!]!
+  Ordering_MarketingDigestSchedulesRefs(ids: [ID!]!): [Ordering_MarketingDigestScheduleRef!]!
+  Ordering_MarketingDigestTodo(id: ID!, includeRetired: Boolean): Ordering_MarketingDigestTodo
+  Ordering_MarketingDigestTodos(after: String, before: String, filter: Ordering_MarketingDigestTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_MarketingDigestTodoConnection!
+  Ordering_MarketingDigestTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_MarketingDigestTodo!]!
+  Ordering_MarketingDigestTodosRefs(ids: [ID!]!): [Ordering_MarketingDigestTodoRef!]!
   Ordering_NotificationDeliveries(after: String, before: String, filter: Ordering_NotificationDeliveryFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_NotificationDeliveryOrderBy): Ordering_NotificationDeliveryConnection!
   Ordering_NotificationDeliveriesByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_NotificationDelivery!]!
   Ordering_NotificationDeliveriesRefs(ids: [ID!]!): [Ordering_NotificationDeliveryRef!]!
@@ -1335,6 +1423,7 @@ type Subscription {
   onOrdering_CancelOrder(id: ID): CommandResult
   onOrdering_ChangeSyncedPrice(id: ID): CommandResult
   onOrdering_ChangeSyncedProductImage(id: ID): CommandResult
+  onOrdering_ChooseDigestTime(id: ID): CommandResult
   onOrdering_Customer_Deactivate(id: ID): CommandResult
   onOrdering_Customer_Reactivate(id: ID): CommandResult
   onOrdering_Customer_Register(id: ID): CommandResult

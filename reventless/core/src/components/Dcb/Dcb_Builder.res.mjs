@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
@@ -151,10 +152,16 @@ function Make(DcbEventLogStorage) {
       ]).concat(stateViewSlices.map(V => [
         V.Spec.name,
         V.Spec.consumedEventSchema
-      ])).concat(automationSlices.flatMap(A => A.Automation.mappings.map(M => [
-        A.Spec.name,
-        M.sourceEventSchema
-      ]))).concat(outboundTranslationSlices.map(O => [
+      ])).concat(automationSlices.flatMap(A => Stdlib_Array.filterMap(A.Automation.mappings, M => {
+        if (M.sourceName === Clock$Reventless.name) {
+          return;
+        } else {
+          return [
+            A.Spec.name,
+            M.sourceEventSchema
+          ];
+        }
+      }))).concat(outboundTranslationSlices.map(O => [
         O.Spec.name,
         O.Spec.consumedEventSchema
       ]));
@@ -353,6 +360,9 @@ function Make(DcbEventLogStorage) {
       automationSlices.forEach(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName, undefined);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[A.queryDbName] = qn;
+        Stdlib_Option.forEach(A.schedulesDbName, queryDbName => {
+          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[queryDbName] = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, queryDbName, undefined);
+        });
       });
       outboundTranslationSlices.forEach(O => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, O.queryDbName, undefined);

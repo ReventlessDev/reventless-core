@@ -215,6 +215,17 @@ let decide = (state, command) =>
       )
     )
 
+  // Not the trait's: when a digest comes is this shop's offer, and the trait holds
+  // no time. Only a recipient the directory knows may choose one.
+  | ChooseDigestTime({recipientId, hour, minute, zone}) =>
+    if state.contacts->Array.length == 0 {
+      Error(RecipientUnknown)
+    } else if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+      Error(DigestTimeInvalid)
+    } else {
+      Ok([DigestTimeChosen({recipientId, hour, minute, zone})])
+    }
+
   // Reported by the send slice once the provider has settled. No rule to state —
   // the outcome is whatever the provider said — so these stay here rather than
   // being pushed through a trait that would only pass them along.

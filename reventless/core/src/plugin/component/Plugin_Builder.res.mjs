@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
@@ -288,7 +289,7 @@ function Make(Spec) {
           let k = param[0];
           allQueryDbs[k + "Todo"] = v.queryDb;
           Stdlib_Option.forEach(v.schedulesDb, db => {
-            allQueryDbs[k + "Schedules"] = db;
+            allQueryDbs[k + "Schedule"] = db;
           });
         });
         Object.entries(dcbResult.outboundTranslationSlicesOutputs).forEach(param => {
@@ -353,7 +354,7 @@ function Make(Spec) {
         });
         let routingSchemas = {};
         automationSlices.forEach(As => {
-          let consumedEventTypes = Belt_SetString.toArray(Belt_SetString.fromArray(As.Automation.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
+          let consumedEventTypes = Belt_SetString.toArray(Belt_SetString.fromArray(As.Automation.mappings.filter(M => M.sourceName !== Clock$Reventless.name).flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
           routingSchemas[As.Spec.name] = {
             consumedEventTypes: consumedEventTypes,
             producedCommandTypes: DcbTag$Reventless.extractAllVariantNames(As.Spec.commandSchema),

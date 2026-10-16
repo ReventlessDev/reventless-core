@@ -121,4 +121,31 @@ describe("NotificationPreferences StateChangeSlice", () => {
       }),
     )
   )
+
+  // The time a recipient chooses for the marketing digest is recorded as they gave
+  // it; `MarketingDigest` turns it into their schedule.
+  // scenario-id: f5727c49-9c2f-4369-905f-95f7feeff996
+  test("a known recipient chooses when their digest comes", () =>
+    givenEvents(announced)
+    ->whenCmd(
+      ChooseDigestTime({recipientId: customerRef, hour: 7, minute: 30, zone: "Europe/Berlin"}),
+    )
+    ->thenEvent(
+      DigestTimeChosen({recipientId: customerRef, hour: 7, minute: 30, zone: "Europe/Berlin"}),
+    )
+  )
+
+  // scenario-id: 196824d8-138d-4f47-b508-1bfb7717f180
+  test("a recipient the directory has never heard of cannot choose one", () =>
+    givenEvents([])
+    ->whenCmd(ChooseDigestTime({recipientId: customerRef, hour: 7, minute: 30, zone: ""}))
+    ->thenError(RecipientUnknown)
+  )
+
+  // scenario-id: 1aa9178d-50b2-4c70-a255-e56e9aae9ac4
+  test("a time of day that does not exist is refused", () =>
+    givenEvents(announced)
+    ->whenCmd(ChooseDigestTime({recipientId: customerRef, hour: 24, minute: 0, zone: ""}))
+    ->thenError(DigestTimeInvalid)
+  )
 })

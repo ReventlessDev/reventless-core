@@ -209,6 +209,32 @@ function decide(state, command) {
         category: categoryKey(command.category),
         channel: channelKey(command.channel)
       });
+    case "ChooseDigestTime" :
+      if (state.contacts.length === 0) {
+        return {
+          TAG: "Error",
+          _0: "RecipientUnknown"
+        };
+      }
+      let minute = command.minute;
+      let hour = command.hour;
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return {
+          TAG: "Error",
+          _0: "DigestTimeInvalid"
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "DigestTimeChosen",
+              recipientId: command.recipientId,
+              hour: hour,
+              minute: minute,
+              zone: command.zone
+            }]
+        };
+      }
     case "RequestNotification" :
       let origin = command.origin;
       let body = command.body;

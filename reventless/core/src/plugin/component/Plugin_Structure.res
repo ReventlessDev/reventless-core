@@ -1775,6 +1775,8 @@ let make = (
       // contributes that one source's variants.
       let allConsumedVariants =
         AS.Automation.mappings
+        // The Clock's tick is no event of the plugin's; `schedule` says when it comes.
+        ->Array.filter((module(M: AS.Automation.Mapping)) => M.sourceName != Reventless.Clock.name)
         ->Array.flatMap((module(M: AS.Automation.Mapping)) =>
           eventVariantNames(M.sourceEventSchema->S.castToUnknown)
         )

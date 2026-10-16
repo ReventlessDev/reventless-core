@@ -242,6 +242,14 @@
     "scenarios": 1
   },
   {
+    "component": "NotificationPreferences",
+    "command": "ChooseDigestTime",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
     "component": "NotificationSourceClaims",
     "command": "ClaimNotificationSource",
     "level": "Collection",

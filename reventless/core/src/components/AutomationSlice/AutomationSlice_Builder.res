@@ -70,7 +70,7 @@ module Make = (
     module SpecificQueryDb = QueryDb_Builder.Make(TodoQueryDbSpec, QueryDbStorage, QueryDbResolvers)
 
     // The schedules store: a row per key, made only for a slice that maps the Clock.
-    let schedulesStoreName = Spec.name ++ "Schedules"
+    let schedulesStoreName = Spec.name ++ "Schedule"
     let schedulesDbName = readsClock ? Some(schedulesStoreName) : None
     module SchedulesQueryDbSpec = {
       module Id = Reventless.Id.String

@@ -127,7 +127,7 @@ let publish = async (event, ~recipientId) => {
 
 /** The keys and times the schedules store holds. */
 let storedSchedules = () =>
-  Bus.getQueryDbScan(Digest.queryDbName->String.replace("Todo", "Schedules"))
+  Bus.getQueryDbScan(Digest.schedulesDbName->Option.getOr(""))
   ->Option.map(scan => scan())
   ->Option.getOr([])
   ->Array.map(row =>

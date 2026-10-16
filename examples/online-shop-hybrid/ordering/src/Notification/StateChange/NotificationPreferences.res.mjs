@@ -75,6 +75,13 @@ let commandSchema = Sury.union([
     channel: s.m(channelSchema)
   })),
   Sury.$schema(s => ({
+    TAG: "ChooseDigestTime",
+    recipientId: s.m(Owner$Reventless.mark(DcbTag$Reventless.string)),
+    hour: s.m(Sury.int32),
+    minute: s.m(Sury.int32),
+    zone: s.m(Sury.string)
+  })),
+  Sury.$schema(s => ({
     TAG: "RequestNotification",
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
@@ -100,7 +107,10 @@ let commandSchema = Sury.union([
   }))
 ]);
 
-let errorSchema = Sury.literal("RecipientUnknown");
+let errorSchema = Sury.union([
+  Sury.literal("RecipientUnknown"),
+  Sury.literal("DigestTimeInvalid")
+]);
 
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -119,6 +129,13 @@ let eventSchema = Sury.union([
     recipientId: s.m(DcbTag$Reventless.string),
     category: s.m(categorySchema),
     channel: s.m(channelSchema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "DigestTimeChosen",
+    recipientId: s.m(DcbTag$Reventless.string),
+    hour: s.m(Sury.int32),
+    minute: s.m(Sury.int32),
+    zone: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "NotificationRequested",
