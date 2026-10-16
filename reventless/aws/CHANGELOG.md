@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.382 (2026-10-16)
+
+### Bug Fixes
+
+* **aws:** a schedule group carries no empty tag value ([f7c5074](https://github.com/ReventlessDev/reventless-core/commit/f7c507474ee5a31555e2af7fb8c87d58fb75ed54))
+
+
 # 3.0.0-alpha.381 (2026-10-15)
 
 * feat!: schedules take a Schedule.time, run on EventBridge Scheduler on AWS ([2d74557](https://github.com/ReventlessDev/reventless-core/commit/2d74557a6304917ded8f2b9f4107af9298c91ac0))
