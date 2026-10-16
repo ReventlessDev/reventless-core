@@ -3,10 +3,9 @@
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
-[S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) is built
-and committed, its deployed check moved to [S5](#s5-schedules-set-by-events). S5's framework half is
-committed; the digest is in the shop, uncommitted, and the deployed check is open
-([where it stands](#where-s5-stands-2026-10-16)).
+[S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) and
+[S5](#s5-schedules-set-by-events) built, with the digest in the shop, and checked on the deployed
+alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); two findings are open.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -590,9 +589,9 @@ platform, and their ticks reach the slice.
 
 ### Where S5 stands, 2026-10-16
 
-The framework half is built and tested, not committed: 464 suites, 5237 tests; the PPX's
-tests, 451 checks. Left: the digest in the online shop and the deployed check
-([below](#what-is-left-of-s5)).
+Built, tested and committed: 464 suites, 5237 tests; the PPX's tests, 451 checks. The digest
+followed in the online shop ([below](#the-digest-in-the-online-shop-2026-10-16)), and both were
+checked on the deployed stack ([the check](#the-deployed-check-2026-10-16)).
 
 - **Spec:** `scheduleChange = Set({key, time}) | Clear({key})`, and `reschedule` on `Mapping`
   and `MappingImpl`.
@@ -685,12 +684,34 @@ Building it in a real plugin found three gaps the framework's own tests had not:
   store is `<Slice>Schedule`, listed as `<Slice>Schedules`, as `<Slice>Todo` is listed as
   `<Slice>Todos` ([D1](#decisions-2026-10-16) named it otherwise).
 
-### What is left of S5
+### The deployed check, 2026-10-16
 
-- **The deployed check**, which also covers [S4](#s4-declared-schedules)'s exit: after a
-  push to alpha, two recipients in different zones choose a time, their schedules appear in
-  the plugin's scheduler group as `MarketingDigest.<recipientId>`, each tick requests their
-  digest, and unsubscribing removes the schedule.
+On the alpha stack, with the hybrid shop's `shopper` and `admin` accounts. This also checks
+[S4](#s4-declared-schedules)'s exit: the deploy's reconcile ran (`AllAutomationSlicesReconcileSchedules`
+was created in 3 s, and fails the deploy if the Lambda throws), and ticks reach the slice.
+
+- **Set.** `shopper` chose 10:30 with no zone and `admin` 12:32 in Europe/Berlin. The ordering
+  stack's group `SchedulerRole-7844646` then held `MarketingDigest.<sub>` for each:
+  `cron(30 10 * * ? *)` in UTC and `cron(32 12 * * ? *)` in Europe/Berlin. Each targets the
+  automation Lambda with `{"reventlessTick": {slice, key, at}}`. `Ordering_MarketingDigestSchedules`
+  listed both rows with the event that set them.
+- **Tick.** At 10:30:25 UTC `shopper`'s item `<sub>@2026-10-16T10:30Z` was `Processing`, and
+  it was completed by the request's outcome at 10:30:28. `admin`'s completed at 10:32:12 UTC,
+  12:32 in Berlin. Neither needed a retry.
+- **Clear.** `shopper`'s `Unsubscribe` from `Marketing` removed the schedule from the group and
+  its row from the store within seconds. `admin`'s stayed.
+
+Two findings, both left open:
+
+- **The schedules store is readable by every signed-in caller**, so `shopper` reads `admin`'s
+  digest time. It says who receives messages and when, which is what [D1](#decisions-2026-10-16)
+  expected might need a narrower rule.
+- **A recipient who never subscribed to `Marketing` still gets a schedule.** `Marketing` is
+  off unless chosen, so each day's digest is suppressed. Their `Unsubscribe` records nothing,
+  since nothing changes, and so it never clears the schedule either: the first `Unsubscribe`
+  above returned `eventCount: 0`, and the clear was checked after a `Subscribe`. Either
+  `ChooseDigestTime` should be refused, or the schedule should wait, until the recipient
+  subscribes.
 
 ## S6: the guide, the words and the examples
 
