@@ -1788,6 +1788,11 @@ let make = (
           producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
           targetName: AS.Spec.targetName,
           chapter: chapterOf(AS.Spec.name),
+          schedule: ?(
+            AS.Spec.schedule->Option.map(time =>
+              time->Reventless.Util_Sury.toJson(Reventless.Schedule.timeSchema)->JSON.stringify
+            )
+          ),
         }: Reventless.Plugin.automationSliceDef
       )
     })

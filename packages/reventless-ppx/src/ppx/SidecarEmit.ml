@@ -356,7 +356,7 @@ let named_binding (vb : value_binding) :
 
 let config_keys =
   [ "targetName"; "maxRetries"; "heartbeatInterval"; "externalSystem"; "sourceNames";
-    "capabilityNeeds"; "traits" ]
+    "capabilityNeeds"; "traits"; "schedule" ]
 
 (* A string literal as ReScript writes it. The ReScript parser keeps a "…"
    string's escapes as written (delimiter "*j"), so quoting it again restores the
@@ -390,6 +390,16 @@ let rec config_value ?src (e : expression) : string option =
     else None
   | _ -> None
 
+(* An automation's declared time, as the source writes it: `Some(t)` records the text
+   of `t`, `None` nothing. A time is a constructor with record arguments, which
+   [config_value] does not render. *)
+let rec schedule_value ?src (e : expression) : string option =
+  match e.pexp_desc with
+  | Pexp_constraint (inner, _) -> schedule_value ?src inner
+  | Pexp_construct ({ txt = Lident "None"; _ }, None) -> None
+  | Pexp_construct ({ txt = Lident "Some"; _ }, Some inner) -> source_text ?src inner
+  | _ -> source_text ?src e
+
 let config_entries ?src (str : structure) : Yojson.Safe.t list =
   List.concat_map
     (fun (item : structure_item) ->
@@ -401,7 +411,7 @@ let config_entries ?src (str : structure) : Yojson.Safe.t list =
             | Some (name, _, e) when List.mem name config_keys ->
               Option.map
                 (fun v -> `Assoc [ ("key", `String name); ("value", `String v) ])
-                (config_value ?src e)
+                (if name = "schedule" then schedule_value ?src e else config_value ?src e)
             | _ -> None)
           vbs
       | _ -> [])

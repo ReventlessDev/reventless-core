@@ -9,44 +9,7 @@
 // and pass the resulting component to Plugin_Builder or Task_Builder.
 
 module Make = (Bus: LocalBus.T) => {
-  type timerHandle
-
-  @val
-  external setTimeoutJs: (unit => unit, float) => timerHandle = "setTimeout"
-  @val
-  external clearTimerJs: timerHandle => unit = "clearTimeout"
-
-  let activeTimers: ref<dict<timerHandle>> = ref(Dict.make())
-
-  // Node fires a delay above 2^31 - 1 ms at once, so a far firing is reached a day at a time.
-  let maxWaitMs = 86_400_000.
-
-  let stop = name =>
-    switch activeTimers.contents->Dict.get(name) {
-    | Some(handle) =>
-      clearTimerJs(handle)
-      activeTimers.contents->Dict.delete(name)
-    | None => ()
-    }
-
-  let rec waitUntil = (name, at, fire) => {
-    let delay = at -. Date.now()
-    let handle =
-      delay > maxWaitMs
-        ? setTimeoutJs(() => waitUntil(name, at, fire), maxWaitMs)
-        : setTimeoutJs(fire, Math.max(delay, 0.))
-    activeTimers.contents->Dict.set(name, handle)
-  }
-
-  let rec arm = (name, time, ~after, ~publish) =>
-    switch ReventlessCore.ScheduleTime.nextFiring(time, ~after) {
-    | None => activeTimers.contents->Dict.delete(name)
-    | Some(at) =>
-      waitUntil(name, at, () => {
-        publish()
-        arm(name, time, ~after=at, ~publish)
-      })
-    }
+  let timers = LocalTimers.make()
 
   let scheduleMeta: ReventlessCore.Message.meta = {
     service: "Scheduler",
@@ -62,7 +25,6 @@ module Make = (Bus: LocalBus.T) => {
       channelResources,
       schedule,
     ) => {
-      ReventlessCore.ScheduleTime.validate(schedule.time)
       let topicName = switch channelResources {
       | [] => ""
       | resources => (resources->Array.getUnsafe(0)).name
@@ -71,19 +33,13 @@ module Make = (Bus: LocalBus.T) => {
       | json => json
       | exception _ => schedule.payload->JSON.Encode.string
       }
-      let publish = () =>
+      timers->LocalTimers.start(schedule.name, schedule.time, ~setAt=Date.now(), ~fire=_ =>
         Bus.publishEvent(topicName, "Scheduler", scheduleMeta, payloadJson)->ignore
-      let setAt = Date.now()
-      stop(schedule.name)
-      arm(
-        schedule.name,
-        schedule.time->ReventlessCore.ScheduleTime.resolveOnce(~from=setAt),
-        ~after=setAt,
-        ~publish,
       )
     }
 
-    let deleteSchedule: ReventlessInfra.Scheduler.deleteSchedule = async (_, name) => stop(name)
+    let deleteSchedule: ReventlessInfra.Scheduler.deleteSchedule = async (_, name) =>
+      timers->LocalTimers.stop(name)
 
     {
       resource: ReventlessInfra.Adapter.make(
@@ -102,8 +58,5 @@ module Make = (Bus: LocalBus.T) => {
   }
 
   // Clear all active timers — call in afterAll/afterEach for test isolation.
-  let reset = () => {
-    activeTimers.contents->Dict.valuesToArray->Array.forEach(clearTimerJs)
-    activeTimers.contents = Dict.make()
-  }
+  let reset = () => timers->LocalTimers.reset
 }

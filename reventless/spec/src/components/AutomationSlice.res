@@ -72,6 +72,14 @@ module type Spec = {
 
   /** Name of the aggregate or StateChangeSlice that receives the produced command. */
   let targetName: string
+
+  /**
+  The time this automation runs on, or `None` for one started by events only. A
+  declared time is the slice's schedule under `Clock.defaultKey`; each time it comes,
+  the slice's `Clock` mapping receives a `Tick`. The `@@reventless.spec` PPX injects
+  `None` when the spec declares none.
+  */
+  let schedule: option<Schedule.time>
 }
 
 // ── Plan 04: Mixed-source mappings ───────────────────────────────────────────

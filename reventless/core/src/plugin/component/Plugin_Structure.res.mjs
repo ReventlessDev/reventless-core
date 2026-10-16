@@ -12,6 +12,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trait.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Schedule$Reventless from "@reventlessdev/reventless-spec/src/types/Schedule.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -1258,7 +1259,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consumedEventTypes: qualify(name, allConsumedVariants),
       producedCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(AS.Spec.commandSchema)),
       targetName: AS.Spec.targetName,
-      chapter: componentChapters[AS.Spec.name]
+      chapter: componentChapters[AS.Spec.name],
+      schedule: Stdlib_Option.map(AS.Spec.schedule, time => JSON.stringify(Util_Sury$Reventless.toJson(time, Schedule$Reventless.timeSchema)))
     };
   });
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({

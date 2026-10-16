@@ -120,6 +120,7 @@ let automation: automationSliceDef = {
   producedCommandTypes: ["Restock"],
   targetName: "Product",
   chapter: Some("Replenishment"),
+  schedule: `{"TAG":"Every","_0":{"TAG":"Minutes","_0":15}}`,
 }
 
 let outbound: outboundTranslationSliceDef = {

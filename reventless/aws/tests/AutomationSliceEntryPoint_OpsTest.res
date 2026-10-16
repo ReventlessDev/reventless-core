@@ -260,6 +260,9 @@ describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
     registered: dummyRegistered,
     sweep: run,
     comp,
+    name: comp,
+    schedule: None,
+    tick: None,
   }
 
   test("sweeps every slice", async () => {
@@ -282,6 +285,47 @@ describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
       sliceThat(~comp="C", ~run=async () => swept->Array.push("c")),
     ])
     expect(swept)->toEqual(["a", "c"])
+  })
+})
+
+describe("AutomationSliceEntryPoint_Ops.runTick", () => {
+  let dummyRegistered: StreamRoutedEntryPoint_Ops.registeredHandler = {
+    handler: (_event, _context) => Effect.succeed(),
+  }
+  let ticks = []
+  let slice = (~name, ~tick): AutomationSliceEntryPoint_Ops.builtSlice => {
+    registered: dummyRegistered,
+    sweep: async () => (),
+    comp: name,
+    name,
+    schedule: None,
+    tick,
+  }
+  let slices = [
+    slice(~name="Outbound", ~tick=None),
+    slice(~name="DemandReport", ~tick=Some(async (~key, ~at) => ticks->Array.push((key, at)))),
+  ]
+
+  test("delivers the scheduled time to the named slice", async () => {
+    await AutomationSliceEntryPoint_Ops.runTick(
+      slices,
+      {slice: "DemandReport", key: "default", at: "2026-10-16T06:00:00Z"},
+    )
+    expect(ticks)->toEqual([("default", Date.fromString("2026-10-16T06:00:00Z")->Date.getTime)])
+  })
+
+  // A throw makes the Scheduler retry, and leaves a log line to find.
+  test("refuses a slice it does not host, or one that maps no Clock", async () => {
+    let refused = async invocation =>
+      switch await AutomationSliceEntryPoint_Ops.runTick(slices, invocation) {
+      | () => false
+      | exception _ => true
+      }
+    expect(await refused({slice: "Nobody", key: "default", at: "2026-10-16T06:00:00Z"}))->toBe(true)
+    expect(await refused({slice: "Outbound", key: "default", at: "2026-10-16T06:00:00Z"}))->toBe(
+      true,
+    )
+    expect(await refused({slice: "DemandReport", key: "default", at: "soon"}))->toBe(true)
   })
 })
 

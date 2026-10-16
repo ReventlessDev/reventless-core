@@ -544,6 +544,9 @@ function MakeWithConfig(Config) {
       return resolveHookedApi();
     }
   };
+  let schedulerRoleUrnRef = {
+    contents: Pulumi.output("")
+  };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
@@ -604,7 +607,7 @@ function MakeWithConfig(Config) {
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(schedulerRoleUrnRef.contents, dcbEventLogUnknown);
   };
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
@@ -619,9 +622,6 @@ function MakeWithConfig(Config) {
   };
   let hooks_scheduler = {
     contents: undefined
-  };
-  let hooks_schedulerRoleUrn = {
-    contents: Pulumi.output("")
   };
   let hooks_deployTarget = {
     contents: "Domain"
@@ -638,7 +638,7 @@ function MakeWithConfig(Config) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
-    schedulerRoleUrn: hooks_schedulerRoleUrn,
+    schedulerRoleUrn: schedulerRoleUrnRef,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     adminApi: hooksAdminApiRef,
@@ -713,7 +713,7 @@ function MakeWithConfig(Config) {
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
-    hooks_schedulerRoleUrn.contents = outputs.resource.urn;
+    schedulerRoleUrnRef.contents = outputs.resource.urn;
     return Component$ReventlessCore.operations(component);
   };
   let provisionPgChangeFeedRelay = () => {
@@ -884,7 +884,7 @@ function MakeWithConfig(Config) {
     } else {
       pluginReadModelTableName = undefined;
     }
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, schedulerRoleUrnRef.contents, undefined);
     let pluginEpEventTopicArn = Output$Pulumi.flatMap(admin.extensionPointsOutputs, eps => {
       let ep = eps.find(ep => ep.name === PluginExtensionPointSpec$ReventlessInfra.name);
       if (ep !== undefined) {
@@ -900,7 +900,7 @@ function MakeWithConfig(Config) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, schedulerRoleUrnRef.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
     let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",
@@ -1960,6 +1960,9 @@ function Make($star) {
       return resolveHookedApi();
     }
   };
+  let schedulerRoleUrnRef = {
+    contents: Pulumi.output("")
+  };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
@@ -2020,7 +2023,7 @@ function Make($star) {
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(schedulerRoleUrnRef.contents, dcbEventLogUnknown);
   };
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
@@ -2035,9 +2038,6 @@ function Make($star) {
   };
   let hooks_scheduler = {
     contents: undefined
-  };
-  let hooks_schedulerRoleUrn = {
-    contents: Pulumi.output("")
   };
   let hooks_deployTarget = {
     contents: "Domain"
@@ -2054,7 +2054,7 @@ function Make($star) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
-    schedulerRoleUrn: hooks_schedulerRoleUrn,
+    schedulerRoleUrn: schedulerRoleUrnRef,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     adminApi: hooksAdminApiRef,
@@ -2129,7 +2129,7 @@ function Make($star) {
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
-    hooks_schedulerRoleUrn.contents = outputs.resource.urn;
+    schedulerRoleUrnRef.contents = outputs.resource.urn;
     return Component$ReventlessCore.operations(component);
   };
   let provisionPgChangeFeedRelay = () => {
@@ -2283,7 +2283,7 @@ function Make($star) {
     } else {
       pluginReadModelTableName = undefined;
     }
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, schedulerRoleUrnRef.contents, undefined);
     let pluginEpEventTopicArn = Output$Pulumi.flatMap(admin.extensionPointsOutputs, eps => {
       let ep = eps.find(ep => ep.name === PluginExtensionPointSpec$ReventlessInfra.name);
       if (ep !== undefined) {
@@ -2299,7 +2299,7 @@ function Make($star) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, schedulerRoleUrnRef.contents, undefined, undefined, domainApiId, false, undefined);
     let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",

@@ -46,6 +46,8 @@ let targetName = "NotificationPreferences";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/Automation/NotificationIntake.res.mjs";
 
+let schedule;
+
 export {
   name,
   Id,
@@ -58,5 +60,6 @@ export {
   authorizationOf,
   commandTransition,
   traits,
+  schedule,
 }
 /* todoItemSchema Not a pure module */

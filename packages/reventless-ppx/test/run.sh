@@ -2643,6 +2643,8 @@ assert_js_contains "$JS" 'function process(id, item, param)' "merged automation:
 JS="$PLUGIN/src/Automation/NowAware_Automation.res.mjs"
 assert_js_contains "$JS" 'function process(id, item, now)' "automation: a process taking ~now keeps its own"
 assert_js_contains "$JS" 'now >= item.dueAt' "automation: a process taking ~now reads it"
+JS="$PLUGIN/src/Automation/NowAware.res.mjs"
+assert_js_contains "$JS" '^let schedule;' "automation spec: schedule = None injected when it declares none"
 assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"
 pass "merged automation: file compiles with one Mapping.Make + let mappings + process (Mappings.Make wrapper auto-injected)"
 
@@ -4272,6 +4274,7 @@ type command = Restock({shelfId: string})
 let maxRetries = 1
 let heartbeatInterval = 1
 let targetName = "Restock"
+let schedule = Some(Reventless.Schedule.Every(Minutes(15)))
 EOF
 cat > "$SPEC_SIDECARS/src/Automation/Restock_Automation.res" <<'EOF'
 @@reventless.automation
@@ -4342,6 +4345,9 @@ else
   assert_js_contains "$MJ" '"annotations": \[ { "name": "default", "args": "2" } \]' \
     "an argument after non-ASCII text on its line"
   assert_js_contains "$MJ" '"annotations": \[ "owner" \]' "a bare annotation is its name"
+  assert_js_contains "$SPEC_SIDECARS/src/Automation/Restock.model.json" \
+    '{ "key": "schedule", "value": "Reventless.Schedule.Every(Minutes(15))" }' \
+    "an automation's declared schedule, as its source text"
   if diff <(grep -v '"file":' "$SPEC_SIDECARS/src/RegisterShelf.model.json") \
        "$PPX_DIR/test/golden/RegisterShelf.model.golden.json" > /dev/null; then
     pass "a spec without arguments is written as before"

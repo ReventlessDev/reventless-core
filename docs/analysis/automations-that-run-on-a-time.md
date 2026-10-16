@@ -2,7 +2,12 @@
 
 **Status:** Analysis. Its decisions and [T1](#9-open-questions) to [T11](#9-open-questions) were
 agreed on 2026-10-15 ([T10](#9-open-questions) as version B); carried out by
-[the plan](../plans/automations-that-run-on-a-time.md).
+[the plan](../plans/automations-that-run-on-a-time.md). The plan's
+[decisions of 2026-10-16](../plans/automations-that-run-on-a-time.md#decisions-2026-10-16) change
+three of them: schedule rows get a store of their own, so [T11](#9-open-questions) and the
+to-do-store layout of [§5.8](#58-keys-and-rows-in-the-query-store-and-the-platforms-names) fall
+away; a deploy-time invocation reconciles the declared schedules; and a stack keeps one schedule
+group, not one per slice.
 **Date:** 2026-10-15
 **Subject:** Work an application does because a time has come rather than because an event
 arrived: a deadline after an event (*cancel an order not shipped three days after it was

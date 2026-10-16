@@ -297,7 +297,8 @@ function Make(Platform) {
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
     heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
-    targetName: AutoShipOrder$OrderingPlugin.targetName
+    targetName: AutoShipOrder$OrderingPlugin.targetName,
+    schedule: undefined
   })({
     process: AutoShipOrder_Automation$OrderingPlugin.process,
     onExhausted: AutoShipOrder_Automation$OrderingPlugin.onExhausted,
@@ -311,7 +312,8 @@ function Make(Platform) {
     commandSchema: NotificationIntake$OrderingPlugin.commandSchema,
     maxRetries: NotificationIntake$OrderingPlugin.maxRetries,
     heartbeatInterval: NotificationIntake$OrderingPlugin.heartbeatInterval,
-    targetName: NotificationIntake$OrderingPlugin.targetName
+    targetName: NotificationIntake$OrderingPlugin.targetName,
+    schedule: undefined
   })({
     process: NotificationIntake_Automation$OrderingPlugin.process,
     onExhausted: NotificationIntake_Automation$OrderingPlugin.onExhausted,

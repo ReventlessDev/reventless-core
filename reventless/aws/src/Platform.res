@@ -815,12 +815,16 @@ module MakeWithConfig = (
     | None => resolveHookedApi()
     }
 
+  // Set by `makeScheduler`, before any plugin builds; the automation Lambda's
+  // finalizer, inside `hooks`, reads it for the stack's schedule group.
+  let schedulerRoleUrnRef = ref(Pulumi.Output.make(""))
+
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.
     scheduler: ref(None),
-    schedulerRoleUrn: ref(Pulumi.Output.make("")),
+    schedulerRoleUrn: schedulerRoleUrnRef,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     adminApi: hooksAdminApiRef,
@@ -920,7 +924,10 @@ module MakeWithConfig = (
     onDcbSlicesCreated: dcbEventLogUnknown => {
       let dcbEventLog = dcbEventLogUnknown->asDcbEventLog
       StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
-      AutomationSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
+      AutomationSliceRuntime_Builder_Single.finishWithDcbEventLog(
+        ~schedulerRoleArn=schedulerRoleUrnRef.contents,
+        dcbEventLog,
+      )
     },
     // Heartbeat EP channel hook — extracts SQS queue URL for heartbeat Lambda handler
     // and records the calling plugin's id so the Lambda runtime can emit Connect commands

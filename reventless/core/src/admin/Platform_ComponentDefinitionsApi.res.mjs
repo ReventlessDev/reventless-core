@@ -11,7 +11,7 @@ let sdlTypes = [
   `type Platform_ErrorDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  errors: [Platform_ErrorDef!]!\n  chapter: String\n}`,
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  lifecycleField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n  retiredField: String\n  retiredValues: [String!]\n  namedWhenRetired: Boolean!\n}`,
-  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
+  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n  schedule: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n  consumedSources: [String!]\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_HandledEventDef {\n  name: String!\n  toCommandTypes: [String!]!\n}`,
@@ -278,6 +278,10 @@ function encodeAutomationSliceDef(a) {
     [
       "chapter",
       Stdlib_Option.mapOr(a.chapter, null, prim => prim)
+    ],
+    [
+      "schedule",
+      Stdlib_Option.mapOr(a.schedule, null, prim => prim)
     ]
   ]);
 }

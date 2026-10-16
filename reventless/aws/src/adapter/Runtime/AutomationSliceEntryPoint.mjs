@@ -70,7 +70,8 @@ async function buildAllHandlers() {
       : Ops.makeAutomationRegisteredHandler(
           entry,
           specModule.name,
-          automationSliceCallbackMake(specModule)(bodyModule)
+          automationSliceCallbackMake(specModule)(bodyModule),
+          specModule.schedule
         );
     // A slice can listen on several streams — its plugin's DCB log and any
     // Aggregate EventTopic it named. Register the one handler under each, since
@@ -100,11 +101,15 @@ const routed = StreamOps.makeRoutedHandler(
   builtPromise.then((b) => b.handlers),
 );
 
-// The scheduled sweep arrives as the EventBridge rule's constant Input, which
-// has no `records` — so this branch is the one place that must probe an untyped
-// Lambda payload, which is what this shell exists for. Everything it dispatches
-// to is type-checked in AutomationSliceEntryPoint_Ops.
-export const handler = async (event, context) =>
-  event?.reventlessSweep
-    ? Ops.runSweeps((await builtPromise).sweeps)
-    : routed(event, context);
+// Three invocations carry no `records`: the sweep (the EventBridge rule's constant
+// Input), a schedule's tick (the Scheduler's input), and the deploy's reconcile of
+// the declared schedules. Telling them apart means probing an untyped Lambda
+// payload, which is what this shell exists for. Everything they dispatch to is
+// type-checked in AutomationSliceEntryPoint_Ops.
+export const handler = async (event, context) => {
+  if (event?.reventlessSweep) return Ops.runSweeps((await builtPromise).sweeps);
+  if (event?.reventlessTick) return Ops.runTick((await builtPromise).sweeps, event.reventlessTick);
+  if (event?.reventlessReconcile)
+    return Ops.reconcileDeclared((await builtPromise).sweeps, context.invokedFunctionArn);
+  return routed(event, context);
+};

@@ -41,6 +41,7 @@ module ShipOrderSpec = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = "CreateShipment"
+  let schedule = None
 }
 
 module SkipProcessSpec = {
@@ -56,6 +57,7 @@ module SkipProcessSpec = {
   let maxRetries = 0
   let heartbeatInterval = 60
   let targetName = "Noop"
+  let schedule = None
 }
 
 // ─────────────────────────────────────────────────────────────

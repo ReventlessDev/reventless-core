@@ -11,6 +11,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
@@ -28,7 +29,9 @@ function Make(RuntimeEnvironment) {
     let Make = Spec => (Automation => {
       let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation);
       let queryDbName = Spec.name + "Todo";
-      let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Automation.mappings.map(M => M.sourceName)));
+      let mappedSources = Belt_SetString.toArray(Belt_SetString.fromArray(Automation.mappings.map(M => M.sourceName)));
+      let sourceNames = mappedSources.filter(name => name !== Clock$Reventless.name);
+      let readsClock = mappedSources.includes(Clock$Reventless.name);
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
@@ -67,6 +70,9 @@ function Make(RuntimeEnvironment) {
           let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
           Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
         });
+        if (readsClock && Stdlib_Option.isNone(Spec.schedule)) {
+          Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" maps the Clock source but declares no schedule, so no tick will ever reach it. Declare \`let schedule\` on its spec.`);
+        }
         let sourceSet = Belt_SetString.fromArray(sourceNames);
         let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceSet);
         let eventCollector = Pulumi.all([
@@ -100,11 +106,16 @@ function Make(RuntimeEnvironment) {
         ]).apply(param => {
           let queryDbOps = param[2];
           let publishJsonsFn = param[1];
+          let processPending = async () => {
+            await Callback.phase2(publishJsonsFn);
+            return await syncToQueryDb(queryDbOps);
+          };
           return {
             enqueueEvent: param[0].enqueueEvent,
-            processPending: async () => {
-              await Callback.phase2(publishJsonsFn);
-              return await syncToQueryDb(queryDbOps);
+            processPending: processPending,
+            tick: async (key, at) => {
+              Callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context);
+              return await processPending();
             }
           };
         }));

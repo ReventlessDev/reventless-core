@@ -8,7 +8,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Schedule$Reventless from "@reventlessdev/reventless-spec/src/types/Schedule.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
@@ -22,6 +25,7 @@ import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBu
 import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -52,7 +56,7 @@ function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName, schedule) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   let sourceTopics = sourceTopicsOpt !== undefined ? sourceTopicsOpt : ({});
@@ -66,7 +70,8 @@ function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackT
     context: context,
     sourceTopics: sourceTopics,
     consumesDcbLog: consumesDcbLog,
-    commandTargetName: commandTargetName
+    commandTargetName: commandTargetName,
+    schedule: schedule
   };
 }
 
@@ -168,6 +173,63 @@ function makeMessagingGrant(runtime, opts) {
   }, customOpts);
 }
 
+function makeAutomationSchedules(runtime, schedulerRoleArn, opts) {
+  let name = "AllAutomationSlices";
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, l => l.arn);
+  let manage = new (Aws.iam.RolePolicy)(name + `SchedulerPolicy`, {
+    policy: schedulerRoleArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SchedulerPolicy`, [
+      {
+        Sid: "AllowManageSchedules",
+        Effect: "Allow",
+        Action: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.manageActions,
+        Resource: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.schedulesOfRoleArn(arn)
+      },
+      {
+        Sid: "AllowPassSchedulerRole",
+        Effect: "Allow",
+        Action: "iam:PassRole",
+        Resource: arn
+      }
+    ]))),
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
+  let invoke = new (Aws.iam.RolePolicy)(name + `SchedulerInvokePolicy`, {
+    policy: lambdaArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SchedulerInvokePolicy`, [{
+        Sid: "AllowSchedulerToInvokeAutomations",
+        Effect: "Allow",
+        Action: "lambda:InvokeFunction",
+        Resource: arn
+      }]))),
+    role: schedulerRoleArn.apply(ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.groupOfRoleArn)
+  }, customOpts);
+  let declared = Object.fromEntries(Stdlib_Array.filterMap(Object.entries(bundledInfos), param => {
+    let slice = param[0];
+    return Stdlib_Option.map(param[1].schedule, time => [
+      slice,
+      Util_Sury$Reventless.toJson(time, Schedule$Reventless.timeSchema)
+    ]);
+  }).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])));
+  let input = JSON.stringify(Object.fromEntries([
+    [
+      "reventlessReconcile",
+      true
+    ],
+    [
+      "declared",
+      declared
+    ]
+  ]));
+  let newrecord = {...customOpts};
+  new (Aws.lambda.Invocation)(name + `ReconcileSchedules`, {
+    functionName: Output$Pulumi.flatMap(runtime.parts.lambda, l => l.name),
+    input: input
+  }, (newrecord.dependsOn = [
+    manage,
+    invoke
+  ], newrecord));
+}
+
 let finished = {
   contents: false
 };
@@ -235,7 +297,7 @@ function finish() {
   finished.contents = true;
 }
 
-function finishWithDcbEventLog(dcbEventLog) {
+function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
   if (finished.contents) {
     return;
   }
@@ -355,6 +417,7 @@ function finishWithDcbEventLog(dcbEventLog) {
       PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
         envVars[param[0]] = param[1];
       });
+      envVars["SCHEDULER_ROLE_ARN"] = schedulerRoleArn;
       let extraStringAssets = {};
       extraStringAssets["automationSliceModules.json"] = `{` + sliceModuleEntries.join(",") + `}`;
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
@@ -365,6 +428,7 @@ function finishWithDcbEventLog(dcbEventLog) {
           resources: allQueryDbResources
         }], runtime, opts);
       makeSweepSchedule(runtime, opts);
+      makeAutomationSchedules(runtime, schedulerRoleArn, opts);
       makeGeocoderGrant(runtime, opts);
       makeMessagingGrant(runtime, opts);
     } else {
@@ -398,6 +462,7 @@ export {
   makeSweepSchedule,
   makeGeocoderGrant,
   makeMessagingGrant,
+  makeAutomationSchedules,
   finished,
   finish,
   finishWithDcbEventLog,

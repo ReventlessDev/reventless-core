@@ -55,6 +55,7 @@ module AutoFulfillSpec = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = "MarkFulfilled"
+  let schedule = None
 }
 
 // Forward-declared per-source mappings live below; the merged `Automation`

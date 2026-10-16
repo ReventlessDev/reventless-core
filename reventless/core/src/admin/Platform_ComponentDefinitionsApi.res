@@ -30,7 +30,7 @@ let sdlTypes: array<string> = [
   // def may decline to state them, and a state whose key cannot be resolved has no
   // `idField` to report.
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  lifecycleField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n  retiredField: String\n  retiredValues: [String!]\n  namedWhenRetired: Boolean!\n}`,
-  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
+  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n  schedule: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n  consumedSources: [String!]\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   // The subscriber's half of the port's translation table — see `handledEventDef`.
@@ -170,6 +170,8 @@ let encodeAutomationSliceDef = (a: automationSliceDef): JSON.t =>
     // from the structure rather than from the deploy-time inspector sync.
     ("targetName", JSON.Encode.string(a.targetName)),
     ("chapter", a.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    // The declared time, as its JSON text; null for an automation started by events only.
+    ("schedule", a.schedule->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeOutboundTranslationSliceDef = (o: outboundTranslationSliceDef): JSON.t =>

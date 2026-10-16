@@ -348,6 +348,18 @@ module FromSlice = (
       | (None, None) => clockNow()
       },
     )
+  /** A tick from one of the slice's schedules, as the `Clock` source delivers it:
+      `key` defaults to the declared schedule's. */
+  let tick = (~key=Reventless.Clock.defaultKey, at) => {
+    sourceName: Reventless.Clock.name,
+    sourceId: key,
+    payload: Reventless.Clock.Tick({key, at})->Message.encode(Reventless.Clock.eventSchema),
+    recordedAt: Some(at),
+  }
+  /** The given events, then a tick at `at`, swept at `at`: what the slice does when its
+      schedule comes due. A tick delivered twice makes one item. */
+  let whenTick = (events, ~key=?, ~at, ~context=testContext) =>
+    whenSweep(events->Array.concat([tick(~key?, at)]), ~context, ~now=at)
   let thenCommands = (scenario, expected) =>
     scenario.commands == expected
       ? Outcome.pass

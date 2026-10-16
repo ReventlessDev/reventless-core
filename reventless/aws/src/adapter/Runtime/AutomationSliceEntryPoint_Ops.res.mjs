@@ -7,6 +7,8 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -25,6 +27,7 @@ import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocode
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
+import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function strOf(obj, key) {
   return Stdlib_Option.flatMap(obj[key], Stdlib_JSON.Decode.string);
@@ -242,14 +245,15 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
   }));
 }
 
-function makeAutomationRegisteredHandler(entry, sliceName, callback) {
+function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
   let comp = `AutomationSlice(` + sliceName + `)`;
   let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
   let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema);
   let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp);
+  let context = Stdlib_Option.getOr(entry.context, defaultContext(sliceName));
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(Stdlib_Option.getOr(entry.context, defaultContext(sliceName)), callback, publishJsons, syncTodoItems, loadTodoItems)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems)),
       comp: comp
     },
     sweep: async () => {
@@ -257,7 +261,16 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback) {
       await callback.phase2(publishJsons);
       return await syncTodoItems();
     },
-    comp: comp
+    comp: comp,
+    name: sliceName,
+    schedule: schedule,
+    tick: async (key, at) => {
+      await loadTodoItems();
+      callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context);
+      await syncTodoItems();
+      await callback.phase2(publishJsons);
+      return await syncTodoItems();
+    }
   };
 }
 
@@ -276,7 +289,10 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
       await callback.phase2(publishJsons, capabilities());
       return await syncTodoItems();
     },
-    comp: comp
+    comp: comp,
+    name: sliceName,
+    schedule: undefined,
+    tick: undefined
   };
 }
 
@@ -291,6 +307,41 @@ async function runSweeps(slices) {
       Effect.runSync(EffectLogger$ReventlessCore.logError(slice.comp, undefined, `sweep failed: ` + msg));
     }
   }
+}
+
+async function runTick(slices, invocation) {
+  let tick = Stdlib_Option.flatMap(slices.find(s => s.name === invocation.slice), s => s.tick);
+  if (tick === undefined) {
+    return Stdlib_JsError.throwWithMessage(`tick for ` + invocation.slice + `: no automation of that name here`);
+  }
+  let at = new Date(invocation.at).getTime();
+  if (Number.isNaN(at)) {
+    Stdlib_JsError.throwWithMessage(`tick for ` + invocation.slice + `: "` + invocation.at + `" is not a time`);
+  }
+  return await tick(invocation.key, at);
+}
+
+async function reconcileDeclared(slices, lambdaArn) {
+  let roleArn = Stdlib_Option.getOr(process.env["SCHEDULER_ROLE_ARN"], "");
+  let automations = slices.filter(s => Stdlib_Option.isSome(s.tick));
+  let declared = automations.filter(s => Stdlib_Option.isSome(s.schedule));
+  if (roleArn === "") {
+    if (declared.length !== 0) {
+      return Stdlib_JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`);
+    } else {
+      return;
+    }
+  }
+  for (let i = 0, i_finish = automations.length; i < i_finish; ++i) {
+    let slice = automations[i];
+    let time = slice.schedule;
+    if (time !== undefined) {
+      await ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.putTickSchedule(roleArn, lambdaArn, slice.name, Clock$Reventless.defaultKey, time);
+    } else {
+      await ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.deleteTickSchedule(roleArn, slice.name, Clock$Reventless.defaultKey);
+    }
+  }
+  return Effect.runSync(EffectLogger$ReventlessCore.logInfo("AutomationSliceRuntime", undefined, `reconcile: ` + declared.length.toString() + ` declared schedule(s) set`));
 }
 
 export {
@@ -312,5 +363,7 @@ export {
   makeAutomationRegisteredHandler,
   makeOutboundRegisteredHandler,
   runSweeps,
+  runTick,
+  reconcileDeclared,
 }
 /* Stream Not a pure module */

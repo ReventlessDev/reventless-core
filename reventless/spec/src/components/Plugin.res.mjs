@@ -158,7 +158,8 @@ let automationSliceDefSchema = Sury.$schema(s => ({
   consumedEventTypes: s.m(Sury.array(Sury.string)),
   producedCommandTypes: s.m(Sury.array(Sury.string)),
   targetName: s.m(Sury.string),
-  chapter: s.m(Sury.$option(Sury.string))
+  chapter: s.m(Sury.$option(Sury.string)),
+  schedule: s.m(Sury.$option(Sury.string))
 }));
 
 let outboundTranslationSliceDefSchema = Sury.$schema(s => ({

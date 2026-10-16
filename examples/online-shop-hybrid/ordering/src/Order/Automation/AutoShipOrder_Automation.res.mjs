@@ -14,7 +14,8 @@ let M = AutomationSlice$Reventless.Mappings.Make({
   commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
   maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
   heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
-  targetName: AutoShipOrder$OrderingPlugin.targetName
+  targetName: AutoShipOrder$OrderingPlugin.targetName,
+  schedule: undefined
 });
 
 let name = "OrderingDcbEventLog";
@@ -82,7 +83,8 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
   maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
   heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
-  targetName: AutoShipOrder$OrderingPlugin.targetName
+  targetName: AutoShipOrder$OrderingPlugin.targetName,
+  schedule: undefined
 })({
   collect: collect,
   resolve: resolve

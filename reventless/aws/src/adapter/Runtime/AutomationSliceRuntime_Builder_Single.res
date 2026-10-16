@@ -48,6 +48,9 @@ type sliceInfo = {
   // created *after* the slices that target it, so a lookup at registration time
   // finds nothing. Only the name is knowable this early.
   commandTargetName: option<string>,
+  // The automation's declared time; what the deploy's reconcile puts on the
+  // platform, and what re-runs it when it changes.
+  schedule: option<Reventless.Schedule.time>,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
@@ -95,6 +98,7 @@ let registerAutomationSlice = (
   ~sourceTopics=Dict.make(),
   ~consumesDcbLog=true,
   ~commandTargetName=?,
+  ~schedule=?,
 ) =>
   bundledInfos->Dict.set(
     name,
@@ -108,6 +112,7 @@ let registerAutomationSlice = (
       sourceTopics,
       consumesDcbLog,
       commandTargetName,
+      schedule,
     },
   )
 
@@ -319,6 +324,116 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
     )
   }
 
+// The automations' schedules. The Lambda may manage the schedules in the stack's
+// scheduler group and pass the scheduler role to them; the scheduler role may invoke
+// the Lambda; and each deploy invokes the Lambda to reconcile the declared schedules
+// (`<slice>.default`), so a schedule the platform refuses fails the deploy. The
+// declared times are the invocation's input, so a changed time re-runs it.
+let makeAutomationSchedules = (
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
+  ~schedulerRoleArn: Pulumi.Output.t<string>,
+  ~opts,
+) => {
+  let name = "AllAutomationSlices"
+  let customOpts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let lambdaArn = runtime.parts.lambda->Pulumi.Output.flatMap(l => l.arn)
+
+  let manage = {
+    open PulumiAws.PolicyDocument
+    PulumiAws.IAM.RolePolicy.make(
+      ~name=`${name}SchedulerPolicy`,
+      ~args={
+        policy: schedulerRoleArn
+        ->Pulumi.Output.apply(arn =>
+          PulumiAws.PolicyDocument.make(
+            ~id=`${name}SchedulerPolicy`,
+            ~statements=[
+              {
+                sid: "AllowManageSchedules",
+                effect: Allow,
+                actions: Actions(ScheduledPublisher_EventBridgeScheduler_Runtime.manageActions),
+                resources: Resource(
+                  arn->ScheduledPublisher_EventBridgeScheduler_Runtime.schedulesOfRoleArn,
+                ),
+              },
+              {
+                sid: "AllowPassSchedulerRole",
+                effect: Allow,
+                actions: Action("iam:PassRole"),
+                resources: Resource(arn),
+              },
+            ],
+          )->PulumiAws.PolicyDocument.toJsonString
+        )
+        ->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
+  // The group is named after the scheduler role, so its last ARN segment is the role's name.
+  let invoke = {
+    open PulumiAws.PolicyDocument
+    PulumiAws.IAM.RolePolicy.make(
+      ~name=`${name}SchedulerInvokePolicy`,
+      ~args={
+        policy: lambdaArn
+        ->Pulumi.Output.apply(arn =>
+          PulumiAws.PolicyDocument.make(
+            ~id=`${name}SchedulerInvokePolicy`,
+            ~statements=[
+              {
+                sid: "AllowSchedulerToInvokeAutomations",
+                effect: Allow,
+                actions: Action("lambda:InvokeFunction"),
+                resources: Resource(arn),
+              },
+            ],
+          )->PulumiAws.PolicyDocument.toJsonString
+        )
+        ->Pulumi.Output.asInput,
+        role: schedulerRoleArn
+        ->Pulumi.Output.apply(ScheduledPublisher_EventBridgeScheduler_Runtime.groupOfRoleArn)
+        ->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
+  let declared =
+    bundledInfos
+    ->Dict.toArray
+    ->Array.filterMap(((slice, info)) =>
+      info.schedule->Option.map(time => (
+        slice,
+        time->Reventless.Util_Sury.toJson(Reventless.Schedule.timeSchema),
+      ))
+    )
+    ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+    ->Dict.fromArray
+    ->JSON.Encode.object
+  let input =
+    Dict.fromArray([("reventlessReconcile", JSON.Encode.bool(true)), ("declared", declared)])
+    ->JSON.Encode.object
+    ->JSON.stringify
+
+  let _reconcile = PulumiAws.Lambda.Invocation.make(
+    ~name=`${name}ReconcileSchedules`,
+    ~args={
+      functionName: runtime.parts.lambda->Pulumi.Output.flatMap(l => l.name)->Pulumi.Output.asInput,
+      input: input->Pulumi.Input.make,
+    },
+    ~opts={
+      ...customOpts,
+      dependsOn: [
+        manage->Pulumi.Resource.makeFromJs,
+        invoke->Pulumi.Resource.makeFromJs,
+      ]->Pulumi.Input.make,
+    },
+  )
+}
+
 let finished = ref(false)
 
 // Legacy finalizer, kept only to satisfy `EventCollectorRuntime_Builder.T`.
@@ -445,7 +560,10 @@ let finish = () =>
 // stream — the sole source for automation/outbound slices, which dispatch by
 // `meta.service` inside the callback. `dcbEventLog` is passed so the parent and
 // the stream URN are available synchronously here.
-let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) =>
+let finishWithDcbEventLog = (
+  ~schedulerRoleArn: Pulumi.Output.t<string>,
+  dcbEventLog: ReventlessCore.DcbEventLog.component,
+) =>
   if !finished.contents {
     if bundledInfos->Dict.keysToArray->Array.length > 0 {
       let dcbResource = dcbEventLog->ReventlessCore.Component.toPulumiResource
@@ -645,6 +763,9 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
           envVars->Dict.set(name, value->Pulumi.Output.asInput)
         )
+        // The stack's scheduler role, which also names its group: where the
+        // automations' schedules go.
+        envVars->Dict.set("SCHEDULER_ROLE_ARN", schedulerRoleArn->Pulumi.Output.asInput)
 
         // Carries no Pulumi Output, so the archive is still built synchronously —
         // the table names and urns that do are what stays in HANDLER_CONFIG.
@@ -680,6 +801,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         )
 
         makeSweepSchedule(~runtime, ~opts)
+        makeAutomationSchedules(~runtime, ~schedulerRoleArn, ~opts)
         makeGeocoderGrant(~runtime, ~opts)
         makeMessagingGrant(~runtime, ~opts)
       | None =>

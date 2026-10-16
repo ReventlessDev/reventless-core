@@ -45,6 +45,7 @@ let resetGraphQLServer = () => DomainGraphQL_Server.reset()
 // Call in afterAll when using Plugin_Builder with LocalHeartbeatRunner.
 let resetHeartbeatRunner = () => LocalHeartbeatRunner.reset()
 let resetAutomationSweep = () => LocalAutomationSweep.reset()
+let resetAutomationSchedules = () => LocalAutomationSchedules.reset()
 
 // ─────────────────────────────────────────────────────────────
 // Bus test utilities

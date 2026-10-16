@@ -95,6 +95,26 @@ type runtime = {
   phase2: phase2,
 }
 
+/** A tick as the runtime receives an event: an envelope from the `Clock`
+    source, recorded at the scheduled time. */
+let tickEvent = (~key, ~at) =>
+  JSON.Encode.object(
+    Dict.fromArray([
+      ("id", key->JSON.Encode.string),
+      (
+        "meta",
+        {
+          ...Message.generateMeta(~service=Reventless.Clock.name),
+          time: at->Date.fromTime->Date.toISOString,
+        }->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema),
+      ),
+      (
+        "event",
+        Reventless.Clock.Tick({key, at})->Reventless.Util_Sury.toJson(Reventless.Clock.eventSchema),
+      ),
+    ]),
+  )
+
 module type T = {
   module Spec: Reventless.AutomationSlice.Spec
   module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
@@ -132,6 +152,10 @@ module Make = (
   // AutomationSlice callbacks dispatch mappings on `meta.service` — so naming
   // the slice here makes the target's own events unmatchable, silently.
   let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
+
+  /** How long a row may stay `Processing` before its command is sent again. */
+  let processingTimeoutMs =
+    15. *. 60. *. 1000.
 
   /** Record a failed attempt. The row is marked `Abandoned` at the moment the
       budget runs out rather than being left to fall out of the next pass's
@@ -228,6 +252,22 @@ module Make = (
     // in fact, so say so rather than letting it sit in a status that promises a
     // retry no pass will make.
     let newlyAbandoned: array<string> = []
+    // A command published but never answered leaves its row `Processing`. After
+    // the timeout that counts as a failed attempt, so this pass sends it again
+    // while the budget lasts.
+    todoItems
+    ->Dict.toArray
+    ->Array.forEach(((id, row)) =>
+      switch (row.status, row.processedAt->Option.map(t => Date.fromString(t)->Date.getTime)) {
+      | (Processing, Some(processedAt)) if currentTime -. processedAt >= processingTimeoutMs =>
+        let updated = row->afterFailedAttempt
+        todoItems->Dict.set(id, updated)
+        if updated.status == Abandoned {
+          newlyAbandoned->Array.push(id)
+        }
+      | _ => ()
+      }
+    )
     todoItems
     ->Dict.toArray
     ->Array.forEach(((id, row)) =>

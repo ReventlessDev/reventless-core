@@ -39,11 +39,15 @@ module Make = (
     // Names of all sources this slice subscribes to (deduplicated). Multiple
     // mappings can share a source name (e.g., two mappings reading the same
     // Aggregate's events for different reasons).
-    let sourceNames =
+    let mappedSources =
       Automation.mappings
       ->Array.map((module(M: Automation.Mapping)) => M.sourceName)
       ->Belt.Set.String.fromArray
       ->Belt.Set.String.toArray
+
+    // The event-topic sources; `Clock` is delivered by the slice's schedules, not a topic.
+    let sourceNames = mappedSources->Array.filter(name => name != Reventless.Clock.name)
+    let readsClock = mappedSources->Array.includes(Reventless.Clock.name)
 
     // QueryDb for TODO list — stores todoRow keyed by string ID
     module TodoQueryDbSpec = {
@@ -115,6 +119,13 @@ module Make = (
           )
         }
       )
+
+      // A `Clock` mapping with no schedule would never receive a tick.
+      if readsClock && Spec.schedule->Option.isNone {
+        JsError.throwWithMessage(
+          `AutomationSlice "${Spec.name}" maps the Clock source but declares no schedule, ` ++ `so no tick will ever reach it. Declare \`let schedule\` on its spec.`,
+        )
+      }
 
       // Filter to only the topics this slice consumes from.
       let sourceSet = sourceNames->Belt.Set.String.fromArray
@@ -197,12 +208,17 @@ module Make = (
         )
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((ecOps, publishJsonsFn, queryDbOps)) => {
+          let processPending = async () => {
+            await Callback.phase2(publishJsonsFn)
+            await syncToQueryDb(queryDbOps)
+          }
           let ops: AutomationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
             // As the AWS sweep does: the rows phase 2 moved are written back.
-            processPending: async () => {
-              await Callback.phase2(publishJsonsFn)
-              await syncToQueryDb(queryDbOps)
+            processPending,
+            tick: async (~key, ~at) => {
+              Callback.phase1([AutomationSlice_Callback.tickEvent(~key, ~at)], context)
+              await processPending()
             },
           }
           ops

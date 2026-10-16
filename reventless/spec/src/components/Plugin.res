@@ -301,6 +301,9 @@ type automationSliceDef = {
   targetName: string,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: option<string>,
+  /** The declared `schedule`, as the JSON of `Schedule.timeSchema`; `None` for an
+      automation started by events only, and in a structure from before the field. */
+  schedule?: string,
 }
 
 @schema

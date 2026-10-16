@@ -18,6 +18,9 @@ Runtime operations exposed by an `AutomationSlice` component.
 type operations = {
   enqueueEvent: EventCollector.enqueueEvent,
   processPending: unit => promise<unit>,
+  /** Delivers `Tick({key, at})` from the `Clock` source, then runs Phase 2: what the
+      platform's Scheduler does when one of the slice's schedules comes due. */
+  tick: (~key: string, ~at: float) => promise<unit>,
 }
 
 /**

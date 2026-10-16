@@ -282,7 +282,8 @@ function Make(Platform) {
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
     heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
-    targetName: AutoShipOrder$OrderingPlugin.targetName
+    targetName: AutoShipOrder$OrderingPlugin.targetName,
+    schedule: undefined
   })({
     process: AutoShipOrder_Automation$OrderingPlugin.process,
     onExhausted: AutoShipOrder_Automation$OrderingPlugin.onExhausted,

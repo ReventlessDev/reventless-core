@@ -447,12 +447,18 @@ type builtSlice = {
   registered: StreamRoutedEntryPoint_Ops.registeredHandler,
   sweep: unit => promise<unit>,
   comp: string,
+  name: string,
+  /** The automation's declared time; always `None` for an outbound slice. */
+  schedule: option<Reventless.Schedule.time>,
+  /** Delivers `Tick({key, at})`; `None` for an outbound slice, which maps no `Clock`. */
+  tick: option<(~key: string, ~at: float) => promise<unit>>,
 }
 
 let makeAutomationRegisteredHandler = (
   entry: handlerEntry,
   ~sliceName: string,
   ~callback: automationCallback,
+  ~schedule: option<Reventless.Schedule.time>,
 ): builtSlice => {
   let comp = `AutomationSlice(${sliceName})`
   let publishJsons = makePublishJsons(
@@ -470,11 +476,12 @@ let makeAutomationRegisteredHandler = (
     ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
     ~comp,
   )
+  let context = entry.context->Option.getOr(defaultContext(sliceName))
   {
     registered: {
       handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
         makeAutomationJsonEventsHandler(
-          ~context=entry.context->Option.getOr(defaultContext(sliceName)),
+          ~context,
           ~callback,
           ~publishJsons,
           ~syncTodoItems,
@@ -489,6 +496,18 @@ let makeAutomationRegisteredHandler = (
       await syncTodoItems()
     },
     comp,
+    name: sliceName,
+    schedule,
+    // The same steps as an event batch, with the tick as its one event.
+    tick: Some(
+      async (~key, ~at) => {
+        await loadTodoItems()
+        callback.phase1([ReventlessCore.AutomationSlice_Callback.tickEvent(~key, ~at)], context)
+        await syncTodoItems()
+        await callback.phase2(publishJsons)
+        await syncTodoItems()
+      },
+    ),
   }
 }
 
@@ -533,6 +552,9 @@ let makeOutboundRegisteredHandler = (
       await syncTodoItems()
     },
     comp,
+    name: sliceName,
+    schedule: None,
+    tick: None,
   }
 }
 
@@ -555,5 +577,68 @@ let runSweeps = async (slices: array<builtSlice>) => {
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       ReventlessCore.EffectLogger.logError(~comp=slice.comp, `sweep failed: ${msg}`)->Effect.runSync
     }
+  }
+}
+
+// ── Schedules ───────────────────────────────────────────────────────────────
+
+/** A Scheduler invocation: which slice's schedule fired, its key, and its scheduled time. */
+type tickInvocation = {slice: string, key: string, at: string}
+
+/**
+Deliver a schedule's firing to its slice. `at` is the Scheduler's placeholder,
+filled in as `2026-10-16T06:00:00Z`. A tick for a slice this Lambda does not host,
+or one that maps no `Clock`, throws, so the Scheduler retries and the error is logged.
+*/
+let runTick = async (slices: array<builtSlice>, invocation: tickInvocation) =>
+  switch slices->Array.find(s => s.name == invocation.slice)->Option.flatMap(s => s.tick) {
+  | Some(tick) =>
+    let at = invocation.at->Date.fromString->Date.getTime
+    if at->Float.isNaN {
+      JsError.throwWithMessage(`tick for ${invocation.slice}: "${invocation.at}" is not a time`)
+    }
+    await tick(~key=invocation.key, ~at)
+  | None =>
+    JsError.throwWithMessage(`tick for ${invocation.slice}: no automation of that name here`)
+  }
+
+/**
+Put each automation's declared schedule on the platform under `<slice>.default`,
+and remove that schedule from an automation that declares none. Run by the deploy,
+so a failure fails it. `lambdaArn` is this Lambda, which the schedules invoke.
+*/
+let reconcileDeclared = async (slices: array<builtSlice>, ~lambdaArn) => {
+  let roleArn = NodeProcess.env->Dict.get("SCHEDULER_ROLE_ARN")->Option.getOr("")
+  let key = Reventless.Clock.defaultKey
+  let automations = slices->Array.filter(s => s.tick->Option.isSome)
+  let declared = automations->Array.filter(s => s.schedule->Option.isSome)
+  if roleArn == "" {
+    if declared->Array.length > 0 {
+      JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`)
+    }
+  } else {
+    for i in 0 to automations->Array.length - 1 {
+      let slice = automations->Array.getUnsafe(i)
+      switch slice.schedule {
+      | Some(time) =>
+        await ScheduledPublisher_EventBridgeScheduler_Runtime.putTickSchedule(
+          ~roleArn,
+          ~lambdaArn,
+          ~slice=slice.name,
+          ~key,
+          time,
+        )
+      | None =>
+        await ScheduledPublisher_EventBridgeScheduler_Runtime.deleteTickSchedule(
+          ~roleArn,
+          ~slice=slice.name,
+          ~key,
+        )
+      }
+    }
+    ReventlessCore.EffectLogger.logInfo(
+      ~comp="AutomationSliceRuntime",
+      `reconcile: ${declared->Array.length->Int.toString} declared schedule(s) set`,
+    )->Effect.runSync
   }
 }

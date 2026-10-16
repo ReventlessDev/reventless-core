@@ -3,7 +3,8 @@
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
-[S3](#s3-the-time-inside-the-functions) built 2026-10-16.
+[S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) is built
+and tested, uncommitted, its deployed check still open ([where it stands](#where-s4-stands-2026-10-16)).
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -425,23 +426,125 @@ The analysis's [§5.1 to §5.5](../analysis/automations-that-run-on-a-time.md#51
 - **The runtime** turns a Scheduler invocation (`{slice, key, at}`) into `Tick({key, at})` for
   the slice's mappings, then runs `process` as for an event batch. The automation runtime is
   given the scheduler's operations.
-- **Schedule rows** in the slice's existing `<Slice>Todo` store: id `schedule#<key>`, `rowKind:
-  "schedule"`, `key`, `time`, `setBy`, `setAt`, `platformName`. An item id from `collect` that
-  starts with `schedule#` is refused and logged. Rehydration of the to-do list is unchanged.
-- **The declared default** is written under `default` after a deploy unless an event has already
-  set it, and the platform's schedules are reconciled with the rows ([P1](#open-questions)).
-- **The PPX's records:** `.wiring.json` marks the mappings that read `Clock`; a build fails when a
-  slice maps `Clock` with neither a `schedule` nor a mapping that reschedules.
+- **No schedule rows yet** ([D1](#decisions-2026-10-16)). A declared schedule's truth is the
+  spec; the rows come with [S5](#s5-schedules-set-by-events), in a store of their own.
+- **The declared default is put on the platform at deploy** by a deploy-time invocation of the
+  automation Lambda, which reconciles it ([D2](#decisions-2026-10-16)). It goes into the stack's
+  scheduler group under the name `<slice>.default` ([D3](#decisions-2026-10-16)).
+- **A slice that maps `Clock` without a `schedule` fails at plugin assembly**, not in the PPX:
+  the PPX sees the automation file without its spec. Assembly reports it at the same moments:
+  deploy, boot and tests.
 - **The plugin's structure** carries the declared time.
 - **The GWT DSL** gains `whenTick(key, at)`, through the same path as `whenSweep`.
 
 **Tests:** the demand report of [§8.2](../analysis/automations-that-run-on-a-time.md#82-a-declared-schedule-the-demand-report-every-morning)
 end to end in memory: the tick makes the day's item, `process` sends `RequestDemandReport`, the
-returned event resolves it; the same tick delivered twice adds one item; a `collect` id starting
-with `schedule#` refused; the build check; the declared time in `.model.json`.
+returned event resolves it; the same tick delivered twice adds one item; the assembly check;
+the declared time in `.model.json`; a `Processing` item sent again after the timeout.
 
 **Exit:** the demand report runs locally at its time and on a deployed stack, by hand; the
-schedule row is visible through the store's query.
+platform's schedule `<slice>.default` matches the declared time after a deploy.
+
+### Decisions, 2026-10-16
+
+Three changes to the analysis's design, taken while building this phase. They are numbered D1
+to D3.
+
+**D1. Schedule rows get a store of their own, `<Slice>Schedules`, made only for a scheduled
+slice.** The analysis put them in the to-do store
+([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names),
+[T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)), so that every stored row
+still decodes. It would not:
+
+- A to-do row requires `item`, `status`, `createdAt` and `retryCount`, and the store's GraphQL
+  type makes them non-null. One store means making those optional.
+- Optional fields cost the runtime its type safety: `phase2`, retries and rehydration all read
+  them.
+- Readers see both kinds of row mixed. The automatic UI shows the to-do list as a panel, and
+  anything that counts pending work would have to filter by `rowKind`.
+- A rebuild has to pick out the schedule rows with a filtered scan, without touching the to-dos.
+- The schedules cannot get an access rule of their own. Per-customer schedules say who receives
+  messages and when, which may warrant a narrower one.
+
+The cost of [D1](#decisions-2026-10-16) is one table, its resolvers and its query per scheduled slice. Built in
+[S5](#s5-schedules-set-by-events); [S4](#s4-declared-schedules) has no rows. The reserved
+`schedule#` prefix goes too: with its own store, `collect` may use any id.
+
+**D2. A deploy-time Lambda invocation reconciles the declared schedules**, the pattern of the
+Postgres migration (`Lambda.Invocation` in `PgMigration_Builder.res`). It runs again when a
+declared schedule changes, and a failure fails the deploy. The alternatives:
+
+- A Pulumi `aws.scheduler.Schedule` per declared schedule would put a default back on the next
+  deploy after an event replaced it ([P1](#open-questions)).
+- The Lambda reconciling on its first run after a deploy would surface a failure only in its
+  logs.
+
+**D3. One schedule group per stack, the one its Scheduler already has**, not one per scheduled
+slice as in
+[§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names).
+A region allows 500 groups by default, and alpha already holds three: the platform and each
+plugin stack. A schedule is named `<slice>.<key>`, hashed when it is too long or holds other
+characters ([§5.8](../analysis/automations-that-run-on-a-time.md#58-keys-and-rows-in-the-query-store-and-the-platforms-names)'s
+rule). Reconcile lists the group by the slice's name prefix, once
+[S5](#s5-schedules-set-by-events) adds the list.
+
+### Where S4 stands, 2026-10-16
+
+Built and tested, not committed. The full suite passes: 461 suites, 5206 tests; the PPX's
+own tests pass, 450 checks. Only the deployed check of the exit is left
+([below](#what-is-left-of-s4)).
+
+- **Spec:**
+  - `Reventless.Clock`, with `Tick({key, at})`, `itemId` and `defaultKey`.
+  - `let schedule` on the spec.
+- **PPX:** `schedule_suffix` injects `None`, and `.model.json` records a declared time as its
+  source text (`SidecarEmit.schedule_value`). Both have a check in the PPX's test script.
+- **Core:**
+  - The `tick` operation; `tickEvent` builds the `Clock` envelope.
+  - The `Processing` timeout of 15 minutes, counted as a failed attempt.
+  - The assembly check.
+  - `sourceNames` without `Clock`.
+  - No reserved item ids ([D1](#decisions-2026-10-16)).
+- **Local:** `LocalTimers`, shared by the scheduled publisher and the new
+  `LocalAutomationSchedules`, which ticks a slice's declared schedule
+  ([AutomationScheduleTest.res](../../reventless/local/tests/components/automationslice/AutomationScheduleTest.res)).
+- **AWS:**
+  - The automation Lambda takes a tick as a third kind of invocation without records, beside
+    the sweep: `{"reventlessTick": {slice, key, at}}`, with `at` filled in by the Scheduler
+    ([AutomationSliceEntryPoint_Ops.res](../../reventless/aws/src/adapter/Runtime/AutomationSliceEntryPoint_Ops.res)).
+    It runs as an event batch does: load, phase 1, sync, phase 2, sync. A tick for a slice the
+    Lambda does not host throws, so the Scheduler retries and the error is logged.
+  - The Lambda gets the stack's scheduler role as `SCHEDULER_ROLE_ARN`, may manage the schedules
+    of its group and pass the role, as Tasks may. The scheduler role may invoke the Lambda.
+  - Each deploy invokes the Lambda to reconcile the declared schedules
+    ([D2](#decisions-2026-10-16)). Its input carries the declared times, so a changed time
+    re-runs it.
+  - A schedule is named `<slice>.<key>`. When that is not a valid name, it is the slice's name
+    cut to 40 characters, a dot and 16 hex digits of the key's SHA-256
+    ([D3](#decisions-2026-10-16)).
+- **The plugin's structure:** an optional `schedule` on `automationSliceDef`, also in the admin
+  API's SDL, its encoder and `AdminApiSchemaDriftTest`; the platform API golden is refreshed.
+- **GWT:** `tick` and `whenTick`, and `AutomationScheduleGwtTest`.
+
+Where it departs from the plan above:
+
+- **The reconcile also removes `<slice>.default` from an automation that declares no
+  schedule**, so taking a schedule out of a spec takes it off the platform. It therefore runs on
+  every stack with automations, not only on those with a declared time. The schedule of a slice
+  deleted from the plugin stays until [S5](#s5-schedules-set-by-events) adds the list that
+  reconcile needs to find it.
+- **The reconcile reads each time from the spec module the Lambda runs**, not from its input.
+  The input only makes Pulumi invoke again when a time changes.
+- **The structure carries the time as its JSON text, in a `String`.** A stored structure is
+  served by the admin API as it is stored, and the time as an object in a `String` field would
+  fail that read. The admin API keeps away from `AWSJSON` for the same reason.
+
+### What is left of S4
+
+- **The deployed check of the exit.** It needs a scheduled automation on a deployed stack, and
+  the online shop has none: [P2](#open-questions) leaves the demand report out of it. One way is a
+  scheduled automation added for the check and removed afterwards; another is to move the
+  deployed check to [S5](#s5-schedules-set-by-events), whose digest goes into the shop.
 
 ## S5: schedules set by events
 
@@ -452,6 +555,9 @@ the once-only part of [§5.7](../analysis/automations-that-run-on-a-time.md#57-t
   `_ => []` where absent and marks the mapping in `.wiring.json`. This takes a new walk into the
   third argument of `Mapping.Make`, in the merged `_Automation.res` form and the older
   `_Mappings.res` form ([S0](#what-s0-found) item 2).
+- **The schedules store** `<Slice>Schedules` ([D1](#decisions-2026-10-16)), made only for a
+  slice that declares a `schedule` or has a mapping that reschedules. A row per key: `key`,
+  `time`, `setBy` (the event's id, or `declared`), `setAt`, `platformName`.
 - **The runtime** writes each change to the schedule rows first, then to the platform; an
   `After` is resolved with the event's recorded time; a once-only key is cleared when its tick
   arrives.
@@ -459,8 +565,11 @@ the once-only part of [§5.7](../analysis/automations-that-run-on-a-time.md#57-t
   order, writes the declared default unless `default` is set, and brings the platform's group in
   line; a once-only time already past is not made again
   ([T7](../analysis/automations-that-run-on-a-time.md#9-open-questions)).
-- **The store's list query** gains the optional `rowKind`, absent for a to-do row, and a filter
-  on it ([T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)).
+- **The schedules store's own list query** answers *when does it run, and who set it*. The
+  to-do store is unchanged, so [T11](../analysis/automations-that-run-on-a-time.md#9-open-questions)'s
+  `rowKind` falls away ([D1](#decisions-2026-10-16)).
+- **The declared default is written into the schedules store** by the reconcile of
+  [D2](#decisions-2026-10-16), unless an event has set `default`.
 - **The GWT DSL** gains `thenSchedules`.
 
 **Tests:** the moved report of [§8.3](../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)
@@ -472,7 +581,7 @@ after the recorded time, cleared when the order ships, cleared after it fires); 
 reproduces the rows and removes a stray platform schedule.
 
 **Exit:** the digest runs on a deployed stack for two recipients with different zones, by hand;
-a rebuild leaves the platform's group equal to the rows.
+a rebuild leaves the platform's schedules of the slice equal to its rows.
 
 ## S6: the guide, the words and the examples
 
@@ -525,7 +634,8 @@ declared schedule, or the runtime's reconcile run after the deploy?
 ([§5.6](../analysis/automations-that-run-on-a-time.md#56-schedules-set-by-events)); if Pulumi
 also made schedules, two owners would fight over the same group. Pulumi creates the group and the
 permissions only, and the deploy ends by asking each scheduled slice to reconcile, as it already
-asks plugins to reconnect.
+asks plugins to reconnect. **Decided 2026-10-16:** a deploy-time Lambda invocation does the
+asking ([D2](#decisions-2026-10-16)).
 
 **P2. Which examples go into the online shop?**
 **Recommendation: the deadline

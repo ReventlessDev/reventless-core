@@ -60,6 +60,7 @@ module Make = (
         ~context,
         ~sourceTopics,
         ~consumesDcbLog,
+        ~schedule=?Spec.schedule,
       )
 
       as_

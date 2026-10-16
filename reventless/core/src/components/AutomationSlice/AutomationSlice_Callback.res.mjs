@@ -7,6 +7,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Clock from "effect/Clock";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -45,10 +46,33 @@ function todoRowSchemaFor(itemSchema) {
   }));
 }
 
+function tickEvent(key, at) {
+  let newrecord = {...Message$ReventlessCore.generateMeta(Clock$Reventless.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined)};
+  return Object.fromEntries([
+    [
+      "id",
+      key
+    ],
+    [
+      "meta",
+      Util_Sury$Reventless.toJson((newrecord.time = new Date(at).toISOString(), newrecord), Message$Reventless.metaSchema)
+    ],
+    [
+      "event",
+      Util_Sury$Reventless.toJson({
+        TAG: "Tick",
+        key: key,
+        at: at
+      }, Clock$Reventless.eventSchema)
+    ]
+  ]);
+}
+
 function Make(Spec) {
   return Automation => {
     let todoItems = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let processingTimeoutMs = 15 * 60 * 1000;
     let afterFailedAttempt = row => {
       let retryCount = row.retryCount + 1 | 0;
       let newrecord = {...row};
@@ -112,6 +136,27 @@ function Make(Spec) {
     let phase2 = async publishJsons => {
       let currentTime = await Effect.runPromise(Clock.currentTimeMillis);
       let newlyAbandoned = [];
+      Object.entries(todoItems).forEach(param => {
+        let row = param[1];
+        let id = param[0];
+        let match = row.status;
+        let match$1 = Stdlib_Option.map(row.processedAt, t => new Date(t).getTime());
+        if (match !== "Processing") {
+          return;
+        }
+        if (match$1 === undefined) {
+          return;
+        }
+        if (currentTime - match$1 < processingTimeoutMs) {
+          return;
+        }
+        let updated = afterFailedAttempt(row);
+        todoItems[id] = updated;
+        if (updated.status === "Abandoned") {
+          newlyAbandoned.push(id);
+          return;
+        }
+      });
       Object.entries(todoItems).forEach(param => {
         let row = param[1];
         if (!(row.status === "Failed" && row.retryCount >= Spec.maxRetries)) {
@@ -253,6 +298,7 @@ export {
   todoStatusSchema,
   todoRowSchema,
   todoRowSchemaFor,
+  tickEvent,
   Make,
 }
 /* todoStatusSchema Not a pure module */

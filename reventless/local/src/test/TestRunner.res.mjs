@@ -4,6 +4,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as DomainGraphQL_Server$ReventlessLocal from "../adapter/DomainGraphQL_Server.res.mjs";
 import * as LocalAutomationSweep$ReventlessLocal from "../components/LocalAutomationSweep.res.mjs";
 import * as LocalHeartbeatRunner$ReventlessLocal from "../adapter/Heartbeat/LocalHeartbeatRunner.res.mjs";
+import * as LocalAutomationSchedules$ReventlessLocal from "../components/LocalAutomationSchedules.res.mjs";
 
 function setup() {
   Pulumi.runtime.setMocks({
@@ -33,6 +34,10 @@ function resetHeartbeatRunner() {
 
 function resetAutomationSweep() {
   LocalAutomationSweep$ReventlessLocal.reset();
+}
+
+function resetAutomationSchedules() {
+  LocalAutomationSchedules$ReventlessLocal.reset();
 }
 
 function collectNEvents(subscribeToEvents, topicName, n) {
@@ -72,6 +77,7 @@ export {
   resetGraphQLServer,
   resetHeartbeatRunner,
   resetAutomationSweep,
+  resetAutomationSchedules,
   collectNEvents,
 }
 /* @pulumi/pulumi Not a pure module */

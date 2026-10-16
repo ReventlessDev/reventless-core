@@ -35,6 +35,8 @@ let targetName = "ShipOrder";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/Automation/AutoShipOrder.res.mjs";
 
+let schedule;
+
 export {
   name,
   Id,
@@ -47,5 +49,6 @@ export {
   authorizationOf,
   commandTransition,
   traits,
+  schedule,
 }
 /* todoItemSchema Not a pure module */

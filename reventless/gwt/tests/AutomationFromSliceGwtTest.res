@@ -18,6 +18,7 @@ module ShipPaid = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = "Order"
+  let schedule = None
 }
 
 module ShipPaid_Automation = {

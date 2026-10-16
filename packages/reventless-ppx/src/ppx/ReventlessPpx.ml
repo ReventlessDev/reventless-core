@@ -959,6 +959,12 @@ let transform (str : structure) : structure =
       let traits_suffix =
         AuthorizationInjection.traits_suffix ~loc loc.loc_start.pos_fname body
       in
+      (* schedule auto-injection (Automation specs). Appends [let schedule = None]
+         when the spec declares no time, so an automation started by events only
+         satisfies the Spec field without a line. Idempotent. *)
+      let schedule_suffix =
+        AuthorizationInjection.schedule_suffix ~loc loc.loc_start.pos_fname body
+      in
       (* The port's two translation tables, read off the arms of `mapOutgoingEvent`
          and `mapIncomingCommand` — see TranslationTable. *)
       let table_suffix =
@@ -970,7 +976,7 @@ let transform (str : structure) : structure =
       in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
         @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
-        @ transition_suffix @ traits_suffix @ table_suffix
+        @ transition_suffix @ traits_suffix @ schedule_suffix @ table_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

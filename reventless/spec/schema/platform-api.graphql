@@ -47,6 +47,7 @@ type Platform_AutomationSliceDef {
   consumedEventTypes: [String!]!
   name: String!
   producedCommandTypes: [String!]!
+  schedule: String
   targetName: String
 }
 

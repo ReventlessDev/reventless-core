@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Clock from "effect/Clock";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
@@ -346,6 +347,23 @@ function FromSlice(Spec) {
           match !== undefined ? match : Effect.runSync(Clock.currentTimeMillis)
         ));
     };
+    let tick = (keyOpt, at) => {
+      let key = keyOpt !== undefined ? keyOpt : Clock$Reventless.defaultKey;
+      return {
+        sourceName: Clock$Reventless.name,
+        sourceId: key,
+        payload: Message$ReventlessCore.encode({
+          TAG: "Tick",
+          key: key,
+          at: at
+        }, Clock$Reventless.eventSchema),
+        recordedAt: at
+      };
+    };
+    let whenTick = (events, key, at, contextOpt) => {
+      let context = contextOpt !== undefined ? contextOpt : testContext;
+      return whenSweep(events.concat([tick(key, at)]), context, at);
+    };
     let thenCommands = (scenario, expected) => {
       if (Primitive_object.equal(scenario.commands, expected)) {
         return Outcome$ReventlessGwt.pass;
@@ -388,6 +406,8 @@ function FromSlice(Spec) {
       routeAll: routeAll,
       sweep: sweep,
       whenSweep: whenSweep,
+      tick: tick,
+      whenTick: whenTick,
       thenCommands: thenCommands,
       andThenEvents: andThenEvents,
       thenScenarioTodos: thenScenarioTodos

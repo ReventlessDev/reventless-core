@@ -620,6 +620,21 @@ let external_system_suffix ~loc fname (body : structure) : structure_item list =
   then [gen_external_system ~loc]
   else []
 
+(* [let schedule = None] — an automation's declared time, absent unless its spec
+   writes one. Injected for Automation specs that don't declare it, so existing
+   specs satisfy the [Spec] module type unchanged. *)
+let gen_schedule_none ~loc =
+  let none = Ast_builder.Default.pexp_construct ~loc { txt = Lident "None"; loc } None in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "schedule"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:none]
+
+let schedule_suffix ~loc fname (body : structure) : structure_item list =
+  if is_spec_namespace_pkg loc then []
+  else if Util.is_in_automationslice_folder fname && not (Util.has_let_binding "schedule" body)
+  then [gen_schedule_none ~loc]
+  else []
+
 (* Inline-module detection + injection --------------------------------------- *)
 (*
    Test fixtures and a handful of framework-internal helpers define spec
