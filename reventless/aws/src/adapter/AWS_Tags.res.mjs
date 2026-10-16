@@ -74,6 +74,10 @@ function makeDict(name, kind, role, scopeOpt, component, owner, plugin, platform
   ]);
 }
 
+function withoutEmpty(tags) {
+  return Object.fromEntries(Object.entries(tags).filter(param => param[1] !== ""));
+}
+
 function make(name, kind, role, scopeOpt, component, owner, plugin, platform) {
   let scope = scopeOpt !== undefined ? scopeOpt : "Component";
   return makeDict(name, kind, role, scope, component, owner, plugin, platform);
@@ -84,6 +88,7 @@ let Attribution;
 export {
   Attribution,
   makeDict,
+  withoutEmpty,
   make,
 }
 /* @pulumi/pulumi Not a pure module */

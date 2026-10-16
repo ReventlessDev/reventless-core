@@ -57,4 +57,9 @@ describe("ScheduledPublisher_EventBridgeScheduler_Runtime", () => {
       "arn:aws:scheduler:*:123456789012:schedule/SchedulerRole-*/*",
     )
   })
+
+  testSync("a schedule group's tags carry no empty value, which AWS refuses", () => {
+    let tags = Dict.fromArray([("Name", "SchedulerScheduleGroup"), ("reventless:plugin", "")])
+    expect(tags->AWS.Tags.withoutEmpty->Dict.toArray)->toEqual([("Name", "SchedulerScheduleGroup")])
+  })
 })

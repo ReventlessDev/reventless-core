@@ -42,7 +42,15 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
     ~name=name ++ "ScheduleGroup",
     ~args={
       name: role.name->Pulumi.Output.asInput,
-      tags: tags(name ++ "ScheduleGroup"),
+      // A schedule group refuses the empty values platform-scoped tags carry.
+      tags: AWS.Tags.makeDict(
+        ~name=name ++ "ScheduleGroup",
+        ~kind=ReventlessCore.ComponentType.Platform,
+        ~role=Identity,
+        ~scope=Platform,
+      )
+      ->AWS.Tags.withoutEmpty
+      ->Pulumi.Input.make,
     },
     ~opts,
   )

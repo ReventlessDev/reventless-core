@@ -103,6 +103,14 @@ let makeDict = (
   ]->Dict.fromArray
 }
 
+/**
+`tags` without the empty values, for the resource types that refuse a tag whose
+value is empty: an EventBridge Scheduler schedule group fails to create with one
+(`reventless:plugin` and `reventless:component` are empty at platform scope).
+*/
+let withoutEmpty = (tags: dict<string>) =>
+  tags->Dict.toArray->Array.filter(((_, value)) => value != "")->Dict.fromArray
+
 /***
 Framework-created AWS resource types that carry NO attribution tags, and why.
 Keep this list here rather than in a plan: it is what tells a coverage audit

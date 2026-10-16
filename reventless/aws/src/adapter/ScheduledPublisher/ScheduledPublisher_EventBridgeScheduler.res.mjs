@@ -23,7 +23,7 @@ function make(name, opts) {
   }, opts);
   new (Aws.scheduler.ScheduleGroup)(name + "ScheduleGroup", {
     name: role.name,
-    tags: tags(name + "ScheduleGroup")
+    tags: AWS_Tags$ReventlessAws.withoutEmpty(AWS_Tags$ReventlessAws.makeDict(name + "ScheduleGroup", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined))
   }, opts);
   return {
     resource: Adapter$ReventlessInfra.make(role.name, role.id, role.arn, Pulumi.output("EventBridgeScheduler"), undefined, undefined, undefined, Pulumi.output("aws:scheduler:ScheduleGroup"), undefined, undefined),
