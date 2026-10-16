@@ -2,8 +2,7 @@
 
 **Status.** Planned 2026-10-15. [S0](#s0-check-what-the-analysis-assumes) done 2026-10-15,
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
-[S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built 2026-10-16; its check on a deployed
-stack waits for the next deploy. [S2](#s2-the-local-platform-sweeps) and
+[S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16.
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
@@ -263,8 +262,22 @@ timeout work on a deployed stack, by hand.
 ### What S1 did
 
 Built 2026-10-16. All suites pass (457 suites, 5184 tests), and `pulumi preview` of the
-hybrid example's platform stack creates the role, the group and its policy. The check on a
-deployed stack waits for the deploy that follows a push.
+hybrid example's platform stack creates the role, the group and its policy.
+
+**On the deployed alpha stack** (2026-10-16):
+
+- **The first deploy failed.** EventBridge Scheduler refuses a tag with an empty value, and a
+  platform-scoped resource's `reventless:plugin` and `reventless:component` are empty. The
+  preview could not show it. The fix, `AWS.Tags.withoutEmpty` on the group, deployed cleanly.
+- **The plugin connect timeout works.** In the hour after the deploy, the plugins' heartbeats
+  created or replaced their disconnect schedules 26 times without an error. Each schedule is
+  an `at(…)` in UTC, deleted after it fires, with the plugin extension point's queue as target
+  and the new role.
+- **A Task schedule could not be checked by hand**: no Task in the hybrid example creates one.
+  `TaskBucketEntryPoint_OpsTest` covers its dispatch.
+- **Every stack that builds a Scheduler gets its own group.** On alpha that is the platform and
+  each plugin stack, as each had its own CloudWatch Events role before. That counts towards
+  the 500 groups a region allows ([Risks](#risks)).
 
 - **The shared reading** is
   [ScheduleTime.res](../../reventless/core/src/util/ScheduleTime.res): `nextFiring`,
