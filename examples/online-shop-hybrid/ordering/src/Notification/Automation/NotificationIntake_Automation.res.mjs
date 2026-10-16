@@ -133,6 +133,10 @@ function resolve(event) {
   }
 }
 
+function reschedule(param) {
+  return [];
+}
+
 let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name,
@@ -148,7 +152,8 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   schedule: undefined
 })({
   collect: collect,
-  resolve: resolve
+  resolve: resolve,
+  reschedule: reschedule
 });
 
 let mappings = [FromOrderingDcb];

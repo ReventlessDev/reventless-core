@@ -153,6 +153,7 @@ module FromDcb = AutomationSlice.Mapping.Make(
       | Shipped({orderId}) => Some(orderId)
       | Placed(_) => None
       }
+    let reschedule = _ => []
   },
 )
 

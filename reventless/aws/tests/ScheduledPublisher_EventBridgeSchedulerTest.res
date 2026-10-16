@@ -62,4 +62,29 @@ describe("ScheduledPublisher_EventBridgeScheduler_Runtime", () => {
     let tags = Dict.fromArray([("Name", "SchedulerScheduleGroup"), ("reventless:plugin", "")])
     expect(tags->AWS.Tags.withoutEmpty->Dict.toArray)->toEqual([("Name", "SchedulerScheduleGroup")])
   })
+
+  testSync("names an automation's schedule <slice>.<key>, or hashes a key it would refuse", () => {
+    expect(Runtime.tickScheduleName(~slice="MarketingDigest", ~key="r1"))->toBe(
+      "MarketingDigest.r1",
+    )
+    let hashed = Runtime.tickScheduleName(~slice="MarketingDigest", ~key="customer:42")
+    expect((hashed->String.startsWith("MarketingDigest."), hashed->String.length))->toEqual((
+      true,
+      16 + 16,
+    ))
+    let long = "A"->String.repeat(60)
+    let cut = Runtime.tickScheduleName(~slice=long, ~key="default")
+    expect((cut->String.length, cut->Runtime.isSliceSchedule(~slice=long)))->toEqual((57, true))
+  })
+
+  testSync("tells a slice's schedules from another slice's sharing its prefix", () => {
+    expect("Digest.r1"->Runtime.isSliceSchedule(~slice="Digest"))->toBe(true)
+    expect("DigestWeekly.r1"->Runtime.isSliceSchedule(~slice="Digest"))->toBe(false)
+  })
+
+  testSync("invokes the automation Lambda with the slice, the key and the scheduled time", () => {
+    expect(
+      Runtime.tickInput(~slice="MarketingDigest", ~key="r1"),
+    )->toBe(`{"reventlessTick":{"slice":"MarketingDigest","key":"r1","at":"<aws.scheduler.scheduled-time>"}}`)
+  })
 })

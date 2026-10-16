@@ -51,6 +51,9 @@ type sliceInfo = {
   // The automation's declared time; what the deploy's reconcile puts on the
   // platform, and what re-runs it when it changes.
   schedule: option<Reventless.Schedule.time>,
+  // The schedules store's table, empty for a slice that maps no `Clock`. Granted to
+  // the Lambda with the to-do tables, and named in the slice's handler config.
+  schedulesResources: array<ReventlessInfra.Adapter.resource>,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
@@ -99,6 +102,7 @@ let registerAutomationSlice = (
   ~consumesDcbLog=true,
   ~commandTargetName=?,
   ~schedule=?,
+  ~schedulesResources=[],
 ) =>
   bundledInfos->Dict.set(
     name,
@@ -113,6 +117,7 @@ let registerAutomationSlice = (
       consumesDcbLog,
       commandTargetName,
       schedule,
+      schedulesResources,
     },
   )
 
@@ -328,10 +333,12 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
 // scheduler group and pass the scheduler role to them; the scheduler role may invoke
 // the Lambda; and each deploy invokes the Lambda to reconcile the declared schedules
 // (`<slice>.default`), so a schedule the platform refuses fails the deploy. The
-// declared times are the invocation's input, so a changed time re-runs it.
+// declared times and the code's hash are the invocation's input, so a changed time
+// or a new build re-runs it.
 let makeAutomationSchedules = (
   ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
   ~schedulerRoleArn: Pulumi.Output.t<string>,
+  ~sourceCodeHash: string,
   ~opts,
 ) => {
   let name = "AllAutomationSlices"
@@ -361,6 +368,12 @@ let makeAutomationSchedules = (
                 effect: Allow,
                 actions: Action("iam:PassRole"),
                 resources: Resource(arn),
+              },
+              {
+                sid: "AllowListSchedules",
+                effect: Allow,
+                actions: Actions(ScheduledPublisher_EventBridgeScheduler_Runtime.listActions),
+                resources: AllResources,
               },
             ],
           )->PulumiAws.PolicyDocument.toJsonString
@@ -414,7 +427,11 @@ let makeAutomationSchedules = (
     ->Dict.fromArray
     ->JSON.Encode.object
   let input =
-    Dict.fromArray([("reventlessReconcile", JSON.Encode.bool(true)), ("declared", declared)])
+    Dict.fromArray([
+      ("reventlessReconcile", JSON.Encode.bool(true)),
+      ("declared", declared),
+      ("code", sourceCodeHash->JSON.Encode.string),
+    ])
     ->JSON.Encode.object
     ->JSON.stringify
 
@@ -656,6 +673,7 @@ let finishWithDcbEventLog = (
 
         bundledInfos->Dict.forEachWithKey((info, name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
+          info.schedulesResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
           // The queue this slice publishes its command to. An Aggregate registers
           // its CommandTopic while plugin construction is still synchronous —
           // before DCB construction registers the slices targeting it — so a
@@ -707,11 +725,16 @@ let finishWithDcbEventLog = (
           // exactly — so it emits neither and inherits both.
           let hasOwnUrns =
             !info.consumesDcbLog || info.sourceTopics->Dict.keysToArray->Array.length > 0
-          let handlerJson = Pulumi.Output.all3((
+          let schedulesTableName = switch info.schedulesResources->Array.get(0) {
+          | Some(resource) => resource.name
+          | None => Pulumi.Output.make("")
+          }
+          let handlerJson = Pulumi.Output.all4((
             info.queryDbTableName,
             commandQueueUrl,
             sourceUrnsFor(info),
-          ))->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
+            schedulesTableName,
+          ))->Pulumi.Output.apply(((tableName, queueUrl, urns, schedulesTable)) => {
             let urnsFragment = hasOwnUrns
               ? `,"u":${urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify}`
               : ""
@@ -719,7 +742,8 @@ let finishWithDcbEventLog = (
             | Some(_) => `,"k":"${queueUrl}","f":${commandQueueIsFifo ? "true" : "false"}`
             | None => ""
             }
-            `{"n":${nameJson},"q":"${tableName}"${urnsFragment}${queueFragment}}`
+            let schedulesFragment = schedulesTable == "" ? "" : `,"s":"${schedulesTable}"`
+            `{"n":${nameJson},"q":"${tableName}"${urnsFragment}${queueFragment}${schedulesFragment}}`
           })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
@@ -801,7 +825,7 @@ let finishWithDcbEventLog = (
         )
 
         makeSweepSchedule(~runtime, ~opts)
-        makeAutomationSchedules(~runtime, ~schedulerRoleArn, ~opts)
+        makeAutomationSchedules(~runtime, ~schedulerRoleArn, ~sourceCodeHash, ~opts)
         makeGeocoderGrant(~runtime, ~opts)
         makeMessagingGrant(~runtime, ~opts)
       | None =>

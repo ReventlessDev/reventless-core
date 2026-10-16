@@ -4,7 +4,8 @@
 including a hand test of EventBridge Scheduler; its findings are folded into the phases below.
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) is built
-and tested, uncommitted, its deployed check still open ([where it stands](#where-s4-stands-2026-10-16)).
+and committed, its deployed check moved to [S5](#s5-schedules-set-by-events). S5's framework half is
+built, uncommitted ([where it stands](#where-s5-stands-2026-10-16)).
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -541,10 +542,10 @@ Where it departs from the plan above:
 
 ### What is left of S4
 
-- **The deployed check of the exit.** It needs a scheduled automation on a deployed stack, and
-  the online shop has none: [P2](#open-questions) leaves the demand report out of it. One way is a
-  scheduled automation added for the check and removed afterwards; another is to move the
-  deployed check to [S5](#s5-schedules-set-by-events), whose digest goes into the shop.
+- **The deployed check of the exit moves to [S5](#s5-schedules-set-by-events)** (2026-10-16).
+  It needs a scheduled automation on a deployed stack, and the online shop has none:
+  [P2](#open-questions) leaves the demand report out of it. The digest that S5's exit deploys
+  goes through the same tick path and the same reconcile.
 
 ## S5: schedules set by events
 
@@ -581,7 +582,80 @@ after the recorded time, cleared when the order ships, cleared after it fires); 
 reproduces the rows and removes a stray platform schedule.
 
 **Exit:** the digest runs on a deployed stack for two recipients with different zones, by hand;
-a rebuild leaves the platform's schedules of the slice equal to its rows.
+a rebuild leaves the platform's schedules of the slice equal to its rows. The deploy that checks
+it also checks [S4](#s4-declared-schedules)'s exit: the reconcile puts the schedules on the
+platform, and their ticks reach the slice.
+
+### Where S5 stands, 2026-10-16
+
+The framework half is built and tested, not committed: 464 suites, 5237 tests; the PPX's
+tests, 451 checks. Left: the digest in the online shop and the deployed check
+([below](#what-is-left-of-s5)).
+
+- **Spec:** `scheduleChange = Set({key, time}) | Clear({key})`, and `reschedule` on `Mapping`
+  and `MappingImpl`.
+- **PPX:** [RescheduleInjection.ml](../../packages/reventless-ppx/src/ppx/RescheduleInjection.ml)
+  adds `let reschedule = _ => []` to a `Mapping.Make` third argument without one, in the merged
+  `_Automation.res` form and the older `_Mappings.res` form. `.wiring.json` records
+  `reschedules` per mapping, as written.
+- **Core:** [AutomationSlice_Schedules.res](../../reventless/core/src/components/AutomationSlice/AutomationSlice_Schedules.res),
+  shared by the runtime and the GWT DSL:
+  - A row per key: `key`, `time`, `setBy` (the event's `msgId`, or `declared`) and `setAt`.
+  - `apply` folds one change. An `After` is counted from the event's recorded time, and a time
+    that cannot fire is refused and logged.
+  - `fired` drops a once-only schedule's row when its tick arrives.
+  - `declare` brings the spec's time in under `default`.
+  - `reconcile` brings the platform in line with the rows.
+  - The callback folds `reschedule` in phase 1 and queues the platform's changes; its driver
+    stores the rows first, then tells the platform. `rebuildSchedules` folds a list of events
+    into empty rows.
+- **The schedules store** `<Slice>Schedules` is made for a slice that maps the `Clock`, with its
+  own list query, and is registered beside the to-do store.
+- **The platform's side** is `platformSchedules` (`put`, `removeName`, `names`, `nameOf`):
+  - Locally, [LocalAutomationSchedules.res](../../reventless/local/src/components/LocalAutomationSchedules.res)
+    holds the timers, and each slice reconciles when it is made.
+  - On AWS, the automation Lambda loads and syncs the rows, follows them with EventBridge
+    Scheduler, and lists the group with `ListSchedules`, which the Lambda is granted on every
+    resource. The deploy's reconcile now runs on every build as well as on a changed time.
+- **GWT:** a scenario folds `reschedule` after the declared time; `thenSchedules` compares the
+  rows by key ([AutomationRescheduleGwtTest.res](../../reventless/gwt/tests/AutomationRescheduleGwtTest.res),
+  and the moved report in [AutomationScheduleGwtTest.res](../../reventless/gwt/tests/AutomationScheduleGwtTest.res)).
+- **Tests:**
+  - The moved report, the digest and the reminder as GWT scenarios.
+  - The digest on the local runtime, two recipients in two zones, with a rebuild that removes
+    a stray timer ([AutomationRescheduleTest.res](../../reventless/local/tests/components/automationslice/AutomationRescheduleTest.res)).
+  - The rows and the reconcile against a fake platform
+    ([AutomationSliceSchedulesTest.res](../../reventless/core/tests/automationslice/AutomationSliceSchedulesTest.res)).
+  - The AWS names, and the order of steps in the Lambda.
+
+Where it departs from the plan above:
+
+- **Clearing `default` leaves a row** with no time, so a later deploy does not put the
+  declared time back (the stopped report of
+  [§8.3](../analysis/automations-that-run-on-a-time.md#83-the-same-schedule-moved-by-an-event)).
+  Any other key's row is removed.
+- **No `platformName` on the row.** The name follows from the slice and the key, and the
+  platform's side gives it (`nameOf`), so storing it would be a second copy.
+- **The time is stored as JSON text**, for the reason the structure stores it so
+  ([What S4 did](#where-s4-stands-2026-10-16)).
+- **The reconcile does not put again a row an event set** when the platform holds it: that
+  row reached the platform when it changed. It puts what is missing, the declared time, and
+  removes what the rows do not hold.
+- **A rebuild is an operation, not a trigger.** Nothing in the framework rebuilds an
+  automation yet; `rebuildSchedules(events)` is there for whatever does, and is tested.
+- **The assembly check accepts a `Clock` mapping without a declared time** when the slice
+  reads any event, since one of them may set a schedule. A `Set` on a slice that maps no
+  `Clock` is logged and skipped.
+- **Locally, a restart reads no rows back**, the gap [What S2 did](#what-s2-did) noted for
+  the to-do list.
+
+### What is left of S5
+
+- **The digest in the online shop**, pulled forward from [S6](#s6-the-guide-the-words-and-the-examples):
+  `ChooseDigestTime` on `NotificationPreferences` and the `MarketingDigest` automation of
+  [§8.4](../analysis/automations-that-run-on-a-time.md#84-a-schedule-per-customer-the-marketing-digest),
+  with its GWT scenarios.
+- **The deployed check**, which also covers [S4](#s4-declared-schedules)'s exit.
 
 ## S6: the guide, the words and the examples
 

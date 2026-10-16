@@ -382,7 +382,7 @@ module Make = (
     // and idResolver paths). Slice output dicts are keyed by Spec.name; the
     // queryDb name appends a suffix per slice kind:
     //   StateViewSlice           — no suffix
-    //   AutomationSlice          — "Todo"
+    //   AutomationSlice          — "Todo", and "Schedules" when it maps the Clock
     //   OutboundTranslationSlice — "Todo"
     //   InboundTranslationSlice  — "Audit"
     dcbResult.stateViewSlicesOutputs
@@ -393,7 +393,10 @@ module Make = (
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Audit", v.queryDb))
     dcbResult.automationSlicesOutputs
     ->Dict.toArray
-    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Todo", v.queryDb))
+    ->Array.forEach(((k, v)) => {
+      allQueryDbs->Dict.set(k ++ "Todo", v.queryDb)
+      v.schedulesDb->Option.forEach(db => allQueryDbs->Dict.set(k ++ "Schedules", db))
+    })
     dcbResult.outboundTranslationSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Todo", v.queryDb))

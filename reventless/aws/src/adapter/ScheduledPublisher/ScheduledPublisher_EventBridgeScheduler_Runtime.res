@@ -142,6 +142,37 @@ let putTickSchedule = (~roleArn, ~lambdaArn, ~slice, ~key, time) =>
     {name: tickScheduleName(~slice, ~key), time, payload: tickInput(~slice, ~key)},
   )
 
-/** Removes the slice's schedule of that key; one it does not have is no error. */
-let deleteTickSchedule = (~roleArn, ~slice, ~key) =>
-  removeSchedule(~roleArn, tickScheduleName(~slice, ~key))
+/** The actions a Lambda that reconciles an automation's schedules is granted on every
+    resource: listing schedules has no resource-level permission. */
+let listActions = ["scheduler:ListSchedules"]
+
+// Hashed names start with the slice's name cut to 40 characters.
+let sliceNamePrefix = slice => slice->String.slice(~start=0, ~end=40)
+
+let isSliceSchedule = (name, ~slice) => {
+  let cut = slice->sliceNamePrefix
+  name->String.startsWith(`${slice}.`) ||
+    (cut != slice &&
+    name->String.startsWith(`${cut}.`) &&
+    name->String.length == cut->String.length + 17)
+}
+
+/** The slice's schedules in the scheduler group of `roleArn`, invoking `lambdaArn`. */
+let platformSchedules = (
+  ~roleArn,
+  ~lambdaArn,
+  ~slice,
+): ReventlessInfra.AutomationSlice.platformSchedules => {
+  put: (~key, time) => putTickSchedule(~roleArn, ~lambdaArn, ~slice, ~key, time),
+  removeName: name => removeSchedule(~roleArn, name),
+  names: async () =>
+    (
+      await ListSchedulesCommand.all({
+        groupName: roleArn->groupOfRoleArn,
+        namePrefix: slice->sliceNamePrefix,
+      })
+    )
+    ->Array.map(s => s.name)
+    ->Array.filter(isSliceSchedule(_, ~slice)),
+  nameOf: key => tickScheduleName(~slice, ~key),
+}

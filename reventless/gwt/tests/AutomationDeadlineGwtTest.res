@@ -52,6 +52,7 @@ module CancelUnshipped_Automation = {
         | Orders.OrderShipped({orderId}) => Some(orderId)
         | OrderPlaced(_) => None
         }
+      let reschedule = _ => []
     },
   )
 

@@ -224,6 +224,9 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
         steps->Array.push("phase1")
       },
       phase2: async _publish => steps->Array.push("phase2"),
+      schedules: Dict.make(),
+      takeScheduleChanges: () => [],
+      rebuildSchedules: _ => (),
     }
     let context: Reventless.AutomationSlice.context = {
       environment: "test",
@@ -250,6 +253,50 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
     // the reloaded backlog unprocessed until another invocation.
     expect(steps)->toEqual(["restore", "phase1", "sync", "phase2", "sync"])
   })
+
+  // The rows are the truth: a platform told before they are stored could hold a
+  // schedule no row knows of, if the store write then failed.
+  test("stores a changed schedule's rows before telling the platform", async () => {
+    let steps = []
+    let daily = Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})})
+    let callback: AutomationSliceEntryPoint_Ops.automationCallback = {
+      todoItems: Dict.make(),
+      phase1: (_jsons, _ctx) => steps->Array.push("phase1"),
+      phase2: async _publish => steps->Array.push("phase2"),
+      schedules: Dict.make(),
+      takeScheduleChanges: () => [Put({key: "r1", time: daily})],
+      rebuildSchedules: _ => (),
+    }
+    let schedules: AutomationSliceEntryPoint_Ops.schedulesStep = {
+      load: async () => steps->Array.push("load schedules"),
+      sync: async () => steps->Array.push("sync schedules"),
+      platform: {
+        put: async (~key, _) => steps->Array.push(`put ${key}`),
+        removeName: async name => steps->Array.push(`remove ${name}`),
+        names: async () => [],
+        nameOf: key => key,
+      },
+    }
+    let handler = AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler(
+      ~context={environment: "test", platformName: "P", pluginName: "Pl", sliceName: "S"},
+      ~callback,
+      ~publishJsons=noopPublish,
+      ~syncTodoItems=async () => steps->Array.push("sync"),
+      ~loadTodoItems=async () => steps->Array.push("restore"),
+      ~schedules=() => Some(schedules),
+    )
+    await Stream.fromIterable([str("e")])->handler->Effect.runPromise
+    expect(steps)->toEqual([
+      "restore",
+      "load schedules",
+      "phase1",
+      "sync",
+      "sync schedules",
+      "put r1",
+      "phase2",
+      "sync",
+    ])
+  })
 })
 
 describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
@@ -261,8 +308,8 @@ describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
     sweep: run,
     comp,
     name: comp,
-    schedule: None,
     tick: None,
+    reconcile: None,
   }
 
   test("sweeps every slice", async () => {
@@ -298,8 +345,8 @@ describe("AutomationSliceEntryPoint_Ops.runTick", () => {
     sweep: async () => (),
     comp: name,
     name,
-    schedule: None,
     tick,
+    reconcile: None,
   }
   let slices = [
     slice(~name="Outbound", ~tick=None),

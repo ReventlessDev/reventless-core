@@ -126,6 +126,17 @@ type context = {
 }
 
 /**
+What an event does to one of the slice's schedules. `key` names the schedule:
+`Clock.defaultKey` for the slice-wide one (replacing a declared time), or an id for a
+time per entity, which the tick carries back to `collect`. `Set` replaces the key's
+time, the last one winning; `Clear` of a key with no schedule does nothing. An
+`After` is counted from when the event was recorded.
+*/
+type scheduleChange =
+  | Set({key: string, time: Schedule.time})
+  | Clear({key: string})
+
+/**
 A compiled per-source-to-AutomationSlice mapping.
 
 Created by `AutomationSlice.Mapping.Make(Source, Target, Impl)`. The mapping
@@ -156,6 +167,9 @@ module type Mapping = {
   */
   let collect: (sourceEvent, ~sourceId: string, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
+  /** The schedules the event sets or clears. The `@@reventless.automation` PPX adds
+      `let reschedule = _ => []` to a mapping written without it. */
+  let reschedule: sourceEvent => array<scheduleChange>
 }
 
 /**
@@ -241,6 +255,9 @@ module type MappingImpl = {
   */
   let collect: (sourceEvent, ~sourceId: string, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
+  /** The schedules the event sets or clears. The `@@reventless.automation` PPX adds
+      `let reschedule = _ => []` to a mapping written without it. */
+  let reschedule: sourceEvent => array<scheduleChange>
 }
 
 /**
@@ -322,6 +339,7 @@ module Mapping = {
     let sourceName = Source.name
     let collect = Impl.collect
     let resolve = Impl.resolve
+    let reschedule = Impl.reschedule
   }
 }
 

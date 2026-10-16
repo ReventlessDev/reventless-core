@@ -2646,6 +2646,8 @@ assert_js_contains "$JS" 'now >= item.dueAt' "automation: a process taking ~now 
 JS="$PLUGIN/src/Automation/NowAware.res.mjs"
 assert_js_contains "$JS" '^let schedule;' "automation spec: schedule = None injected when it declares none"
 assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"
+JS="$PLUGIN/src/Automation/MergedAutomation_Automation.res.mjs"
+assert_js_contains "$JS" 'reschedule' "merged automation: a mapping without reschedule is given one"
 pass "merged automation: file compiles with one Mapping.Make + let mappings + process (Mappings.Make wrapper auto-injected)"
 
 echo ""
@@ -4320,6 +4322,10 @@ module FromCatalog = Mapping.Make(
     let resolve = event =>
       switch event {
       | ProductDelisted({shelfId}) => Some(shelfId)
+      }
+    let reschedule = event =>
+      switch event {
+      | ProductDelisted({shelfId}) => [Clear({key: shelfId})]
       }
   },
 )

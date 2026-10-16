@@ -525,7 +525,7 @@ function AutomationSlice(Spec) {
     let whenReacts = async flowP => {
       let s = await flowP;
       let routed = s.log.flatMap(entry => Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, Stdlib_Option.getOr(entry.aggregateId, ""), A.testContext)));
-      let match = A.sweep(routed, Automation_GWT$ReventlessGwt.clockNow());
+      let match = A.sweep(routed, Automation_GWT$ReventlessGwt.clockNow(), undefined);
       return {
         log: s.log,
         outcome: s.outcome,

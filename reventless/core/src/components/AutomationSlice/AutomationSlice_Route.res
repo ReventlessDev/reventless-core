@@ -1,4 +1,4 @@
-// Decode one source event and run its mappings' `collect`/`resolve`, with no
+// Decode one source event and run its mappings' `collect`/`resolve`/`reschedule`, with no
 // side effects. Shared by the runtime callback, which applies the result to its
 // to-do list, and by the GWT sweep, which must route exactly as the runtime does.
 
@@ -6,6 +6,7 @@
 type routed<'item> = {
   collected: array<(string, 'item)>,
   resolved: option<string>,
+  rescheduled: array<Reventless.AutomationSlice.scheduleChange>,
 }
 
 module Make = (
@@ -31,6 +32,7 @@ module Make = (
       decoder.decode(~eventType, ~data=dataDict)->Option.map(event => {
         collected: M.collect(event, ~sourceId, ctx),
         resolved: M.resolve(event),
+        rescheduled: M.reschedule(event),
       })
     }
     {sourceName: M.sourceName, handle}

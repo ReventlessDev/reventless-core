@@ -89,6 +89,7 @@ module FromOrderAggregate = AutomationSlice.Mapping.Make(
       }
     }
     let resolve = (_event: OrderAggregateSource.event) => None
+    let reschedule = _ => []
   },
 )
 
@@ -116,6 +117,7 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
       | StockReleased({orderId, productId}) => Some(orderId ++ ":" ++ productId)
       | StockReserved(_) => None
       }
+    let reschedule = _ => []
   },
 )
 

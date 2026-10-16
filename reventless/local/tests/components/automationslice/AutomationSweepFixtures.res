@@ -41,6 +41,7 @@ module FromOrders = AutomationSlice.Mapping.Make(
       | (OrderPlaced(_), None) => []
       }
     let resolve = (_event: OrderSource.event) => None
+    let reschedule = _ => []
   },
 )
 

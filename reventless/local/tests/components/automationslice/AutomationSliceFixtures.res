@@ -86,6 +86,7 @@ module ShipOrderMapping = Reventless.AutomationSlice.Mapping.Make(
       | ShipmentCreated({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
+    let reschedule = _ => []
   },
 )
 
@@ -103,6 +104,7 @@ module SkipProcessMapping = Reventless.AutomationSlice.Mapping.Make(
       | ShipmentCreated({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
+    let reschedule = _ => []
   },
 )
 

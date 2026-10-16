@@ -7,6 +7,25 @@ Deploy-time outputs produced when an `AutomationSlice` is provisioned.
 type outputs = {
   resources: array<Adapter.resource>,
   queryDb: QueryDb.outputs,
+  /** The schedules store, made only for a slice that maps the `Clock`. */
+  schedulesDb?: QueryDb.outputs,
+}
+
+/**
+The platform's schedules of one slice. It knows only when: each schedule is a key and
+a time, and its firing reaches the slice as `Tick({key, at})`. A platform may name a
+schedule otherwise than by its key (EventBridge Scheduler hashes a key it refuses),
+so what it holds is read as names.
+*/
+type platformSchedules = {
+  /** Sets the key's schedule, replacing the one it has. */
+  put: (~key: string, Reventless.Schedule.time) => promise<unit>,
+  /** Removes a schedule by its platform name; one already gone is no error. */
+  removeName: string => promise<unit>,
+  /** The names of the schedules the platform holds for the slice. */
+  names: unit => promise<array<string>>,
+  /** The name the platform gives the key's schedule. */
+  nameOf: string => string,
 }
 
 /**
@@ -21,6 +40,12 @@ type operations = {
   /** Delivers `Tick({key, at})` from the `Clock` source, then runs Phase 2: what the
       platform's Scheduler does when one of the slice's schedules comes due. */
   tick: (~key: string, ~at: float) => promise<unit>,
+  /** Brings the declared time into the schedule rows and the platform's schedules in
+      line with the rows: what a deploy or a start runs. */
+  reconcileSchedules: unit => promise<unit>,
+  /** Rebuilds the schedule rows from the slice's source events, in order, then
+      reconciles. */
+  rebuildSchedules: array<JSON.t> => promise<unit>,
 }
 
 /**
@@ -39,6 +64,8 @@ module type T = {
   module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
+  /** The schedules store's name, for a slice that maps the `Clock`. */
+  let schedulesDbName: option<string>
   /** Names of all sources this slice consumes (deduplicated). Used by
       `Plugin_Builder` for the source-name fail-fast assembly check. */
   let sourceNames: array<string>

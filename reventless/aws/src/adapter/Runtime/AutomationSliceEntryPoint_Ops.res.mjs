@@ -8,7 +8,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -22,6 +21,7 @@ import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
+import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocoder_AwsLocation_Backend.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
@@ -51,7 +51,8 @@ function decodeEntry(json) {
     dcbQueueUrl: Stdlib_Option.getOr(strOf(h, "dcbQueueUrl"), ""),
     commandQueueIsFifo: Stdlib_Option.flatMap(h["commandQueueIsFifo"], Stdlib_JSON.Decode.bool),
     sourceUrn: Stdlib_Option.getOr(strOf(h, "sourceUrn"), ""),
-    context: Stdlib_Option.flatMap(h["context"], decodeContext)
+    context: Stdlib_Option.flatMap(h["context"], decodeContext),
+    schedulesTableName: strOf(h, "schedulesTableName")
   }));
 }
 
@@ -67,7 +68,8 @@ function decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h
     dcbQueueUrl: Stdlib_Option.getOr(strOf(h, "k"), sharedQueueUrl),
     commandQueueIsFifo: f !== undefined ? f : sharedIsFifo,
     sourceUrn: Stdlib_Option.getOr(urns[0], ""),
-    context: Stdlib_Option.flatMap(m["context"], decodeContext)
+    context: Stdlib_Option.flatMap(m["context"], decodeContext),
+    schedulesTableName: strOf(h, "s")
   };
 }
 
@@ -191,6 +193,74 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
   };
 }
 
+function scheduleTable(tableName) {
+  return {
+    id: "",
+    name: tableName,
+    arn: "",
+    hashKey: "id"
+  };
+}
+
+function makeScheduleStore(tableName, rows, comp) {
+  let table = scheduleTable(tableName);
+  let save = QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table);
+  let $$delete = QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table);
+  let stored = {
+    contents: []
+  };
+  let loaded = {
+    contents: false
+  };
+  let load = async () => {
+    if (loaded.contents) {
+      return;
+    }
+    loaded.contents = true;
+    let params_ConsistentRead = true;
+    let params = {
+      TableName: tableName,
+      ConsistentRead: params_ConsistentRead
+    };
+    await Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)), items => {
+      items.forEach(item => {
+        let json = JSON.parse(Stdlib_Option.getOr(JSON.stringify(item), ""));
+        let row;
+        try {
+          row = Util_Sury$Reventless.fromJson(json, AutomationSlice_Schedules$ReventlessCore.rowSchema);
+        } catch (exn) {
+          return;
+        }
+        if (Stdlib_Option.isNone(rows[row.key])) {
+          rows[row.key] = row;
+          return;
+        }
+      });
+    }), err => EffectLogger$ReventlessCore.logError(comp, undefined, `restore: couldn't read the schedules from ` + tableName + `: ` + DynamoDb_Error$ReventlessAws.message(err))));
+    stored.contents = Object.keys(rows);
+  };
+  let sync = async () => {
+    let keys = Object.keys(rows);
+    await Promise.all(Object.entries(rows).map(param => save(param[0], Util_Sury$Reventless.toJson(param[1], AutomationSlice_Schedules$ReventlessCore.rowSchema), "Overwrite", undefined)));
+    await Promise.all(stored.contents.filter(key => !keys.includes(key)).map(key => $$delete(key, undefined)));
+    stored.contents = keys;
+  };
+  return [
+    load,
+    sync
+  ];
+}
+
+function ownArn() {
+  let env = key => Stdlib_Option.getOr(process.env[key], "");
+  let account = Stdlib_Option.getOr(env("SCHEDULER_ROLE_ARN").split(":")[4], "");
+  return `arn:aws:lambda:` + env("AWS_REGION") + `:` + account + `:function:` + env("AWS_LAMBDA_FUNCTION_NAME");
+}
+
+function platformSchedulesOf(slice) {
+  return ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.platformSchedules(Stdlib_Option.getOr(process.env["SCHEDULER_ROLE_ARN"], ""), ownArn(), slice);
+}
+
 function messagingEmailProvider() {
   let sender = Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_SENDER"], "");
   let match = Stdlib_Option.getOr(process.env["MESSAGING_EMAIL_PROVIDER"], "");
@@ -210,11 +280,31 @@ function capabilities() {
   };
 }
 
-function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems) {
+async function loadSchedules(step) {
+  if (step !== undefined) {
+    return await step.load();
+  }
+}
+
+async function followSchedules(step, callback) {
+  if (step === undefined) {
+    return;
+  }
+  let changes = callback.takeScheduleChanges();
+  if (changes.length !== 0) {
+    await step.sync();
+    return await AutomationSlice_Schedules$ReventlessCore.tell(step.platform, changes);
+  }
+}
+
+function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems, schedulesOpt) {
+  let schedules = schedulesOpt !== undefined ? schedulesOpt : () => {};
   return stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
     await loadTodoItems();
+    await loadSchedules(schedules());
     callback.phase1(jsons, context);
     await syncTodoItems();
+    await followSchedules(schedules(), callback);
     await callback.phase2(publishJsons);
     return await syncTodoItems();
   }));
@@ -251,9 +341,33 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
   let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema);
   let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp);
   let context = Stdlib_Option.getOr(entry.context, defaultContext(sliceName));
+  let step = {
+    contents: undefined
+  };
+  let schedules = () => {
+    let match = step.contents;
+    let match$1 = entry.schedulesTableName;
+    if (match !== undefined) {
+      return match;
+    }
+    if (match$1 === undefined) {
+      return;
+    }
+    let match$2 = makeScheduleStore(match$1, callback.schedules, comp);
+    let s_load = match$2[0];
+    let s_sync = match$2[1];
+    let s_platform = platformSchedulesOf(sliceName);
+    let s = {
+      load: s_load,
+      sync: s_sync,
+      platform: s_platform
+    };
+    step.contents = s;
+    return s;
+  };
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems, schedules)),
       comp: comp
     },
     sweep: async () => {
@@ -263,13 +377,30 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
     },
     comp: comp,
     name: sliceName,
-    schedule: schedule,
     tick: async (key, at) => {
       await loadTodoItems();
+      await loadSchedules(schedules());
       callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context);
       await syncTodoItems();
+      let match = schedules();
+      if (match !== undefined) {
+        await match.sync();
+      }
       await callback.phase2(publishJsons);
       return await syncTodoItems();
+    },
+    reconcile: async () => {
+      let match = schedules();
+      if (match !== undefined) {
+        await match.load();
+        await AutomationSlice_Schedules$ReventlessCore.reconcile(callback.schedules, match.platform, schedule, Date.now());
+        return await match.sync();
+      }
+      let platform = platformSchedulesOf(sliceName);
+      let names = await platform.names();
+      for (let i = 0, i_finish = names.length; i < i_finish; ++i) {
+        await platform.removeName(names[i]);
+      }
     }
   };
 }
@@ -291,8 +422,8 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
     },
     comp: comp,
     name: sliceName,
-    schedule: undefined,
-    tick: undefined
+    tick: undefined,
+    reconcile: undefined
   };
 }
 
@@ -321,27 +452,15 @@ async function runTick(slices, invocation) {
   return await tick(invocation.key, at);
 }
 
-async function reconcileDeclared(slices, lambdaArn) {
-  let roleArn = Stdlib_Option.getOr(process.env["SCHEDULER_ROLE_ARN"], "");
-  let automations = slices.filter(s => Stdlib_Option.isSome(s.tick));
-  let declared = automations.filter(s => Stdlib_Option.isSome(s.schedule));
-  if (roleArn === "") {
-    if (declared.length !== 0) {
-      return Stdlib_JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`);
-    } else {
-      return;
-    }
+async function reconcileSchedules(slices) {
+  if (Stdlib_Option.getOr(process.env["SCHEDULER_ROLE_ARN"], "") === "") {
+    Stdlib_JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`);
   }
-  for (let i = 0, i_finish = automations.length; i < i_finish; ++i) {
-    let slice = automations[i];
-    let time = slice.schedule;
-    if (time !== undefined) {
-      await ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.putTickSchedule(roleArn, lambdaArn, slice.name, Clock$Reventless.defaultKey, time);
-    } else {
-      await ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.deleteTickSchedule(roleArn, slice.name, Clock$Reventless.defaultKey);
-    }
+  let reconciles = Stdlib_Array.filterMap(slices, s => s.reconcile);
+  for (let i = 0, i_finish = reconciles.length; i < i_finish; ++i) {
+    await reconciles[i]();
   }
-  return Effect.runSync(EffectLogger$ReventlessCore.logInfo("AutomationSliceRuntime", undefined, `reconcile: ` + declared.length.toString() + ` declared schedule(s) set`));
+  return Effect.runSync(EffectLogger$ReventlessCore.logInfo("AutomationSliceRuntime", undefined, `reconcile: the schedules of ` + reconciles.length.toString() + ` automation(s) are in line`));
 }
 
 export {
@@ -356,14 +475,20 @@ export {
   makePublishJsons,
   makeSyncTodoItems,
   makeLoadTodoItems,
+  scheduleTable,
+  makeScheduleStore,
+  ownArn,
+  platformSchedulesOf,
   messagingEmailProvider,
   capabilities,
+  loadSchedules,
+  followSchedules,
   makeAutomationJsonEventsHandler,
   makeOutboundJsonEventsHandler,
   makeAutomationRegisteredHandler,
   makeOutboundRegisteredHandler,
   runSweeps,
   runTick,
-  reconcileDeclared,
+  reconcileSchedules,
 }
 /* Stream Not a pure module */

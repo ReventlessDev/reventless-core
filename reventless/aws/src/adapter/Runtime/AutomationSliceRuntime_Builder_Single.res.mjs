@@ -56,11 +56,12 @@ function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName, schedule) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName, schedule, schedulesResourcesOpt) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   let sourceTopics = sourceTopicsOpt !== undefined ? sourceTopicsOpt : ({});
   let consumesDcbLog = consumesDcbLogOpt !== undefined ? consumesDcbLogOpt : true;
+  let schedulesResources = schedulesResourcesOpt !== undefined ? schedulesResourcesOpt : [];
   bundledInfos[name] = {
     specModulePath: specModulePath,
     bodyModulePath: bodyModulePath,
@@ -71,7 +72,8 @@ function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackT
     sourceTopics: sourceTopics,
     consumesDcbLog: consumesDcbLog,
     commandTargetName: commandTargetName,
-    schedule: schedule
+    schedule: schedule,
+    schedulesResources: schedulesResources
   };
 }
 
@@ -173,7 +175,7 @@ function makeMessagingGrant(runtime, opts) {
   }, customOpts);
 }
 
-function makeAutomationSchedules(runtime, schedulerRoleArn, opts) {
+function makeAutomationSchedules(runtime, schedulerRoleArn, sourceCodeHash, opts) {
   let name = "AllAutomationSlices";
   let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, l => l.arn);
@@ -190,6 +192,12 @@ function makeAutomationSchedules(runtime, schedulerRoleArn, opts) {
         Effect: "Allow",
         Action: "iam:PassRole",
         Resource: arn
+      },
+      {
+        Sid: "AllowListSchedules",
+        Effect: "Allow",
+        Action: ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.listActions,
+        Resource: "*"
       }
     ]))),
     role: runtime.parts.lambdaRole.id
@@ -218,6 +226,10 @@ function makeAutomationSchedules(runtime, schedulerRoleArn, opts) {
     [
       "declared",
       declared
+    ],
+    [
+      "code",
+      sourceCodeHash
     ]
   ]));
   let newrecord = {...customOpts};
@@ -352,6 +364,9 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
+        info.schedulesResources.forEach(r => {
+          allQueryDbResources.push(r);
+        });
         let target = Stdlib_Option.flatMap(info.commandTargetName, CommandTopicRegistry$ReventlessAws.get);
         if (target !== undefined) {
           allQueryDbResources.push(target.resource);
@@ -378,16 +393,21 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
           ];
         let commandQueueIsFifo = match[1];
         let hasOwnUrns = !info.consumesDcbLog || Object.keys(info.sourceTopics).length !== 0;
+        let resource = info.schedulesResources[0];
+        let schedulesTableName = resource !== undefined ? resource.name : Pulumi.output("");
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           match[0],
-          sourceUrnsFor(info)
+          sourceUrnsFor(info),
+          schedulesTableName
         ]).apply(param => {
+          let schedulesTable = param[3];
           let urnsFragment = hasOwnUrns ? `,"u":` + JSON.stringify(param[2].map(prim => prim)) : "";
           let queueFragment = target !== undefined ? `,"k":"` + param[1] + `","f":` + (
               commandQueueIsFifo ? "true" : "false"
             ) : "";
-          return `{"n":` + nameJson + `,"q":"` + param[0] + `"` + urnsFragment + queueFragment + `}`;
+          let schedulesFragment = schedulesTable === "" ? "" : `,"s":"` + schedulesTable + `"`;
+          return `{"n":` + nameJson + `,"q":"` + param[0] + `"` + urnsFragment + queueFragment + schedulesFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });
@@ -421,14 +441,15 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       let extraStringAssets = {};
       extraStringAssets["automationSliceModules.json"] = `{` + sliceModuleEntries.join(",") + `}`;
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
+      let sourceCodeHash = match.sourceCodeHash;
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", [{
           channel: channel,
           eventTopics: eventTopics,
           resources: allQueryDbResources
         }], runtime, opts);
       makeSweepSchedule(runtime, opts);
-      makeAutomationSchedules(runtime, schedulerRoleArn, opts);
+      makeAutomationSchedules(runtime, schedulerRoleArn, sourceCodeHash, opts);
       makeGeocoderGrant(runtime, opts);
       makeMessagingGrant(runtime, opts);
     } else {

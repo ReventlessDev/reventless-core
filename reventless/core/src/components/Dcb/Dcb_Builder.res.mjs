@@ -25,6 +25,7 @@ import * as Plugin_Structure$ReventlessCore from "../../plugin/component/Plugin_
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
+import * as AutomationSlice_Schedules$ReventlessCore from "../AutomationSlice/AutomationSlice_Schedules.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
@@ -612,6 +613,17 @@ function Make(DcbEventLogStorage) {
           connectionSpec: true
         };
       });
+      let scheduleEntries = Stdlib_Array.filterMap(automationSlices, A => Stdlib_Option.map(A.schedulesDbName, queryDbName => {
+        let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, queryDbName, undefined);
+        return {
+          singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
+          stateSchema: AutomationSlice_Schedules$ReventlessCore.rowSchema,
+          authorization: undefined,
+          connectionSpec: true
+        };
+      }));
       let outboundEntries = outboundTranslationSlices.map(O => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, O.queryDbName, undefined);
         return {
@@ -655,7 +667,7 @@ function Make(DcbEventLogStorage) {
         dcbPublishJsons: publishJsons,
         dcbCommandTopicQueueUrl: dcbCommandTopicQueueUrl,
         mutationEntries: mutationEntriesFromSlices.concat(mutationEntriesFromInboundSlices),
-        queryEntries: stateViewEntries.concat(automationEntries).concat(outboundEntries).concat(inboundEntries),
+        queryEntries: stateViewEntries.concat(automationEntries).concat(scheduleEntries).concat(outboundEntries).concat(inboundEntries),
         eventLogEntries: allProducedSchemas.length !== 0 ? [{
               busKey: name + "DcbEventLog",
               displayName: name,

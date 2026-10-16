@@ -58,6 +58,7 @@ module ShipPaid_Automation = {
         | Orders.OrderCancelled({orderId}) => Some(orderId)
         | OrderPlaced(_) => None
         }
+      let reschedule = _ => []
     },
   )
 
@@ -75,6 +76,7 @@ module ShipPaid_Automation = {
         | Payments.Refunded(_) => None
         | Captured(_) => None
         }
+      let reschedule = _ => []
     },
   )
 

@@ -160,8 +160,33 @@ function putTickSchedule(roleArn, lambdaArn, slice, key, time) {
   });
 }
 
-function deleteTickSchedule(roleArn, slice, key) {
-  return removeSchedule(roleArn, tickScheduleName(slice, key));
+let listActions = ["scheduler:ListSchedules"];
+
+function sliceNamePrefix(slice) {
+  return slice.slice(0, 40);
+}
+
+function isSliceSchedule(name, slice) {
+  let cut = slice.slice(0, 40);
+  if (name.startsWith(slice + `.`)) {
+    return true;
+  } else if (cut !== slice && name.startsWith(cut + `.`)) {
+    return name.length === (cut.length + 17 | 0);
+  } else {
+    return false;
+  }
+}
+
+function platformSchedules(roleArn, lambdaArn, slice) {
+  return {
+    put: (key, time) => putTickSchedule(roleArn, lambdaArn, slice, key, time),
+    removeName: name => removeSchedule(roleArn, name),
+    names: async () => (await EventBridgeScheduler$AwsSdk.ListSchedulesCommand.all({
+      GroupName: groupOfRoleArn(roleArn),
+      NamePrefix: slice.slice(0, 40)
+    })).map(s => s.Name).filter(__x => isSliceSchedule(__x, slice)),
+    nameOf: key => tickScheduleName(slice, key)
+  };
 }
 
 export {
@@ -181,6 +206,9 @@ export {
   tickScheduleName,
   tickInput,
   putTickSchedule,
-  deleteTickSchedule,
+  listActions,
+  sliceNamePrefix,
+  isSliceSchedule,
+  platformSchedules,
 }
 /* node:crypto Not a pure module */

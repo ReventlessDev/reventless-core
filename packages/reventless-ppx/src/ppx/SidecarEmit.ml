@@ -605,7 +605,12 @@ let wiring_fragment_json ?src ~spec_name ~fname (body : structure) : Yojson.Safe
       `Assoc
         [ ("module", `String name);
           ("target", path_json (arg 1));
-          ("source", match arg 0 with Some p -> source_json ?src ~inline p | None -> `Null) ]
+          ("source", match arg 0 with Some p -> source_json ?src ~inline p | None -> `Null);
+          ( "reschedules",
+            `Bool
+              (match List.assoc_opt name modules with
+               | Some me -> RescheduleInjection.third_arg_reschedules me
+               | None -> false) ) ]
     | None -> `Assoc [ ("module", `String name); ("target", `Null); ("source", `Null) ]
   in
   `Assoc

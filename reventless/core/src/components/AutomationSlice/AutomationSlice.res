@@ -26,6 +26,8 @@ module type T = {
   module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
+  /** The schedules store's name, for a slice that maps the `Clock`. */
+  let schedulesDbName: option<string>
   /** Names of all sources this slice consumes (deduplicated). Used by
       `Plugin_Builder` for the source-name fail-fast assembly check. */
   let sourceNames: array<string>

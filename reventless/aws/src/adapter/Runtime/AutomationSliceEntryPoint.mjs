@@ -109,7 +109,6 @@ const routed = StreamOps.makeRoutedHandler(
 export const handler = async (event, context) => {
   if (event?.reventlessSweep) return Ops.runSweeps((await builtPromise).sweeps);
   if (event?.reventlessTick) return Ops.runTick((await builtPromise).sweeps, event.reventlessTick);
-  if (event?.reventlessReconcile)
-    return Ops.reconcileDeclared((await builtPromise).sweeps, context.invokedFunctionArn);
+  if (event?.reventlessReconcile) return Ops.reconcileSchedules((await builtPromise).sweeps);
   return routed(event, context);
 };

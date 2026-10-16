@@ -5,6 +5,23 @@ module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module EventCollectorRuntimeBuilder = AutomationSliceRuntime_Builder_Single
 
+// The core builder's operations never run on AWS: the automation Lambda drives the
+// callback itself (AutomationSliceEntryPoint_Ops).
+module DeployTimeSchedules = {
+  let platformFor = (~slice): ReventlessInfra.AutomationSlice.platformSchedules => {
+    let refuse = () =>
+      JsError.throwWithMessage(
+        `AutomationSlice(${slice}): schedules are set by its Lambda, not at deploy`,
+      )
+    {
+      put: async (~key as _, _) => refuse(),
+      removeName: async _ => refuse(),
+      names: async () => refuse(),
+      nameOf: key => key,
+    }
+  }
+}
+
 module Make = (
   Api: {
     let api: unit => Types.AppSync.api
@@ -18,6 +35,7 @@ module Make = (
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
     Api,
+    DeployTimeSchedules,
   )
 
   module Make = (
@@ -30,6 +48,7 @@ module Make = (
     module Automation = Automation
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
+    let schedulesDbName = InnerMake.schedulesDbName
     let sourceNames = InnerMake.sourceNames
 
     let make = (~allEventTopics, ~publishJsons, ~context, ~runtime=?, ~opts=?): component => {
@@ -61,6 +80,10 @@ module Make = (
         ~sourceTopics,
         ~consumesDcbLog,
         ~schedule=?Spec.schedule,
+        ~schedulesResources=(as_->ReventlessCore.Component.outputs).schedulesDb->Option.mapOr(
+          [],
+          db => db.resources,
+        ),
       )
 
       as_

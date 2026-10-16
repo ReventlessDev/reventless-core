@@ -1,6 +1,6 @@
 // In-memory AutomationSlice builder.
 // Wires in-memory adapters and delegates to the core ReventlessCore.AutomationSlice_Builder;
-// each slice it makes joins the local automation sweep, and its declared schedule starts.
+// each slice it makes joins the local automation sweep, and its schedules start.
 
 module Make = (Bus: LocalBus.T) => {
   module RuntimeEnvironment = LocalRuntimeEnvironment
@@ -25,6 +25,7 @@ module Make = (Bus: LocalBus.T) => {
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
     Api,
+    LocalAutomationSchedules,
   )
 
   module Make = (
@@ -36,6 +37,7 @@ module Make = (Bus: LocalBus.T) => {
     module Automation = Automation
     type component = Inner.component
     let queryDbName = Inner.queryDbName
+    let schedulesDbName = Inner.schedulesDbName
     let sourceNames = Inner.sourceNames
     let make = (~allEventTopics, ~publishJsons, ~context, ~runtime=?, ~opts=?) => {
       let component = Inner.make(~allEventTopics, ~publishJsons, ~context, ~runtime?, ~opts?)
@@ -44,17 +46,24 @@ module Make = (Bus: LocalBus.T) => {
         let ops = await operations()
         await ops.processPending()
       })
-      Spec.schedule->Option.forEach(time =>
-        LocalAutomationSchedules.set(
-          ~slice=Spec.name,
-          ~key=Reventless.Clock.defaultKey,
-          time,
-          ~tick=async (~key, ~at) => {
-            let ops = await operations()
-            await ops.tick(~key, ~at)
-          },
-        )
-      )
+      LocalAutomationSchedules.register(~slice=Spec.name, async (~key, ~at) => {
+        let ops = await operations()
+        await ops.tick(~key, ~at)
+      })
+      // As a deploy does on AWS: the declared time into the rows, the timers to the rows.
+      let _ =
+        operations()
+        ->Promise.then(ops => ops.reconcileSchedules())
+        ->Promise.catch(exn => {
+          ReventlessCore.EffectLogger.logError(
+            ~comp=`AutomationSlice(${Spec.name})`,
+            `the schedules could not be reconciled: ${exn
+              ->JsExn.fromException
+              ->Option.flatMap(JsExn.message)
+              ->Option.getOr("unknown")}`,
+          )->Effect.runSync
+          Promise.resolve()
+        })
       component
     }
   }

@@ -237,6 +237,8 @@ module FromSlice = (
   type scenario = {
     todos: array<(string, Spec.todoItem)>,
     commands: array<(string, Spec.command)>,
+    /** The slice's schedule rows after the events, by key. */
+    schedules: dict<AutomationSlice_Schedules.row>,
   }
 
   let encTodos = (arr: array<(string, Spec.todoItem)>) =>
@@ -309,18 +311,54 @@ module FromSlice = (
       | (l, None) => l
       }
     )
-  let routeAll = (events: array<sourced>, context) =>
-    events->Array.flatMap(e =>
+  let routeEach = (events: array<sourced>, context) =>
+    events->Array.map(e => (
+      e,
       Route.route(
         e.payload,
         ~sourceName=e.sourceName,
         ~sourceId=e.sourceId,
         context->withRecordedAt(e.recordedAt),
+      ),
+    ))
+  let routeAll = (events: array<sourced>, context) =>
+    routeEach(events, context)->Array.flatMap(((_, routed)) => routed)
+
+  /** Folds the events' `reschedule` into the rows as the runtime does; a tick
+      removes the once-only schedule it fired. A time that cannot fire changes
+      nothing, as at run time. */
+  let foldSchedules = (
+    rows,
+    routedEvents: array<(sourced, array<AutomationSlice_Route.routed<Spec.todoItem>>)>,
+    ~now,
+  ) =>
+    routedEvents->Array.forEach(((e, routed)) => {
+      let recordedAt = e.recordedAt->Option.getOr(now)
+      routed->Array.forEach(r =>
+        r.rescheduled->Array.forEach(
+          change => {
+            let _ = rows->AutomationSlice_Schedules.apply(change, ~setBy="scenario", ~recordedAt)
+          },
+        )
       )
-    )
+      if e.sourceName == Reventless.Clock.name {
+        rows->AutomationSlice_Schedules.fired(~key=e.sourceId)
+      }
+    })
+
+  // The declared time is in the rows before any event, as a deploy put it there.
+  let declaredRows = (~now) => {
+    let rows = Dict.make()
+    rows->AutomationSlice_Schedules.declare(Spec.schedule, ~now)
+    rows
+  }
   /** Applies routed events as the runtime's to-do list does: the first writer of
       an id wins, and a resolve completes only a row that already exists. */
-  let sweep = (routed: array<AutomationSlice_Route.routed<Spec.todoItem>>, ~now) => {
+  let sweep = (
+    routed: array<AutomationSlice_Route.routed<Spec.todoItem>>,
+    ~now,
+    ~schedules=declaredRows(~now),
+  ) => {
     let rows: array<(string, Spec.todoItem, ref<bool>)> = []
     routed->Array.forEach(r => {
       r.collected->Array.forEach(((id, item)) =>
@@ -338,16 +376,22 @@ module FromSlice = (
       )
     })
     let todos = rows->Array.filterMap(((id, item, done)) => done.contents ? None : Some((id, item)))
-    {todos, commands: todos->Array.filterMap(((id, item)) => Automation.process(id, item, ~now))}
+    {
+      todos,
+      commands: todos->Array.filterMap(((id, item)) => Automation.process(id, item, ~now)),
+      schedules,
+    }
   }
-  let whenSweep = (events, ~context=testContext, ~now=?) =>
-    sweep(
-      routeAll(events, context),
-      ~now=switch (now, latestRecorded(events)) {
-      | (Some(now), _) | (None, Some(now)) => now
-      | (None, None) => clockNow()
-      },
-    )
+  let whenSweep = (events, ~context=testContext, ~now=?) => {
+    let now = switch (now, latestRecorded(events)) {
+    | (Some(now), _) | (None, Some(now)) => now
+    | (None, None) => clockNow()
+    }
+    let routedEvents = routeEach(events, context)
+    let schedules = declaredRows(~now)
+    schedules->foldSchedules(routedEvents, ~now)
+    sweep(routedEvents->Array.flatMap(((_, routed)) => routed), ~now, ~schedules)
+  }
   /** A tick from one of the slice's schedules, as the `Clock` source delivers it:
       `key` defaults to the declared schedule's. */
   let tick = (~key=Reventless.Clock.defaultKey, at) => {
@@ -370,8 +414,37 @@ module FromSlice = (
           }),
         )
   let andThenEvents = (scenario, events, ~context=testContext) => {
-    let resolved = routeAll(events, context)->Array.filterMap(r => r.resolved)
-    {...scenario, todos: scenario.todos->Array.filter(((id, _)) => !(resolved->Array.includes(id)))}
+    let routedEvents = routeEach(events, context)
+    let resolved =
+      routedEvents->Array.flatMap(((_, routed)) => routed)->Array.filterMap(r => r.resolved)
+    let schedules = scenario.schedules->Dict.copy
+    schedules->foldSchedules(routedEvents, ~now=latestRecorded(events)->Option.getOr(clockNow()))
+    {
+      ...scenario,
+      todos: scenario.todos->Array.filter(((id, _)) => !(resolved->Array.includes(id))),
+      schedules,
+    }
+  }
+  /** The slice's schedules after the scenario, by key: the declared time unless an
+      event replaced or cleared it, and every time an event set. An `After` an event
+      set is counted from when the event was recorded. */
+  let thenSchedules = (scenario, expected: array<(string, Reventless.Schedule.time)>) => {
+    let enc = ((key, time)) =>
+      JSON.Encode.object(
+        Dict.fromArray([
+          ("key", key->JSON.Encode.string),
+          ("time", time->Message.encode(Reventless.Schedule.timeSchema)),
+        ]),
+      )
+    let byKey = rows => rows->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+    let actual =
+      scenario.schedules
+      ->Dict.valuesToArray
+      ->Array.filterMap(row => row->AutomationSlice_Schedules.timeOf->Option.map(t => (row.key, t)))
+      ->byKey
+      ->Array.map(enc)
+    let expected = expected->byKey->Array.map(enc)
+    actual == expected ? Outcome.pass : Outcome.fail(QueryRowsMismatch({expected, actual}))
   }
   let thenScenarioTodos = (scenario, expected) => thenTodos(scenario.todos, expected)
 }

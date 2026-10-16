@@ -30,6 +30,7 @@ module FromClock = AutomationSlice.Mapping.Make(
       (itemId(key, at), ({day: at}: DemandReportSpec.todoItem)),
     ]
     let resolve = _ => None
+    let reschedule = _ => []
   },
 )
 
@@ -58,6 +59,7 @@ module FromClockUnscheduled = AutomationSlice.Mapping.Make(
   {
     let collect = (_, ~sourceId as _, _ctx) => []
     let resolve = _ => None
+    let reschedule = _ => []
   },
 )
 

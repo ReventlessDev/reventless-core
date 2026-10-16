@@ -22,6 +22,10 @@ module Make = (
     let api: unit => QueryDbStorage.api
     let apiRole: unit => QueryDbStorage.role
   },
+  // The platform's schedules of a slice, for the runtime this builder's operations run on.
+  Schedules: {
+    let platformFor: (~slice: string) => ReventlessInfra.AutomationSlice.platformSchedules
+  },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
   module Make = (
@@ -64,6 +68,55 @@ module Make = (
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(TodoQueryDbSpec, QueryDbStorage, QueryDbResolvers)
+
+    // The schedules store: a row per key, made only for a slice that maps the Clock.
+    let schedulesStoreName = Spec.name ++ "Schedules"
+    let schedulesDbName = readsClock ? Some(schedulesStoreName) : None
+    module SchedulesQueryDbSpec = {
+      module Id = Reventless.Id.String
+      let name = schedulesStoreName
+      let moduleUrl: string = %raw(`import.meta.url`)
+      type state = AutomationSlice_Schedules.row
+      let stateSchema = AutomationSlice_Schedules.rowSchema
+      let config = Reventless.ReadModel.config()
+      let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
+      type role = Reventless.Role.name
+      let authorization: Reventless.Authorization.rule<role> = AllowAuthenticated
+      let visibility: Reventless.Visibility.t = Public
+    }
+    module SchedulesQueryDb = QueryDb_Builder.Make(
+      SchedulesQueryDbSpec,
+      QueryDbStorage,
+      QueryDbResolvers,
+    )
+
+    // Written whole, and a key the rows no longer hold is deleted.
+    let syncSchedules = async (
+      ops: option<SchedulesQueryDb.operations>,
+      ~stored: ref<array<string>>,
+    ) =>
+      switch ops {
+      | Some(ops) =>
+        let keys = Callback.schedules->Dict.keysToArray
+        for i in 0 to keys->Array.length - 1 {
+          let key = keys->Array.getUnsafe(i)
+          let _ = await ops.save(
+            key->Reventless.Id.String.makeFromString,
+            Callback.schedules->Dict.getUnsafe(key),
+            QueryDb.Overwrite,
+            None,
+          )
+        }
+        let gone = stored.contents->Array.filter(key => !(keys->Array.includes(key)))
+        for i in 0 to gone->Array.length - 1 {
+          let _ = await ops.delete(
+            gone->Array.getUnsafe(i)->Reventless.Id.String.makeFromString,
+            None,
+          )
+        }
+        stored := keys
+      | None => ()
+      }
     module SpecificEventCollector = EventCollector_Builder.Make(
       RuntimeEnvironment,
       EventCollectorChannel,
@@ -120,12 +173,31 @@ module Make = (
         }
       )
 
-      // A `Clock` mapping with no schedule would never receive a tick.
-      if readsClock && Spec.schedule->Option.isNone {
+      // A `Clock` mapping receives ticks only from a declared schedule, or from one an
+      // event sets through another mapping's `reschedule`.
+      if readsClock && Spec.schedule->Option.isNone && sourceNames->Array.length == 0 {
         JsError.throwWithMessage(
-          `AutomationSlice "${Spec.name}" maps the Clock source but declares no schedule, ` ++ `so no tick will ever reach it. Declare \`let schedule\` on its spec.`,
+          `AutomationSlice "${Spec.name}" maps the Clock source but declares no schedule ` ++
+          `and reads no event that could set one, so no tick will ever reach it. ` ++ `Declare \`let schedule\` on its spec.`,
         )
       }
+
+      let schedulesDb = readsClock
+        ? Some(
+            SchedulesQueryDb.make(
+              ~api=Api.api(),
+              ~apiRole=Api.apiRole(),
+              ~owner={kind: ComponentType.AutomationSlice, name: Spec.name},
+              ~opts,
+            ),
+          )
+        : None
+      let schedulesOps: Pulumi.Output.t<option<SchedulesQueryDb.operations>> = switch schedulesDb {
+      | Some(db) => db->Component.operations->Pulumi.Output.apply(ops => Some(ops))
+      | None => Pulumi.Output.make(None)
+      }
+      let platform = Schedules.platformFor(~slice=Spec.name)
+      let storedSchedules = ref([])
 
       // Filter to only the topics this slice consumes from.
       let sourceSet = sourceNames->Belt.Set.String.fromArray
@@ -138,9 +210,9 @@ module Make = (
       // first event arrival (which silently dropped Phase 2 in the previous
       // shape).
       let eventCollector =
-        (queryDb->Component.operations, publishJsons)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
+        (queryDb->Component.operations, publishJsons, schedulesOps)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, schedulesOps)) => {
           let ec = SpecificEventCollector.make(
             ~name=Spec.name,
             ~eventTopics,
@@ -159,6 +231,13 @@ module Make = (
                   // Sync the post-phase-1 TODO state so consumers awaiting the
                   // originating publishEvent observe Pending rows immediately.
                   await syncToQueryDb(queryDbOps)
+                  // The schedule rows are stored first, then the platform follows them.
+                  switch Callback.takeScheduleChanges() {
+                  | [] => ()
+                  | changes =>
+                    await syncSchedules(schedulesOps, ~stored=storedSchedules)
+                    await AutomationSlice_Schedules.tell(platform, changes)
+                  }
                   // Phase 2 must NOT be awaited here. Phase 2 publishes commands
                   // whose downstream events get fanned out by the bus to all
                   // subscribers of this same topic — including this very fiber.
@@ -205,20 +284,41 @@ module Make = (
           eventCollector->Pulumi.Output.flatMap(ec => ec->Component.operations),
           publishJsons,
           queryDb->Component.operations,
+          schedulesOps,
         )
-        ->Pulumi.Output.all3
-        ->Pulumi.Output.apply(((ecOps, publishJsonsFn, queryDbOps)) => {
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply(((ecOps, publishJsonsFn, queryDbOps, schedulesOps)) => {
           let processPending = async () => {
             await Callback.phase2(publishJsonsFn)
             await syncToQueryDb(queryDbOps)
           }
+          let reconcileSchedules = async () =>
+            if readsClock {
+              await AutomationSlice_Schedules.reconcile(
+                Callback.schedules,
+                platform,
+                ~declaredTime=Spec.schedule,
+                ~now=Date.now(),
+              )
+              await syncSchedules(schedulesOps, ~stored=storedSchedules)
+            }
           let ops: AutomationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
             // As the AWS sweep does: the rows phase 2 moved are written back.
             processPending,
             tick: async (~key, ~at) => {
               Callback.phase1([AutomationSlice_Callback.tickEvent(~key, ~at)], context)
+              await syncToQueryDb(queryDbOps)
+              // A once-only schedule's row went when it fired, and a Clock mapping
+              // may change schedules too.
+              await syncSchedules(schedulesOps, ~stored=storedSchedules)
+              await AutomationSlice_Schedules.tell(platform, Callback.takeScheduleChanges())
               await processPending()
+            },
+            reconcileSchedules,
+            rebuildSchedules: async events => {
+              Callback.rebuildSchedules(events)
+              await reconcileSchedules()
             },
           }
           ops
@@ -233,6 +333,7 @@ module Make = (
       let outputs: AutomationSlice.outputs = {
         resources: aggregatedResources,
         queryDb: queryDb->Component.outputs,
+        schedulesDb: ?(schedulesDb->Option.map(db => db->Component.outputs)),
       }
       self->Component.setOutputs(outputs)
     }

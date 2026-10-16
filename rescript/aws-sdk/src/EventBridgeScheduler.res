@@ -122,6 +122,47 @@ module DeleteScheduleCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module ListSchedulesCommand = {
+  type t
+  type input = {
+    @as("GroupName") groupName?: string,
+    @as("NamePrefix") namePrefix?: string,
+    @as("NextToken") nextToken?: string,
+    @as("MaxResults") maxResults?: int,
+  }
+  type summary = {
+    @as("Name") name: string,
+    @as("GroupName") groupName?: string,
+    @as("State") state?: string,
+  }
+  type output = {
+    @as("Schedules") schedules: array<summary>,
+    @as("NextToken") nextToken?: string,
+  }
+
+  @new @module("@aws-sdk/client-scheduler")
+  external make: input => t = "ListSchedulesCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+
+  /** Every schedule matching `input`, following `NextToken` across pages. */
+  let all = async (input: input) => {
+    let found = []
+    let next = ref(Some(input))
+    while next.contents->Option.isSome {
+      let page = await make(next.contents->Option.getOrThrow)->send
+      page.schedules->Array.forEach(s => found->Array.push(s))
+      next := page.nextToken->Option.map(nextToken => {...input, nextToken})
+    }
+    found
+  }
+}
+
 /** The names of the errors the commands throw that a caller may want to tell apart. */
 module ErrorName = {
   /** A schedule of that name already exists in the group. */

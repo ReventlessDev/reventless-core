@@ -7,10 +7,13 @@ import * as Effect from "effect/Effect";
 import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Schedule$Reventless from "@reventlessdev/reventless-spec/src/types/Schedule.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as AutomationSlice_Route$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Route.res.mjs";
+import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
 
 function clockNow() {
   return Effect.runSync(Clock.currentTimeMillis);
@@ -299,8 +302,32 @@ function FromSlice(Spec) {
         return match;
       }
     });
-    let routeAll = (events, context) => events.flatMap(e => Route.route(e.payload, e.sourceName, e.sourceId, withRecordedAt(context, e.recordedAt)));
-    let sweep = (routed, now) => {
+    let routeEach = (events, context) => events.map(e => [
+      e,
+      Route.route(e.payload, e.sourceName, e.sourceId, withRecordedAt(context, e.recordedAt))
+    ]);
+    let routeAll = (events, context) => routeEach(events, context).flatMap(param => param[1]);
+    let foldSchedules = (rows, routedEvents, now) => {
+      routedEvents.forEach(param => {
+        let e = param[0];
+        let recordedAt = Stdlib_Option.getOr(e.recordedAt, now);
+        param[1].forEach(r => {
+          r.rescheduled.forEach(change => {
+            AutomationSlice_Schedules$ReventlessCore.apply(rows, change, "scenario", recordedAt);
+          });
+        });
+        if (e.sourceName === Clock$Reventless.name) {
+          return AutomationSlice_Schedules$ReventlessCore.fired(rows, e.sourceId);
+        }
+      });
+    };
+    let declaredRows = now => {
+      let rows = {};
+      AutomationSlice_Schedules$ReventlessCore.declare(rows, Spec.schedule, now);
+      return rows;
+    };
+    let sweep = (routed, now, schedulesOpt) => {
+      let schedules = schedulesOpt !== undefined ? schedulesOpt : declaredRows(now);
       let rows = [];
       routed.forEach(r => {
         r.collected.forEach(param => {
@@ -337,15 +364,20 @@ function FromSlice(Spec) {
       });
       return {
         todos: todos,
-        commands: Stdlib_Array.filterMap(todos, param => Automation.process(param[0], param[1], now))
+        commands: Stdlib_Array.filterMap(todos, param => Automation.process(param[0], param[1], now)),
+        schedules: schedules
       };
     };
     let whenSweep = (events, contextOpt, now) => {
       let context = contextOpt !== undefined ? contextOpt : testContext;
       let match = latestRecorded(events);
-      return sweep(routeAll(events, context), now !== undefined ? now : (
+      let now$1 = now !== undefined ? now : (
           match !== undefined ? match : Effect.runSync(Clock.currentTimeMillis)
-        ));
+        );
+      let routedEvents = routeEach(events, context);
+      let schedules = declaredRows(now$1);
+      foldSchedules(schedules, routedEvents, now$1);
+      return sweep(routedEvents.flatMap(param => param[1]), now$1, schedules);
     };
     let tick = (keyOpt, at) => {
       let key = keyOpt !== undefined ? keyOpt : Clock$Reventless.defaultKey;
@@ -377,11 +409,42 @@ function FromSlice(Spec) {
     };
     let andThenEvents = (scenario, events, contextOpt) => {
       let context = contextOpt !== undefined ? contextOpt : testContext;
-      let resolved = Stdlib_Array.filterMap(routeAll(events, context), r => r.resolved);
+      let routedEvents = routeEach(events, context);
+      let resolved = Stdlib_Array.filterMap(routedEvents.flatMap(param => param[1]), r => r.resolved);
+      let schedules = Object.assign({}, scenario.schedules);
+      foldSchedules(schedules, routedEvents, Stdlib_Option.getOr(latestRecorded(events), Effect.runSync(Clock.currentTimeMillis)));
       return {
         todos: scenario.todos.filter(param => !resolved.includes(param[0])),
-        commands: scenario.commands
+        commands: scenario.commands,
+        schedules: schedules
       };
+    };
+    let thenSchedules = (scenario, expected) => {
+      let enc = param => Object.fromEntries([
+        [
+          "key",
+          param[0]
+        ],
+        [
+          "time",
+          Message$ReventlessCore.encode(param[1], Schedule$Reventless.timeSchema)
+        ]
+      ]);
+      let byKey = rows => rows.toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
+      let actual = byKey(Stdlib_Array.filterMap(Object.values(scenario.schedules), row => Stdlib_Option.map(AutomationSlice_Schedules$ReventlessCore.timeOf(row), t => [
+        row.key,
+        t
+      ]))).map(enc);
+      let expected$1 = byKey(expected).map(enc);
+      if (Primitive_object.equal(actual, expected$1)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "QueryRowsMismatch",
+          expected: expected$1,
+          actual: actual
+        });
+      }
     };
     let thenScenarioTodos = (scenario, expected) => thenTodos(scenario.todos, expected);
     return {
@@ -403,13 +466,17 @@ function FromSlice(Spec) {
       givenEvents: givenEvents,
       atTime: atTime,
       latestRecorded: latestRecorded,
+      routeEach: routeEach,
       routeAll: routeAll,
+      foldSchedules: foldSchedules,
+      declaredRows: declaredRows,
       sweep: sweep,
       whenSweep: whenSweep,
       tick: tick,
       whenTick: whenTick,
       thenCommands: thenCommands,
       andThenEvents: andThenEvents,
+      thenSchedules: thenSchedules,
       thenScenarioTodos: thenScenarioTodos
     };
   };

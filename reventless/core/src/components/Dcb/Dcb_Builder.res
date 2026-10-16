@@ -1144,6 +1144,21 @@ module Make = (
         }
       })
 
+      // A scheduled slice's schedules: when it runs, and who set it.
+      let scheduleEntries = automationSlices->Array.filterMap((module(A: AutomationSlice.T)) =>
+        A.schedulesDbName->Option.map(queryDbName => {
+          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName)
+          {
+            ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+            listFieldName: qn.listFieldName,
+            returnTypeName: qn.returnTypeName,
+            stateSchema: AutomationSlice_Schedules.rowSchema->S.castToUnknown,
+            authorization: None,
+            connectionSpec: true,
+          }
+        })
+      )
+
       let outboundEntries =
         outboundTranslationSlices->Array.map((module(O: OutboundTranslationSlice.T)) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(
@@ -1234,6 +1249,7 @@ module Make = (
         mutationEntries: Array.concat(mutationEntriesFromSlices, mutationEntriesFromInboundSlices),
         queryEntries: stateViewEntries
         ->Array.concat(automationEntries)
+        ->Array.concat(scheduleEntries)
         ->Array.concat(outboundEntries)
         ->Array.concat(inboundEntries),
         eventLogEntries: if allProducedSchemas->Array.length > 0 {

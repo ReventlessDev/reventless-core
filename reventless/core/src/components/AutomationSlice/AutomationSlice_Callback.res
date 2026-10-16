@@ -93,6 +93,13 @@ type runtime = {
   todoItems: Dict.t<todoRow>,
   phase1: phase1,
   phase2: phase2,
+  /** The slice's schedules, by key: what its schedules store holds. */
+  schedules: Dict.t<AutomationSlice_Schedules.row>,
+  /** What phase 1 changed in `schedules` since the last call, for the platform to
+      follow once the rows are stored. */
+  takeScheduleChanges: unit => array<AutomationSlice_Schedules.platformChange>,
+  /** Folds the given events' `reschedule` into empty rows, in order: a rebuild. */
+  rebuildSchedules: array<JSON.t> => unit,
 }
 
 /** A tick as the runtime receives an event: an envelope from the `Clock`
@@ -128,6 +135,10 @@ module type T = {
 
   /** Phase 2: process all pending items, publishing commands via publishJsons. */
   let phase2: phase2
+
+  let schedules: Dict.t<AutomationSlice_Schedules.row>
+  let takeScheduleChanges: unit => array<AutomationSlice_Schedules.platformChange>
+  let rebuildSchedules: array<JSON.t> => unit
 }
 
 module Make = (
@@ -138,6 +149,20 @@ module Make = (
   module Automation = Automation
 
   let todoItems: Dict.t<todoRow> = Dict.make()
+  let schedules: Dict.t<AutomationSlice_Schedules.row> = Dict.make()
+  let scheduleChanges: ref<array<AutomationSlice_Schedules.platformChange>> = ref([])
+
+  let takeScheduleChanges = () => {
+    let changes = scheduleChanges.contents
+    scheduleChanges := []
+    changes
+  }
+
+  // Only a slice that maps the Clock can receive the ticks a schedule sends.
+  let readsClock =
+    Automation.mappings->Array.some((module(M: Automation.Mapping)) =>
+      M.sourceName == Reventless.Clock.name
+    )
 
   let now = () => Date.make()->Date.toISOString
 
@@ -225,6 +250,32 @@ module Make = (
     )
   }
 
+  let reschedule = (
+    routed: array<AutomationSlice_Route.routed<Spec.todoItem>>,
+    ~setBy,
+    ~recordedAt,
+  ) =>
+    routed->Array.forEach(r =>
+      r.rescheduled->Array.forEach(change =>
+        if !readsClock {
+          EffectLogger.logError(
+            ~comp=`AutomationSlice(${Spec.name})`,
+            `a mapping changed a schedule, but no mapping reads the Clock, so no tick would reach the slice; the change is skipped`,
+          )->Effect.runSync
+        } else {
+          switch schedules->AutomationSlice_Schedules.apply(change, ~setBy, ~recordedAt) {
+          | Ok(platformChange) =>
+            scheduleChanges := scheduleChanges.contents->Array.concat([platformChange])
+          | Error(message) =>
+            EffectLogger.logError(
+              ~comp=`AutomationSlice(${Spec.name})`,
+              `${message}; the change is skipped`,
+            )->Effect.runSync
+          }
+        }
+      )
+    )
+
   let phase1 = (events: array<JSON.t>, sliceCtx: Reventless.AutomationSlice.context) => {
     events->Array.forEach(json => {
       let context = json->Message.decode(Reventless.Message.contextSchema)
@@ -241,8 +292,38 @@ module Make = (
       | None => json
       }
       // Multiple mappings can share a sourceName; all matching dispatches run.
-      Route.route(eventPayload, ~sourceName, ~sourceId=context.id, ctx)->Array.forEach(apply)
+      let routed = Route.route(eventPayload, ~sourceName, ~sourceId=context.id, ctx)
+      routed->Array.forEach(apply)
+      reschedule(
+        routed,
+        ~setBy=context.meta.msgId,
+        ~recordedAt=ctx.recordedAt->Option.getOr(Date.now()),
+      )
+
+      // A tick's envelope is addressed by its key.
+      if sourceName == Reventless.Clock.name {
+        schedules->AutomationSlice_Schedules.fired(~key=context.id)
+      }
     })
+  }
+
+  let rebuildSchedules = (events: array<JSON.t>) => {
+    schedules->Dict.keysToArray->Array.forEach(key => schedules->Dict.delete(key))
+    events->Array.forEach(json => {
+      let context = json->Message.decode(Reventless.Message.contextSchema)
+      let eventPayload = switch json->JSON.Decode.object {
+      | Some(dict) => dict->Dict.get("event")->Option.getOr(json)
+      | None => json
+      }
+      let recordedAt = recordedAtOf(context.meta.time)->Option.getOr(Date.now())
+      Route.route(
+        eventPayload,
+        ~sourceName=context.meta.service,
+        ~sourceId=context.id,
+        {environment: "", platformName: "", pluginName: "", sliceName: Spec.name, recordedAt},
+      )->reschedule(~setBy=context.meta.msgId, ~recordedAt)
+    })
+    scheduleChanges := []
   }
 
   let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {

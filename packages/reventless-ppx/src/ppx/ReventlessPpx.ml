@@ -607,6 +607,9 @@ let dispatch_mappings_impl ~loc ~specifier ~spec_name fname body =
   let domain = detect_mappings_domain ~loc fname in
   let domain_mod = mappings_domain_module domain in
   let body = walk_for_dcb_sources body in
+  let body =
+    if domain = DomainAutomationSlice then RescheduleInjection.inject body else body
+  in
   let prefix = ref [] in
   if not (Util.has_open_dotted "Reventless" domain_mod body) then
     prefix := !prefix @ [gen_open_reventless_sub ~loc domain_mod];
@@ -1019,6 +1022,8 @@ let transform (str : structure) : structure =
          in
          (* An automation's [process] takes [~now]; one written without it gets it. *)
          let body = if kind = Automation then NowInjection.inject body else body in
+         (* A mapping without [reschedule] sets no schedule. *)
+         let body = if kind = Automation then RescheduleInjection.inject body else body in
          (* @@reventless.automation: in the merged AutomationSlice file shape
             (process + per-source Mapping.Make + let mappings), inject the
             AutomationSlice.Mappings.Make wrapper and scan inner DCB Source

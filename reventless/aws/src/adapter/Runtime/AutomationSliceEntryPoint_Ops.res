@@ -32,6 +32,8 @@ type handlerEntry = {
   commandQueueIsFifo: option<bool>,
   sourceUrn: string,
   context: option<Reventless.AutomationSlice.context>,
+  /** The slice's schedules store; absent for a slice that maps no `Clock`. */
+  schedulesTableName: option<string>,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -59,6 +61,7 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     commandQueueIsFifo: h->Dict.get("commandQueueIsFifo")->Option.flatMap(JSON.Decode.bool),
     sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
     context: h->Dict.get("context")->Option.flatMap(decodeContext),
+    schedulesTableName: h->strOf("schedulesTableName"),
   })
 
 // A compact entry names its slice and carries only what the deploy resolved;
@@ -96,6 +99,7 @@ let decodeCompactEntry = (
     // urns stay in the config for the multi-source registration to use.
     sourceUrn: urns->Array.get(0)->Option.getOr(""),
     context: m->Dict.get("context")->Option.flatMap(decodeContext),
+    schedulesTableName: h->strOf("s"),
   }
 }
 
@@ -286,6 +290,94 @@ let makeLoadTodoItems = (
     }
 }
 
+// ── An automation's schedules ───────────────────────────────────────────────
+// The rows are the truth: they are written before the platform is told, and a
+// cold container reads them all once, as it does the to-do list. Unlike to-do
+// rows, a schedule row can go, so the sync deletes what the dict no longer holds.
+
+let scheduleTable = (tableName): Util_DynamoDb_Runtime.resolvedTable => {
+  id: "",
+  name: tableName,
+  arn: "",
+  hashKey: "id",
+}
+
+let makeScheduleStore = (
+  ~tableName,
+  ~rows: dict<ReventlessCore.AutomationSlice_Schedules.row>,
+  ~comp,
+) => {
+  let table = scheduleTable(tableName)
+  let save = QueryDbStorage_DynamoDb_Runtime.save(table)
+  let delete = QueryDbStorage_DynamoDb_Runtime.delete(table)
+  let stored: ref<array<string>> = ref([])
+  let loaded = ref(false)
+  let load = async () =>
+    if !loaded.contents {
+      loaded := true
+      let params: AwsSdk.DynamoDb.DocumentClient.ScanCommand.input = {
+        tableName,
+        consistentRead: true,
+      }
+      let _ = await Util_DynamoDb_Runtime.scanStream(params)
+      ->Stream.runCollect
+      ->Effect.map(items =>
+        items->Array.forEach(item => {
+          let json = item->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow
+          switch json->Reventless.Util_Sury.fromJson(
+            ReventlessCore.AutomationSlice_Schedules.rowSchema,
+          ) {
+          | row if rows->Dict.get(row.key)->Option.isNone => rows->Dict.set(row.key, row)
+          | _ => ()
+          | exception _ => ()
+          }
+        })
+      )
+      ->Effect.catchAll(err =>
+        ReventlessCore.EffectLogger.logError(
+          ~comp,
+          `restore: couldn't read the schedules from ${tableName}: ${DynamoDb_Error.message(err)}`,
+        )
+      )
+      ->Effect.runPromise
+      stored := rows->Dict.keysToArray
+    }
+  let sync = async () => {
+    let keys = rows->Dict.keysToArray
+    let _ = await rows
+    ->Dict.toArray
+    ->Array.map(((key, row)) =>
+      save(
+        key,
+        row->Reventless.Util_Sury.toJson(ReventlessCore.AutomationSlice_Schedules.rowSchema),
+        ReventlessCore.QueryDb.Overwrite,
+        None,
+      )
+    )
+    ->Promise.all
+    let _ = await stored.contents
+    ->Array.filter(key => !(keys->Array.includes(key)))
+    ->Array.map(key => delete(key, None))
+    ->Promise.all
+    stored := keys
+  }
+  (load, sync)
+}
+
+/** This Lambda's own ARN, which the slice's schedules invoke. */
+let ownArn = () => {
+  let env = key => NodeProcess.env->Dict.get(key)->Option.getOr("")
+  let account = env("SCHEDULER_ROLE_ARN")->String.split(":")->Array.get(4)->Option.getOr("")
+  `arn:aws:lambda:${env("AWS_REGION")}:${account}:function:${env("AWS_LAMBDA_FUNCTION_NAME")}`
+}
+
+let platformSchedulesOf = (~slice) =>
+  ScheduledPublisher_EventBridgeScheduler_Runtime.platformSchedules(
+    ~roleArn=NodeProcess.env->Dict.get("SCHEDULER_ROLE_ARN")->Option.getOr(""),
+    ~lambdaArn=ownArn(),
+    ~slice,
+  )
+
 // ── Platform capabilities ───────────────────────────────────────────────────
 
 /**
@@ -361,6 +453,32 @@ let capabilities = (): Reventless.Capabilities.t => {
 type automationCallback = ReventlessCore.AutomationSlice_Callback.runtime
 type outboundCallback<'event> = ReventlessCore.OutboundTranslationSlice_Callback.runtime<'event>
 
+/** A scheduled slice's schedule rows, as the Lambda keeps them: load once, sync,
+    and the platform that follows them. */
+type schedulesStep = {
+  load: unit => promise<unit>,
+  sync: unit => promise<unit>,
+  platform: ReventlessInfra.AutomationSlice.platformSchedules,
+}
+
+let loadSchedules = async step =>
+  switch step {
+  | Some({load}) => await load()
+  | None => ()
+  }
+
+// The rows are stored first, then the platform follows them.
+let followSchedules = async (step, callback: automationCallback) =>
+  switch step {
+  | Some({sync, platform}) =>
+    let changes = callback.takeScheduleChanges()
+    if changes->Array.length > 0 {
+      await sync()
+      await ReventlessCore.AutomationSlice_Schedules.tell(platform, changes)
+    }
+  | None => ()
+  }
+
 // Automation: phase 1 takes the RAW envelope JSONs — the callback routes by
 // `meta.service` and unwraps `{id, meta, event}` itself — plus the context.
 let makeAutomationJsonEventsHandler = (
@@ -369,6 +487,7 @@ let makeAutomationJsonEventsHandler = (
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
   ~syncTodoItems: unit => promise<unit>,
   ~loadTodoItems: unit => promise<unit>,
+  ~schedules: unit => option<schedulesStep>=() => None,
 ): ReventlessCore.EventCollector.jsonEventsHandler =>
   stream =>
     stream
@@ -376,8 +495,10 @@ let makeAutomationJsonEventsHandler = (
     ->Effect.flatMap(jsons =>
       Effect.promise(async () => {
         await loadTodoItems()
+        await loadSchedules(schedules())
         callback.phase1(jsons, context)
         await syncTodoItems()
+        await followSchedules(schedules(), callback)
         await callback.phase2(publishJsons)
         await syncTodoItems()
       })
@@ -448,10 +569,11 @@ type builtSlice = {
   sweep: unit => promise<unit>,
   comp: string,
   name: string,
-  /** The automation's declared time; always `None` for an outbound slice. */
-  schedule: option<Reventless.Schedule.time>,
   /** Delivers `Tick({key, at})`; `None` for an outbound slice, which maps no `Clock`. */
   tick: option<(~key: string, ~at: float) => promise<unit>>,
+  /** Brings the slice's schedules in line with its spec and its rows, at a deploy;
+      `None` for an outbound slice. */
+  reconcile: option<unit => promise<unit>>,
 }
 
 let makeAutomationRegisteredHandler = (
@@ -477,6 +599,18 @@ let makeAutomationRegisteredHandler = (
     ~comp,
   )
   let context = entry.context->Option.getOr(defaultContext(sliceName))
+  // Built on first use: the platform reads the environment, which a test sets late.
+  let step = ref(None)
+  let schedules = () =>
+    switch (step.contents, entry.schedulesTableName) {
+    | (Some(s), _) => Some(s)
+    | (None, Some(tableName)) =>
+      let (load, sync) = makeScheduleStore(~tableName, ~rows=callback.schedules, ~comp)
+      let s = {load, sync, platform: platformSchedulesOf(~slice=sliceName)}
+      step := Some(s)
+      Some(s)
+    | (None, None) => None
+    }
   {
     registered: {
       handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
@@ -486,6 +620,7 @@ let makeAutomationRegisteredHandler = (
           ~publishJsons,
           ~syncTodoItems,
           ~loadTodoItems,
+          ~schedules,
         ),
       ),
       comp,
@@ -497,16 +632,42 @@ let makeAutomationRegisteredHandler = (
     },
     comp,
     name: sliceName,
-    schedule,
     // The same steps as an event batch, with the tick as its one event.
     tick: Some(
       async (~key, ~at) => {
         await loadTodoItems()
+        await loadSchedules(schedules())
         callback.phase1([ReventlessCore.AutomationSlice_Callback.tickEvent(~key, ~at)], context)
         await syncTodoItems()
+        // A once-only schedule's row goes when it fires.
+        switch schedules() {
+        | Some({sync}) => await sync()
+        | None => ()
+        }
         await callback.phase2(publishJsons)
         await syncTodoItems()
       },
+    ),
+    reconcile: Some(
+      async () =>
+        switch schedules() {
+        | Some({load, sync, platform}) =>
+          await load()
+          await ReventlessCore.AutomationSlice_Schedules.reconcile(
+            callback.schedules,
+            platform,
+            ~declaredTime=schedule,
+            ~now=Date.now(),
+          )
+          await sync()
+        // No Clock mapping, so no schedule of the slice may stay on the platform.
+        | None =>
+          let platform = platformSchedulesOf(~slice=sliceName)
+          let names = await platform.names()
+          for i in 0 to names->Array.length - 1 {
+            await platform.removeName(names->Array.getUnsafe(i))
+          }
+        },
     ),
   }
 }
@@ -553,8 +714,8 @@ let makeOutboundRegisteredHandler = (
     },
     comp,
     name: sliceName,
-    schedule: None,
     tick: None,
+    reconcile: None,
   }
 }
 
@@ -603,42 +764,22 @@ let runTick = async (slices: array<builtSlice>, invocation: tickInvocation) =>
   }
 
 /**
-Put each automation's declared schedule on the platform under `<slice>.default`,
-and remove that schedule from an automation that declares none. Run by the deploy,
-so a failure fails it. `lambdaArn` is this Lambda, which the schedules invoke.
+Bring every automation's schedules in line, at a deploy: its declared time into its
+rows, and the platform's schedules to its rows. Run by the deploy, so a failure fails
+it; unlike a sweep, one slice's failure stops the rest.
 */
-let reconcileDeclared = async (slices: array<builtSlice>, ~lambdaArn) => {
-  let roleArn = NodeProcess.env->Dict.get("SCHEDULER_ROLE_ARN")->Option.getOr("")
-  let key = Reventless.Clock.defaultKey
-  let automations = slices->Array.filter(s => s.tick->Option.isSome)
-  let declared = automations->Array.filter(s => s.schedule->Option.isSome)
-  if roleArn == "" {
-    if declared->Array.length > 0 {
-      JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`)
-    }
-  } else {
-    for i in 0 to automations->Array.length - 1 {
-      let slice = automations->Array.getUnsafe(i)
-      switch slice.schedule {
-      | Some(time) =>
-        await ScheduledPublisher_EventBridgeScheduler_Runtime.putTickSchedule(
-          ~roleArn,
-          ~lambdaArn,
-          ~slice=slice.name,
-          ~key,
-          time,
-        )
-      | None =>
-        await ScheduledPublisher_EventBridgeScheduler_Runtime.deleteTickSchedule(
-          ~roleArn,
-          ~slice=slice.name,
-          ~key,
-        )
-      }
-    }
-    ReventlessCore.EffectLogger.logInfo(
-      ~comp="AutomationSliceRuntime",
-      `reconcile: ${declared->Array.length->Int.toString} declared schedule(s) set`,
-    )->Effect.runSync
+let reconcileSchedules = async (slices: array<builtSlice>) => {
+  if NodeProcess.env->Dict.get("SCHEDULER_ROLE_ARN")->Option.getOr("") == "" {
+    JsError.throwWithMessage(`reconcile: SCHEDULER_ROLE_ARN is not set`)
   }
+  let reconciles = slices->Array.filterMap(s => s.reconcile)
+  for i in 0 to reconciles->Array.length - 1 {
+    await (reconciles->Array.getUnsafe(i))()
+  }
+  ReventlessCore.EffectLogger.logInfo(
+    ~comp="AutomationSliceRuntime",
+    `reconcile: the schedules of ${reconciles
+      ->Array.length
+      ->Int.toString} automation(s) are in line`,
+  )->Effect.runSync
 }

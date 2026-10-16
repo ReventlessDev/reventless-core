@@ -13,7 +13,8 @@ function Make(Spec) {
         let match = Message$ReventlessCore.splitMessage(json);
         return Stdlib_Option.map(decoder.decode(match[0], match[1]), event => ({
           collected: M.collect(event, sourceId, ctx),
-          resolved: M.resolve(event)
+          resolved: M.resolve(event),
+          rescheduled: M.reschedule(event)
         }));
       };
       return {

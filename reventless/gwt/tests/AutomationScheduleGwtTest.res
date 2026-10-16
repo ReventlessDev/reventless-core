@@ -1,6 +1,7 @@
 // A declared schedule: the demand report every morning at 06:00. The slice maps the
 // framework's Clock source; each tick makes the day's item, `process` requests the
-// report, and the event that request records completes the item.
+// report, and the event that request records completes the item. The catalog team
+// can move the report or stop it with an event, which replaces the declared time.
 
 module DemandReport = {
   let name = "DemandReport"
@@ -27,7 +28,10 @@ module DemandReport_Automation = {
     module Id = Reventless.Id.String
     let name = "CatalogDcbEventLog"
     @schema
-    type event = DemandReportRequested({day: float})
+    type event =
+      | DemandReportRequested({day: float})
+      | DemandReportTimeChanged({time: Reventless.Schedule.time})
+      | DemandReportStopped
   }
 
   module FromClock = Reventless.AutomationSlice.Mapping.Make(
@@ -39,6 +43,7 @@ module DemandReport_Automation = {
         (itemId(key, at), ({day: at}: DemandReport.todoItem)),
       ]
       let resolve = _ => None
+      let reschedule = _ => []
     },
   )
 
@@ -47,9 +52,20 @@ module DemandReport_Automation = {
     DemandReport,
     {
       let collect = (_, ~sourceId as _, _ctx) => []
-      let resolve = (CatalogDcbSource.DemandReportRequested({day})) => Some(
-        Reventless.Clock.itemId(Reventless.Clock.defaultKey, day),
-      )
+      let resolve = event =>
+        switch event {
+        | CatalogDcbSource.DemandReportRequested({day}) =>
+          Some(Reventless.Clock.itemId(Reventless.Clock.defaultKey, day))
+        | _ => None
+        }
+      let reschedule = event =>
+        switch event {
+        | CatalogDcbSource.DemandReportTimeChanged({time}) => [
+            Reventless.AutomationSlice.Set({key: Reventless.Clock.defaultKey, time}),
+          ]
+        | DemandReportStopped => [Clear({key: Reventless.Clock.defaultKey})]
+        | DemandReportRequested(_) => []
+        }
     },
   )
 
@@ -96,5 +112,29 @@ describe("a declared schedule", () => {
     ->thenScenarioTodos([
       ("r1@2026-10-16T18:00Z", {day: Date.fromString("2026-10-16T18:00:42Z")->Date.getTime}),
     ])
+  )
+})
+
+let daily6 = Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})})
+let weekdays730 = Reventless.Schedule.Calendar({
+  calendar: Weekly({days: [Mon, Tue, Wed, Thu, Fri], hour: 7, minute: 30}),
+})
+
+describe("the same schedule, moved by an event", () => {
+  test("with no event, the schedule is the declared one", () =>
+    givenEvents([])->whenSweep(~now=morning)->thenSchedules([("default", daily6)])
+  )
+
+  test("an event replaces the declared time", () =>
+    givenEvents([Catalog.event(DemandReportTimeChanged({time: weekdays730}))])
+    ->whenSweep(~now=morning)
+    ->thenSchedules([("default", weekdays730)])
+  )
+
+  test("an event that stops the report leaves no schedule", () =>
+    givenEvents([Catalog.event(DemandReportTimeChanged({time: weekdays730}))])
+    ->whenSweep(~now=morning)
+    ->andThenEvents([Catalog.event(DemandReportStopped)])
+    ->thenSchedules([])
   )
 })
