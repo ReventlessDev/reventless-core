@@ -171,6 +171,10 @@ function loadProvidedGroups() {
   return Platform_ProvidedGroups$ReventlessAws.load(platformStackReference());
 }
 
+function webhookUrl() {
+  return PluginRuntime_Builder$ReventlessAws.webhookUrlRef.contents;
+}
+
 function MakeWithConfig(Config) {
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   Role$Reventless.provideGroupsFrom(() => [Role$Reventless.adminGroup()].concat(AccountsManifest$Reventless.declaredGroups()));
@@ -3008,6 +3012,7 @@ export {
   loadProvidedGroups,
   groupOf,
   adminGroup,
+  webhookUrl,
   MakeWithConfig,
   Make,
 }

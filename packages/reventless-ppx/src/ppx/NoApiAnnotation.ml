@@ -128,15 +128,16 @@ let transform ~loc (str : structure) =
               if List.length variant_names > 0 then
                 metadata_bindings := !metadata_bindings @ [gen_no_api_variants_metadata_binding ~loc ~schema_name ~variant_names];
 
-              let new_ctors = List.map strip_no_api_from_constructor (
-                match td.ptype_kind with
-                | Ptype_variant ctors -> ctors
-                | _ -> []
-              ) in
+              (* Only a variant has constructors to strip; a record (an inbound
+                 slice's [externalInput]) keeps its fields. *)
+              let new_kind = match td.ptype_kind with
+                | Ptype_variant ctors -> Ptype_variant (List.map strip_no_api_from_constructor ctors)
+                | kind -> kind
+              in
               let stripped_td = {
                 td with
                 ptype_attributes = strip_no_api_attr td.ptype_attributes;
-                ptype_kind = Ptype_variant new_ctors;
+                ptype_kind = new_kind;
               } in
               new_items := !new_items @ [{ item with pstr_desc = Pstr_type (Nonrecursive, [stripped_td]) }]
             )

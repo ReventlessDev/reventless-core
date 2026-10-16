@@ -45,7 +45,7 @@ Reventless currently ships two Platform implementations. The same plugin code, t
 
 Both platforms expose the same Domain API shape described in this guide. The differences clients may notice in practice:
 
-- **Subscriptions.** The framework generates three subscription feeds for every platform (covered in §10):
+- **Subscriptions.** The framework generates three subscription feeds for every platform (covered in [§10](#10-subscriptions)):
 
   - **Event-log feed** (`on<EventLog>EventLog_eventAppended`): one field per event log, fires on each appended event.
   - **Read-model feed** (`on<Type>_stateChanged`): one field per queryable type, fires after the projection has written the new state.
@@ -220,7 +220,7 @@ Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: 
 
 Use this when an external system needs to call you with their vocabulary and you translate to your domain command.
 
-Two things differ from the other mutation sources. There is **no `@noApi` opt-out** — declaring the slice declares its mutation. And the mutation is currently the *only* door the framework builds for an inbound slice: no Lambda Function URL and no API Gateway is provisioned yet, so a sender that can only POST to a plain URL needs a transport you build yourself. A provisioned webhook endpoint is planned — see [InboundTranslationSlice](./components/inboundtranslationslice.md#no-http-endpoint-yet--planned).
+Two things differ from the other mutation sources. `@noApi` goes on `externalInput`, not on a command, since that is where the mutation's arguments come from; it withholds the mutation and is allowed only on a slice that declares a webhook URL. And a slice can have a second door: a sender that can only post to a plain URL gets one from the slice's `endpoint` — see [InboundTranslationSlice](./components/inboundtranslationslice.md#a-webhook-url).
 
 ### 5.4 Suppressing mutation fields
 
@@ -346,7 +346,7 @@ extend type Query {
 
 When the state has no sortable fields, the `OrderField` enum is empty (or omitted) and the `orderBy` argument disappears with it.
 
-`PageInfo`, `Node`, and `SortOrder` are platform-wide types (see §9).
+`PageInfo`, `Node`, and `SortOrder` are platform-wide types (see [§9](#9-platform-wide-types)).
 
 ### 6.3 Items query (range over a sub-id)
 
@@ -573,7 +573,7 @@ type Query {
 
 If no plugin contributes any mutations, the schema declares `type Mutation { _noop: String }` so it still parses. The same fallback applies to subscriptions.
 
-`@aws_subscribe` is an AppSync directive used by the mutation-accepted subscription feed (§10.3). On the AWS deployment it routes subscription delivery through AppSync; on the local platform it is a no-op.
+`@aws_subscribe` is an AppSync directive used by the mutation-accepted subscription feed ([§10.3](#103-mutation-accepted-feed--onmutationfieldid-id)). On the AWS deployment it routes subscription delivery through AppSync; on the local platform it is a no-op.
 
 ## 10. Subscriptions
 

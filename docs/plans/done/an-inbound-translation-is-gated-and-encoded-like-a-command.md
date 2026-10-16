@@ -105,7 +105,7 @@ Encode with `Util_Sury.toJson(Spec.commandSchema)`. An encode failure keeps toda
 | 4 | AWS: identity into the payload, through the entry point into `receive` | `reventless/aws` |
 | 5 | Encode with `commandSchema` | `InboundTranslationSlice_Callback` |
 | 6 | Remove `lifecycleState` / `commandTransition` from the inbound spec and its PPX injection | `reventless/spec`, `packages/reventless-ppx` |
-| 7 | Correct the comment above `permissionForFirstConstructor`, the spec's doc comment, and the webhook plan's [Consequences of two doors](../Backlog/webhook-infrastructure.md#consequences-of-two-doors) | docs and comments |
+| 7 | Correct the comment above `permissionForFirstConstructor`, the spec's doc comment, and the webhook plan's [Consequences of two doors](./webhook-infrastructure.md#consequences-of-two-doors) | docs and comments |
 
 Step 6 changes the PPX, so it goes out with the next PPX release by the usual procedure. Steps
 1 to 5 do not depend on it, and can ship first.
@@ -140,7 +140,7 @@ Step 6 changes the PPX, so it goes out with the next PPX release by the usual pr
 1. **The webhook door.** A webhook caller has no Cognito groups. Its authentication (signature,
    key) replaces check 1. Is check 2 then skipped, or does the webhook config name the roles
    it stands for? Leaning: the webhook config names a role, and check 2 runs against it. Decide
-   in [webhook-infrastructure](../Backlog/webhook-infrastructure.md).
+   in [webhook-infrastructure](./webhook-infrastructure.md).
 2. **Does the target check its own authorization and transition** when a command arrives from a
    translation rather than from its own mutation? Today a published command bypasses the
    target's resolver. This plan does not change that.

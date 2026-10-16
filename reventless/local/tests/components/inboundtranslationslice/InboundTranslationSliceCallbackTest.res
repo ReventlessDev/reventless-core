@@ -215,6 +215,7 @@ describe("InboundTranslationSlice Callback", () => {
 
           let targetName = "ConfirmPayment"
           let externalSystem = None
+          let endpoint = None
 
           let translate = (input: externalInput) => Ok(
             input.items->Array.map(
@@ -285,6 +286,7 @@ describe("InboundTranslationSlice Callback", () => {
 
           let targetName = "ConfirmPayment"
           let externalSystem = None
+          let endpoint = None
 
           let translate = (_input: externalInput) => Ok([])
 

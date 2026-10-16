@@ -359,6 +359,10 @@ module Permission = {
     principal: string,
     statementId?: string,
     sourceArn?: Pulumi.Input.t<string>,
+    /** `"AWS_IAM"` or `"NONE"`; only with `lambda:InvokeFunctionUrl`. */
+    functionUrlAuthType?: string,
+    /** Limits `lambda:InvokeFunction` to calls through the function's URL. */
+    invokedViaFunctionUrl?: bool,
   }
 
   type t = {"arn": Pulumi.Output.t<string>, "id": Pulumi.Output.t<string>}

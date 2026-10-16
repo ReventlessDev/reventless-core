@@ -146,6 +146,7 @@ module PsTwoRuleFeed = {
   @schema type command = AddProduct({sku: string}) | AddCategory({sku: string})
   let targetName = "AddProduct"
   let externalSystem = None
+  let endpoint = None
   type role = Reventless.Role.name
   let authorizationOf = (name: string): Reventless.Authorization.rule<role> =>
     switch name {

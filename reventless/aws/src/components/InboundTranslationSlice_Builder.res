@@ -25,6 +25,12 @@ module Make = (
       ~specPath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
       ~translationPath=Util_Bundle.getModuleSpecifier(Translation.moduleUrl),
     )
+    switch Spec.endpoint {
+    | Some({auth: SignedBody({secret})}) =>
+      PluginRuntime_Builder.registerWebhook(~specName=Spec.name, ~secret=Some(secret))
+    | Some({auth: Open}) => PluginRuntime_Builder.registerWebhook(~specName=Spec.name, ~secret=None)
+    | None => ()
+    }
     module InnerMake = Inner.Make(Spec, Translation)
     module Spec = Spec
     module Translation = Translation

@@ -50,6 +50,8 @@ let externalSystem = "SupplierFeed";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslation/ImportProduct.res.mjs";
 
+let endpoint;
+
 export {
   name,
   Id,
@@ -60,5 +62,6 @@ export {
   moduleUrl,
   authorizationOf,
   traits,
+  endpoint,
 }
 /* externalInputSchema Not a pure module */

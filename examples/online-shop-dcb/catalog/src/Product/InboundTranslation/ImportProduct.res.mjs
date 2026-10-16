@@ -21,7 +21,10 @@ let commandSchema = Sury.$schema(s => ({
 }));
 
 function authorizationOf(param) {
-  return "AllowAuthenticated";
+  return {
+    TAG: "AllowRoles",
+    _0: ["Admin"]
+  };
 }
 
 let traits = [];
@@ -34,6 +37,20 @@ let targetName = "AddProduct";
 
 let externalSystem = "SupplierFeed";
 
+let endpoint = {
+  path: "supplier-feed",
+  auth: {
+    TAG: "SignedBody",
+    _0: {
+      header: "X-Signature-256",
+      prefix: "sha256=",
+      timestampHeader: "X-Signature-Timestamp",
+      secret: "supplierFeed"
+    }
+  },
+  role: "Admin"
+};
+
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/InboundTranslation/ImportProduct.res.mjs";
 
 export {
@@ -43,6 +60,7 @@ export {
   commandSchema,
   targetName,
   externalSystem,
+  endpoint,
   moduleUrl,
   authorizationOf,
   traits,

@@ -407,19 +407,22 @@ function Make(DcbEventLogStorage) {
       let inboundTranslationSliceData = inboundTranslationSlices.map(ITS => {
         let its = ITS.make(publishJsons, componentRuntime[ITS.Spec.name], opts);
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
+        let exposed = InboundTranslationSlice_Callback$ReventlessCore.exposesMutation(ITS.Spec.externalInputSchema);
+        InboundTranslationSlice_Callback$ReventlessCore.checkReachable(name, ITS.Spec.name, exposed, Stdlib_Option.isSome(ITS.Spec.endpoint));
         let registerResolver = HooksConfig.hooks.inboundMutationResolverHook;
-        if (registerResolver !== undefined) {
+        if (registerResolver !== undefined && exposed) {
           registerResolver(fieldName, ITS.Spec.externalInputSchema, inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf));
         }
         let bindReceive = HooksConfig.hooks.inboundMutationBindReceiveHook;
-        if (bindReceive !== undefined) {
-          Component$ReventlessCore.operations(its).apply(ops => bindReceive(fieldName, ops.receive));
+        if (bindReceive !== undefined && exposed) {
+          Component$ReventlessCore.operations(its).apply(ops => bindReceive(fieldName, (input, caller) => ops.receive(input, caller, undefined)));
         }
         return [
           ITS.Spec.name,
           fieldName,
           its,
-          ITS.Spec.externalInputSchema
+          ITS.Spec.externalInputSchema,
+          exposed
         ];
       });
       let inboundTranslationSlicesOutputs = Object.fromEntries(inboundTranslationSliceData.map(param => [
@@ -482,7 +485,7 @@ function Make(DcbEventLogStorage) {
             let receiveFn = receivers[event.fieldName];
             if (receiveFn !== undefined) {
               return Effect.promise(async () => {
-                let result = await receiveFn(event.arguments, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(event.identity));
+                let result = await receiveFn(event.arguments, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(event.identity), undefined);
                 return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
               });
             } else {
@@ -507,8 +510,9 @@ function Make(DcbEventLogStorage) {
       });
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources.concat(outputs.queryDb.resources)));
       let asyncDcbResources = Object.values(asyncStateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
-      let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
-      let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
+      let exposedInbound = inboundTranslationSliceData.filter(param => param[4]);
+      let inboundFieldNames = exposedInbound.map(param => param[1]);
+      let inboundSchemas = exposedInbound.map(param => param[3]);
       let dcbMutationData = stateChangeSlices.flatMap(S => {
         let commandSchema = S.Spec.commandSchema;
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
@@ -578,7 +582,7 @@ function Make(DcbEventLogStorage) {
           consistencyRead: Stdlib_Option.flatMap(sliceDef, d => d.consistencyRead)
         };
       });
-      let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => {
+      let mutationEntriesFromInboundSlices = inboundTranslationSlices.filter(ITS => InboundTranslationSlice_Callback$ReventlessCore.exposesMutation(ITS.Spec.externalInputSchema)).map(ITS => {
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let fieldPermissions = {};
         Stdlib_Option.forEach(inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf), rule => {

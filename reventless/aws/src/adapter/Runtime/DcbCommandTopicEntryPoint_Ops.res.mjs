@@ -5,6 +5,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -13,6 +14,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_Postgres_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_Postgres_Runtime.res.mjs";
@@ -118,29 +120,71 @@ function buildSliceHandler(spec, behavior, scope, dcbEventLog) {
   };
 }
 
+async function persistAudit(callback, auditQueryDbOps, result) {
+  if (auditQueryDbOps === undefined) {
+    return;
+  }
+  let id = InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result);
+  let row = InboundTranslationSlice_Callback$ReventlessCore.takeAuditRow(callback.auditLog, id);
+  if (row === undefined) {
+    return;
+  }
+  let json = Util_Sury$Reventless.toJson(row, InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema);
+  try {
+    let err = await auditQueryDbOps.save(id, json, "Overwrite", undefined);
+    if (err.TAG === "Ok") {
+      return;
+    } else {
+      return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + QueryDb$ReventlessCore.storageErrorToString(err._0)));
+    }
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
+    return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + detail));
+  }
+}
+
 function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) {
   let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
   return async (args, identity) => {
-    let result = await callback.receive(publishJsons, args, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity));
-    if (auditQueryDbOps !== undefined) {
-      let id = InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result);
-      let row = InboundTranslationSlice_Callback$ReventlessCore.takeAuditRow(callback.auditLog, id);
-      if (row !== undefined) {
-        let json = Util_Sury$Reventless.toJson(row, InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema);
-        try {
-          let err = await auditQueryDbOps.save(id, json, "Overwrite", undefined);
-          if (err.TAG !== "Ok") {
-            Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + QueryDb$ReventlessCore.storageErrorToString(err._0)));
-          }
-        } catch (raw_exn) {
-          let exn = Primitive_exceptions.internalToException(raw_exn);
-          let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
-          Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + detail));
-        }
-      }
-    }
+    let result = await callback.receive(publishJsons, args, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity), undefined);
+    await persistAudit(callback, auditQueryDbOps, result);
     return CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
   };
+}
+
+function buildWebhookSlice(spec, translation, publishJsons, auditQueryDbOps) {
+  let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
+  let persisted = async result => {
+    await persistAudit(callback, auditQueryDbOps, result);
+    return result;
+  };
+  return Stdlib_Nullable.fromOption(Stdlib_Option.map(callback.webhook, route => ({
+    route: route,
+    receive: async (input, caller) => await persisted(await callback.receive(publishJsons, input, caller, "Webhook")),
+    refuse: async (body, errorCode, error) => await persisted(callback.refuse(body, errorCode, error))
+  })));
+}
+
+async function serveWebhook(slices, request) {
+  let match = await InboundTranslationSlice_Webhook$ReventlessCore.dispatch(slices, undefined, undefined, request);
+  return Object.fromEntries([
+    [
+      "statusCode",
+      match.status
+    ],
+    [
+      "headers",
+      Object.fromEntries([[
+          "content-type",
+          "application/json"
+        ]])
+    ],
+    [
+      "body",
+      match.body
+    ]
+  ]);
 }
 
 export {
@@ -150,6 +194,9 @@ export {
   makePostgresStorageOps,
   makeStorageOps,
   buildSliceHandler,
+  persistAudit,
   buildInboundReceiver,
+  buildWebhookSlice,
+  serveWebhook,
 }
 /* Stdlib_JsExn Not a pure module */

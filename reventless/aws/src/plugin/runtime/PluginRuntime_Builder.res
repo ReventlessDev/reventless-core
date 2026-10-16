@@ -161,6 +161,29 @@ let registerInboundAuditTableName = (~specName: string, tableName: Pulumi.Output
     )
   }
 
+// Webhook endpoints. Each slice's route is read off its spec at run time, so the
+// deploy needs only whether any slice has one (the sync command Lambda then gets a
+// Function URL) and the secrets they name, which become that Lambda's environment.
+// A secret is read when the slice registers, outside any `apply`, so a missing one
+// fails `pulumi preview` too.
+let webhookSlices: array<string> = []
+let webhookSecrets: dict<Pulumi.Output.t<string>> = Dict.make()
+
+let registerWebhook = (~specName: string, ~secret: option<string>) => {
+  if !(webhookSlices->Array.includes(specName)) {
+    webhookSlices->Array.push(specName)
+  }
+  secret->Option.forEach(secret =>
+    webhookSecrets->Dict.set(
+      ReventlessCore.InboundTranslationSlice_Webhook.secretEnvKey(secret),
+      Pulumi.Config.make(Some("webhook"))->Pulumi.Config.requireSecret(secret),
+    )
+  )
+}
+
+// The plugin's webhook base URL, once its command Lambda has one; "" until then.
+let webhookUrlRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 /**
 Redundant with the seams that populate `dcbConfigRef` automatically:
 `pluginName` is set by `registerPluginName` (called from `Plugin_Builder.make`
@@ -933,6 +956,8 @@ module Make = (
     StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic(
       ~slicePaths,
       ~inboundSlices,
+      ~webhookSecrets=?webhookSlices->Array.length > 0 ? Some(webhookSecrets) : None,
+      ~onWebhookUrl=url => webhookUrlRef := url,
       ~dcbTableName=dcbConfig.dcbTableName,
       ~pluginName=dcbConfig.pluginName,
       ~syncConfig=syncStateChangesConfigRef.contents,

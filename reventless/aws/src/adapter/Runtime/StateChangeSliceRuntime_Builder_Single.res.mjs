@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -11,16 +12,18 @@ import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, connect, dcbCommandTopic) {
+function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, webhookSecrets, onWebhookUrlOpt, connect, dcbCommandTopic) {
   let inboundSlices = inboundSlicesOpt !== undefined ? inboundSlicesOpt : [];
   let sliceMemoryFloor = sliceMemoryFloorOpt !== undefined ? sliceMemoryFloorOpt : 0;
   let sliceTimeoutFloor = sliceTimeoutFloorOpt !== undefined ? sliceTimeoutFloorOpt : 0;
+  let onWebhookUrl = onWebhookUrlOpt !== undefined ? onWebhookUrlOpt : param => {};
   if (slicePaths.length === 0 && inboundSlices.length === 0) {
     return log.warn("StateChangeSliceRuntime_Builder_Single", undefined, "forDcbCommandTopic skipped (no slice specs)");
   }
@@ -53,6 +56,10 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       envVars[key] = Pulumi.output(value);
       return;
     }
+  }));
+  let webhookSecrets$1 = isAsync ? undefined : webhookSecrets;
+  Stdlib_Option.forEach(webhookSecrets$1, secrets => Stdlib_Dict.forEachWithKey(secrets, (value, key) => {
+    envVars[key] = value;
   }));
   Stdlib_Option.forEach(cfg.logLevel, level => {
     envVars["LOG_LEVEL"] = Pulumi.output(level);
@@ -129,6 +136,27 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       }])),
     role: runtime.parts.lambdaRole.id
   }));
+  if (Stdlib_Option.isSome(webhookSecrets$1)) {
+    let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+    let functionName = Output$Pulumi.flatMap(runtime.parts.lambda, lambda => lambda.name);
+    let url = new (Aws.lambda.FunctionUrl)(name + `-webhook`, {
+      authorizationType: "NONE",
+      functionName: functionName
+    }, customOpts);
+    new (Aws.lambda.Permission)(name + `-webhookUrl`, {
+      action: "lambda:InvokeFunctionUrl",
+      function: functionName,
+      principal: "*",
+      functionUrlAuthType: "NONE"
+    }, customOpts);
+    new (Aws.lambda.Permission)(name + `-webhookInvoke`, {
+      action: "lambda:InvokeFunction",
+      function: functionName,
+      principal: "*",
+      invokedViaFunctionUrl: true
+    }, customOpts);
+    onWebhookUrl(url.functionUrl);
+  }
   connect(runtime);
   CommandTopicChannel_SQS$ReventlessAws.clearBatchSize();
 }

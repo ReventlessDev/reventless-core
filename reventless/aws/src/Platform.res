@@ -148,6 +148,11 @@ let groupOf = Reventless.Role.groupOf
 /** `groupOf(Role.admin)`. */
 let adminGroup = Reventless.Role.adminGroup
 
+/** The plugin's webhook base URL — each inbound slice's endpoint is its `path`
+    under it — or `""` when no slice declares one. Read after `deployPlugin`, to
+    export it and register it with the sender. */
+let webhookUrl = (): Pulumi.Output.t<string> => PluginRuntime_Builder.webhookUrlRef.contents
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool

@@ -22,6 +22,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res.mjs";
 import * as StateChangeSliceRuntime_Builder_Single$ReventlessAws from "../../adapter/Runtime/StateChangeSliceRuntime_Builder_Single.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -138,6 +139,23 @@ function registerInboundAuditTableName(specName, tableName) {
     };
   }
 }
+
+let webhookSlices = [];
+
+let webhookSecrets = {};
+
+function registerWebhook(specName, secret) {
+  if (!webhookSlices.includes(specName)) {
+    webhookSlices.push(specName);
+  }
+  Stdlib_Option.forEach(secret, secret => {
+    webhookSecrets[InboundTranslationSlice_Webhook$ReventlessCore.secretEnvKey(secret)] = new Pulumi.Config("webhook").requireSecret(secret);
+  });
+}
+
+let webhookUrlRef = {
+  contents: Pulumi.output("")
+};
 
 function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceModulePathsOpt, param) {
   let stateChangeSliceModulePaths = stateChangeSliceModulePathsOpt !== undefined ? stateChangeSliceModulePathsOpt : [];
@@ -542,7 +560,9 @@ function Make(EventCollectorChannel) {
         };
       }
     });
-    StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, inboundSlices, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, memorySize, timeout, connect, dcbCommandTopic);
+    StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, inboundSlices, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, memorySize, timeout, webhookSlices.length !== 0 ? webhookSecrets : undefined, url => {
+      webhookUrlRef.contents = url;
+    }, connect, dcbCommandTopic);
   };
   let finish = () => {};
   return {
@@ -577,6 +597,10 @@ export {
   registeredInboundSlices,
   registerInboundTranslationSliceSpec,
   registerInboundAuditTableName,
+  webhookSlices,
+  webhookSecrets,
+  registerWebhook,
+  webhookUrlRef,
   registerDcbConfig,
   registerDcbTableName,
   heartbeatConfigRef,

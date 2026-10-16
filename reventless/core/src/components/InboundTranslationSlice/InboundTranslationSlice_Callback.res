@@ -15,6 +15,8 @@ type auditRow = {
   commandCount?: int,
   error?: string,
   receivedAt: string,
+  /** Absent on rows written before the slice had a second door. */
+  door?: ReventlessInfra.InboundTranslationSlice.door,
 }
 
 /** The `CommandResult` a `receive` outcome answers with: the first target as
@@ -76,6 +78,19 @@ type doorInvocation = {
 let doorCaller = (identity: Nullable.t<Reventless.Identity.t>): Reventless.Identity.t =>
   identity->Nullable.toOption->Option.getOr(Reventless.Identity.anonymous)
 
+/** Whether a slice's input is offered as a mutation: not when `externalInput`
+    carries `@noApi`, which leaves the webhook as its only door. */
+let exposesMutation = (externalInputSchema: S.t<unknown>): bool =>
+  !ApiNoApiHelpers.isNoApi(externalInputSchema)
+
+/** Refuse a slice with neither door, which nothing could ever reach. */
+let checkReachable = (~plugin: string, ~slice: string, ~mutation: bool, ~webhook: bool) =>
+  if !mutation && !webhook {
+    JsError.throwWithMessage(
+      `${plugin}: inbound translation slice ${slice} has @noApi on externalInput and declares no endpoint, so nothing can reach it`,
+    )
+  }
+
 module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
   module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec
@@ -88,7 +103,18 @@ module type T = {
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
     ~caller: Reventless.Identity.t=?,
+    ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
+
+  /** Record a webhook request refused before it could be read, and reject it. */
+  let refuse: (
+    ~body: string,
+    ~errorCode: string,
+    string,
+  ) => ReventlessInfra.InboundTranslationSlice.receiveResult
+
+  /** The slice's webhook route, if its spec declares an endpoint. */
+  let webhook: option<InboundTranslationSlice_Webhook.route>
 }
 
 module Make = (
@@ -110,15 +136,12 @@ module Make = (
     exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
 
   // One audit row per request, whatever the outcome.
-  let failWith = (~requestId, ~inputJson, ~errorCode=?, error) => {
-    auditLog->Dict.set(
-      requestId,
-      {input: inputJson->JSON.stringify, status: Failure, error, receivedAt: now()},
-    )
+  let failWith = (~requestId, ~input, ~door, ~errorCode=?, error) => {
+    auditLog->Dict.set(requestId, {input, status: Failure, error, receivedAt: now(), door})
     Error({ReventlessInfra.InboundTranslationSlice.requestId, error, ?errorCode})
   }
 
-  let succeed = (~requestId, ~inputJson, targetIds) => {
+  let succeed = (~requestId, ~inputJson, ~door, targetIds) => {
     let commandCount = targetIds->Array.length
     auditLog->Dict.set(
       requestId,
@@ -128,6 +151,7 @@ module Make = (
         targetIds,
         commandCount,
         receivedAt: now(),
+        door,
       },
     )
     Ok({ReventlessInfra.InboundTranslationSlice.requestId, targetIds, commandCount})
@@ -155,9 +179,12 @@ module Make = (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     inputJson: JSON.t,
     ~caller: option<Reventless.Identity.t>=?,
+    ~door: ReventlessInfra.InboundTranslationSlice.door=Mutation,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
     let requestId = Uuid.v4()
-    let fail = (~errorCode=?, error) => failWith(~requestId, ~inputJson, ~errorCode?, error)
+    let fail = (~errorCode=?, error) =>
+      failWith(~requestId, ~input=inputJson->JSON.stringify, ~door, ~errorCode?, error)
+    let succeed = succeed(~requestId, ~inputJson, ~door, ...)
     let parsed = try Ok(inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)) catch {
     | exn => Error(messageOf(exn, "invalid input"))
     }
@@ -192,16 +219,24 @@ module Make = (
             ~errorCode="Forbidden",
             `${Spec.name}: the caller is not authorized for every command this input translates into`,
           )
-        | Ok([]) => succeed(~requestId, ~inputJson, [])
+        | Ok([]) => succeed([])
         | Ok(msgs) =>
           try {
             await publishJsons(msgs)
-            succeed(~requestId, ~inputJson, pairs->Array.map(((targetId, _)) => targetId))
+            succeed(pairs->Array.map(((targetId, _)) => targetId))
           } catch {
-          | exn => fail(messageOf(exn, "publish failed"))
+          | exn => fail(~errorCode="PublishFailed", messageOf(exn, "publish failed"))
           }
         }
       }
     }
   }
+
+  let refuse = (~body, ~errorCode, error) =>
+    failWith(~requestId=Uuid.v4(), ~input=body, ~door=Webhook, ~errorCode, error)
+
+  let webhook =
+    Spec.endpoint->Option.map(endpoint =>
+      InboundTranslationSlice_Webhook.routeOf(~slice=Spec.name, endpoint)
+    )
 }

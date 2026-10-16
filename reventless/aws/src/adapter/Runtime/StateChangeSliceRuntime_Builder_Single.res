@@ -41,6 +41,11 @@ let forDcbCommandTopic = (
   // the per-flavor commandHandlerConfig below (whichever is higher wins).
   ~sliceMemoryFloor: int=0,
   ~sliceTimeoutFloor: int=0,
+  // The webhook secrets, by environment variable, when some inbound slice declares
+  // an endpoint: the sync Lambda then gets a public Function URL, handed to
+  // `onWebhookUrl`. The entry point routes its requests by path.
+  ~webhookSecrets: option<dict<Pulumi.Output.t<string>>>=?,
+  ~onWebhookUrl: Pulumi.Output.t<string> => unit=_ => (),
   ~connect,
   dcbCommandTopic,
 ) =>
@@ -106,6 +111,12 @@ let forDcbCommandTopic = (
           envVars->Dict.set(key, value->Pulumi.Output.make->Pulumi.Output.asInput)
         }
       })
+    )
+    let webhookSecrets = isAsync ? None : webhookSecrets
+    webhookSecrets->Option.forEach(secrets =>
+      secrets->Dict.forEachWithKey((value, key) =>
+        envVars->Dict.set(key, value->Pulumi.Output.asInput)
+      )
     )
     // First-class log-level override → LOG_LEVEL, winning over any generic
     // envVars entry. When unset, makeFromCodeAsset applies the tier default.
@@ -318,6 +329,41 @@ let forDcbCommandTopic = (
         },
       )
     })
+
+    if webhookSecrets->Option.isSome {
+      let customOpts =
+        opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+      let functionName =
+        runtime.parts.lambda->Pulumi.Output.flatMap(lambda => lambda.name)->Pulumi.Output.asInput
+      let url = PulumiAws.FunctionUrl.make(
+        ~name=`${name}-webhook`,
+        ~args={authorizationType: None, functionName},
+        ~opts=customOpts,
+      )
+      // A public URL needs both grants: the URL invoke, and the function invoke
+      // limited to calls arriving through that URL.
+      let _ = PulumiAws.Lambda.Permission.make(
+        ~name=`${name}-webhookUrl`,
+        ~args={
+          action: "lambda:InvokeFunctionUrl",
+          function: functionName,
+          principal: "*",
+          functionUrlAuthType: "NONE",
+        },
+        ~opts=customOpts,
+      )
+      let _ = PulumiAws.Lambda.Permission.make(
+        ~name=`${name}-webhookInvoke`,
+        ~args={
+          action: "lambda:InvokeFunction",
+          function: functionName,
+          principal: "*",
+          invokedViaFunctionUrl: true,
+        },
+        ~opts=customOpts,
+      )
+      onWebhookUrl(url.functionUrl)
+    }
 
     connect(~runtime)
     CommandTopicChannel.SQS.clearBatchSize()

@@ -25,7 +25,7 @@ CommandTopic -> StateChangeSlice: commands { class: command-flow }
 StateChangeSlice -> DcbEventLog: append { class: event-flow }
 ```
 
-The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication. It receives external input in the sender's vocabulary, validates and transforms it through an anti-corruption layer, and publishes domain commands. The framework gives it a [generated GraphQL mutation](#integration-the-generated-mutation) as its door; a provisioned HTTP endpoint is [planned but not yet implemented](#no-http-endpoint-yet--planned).
+The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication. It receives external input in the sender's vocabulary, validates and transforms it through an anti-corruption layer, and publishes domain commands. The framework gives it a [generated GraphQL mutation](#integration-the-generated-mutation) as its door, and, when its spec asks for one, a [webhook URL](#a-webhook-url) beside it.
 
 ## Event Modeling: The Inbound Translation Pattern
 
@@ -54,7 +54,7 @@ The anti-corruption layer protects the domain from external data formats and val
 | **Error handling** | Lambda error | Structured error response to caller |
 | **Observability** | CloudWatch only | QueryDb audit log of all translations |
 
-**Choose Task** when you need S3 triggers, scheduled jobs, or provider-specific integrations — or, for now, when the sender can only reach you over plain HTTP, since an inbound slice's door is a GraphQL mutation and its own URL is [still planned](#no-http-endpoint-yet--planned).
+**Choose Task** when you need S3 triggers, scheduled jobs, or provider-specific integrations.
 
 **Choose InboundTranslationSlice** when you need validated, audited external input processing with a clean anti-corruption layer.
 
@@ -80,13 +80,14 @@ module type Spec = {
   let targetName: string
   type role
   let authorizationOf: string => Authorization.rule<role>
+  let endpoint: option<endpointConfig<role>>
 }
 ```
 
 `translate` lives on the `Translation` module.
 There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
-`moduleUrl`, a default `authorizationOf` (`AllowAuthenticated`), and
-`type role`, the plugin's `Roles.t` when it declares one (see
+`moduleUrl`, a default `authorizationOf` (`AllowAuthenticated`), `let endpoint = None`
+when the spec declares no [webhook URL](#a-webhook-url), and `type role`, the plugin's `Roles.t` when it declares one (see
 [Authorization](../authorization.md#roles-and-groups)).
 
 ### Spec Fields Explained
@@ -96,6 +97,7 @@ There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
 | `externalInput` | `@schema type` | The external data format received from the outside world |
 | `command` | `@schema type` | The domain command produced by the anti-corruption layer |
 | `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
+| `endpoint` | `option<endpointConfig<role>>` | The slice's [webhook URL](#a-webhook-url), if it has one |
 
 ### The translate Function
 
@@ -303,37 +305,127 @@ The field answers under the slice's `authorizationOf`, which defaults to
 `AllowAuthenticated` (see [Authorization](../authorization.md)). A caller that
 must reach it without signing in needs `AllowAnonymous` written on the spec.
 
-#### No HTTP endpoint yet — planned
+### A webhook URL
 
-:::caution Not implemented
-The framework creates **no** Lambda Function URL and **no** API Gateway for an
-inbound slice today. "Webhook" here names the *shape* — an external system pushing
-data in — not a bare URL you can hand to a third party.
-:::
+A sender that can only post JSON to an address — a payment provider, a carrier —
+does not speak GraphQL and cannot sign in. For it, the spec declares an endpoint,
+and the slice gets a URL **beside** its mutation. Both doors lead to the same
+`receive`, so the same input produces the same commands whichever way it came.
 
-A first-class webhook endpoint is planned: an optional endpoint declaration on the
-slice's spec that provisions a URL (Lambda Function URL or API Gateway HTTP API)
-and reports it back as a deploy-time output, so it can be registered with the
-sending provider. The generated mutation stays either way — a slice with a URL
-will have both doors into the same `receive`.
+```rescript title="Product/InboundTranslation/ImportProduct.res"
+@@reventless.spec
+@@reventless.authorize(AllowRoles([Admin]))
 
-Until then, a sender that can only POST to a plain URL needs a transport you build
-and operate yourself. The seam to call from it is the component's
-`operations.receive`:
+// … externalInput, command, targetName …
 
-```rescript
-receive: JSON.t => promise<result<acceptedResult, rejectedResult>>
+let endpoint = Some({
+  Reventless.InboundTranslationSlice.path: "supplier-feed",
+  auth: SignedBody({
+    header: "X-Signature-256",
+    prefix: "sha256=",
+    timestampHeader: "X-Signature-Timestamp",
+    secret: "supplierFeed",
+  }),
+  role: Roles.Admin,
+})
 ```
 
-Both arms carry a `requestId` that correlates the response with the slice's
-[audit row](#audit-log).
+| Field | Meaning |
+|-------|---------|
+| `path` | The slice's segment under the plugin's webhook base URL |
+| `method` | `Post` (the default) or `Put` |
+| `auth` | Who may call: `SignedBody(signature)` or `Open` — required, so the choice is always written down |
+| `role` | The role a request that passes `auth` acts as; none when absent |
+| `transport` | `FunctionUrl`, the default and, for now, the only one |
 
-Two things to settle in any transport you write yourself, because the mutation
-handles them for you and a URL does not: **authentication** — the mutation answers
-under `authorizationOf`, whereas a public URL has no authenticated caller, so
-verify a provider signature (HMAC over the raw body plus a timestamp) *before*
-parsing; and **cost** — every rejected request still runs your handler and writes
-an audit row.
+#### Signed requests
+
+`SignedBody` is what webhook providers do: the sender computes an HMAC-SHA256 of
+the raw body with a secret you share, hex-encodes it and sends it in `header`,
+after `prefix` if there is one. With `timestampHeader` the signed text is
+`<timestamp>.<body>`, the timestamp in seconds, and a request more than
+`toleranceSeconds` (default 300) from now is refused, so a captured request cannot
+be replayed later. The check runs on the bytes as sent, before the body is parsed.
+
+`secret` names the secret; its value never appears in source. The platform reads it
+from `REVENTLESS_WEBHOOK_SECRET_<SECRET>` — the name upper-cased, other characters
+as `_`. That variable may list several, comma-separated: while you rotate, put the
+new and the old one there, and either passes.
+
+- **AWS:** set it in the plugin stack's config, `pulumi config set --secret
+  webhook:supplierFeed <value>`. The deploy (and `pulumi preview`) fails while it
+  is missing.
+- **Locally:** export `REVENTLESS_WEBHOOK_SECRET_SUPPLIERFEED` before you start.
+
+A request the platform has no secret for is answered `500` and logged; it is never
+treated as open.
+
+#### Who the request acts as
+
+A signed request acts as a signed-in caller holding the endpoint's `role`. Each
+command its input translates into is then checked against that command's own rule,
+exactly as on the mutation, and one refused refuses the whole input. An `Open` URL
+identifies nobody: it acts as an anonymous caller, so only commands written
+`AllowAnonymous` get through it. Every request to an open URL still runs the
+handler and writes an audit row, so an open URL costs you for every stranger's
+request.
+
+**The signature protects the URL, not the mutation.** If the commands keep the
+default `AllowAuthenticated`, any signed-in user can send a forged input through
+the mutation. Give the commands a rule that admits only the sender's role, as the
+example does with `Admin`, so the mutation becomes an operator's replay door. Or
+withhold the mutation altogether.
+
+#### A webhook-only slice
+
+`@noApi` on `externalInput` withholds the mutation, which leaves the URL as the
+slice's only door:
+
+```rescript
+@noApi @schema
+type externalInput = {paymentId: string, status: string}
+```
+
+| | no `endpoint` | `endpoint` declared |
+|---|---|---|
+| **default** | mutation only | mutation and URL |
+| **`@noApi`** | refused at build — nothing could reach it | URL only |
+
+#### Where the URL is
+
+**On AWS** the plugin's command handler gets one public Lambda Function URL, and
+each slice's endpoint is its `path` under it. Read it in the plugin's deploy
+program after `deployPlugin`, to export it and register it with the sender:
+
+```rescript
+let webhookUrl = Platform.webhookUrl() // "" when no slice declares an endpoint
+```
+
+**Locally** there is no HTTP server. The routes live in `LocalWebhookRegistry`, and
+a test posts the raw body through the same signature check and dispatch:
+
+```rescript
+let response = await LocalWebhookRegistry.post(~path="supplier-feed", ~headers, body)
+```
+
+#### Responses
+
+The status tells a sender whether to try again: `2xx` done, `5xx` try again, any
+other `4xx` do not.
+
+| Status | When |
+|--------|------|
+| `200` | Translated and published, `{requestId, commandCount}` |
+| `400` | The body is not JSON |
+| `401` | The signature is missing, wrong, or outside the time window |
+| `403` | The endpoint's role may not send a command the input translates into |
+| `404` / `405` | No slice at that path / the wrong method |
+| `422` | The input was refused: by its schema or by `translate` |
+| `500` | The secret is not configured |
+| `503` | The commands could not be published |
+
+Every answer from `400` to `422`, and `503`, writes an audit row first; `404`, `405`
+and `500` do not, because no slice was reached or no secret was there to check with.
 
 ## Audit Log
 
@@ -341,17 +433,24 @@ All translation attempts are recorded in a QueryDb for observability:
 
 ```rescript
 type auditStatus = Success | Failure
+type door = Mutation | Webhook
 
 type auditRow = {
-  input: JSON.t,
+  input: string,
   status: auditStatus,
-  targetId?: string,
+  targetIds?: array<string>,
+  commandCount?: int,
   error?: string,
   receivedAt: string,
+  door?: door,
 }
 ```
 
-The audit log records every call to `receive`, whether successful or not, providing a complete history of all external input processed by the slice.
+The audit log records every input, whether successful or not, providing a complete
+history of all external input processed by the slice. `door` says which way it
+came in, so the log can answer "did the provider actually call us?"; it is absent
+on rows written before the slice had a second door. A webhook request refused
+before it could be read keeps its raw body as `input`.
 
 ## Error Handling
 
@@ -379,7 +478,8 @@ type outputs = {
 }
 
 type operations = {
-  receive: JSON.t => promise<result<string, string>>,
+  receive: (JSON.t, ~caller: Identity.t=?, ~door: door=?) => promise<receiveResult>,
+  refuse: (~body: string, ~errorCode: string, string) => promise<receiveResult>,
 }
 ```
 

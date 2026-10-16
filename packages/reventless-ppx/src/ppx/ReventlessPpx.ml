@@ -968,6 +968,11 @@ let transform (str : structure) : structure =
       let schedule_suffix =
         AuthorizationInjection.schedule_suffix ~loc loc.loc_start.pos_fname body
       in
+      (* endpoint auto-injection (InboundTranslation specs). Appends
+         [let endpoint = None] when the spec declares no webhook URL. Idempotent. *)
+      let endpoint_suffix =
+        AuthorizationInjection.endpoint_suffix ~loc loc.loc_start.pos_fname body
+      in
       (* The port's two translation tables, read off the arms of `mapOutgoingEvent`
          and `mapIncomingCommand` — see TranslationTable. *)
       let table_suffix =
@@ -979,7 +984,7 @@ let transform (str : structure) : structure =
       in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
         @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
-        @ transition_suffix @ traits_suffix @ schedule_suffix @ table_suffix
+        @ transition_suffix @ traits_suffix @ schedule_suffix @ endpoint_suffix @ table_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

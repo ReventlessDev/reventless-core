@@ -282,7 +282,8 @@ function Make(Platform) {
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
     targetName: ImportProduct$CatalogPlugin.targetName,
     externalSystem: ImportProduct$CatalogPlugin.externalSystem,
-    authorizationOf: ImportProduct$CatalogPlugin.authorizationOf
+    authorizationOf: ImportProduct$CatalogPlugin.authorizationOf,
+    endpoint: ImportProduct$CatalogPlugin.endpoint
   })({
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl

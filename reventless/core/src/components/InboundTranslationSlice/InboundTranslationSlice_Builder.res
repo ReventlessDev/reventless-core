@@ -81,8 +81,13 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
           let ops: InboundTranslationSlice.operations = {
-            receive: async (inputJson, ~caller=?) => {
-              let result = await Callback.receive(publishJsonsFn, inputJson, ~caller?)
+            receive: async (inputJson, ~caller=?, ~door=?) => {
+              let result = await Callback.receive(publishJsonsFn, inputJson, ~caller?, ~door?)
+              await syncToQueryDb(queryDbOps, result->InboundTranslationSlice_Callback.requestIdOf)
+              result
+            },
+            refuse: async (~body, ~errorCode, error) => {
+              let result = Callback.refuse(~body, ~errorCode, error)
               await syncToQueryDb(queryDbOps, result->InboundTranslationSlice_Callback.requestIdOf)
               result
             },

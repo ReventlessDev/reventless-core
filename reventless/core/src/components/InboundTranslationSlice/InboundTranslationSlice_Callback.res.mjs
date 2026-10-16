@@ -7,6 +7,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
@@ -16,6 +17,9 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
+import * as InboundTranslationSlice$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/InboundTranslationSlice.res.mjs";
+import * as InboundTranslationSlice_Webhook$ReventlessCore from "./InboundTranslationSlice_Webhook.res.mjs";
 
 let auditStatusSchema = Sury.union([
   Sury.literal("Success"),
@@ -28,7 +32,8 @@ let auditRowSchema = Sury.$schema(s => ({
   targetIds: s.m(Sury.$option(Sury.array(Sury.string))),
   commandCount: s.m(Sury.$option(Sury.int32)),
   error: s.m(Sury.$option(Sury.string)),
-  receivedAt: s.m(Sury.string)
+  receivedAt: s.m(Sury.string),
+  door: s.m(Sury.$option(InboundTranslationSlice$ReventlessInfra.doorSchema))
 }));
 
 function receiveResultToOutcome(result) {
@@ -87,26 +92,35 @@ function doorCaller(identity) {
   return Stdlib_Option.getOr((identity == null) ? undefined : Primitive_option.some(identity), Identity$Reventless.anonymous);
 }
 
+function exposesMutation(externalInputSchema) {
+  return !ApiNoApiHelpers$ReventlessCore.isNoApi(externalInputSchema);
+}
+
+function checkReachable(plugin, slice, mutation, webhook) {
+  if (!mutation && !webhook) {
+    return Stdlib_JsError.throwWithMessage(plugin + `: inbound translation slice ` + slice + ` has @noApi on externalInput and declares no endpoint, so nothing can reach it`);
+  }
+}
+
 function Make(Spec) {
   return Translation => {
     let auditLog = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
-    let succeed = (requestId, inputJson, targetIds) => {
-      let commandCount = targetIds.length;
+    let failWith = (requestId, input, door, errorCode, error) => {
       auditLog[requestId] = {
-        input: JSON.stringify(inputJson),
-        status: "Success",
-        targetIds: targetIds,
-        commandCount: commandCount,
-        receivedAt: new Date().toISOString()
+        input: input,
+        status: "Failure",
+        error: error,
+        receivedAt: new Date().toISOString(),
+        door: door
       };
       return {
-        TAG: "Ok",
+        TAG: "Error",
         _0: {
           requestId: requestId,
-          targetIds: targetIds,
-          commandCount: commandCount
+          error: error,
+          errorCode: errorCode
         }
       };
     };
@@ -129,21 +143,26 @@ function Make(Spec) {
         };
       }
     };
-    let receive = async (publishJsons, inputJson, caller) => {
+    let receive = async (publishJsons, inputJson, caller, doorOpt) => {
+      let door = doorOpt !== undefined ? doorOpt : "Mutation";
       let requestId = Uuid.v4();
-      let fail = (errorCode, error) => {
+      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(inputJson), door, errorCode, error);
+      let succeed = extra => {
+        let commandCount = extra.length;
         auditLog[requestId] = {
           input: JSON.stringify(inputJson),
-          status: "Failure",
-          error: error,
-          receivedAt: new Date().toISOString()
+          status: "Success",
+          targetIds: extra,
+          commandCount: commandCount,
+          receivedAt: new Date().toISOString(),
+          door: door
         };
         return {
-          TAG: "Error",
+          TAG: "Ok",
           _0: {
             requestId: requestId,
-            error: error,
-            errorCode: errorCode
+            targetIds: extra,
+            commandCount: commandCount
           }
         };
       };
@@ -197,20 +216,24 @@ function Make(Spec) {
         return fail("Forbidden", Spec.name + `: the caller is not authorized for every command this input translates into`);
       }
       if (msgs.length === 0) {
-        return succeed(requestId, inputJson, []);
+        return succeed([]);
       }
       try {
         await publishJsons(msgs);
-        return succeed(requestId, inputJson, pairs.map(param => param[0]));
+        return succeed(pairs.map(param => param[0]));
       } catch (raw_exn$1) {
         let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-        return fail(undefined, messageOf(exn$1, "publish failed"));
+        return fail("PublishFailed", messageOf(exn$1, "publish failed"));
       }
     };
+    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), body, "Webhook", errorCode, error);
+    let webhook = Stdlib_Option.map(Spec.endpoint, endpoint => InboundTranslationSlice_Webhook$ReventlessCore.routeOf(Spec.name, endpoint));
     return {
       Spec: Spec,
       auditLog: auditLog,
-      receive: receive
+      receive: receive,
+      refuse: refuse,
+      webhook: webhook
     };
   };
 }
@@ -223,6 +246,8 @@ export {
   takeAuditRow,
   callerAdmits,
   doorCaller,
+  exposesMutation,
+  checkReachable,
   Make,
 }
 /* auditStatusSchema Not a pure module */

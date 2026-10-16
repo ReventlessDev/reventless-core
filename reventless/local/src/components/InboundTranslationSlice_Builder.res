@@ -26,7 +26,16 @@ module Make = (Bus: LocalBus.T) => {
     module Translation = Translation
     type component = Inner.component
     let queryDbName = Inner.queryDbName
-    let make = Inner.make
+    let make = (~publishJsons, ~runtime=?, ~opts=?) => {
+      let component = Inner.make(~publishJsons, ~runtime?, ~opts?)
+      Spec.endpoint->Option.forEach(endpoint =>
+        LocalWebhookRegistry.register(
+          ~route=ReventlessCore.InboundTranslationSlice_Webhook.routeOf(~slice=Spec.name, endpoint),
+          ~operations=component->ReventlessCore.Component.operations,
+        )
+      )
+      component
+    }
     // Re-expose operations for test resolution
     let operations: component => Pulumi.Output.t<
       ReventlessCore.InboundTranslationSlice.operations,

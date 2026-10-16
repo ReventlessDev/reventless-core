@@ -13,6 +13,7 @@ module PaymentHook = {
 
   let targetName = "Order"
   let externalSystem = Some("Payments")
+  let endpoint = None
   type role = Reventless.Role.name
   let authorizationOf = _ => Reventless.Authorization.AllowAuthenticated
 }

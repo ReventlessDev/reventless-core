@@ -30,7 +30,7 @@ import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessde
 // per-slice handler building (functor + decode + handleCommands), all
 // compiler-checked against the framework signatures (see the module header and
 // docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
-import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
+import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver, buildWebhookSlice, serveWebhook } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
 import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -177,6 +177,8 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // follow-up, so on that backend the receiver runs without persistence.
   const inboundModules = config.inboundTranslationSliceModules || [];
   const inboundReceiversByField = {};
+  // Route W registry: the slices whose spec declares an endpoint.
+  const webhookSlices = [];
   await Promise.all(inboundModules.map(async ({ spec, translation, auditTableName }) => {
     const specModule = await loadModule(spec);
     const translationModule = await loadModule(translation);
@@ -203,6 +205,8 @@ export async function buildHandlersForConfig(config, opts = {}) {
       publishJsons,
       auditOps,
     );
+    const webhook = buildWebhookSlice(specModule, translationModule, publishJsons, auditOps);
+    if (webhook != null) webhookSlices.push(webhook);
   }));
 
   // Sync (default): inline-dispatch the command via the same composite handler
@@ -276,8 +280,9 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // Elements past the first two are additive — existing callers (the integration
   // tests) keep destructuring the first two. No deploy-time `plugin` fragment
   // needed here: this Lambda serves exactly one plugin and HANDLER_CONFIG already
-  // names it. The 5th element is the Route 0 inbound-translation registry.
-  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName, inboundReceiversByField];
+  // names it. The 5th element is the Route 0 inbound-translation registry, the
+  // 6th the Route W webhook slices.
+  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName, inboundReceiversByField, webhookSlices];
 }
 
 async function buildHandler() {
@@ -313,7 +318,23 @@ initPromise.catch(() => {});
 
 export async function handler(event, context) {
   setRequestId(context?.awsRequestId);
-  const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers] = await initPromise;
+  const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers, webhookSlices] = await initPromise;
+
+  // Route W: a request on the Lambda's Function URL, for an inbound slice's
+  // webhook. The body stays raw until its signature is checked.
+  if (event.requestContext?.http != null && typeof event.rawPath === "string") {
+    const body = event.body == null
+      ? ""
+      : event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
+    const headers = {};
+    for (const [name, value] of Object.entries(event.headers ?? {})) headers[name.toLowerCase()] = value;
+    return await serveWebhook(webhookSlices ?? [], {
+      method: event.requestContext.http.method,
+      path: event.rawPath,
+      headers,
+      body,
+    });
+  }
 
   // Route 0: InboundTranslationSlice mutation — the AppSync resolver invokes this
   // Lambda with `{__inboundTranslation: true, fieldName, arguments, identity}`.

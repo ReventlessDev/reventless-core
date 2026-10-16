@@ -759,38 +759,51 @@ module Make = (
             ~opts,
           )
           let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
+          // `@noApi` on `externalInput` withholds the mutation; the webhook is
+          // then the only door, and a slice with neither could never be reached.
+          let exposed = InboundTranslationSlice_Callback.exposesMutation(
+            ITS.Spec.externalInputSchema->S.castToUnknown,
+          )
+          InboundTranslationSlice_Callback.checkReachable(
+            ~plugin=name,
+            ~slice=ITS.Spec.name,
+            ~mutation=exposed,
+            ~webhook=ITS.Spec.endpoint->Option.isSome,
+          )
 
           switch HooksConfig.hooks.inboundMutationResolverHook {
-          | Some(registerResolver) =>
+          | Some(registerResolver) if exposed =>
             registerResolver(
               ~fieldName,
               ~externalInputSchema=ITS.Spec.externalInputSchema->S.castToUnknown,
               ~permission=?inboundDoorPermission(ITS.Spec.commandSchema, ITS.Spec.authorizationOf),
             )
-          | None => ()
+          | _ => ()
           }
 
           switch HooksConfig.hooks.inboundMutationBindReceiveHook {
-          | Some(bindReceive) =>
+          | Some(bindReceive) if exposed =>
             let _ =
               its
               ->Component.operations
-              ->Pulumi.Output.apply(ops => bindReceive(~fieldName, ~receive=ops.receive))
-          | None => ()
+              ->Pulumi.Output.apply(ops =>
+                bindReceive(~fieldName, ~receive=(input, ~caller=?) => ops.receive(input, ~caller?))
+              )
+          | _ => ()
           }
 
-          (ITS.Spec.name, fieldName, its, ITS.Spec.externalInputSchema->S.castToUnknown)
+          (ITS.Spec.name, fieldName, its, ITS.Spec.externalInputSchema->S.castToUnknown, exposed)
         })
 
       let inboundTranslationSlicesOutputs =
         inboundTranslationSliceData
-        ->Array.map(((specName, _, its, _)) => (specName, its->Component.outputs))
+        ->Array.map(((specName, _, its, _, _)) => (specName, its->Component.outputs))
         ->Dict.fromArray
 
       // Collect InboundTranslationSlice receive functions for composite handler routing
       let inboundReceiversOutput =
         inboundTranslationSliceData
-        ->Array.map(((_, fieldName, its, _)) =>
+        ->Array.map(((_, fieldName, its, _, _)) =>
           its
           ->Component.operations
           ->Pulumi.Output.apply(ops => (fieldName, ops.receive))
@@ -942,9 +955,10 @@ module Make = (
         ->Dict.valuesToArray
         ->Array.flatMap(outputs => outputs.resources)
 
-      let inboundFieldNames =
-        inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
-      let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
+      let exposedInbound =
+        inboundTranslationSliceData->Array.filter(((_, _, _, _, exposed)) => exposed)
+      let inboundFieldNames = exposedInbound->Array.map(((_, fieldName, _, _, _)) => fieldName)
+      let inboundSchemas = exposedInbound->Array.map(((_, _, _, schema, _)) => schema)
 
       // Collect DCB mutation field names + TAGs for AppSync resolver creation
       // (excludes @noApi slices — includes both sync and async)
@@ -1092,7 +1106,13 @@ module Make = (
         })
 
       let mutationEntriesFromInboundSlices =
-        inboundTranslationSlices->Array.map((module(ITS: InboundTranslationSlice.T)) => {
+        inboundTranslationSlices
+        ->Array.filter((module(ITS: InboundTranslationSlice.T)) =>
+          InboundTranslationSlice_Callback.exposesMutation(
+            ITS.Spec.externalInputSchema->S.castToUnknown,
+          )
+        )
+        ->Array.map((module(ITS: InboundTranslationSlice.T)) => {
           let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
           let fieldPermissions = Dict.make()
           inboundDoorPermission(

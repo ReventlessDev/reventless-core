@@ -15,6 +15,15 @@ function Make(Api) {
   })(Api);
   let Make$1 = Spec => (Translation => {
     PluginRuntime_Builder$ReventlessAws.registerInboundTranslationSliceSpec(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl));
+    let match = Spec.endpoint;
+    if (match !== undefined) {
+      let match$1 = match.auth;
+      if (typeof match$1 !== "object") {
+        PluginRuntime_Builder$ReventlessAws.registerWebhook(Spec.name, undefined);
+      } else {
+        PluginRuntime_Builder$ReventlessAws.registerWebhook(Spec.name, match$1._0.secret);
+      }
+    }
     let InnerMake = Inner.Make(Spec)(Translation);
     let make = (publishJsons, runtime, opts) => {
       let component = InnerMake.make(publishJsons, runtime, opts);

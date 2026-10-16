@@ -40,7 +40,7 @@ external calls) ·
 [plans/retry-exhaustion-is-not-a-state.md](../plans/retry-exhaustion-is-not-a-state.md) ·
 [plans/trait-contact-verification.md](../plans/trait-contact-verification.md) (why capabilities
 are injected) ·
-[plans/Backlog/webhook-infrastructure.md](../plans/Backlog/webhook-infrastructure.md)
+[plans/done/webhook-infrastructure.md](../plans/done/webhook-infrastructure.md)
 
 ---
 
@@ -277,7 +277,7 @@ twice*.
 `InboundTranslationMutationTest` covers the mutation's shape. Once [§3.1](#31-inbound-commandauthorization-is-enforced-only-on-aws-and-only-for-the-first-constructor)
 is fixed, it needs a caller without the role, refused, and one with it, accepted, on the local platform as well as in the AWS schema. The webhook
 plan already lists its own door tests: signature, replay, both doors giving the same commands
-([Tests (step 16)](../plans/Backlog/webhook-infrastructure.md#tests-step-16)).
+([Tests (step 16)](../plans/done/webhook-infrastructure.md#tests-step-16)).
 
 ---
 
@@ -317,5 +317,5 @@ plan already lists its own door tests: signature, replay, both doors giving the 
 | DSLs that take the slice as written; the scenario sidecar reads these tests; model sidecars carry the wiring | [plans/the-sidecars-read-automations-and-translations.md](../plans/done/the-sidecars-read-automations-and-translations.md) |
 | Recording capability fakes, `whenTranslated`, `thenSent`, `whenExhausted`, statuses and retry budget aligned, `whenReceived`, flow inbound step | the same plan's second phase; the verbs are listed there |
 | Inbound authorization the same at every door; commands encoded with their schema | [plans/an-inbound-translation-is-gated-and-encoded-like-a-command.md](../plans/done/an-inbound-translation-is-gated-and-encoded-like-a-command.md) |
-| Idempotency in and out | open ([§5](#5-open-questions)); inbound with [webhook-infrastructure](../plans/Backlog/webhook-infrastructure.md) |
+| Idempotency in and out | open ([§5](#5-open-questions)); inbound with [webhook-infrastructure](../plans/done/webhook-infrastructure.md) |
 | Stale documentation | the [given-when-then guide](../../packages/doc/docs-app/given-when-then.md) [§4.8](../../packages/doc/docs-app/given-when-then.md#48-inboundtranslation_gwt--external--internal-translation) and [§4.9](../../packages/doc/docs-app/given-when-then.md#49-outboundtranslation_gwt--internal--external-translation) (the real `translate` is not exercised in component tests); [given-when-then-specifications §2.5](./given-when-then-specifications.md#25-coverage-matrix) ("no DSL"); the OutboundStep claim in [gwt-flow-and-extension-test-kinds](../plans/done/gwt-flow-and-extension-test-kinds.md). Fix when the plan lands |

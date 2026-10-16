@@ -363,5 +363,5 @@ every new key, and one golden `.wiring.json` for a two-source automation.
 - Inbound `commandAuthorization` the same at every door, and inbound commands encoded with
   their schema: [an-inbound-translation-is-gated-and-encoded-like-a-command.md](an-inbound-translation-is-gated-and-encoded-like-a-command.md).
 - Idempotency of repeated deliveries, in and out.
-- The webhook URL ([Backlog/webhook-infrastructure.md](../Backlog/webhook-infrastructure.md)).
+- The webhook URL ([webhook-infrastructure.md](./webhook-infrastructure.md)).
 - The tools' readers (companion plan in reventless-tools).

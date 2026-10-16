@@ -1,17 +1,74 @@
 # Backlog: Webhook Infrastructure for InboundTranslationSlice
 
-**Status:** Backlog. Refreshed 2026-08-31 against the current tree — the original
+**Status:** Done 2026-10-16, with the Function URL transport only; see
+[Outcome](#outcome) for the decisions taken at step 1 and where the build differs
+from the steps below. Refreshed 2026-08-31 against the current tree — the original
 draft predates the repo split, the two-file slice spec, and the generated inbound
-mutation, and several of its steps were either already done or would now be wrong.
-Checked again 2026-10-16: the design holds; step 14's file reference and the PPX
-precedent for step 3 are updated, and its place after
-[automations that run on a time](../automations-that-run-on-a-time.md) is set out in
-[Sequencing](#sequencing).
-**Depends on:** [done/translation-slice.md](../done/translation-slice.md)
-**Prior art:** [done/inbound-translation-slice-api-mutation.md](../done/inbound-translation-slice-api-mutation.md),
-[done/aws-inbound-translation-lambda-routing.md](../done/aws-inbound-translation-lambda-routing.md),
-[done/inbound-translation-mutation-result-type.md](../done/inbound-translation-mutation-result-type.md)
-**Related:** [api-component-openapi.md](./api-component-openapi.md) (REST API Gateway)
+mutation. Checked again 2026-10-16 before it ran, after
+[automations that run on a time](./automations-that-run-on-a-time.md) (see
+[Sequencing](#sequencing)).
+**Depends on:** [done/translation-slice.md](./translation-slice.md)
+**Prior art:** [done/inbound-translation-slice-api-mutation.md](./inbound-translation-slice-api-mutation.md),
+[done/aws-inbound-translation-lambda-routing.md](./aws-inbound-translation-lambda-routing.md),
+[done/inbound-translation-mutation-result-type.md](./inbound-translation-mutation-result-type.md)
+**Related:** [api-component-openapi.md](../Backlog/api-component-openapi.md) (REST API Gateway)
+
+## Outcome
+
+**In plain words:** an inbound slice can now declare a URL. A sender that signs its
+posts with a shared secret reaches the slice's `receive` without GraphQL or a
+sign-in, acting as a role the spec names, and the audit log records which door each
+input came through.
+
+### Decisions at step 1
+
+- **`let endpoint: option<endpointConfig<role>>`, not `@@reventless.webhook`.** The
+  time plan had just set the pattern — `let schedule: option<Schedule.time>`, injected
+  as `None` when absent — and the config is structured (an auth variant, a secret
+  name, a role), which a typed `let` checks and an attribute payload would not.
+- **`SignedBody` is one generic HMAC-SHA256 scheme**: `header`, `prefix?`,
+  `timestampHeader?` (the signed text is then `<timestamp>.<body>`),
+  `toleranceSeconds?` (default 300) and `secret`, a name. It covers GitHub-style and
+  most generic senders; Stripe's combined `t=…,v1=…` header waits for a sender that
+  needs it, as a named preset.
+- **The secret lives in an environment variable**, `REVENTLESS_WEBHOOK_SECRET_<NAME>`,
+  filled on AWS from the plugin stack's `webhook:<name>` config secret
+  ([open question 7](#open-questions)). It may list several, comma-separated, so a
+  rotation has no gap. Secrets Manager waits for someone who needs rotation without a
+  redeploy.
+- **`auth` is required**, so an open URL is always a written choice. The variants
+  are `Open | SignedBody` — `IAM` and `ApiKey` waited for a transport that can honour
+  them per slice.
+- **The URL's caller**: a signed request acts as a signed-in identity holding the
+  endpoint's `role` (none when absent); an open one as anonymous. The per-command
+  check then runs unchanged.
+
+### Where the build differs from the steps
+
+- **One Function URL per plugin, on its sync DCB command Lambda**, not a Lambda per
+  slice. That Lambda already loads each inbound slice's spec and translation, holds
+  `publishJsons` and writes its audit rows (Route 0), so a new route in its entry
+  point (Route W) dispatches by path. It also gives every webhook in a plugin one base
+  URL, which [Approach B](#approach-b-api-gateway-http-api) was going to be needed
+  for. Steps 7, 9 and 11 (a provider abstraction threaded through the core builder)
+  were therefore not built, and step 8 is that route plus the URL and its two
+  permissions in `StateChangeSliceRuntime_Builder_Single`.
+- **Step 4**: the URL belongs to the command Lambda, built after the slice, so it is
+  not on the slice's outputs. `Platform.webhookUrl()` reads it after `deployPlugin`.
+- **Step 6 / transport B** were not built; `webhookTransport` has `FunctionUrl` only.
+- **Step 14** found a PPX bug: type-level `@noApi` on a *record* rebuilt the
+  declaration as an empty variant. Fixed in `NoApiAnnotation.ml`, with PPX cases.
+- **Republish `reventless-ppx`** with the spec packages: an older published binary
+  injects no `let endpoint = None` and every inbound spec fails against the new
+  module type. This repo's CI builds the PPX from source, so only external consumers
+  see the gap.
+
+### Answers to the open questions
+
+[Open question](#open-questions) 1 is settled per plugin by the transport. 5 is not:
+an open Function URL still has no throttle beyond the command Lambda's own reserved
+concurrency. 6 is left to `translate`, which can return `Ok([])`. 7 is above. 2, 3
+and 4 belong to transport B.
 
 ## Motivation
 
@@ -57,7 +114,7 @@ without giving up the mutation it already has.
 
 ## Sequencing
 
-**After [automations that run on a time](../automations-that-run-on-a-time.md), except
+**After [automations that run on a time](./automations-that-run-on-a-time.md), except
 step 1.** Both plans add an optional value to a slice spec that the PPX injects when it
 is absent (`let endpoint = None` here, `let schedule = None` there), and both need the
 PPX republished in lockstep with the spec module type (step 3 below). Run side by side
@@ -209,7 +266,7 @@ handle these rather than discover them:
 - **The mutation door checks twice.** Before translating, the caller must satisfy at
   least one constructor's rule, since no command exists yet. After translating, each
   command is checked against its own rule, and one refused refuses the whole input
-  ([the inbound gate plan](../done/an-inbound-translation-is-gated-and-encoded-like-a-command.md#the-rule-at-the-door-and-the-rule-per-command)).
+  ([the inbound gate plan](./an-inbound-translation-is-gated-and-encoded-like-a-command.md#the-rule-at-the-door-and-the-rule-per-command)).
   A URL has no Cognito caller, so its authentication replaces the first check. The
   second still needs a caller to check: the leaning is that the webhook config names
   the role the URL stands for, and the per-command check runs against it.
@@ -249,7 +306,7 @@ The first draft's Steps 6 and 7 both created the webhook Lambda with
 the AWS SDK: the serialized closure mixes the Lambda layer's `@smithy` versions
 with the runtime's and fails at cold start with a 502. See
 [task-sideeffect-callbackfunction-conversion.md](../task-sideeffect-callbackfunction-conversion.md)
-and [done/entry-point-rescript-conversion.md](../done/entry-point-rescript-conversion.md).
+and [done/entry-point-rescript-conversion.md](./entry-point-rescript-conversion.md).
 
 Follow the established shape instead — a runtime-pure `*_Ops.res` module compiled
 into an entry point and shipped via `buildCodeArchive`, exactly as
@@ -347,24 +404,24 @@ GraphQL server's port) can come later if anyone needs to point a tunnel at it.
 
 | # | Step | File | State |
 |---|---|---|---|
-| 1 | Decide `SignedBody`'s shape, and `let endpoint` vs `@@reventless.webhook` | — | **Blocks 2–3 and 8–9** |
-| 2 | Add `endpointConfig` + `let endpoint` to the Spec | `reventless/spec/src/components/InboundTranslationSlice.res` | |
-| 3 | Inject `let endpoint = None` by default (or read the attribute, per step 1) | `reventless-ppx` (spec pass) | Republish in lockstep — an older published ppx omits the injection and every spec fails to compile against the new module type. Precedent: `let externalSystem = None`, injected only when absent and gated on the translation folder (`AuthorizationInjection.ml`); follow it. After the time plan's `let schedule = None` ([Sequencing](#sequencing)) |
-| 4 | Add `endpointUrl?` to outputs | `reventless/infra/src/components/InboundTranslationSlice.res` | |
+| 1 | Decide `SignedBody`'s shape, and `let endpoint` vs `@@reventless.webhook` | — | **Done** — [Decisions at step 1](#decisions-at-step-1) |
+| 2 | Add `endpointConfig` + `let endpoint` to the Spec | `reventless/spec/src/components/InboundTranslationSlice.res` | **Done** |
+| 3 | Inject `let endpoint = None` by default (or read the attribute, per step 1) | `reventless-ppx` (spec pass) | Republish in lockstep — an older published ppx omits the injection and every spec fails to compile against the new module type. Precedent: `let externalSystem = None`, injected only when absent and gated on the translation folder (`AuthorizationInjection.ml`); follow it. After the time plan's `let schedule = None` ([Sequencing](#sequencing)). **Done** |
+| 4 | Add `endpointUrl?` to outputs | `reventless/infra/src/components/InboundTranslationSlice.res` | Not built — `Platform.webhookUrl()` instead ([Outcome](#where-the-build-differs-from-the-steps)) |
 | 5 | `Lambda.FunctionUrl` bindings | `rescript/pulumi-aws/src/Lambda/FunctionUrl.res` | **Done** |
-| 6 | `ApiGatewayV2` bindings (`Api`, `Integration`, `Route`, `Stage`) | `rescript/pulumi-aws/src/ApiGatewayV2/` | Only for transport B |
-| 7 | Webhook provider abstraction | `reventless/infra/src/components/Webhook_Adapter.res` | |
-| 8 | Function URL provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_FunctionUrl.res` | |
-| 9 | API Gateway provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_ApiGateway.res` | |
-| 10 | Local registry | `reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res` | |
-| 11 | Thread the provider through the core builder | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Note the **nested** `Make` and the `unit => api` thunks on the `Api` parameter |
-| 12 | Wire AWS | `reventless/aws/src/components/InboundTranslationSlice_Builder.res`, `reventless/aws/src/Platform.res` | Shared HTTP API created once per plugin, only if some slice asks for transport B |
-| 13 | Wire local | `reventless/local/src/components/InboundTranslationSlice_Builder.res`, `reventless/local/src/Platform.res` | |
-| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, which now builds each slice's mutation field itself, through `Api_Naming.sliceMutationField`, with `inboundDoorPermission` from the slice's `authorizationOf`; `mutationEntriesFromInboundSlices` no longer exists. Nothing filters today) | |
-| 15 | Record the door on the audit row | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res` | |
-| 16 | Example slice with an endpoint | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` | Two files: `<Name>.res` + `<Name>_Translation.res` |
-| 17 | Tests | | See below |
-| 18 | Docs | `packages/doc/docs-app/components/inboundtranslationslice.md` § "No HTTP endpoint yet — planned", `packages/doc/docs-app/graphql-api-guide.md` § 5.3 | Both currently state the gap; both must be rewritten when it closes |
+| 6 | `ApiGatewayV2` bindings (`Api`, `Integration`, `Route`, `Stage`) | `rescript/pulumi-aws/src/ApiGatewayV2/` | Not built — transport B |
+| 7 | Webhook provider abstraction | `reventless/infra/src/components/Webhook_Adapter.res` | Not needed ([Outcome](#where-the-build-differs-from-the-steps)) |
+| 8 | Function URL provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_FunctionUrl.res` | **Done** as Route W of the DCB command entry point; the HTTP door itself is `InboundTranslationSlice_Webhook.res` in core |
+| 9 | API Gateway provider (+ `_Ops` split) | `reventless/aws/src/adapter/Webhook/Webhook_ApiGateway.res` | Not built — transport B |
+| 10 | Local registry | `reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res` | **Done** |
+| 11 | Thread the provider through the core builder | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Not needed ([Outcome](#where-the-build-differs-from-the-steps)) |
+| 12 | Wire AWS | `reventless/aws/src/components/InboundTranslationSlice_Builder.res`, `reventless/aws/src/Platform.res` | **Done** — registration in the AWS slice builder, the URL in `StateChangeSliceRuntime_Builder_Single` |
+| 13 | Wire local | `reventless/local/src/components/InboundTranslationSlice_Builder.res`, `reventless/local/src/Platform.res` | **Done** (the builder only) |
+| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, which now builds each slice's mutation field itself, through `Api_Naming.sliceMutationField`, with `inboundDoorPermission` from the slice's `authorizationOf`; `mutationEntriesFromInboundSlices` no longer exists. Nothing filters today) | **Done** |
+| 15 | Record the door on the audit row | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res` | **Done** |
+| 16 | Example slice with an endpoint | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` | **Done** — the DCB shop's `ImportProduct` |
+| 17 | Tests | | **Done**, but for the AWS builder bullet below |
+| 18 | Docs | `packages/doc/docs-app/components/inboundtranslationslice.md` § "No HTTP endpoint yet — planned", `packages/doc/docs-app/graphql-api-guide.md` [§5.3](../../../packages/doc/docs-app/graphql-api-guide.md#53-from-an-inboundtranslation) | **Done** |
 
 ### Builder wiring sketch (step 11)
 

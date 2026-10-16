@@ -29,7 +29,8 @@ authorization check, by command encoding or by the publish itself.
 
 - `requestId` -- the key the audit row is stored under
 - `error` -- the rejection message
-- `errorCode` -- `"Forbidden"` for a refused caller; absent for a failed translation
+- `errorCode` -- `"Forbidden"` for a refused caller, `"PublishFailed"` when the
+  commands could not be published (worth retrying); absent for a failed translation
 */
 type rejectedResult = {
   requestId: string,
@@ -44,14 +45,24 @@ response with the slice's audit row, and so the GraphQL resolver can report a
 */
 type receiveResult = result<acceptedResult, rejectedResult>
 
+/** Which door an input arrived through, recorded on its audit row. */
+@schema
+type door =
+  | Mutation
+  | Webhook
+
 /**
 Runtime operations exposed by an `InboundTranslationSlice` component.
 
 - `receive` -- accept external input, translate it, and publish its commands.
-  `caller` is who sent it; absent means the platform itself.
+  `caller` is who sent it; absent means the platform itself. `door` defaults to
+  `Mutation`.
+- `refuse` -- record a webhook request refused before it could be read (a bad
+  signature, a body that is not JSON) and answer it as rejected.
 */
 type operations = {
-  receive: (JSON.t, ~caller: Reventless.Identity.t=?) => promise<receiveResult>,
+  receive: (JSON.t, ~caller: Reventless.Identity.t=?, ~door: door=?) => promise<receiveResult>,
+  refuse: (~body: string, ~errorCode: string, string) => promise<receiveResult>,
 }
 
 /**

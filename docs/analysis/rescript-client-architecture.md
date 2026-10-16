@@ -1205,7 +1205,7 @@ Client --HTTP POST--> API Gateway HTTP API / Lambda Function URL --> Lambda --> 
 
 **Advantages:**
 - Simplest to implement — no connection state, no WebSocket management
-- Reuses the existing webhook infrastructure pattern (planned in `docs/plans/Backlog/webhook-infrastructure.md`)
+- Reuses the existing webhook infrastructure pattern (see [webhook-infrastructure.md](../plans/done/webhook-infrastructure.md))
 - Works through corporate proxies and firewalls that may block WebSocket
 - Easy to test with curl/Postman
 - Can return synchronous command acceptance/rejection in the HTTP response

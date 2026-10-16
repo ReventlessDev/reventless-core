@@ -635,6 +635,22 @@ let schedule_suffix ~loc fname (body : structure) : structure_item list =
   then [gen_schedule_none ~loc]
   else []
 
+(* [let endpoint = None] — an inbound translation's webhook URL, absent unless its
+   spec declares one. Injected for inbound specs that don't, so existing specs
+   satisfy the [Spec] module type unchanged. *)
+let gen_endpoint_none ~loc =
+  let none = Ast_builder.Default.pexp_construct ~loc { txt = Lident "None"; loc } None in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "endpoint"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:none]
+
+let endpoint_suffix ~loc fname (body : structure) : structure_item list =
+  if is_spec_namespace_pkg loc then []
+  else if Util.is_in_slice_folder_named fname "InboundTranslation"
+          && not (Util.has_let_binding "endpoint" body)
+  then [gen_endpoint_none ~loc]
+  else []
+
 (* Inline-module detection + injection --------------------------------------- *)
 (*
    Test fixtures and a handful of framework-internal helpers define spec
@@ -701,6 +717,16 @@ let inject_external_system_into_inner_module ~loc (mb : module_binding) : module
   match mb.pmb_expr.pmod_desc with
   | Pmod_structure body when not (Util.has_let_binding "externalSystem" body) ->
     let new_body = body @ [gen_external_system ~loc] in
+    { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
+  | _ -> mb
+
+(* Append [let endpoint = None] to an inline inbound translation spec lacking it. *)
+let inject_endpoint_into_inner_module ~loc (mb : module_binding) : module_binding =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body
+    when body_has_schema_type "externalInput" body
+         && not (Util.has_let_binding "endpoint" body) ->
+    let new_body = body @ [gen_endpoint_none ~loc] in
     { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
   | _ -> mb
 
@@ -776,7 +802,8 @@ let walk_inline_specs (str : structure) : structure =
       let mb' = inject_traits_into_inner_module ~loc mb' in
       let mb' =
         if inner_module_is_translation_spec mb'
-        then inject_external_system_into_inner_module ~loc mb'
+        then inject_endpoint_into_inner_module ~loc
+               (inject_external_system_into_inner_module ~loc mb')
         else mb'
       in
       { item with pstr_desc = Pstr_module mb' }

@@ -1544,6 +1544,27 @@ let translate = (input: externalInput) =>
   Ok([(input.id, Apply({id: input.id, value: input.value}))])
 EOF
 
+# A pure webhook receiver: `@noApi` on a record input keeps its fields, and a
+# declared endpoint is not overwritten by the injected default.
+cat > "$PLUGIN/src/InboundTranslation/Relay.res" <<'EOF'
+@@reventless.spec
+
+@noApi @schema
+type externalInput = { relayId: string, amount: int }
+
+@schema
+type command = Forward({ id: string, amount: int })
+
+let endpoint = Some({Reventless.InboundTranslationSlice.path: "relay", auth: Open})
+EOF
+
+cat > "$PLUGIN/src/InboundTranslation/Relay_Translation.res" <<'EOF'
+@@reventless.translation
+
+let translate = (input: externalInput) =>
+  Ok([(input.relayId, Forward({id: input.relayId, amount: input.amount}))])
+EOF
+
 # ─── Fixture: split-form OutboundTranslation slice ───────────────────
 
 mkdir -p "$PLUGIN/src/OutboundTranslation"
@@ -2610,6 +2631,13 @@ echo ""
 echo "=== Test: @@reventless.translation (split-form InboundTranslationSlice) ==="
 JS="$PLUGIN/src/InboundTranslation/Hook_Translation.res.mjs"
 assert_js_contains "$JS" 'InboundTranslation/Hook_Translation.res.mjs' "inbound translation moduleUrl"
+assert_js_contains "$PLUGIN/src/InboundTranslation/Hook.res.mjs" '^let endpoint;' \
+  "inbound spec: endpoint = None injected when it declares none"
+JS="$PLUGIN/src/InboundTranslation/Relay.res.mjs"
+assert_js_contains "$JS" 'markNoApi' "inbound spec: @noApi on a record input marks its schema"
+assert_js_contains "$JS" 'relayId' "inbound spec: @noApi on a record input keeps its fields"
+assert_js_contains "$JS" '"relay"' "inbound spec: a declared endpoint is kept"
+assert_js_not_contains "$JS" '^let endpoint;' "inbound spec: a declared endpoint is not replaced by None"
 pass "inbound translation compiles (sync translate function)"
 
 echo ""

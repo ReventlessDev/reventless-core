@@ -28,6 +28,7 @@ module PaymentWebhookSpec = {
 
   let targetName = "ConfirmPayment"
   let externalSystem = None
+  let endpoint = None
 
   let translate = (input: externalInput) =>
     switch input.status {
@@ -52,6 +53,7 @@ module CatalogFeedSpec = {
 
   let targetName = "AddProduct"
   let externalSystem = None
+  let endpoint = None
 
   type role = Reventless.Role.name
   let merchandiser = Reventless.Role.make("Merchandiser")
@@ -89,6 +91,7 @@ module NoteFeedSpec = {
 
   let targetName = "Annotate"
   let externalSystem = None
+  let endpoint = None
 
   let translate = (input: externalInput) => Ok([
     (input.orderId, Annotate({orderId: input.orderId, note: None})),

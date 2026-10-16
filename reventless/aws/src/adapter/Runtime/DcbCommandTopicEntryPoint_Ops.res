@@ -258,7 +258,14 @@ type inboundCallback = {
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
     ~caller: Reventless.Identity.t=?,
+    ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
+  refuse: (
+    ~body: string,
+    ~errorCode: string,
+    string,
+  ) => ReventlessInfra.InboundTranslationSlice.receiveResult,
+  webhook: option<ReventlessCore.InboundTranslationSlice_Webhook.route>,
   auditLog: dict<ReventlessCore.InboundTranslationSlice_Callback.auditRow>,
 }
 @module(
@@ -266,9 +273,49 @@ type inboundCallback = {
 )
 external makeInboundCallback: specModule => translationModule => inboundCallback = "Make"
 
+// The request's audit row to its table, when one was threaded. A failed write is
+// logged, not raised: the commands are published.
+let persistAudit = async (
+  callback: inboundCallback,
+  auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
+  result: ReventlessInfra.InboundTranslationSlice.receiveResult,
+) =>
+  switch auditQueryDbOps {
+  | Some(ops) =>
+    let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+    switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
+    | Some(row) =>
+      let json =
+        row->Reventless.Util_Sury.toJson(
+          ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
+        )
+      // `save` resolves `Error(_)` rather than throwing, so its result is read.
+      try {
+        switch await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None) {
+        | Ok() => ()
+        | Error(err) =>
+          ReventlessCore.EffectLogger.logError(
+            ~comp="InboundTranslationSlice.audit",
+            `failed to persist audit row ${id}: ${err->ReventlessCore.QueryDb.storageErrorToString}`,
+          )->Effect.runSync
+        }
+      } catch {
+      | exn =>
+        let detail =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
+        ReventlessCore.EffectLogger.logError(
+          ~comp="InboundTranslationSlice.audit",
+          `failed to persist audit row ${id}: ${detail}`,
+        )->Effect.runSync
+      }
+    | None => ()
+    }
+  | None => ()
+  }
+
 // Builds the inbound receive handler: `receive` for the resolver's caller, then
-// the request's audit row to its table when one was threaded. Answers the
-// `commandOutcome` JSON the AppSync direct-invocation route answers with.
+// the request's audit row. Answers the `commandOutcome` JSON the AppSync
+// direct-invocation route answers with.
 let buildInboundReceiver = (
   spec: specModule,
   translation: translationModule,
@@ -282,42 +329,56 @@ let buildInboundReceiver = (
       args,
       ~caller=ReventlessCore.InboundTranslationSlice_Callback.doorCaller(identity),
     )
-    switch auditQueryDbOps {
-    | Some(ops) =>
-      let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
-      switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
-      | Some(row) =>
-        let json =
-          row->Reventless.Util_Sury.toJson(
-            ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
-          )
-        // A failed audit write is logged, not raised: the commands are published.
-        // `save` resolves `Error(_)` rather than throwing, so its result is read.
-        try {
-          switch await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None) {
-          | Ok() => ()
-          | Error(err) =>
-            ReventlessCore.EffectLogger.logError(
-              ~comp="InboundTranslationSlice.audit",
-              `failed to persist audit row ${id}: ${err->ReventlessCore.QueryDb.storageErrorToString}`,
-            )->Effect.runSync
-          }
-        } catch {
-        | exn =>
-          let detail =
-            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
-          ReventlessCore.EffectLogger.logError(
-            ~comp="InboundTranslationSlice.audit",
-            `failed to persist audit row ${id}: ${detail}`,
-          )->Effect.runSync
-        }
-      | None => ()
-      }
-    | None => ()
-    }
+    await persistAudit(callback, auditQueryDbOps, result)
     result
     ->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome
     // `CommandTopic_Helpers`, not `CommandTopic`, which imports `@pulumi/pulumi`.
     ->ReventlessCore.CommandTopic_Helpers.commandOutcomeToJson
   }
+}
+
+// The slice's webhook door, when its spec declares an endpoint: both operations
+// persist the audit row they write.
+let buildWebhookSlice = (
+  spec: specModule,
+  translation: translationModule,
+  ~publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+  ~auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
+): Nullable.t<ReventlessCore.InboundTranslationSlice_Webhook.slice> => {
+  let callback = makeInboundCallback(spec)(translation)
+  let persisted = async result => {
+    await persistAudit(callback, auditQueryDbOps, result)
+    result
+  }
+  callback.webhook
+  ->Option.map((route): ReventlessCore.InboundTranslationSlice_Webhook.slice => {
+    route,
+    receive: async (input, ~caller) =>
+      await persisted(await callback.receive(publishJsons, input, ~caller, ~door=Webhook)),
+    refuse: async (~body, ~errorCode, error) =>
+      await persisted(callback.refuse(~body, ~errorCode, error)),
+  })
+  ->Nullable.fromOption
+}
+
+/** Serve a Function URL request on the plugin's webhook slices. Answers the
+    response shape a Function URL expects. */
+let serveWebhook = async (
+  slices: array<ReventlessCore.InboundTranslationSlice_Webhook.slice>,
+  request: ReventlessCore.InboundTranslationSlice_Webhook.request,
+): JSON.t => {
+  let {status, body} = await ReventlessCore.InboundTranslationSlice_Webhook.dispatch(
+    slices,
+    request,
+  )
+  Dict.fromArray([
+    ("statusCode", JSON.Encode.int(status)),
+    (
+      "headers",
+      Dict.fromArray([
+        ("content-type", JSON.Encode.string("application/json")),
+      ])->JSON.Encode.object,
+    ),
+    ("body", JSON.Encode.string(body)),
+  ])->JSON.Encode.object
 }
