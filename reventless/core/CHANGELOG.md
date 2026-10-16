@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.298 (2026-10-16)
+
+* feat!(inbound): a translation slice can declare a signed webhook URL ([0ad6994](https://github.com/ReventlessDev/reventless-core/commit/0ad69949fcc91c2756c60ca8cb120dd468841d8b))
+
+### BREAKING CHANGES
+
+* InboundTranslationSlice.Spec requires `endpoint`. Specs under
+@@reventless.spec get it from the PPX (republish reventless-ppx with this
+release); hand-written specs add `let endpoint = None`.
+
+
+
 # 3.0.0-alpha.297 (2026-10-16)
 
 * fix(auth)!: only operators read the framework's own stores ([a2fd202](https://github.com/ReventlessDev/reventless-core/commit/a2fd2022b6876dae855b185df7f8263353fc971d))

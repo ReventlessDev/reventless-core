@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.246 (2026-10-16)
+
+* feat!(inbound): a translation slice can declare a signed webhook URL ([0ad6994](https://github.com/ReventlessDev/reventless-core/commit/0ad69949fcc91c2756c60ca8cb120dd468841d8b))
+
+### BREAKING CHANGES
+
+* InboundTranslationSlice.Spec requires `endpoint`. Specs under
+@@reventless.spec get it from the PPX (republish reventless-ppx with this
+release); hand-written specs add `let endpoint = None`.
+
+
+
 # 1.0.0-alpha.245 (2026-10-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
