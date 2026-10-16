@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-16
+- fix(auth)!: only operators read the framework's own stores ([a2fd202](https://github.com/ReventlessDev/reventless-core/commit/a2fd2022b6876dae855b185df7f8263353fc971d))
+### 2026-10-16
 - docs(automation): running on a time, in the guide and the shop ([82d1630](https://github.com/ReventlessDev/reventless-core/commit/82d1630ce75e6597321f9a5f0bd2e01ba5385865))
 ### 2026-10-16
 - feat!: an automation's process takes ~now, and collect the event's recorded time ([8c8f3f5](https://github.com/ReventlessDev/reventless-core/commit/8c8f3f570474b1658b605b726077debc7d6a1dc7))
