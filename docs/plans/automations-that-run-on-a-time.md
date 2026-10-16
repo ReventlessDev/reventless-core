@@ -5,7 +5,9 @@ including a hand test of EventBridge Scheduler; its findings are folded into the
 [S1](#s1-one-type-for-a-time-and-the-schedulers-agree) built and deployed 2026-10-16. [S2](#s2-the-local-platform-sweeps) and
 [S3](#s3-the-time-inside-the-functions) built 2026-10-16. [S4](#s4-declared-schedules) and
 [S5](#s5-schedules-set-by-events) built, with the digest in the shop, and checked on the deployed
-alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); one finding is open.
+alpha stack 2026-10-16 ([the check](#the-deployed-check-2026-10-16)); its open finding moved to
+[its own plan](framework-store-access.md). [S6](#s6-the-guide-the-words-and-the-examples) built
+2026-10-16 ([what it did](#what-s6-did)).
 
 **Analysis:** [automations-that-run-on-a-time.md](../analysis/automations-that-run-on-a-time.md)
 (*the analysis*; §-references below are its sections). Its decisions and its recommendations
@@ -705,7 +707,8 @@ Two findings:
 
 - **The schedules store is readable by every signed-in caller**, so `shopper` reads `admin`'s
   digest time. It says who receives messages and when, which is what [D1](#decisions-2026-10-16)
-  expected might need a narrower rule.
+  expected might need a narrower rule. Every store the framework makes is open the same way, so
+  it is [a plan of its own](framework-store-access.md).
 - **A recipient who never subscribed to `Marketing` still got a schedule.** `Marketing` is
   off unless chosen, so each day's digest was suppressed. Their `Unsubscribe` recorded nothing,
   since nothing changed, and so it never cleared the schedule either: the first `Unsubscribe`
@@ -724,6 +727,36 @@ Two findings:
   scenarios.
 
 **Exit:** the guide's examples compile as written; the shop's suites pass.
+
+### What S6 did
+
+Built 2026-10-16.
+
+- **The component guide** ([automationslice.md](../../packages/doc/docs-app/components/automationslice.md))
+  gains *Running on a time*:
+  - the three ways (a due time, a declared schedule, schedules set by events) and the words;
+  - an example of each, a once-only time, why `resolve` still matters, where the schedules
+    live, and testing;
+  - *Which to use*, the analysis's flowchart drawn in D2, since the documentation site renders
+    no Mermaid.
+- **The guide's older parts** are brought up to date: the spec's `schedule`, the mapping's
+  `reschedule`, `collect`'s `~sourceId`, the 15-minute resend of a `Processing` item (the guide
+  still said the sweep never resends one), and the new operations and store.
+- **The words** go to two places: the published [glossary](../../packages/doc/docs-app/glossary.md#schedule)
+  for an application developer (Clock, Schedule, Scheduler, Sweep, Tick), and the
+  [terminology guide](../guides/terminology-guide.md#timing-vocabulary) for the rule that keeps
+  them apart.
+- **The online shop** has both of [P2](#open-questions)'s examples: the digest
+  ([above](#the-digest-in-the-online-shop-2026-10-16)) and the deadline, `CancelUnshippedOrder`.
+  The deadline cancels a Standard order the batch has not shipped three days after it was
+  recorded. Express orders ship at once, and Pickup orders record no shipping.
+
+Where it departs from the plan above:
+
+- **Nothing compiles the guide's snippets.** Each is taken from code that does compile: the
+  deadline and the digest from the shop, the declared schedule and the reminder from the
+  framework's GWT tests (`AutomationScheduleGwtTest.res`, `AutomationRescheduleGwtTest.res`),
+  in the file form an application writes them in.
 
 ## S7: release
 

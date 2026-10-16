@@ -530,6 +530,54 @@ type Ordering_AvailableProductRef {
   retiredState: String
 }
 
+type Ordering_CancelUnshippedOrderTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_CancelUnshippedOrderTodoItem!
+  maxRetries: Int
+  processedAt: String
+  retryCount: Int!
+  status: Ordering_CancelUnshippedOrderTodoStatus!
+}
+
+type Ordering_CancelUnshippedOrderTodoConnection {
+  edges: [Ordering_CancelUnshippedOrderTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_CancelUnshippedOrderTodoEdge {
+  cursor: String!
+  node: Ordering_CancelUnshippedOrderTodo!
+}
+
+input Ordering_CancelUnshippedOrderTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_CancelUnshippedOrderTodoItem {
+  dueAt: Float!
+  orderId: ID!
+}
+
+type Ordering_CancelUnshippedOrderTodoRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Ordering_CancelUnshippedOrderTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
 type Ordering_Customer implements Node {
   accountStatus: Ordering_CustomerAccountStatus!
   address: String!
@@ -1342,6 +1390,10 @@ type Query {
   Ordering_AvailableProducts(after: String, before: String, filter: Ordering_AvailableProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_AvailableProductOrderBy): Ordering_AvailableProductConnection!
   Ordering_AvailableProductsByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_AvailableProduct!]!
   Ordering_AvailableProductsRefs(ids: [ID!]!): [Ordering_AvailableProductRef!]!
+  Ordering_CancelUnshippedOrderTodo(id: ID!, includeRetired: Boolean): Ordering_CancelUnshippedOrderTodo
+  Ordering_CancelUnshippedOrderTodos(after: String, before: String, filter: Ordering_CancelUnshippedOrderTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_CancelUnshippedOrderTodoConnection!
+  Ordering_CancelUnshippedOrderTodosByIds(ids: [String!]!, includeRetired: Boolean): [Ordering_CancelUnshippedOrderTodo!]!
+  Ordering_CancelUnshippedOrderTodosRefs(ids: [ID!]!): [Ordering_CancelUnshippedOrderTodoRef!]!
   Ordering_Customer(id: ID!, includeRetired: Boolean): Ordering_Customer
   Ordering_CustomerEventHistory(after: String, before: String, filter: Ordering_CustomerEventHistoryFilter, first: Int, last: Int): Ordering_CustomerEventRecordConnection!
   Ordering_Customers(after: String, before: String, filter: Ordering_CustomerFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_CustomerOrderBy): Ordering_CustomerConnection!

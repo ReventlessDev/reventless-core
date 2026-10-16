@@ -93,6 +93,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
+  module CancelUnshippedOrderSlice = Platform.AutomationSlice.Make(
+    CancelUnshippedOrder,
+    CancelUnshippedOrder_Automation,
+  )
   module MarketingDigestSlice = Platform.AutomationSlice.Make(
     MarketingDigest,
     MarketingDigest_Automation,
@@ -157,6 +161,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ],
     ~automationSlices=[
       module(AutoShipOrderSlice),
+      module(CancelUnshippedOrderSlice),
       module(MarketingDigestSlice),
       module(NotificationIntakeSlice),
     ],
@@ -173,6 +178,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("AutoShipOrder", "Order"),
       ("AvailableProducts", "CatalogProduct"),
       ("CancelOrder", "Order"),
+      ("CancelUnshippedOrder", "Order"),
       ("Customer", "Customer"),
       ("Customers", "Customer"),
       ("EmailVerificationChallenges", "Customer"),
@@ -219,6 +225,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ],
       ~automationSlices=[
         module(AutoShipOrderSlice),
+        module(CancelUnshippedOrderSlice),
         module(MarketingDigestSlice),
         module(NotificationIntakeSlice),
       ],

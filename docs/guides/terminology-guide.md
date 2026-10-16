@@ -121,6 +121,24 @@ that platform's idiomatic labels; the vocabulary is one, the spelling is per-pla
 
 ---
 
+## Timing vocabulary
+
+Three words name the timing of an automation, one per level, and are not synonyms:
+**the platform's Scheduler fires; the slice's schedule says when; the time is the value a
+schedule holds.** The [glossary](../../packages/doc/docs-app/glossary.md#schedule) defines them
+for an application developer; the rule here is that none stands in for another.
+
+| Word | Names | Level |
+|---|---|---|
+| **Scheduler** | the infrastructure that fires: EventBridge Scheduler on AWS, timers locally (`ComponentType.Scheduler`) | platform |
+| **schedule** | one key and one time held by one slice: the declared one (`let schedule`), a row in its schedules store, an entry on the platform | slice |
+| **time** | when a schedule fires: `Every`, `Calendar` or `Once` (`Schedule.time`) | value |
+| **Clock**, **Tick** | the framework source a slice maps, and its one event `Tick({key, at})` | slice input |
+| **`reschedule`** | the mapping function that sets or clears schedules; *re-* because from the slice's side every change is one, the first too | slice code |
+| **sweep** | the run over pending to-do items every five minutes; it retries, it does not fire schedules | runtime |
+| **heartbeat** | the plugin's liveness signal, which is not the sweep, though an automation's `heartbeatInterval` is named after it | runtime |
+| **to-do store**, **schedules store** | the slice's two stores: `<Slice>Todo` and, for a slice that maps the Clock, `<Slice>Schedule` | storage |
+
 ## Naming rules
 
 1. **Core names a code layer, never a deployed thing.** If it gets provisioned, it belongs to a

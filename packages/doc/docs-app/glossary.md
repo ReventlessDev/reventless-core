@@ -25,7 +25,8 @@ rejected (returning an error). See
 
 A DCB component implementing the automation (TODO-list) pattern: it accumulates
 pending work from events, issues a command per item, and marks the item resolved
-when the resulting event arrives. Stateful, unlike an EventMapping. See
+when the resulting event arrives. Stateful, unlike an EventMapping. It can also
+run on a time: see [Schedule](#schedule). See
 [AutomationSlice component](/app/components/automationslice).
 
 ## Behavior
@@ -56,6 +57,12 @@ words sit near it without meaning it:
   layer down, and unrelated except by the shared word.
 
 Nothing in the framework declares, stores or checks a business capability.
+
+## Clock
+
+The framework source an AutomationSlice maps to receive its schedules' firings.
+Its one event is `Tick({key, at})`: which schedule fired, and the time it was
+scheduled for. See [Running on a time](/app/components/automationslice#running-on-a-time).
 
 ## Competency
 
@@ -202,6 +209,19 @@ A query-side projection of events into a queryable store. Read models consume
 events from an event collector and project them into a QueryDb. See
 [ReadModel component](/app/components/readmodel).
 
+## Schedule
+
+One key and one time held by one AutomationSlice: declared in its spec
+(`let schedule`, under the key `default`), or set and cleared by events through a
+mapping's `reschedule`. The slice keeps its schedules as rows, and the platform's
+[Scheduler](#scheduler) follows them. Not a component of its own. See
+[Running on a time](/app/components/automationslice#running-on-a-time).
+
+## Scheduler
+
+The platform's part that fires at a time: EventBridge Scheduler on AWS, timers
+locally. It knows only *when*; what a firing means is the slice's.
+
 ## Slice
 
 A component in a DCB-based plugin that processes a subset of events from a shared
@@ -238,9 +258,19 @@ queries or validation. See
 The schema library behind `@schema`: it derives serialization for a type from its
 declaration, so events and commands cross the wire without hand-written codecs.
 
+## Sweep
+
+The run over every automation's pending and failed to-do items, every five
+minutes. It retries work and offers items with a due time; it does not fire
+[schedules](#schedule).
+
 ## Tag
 
 A key on a DCB event that makes it findable — usually an entity id. A decision
 reads by tags, and the events it appends carry them, which is what lets two
 slices' events live in one log and still be queried apart. See
 [DCB usage](/app/dcb-usage).
+
+## Tick
+
+The event the [Clock](#clock) delivers when one of a slice's schedules comes due.

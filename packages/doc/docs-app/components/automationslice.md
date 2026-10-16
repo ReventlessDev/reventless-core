@@ -8,6 +8,10 @@ For a short summary of AutomationSlice, see [Reventless Components Overview.](..
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`AutomationSlice.res`), builder logic (`AutomationSlice_Builder.res`), and callback/handler logic (`AutomationSlice_Callback.res`).
 :::
 
+:::tip Running on a time
+An AutomationSlice can also run on a time: a due time inside an item, a time its spec declares (*every morning at 06:00*), or a time an event sets per entity (*at the hour each customer chose*). See [Running on a time](#running-on-a-time).
+:::
+
 :::tip Mixed-source automation
 An AutomationSlice can consume events from **multiple sources** — Aggregate `EventTopic`s and DCB `EventLog`s — via per-source `Mapping` modules. `collect` and `resolve` move to the mapping; `process` stays source-agnostic. See the [mixed-source guide](../mixed-source-automationslice.md) for the per-source mapping convention, ambient context, and `toTags` validation.
 :::
@@ -78,6 +82,8 @@ module type Spec = {
   let maxRetries: int
   let heartbeatInterval: int
   let targetName: string
+  // injected as None by @@reventless.spec when the spec declares no time
+  let schedule: option<Schedule.time>
 }
 ```
 
@@ -98,16 +104,19 @@ filename — you don't write them):
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
 | `heartbeatInterval` | `int` | Reserved: not read today; the sweep runs every five minutes for every automation |
 | `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
+| `schedule` | `option<Schedule.time>` | The time the slice runs on, which its `Clock` mapping receives as a `Tick`; `None` (injected when absent) for a slice started by events only. See [Running on a time](#running-on-a-time) |
 
-### The Three Functions
+### The Functions
 
-`collect` and `resolve` live on each per-source `Mapping` in the
+`collect`, `resolve` and `reschedule` live on each per-source `Mapping` in the
 `_Automation.res` file; `process` is source-agnostic and lives at the top level
 of that same file.
 
 **`collect`** -- `(sourceEvent, ~sourceId, ctx) => array<(string, todoItem)>`. When an event arrives, `collect` decides whether it creates new TODO items. `ctx.recordedAt` is when the event was recorded, the time a due time is counted from. Each item has a string `id` (used as a deduplication key) and a `todoItem` payload. Returns an empty array for irrelevant events. If an item with the same id already exists, it is skipped (idempotent).
 
 **`resolve`** -- `sourceEvent => option<string>`. When an event arrives, `resolve` checks if it marks an existing TODO item as completed. Returns `Some(itemId)` to mark that item done, or `None` to skip. This closes the automation loop -- the command produced by `process` eventually causes events that `resolve` recognizes.
+
+**`reschedule`** -- `sourceEvent => array<scheduleChange>`. Which of the slice's schedules an event sets (`Set({key, time})`) or clears (`Clear({key})`). A mapping written without it is given `let reschedule = _ => []` by the PPX. See [Schedules set by events](#schedules-set-by-events).
 
 **`process`** -- `(string, todoItem, ~now) => option<(string, command)>`. For each pending item, `process` decides what command to issue. Returns `Some((targetId, command))` to publish a command, or `None` to skip processing (e.g., waiting for more data, or a due time `~now` has not reached). Skipped items remain pending for the next sweep. `~now` is the current time in milliseconds, from Effect's `Clock`; a `process` written without it is given `~now as _` by the `@@reventless.automation` PPX.
 
@@ -160,7 +169,7 @@ module FromOrderingDcb = Mapping.Make(
   {
     open OrderingDcbSource
 
-    let collect = (event, _ctx) =>
+    let collect = (event, ~sourceId as _, _ctx) =>
       switch event {
       | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipOrder.todoItem))]
       | OrderShipped(_) => []
@@ -275,7 +284,8 @@ Each TODO item moves through these statuses:
 | `Pending` | Created by `collect`, waiting to be processed |
 | `Processing` | `process` returned a command, waiting for resolution event |
 | `Completed` | `resolve` matched -- work is done |
-| `Failed` | Command publishing failed -- eligible for retry |
+| `Failed` | Command publishing failed, or no resolving event came within 15 minutes -- eligible for retry |
+| `Abandoned` | The retry budget is spent -- no sweep picks it up again |
 
 ### Heartbeat Handler
 
@@ -285,8 +295,9 @@ and locally (where `REVENTLESS_LOCAL_SWEEP_SECONDS` shortens it). It picks up:
 - Items collected in a previous batch where `process` returned `None` (waiting for more data)
 - Failed items eligible for retry (`retryCount < maxRetries`)
 
-An item whose command was published but whose resolving event never came stays
-`Processing`; the sweep does not send it again.
+An item whose command was published but whose resolving event never came is sent
+again once it has been `Processing` for 15 minutes; that counts as a failed attempt,
+so it ends `Abandoned` like any other once `maxRetries` is spent.
 
 ## When an item runs out of retries
 
@@ -303,6 +314,227 @@ is declared either way, because abandonment is an outcome and the framework cann
 publish it for you: the command has to name a target, and which target is exactly
 what the slice knows and the framework does not. The row is marked `Abandoned`
 regardless — the hook decides only whether anything downstream reacts.
+
+## Running on a time
+
+An automation is started by events, but some work is about **when**: an order not
+shipped in three days is cancelled, a report is requested every morning, a customer
+gets a digest at the hour they chose. There is no separate component for this. The
+same slice runs on a time, in one of three ways:
+
+| Way | The time lives in | Example |
+|---|---|---|
+| **A due time** | the to-do item; `process` waits for `~now` to reach it, and the sweep offers it every five minutes | cancel an order not shipped in three days |
+| **A declared schedule** | the spec: `let schedule` | the demand report every morning at 06:00 |
+| **Schedules set by events** | rows the slice keeps, one per key, set and cleared by `reschedule` | a digest at the time each customer chose |
+
+The platform only knows **when**. Its Scheduler (EventBridge Scheduler on AWS,
+timers locally) fires, and the slice receives a `Tick({key, at})` from the
+framework's `Clock` source: which of its schedules fired, and the time it was
+scheduled for. What the tick means stays in the slice's mappings and `process`,
+exactly as for an event.
+
+### Three words
+
+| Word | Names |
+|---|---|
+| **Scheduler** | the platform's part that fires at a time |
+| **schedule** | one key and one time held by one slice |
+| **time** | when a schedule fires: `Every` an interval, `Calendar` a wall-clock time, or `Once` a single moment (`Schedule.time`) |
+| **Clock**, **Tick** | the source a slice maps to receive its schedules' firings, and its one event |
+
+### A due time
+
+No schedule at all: `collect` counts the due time from when the event was recorded
+(`ctx.recordedAt`), and `process` returns `None` until `~now` reaches it. The item
+stays pending, and each sweep offers it again. Precise to the sweep, five minutes.
+From the online shop's
+[CancelUnshippedOrder_Automation.res](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-hybrid/ordering/src/Order/Automation/CancelUnshippedOrder_Automation.res):
+
+```rescript title="Order/Automation/CancelUnshippedOrder_Automation.res (excerpt)"
+let collect = (event, ~sourceId as _, ctx: Reventless.AutomationSlice.context) =>
+  switch (event, ctx.recordedAt) {
+  | (OrderPlaced({orderId, shippingMethod: Standard}), Some(placedAt)) => [
+      (
+        orderId->OrderId.toString,
+        ({orderId, dueAt: placedAt +. shippingWindowMs}: CancelUnshippedOrder.todoItem),
+      ),
+    ]
+  | _ => []
+  }
+
+let process = (id, item: CancelUnshippedOrder.todoItem, ~now) =>
+  now >= item.dueAt ? Some((id, CancelOrder({orderId: item.orderId}))) : None
+```
+
+`OrderShipped` or `OrderCancelled` resolves the item first, and nothing is sent.
+
+### A declared schedule
+
+The spec declares the time, and a mapping reads the `Clock`. Each tick makes the
+day's item; `Clock.itemId(key, at)` names it by the key and the scheduled minute in
+UTC (`default@2026-10-16T06:00Z`), so the same tick delivered twice makes one item.
+
+```rescript title="Catalog/Automation/DemandReport.res"
+@@reventless.spec
+
+@schema
+type todoItem = {day: float}
+
+@schema
+type command = RequestDemandReport({day: float})
+
+let maxRetries = 3
+let heartbeatInterval = 60
+let targetName = "ReportSettings"
+let schedule = Some(Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})}))
+```
+
+```rescript title="Catalog/Automation/DemandReport_Automation.res (excerpt)"
+module FromClock = Mapping.Make(
+  Reventless.Clock,
+  DemandReport,
+  {
+    open Reventless.Clock
+    let collect = (Tick({key, at}), ~sourceId as _, _ctx) => [
+      (itemId(key, at), ({day: at}: DemandReport.todoItem)),
+    ]
+    let resolve = _ => None
+  },
+)
+```
+
+The declared schedule is held under the key `Clock.defaultKey` (`"default"`). A
+slice that maps the `Clock` but declares no schedule, and reads no event that could
+set one, is refused when the plugin is assembled: no tick would ever reach it.
+
+### Schedules set by events
+
+Often the time is data. A mapping's `reschedule` says which schedules an event sets
+or clears, by key. A key per entity gives each one its own time; the tick carries
+the key back, so `collect` knows whose time came. From the shop's
+[MarketingDigest_Automation.res](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-hybrid/ordering/src/Notification/Automation/MarketingDigest_Automation.res):
+
+```rescript title="Notification/Automation/MarketingDigest_Automation.res (excerpt)"
+module FromClock = Mapping.Make(
+  Reventless.Clock,
+  MarketingDigest,
+  {
+    open Reventless.Clock
+    let collect = (Tick({key, at}), ~sourceId as _, _ctx) => [
+      (itemId(key, at), ({recipientId: key}: MarketingDigest.todoItem)),
+    ]
+    let resolve = _ => None
+  },
+)
+
+// in the mapping over the ordering log
+let reschedule = event =>
+  switch event {
+  | DigestTimeChosen({recipientId, hour, minute, zone}) => [
+      Set({key: recipientId, time: dailyAt(~hour, ~minute, ~zone)}),
+    ]
+  | NotificationUnsubscribed({recipientId, category: Marketing, channel: Email}) => [
+      Clear({key: recipientId}),
+    ]
+  | _ => []
+  }
+```
+
+- **`Set` replaces** the key's time; the last one wins. **`Clear`** of a key with no
+  schedule does nothing.
+- **An event may replace the declared time** by setting `default`, or stop it by
+  clearing `default`. A later deploy does not put the declared time back: the
+  declaration only fills a key no event has touched.
+- **A time that cannot fire** (a 25th hour, an unknown zone) is refused, logged, and
+  changes nothing.
+
+A once-only time suits a reminder: `Once({moment: After(Minutes(10))})` is counted
+from when the event was recorded, and its schedule is removed when its tick arrives:
+
+```rescript
+let reschedule = event =>
+  switch event {
+  | OrderPlaced({orderId}) => [Set({key: orderId, time: Once({moment: After(Minutes(10))})})]
+  | OrderShipped({orderId}) => [Clear({key: orderId})]
+  }
+```
+
+### Why `resolve` still matters
+
+A tick makes an item and `process` sends its command, as for any event. The item is
+done only when an event resolves it; one left `Processing` is sent again after 15
+minutes, up to `maxRetries`. The digest's request carries the item id as its
+`reference`, and every outcome of the request (sent, suppressed, undeliverable,
+deferred) resolves it by that reference.
+
+### Where the schedules live
+
+- **The rows are the truth.** A slice that maps the `Clock` gets a second store,
+  `{name}Schedule`, with a row per key: `key`, `time` (the `Schedule.time` as JSON
+  text, an `After` already counted from its event), `setBy` (the event's id, or
+  `declared`) and `setAt`. Its list query answers *when does it run, and who set it*.
+- **The platform follows them.** An event's change is stored first, then the
+  platform is told. At deploy on AWS, and when the slice starts locally, a reconcile
+  writes the declared time into the rows, puts on the platform what it is missing, and
+  removes what the rows do not hold; a once-only time already past is not made again.
+- **On AWS** each stack has one schedule group, and a slice's schedule is named
+  `<slice>.<key>`, or hashed when that is longer than 64 characters or holds a
+  character EventBridge refuses. The schedule invokes the automation Lambda.
+- **Daylight saving** follows AWS on both platforms: a calendar time in the hour
+  skipped in spring does not fire that day, and one in the repeated hour fires once.
+
+### Testing
+
+The GWT DSL fixes the time. `atTime(t)` dates the given events, `whenSweep(~now)`
+runs the sweep at a time, `whenTick(~key, ~at)` delivers a tick, and `thenSchedules`
+compares the rows by key, with the declared time in them unless an event replaced it:
+
+```rescript
+test("a Standard order not shipped after three days is cancelled", () =>
+  givenEvents([Ordering.event(OrderPlaced({orderId: o1, shippingMethod: Standard}))])
+  ->atTime(day0)
+  ->whenSweep(~now=day0 +. 3. *. day)
+  ->thenCommands([(orderRef, CancelOrder({orderId: o1}))])
+)
+
+test("each recipient's choice is their own schedule, read on their own clock", () =>
+  givenEvents([
+    Ordering.event(DigestTimeChosen({recipientId: "c1", hour: 18, minute: 0, zone: ""})),
+    Ordering.event(
+      DigestTimeChosen({recipientId: "c2", hour: 7, minute: 30, zone: "Europe/Berlin"}),
+    ),
+  ])
+  ->whenSweep
+  ->thenSchedules([("c1", utc18), ("c2", berlin730)])
+)
+```
+
+### Which to use
+
+```d2
+direction: down
+
+starts: "What starts it?" { shape: diamond }
+minute: "Must it be on the minute?" { shape: diamond }
+fixed: "Is the time fixed in code?" { shape: diamond }
+many: "One time for the app, or one per entity?" { shape: diamond }
+
+due: "A due time\nan item the sweep offers" { class: automation-slice }
+once: "Once\nSet at the event, Clear on the cancelling one" { class: automation-slice }
+declared: "A declared schedule\nlet schedule" { class: automation-slice }
+default: "Set the key default\nfrom an event" { class: automation-slice }
+perEntity: "Set a key per entity\nfrom an event" { class: automation-slice }
+
+starts -> minute: an event, some time later
+minute -> due: no
+minute -> once: yes
+starts -> fixed: the clock
+fixed -> declared: yes
+fixed -> many: "no, it is data"
+many -> default: one
+many -> perEntity: per entity
+```
 
 ## TODO List Storage
 
@@ -372,17 +604,23 @@ AutomationSlice and EventMapper both react to events and produce commands, but t
 type outputs = {
   resources: array<Adapter.resource>,
   queryDb: QueryDb.outputs,
+  // only for a slice that maps the Clock
+  schedulesDb?: QueryDb.outputs,
 }
 
 type operations = {
   enqueueEvent: EventCollector.enqueueEvent,
   processPending: unit => promise<unit>,
+  tick: (~key: string, ~at: float) => promise<unit>,
+  reconcileSchedules: unit => promise<unit>,
+  rebuildSchedules: array<JSON.t> => promise<unit>,
 }
 ```
 
 **Resource Naming:**
 - Component type: `reventless:AutomationSlice`
 - TODO list QueryDb: `{name}Todo`
+- Schedules QueryDb: `{name}Schedule`, for a slice that maps the `Clock`
 - EventCollector: subscribed to DcbEventLog's EventTopic
 
 **Dependencies:**

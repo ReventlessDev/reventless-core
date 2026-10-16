@@ -27,6 +27,7 @@ import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-
 import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChange/PlaceOrder_Behavior.res.mjs";
 import * as VerifyCustomerEmail$OrderingPlugin from "./Customer/OutboundTranslation/VerifyCustomerEmail.res.mjs";
 import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChange/CancelOrder_Behavior.res.mjs";
+import * as CancelUnshippedOrder$OrderingPlugin from "./Order/Automation/CancelUnshippedOrder.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
 import * as GeocodeCustomerAddress$OrderingPlugin from "./Customer/OutboundTranslation/GeocodeCustomerAddress.res.mjs";
@@ -43,6 +44,7 @@ import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/S
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendNotification_Translation$OrderingPlugin from "./Notification/OutboundTranslation/SendNotification_Translation.res.mjs";
 import * as NotificationIntake_Automation$OrderingPlugin from "./Notification/Automation/NotificationIntake_Automation.res.mjs";
+import * as CancelUnshippedOrder_Automation$OrderingPlugin from "./Order/Automation/CancelUnshippedOrder_Automation.res.mjs";
 import * as VerifyCustomerEmail_Translation$OrderingPlugin from "./Customer/OutboundTranslation/VerifyCustomerEmail_Translation.res.mjs";
 import * as NotificationPreferences_Behavior$OrderingPlugin from "./Notification/StateChange/NotificationPreferences_Behavior.res.mjs";
 import * as NotificationDeliveries_Projection$OrderingPlugin from "./Notification/StateViewStream/NotificationDeliveries_Projection.res.mjs";
@@ -307,6 +309,21 @@ function Make(Platform) {
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
+  let CancelUnshippedOrderSlice = Platform.AutomationSlice.Make({
+    name: CancelUnshippedOrder$OrderingPlugin.name,
+    moduleUrl: CancelUnshippedOrder$OrderingPlugin.moduleUrl,
+    todoItemSchema: CancelUnshippedOrder$OrderingPlugin.todoItemSchema,
+    commandSchema: CancelUnshippedOrder$OrderingPlugin.commandSchema,
+    maxRetries: CancelUnshippedOrder$OrderingPlugin.maxRetries,
+    heartbeatInterval: CancelUnshippedOrder$OrderingPlugin.heartbeatInterval,
+    targetName: CancelUnshippedOrder$OrderingPlugin.targetName,
+    schedule: undefined
+  })({
+    process: CancelUnshippedOrder_Automation$OrderingPlugin.process,
+    onExhausted: CancelUnshippedOrder_Automation$OrderingPlugin.onExhausted,
+    moduleUrl: CancelUnshippedOrder_Automation$OrderingPlugin.moduleUrl,
+    mappings: CancelUnshippedOrder_Automation$OrderingPlugin.mappings
+  });
   let MarketingDigestSlice = Platform.AutomationSlice.Make({
     name: MarketingDigest$OrderingPlugin.name,
     moduleUrl: MarketingDigest$OrderingPlugin.moduleUrl,
@@ -513,6 +530,7 @@ function Make(Platform) {
     SyncCatalogProductSlice
   ], [
     AutoShipOrderSlice,
+    CancelUnshippedOrderSlice,
     MarketingDigestSlice,
     NotificationIntakeSlice
   ], [
@@ -559,6 +577,10 @@ function Make(Platform) {
     ],
     [
       "CancelOrder",
+      "Order"
+    ],
+    [
+      "CancelUnshippedOrder",
       "Order"
     ],
     [
@@ -644,6 +666,7 @@ function Make(Platform) {
     OrdersStreamSlice
   ], [
     AutoShipOrderSlice,
+    CancelUnshippedOrderSlice,
     MarketingDigestSlice,
     NotificationIntakeSlice
   ], [
@@ -694,6 +717,7 @@ function Make(Platform) {
     NotificationSubscriptionsStreamSlice: NotificationSubscriptionsStreamSlice,
     OrdersStreamSlice: OrdersStreamSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
+    CancelUnshippedOrderSlice: CancelUnshippedOrderSlice,
     MarketingDigestSlice: MarketingDigestSlice,
     NotificationIntakeSlice: NotificationIntakeSlice,
     AnnounceRecipientContactSlice: AnnounceRecipientContactSlice,
