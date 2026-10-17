@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.279 (2026-10-17)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
+
+
+
+
+
 # 1.0.0-alpha.278 (2026-10-16)
 
 * feat!(inbound): a translation slice can declare a signed webhook URL ([0ad6994](https://github.com/ReventlessDev/reventless-core/commit/0ad69949fcc91c2756c60ca8cb120dd468841d8b))
