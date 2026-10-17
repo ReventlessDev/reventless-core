@@ -207,9 +207,7 @@ let resolve = event =>
 
 let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
 
-let maxRetries = 3
-let heartbeatInterval = 60
-```
+let maxRetries = 3```
 
 ## InboundTranslationSlice (e.g., ImportProduct.res)
 
@@ -290,9 +288,7 @@ let translate = async (_id, item) => {
   }
 }
 
-let maxRetries = 3
-let heartbeatInterval = 60
-```
+let maxRetries = 3```
 
 ## DCB Plugin Composition (e.g., CatalogPlugin.res)
 

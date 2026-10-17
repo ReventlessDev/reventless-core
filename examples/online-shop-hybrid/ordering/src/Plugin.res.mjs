@@ -300,7 +300,6 @@ function Make(Platform) {
     todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
     targetName: AutoShipOrder$OrderingPlugin.targetName,
     schedule: undefined
   })({
@@ -315,7 +314,6 @@ function Make(Platform) {
     todoItemSchema: CancelUnshippedOrder$OrderingPlugin.todoItemSchema,
     commandSchema: CancelUnshippedOrder$OrderingPlugin.commandSchema,
     maxRetries: CancelUnshippedOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: CancelUnshippedOrder$OrderingPlugin.heartbeatInterval,
     targetName: CancelUnshippedOrder$OrderingPlugin.targetName,
     schedule: undefined
   })({
@@ -330,7 +328,6 @@ function Make(Platform) {
     todoItemSchema: MarketingDigest$OrderingPlugin.todoItemSchema,
     commandSchema: MarketingDigest$OrderingPlugin.commandSchema,
     maxRetries: MarketingDigest$OrderingPlugin.maxRetries,
-    heartbeatInterval: MarketingDigest$OrderingPlugin.heartbeatInterval,
     targetName: MarketingDigest$OrderingPlugin.targetName,
     schedule: undefined
   })({
@@ -345,7 +342,6 @@ function Make(Platform) {
     todoItemSchema: NotificationIntake$OrderingPlugin.todoItemSchema,
     commandSchema: NotificationIntake$OrderingPlugin.commandSchema,
     maxRetries: NotificationIntake$OrderingPlugin.maxRetries,
-    heartbeatInterval: NotificationIntake$OrderingPlugin.heartbeatInterval,
     targetName: NotificationIntake$OrderingPlugin.targetName,
     schedule: undefined
   })({
@@ -361,7 +357,6 @@ function Make(Platform) {
     outboundItemSchema: AnnounceRecipientContact$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: AnnounceRecipientContact$OrderingPlugin.inboundCommandSchema,
     maxRetries: AnnounceRecipientContact$OrderingPlugin.maxRetries,
-    heartbeatInterval: AnnounceRecipientContact$OrderingPlugin.heartbeatInterval,
     targetName: AnnounceRecipientContact$OrderingPlugin.targetName,
     sourceNames: AnnounceRecipientContact$OrderingPlugin.sourceNames,
     externalSystem: undefined,
@@ -380,7 +375,6 @@ function Make(Platform) {
     outboundItemSchema: GeocodeCustomerAddress$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: GeocodeCustomerAddress$OrderingPlugin.inboundCommandSchema,
     maxRetries: GeocodeCustomerAddress$OrderingPlugin.maxRetries,
-    heartbeatInterval: GeocodeCustomerAddress$OrderingPlugin.heartbeatInterval,
     targetName: GeocodeCustomerAddress$OrderingPlugin.targetName,
     sourceNames: GeocodeCustomerAddress$OrderingPlugin.sourceNames,
     externalSystem: GeocodeCustomerAddress$OrderingPlugin.externalSystem,
@@ -399,7 +393,6 @@ function Make(Platform) {
     outboundItemSchema: SendNotification$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: SendNotification$OrderingPlugin.inboundCommandSchema,
     maxRetries: SendNotification$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendNotification$OrderingPlugin.heartbeatInterval,
     targetName: SendNotification$OrderingPlugin.targetName,
     sourceNames: SendNotification$OrderingPlugin.sourceNames,
     externalSystem: SendNotification$OrderingPlugin.externalSystem,
@@ -418,7 +411,6 @@ function Make(Platform) {
     outboundItemSchema: VerifyCustomerEmail$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: VerifyCustomerEmail$OrderingPlugin.inboundCommandSchema,
     maxRetries: VerifyCustomerEmail$OrderingPlugin.maxRetries,
-    heartbeatInterval: VerifyCustomerEmail$OrderingPlugin.heartbeatInterval,
     targetName: VerifyCustomerEmail$OrderingPlugin.targetName,
     sourceNames: VerifyCustomerEmail$OrderingPlugin.sourceNames,
     externalSystem: undefined,

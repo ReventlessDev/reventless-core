@@ -83,7 +83,7 @@ them would hide where each lives, as an event log and a source module are kept a
 | **Clock**, **Tick** | the framework source a slice maps, and its one event `Tick({key, at})` | slice input |
 | **`reschedule`** | the mapping function that sets or clears schedules. *Re-* because, from the slice's side, every `Set` or `Clear` changes its schedules, the first one too | slice code |
 | **sweep** | the run over pending to-do items every five minutes, on AWS one for all automations; for a scheduled slice it retries, it does not time ([§5.2](#52-the-tick-is-a-source)) | runtime |
-| **heartbeat** | the plugin's liveness signal; not the sweep, though an automation's `heartbeatInterval` is named after it ([T6](#9-open-questions)) | runtime |
+| **heartbeat** | the plugin's liveness signal; not the sweep; an automation's own `heartbeatInterval`, named after it, was removed ([T6](#9-open-questions)) | runtime |
 | **to-do list**, **schedules** | the two kinds of row in the slice's one query store ([§5.8](#58-keys-and-rows-in-the-query-store-and-the-platforms-names)) | storage |
 
 The same definitions belong in the [terminology guide](../guides/terminology-guide.md) when the
@@ -1082,6 +1082,10 @@ on its own.
 swept ([§2](#2-what-exists-today)).
 **Recommendation: decide it with this work**: either honour it per slice, or deprecate it and
 document the shared sweep.
+**Decided 2026-10-17: removed.** The field is gone from both slice Specs, the examples, the
+trait scaffolds and the guides; the component guides describe the one five-minute sweep. A slice
+that still declares it compiles, since a module may carry more than its type asks. The plugin's
+own `heartbeatInterval`, its liveness signal, stays.
 
 **T7. Is a schedule set by an event replayed from history when the slice is rebuilt?**
 **Recommendation: yes, through the schedules table**, rebuilt in event order like the to-do list

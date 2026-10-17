@@ -144,9 +144,7 @@ let moduleUrl: string = %raw(`import.meta.url`)
 let collect = event => [(id, todoItem)]  // create work items
 let resolve = event => Some(id) | None   // complete work items
 let process = (id, item) => Some((id, command)) | None  // generate command
-let maxRetries = 3
-let heartbeatInterval = 60
-```
+let maxRetries = 3```
 
 **Builder:** `Platform.AutomationSlice.Make(Spec)`
 
@@ -172,9 +170,7 @@ let moduleUrl: string = %raw(`import.meta.url`)
 @schema type inboundCommand = unit  // or echo command type
 let collect = event => [(id, outboundItem)]
 let translate = async (id, item) => result<option<(string, inboundCommand)>, string>
-let maxRetries = 3
-let heartbeatInterval = 60
-```
+let maxRetries = 3```
 
 **Builder:** `Platform.OutboundTranslationSlice.Make(Spec)`
 

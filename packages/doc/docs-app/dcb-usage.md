@@ -128,7 +128,6 @@ module type Spec = {
   type command
 
   let maxRetries: int
-  let heartbeatInterval: int
   let targetName: string
 }
 ```
@@ -153,7 +152,6 @@ module type Spec = {
   type inboundCommand
 
   let maxRetries: int
-  let heartbeatInterval: int
   let targetName: option<string>
 }
 ```

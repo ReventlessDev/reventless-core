@@ -19,5 +19,4 @@ type todoItem = {orderId: OrderId.t}
 type command = ShipOrder({orderId: OrderId.t})
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "ShipOrder"

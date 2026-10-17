@@ -30,8 +30,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName;
 
 let externalSystem = "EmailService";
@@ -45,7 +43,6 @@ export {
   outboundItemSchema,
   inboundCommandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   sourceNames,
   externalSystem,

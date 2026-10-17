@@ -14,7 +14,6 @@ let M = AutomationSlice$Reventless.Mappings.Make({
   todoItemSchema: MarketingDigest$OrderingPlugin.todoItemSchema,
   commandSchema: MarketingDigest$OrderingPlugin.commandSchema,
   maxRetries: MarketingDigest$OrderingPlugin.maxRetries,
-  heartbeatInterval: MarketingDigest$OrderingPlugin.heartbeatInterval,
   targetName: MarketingDigest$OrderingPlugin.targetName,
   schedule: undefined
 });
@@ -99,7 +98,6 @@ let FromClock = AutomationSlice$Reventless.Mapping.Make({
   todoItemSchema: MarketingDigest$OrderingPlugin.todoItemSchema,
   commandSchema: MarketingDigest$OrderingPlugin.commandSchema,
   maxRetries: MarketingDigest$OrderingPlugin.maxRetries,
-  heartbeatInterval: MarketingDigest$OrderingPlugin.heartbeatInterval,
   targetName: MarketingDigest$OrderingPlugin.targetName,
   schedule: undefined
 })({
@@ -162,7 +160,6 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   todoItemSchema: MarketingDigest$OrderingPlugin.todoItemSchema,
   commandSchema: MarketingDigest$OrderingPlugin.commandSchema,
   maxRetries: MarketingDigest$OrderingPlugin.maxRetries,
-  heartbeatInterval: MarketingDigest$OrderingPlugin.heartbeatInterval,
   targetName: MarketingDigest$OrderingPlugin.targetName,
   schedule: undefined
 })({

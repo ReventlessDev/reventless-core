@@ -15,5 +15,4 @@ type todoItem = {orderId: OrderId.t, dueAt: float}
 type command = CancelOrder({orderId: OrderId.t})
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "CancelOrder"

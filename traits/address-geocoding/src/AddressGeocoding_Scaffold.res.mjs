@@ -79,7 +79,6 @@ function sliceSpec(c) {
     ``,
     `// Retries are for a geocoder that is down, not one that has answered.`,
     `let maxRetries = 3`,
-    `let heartbeatInterval = 60`,
     `let targetName = Some("` + c.entity + `")`,
     ``,
     `// The ` + c.entity + ` aggregate by its Spec.name; an outbound slice could once only`,

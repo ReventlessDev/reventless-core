@@ -24,7 +24,6 @@ module CancelUnshippedSpec = {
   type command = CancelOrder({orderId: @s.matches(DcbTag.string) string})
 
   let maxRetries = 2
-  let heartbeatInterval = 60
   let targetName = "CancelOrder"
   let schedule = None
 }

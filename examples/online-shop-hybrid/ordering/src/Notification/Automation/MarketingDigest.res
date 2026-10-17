@@ -28,5 +28,4 @@ type command =
     })
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "NotificationPreferences"

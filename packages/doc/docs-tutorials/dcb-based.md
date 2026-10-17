@@ -193,7 +193,6 @@ type todoItem = {orderId: string}
 type command = ShipOrder({orderId: string})
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "ShipOrder"
 ```
 
@@ -262,7 +261,6 @@ type outboundItem = {orderId: string, customerId: string}
 type inboundCommand = unit
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = None
 ```
 

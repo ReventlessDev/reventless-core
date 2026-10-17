@@ -38,7 +38,6 @@ module SendTrackingEmailSpec = {
   let onExhausted = (_id, _item, ~lastError as _) => None
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = None
   let sourceNames: array<string> = []
   let externalSystem = None
@@ -86,7 +85,6 @@ module ProcessPaymentSpec = {
   let onExhausted = (id, item, ~lastError) => onExhaustedFn.contents(id, item, lastError)
 
   let maxRetries = 2
-  let heartbeatInterval = 30
   let targetName = Some("ConfirmPayment")
   let sourceNames: array<string> = []
   let externalSystem = None

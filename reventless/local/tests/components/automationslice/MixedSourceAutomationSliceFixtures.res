@@ -53,7 +53,6 @@ module AutoFulfillSpec = {
       })
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "MarkFulfilled"
   let schedule = None
 }

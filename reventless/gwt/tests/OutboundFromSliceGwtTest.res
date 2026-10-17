@@ -15,7 +15,6 @@ module Welcome = {
   type inboundCommand = MarkWelcomed({customerId: string}) | MarkUnreachable({customerId: string})
 
   let maxRetries = 2
-  let heartbeatInterval = 60
   let targetName = Some("Customer")
   let sourceNames = []
   let externalSystem = None

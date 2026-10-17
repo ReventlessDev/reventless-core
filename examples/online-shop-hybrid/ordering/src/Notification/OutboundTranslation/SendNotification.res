@@ -44,7 +44,6 @@ type inboundCommand =
 // Retries are for a provider that is down, not one that has refused. The port's
 // own `retriable` rule decides which is which, in the translation next door.
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = Some("NotificationPreferences")
 
 // This plugin's own DCB event log — `NotificationRequested` is a DCB event.

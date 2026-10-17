@@ -78,7 +78,6 @@ module SendConfirmSpec = {
   type inboundCommand = unit
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = None
   let sourceNames: array<string> = []
   let externalSystem = Some("EmailService")

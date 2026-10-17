@@ -26,7 +26,6 @@ module DigestSpec = {
   type command = SendDigest({recipientId: @s.matches(DcbTag.string) string})
 
   let maxRetries = 2
-  let heartbeatInterval = 60
   let targetName = "SendDigest"
   let schedule = None
 }

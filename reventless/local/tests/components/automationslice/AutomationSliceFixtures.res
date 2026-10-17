@@ -39,7 +39,6 @@ module ShipOrderSpec = {
   type command = CreateShipment({orderId: @s.matches(Reventless.DcbTag.string) string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "CreateShipment"
   let schedule = None
 }
@@ -55,7 +54,6 @@ module SkipProcessSpec = {
   type command = Noop
 
   let maxRetries = 0
-  let heartbeatInterval = 60
   let targetName = "Noop"
   let schedule = None
 }

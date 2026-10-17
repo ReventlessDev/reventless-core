@@ -14,7 +14,6 @@ module CancelUnshipped = {
   type command = CancelOrder({orderId: string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "Order"
   let schedule = None
 }

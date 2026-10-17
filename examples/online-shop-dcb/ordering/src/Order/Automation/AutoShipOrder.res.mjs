@@ -29,8 +29,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "ShipOrder";
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/Automation/AutoShipOrder.res.mjs";
@@ -43,7 +41,6 @@ export {
   todoItemSchema,
   commandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   moduleUrl,
   authorizationOf,

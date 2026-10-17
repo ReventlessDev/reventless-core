@@ -63,7 +63,7 @@ The key insight is that the automation maintains a **stateful TODO list** of pen
 An AutomationSlice is **split into two files**:
 
 - `<Name>.res` — the **spec** (`@@reventless.spec`): the `todoItem` and `command`
-  `@schema` types, the sweep config (`maxRetries`, `heartbeatInterval`), and
+  `@schema` types, the retry config (`maxRetries`), and
   `targetName` (the aggregate or StateChangeSlice that receives the produced
   command).
 - `<Name>_Automation.res` — the **automation** (`@@reventless.automation`): one or
@@ -80,7 +80,6 @@ module type Spec = {
   @schema type command
 
   let maxRetries: int
-  let heartbeatInterval: int
   let targetName: string
   // injected as None by @@reventless.spec when the spec declares no time
   let schedule: option<Schedule.time>
@@ -102,7 +101,6 @@ filename — you don't write them):
 | `todoItem` | `@schema type` | Data accumulated for each pending work item |
 | `command` | `@schema type` | Command type produced by the processor |
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
-| `heartbeatInterval` | `int` | Reserved: not read today; the sweep runs every five minutes for every automation |
 | `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
 | `schedule` | `option<Schedule.time>` | The time the slice runs on, which its `Clock` mapping receives as a `Tick`; `None` (injected when absent) for a slice started by events only. See [Running on a time](#running-on-a-time) |
 
@@ -141,7 +139,6 @@ type todoItem = {orderId: string}
 type command = ShipOrder({orderId: string})
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "ShipOrder"
 ```
 
@@ -385,7 +382,6 @@ type todoItem = {day: float}
 type command = RequestDemandReport({day: float})
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = "ReportSettings"
 let schedule = Some(Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})}))
 ```

@@ -16,7 +16,6 @@ module DemandReportSpec = {
   type command = RequestDemandReport({day: float})
 
   let maxRetries = 2
-  let heartbeatInterval = 60
   let targetName = "ReportSettings"
   let schedule = Some(Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})}))
 }

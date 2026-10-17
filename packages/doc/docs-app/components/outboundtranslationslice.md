@@ -75,8 +75,8 @@ events like any other source.
 An OutboundTranslationSlice is **split into two files**:
 
 - `<Name>.res` — the **spec** (`@@reventless.spec`): the `consumedEvent`,
-  `outboundItem`, and `inboundCommand` `@schema` types, the sweep config
-  (`maxRetries`, `heartbeatInterval`), and `targetName` (`None` for fire-and-forget,
+  `outboundItem`, and `inboundCommand` `@schema` types, the retry config
+  (`maxRetries`), and `targetName` (`None` for fire-and-forget,
   or `Some("<TargetSlice>")` to publish a command back).
 - `<Name>_Translation.res` — the **translation** (`@@reventless.translation`): the
   `collect` function (event → outbound items) and the async `translate` function
@@ -93,7 +93,6 @@ module type Spec = {
   @schema type inboundCommand
 
   let maxRetries: int
-  let heartbeatInterval: int
   let targetName: option<string>
   let sourceNames: array<string>
   let externalSystem: option<string>
@@ -112,7 +111,6 @@ and names its sources in `sourceNames`.
 | `outboundItem` | `@schema type` | Data accumulated for each pending external call |
 | `inboundCommand` | `@schema type` | Command type optionally published back after translate. Use `unit` for fire-and-forget |
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
-| `heartbeatInterval` | `int` | Seconds between heartbeat sweeps for pending/failed items |
 | `targetName` | `option<string>` | `None` for fire-and-forget; `Some("<TargetSlice>")` to route the optional command back |
 | `sourceNames` | `array<string>` | Event sources to subscribe to. `[]` (the default) means this plugin's own DcbEventLog — see [Event sources](#event-sources) |
 | `externalSystem` | `option<string>` | Display name of the foreign system, drawn as an external box in the Event Graph. Auto-injected as `None` |
@@ -226,7 +224,6 @@ type outboundItem = {orderId: string, email: string}
 type inboundCommand = unit
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = None
 // This plugin's own DCB event log — `OrderShipped` is a DCB event. The
 // annotation is needed because a bare `[]` has no element type to infer.
@@ -274,7 +271,6 @@ type inboundCommand = ConfirmPayment({
 })
 
 let maxRetries = 5
-let heartbeatInterval = 30
 let targetName = Some("ConfirmPayment")
 let sourceNames: array<string> = []
 let externalSystem = Some("PaymentGateway")
@@ -351,7 +347,6 @@ type inboundCommand =
 // address the service has no match for is settled by publishing a command, not
 // by asking three more times.
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = Some("Customer")
 
 // The Customer Aggregate, by its `Spec.name`.
@@ -453,9 +448,11 @@ Each TODO item moves through these statuses:
 | `Failed` | External call failed -- eligible for retry |
 | `Abandoned` | External call failed for the last time -- `onExhausted` was consulted, and no sweep will pick this row up again |
 
-### Heartbeat Handler
+### The sweep
 
-A periodic heartbeat (configurable via `heartbeatInterval`) runs **Phase 2 only**, catching:
+A sweep runs **Phase 2 only**, every five minutes, for every automation and outbound
+translation slice of the deployment (one schedule for all of them, not one per
+slice). It catches:
 
 - Failed items eligible for retry (`retryCount < maxRetries`)
 - Items collected in a previous batch but not yet translated

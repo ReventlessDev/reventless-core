@@ -37,8 +37,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "NotificationPreferences";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/Automation/MarketingDigest.res.mjs";
@@ -51,7 +49,6 @@ export {
   todoItemSchema,
   commandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   moduleUrl,
   authorizationOf,

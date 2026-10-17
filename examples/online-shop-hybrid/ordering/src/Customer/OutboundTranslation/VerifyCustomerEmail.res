@@ -33,7 +33,6 @@ type inboundCommand =
 // retried, and exhausting delivery retries is not a verdict on the verification
 // — the challenge simply never opens, and the address stays unproven.
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = Some("EmailVerificationChallenges")
 
 let sourceNames = ["Customer"]

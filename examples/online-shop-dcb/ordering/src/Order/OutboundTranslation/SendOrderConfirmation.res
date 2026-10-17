@@ -14,7 +14,6 @@ type outboundItem = {orderId: OrderId.t, customerId: CustomerId.t}
 type inboundCommand = unit
 
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = None
 // This plugin's own DCB event log — `OrderPlaced` is a DCB event.
 let sourceNames: array<string> = []

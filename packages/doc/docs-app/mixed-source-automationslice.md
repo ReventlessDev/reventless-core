@@ -27,7 +27,7 @@ Automation/
   AutoFulfill_Automation.res  // Source modules + per-source Mapping.Make + mappings + process
 ```
 
-- **Spec** (`AutoFulfill.res`, `@@reventless.spec`) — `todoItem`, `command`, `maxRetries`, `heartbeatInterval`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
+- **Spec** (`AutoFulfill.res`, `@@reventless.spec`) — `todoItem`, `command`, `maxRetries`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
 - **Automation** (`AutoFulfill_Automation.res`, `@@reventless.automation`) — holds everything else inline: any DCB `Source` modules, one `Mapping.Make` instance per source, the `mappings` array, and `process: (string, todoItem, ~now: float) => option<(string, command)>` (the PPX adds `~now as _` when `process` does not take it). The `@@reventless.automation` PPX auto-injects `open Reventless.AutomationSlice`, `module Spec`, the `Mappings.Make` wrapper (`module M` / `module type Mapping`), `let moduleUrl`, and `module Id = Reventless.Id.String` + dcbTags on each Source module — you don't write those by hand. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
 
 ## Per-source mapping

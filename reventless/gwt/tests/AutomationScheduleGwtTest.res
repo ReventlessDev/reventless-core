@@ -14,7 +14,6 @@ module DemandReport = {
   type command = RequestDemandReport({day: float})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "ReportSettings"
   let schedule = Some(Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})}))
 }

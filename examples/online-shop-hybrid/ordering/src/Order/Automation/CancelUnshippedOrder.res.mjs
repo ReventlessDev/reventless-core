@@ -30,8 +30,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "CancelOrder";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/Automation/CancelUnshippedOrder.res.mjs";
@@ -44,7 +42,6 @@ export {
   todoItemSchema,
   commandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   moduleUrl,
   authorizationOf,

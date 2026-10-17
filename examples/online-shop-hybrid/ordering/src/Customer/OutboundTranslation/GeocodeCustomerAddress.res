@@ -25,7 +25,6 @@ type inboundCommand =
 
 // Retries are for a geocoder that is down, not one that has answered.
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = Some("Customer")
 
 // The Customer aggregate by its Spec.name; an outbound slice could once only

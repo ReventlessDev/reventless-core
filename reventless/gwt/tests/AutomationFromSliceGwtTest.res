@@ -16,7 +16,6 @@ module ShipPaid = {
     | GiveUp({orderId: string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "Order"
   let schedule = None
 }

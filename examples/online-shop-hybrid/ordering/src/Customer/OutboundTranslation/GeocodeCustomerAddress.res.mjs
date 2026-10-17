@@ -44,8 +44,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "Customer";
 
 let externalSystem = "AwsLocation";
@@ -61,7 +59,6 @@ export {
   outboundItemSchema,
   inboundCommandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   sourceNames,
   externalSystem,

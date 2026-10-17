@@ -42,8 +42,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "EmailVerificationChallenges";
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/OutboundTranslation/VerifyCustomerEmail.res.mjs";
@@ -57,7 +55,6 @@ export {
   outboundItemSchema,
   inboundCommandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   sourceNames,
   capabilityNeeds,

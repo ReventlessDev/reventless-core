@@ -13,7 +13,6 @@ let M = AutomationSlice$Reventless.Mappings.Make({
   todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
   commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
   maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-  heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
   targetName: AutoShipOrder$OrderingPlugin.targetName,
   schedule: undefined
 });
@@ -72,7 +71,6 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
   commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
   maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-  heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
   targetName: AutoShipOrder$OrderingPlugin.targetName,
   schedule: undefined
 })({

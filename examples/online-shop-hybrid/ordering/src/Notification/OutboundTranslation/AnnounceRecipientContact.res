@@ -35,7 +35,6 @@ type inboundCommand = AnnounceRecipient({recipientId: string, email: string})
 // of one would turn a transient publish error into a lost address. Three, and
 // then the row is visible in the sweep.
 let maxRetries = 3
-let heartbeatInterval = 60
 let targetName = Some("NotificationPreferences")
 
 // The Customer aggregate by its Spec.name.

@@ -134,7 +134,6 @@ module AutoShipSpec = {
   type command = Ship({orderId: @s.matches(Reventless.DcbTag.string) string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "Ship"
   let schedule = None
 }

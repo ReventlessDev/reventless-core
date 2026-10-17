@@ -281,7 +281,6 @@ function Make(Platform) {
     todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
     targetName: AutoShipOrder$OrderingPlugin.targetName,
     schedule: undefined
   })({
@@ -297,7 +296,6 @@ function Make(Platform) {
     outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
     targetName: undefined,
     sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
     externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,

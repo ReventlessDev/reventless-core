@@ -51,8 +51,6 @@ let Id;
 
 let maxRetries = 3;
 
-let heartbeatInterval = 60;
-
 let targetName = "NotificationPreferences";
 
 let externalSystem = "Messaging";
@@ -66,7 +64,6 @@ export {
   outboundItemSchema,
   inboundCommandSchema,
   maxRetries,
-  heartbeatInterval,
   targetName,
   sourceNames,
   externalSystem,

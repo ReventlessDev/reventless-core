@@ -39,11 +39,10 @@ let process = (id, item) =>
   Some((id, CreateShipment({orderId: item.orderId, address: item.shippingAddress})))
 
 let maxRetries = 3
-let heartbeatInterval = 60
 ```
 */
 /**
-The lean Spec for an AutomationSlice — types, identity, schemas, sweep config.
+The lean Spec for an AutomationSlice — types, identity, schemas, retry config.
 
 Plan 04 dropped `consumedEvent` from the Spec — the framework now derives the
 consumed-event set from each per-source Mapping's `sourceEventSchema`, so a
@@ -66,9 +65,6 @@ module type Spec = {
 
   /** Maximum number of retries for a failed processing attempt. */
   let maxRetries: int
-
-  /** Heartbeat interval in seconds for sweeping pending/failed items. */
-  let heartbeatInterval: int
 
   /** Name of the aggregate or StateChangeSlice that receives the produced command. */
   let targetName: string

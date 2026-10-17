@@ -14,7 +14,6 @@ module MarketingDigest = {
   type command = RequestNotification({recipientId: string, reference: string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "NotificationPreferences"
   let schedule = None
 }
@@ -164,7 +163,6 @@ module Reminder = {
   type command = RemindOrder({orderId: string})
 
   let maxRetries = 3
-  let heartbeatInterval = 60
   let targetName = "Order"
   let schedule = None
 }

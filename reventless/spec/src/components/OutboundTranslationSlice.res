@@ -15,7 +15,7 @@ Event(s) -> TODO List (read model) -> Translator -> External Service
 
 Plan 02 splits the merged spec into two module types:
 
-- `Spec` — types, identity, schemas, sweep config. Per D2, `outboundItem`
+- `Spec` — types, identity, schemas, retry config. Per D2, `outboundItem`
   lives here (persisted TODO state with schema).
 - `Translation` — `collect` (sync, observable in tests) and `translate`
   (async, mocked in tests via `whenTranslateMocked`).
@@ -41,11 +41,10 @@ let translate = async (_id, item, ~capabilities as _) => {
 }
 
 let maxRetries = 3
-let heartbeatInterval = 60
 ```
 */
 /**
-The lean Spec for an OutboundTranslationSlice — types, identity, schemas, sweep config.
+The lean Spec for an OutboundTranslationSlice — types, identity, schemas, retry config.
 */
 module type Spec = {
   /** Logical name of this outbound translation slice (used as a component prefix). */
@@ -70,9 +69,6 @@ module type Spec = {
 
   /** Maximum number of retries for a failed translate attempt. */
   let maxRetries: int
-
-  /** Heartbeat interval in seconds for sweeping pending/failed items. */
-  let heartbeatInterval: int
 
   /** Name of the aggregate or StateChangeSlice that receives the inbound command, or None for fire-and-forget. */
   let targetName: option<string>
