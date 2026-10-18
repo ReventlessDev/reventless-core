@@ -1,5 +1,5 @@
 // Writes the curated component manifest where the local host shell serves its
-// static assets from (`HostShellDist`), so `manifestUrl` discovery works in dev
+// static assets from (the chosen `assetsDir`, else `HostShellDist`), so `manifestUrl` discovery works in dev
 // exactly as it does in a deployment. Rewritten on every boot, which also makes
 // it self-healing — a `pnpm install` that replaces the package directory costs
 // one restart, not a debugging session.
@@ -30,6 +30,8 @@ let files = (~config: ReventlessInfra.Platform.bakedManifest): array<(
 let emit = (
   ~structures: array<(string, Reventless.Plugin.pluginStructure)>,
   ~config: ReventlessInfra.Platform.bakedManifest,
+  // The platform's chosen `assetsDir`; unset, the host-shell package's `dist/`.
+  ~dir: option<string>=?,
 ) => {
   let outputs = files(~config)
   // Every file is curated before any is written. A declaration naming a
@@ -42,7 +44,10 @@ let emit = (
     | Ok(manifest) => manifest
     },
   ))
-  switch HostShellDist.dir() {
+  switch switch dir {
+  | Some(_) as given => given
+  | None => HostShellDist.dir()
+  } {
   | None =>
     JsError.throwWithMessage(
       `baked manifest: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++

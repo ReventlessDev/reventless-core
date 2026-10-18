@@ -323,7 +323,7 @@ app (the online-shop-hybrid example puts it in its seed package as
 answer on every platform; only where the file goes is platform-specific.
 
 The file is written to the resolved `@reventlessdev/reventless-host-shell`
-`dist/` — where the `config.json` and `ui-hints.json` you already see are served
+`dist/` (or to a chosen [`assetsDir`](#where-the-host-ui-files-go-assetsdir)) — where the `config.json` and `ui-hints.json` you already see are served
 from — as `component-manifest.json` (override with `key`), on every boot. Point
 the shell at it by adding `"manifestUrl": "/component-manifest.json"` to that
 same `config.json`; with the key set the shell never contacts the platform API
@@ -342,6 +342,37 @@ along on `internalQueryables` when an included command `@ref`s one, because a
 shell reading a baked file has no admin API to resolve a picker's targets from.
 
 Unset ⇒ no file written, and the platform behaves exactly as it did before.
+
+## Where the host UI files go (`assetsDir`)
+
+The local platform writes four files for the host shell: the `config.json` overlay, the
+declared `ui-hints.json`, the declared `ui-slots.js` and the baked manifest. By default they go
+into the installed `@reventlessdev/reventless-host-shell` package's `dist/`. An app that
+builds its own UI bundle (extra modules beside the shell, or a build of its own) can name
+another directory, as it does for the AWS deploy:
+
+```rescript
+~hostUiBundle={
+  assetsDir: "ui/dist",
+  shellConfig: Dict.fromArray([("appName", JSON.Encode.string("Online Shop"))]),
+}
+```
+
+A relative path resolves against the working directory, and the directory is created if it is
+missing. The `config.json` already in it is the baseline that the overlay is written on top of,
+exactly as the shipped file is in the package's `dist/`. So an app can ship its own baseline
+(with `viewModes`, for example) in that directory.
+
+The local host shell still serves its own `dist/`. Until its start command can serve a
+directory you give it, files written to a chosen `assetsDir` are not what the browser sees.
+
+## Which environment the shell is in
+
+The `config.json` overlay always carries `"environment": "local"` and
+`"environmentPurpose": "local"`, so the shell can show a *local* badge. The platform computes
+both keys, so a `shellConfig` that sets either one fails the boot. A deployed platform writes
+the deployment's own name and purpose; see
+[What the host shell is told](deploy-environments.md#what-the-host-shell-is-told).
 
 ## Editing UI hints without restarting
 

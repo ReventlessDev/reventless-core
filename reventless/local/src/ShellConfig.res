@@ -17,8 +17,9 @@
 // `pnpm install` that replaces the package directory costs one restart, because
 // the baseline is re-seeded from whatever the new package ships.
 //
-// One key is computed (`manifestUrl`, from the bake declaration — local knows
-// where it put the file); the rest are the deployment's own `shellConfig`,
+// The computed keys are the environment (always `local`), `manifestUrl` and the
+// journey map (from the bake declaration — local knows where it put the file),
+// `uiSlotsUrl` and `adminGroup`; the rest are the deployment's own `shellConfig`,
 // passed through verbatim. A `shellConfig` that names a computed key fails the
 // same way it does on AWS: a passthrough cannot redirect a key the platform
 // decides, and silently resolving it either way points the shell somewhere
@@ -41,7 +42,10 @@ let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
 // caller matching no declared group gets and what every existing deployment has.
 let journeyManifestsKey = "journeyManifestUrls"
 
+let environmentKeys = [Reventless.ShellEnvironment.nameKey, Reventless.ShellEnvironment.purposeKey]
+
 let computedKeys = [
+  ...environmentKeys,
   "manifestUrl",
   journeyManifestsKey,
   ReventlessCore.Platform_UiSlots.configKey,
@@ -60,7 +64,10 @@ let overlay = (
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
 ): dict<JSON.t> => {
-  let out = Dict.make()
+  let out =
+    Reventless.ShellEnvironment.local
+    ->Reventless.ShellEnvironment.configFields
+    ->Dict.fromArray
 
   // `UiSlots` serves the module; this is what tells the shell to import it. The
   // two are separate writes to separate files, which is exactly why the name
@@ -120,23 +127,22 @@ let readObject = (~path: string, ~label: string): dict<JSON.t> =>
 /**
  Merge the overlay onto the shipped `config.json` in the host shell's `dist/`.
 
- A no-op when there is nothing to say and nothing was said before — a platform
- that declares neither a bake nor any `shellConfig` never touches the file, so
- its dev shell is byte-identical to one built before this module existed. Once
- either is declared the write happens or fails loudly, for the reason
- `BakedManifest.emit` gives: both failure modes it can hit are the deployment's
- own mistake, and both produce the same silent symptom if swallowed.
+ The environment keys are always written, so the shell can say it is local;
+ without the package they are dropped silently, since a platform nobody points a
+ browser at has nothing to badge. Anything declared beyond them is written or
+ fails loudly, for the reason `BakedManifest.emit` gives: both failure modes it
+ can hit are the deployment's own mistake, and both produce the same silent
+ symptom if swallowed.
  */
 let emit = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
-  // Test seam. The baseline dance is the part of this module with state behind
-  // it — "boot twice and the second write still starts from the shipped file" is
-  // not a property a pure function can carry.
+  // The platform's chosen `assetsDir`; unset, the host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
   let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig)
+  let declared = overlay->Dict.keysToArray->Array.filter(k => !(environmentKeys->Array.includes(k)))
 
   switch switch dir {
   | Some(_) as given => given
@@ -146,7 +152,7 @@ let emit = (
     // Nothing declared and no shell installed is the ordinary case for a
     // platform nobody points a browser at; only a declaration makes the missing
     // package an error, and then it is the same error the bake gives.
-    if overlay->Dict.keysToArray->Array.length > 0 {
+    if declared->Array.length > 0 {
       JsError.throwWithMessage(
         `host UI config.json: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
         `the local shell reads its config from that package's dist/, so declaring shell ` ++
@@ -157,29 +163,26 @@ let emit = (
     let path = NodePath.join([dir, fileName])
     let baselinePath = NodePath.join([dir, baselineFileName])
 
-    // Seeded only when there is an overlay to apply. A platform that declares
-    // nothing must not leave a `config.base.json` behind for the next one to
-    // read as authoritative.
-    if !NodeFs.existsSync(baselinePath) && overlay->Dict.keysToArray->Array.length > 0 {
-      if !NodeFs.existsSync(path) {
+    // The baseline is whatever `config.json` the directory held first: the
+    // shell's shipped file, or the app's own in a chosen `assetsDir`.
+    if !NodeFs.existsSync(baselinePath) {
+      if NodeFs.existsSync(path) {
+        NodeFs.writeFileSync(baselinePath, NodeFs.readFileSync(path))
+      } else if declared->Array.length > 0 {
         JsError.throwWithMessage(
-          `host UI config.json: ${HostShellDist.package} ships no ${fileName} at ${dir} — ` ++
+          `host UI config.json: there is no ${fileName} at ${dir} — ` ++
           `there is no baseline to overlay, so the shell would boot with only the keys ` ++ `declared here and none of the ones it expects.`,
         )
       }
-      NodeFs.writeFileSync(baselinePath, NodeFs.readFileSync(path))
     }
 
     if NodeFs.existsSync(baselinePath) {
       let merged = readObject(~path=baselinePath, ~label="config baseline")
       overlay->Dict.forEachWithKey((v, k) => merged->Dict.set(k, v))
       NodeFs.writeFileSync(path, JSON.stringify(merged->JSON.Encode.object, ~space=2))
-      let keys = overlay->Dict.keysToArray
       log.info(
         ~comp="ShellConfig",
-        keys->Array.length == 0
-          ? `restored ${fileName} from ${baselineFileName}: ${path}`
-          : `wrote ${fileName} with ${keys->Array.join(", ")}: ${path}`,
+        `wrote ${fileName} with ${overlay->Dict.keysToArray->Array.join(", ")}: ${path}`,
       )
     }
   }

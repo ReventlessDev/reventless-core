@@ -2355,6 +2355,12 @@ module MakeWithConfig = (
       // `platformApiEndpoint`, already present) with the store it declares, so there
       // is no per-store URL to publish. The store's *serving* base URL still travels
       // in the `objectStores` stack output above.
+      // Outside the apply; the same name the deployment record carries.
+      let shellEnvironment = Reventless.ShellEnvironment.resolve(
+        ~provenance=Reventless.DeploymentProvenance.current(),
+        ~stack=stackName,
+        ~prodStacks=Util_HostUiDomain.resolveProdStacks(),
+      )
       let configJsonContent =
         (
           (
@@ -2407,6 +2413,7 @@ module MakeWithConfig = (
           // public Function URL and its config key are both gone.
           Util_ShellConfig.fields(
             ~computed=withEvents,
+            ~environment=shellEnvironment,
             ~viewModes=?cfg.viewModes,
             ~bakedManifest=?cfg.bakedManifest,
             ~uiSlotsFile=?cfg.uiSlotsFile,

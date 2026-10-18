@@ -928,6 +928,7 @@ module MakeWithConfig = (
   let bakeManifest = (
     ~pluginComponents: array<ReventlessCore.Plugin.component>,
     ~config: ReventlessInfra.Platform.bakedManifest,
+    ~dir: option<string>,
   ) => {
     let resolved: array<(string, Reventless.Plugin.pluginStructure)> = []
     let expected = pluginComponents->Array.length
@@ -942,7 +943,7 @@ module MakeWithConfig = (
           | None => ()
           }
           if resolved->Array.length === expected {
-            BakedManifest.emit(~structures=resolved, ~config)
+            BakedManifest.emit(~structures=resolved, ~config, ~dir?)
           }
         })
     })
@@ -1518,13 +1519,15 @@ module MakeWithConfig = (
     })
 
   // In-memory ignores the infrastructure half of `~hostUiBundle` — the host shell
-  // is served from the installed package's own `dist/`, not from a CDN. What a
-  // deployment *says* is honoured, in the same three files the AWS deploy writes
+  // is served from a local directory (`assetsDir`, else the installed package's
+  // own `dist/`), not from a CDN. What a deployment *says* is honored, in the same files the AWS deploy writes
   // beside each other: `bakedManifest` through `BakedManifest`, `shellConfig`
   // through `ShellConfig`, which overlays the served `config.json` the way the
   // AWS deploy composes the one it writes, and `uiHintsFile` through `UiHints`,
   // which replaces the served hints file the way the deploy uploads it.
   type hostUiBundleConfig = {
+    // Where every file below is written, as on AWS. Unset: the host-shell
+    // package's `dist/`.
     assetsDir?: string,
     bundleVersion?: string,
     // `makePlatform` serves the declared file in place of the host-shell
@@ -1736,7 +1739,14 @@ module MakeWithConfig = (
     // structure Output to land. Unconditional, unlike the bake, because it is
     // also what restores the shipped file for a platform that has stopped
     // declaring anything.
+    //
+    // All four writers share one directory, resolved once: a second opinion puts
+    // a file where nothing reads it.
+    let hostUiDir = HostShellDist.resolve(
+      ~assetsDir=hostUiBundle->Option.flatMap(cfg => cfg.assetsDir),
+    )
     ShellConfig.emit(
+      ~dir=?hostUiDir,
       ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
       // Names the module `UiSlots.emit` serves below. Both or neither: a key
       // without the file is a 404 the shell survives quietly, and a file without
@@ -1747,7 +1757,7 @@ module MakeWithConfig = (
     // Unconditional for the same reason, and one file over: it is also what
     // restores the shell package's own hints for a platform that has stopped
     // declaring its own.
-    UiHints.emit(~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile))
+    UiHints.emit(~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile), ~dir=?hostUiDir)
     // The dev loop for the file just written. Editing hints is presentation
     // work — you change a label, you want to see the label — and routing that
     // through a platform restart puts fifteen seconds between the two. The
@@ -1759,20 +1769,22 @@ module MakeWithConfig = (
     // would imply a shutdown path this platform does not have.
     let _ = UiHints.watch(
       ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
+      ~dir=?hostUiDir,
       ~onReload=LocalEvents_Server.broadcastUiHintsChanged,
     )
     // The same pair for the module that draws what a hint cannot say. Also
     // unconditional, and for a reason the hints file does not have: this is what
     // removes a module a platform has stopped declaring, and leaving one behind
     // would go on drawing regions with nothing in the deployment to explain it.
-    UiSlots.emit(~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile))
+    UiSlots.emit(~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile), ~dir=?hostUiDir)
     let _ = UiSlots.watch(
       ~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+      ~dir=?hostUiDir,
       ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
     )
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
-    | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg)
+    | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg, ~dir=hostUiDir)
     }
     switch (projectionCatchup, pgProjectionCatchup) {
     | (Some((db, upperBound, dcbUpperBound)), _) =>

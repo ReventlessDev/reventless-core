@@ -35,6 +35,7 @@ import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
+import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "./adapter/QueryDb/QueryDbBackend.res.mjs";
@@ -52,6 +53,7 @@ import * as Util_StoreLayout$ReventlessAws from "./util/Util_StoreLayout.res.mjs
 import * as IndexJs from "@pulumi/pulumi/runtime/index.js";
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
 import * as AppSync_MergedApi$ReventlessAws from "./components/Api/AppSync_MergedApi.res.mjs";
+import * as DeploymentProvenance$Reventless from "@reventlessdev/reventless-spec/src/types/DeploymentProvenance.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
@@ -1235,6 +1237,7 @@ function MakeWithConfig(Config) {
       if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
+      let shellEnvironment = ShellEnvironment$Reventless.resolve(DeploymentProvenance$Reventless.current(), stackName, Util_HostUiDomain$ReventlessAws.resolveProdStacks());
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1286,7 +1289,7 @@ function MakeWithConfig(Config) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, shellEnvironment, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
       let bootFileCacheControl = "no-cache";
       new (Aws.s3.BucketObject)("host-ui-config-json", {
@@ -2628,6 +2631,7 @@ function Make($star) {
       if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
+      let shellEnvironment = ShellEnvironment$Reventless.resolve(DeploymentProvenance$Reventless.current(), stackName, Util_HostUiDomain$ReventlessAws.resolveProdStacks());
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -2679,7 +2683,7 @@ function Make($star) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, shellEnvironment, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.uiSlotsFile, hostUiBundle.shellConfig));
       });
       let bootFileCacheControl = "no-cache";
       new (Aws.s3.BucketObject)("host-ui-config-json", {

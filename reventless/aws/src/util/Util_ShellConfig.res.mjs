@@ -4,6 +4,7 @@ import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
+import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
@@ -58,8 +59,13 @@ function subscriptionEndpoint(httpsEndpoint) {
   return httpsEndpoint.replace("https://", "wss://").replace(".appsync-api.", ".appsync-realtime-api.");
 }
 
-function fields(computed, viewModes, bakedManifest, uiSlotsFile, shellConfig) {
+function fields(computed, environment, viewModes, bakedManifest, uiSlotsFile, shellConfig) {
   let out = Object.fromEntries(computed);
+  Stdlib_Option.forEach(environment, env => {
+    ShellEnvironment$Reventless.configFields(env).forEach(param => {
+      out[param[0]] = param[1];
+    });
+  });
   Stdlib_Option.forEach(Platform_AdminGroup$ReventlessCore.configEntry(), param => {
     out[param[0]] = param[1];
   });
@@ -107,4 +113,4 @@ export {
   subscriptionEndpoint,
   fields,
 }
-/* Platform_AdminGroup-ReventlessCore Not a pure module */
+/* ShellEnvironment-Reventless Not a pure module */

@@ -226,6 +226,46 @@ describe("Util_ShellConfig.fields — journeys", () => {
   })
 })
 
+// The shell badges every environment that is not production, so a purpose that
+// went missing shows as a badge rather than as nothing.
+describe("Util_ShellConfig.fields — environment", () => {
+  testSync("the name and the purpose follow the computed keys", () => {
+    let out = Util_ShellConfig.fields(~computed, ~environment={name: "test", purpose: Some("test")})
+    expect(out->Dict.keysToArray)->toEqual([
+      "apiEndpoint",
+      "region",
+      "environment",
+      "environmentPurpose",
+    ])
+    expect((out->get("environment"), out->get("environmentPurpose")))->toEqual((
+      JSON.Encode.string("test"),
+      JSON.Encode.string("test"),
+    ))
+  })
+
+  testSync("an unknown purpose leaves its key out", () => {
+    let out = Util_ShellConfig.fields(~computed, ~environment={name: "alpha", purpose: None})
+    expect(out->Dict.get("environmentPurpose")->Option.isNone)->toBe(true)
+  })
+
+  testSync("a shellConfig environment fails the deploy rather than renaming it", () => {
+    let failure = try {
+      let _ = Util_ShellConfig.fields(
+        ~computed,
+        ~environment={name: "prod", purpose: Some("production")},
+        ~shellConfig=Dict.fromArray([("environment", JSON.Encode.string("staging"))]),
+      )
+      None
+    } catch {
+    | Failure(message) => Some(message)
+    }
+    switch failure {
+    | Some(message) => expect(message->String.includes("environment"))->toBe(true)
+    | None => fail("a shellConfig key renaming the computed environment must fail the deploy")
+    }
+  })
+})
+
 describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
   testSync("shell-owned keys land verbatim, under the computed ones", () => {
     let out = Util_ShellConfig.fields(

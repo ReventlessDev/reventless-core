@@ -26,10 +26,34 @@ let threw = (f: unit => unit): bool =>
   }
 
 describe("ShellConfig.overlay", () => {
-  testSync("is empty when the deployment declares nothing", () => {
+  testSync("carries only the environment when the deployment declares nothing", () => {
     let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
-    expect(out->Dict.keysToArray)->toEqual([])
+    expect(out->Dict.keysToArray)->toEqual(["environment", "environmentPurpose"])
   })
+
+  // The shell badges everything that is not production; locally it says so.
+  testSync("names the environment and its purpose local", () => {
+    let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
+    expect((out->str("environment"), out->str("environmentPurpose")))->toEqual((
+      Some("local"),
+      Some("local"),
+    ))
+  })
+
+  testSync("refuses a shellConfig naming either environment key", () =>
+    expect(
+      ["environment", "environmentPurpose"]->Array.map(
+        key =>
+          threw(
+            () =>
+              ShellConfig.overlay(
+                ~bakedManifest=None,
+                ~shellConfig=Some(Dict.fromArray([(key, JSON.Encode.string("prod"))])),
+              )->ignore,
+          ),
+      ),
+    )->toEqual([true, true])
+  )
 
   testSync("points manifestUrl at the bake's default key", () => {
     let out = ShellConfig.overlay(~bakedManifest=Some(manifest()), ~shellConfig=None)
@@ -147,11 +171,25 @@ describe("ShellConfig.emit", () => {
     expect(out->str("apiEndpoint"))->toEqual(Some("/graphql"))
   })
 
-  testSync("leaves a platform that declares nothing entirely alone", () => {
+  testSync("adds only the environment for a platform that declares nothing", () => {
     let dir = distWithConfig()
     ShellConfig.emit(~bakedManifest=None, ~shellConfig=None, ~dir)
-    expect(NodeFs.readFileSync(NodePath.join([dir, "config.json"])))->toEqual(shipped)
-    expect(NodeFs.existsSync(NodePath.join([dir, "config.base.json"])))->toBe(false)
+    let out = readConfig(dir)
+    expect(out->Dict.keysToArray)->toEqual([
+      "apiEndpoint",
+      "appName",
+      "environment",
+      "environmentPurpose",
+    ])
+    expect(readBaseline(dir)->str("appName"))->toEqual(Some("Shipped"))
+  })
+
+  // The environment alone is no declaration: a directory with no config.json to
+  // overlay is left as it is rather than refused.
+  testSync("writes nothing and refuses nothing when only the environment has no baseline", () => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-shellconfig-"]))
+    ShellConfig.emit(~bakedManifest=None, ~shellConfig=None, ~dir)
+    expect(NodeFs.readdirSyncNames(dir, {}))->toEqual([])
   })
 
   // The whole reason a baseline is kept: boot 2 overlaying boot 1's output would
@@ -273,8 +311,8 @@ describe("ShellConfig.overlay — adminGroup", () => {
   testSync("is absent while the administrator role keeps its own name", () => {
     Reventless.Role.clearGroups()
     expect(
-      ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)->Dict.keysToArray,
-    )->toEqual([])
+      ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)->Dict.get("adminGroup"),
+    )->toEqual(None)
   })
 
   testSync("carries the group a renamed administrator role maps to", () => {

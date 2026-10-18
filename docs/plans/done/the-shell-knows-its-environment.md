@@ -1,14 +1,16 @@
 # Plan: the shell knows its environment, and the local platform serves a chosen UI directory
 
 **Date:** 2026-10-18<br/>
-**Status:** 📋 Planned. Nothing built.<br/>
+**Status:** ✅ Done. [U1](#u1--one-resolver-for-the-shells-environment) to
+[U5](#u5--docs-and-release) are built; the release goes out with the next push. What
+differs from the steps is listed under [Outcome](#outcome).<br/>
 **Touches:** `reventless/aws` (`Util_ShellConfig`, the host UI part of `Platform.deployPlatform`),
 `reventless/local` (`ShellConfig`, `UiHints`, `UiSlots`, `BakedManifest`, `HostShellDist`,
 `Platform.makePlatform`), `reventless/spec` (one shared resolver), and the guides
 `local-dev.md` and `deploy-environments.md`.<br/>
-**Builds on:** [an-app-declares-its-environments.md](an-app-declares-its-environments.md)
+**Builds on:** [an-app-declares-its-environments.md](../an-app-declares-its-environments.md)
 (environments with a purpose, recorded with every deployment) and
-[done/host-ui-shell-config-choices.md](done/host-ui-shell-config-choices.md) (the composed
+[host-ui-shell-config-choices.md](host-ui-shell-config-choices.md) (the composed
 `config.json`).<br/>
 **Companion:** reventless-ui. The shell reads the two keys and draws an environment badge; the
 host shell's start command serves the directory [U4](#u4--the-local-platform-honours-assetsdir)
@@ -30,7 +32,7 @@ chooses, as the AWS platform already does with `assetsDir`.
 - **Core knows the environment and does not pass it on.** The stack name is the environment in
   resource tags (`reventless:environment`), the deploy hook and the deployment record. A
   declared environment and its purpose reach every deploy through
-  `DeploymentProvenance` ([an-app-declares-its-environments.md](an-app-declares-its-environments.md)).
+  `DeploymentProvenance` ([an-app-declares-its-environments.md](../an-app-declares-its-environments.md)).
   `Util_ShellConfig.fields` writes endpoints, the admin group, slots, the baked manifest and
   view modes, but neither of these.
 - **The shell already has a key for the name and nobody fills it.** `Config.t` reads
@@ -180,11 +182,38 @@ other three and can land first. [U5](#u5--docs-and-release) closes.
    in a third.** Recommendation: align on `"local"` in a separate fix; the badge does not depend
    on it.
 
+## Outcome
+
+In plain words: both platforms now tell the shell which environment it runs in, and the
+local platform writes the host UI's files into the app's chosen directory. Four details differ
+from the steps above.
+
+- **[U1](#u1--one-resolver-for-the-shells-environment): a declared environment without a
+  purpose falls back to the stack list.** `ShellEnvironment.resolve` takes the name from the
+  declaration, else the stack, and the purpose from the declaration, else `production` for a
+  stack in `prodStacks`. The table's two rows are the two ends of this rule. The module also
+  carries the key names and `configFields`, so both platforms write the keys the same way.
+- **[U2](#u2--the-aws-platform-writes-both-keys): `Util_ShellConfig.fields` takes
+  `~environment`** instead of the deploy adding the keys to `computed`. That way the test calls
+  the same code path the deploy does. The collision guard covers the keys as before.
+- **[U3](#u3--the-local-platform-writes-both-keys): a local platform that declares nothing now
+  writes `config.json`.** The overlay always carries the two keys, so the shell's `config.json`
+  gets them and a `config.base.json` whenever a shell is installed. Without the package, or
+  without a `config.json` in the directory, the environment keys alone are dropped silently. A
+  missing package or baseline is still an error only when something else is declared.
+- **[U5](#u5--docs-and-release): two more docs.** The `config.json` contract in
+  [`ui-fragments-deployment.md`](../../../packages/doc/docs-infrastructure/ui-fragments-deployment.md#configjson-contract)
+  and [§5.5](../../../packages/doc/docs-app/ui-configuration.md#55-the-environment) of
+  [`ui-configuration.md`](../../../packages/doc/docs-app/ui-configuration.md) describe the
+  two keys too, and [local-dev.md](../../guides/local-dev.md#where-the-host-ui-files-go-assetsdir)
+  and [deploy-environments.md](../../guides/deploy-environments.md#what-the-host-shell-is-told)
+  carry the guide sections.
+
 ## Not in scope
 
 - Drawing the badge: the shell's change in reventless-ui.
 - Serving the chosen directory locally: the host shell's start command, in reventless-ui.
 - Local `viewModes`: still the backlog plan
-  [Backlog/shell-config-json-contract-and-local-view-modes.md](Backlog/shell-config-json-contract-and-local-view-modes.md).
+  [Backlog/shell-config-json-contract-and-local-view-modes.md](../Backlog/shell-config-json-contract-and-local-view-modes.md).
   A chosen `assetsDir` lets an app ship its own `config.json` baseline with `viewModes`, which
   narrows that gap without closing it.

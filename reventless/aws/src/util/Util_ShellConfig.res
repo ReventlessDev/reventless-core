@@ -81,7 +81,8 @@ let subscriptionEndpoint = (httpsEndpoint: string): string =>
 /**
 The config.json field set.
 
-`computed` arrives in wire order and keeps it. `viewModes` unset ⇒ no
+`computed` arrives in wire order and keeps it; `environment` follows it, its
+purpose key only when the purpose is known. `viewModes` unset ⇒ no
 `viewModes` key and no per-mode key, so a deployment that wants no optional mode
 gets byte-identical output to before this input existed. `bakedManifest` unset ⇒
 no `manifestUrl`, and every caller keeps the admin discovery path. `shellConfig`
@@ -91,12 +92,17 @@ somewhere unintended with nothing in the diff to say so.
 */
 let fields = (
   ~computed: array<(string, JSON.t)>,
+  ~environment: option<Reventless.ShellEnvironment.t>=?,
   ~viewModes: option<array<Platform.viewMode>>=?,
   ~bakedManifest: option<Platform.bakedManifest>=?,
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>=?,
 ): dict<JSON.t> => {
   let out = computed->Dict.fromArray
+
+  environment->Option.forEach(env =>
+    env->Reventless.ShellEnvironment.configFields->Array.forEach(((k, v)) => out->Dict.set(k, v))
+  )
 
   // Computed, like the endpoints: the group the admin API is gated on, from the
   // deploy's own role mapping.

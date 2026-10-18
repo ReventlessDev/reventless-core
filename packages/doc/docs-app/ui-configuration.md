@@ -1097,6 +1097,18 @@ reads as `Admin`. It is computed, not passthrough: naming it in `shellConfig`
 fails, because a shell gating on another group than the server would treat a real
 administrator as a non-admin.
 
+### 5.5 The environment
+
+The platform tells the shell which environment it runs in, as `environment` (the
+name) and `environmentPurpose` (`dev`, `test`, `production`, a team's own word, or
+`local`). The local platform writes `local` for both. A deployed platform writes the
+deployment's declared environment and purpose. Without a declaration it writes the
+stack name, plus `production` when the stack is one of `hostUiProdStacks`; any
+other stack gets no purpose key. The shell shows an environment badge unless the
+purpose is `production`. Both keys are computed, not passthrough: naming either in
+`shellConfig` fails. See
+[the `config.json` contract](/infrastructure/ui-fragments-deployment#configjson-contract).
+
 ---
 
 ## 6. Putting it together

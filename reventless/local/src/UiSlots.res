@@ -53,9 +53,8 @@ let fileName = ReventlessCore.Platform_UiSlots.fileName
  */
 let emit = (
   ~uiSlotsFile: option<string>,
-  // Test seam, as in `UiHints.emit`: the removal on withdrawal is the part with
-  // state behind it, and "declare, then withdraw, and the file is gone" is not a
-  // property a pure function can carry.
+  // Where the module is served from: the platform's chosen `assetsDir`; unset,
+  // the host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
   // Read before anything is touched, so a bad declaration cannot leave the

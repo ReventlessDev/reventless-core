@@ -11,7 +11,7 @@ let log = Logger$ReventlessCore.fromEnv();
 
 let files = Platform_BakedManifest$ReventlessCore.files;
 
-function emit(structures, config) {
+function emit(structures, config, dir) {
   let outputs = Platform_BakedManifest$ReventlessCore.files(config);
   let curated = outputs.map(param => {
     let e = Platform_BakedManifest$ReventlessCore.curate(structures, param[1]);
@@ -22,11 +22,11 @@ function emit(structures, config) {
       tmp
     ];
   });
-  let dir = HostShellDist$ReventlessLocal.dir();
-  if (dir !== undefined) {
+  let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
+  if (dir$1 !== undefined) {
     curated.forEach(param => {
       let key = param[0];
-      let path = Nodepath.join(dir, key);
+      let path = Nodepath.join(dir$1, key);
       Nodefs.writeFileSync(path, JSON.stringify(param[1], undefined, 2), "utf8");
       log.info("BakedManifest", undefined, `wrote ` + key + `: ` + path);
     });

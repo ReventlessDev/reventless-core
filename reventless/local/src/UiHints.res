@@ -37,9 +37,8 @@ let baselineFileName = "ui-hints.base.json"
  */
 let emit = (
   ~uiHintsFile: option<string>,
-  // Test seam, as in `ShellConfig.emit`: the baseline dance is the part with
-  // state behind it, and "boot twice and the second write still starts from the
-  // shipped file" is not a property a pure function can carry.
+  // Where the file is served from: the platform's chosen `assetsDir`; unset, the
+  // host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
   // Read before anything is touched, so a bad declaration cannot leave the
@@ -125,8 +124,7 @@ let emit = (
  */
 let watch = (
   ~uiHintsFile: option<string>,
-  // The same seam `emit` takes, and threaded to it: a test has to be able to
-  // watch a file it wrote into a temp dir without a host-shell package on disk.
+  // The directory `emit` takes, threaded to it.
   ~dir: option<string>=?,
   ~onReload: unit => unit,
 ): option<NodeFs.watcher> =>

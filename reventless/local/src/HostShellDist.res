@@ -27,3 +27,14 @@ let dir = (): option<string> =>
   } catch {
   | _ => None
   }
+
+/** The directory the local writers write into: the app's chosen `assetsDir`,
+  created if missing, else the package's `dist/`. */
+let resolve = (~assetsDir: option<string>): option<string> =>
+  switch assetsDir {
+  | Some(chosen) =>
+    let absolute = NodePath.resolve([NodeProcess.cwd(), chosen])
+    NodeFs.mkdirSync(absolute, {recursive: true})
+    Some(absolute)
+  | None => dir()
+  }

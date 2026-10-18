@@ -106,6 +106,24 @@ plugin-deployed hook:
 A deploy from a laptop therefore records its checkout's commit, not a timestamp.
 `deploymentId` keeps its meaning. The provenance is `Reventless.DeploymentProvenance`.
 
+### What the host shell is told
+
+The host shell's `config.json` carries two of these, so the shell can show its users which
+environment they are in:
+
+| Key | Value |
+|---|---|
+| `environment` | the same name as `environment` above: the declared environment, else the stack |
+| `environmentPurpose` | the declared purpose; without one, `production` when the stack is in `hostUiProdStacks` (default `prod`, `main`), else absent |
+
+The shell shows an environment badge for every purpose except `production`, and also when the
+purpose is absent. So a production deployment with no declared environment, on a stack outside
+`hostUiProdStacks`, shows a badge until you declare it or add the stack to the list. The
+local platform writes `local` for both keys. The resolver is `Reventless.ShellEnvironment`.
+
+The platform computes both keys. A `shellConfig` that sets either one fails the deploy, as it
+does for any other computed key.
+
 ## Asking by hand
 
 ```

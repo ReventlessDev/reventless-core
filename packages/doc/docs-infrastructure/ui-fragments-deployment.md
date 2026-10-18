@@ -142,6 +142,8 @@ on purpose: the shell and the schema it renders move together.
   "cognitoUserPoolId": "<aws region>_XXXXXXXXX",
   "cognitoClientId": "<26-char client id>",
   "liveUpdates": true,
+  "environment": "test",
+  "environmentPurpose": "test",
   "domainApiEventsEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/event",
   "platformApiEventsEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/event",
   "clientEventsNamespace": "client",
@@ -155,6 +157,8 @@ on purpose: the shell and the schema it renders move together.
 The first block of keys is always present. The events keys appear only when the stack has an AppSync Events API — `clientEventsNamespace` is a capability gate, and a client hides publish-dependent features (presence, transient chat) when it is absent. `geocoderEndpoint` appears only when `~hostUiBundle` carries a `geocoderPlaceIndex`. `viewModes` (and each mode's flattened options) appears only when `~hostUiBundle` names one.
 
 `uiSlotsUrl` appears only when `~hostUiBundle` carries a `uiSlotsFile`, and names the object the deploy wrote from it. It is computed rather than passthrough: the shell imports the module this key names and imports nothing when it is absent, so a key pointing anywhere else is a 404 the shell survives silently by drawing its own regions. Naming it in `shellConfig` fails the deploy.
+
+`environment` is always present: the declared environment, else the stack name, the same name the deployment record carries. `environmentPurpose` is the declared purpose. Without one, it is `production` for a stack in `hostUiProdStacks` and absent for any other stack. The shell shows an environment badge unless the purpose is `production`. Both keys are computed: naming either in `shellConfig` fails the deploy.
 
 `adminGroup` appears only when the platform root maps the administrator role to a group of another name (`Platform.roleGroups`), and names the group the admin API is gated on. The shell reads an absent key as `Admin`. It is computed from the same role-to-group resolution the server uses, so the browser and the server cannot disagree, and naming it in `shellConfig` fails the deploy. See [Authorization](/app/authorization#roles-and-groups).
 

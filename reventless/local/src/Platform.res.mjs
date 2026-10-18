@@ -38,6 +38,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
+import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
@@ -860,7 +861,7 @@ function MakeWithConfig(Config) {
   let pluginStructuresStore = {
     contents: {}
   };
-  let bakeManifest = (pluginComponents, config) => {
+  let bakeManifest = (pluginComponents, config, dir) => {
     let resolved = [];
     let expected = pluginComponents.length;
     pluginComponents.forEach(plugin => {
@@ -877,7 +878,7 @@ function MakeWithConfig(Config) {
           ]);
         }
         if (resolved.length === expected) {
-          return BakedManifest$ReventlessLocal.emit(resolved, config);
+          return BakedManifest$ReventlessLocal.emit(resolved, config, dir);
         }
       });
     });
@@ -1330,14 +1331,15 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
-    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
-    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
-    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined);
-    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+    let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), hostUiDir);
+    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
+    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
+    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
+    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
-      bakeManifest(plugins$1, cfg);
+      bakeManifest(plugins$1, cfg, hostUiDir);
     }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
@@ -2620,7 +2622,7 @@ function Make($star) {
   let pluginStructuresStore = {
     contents: {}
   };
-  let bakeManifest = (pluginComponents, config) => {
+  let bakeManifest = (pluginComponents, config, dir) => {
     let resolved = [];
     let expected = pluginComponents.length;
     pluginComponents.forEach(plugin => {
@@ -2637,7 +2639,7 @@ function Make($star) {
           ]);
         }
         if (resolved.length === expected) {
-          return BakedManifest$ReventlessLocal.emit(resolved, config);
+          return BakedManifest$ReventlessLocal.emit(resolved, config, dir);
         }
       });
     });
@@ -3085,14 +3087,15 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
-    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
-    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
-    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined);
-    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+    let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), hostUiDir);
+    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
+    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
+    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
+    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
-      bakeManifest(plugins$1, cfg);
+      bakeManifest(plugins$1, cfg, hostUiDir);
     }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {

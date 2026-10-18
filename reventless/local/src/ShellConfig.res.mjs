@@ -2,11 +2,13 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
@@ -24,15 +26,23 @@ function manifestUrlOf(config) {
 
 let journeyManifestsKey = "journeyManifestUrls";
 
-let computedKeys = [
-  "manifestUrl",
-  journeyManifestsKey,
-  Platform_UiSlots$ReventlessCore.configKey,
-  Platform_AdminGroup$ReventlessCore.configKey
+let environmentKeys = [
+  ShellEnvironment$Reventless.nameKey,
+  ShellEnvironment$Reventless.purposeKey
 ];
 
+let computedKeys = Belt_Array.concatMany([
+  environmentKeys,
+  [
+    "manifestUrl",
+    journeyManifestsKey,
+    Platform_UiSlots$ReventlessCore.configKey,
+    Platform_AdminGroup$ReventlessCore.configKey
+  ]
+]);
+
 function overlay(bakedManifest, uiSlotsFile, shellConfig) {
-  let out = {};
+  let out = Object.fromEntries(ShellEnvironment$Reventless.configFields(ShellEnvironment$Reventless.local));
   Stdlib_Option.forEach(uiSlotsFile, param => {
     out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
   });
@@ -78,9 +88,10 @@ function readObject(path, label) {
 
 function emit(bakedManifest, uiSlotsFile, shellConfig, dir) {
   let overlay$1 = overlay(bakedManifest, uiSlotsFile, shellConfig);
+  let declared = Object.keys(overlay$1).filter(k => !environmentKeys.includes(k));
   let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
   if (dir$1 === undefined) {
-    if (Object.keys(overlay$1).length !== 0) {
+    if (declared.length !== 0) {
       return Stdlib_JsError.throwWithMessage(`host UI config.json: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell reads its config from that package's dist/, so declaring shell config without the package installed would write nothing and leave the shell configured as it shipped.`);
     } else {
       return;
@@ -88,11 +99,12 @@ function emit(bakedManifest, uiSlotsFile, shellConfig, dir) {
   }
   let path = Nodepath.join(dir$1, fileName);
   let baselinePath = Nodepath.join(dir$1, baselineFileName);
-  if (!Nodefs.existsSync(baselinePath) && Object.keys(overlay$1).length !== 0) {
-    if (!Nodefs.existsSync(path)) {
-      Stdlib_JsError.throwWithMessage(`host UI config.json: ` + HostShellDist$ReventlessLocal.$$package + ` ships no ` + fileName + ` at ` + dir$1 + ` — there is no baseline to overlay, so the shell would boot with only the keys declared here and none of the ones it expects.`);
+  if (!Nodefs.existsSync(baselinePath)) {
+    if (Nodefs.existsSync(path)) {
+      Nodefs.writeFileSync(baselinePath, Nodefs.readFileSync(path, "utf8"), "utf8");
+    } else if (declared.length !== 0) {
+      Stdlib_JsError.throwWithMessage(`host UI config.json: there is no ` + fileName + ` at ` + dir$1 + ` — there is no baseline to overlay, so the shell would boot with only the keys declared here and none of the ones it expects.`);
     }
-    Nodefs.writeFileSync(baselinePath, Nodefs.readFileSync(path, "utf8"), "utf8");
   }
   if (!Nodefs.existsSync(baselinePath)) {
     return;
@@ -102,8 +114,7 @@ function emit(bakedManifest, uiSlotsFile, shellConfig, dir) {
     merged[k] = v;
   });
   Nodefs.writeFileSync(path, JSON.stringify(merged, undefined, 2), "utf8");
-  let keys = Object.keys(overlay$1);
-  log.info("ShellConfig", undefined, keys.length === 0 ? `restored ` + fileName + ` from ` + baselineFileName + `: ` + path : `wrote ` + fileName + ` with ` + keys.join(", ") + `: ` + path);
+  log.info("ShellConfig", undefined, `wrote ` + fileName + ` with ` + Object.keys(overlay$1).join(", ") + `: ` + path);
 }
 
 export {
@@ -112,6 +123,7 @@ export {
   baselineFileName,
   manifestUrlOf,
   journeyManifestsKey,
+  environmentKeys,
   computedKeys,
   overlay,
   readObject,
