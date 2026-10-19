@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.387 (2026-10-19)
+
+### Features
+
+* **spec,aws,local:** tell the host shell which environment it runs in, and write local host UI files into a chosen assetsDir ([4f896d1](https://github.com/ReventlessDev/reventless-core/commit/4f896d13ae9ec0d211c33dbd9271e7197cfebc41))
+
+
 # 3.0.0-alpha.386 (2026-10-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

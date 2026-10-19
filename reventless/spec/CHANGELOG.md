@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.169 (2026-10-19)
+
+### Features
+
+* **gwt:** record behaviour scenarios as they run, for suites whose source names none ([256b253](https://github.com/ReventlessDev/reventless-core/commit/256b253153ec043105c38ac742a1a3efbde48c87))
+* **spec,aws,local:** tell the host shell which environment it runs in, and write local host UI files into a chosen assetsDir ([4f896d1](https://github.com/ReventlessDev/reventless-core/commit/4f896d13ae9ec0d211c33dbd9271e7197cfebc41))
+
+
 # 3.0.0-alpha.168 (2026-10-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec
