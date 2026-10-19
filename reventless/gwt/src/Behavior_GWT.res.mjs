@@ -15,6 +15,7 @@ import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
+import * as ScenarioRecorder$ReventlessGwt from "./ScenarioRecorder.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function roleNames(roles) {
@@ -317,7 +318,7 @@ function AssertionCore(Spec) {
 
 function Make(Spec) {
   return Behavior => {
-    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
+    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, () => ScenarioRecorder$ReventlessGwt.around(Spec.name, name, body));
     let errors = {
       contents: []
     };
@@ -494,6 +495,10 @@ function Make(Spec) {
     let queryTagsTotal = q => Stdlib_Array.reduce(q, 0, (acc, qi) => acc + Stdlib_Option.mapOr(qi.tags, 0, t => t.length) | 0);
     let givenEvents = consumed => consumed;
     let whenCmd = (history, cmd) => {
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.given(history.map(e => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(e, Spec.consumedEventSchema))));
+        ScenarioRecorder$ReventlessGwt.whenCommand(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(cmd, commandSchema)));
+      }
       errors.contents = [];
       appendConditionFailure.contents = undefined;
       let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
@@ -529,6 +534,13 @@ function Make(Spec) {
       errors.contents = [events._0];
       return [];
     };
+    let expects = (eventsOpt, error) => {
+      let events = eventsOpt !== undefined ? eventsOpt : [];
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.thenEvents(events.map(e => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(e, Spec.eventSchema))));
+        return Stdlib_Option.forEach(error, err => ScenarioRecorder$ReventlessGwt.thenError(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(err, Spec.errorSchema))));
+      }
+    };
     let checkAppendCondition = () => {
       let m = appendConditionFailure.contents;
       if (m !== undefined) {
@@ -555,6 +567,7 @@ function Make(Spec) {
       }
     };
     let thenEvents = (events, expectedEvents) => {
+      expects(expectedEvents, undefined);
       let o = checkAppendCondition();
       if (o !== undefined) {
         return o;
@@ -572,6 +585,9 @@ function Make(Spec) {
     };
     let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent]);
     let thenNoEvent = events => {
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.thenNoEvent();
+      }
       let o = checkAppendCondition();
       if (o !== undefined) {
         return o;
@@ -587,6 +603,7 @@ function Make(Spec) {
       }
     };
     let thenError = (events, expectedError) => {
+      expects(undefined, Primitive_option.some(expectedError));
       let o = checkAppendCondition();
       if (o !== undefined) {
         return o;
@@ -595,6 +612,7 @@ function Make(Spec) {
       }
     };
     let thenEventWithError = (events, expectedEvent, expectedError) => {
+      expects([expectedEvent], Primitive_option.some(expectedError));
       let o = checkAppendCondition();
       if (o !== undefined) {
         return o;
@@ -603,6 +621,7 @@ function Make(Spec) {
       }
     };
     let thenEventsWithError = (events, expectedEvents, expectedError) => {
+      expects(expectedEvents, Primitive_option.some(expectedError));
       let o = checkAppendCondition();
       if (o !== undefined) {
         return o;
@@ -676,7 +695,7 @@ function Make(Spec) {
 
 function MakeFromAggregate(Spec) {
   return Behavior => {
-    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
+    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, () => ScenarioRecorder$ReventlessGwt.around(Spec.name, name, body));
     let errors = {
       contents: []
     };
@@ -810,6 +829,10 @@ function MakeFromAggregate(Spec) {
     }));
     let givenEvents = events => events;
     let whenCmd = (history, cmd) => {
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.given(history.map(e => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(e, Spec.eventSchema))));
+        ScenarioRecorder$ReventlessGwt.whenCommand(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(cmd, commandSchema)));
+      }
       errors.contents = [];
       if (refuses(history, cmd)) {
         return [];
@@ -821,6 +844,13 @@ function MakeFromAggregate(Spec) {
       errors.contents = [events._0];
       return [];
     };
+    let expects = (eventsOpt, error) => {
+      let events = eventsOpt !== undefined ? eventsOpt : [];
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.thenEvents(events.map(e => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(e, Spec.eventSchema))));
+        return Stdlib_Option.forEach(error, err => ScenarioRecorder$ReventlessGwt.thenError(Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(err, Spec.errorSchema))));
+      }
+    };
     let unlessRefused = (events, compare) => {
       let o = unexpectedRefusal();
       if (o !== undefined) {
@@ -829,38 +859,58 @@ function MakeFromAggregate(Spec) {
         return compare(events);
       }
     };
-    let thenEvents = (events, expected) => unlessRefused(events, __x => {
-      if (errors.contents.length !== 0) {
-        return unexpectedError(__x);
-      } else if (Primitive_object.equal(__x.map(encEvent), expected.map(encEvent))) {
-        return Outcome$ReventlessGwt.pass;
-      } else {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "EventsMismatch",
-          expected: expected.map(encEvent),
-          actual: __x.map(encEvent)
-        });
-      }
-    });
-    let thenCompareEvents = (events, expected, cmp) => unlessRefused(events, __x => {
-      if (errors.contents.length !== 0) {
-        return unexpectedError(__x);
-      } else if (__x.length === expected.length && Stdlib_Array.zip(__x, expected).every(param => cmp(param[0], param[1]))) {
-        return Outcome$ReventlessGwt.pass;
-      } else {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "EventsMismatch",
-          expected: expected.map(encEvent),
-          actual: __x.map(encEvent)
-        });
-      }
-    });
+    let thenEvents = (events, expected) => {
+      expects(expected, undefined);
+      return unlessRefused(events, __x => {
+        if (errors.contents.length !== 0) {
+          return unexpectedError(__x);
+        } else if (Primitive_object.equal(__x.map(encEvent), expected.map(encEvent))) {
+          return Outcome$ReventlessGwt.pass;
+        } else {
+          return Outcome$ReventlessGwt.fail({
+            TAG: "EventsMismatch",
+            expected: expected.map(encEvent),
+            actual: __x.map(encEvent)
+          });
+        }
+      });
+    };
+    let thenCompareEvents = (events, expected, cmp) => {
+      expects(expected, undefined);
+      return unlessRefused(events, __x => {
+        if (errors.contents.length !== 0) {
+          return unexpectedError(__x);
+        } else if (__x.length === expected.length && Stdlib_Array.zip(__x, expected).every(param => cmp(param[0], param[1]))) {
+          return Outcome$ReventlessGwt.pass;
+        } else {
+          return Outcome$ReventlessGwt.fail({
+            TAG: "EventsMismatch",
+            expected: expected.map(encEvent),
+            actual: __x.map(encEvent)
+          });
+        }
+      });
+    };
     let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent]);
     let thenCompareEvent = (events, expectedEvent, cmp) => thenCompareEvents(events, [expectedEvent], cmp);
-    let thenNoEvent = events => unlessRefused(events, compareNoEvent);
-    let thenError = (events, expectedError) => unlessRefused(events, __x => matchesError(__x, [], expectedError));
-    let thenEventWithError = (events, expectedEvent, expectedError) => unlessRefused(events, __x => matchesError(__x, [expectedEvent], expectedError));
-    let thenEventsWithError = (events, expectedEvents, expectedError) => unlessRefused(events, __x => matchesError(__x, expectedEvents, expectedError));
+    let thenNoEvent = events => {
+      if (ScenarioRecorder$ReventlessGwt.recording()) {
+        ScenarioRecorder$ReventlessGwt.thenNoEvent();
+      }
+      return unlessRefused(events, compareNoEvent);
+    };
+    let thenError = (events, expectedError) => {
+      expects(undefined, Primitive_option.some(expectedError));
+      return unlessRefused(events, __x => matchesError(__x, [], expectedError));
+    };
+    let thenEventWithError = (events, expectedEvent, expectedError) => {
+      expects([expectedEvent], Primitive_option.some(expectedError));
+      return unlessRefused(events, __x => matchesError(__x, [expectedEvent], expectedError));
+    };
+    let thenEventsWithError = (events, expectedEvents, expectedError) => {
+      expects(expectedEvents, Primitive_option.some(expectedError));
+      return unlessRefused(events, __x => matchesError(__x, expectedEvents, expectedError));
+    };
     let thenRefused = events => {
       let decided = Stdlib_Option.map(errors.contents[0], encError);
       let match = refusal.contents;

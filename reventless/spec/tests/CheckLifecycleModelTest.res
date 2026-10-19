@@ -528,3 +528,36 @@ describe("a step the sidecar could not read", () => {
     )->toEqual([])
   )
 })
+
+describe("a recorded scenario sidecar", () => {
+  // What `ScenarioRecorder` writes for a suite whose source names nothing: the spec's name as the
+  // stem, so its scenarios count for that component like the component's own.
+  testSync("is read as its spec's component, with its command and outcome", () => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "recorded-sidecar-"]))
+    let path = NodePath.join([dir, "NotificationConformance_GWT.gwt.json"])
+    NodeFs.writeFileSync(
+      path,
+      `{"stem":"NotificationPreferences","recorded":true,"scenarios":[{"title":"undeliverable","given":[],"when":[{"kind":"command","element":"RequestNotification","values":[]}],"then":[{"kind":"event","element":"NotificationUndeliverable","values":[]}]}]}`,
+    )
+    let corpus = Check.readCorpus(path)
+    expect(
+      corpus->Option.map(
+        c => (
+          c.component,
+          c.scenarios->Array.map(
+            s => (
+              s.whenElements->Array.map(e => e.name),
+              s.thenKind,
+              s.thenElements->Array.map(e => e.name),
+            ),
+          ),
+        ),
+      ),
+    )->toEqual(
+      Some((
+        "NotificationPreferences",
+        [(["RequestNotification"], "event", ["NotificationUndeliverable"])],
+      )),
+    )
+  })
+})

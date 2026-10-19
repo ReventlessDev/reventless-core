@@ -443,7 +443,10 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
 
   let describe = JestBind.describe
   let todo = JestBind.todo
-  let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
+  let test = (name, body) =>
+    JestBind.test(~slice=Spec.name, name, () =>
+      ScenarioRecorder.around(~spec=Spec.name, name, body)
+    )
 
   let currentState = consumed => consumed->Array.reduce(Behavior.initialState, Behavior.evolve)
 
@@ -614,7 +617,27 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
   }
 
   let givenEvents = consumed => consumed
-  let whenCmd = (history, cmd) => history->exec(cmd)
+  let whenCmd = (history, cmd) => {
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.given(
+        history->Array.map(e =>
+          e->Message.encode(Spec.consumedEventSchema)->Message.variantNameOfJson
+        ),
+      )
+      ScenarioRecorder.whenCommand(Guard.commandName(cmd))
+    }
+    history->exec(cmd)
+  }
+  // What a test expects, named for the recorded sidecar.
+  let expects = (~events=[], ~error=?) =>
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.thenEvents(
+        events->Array.map(e => e->Core.encEvent->Message.variantNameOfJson),
+      )
+      error->Option.forEach(err =>
+        ScenarioRecorder.thenError(err->Core.encError->Message.variantNameOfJson)
+      )
+    }
 
   let checkAppendCondition = (): option<Outcome.outcome> =>
     switch appendConditionFailure.contents {
@@ -631,37 +654,49 @@ module Make = (Spec: BehaviorSpec, Behavior: Behavior with module Spec := Spec):
 
   // The append-condition footgun is surfaced before the shared comparison core
   // runs; `thenAppends*` below bypass it deliberately.
-  let thenEvents = (events, expectedEvents) =>
+  let thenEvents = (events, expectedEvents) => {
+    expects(~events=expectedEvents)
     switch checkAppendCondition() {
     | Some(o) => o
     | None => Core.compareEvents(events, expectedEvents)
     }
+  }
 
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
 
-  let thenNoEvent = events =>
+  let thenNoEvent = events => {
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.thenNoEvent()
+    }
     switch checkAppendCondition() {
     | Some(o) => o
     | None => Core.compareNoEvent(events)
     }
+  }
 
-  let thenError = (events, expectedError) =>
+  let thenError = (events, expectedError) => {
+    expects(~error=expectedError)
     switch checkAppendCondition() {
     | Some(o) => o
     | None => Core.matchesError(events, [], expectedError)
     }
+  }
 
-  let thenEventWithError = (events, expectedEvent, expectedError) =>
+  let thenEventWithError = (events, expectedEvent, expectedError) => {
+    expects(~events=[expectedEvent], ~error=expectedError)
     switch checkAppendCondition() {
     | Some(o) => o
     | None => Core.matchesError(events, [expectedEvent], expectedError)
     }
+  }
 
-  let thenEventsWithError = (events, expectedEvents, expectedError) =>
+  let thenEventsWithError = (events, expectedEvents, expectedError) => {
+    expects(~events=expectedEvents, ~error=expectedError)
     switch checkAppendCondition() {
     | Some(o) => o
     | None => Core.matchesError(events, expectedEvents, expectedError)
     }
+  }
 
   let thenAppendsConditionedOn = (_events, expectedQuery: Reventless.DcbTag.query) =>
     switch derivedCondition.contents {
@@ -773,7 +808,10 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
   module Spec = Spec
 
   let describe = JestBind.describe
-  let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
+  let test = (name, body) =>
+    JestBind.test(~slice=Spec.name, name, () =>
+      ScenarioRecorder.around(~spec=Spec.name, name, body)
+    )
 
   let currentState = events => events->Array.reduce(Behavior.initialState, Behavior.evolve)
 
@@ -809,7 +847,23 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
   }
 
   let givenEvents = events => events
-  let whenCmd = (history, cmd) => history->exec(cmd)
+  let whenCmd = (history, cmd) => {
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.given(history->Array.map(e => e->Core.encEvent->Message.variantNameOfJson))
+      ScenarioRecorder.whenCommand(Guard.commandName(cmd))
+    }
+    history->exec(cmd)
+  }
+  // What a test expects, named for the recorded sidecar.
+  let expects = (~events=[], ~error=?) =>
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.thenEvents(
+        events->Array.map(e => e->Core.encEvent->Message.variantNameOfJson),
+      )
+      error->Option.forEach(err =>
+        ScenarioRecorder.thenError(err->Core.encError->Message.variantNameOfJson)
+      )
+    }
 
   // The aggregate flavour has no append-condition footgun, so the shared core's
   // comparisons are exposed directly once a refusal has been ruled out; only
@@ -819,22 +873,38 @@ module MakeFromAggregate = (Spec: AggregateSpec, Behavior: Behavior.T with modul
     | Some(o) => o
     | None => compare(events)
     }
-  let thenEvents = (events, expected) => events->unlessRefused(Core.compareEvents(_, expected))
-  let thenCompareEvents = (events, expected, cmp) =>
+  let thenEvents = (events, expected) => {
+    expects(~events=expected)
+    events->unlessRefused(Core.compareEvents(_, expected))
+  }
+  let thenCompareEvents = (events, expected, cmp) => {
+    expects(~events=expected)
     events->unlessRefused(Core.compareEventsWith(_, expected, cmp))
+  }
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     thenCompareEvents(events, [expectedEvent], cmp)
-  let thenNoEvent = events => events->unlessRefused(Core.compareNoEvent)
+  let thenNoEvent = events => {
+    if ScenarioRecorder.recording() {
+      ScenarioRecorder.thenNoEvent()
+    }
+    events->unlessRefused(Core.compareNoEvent)
+  }
 
-  let thenError = (events, expectedError) =>
+  let thenError = (events, expectedError) => {
+    expects(~error=expectedError)
     events->unlessRefused(Core.matchesError(_, [], expectedError))
+  }
 
-  let thenEventWithError = (events, expectedEvent, expectedError) =>
+  let thenEventWithError = (events, expectedEvent, expectedError) => {
+    expects(~events=[expectedEvent], ~error=expectedError)
     events->unlessRefused(Core.matchesError(_, [expectedEvent], expectedError))
+  }
 
-  let thenEventsWithError = (events, expectedEvents, expectedError) =>
+  let thenEventsWithError = (events, expectedEvents, expectedError) => {
+    expects(~events=expectedEvents, ~error=expectedError)
     events->unlessRefused(Core.matchesError(_, expectedEvents, expectedError))
+  }
 
   let thenRefused = events =>
     Guard.thenRefused(

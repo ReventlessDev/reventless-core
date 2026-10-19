@@ -70,6 +70,22 @@ An example value is a literal where the source writes one (`string`, `int`, `flo
 
 A scenario's id comes from a `// scenario-id: <id>` comment on the line above its `test(`. The older spelling `// spec-id: <id>` is still read, and always will be. A marker belongs only to the test directly below it: a test with no marker of its own gets the id `""`, even when a marked test comes before it. The sidecar also repeats the id under `specId`, for codegen releases that read only that key; that duplicate will be dropped once the codegen reads `scenarioId`.
 
+**Recorded scenario sidecars.** A suite written against a binding names nothing in its source:
+a trait's conformance suite steps through `B.request(…)` and `B.undeliverable(…)`, values the
+host's binding builds, and the host's test file only registers it. The PPX writes no `.gwt.json`
+for it, so `check-lifecycle` would not see its scenarios. A behaviour test (`Behavior_GWT.Make`
+or `MakeFromAggregate`) run with `REVENTLESS_EMIT_SIDECAR=1` in the test process records what it
+runs instead (`ScenarioRecorder`): per test its title, the history's event names (`given`), the
+command (`when`) and what it expects (`then`: `event`, `error` or `noEvent`), named by the spec's
+schemas. It writes them beside the test file as `<File>_GWT.gwt.json`, with `stem` set to the
+spec's name, which is the component `check-lifecycle` files them under, and `recorded: true`; a
+further spec run from the same file gets `<File>_GWT.<Spec>.gwt.json`. A file whose sidecar the
+PPX wrote is never written over, since read from source it carries values and ids. A recorded
+sidecar carries no `values` and no `scenarioId`, and is as fresh as the last test run with the
+switch on, not the last build: run the tests with it before `check-lifecycle --reuse-sidecars`
+for those scenarios to count. An external runner registered through `RunnerHook` names the file
+it runs with `ScenarioRecorder.setFile`; under Jest the recorder finds it itself.
+
 Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDECAR=1` — which `export` sets before it builds. Ordinary `rescript build` writes nothing new. They are git-ignored (`*.model.json` / `*.gwt.json` / `*.examples.json` / `*.types.json` / `*.wiring.json`) and never hand-edited: `export` does a clean rebuild first so they cannot lag source.
 
 ### The source reader
