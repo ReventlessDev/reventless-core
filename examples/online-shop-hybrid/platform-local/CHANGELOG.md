@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.301 (2026-10-20)
+
+### Features
+
+* **examples:** the online shop's local platform serves its host UI from REVENTLESS_HOST_UI_DIR when set ([7dd5a5f](https://github.com/ReventlessDev/reventless-core/commit/7dd5a5f68812791f8043d3b992bee4a5d2450b07))
+
+
 # 1.0.0-alpha.300 (2026-10-19)
 
 ### Bug Fixes
