@@ -4,6 +4,11 @@ ReventlessLocal.LocalPlatformStart.orAddressRunning()
 
 module Platform = ReventlessLocal.Platform.Make()
 
+// A directory to serve the host UI from instead of the installed shell's own, for an app that
+// stages its shell beside the platform.
+@val @scope(("process", "env"))
+external hostUiDir: Nullable.t<string> = "REVENTLESS_HOST_UI_DIR"
+
 // Before the plugins are built, because component construction is where the
 // owner-scoped resolvers read it. Set afterwards it would be set for nothing.
 Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedRoles)
@@ -33,6 +38,7 @@ Platform.makePlatform(
   // back office would be unreachable.
   ~hostUiBundle={
     bakedManifest: OnlineShopHybridSeed.Storefront.manifest,
+    assetsDir: ?(hostUiDir->Nullable.toOption),
     // Without this the dev shell applies whatever hints the host-shell package
     // happens to ship, which is that repo's own demonstration file — so the
     // storefront's nav would read right locally for a reason nothing here
