@@ -10,7 +10,7 @@
     "rebuild": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
-    "@rescript/react": "^0.13.1",
+    "@rescript/react": "^0.15.0",
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
@@ -19,7 +19,7 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "@reventlessdev/reventless-ui-slots": "3.0.0-alpha.12",
+    "@reventlessdev/reventless-ui-slots": "3.0.0-alpha.13",
     "sury": "11.0.0"
   },
   "devDependencies": {
