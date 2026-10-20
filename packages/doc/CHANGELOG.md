@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-19
+- style(doc): arrows leaving an event are its orange, a lighter one ([0ec61ab](https://github.com/ReventlessDev/reventless-core/commit/0ec61ab385a7a1a7ea35b67d8da5366823716061))
 ### 2026-10-18
 - feat(spec,aws,local): tell the host shell which environment it runs in, and write local host UI files into a chosen assetsDir ([4f896d1](https://github.com/ReventlessDev/reventless-core/commit/4f896d13ae9ec0d211c33dbd9271e7197cfebc41))
 ### 2026-10-17
