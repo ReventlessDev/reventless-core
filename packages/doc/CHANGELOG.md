@@ -719,6 +719,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-21
+- docs: a state view's row key is module Id in the docs and rules ([e863360](https://github.com/ReventlessDev/reventless-core/commit/e8633601dcb9ecf8a4ad21293b8e81d698e19a2f))
+- docs: a component's definition is a read-side or write-side def in the docs, as in the code ([432522f](https://github.com/ReventlessDev/reventless-core/commit/432522f2884ad547bc447a1211c16a9156467bb6))
+### 2026-10-21
 - docs: the decision is the docs' word for a write-side component's logic file ([38ae6d8](https://github.com/ReventlessDev/reventless-core/commit/38ae6d827cb4908c601df925576f79fa6aa09319))
 - docs: prose and comments spell American, and check:spelling lists any British spelling left ([3899604](https://github.com/ReventlessDev/reventless-core/commit/389960431a8900520a6c5a6549d76cdcbdd733d5))
 - docs: the glossary defines chapter, section, view, error, rejection, delegate and row, and what the UI draws from a view is a page ([56c6f6a](https://github.com/ReventlessDev/reventless-core/commit/56c6f6a6a4a3d2c3cd5490b72ad8eb57f9b2cda9))
