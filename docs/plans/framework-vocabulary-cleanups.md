@@ -1,6 +1,6 @@
 # Plan: the framework's smaller vocabulary cleanups
 
-**Status:** 📋 Planned 2026-10-21. Not started.<br/>
+**Status:** 🚧 [V1](#v1-glossary-entries), [V2](#v2-pages-not-views-for-what-the-ui-draws), [V6](#v6-three-stray-words-in-the-docs) and [V7](#v7-american-spelling-in-prose) done 2026-10-21; [V3](#v3-queryabledef-becomes-readsidedef), [V4](#v4-a-state-views-row-key-is-id) and [V5](#v5-two-identifiers-that-say-the-wrong-thing) not started.<br/>
 **Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
 its [order of work](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#14-order-of-work)
 and [decisions](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
