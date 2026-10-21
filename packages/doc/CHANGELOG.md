@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-22
+- fix(core): a typed id links to the view in its own chapter ([5420e30](https://github.com/ReventlessDev/reventless-core/commit/5420e302b835e11f6b85293239869776068120da))
 ### 2026-10-21
 - feat(aws): a UI bundle uploads as one resource, putting only the files that changed ([9e28682](https://github.com/ReventlessDev/reventless-core/commit/9e286829817c6679aace100b3f17195a777a4cf4))
 ### 2026-10-21
