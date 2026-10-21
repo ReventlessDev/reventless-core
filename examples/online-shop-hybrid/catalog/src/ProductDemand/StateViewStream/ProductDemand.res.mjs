@@ -69,8 +69,6 @@ let name = "ProductDemand";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateViewStream/ProductDemand.res.mjs";
@@ -80,7 +78,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   config,
   subIdConfig,

@@ -3,7 +3,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CustomerId
+module Id = CustomerId
 
 @schema
 type state = {

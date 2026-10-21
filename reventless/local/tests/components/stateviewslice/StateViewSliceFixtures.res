@@ -20,7 +20,7 @@ module ItemEventLog = {
 // ─────────────────────────────────────────────────────────────
 
 module ItemsViewSpec = {
-  module Key = Reventless.Id.StringPure
+  module Id = Reventless.Id.StringPure
   let name = "ItemsView"
   let moduleUrl: string = %raw(`import.meta.url`)
 

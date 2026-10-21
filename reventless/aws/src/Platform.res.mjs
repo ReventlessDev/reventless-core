@@ -506,7 +506,7 @@ function MakeWithConfig(Config) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
-    Key: {
+    Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
       makeFromString: prim => prim,
@@ -1923,7 +1923,7 @@ function Make($star) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
-    Key: {
+    Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
       makeFromString: prim => prim,

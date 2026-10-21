@@ -672,7 +672,7 @@ function MakeWithConfig(Config) {
     isAsync: UiFragmentRegistrySlice_isAsync,
     make: UiFragmentRegistrySlice_make
   };
-  let Spec_Key = {
+  let Spec_Id = {
     schema: Id$Reventless.StringPure.schema,
     make: prim => prim,
     makeFromString: prim => prim,
@@ -683,7 +683,7 @@ function MakeWithConfig(Config) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
-    Key: Spec_Key,
+    Id: Spec_Id,
     consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
     config: UiFragments$ReventlessCore.config,
     subIdConfig: undefined,
@@ -2433,7 +2433,7 @@ function Make($star) {
     isAsync: UiFragmentRegistrySlice_isAsync,
     make: UiFragmentRegistrySlice_make
   };
-  let Spec_Key = {
+  let Spec_Id = {
     schema: Id$Reventless.StringPure.schema,
     make: prim => prim,
     makeFromString: prim => prim,
@@ -2444,7 +2444,7 @@ function Make($star) {
     name: UiFragments$ReventlessCore.name,
     moduleUrl: UiFragments$ReventlessCore.moduleUrl,
     stateSchema: UiFragments$ReventlessCore.stateSchema,
-    Key: Spec_Key,
+    Id: Spec_Id,
     consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
     config: UiFragments$ReventlessCore.config,
     subIdConfig: undefined,

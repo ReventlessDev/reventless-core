@@ -462,7 +462,7 @@ mkdir -p "$DCB/src/StateView"
 cat > "$DCB/src/StateView/BuyerBoard.res" <<'EOF'
 @@reventless.spec
 
-module Key = CustomerId
+module Id = CustomerId
 
 @schema
 type state = {buyer: CustomerId.t, favourite: ProductId.t, name: string}
@@ -477,7 +477,7 @@ EOF
 cat > "$DCB/src/StateView/PairBoard.res" <<'EOF'
 @@reventless.spec
 
-module Key = CustomerId
+module Id = CustomerId
 
 @schema
 type state = {buyer: CustomerId.t, seller: CustomerId.t}
@@ -1475,6 +1475,13 @@ let project = (event: consumedEvent) => switch event {
 }
 EOF
 
+# Only compiles when the injected row key is a plain string and the spec has no
+# second Id.
+cat > "$PLUGIN/src/SplitViewCheck.res" <<'EOF'
+module Checked: Reventless.StateViewSlice.Spec = SplitView
+let plain: SplitView.Id.t = "row-1"
+EOF
+
 # Explicit Spec module name form
 cat > "$PLUGIN/src/StateView/AltView.res" <<'EOF'
 @@reventless.spec
@@ -2087,11 +2094,11 @@ assert_js_contains "$JS" 'state => state.buyer'               "@id on an identit
 assert_js_contains "$JS" 'Owner$Reventless.mark(CustomerId$TestDcb.schema)' "@owner on an identity composes onto its schema"
 
 echo ""
-echo "=== Test: module Key = <Identity> marks that identity's state field @id ==="
+echo "=== Test: module Id = <Identity> marks that identity's state field @id ==="
 JS="$DCB/src/StateView/BuyerBoard.res.mjs"
-assert_js_contains "$JS" 'ids: \["buyer"\]'                  "Key: the one CustomerId.t field is recorded as the id"
+assert_js_contains "$JS" 'ids: \["buyer"\]'                  "Id: the one CustomerId.t field is recorded as the id"
 JS="$DCB/src/StateView/PairBoard.res.mjs"
-assert_js_not_contains "$JS" 'ids: \["buyer"\]'              "Key: two fields of the identity's type infer nothing"
+assert_js_not_contains "$JS" 'ids: \["buyer"\]'              "Id: two fields of the identity's type infer nothing"
 
 echo ""
 echo "=== Test: module Delegate auto-detected via @@reventless.spec (no @reventless.delegate needed) ==="
@@ -2613,7 +2620,9 @@ assert_js_contains "$JS" 'StateView/SplitView_Projection.res.mjs' "projection mo
 # which are only in scope after `open SplitView` and `open Reventless.Projection`)
 pass "projection compiles (open Spec + module Spec injected; _Projection suffix stripped from filename)"
 JS="$PLUGIN/src/StateView/SplitView.res.mjs"
-assert_js_contains "$JS" 'let Key'                        "a StateView spec gets a default string Key"
+assert_js_contains "$JS" 'let Id'                         "a StateView spec gets a default row key Id"
+assert_js_not_contains "$JS" 'let Key'                     "a StateView spec gets no Key"
+pass "SplitViewCheck compiles (the injected Id is the only one, and a plain string)"
 
 echo ""
 echo "=== Test: @@reventless.projection(Spec) explicit name ==="
@@ -3219,6 +3228,32 @@ else
   fi
 fi
 rm -f "$ERROR/src/Aggregate/Legacy_Behavior.res"
+
+echo ""
+echo "=== Test: module Key in a StateView raises, naming module Id ==="
+mkdir -p "$ERROR/src/StateView"
+cat > "$ERROR/src/StateView/LegacyKeyed.res" <<'EOF'
+@@reventless.spec
+
+module Key = Reventless.Id.StringPure
+
+@schema
+type state = {id: string}
+
+@schema
+type consumedEvent = Seen({id: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "module Key in a StateView" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q 'row key is `module Id`, not `module Key`' \
+    && echo "$OUTPUT" | grep -q "module Id = Reventless.Id.StringPure"; then
+    pass "module Key in a StateView fails the build, naming module Id and its target"
+  else
+    fail "module Key in a StateView" "error did not name module Id: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/StateView/LegacyKeyed.res"
 
 echo ""
 echo "=== Test: a Behavior_GWT reference raises, naming Decision_GWT ==="
@@ -4106,7 +4141,7 @@ EOF
 cat > "$ERROR/src/StateView/KeyedOrders.res" <<'EOF'
 @@reventless.spec
 
-module Key = OrderKey
+module Id = OrderKey
 
 @schema
 type state = {orderId: string}
@@ -4131,7 +4166,7 @@ EOF
 if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
   fail "typed StateView key" "expected compilation to fail but it succeeded"
 else
-  if echo "$OUTPUT" | grep -q "Key.t"; then
+  if echo "$OUTPUT" | grep -q "Spec.Id.t"; then
     pass "typed StateView key → a plain string row key is a type error"
   else
     fail "typed StateView key" "unexpected error output: $OUTPUT"

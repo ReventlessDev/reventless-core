@@ -127,10 +127,10 @@ let gen_module_id ~loc =
     pstr_loc = loc }
 
 (* A StateView's row key: a plain string unless the view declares its identity. *)
-let gen_module_key ~loc =
+let gen_module_row_id ~loc =
   let lid = { txt = Ldot (Ldot (Lident "Reventless", "Id"), "StringPure"); loc } in
   { pstr_desc = Pstr_module {
-      pmb_name = { txt = Some "Key"; loc };
+      pmb_name = { txt = Some "Id"; loc };
       pmb_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
       pmb_attributes = [];
       pmb_loc = loc;
@@ -796,8 +796,12 @@ let transform (str : structure) : structure =
     let body = strip_ppx_attrs str in
     (* First, so the sidecar and every later pass see the key as a written [@id]. *)
     let body =
-      if Util.is_stateview_filename loc.loc_start.pos_fname
-      then StateAnnotations.infer_id_from_key body
+      if Util.is_stateview_filename loc.loc_start.pos_fname then begin
+        (match mode with
+         | Spec _ -> StateAnnotations.check_no_key_module body
+         | _ -> ());
+        StateAnnotations.infer_id_from_key body
+      end
       else body
     in
     (* Capture the spec body before the DCB-tag passes rewrite the field
@@ -870,8 +874,14 @@ let transform (str : structure) : structure =
       (* A [*-spec] package publishes contracts, not components: an extension
          point's events need no stream id, and a package that depends on
          reventless-spec only to declare its identities must not grow one. *)
+      (* A state view's [Id] is its row key, injected below. *)
+      let is_stateview_file =
+        Util.is_stateview_filename loc.loc_start.pos_fname
+        && Util.has_schema_state_type body
+      in
       if has_reventless_spec
          && not (AuthorizationInjection.is_spec_namespace_pkg loc)
+         && not is_stateview_file
          && not (Util.has_module_binding "Id" body) then
         prefix := !prefix @ [gen_module_id ~loc];
       let is_readmodel =
@@ -918,7 +928,7 @@ let transform (str : structure) : structure =
         else if is_stateview then
           (if not (Util.has_let_binding "config" body)
            then [gen_config_let ~loc ?owner_index body] else [])
-          @ (if not (Util.has_module_binding "Key" body) then [gen_module_key ~loc] else [])
+          @ (if not (Util.has_module_binding "Id" body) then [gen_module_row_id ~loc] else [])
           @ sub_id_items @ make_id_items @ state_annotations_items
         else []
       in

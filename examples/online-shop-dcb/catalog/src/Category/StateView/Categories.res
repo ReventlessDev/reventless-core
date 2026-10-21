@@ -3,7 +3,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CategoryId
+module Id = CategoryId
 
 @schema
 type state = {categoryId: CategoryId.t, name: string, archived: bool}

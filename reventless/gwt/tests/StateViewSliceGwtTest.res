@@ -11,7 +11,7 @@
 open Reventless.Projection
 
 module CategoriesView = {
-  module Key = Reventless.Id.StringPure
+  module Id = Reventless.Id.StringPure
   let name = "CategoriesView"
 
   @schema

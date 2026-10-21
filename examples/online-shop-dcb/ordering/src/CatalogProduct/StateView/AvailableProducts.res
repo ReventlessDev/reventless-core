@@ -5,7 +5,7 @@
 @@reventless.visibility(Internal)
 
 // Rows are keyed by this identity.
-module Key = CatalogSpec.ProductId
+module Id = CatalogSpec.ProductId
 
 @schema
 type state = {productId: CatalogSpec.ProductId.t, name: string, price: float}

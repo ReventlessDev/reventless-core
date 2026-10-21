@@ -134,8 +134,6 @@ let name = "Products";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewStream/Products.res.mjs";
@@ -147,7 +145,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   shelfStatusSchema,
   config,

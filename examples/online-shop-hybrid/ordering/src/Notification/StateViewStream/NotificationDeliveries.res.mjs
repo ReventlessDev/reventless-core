@@ -114,8 +114,6 @@ let name = "NotificationDeliveries";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/StateViewStream/NotificationDeliveries.res.mjs";
@@ -126,11 +124,10 @@ let visibility = "Public";
 
 export {
   name,
-  Id,
   outcomeSchema,
   consumedEventSchema,
   config,
-  Key,
+  Id,
   subIdConfig,
   stateSchema$1 as stateSchema,
   moduleUrl,

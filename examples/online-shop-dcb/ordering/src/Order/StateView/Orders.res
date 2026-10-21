@@ -3,7 +3,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = OrderId
+module Id = OrderId
 
 @schema
 type lifecycle =

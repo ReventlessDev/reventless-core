@@ -35,17 +35,17 @@ let strip_composite_id_field_attr (attrs : attributes) =
 
 (* ── @id from a view's declared identity ── *)
 
-(* A StateView that declares [module Key = ChargerId] says what its rows are keyed
+(* A StateView that declares [module Id = ChargerId] says what its rows are keyed
    by, and its state holds that key as a [ChargerId.t] field. Mark that field [@id],
    so the key reaches everything that reads one (state annotations, the sidecar,
-   core's key ladder) without each of them learning about [Key]. Only when the
-   state declares no [@id]/[@compositeId] of its own and exactly one field has the
-   identity's type: several is ambiguous, and an explicit [@id] says which. *)
+   core's key ladder) without each of them learning about the row key. Only when
+   the state declares no [@id]/[@compositeId] of its own and exactly one field has
+   the identity's type: several is ambiguous, and an explicit [@id] says which. *)
 let infer_id_from_key (str : structure) : structure =
   let key_ident =
     List.find_map (fun (item : structure_item) ->
       match item.pstr_desc with
-      | Pstr_module { pmb_name = { txt = Some "Key"; _ };
+      | Pstr_module { pmb_name = { txt = Some "Id"; _ };
                       pmb_expr = { pmod_desc = Pmod_ident { txt; _ }; _ }; _ } ->
         Some txt
       | _ -> None
@@ -87,6 +87,24 @@ let infer_id_from_key (str : structure) : structure =
       | Pstr_type (rf, tds) -> { item with pstr_desc = Pstr_type (rf, List.map map_state tds) }
       | _ -> item
     ) str
+
+(* A state view's row key was once [module Key]; refuse it rather than leave the
+   view keyed by the default string beside an unread [Key]. *)
+let check_no_key_module (str : structure) : unit =
+  List.iter (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module { pmb_name = { txt = Some "Key"; _ }; pmb_expr; pmb_loc; _ } ->
+      let target =
+        match pmb_expr.pmod_desc with
+        | Pmod_ident { txt; _ } -> Longident.name txt
+        | _ -> "..."
+      in
+      Location.raise_errorf ~loc:pmb_loc
+        "[reventless-ppx] A state view's row key is `module Id`, not `module Key`. \
+         Write `module Id = %s`."
+        target
+    | _ -> ()
+  ) str
 
 (* ── @subId / @compositeSubId attribute helpers ── *)
 

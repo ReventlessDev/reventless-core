@@ -6,7 +6,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CatalogSpec.ProductId
+module Id = CatalogSpec.ProductId
 @@reventless.visibility(Internal)
 
 @schema

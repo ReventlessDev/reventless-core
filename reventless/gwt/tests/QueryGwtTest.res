@@ -115,7 +115,7 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
 module OrdersView = {
   let name = "OrdersView"
   let moduleUrl = ""
-  module Key = Reventless.Id.StringPure
+  module Id = Reventless.Id.StringPure
 
   @schema
   type state = {orderId: string, customerId: string, total: int}

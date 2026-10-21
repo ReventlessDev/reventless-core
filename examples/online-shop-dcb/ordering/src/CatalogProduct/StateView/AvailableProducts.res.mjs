@@ -57,8 +57,6 @@ let name = "AvailableProducts";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/CatalogProduct/StateView/AvailableProducts.res.mjs";
@@ -70,7 +68,6 @@ let visibility = "Internal";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   config,
   subIdConfig,

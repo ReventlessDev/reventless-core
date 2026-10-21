@@ -59,8 +59,6 @@ let name = "ProductDemand";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ProductDemand/StateView/ProductDemand.res.mjs";
@@ -72,7 +70,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   config,
   subIdConfig,

@@ -58,8 +58,6 @@ let name = "NotificationSubscriptions";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Notification/StateViewStream/NotificationSubscriptions.res.mjs";
@@ -70,12 +68,11 @@ let visibility = "Public";
 
 export {
   name,
-  Id,
   subscriptionSchema,
   stateSchema$1 as stateSchema,
   consumedEventSchema,
   config,
-  Key,
+  Id,
   subIdConfig,
   moduleUrl,
   authorization,

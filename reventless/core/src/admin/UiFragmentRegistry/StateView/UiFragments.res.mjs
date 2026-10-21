@@ -40,8 +40,6 @@ let name = "UiFragments";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
@@ -52,11 +50,10 @@ let visibility = "Public";
 
 export {
   name,
-  Id,
   stateSchema,
   consumedEventSchema,
   config,
-  Key,
+  Id,
   subIdConfig,
   moduleUrl,
   authorization,

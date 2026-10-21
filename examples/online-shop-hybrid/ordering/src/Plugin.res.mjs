@@ -230,7 +230,7 @@ function Make(Platform) {
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
-    Key: ProductId$CatalogSpec,
+    Id: ProductId$CatalogSpec,
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
@@ -244,7 +244,7 @@ function Make(Platform) {
     name: NotificationDeliveries$OrderingPlugin.name,
     moduleUrl: NotificationDeliveries$OrderingPlugin.moduleUrl,
     stateSchema: NotificationDeliveries$OrderingPlugin.stateSchema,
-    Key: {
+    Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
       makeFromString: prim => prim,
@@ -264,7 +264,7 @@ function Make(Platform) {
     name: NotificationSubscriptions$OrderingPlugin.name,
     moduleUrl: NotificationSubscriptions$OrderingPlugin.moduleUrl,
     stateSchema: NotificationSubscriptions$OrderingPlugin.stateSchema,
-    Key: {
+    Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
       makeFromString: prim => prim,
@@ -284,7 +284,7 @@ function Make(Platform) {
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
-    Key: OrderId$OrderingPlugin,
+    Id: OrderId$OrderingPlugin,
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,

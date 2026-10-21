@@ -128,8 +128,6 @@ let name = "Orders";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateViewStream/Orders.res.mjs";
@@ -141,7 +139,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   catalogProductImage,
   shippingMethodSchema,
   orderLineSchema,

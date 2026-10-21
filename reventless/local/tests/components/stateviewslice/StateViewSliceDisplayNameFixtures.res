@@ -13,7 +13,7 @@ module OrderEventLog = {
 }
 
 module OrdersViewSpec = {
-  module Key = Reventless.Id.StringPure
+  module Id = Reventless.Id.StringPure
   let name = "DnOrdersView"
   let moduleUrl: string = %raw(`import.meta.url`)
 

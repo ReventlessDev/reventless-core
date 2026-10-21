@@ -4,7 +4,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CategoryId
+module Id = CategoryId
 
 @schema
 type consumedEvent =

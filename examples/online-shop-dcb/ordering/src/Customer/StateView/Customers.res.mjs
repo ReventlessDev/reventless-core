@@ -74,8 +74,6 @@ let name = "Customers";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateView/Customers.res.mjs";
@@ -87,7 +85,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   config,
   subIdConfig,

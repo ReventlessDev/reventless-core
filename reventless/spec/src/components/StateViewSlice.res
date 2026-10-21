@@ -53,11 +53,11 @@ module type Spec = {
 
   /**
   What a row is keyed by. `Id.StringPure` (a plain `string`) unless the view
-  declares its identity — `module Key = OrderId` — in which case a projection
+  declares its identity — `module Id = OrderId` — in which case a projection
   that keys a row by another entity's id does not compile. Auto-injected by
   `@@reventless.spec` in a `StateView/` folder.
   */
-  module Key: Id.T
+  module Id: Id.T
 
   /**
   Events this view slice projects. Only needs the fields required for the projection —
@@ -125,7 +125,7 @@ module type Projection = {
   Receives the event wrapped in a `consumed` envelope (event + `meta` +
   `recordedAt`); only events declared in `Spec.consumedEvent` — no wildcard needed.
   */
-  let project: consumed<Spec.consumedEvent> => array<Projection.action<Spec.Key.t, Spec.state>>
+  let project: consumed<Spec.consumedEvent> => array<Projection.action<Spec.Id.t, Spec.state>>
 
   /** File URL of this Projection module (`import.meta.url`). */
   let moduleUrl: string

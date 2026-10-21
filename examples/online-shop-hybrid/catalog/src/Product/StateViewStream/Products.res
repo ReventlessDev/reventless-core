@@ -4,7 +4,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CatalogSpec.ProductId
+module Id = CatalogSpec.ProductId
 
 // Order is load-bearing: sury strands constructors declared after a run of two or
 // more same-shaped ones, so the `Money.t` pair must lead (DZakh/sury#392).

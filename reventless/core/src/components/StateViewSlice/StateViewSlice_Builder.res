@@ -132,8 +132,8 @@ module Make = (
                     })->Array.map(
                       Reventless.Projection.mapActionId(
                         _,
-                        ~to_=Spec.Key.toString,
-                        ~from=Spec.Key.makeFromString,
+                        ~to_=Spec.Id.toString,
+                        ~from=Spec.Id.makeFromString,
                       ),
                     ) catch {
                     | exn =>

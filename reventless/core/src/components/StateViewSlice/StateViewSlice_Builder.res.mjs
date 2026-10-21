@@ -109,7 +109,7 @@ function Make(RuntimeEnvironment) {
                   event: Primitive_option.valFromOption(event),
                   meta: meta,
                   recordedAt: recordedAt
-                }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Key.toString, Spec.Key.makeFromString));
+                }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Id.toString, Spec.Id.makeFromString));
               } catch (raw_exn) {
                 let exn$1 = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");

@@ -4,7 +4,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = CatalogSpec.ProductId
+module Id = CatalogSpec.ProductId
 
 // Operator surface: aggregate demand across every customer is a merchandising
 // signal, not something a shopper is entitled to read.

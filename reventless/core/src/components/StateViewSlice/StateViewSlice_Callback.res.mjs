@@ -33,7 +33,7 @@ function Make(Spec) {
           event: event,
           meta: raw.meta,
           recordedAt: raw.recordedAt
-        }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Key.toString, Spec.Key.makeFromString));
+        }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Id.toString, Spec.Id.makeFromString));
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
         allActions.push(...actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, raw.meta.time, Spec.stateSchema)));

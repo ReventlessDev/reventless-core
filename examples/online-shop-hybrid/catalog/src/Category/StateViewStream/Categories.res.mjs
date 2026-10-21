@@ -96,8 +96,6 @@ let name = "Categories";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateViewStream/Categories.res.mjs";
@@ -109,7 +107,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   shelfStatusSchema,
   config,

@@ -4,7 +4,7 @@
 @@reventless.spec
 
 // Rows are keyed by this identity.
-module Key = OrderId
+module Id = OrderId
 
 // Catalog's store, named explicitly: the ppx would otherwise derive an
 // *Ordering* store from the field name, and nothing writes to that one.

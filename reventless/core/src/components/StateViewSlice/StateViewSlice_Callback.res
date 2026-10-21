@@ -44,8 +44,8 @@ module Make = (
           Projection.project({event, meta: raw.meta, recordedAt: raw.recordedAt})->Array.map(
             Reventless.Projection.mapActionId(
               _,
-              ~to_=Spec.Key.toString,
-              ~from=Spec.Key.makeFromString,
+              ~to_=Spec.Id.toString,
+              ~from=Spec.Id.makeFromString,
             ),
           )
         let actionsStr = LogFormat.actionNames(actions)

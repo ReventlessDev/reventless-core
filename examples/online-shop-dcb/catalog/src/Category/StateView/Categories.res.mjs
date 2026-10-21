@@ -60,8 +60,6 @@ let name = "Categories";
 
 let Id;
 
-let Key;
-
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Category/StateView/Categories.res.mjs";
@@ -73,7 +71,6 @@ let visibility = "Public";
 export {
   name,
   Id,
-  Key,
   consumedEventSchema,
   config,
   subIdConfig,
