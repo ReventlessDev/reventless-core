@@ -21,18 +21,18 @@ let needsOf = (structure: Plugin.pluginStructure, ~plugin: string): array<need> 
   let need = (item, role) => {plugin, item, role, group: Role.groupOf(role)}
   let rolesOf = (item, roles: option<array<string>>) =>
     roles->Option.getOr([])->Array.map(role => need(item, Role.make(role)))
-  let writable = (defs: array<Plugin.writableDef>) =>
+  let writeSide = (defs: array<Plugin.writeSideDef>) =>
     defs->Array.flatMap(w =>
       w.commands->Array.flatMap(c => rolesOf(`${w.name}.${c.name}`, c.requiredRoles))
     )
-  let queryable = (defs: array<Plugin.queryableDef>) =>
+  let readSide = (defs: array<Plugin.readSideDef>) =>
     defs->Array.flatMap(q => rolesOf(q.name, q.requiredRoles))
   Array.flat([
-    writable(structure.aggregates),
-    writable(structure.stateChangeSlices),
+    writeSide(structure.aggregates),
+    writeSide(structure.stateChangeSlices),
     structure.inboundTranslationSlices->Array.flatMap(s => rolesOf(s.name, s.requiredRoles)),
-    queryable(structure.readModels),
-    queryable(structure.stateViewSlices),
+    readSide(structure.readModels),
+    readSide(structure.stateViewSlices),
   ])
 }
 

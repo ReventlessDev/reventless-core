@@ -158,7 +158,7 @@ describe("Message should", () => {
       let json = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
 
       // Simulate the persisted JSON as written before these fields existed: drop the
-      // mandatory enum `kind`, a top-level `T | null` field, and two nested writableDef
+      // mandatory enum `kind`, a top-level `T | null` field, and two nested writeSideDef
       // fields (a mandatory array + a `T | null`).
       let oldJson = %raw(`function(j){
         var c = JSON.parse(JSON.stringify(j));

@@ -92,7 +92,7 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
 
 // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
 // tooling but must stay out of the deployed AutoUI — the menu, drill-down pages and
-// queryable defs are all derived from this response, so filter them here.
+// read-side defs are all derived from this response, so filter them here.
 //
 // Hidden from the menu is not the same question as denied as a reference target: a
 // denormalised lookup view is precisely the thing an author wants referenceable but
@@ -100,9 +100,9 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
 // (below) answers the second. Neither is a security boundary — an Internal view
 // keeps its resolver and stays queryable, so naming it here publishes a fact the
 // caller is already entitled to.
-let isPublicQueryable = (q: queryableDef): bool => q.visibility != Some("Internal")
+let isPublicReadSide = (q: readSideDef): bool => q.visibility != Some("Internal")
 
-let encodeQueryableDef = (r: queryableDef): JSON.t =>
+let encodeReadSideDef = (r: readSideDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(r.name)),
     ("queryField", JSON.Encode.string(r.queryField)),
@@ -143,7 +143,7 @@ let encodeErrorDef = (e: errorDef): JSON.t =>
     ("references", e.references->Array.map(encodeFieldReference)->JSON.Encode.array),
   ])->JSON.Encode.object
 
-let encodeWritableDef = (w: writableDef): JSON.t =>
+let encodeWriteSideDef = (w: writeSideDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(w.name)),
     ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
@@ -254,26 +254,26 @@ let encodePluginStructureEntry = (
     (
       "readModels",
       def.readModels
-      ->Array.filter(isPublicQueryable)
-      ->Array.map(encodeQueryableDef)
+      ->Array.filter(isPublicReadSide)
+      ->Array.map(encodeReadSideDef)
       ->JSON.Encode.array,
     ),
     (
       "stateViewSlices",
       def.stateViewSlices
-      ->Array.filter(isPublicQueryable)
-      ->Array.map(encodeQueryableDef)
+      ->Array.filter(isPublicReadSide)
+      ->Array.map(encodeReadSideDef)
       ->JSON.Encode.array,
     ),
     (
       "internalQueryables",
       Array.concat(def.readModels, def.stateViewSlices)
-      ->Array.filter(q => !isPublicQueryable(q))
-      ->Array.map(encodeQueryableDef)
+      ->Array.filter(q => !isPublicReadSide(q))
+      ->Array.map(encodeReadSideDef)
       ->JSON.Encode.array,
     ),
-    ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),
-    ("aggregates", def.aggregates->Array.map(encodeWritableDef)->JSON.Encode.array),
+    ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWriteSideDef)->JSON.Encode.array),
+    ("aggregates", def.aggregates->Array.map(encodeWriteSideDef)->JSON.Encode.array),
     (
       "automationSlices",
       def.automationSlices->Array.map(encodeAutomationSliceDef)->JSON.Encode.array,

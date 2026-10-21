@@ -10,7 +10,7 @@
 //
 // Channel layout: /default/{topicName}/{pathSegment(entityKey)}
 //   topicName    = plugin-prefixed query LIST field name (e.g. "Catalog-Products").
-//                  MUST match the AutoUI manifest's queryableDef.queryField,
+//                  MUST match the AutoUI manifest's readSideDef.queryField,
 //                  which the host-shell's AutoLive subscribes on. Using the
 //                  singular return type here would orphan the channel.
 //   entityKey    = the table's primary-key value(s) extracted from record.Keys.

@@ -8,7 +8,7 @@
 // handler wraps each persisted structure with `pluginId` without decoding.
 // One caveat: the persisted structure is PRE-filter — it still carries Internal
 // ReadModels / StateViewSlices for developer tooling. The handler re-applies the
-// `isPublicQueryable` filter (mirroring `encodePluginStructureEntry`) so Internal
+// `isPublicReadSide` filter (mirroring `encodePluginStructureEntry`) so Internal
 // components stay out of the deployed AutoUI, matching the in-memory adapter.
 
 open PulumiAws

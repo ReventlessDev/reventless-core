@@ -7,7 +7,7 @@
 open JestGlobals
 open Reventless.Plugin
 
-let publicRm: queryableDef = {
+let publicRm: readSideDef = {
   name: "Products",
   queryField: "Catalog_Products",
   schema: "{}",
@@ -30,7 +30,7 @@ let publicRm: queryableDef = {
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.
-let internalRm: queryableDef = {
+let internalRm: readSideDef = {
   ...publicRm,
   name: "ProductAudit",
   queryField: "Catalog_ProductAudit",
@@ -138,7 +138,7 @@ describe("Platform_PluginStructures entry", () => {
     )->toEqual(true)
   )
 
-  // Both read-side queries share `encodeQueryableDef`, so this asserts the singular
+  // Both read-side queries share `encodeReadSideDef`, so this asserts the singular
   // name is not a ComponentDefinitions-only field: a developer tool building a detail
   // query reads it from here.
   testSync("encodes the singular query field beside the list one", () =>

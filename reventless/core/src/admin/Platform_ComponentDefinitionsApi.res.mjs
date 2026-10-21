@@ -97,11 +97,11 @@ function encodeCommandDef(c) {
   ]);
 }
 
-function isPublicQueryable(q) {
+function isPublicReadSide(q) {
   return Primitive_object.notequal(q.visibility, "Internal");
 }
 
-function encodeQueryableDef(r) {
+function encodeReadSideDef(r) {
   return Object.fromEntries([
     [
       "name",
@@ -216,7 +216,7 @@ function encodeErrorDef(e) {
   ]);
 }
 
-function encodeWritableDef(w) {
+function encodeWriteSideDef(w) {
   return Object.fromEntries([
     [
       "name",
@@ -399,23 +399,23 @@ function encodePluginStructureEntry(pluginId, derived, def) {
     ],
     [
       "readModels",
-      def.readModels.filter(isPublicQueryable).map(encodeQueryableDef)
+      def.readModels.filter(isPublicReadSide).map(encodeReadSideDef)
     ],
     [
       "stateViewSlices",
-      def.stateViewSlices.filter(isPublicQueryable).map(encodeQueryableDef)
+      def.stateViewSlices.filter(isPublicReadSide).map(encodeReadSideDef)
     ],
     [
       "internalQueryables",
-      def.readModels.concat(def.stateViewSlices).filter(q => !Primitive_object.notequal(q.visibility, "Internal")).map(encodeQueryableDef)
+      def.readModels.concat(def.stateViewSlices).filter(q => !Primitive_object.notequal(q.visibility, "Internal")).map(encodeReadSideDef)
     ],
     [
       "stateChangeSlices",
-      def.stateChangeSlices.map(encodeWritableDef)
+      def.stateChangeSlices.map(encodeWriteSideDef)
     ],
     [
       "aggregates",
-      def.aggregates.map(encodeWritableDef)
+      def.aggregates.map(encodeWriteSideDef)
     ],
     [
       "automationSlices",
@@ -448,11 +448,11 @@ export {
   encodeStrings,
   encodeFieldReference,
   encodeCommandDef,
-  isPublicQueryable,
-  encodeQueryableDef,
+  isPublicReadSide,
+  encodeReadSideDef,
   encodeEventDef,
   encodeErrorDef,
-  encodeWritableDef,
+  encodeWriteSideDef,
   encodeAutomationSliceDef,
   encodeOutboundTranslationSliceDef,
   encodeInboundTranslationSliceDef,

@@ -42,7 +42,7 @@ let pluginCommands: array<commandDef> = Plugin_Structure.extractCommandDefs(
   commandSchema,
 )
 
-let pluginAggregate: writableDef = {
+let pluginAggregate: writeSideDef = {
   name: "Plugin",
   commands: pluginCommands,
   producedEventTypes: [],
@@ -59,8 +59,8 @@ let pluginAggregate: writableDef = {
 
 // Functions, not values: the view's access keys are the group the platform maps
 // the administrator role to, and this module is evaluated before a root maps it.
-let pluginReadModel = (): queryableDef =>
-  Plugin_Structure.queryableDefFromSpec(
+let pluginReadModel = (): readSideDef =>
+  Plugin_Structure.readSideDefFromSpec(
     ~plugin=pluginId,
     ~name=PluginsReadModelSpec.name,
     ~stateSchema=PluginsReadModelSpec.stateSchema->S.castToUnknown,

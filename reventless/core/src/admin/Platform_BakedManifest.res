@@ -65,12 +65,12 @@ type selection = {
   derived: option<array<string>>,
 }
 
-let publicViews = (def: pluginStructure): array<queryableDef> =>
+let publicViews = (def: pluginStructure): array<readSideDef> =>
   Array.concat(def.readModels, def.stateViewSlices)->Array.filter(
-    Platform_ComponentDefinitionsApi.isPublicQueryable,
+    Platform_ComponentDefinitionsApi.isPublicReadSide,
   )
 
-let writeSides = (def: pluginStructure): array<writableDef> =>
+let writeSides = (def: pluginStructure): array<writeSideDef> =>
   Array.concat(def.stateChangeSlices, def.aggregates)
 
 let commandNames = (def: pluginStructure): array<string> =>
@@ -116,7 +116,7 @@ let isSelected = (selected: option<array<string>>, name: string): bool =>
 // breaks the picker permanently in the one deployment shape with no fallback.
 // Naming it discloses nothing: the domain API already serves that view to the same
 // caller (Internal is a menu hint, not a boundary).
-let referencedEntities = (~pluginName: string, kept: array<writableDef>): array<string> =>
+let referencedEntities = (~pluginName: string, kept: array<writeSideDef>): array<string> =>
   kept
   ->Array.flatMap(w => w.commands)
   ->Array.flatMap(c => c.references)
@@ -133,7 +133,7 @@ let curateStructure = (~pluginId: string, ~def: pluginStructure, sel: selection)
 > =>
   validate(~def, sel)->Result.map(() => {
     let pluginName = Plugin.name(pluginId)
-    let keepCommands = (ws: array<writableDef>) =>
+    let keepCommands = (ws: array<writeSideDef>) =>
       ws
       ->Array.map(w => {
         ...w,
@@ -147,9 +147,9 @@ let curateStructure = (~pluginId: string, ~def: pluginStructure, sel: selection)
     let stateChangeSlices = def.stateChangeSlices->keepCommands
     let aggregates = def.aggregates->keepCommands
     let referenced = referencedEntities(~pluginName, Array.concat(stateChangeSlices, aggregates))
-    let keepViews = (qs: array<queryableDef>) =>
+    let keepViews = (qs: array<readSideDef>) =>
       qs->Array.filter(q =>
-        if Platform_ComponentDefinitionsApi.isPublicQueryable(q) {
+        if Platform_ComponentDefinitionsApi.isPublicReadSide(q) {
           sel.views->isSelected(q.name)
         } else {
           referenced->Array.includes(q.name)

@@ -301,7 +301,7 @@ let structure = Plugin_Structure.make(
 
 describe("lifecycle topology", () => {
   let ordersStates = Dict.fromArray([("Orders", ["Placed", "Shipped", "Cancelled"])])
-  let writableWith = (commands): Reventless.Plugin.writableDef => {
+  let writableWith = (commands): Reventless.Plugin.writeSideDef => {
     name: "Ordering",
     commands,
     producedEventTypes: [],
@@ -330,7 +330,7 @@ describe("lifecycle topology", () => {
   testSync("names a state no command can reach", () => {
     // `Cancelled` is in the enum and nothing declares an edge into it.
     let findings = Plugin_Structure.lifecycleTopologyFindings(
-      ~writables=[
+      ~writeSides=[
         writableWith([
           command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
         ]),
@@ -342,7 +342,7 @@ describe("lifecycle topology", () => {
 
   testSync("says nothing when every state is reachable", () => {
     let findings = Plugin_Structure.lifecycleTopologyFindings(
-      ~writables=[
+      ~writeSides=[
         writableWith([
           command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
           command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
@@ -357,7 +357,7 @@ describe("lifecycle topology", () => {
   // expected rather than suspicious.
   testSync("does not call the initial state unreachable", () => {
     let findings = Plugin_Structure.lifecycleTopologyFindings(
-      ~writables=[
+      ~writeSides=[
         writableWith([
           command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
           command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
@@ -374,7 +374,7 @@ describe("lifecycle topology", () => {
   // silenced. See the comment in Plugin_Structure.
   testSync("does not report a state with no way out", () => {
     let findings = Plugin_Structure.lifecycleTopologyFindings(
-      ~writables=[
+      ~writeSides=[
         writableWith([
           command(~name="Ship", ~allowedStates=["Placed"], ~targetState="Shipped", ()),
           command(~name="Cancel", ~allowedStates=["Placed"], ~targetState="Cancelled", ()),
@@ -1310,7 +1310,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   // worked it out — the same declaration-vs-guess distinction `labelFieldSource`
   // publishes, for the field the generated filter and order-by are built from.
   describe("idField / idFieldSource — the key and its provenance", () => {
-    let keyOf = (q: Reventless.Plugin.queryableDef) => (q.idField, q.idFieldSource)
+    let keyOf = (q: Reventless.Plugin.readSideDef) => (q.idField, q.idFieldSource)
     let withCategories = Plugin_Structure.make(
       ~name="TestPlugin",
       ~stateChangeSlices=[],
@@ -1738,11 +1738,11 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     | None => None
     }
 
-  // Phase 4: queryableDef.schema must carry x-reventless-* extension keys for
+  // Phase 4: readSideDef.schema must carry x-reventless-* extension keys for
   // annotated state types. Plugin_Structure now uses SuryToJsonSchema.deriveObjectSchema
   // (annotation-aware) instead of S.toInputJSONSchemaOrThrow (metadata-blind).
-  describe("queryableDef.schema propagates x-reventless-* annotations", () => {
-    let parseSchema = (svs: Reventless.Plugin.queryableDef): JSON.t => svs.schema->JSON.parseOrThrow
+  describe("readSideDef.schema propagates x-reventless-* annotations", () => {
+    let parseSchema = (svs: Reventless.Plugin.readSideDef): JSON.t => svs.schema->JSON.parseOrThrow
 
     let annotatedSchema = structure.stateViewSlices->Array.getUnsafe(3)->parseSchema
 

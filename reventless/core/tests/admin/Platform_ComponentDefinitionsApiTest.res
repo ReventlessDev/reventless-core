@@ -19,7 +19,7 @@ let cmd: commandDef = {
   ownerField: None,
 }
 
-let qbl: queryableDef = {
+let qbl: readSideDef = {
   name: "Products",
   queryField: "Catalog_Products",
   schema: "{}",
@@ -41,7 +41,7 @@ let qbl: queryableDef = {
   namedWhenRetired: None,
 }
 
-let wbl: writableDef = {
+let wbl: writeSideDef = {
   name: "Product",
   commands: [cmd],
   linkedViews: ["Products"],
@@ -152,7 +152,7 @@ describe("encodePluginStructureEntry", () => {
     expect(json->String.includes("\"plugin\":\"Catalog\""))->toEqual(true)
   )
 
-  testSync("includes the queryableDef name", () =>
+  testSync("includes the readSideDef name", () =>
     expect(json->String.includes("\"name\":\"Products\""))->toEqual(true)
   )
 
@@ -177,12 +177,12 @@ describe("encodePluginStructureEntry", () => {
   )
 
   // Phase 6.3: write-side emitted-event field schemas.
-  testSync("encodes writableDef events", () =>
+  testSync("encodes writeSideDef events", () =>
     expect(json->String.includes("\"events\":[{\"name\":\"ProductAdded\""))->toEqual(true)
   )
 
   // The refusals a caller has to handle travel beside the facts it can observe.
-  testSync("encodes writableDef errors", () =>
+  testSync("encodes writeSideDef errors", () =>
     expect(json->String.includes("\"errors\":[{\"name\":\"ProductAlreadyExists\""))->toEqual(true)
   )
 
@@ -258,7 +258,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
   // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
   // tooling but must not surface in the UI definitions the deployed AutoUI builds its
   // menu / pages from — see Plugin_Structure.res / Visibility.res.
-  let internalQbl: queryableDef = {
+  let internalQbl: readSideDef = {
     name: "AvailableProducts",
     queryField: "Ordering_AvailableProducts",
     schema: "{}",
@@ -281,7 +281,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
-  let internalSlice: queryableDef = {
+  let internalSlice: readSideDef = {
     ...internalQbl,
     name: "PendingShipments",
     queryField: "Ordering_PendingShipments",
@@ -314,12 +314,12 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
       ->Option.flatMap(JSON.Decode.string)
     )
 
-  testSync("excludes an Internal queryableDef from the encoded read-side", () => {
+  testSync("excludes an Internal readSideDef from the encoded read-side", () => {
     expect(mixedEntry->namesAt("readModels"))->toEqual(["Products"])
     expect(mixedEntry->namesAt("stateViewSlices"))->toEqual([])
   })
 
-  testSync("keeps a Public queryableDef", () =>
+  testSync("keeps a Public readSideDef", () =>
     expect(mixedEntry->namesAt("readModels")->Array.includes("Products"))->toEqual(true)
   )
 
@@ -364,7 +364,7 @@ describe("allowedStates + lifecycleField populated", () => {
     ownerField: None,
   }
 
-  let qblWithStatus: queryableDef = {
+  let qblWithStatus: readSideDef = {
     name: "Plugin",
     queryField: "Platform_Plugins",
     schema: "{}",
@@ -386,7 +386,7 @@ describe("allowedStates + lifecycleField populated", () => {
     namedWhenRetired: None,
   }
 
-  let wblWithStates: writableDef = {
+  let wblWithStates: writeSideDef = {
     name: "Plugin",
     commands: [cmdWithStates],
     linkedViews: ["Plugin"],

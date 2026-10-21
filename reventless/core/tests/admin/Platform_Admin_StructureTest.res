@@ -27,7 +27,7 @@ let commandNamed = (name: string): commandDef =>
 let activate = () => commandNamed("Activate")
 
 describe("the Plugins read model declares its lifecycle", () => {
-  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel()
+  let rm: readSideDef = Platform_Admin_Structure.pluginReadModel()
 
   testSync("names the field commands branch on", () =>
     expect(rm.lifecycleField)->toEqual(Some("status"))
@@ -44,14 +44,14 @@ describe("the Plugins read model declares its lifecycle", () => {
   })
 
   testSync("is served on the encoded def under the new key", () => {
-    let json = rm->Platform_ComponentDefinitionsApi.encodeQueryableDef->JSON.stringify
+    let json = rm->Platform_ComponentDefinitionsApi.encodeReadSideDef->JSON.stringify
     expect(json->String.includes(`"lifecycleField":"status"`))->toEqual(true)
   })
 
   testSync("and never under the old one", () =>
     expect(
       rm
-      ->Platform_ComponentDefinitionsApi.encodeQueryableDef
+      ->Platform_ComponentDefinitionsApi.encodeReadSideDef
       ->JSON.stringify
       ->String.includes(`"statusField"`),
     )->toEqual(false)
@@ -73,10 +73,10 @@ describe("the admin structure's declared transitions are checked", () => {
     d
   }
 
-  let raises = writables =>
+  let raises = writeSides =>
     switch Plugin_Structure.checkDeclaredTransitions(
       ~pluginName="Platform",
-      ~writables,
+      ~writeSides,
       ~lifecycleStatesByView=statesByView(),
     ) {
     | () => false
@@ -95,7 +95,7 @@ describe("the admin structure's declared transitions are checked", () => {
 
   // A check that cannot fail is indistinguishable from one that is not running.
   testSync("and a state the view does not declare is caught", () => {
-    let bogus: Reventless.Plugin.writableDef = {
+    let bogus: Reventless.Plugin.writeSideDef = {
       ...Platform_Admin_Structure.pluginAggregate,
       commands: [
         {
@@ -193,7 +193,7 @@ describe("the internal commands declare the edges they move rows along", () => {
   testSync("and no state is left unreachable", () =>
     expect(
       Plugin_Structure.lifecycleTopologyFindings(
-        ~writables=[Platform_Admin_Structure.pluginAggregate],
+        ~writeSides=[Platform_Admin_Structure.pluginAggregate],
         ~lifecycleStatesByView=statesByView(),
       ),
     )->toEqual([])
@@ -239,14 +239,14 @@ describe("the Plugins view publishes the rule the server enforces", () => {
   })
 })
 
-// The `queryableDef` is derived from the spec, not hand-written. The analysis
+// The `readSideDef` is derived from the spec, not hand-written. The analysis
 // that preceded this expected the admin's naming to be bespoke and it is not:
 // `Api_Naming.queryFieldNamesForReadModel` returns byte-identical names, because
 // `singularize` already handles the plural-spec-name / singular-type shape that
 // looked special. Asserted rather than assumed — the whole case for deriving
 // rests on the generic helpers reaching the same answers.
-describe("the Plugins queryableDef is what the generic helpers produce", () => {
-  let rm: queryableDef = Platform_Admin_Structure.pluginReadModel()
+describe("the Plugins readSideDef is what the generic helpers produce", () => {
+  let rm: readSideDef = Platform_Admin_Structure.pluginReadModel()
 
   testSync("the field names are the generic ones", () =>
     expect((rm.queryField, rm.singleQueryField))->toEqual((

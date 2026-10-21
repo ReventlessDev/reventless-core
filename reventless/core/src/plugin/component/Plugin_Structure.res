@@ -392,13 +392,13 @@ let extensionPartitionFailure = (
 // forces a spec to pick its linked view's enum.
 let checkDeclaredTransitions = (
   ~pluginName: string,
-  ~writables: array<Reventless.Plugin.writableDef>,
+  ~writeSides: array<Reventless.Plugin.writeSideDef>,
   ~lifecycleStatesByView: dict<array<string>>,
 ): unit => {
   let unvalidated = ref(0)
   let failures = []
 
-  writables->Array.forEach(w =>
+  writeSides->Array.forEach(w =>
     w.commands->Array.forEach(cmd => {
       let declared = Array.concat(
         cmd.allowedStates->Option.getOr([]),
@@ -469,7 +469,7 @@ let checkDeclaredTransitions = (
 // and one that stops a deploy gets silenced rather than fixed. Pure, so the rule
 // tests without a log; `checkLifecycleTopology` reports.
 let lifecycleTopologyFindings = (
-  ~writables: array<Reventless.Plugin.writableDef>,
+  ~writeSides: array<Reventless.Plugin.writeSideDef>,
   ~lifecycleStatesByView: dict<array<string>>,
 ): array<(string, string)> => {
   let findings = []
@@ -479,7 +479,7 @@ let lifecycleTopologyFindings = (
     // Arrival only, so a creating command (a target and no from-set) counts
     // towards reachability like any other edge.
     let reachable =
-      writables->Array.reduce([], (acc, w) =>
+      writeSides->Array.reduce([], (acc, w) =>
         w.linkedViews->Array.includes(view)
           ? Array.concat(acc, w.commands->Array.filterMap(cmd => cmd.targetState))
           : acc
@@ -508,10 +508,10 @@ let lifecycleTopologyFindings = (
 
 let checkLifecycleTopology = (
   ~pluginName: string,
-  ~writables: array<Reventless.Plugin.writableDef>,
+  ~writeSides: array<Reventless.Plugin.writeSideDef>,
   ~lifecycleStatesByView: dict<array<string>>,
 ): unit =>
-  lifecycleTopologyFindings(~writables, ~lifecycleStatesByView)->Array.forEach(((view, message)) =>
+  lifecycleTopologyFindings(~writeSides, ~lifecycleStatesByView)->Array.forEach(((view, message)) =>
     log.warn(~comp="Plugin_Structure", `${pluginName}/${view}: ${message}`)
   )
 
@@ -1074,12 +1074,12 @@ let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
   }
 
 /**
- A read model's `queryableDef` assembled from its spec, for the platform's own
+ A read model's `readSideDef` assembled from its spec, for the platform's own
  components: `make` takes `module(ReadModel.T)` values, and at structure-assembly
  time the platform has no built module to hand itself. Every extractor here is the
  one `make` calls, so the two cannot drift — a hand-written record did, four times.
  */
-let queryableDefFromSpec = (
+let readSideDefFromSpec = (
   ~plugin: string,
   ~name: string,
   ~stateSchema: S.t<unknown>,
@@ -1088,7 +1088,7 @@ let queryableDefFromSpec = (
   ~consumedEventTypes: array<string>=[],
   ~linkedWriteSide: array<string>=[],
   ~chapter: option<string>=?,
-): Reventless.Plugin.queryableDef => {
+): Reventless.Plugin.readSideDef => {
   let qf = Api_Naming.queryFieldNamesForReadModel(~plugin, ~name)
   let label = labelFieldsFromStateSchema(~entityName=name, stateSchema)
   // The published key is always filterable; not every filterable field is the key.
@@ -1498,9 +1498,9 @@ let make = (
     )
   )
 
-  // ── Build queryable defs ───────────────────────────────────────────────────
+  // ── Build read-side defs ───────────────────────────────────────────────────
   //
-  // Internal views are carried here, tagged via `queryableDef.visibility`, so
+  // Internal views are carried here, tagged via `readSideDef.visibility`, so
   // developer tools see them; AutoUI's consumers re-filter on the tag.
   // View name -> the states its lifecycle field can hold, collected as the view
   // defs are built so the transition check below has both sides in one place.
@@ -1576,7 +1576,7 @@ let make = (
         idFieldSource: keyField->Option.map(((_, rung)) => rung),
         requiredAccess: accessKeysFor(R.Spec.authorization->Reventless.Authorization.named),
         requiredRoles: ?rolesFor(R.Spec.authorization->Reventless.Authorization.named),
-      }: Reventless.Plugin.queryableDef
+      }: Reventless.Plugin.readSideDef
     )
   })
 
@@ -1617,11 +1617,11 @@ let make = (
           idFieldSource: keyField->Option.map(((_, rung)) => rung),
           requiredAccess: accessKeysFor(SVS.Spec.authorization->Reventless.Authorization.named),
           requiredRoles: ?rolesFor(SVS.Spec.authorization->Reventless.Authorization.named),
-        }: Reventless.Plugin.queryableDef
+        }: Reventless.Plugin.readSideDef
       )
     })
 
-  // ── Build writable defs ────────────────────────────────────────────────────
+  // ── Build write-side defs ──────────────────────────────────────────────────
 
   // Non-throwing: this is a description of the plugin, and the builder is what
   // refuses a boundary whose partitions do not resolve.
@@ -1728,7 +1728,7 @@ let make = (
           events: extractEventDefs(~identityViews, SCS.Spec.eventSchema->S.castToUnknown),
           errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
           chapter: chapterOf(SCS.Spec.name),
-        }: Reventless.Plugin.writableDef
+        }: Reventless.Plugin.writeSideDef
       )
     })
 
@@ -1762,7 +1762,7 @@ let make = (
         events: extractEventDefs(~identityViews, A.Spec.eventSchema->S.castToUnknown),
         errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(A.Spec.name),
-      }: Reventless.Plugin.writableDef
+      }: Reventless.Plugin.writeSideDef
     )
   })
 
@@ -2258,12 +2258,12 @@ let make = (
   // assembled, so the check cannot run inline where the defs are made.
   checkDeclaredTransitions(
     ~pluginName=name,
-    ~writables=Array.concat(stateChangeDefs, aggregateDefs),
+    ~writeSides=Array.concat(stateChangeDefs, aggregateDefs),
     ~lifecycleStatesByView,
   )
   checkLifecycleTopology(
     ~pluginName=name,
-    ~writables=Array.concat(stateChangeDefs, aggregateDefs),
+    ~writeSides=Array.concat(stateChangeDefs, aggregateDefs),
     ~lifecycleStatesByView,
   )
   // Also a second pass, for a different reason: the failures are gathered per

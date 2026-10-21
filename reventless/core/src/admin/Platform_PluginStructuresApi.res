@@ -6,7 +6,7 @@
 // difference is not cosmetic.
 //
 //   Platform_ComponentDefinitions  the deployed AutoUI's menu, drill-down pages and
-//                                  queryable defs. Internal ReadModels /
+//                                  read-side defs. Internal ReadModels /
 //                                  StateViewSlices are filtered OUT — showing them
 //                                  would put components in an end user's menu that
 //                                  the author marked as not-for-display.
@@ -119,7 +119,7 @@ let encodeRequiredCapabilityDeclaration = (d: requiredCapabilityDeclaration): JS
     ("component", JSON.Encode.string(d.component)),
   ])->JSON.Encode.object
 
-// Deliberately NOT filtered by `isPublicQueryable`: that filter is the AutoUI
+// Deliberately NOT filtered by `isPublicReadSide`: that filter is the AutoUI
 // contract, and applying it here would silently drop Internal components from the
 // graph a developer tool draws.
 let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON.t =>
@@ -128,25 +128,25 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
     (
       "readModels",
       def.readModels
-      ->Array.map(Platform_ComponentDefinitionsApi.encodeQueryableDef)
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeReadSideDef)
       ->JSON.Encode.array,
     ),
     (
       "stateViewSlices",
       def.stateViewSlices
-      ->Array.map(Platform_ComponentDefinitionsApi.encodeQueryableDef)
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeReadSideDef)
       ->JSON.Encode.array,
     ),
     (
       "stateChangeSlices",
       def.stateChangeSlices
-      ->Array.map(Platform_ComponentDefinitionsApi.encodeWritableDef)
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeWriteSideDef)
       ->JSON.Encode.array,
     ),
     (
       "aggregates",
       def.aggregates
-      ->Array.map(Platform_ComponentDefinitionsApi.encodeWritableDef)
+      ->Array.map(Platform_ComponentDefinitionsApi.encodeWriteSideDef)
       ->JSON.Encode.array,
     ),
     (

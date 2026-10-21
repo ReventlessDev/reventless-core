@@ -33,7 +33,7 @@ let pluginAggregate = {
 };
 
 function pluginReadModel() {
-  return Plugin_Structure$ReventlessCore.queryableDefFromSpec(pluginId, PluginsReadModelSpec$ReventlessCore.name, PluginsReadModelSpec$ReventlessCore.stateSchema, Authorization$Reventless.named(PluginsReadModelSpec$ReventlessCore.authorization), undefined, undefined, ["Plugin"], undefined);
+  return Plugin_Structure$ReventlessCore.readSideDefFromSpec(pluginId, PluginsReadModelSpec$ReventlessCore.name, PluginsReadModelSpec$ReventlessCore.stateSchema, Authorization$Reventless.named(PluginsReadModelSpec$ReventlessCore.authorization), undefined, undefined, ["Plugin"], undefined);
 }
 
 function structure() {

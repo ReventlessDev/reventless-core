@@ -1,7 +1,7 @@
 // Verifies that ReadModel.Spec.visibility flows through PPX injection, that the
 // filter predicate used by Plugin_Builder.makeAutoUIManifest excludes Internal
 // entries while leaving Public ones intact, and that Plugin_Structure.make
-// CARRIES Internal entries but tags them via `queryableDef.visibility` (the
+// CARRIES Internal entries but tags them via `readSideDef.visibility` (the
 // dev-graph contract). Does NOT instantiate the full Plugin_Builder.Make functor
 // — the filter is a pure switch on a Spec field and is therefore testable in
 // isolation via stubbed ReadModel.T modules.
@@ -120,7 +120,7 @@ describe("ReadModel visibility filter", () => {
 
 describe("Plugin_Structure.make — visibility tagging", () => {
   // pluginStructure CARRIES Internal read models (so the dev graph / dead-code
-  // tools can see them) and tags each via `queryableDef.visibility`
+  // tools can see them) and tags each via `readSideDef.visibility`
   // (`None` = Public, `Some("Internal")` = Internal). The deployed AutoUI
   // consumers re-filter on that tag — visibility does not remove entries from
   // pluginStructure itself. See Plugin_Structure.res / Visibility.res.

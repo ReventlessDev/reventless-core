@@ -27,7 +27,7 @@ function describe(e) {
 }
 
 function publicViews(def) {
-  return def.readModels.concat(def.stateViewSlices).filter(Platform_ComponentDefinitionsApi$ReventlessCore.isPublicQueryable);
+  return def.readModels.concat(def.stateViewSlices).filter(Platform_ComponentDefinitionsApi$ReventlessCore.isPublicReadSide);
 }
 
 function writeSides(def) {
@@ -117,7 +117,7 @@ function curateStructure(pluginId, def, sel) {
     let aggregates = keepCommands(def.aggregates);
     let referenced = referencedEntities(pluginName, stateChangeSlices.concat(aggregates));
     let keepViews = qs => qs.filter(q => {
-      if (Platform_ComponentDefinitionsApi$ReventlessCore.isPublicQueryable(q)) {
+      if (Platform_ComponentDefinitionsApi$ReventlessCore.isPublicReadSide(q)) {
         return isSelected(sel.views, q.name);
       } else {
         return referenced.includes(q.name);

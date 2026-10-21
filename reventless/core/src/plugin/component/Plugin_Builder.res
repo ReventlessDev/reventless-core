@@ -1050,31 +1050,31 @@ module Make = (
     ~aggregatePositions: array<string>=[],
   ): Reventless.Plugin.uiFragmentManifest => {
     // Internal queryable components are hidden from the AutoUI manifest. They
-    // remain fully wired (resolvers, GraphQL schema, queryable defs,
+    // remain fully wired (resolvers, GraphQL schema, read-side defs,
     // authorization) — visibility is a UX hint, not a security boundary. See
     // docs/plans/done/component-visibility-annotations.md
-    let isVisibleQueryable = (q: Reventless.Plugin.queryableDef) =>
+    let isVisibleReadSide = (q: Reventless.Plugin.readSideDef) =>
       switch q.visibility {
       | Some("Internal") => false
       | _ => true
       }
-    let visibleReadModels = pluginStructure.readModels->Array.filter(isVisibleQueryable)
-    let visibleStateViewSlices = pluginStructure.stateViewSlices->Array.filter(isVisibleQueryable)
-    let listPanel = (q: Reventless.Plugin.queryableDef): Reventless.Plugin.panelManifestEntry => {
+    let visibleReadModels = pluginStructure.readModels->Array.filter(isVisibleReadSide)
+    let visibleStateViewSlices = pluginStructure.stateViewSlices->Array.filter(isVisibleReadSide)
+    let listPanel = (q: Reventless.Plugin.readSideDef): Reventless.Plugin.panelManifestEntry => {
       fragmentId: name ++ "." ++ q.name ++ ".list",
       title: q.name,
       description: "",
       positions: readModelPositions,
       requiredAccess: None,
     }
-    let detailPanel = (w: Reventless.Plugin.writableDef): Reventless.Plugin.panelManifestEntry => {
+    let detailPanel = (w: Reventless.Plugin.writeSideDef): Reventless.Plugin.panelManifestEntry => {
       fragmentId: name ++ "." ++ w.name ++ ".detail",
       title: w.name,
       description: "",
       positions: aggregatePositions,
       requiredAccess: None,
     }
-    let listPage = (q: Reventless.Plugin.queryableDef): Reventless.Plugin.pageManifestEntry => {
+    let listPage = (q: Reventless.Plugin.readSideDef): Reventless.Plugin.pageManifestEntry => {
       fragmentId: name ++ "." ++ q.name ++ ".list",
       title: q.name,
       menuEntry: {label: q.name, icon: None, group: None, sortOrder: 0},

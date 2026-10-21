@@ -13,14 +13,14 @@ function needsOf(structure, plugin) {
     role: role,
     group: Role$Reventless.groupOf(role)
   }));
-  let writable = defs => defs.flatMap(w => w.commands.flatMap(c => rolesOf(w.name + `.` + c.name, c.requiredRoles)));
-  let queryable = defs => defs.flatMap(q => rolesOf(q.name, q.requiredRoles));
+  let writeSide = defs => defs.flatMap(w => w.commands.flatMap(c => rolesOf(w.name + `.` + c.name, c.requiredRoles)));
+  let readSide = defs => defs.flatMap(q => rolesOf(q.name, q.requiredRoles));
   return [
-    writable(structure.aggregates),
-    writable(structure.stateChangeSlices),
+    writeSide(structure.aggregates),
+    writeSide(structure.stateChangeSlices),
     structure.inboundTranslationSlices.flatMap(s => rolesOf(s.name, s.requiredRoles)),
-    queryable(structure.readModels),
-    queryable(structure.stateViewSlices)
+    readSide(structure.readModels),
+    readSide(structure.stateViewSlices)
   ].flat();
 }
 

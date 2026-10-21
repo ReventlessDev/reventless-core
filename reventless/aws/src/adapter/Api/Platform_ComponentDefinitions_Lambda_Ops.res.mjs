@@ -182,7 +182,7 @@ function healStructure(structure) {
   return out;
 }
 
-function isPublicQueryable(q) {
+function isPublicReadSide(q) {
   let match = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(q), o => o["visibility"]), Stdlib_JSON.Decode.string);
   if (match !== undefined) {
     return match !== "Internal";
@@ -196,9 +196,9 @@ function filterStructure(structure) {
   let arrAt = key => Stdlib_Option.getOr(Stdlib_Option.flatMap(out[key], Stdlib_JSON.Decode.array), []);
   let readModels = arrAt("readModels");
   let stateViewSlices = arrAt("stateViewSlices");
-  out["readModels"] = readModels.filter(isPublicQueryable);
-  out["stateViewSlices"] = stateViewSlices.filter(isPublicQueryable);
-  out["internalQueryables"] = readModels.concat(stateViewSlices).filter(q => !isPublicQueryable(q));
+  out["readModels"] = readModels.filter(isPublicReadSide);
+  out["stateViewSlices"] = stateViewSlices.filter(isPublicReadSide);
+  out["internalQueryables"] = readModels.concat(stateViewSlices).filter(q => !isPublicReadSide(q));
   return out;
 }
 
@@ -644,7 +644,7 @@ export {
   fillLifecycleField,
   readSideCollections,
   healStructure,
-  isPublicQueryable,
+  isPublicReadSide,
   filterStructure,
   toEntryWith,
   adminEntry,

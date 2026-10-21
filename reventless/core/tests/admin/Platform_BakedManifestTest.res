@@ -6,7 +6,7 @@
 open JestGlobals
 open Reventless.Plugin
 
-let queryable = (~name, ~visibility=?, ~ownerField=?, ()): queryableDef => {
+let readSide = (~name, ~visibility=?, ~ownerField=?, ()): readSideDef => {
   name,
   queryField: `Ordering_${name}`,
   schema: "{}",
@@ -42,7 +42,7 @@ let command = (~name, ~references=[], ~ownerField=?, ()): commandDef => {
   ownerField,
 }
 
-let writable = (~name, ~commands): writableDef => {
+let writeSide = (~name, ~commands): writeSideDef => {
   name,
   commands,
   linkedViews: [],
@@ -58,13 +58,13 @@ let writable = (~name, ~commands): writableDef => {
 // denormalised product mirror a command @refs, one end-user command and one
 // operator command.
 let structure: pluginStructure = {
-  readModels: [queryable(~name="Customers", ())],
+  readModels: [readSide(~name="Customers", ())],
   stateViewSlices: [
-    queryable(~name="Orders", ~ownerField="customerId", ()),
-    queryable(~name="AvailableProducts", ~visibility="Internal", ()),
+    readSide(~name="Orders", ~ownerField="customerId", ()),
+    readSide(~name="AvailableProducts", ~visibility="Internal", ()),
   ],
   stateChangeSlices: [
-    writable(
+    writeSide(
       ~name="PlaceOrder",
       ~commands=[
         command(
@@ -75,7 +75,7 @@ let structure: pluginStructure = {
         ),
       ],
     ),
-    writable(~name="ImportOrders", ~commands=[command(~name="ImportOrders", ())]),
+    writeSide(~name="ImportOrders", ~commands=[command(~name="ImportOrders", ())]),
   ],
   aggregates: [],
   automationSlices: [],

@@ -97,7 +97,7 @@ type pluginDeployedSchema = {
   /** Intra-plugin grouping band (the "chapter") this component belongs to, mirrored
    from the static `pluginStructure` for parity on the hook surface. Absent when the
    component carries no chapter (lives directly under a kind-folder). See
-   `Reventless.Plugin.queryableDef.chapter`. */
+   `Reventless.Plugin.readSideDef.chapter`. */
   chapter?: string,
 }
 

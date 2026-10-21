@@ -318,12 +318,12 @@ function extensionPartitionFailure(label, delegate, expected, actual) {
   return label + `: the extension ` + seen + `, but the plugin partitions ` + delegate + ` by ` + describePartition(expected) + `. An extension sees only the slice's command and events, not what it reads or its chapter — ` + (`add @partitionTag ` + describePartition(expected) + ` to ` + delegate + `'s event.`);
 }
 
-function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) {
+function checkDeclaredTransitions(pluginName, writeSides, lifecycleStatesByView) {
   let unvalidated = {
     contents: 0
   };
   let failures = [];
-  writables.forEach(w => {
+  writeSides.forEach(w => {
     w.commands.forEach(cmd => {
       let t = cmd.targetState;
       let declared = Stdlib_Option.getOr(cmd.allowedStates, []).concat(t !== undefined ? [t] : []);
@@ -357,12 +357,12 @@ function checkDeclaredTransitions(pluginName, writables, lifecycleStatesByView) 
   }
 }
 
-function lifecycleTopologyFindings(writables, lifecycleStatesByView) {
+function lifecycleTopologyFindings(writeSides, lifecycleStatesByView) {
   let findings = [];
   Object.entries(lifecycleStatesByView).forEach(param => {
     let states = param[1];
     let view = param[0];
-    let reachable = Stdlib_Array.reduce(writables, [], (acc, w) => {
+    let reachable = Stdlib_Array.reduce(writeSides, [], (acc, w) => {
       if (w.linkedViews.includes(view)) {
         return acc.concat(Stdlib_Array.filterMap(w.commands, cmd => cmd.targetState));
       } else {
@@ -386,8 +386,8 @@ function lifecycleTopologyFindings(writables, lifecycleStatesByView) {
   return findings;
 }
 
-function checkLifecycleTopology(pluginName, writables, lifecycleStatesByView) {
-  lifecycleTopologyFindings(writables, lifecycleStatesByView).forEach(param => log.warn("Plugin_Structure", undefined, pluginName + `/` + param[0] + `: ` + param[1]));
+function checkLifecycleTopology(pluginName, writeSides, lifecycleStatesByView) {
+  lifecycleTopologyFindings(writeSides, lifecycleStatesByView).forEach(param => log.warn("Plugin_Structure", undefined, pluginName + `/` + param[0] + `: ` + param[1]));
 }
 
 function labelFieldSourceToString(s) {
@@ -772,7 +772,7 @@ function visibilityTag(v) {
   }
 }
 
-function queryableDefFromSpec(plugin, name, stateSchema, authorization, visibilityOpt, consumedEventTypesOpt, linkedWriteSideOpt, chapter) {
+function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilityOpt, consumedEventTypesOpt, linkedWriteSideOpt, chapter) {
   let visibility = visibilityOpt !== undefined ? visibilityOpt : "Public";
   let consumedEventTypes = consumedEventTypesOpt !== undefined ? consumedEventTypesOpt : [];
   let linkedWriteSide = linkedWriteSideOpt !== undefined ? linkedWriteSideOpt : [];
@@ -1591,7 +1591,7 @@ export {
   toCommandDef,
   extractCommandDefs,
   visibilityTag,
-  queryableDefFromSpec,
+  readSideDefFromSpec,
   make,
 }
 /* log Not a pure module */

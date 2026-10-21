@@ -173,7 +173,7 @@ type commandDef = {
       means the command does not move the row. */
   targetState: option<string>,
   /** Where the from-set came from, ranking an inherited edge against an authored
-      one the way `queryableDef.labelFieldSource` does for its field:
+      one the way `readSideDef.labelFieldSource` does for its field:
 
       - `"derived"` — the component's own scenarios.
       - `"declared"` — its `commandTransition` switch.
@@ -204,7 +204,7 @@ type commandDef = {
 }
 
 @schema
-type queryableDef = {
+type readSideDef = {
   name: string,
   queryField: string,
   schema: string,
@@ -276,7 +276,7 @@ type errorDef = {
 }
 
 @schema
-type writableDef = {
+type writeSideDef = {
   name: string,
   commands: array<commandDef>,
   producedEventTypes: array<string>,
@@ -289,7 +289,7 @@ type writableDef = {
       required list still lacks the key — both admin resolvers heal absent ones to
       `[]` on read, and a new one must be added there too. */
   errors: array<errorDef>,
-  /** Chapter grouping band — see `queryableDef.chapter`. */
+  /** Chapter grouping band — see `readSideDef.chapter`. */
   chapter: option<string>,
 }
 
@@ -299,7 +299,7 @@ type automationSliceDef = {
   consumedEventTypes: array<string>,
   producedCommandTypes: array<string>,
   targetName: string,
-  /** Chapter grouping band — see `queryableDef.chapter`. */
+  /** Chapter grouping band — see `readSideDef.chapter`. */
   chapter: option<string>,
   /** The declared `schedule`, as the JSON of `Schedule.timeSchema`; `None` for an
       automation started by events only, and in a structure from before the field. */
@@ -314,7 +314,7 @@ type outboundTranslationSliceDef = {
   targetName: option<string>,
   // Foreign system this slice publishes to — drives the external box (Event Graph).
   externalSystem: option<string>,
-  /** Chapter grouping band — see `queryableDef.chapter`. */
+  /** Chapter grouping band — see `readSideDef.chapter`. */
   chapter: option<string>,
   /** The topics this slice subscribes to, as `Spec.sourceNames` declares them —
       an Aggregate's `Spec.name` or a DCB source name. `Some([])` is the declared
@@ -333,7 +333,7 @@ type inboundTranslationSliceDef = {
   targetName: string,
   // Foreign system this slice receives from — drives the external box (Event Graph).
   externalSystem: option<string>,
-  /** Chapter grouping band — see `queryableDef.chapter`. */
+  /** Chapter grouping band — see `readSideDef.chapter`. */
   chapter: option<string>,
   /** The roles any of its commands' rules name; see `commandDef`. */
   requiredRoles?: array<string>,
@@ -393,7 +393,7 @@ type extensionDef = {
 An extension point owned by a plugin, from the producer side.
 
 `sourceEventTypes` are the `Delegate`'s events feeding the published protocol,
-plugin-qualified to match `writableDef.producedEventTypes`. `commandTypes` is the
+plugin-qualified to match `writeSideDef.producedEventTypes`. `commandTypes` is the
 EP's inbound protocol — None (read as []) for a `command = unit` EP, which routes
 nothing. Definitions persisted before a field was added must be re-emitted.
 */
@@ -474,10 +474,10 @@ is fabricated and warned about, so it is the one shape to avoid. Regression suit
 */
 @schema
 type pluginStructure = {
-  readModels: array<queryableDef>,
-  stateViewSlices: array<queryableDef>,
-  stateChangeSlices: array<writableDef>,
-  aggregates: array<writableDef>,
+  readModels: array<readSideDef>,
+  stateViewSlices: array<readSideDef>,
+  stateChangeSlices: array<writeSideDef>,
+  aggregates: array<writeSideDef>,
   automationSlices: array<automationSliceDef>,
   outboundTranslationSlices: array<outboundTranslationSliceDef>,
   inboundTranslationSlices: array<inboundTranslationSliceDef>,

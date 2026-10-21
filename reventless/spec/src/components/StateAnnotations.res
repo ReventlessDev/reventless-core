@@ -161,7 +161,7 @@ type stateAnnotationSpec = {
   command's declared edge is written in terms of, a board draws its columns
   from and a state diagram renders. `Some(name)` when one such annotation
   exists; the PPX errors on duplicate `@lifecycle` annotations within the same
-  record. Codegen consumes this to populate `queryableDef.lifecycleField`, and
+  record. Codegen consumes this to populate `readSideDef.lifecycleField`, and
   falls back to a field literally named `"lifecycle"` whose shape is an enum
   when this annotation is absent — so a record whose field can honestly be
   called `lifecycle` declares one without ceremony.

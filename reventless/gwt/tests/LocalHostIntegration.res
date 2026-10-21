@@ -36,7 +36,7 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   let catalog = structureFor(g, "Catalog")->Option.getOrThrow
   let category =
     catalog.aggregates
-    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Category")
+    ->Array.find((a: Reventless.Plugin.writeSideDef) => a.name == "Category")
     ->Option.getOrThrow
   ok(category.producedEventTypes->Array.includes("Catalog.Added"))
 
@@ -50,7 +50,7 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   let ordering = structureFor(g, "Ordering")->Option.getOrThrow
   let order =
     ordering.aggregates
-    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Order")
+    ->Array.find((a: Reventless.Plugin.writeSideDef) => a.name == "Order")
     ->Option.getOrThrow
   ok(order.producedEventTypes->Array.includes("Ordering.Placed"))
 
@@ -72,7 +72,7 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   )
   let product =
     catalog.aggregates
-    ->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Product")
+    ->Array.find((a: Reventless.Plugin.writeSideDef) => a.name == "Product")
     ->Option.getOrThrow
   ok(productsEp.sourceEventTypes->Array.every(e => product.producedEventTypes->Array.includes(e)))
 })

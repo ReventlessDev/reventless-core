@@ -41,7 +41,7 @@ module type T = {
       mapping's source event schema (Projection.Mapping.sourceEventSchema). Unlike
       `sourceNames` (the source aggregate / DCB-log names) this names the actual events — so
       a DCB-log-sourced mapping (e.g. consuming `OrderPlaced`) is captured, which sourceNames
-      cannot express. Plugin_Structure qualifies + exposes these as `queryableDef.consumedEventTypes`. */
+      cannot express. Plugin_Structure qualifies + exposes these as `readSideDef.consumedEventTypes`. */
   let consumedEventNames: array<string>
   let make: (
     ~api: api,

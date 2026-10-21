@@ -964,7 +964,7 @@ module MakeWithConfig = (
           allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
             if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
               // Channel root MUST equal what the host-shell subscribes to. The
-              // AutoUI manifest sets queryableDef.queryField = listFieldName
+              // AutoUI manifest sets readSideDef.queryField = listFieldName
               // (plural, e.g. "Catalog_Products") and AutoLive subscribes on that.
               // Publishing on the singular returnTypeName ("Catalog_Product")
               // would land descriptors on a channel no client listens to.

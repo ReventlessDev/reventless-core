@@ -47,7 +47,7 @@ function Make(Spec) {
     let makeAutoUIManifest = (remoteEntryUrl, name, pluginStructure, readModelPositionsOpt, aggregatePositionsOpt) => {
       let readModelPositions = readModelPositionsOpt !== undefined ? readModelPositionsOpt : [];
       let aggregatePositions = aggregatePositionsOpt !== undefined ? aggregatePositionsOpt : [];
-      let isVisibleQueryable = q => {
+      let isVisibleReadSide = q => {
         let match = q.visibility;
         if (match !== undefined) {
           return match !== "Internal";
@@ -55,8 +55,8 @@ function Make(Spec) {
           return true;
         }
       };
-      let visibleReadModels = pluginStructure.readModels.filter(isVisibleQueryable);
-      let visibleStateViewSlices = pluginStructure.stateViewSlices.filter(isVisibleQueryable);
+      let visibleReadModels = pluginStructure.readModels.filter(isVisibleReadSide);
+      let visibleStateViewSlices = pluginStructure.stateViewSlices.filter(isVisibleReadSide);
       let listPanel = q => ({
         fragmentId: name + "." + q.name + ".list",
         title: q.name,

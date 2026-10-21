@@ -392,7 +392,7 @@ and objectRefToJsonSchema = (
   // not declare — which is precisely the mismatch that made read-model queries
   // reference fields the server rejects.
   //
-  // This is the single point for every JSON-Schema consumer: `queryableDef.schema`,
+  // This is the single point for every JSON-Schema consumer: `readSideDef.schema`,
   // the MCP generator and the manifest all derive through this walk.
   let internal = annotations->Option.flatMap(spec => spec.internal)->Option.getOr([])
   fields

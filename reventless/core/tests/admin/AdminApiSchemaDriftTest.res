@@ -80,7 +80,7 @@ let cmd: commandDef = {
 let evt: eventDef = {name: "ProductAdded", schema: "{}", references: [fieldRef]}
 let err: errorDef = {name: "ProductAlreadyExists", schema: "{}", references: []}
 
-let writable: writableDef = {
+let writeSide: writeSideDef = {
   name: "Product",
   commands: [cmd],
   producedEventTypes: ["ProductAdded"],
@@ -92,7 +92,7 @@ let writable: writableDef = {
   chapter: Some("Catalogue"),
 }
 
-let queryable: queryableDef = {
+let readSide: readSideDef = {
   name: "Products",
   queryField: "Catalog_Products",
   schema: "{}",
@@ -174,10 +174,10 @@ let capabilityDecl: requiredCapabilityDeclaration = {
 }
 
 let structure: pluginStructure = {
-  readModels: [queryable],
+  readModels: [readSide],
   stateViewSlices: [],
   stateChangeSlices: [],
-  aggregates: [writable],
+  aggregates: [writeSide],
   automationSlices: [automation],
   outboundTranslationSlices: [outbound],
   inboundTranslationSlices: [inbound],
@@ -278,16 +278,16 @@ let guards: array<guard> = [
   {
     gqlType: "Platform_WriteSideDef",
     sdlTypes: componentSdl,
-    recordFields: schemaKeys(writableDefSchema),
-    wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeWritableDef(writable)),
+    recordFields: schemaKeys(writeSideDefSchema),
+    wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeWriteSideDef(writeSide)),
     wireOnly: [],
     recordOnly: [],
   },
   {
     gqlType: "Platform_ReadSideDef",
     sdlTypes: componentSdl,
-    recordFields: schemaKeys(queryableDefSchema),
-    wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeQueryableDef(queryable)),
+    recordFields: schemaKeys(readSideDefSchema),
+    wireFields: jsonKeys(Platform_ComponentDefinitionsApi.encodeReadSideDef(readSide)),
     wireOnly: [],
     // The roles behind `requiredAccess`, read by the deploy check in-process.
     // A client gates on the mapped groups and has no use for role names.

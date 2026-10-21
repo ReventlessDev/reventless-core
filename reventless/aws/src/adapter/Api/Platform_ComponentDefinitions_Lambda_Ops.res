@@ -6,7 +6,7 @@
 //
 // Scans the Plugin read model for Connected plugins carrying a `structure`,
 // collapses to the highest version per plugin name, re-applies the
-// `isPublicQueryable` filter (the persisted structure is PRE-filter — it still
+// `isPublicReadSide` filter (the persisted structure is PRE-filter — it still
 // carries Internal ReadModels / StateViewSlices for developer tooling), and
 // prepends the built-in Platform_Admin entry. The persisted structure is
 // sury-encoded with the same shape as the in-memory adapter's
@@ -128,9 +128,9 @@ let healStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   out
 }
 
-// Mirror ReventlessCore.Platform_ComponentDefinitionsApi.isPublicQueryable on
+// Mirror ReventlessCore.Platform_ComponentDefinitionsApi.isPublicReadSide on
 // the read path: a component is public unless its visibility is "Internal".
-let isPublicQueryable = (q: JSON.t): bool =>
+let isPublicReadSide = (q: JSON.t): bool =>
   switch q
   ->JSON.Decode.object
   ->Option.flatMap(o => o->Dict.get("visibility"))
@@ -154,15 +154,15 @@ let filterStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   let arrAt = key => out->Dict.get(key)->Option.flatMap(JSON.Decode.array)->Option.getOr([])
   let readModels = arrAt("readModels")
   let stateViewSlices = arrAt("stateViewSlices")
-  out->Dict.set("readModels", readModels->Array.filter(isPublicQueryable)->JSON.Encode.array)
+  out->Dict.set("readModels", readModels->Array.filter(isPublicReadSide)->JSON.Encode.array)
   out->Dict.set(
     "stateViewSlices",
-    stateViewSlices->Array.filter(isPublicQueryable)->JSON.Encode.array,
+    stateViewSlices->Array.filter(isPublicReadSide)->JSON.Encode.array,
   )
   out->Dict.set(
     "internalQueryables",
     Array.concat(readModels, stateViewSlices)
-    ->Array.filter(q => !isPublicQueryable(q))
+    ->Array.filter(q => !isPublicReadSide(q))
     ->JSON.Encode.array,
   )
   out
@@ -173,7 +173,7 @@ let filterStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
 // no decodable structure (former `!item.structure`).
 //
 // `~filter` is what separates the two fields this handler serves: AutoUI
-// (`Platform_ComponentDefinitions`) gets the public-queryable subset, developer
+// (`Platform_ComponentDefinitions`) gets the public read-side subset, developer
 // tooling (`Platform_PluginStructures`) gets the structure exactly as persisted,
 // including Internal components and the producer-side `extensionPoints` that the
 // AutoUI entry type does not declare. Both are healed first — the SDL's non-null

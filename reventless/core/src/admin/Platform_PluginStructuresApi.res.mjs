@@ -124,19 +124,19 @@ function encodePluginStructureEntry(pluginId, def) {
     ],
     [
       "readModels",
-      def.readModels.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeQueryableDef)
+      def.readModels.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeReadSideDef)
     ],
     [
       "stateViewSlices",
-      def.stateViewSlices.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeQueryableDef)
+      def.stateViewSlices.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeReadSideDef)
     ],
     [
       "stateChangeSlices",
-      def.stateChangeSlices.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeWritableDef)
+      def.stateChangeSlices.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeWriteSideDef)
     ],
     [
       "aggregates",
-      def.aggregates.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeWritableDef)
+      def.aggregates.map(Platform_ComponentDefinitionsApi$ReventlessCore.encodeWriteSideDef)
     ],
     [
       "automationSlices",

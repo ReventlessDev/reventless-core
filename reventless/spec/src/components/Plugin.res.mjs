@@ -106,7 +106,7 @@ let commandDefSchema = Sury.$schema(s => ({
   ownerField: s.m(Sury.$option(Sury.string))
 }));
 
-let queryableDefSchema = Sury.$schema(s => ({
+let readSideDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   queryField: s.m(Sury.string),
   schema: s.m(Sury.string),
@@ -141,7 +141,7 @@ let errorDefSchema = Sury.$schema(s => ({
   references: s.m(Sury.array(fieldReferenceSchema))
 }));
 
-let writableDefSchema = Sury.$schema(s => ({
+let writeSideDefSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   commands: s.m(Sury.array(commandDefSchema)),
   producedEventTypes: s.m(Sury.array(Sury.string)),
@@ -239,10 +239,10 @@ let traitDeclarationSchema = Sury.$schema(s => ({
 }));
 
 let pluginStructureSchema = Sury.$schema(s => ({
-  readModels: s.m(Sury.array(queryableDefSchema)),
-  stateViewSlices: s.m(Sury.array(queryableDefSchema)),
-  stateChangeSlices: s.m(Sury.array(writableDefSchema)),
-  aggregates: s.m(Sury.array(writableDefSchema)),
+  readModels: s.m(Sury.array(readSideDefSchema)),
+  stateViewSlices: s.m(Sury.array(readSideDefSchema)),
+  stateChangeSlices: s.m(Sury.array(writeSideDefSchema)),
+  aggregates: s.m(Sury.array(writeSideDefSchema)),
   automationSlices: s.m(Sury.array(automationSliceDefSchema)),
   outboundTranslationSlices: s.m(Sury.array(outboundTranslationSliceDefSchema)),
   inboundTranslationSlices: s.m(Sury.array(inboundTranslationSliceDefSchema)),
@@ -290,10 +290,10 @@ export {
   commandLevelSchema,
   fieldReferenceSchema,
   commandDefSchema,
-  queryableDefSchema,
+  readSideDefSchema,
   eventDefSchema,
   errorDefSchema,
-  writableDefSchema,
+  writeSideDefSchema,
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
