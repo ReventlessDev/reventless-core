@@ -369,7 +369,7 @@ not a cycle: `SetLocation` produces an event this slice does not consume, so the
 loop terminates by construction rather than by a guard. Choosing which events a
 slice consumes is how you keep it that way.
 
-## Runtime Behavior
+## At run time
 
 ### Two-Phase Processing
 

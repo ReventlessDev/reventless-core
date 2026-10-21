@@ -35,7 +35,7 @@ Needing an automation or a translation slice is not a reason to choose DCB. Thos
 An **Aggregate** is a write-side component with its own private event stream per entity instance. Each aggregate ID has its own event history, and state is reconstructed by replaying that history on every command.
 
 **Components:**
-- **Aggregate** (Spec + Behavior) — handles commands, produces events
+- **Aggregate** (Spec + Decision) — handles commands, produces events
 - **EventLog** — one append-only stream per aggregate ID
 - **ReadModel** + **Projections** — query-side views consuming aggregate events
 
@@ -109,7 +109,7 @@ A single plugin can **mix both approaches**. Independent entities use aggregates
 **Choose DCB when** commands are thin and focused. Each command does one thing, often involving a cross-entity check. DCB slices are naturally fine-grained — one slice per command type.
 
 **Examples:**
-- **Aggregate:** `Product` with commands `Add`, `UpdateName`, `UpdateDescription`, `UpdatePrice` — all operating on the same entity state. A single behavior module handles all variants.
+- **Aggregate:** `Product` with commands `Add`, `UpdateName`, `UpdateDescription`, `UpdatePrice` — all operating on the same entity state. A single decision module handles all variants.
 - **DCB:** `AddProduct`, `ChangeProductName`, `ChangeProductDescription`, `ChangeProductPrice` — each is a separate StateChangeSlice. They share the event log but have independent decision logic.
 
 ### 4. External Data Synchronization
@@ -150,10 +150,10 @@ Choose the approach for the entity on the other criteria, then add these slices 
 
 | Advantage | Consequence |
 |-----------|-------------|
-| Clear entity boundaries — one aggregate, one event stream, one behavior | More infrastructure per entity (CommandTopic, EventLog, EventTopic per aggregate) |
+| Clear entity boundaries — one aggregate, one event stream, one decision | More infrastructure per entity (CommandTopic, EventLog, EventTopic per aggregate) |
 | Strong consistency within entity — commands serialized by ID | No cross-entity transactions — must use sagas or extension-driven aggregates for coordination |
 | Full audit trail per entity — replay any ID to any point in time | State reconstruction cost — every command replays the full event history |
-| Isolated testing — BehaviorTest DSL tests decide/evolve in pure functions | Separate ReadModel infrastructure required for every query view |
+| Isolated testing — DecisionTest DSL tests decide/evolve in pure functions | Separate ReadModel infrastructure required for every query view |
 | Mature pattern — well-documented, widely understood | Idempotency must be explicit (`Ok([])` for no-change commands) |
 | Efficient per-ID storage — DynamoDB partition per aggregate ID | Event schema is per-aggregate — no shared type across entities |
 
@@ -164,7 +164,7 @@ Choose the approach for the entity on the other criteria, then add these slices 
 | Shared event log — one DcbEventLog per plugin, simpler infrastructure | All events share one table — throughput planning is domain-wide |
 | Dynamic consistency — tag-based queries determine boundaries at runtime | Tag annotations required on all filterable fields (`@s.matches(DcbTag.string)`) |
 | Cross-entity decisions — one query can span multiple entity types | Optimistic concurrency with retries (up to 3) — conflicts are expected |
-| Fine-grained slices — one slice per command, easy to add/remove | More files per domain concept (one slice file per command vs one behavior with all commands) |
+| Fine-grained slices — one slice per command, easy to add/remove | More files per domain concept (one slice file per command vs one decision with all commands) |
 | Minimal decision model — evolve only the fields needed for the decision | Event type union grows as slices are added (all events in one schema) |
 | No separate ReadModel wiring — StateViewSlice projects directly | StateViewSlice is simpler but less flexible than ReadModel (single event source) |
 
@@ -385,7 +385,7 @@ plugin-wide namespace and collide with the next host.
 
 | Aggregate Approach | DCB Approach | Purpose |
 |-------------------|-------------|---------|
-| Aggregate (Spec + Behavior) | StateChangeSlice | Command handling, event production |
+| Aggregate (Spec + Decision) | StateChangeSlice | Command handling, event production |
 | EventLog (per ID) | DcbEventLog (shared, tag-filtered) | Event storage |
 | ReadModel + Projections | StateViewSlice | Query-side projections |
 | EventMapper | AutomationSlice | Event-driven command generation |

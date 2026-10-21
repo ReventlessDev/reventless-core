@@ -4,7 +4,7 @@
 
 | ES/CQRS Concept | Aggregate Approach | DCB Approach |
 |----------------|-------------------|-------------|
-| Command handler + state machine | Aggregate (Spec + Behavior) | StateChangeSlice |
+| Command handler + state machine | Aggregate (Spec + Decision) | StateChangeSlice |
 | Event store (per entity) | EventLog | — |
 | Event store (shared, tag-filtered) | — | DcbEventLog |
 | Command delivery queue | CommandTopic (per aggregate) | CommandTopic (shared per plugin) |
@@ -73,7 +73,7 @@ Command
 ```
 Platform.Make()           // Choose infrastructure (InMemory, AWS)
   → Plugin.Make(Platform) // Build each plugin with platform's builders
-    → Aggregate.Make(Spec, Behavior, EventMappings)
+    → Aggregate.Make(Spec, Decision, EventMappings)
     → ReadModel.Make(Spec, Projections)
     → ExtensionPoint.Make(Spec, Mappings)
     → Extension.Make(ExternalSpec, Mappings)

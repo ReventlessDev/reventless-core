@@ -133,7 +133,7 @@ a bare fact reintroduces the bug silently.
 
 ## The evidence that the folds are not what is wrong
 
-From `ShipOrder_Behavior.res` in the hybrid ordering example:
+From `ShipOrder_Decision.res` in the hybrid ordering example:
 
 > `productIds` is carried only to keep `OrderPlaced` out of the payload-less
 > filter (so the slice links to `Orders`); `ShipOrder`'s decision doesn't use it.

@@ -28,7 +28,7 @@ type error =
 let moduleUrl: string = %raw(`import.meta.url`)
 ```
 
-## Behavior (e.g., ProductBehavior.res)
+## Decision (e.g., Product_Decision.res)
 
 ```rescript
 open Product
@@ -119,7 +119,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // 1. Build aggregates
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    ProductBehavior,
+    Product_Decision,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
 
@@ -176,7 +176,7 @@ plugin-name/
 ├── src/
 │   ├── Aggregate/
 │   │   ├── EntityName.res          # Spec (commands, events, errors)
-│   │   └── EntityNameBehavior.res  # State machine (evolve, decide)
+│   │   └── EntityName_Decision.res  # State machine (evolve, decide)
 │   ├── ReadModel/
 │   │   ├── EntityNamesReadModel.res    # Read model spec
 │   │   └── EntityNamesProjections.res  # Projection mappings
@@ -187,7 +187,7 @@ plugin-name/
 │   └── PluginNamePlugin.res        # Composition root
 └── tests/
     ├── Aggregate/
-    │   └── EntityNameBehaviorTest.res
+    │   └── EntityName_GWT.res
     ├── ReadModel/
     │   └── EntityNamesProjectionTest.res
     └── E2E/

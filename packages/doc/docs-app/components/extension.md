@@ -353,7 +353,7 @@ module Mapping = {
 }
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Incoming Event Flow
 

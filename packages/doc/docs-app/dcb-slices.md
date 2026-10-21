@@ -69,7 +69,7 @@ There is no separate event log spec file. The framework creates one shared event
 Each `StateChangeSlice` lives in two files inside a `StateChange/` folder:
 
 - **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent`, `command`, `error`, and `event`
-- **`<Name>_Behavior.res`** (`@@reventless.behavior`) — declares `state`, `initialState`, `evolve`, and `decide`
+- **`<Name>_Decision.res`** (`@@reventless.decision`) — declares `state`, `initialState`, `evolve`, and `decide`
 
 What each type means:
 
@@ -102,8 +102,8 @@ type event =
 ```
 
 ```rescript
-// AddProduct_Behavior.res
-@@reventless.behavior
+// AddProduct_Decision.res
+@@reventless.decision
 
 type state = {exists: bool}
 
@@ -147,8 +147,8 @@ type event = ProductNameChanged({productId: string, name: string})
 ```
 
 ```rescript
-// ChangeProductName_Behavior.res
-@@reventless.behavior
+// ChangeProductName_Decision.res
+@@reventless.decision
 
 type state = {exists: bool, currentName: string}
 
@@ -216,14 +216,14 @@ let project = ({event}) =>
 
 ### Step 3: Assemble the Plugin
 
-The plugin's composition root, `src/Plugin.res`, is **generated** by `generate-plugin` before each build — you do not write it by hand. It is a [module function](./rescript-syntax.md#functors) over `Platform.T`. The generator pairs each spec with its body file via two-argument functor calls (`Make(Spec, Behavior)` for state-change slices, `Make(Spec, Projection)` for view slices) and passes the resulting modules to `Plugin.make`.
+The plugin's composition root, `src/Plugin.res`, is **generated** by `generate-plugin` before each build — you do not write it by hand. It is a [module function](./rescript-syntax.md#functors) over `Platform.T`. The generator pairs each spec with its body file via two-argument functor calls (`Make(Spec, Decision)` for state-change slices, `Make(Spec, Projection)` for view slices) and passes the resulting modules to `Plugin.make`.
 
 ```rescript
 // Plugin.res — AUTO-GENERATED
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Decision)
 
   module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
 

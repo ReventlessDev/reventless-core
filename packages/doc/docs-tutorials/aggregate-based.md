@@ -170,7 +170,7 @@ Orders_Extension  ◄─────────────  Orders_ExtensionPo
 
 The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-aggregates/catalog/` — the `Product` aggregate with its read model, the `ProductDemand` aggregate for demand tracking, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
 
-Each component is **split** into a spec file (`<Name>.res`, annotated `@@reventless.spec`) and a body file (e.g. `<Name>_Behavior.res`, `<Name>_Projections.res`). The PPX auto-injects boilerplate — `let name`, `module Id`, `let moduleUrl`, the `open`/`module Spec` lines, projection mapping wrappers, read model `config`, default authorization, and visibility — so the source you write contains only domain logic. The folder a file lives in (`Aggregate/`, `ReadModel/`, `Task/`, …) tells the PPX and the plugin generator what kind of component it is.
+Each component is **split** into a spec file (`<Name>.res`, annotated `@@reventless.spec`) and a body file (e.g. `<Name>_Decision.res`, `<Name>_Projections.res`). The PPX auto-injects boilerplate — `let name`, `module Id`, `let moduleUrl`, the `open`/`module Spec` lines, projection mapping wrappers, read model `config`, default authorization, and visibility — so the source you write contains only domain logic. The folder a file lives in (`Aggregate/`, `ReadModel/`, `Task/`, …) tells the PPX and the plugin generator what kind of component it is.
 
 ### 1. Aggregate Spec
 
@@ -202,9 +202,9 @@ type error =
 
 The `@schema` attribute generates JSON serialization automatically via the Sury PPX — no hand-written encoders or decoders needed. The aggregate ID is supplied by the framework at command time, so it is not part of the command or event payloads.
 
-### 2. Behavior
+### 2. Decision
 
-The behavior module implements the aggregate's state machine. It lives next to the spec at `Product/Aggregate/Product_Behavior.res` and is annotated `@@reventless.behavior`, which auto-injects `open Spec` / `module Spec = Product` (derived from the filename) and `let moduleUrl`. It defines the state type and three functions that the framework calls at runtime:
+The decision module implements the aggregate's state machine. It lives next to the spec at `Product/Aggregate/Product_Decision.res` and is annotated `@@reventless.decision`, which auto-injects `open Spec` / `module Spec = Product` (derived from the filename) and `let moduleUrl`. It defines the state type and three functions that the framework calls at runtime:
 
 | Value | Role |
 |---|---|
@@ -213,8 +213,8 @@ The behavior module implements the aggregate's state machine. It lives next to t
 | `decide` | Takes the current state and a command, returns `result<array<event>, error>` — `Ok([...])` accepts, `Error(err)` rejects |
 
 ```rescript
-// Product/Aggregate/Product_Behavior.res
-@@reventless.behavior
+// Product/Aggregate/Product_Decision.res
+@@reventless.decision
 
 @schema
 type state =
@@ -423,17 +423,17 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    Category_Behavior,
+    Category_Decision,
     ReventlessInfra.NoEventMappings.Make(Category),
   )
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    Product_Behavior,
+    Product_Decision,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
   module ProductDemandAggregate = Platform.Aggregate.Make(
     ProductDemand,
-    ProductDemand_Behavior,
+    ProductDemand_Decision,
     ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
@@ -512,7 +512,7 @@ The plugin generator detects the `Order_Mappings.res` sibling and wires it as th
 ```rescript
 module OrderAggregate = Platform.Aggregate.Make(
   Order,
-  Order_Behavior,
+  Order_Decision,
   Order_Mappings,  // generated; replaces NoEventMappings.Make(Order)
 )
 ```

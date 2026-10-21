@@ -1,16 +1,16 @@
 # Testing Patterns
 
-## Aggregate Behavior Test (Unit)
+## Aggregate Decision Test (Unit)
 
-Uses the BehaviorTest DSL: `givenEvents → whenCmd → thenEvent/thenError`
+Uses the Decision_GWT DSL: `givenEvents → whenCmd → thenEvent/thenError`
 
 ```rescript
-// tests/Aggregate/ProductBehaviorTest.res
+// tests/Aggregate/Product_GWT.res
 
 open Product
-include ReventlessLocal.BehaviorTest.Make(Product, ProductBehavior)
+include ReventlessGwt.Decision_GWT.MakeFromAggregate(Product, Product_Decision)
 
-describe("ProductBehavior:", () => {
+describe("Product_Decision:", () => {
   test("on new aggregate produces Added", () =>
     givenEvents([])
     ->whenCmd(Add({name: "Laptop", description: "A laptop", price: 999.99}))
@@ -167,8 +167,8 @@ describe("ProductsView:", () => {
 ```
 tests/
 ├── Aggregate/
-│   ├── ProductBehaviorTest.res       # Unit: givenEvents/whenCmd/thenEvent
-│   └── CategoryBehaviorTest.res
+│   ├── Product_GWT.res       # Unit: givenEvents/whenCmd/thenEvent
+│   └── Category_GWT.res
 ├── ReadModel/
 │   └── ProductsProjectionTest.res    # Unit: event → projection action
 └── E2E/

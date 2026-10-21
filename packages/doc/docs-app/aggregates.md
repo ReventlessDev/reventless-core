@@ -46,7 +46,7 @@ The following example builds the **Catalog plugin** step by step, focusing on th
 
 ### Step 1: Define the Aggregate Spec
 
-The Spec defines the aggregate's **identity**, **commands**, **events**, and **errors**. It lives in its own file so both the behavior and any event mappings can reference it without creating circular dependencies.
+The Spec defines the aggregate's **identity**, **commands**, **events**, and **errors**. It lives in its own file so both the decision and any event mappings can reference it without creating circular dependencies.
 
 ```rescript
 // Product/Aggregate/Product.res
@@ -74,17 +74,17 @@ type error =
 
 The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. The `@schema` annotation generates JSON serialization code via the [Sury `ppx`](./rescript-syntax.md#ppx). Every `command`, `event`, and `error` type must be annotated. See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for details.
 
-### Step 2: Implement the Behavior
+### Step 2: Implement the Decision
 
-The Behavior implements the aggregate's state machine. It defines three values:
+The Decision implements the aggregate's state machine. It defines three values:
 
 - **`initialState`** — the starting state before any events have been applied (represents a "not yet created" instance)
 - **`evolve`** — calculates the next state from the current state and an event; called once per historic event during replay
 - **`decide`** — takes the current state and a command, returns `result<array<event>, error>`; `Ok([...events])` accepts the command, `Error(err)` rejects it
 
 ```rescript
-// Product/Aggregate/Product_Behavior.res
-@@reventless.behavior
+// Product/Aggregate/Product_Decision.res
+@@reventless.decision
 
 @schema
 type state =
@@ -224,10 +224,10 @@ For the Catalog plugin built above, the generator emits roughly:
 ```rescript
 // src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  // Aggregate: spec + behavior + event mappings (NoEventMappings when none exist)
+  // Aggregate: spec + decision + event mappings (NoEventMappings when none exist)
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    Product_Behavior,
+    Product_Decision,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
 
@@ -283,7 +283,7 @@ type command = Reserve({sku: string, quantity: int})
 // ...events, error
 ```
 
-On the next build, `prebuild` regenerates `Plugin.res` and the generator emits `Platform.Aggregate.MakeAsync(Inventory, Inventory_Behavior, ...)` instead of `Make` for that aggregate. The opt-in lives entirely on the spec file; you never edit the wiring by hand.
+On the next build, `prebuild` regenerates `Plugin.res` and the generator emits `Platform.Aggregate.MakeAsync(Inventory, Inventory_Decision, ...)` instead of `Make` for that aggregate. The opt-in lives entirely on the spec file; you never edit the wiring by hand.
 
 Async aggregates route to a separate FIFO-backed command-handler Lambda (`AllAggregatesAsyncCmdHandler`), distinct from the default sync `AllAggregatesCmdHandler`. Each is only provisioned when at least one aggregate of that flavor exists, so sync-only setups (the default) pay no extra Lambda cost. In the local platform, sync and async behave identically.
 

@@ -723,7 +723,7 @@ refuses `ShipOrder` outright.
 **A note on `commandTransition`.** `CancelOrder` declares
 `Moves([Orders.Placed], Orders.Cancelled)`, whose from-set is a **menu filter**: the command is
 offered only on rows whose lifecycle field is `Placed`. It is UX, not a gate — the
-behavior is what refuses a shipped order, by returning `OrderAlreadyShipped`.
+decision is what refuses a shipped order, by returning `OrderAlreadyShipped`.
 
 ### 3.3 Acting as one role
 

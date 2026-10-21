@@ -73,7 +73,7 @@ A scenario's id comes from a `// scenario-id: <id>` comment on the line above it
 **Recorded scenario sidecars.** A suite written against a binding names nothing in its source:
 a trait's conformance suite steps through `B.request(…)` and `B.undeliverable(…)`, values the
 host's binding builds, and the host's test file only registers it. The PPX writes no `.gwt.json`
-for it, so `check-lifecycle` would not see its scenarios. A behavior test (`Behavior_GWT.Make`
+for it, so `check-lifecycle` would not see its scenarios. A decision test (`Decision_GWT.Make`
 or `MakeFromAggregate`) run with `REVENTLESS_EMIT_SIDECAR=1` in the test process records what it
 runs instead (`ScenarioRecorder`): per test its title, the history's event names (`given`), the
 command (`when`) and what it expects (`then`: `event`, `error` or `noEvent`), named by the spec's

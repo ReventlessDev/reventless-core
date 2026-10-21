@@ -42,7 +42,7 @@ For each entity, verify against `docs/guides/aggregate-vs-dcb-decision-guide.md`
 
 ### Component Completeness
 
-- [ ] Every aggregate has a behavior
+- [ ] Every aggregate has a decision
 - [ ] Every aggregate has at least one read model
 - [ ] Every StateChangeSlice has a corresponding StateViewSlice
 - [ ] All components are registered in plugin composition root

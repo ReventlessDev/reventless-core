@@ -150,7 +150,7 @@ let mappings: array<module(Mapping)> = [module(OrderMapping), module(CounterMapp
 let counter = Some(module(Invoice_Counter: Counter.T))
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Counter Countdown Sequence
 

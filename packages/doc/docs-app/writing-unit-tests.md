@@ -6,7 +6,7 @@ sidebar_label: Legacy test helpers
 # Legacy test helpers
 
 Older Reventless code tests business logic through per-kind helper modules —
-`BehaviorTest`, `ProjectionTest`, `EventMappingTest` — each with its own
+`DecisionTest`, `ProjectionTest`, `EventMappingTest` — each with its own
 vocabulary for setting up prior events, dispatching, and asserting.
 
 **Write new tests as scenarios instead.** The
@@ -24,7 +24,7 @@ and assertion steps map one to one.
 
 | Legacy helper | Scenario DSL |
 |---|---|
-| `BehaviorTest` (aggregate command handling) | `Behavior_GWT` / `StateChangeSlice_GWT` |
+| `DecisionTest` (aggregate command handling) | `Decision_GWT` / `StateChangeSlice_GWT` |
 | `ProjectionTest` (event → state) | `Projection_GWT` / `StateViewSlice_GWT` |
 | `EventMappingTest` (cross-entity reactions) | `Mapping_GWT` / `Automation_GWT` |
 

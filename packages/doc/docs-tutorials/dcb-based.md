@@ -306,7 +306,7 @@ As with the aggregate-based approach, `Order` references products by `ProductId`
 
 The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-dcb/catalog/` — the `Product` chapter with its StateChangeSlices and StateViewSlices, the `ProductDemand` chapter that tracks demand, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
 
-There is **no hand-written event-log spec file**. In the DCB approach the plugin's event log is simply the union of the events declared by its slices — each slice owns the events it produces (`event`) and the events it reads (`consumedEvent`). The framework assembles the shared log from these declarations. Every slice is **split** into a spec file (`@@reventless.spec`, the types) and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or `_Automation.res`, the logic). Because the files live inside a slice folder, `@@reventless.spec` automatically applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — you never write the tag annotation by hand.
+There is **no hand-written event-log spec file**. In the DCB approach the plugin's event log is simply the union of the events declared by its slices — each slice owns the events it produces (`event`) and the events it reads (`consumedEvent`). The framework assembles the shared log from these declarations. Every slice is **split** into a spec file (`@@reventless.spec`, the types) and a body file (`_Decision.res`, `_Projection.res`, `_Translation.res`, or `_Automation.res`, the logic). Because the files live inside a slice folder, `@@reventless.spec` automatically applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — you never write the tag annotation by hand.
 
 ### 1. StateChangeSlices
 
@@ -319,7 +319,7 @@ The **spec** declares:
 - **`error`** — the business errors it can return
 - **`event`** — the events it produces on success
 
-The **behavior** (`_Behavior.res`, `@@reventless.behavior`) declares:
+The **decision** (`_Decision.res`, `@@reventless.decision`) declares:
 
 - **`state`** — the minimal decision state needed to validate the command
 - **`initialState`** — the starting value before any events are replayed
@@ -361,8 +361,8 @@ type event =
 ```
 
 ```rescript
-// Product/StateChange/AddProduct_Behavior.res
-@@reventless.behavior
+// Product/StateChange/AddProduct_Decision.res
+@@reventless.decision
 
 type state = {exists: bool}
 
@@ -410,8 +410,8 @@ type event = ProductPriceChanged({productId: string, price: float})
 ```
 
 ```rescript
-// Product/StateChange/ChangeProductPrice_Behavior.res
-@@reventless.behavior
+// Product/StateChange/ChangeProductPrice_Decision.res
+@@reventless.decision
 
 type state = {exists: bool, currentPrice: float}
 
@@ -472,8 +472,8 @@ type event =
 ```
 
 ```rescript
-// ProductDemand/StateChange/RecordProductDemand_Behavior.res
-@@reventless.behavior
+// ProductDemand/StateChange/RecordProductDemand_Decision.res
+@@reventless.decision
 
 type state = {recordedOrderIds: array<string>}
 let initialState = {recordedOrderIds: []}
@@ -687,14 +687,14 @@ The plugin composes all StateChangeSlices, StateViewSlices, the InboundTranslati
 // src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
-  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Decision)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Decision)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Decision)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Decision)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Decision)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Decision)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Decision)
 
   // StateViewSlices
   module CategoriesSlice = Platform.StateViewSlice.Make(Categories, Categories_Projection)

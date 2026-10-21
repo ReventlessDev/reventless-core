@@ -124,7 +124,7 @@ type publishJson = (
 
 This is used internally by the EventLog after storing events.
 
-## Runtime Behavior
+## At run time
 
 ### Event Publishing Flow
 

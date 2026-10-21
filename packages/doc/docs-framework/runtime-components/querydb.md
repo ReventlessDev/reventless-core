@@ -210,7 +210,7 @@ let items = [
 await queryDb.deleteBatch(items)
 ```
 
-## Runtime Behavior
+## At run time
 
 ### State Update Flow
 

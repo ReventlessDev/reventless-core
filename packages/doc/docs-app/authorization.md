@@ -265,7 +265,7 @@ two halves of "who is an administrator", and a deployment that narrows one shoul
 narrow the other — see [The first administrator](./first-admin.md).
 
 In a GWT scenario, `Caller.operator` stands for an exempt caller — see
-[Who may act](./given-when-then.md#who-may-act-ascaller-and-thenrefused).
+[Who may act](./given-when-then.md#who-may-act-ascaller-and-thenforbidden).
 
 ## The framework's own stores
 

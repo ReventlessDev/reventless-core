@@ -189,7 +189,7 @@ let mappings: array<module(Mapping)> = [module(OrderMapping), module(CounterMapp
 let counter = Some(module(Invoice_Counter: Counter.T))
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Event Processing Sequence
 
@@ -253,7 +253,7 @@ the third argument to the Aggregate factory in the **generated** `Plugin.res`:
 ```rescript title="src/Plugin.res (generated — do not edit)"
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
-  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Behavior, Order_Mappings)
+  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Decision, Order_Mappings)
 
   // ... other components
 }

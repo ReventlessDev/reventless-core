@@ -1,12 +1,12 @@
-# BehaviorTest DSL
+# Decision_GWT DSL
 
 ## Setup
 
-Include the BehaviorTest module in your test file:
+Include the Decision_GWT module in your test file:
 
 ```rescript
 open Product
-include ReventlessLocal.BehaviorTest.Make(Product, ProductBehavior)
+include ReventlessGwt.Decision_GWT.MakeFromAggregate(Product, Product_Decision)
 ```
 
 This provides `givenEvents`, `whenCmd`, `thenEvent`, `thenError`, `thenNoEvents`.
@@ -14,7 +14,7 @@ This provides `givenEvents`, `whenCmd`, `thenEvent`, `thenError`, `thenNoEvents`
 ## Pattern: Given/When/Then
 
 ```rescript
-describe("ProductBehavior:", () => {
+describe("Product_Decision:", () => {
   // Happy path: new entity
   test("Add on new aggregate produces Added", () =>
     givenEvents([])

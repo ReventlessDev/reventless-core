@@ -29,7 +29,7 @@ This is not a bug that can be worked around at individual call sites. Business l
 
 Instead of serializing closures, all Lambda handlers:
 
-1. **Generate** a JavaScript entry point file (source code string) that imports the handler's spec and behavior modules
+1. **Generate** a JavaScript entry point file (source code string) that imports the handler's spec and decision modules
 2. **Bundle** it with esbuild into a self-contained `index.mjs`
 3. **Upload** the bundle as a code asset to `aws.lambda.Function` (not `CallbackFunction`)
 4. **Pass infrastructure references** (table names, queue URLs) via environment variables instead of captured closure values
@@ -103,7 +103,7 @@ The standard plugin package (`catalog/`, `ordering/`) generates a Layer 2 `Plugi
 // Layer 2 — auto-generated; works with any platform
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoryAggregate = Platform.Aggregate.Make(
-    Category, CategoryBehavior, ReventlessInfra.NoEventMappings.Make(Category),
+    Category, CategoryDecision, ReventlessInfra.NoEventMappings.Make(Category),
   )
   module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView, OrdersView_Projection)
   // ... aggregates, readmodels, slices, extensionpoints, extensions ...
@@ -142,11 +142,11 @@ If a plugin has neither aggregates nor read models, the generator emits `let mak
 
 ### Handler Configuration
 
-Each AWS builder extracts module paths at deploy time so the generated Lambda entry point can `import` the right spec and behavior modules at runtime. These paths are resolved using `Util_Bundle.getModuleSpecifier`, which converts `import.meta.url` to an importable module specifier.
+Each AWS builder extracts module paths at deploy time so the generated Lambda entry point can `import` the right spec and decision modules at runtime. These paths are resolved using `Util_Bundle.getModuleSpecifier`, which converts `import.meta.url` to an importable module specifier.
 
 | Component | Config extracted from |
 |---|---|
-| Aggregate | `Spec.moduleUrl`, `Behavior.moduleUrl` |
+| Aggregate | `Spec.moduleUrl`, `Decision.moduleUrl` |
 | ReadModel | `Spec.moduleUrl`, `Mappings.moduleUrl` |
 | ExtensionPoint | `Spec.moduleUrl`, `Mappings.moduleUrl` |
 | StateViewSlice | `Spec.moduleUrl` |
@@ -189,8 +189,8 @@ When an AWS component builder is called, the following pipeline runs at deploy t
 3. Util_EntryPoint.generateXxxEntryPoint() creates JS source code:
    │  import { makeHandler } from "AggregateHandlerFactory.mjs";
    │  import * as Spec from "<specModulePath>";
-   │  import * as Behavior from "<behaviorModulePath>";
-   │  const handler = makeHandler(Spec, Behavior, process.env.TABLE_NAME, ...);
+   │  import * as Decision from "<decisionModulePath>";
+   │  const handler = makeHandler(Spec, Decision, process.env.TABLE_NAME, ...);
    │  export { handler };
    │
 4. Util_Bundle.bundleEntryPoint() runs esbuild:

@@ -43,9 +43,9 @@ Use on **all spec files**: aggregate specs, read model specs, extension point sp
 | `AddCategory.res` | `"AddCategory"` |
 | `CategoriesView.res` | `"Categories"` |
 | `Products_ExtensionPoint.res` | `"Products"` |
-| `Product_Behavior.res` | `"Product"` |
+| `Product_Decision.res` | `"Product"` |
 
-Stripped suffixes (each tried first with a leading underscore, e.g. `_Behavior`, then bare): `ExtensionPointMapping`, `ExtensionPoint`, `ReadModel`, `Behavior`, `Projections`, `Projection`, `Aggregate`, `Plugin`, `Slice`, `Spec`, `View`.
+Stripped suffixes (each tried first with a leading underscore, e.g. `_Decision`, then bare): `ExtensionPointMapping`, `ExtensionPoint`, `ReadModel`, `Decision`, `Projections`, `Projection`, `Aggregate`, `Plugin`, `Slice`, `Spec`, `View`.
 
 **Dotted names in spec packages:** When the `rescript.json` namespace ends in `Spec` (e.g., `CatalogSpec`), the PPX automatically prefixes the derived name with the plugin name:
 
@@ -68,9 +68,9 @@ Use this when the derived name doesn't match your intent. The PPX still injects 
 
 ---
 
-### `@@reventless.behavior`
+### `@@reventless.decision`
 
-Use on **all behavior files**.
+Use on **all decision files**.
 
 **What it injects:**
 | Binding | Condition | Value |
@@ -79,21 +79,21 @@ Use on **all behavior files**.
 | `module Spec = Spec` | Not already declared | Aliases the spec module |
 | `let moduleUrl` | Not already declared | Computed npm specifier |
 
-**Spec module derivation:** strips `_Behavior` (or a bare `Behavior`) from the filename.
+**Spec module derivation:** strips `_Decision` (or a bare `Decision`) from the filename.
 
 | Filename | Derived spec |
 |----------|-------------|
-| `Category_Behavior.res` | `open Category; module Spec = Category` |
-| `Order_Behavior.res` | `open Order; module Spec = Order` |
-| `ProductDemand_Behavior.res` | `open ProductDemand; module Spec = ProductDemand` |
+| `Category_Decision.res` | `open Category; module Spec = Category` |
+| `Order_Decision.res` | `open Order; module Spec = Order` |
+| `ProductDemand_Decision.res` | `open ProductDemand; module Spec = ProductDemand` |
 
 **Explicit spec override:**
 
 ```rescript
-@@reventless.behavior(PluginSpec)
+@@reventless.decision(PluginSpec)
 ```
 
-Use this when the spec module name doesn't match `{Filename minus Behavior}` — for example when the spec file is named differently than the behavior file's prefix.
+Use this when the spec module name doesn't match `{Filename minus Decision}` — for example when the spec file is named differently than the decision file's prefix.
 
 ---
 
@@ -154,7 +154,7 @@ type event = ProductAdded({
 
 ### `@partitionTag`, `@noDcbTag`, `@dcbTag` — field-level DCB tag control
 
-These field attributes give fine-grained control over DCB tag injection. They work in any `@@reventless.spec` or `@@reventless.behavior` file, regardless of whether dcbTags auto-inference is active.
+These field attributes give fine-grained control over DCB tag injection. They work in any `@@reventless.spec` or `@@reventless.decision` file, regardless of whether dcbTags auto-inference is active.
 
 | Annotation | Placed on | Effect |
 |---|---|---|
@@ -269,7 +269,7 @@ Each annotated field is still a regular DCB tag (individually queryable). The co
 
 ```rescript
 @compositePartitionTag            // uses "/" after this field (default)
-@compositePartitionTag("/")       // explicit default — identical behaviour
+@compositePartitionTag("/")       // explicit default — identical behavior
 @compositePartitionTag(":")       // uses ":" after this field
 ```
 
@@ -1128,11 +1128,11 @@ type error =
 
 PPX injects: `let name = "Category"`, `module Id = Reventless.Id.String`, `let moduleUrl = "..."`.
 
-### Behavior
+### Decision
 
 ```rescript
-// CategoryBehavior.res
-@@reventless.behavior
+// CategoryDecision.res
+@@reventless.decision
 
 @schema
 type state =
@@ -1271,8 +1271,8 @@ Use `@@reventless.spec("ExplicitName")` when:
 - The desired name differs from the filename (rare)
 - The file is a framework-internal component (e.g., `PluginSpec.res` → `"Plugin"` works, but being explicit is clearer)
 
-Use `@@reventless.behavior(SpecName)` when:
-- The spec module name doesn't match `{filename minus Behavior}` (e.g., `PluginBehavior.res` opens `PluginSpec`, not `Plugin`)
+Use `@@reventless.decision(SpecName)` when:
+- The spec module name doesn't match `{filename minus Decision}` (e.g., `PluginDecision.res` opens `PluginSpec`, not `Plugin`)
 
 ### Files that cannot use PPX annotations
 
@@ -1403,7 +1403,7 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `module Id = Id.String` | Auto-injected by `@@reventless.spec` |
 | `let name = "Category"` | Derived from filename |
 | `let moduleUrl: string = %raw(\`import.meta.url\`)` | Computed at compile time |
-| `open Spec; module Spec = Spec` | Auto-injected by `@@reventless.behavior` |
+| `open Spec; module Spec = Spec` | Auto-injected by `@@reventless.decision` |
 | `@s.matches(DcbTag.string)` on `*Id`/`*Ids` fields | Auto-injected by `@@reventless.dcbTags` (or automatically in slice folders) |
 | `@s.matches(DcbTag.partition)` on partition key field | Use `@partitionTag` field annotation |
 | `@s.matches(DcbTag.string)` on non-`*Id` field | Use `@dcbTag` field annotation |

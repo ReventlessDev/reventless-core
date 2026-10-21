@@ -25,7 +25,7 @@ When the user has an Event Modeling JSON file, the `reventless-codegen` tooling 
 - **VS Code:** *Reventless: Generate from Event Model…* imports, *Export to Event Model…* writes the plugin back out, and *Check Model Drift…* compares the two.
 - **CLI:** `forward` (import), `validate`, `export` and `watch`, all with `--adapter eventmodeling`. See `docs/guides/forward-codegen-pipeline.md` and `docs/guides/reverse-codegen-pipeline.md` in reventless-core.
 
-Per slice, `forward` writes the Spec file and the GWT file (regenerated while they carry the generated header). It writes a behaviour skeleton only if none exists, and the plugin's `package.json` / `rescript.json` / `plugin.json` only if absent. A slice's `context` becomes plugin + chapter folder. `specifications[]` become GWT scenarios with typed example values. Screens, actors, status and timeline order are carried through to export unchanged, but nothing interprets them.
+Per slice, `forward` writes the Spec file and the GWT file (regenerated while they carry the generated header). It writes a decision skeleton only if none exists, and the plugin's `package.json` / `rescript.json` / `plugin.json` only if absent. A slice's `context` becomes plugin + chapter folder. `specifications[]` become GWT scenarios with typed example values. Screens, actors, status and timeline order are carried through to export unchanged, but nothing interprets them.
 
 Check whether the user can run the importer before writing any of those files by hand. If they can't, use the mapping in `references/` and emit the same layout. Either way, this skill's job is the analysis the importer cannot do:
 

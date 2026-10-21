@@ -63,7 +63,7 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
 - **Name-based resolution** - Uses naming conventions to find the correct QueryDb
 - **Type safety** - Validates at deploy-time that the QueryDb supports streams
 
-## Runtime Behavior
+## At run time
 
 Unlike other adapters, StateTopic has **no runtime operations** - it's a pure deploy-time resource:
 

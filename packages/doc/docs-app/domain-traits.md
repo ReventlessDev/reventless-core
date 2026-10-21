@@ -55,7 +55,7 @@ let onLocationReport = (r, ~location, ~resolvedFrom) =>
   }
 ```
 
-In `Customer_Behavior.res` the corresponding `decide` arm names the host's own
+In `Customer_Decision.res` the corresponding `decide` arm names the host's own
 command and the host's own event, and delegates the judgement:
 
 ```rescript
@@ -444,7 +444,7 @@ the host's state, either the boundary is in the wrong place or the competency is
 one.
 
 **2. Write the `Binding` over your host's constructors.** A `module type` naming what
-a host must expose: its spec, its behavior, and one function per constructor the
+a host must expose: its spec, its decision, and one function per constructor the
 rules reason about. Keep abstract whatever your host happens to have made concrete —
 the geocoding trait's `subject` is abstract so the rules hold for any address-shaped
 thing, even though its first host types it `string`.

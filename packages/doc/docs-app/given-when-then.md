@@ -20,7 +20,7 @@ an Aggregate implementation and a DCB implementation of each:
 
 | Pattern                      | Aggregate world                   | DCB world                       | GWT DSL                                                        |
 |------------------------------|-----------------------------------|---------------------------------|----------------------------------------------------------------|
-| Command (state change)       | `Aggregate` + `Behavior`          | `StateChangeSlice`              | `Behavior_GWT` / `StateChangeSlice_GWT`                        |
+| Command (state change)       | `Aggregate` + `Decision`          | `StateChangeSlice`              | `Decision_GWT` / `StateChangeSlice_GWT`                        |
 | View (state projection)      | `ReadModel` + `Projection.Mapping`| `StateViewSlice`                | `Projection_GWT` / `StateViewSlice_GWT`                        |
 | Automation (TODO list)       | `EventMapping` (delayed / async)  | `AutomationSlice`               | `Mapping_GWT` *(covers the Aggregate side)* / `Automation_GWT` |
 | Translation (anti-corruption)| API / handler code                | `InboundTranslationSlice` / `OutboundTranslationSlice` | `InboundTranslation_GWT` / `OutboundTranslation_GWT` |
@@ -68,8 +68,8 @@ Two cross-cutting DSLs round out the surface:
    the long singular form (`StateChangeSlice`), and the plural form
    (`StateChangeSlices`), matching the same vocabulary `@@reventless.spec`
    uses for production files. The Aggregate-pattern architectural folders
-   `Aggregate` (mapped to the `Behavior` DSL with the
-   `Behavior_GWT.MakeFromAggregate` adapter) and `ReadModel` (mapped to
+   `Aggregate` (mapped to the `Decision` DSL with the
+   `Decision_GWT.MakeFromAggregate` adapter) and `ReadModel` (mapped to
    `MultiSourceProjection_GWT.Make`) are also recognized. When multiple
    segments of the path match, the segment closest to the file wins. Spec
    resolution picks (1) the first top-level module defined in the test
@@ -81,10 +81,10 @@ Two cross-cutting DSLs round out the surface:
    Explicit forms (when the path-based inference doesn't fit):
    ```rescript
    @@reventless.gwt(AddCategorySlice)                          // explicit Spec (external module reference)
-   @@reventless.gwt(CategorySpec, CategoryBehavior)            // Behavior DSL (two-arg functor)
+   @@reventless.gwt(CategorySpec, CategoryDecision)            // Decision DSL (two-arg functor)
    @@reventless.gwt(Categories_Projections.CategoryMapping)    // MultiSourceProjection — qualified Mapping payload
    ```
-   Both payload forms resolve the Spec (and Behavior) names through the
+   Both payload forms resolve the Spec (and Decision) names through the
    compiler, so the modules do not need to be defined locally in the test
    file — the PPX will prepend the generated `open` + `include` at the
    top of the structure.
@@ -116,7 +116,7 @@ Every DSL uses the same verbs for the same roles:
 | `thenEvent(e)` / `thenEvents([...])`  | assert `decide` emitted exactly these events    |
 | `thenNoEvent` / `thenNoCommand`       | assert idempotency (nothing produced)           |
 | `thenError(e)`                        | assert `decide` returned `Error(e)`             |
-| `thenRefused`                         | assert the caller was refused before `decide`, as not owning what the command acts on |
+| `thenForbidden`                         | assert the caller was refused before `decide`, as not owning what the command acts on |
 | `thenEventWithError(e, err)`          | `decide` returned `Ok([e])` then later errored  |
 | `thenState(s)` / `thenStateWithId(id, s)` | assert the projected state for one key      |
 | `thenAllStates([...])`                | assert the full projection store               |
@@ -136,18 +136,18 @@ Each example is a minimal but complete `_GWT` file that you can copy as a
 template. All nine are also shipped as runnable worked-example tests in
 [`reventless/gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/alpha/reventless/gwt/tests/).
 
-### 4.1 `Behavior_GWT` — Aggregate command slice
+### 4.1 `Decision_GWT` — Aggregate command slice
 
-Pure synchronous DSL. Spec module + Behavior module (two-arg functor). In a
+Pure synchronous DSL. Spec module + Decision module (two-arg functor). In a
 consumer repo the canonical form is a bare `@@reventless.gwt` in an
-`Aggregate/` folder — the PPX infers the `Behavior` DSL and resolves both
-`Category` and `Category_Behavior`, and opens `Category` for you:
+`Aggregate/` folder — the PPX infers the `Decision` DSL and resolves both
+`Category` and `Category_Decision`, and opens `Category` for you:
 
 ```rescript
 // tests/Category/Aggregate/Category_GWT.res
 @@reventless.gwt
 
-describe("Category Behavior", () => {
+describe("Category Decision", () => {
   test("Add on new aggregate produces Added", () =>
     givenEvents([])
     ->whenCmd(Add({name: "Electronics"}))
@@ -168,7 +168,7 @@ describe("Category Behavior", () => {
 Real example:
 [`examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res).
 
-#### Who may act: `asCaller` and `thenRefused`
+#### Who may act: `asCaller` and `thenForbidden`
 
 `asCaller` names the caller before `whenCmd`, and the command is checked as
 production checks it before `decide`:
@@ -191,7 +191,7 @@ test("a shopper may not add a product", () =>
   givenEvents([CategoryAdded({categoryId: cat1})])
   ->asCaller(Caller.owner(shopper))
   ->whenCmd(AddProduct({productId: p1, name: laptop, categoryId: cat1}))
-  ->thenRefused
+  ->thenForbidden
 )
 ```
 
@@ -202,7 +202,7 @@ test("another customer cannot cancel the order", () =>
   givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
   ->asCaller(Caller.owner(c2))
   ->whenCmd(CancelOrder({orderId: o1}))
-  ->thenRefused
+  ->thenForbidden
 )
 
 test("an operator may cancel any customer's order", () =>
@@ -232,19 +232,19 @@ The callers:
   `AllowAnonymous` and on anything owned.
 
 The rule is checked against roles, not groups: which group stands for a role is
-the deployment's fact, so a scenario does not depend on it. `thenRefused` passes
+the deployment's fact, so a scenario does not depend on it. `thenForbidden` passes
 for either refusal, since both are `Forbidden` to a client; let the title say
 which rule refused.
 
 A scenario without `asCaller` names no caller, which the handler reads as the
 platform acting for itself, so neither rule refuses it. Any other `then*` after a
 refusal fails, because `decide` never ran. The lifecycle check leaves
-`thenRefused` scenarios out: who may act says nothing about which states a
+`thenForbidden` scenarios out: who may act says nothing about which states a
 command is legal in.
 
 ### 4.2 `StateChangeSlice_GWT` — DCB command slice
 
-Same vocabulary as `Behavior_GWT`, plus DCB-specific
+Same vocabulary as `Decision_GWT`, plus DCB-specific
 `thenAppendsConditionedOn` / `thenAppendsConditionedOnExactly` for the
 optimistic-concurrency query.
 
@@ -428,13 +428,13 @@ referenced entry is missing from `Spec.config.indexes`. Runnable copy:
 ### 4.6 `Mapping_GWT` — cross-pattern automation
 
 Generalised cross-pattern automation. Source and Target can each be an
-Aggregate+Behavior pair (via `FromBehavior`) or a StateChangeSlice (via
+Aggregate+Decision pair (via `FromDecision`) or a StateChangeSlice (via
 `FromStateChangeSlice`), giving all four Aggregate/DCB combinations with the
 same vocabulary.
 
 ```rescript
-module CategorySource   = Mapping_GWT.FromBehavior(CategorySpec, CategoryBehavior)
-module ProductTarget    = Mapping_GWT.FromBehavior(ProductSpec, ProductBehavior)
+module CategorySource   = Mapping_GWT.FromDecision(CategorySpec, CategoryDecision)
+module ProductTarget    = Mapping_GWT.FromDecision(ProductSpec, ProductDecision)
 
 module CatalogMapping = {
   module Source = CategorySource
@@ -681,9 +681,9 @@ Conventions to follow:
 - **No explicit `open`.** The PPX emits one for you so the spec's variants,
   fields, and `initialState` read unqualified.
 
-The same pattern applies to every DSL. Behavior is the one exception to the
+The same pattern applies to every DSL. Decision is the one exception to the
 zero-payload form: the two-arg functor needs both modules named —
-`@@reventless.gwt(CategorySpec, CategoryBehavior)`. Automations and
+`@@reventless.gwt(CategorySpec, CategoryDecision)`. Automations and
 translations pair the spec with its body file by name — `<Spec>_Automation` or
 `<Spec>_Translation` — so they keep the bare form (§§ 4.7–4.9).
 
@@ -739,10 +739,10 @@ Conventions:
   repo-wide primitives module (e.g. `TestFixtures.res`) so those primitives
   flow through the auto-open transitively, without each GWT test needing its
   own manual open.
-- **Explicit-payload and Behavior DSL.** The companion rule keys off the
+- **Explicit-payload and Decision DSL.** The companion rule keys off the
   filename stem, not the Spec name. `@@reventless.gwt(OtherSpec)` on
   `AddCategory_GWT.res` still auto-opens `AddCategory_Fixtures.res` if
-  present. Likewise for `@@reventless.gwt(Spec, Behavior)` pairs.
+  present. Likewise for `@@reventless.gwt(Spec, Decision)` pairs.
 
 Not auto-opened: spec-adjacent types modules (e.g. `DeploymentTypes`,
 shared-variant modules beyond the Spec). Those still need an explicit
@@ -1013,7 +1013,7 @@ Full field reference lives in
   (`examples/online-shop-aggregates/`, `online-shop-dcb/`, `online-shop-hybrid/`)
   the `tests/` tree contains **only `*_GWT.res` files and the `*_Examples.res` they
   share values through** (§ 4.12) — no `E2E`, no ad-hoc
-  `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests mirror
+  `*DecisionTest.res` / `*ProjectionTest.res`. Tests mirror
   `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind). Ship one
   `*_GWT.res` per Aggregate / StateChangeSlice / StateViewSlice /
   StateViewSliceStream / ReadModel / AutomationSlice / InboundTranslationSlice /

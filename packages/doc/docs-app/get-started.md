@@ -122,7 +122,7 @@ type event =
 and the decision that goes with it:
 
 ```rescript
-@@reventless.behavior
+@@reventless.decision
 
 type state = {exists: bool}
 let initialState = {exists: false}

@@ -265,7 +265,7 @@ type event =
     })
 ```
 
-These annotations work in any `@@reventless.spec` or `@@reventless.behavior` file, regardless of whether dcbTags auto-inference is active.
+These annotations work in any `@@reventless.spec` or `@@reventless.decision` file, regardless of whether dcbTags auto-inference is active.
 
 ### Available Tag Schemas
 

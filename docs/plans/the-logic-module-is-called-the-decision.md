@@ -1,6 +1,6 @@
 # Plan: the write-side logic module is called the decision
 
-**Status:** 📋 Planned 2026-10-21. Not started.<br/>
+**Status:** ✅ R1–R8 built 2026-10-21, not yet released.<br/>
 **Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
 [§3](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#3-behavior-or-decision)
 and [§8.4](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#84-recommendation);

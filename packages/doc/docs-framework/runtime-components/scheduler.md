@@ -132,7 +132,7 @@ let removeSchedule = async (scheduleName) => {
 }
 ```
 
-## Runtime Behavior
+## At run time
 
 The Scheduler component operates through two main runtime operations:
 

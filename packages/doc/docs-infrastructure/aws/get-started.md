@@ -27,7 +27,7 @@ deploys:
 
 ```
 my-app/
-├── catalog/            # the plugin — specs, behaviors, scenarios
+├── catalog/            # the plugin — specs, decisions, scenarios
 ├── catalog-aws/        # its deployment package
 │   ├── src/Main.res    # generated entry point
 │   ├── Pulumi.yaml

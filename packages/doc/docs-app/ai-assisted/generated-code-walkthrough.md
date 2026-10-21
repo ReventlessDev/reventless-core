@@ -24,11 +24,11 @@ catalog/                               # Plugin implementation
     ├── Product/
     │   ├── StateChange/
     │   │   ├── AddProduct.res             # Command spec: add a product
-    │   │   ├── AddProduct_Behavior.res    # state / evolve / decide
+    │   │   ├── AddProduct_Decision.res    # state / evolve / decide
     │   │   ├── ChangeProductName.res      # Command spec: rename
-    │   │   ├── ChangeProductName_Behavior.res
+    │   │   ├── ChangeProductName_Decision.res
     │   │   ├── ChangeProductPrice.res     # Command spec: reprice
-    │   │   └── ChangeProductPrice_Behavior.res
+    │   │   └── ChangeProductPrice_Decision.res
     │   └── StateView/
     │       ├── Products.res               # Query spec: product listings
     │       └── Products_Projection.res    # project function
@@ -46,14 +46,14 @@ platform-local/                    # Platform assembly
 ```
 
 Each component is **split** into a spec file (`@@reventless.spec` — types only)
-and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or
+and a body file (`_Decision.res`, `_Projection.res`, `_Translation.res`, or
 `_Automation.res` — logic only). `Plugin.res` is **generated** by
 `generate-plugin` from the folder layout and carries an "AUTO-GENERATED — do
 not edit" banner.
 
 ## Key Files Explained
 
-### StateChangeSlice (e.g., `AddProduct.res` + `AddProduct_Behavior.res`)
+### StateChangeSlice (e.g., `AddProduct.res` + `AddProduct_Decision.res`)
 
 Handles one command type, split across two files.
 
@@ -63,7 +63,7 @@ The **spec** (`AddProduct.res`, `@@reventless.spec`) declares:
 - **error** — the business errors it can return
 - **event** — the events it produces on success
 
-The **behavior** (`AddProduct_Behavior.res`, `@@reventless.behavior`) declares:
+The **decision** (`AddProduct_Decision.res`, `@@reventless.decision`) declares:
 - **state** — minimal decision state (what's needed to accept/reject)
 - **initialState** — the starting value before any event is replayed
 - **evolve** — builds decision state from consumed events
@@ -83,7 +83,7 @@ The **projection** (`Products_Projection.res`, `@@reventless.projection`) declar
 ### Plugin Composition (`Plugin.res` — generated)
 
 The wiring file is **generated** from the folder layout — do not hand-edit it:
-1. Builds each slice/view via `Platform.StateChangeSlice.Make(Spec, Behavior)` / `Platform.StateViewSlice.Make(Spec, Projection)` (two args: spec + body)
+1. Builds each slice/view via `Platform.StateChangeSlice.Make(Spec, Decision)` / `Platform.StateViewSlice.Make(Spec, Projection)` (two args: spec + body)
 2. Wires extension point mappings and extensions
 3. Assembles everything into `Platform.Plugin.make(...)` with named arrays
 

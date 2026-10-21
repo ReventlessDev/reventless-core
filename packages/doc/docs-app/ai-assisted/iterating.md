@@ -14,7 +14,7 @@ Use `/reventless-add` to add components to an existing plugin:
 ```
 /reventless-add slice       → new StateChangeSlice
 /reventless-add viewslice   → new StateViewSlice
-/reventless-add aggregate   → new Aggregate (spec + behavior)
+/reventless-add aggregate   → new Aggregate (spec + decision)
 /reventless-add readmodel   → new ReadModel (spec + projection)
 /reventless-add automation  → new AutomationSlice
 /reventless-add inbound     → new InboundTranslationSlice

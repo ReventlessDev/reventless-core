@@ -231,7 +231,7 @@ let setup = (_queryEngine, _queryBucketName, _opts): Task.config => {
 }
 ```
 
-## Runtime Behavior
+## At run time
 
 Tasks operate through an event-driven flow triggered by file operations:
 

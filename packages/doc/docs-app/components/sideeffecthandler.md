@@ -102,7 +102,7 @@ let sideEffectHandler = SideEffectHandler.make(
 )
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Event Processing Sequence
 

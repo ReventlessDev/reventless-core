@@ -2,14 +2,14 @@
 
 ## Purpose
 
-This guide provides a standardized approach for testing Reventless components. It's based on patterns discovered during DCB component testing and existing test suites (PluginBehaviorTest, MessageTest, ProjectionTest).
+This guide provides a standardized approach for testing Reventless components. It's based on patterns discovered during DCB component testing and existing test suites (PluginDecisionTest, MessageTest, ProjectionTest).
 
 Use this guide when adding tests for **any** Reventless component:
 - Core components (Aggregate, EventLog, ReadModel, Plugin, etc.)
 - New components (DcbEventLog, CommandHandler, etc.)
 - Adapter implementations (DynamoDB, S3, SQS, etc.)
 
-> **Slice-level Given-When-Then tests** — aggregate `Behavior`, DCB
+> **Slice-level Given-When-Then tests** — aggregate `Decision`, DCB
 > `StateChangeSlice`, read model projections, DCB `StateViewSlice`,
 > automation / translation slices, and cross-pattern `Mapping_GWT` — are
 > covered by [`docs/guides/given-when-then.md`](/app/given-when-then) and run
@@ -693,7 +693,7 @@ packages/<package-name>/tests/
 packages/reventless/tests/
 ├── plugin/
 │   ├── PluginFixtures.res
-│   ├── PluginBehaviorTest.res
+│   ├── PluginDecisionTest.res
 │   └── PluginProjectionTest.res
 ├── dcb/
 │   ├── DcbFixtures.res
@@ -1010,10 +1010,10 @@ describe("Command flow integration:", () => {
   - Retry testing with counter-based failure injection
   - Batch processing with mixed results
 
-### Behavior Tests
+### Decision Tests
 
-- **`PluginBehaviorTest.res`** — Tests Aggregate behavior (init/apply/execute)
-  - Uses `BehaviorTest` helper module
+- **`PluginDecisionTest.res`** — Tests the aggregate decision (init/apply/execute)
+  - Uses `DecisionTest` helper module
   - Given/When/Then test structure
   - Focuses on domain logic, not infrastructure
 

@@ -96,14 +96,14 @@ All files are under `reventless/core/tests/`.
 |------|------------------|----------------|
 | `message/MessageTest.res` | `ReventlessCore.Message` | `splitMessage` and `combineMessage` JSON encoding for tagged union variants; `generateMeta` meta construction; round-trip encode→decode for command and event envelopes |
 | `EventMappingTest.res` | `ReventlessCore.ExtensionMapping` | Pure mapping logic: `mapIncomingEvent` action production, `AbstractPublishAggregateCommand` routing, `AbstractPublishExtensionPointCommand` routing |
-| `BehaviorTest.res` | `ReventlessCore.BehaviorTest` | Test harness helper module; verifies the Given/When/Then DSL used by `PluginBehaviorTest` |
+| `DecisionTest.res` | `ReventlessCore.DecisionTest` | Test harness helper module; verifies the Given/When/Then DSL used by `PluginDecisionTest` |
 | `ProjectionTest.res` | `ReventlessCore.ProjectionTest` | Test harness helper module; verifies the event→state DSL used by `PluginProjectionTest` |
 
-#### Plugin-level tests (Aggregate + ReadModel via Behavior/Projection helpers)
+#### Plugin-level tests (Aggregate + ReadModel via Decision/Projection helpers)
 
 | File | Module under test | What is tested |
 |------|------------------|----------------|
-| `plugin/PluginBehaviorTest.res` | `Reventless.Aggregate.Behavior` | Aggregate decide/reduce loop via the `BehaviorTest` DSL: initial state, command → event emission, duplicate command rejection, state accumulation across multiple events |
+| `plugin/PluginDecisionTest.res` | `Reventless.Aggregate.Decision` | Aggregate decide/reduce loop via the `DecisionTest` DSL: initial state, command → event emission, duplicate command rejection, state accumulation across multiple events |
 | `plugin/PluginProjectionTest.res` | `Reventless.ReadModel.Projection` | ReadModel `project` function via the `ProjectionTest` DSL: event → state upsert, event → state delete, multi-event projection chains |
 
 #### DCB component tests

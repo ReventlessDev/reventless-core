@@ -137,7 +137,7 @@ In the `_Projection.res` file:
 |-------|------|-------------|
 | `project` | `Reventless.StateViewSlice.consumed<consumedEvent> => array<Projection.action<state>>` | Function to transform a consumed event envelope into state actions |
 
-## Runtime Behavior
+## At run time
 
 ### Event Processing Flow
 

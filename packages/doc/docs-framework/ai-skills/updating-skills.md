@@ -19,7 +19,7 @@ Skills encode framework knowledge. When the framework changes, skills must be up
 | New AWS adapter | `reventless-aws` (adapter-architecture.md) |
 | New deployment strategy | `reventless-aws` (runtime-patterns.md) |
 | Plugin composition pattern change | `reventless-app` (aggregate-patterns.md, dcb-patterns.md) |
-| Testing DSL change | `reventless-testing` (behavior-test-dsl.md) |
+| Testing DSL change | `reventless-testing` (decision-test-dsl.md) |
 | New naming convention | `reventless-context` (discovery-checklist.md) |
 
 ## Update Process

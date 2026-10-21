@@ -59,8 +59,8 @@ DCB slices are passed directly as optional labeled arrays to `Plugin.make`. No s
 Empty arrays can simply be omitted (all args are optional).
 
 The channel choice (sync vs. async) is encoded in the slice spec via PPX, not in a separate array:
-- **Default — sync.** Spec files without any flag get `Platform.StateChangeSlice.Make(Spec, Spec_Behavior)` from the plugin generator, backed by a standard SQS queue; mutation waits for `decide` inline and returns `CommandAccepted` or `CommandRejected` immediately.
-- **Opt-in — async.** Add `@@reventless.async` at the top of the slice spec file. The generator emits `Platform.StateChangeSlice.MakeAsync(Spec, Spec_Behavior)`, backed by a FIFO SQS queue; mutation returns `CommandPending` and the command is processed asynchronously. Use for slices where throughput requirements make synchronous per-request replay impractical.
+- **Default — sync.** Spec files without any flag get `Platform.StateChangeSlice.Make(Spec, Spec_Decision)` from the plugin generator, backed by a standard SQS queue; mutation waits for `decide` inline and returns `CommandAccepted` or `CommandRejected` immediately.
+- **Opt-in — async.** Add `@@reventless.async` at the top of the slice spec file. The generator emits `Platform.StateChangeSlice.MakeAsync(Spec, Spec_Decision)`, backed by a FIFO SQS queue; mutation returns `CommandPending` and the command is processed asynchronously. Use for slices where throughput requirements make synchronous per-request replay impractical.
 
 Both variants go in the same `~stateChangeSlices` array. Commands are routed by type name to whichever handler registered for them, regardless of which queue they arrived on.
 
@@ -254,11 +254,11 @@ type event =
   | ProductAdded({productId: string, name: string, description: string, price: float})
 ```
 
-The behavior file (`@@reventless.behavior`) holds `state`, `initialState`, `evolve`, and `decide`. It auto-injects `open Spec` and `module Spec`:
+The decision file (`@@reventless.decision`) holds `state`, `initialState`, `evolve`, and `decide`. It auto-injects `open Spec` and `module Spec`:
 
 ```rescript
-// AddProduct_Behavior.res
-@@reventless.behavior
+// AddProduct_Decision.res
+@@reventless.decision
 
 type state = {exists: bool}
 let initialState = {exists: false}
@@ -351,11 +351,11 @@ let project = ({event}) =>
 // AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
-  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
-  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Decision)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Decision)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Decision)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Decision)
 
   // StateViewSliceStreams
   module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
@@ -410,12 +410,12 @@ type error = ...
 type event = ...
 ```
 
-The plugin generator then emits `Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Behavior)` for that slice and the standard `Make(...)` for the rest — both share the same `~stateChangeSlices` array in the generated `Plugin.res`:
+The plugin generator then emits `Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Decision)` for that slice and the standard `Make(...)` for the rest — both share the same `~stateChangeSlices` array in the generated `Plugin.res`:
 
 ```rescript
 // AUTO-GENERATED Plugin.res — for reference only
-module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Behavior)  // FIFO queue, CommandPending
+module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
+module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Decision)  // FIFO queue, CommandPending
 
 Platform.Plugin.make(
   ~name="Catalog",
@@ -577,7 +577,7 @@ Each `@compositePartitionTag` field is still a regular DCB tag — individually 
 
 ```rescript
 @compositePartitionTag            // default: "/"
-@compositePartitionTag("/")       // explicit default — same behaviour
+@compositePartitionTag("/")       // explicit default — same behavior
 @compositePartitionTag(":")       // use ":" between this and the next field
 ```
 

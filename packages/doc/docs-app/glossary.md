@@ -29,13 +29,6 @@ when the resulting event arrives. Stateful, unlike an EventMapping. It can also
 run on a time: see [Schedule](#schedule). See
 [AutomationSlice component](/app/components/automationslice).
 
-## Behavior
-
-The module holding a component's state machine, annotated `@@reventless.behavior`:
-`type state`, `initialState`, `evolve` (state × event → state), and `decide`
-(state × command → events or error). Paired with a **Spec**, which holds the
-types the behavior operates on.
-
 ## Business capability
 
 **Not a framework concept.** A term from enterprise architecture and business
@@ -104,6 +97,16 @@ An event a slice reads in order to decide — declared as `type consumedEvent` o
 its spec, separately from the events it emits. Only the fields the decision
 needs have to be present; where existence is all that matters the variant can be
 payload-less.
+
+## Decision
+
+The logic file of a write-side component, `<Spec>_Decision.res`, annotated
+`@@reventless.decision`: `type state`, `initialState`, `evolve`
+(state × event → state), and `decide` (state × command → events or error). It
+implements the *decider* pattern. Paired with a **Spec**, which holds the types
+the decision operates on. In conversation, "the AddProduct decision" can also
+mean the whole write-side slice, spec and decision together; the two readings
+nest. It was called *Behavior* before (`_Behavior.res`, `@@reventless.behavior`).
 
 ## Decision model
 
@@ -235,7 +238,7 @@ to that component, not to the kind.
 
 The compile-time source transformation that injects the repetitive parts of a
 spec — names, module identity, schema annotations, DCB tags — from the file-level
-markers (`@@reventless.spec`, `@@reventless.behavior`, …). It is why a spec file
+markers (`@@reventless.spec`, `@@reventless.decision`, …). It is why a spec file
 states its types and almost nothing else. See
 [PPX annotations](/app/reventless-ppx).
 
@@ -305,7 +308,7 @@ DCB event log:
 
 The module defining a component's type contract — `command`, `event`, `error`,
 and where applicable `consumedEvent` or `state` — plus its name and schemas.
-Annotated `@@reventless.spec`. Paired with a **Behavior** that holds the logic.
+Annotated `@@reventless.spec`. Paired with a [decision](#decision) that holds the logic.
 
 ## StateChangeSlice
 

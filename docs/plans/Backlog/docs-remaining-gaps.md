@@ -11,7 +11,7 @@ leaves no image and no error — check `static/d2/<page>/` after touching one.
 ## Page rewrites
 
 - **`docs-framework/application-development-layers.md`** — written against the
-  pre-PPX API. Either update it to `Product_Behavior.res` / `@@reventless.spec`
+  pre-PPX API. Either update it to `Product_Decision.res` / `@@reventless.spec`
   conventions and reframe as "how the framework enforces layer boundaries", or
   fold it into the app-side guide.
 - **`docs-framework/ppx-binary-management.md`** — rewrite around the current

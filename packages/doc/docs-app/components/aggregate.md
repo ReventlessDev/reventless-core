@@ -18,7 +18,7 @@ Aggregate: {
   Domain: {
     class: aggregate
     Spec: Aggregate Spec { class: spec }
-    Behavior: Behavior { class: spec }
+    Decision: Decision { class: spec }
     EventMappings: Event Mappings { class: spec }
   }
 
@@ -36,14 +36,14 @@ CommandSource -> Aggregate.CommandTopic: command { class: command-flow }
 Aggregate.EventTopic -> EventTarget: { class: event-flow }
 ```
 
-An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behavior**](#behavior), [**Config**](../common-modules/config.md) and [**Event Mappings**](#eventmappings).
+An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Decision**](#decision), [**Config**](../common-modules/config.md) and [**Event Mappings**](#eventmappings).
 
 Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source: Command Generator, [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), and [Extension Point](./extensionpoint.md). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarative manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#projections), [Extensionpoint Mappings](extensionpoint.md#extensionpoint-mappings), [Extension Mappings](extension.md#extension-mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarative manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Decision](#decision), EventMapper, [ReadModel Projections](readmodel.md#projections), [Extensionpoint Mappings](extensionpoint.md#extensionpoint-mappings), [Extension Mappings](extension.md#extension-mappings))
 
 ### Example
 
@@ -104,9 +104,9 @@ Event Variant Constructors should be formulated in past tense.
 The error type declares possible unrecoverable errors of the aggregate.
 The semantic may be chosen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
-## Behavior
+## Decision
 
-The aggregate specific business logic is implemented in a behavior module.
+The aggregate specific business logic is implemented in a decision module.
 
 It defines:
 
@@ -115,8 +115,8 @@ It defines:
 
 ### Example
 
-```rescript title="Customer_Behavior.res" showLineNumbers
-@@reventless.behavior
+```rescript title="Customer_Decision.res" showLineNumbers
+@@reventless.decision
 
 @schema
 type state =
@@ -203,10 +203,10 @@ Every command rebuilds current state by replaying the aggregate's event log, so 
 
 - **Persisted snapshots (opt-in).** For long-lived aggregates (running orders, ledgers, multi-month workflows), a cold start — a fresh instance, or an entity evicted from the cache — still pays a full replay. Enabling snapshots makes that cold replay `O(events since the last snapshot)` instead of `O(all events)`: the runtime periodically persists the folded state and, on a cold read, seeds from the latest snapshot and replays only the delta after it.
 
-Snapshotting is enabled per aggregate on the **behavior** file (where `state` is defined):
+Snapshotting is enabled per aggregate on the **decision** file (where `state` is defined):
 
 ```rescript
-@@reventless.behavior
+@@reventless.decision
 @@reventless.snapshots(50)   // write a snapshot every 50 events
 
 @schema
@@ -219,7 +219,7 @@ or, equivalently, by declaring the binding by hand:
 let snapshot = Some({interval: 50, stateSchema})
 ```
 
-Behaviors that declare neither keep full replay (the default injection is `let snapshot = None`).
+Decisions that declare neither keep full replay (the default injection is `let snapshot = None`).
 
 Guarantees and behavior:
 
@@ -247,34 +247,34 @@ shape: sequence_diagram
 
 CommandSource: Command Source { class: command-generator }
 Aggregate: Aggregate { class: aggregate }
-Behavior: Behavior { class: spec }
+Decision: Decision { class: spec }
 EventLog: Event Log { class: event-log }
 
 CommandSource -> Aggregate: "Command1 (very first Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[] (no events yet)"
-Aggregate -> Behavior: "decide(initialState, Command1)"
-Behavior --> Aggregate: "Ok([event1])"
+Aggregate -> Decision: "decide(initialState, Command1)"
+Decision --> Aggregate: "Ok([event1])"
 Aggregate -> EventLog: "append(event1)"
 
 CommandSource -> Aggregate: "Command2 (second Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[event1] (one event persisted)"
-Aggregate -> Behavior: "evolve(initialState, event1)"
-Behavior --> Aggregate: state1
-Aggregate -> Behavior: "decide(state1, Command2)"
-Behavior --> Aggregate: "Ok([event2])"
+Aggregate -> Decision: "evolve(initialState, event1)"
+Decision --> Aggregate: state1
+Aggregate -> Decision: "decide(state1, Command2)"
+Decision --> Aggregate: "Ok([event2])"
 Aggregate -> EventLog: "append(event2)"
 
 CommandSource -> Aggregate: "Command3 (third Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[event1, event2] (two events persisted)"
-Aggregate -> Behavior: "evolve(initialState, event1)"
-Behavior --> Aggregate: state1
-Aggregate -> Behavior: "evolve(state1, event2)"
-Behavior --> Aggregate: state2
-Aggregate -> Behavior: "decide(state2, Command3)"
-Behavior --> Aggregate: "Ok([event3])"
+Aggregate -> Decision: "evolve(initialState, event1)"
+Decision --> Aggregate: state1
+Aggregate -> Decision: "evolve(state1, event2)"
+Decision --> Aggregate: state2
+Aggregate -> Decision: "decide(state2, Command3)"
+Decision --> Aggregate: "Ok([event3])"
 Aggregate -> EventLog: "append(event3)"
 ```
 
@@ -336,16 +336,16 @@ See [Counter](/framework/runtime-components/counter#counter-in-eventmappings) co
 
 You never wire the `Aggregate` by hand. The plugin generator scans the
 `Aggregate/` folder and emits the wiring into the **generated** `src/Plugin.res`
-using the three-arg factory `Platform.Aggregate.Make(Spec, Behavior, Mappings)`:
+using the three-arg factory `Platform.Aggregate.Make(Spec, Decision, Mappings)`:
 
 ```rescript title="src/Plugin.res (generated — do not edit)"
 // With event mappings:
-module CustomerAggregate = Platform.Aggregate.Make(Customer, Customer_Behavior, Customer_Mappings)
+module CustomerAggregate = Platform.Aggregate.Make(Customer, Customer_Decision, Customer_Mappings)
 
 // Without event mappings, the third slot is NoEventMappings:
 module CategoryAggregate = Platform.Aggregate.Make(
   Category,
-  Category_Behavior,
+  Category_Decision,
   ReventlessInfra.NoEventMappings.Make(Category),
 )
 ```

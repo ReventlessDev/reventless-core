@@ -270,7 +270,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
-    Customer_Behavior,
+    Customer_Decision,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
 
@@ -303,7 +303,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 The plugin module is then referenced from the platform as
 `MyDomainPlugin.Plugin.Make(Platform)`.
 
-## Runtime Behavior
+## At run time
 
 ### Initialization Sequence
 

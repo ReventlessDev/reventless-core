@@ -41,7 +41,7 @@ Generate in this order:
 1. Spec packages (extension point type definitions)
 2. Plugin packages (package.json, rescript.json for each plugin)
 3. Domain types (aggregate specs or slice files)
-4. Business logic (behaviors or decide functions)
+4. Business logic (decisions)
 5. Read-side projections
 6. Cross-plugin communication (EP specs, mappings, extensions)
 7. Side effects and automation

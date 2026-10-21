@@ -26,7 +26,7 @@ vocabularies exist, deliberately:
 
 - The **aggregate / `Plugins` read model** status — the live operational state of a
   version: `Connected`, `Disconnected`, `Inactive`, `Retired` (`PluginsReadModelSpec.status`
-  / `PluginBehavior.status`).
+  / `PluginDecision.status`).
 - The **`PluginHistory`** transition kinds — the full audit vocabulary, including
   states that are *derived* rather than stored: `Detected`, `Connected`, `Superseded`,
   `Promoted`, `Disconnected`, `Activated`, `Deactivated`, `Retired`,
@@ -87,7 +87,7 @@ deterministic**.
 `VersionDeactivated`, `VersionRetired`, `IncompatiblePluginDetected`, plus the
 `UIFragment*` events (UI-manifest lifecycle, orthogonal to version status).
 
-### Key behaviors (all in `PluginBehavior`)
+### Key behaviors (all in `PluginDecision`)
 
 - **`current` is derived, never commanded.** Supersession is *not* a command — a
   version that is `Connected` but not `current` is "superseded", a label the read

@@ -126,7 +126,7 @@ type replay<'id, 'event> = (
 3. Decodes JSON events back to typed event values
 4. Returns array of events (empty array if aggregate doesn't exist)
 
-## Runtime Behavior
+## At run time
 
 The EventLog integrates with the Aggregate's event sourcing lifecycle:
 
@@ -186,11 +186,11 @@ AggregateComponent: Aggregate Component {
 
   CommandHandler: Command Handler{ class: aggregate }
   EventLog: EventLog { class: event-log }
-  Behavior: Behavior{ class: spec }
+  Decision: Decision{ class: spec }
 
   CommandHandler -> EventLog: 1. replay
-  EventLog -> Behavior: 2. events
-  Behavior -> CommandHandler: 3. state
+  EventLog -> Decision: 2. events
+  Decision -> CommandHandler: 3. state
   CommandHandler -> EventLog: 4. new events
 }
 
@@ -202,7 +202,7 @@ AggregateComponent.EventLog -> EventTopic: 5. publish { class: event-flow }
 **Sequence:**
 1. Aggregate requests event replay for the aggregate ID
 2. EventLog returns historical events
-3. Behavior reconstructs current state from events
+3. Decision reconstructs current state from events
 4. Aggregate appends new events from command processing
 5. EventLog publishes new events to EventTopic
 

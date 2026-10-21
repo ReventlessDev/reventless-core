@@ -41,15 +41,15 @@ The AI generates 30+ files across 5 packages:
 
 **ordering-spec/** — 1 file: `Orders_ExtensionPoint.res`
 
-**catalog/** — each component is split into a spec file (`@@reventless.spec`) and a body file (`_Behavior.res` / `_Projection.res`):
-- StateChangeSlices: AddProduct, ChangeProductName, ChangeProductDescription, ChangeProductPrice, AddCategory, RenameCategory, ArchiveCategory (each `+ _Behavior.res`)
+**catalog/** — each component is split into a spec file (`@@reventless.spec`) and a body file (`_Decision.res` / `_Projection.res`):
+- StateChangeSlices: AddProduct, ChangeProductName, ChangeProductDescription, ChangeProductPrice, AddCategory, RenameCategory, ArchiveCategory (each `+ _Decision.res`)
 - StateViewSlices: Products, Categories (each `+ _Projection.res`)
 - ExtensionPoint: ExtensionPoint/Products_ExtensionPointMapping.res
 - Extension: Extension/Orders_Extension.res (subscribes to Ordering's EP)
 - `Plugin.res` (generated — "AUTO-GENERATED — do not edit")
 
 **ordering/** — same spec + body split:
-- StateChangeSlices: RegisterCustomer, ChangeEmail, ChangeAddress, DeactivateCustomer, PlaceOrder, ShipOrder, CancelOrder, SyncCatalogProduct (each `+ _Behavior.res`)
+- StateChangeSlices: RegisterCustomer, ChangeEmail, ChangeAddress, DeactivateCustomer, PlaceOrder, ShipOrder, CancelOrder, SyncCatalogProduct (each `+ _Decision.res`)
 - StateViewSlices: Customers, Orders, AvailableProducts (each `+ _Projection.res`)
 - AutomationSlice: AutoShipOrder (`+ _Automation.res`)
 - OutboundTranslationSlice: SendOrderConfirmation (`+ _Translation.res`)

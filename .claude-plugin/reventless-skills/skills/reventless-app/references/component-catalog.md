@@ -16,7 +16,7 @@ let moduleUrl: string = %raw(`import.meta.url`)
 @schema type error = | Err1 | Err2
 ```
 
-**Behavior fields:**
+**Decision fields:**
 ```rescript
 module Spec = EntityName
 @schema type state = NotCreated | Created({...})
@@ -26,7 +26,7 @@ let decide = (state, command) => result<array<event>, error>
 let moduleUrl: string = %raw(`import.meta.url`)
 ```
 
-**Builder:** `Platform.Aggregate.Make(Spec, Behavior, EventMappings)`
+**Builder:** `Platform.Aggregate.Make(Spec, Decision, EventMappings)`
 
 ### StateChangeSlice (DCB approach)
 

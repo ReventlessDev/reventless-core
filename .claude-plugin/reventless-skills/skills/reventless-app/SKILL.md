@@ -9,7 +9,7 @@ description: >-
 
 ## Purpose
 
-Generates complete, compilable Reventless application code from domain requirements. Produces all necessary files — specs, behaviors, projections, slices, plugin composition, platform wiring, configuration, and tests.
+Generates complete, compilable Reventless application code from domain requirements. Produces all necessary files — specs, decisions, projections, slices, plugin composition, platform wiring, configuration, and tests.
 
 ## When to Use
 
@@ -50,7 +50,7 @@ Generate files in dependency-safe order:
 1. Spec package (if extension points exist)
 2. Plugin package configuration (package.json, rescript.json)
 3. Domain types (Aggregate specs or StateChangeSlice files)
-4. Business logic (Behaviors or slice decide functions)
+4. Business logic (decisions, for aggregates and slices)
 5. Read-side projections (ReadModel + Projections or StateViewSlices)
 6. Cross-plugin communication (EP specs, EP mappings, Extensions)
 7. Side effects and automation (if needed)
@@ -83,7 +83,7 @@ Generate files in dependency-safe order:
    - `src/StateChange/` — StateChangeSlices (e.g. `SyncPlugin.res`, not `SyncPluginSpec.res`)
    - `src/StateView/` — StateViewSlices (e.g. `ResourceInventory.res`, not `ResourceInventoryView.res`)
    - `src/ReadModel/` — ReadModels and Projections (CQRS-style, distinct from StateView)
-   - `src/Aggregate/` — Aggregates and their Behaviors (co-located, not separate folders)
+   - `src/Aggregate/` — Aggregates and their Decisions (co-located, not separate folders)
    - `src/InboundTranslation/` — InboundTranslationSlices
    - `src/OutboundTranslation/` — OutboundTranslationSlices
    - `src/Automation/` — AutomationSlices

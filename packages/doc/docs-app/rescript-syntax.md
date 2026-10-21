@@ -116,7 +116,7 @@ The [`result`](https://rescript-lang.org/docs/manual/latest/api/core/result) typ
 
 ```rescript
 // Commands return result<array<event>, error>
-let handle = (state, command) =>
+let decide = (state, command) =>
   switch command {
   | CreateItem({name}) =>
     switch state {
@@ -477,7 +477,7 @@ PPX (PreProcessor eXtensions) are compile-time code generators that transform yo
 
 ### Reventless PPX Annotations
 
-Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate boilerplate. These annotations appear in spec and behavior files. This section is a primer; for the complete annotation reference, see the [Reventless PPX guide](./reventless-ppx).
+Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate boilerplate. These annotations appear in spec and decision files. This section is a primer; for the complete annotation reference, see the [Reventless PPX guide](./reventless-ppx).
 
 #### `@@reventless.spec`
 
@@ -494,13 +494,13 @@ Place at the top of any spec file (aggregates, read models, extension points, DC
 
 For files in a `*Spec` namespace, the PPX also auto-prefixes extension point names with the plugin name.
 
-#### `@@reventless.behavior`
+#### `@@reventless.decision`
 
-Place at the top of a behavior file (`Item_Behavior.res`). The PPX derives the spec module from the filename and automatically injects `open Item`, `module Spec = Item`, and `let moduleUrl`. The behavior implements the state machine with three values — `initialState`, `evolve` (folds an event into the next state during replay), and `decide` (turns a command into `Ok([...events])` or `Error(err)`):
+Place at the top of a decision file (`Item_Decision.res`). The PPX derives the spec module from the filename and automatically injects `open Item`, `module Spec = Item`, and `let moduleUrl`. The decision implements the state machine with three values — `initialState`, `evolve` (folds an event into the next state during replay), and `decide` (turns a command into `Ok([...events])` or `Error(err)`):
 
 ```rescript
-// Item_Behavior.res  (PPX derives Spec from "Item" in filename)
-@@reventless.behavior
+// Item_Decision.res  (PPX derives Spec from "Item" in filename)
+@@reventless.decision
 
 @schema
 type state =

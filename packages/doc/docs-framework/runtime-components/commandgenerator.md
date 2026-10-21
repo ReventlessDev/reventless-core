@@ -71,19 +71,19 @@ let mutationsSchema = "
 
 Configure how GraphQL mutations are transformed into commands:
 
-```rescript title="Customer_Behavior.res"
+```rescript title="Customer_Decision.res"
 module Spec = Customer
 
 type state = option<Customer.customer>
 
-// Behavior functions: init, apply, execute
+// Decision functions: init, evolve, execute
 let init = (event: Customer.event) =>
   switch event {
   | Created(customer) => Some(customer)
   | _ => None
   }
 
-let apply = (state, event: Customer.event) =>
+let evolve = (state, event: Customer.event) =>
   switch (state, event) {
   | (Some(customer), AddressChanged(newAddress)) =>
     Some({...customer, address: newAddress})
@@ -145,11 +145,11 @@ mutation CreateCustomer {
 The CommandGenerator is automatically created when defining an Aggregate:
 
 ```rescript title="Customer.res"
-// Define aggregate with behavior
+// Define aggregate with its decision
 include ReventlessAws.Aggregate.Make(
   Config,
   Customer,          // Spec
-  Customer_Behavior, // Behavior
+  Customer_Decision, // Decision
   Customer_EventMappings,
 )
 
@@ -160,7 +160,7 @@ include ReventlessAws.Aggregate.Make(
 // - Customer EventLog
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Command Generation Flow
 
@@ -347,7 +347,7 @@ mutation CreateMultipleOrders {
 
 ### Async Command Generation
 
-```rescript title="Order_Behavior.res"
+```rescript title="Order_Decision.res"
 // The CommandGenerator can perform async operations
 // before publishing commands (e.g., validate inventory)
 ```
@@ -502,7 +502,7 @@ let generateCommand = async (payload) => {
 - **[Aggregate](/app/components/aggregate)** - Receives commands from CommandGenerator
 - **[CommandTopic](./commandtopic.md)** - Receives generated commands for delivery
 - **[API](/app/graphql-api-guide)** - Defines GraphQL schema for mutations
-- **[Behavior](/app/components/aggregate#behavior)** - Defines aggregate business logic (decide, evolve)
+- **[Decision](/app/components/aggregate#decision)** - Defines aggregate business logic (decide, evolve)
 - **[EventMapper](./eventmapper.md)** - Alternative command source (from events)
 
 ## AWS Implementation

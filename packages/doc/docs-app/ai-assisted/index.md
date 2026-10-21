@@ -15,7 +15,7 @@ Reventless includes a set of **AI skills** that help you build event-sourced app
 | **event-sourcing-cqrs** | Learn ES/CQRS concepts in the context of Reventless |
 | **event-modeling** | Translate Event Modeling diagrams into Reventless components |
 | **rescript** | ReScript v12 patterns and pitfall avoidance |
-| **reventless-testing** | Testing patterns (BehaviorTest DSL, E2E, mocks) |
+| **reventless-testing** | Testing patterns (DecisionTest DSL, E2E, mocks) |
 | **reventless-aws** | AWS deployment patterns (DynamoDB, Lambda, Pulumi) |
 | **reventless-context** | Pre-implementation discovery for existing codebases |
 

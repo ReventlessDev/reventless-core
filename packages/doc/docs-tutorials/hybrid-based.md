@@ -122,7 +122,7 @@ uploads while the slice reacts to inbound webhook payloads.
 ### The decision, in full
 
 Everything above is structure. This is the part that decides — `AddProduct`'s
-spec, then its behavior, as they are shipped.
+spec, then its decision, as they are shipped.
 
 The spec names what the slice reads, accepts, refuses, and emits. Note
 `consumedEvent`: it lists `CategoryAdded` and `CategoryArchived` alongside the
@@ -168,11 +168,11 @@ Two ids appear on the event, yet no annotation says which one decides storage
 placement. The framework works it out: `categoryId` also appears on
 `CategoryAdded`, which another slice writes, so it is a reference to a category,
 and `productId` is left as the product's partition key. `categoryId` stays
-queryable, which is what lets the decision read the category's events. The behavior folds those events into exactly the two facts the
+queryable, which is what lets the decision read the category's events. The decision folds those events into exactly the two facts the
 rule needs, and nothing else:
 
 ```rescript
-@@reventless.behavior
+@@reventless.decision
 
 type state = {exists: bool, liveCategoryIds: array<string>}
 
@@ -470,8 +470,8 @@ The generator maps each folder to a functor and a `Plugin.make` argument:
 
 | Folder | Generated as | `Plugin.make` argument |
 |---|---|---|
-| `Aggregate/` | `Platform.Aggregate.Make(Spec, Behavior, …)` | `~aggregates` |
-| `StateChange/` | `Platform.StateChangeSlice.Make(Spec, Behavior)` | `~stateChangeSlices` |
+| `Aggregate/` | `Platform.Aggregate.Make(Spec, Decision, …)` | `~aggregates` |
+| `StateChange/` | `Platform.StateChangeSlice.Make(Spec, Decision)` | `~stateChangeSlices` |
 | `StateViewStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `~stateViewSlices` |
 | `ReadModel/` | `Platform.ReadModel.Make(Spec, Projections)` | `~readModels` |
 | `ReadModelStream/` | `Platform.ReadModelStream.Make(Spec, Projections)` | `~readModels` |
@@ -499,8 +499,8 @@ every build — never edit it by hand:
 // AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices (Category + Product + ProductDemand — all DCB entities)
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Decision)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
   // … RenameCategory, ArchiveCategory, ChangeProductName/Description/Price, RecordProductDemand
 
   // StateViewSliceStreams (live-updating views)

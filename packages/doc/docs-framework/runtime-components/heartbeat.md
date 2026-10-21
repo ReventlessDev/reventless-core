@@ -62,7 +62,7 @@ let heartbeatHandler = Reventless.Heartbeat.makeHandler(
 )
 ```
 
-## Runtime Behavior
+## At run time
 
 The Heartbeat component operates through a simple, automated flow:
 

@@ -134,7 +134,7 @@ type commandJson = {
 ```
 
 
-## Runtime Behavior
+## At run time
 
 ### Command Publishing Flow
 

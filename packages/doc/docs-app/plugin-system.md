@@ -29,7 +29,7 @@ catalog/                          ← the plugin package
     Category/
       Aggregate/
         Category.res              ← spec   (@@reventless.spec)
-        Category_Behavior.res     ← behavior (@@reventless.behavior)
+        Category_Decision.res     ← decision (@@reventless.decision)
       ReadModel/
         Categories.res            ← spec
         Categories_Projections.res ← mappings (@@reventless.mappings)
@@ -54,10 +54,10 @@ module Platform = ReventlessAws.Platform.Make(Config)
 
 | Builder | Purpose |
 |---------|---------|
-| `Platform.Aggregate.Make(Spec, Behavior, EventMappings)` | Builds an aggregate component |
+| `Platform.Aggregate.Make(Spec, Decision, EventMappings)` | Builds an aggregate component |
 | `Platform.ReadModel.Make(Spec, Projections)` | Builds a read model component |
 | `Platform.ReadModelStream.Make(Spec, Projections)` | Builds a stream-fed read model component |
-| `Platform.StateChangeSlice.Make(Spec, Behavior)` | Builds a DCB write-side slice |
+| `Platform.StateChangeSlice.Make(Spec, Decision)` | Builds a DCB write-side slice |
 | `Platform.StateViewSliceStream.Make(Spec, Projection)` | Builds a DCB read-side view slice |
 | `Platform.AutomationSlice.Make(Spec, Automation)` | Builds a DCB automation slice |
 | `Platform.InboundTranslationSlice.Make(Spec, Translation)` | Builds a DCB inbound translation slice |

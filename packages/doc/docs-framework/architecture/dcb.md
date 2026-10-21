@@ -55,10 +55,10 @@ from it), `authorizationOf` with the `role` type its rule names, and
 `readConsistency` — all injected by `@@reventless.spec` with defaults, so a spec
 file states only its types.
 
-**`StateChangeSlice.Behavior`** — the pure state machine over that spec:
+**`StateChangeSlice.Decision`** — the pure state machine over that spec:
 
 ```rescript
-module type Behavior = {
+module type Decision = {
   module Spec: Spec
   type state
   let initialState: state
@@ -77,7 +77,7 @@ in place of `decide`.
 
 The split exists so the types can be shared without the state machine: the
 generated composition root, the GraphQL schema, and the tag extraction all need
-`Spec` alone, and only the command handler needs `Behavior`.
+`Spec` alone, and only the command handler needs `Decision`.
 
 ## Wiring
 
@@ -85,7 +85,7 @@ The plugin generator writes the composition root, so a slice is registered by
 existing on disk:
 
 ```rescript
-module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
+module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Decision)
 
 let make = () =>
   Platform.Plugin.make(
@@ -192,9 +192,9 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
    - **Scalar tags only** (e.g., `itemId: @s.matches(DcbTag.string) string`) → single AND clause (standard single-entity query)
    - **Tagged array fields** (e.g., `productId: array<@s.matches(DcbTag.string) string>`) → per-element OR clauses (cross-entity query for commands referencing multiple entities)
 2. Queries the event log: `dcbEventLog.readStream(~query)`
-3. Folds those events into the decision state with `Behavior.evolve`, starting
-   from `Behavior.initialState`
-4. Calls `Behavior.decide(state, command)` to produce new events or an error
+3. Folds those events into the decision state with `Decision.evolve`, starting
+   from `Decision.initialState`
+4. Calls `Decision.decide(state, command)` to produce new events or an error
 5. Appends with optimistic concurrency: `dcbEventLog.append(newEvents, ~condition={query, after: headPosition})`
 6. Retries up to 3 times on append conflict (position changed between read and write)
 

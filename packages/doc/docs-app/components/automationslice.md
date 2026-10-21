@@ -207,7 +207,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 The framework automatically wires the slice to the shared DcbEventLog and CommandTopic.
 
-## Runtime Behavior
+## At run time
 
 ### Two-Phase Processing
 

@@ -99,7 +99,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Build components by applying functors
   module ProductAggregate = Platform.Aggregate.Make(
     Product,           // Spec module
-    ProductBehavior,   // Behavior module
+    Product_Decision,   // Decision module
     ReventlessInfra.NoEventMappings.Make(Product)  // Event mappings
   )
 

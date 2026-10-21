@@ -45,7 +45,7 @@ no Effect, no DynamoDB — only `sury` (for JSON schema derivation via the
 ]
 ```
 
-`reventless-spec` provides `Aggregate.Spec`, `Behavior.T`, `ReadModel.Spec`,
+`reventless-spec` provides `Aggregate.Spec`, `Decision.T`, `ReadModel.Spec`,
 `Projection`, `StateChangeSlice.Spec`, `StateViewSlice.Spec`,
 `DcbEventLog.Spec`, `SideEffect.T`, `Handler.handler`, `Id`, `Message.meta`,
 `Schedule`, `EventMapping.action`, etc. — every type that describes _what
@@ -53,7 +53,7 @@ the domain does_, with no infrastructure attached.
 
 ### What goes here
 
-#### Aggregate-style: Spec + Behavior + Projections
+#### Aggregate-style: Spec + Decision + Projections
 
 **Aggregate Spec** (`Product.res`)
 
@@ -85,9 +85,9 @@ The `@schema` ppx generates `commandSchema`, `eventSchema`, and `errorSchema`
 — sury codecs used by the framework for serialisation, routing, and error
 reporting. The app developer never writes these by hand.
 
-**Aggregate Behavior** (`ProductBehavior.res`)
+**Aggregate Decision** (`ProductDecision.res`)
 
-The behavior module satisfies `Reventless.Behavior.T`. It implements the
+The decision module satisfies `Reventless.Decision.T`. It implements the
 state machine: how to reconstruct state from events and how to process
 commands:
 
@@ -108,7 +108,7 @@ let init = event =>
   | _ => throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
-let apply = (state, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded({name, description, price}) => {name, description, price}
   | ProductNameUpdated({name}) => {...state, name}
@@ -371,7 +371,7 @@ module Mappings = {
 | Module | Satisfies | Package |
 |---|---|---|
 | `Product.res` | `Reventless.Aggregate.Spec` | reventless-spec |
-| `ProductBehavior.res` | `Reventless.Behavior.T` | reventless-spec |
+| `ProductDecision.res` | `Reventless.Decision.T` | reventless-spec |
 | `ProductsReadModel.res` | `Reventless.ReadModel.Spec` | reventless-spec |
 | `ProductsProjections.res` | mappings via `Reventless.Projection` | reventless-spec |
 | `CatalogEventLog.res` | `Reventless.DcbEventLog.Spec` | reventless-spec |
@@ -441,13 +441,13 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ── Aggregates ─────────────────────────────────────────────────────
   module ProductAggregate = Platform.Aggregate.Make(
     Product,                                        // Aggregate.Spec
-    ProductBehavior,                                // Behavior.T
+    ProductDecision,                                // Decision.T
     ReventlessInfra.NoEventMappings.Make(Product),  // no cross-aggregate event mappings
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    CategoryBehavior,
+    CategoryDecision,
     ReventlessInfra.NoEventMappings.Make(Category),
   )
 
@@ -536,7 +536,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 | Method | Layer 1 input | Output (ReventlessInfra type) |
 |---|---|---|
-| `Platform.Aggregate.Make` | `Spec`, `Behavior`, `EventMappings` | `Aggregate.T` |
+| `Platform.Aggregate.Make` | `Spec`, `Decision`, `EventMappings` | `Aggregate.T` |
 | `Platform.ReadModel.Make` | `Spec`, `Mappings` | `ReadModel.T` |
 | `Platform.ExtensionPoint.Make` | `Mappings` | `ExtensionPoint.T` |
 | `Platform.Extension.Make` | `Mapping` | `Extension.Blueprint` |
@@ -664,7 +664,7 @@ This shows how a minimal two-aggregate plugin moves from spec to deployment.
 src/
   Aggregate/
     Item.res          ← Aggregate.Spec: command/event/error types
-    ItemBehavior.res  ← Behavior.T: state, init, apply, create, execute
+    ItemDecision.res  ← Decision.T: state, init, evolve, create, execute
   ReadModel/
     ItemsReadModel.res     ← ReadModel.Spec: state type + config
     ItemsProjections.res   ← Projection.Mapping: events → read model mutations
@@ -683,7 +683,7 @@ let name = "Item"
 @schema type error   = | ItemAlreadyExists | ItemNotFound
 ```
 
-**ItemBehavior.res**
+**ItemDecision.res**
 ```rescript
 open Reventless
 open Item
@@ -696,7 +696,7 @@ let init = event => switch event {
   | ItemCreated({name}) => {name}
   | _ => throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
 }
-let apply = (state, event) => switch event {
+let evolve = (state, event) => switch event {
   | ItemCreated({name}) | ItemRenamed({name}) => {name}
 }
 let create = (command, _ctx, err) => switch command {
@@ -748,7 +748,7 @@ open Reventless.Projection
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ItemAggregate = Platform.Aggregate.Make(
     Item,
-    ItemBehavior,
+    ItemDecision,
     ReventlessInfra.NoEventMappings.Make(Item),
   )
 

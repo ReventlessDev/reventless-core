@@ -16,7 +16,7 @@ let _ = Bus.subscribeToEvents("ProductAggrEventTopic", async (_, _, _) => {
 let _ = ReventlessLocal.TestRunner.setup()
 
 // 4. Build component
-module ProductAgg = Platform.Aggregate.Make(Product, ProductBehavior, ...)
+module ProductAgg = Platform.Aggregate.Make(Product, Product_Decision, ...)
 let agg = ProductAgg.make(~api=())
 
 // 5. Test

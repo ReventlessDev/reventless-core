@@ -116,7 +116,7 @@ module type Spec = {
 | `evolve` | `(state, event) => state` | Fold function to accumulate events into state |
 | `decide` | `(state, command) => result<events, error>` | Business logic to produce events from command |
 
-## Runtime Behavior
+## At run time
 
 ### Command Processing Flow
 

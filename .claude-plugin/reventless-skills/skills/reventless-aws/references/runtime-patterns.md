@@ -73,5 +73,5 @@ Entry point files (`.mjs`) bootstrap the Lambda handler:
 Framework code is packaged as a Lambda Layer to reduce cold start times and deployment size:
 
 - Layer contains: reventless-core, reventless-aws, rescript-aws-sdk, and all framework dependencies
-- Application Lambda only contains app-specific code (specs, behaviors, slices)
+- Application Lambda only contains app-specific code (specs, decisions, slices)
 - Layer ARN is managed via CI/CD and updated in `reventless-layer-builder`

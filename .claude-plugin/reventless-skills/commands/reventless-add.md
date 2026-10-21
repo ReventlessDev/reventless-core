@@ -12,7 +12,7 @@ Add a new component to an existing plugin or platform. Detects the current proje
 | Argument | What Gets Created |
 |----------|-------------------|
 | `plugin` | New plugin package + spec package + composition root |
-| `aggregate` | Aggregate spec + behavior + wiring in plugin |
+| `aggregate` | Aggregate spec + decision + wiring in plugin |
 | `slice` | StateChangeSlice file + wiring in plugin |
 | `readmodel` | ReadModel spec + projection mapping + wiring in plugin |
 | `viewslice` | StateViewSlice file + wiring in plugin |

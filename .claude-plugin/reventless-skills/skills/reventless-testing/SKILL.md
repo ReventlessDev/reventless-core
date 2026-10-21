@@ -2,13 +2,13 @@
 name: reventless-testing
 description: >-
   Testing patterns for Reventless applications. Use when creating tests,
-  debugging test failures, or understanding the BehaviorTest DSL,
+  debugging test failures, or understanding the Decision_GWT DSL,
   E2E test patterns, mock strategies, and Jest ESM mode gotchas.
 ---
 
 ## Purpose
 
-Provides testing patterns, templates, and debugging guidance for Reventless applications. Covers unit tests (BehaviorTest DSL, decision tests), projection tests, E2E integration tests with the local platform, and common Jest/ESM pitfalls.
+Provides testing patterns, templates, and debugging guidance for Reventless applications. Covers unit tests (Decision_GWT DSL, decision tests), projection tests, E2E integration tests with the local platform, and common Jest/ESM pitfalls.
 
 ## When to Use
 
@@ -22,7 +22,7 @@ Provides testing patterns, templates, and debugging guidance for Reventless appl
 
 | File | Content |
 |------|---------|
-| `references/behavior-test-dsl.md` | givenEvents/whenCmd/thenEvent patterns for aggregates |
+| `references/decision-test-dsl.md` | givenEvents/whenCmd/thenEvent patterns for aggregates |
 | `references/e2e-test-patterns.md` | Local platform wiring, Bus setup, async resolution |
 | `references/mock-patterns.md` | Factory functions, counter-based failure injection, reset |
 | `references/jest-esm-gotchas.md` | testPromise broken, fake timers, @jest/globals, Array.getUnsafe |

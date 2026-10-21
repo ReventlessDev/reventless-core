@@ -21,7 +21,7 @@ Skills are automatically available when working in a Reventless project. For ext
 | `rescript` | ReScript v12 patterns, sury-ppx, pitfalls |
 | `event-sourcing-cqrs` | ES/CQRS concepts for Reventless developers |
 | `event-modeling` | Event Modeling methodology → Reventless components |
-| `reventless-testing` | BehaviorTest DSL, E2E patterns, Jest ESM gotchas |
+| `reventless-testing` | Decision_GWT DSL, E2E patterns, Jest ESM gotchas |
 | `reventless-aws` | AWS deployment (DynamoDB, Lambda, Pulumi) |
 | `reventless-context` | Pre-implementation discovery for codebases |
 

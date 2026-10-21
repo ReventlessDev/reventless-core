@@ -9,7 +9,7 @@ The reventless-aws Lambda layer provides shared runtime dependencies to all Lamb
 │  Lambda Function (/var/task/)                           │
 │                                                         │
 │  index.mjs (esbuild bundle)                             │
-│    ├── user domain code (Spec, Behavior)    ← bundled   │
+│    ├── user domain code (Spec, Decision)    ← bundled   │
 │    ├── import ... from "effect/Effect"       ← external  │
 │    ├── import ... from "@reventlessdev/..." ← external  │
 │    └── import ... from "@rescript/..."       ← external  │
@@ -76,7 +76,7 @@ This distinction is critical for correct bundling:
 
 - **Absolute paths** (e.g., `/Users/.../node_modules/@reventlessdev/.../AggregateHandlerFactory.mjs`) do NOT match external patterns → esbuild follows and inlines the file. Any transitive `@reventlessdev/*` imports inside that file then become top-level externals in the output — but they resolve from `/var/task/`, not from the layer.
 
-**Rule:** framework module paths (`factoryModule`, `requestContextModule`) must be package specifiers. User domain paths (`specModulePath`, `behaviorModulePath`) are resolved to absolute paths so esbuild bundles them.
+**Rule:** framework module paths (`factoryModule`, `requestContextModule`) must be package specifiers. User domain paths (`specModulePath`, `decisionModulePath`) are resolved to absolute paths so esbuild bundles them.
 
 ### Deep Imports for `effect`
 
@@ -104,7 +104,7 @@ This applies to:
 
 1. Imports the handler factory from the layer (`@reventlessdev/reventless-aws/...`)
 2. Imports `RequestContext` from the layer (`@reventlessdev/reventless-core/...`)
-3. Imports user Spec/Behavior modules (bundled via absolute paths or user package specifiers)
+3. Imports user Spec/Decision modules (bundled via absolute paths or user package specifiers)
 4. Reads infrastructure details from environment variables (table names, queue URLs)
 5. Constructs handlers at cold start, dispatches SQS/DynamoDB events to them
 
@@ -135,7 +135,7 @@ import { createCommandTopicHandler } from "@reventlessdev/reventless-aws/src/ada
 import { Effect } from "effect/Effect";
 import * as RequestContext from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import * as Spec_0 from "/abs/path/to/ItemSpec.res.mjs";
-import * as Behavior_0 from "/abs/path/to/ItemBehavior.res.mjs";
+import * as Decision_0 from "/abs/path/to/ItemDecision.res.mjs";
 
 const runEffect = (correlationId, effect) =>
   effect
@@ -145,7 +145,7 @@ const runEffect = (correlationId, effect) =>
 const commandTopicHandlers = new Map([
   [process.env.HANDLER_0_QUEUE_ARN, createCommandTopicHandler({
     specModule: Spec_0,
-    behaviorModule: Behavior_0,
+    decisionModule: Decision_0,
     eventLogTableName: process.env.HANDLER_0_TABLE,
     queueUrl: process.env.HANDLER_0_QUEUE_URL,
   })],
@@ -158,7 +158,7 @@ export const handler = async (event, context) => {
 ```
 
 After esbuild bundling:
-- `Spec_0` and `Behavior_0` are inlined (absolute paths)
+- `Spec_0` and `Decision_0` are inlined (absolute paths)
 - `@reventlessdev/*`, `effect/Effect`, `RequestContext` remain as external imports → resolved from layer
 
 ## Lambda Runtime Integration
@@ -349,7 +349,7 @@ The layer must be rebuilt when:
 - The layer builder configuration changes
 
 The layer does NOT need rebuilding for:
-- User domain code changes (Spec, Behavior) — these are bundled into function code
+- User domain code changes (Spec, Decision) — these are bundled into function code
 - Deploy-time infrastructure changes (Pulumi resources)
 - Changes to excluded packages (build tools, testing)
 

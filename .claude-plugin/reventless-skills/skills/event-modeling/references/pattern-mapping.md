@@ -4,7 +4,7 @@
 
 | EM Pattern | EM Slice Type | Aggregate Approach | DCB Approach |
 |-----------|--------------|-------------------|-------------|
-| Command (State Change) | `STATE_CHANGE` | Aggregate (Spec + Behavior) | StateChangeSlice |
+| Command (State Change) | `STATE_CHANGE` | Aggregate (Spec + Decision) | StateChangeSlice |
 | View (State View) | `STATE_VIEW` | ReadModel + Projection | StateViewSlice |
 | Automation | `AUTOMATION` | AutomationSlice (Aggregate source), or EventMapper / Counter | AutomationSlice |
 | Inbound Translation | — | InboundTranslationSlice (`targetName` = the Aggregate), or Task (S3 trigger) | InboundTranslationSlice |
@@ -26,7 +26,7 @@ EM slices:
 
 → Reventless:
   Product.res (Spec: Add | UpdateName | UpdatePrice commands)
-  ProductBehavior.res (state machine handling all commands)
+  Product_Decision.res (state machine handling all commands)
 ```
 
 ### As DCB StateChangeSlice

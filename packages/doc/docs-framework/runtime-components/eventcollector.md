@@ -87,7 +87,7 @@ type jsonEventsHandler = array<Js.Json.t> => promise<unit>
 
 This handler receives batches of events and processes them.
 
-## Runtime Behavior
+## At run time
 
 ### Event Collection Flow
 

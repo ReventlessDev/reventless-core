@@ -288,7 +288,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-## Runtime Behavior
+## At run time
 
 ### Outgoing Event Flow
 
