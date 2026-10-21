@@ -1,7 +1,8 @@
 # Plan: a static bundle uploads what changed, in one resource
 
 **Status:** 🚧 [S1](#s1-the-deploy-workflow-takes-a-parallelism) and
-[S2](#s2-the-per-file-objects-are-retained-on-delete) built 2026-10-21.<br/>
+[S2](#s2-the-per-file-objects-are-retained-on-delete) built and deployed 2026-10-21;
+[S3](#s3-one-resource-uploads-the-directory) and [S4](#s4-docs) built.<br/>
 **Touches:** `reventless/aws` (`Plugin_Stack.makeUiBundleDistribution`), the reusable deploy
 workflow `.github/workflows/deploy-reventless-aws.yml`, the docs on deploying a UI bundle.
 
@@ -74,10 +75,18 @@ Callers change nothing: `makeUiBundleDistribution` keeps its arguments and resul
 Done when a stack that ran S2 deploys with S3 and its `pulumi up` shows one bundle resource
 updated, the site serves every file, and an update with an unchanged bundle uploads nothing.
 
+As built: `reventless/aws/src/util/Util_StaticBundleUpload.res`, reusing
+`Util_LogGroup_Adopting_Js.mjs`'s helpers for the lazily imported SDK. It compares by MD5, since
+`ListObjectsV2` returns ETags but no metadata and a single-part upload's ETag is its MD5. The
+deletion rule is `staleKeys`, tested in `tests/Util_StaticBundleUploadTest.res`. Not released
+until every stack has deployed S2.
+
 ### S4: docs
 
 The comment on `makeUiBundleDistribution`, and the deploy guide's section on UI bundles, say
 how the upload works now, and that a stack must deploy S2 before S3.
+
+As built: the comment, and `packages/doc/docs-infrastructure/ui-fragments-deployment.md`.
 
 ## Order
 
@@ -85,6 +94,13 @@ how the upload works now, and that a stack must deploy S2 before S3.
 [S2](#s2-the-per-file-objects-are-retained-on-delete) ship together. Every stack that deploys a
 bundle then runs one deploy with them before
 [S3](#s3-one-resource-uploads-the-directory) ships; [S4](#s4-docs) with S3.
+
+## What the first deploys showed
+
+With S1 and S2, a platform stack's update still took 12m51s at `--parallel 64`: every bundle
+object was updated though none had changed. The per-file objects pass the file's SHA-256 as
+`etag`, and S3 reports an MD5, so each deploy saw a difference on every object and uploaded the
+whole bundle again. S3 compares MD5 with MD5, which removes that as well.
 
 ## Risks
 

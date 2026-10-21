@@ -87,6 +87,11 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 `Platform.deployPlatform(~hostUiBundle={assetsDir, bundleVersion})` calls `Plugin_Stack.makeUiBundleDistribution` for the static SPA:
 
 - S3 bucket with public access blocked, accessed only via CloudFront OAC.
+- The bundle's files uploaded by **one** resource rather than one per file: each deploy lists the
+  bucket, puts only the files that are new or changed (sixteen at a time), and deletes files two
+  deploys old, so a page opened before the previous deploy still loads its chunks. Upgrading a
+  stack that still holds one `BucketObject` per file: deploy a release that marks them
+  `retainOnDelete` first, or that stack's bundle files are missing until its next deploy.
 - CloudFront distribution with `~spaFallback=true` (403/404 → `index.html`).
 - Ordered cache behaviors layered on top of the default `CachingOptimized` policy:
   - `/remoteEntry.js`, `/index.html`, `/config.json` use `CachingDisabled` (TTL 0).

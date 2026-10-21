@@ -114,9 +114,10 @@ let invalidateDistribution = async (~distributionId: string, ~paths: array<strin
 
 /**
  * Provision an S3 bucket + CloudFront distribution for a UI bundle. When
- * `~assetsDir` is supplied, every file under it is uploaded as a `BucketObject`
- * with the correct MIME type and an etag derived from the file's SHA-256 so
- * Pulumi only re-uploads files that actually changed. When `~spaFallback=true`,
+ * `~assetsDir` is supplied, its files are uploaded by one resource
+ * (`Util_StaticBundleUpload`) with the correct MIME type, putting only files
+ * that changed and deleting those two deploys old. A stack must have deployed
+ * the per-file objects with `retainOnDelete` before this replaces them. When `~spaFallback=true`,
  * CloudFront 403/404 responses fall back to the index document so client-side
  * routes resolve correctly on first paint.
  *
@@ -147,9 +148,7 @@ let makeUiBundleDistribution = (
 ): bundleDistribution => {
   // When stableName=true, Pulumi resource names omit bundleVersion so every
   // deploy updates the same bucket + CloudFront distribution in place. The
-  // public CloudFront domain stays the same across releases. Per-file etags
-  // still drive BucketObject diffs, and obsolete objects are removed when
-  // their Pulumi resource disappears from state.
+  // public CloudFront domain stays the same across releases.
   //
   // When false (the default), bundleVersion is baked into every resource name,
   // so each release provisions a fresh bucket + distribution — useful for
@@ -500,42 +499,39 @@ let makeUiBundleDistribution = (
     if allEntries->Array.length == 0 {
       JsError.throwWithMessage(`Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ${dir}`)
     }
-    // Drop excluded relative paths before BucketObject creation. Used so the
+    // Drop excluded relative paths before the upload. Used so the
     // host-shell deploy can skip the dev-mode `public/config.json` it ships
     // with — the explicit Platform.res BucketObject writes the production
     // config to the same S3 key and would otherwise race with the bundle
     // upload (whichever Pulumi applies last wins).
     let entries =
       allEntries->Array.filter(entry => !(excludeFiles->Array.includes(entry.relativePath)))
-    let objectEtags = entries->Array.map(entry => {
-      let obj = PulumiAws.S3.BucketObject.make(
-        ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
-        ~args={
-          bucket: bucket.id->Pulumi.Output.asInput,
-          key: Pulumi.Input.make(entry.relativePath),
-          source: Pulumi.Input.make(entry.fileAsset),
-          contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
-          cacheControl: Pulumi.Input.make(cacheControlFor(entry.relativePath)),
-          etag: Pulumi.Input.make(entry.contentHash),
-        },
-        // Retained, so the update that replaces these with one upload resource drops them from
-        // state instead of deleting the keys it has just uploaded.
-        ~opts={retainOnDelete: true},
-      )
-      obj.etag
-    })
+    // One resource for the whole directory: it puts what is new or changed and deletes what
+    // is two deploys old (`Util_StaticBundleUpload`).
+    let upload = Util_StaticBundleUpload.make(
+      ~name=name ++ "-assets",
+      ~props={
+        bucket: bucket.bucket->Pulumi.Output.asInput,
+        dir,
+        files: entries->Array.map((entry): Util_StaticBundleUpload.file => {
+          key: entry.relativePath,
+          contentType: Util.StaticBundle.contentTypeFor(entry.relativePath),
+          cacheControl: cacheControlFor(entry.relativePath),
+        }),
+      },
+    )
 
-    // Auto-invalidate CloudFront once every object is (re)uploaded. Stable-named
+    // Auto-invalidate CloudFront once the upload is done. Stable-named
     // entry files (index.html, the module-federation mf-entry-bootstrap-*.js)
     // are served by the long-TTL default cache behavior, so without this a
     // `pulumi up` lands the new bundle in S3 while CloudFront keeps serving the
-    // prior build until its TTL expires. Chained on the upload etags so it runs
+    // prior build until its TTL expires. Chained on the upload so it runs
     // AFTER the new content is in S3; `/*` is a single invalidation path (well
     // within CloudFront's free-tier monthly allowance even on frequent deploys).
     let _ =
-      (distribution.id, Pulumi.Output.all(objectEtags))
+      (distribution.id, upload.uploaded)
       ->Pulumi.Output.all2
-      ->Pulumi.Output.flatMap(((distId, _etags)) =>
+      ->Pulumi.Output.flatMap(((distId, _uploaded)) =>
         invalidateDistribution(~distributionId=distId, ~paths=["/*"])->Pulumi.Output.fromPromise
       )
   }

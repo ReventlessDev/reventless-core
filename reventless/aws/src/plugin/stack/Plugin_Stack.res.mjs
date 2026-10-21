@@ -13,6 +13,7 @@ import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
 import * as Util_StoreLayout$ReventlessAws from "../../util/Util_StoreLayout.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "../../util/Util_StaticBundle.res.mjs";
+import * as Util_StaticBundleUpload$ReventlessAws from "../../util/Util_StaticBundleUpload.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -287,19 +288,18 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       Stdlib_JsError.throwWithMessage(`Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ` + assetsDir);
     }
     let entries = allEntries.filter(entry => !excludeFiles.includes(entry.relativePath));
-    let objectEtags = entries.map(entry => new (Aws.s3.BucketObject)(name + "-asset-" + Util_StaticBundle$ReventlessAws.sanitizeName(entry.relativePath), {
-      bucket: bucket.id,
-      key: entry.relativePath,
-      source: entry.fileAsset,
-      contentType: Util_StaticBundle$ReventlessAws.contentTypeFor(entry.relativePath),
-      cacheControl: cacheControlFor(entry.relativePath),
-      etag: entry.contentHash
-    }, {
-      retainOnDelete: true
-    }).etag);
+    let upload = Util_StaticBundleUpload$ReventlessAws.make(name + "-assets", {
+      bucket: bucket.bucket,
+      dir: assetsDir,
+      files: entries.map(entry => ({
+        key: entry.relativePath,
+        contentType: Util_StaticBundle$ReventlessAws.contentTypeFor(entry.relativePath),
+        cacheControl: cacheControlFor(entry.relativePath)
+      }))
+    });
     Output$Pulumi.flatMap(Pulumi.all([
       distribution.id,
-      Pulumi.all(objectEtags)
+      upload.uploaded
     ]), param => invalidateDistribution(param[0], ["/*"]));
   }
   let distributionUrl = customDomain !== undefined ? Pulumi.output("https://" + customDomain.fqdn) : distribution.domainName.apply(d => "https://" + d);
