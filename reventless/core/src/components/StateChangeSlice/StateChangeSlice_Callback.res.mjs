@@ -17,6 +17,7 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Metrics$ReventlessCore from "../../util/Metrics.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
@@ -311,10 +312,10 @@ function Make(Spec) {
                 let err = appendResult._0;
                 let match;
                 match = typeof err !== "object" ? [
-                    "Conflict",
+                    CommandOutcome$Reventless.code("Conflict"),
                     "conflict: condition check failed"
                   ] : [
-                    "AppendFailed",
+                    CommandOutcome$Reventless.code("AppendFailed"),
                     err._0
                   ];
                 let errDetail = match[1];
@@ -329,7 +330,7 @@ function Make(Spec) {
                   return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + errDetail), () => attempt(retries - 1 | 0));
                 } else {
                   cacheInvalidate();
-                  if (errorCode === "Conflict") {
+                  if (errorCode === CommandOutcome$Reventless.code("Conflict")) {
                     Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
                   }
                   CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.msgId, {

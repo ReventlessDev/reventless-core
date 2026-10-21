@@ -151,6 +151,20 @@ describe("AppSync_SdlDecorate.stampCanonicalTypes", () => {
     expect(sdl->String.includes("type Product @canonical"))->toBe(false)
   })
 
+  testSync("leaves the rejection-cause enum identical in every source", () => {
+    let types = ReventlessCore.GraphQL_FragmentGenerator.commandResultSdlTypes->Array.join("\n\n")
+    let stamped =
+      types
+      ->AppSync_SdlDecorate.stampSharedIamTypes
+      ->AppSync_SdlDecorate.stampAllTypesCognito
+      ->AppSync_SdlDecorate.stampCanonicalTypes
+    expect(stamped)->toContain(
+      "enum CommandRejectionCause {\n  DOMAIN\n  ACCESS\n  INFRASTRUCTURE\n}",
+    )
+    expect(stamped)->toContain("type CommandRejected @aws_cognito_user_pools @aws_iam @canonical {")
+    expect(stamped)->toContain("  cause: CommandRejectionCause!")
+  })
+
   testSync("is idempotent", () => {
     let once = AppSync_SdlDecorate.stampCanonicalTypes("type PageInfo {\n  x: Int\n}")
     expect(AppSync_SdlDecorate.stampCanonicalTypes(once))->toBe(once)

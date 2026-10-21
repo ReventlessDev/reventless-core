@@ -1862,9 +1862,12 @@ module MakeWithConfig = (
         }
         switch statusByName->Dict.get(pluginPrefix) {
         | Some(Connected) => None
-        | Some(Disconnected) => Some(("PluginUnavailable", "plugin is disconnected"))
-        | Some(Inactive) => Some(("PluginInactive", "plugin is inactive"))
-        | Some(Retired) => Some(("PluginRetired", "plugin version has been retired"))
+        | Some(Disconnected) =>
+          Some((Reventless.CommandOutcome.code(PluginUnavailable), "plugin is disconnected"))
+        | Some(Inactive) =>
+          Some((Reventless.CommandOutcome.code(PluginInactive), "plugin is inactive"))
+        | Some(Retired) =>
+          Some((Reventless.CommandOutcome.code(PluginRetired), "plugin version has been retired"))
         | None => None
         }
       }

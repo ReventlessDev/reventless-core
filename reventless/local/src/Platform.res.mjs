@@ -26,6 +26,7 @@ import * as UiSlots$ReventlessLocal from "./UiSlots.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
@@ -1393,17 +1394,17 @@ function MakeWithConfig(Config) {
           return;
         case "Disconnected" :
           return [
-            "PluginUnavailable",
+            CommandOutcome$Reventless.code("PluginUnavailable"),
             "plugin is disconnected"
           ];
         case "Inactive" :
           return [
-            "PluginInactive",
+            CommandOutcome$Reventless.code("PluginInactive"),
             "plugin is inactive"
           ];
         case "Retired" :
           return [
-            "PluginRetired",
+            CommandOutcome$Reventless.code("PluginRetired"),
             "plugin version has been retired"
           ];
       }
@@ -3149,17 +3150,17 @@ function Make($star) {
           return;
         case "Disconnected" :
           return [
-            "PluginUnavailable",
+            CommandOutcome$Reventless.code("PluginUnavailable"),
             "plugin is disconnected"
           ];
         case "Inactive" :
           return [
-            "PluginInactive",
+            CommandOutcome$Reventless.code("PluginInactive"),
             "plugin is inactive"
           ];
         case "Retired" :
           return [
-            "PluginRetired",
+            CommandOutcome$Reventless.code("PluginRetired"),
             "plugin version has been retired"
           ];
       }

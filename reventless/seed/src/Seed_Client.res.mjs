@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
 
 function sleep(ms) {
@@ -327,31 +328,52 @@ async function checkAccess(t, query, label) {
 
 let commandResultSelection = `__typename
   ... on CommandAccepted { eventCount }
-  ... on CommandRejected { errorCode errorDetail }`;
+  ... on CommandRejected { errorCode errorDetail cause }`;
+
+function isInfrastructureRejection(result) {
+  return Primitive_object.equal(nodeString(result, "cause"), "INFRASTRUCTURE");
+}
+
+function describeRejection(label, tried, result) {
+  let code = Stdlib_Option.getOr(nodeString(result, "errorCode"), "unknown");
+  let detail = Stdlib_Option.getOr(nodeString(result, "errorDetail"), "none");
+  let lines = `\n  errorCode: ` + code + `\n  errorDetail: ` + detail;
+  if (isInfrastructureRejection(result)) {
+    return label + ` failed on the platform, not in the model (retryable)` + lines + `\n  gave up after ` + tried.toString() + ` attempts`;
+  } else {
+    return label + ` was rejected` + lines;
+  }
+}
 
 async function send(t, m, tolerateOpt) {
   let tolerate = tolerateOpt !== undefined ? tolerateOpt : [];
   let label = Seed_Types$ReventlessSeed.describe(m);
   let query = `mutation { r: ` + m.field + `(` + Seed_Types$ReventlessSeed.renderArgs(m.args) + `) { ` + commandResultSelection + ` } }`;
-  let data = await gql(t, query, label);
-  let result = Stdlib_Option.getOr(field(data, "r"), null);
-  let match = nodeString(result, "__typename");
-  if (match === undefined) {
-    return;
-  }
-  if (match !== "CommandRejected") {
-    return;
-  }
-  let code = Stdlib_Option.getOr(nodeString(result, "errorCode"), "unknown");
-  let detail = Stdlib_Option.getOr(nodeString(result, "errorDetail"), "none");
-  if (tolerate.includes(code)) {
-    return code;
-  }
-  throw {
-    RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-    _1: label + ` was rejected\n  errorCode: ` + code + `\n  errorDetail: ` + detail,
-    Error: new Error()
+  let attempt = async n => {
+    let data = await gql(t, query, label);
+    let result = Stdlib_Option.getOr(field(data, "r"), null);
+    let match = nodeString(result, "__typename");
+    if (match === undefined) {
+      return;
+    }
+    if (match !== "CommandRejected") {
+      return;
+    }
+    let code = Stdlib_Option.getOr(nodeString(result, "errorCode"), "unknown");
+    if (tolerate.includes(code)) {
+      return code;
+    }
+    if (isInfrastructureRejection(result) && n < 4) {
+      await sleep((250 * (1 << (n - 1 | 0)) | 0) + (Math.random() * 250 | 0) | 0);
+      return await attempt(n + 1 | 0);
+    }
+    throw {
+      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+      _1: describeRejection(label, n, result),
+      Error: new Error()
+    };
   };
+  return await attempt(1);
 }
 
 let deniedCommandCodes = [
@@ -363,6 +385,9 @@ let deniedCommandCodes = [
 function isDeniedResult(result) {
   let match = nodeString(result, "errorCode");
   let match$1 = nodeString(result, "errorDetail");
+  if (Primitive_object.equal(nodeString(result, "cause"), "ACCESS")) {
+    return true;
+  }
   if (match !== undefined && deniedCommandCodes.includes(match)) {
     return true;
   }
@@ -554,6 +579,8 @@ export {
   gql,
   checkAccess,
   commandResultSelection,
+  isInfrastructureRejection,
+  describeRejection,
   send,
   deniedCommandCodes,
   isDeniedResult,

@@ -35,14 +35,15 @@ let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
 // Returns a `CommandRejected` outcome with a fresh msgId so the GraphQL union
 // resolves consistently — matches the existing CommandResult contract.
 
-let rejectForbidden = (~field: string): JSON.t => JSON.Object(
-  Dict.fromArray([
-    ("__typename", JSON.String("CommandRejected")),
-    ("msgId", JSON.String(ReventlessCore.Message.uuid())),
-    ("errorCode", JSON.String("Forbidden")),
-    ("errorDetail", JSON.String(`Mutation.${field}: identity is not authorized`)),
-  ]),
-)
+let rejectForbidden = (~field: string): JSON.t =>
+  CommandTopic.commandOutcomeToJson(
+    Rejected({
+      msgId: ReventlessCore.Message.uuid(),
+      errorCode: Reventless.CommandOutcome.code(Forbidden),
+      errorDetail: Some(`Mutation.${field}: identity is not authorized`),
+      cause: AccessRefusal,
+    }),
+  )
 
 // -- Plugin status gate -------------------------------------------------------
 // Set by the platform after Admin.construct to wire a per-mutation lookup against
@@ -60,18 +61,16 @@ let pluginStatusGate: ref<option<string => option<(string, string)>>> = ref(None
 let setPluginStatusGate = fn => pluginStatusGate := Some(fn)
 let resetPluginStatusGate = () => pluginStatusGate := None
 
-let rejectPluginStatus = (
-  ~field: string,
-  ~errorCode: string,
-  ~detail: string,
-): JSON.t => JSON.Object(
-  Dict.fromArray([
-    ("__typename", JSON.String("CommandRejected")),
-    ("msgId", JSON.String(ReventlessCore.Message.uuid())),
-    ("errorCode", JSON.String(errorCode)),
-    ("errorDetail", JSON.String(`Mutation.${field}: ${detail}`)),
-  ]),
-)
+// The plugin, not the model, is what said no.
+let rejectPluginStatus = (~field: string, ~errorCode: string, ~detail: string): JSON.t =>
+  CommandTopic.commandOutcomeToJson(
+    Rejected({
+      msgId: ReventlessCore.Message.uuid(),
+      errorCode,
+      errorDetail: Some(`Mutation.${field}: ${detail}`),
+      cause: InfrastructureFailure,
+    }),
+  )
 
 let checkPluginStatus = (~field: string): option<JSON.t> =>
   switch pluginStatusGate.contents {

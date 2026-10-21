@@ -15,6 +15,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalker.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
@@ -254,7 +255,7 @@ function Make(Spec) {
               };
             } else {
               CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", reference, {
-                errorCode: "AppendFailed",
+                errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                 errorDetail: appendErrorDetail
               });
               return {

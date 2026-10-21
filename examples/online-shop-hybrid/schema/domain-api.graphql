@@ -253,9 +253,16 @@ type CommandPending {
 }
 
 type CommandRejected {
+  cause: CommandRejectionCause!
   errorCode: String!
   errorDetail: String
   msgId: ID!
+}
+
+enum CommandRejectionCause {
+  ACCESS
+  DOMAIN
+  INFRASTRUCTURE
 }
 
 union CommandResult = CommandAccepted | CommandPending | CommandRejected

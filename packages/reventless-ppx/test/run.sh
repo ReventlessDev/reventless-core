@@ -3271,6 +3271,57 @@ else
 fi
 rm -f "$ERROR/src/Aggregate/LegacyGwt.res"
 
+# ── The platform's rejection codes are reserved ─────────────────────────────
+#
+# A client reading only `errorCode` must be able to tell the platform's codes
+# from the model's, so a spec or decision file may not declare an error named
+# like one.
+
+echo ""
+echo "=== Test: an error variant named like a platform code raises ==="
+mkdir -p "$ERROR/src/StateChange"
+cat > "$ERROR/src/StateChange/BookSeat.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = BookSeat({seatId: string})
+
+@schema
+type event = SeatBooked({seatId: string})
+
+@schema
+type error =
+  | SeatUnknown
+  | Conflict
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "reserved error name in a spec" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q '`Conflict` is a code the platform uses for its own rejections' \
+    && echo "$OUTPUT" | grep -q 'such as `AlreadyBooked`'; then
+    pass "a spec declaring | Conflict fails the build, naming the code and a rename"
+  else
+    fail "reserved error name in a spec" "error did not name the reserved code: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/StateChange/BookSeat.res"
+
+cat > "$ERROR/src/StateChange/Shelf_Decision.res" <<'EOF'
+@@reventless.decision
+
+type error = Forbidden({reason: string})
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "reserved error name in a decision file" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q '`Forbidden` is a code the platform uses for its own rejections'; then
+    pass "a decision file declaring | Forbidden(...) fails the build"
+  else
+    fail "reserved error name in a decision file" "error did not name the reserved code: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/StateChange/Shelf_Decision.res"
+
 # ── The three removed command-edge attributes ───────────────────────────────
 #
 # Each raises rather than being ignored. A silently-dropped attribute would leave

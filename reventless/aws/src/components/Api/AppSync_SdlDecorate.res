@@ -524,6 +524,10 @@ let assertGateable = (sdl: string): string => {
 // Object types the admin source owns canonically. `interface Node` and
 // `union CommandResult` are handled structurally below (their def lines don't
 // start with `type `).
+//
+// `enum CommandRejectionCause` is left unstamped, like `SortOrder`: every source
+// emits a byte-identical copy, which the merge unions. Only object types,
+// interfaces and unions were spike-validated with `@canonical`.
 let canonicalTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
 
 let stampCanonicalTypes = (sdl: string): string =>

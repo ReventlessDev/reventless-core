@@ -609,9 +609,9 @@ describe("GraphQL_SchemaInspector", () => {
         let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
         // TestState, TestStateEdge, TestStateConnection, TestStateFilter (connection filter)
         // + TestStateRef (the reference door's projection)
-        // + CommandResult union + CommandAccepted + CommandRejected + CommandPending
-        // (auto-injected whenever the fragment emits any mutation field).
-        expect(inspection.types->Array.length)->toBe(9)
+        // + CommandResult union + CommandAccepted + CommandRejectionCause + CommandRejected
+        // + CommandPending (auto-injected whenever the fragment emits any mutation field).
+        expect(inspection.types->Array.length)->toBe(10)
         expect(inspection.mutations->Array.length)->toBe(1)
         // single Test_State(id), list Test_States(...), Test_StatesByIds(ids: [String!]!)
         // and Test_StatesRefs(ids: [ID!]!) — the by-ids read projected to a reference.

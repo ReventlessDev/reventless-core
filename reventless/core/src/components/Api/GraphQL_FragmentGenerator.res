@@ -12,6 +12,9 @@ let log = Logger.fromEnv()
 // fragments. These SDL declarations are injected into any fragment that emits
 // at least one mutation field; the stitcher dedupes by type name so
 // concatenating across plugin + admin fragments stays safe.
+//
+// `cause` says which no a rejection is: the model's (DOMAIN, `errorCode` is the
+// declared error), the caller's (ACCESS) or the platform's (INFRASTRUCTURE).
 let commandResultSdlTypes: array<string> = [
   `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
   `type CommandAccepted {
@@ -19,10 +22,16 @@ let commandResultSdlTypes: array<string> = [
   entityId: ID
   eventCount: Int!
 }`,
+  `enum CommandRejectionCause {
+  DOMAIN
+  ACCESS
+  INFRASTRUCTURE
+}`,
   `type CommandRejected {
   msgId: ID!
   errorCode: String!
   errorDetail: String
+  cause: CommandRejectionCause!
 }`,
   `type CommandPending {
   msgId: ID!

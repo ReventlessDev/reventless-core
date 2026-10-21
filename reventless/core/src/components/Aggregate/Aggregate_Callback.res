@@ -392,7 +392,7 @@ module Make = (
           ~component=Spec.name,
           ~cause=InfrastructureFailure,
           reference,
-          {errorCode: "AppendFailed", errorDetail: appendErrorDetail},
+          {errorCode: Reventless.CommandOutcome.code(AppendFailed), errorDetail: appendErrorDetail},
         )
         Error(reference)
       }

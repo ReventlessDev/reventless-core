@@ -14,13 +14,18 @@ let _ = beforeEach(() => {
 
 // Captures whatever flows through CommandTopic_Helpers.reportRejected during a test.
 let capturedRejections: ref<array<(string, CommandTopic_Helpers.rejectedResult)>> = ref([])
+let capturedCauses: ref<array<CommandTopic_Helpers.refusalCause>> = ref([])
 let capturedAccepts: ref<array<(string, CommandTopic_Helpers.acceptedResult)>> = ref([])
 
 let installChannels = () => {
   capturedRejections := []
+  capturedCauses := []
   capturedAccepts := []
   CommandTopic_Helpers.rejectedResultChannel.contents = Some(
-    (ref, info) => capturedRejections := capturedRejections.contents->Array.concat([(ref, info)]),
+    (ref, info, cause) => {
+      capturedRejections := capturedRejections.contents->Array.concat([(ref, info)])
+      capturedCauses := capturedCauses.contents->Array.concat([cause])
+    },
   )
   CommandTopic_Helpers.acceptedResultChannel.contents = Some(
     (ref, info) => capturedAccepts := capturedAccepts.contents->Array.concat([(ref, info)]),
@@ -58,6 +63,8 @@ describe("Aggregate decide-rejection propagation:", () => {
         let (ref, info) = capturedRejections.contents->Array.getUnsafe(0)
         expect(ref)->toEqual("ref-1")
         expect(info.errorCode)->toEqual("AlreadyExists")
+        // `decide` said no: the model, not the platform.
+        expect(capturedCauses.contents)->toEqual([CommandTopic_Helpers.DomainRejection])
         // No event was appended.
         expect(mock.getAll()->Array.length)->toBe(1)
       },

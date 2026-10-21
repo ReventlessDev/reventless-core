@@ -791,6 +791,9 @@ let transform (str : structure) : structure =
     else
       str
   | Some (mode, loc) ->
+    (match mode with
+     | Spec _ | Implementation (Decision, _) -> PlatformErrorCodes.check_structure str
+     | Implementation _ -> ());
     let dcb_tags = has_dcb_tags_attr str
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in

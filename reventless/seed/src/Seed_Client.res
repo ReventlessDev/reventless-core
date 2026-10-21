@@ -393,31 +393,55 @@ let checkAccess = async (t: t, ~query: string, ~label: string): access =>
 
 let commandResultSelection = `__typename
   ... on CommandAccepted { eventCount }
-  ... on CommandRejected { errorCode errorDetail }`
+  ... on CommandRejected { errorCode errorDetail cause }`
+
+/** A rejection the platform caused rather than the model: resending can succeed,
+    and nothing was appended by the attempt that failed. */
+let isInfrastructureRejection = (result: JSON.t): bool =>
+  result->nodeString("cause") == Some("INFRASTRUCTURE")
+
+/** Why a command was not accepted, worded by who said no. */
+let describeRejection = (~label: string, ~tried: int, result: JSON.t): string => {
+  let code = result->nodeString("errorCode")->Option.getOr("unknown")
+  let detail = result->nodeString("errorDetail")->Option.getOr("none")
+  let lines = `\n  errorCode: ${code}\n  errorDetail: ${detail}`
+  if result->isInfrastructureRejection {
+    `${label} failed on the platform, not in the model (retryable)${lines}\n  gave up after ${tried->Int.toString} attempts`
+  } else {
+    `${label} was rejected${lines}`
+  }
+}
 
 /**
  * Issues one command and insists it was accepted.
  *
  * `tolerate` names error codes that are an expected outcome of the domain
  * rather than a broken seed; a tolerated rejection is returned to the caller so
- * it can report on them instead of failing.
+ * it can report on them instead of failing. A rejection with cause
+ * `INFRASTRUCTURE` (contention, a failed append) is resent with backoff, like
+ * a transient GraphQL fault.
  */
 let send = async (t: t, m: mutation, ~tolerate: array<string>=[]): option<string> => {
   let label = m->describe
   let query = `mutation { r: ${m.field}(${m.args->renderArgs}) { ${commandResultSelection} } }`
-  let data = await gql(t, ~query, ~label)
-  let result = data->field("r")->Option.getOr(JSON.Encode.null)
-  switch result->nodeString("__typename") {
-  | Some("CommandRejected") =>
-    let code = result->nodeString("errorCode")->Option.getOr("unknown")
-    let detail = result->nodeString("errorDetail")->Option.getOr("none")
-    if tolerate->Array.includes(code) {
-      Some(code)
-    } else {
-      throw(Failed(`${label} was rejected\n  errorCode: ${code}\n  errorDetail: ${detail}`))
+  let rec attempt = async (n: int): option<string> => {
+    let data = await gql(t, ~query, ~label)
+    let result = data->field("r")->Option.getOr(JSON.Encode.null)
+    switch result->nodeString("__typename") {
+    | Some("CommandRejected") =>
+      let code = result->nodeString("errorCode")->Option.getOr("unknown")
+      if tolerate->Array.includes(code) {
+        Some(code)
+      } else if result->isInfrastructureRejection && n < attempts {
+        await sleep(250 * Int.shiftLeft(1, n - 1) + Int.fromFloat(Math.random() *. 250.))
+        await attempt(n + 1)
+      } else {
+        throw(Failed(describeRejection(~label, ~tried=n, result)))
+      }
+    | _ => None
     }
-  | _ => None
   }
+  await attempt(1)
 }
 
 /**
@@ -439,6 +463,7 @@ let deniedCommandCodes = ["Forbidden", "Unauthorized", "AccessDenied"]
 
 let isDeniedResult = (result: JSON.t): bool =>
   switch (result->nodeString("errorCode"), result->nodeString("errorDetail")) {
+  | _ if result->nodeString("cause") == Some("ACCESS") => true
   | (Some(code), _) if deniedCommandCodes->Array.includes(code) => true
   | (_, Some(detail)) => detail->String.toLowerCase->String.includes("not authorized")
   | _ => false

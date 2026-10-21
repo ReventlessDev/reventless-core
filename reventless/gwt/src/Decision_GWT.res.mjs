@@ -14,6 +14,7 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as ScenarioRecorder$ReventlessGwt from "./ScenarioRecorder.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
@@ -111,7 +112,7 @@ function Acting(Spec) {
       return false;
     } else {
       refusal.contents = {
-        errorCode: "Forbidden",
+        errorCode: CommandOutcome$Reventless.code("Forbidden"),
         errorDetail: Spec.name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema)) + `: the caller holds no role this command's rule admits`
       };
       return true;
@@ -165,7 +166,7 @@ function Acting(Spec) {
         TAG: "ErrorMismatch",
         expected: Object.fromEntries([[
             "errorCode",
-            "Forbidden"
+            CommandOutcome$Reventless.code("Forbidden")
           ]]),
         actual: decided,
         actualEvents: encEvents(events)
@@ -399,7 +400,7 @@ function Make(Spec) {
             return false;
           } else {
             refusal.contents = {
-              errorCode: "Forbidden",
+              errorCode: CommandOutcome$Reventless.code("Forbidden"),
               errorDetail: name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)) + `: the caller holds no role this command's rule admits`
             };
             return true;
@@ -559,7 +560,7 @@ function Make(Spec) {
           TAG: "ErrorMismatch",
           expected: Object.fromEntries([[
               "errorCode",
-              "Forbidden"
+              CommandOutcome$Reventless.code("Forbidden")
             ]]),
           actual: decided,
           actualEvents: encEvents(events)
@@ -788,7 +789,7 @@ function MakeFromAggregate(Spec) {
             return false;
           } else {
             refusal.contents = {
-              errorCode: "Forbidden",
+              errorCode: CommandOutcome$Reventless.code("Forbidden"),
               errorDetail: name + `.` + Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema)) + `: the caller holds no role this command's rule admits`
             };
             return true;
@@ -921,7 +922,7 @@ function MakeFromAggregate(Spec) {
           TAG: "ErrorMismatch",
           expected: Object.fromEntries([[
               "errorCode",
-              "Forbidden"
+              CommandOutcome$Reventless.code("Forbidden")
             ]]),
           actual: decided,
           actualEvents: encEvents(events)

@@ -44,6 +44,11 @@ let selection = `__typename
   ... on CommandAccepted { msgId entityId eventCount }
   ... on CommandRejected { msgId errorCode errorDetail }`
 
+// The same selection with `cause`, which a client opts into.
+let selectionWithCause = `__typename
+  ... on CommandAccepted { msgId entityId eventCount }
+  ... on CommandRejected { msgId errorCode errorDetail cause }`
+
 let signedIn = (groups): Reventless.Identity.t => {
   userId: "u-1",
   username: "alice",
@@ -67,7 +72,7 @@ let execute = async (~caller, source) =>
     "contextValue": contextOf(caller),
   })
 
-let runMutation = async (~status: string) =>
+let runMutation = async (~status: string, ~selection=selection) =>
   await execute(
     ~caller=Some(signedIn([])),
     `mutation {
@@ -153,6 +158,23 @@ describe("InboundTranslationSlice mutation — response envelope", () => {
     expect(published.contents->Array.length)->toBe(0)
   })
 
+  testPromise("a client selecting cause learns the model said no", async () => {
+    let result = await runMutation(~status="pending", ~selection=selectionWithCause)
+    expect(errorMessages(result))->toEqual([])
+    let node = payload(result)
+    expect(node->str("errorCode"))->toEqual(Some("TranslationFailed"))
+    expect(node->str("cause"))->toEqual(Some("DOMAIN"))
+  })
+
+  testPromise("a client not selecting cause gets exactly the fields it asked for", async () => {
+    let node = payload(await runMutation(~status="pending"))
+    expect(
+      node
+      ->JSON.Decode.object
+      ->Option.map(d => d->Dict.keysToArray->Array.toSorted(String.compare)),
+    )->toEqual(Some(["__typename", "errorCode", "errorDetail", "msgId"]))
+  })
+
   testSync("the mutation field is typed CommandResult!", () => {
     let fieldLine =
       DomainGraphQL_Server.asInterface.buildSdl()
@@ -176,7 +198,7 @@ let feedField = "Catalog_CatalogFeed"
 let runFeed = async (~caller, ~kind) =>
   await execute(
     ~caller,
-    `mutation { r: ${feedField}(kind: "${kind}", id: "x-1") { ${selection} } }`,
+    `mutation { r: ${feedField}(kind: "${kind}", id: "x-1") { ${selectionWithCause} } }`,
   )
 
 describe("InboundTranslationSlice mutation — the door", () => {
@@ -206,6 +228,7 @@ describe("InboundTranslationSlice mutation — the door", () => {
   testPromise("a caller holding none of the commands' roles is refused", async () => {
     let node = payload(await runFeed(~caller=Some(signedIn(["Ops"])), ~kind="product"))
     expect(node->str("errorCode"))->toEqual(Some("Forbidden"))
+    expect(node->str("cause"))->toEqual(Some("ACCESS"))
     expect(published.contents->Array.length)->toBe(0)
   })
 
@@ -225,6 +248,7 @@ describe("InboundTranslationSlice mutation — the door", () => {
   testPromise("the caller reaches the per-command check", async () => {
     let node = payload(await runFeed(~caller=Some(signedIn(["Merchandiser"])), ~kind="both"))
     expect(node->str("errorCode"))->toEqual(Some("Forbidden"))
+    expect(node->str("cause"))->toEqual(Some("ACCESS"))
     expect(published.contents->Array.length)->toBe(0)
   })
 })

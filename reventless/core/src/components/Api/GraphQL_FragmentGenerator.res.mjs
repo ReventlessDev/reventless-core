@@ -23,10 +23,16 @@ let commandResultSdlTypes = [
   entityId: ID
   eventCount: Int!
 }`,
+  `enum CommandRejectionCause {
+  DOMAIN
+  ACCESS
+  INFRASTRUCTURE
+}`,
   `type CommandRejected {
   msgId: ID!
   errorCode: String!
   errorDetail: String
+  cause: CommandRejectionCause!
 }`,
   `type CommandPending {
   msgId: ID!

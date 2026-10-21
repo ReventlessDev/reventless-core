@@ -285,3 +285,36 @@ describe("Seed_Client.isDenied:", () => {
     expect(Seed_Client.isDenied(errors([])))->toBe(false)
   })
 })
+
+// A rejection's `cause` says who said no. Only the platform's no is worth
+// resending; the model's is an answer, and the caller's is a refusal.
+describe("Seed_Client rejection causes:", () => {
+  let rejected = cause =>
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("__typename", JSON.Encode.string("CommandRejected")),
+        ("errorCode", JSON.Encode.string("Conflict")),
+        ("errorDetail", JSON.Encode.string("retries exhausted")),
+        ("cause", JSON.Encode.string(cause)),
+      ]),
+    )
+
+  testSync("an INFRASTRUCTURE rejection is the platform's, and retryable", () => {
+    expect(Seed_Client.isInfrastructureRejection(rejected("INFRASTRUCTURE")))->toBe(true)
+    expect(
+      Seed_Client.describeRejection(~label="Order.Place", ~tried=4, rejected("INFRASTRUCTURE")),
+    )->toContain("failed on the platform, not in the model (retryable)")
+  })
+
+  testSync("a DOMAIN rejection is the model's answer", () => {
+    expect(Seed_Client.isInfrastructureRejection(rejected("DOMAIN")))->toBe(false)
+    expect(
+      Seed_Client.describeRejection(~label="Order.Place", ~tried=1, rejected("DOMAIN")),
+    )->toContain("Order.Place was rejected")
+  })
+
+  testSync("an ACCESS rejection is a refusal whatever its code", () => {
+    expect(Seed_Client.isDeniedResult(rejected("ACCESS")))->toBe(true)
+    expect(Seed_Client.isDeniedResult(rejected("DOMAIN")))->toBe(false)
+  })
+})

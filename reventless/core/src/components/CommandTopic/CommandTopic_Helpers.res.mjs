@@ -8,7 +8,19 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+
+function refusalCauseToGraphQL(cause) {
+  switch (cause) {
+    case "DomainRejection" :
+      return "DOMAIN";
+    case "InfrastructureFailure" :
+      return "INFRASTRUCTURE";
+    case "AccessRefusal" :
+      return "ACCESS";
+  }
+}
 
 let commandOutcomeHook = {
   contents: undefined
@@ -51,7 +63,7 @@ function ownershipRefusal(verdict, component, command) {
     let isDefect = isDefectOpt !== undefined ? isDefectOpt : false;
     return {
       rejected: {
-        errorCode: "Forbidden",
+        errorCode: CommandOutcome$Reventless.code("Forbidden"),
         errorDetail: component + `.` + command + `: ` + why
       },
       isDefect: isDefect
@@ -84,7 +96,7 @@ function reportAccepted(component, reference, result) {
 }
 
 function reportRejected(component, cause, reference, result) {
-  Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result));
+  Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result, cause));
   fireCommandOutcome(component, reference, {
     TAG: "OutcomeRejected",
     errorCode: result.errorCode,
@@ -131,6 +143,10 @@ function commandOutcomeToJson(outcome) {
         [
           "errorDetail",
           Stdlib_Option.getOr(Stdlib_Option.map(outcome.errorDetail, s => (s)), null)
+        ],
+        [
+          "cause",
+          refusalCauseToGraphQL(outcome.cause)
         ]
       ]);
     case "Pending" :
@@ -177,8 +193,11 @@ async function runInlineAndCollect(jsons, handleCmds) {
   acceptedResultChannel.contents = (reference, result) => {
     acceptedResults[reference] = result;
   };
-  rejectedResultChannel.contents = (reference, result) => {
-    rejectedResults[reference] = result;
+  rejectedResultChannel.contents = (reference, result, cause) => {
+    rejectedResults[reference] = [
+      result,
+      cause
+    ];
   };
   let results = await Effect.runPromise(handleCmds(Stream.fromIterable(items)));
   acceptedResultChannel.contents = undefined;
@@ -187,22 +206,25 @@ async function runInlineAndCollect(jsons, handleCmds) {
     let msgId = cmdJson.meta.msgId;
     let match = rejectedResults[msgId];
     if (match !== undefined) {
-      let errorDetail = match.errorDetail;
+      let match$1 = match[0];
+      let errorDetail = match$1.errorDetail;
       let detail = errorDetail === "" ? undefined : errorDetail;
       return {
         TAG: "Rejected",
         msgId: msgId,
-        errorCode: match.errorCode,
-        errorDetail: detail
+        errorCode: match$1.errorCode,
+        errorDetail: detail,
+        cause: match[1]
       };
     }
-    let match$1 = results[i];
-    if (match$1 !== undefined && match$1.TAG !== "Ok") {
+    let match$2 = results[i];
+    if (match$2 !== undefined && match$2.TAG !== "Ok") {
       return {
         TAG: "Rejected",
         msgId: msgId,
-        errorCode: "Conflict",
-        errorDetail: match$1._0
+        errorCode: CommandOutcome$Reventless.code("Conflict"),
+        errorDetail: match$2._0,
+        cause: "InfrastructureFailure"
       };
     }
     let ar = Stdlib_Option.getOr(acceptedResults[msgId], {
@@ -249,6 +271,7 @@ function getHandlers(typeName) {
 }
 
 export {
+  refusalCauseToGraphQL,
   commandOutcomeHook,
   registerCommandOutcome,
   clearCommandOutcome,

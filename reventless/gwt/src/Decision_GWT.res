@@ -152,7 +152,7 @@ module Acting = (Spec: ActingSpec) => {
     } else {
       refusal :=
         Some({
-          errorCode: "Forbidden",
+          errorCode: Reventless.CommandOutcome.code(Forbidden),
           errorDetail: `${Spec.name}.${commandName(
               command,
             )}: the caller holds no role this command's rule admits`,
@@ -211,7 +211,9 @@ module Acting = (Spec: ActingSpec) => {
       Outcome.fail(
         ErrorMismatch({
           expected: JSON.Encode.object(
-            Dict.fromArray([("errorCode", JSON.Encode.string("Forbidden"))]),
+            Dict.fromArray([
+              ("errorCode", JSON.Encode.string(Reventless.CommandOutcome.code(Forbidden))),
+            ]),
           ),
           actual: decided,
           actualEvents: encEvents(events),

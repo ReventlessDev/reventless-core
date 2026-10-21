@@ -31,6 +31,14 @@ own what the command acts on (`OwnerScope.decideActing`).
 */
 type refusalCause = DomainRejection | InfrastructureFailure | AccessRefusal
 
+/** The `CommandRejectionCause` enum value a client sees for a cause. */
+let refusalCauseToGraphQL = (cause: refusalCause): string =>
+  switch cause {
+  | DomainRejection => "DOMAIN"
+  | AccessRefusal => "ACCESS"
+  | InfrastructureFailure => "INFRASTRUCTURE"
+  }
+
 /**
 What became of one command. Constructors are prefixed to stay clear of `commandOutcome`'s
 `Accepted`/`Rejected` below — that type is the producer-facing result shape (and the GraphQL
@@ -91,10 +99,9 @@ let fireCommandOutcome = (~component: string, ~reference: string, outcome: obser
 // Callback implementations call reportAccepted during inline dispatch.
 let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(None)
 
-// Sibling side-channel for domain rejections — populated by callbacks when
-// `Decision.decide` returns `Error`. Read by runInlineAndCollect to build
-// `Rejected` outcomes that carry the real error code and detail.
-let rejectedResultChannel: ref<option<(string, rejectedResult) => unit>> = ref(None)
+// Sibling side-channel for rejections, with their cause. Read by runInlineAndCollect
+// to build `Rejected` outcomes that carry the real error code, detail and cause.
+let rejectedResultChannel: ref<option<(string, rejectedResult, refusalCause) => unit>> = ref(None)
 
 /**
 Turn an `acting` verdict into the refusal a command handler reports, or `None` to let
@@ -112,7 +119,10 @@ let ownershipRefusal = (
   ~command: string,
 ): option<ownershipRefusal> => {
   let refuse = (~isDefect=false, why) => Some({
-    rejected: {errorCode: "Forbidden", errorDetail: `${component}.${command}: ${why}`},
+    rejected: {
+      errorCode: Reventless.CommandOutcome.code(Forbidden),
+      errorDetail: `${component}.${command}: ${why}`,
+    },
     isDefect,
   })
   switch verdict {
@@ -148,7 +158,7 @@ let reportRejected = (
   reference: string,
   result: rejectedResult,
 ) => {
-  rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+  rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result, cause))
   fireCommandOutcome(
     ~component,
     ~reference,
@@ -160,7 +170,7 @@ let reportRejected = (
 // without importing Adapter.res → @pulumi/pulumi. Re-exported by CommandTopic via include.
 type commandOutcome =
   | Accepted({msgId: string, entityId?: string, eventCount: int})
-  | Rejected({msgId: string, errorCode: string, errorDetail: option<string>})
+  | Rejected({msgId: string, errorCode: string, errorDetail: option<string>, cause: refusalCause})
   | Pending({msgId: string})
 
 // Serialise a commandOutcome to the JSON shape the CommandResult GraphQL union
@@ -179,13 +189,14 @@ let commandOutcomeToJson = (outcome: commandOutcome): JSON.t =>
         ("eventCount", JSON.Number(eventCount->Int.toFloat)),
       ]),
     )
-  | Rejected({msgId, errorCode, errorDetail}) =>
+  | Rejected({msgId, errorCode, errorDetail, cause}) =>
     JSON.Object(
       Dict.fromArray([
         ("__typename", JSON.String("CommandRejected")),
         ("msgId", JSON.String(msgId)),
         ("errorCode", JSON.String(errorCode)),
         ("errorDetail", errorDetail->Option.map(s => JSON.String(s))->Option.getOr(JSON.Null)),
+        ("cause", JSON.String(refusalCauseToGraphQL(cause))),
       ]),
     )
   | Pending({msgId}) =>
@@ -222,27 +233,34 @@ let runInlineAndCollect = async (
     item
   })
   let acceptedResults: dict<acceptedResult> = Dict.make()
-  let rejectedResults: dict<rejectedResult> = Dict.make()
+  let rejectedResults: dict<(rejectedResult, refusalCause)> = Dict.make()
   acceptedResultChannel.contents = Some(
     (reference, result) => acceptedResults->Dict.set(reference, result),
   )
   rejectedResultChannel.contents = Some(
-    (reference, result) => rejectedResults->Dict.set(reference, result),
+    (reference, result, cause) => rejectedResults->Dict.set(reference, (result, cause)),
   )
   let results = await handleCmds(Stream.fromIterable(items))->Effect.runPromise
   acceptedResultChannel.contents = None
   rejectedResultChannel.contents = None
   jsons->Array.mapWithIndex((cmdJson, i) => {
     let msgId = cmdJson.meta.msgId
-    // Domain rejection from Decision.decide takes precedence over both Accepted
-    // and the synthesized "Conflict" — it carries the most informative error.
+    // A reported rejection takes precedence over both Accepted and the
+    // synthesized "Conflict" — it carries the most informative error.
     switch rejectedResults->Dict.get(msgId) {
-    | Some({errorCode, errorDetail}) =>
+    | Some(({errorCode, errorDetail}, cause)) =>
       let detail = errorDetail == "" ? None : Some(errorDetail)
-      Rejected({msgId, errorCode, errorDetail: detail})
+      Rejected({msgId, errorCode, errorDetail: detail, cause})
     | None =>
       switch results->Array.get(i) {
-      | Some(Error(msg)) => Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
+      // The handler failed outright: the platform, not the model.
+      | Some(Error(msg)) =>
+        Rejected({
+          msgId,
+          errorCode: Reventless.CommandOutcome.code(Conflict),
+          errorDetail: Some(msg),
+          cause: InfrastructureFailure,
+        })
       | _ =>
         let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
         switch ar.entityId {

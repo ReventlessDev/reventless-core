@@ -139,6 +139,12 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
     )
     expect(getTypename(response))->toEqual("CommandRejected")
     expect(getErrorCode(response))->toEqual("Forbidden")
+    expect(
+      response
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("cause"))
+      ->Option.flatMap(JSON.Decode.string),
+    )->toEqual(Some("ACCESS"))
     expect(calls.contents)->toEqual([])
   })
 

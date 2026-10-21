@@ -10,6 +10,7 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as GraphQL_CallerError$ReventlessLocal from "../GraphQL_CallerError.res.mjs";
 import * as Plugin_ResolverError$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_ResolverError.res.mjs";
@@ -29,24 +30,13 @@ function extractIdentity(ctx) {
 }
 
 function rejectForbidden(field) {
-  return Object.fromEntries([
-    [
-      "__typename",
-      "CommandRejected"
-    ],
-    [
-      "msgId",
-      Message$ReventlessCore.uuid()
-    ],
-    [
-      "errorCode",
-      "Forbidden"
-    ],
-    [
-      "errorDetail",
-      `Mutation.` + field + `: identity is not authorized`
-    ]
-  ]);
+  return CommandTopic$ReventlessCore.commandOutcomeToJson({
+    TAG: "Rejected",
+    msgId: Message$ReventlessCore.uuid(),
+    errorCode: CommandOutcome$Reventless.code("Forbidden"),
+    errorDetail: `Mutation.` + field + `: identity is not authorized`,
+    cause: "AccessRefusal"
+  });
 }
 
 let pluginStatusGate = {
@@ -62,24 +52,13 @@ function resetPluginStatusGate() {
 }
 
 function rejectPluginStatus(field, errorCode, detail) {
-  return Object.fromEntries([
-    [
-      "__typename",
-      "CommandRejected"
-    ],
-    [
-      "msgId",
-      Message$ReventlessCore.uuid()
-    ],
-    [
-      "errorCode",
-      errorCode
-    ],
-    [
-      "errorDetail",
-      `Mutation.` + field + `: ` + detail
-    ]
-  ]);
+  return CommandTopic$ReventlessCore.commandOutcomeToJson({
+    TAG: "Rejected",
+    msgId: Message$ReventlessCore.uuid(),
+    errorCode: errorCode,
+    errorDetail: `Mutation.` + field + `: ` + detail,
+    cause: "InfrastructureFailure"
+  });
 }
 
 function checkPluginStatus(field) {

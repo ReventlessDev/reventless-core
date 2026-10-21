@@ -19,6 +19,17 @@ type auditRow = {
   door?: ReventlessInfra.InboundTranslationSlice.door,
 }
 
+/** A refused caller is access, a failed publish the platform; anything else is
+    the translation refusing its input. */
+let rejectionCauseOf = (errorCode: string): CommandTopic_Helpers.refusalCause =>
+  if errorCode == Reventless.CommandOutcome.code(Forbidden) {
+    AccessRefusal
+  } else if errorCode == Reventless.CommandOutcome.code(PublishFailed) {
+    InfrastructureFailure
+  } else {
+    DomainRejection
+  }
+
 /** The `CommandResult` a `receive` outcome answers with: the first target as
     `entityId` (omitted when nothing was produced), the fan-out as `eventCount`. */
 let receiveResultToOutcome = (
@@ -31,10 +42,12 @@ let receiveResultToOutcome = (
     | None => Accepted({msgId: requestId, eventCount: commandCount})
     }
   | Error({requestId, error, ?errorCode}) =>
+    let errorCode = errorCode->Option.getOr(Reventless.CommandOutcome.code(TranslationFailed))
     Rejected({
       msgId: requestId,
-      errorCode: errorCode->Option.getOr("TranslationFailed"),
+      errorCode,
       errorDetail: Some(error),
+      cause: rejectionCauseOf(errorCode),
     })
   }
 
@@ -216,7 +229,7 @@ module Make = (
             )
           ) =>
           fail(
-            ~errorCode="Forbidden",
+            ~errorCode=Reventless.CommandOutcome.code(Forbidden),
             `${Spec.name}: the caller is not authorized for every command this input translates into`,
           )
         | Ok([]) => succeed([])
@@ -225,7 +238,11 @@ module Make = (
             await publishJsons(msgs)
             succeed(pairs->Array.map(((targetId, _)) => targetId))
           } catch {
-          | exn => fail(~errorCode="PublishFailed", messageOf(exn, "publish failed"))
+          | exn =>
+            fail(
+              ~errorCode=Reventless.CommandOutcome.code(PublishFailed),
+              messageOf(exn, "publish failed"),
+            )
           }
         }
       }

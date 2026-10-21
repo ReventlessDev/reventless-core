@@ -16,6 +16,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as InboundTranslationSlice$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/InboundTranslationSlice.res.mjs";
@@ -35,6 +36,16 @@ let auditRowSchema = Sury.$schema(s => ({
   receivedAt: s.m(Sury.string),
   door: s.m(Sury.$option(InboundTranslationSlice$ReventlessInfra.doorSchema))
 }));
+
+function rejectionCauseOf(errorCode) {
+  if (errorCode === CommandOutcome$Reventless.code("Forbidden")) {
+    return "AccessRefusal";
+  } else if (errorCode === CommandOutcome$Reventless.code("PublishFailed")) {
+    return "InfrastructureFailure";
+  } else {
+    return "DomainRejection";
+  }
+}
 
 function receiveResultToOutcome(result) {
   if (result.TAG === "Ok") {
@@ -58,11 +69,13 @@ function receiveResultToOutcome(result) {
     }
   }
   let match$1 = result._0;
+  let errorCode = Stdlib_Option.getOr(match$1.errorCode, CommandOutcome$Reventless.code("TranslationFailed"));
   return {
     TAG: "Rejected",
     msgId: match$1.requestId,
-    errorCode: Stdlib_Option.getOr(match$1.errorCode, "TranslationFailed"),
-    errorDetail: match$1.error
+    errorCode: errorCode,
+    errorDetail: match$1.error,
+    cause: rejectionCauseOf(errorCode)
   };
 }
 
@@ -213,7 +226,7 @@ function Make(Spec) {
       }
       let msgs = msg$1._0;
       if (msgs.some(param => !callerAdmits(Authorization$Reventless.named(Spec.authorizationOf(Message$Reventless.variantNameOfJson(param.commandJson))), caller))) {
-        return fail("Forbidden", Spec.name + `: the caller is not authorized for every command this input translates into`);
+        return fail(CommandOutcome$Reventless.code("Forbidden"), Spec.name + `: the caller is not authorized for every command this input translates into`);
       }
       if (msgs.length === 0) {
         return succeed([]);
@@ -223,7 +236,7 @@ function Make(Spec) {
         return succeed(pairs.map(param => param[0]));
       } catch (raw_exn$1) {
         let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-        return fail("PublishFailed", messageOf(exn$1, "publish failed"));
+        return fail(CommandOutcome$Reventless.code("PublishFailed"), messageOf(exn$1, "publish failed"));
       }
     };
     let refuse = (body, errorCode, error) => failWith(Uuid.v4(), body, "Webhook", errorCode, error);
@@ -241,6 +254,7 @@ function Make(Spec) {
 export {
   auditStatusSchema,
   auditRowSchema,
+  rejectionCauseOf,
   receiveResultToOutcome,
   requestIdOf,
   takeAuditRow,

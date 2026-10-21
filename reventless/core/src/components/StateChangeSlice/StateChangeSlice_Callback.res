@@ -478,10 +478,10 @@ module Make = (
                     // which disagreed with the backends' casing).
                     let (errorCode, errDetail) = switch err {
                     | ReventlessInfra.DcbEventLog.Conflict => (
-                        "Conflict",
+                        Reventless.CommandOutcome.code(Conflict),
                         "conflict: condition check failed",
                       )
-                    | StorageFailure(msg) => ("AppendFailed", msg)
+                    | StorageFailure(msg) => (Reventless.CommandOutcome.code(AppendFailed), msg)
                     }
                     if retries > 0 {
                       // Re-seed from the just-read snapshot so the retry reads only
@@ -504,7 +504,7 @@ module Make = (
                       // A surfaced Conflict means the 3-retry loop could not absorb
                       // the contention — the operator signal for "this slice is hot"
                       // (consider sharding / async — Issue 10, §4 of the analysis).
-                      if errorCode == "Conflict" {
+                      if errorCode == Reventless.CommandOutcome.code(Conflict) {
                         Metrics.emitCount(~metric="AppendConflict", ~slice=Spec.name)
                       }
                       // Both arms here are storage, not the model: a surfaced Conflict is

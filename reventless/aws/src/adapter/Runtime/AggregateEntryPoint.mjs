@@ -84,12 +84,14 @@ function extractFieldName(event) {
   return dot >= 0 ? info.slice(dot + 1) : info;
 }
 
+// The plugin, not the model, said no: cause INFRASTRUCTURE.
 function pluginRejection(msgId, errorCode, detail) {
   return {
     __typename: "CommandRejected",
     msgId,
     errorCode,
     errorDetail: detail,
+    cause: "INFRASTRUCTURE",
   };
 }
 

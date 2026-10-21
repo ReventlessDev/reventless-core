@@ -23,6 +23,8 @@ function filter(allCommandTopics, names) {
 
 let componentType = "CommandTopic";
 
+let refusalCauseToGraphQL = CommandTopic_Helpers$ReventlessCore.refusalCauseToGraphQL;
+
 let commandOutcomeHook = CommandTopic_Helpers$ReventlessCore.commandOutcomeHook;
 
 let registerCommandOutcome = CommandTopic_Helpers$ReventlessCore.registerCommandOutcome;
@@ -60,6 +62,7 @@ let getHandlers = CommandTopic_Helpers$ReventlessCore.getHandlers;
 export {
   componentType,
   NotPublishedToChannel,
+  refusalCauseToGraphQL,
   commandOutcomeHook,
   registerCommandOutcome,
   clearCommandOutcome,
