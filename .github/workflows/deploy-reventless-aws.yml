@@ -96,6 +96,11 @@ on:
         required: false
         type: boolean
         default: false
+      pulumi-parallel:
+        description: "How many resource operations `pulumi up` runs at once (`--parallel`). Empty keeps Pulumi's own default. A platform whose static assets are many small objects deploys faster with a higher value; AWS throttling is retried."
+        required: false
+        type: string
+        default: ""
       build-ppx-from-source:
         description: "Build the reventless-ppx binary from source (via .github/actions/setup-ppx) before the deploy build, so annotated spec sources compile with the from-source PPX instead of the published per-platform binary. Only reventless-core's own example deploys set this — their checkout contains packages/reventless-ppx/src. External callers deploying their own platform must leave it false (they have no PPX source and consume the published binary)."
         required: false
@@ -708,7 +713,7 @@ jobs:
           # that timed out), refuse any other rather than orphan it, refresh.
           # From reventless-aws, so a caller of this workflow has it too.
           (cd "$DEPLOY_DIR" && pnpm exec clear-pending-creates --stack "$STACK")
-          pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive ${{ inputs.pulumi-parallel && format('--parallel {0}', inputs.pulumi-parallel) || '' }}
 
       # EventBridge allows 300 rules per bus. The plugin disconnect mechanism
       # creates one per connected plugin, so a broken delete leaks silently
@@ -1089,7 +1094,7 @@ jobs:
           fi
           # Recovery for an interrupted deploy — same as deploy-platform above.
           (cd "$DEPLOY_DIR" && pnpm exec clear-pending-creates --stack "$STACK")
-          pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi up --stack "$STACK" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive ${{ inputs.pulumi-parallel && format('--parallel {0}', inputs.pulumi-parallel) || '' }}
 
   # ---------------------------------------------------------------------------
   # Job 4: Bake the component manifest (after every plugin stack is up)

@@ -518,6 +518,9 @@ let makeUiBundleDistribution = (
           cacheControl: Pulumi.Input.make(cacheControlFor(entry.relativePath)),
           etag: Pulumi.Input.make(entry.contentHash),
         },
+        // Retained, so the update that replaces these with one upload resource drops them from
+        // state instead of deleting the keys it has just uploaded.
+        ~opts={retainOnDelete: true},
       )
       obj.etag
     })

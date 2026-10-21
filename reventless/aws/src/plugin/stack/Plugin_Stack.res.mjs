@@ -294,6 +294,8 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       contentType: Util_StaticBundle$ReventlessAws.contentTypeFor(entry.relativePath),
       cacheControl: cacheControlFor(entry.relativePath),
       etag: entry.contentHash
+    }, {
+      retainOnDelete: true
     }).etag);
     Output$Pulumi.flatMap(Pulumi.all([
       distribution.id,
