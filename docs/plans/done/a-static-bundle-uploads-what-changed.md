@@ -1,8 +1,8 @@
 # Plan: a static bundle uploads what changed, in one resource
 
-**Status:** 🚧 [S1](#s1-the-deploy-workflow-takes-a-parallelism) and
-[S2](#s2-the-per-file-objects-are-retained-on-delete) built and deployed 2026-10-21;
-[S3](#s3-one-resource-uploads-the-directory) and [S4](#s4-docs) built.<br/>
+**Status:** ✅ Built and deployed 2026-10-21: [S1](#s1-the-deploy-workflow-takes-a-parallelism)
+and [S2](#s2-the-per-file-objects-are-retained-on-delete) in `reventless-aws` 3.0.0-alpha.391,
+[S3](#s3-one-resource-uploads-the-directory) and [S4](#s4-docs) in 3.0.0-alpha.392.<br/>
 **Touches:** `reventless/aws` (`Plugin_Stack.makeUiBundleDistribution`), the reusable deploy
 workflow `.github/workflows/deploy-reventless-aws.yml`, the docs on deploying a UI bundle.
 
@@ -101,6 +101,19 @@ With S1 and S2, a platform stack's update still took 12m51s at `--parallel 64`: 
 object was updated though none had changed. The per-file objects pass the file's SHA-256 as
 `etag`, and S3 reports an MD5, so each deploy saw a difference on every object and uploaded the
 whole bundle again. S3 compares MD5 with MD5, which removes that as well.
+
+## What the switch showed
+
+On the platform stack measured above, with S1 and S2 applied:
+
+| Update | Platform `pulumi up` | Where the time went |
+|---|---|---|
+| S1 and S2 (`--parallel 64`) | 12m51s | every bundle object uploaded again (the etag mismatch) |
+| S3, the switch | 14m24s | 11 minutes dropping 232 retained objects from state, one by one; the upload resource took 12s and put 1 of 232 files |
+| After the switch | about 3 minutes expected | what the switch took outside the one-time drop |
+
+On a smaller stack the switch took 38s, its upload resource 1s, with no file put. Both sites
+served every file afterwards. The files the per-file objects held stay in the bucket, untracked.
 
 ## Risks
 
