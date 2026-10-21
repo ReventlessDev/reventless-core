@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.282 (2026-10-21)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog
+
+
+
+
+
 # 3.0.0-alpha.281 (2026-10-21)
 
 * feat!: the write-side logic module is called the decision, and a codemod moves an app over ([cb573ff](https://github.com/ReventlessDev/reventless-core/commit/cb573ff5b928c7d7f3e75988dfaa65066f8c95eb))

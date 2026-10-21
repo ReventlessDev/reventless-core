@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.286 (2026-10-21)
+
+* feat!: a state view's row key is module Id ([08c9726](https://github.com/ReventlessDev/reventless-core/commit/08c972659a3d689a39fd5e2f2026597155e92210))
+
+### BREAKING CHANGES
+
+* a state view spec declares its row key as module Id. A
+hand-written module Key in a spec under StateView/ or StateViewStream/
+fails the build with "A state view's row key is `module Id`, not
+`module Key`".
+
+
+
 # 1.0.0-alpha.285 (2026-10-21)
 
 * feat!: the write-side logic module is called the decision, and a codemod moves an app over ([cb573ff](https://github.com/ReventlessDev/reventless-core/commit/cb573ff5b928c7d7f3e75988dfaa65066f8c95eb))

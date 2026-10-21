@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.199 (2026-10-21)
+
+* feat!: a plugin structure's component definitions are read-side and write-side defs ([ea2ab69](https://github.com/ReventlessDev/reventless-core/commit/ea2ab69e928ba16d7e640e4c66ab0e9ba034fe5c))
+
+### BREAKING CHANGES
+
+* Plugin.queryableDef, Plugin.writableDef, their schemas,
+isPublicQueryable and encodeQueryableDef no longer exist; a reader names
+readSideDef, writeSideDef, isPublicReadSide and encodeReadSideDef. There
+are no aliases, so the compiler lists every reader.
+
+
+
 # 3.0.0-alpha.198 (2026-10-21)
 
 * feat!: the write-side logic module is called the decision, and a codemod moves an app over ([cb573ff](https://github.com/ReventlessDev/reventless-core/commit/cb573ff5b928c7d7f3e75988dfaa65066f8c95eb))
