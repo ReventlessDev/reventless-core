@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.200 (2026-10-21)
+
+**Note:** Version bump only for package @reventlessdev/reventless-infra
+
+
+
+
+
 # 3.0.0-alpha.199 (2026-10-21)
 
 * feat!: a plugin structure's component definitions are read-side and write-side defs ([ea2ab69](https://github.com/ReventlessDev/reventless-core/commit/ea2ab69e928ba16d7e640e4c66ab0e9ba034fe5c))

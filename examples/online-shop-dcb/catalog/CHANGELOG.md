@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.287 (2026-10-21)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog
+
+
+
+
+
 # 1.0.0-alpha.286 (2026-10-21)
 
 * feat!: a state view's row key is module Id ([08c9726](https://github.com/ReventlessDev/reventless-core/commit/08c972659a3d689a39fd5e2f2026597155e92210))

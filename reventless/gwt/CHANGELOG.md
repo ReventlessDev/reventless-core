@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.251 (2026-10-21)
+
+* feat!: a rejected command says whether the model, the access check or the platform said no ([6a8a6b0](https://github.com/ReventlessDev/reventless-core/commit/6a8a6b0f2f31e766ae26a944c23b0904e51a5865))
+
+### BREAKING CHANGES
+
+* a type error variant with one of those names fails to
+compile; rename it for what the model means, such as AlreadyBooked. On
+AWS, rebuild every plugin against this release before a client selects
+cause: a plugin built earlier answers it with a non-null error.
+
+
+
 # 1.0.0-alpha.250 (2026-10-21)
 
 * feat!: a state view's row key is module Id ([08c9726](https://github.com/ReventlessDev/reventless-core/commit/08c972659a3d689a39fd5e2f2026597155e92210))
