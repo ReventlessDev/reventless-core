@@ -718,6 +718,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-21
+- docs: the decision is the docs' word for a write-side component's logic file ([38ae6d8](https://github.com/ReventlessDev/reventless-core/commit/38ae6d827cb4908c601df925576f79fa6aa09319))
+- docs: prose and comments spell American, and check:spelling lists any British spelling left ([3899604](https://github.com/ReventlessDev/reventless-core/commit/389960431a8900520a6c5a6549d76cdcbdd733d5))
+- docs: the glossary defines chapter, section, view, error, rejection, delegate and row, and what the UI draws from a view is a page ([56c6f6a](https://github.com/ReventlessDev/reventless-core/commit/56c6f6a6a4a3d2c3cd5490b72ad8eb57f9b2cda9))
+- docs: multi-source is the word for a view fed from more than one log, and extension pages name the component, not a port ([2cd64d0](https://github.com/ReventlessDev/reventless-core/commit/2cd64d06cb6ecd5f9ddaf06fdcb902350dec6038))
 ### 2026-10-19
 - style(doc): arrows leaving an event are its orange, a lighter one ([0ec61ab](https://github.com/ReventlessDev/reventless-core/commit/0ec61ab385a7a1a7ea35b67d8da5366823716061))
 ### 2026-10-18
