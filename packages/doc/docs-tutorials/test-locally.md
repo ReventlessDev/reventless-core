@@ -35,7 +35,7 @@ The four accounts exist to show two different questions being answered
 separately. `merch` and `fulfil` both operate the shop, but only `fulfil` reads
 orders that belong to *other* people — so only `fulfil` is exempt from
 owner-scoped reads. Sign in as `shopper` and you see your own orders and nobody
-else's; sign in as `fulfil` and you see the board.
+else's; sign in as `fulfil` and you see the board page.
 
 :::note Anonymous requests
 Without an `X-User` header the local platform falls back to an unprivileged

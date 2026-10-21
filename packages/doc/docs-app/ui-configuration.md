@@ -138,9 +138,9 @@ per-row filter cannot be built from one.
 
 | Annotation | Effect |
 |---|---|
-| `@summary` | always include this field in summary/list views |
-| `@hidden` | suppress this field from summary/list views |
-| `@groupBy` | section the list view by this field; for an enum, the declaration order is the section order |
+| `@summary` | always include this field in summaries and list pages |
+| `@hidden` | suppress this field from summaries and list pages |
+| `@groupBy` | section the list page by this field; for an enum, the declaration order is the section order |
 
 `@hidden` and `@summary` on the same field is a compile error. At most one
 `@groupBy` per record.
@@ -251,7 +251,7 @@ markers, and §5 for the deployment side that provisions the store.
 
 ### 2.9 Query capability — what the UI can filter and sort by
 
-These shape the generated GraphQL surface, and therefore what the list view can
+These shape the generated GraphQL surface, and therefore what the list page can
 offer:
 
 | Annotation | Gives the UI |
@@ -260,7 +260,7 @@ offer:
 | `@index`, `@indexSubId` | filter + order by a secondary index |
 | `@scan` | opt-in equality filter on a field with no backing index |
 | `@scanSort` | opt-in sort on a field with no backing sort key |
-| `@resolves`, `@resolvesMany` | cross-table resolvers — linked entities in the detail view |
+| `@resolves`, `@resolvesMany` | cross-table resolvers — linked entities on the detail page |
 
 An `@index` on a field that *names another entity* is worth calling out, because it
 buys more than a filter box. `@index categoryId` on a product is what lets a shell
@@ -818,7 +818,7 @@ worth reading rather than overlooked.
 **`scopedLabel` is the one key that varies per caller.** A menu label is normally
 a fact about the component, and one file can state it for everybody. "My Orders"
 is not: it is a claim about *whose* rows, and the same view answers that
-differently for a customer and for the agent working the board.
+differently for a customer and for the agent working the board page.
 
 So `label` is what the entry is called when the caller reads every row, and
 `scopedLabel` when they are narrowed to their own. It applies only where the view

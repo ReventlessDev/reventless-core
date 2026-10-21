@@ -56,7 +56,7 @@ read model channels (see [`AppSync_EventsApi.res`](https://github.com/Reventless
 | **Read-model feed** (state changes) | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?, seq, state?}` |
 | **Event-log feed** (raw events) | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
 
-AutoUI list/detail views consume the **read model feed**. The rest of this guide
+AutoUI list and detail pages consume the **read model feed**. The rest of this guide
 focuses on it; the **event-log feed** follows the same namespace/auth rules with a
 different channel root and payload.
 
@@ -211,8 +211,8 @@ delivered to a channel nobody listens to.
 | List (`AutoListView`) | `All` | `/default/Catalog-Products/*` |
 | Detail (`AutoDrillDetail`) | `Entity(id)` | `/default/Catalog-Products/<id>` |
 
-The trailing `*` wildcard matches any entity key, so a list view receives every
-row change in the read model; a detail view receives only its own entity's changes.
+The trailing `*` wildcard matches any entity key, so a list page receives every
+row change in the read model; a detail page receives only its own entity's changes.
 
 ### Change-descriptor payload (read model feed)
 

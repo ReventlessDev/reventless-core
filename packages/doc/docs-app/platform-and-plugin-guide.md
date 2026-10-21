@@ -457,9 +457,9 @@ When the target read model type is ambiguous in the `Update` callback, annotate 
 
 `ReadModelStream` is a variant of `ReadModel` whose query view also pushes
 **live updates** to subscribed browsers (live read model state-change events,
-delivered over AppSync Events — the AutoUI list/detail refresh-without-reload
+delivered over AppSync Events — the AutoUI list and detail pages' refresh-without-reload
 behavior). Use it for read models backing a
-UI list or detail that users keep open and expect to stay fresh.
+UI list or detail page that users keep open and expect to stay fresh.
 
 **Spec and projection files are identical to `ReadModel`** — same `@@reventless.spec`
 state, same `@@reventless.mappings` projection, same DSL. The only difference is
@@ -478,7 +478,7 @@ the folder name and the platform factory the generator picks.
 - The read model registers itself in `QueryDbStorage_DynamoDbStream.streamRegistry` on `make`.
 - The platform's `subscriptionInfraHook` wires a `StateTopic_AppSync` Lambda per
   registered read model that forwards stream changes into the AppSync **Events
-  API**, so any browser viewing the list/detail receives change descriptors.
+  API**, so any browser viewing the list or detail page receives change descriptors.
 
 **What it does not change:**
 
@@ -1620,7 +1620,7 @@ These aggregates:
 
 ## AutoUI
 
-Auto UI renders every plugin's panels and pages from `pluginStructure` alone — no plugin React code is needed. The host shell reads each plugin's component metadata at boot and derives list/detail views for queryables and command forms for write-sides. The optional `~uiBundleUrl` env var is an *override*: a Module-Federation bundle that replaces specific Auto UI fragments by id. Leaving it unset means every fragment renders via Auto UI.
+Auto UI renders every plugin's panels and pages from `pluginStructure` alone — no plugin React code is needed. The host shell reads each plugin's component metadata at boot and derives list and detail pages for queryables and command forms for write-sides. The optional `~uiBundleUrl` env var is an *override*: a Module-Federation bundle that replaces specific Auto UI fragments by id. Leaving it unset means every fragment renders via Auto UI.
 
 ### How it's wired
 
@@ -1681,10 +1681,10 @@ The AWS variant's `Plugin.res` is a thin retypecast over the Composition variant
 | Component | AutoUI role |
 |---|---|
 | `Aggregate` | Commands — write-side; state is internal, not queryable |
-| `ReadModel` | List / detail view — aggregate-style queryable projection |
+| `ReadModel` | List and detail pages — aggregate-style queryable projection |
 | `StateChangeSlice` | Commands — DCB write-side; independent, not linked to any specific view |
-| `StateViewSlice` | List / detail view — DCB equivalent of ReadModel |
-| `StateViewSliceStream` | List / detail view — live-updating DCB view |
+| `StateViewSlice` | List and detail pages — DCB equivalent of ReadModel |
+| `StateViewSliceStream` | List and detail pages — live-updating DCB view |
 
 Aggregates and StateChangeSlices provide command forms; ReadModels and StateViewSlices (incl. their Stream variant) provide the queryable views those forms act on. The UI resolves linkage between them at render time — there is no automatic coupling at the manifest level.
 
@@ -1702,9 +1702,9 @@ A handful of PPX annotations on aggregate / read model / state-view spec files s
 
 | Annotation | Placed on | What AutoUI does with it |
 |---|---|---|
-| `@displayName` | One or more `string` fields on a `@schema type state` | Picks the row label for list views and search results. Falls back to a non-`id` string field, then to `"id"`. (No canonical entry in the PPX guide yet.) |
+| `@displayName` | One or more `string` fields on a `@schema type state` | Picks the row label for list pages and search results. Falls back to a non-`id` string field, then to `"id"`. (No canonical entry in the PPX guide yet.) |
 | [`@id`](reventless-ppx.md#id-compositeid--partition-key-derivation) | A `string` field on a `@schema type state` | Marks the entity primary key. Used by the auto-generated query and by AutoUI's row-id wiring on per-row command forms. |
-| [`@subId`](reventless-ppx.md#subid-compositesubid--sort-key-derivation) | A `string` field on a `@schema type state` | Adds a sort-key dimension to the entity's query field, so list views can drill into a specific sort key. |
+| [`@subId`](reventless-ppx.md#subid-compositesubid--sort-key-derivation) | A `string` field on a `@schema type state` | Adds a sort-key dimension to the entity's query field, so list pages can drill into a specific sort key. |
 | [`@lifecycle`](reventless-ppx.md#lifecycle--mark-the-field-a-records-lifecycle-lives-in) | One field on a `@schema type state` | Names the field a record's lifecycle lives in. AutoUI compares this field per row against each command's from-set in `commandTransition` to decide whether to show the command. Unnecessary when the field is already named `lifecycle` — the name declares it. |
 | [`commandTransition`](reventless-ppx.md#commandtransition-the-states-a-command-applies-in) (a value, not an annotation) | A `let` beside the `@schema type command` | Hides a command on rows whose lifecycle value is not in its from-set (`Guards([…])` or `Moves([…], _)`). A command with no from-set (`Creates`, `Unrestricted`) is always shown. |
 | [`@dcbTag`](reventless-ppx.md#partitiontag-nodcbtag-dcbtag--field-level-dcb-tag-control) and family | Field-level inside command / event variants | Drives DCB tag inference. Affects which arg becomes `id: ID!` on the auto-generated GraphQL mutation. |
@@ -1721,7 +1721,7 @@ type lifecycle = Placed | Shipped | Cancelled
 @schema
 type state = {
   @id orderId: string,
-  @displayName customerId: string,    // list-view label
+  @displayName customerId: string,    // list-page label
   lifecycle: lifecycle,               // gates per-row commands
 }
 
@@ -1745,7 +1745,7 @@ let commandTransition = (command: command): Reventless.Transition.t<lifecycleSta
 }
 ```
 
-After build, AutoUI's Orders list view labels rows by `customerId`, and the per-row `…` menu shows `Ship` and `Cancel` only on `Placed` rows. `InternalRefund` is invisible to the UI.
+After build, AutoUI's Orders list page labels rows by `customerId`, and the per-row `…` menu shows `Ship` and `Cancel` only on `Placed` rows. `InternalRefund` is invisible to the UI.
 
 ---
 

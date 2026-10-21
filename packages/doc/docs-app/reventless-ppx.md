@@ -488,7 +488,7 @@ The `@noApi` annotation is stripped from the compiled output by the PPX. Filteri
 
 ### `@lifecycle` — mark the field a record's lifecycle lives in
 
-The field whose value identifies where the record is in its life: the enum a spec's `commandTransition` names its states in, the one a board draws its columns from, a progress tracker walks and a state diagram renders. AutoUI's command-menu filter reads it per row and matches it against each command's from-set (`commandDef.allowedStates`).
+The field whose value identifies where the record is in its life: the enum a spec's `commandTransition` names its states in, the one a board page draws its columns from, a progress tracker walks and a state diagram renders. AutoUI's command-menu filter reads it per row and matches it against each command's from-set (`commandDef.allowedStates`).
 
 There are two ways to declare it, and a record uses whichever fits.
 
@@ -537,9 +537,9 @@ An enum-shaped field is not automatically a candidate. A field tracking a backgr
 
 ---
 
-### `@groupBy` — section the list view by a field
+### `@groupBy` — section the list page by a field
 
-Use on a single `@schema type state` field in a ReadModel or StateViewSlice spec to mark the field the UI's list view should group rows by. AutoUI's list view renders the read model's rows in sections keyed on the annotated field, ordered by the field's `enum` declaration order when the field is an enum.
+Use on a single `@schema type state` field in a ReadModel or StateViewSlice spec to mark the field the UI's list page should group rows by. AutoUI's list page renders the read model's rows in sections keyed on the annotated field, ordered by the field's `enum` declaration order when the field is an enum.
 
 ```rescript
 @@reventless.spec
@@ -982,7 +982,7 @@ type state = {
 
 The constructor form takes no argument, and it is a compile error if the field holding the enum carries `@retired` as well. It is also a compile error if no field of `type state` holds the enum, or if two fields do. Use the field form, `@retired(Deactivated)`, when the enum is declared in another file, where this file's PPX cannot reach its constructors.
 
-**Reach for the state form whenever the record has a lifecycle at all**, and the reason is what it does to commands. Without it, a record whose retirement is part of its life carries the same fact twice — once as the boolean the query layer filters on, once as a value of the enum that board columns, group sections, the progress tracker and `commandTransition` are all expressed in terms of. Two sources of one truth, free to drift, with no rule keeping them in step.
+**Reach for the state form whenever the record has a lifecycle at all**, and the reason is what it does to commands. Without it, a record whose retirement is part of its life carries the same fact twice — once as the boolean the query layer filters on, once as a value of the enum that board-page columns, group sections, the progress tracker and `commandTransition` are all expressed in terms of. Two sources of one truth, free to drift, with no rule keeping them in step.
 
 With one field, the spec's `commandTransition` decides which commands a retired row still offers, with no new annotation at all:
 

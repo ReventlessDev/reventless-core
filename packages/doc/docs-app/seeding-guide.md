@@ -110,11 +110,11 @@ verify by resetting and re-running, then diffing a dump of every view.
 
 ## 5. Shape the data deliberately
 
-Volume alone demonstrates nothing. A board with every card in one column, a
+Volume alone demonstrates nothing. A board page with every card in one column, a
 leaderboard with a flat line, or a dashboard reading zero everywhere is as
 uninformative as an empty grid. Decide the shape:
 
-- **Status mixes that read on a board.** Check what your domain actually allows.
+- **Status mixes that read on a board page.** Check what your domain actually allows.
   If an automation moves every entity out of its initial state immediately, that
   state is unreachable and no seed can show it — the fix is in the domain, not
   the seeder.

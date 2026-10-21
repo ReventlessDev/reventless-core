@@ -58,6 +58,23 @@ words sit near it without meaning it:
 
 Nothing in the framework declares, stores or checks a business capability.
 
+## Chapter
+
+A grouping band inside a plugin: the first folder under `src/` that is not a kind
+folder, so `src/Order/StateChange/PlaceOrder.res` puts `PlaceOrder` in the `Order`
+chapter, and a component placed directly under a kind folder has none. The
+generated `Plugin.res` lists every component's chapter, and every component
+definition carries it as `chapter`, so the platform's component-definitions API
+and the UI manifest publish it. The generated UI groups a plugin's components by
+it. The [DCB](#dcb-dynamic-consistency-boundary) partition inference reads it as
+well: when several ids are left as a slice's [partition key](#partition-key), the
+ids every event written in the slice's chapter carries break the tie, so moving a
+slice into another chapter can move its partition. See
+[DCB usage](/app/dcb-usage).
+
+Not a [section](#section), which names a list page's row groups and a part of a
+document.
+
 ## Clock
 
 The framework source an AutomationSlice maps to receive its schedules' firings.
@@ -92,7 +109,8 @@ payload-less.
 
 The ephemeral state a write-side component builds by replaying the events
 relevant to one command, folding them with `evolve` from `initialState`. It is
-never stored: it is rebuilt per command, used by `decide`, and discarded.
+never stored: it is rebuilt per command, used by `decide`, and discarded. Its
+read-side counterpart, which *is* stored, is a view's [row](#row).
 
 ## DCB (Dynamic Consistency Boundary)
 
@@ -103,6 +121,15 @@ nothing having changed underneath it. The consistency boundary is per command,
 not per entity — which is what lets one entity's decision depend on another's
 events. See [What is a DCB?](/app/concepts/dcb).
 
+## Delegate
+
+The local component an [extension point](#extension-point) or
+[extension](#extension) stands in for, declared as `module Delegate` in its
+mapping. On the publishing side, an extension point's delegate is the component
+whose events it translates into published events; on the consuming side, an
+extension's delegate is the component it sends commands to. The GWT kind that
+tests both mappings is `Delegate_GWT`.
+
 ## Domain trait
 
 A package holding a [competency](#competency): the rules as a module your host
@@ -110,6 +137,13 @@ imports and calls, while the types stay yours. Adopting one is a graft — the
 trait emits components and prints the relays only you can write — so fixing a
 rule is a release of the trait rather than an edit to every host that copied it.
 See [Domain Traits](./domain-traits.md).
+
+## Error
+
+In a spec, `type error` lists the named reasons `decide` rejects a command with,
+returned as `Error(CategoryNotFound)`. An error is not a failure: returning one
+is the model working. The outcome a client sees is a [rejection](#rejection).
+Plain-language surfaces may call a declared error a *refusal*.
 
 ## Extension
 
@@ -187,8 +221,15 @@ infrastructure.
 
 The deployable unit of a Reventless application, grouping related components and
 their infrastructure. Plugins are independently versioned and communicate only
-through extension points and extensions. See
+through extension points and extensions. In domain-driven design terms a plugin
+is a bounded context: its own model, its own event log, no tables shared with
+another plugin. Plain-language surfaces may call it "a separate system". See
 [Plugin component](/app/components/plugin).
+
+The platform's own *Plugin aggregate*, with the *Plugins read model* beside it,
+is the registry of plugins: it records each plugin's registration, versions and
+status (connected, disconnected, inactive, retired). The capitalized name refers
+to that component, not to the kind.
 
 ## PPX
 
@@ -200,14 +241,32 @@ states its types and almost nothing else. See
 
 ## Projection
 
-A mapping from one event type to a read model state update. Projections are pure:
-`event × state → state`. A read model composes several of them.
+The function that folds one event into a [view](#view)'s [row](#row), the same in
+both styles: `event × state → state`, and pure. A
+[ReadModel](#readmodel) holds one per source event, a
+[StateViewSlice](#stateviewslice) one in total.
 
 ## ReadModel
 
-A query-side projection of events into a queryable store. Read models consume
-events from an event collector and project them into a QueryDb. See
-[ReadModel component](/app/components/readmodel).
+The aggregate-style [view](#view). A read model consumes events from an event
+collector, folds each into a [row](#row) with that event's
+[projection](#projection), and stores the rows in a QueryDb that its GraphQL
+queries read. See [ReadModel component](/app/components/readmodel).
+
+## Rejection
+
+The outcome a client sees when a command does not go through: a
+`CommandRejected` result with an `errorCode`. Most often the cause is a declared
+[error](#error) that `decide` returned; the platform also rejects a command the
+caller may not send (`Forbidden`) and one it could not record (`AppendFailed`,
+`Conflict`). A plain-language *refusal* is a declared error.
+
+## Row
+
+The stored record of a [view](#view), one per key: its spec's `type state`. A
+[projection](#projection) folds events into it, and the view's queries return
+it. The same `type state` in a write-side component is the
+[decision model](#decision-model), which is rebuilt per command and never stored.
 
 ## Schedule
 
@@ -221,6 +280,13 @@ mapping's `reschedule`. The slice keeps its schedules as rows, and the platform'
 
 The platform's part that fires at a time: EventBridge Scheduler on AWS, timers
 locally. It knows only *when*; what a firing means is the slice's.
+
+## Section
+
+A list page's row groups, keyed by the field a view's state marks `@groupBy`
+(see [`@groupBy`](/app/reventless-ppx#groupby--section-the-list-page-by-a-field)),
+and in prose a part of a document. Not a [chapter](#chapter), which groups a
+plugin's components.
 
 ## Slice
 
@@ -249,8 +315,8 @@ built from tag-filtered events and appends new ones. See
 
 ## StateViewSlice
 
-A read-only DCB slice, consuming tag-filtered events to build a view used for
-queries or validation. See
+The DCB-style [view](#view): a read-only slice consuming tag-filtered events into
+[rows](#row) its queries return. See
 [StateViewSlice component](/app/components/stateviewslice).
 
 ## Sury
@@ -274,3 +340,11 @@ slices' events live in one log and still be queried apart. See
 ## Tick
 
 The event the [Clock](#clock) delivers when one of a slice's schedules comes due.
+
+## View
+
+A read-side component: a [ReadModel](#readmodel) or a
+[StateViewSlice](#stateviewslice). In the platform API its definition is a
+*read-side def* (`Platform_ReadSideDef`); the plugin structure's ReScript type is
+still `queryableDef`. What the generated UI draws from a view is a page: its list
+page, detail page or board page.

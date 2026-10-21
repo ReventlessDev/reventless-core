@@ -45,7 +45,7 @@ What can go wrong?
 
 What views do users need?
 
-> "Users need a list of all products with name and price. A detail view showing full product info."
+> "Users need a list of all products with name and price. A detail page showing full product info."
 
 ## 7. Cross-Plugin Communication
 
