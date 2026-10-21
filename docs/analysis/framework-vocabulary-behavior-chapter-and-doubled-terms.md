@@ -1,7 +1,7 @@
 # Framework vocabulary: one chapter per term
 
-**Status:** Analysis, 2026-10-19 (first version 2026-10-18). Nothing renamed yet. The open
-decisions are listed in [§14](#14-decisions).
+**Status:** Analysis, 2026-10-21 (first version 2026-10-18). Nothing renamed yet. The open
+decisions are listed in [§15](#15-decisions).
 
 **Relates to:** [event-terminology-disambiguation.md](event-terminology-disambiguation.md)
 (the earlier pass over "event" and "handler"),
@@ -25,18 +25,19 @@ The terms, and the short answers:
 
 | Chapter | Term today | Question | Answer |
 |---|---|---|---|
-| [§3](#3-behavior-or-decision) | behavior | call the write-side logic module the *decision*? | yes, with a compatibility window |
+| [§3](#3-behavior-or-decision) | behavior | call the write-side logic module the *decision*? | yes, as a hard rename with loud refusals and a codemod, no aliases |
 | [§4](#4-chapter-or-section) | chapter | say *section* for a plugin's grouping band? | no, keep *chapter*; *section* is taken |
 | [§5](#5-plugin-or-system) | plugin | call the deployable unit a *system*? | no, keep *plugin*; gloss it where plain words are needed |
-| [§6](#6-id-or-key-for-a-views-row-key) | `Key` / `Id` | one name for a view's row key? | yes, `Id` |
-| [§7](#7-rejected-or-refused) | refused | what does *refused* mean? | the platform's no; *rejected* is the domain's no |
-| [§8](#8-event-handler-or-invocation-handler) | `eventHandler` | the runtime's handler of platform payloads? | `invocationHandler`, as proposed before |
-| [§9](#9-multi-source-or-mixed-source) | mixed-source | the docs' word for a view fed by several sources? | *multi-source*, the code's word |
-| [§10](#10-terms-that-need-a-definition-not-a-rename) | delegate, port, piece, … | undefined or stray words | glossary entries and doc edits |
-| [§12](#12-spelling) | behaviour / behavior | which spelling? | American throughout |
+| [§6](#6-view-queryable-or-read-side) | queryable, read side, view | one umbrella word for ReadModel and StateViewSlice? | *view* in words, *read side* in the code; what the UI draws is a *page* |
+| [§7](#7-id-or-key-for-a-views-row-key) | `Key` / `Id` | one name for a view's row key? | yes, `Id` |
+| [§8](#8-error-rejection-and-refusal) | error, rejected, refused | the words for a command that does not go through? | keep *error* for the declared reason; `thenRefused` becomes `thenForbidden`; a client should be told the cause |
+| [§9](#9-event-handler-or-invocation-handler) | `eventHandler` | the runtime's handler of platform payloads? | `invocationHandler`, as proposed before |
+| [§10](#10-multi-source-or-mixed-source) | mixed-source | the docs' word for a view fed by several sources? | *multi-source*, the code's word |
+| [§11](#11-terms-that-need-a-definition-not-a-rename) | delegate, port, piece, … | undefined or stray words | glossary entries and doc edits |
+| [§13](#13-spelling) | behaviour / behavior | which spelling? | American throughout |
 
 Most of what the sweep found beyond these is deliberate layering, listed in
-[§11](#11-deliberate-layering-leave-alone) so nobody re-opens it.
+[§12](#12-deliberate-layering-leave-alone) so nobody re-opens it.
 
 ---
 
@@ -46,7 +47,7 @@ Counts come from a search over `reventless/*/src`, `examples/`, `traits/`,
 `packages/reventless-ppx/src`, `packages/doc`, and `docs/`, excluding `node_modules`, `lib`, and
 compiled `.res.mjs` files. They are rough and meant to show weight, not to be exact. Each
 chapter follows the same shape: what the term names today, the alternatives, pros and cons, and
-a recommendation. A term that only needs a definition gets a row in [§10](#10-terms-that-need-a-definition-not-a-rename)
+a recommendation. A term that only needs a definition gets a row in [§11](#11-terms-that-need-a-definition-not-a-rename)
 instead of a chapter.
 
 Two rules shaped the recommendations:
@@ -117,7 +118,7 @@ What already says *decision*:
 What else *behavior* means here: ten docs pages have a "Runtime Behavior" heading about how a
 component acts at run time, the AWS stack has `orderedCacheBehaviors` (CloudFront's word), and
 comments say "the deployment's behaviour". The spelling is split too, 570 *behaviour* against
-580 *behavior* ([§12](#12-spelling)).
+580 *behavior* ([§13](#13-spelling)).
 
 ### 3.2 Alternatives
 
@@ -125,8 +126,8 @@ comments say "the deployment's behaviour". The spelling is split too, 570 *behav
 |---|---|---|
 | **Decision**: `_Decision.res`, `@@reventless.decision`, `Decision.T`, `Decision_GWT` | "the AddProduct decision" | Recommended. A noun for what the file holds, like `_Projection` and `_Translation`; lines up with *decision model* and *decision query*. |
 | **Decider**: `_Decider.res`, `Decider.T` | "the AddProduct decider" | Names the pattern exactly, but it would be the only agent noun among the body suffixes (`_Projection`, not `_Projector`). Name the pattern in the glossary, do not use it as the suffix. |
-| **Keep Behavior** | as today | Costs nothing now and keeps paying the three-words toll (behavior, decision model, decide). Defensible only if no other rename is planned, because the compatibility window is the expensive part and is best shared. |
-| **Logic** or **Handler**: `_Logic.res`, `_Handler.res` | "the AddProduct handler" | *Handler* is already the runtime's word for a dispatch entry ([§8](#8-event-handler-or-invocation-handler)); *logic* says nothing a reader can act on. |
+| **Keep Behavior** | as today | Costs nothing now and keeps paying the three-words toll (behavior, decision model, decide). Defensible only if the toll is judged smaller than one breaking release for every consumer. |
+| **Logic** or **Handler**: `_Logic.res`, `_Handler.res` | "the AddProduct handler" | *Handler* is already the runtime's word for a dispatch entry ([§9](#9-event-handler-or-invocation-handler)); *logic* says nothing a reader can act on. |
 | Rename the `StateChange/` folder to `Decision/` as well | `Decision/AddProduct.res` | No. *State Change*, *State View*, *Automation* and *Translation* are the established slice names of the modelling method the framework follows, and the folder word names the kind, not the file. |
 | Rename `evolve` to `apply` or `fold` | | No. `evolve` is the decider pattern's own word and is consistent across aggregate and slice. |
 
@@ -152,36 +153,66 @@ comments say "the deployment's behaviour". The spelling is split too, 570 *behav
   logic). After the rename, "the AddProduct decision" names the slice in conversation and
   `AddProduct_Decision.res` names its logic file. The two readings nest rather than conflict, but
   the docs must say so once.
-- `@@reventless.behavior` is in every downstream application's source. A window where both
-  spellings compile is needed, and the PPX must be republished in lockstep with the core packages
-  (the drill in [ppx-republish-single-commit.md](../plans/done/ppx-republish-single-commit.md)).
+- `@@reventless.behavior` is in every downstream application's source, so the rename is a
+  breaking change for each of them, and the PPX must be republished in lockstep with the core
+  packages (the drill in [ppx-republish-single-commit.md](../plans/done/ppx-republish-single-commit.md)).
+  [§3.5](#35-a-hard-rename-with-loud-refusals-not-aliases) explains why this is handled with
+  refusals rather than aliases.
 
 ### 3.4 Recommendation
 
 Rename *behavior* to *decision* everywhere it names the write-side logic module, as one
-coordinated change:
+coordinated change with no aliases. The old spellings are refused loudly, each with a message
+that says what to change:
 
 1. **Spec and core.** `Behavior.res` becomes `Decision.res` with `module type T` unchanged in
-   shape; `Reventless.Behavior` stays as a deprecated alias (`module Behavior = Decision`) for
-   one release window. `ComponentKind.bodySuffixes` gains `_Decision` and keeps `_Behavior` so the
-   stem-collision check still sees both.
-2. **PPX.** `@@reventless.decision` is the new attribute; `@@reventless.behavior` is accepted
-   and rewritten with a deprecation warning that names the file. The GWT inference accepts
-   `Decision` and `Behavior` as kind words and `_Decision` / `_Behavior` as filename hints. The
-   sidecar's kind label becomes `"Decision"`. Republish the PPX with the core packages.
-3. **Generator.** Pair a spec with `_Decision` first, then `_Behavior`; emit an information line
-   when it used the old suffix.
-4. **GWT.** `Decision_GWT` with `Behavior_GWT` as an alias module.
+   shape. No `module Behavior = Decision` alias: a reference to `Reventless.Behavior` fails to
+   compile and the compiler names the missing module. `ComponentKind.bodySuffixes` replaces
+   `_Behavior` with `_Decision`.
+2. **PPX.** `@@reventless.decision` is the new attribute. `@@reventless.behavior` is a compile
+   error: "renamed to `@@reventless.decision`; rename the file to `<Spec>_Decision.res`", the way
+   `@status` is refused naming `@lifecycle`. The GWT inference reads `Decision` as the kind word
+   and `_Decision` as the filename hint, and refuses `Behavior_GWT` with the same kind of message.
+   The sidecar's kind label becomes `"Decision"`. Republish the PPX with the core packages.
+3. **Generator.** Pairs a spec with `_Decision.res`. A `_Behavior.res` beside a spec is an error
+   naming the file and the new name, never a silent second component.
+4. **GWT.** `Decision_GWT` replaces `Behavior_GWT`. No alias module.
 5. **AWS runtime builders.** `behaviorPath` → `decisionPath`, the runtime JSON key
    `behaviorModule` → `decisionModule`. These are written and read by the same deploy, so no
    stored data changes and no migration is needed.
 6. **Examples, traits, the platform's own files.** `git mv` every `_Behavior.res` and update its
    attribute. Run the golden checks in the same commit.
-7. **Docs.** Glossary: replace *Behavior* with *Decision* and say it implements the decider
-   pattern; keep a one-line *Behavior (former name)* entry for a window. Rename the "Runtime
-   Behavior" headings to "At run time". Update the file-naming table in
-   [app-developer.md](../../.claude/rules/app-developer.md).
-8. **Remove the aliases** after the window, in a `feat!` commit.
+7. **A codemod for downstream applications.** A small script that renames every `_Behavior.res`
+   to `_Decision.res`, swaps the attribute, and replaces `Behavior_GWT` and `Reventless.Behavior`
+   references, so a consumer's bump is one command plus a build. Ship it with the release and
+   name it in the refusal messages.
+8. **Docs.** Glossary: replace *Behavior* with *Decision* and say it implements the decider
+   pattern, with one line saying it was called *Behavior* before. Rename the "Runtime Behavior"
+   headings to "At run time". Update the file-naming table in
+   [app-developer.md](../../.claude/rules/app-developer.md). The commit is `feat!`.
+
+### 3.5 A hard rename with loud refusals, not aliases
+
+An alias keeps the old name compiling for a while, so consumers can move at their own pace. It
+is not needed here:
+
+- **Every known consumer moves on purpose.** Applications pin published core versions, so a
+  hard rename reaches them only when they bump, and the bump can carry their rename. The
+  packages are still prereleases, where breaking changes are expected.
+- **Nothing persisted carries the word.** No committed golden, lifecycle model or schema
+  mentions `Behavior`. The runtime's `behaviorModule` key is written and read by one deploy, and
+  the GWT sidecars are regenerated on every build. No data needs a migration.
+- **The old spelling fails loudly, never silently.** A refusal names the new spelling and the
+  codemod; without it, the missing `open Spec` alone would stop the file compiling. Nobody can
+  ship a plugin that quietly lost its decisions.
+- **An alias tends to stay.** The slice-folder rename kept every old folder spelling accepted,
+  and they are all still accepted. A removal step that depends on someone remembering it is one
+  that rarely happens, and until it does every reader meets both names.
+
+The case for aliases would be external users on published prerelease versions who cannot be
+reached and cannot move in one step. If such users appear before the rename lands, add an alias
+for `Behavior.T` and `Behavior_GWT` only, with a removal date in the release notes, and keep the
+PPX and generator refusals as they are.
 
 ---
 
@@ -343,9 +374,106 @@ If the word is ever revisited, *context* is the only alternative with more preci
 
 ---
 
-## 6. Id or Key for a view's row key
+## 6. View, queryable or read side
 
-### 6.1 Today
+### 6.1 What the read side is called today
+
+The framework has two read-side kinds, `ReadModel` (aggregate style) and `StateViewSlice` (DCB
+style). Each kind keeps its own name, and that is deliberate
+([§12](#12-deliberate-layering-leave-alone)). The trouble is the word for *both*, which has four
+names:
+
+| Where | Name | Its write-side partner |
+|---|---|---|
+| ReScript types in the plugin structure | `queryableDef`, with `isPublicQueryable`, `internalQueryables`, `encodeQueryableDef` (about 70 hits) | `writableDef` |
+| The platform API schema | `Platform_ReadSideDef`, on `readModels`, `stateViewSlices` and `internalQueryables` | `Platform_WriteSideDef`, and the field `linkedWriteSide` |
+| The AWS component-definitions handler | `readSideCollections`, `readSideHeal` | — |
+| Prose, comments, the docs, and many identifiers | *view*: "no view lists it", "the view's rows", `linkedViews`, `identityViews`, about 220 mentions in the app docs | — |
+
+The glossary has no entry for any of them, and the two entries it does have are circular:
+
+- [*Projection*](../../packages/doc/docs-app/glossary.md#projection): "a mapping from one event
+  type to a read model state update. A read model composes several of them."
+- [*ReadModel*](../../packages/doc/docs-app/glossary.md#readmodel): "a query-side projection of
+  events into a queryable store."
+
+So a projection is part of a read model, and a read model is a projection. A third entry,
+[*StateViewSlice*](../../packages/doc/docs-app/glossary.md#stateviewslice), says its view is
+"used for queries or validation". No mechanism in the spec, the core component, or the component
+docs uses a state view for validation: a DCB state-change slice validates by reading its own
+consumed events. The "or validation" is a leftover.
+
+*View* is also the word for what the generated UI draws from a view: "list view" (about 36
+mentions in the docs), "detail view" (about 15), "board". So the docs can end up writing "the
+list view of the Products view". The docs say "list page" and "detail page" only about ten
+times, and plain-language surfaces built on the framework already call it a "generated page".
+
+Other uses of *view* are external and already qualified: DynamoDB's `streamViewType`, CloudFront's
+viewer settings, and the host configuration's `viewModes`, which chooses whether a page shows
+its rows as a list or a map.
+
+### 6.2 Alternatives for the umbrella word
+
+| Option | Verdict |
+|---|---|
+| **View** | Recommended as the word in prose and the glossary. It is already the prose winner, it is the modelling method's word (the view slice, the green box), and it pairs with *decision* on the write side. Its one collision, the UI's "list view", is resolved by calling what the UI draws a page ([§6.4](#64-recommendation)). |
+| **Read side** | Recommended as the word in identifiers. It is the CQRS term every developer knows, the platform API already uses it with its write-side partner, and it names the half of the architecture a definition belongs to, which is what a type name needs. As a word for one component it reads badly ("a read side lists products"), so it is not the prose word. |
+| **Queryable** | The current ReScript name. Precise, but an adjective used as a noun, nobody says it, and it pairs with *writable*, which describes nothing a reader knows. |
+| **Read model** | The aggregate-style kind's own name. Using it for both kinds would make every "ReadModel" ambiguous between the kind and the umbrella, which is the problem this chapter is solving. |
+| **Projection** | The function inside a view, not the view. Using it for the component is what made the glossary circular. |
+| **Query** | The GraphQL operation a view answers, not the view. |
+
+### 6.3 Pros and cons
+
+**For view in words and read side in code**
+
+- One word in prose that already wins, matches the modelling method, and pairs with *decision*:
+  decisions on the write side, views on the read side.
+- One name in code that already exists on the wire. Aligning the ReScript types to the API
+  schema changes no field and no type a client selects, so no consumer's query breaks.
+- *Projection* gets one meaning back: the fold from an event into a view's row, the same in both
+  styles.
+- Calling the UI's drawings *pages* removes the only real collision and matches the word
+  plain-language surfaces use already.
+
+**Against**
+
+- Two words for one idea, *view* in prose and *read side* in code. The split is defensible
+  because each is the natural word in its place, and the glossary says so in one line, but it
+  is a split.
+- *Read side* is a CQRS term a non-developer will not know. That is acceptable because it only
+  appears in identifiers.
+- The type rename reaches the other packages that read the plugin structure, about ten files
+  outside the framework packages, on their next bump.
+- *Page* is a new docs word for something the docs have called a view for a long time. About 50
+  mentions move.
+
+### 6.4 Recommendation
+
+1. **Glossary.** Add *View*: "a read-side component, a ReadModel or a StateViewSlice; in the code
+   and the platform API its definition is a *read-side def*". Rewrite *Projection* as "the
+   function that folds one event into a view's row, `event × state → state`, in both styles; a
+   ReadModel holds one per source event, a StateViewSlice one in total". Rewrite *ReadModel* as
+   "the aggregate-style view" without calling it a projection. Drop "or validation" from
+   *StateViewSlice*.
+2. **Code.** Rename `queryableDef` to `readSideDef` and `writableDef` to `writeSideDef`, with
+   `isPublicQueryable` and `encodeQueryableDef` following. This is source only, a hard rename
+   like [§3.5](#35-a-hard-rename-with-loud-refusals-not-aliases): the compiler names every place.
+   Leave the API schema's `Platform_ReadSideDef` and `Platform_WriteSideDef` as they are, since
+   they already have the right names, and leave the wire field `internalQueryables` alone: renaming
+   it is a breaking change for a field name alone.
+3. **Pages, not views, for what the UI draws.** In the docs, the list view, detail view and board
+   of a view become its *list page*, *detail page* and *board page*, and "a view's pages" is the
+   collective. Leave identifiers alone, including `viewModes`: it names how a page shows its
+   rows, and it is a host configuration key on the wire.
+4. **Leave the components alone.** `ReadModel`, `StateViewSlice` and the `StateView/` folder keep
+   their names.
+
+---
+
+## 7. Id or Key for a view's row key
+
+### 7.1 Today
 
 A read model's row key is `module Id: Id.T`
 ([`ReadModel.res`](../../reventless/spec/src/components/ReadModel.res) line 174). A state view's
@@ -355,49 +483,126 @@ the PPX injects `module Key = Reventless.Id.StringPure` into a `StateView/` file
 reason for the difference: `@@reventless.spec` injects a `module Id` into every spec file for the
 *component's* identity, and the state view needed a second name for the *row's*.
 
-### 6.2 Alternatives and verdict
+### 7.2 What the collision check found
+
+`@@reventless.spec` injects `module Id = Reventless.Id.String` into every spec file that does not
+declare one ([`ReventlessPpx.ml`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) line
+263). A `StateView/` file therefore holds **both** modules today: the generic `Id`, then the row
+key `Key` the same pass injects at line 897. A compiled state view spec exports both. So a
+straight rename of `Key` to `Id` would collide.
+
+The generic `Id` on a state view is dead weight, though. Nothing reads it:
+[`StateViewSlice.Spec`](../../reventless/spec/src/components/StateViewSlice.res) does not
+require it, and the core builder and callback, the GWT projection DSL and both runtimes reach the
+row key only through `Spec.Key`. In a read model the same injected `Id` *is* the row key,
+which is why the read model needs no second name.
+
+Five views in the examples declare their row key by hand, `module Key = OrderId` and the like.
+
+### 7.3 Alternatives and verdict
 
 | Option | Verdict |
 |---|---|
-| **`Id` on both** | Recommended if the injected component `Id` does not collide; check this first. The read model's `Id` already lives with that injection, which suggests it does not. |
-| **`Key` on both** | The fallback if it does collide. Rename the read model's instead; same cost, and *key* is the storage word (partition key, sort key), which the row key is. |
+| **`Id` on both, and the PPX stops injecting the generic `Id` into `StateView/` files** | Recommended. A state view then has one identity module, the row key, under the same name as a read model's. The PPX injects `module Id = Reventless.Id.StringPure` where it injects `Key` today, and a hand-written `module Id = OrderId` suppresses it, as `Key` does now. |
+| **`Key` on both** | Works without touching the injection, but renames the read model's `Id`, which every read model spec and its builders use, and leaves the dead generic `Id` on every state view. |
 | Leave as is | Every doc that explains the row key has to say "Id, or Key on a state view". |
 
-Either way, keep the other name as an alias for one window, and let the PPX inject the new one.
+No alias: a hand-written `module Key` in a `StateView/` file is refused with a message naming
+`module Id`, as in [§3.5](#35-a-hard-rename-with-loud-refusals-not-aliases). The build that
+drops the generic injection is the proof that nothing read it.
 
 ---
 
-## 7. Rejected or refused
+## 8. Error, rejection and refusal
 
-### 7.1 Today
+### 8.1 Today
 
-*Refused* means three things:
+When a command does not go through, the framework uses three words, and two of them mean more
+than one thing.
+
+**The domain's no.** A decision declines a command by returning one of the reasons its spec
+declares. The reason and the outcome have different words, and that layering is sound:
+
+| Role | Word | Where |
+|---|---|---|
+| The declared reason | *error* | `@schema type error` in 55 specs, `decide` returning ReScript's built-in `Error(CategoryNotFound)`, the test step `thenError` (222 uses), the wire's `errorCode` |
+| The outcome | *rejection* | the wire's `CommandRejected`, the handler's `DomainRejection` |
+
+**Refused** means three things:
 
 | Where | Meaning |
 |---|---|
-| [`CommandTopic_Helpers.res`](../../reventless/core/src/components/CommandTopic/CommandTopic_Helpers.res) line 32 | the umbrella `refusalCause = DomainRejection \| InfrastructureFailure \| AccessRefusal` |
-| [`Behavior_GWT.res`](../../reventless/gwt/src/Behavior_GWT.res) line 278, `thenRefused` | access refusal only (the caller may not act); a domain rejection is `thenError` |
+| [`CommandTopic_Helpers.res`](../../reventless/core/src/components/CommandTopic/CommandTopic_Helpers.res) line 32 | the umbrella over every no, `refusalCause = DomainRejection \| InfrastructureFailure \| AccessRefusal` |
+| [`Behavior_GWT.res`](../../reventless/gwt/src/Behavior_GWT.res) line 278, `thenRefused` (63 uses) | access refusal only: the caller may not act. The PPX records it as sidecar kind `forbidden` |
 | [`CheckLifecycleModel.res`](../../reventless/spec/src/lifecycle/CheckLifecycleModel.res) lines 598 and 649, `outcome = Refused` | a *domain* rejection, mapped from the sidecar's `"error"` kind |
 
-On the wire a command's outcome is `CommandAccepted | CommandRejected | CommandPending`, and an
-access refusal travels as `CommandRejected` with `errorCode: "Forbidden"`.
+On top of that, *refuse* is everyday prose here, about 100 times in the app docs and in the
+conventions, for any check that says no: "refused at build time", "a deploy that declares one
+the platform does not provide is refused". Plain-language surfaces built on the framework call a
+declared error a *refusal*.
 
-### 7.2 Alternatives and verdict
+**One wire outcome for every no.** A client receives `CommandRejected {errorCode, errorDetail}`
+for all three causes. The cause itself never leaves the platform. The helper's own comment says
+the cause exists "so without this a consumer would read a broken event log as a business
+rejection", but that protects only consumers inside the platform. A GraphQL client still reads a
+failed append as a rejection, because its only clue is `errorCode`, and the platform's own codes
+share that namespace with every spec's error variant names:
+
+| `errorCode` the platform puts on `CommandRejected` | Cause |
+|---|---|
+| `Forbidden` | access refusal, before `decide` runs |
+| `AppendFailed` | an event-log append the store failed, from an aggregate or a slice |
+| `Conflict` | a slice's conflict retries exhausted, or any other failure of the handler |
+
+(An inbound webhook's `Unsigned`, `InvalidBody` and `PublishFailed` are answered as HTTP statuses
+401, 400 and 503, not as `CommandRejected`, so they do not clash.)
+
+No example declares a clashing error today, but nothing stops a spec from declaring `| Conflict`,
+and then a client cannot tell "retry later" from "the model said no".
+
+### 8.2 Alternatives for the words
 
 | Option | Verdict |
 |---|---|
-| **Rejected = the domain's no, refused = the platform's no** (access, infrastructure) | Recommended. Matches the wire (`CommandRejected`, `DomainRejection`) and the GWT (`thenRefused` is access). One rename: the lifecycle harvest's `Refused` becomes `Rejected`. |
-| One word for both | Loses the distinction the GWT DSL already teaches and the umbrella type already names. |
-| *Denied* for access | `AccessDenied` is IAM's word for an infrastructure error here; keep it out of the domain layer. |
+| **Keep *error* for the declared reason, add a glossary entry** | Recommended. `decide` returns `Error(...)`, the language's own result constructor, which cannot be renamed. A type called `rejection` that is built with `Error(...)` would read worse than today. |
+| Rename `type error` to `type rejection` or `type reason` | No. It fights the language, touches every spec, every test and the wire's `errorCode`, and still leaves `Error(...)` in every `decide`. |
+| **Rename `thenRefused` to `thenForbidden`** | Recommended. It matches the wire's `errorCode: "Forbidden"` and the sidecar kind `forbidden`, so the test step, the sidecar and the wire say the same word. *Refuse* is then free to stay plain English. |
+| Make *refused* mean "the platform's no", as a rule for prose | No, which reverses this chapter's first version. *Refuse* is everyday prose for any check, and a plain-language *refusal* is a domain error, the opposite. A word used that widely cannot carry a narrow technical meaning. |
+| **Rename the lifecycle harvest's `Refused` to `Rejected`** | Recommended. It names a domain rejection, which the wire and `DomainRejection` already call a rejection. |
+| *Denied* for access | No. `AccessDenied` is IAM's word for an infrastructure error here. |
 
-Plain-language surfaces that call a declared error a *refusal* are describing a domain rejection;
-the glossary should say that *refusal* in plain words is *rejection* in the framework.
+`refusalCause` and `AccessRefusal` stay as they are: the umbrella is internal, and its arms
+already say which no they are.
+
+### 8.3 Alternatives for telling a client which no it got
+
+| Option | Verdict |
+|---|---|
+| **Add `cause: DOMAIN \| ACCESS \| INFRASTRUCTURE` to `CommandRejected`** | Recommended. Additive: an existing query keeps working, a client that selects the field can decide between showing the reason, asking the caller to sign in, and retrying. The platform already computes the cause. |
+| **Reserve the platform's codes** | Recommended with the field. The PPX refuses a spec error variant named like a platform code, so the `errorCode` namespace cannot clash even for a client that ignores `cause`. |
+| A separate `CommandFailed` member of the result union for infrastructure failures | Cleaner in the long run, but breaking for every client that handles the union exhaustively. Worth it only if a second breaking change to the result shape is planned anyway. |
+| Prefix the platform's codes (`Platform.Conflict`) | Breaking for every client that matches `Forbidden` today, and it solves the clash without telling the client the cause. |
+| Leave | A client keeps reading infrastructure failures as business rejections. |
+
+### 8.4 Recommendation
+
+1. **Glossary.** Add *Error*: "in a spec, a named reason a decision rejects a command. It is not
+   a failure: returning one is the model working. The outcome a client sees is a *rejection*."
+   Add *Rejection* beside it, and say that a plain-language *refusal* is a declared error.
+2. **GWT.** Rename `thenRefused` to `thenForbidden`, as a hard rename with a refusal message
+   like [§3.5](#35-a-hard-rename-with-loud-refusals-not-aliases). It can ride on the
+   behavior-to-decision rename, which touches the same test files and the same DSL.
+3. **Lifecycle harvest.** Rename `outcome = Refused` to `Rejected`.
+4. **The client cause.** Add the `cause` field and the reserved-code check. This changes behavior
+   and the GraphQL contract goldens, so it goes into its own plan rather than into this rename
+   work.
+5. **Prose.** *Refuse* stays plain English for any check that says no.
 
 ---
 
-## 8. Event handler or invocation handler
+## 9. Event handler or invocation handler
 
-### 8.1 Today
+### 9.1 Today
 
 [`Runtime.res`](../../reventless/core/src/adapter/Runtime/Runtime.res) line 1 still declares
 `type eventHandler<'event, 'context, 'result>` for the function a Lambda or the local runtime
@@ -406,7 +611,7 @@ invokes with its *payload*, which is not a domain event.
 `invocationHandler<'payload, …>` for it and the dispatch dictionaries renamed to `*Dispatchers`.
 None of that was applied.
 
-### 8.2 Alternatives and verdict
+### 9.2 Alternatives and verdict
 
 | Option | Verdict |
 |---|---|
@@ -416,9 +621,9 @@ None of that was applied.
 
 ---
 
-## 9. Multi-source or mixed-source
+## 10. Multi-source or mixed-source
 
-### 9.1 Today
+### 10.1 Today
 
 The GWT DSL and the code say *multi-source*
 ([`MultiSourceProjection_GWT.res`](../../reventless/gwt/src/MultiSourceProjection_GWT.res)).
@@ -427,15 +632,15 @@ The docs say *mixed-source* in two page names and their prose
 [`mixed-source-automationslice.md`](../../packages/doc/docs-app/mixed-source-automationslice.md)),
 about 20 files each way.
 
-### 9.2 Verdict
+### 10.2 Verdict
 
-*Multi-source*: rename the two pages and their prose. The identifier is the one that cannot move
-without a window, and *multi* says "several" where *mixed* hints at "of different kinds", which
+*Multi-source*: rename the two pages and their prose. Moving the identifier instead would be a
+breaking change for every test that names it, and *multi* says "several" where *mixed* hints at "of different kinds", which
 is not the point.
 
 ---
 
-## 10. Terms that need a definition, not a rename
+## 11. Terms that need a definition, not a rename
 
 | Term | Problem | Where | Fix |
 |---|---|---|---|
@@ -445,18 +650,19 @@ is not the point.
 | **`apply`**, **`handle`** in doc examples | where the framework's functions are `evolve` and `decide` | [`application-development-layers.md`](../../packages/doc/docs-framework/application-development-layers.md) lines 111 and 699, [`commandgenerator.md`](../../packages/doc/docs-framework/runtime-components/commandgenerator.md) line 86, [`rescript-syntax.md`](../../packages/doc/docs-app/rescript-syntax.md) line 119 | Four edits, with the rename in [§3.4](#34-recommendation), which touches the same pages. |
 | **Body suffix vs attribute** | `_Projections` pairs with `@@reventless.mappings`, `_Projection` with `@@reventless.projection`, `_Mappings` with `@@reventless.mappings` | [`Vocabulary.ml`](../../packages/reventless-ppx/src/ppx/Vocabulary.ml) lines 67 and 70 | Leave the names: the attribute names the shape (a list of per-source mappings, used by two file kinds) and the suffix names the output. Add the attribute column to the file-naming table so the pairing is visible. |
 | **`type state`** | the decision model in a decision module; the stored row in a queryable spec | [`StateChangeSlice.res`](../../reventless/spec/src/components/StateChangeSlice.res), [`StateViewSlice.res`](../../reventless/spec/src/components/StateViewSlice.res) | Add a glossary entry *Row* beside *Decision model*. |
-| **Refusal** (plain word) | a declared error in plain-language surfaces, a domain rejection in the framework | [§7](#7-rejected-or-refused) | Say so in the glossary's *Rejection* entry. |
+| **Refusal** (plain word) | a declared error in plain-language surfaces | [§8](#8-error-rejection-and-refusal) | Say so in the glossary's *Error* and *Rejection* entries. |
 | **GWT test suffixes** | framework tests are `*GwtTest.res`, example tests `*_GWT.res`; the PPX accepts `_GWT`, `GwtTest` and `Gwt` | [`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml), [`reventless/gwt/tests/`](../../reventless/gwt/tests/) | Leave. The framework's own tests are not the form the docs teach, and the tolerance is cheap. |
 
 ---
 
-## 11. Deliberate layering, leave alone
+## 12. Deliberate layering, leave alone
 
 Named here so the next sweep does not re-find them.
 
 - **Aggregate style and DCB style run parallel vocabularies** on purpose: `ReadModel` /
   `StateViewSlice`, `_Projections` / `_Projection`, `EventMapping` / `AutomationSlice`, and the
-  shared umbrella `queryableDef` / `writableDef` over both.
+  shared umbrella over both, today `queryableDef` / `writableDef` and after [§6.4](#64-recommendation)
+  `readSideDef` / `writeSideDef`.
 - **`StateChangeSlice` on types, `StateChange/` on folders.** Decided in
   [`ComponentKind.res`](../../reventless/spec/src/components/ComponentKind.res): the folder names
   the kind, the type keeps the suffix that distinguishes it from the aggregate. The four accepted
@@ -481,7 +687,7 @@ Named here so the next sweep does not re-find them.
 
 ---
 
-## 12. Spelling
+## 13. Spelling
 
 The prose in this repo leans British for words that are never identifiers and American for
 words that are:
@@ -508,36 +714,44 @@ run by hand before a docs commit rather than in CI.
 
 ---
 
-## 13. Order of work
+## 14. Order of work
 
 1. The behavior → decision rename ([§3.4](#34-recommendation)), as one commit plus the PPX
-   republish, with aliases. The doc-example edits of [§10](#10-terms-that-need-a-definition-not-a-rename)
-   ride on it.
+   republish, the refusals and the codemod. The doc-example edits of [§11](#11-terms-that-need-a-definition-not-a-rename)
+   and the `thenRefused` → `thenForbidden` rename ([§8.4](#84-recommendation)) ride on it, since
+   they touch the same pages, test files and DSL.
 2. The glossary entries: *Chapter* and *Section* ([§4.4](#44-recommendation)), the *Plugin*
-   extension ([§5.4](#54-recommendation)), *Delegate*, *Row*, *Rejection*
-   ([§10](#10-terms-that-need-a-definition-not-a-rename)). Small enough for one docs commit.
-3. The row key ([§6](#6-id-or-key-for-a-views-row-key)), its own commit, after the collision
-   check.
-4. The lifecycle harvest's `Refused` → `Rejected` ([§7](#7-rejected-or-refused)) and the
-   runtime's `invocationHandler` ([§8](#8-event-handler-or-invocation-handler)), one commit each.
-5. The *multi-source* page rename ([§9](#9-multi-source-or-mixed-source)) and the *port* /
+   extension ([§5.4](#54-recommendation)), *View* with the rewritten *Projection*, *ReadModel*
+   and *StateViewSlice* ([§6.4](#64-recommendation)), *Error* and *Rejection* ([§8.4](#84-recommendation)), *Delegate*, *Row*
+   ([§11](#11-terms-that-need-a-definition-not-a-rename)). Small enough for one docs commit.
+3. The *page* wording for what the UI draws ([§6.4](#64-recommendation)), docs only, its own
+   commit since it touches about 50 mentions.
+4. The `queryableDef` → `readSideDef` rename ([§6.4](#64-recommendation)), source only, its own
+   commit.
+5. The row key ([§7](#7-id-or-key-for-a-views-row-key)), its own commit, with a PPX republish.
+6. The lifecycle harvest's `Refused` → `Rejected` ([§8](#8-error-rejection-and-refusal)) and the
+   runtime's `invocationHandler` ([§9](#9-event-handler-or-invocation-handler)), one commit each.
+   The client cause on `CommandRejected` ([§8.3](#83-alternatives-for-telling-a-client-which-no-it-got))
+   is not part of this list: it changes behavior and gets a plan of its own.
+7. The *multi-source* page rename ([§10](#10-multi-source-or-mixed-source)) and the *port* /
    *piece* edits, one docs commit.
-6. The spelling pass ([§12](#12-spelling)), docs only, after the renames so the former term is
+8. The spelling pass ([§13](#13-spelling)), docs only, after the renames so the former term is
    not re-spelled first.
-7. Removal of the aliases after one release window.
 
 ---
 
-## 14. Decisions
+## 15. Decisions
 
 | Id | Question | Recommendation |
 |---|---|---|
-| D1 | Rename *behavior* to *decision*? | Yes: suffix `_Decision`, attribute `@@reventless.decision`, module `Decision.T`, DSL `Decision_GWT`, with aliases for one window ([§3.4](#34-recommendation)). |
+| D1 | Rename *behavior* to *decision*? | Yes: suffix `_Decision`, attribute `@@reventless.decision`, module `Decision.T`, DSL `Decision_GWT`; the old spellings are refused with a message, a codemod ships with the release, no aliases ([§3.4](#34-recommendation), [§3.5](#35-a-hard-rename-with-loud-refusals-not-aliases)). |
 | D2 | *Decider* or *decision* as the suffix? | *Decision*; *decider* is named in the glossary as the pattern ([§3.2](#32-alternatives)). |
 | D3 | *Chapter* or *section*? | *Chapter* everywhere a framework concept is named; *section* stays for list-view groups and document parts ([§4.4](#44-recommendation)). |
 | D4 | *Plugin* or *system*? | *Plugin*; glossary says it is a bounded context and that plain-language surfaces may gloss it as a separate system ([§5.4](#54-recommendation)). |
-| D5 | `Id` or `Key` for a view's row key? | `Id` on both, unless the injected component `Id` collides, then `Key` on both ([§6](#6-id-or-key-for-a-views-row-key)). |
-| D6 | What does *refused* mean? | The platform's no; *rejected* is the domain's no; the lifecycle harvest renames its `Refused` ([§7](#7-rejected-or-refused)). |
-| D7 | Apply the earlier `invocationHandler` proposal? | Yes ([§8](#8-event-handler-or-invocation-handler)). |
-| D8 | *Multi-source* or *mixed-source*? | *Multi-source*, in the docs ([§9](#9-multi-source-or-mixed-source)). |
-| D9 | Prose spelling? | American throughout, matching the identifiers ([§12](#12-spelling)). |
+| D5 | `Id` or `Key` for a view's row key? | `Id` on both; the PPX stops injecting the unused generic `Id` into `StateView/` files and injects the row key as `Id` ([§7.3](#73-alternatives-and-verdict)). |
+| D6 | Error, rejection and refusal? | Keep *error* for the declared reason, with a glossary entry; *rejection* is the outcome; `thenRefused` becomes `thenForbidden` and the lifecycle harvest's `Refused` becomes `Rejected`; *refuse* stays plain English ([§8.4](#84-recommendation)). |
+| D11 | Tell a client which kind of no it got? | Yes: an additive `cause` field on `CommandRejected` and the platform's error codes reserved against spec error names, in a plan of its own ([§8.3](#83-alternatives-for-telling-a-client-which-no-it-got)). |
+| D7 | Apply the earlier `invocationHandler` proposal? | Yes ([§9](#9-event-handler-or-invocation-handler)). |
+| D8 | *Multi-source* or *mixed-source*? | *Multi-source*, in the docs ([§10](#10-multi-source-or-mixed-source)). |
+| D9 | Prose spelling? | American throughout, matching the identifiers ([§13](#13-spelling)). |
+| D10 | One umbrella word for ReadModel and StateViewSlice? | *View* in prose and the glossary, *read side* in identifiers (`readSideDef`, matching the API schema); what the UI draws from a view is a *page* ([§6.4](#64-recommendation)). |
