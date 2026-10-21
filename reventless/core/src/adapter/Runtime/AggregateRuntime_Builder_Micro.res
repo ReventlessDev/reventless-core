@@ -45,7 +45,7 @@ module Make = (
   }
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     >,
     ~connect,
     ~memorySize=1024,
@@ -76,7 +76,7 @@ module Make = (
 
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,

@@ -27,7 +27,7 @@ external asEvent: 'a => event = "%identity"
 let metaInfo = event => (event->asEvent).meta->Option.map(({info}) => info)
 
 type commandGenerator = payload => Effect.t<CommandTopic.commandOutcome, unit, unit>
-type effectEventHandler<'context> = Runtime.effectHandler<
+type effectEventHandler<'context> = Runtime.effectInvocationHandler<
   payload,
   'context,
   CommandTopic.commandOutcome,

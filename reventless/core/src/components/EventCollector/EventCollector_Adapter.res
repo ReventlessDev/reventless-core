@@ -3,7 +3,7 @@ type channel<'callbackEvent, 'context, 'channelParts> = {
   resources: array<ReventlessInfra.Adapter.resource>,
   enqueueEvent: Pulumi.Output.t<EventCollector.enqueueEvent>,
   handleChannelEvent: EventCollector.jsonEventsHandler => Pulumi.Output.t<
-    Runtime.effectHandler<'callbackEvent, 'context, unit, string>,
+    Runtime.effectInvocationHandler<'callbackEvent, 'context, unit, string>,
   >,
 }
 

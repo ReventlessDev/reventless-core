@@ -18,7 +18,7 @@ module type T = {
   type runtimeParts
 
   let forBucketCallback: (
-    ~handler: Pulumi.Output.t<Runtime.eventHandler<callbackEvent, context, unit>>,
+    ~handler: Pulumi.Output.t<Runtime.invocationHandler<callbackEvent, context, unit>>,
     ~connect: Runtime.connect<runtimeParts>,
     ~memorySize: int=?,
     ~timeout: int=?,

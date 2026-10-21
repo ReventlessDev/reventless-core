@@ -19,7 +19,7 @@ module type T = {
     ~id: string,
     ~timeout: int,
     ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
-  ) => Pulumi.Output.t<Runtime.eventHandler<unit, 'context, unit>>
+  ) => Pulumi.Output.t<Runtime.invocationHandler<unit, 'context, unit>>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

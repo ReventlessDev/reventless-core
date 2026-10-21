@@ -80,7 +80,12 @@ let forCommandGenerator: ReventlessCore.Runtime.forComponent<
 }
 
 let forCommandTopic: ReventlessCore.Runtime.forComponent<
-  ReventlessCore.Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
+  ReventlessCore.Runtime.effectInvocationHandler<
+    CommandTopicChannel.callbackEvent,
+    context,
+    unit,
+    string,
+  >,
   runtimeParts,
   ReventlessCore.CommandTopic.component<'op>,
 > = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, commandTopic) => {
@@ -113,7 +118,12 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
 }
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+  ReventlessCore.Runtime.effectInvocationHandler<
+    EventCollectorChannel.callbackEvent,
+    context,
+    unit,
+    string,
+  >,
   ReventlessCore.EventCollector.component,
 > = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource

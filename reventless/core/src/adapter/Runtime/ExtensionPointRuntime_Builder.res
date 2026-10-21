@@ -5,7 +5,7 @@ module type T = {
 
   let forCommandTopic: (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     >,
     ~connect: Runtime.connect<runtimeParts>,
     ~memorySize: int=?,

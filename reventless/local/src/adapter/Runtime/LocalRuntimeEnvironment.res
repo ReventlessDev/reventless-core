@@ -20,7 +20,7 @@ external asUnitHandler: ((JSON.t, unit) => promise<'r>) => (JSON.t, unit) => pro
 
 let make = (
   ~name as _: string,
-  ~handler: Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<event, context, 'result>>,
+  ~handler: Pulumi.Output.t<ReventlessCore.Runtime.invocationHandler<event, context, 'result>>,
   ~memorySize as _=1024,
   ~timeout as _=30,
   ~opts as _=?,
@@ -62,6 +62,11 @@ let extractSentTimestamp = (_event: event) => Some(Date.now())
 // No redelivery in-process — the bus calls each handler once.
 let extractRetryCount = (_event: event) => Some(1)
 
-external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"
-external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<event, context, 'r, 'error> =
+external asEventHandler: 'a => ReventlessCore.Runtime.invocationHandler<event, context, 'r> =
   "%identity"
+external asEffectHandler: 'a => ReventlessCore.Runtime.effectInvocationHandler<
+  event,
+  context,
+  'r,
+  'error,
+> = "%identity"

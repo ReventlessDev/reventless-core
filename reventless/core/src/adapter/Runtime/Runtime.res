@@ -1,6 +1,7 @@
-type eventHandler<'event, 'context, 'result> = ('event, 'context) => promise<'result>
-type effectHandler<'event, 'context, 'result, 'error> = (
-  'event,
+// Handlers of a platform invocation (a Lambda payload), not of domain events.
+type invocationHandler<'payload, 'context, 'result> = ('payload, 'context) => promise<'result>
+type effectInvocationHandler<'payload, 'context, 'result, 'error> = (
+  'payload,
   'context,
 ) => Effect.t<'result, 'error, unit>
 
@@ -92,7 +93,7 @@ let runEffect = (
   )
   ->Effect.runPromise
 
-// Convert an effectHandler to an eventHandler at build time, annotating the
+// Convert an effectInvocationHandler to an invocationHandler at build time, annotating the
 // invocation on each call. Used by the single-component-per-Lambda strategies
 // (Micro / PerAggregate / Plugin / PerEventCollector / PerExtensionPoint), which
 // pass the Environment's `extractCorrelationId` / `extractCausationId` and the
@@ -105,8 +106,8 @@ let runEffectHandler = (
   ~extractRetryCount: option<'event => option<int>>=?,
   ~comp=?,
   ~pluginName=?,
-  handler: effectHandler<'event, 'context, 'result, 'error>,
-): eventHandler<'event, 'context, 'result> =>
+  handler: effectInvocationHandler<'event, 'context, 'result, 'error>,
+): invocationHandler<'event, 'context, 'result> =>
   (event, ctx) => {
     let extract = (f, event) =>
       switch f {
@@ -136,7 +137,7 @@ type environment<'parts> = {
 
 type environmentMaker<'event, 'context, 'result, 'parts> = (
   ~name: string,
-  ~handler: Pulumi.Output.t<eventHandler<'event, 'context, 'result>>,
+  ~handler: Pulumi.Output.t<invocationHandler<'event, 'context, 'result>>,
   ~memorySize: int=?,
   ~timeout: int=?,
   ~opts: Pulumi.ComponentResource.options=?,
@@ -154,8 +155,8 @@ module type Environment = {
   // `None` where the transport carries no such notion (see each implementation).
   let extractSentTimestamp: event => option<float>
   let extractRetryCount: event => option<int>
-  let asEventHandler: 'a => eventHandler<event, context, 'result>
-  let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
+  let asEventHandler: 'a => invocationHandler<event, context, 'result>
+  let asEffectHandler: 'a => effectInvocationHandler<event, context, 'result, 'error>
 }
 
 type connect<'parts> = (~runtime: environment<'parts>) => unit

@@ -33,12 +33,17 @@ module Make = (
     maxMemorySize: 0,
     maxTimeout: 0,
   })
-  type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
+  type effectInvocationHandler = Runtime.effectInvocationHandler<
+    RuntimeEnvironment.event,
+    context,
+    unit,
+    string,
+  >
   // `comp` is the *element's* log component, resolved where the handler is registered
   // (the event collector's own resource is in hand there). Keeping it next to the
   // handler is what makes every collector hosted in this one runtime separable by
   // field — the runtime-group name would be identical for all of them.
-  type registeredHandler = {comp: string, handler: effectHandler}
+  type registeredHandler = {comp: string, handler: effectInvocationHandler}
   let eventCollectorHandlers: dict<array<registeredHandler>> = Dict.make()
 
   let eventCollectorHandler = parentName =>
@@ -142,7 +147,7 @@ module Make = (
 
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,

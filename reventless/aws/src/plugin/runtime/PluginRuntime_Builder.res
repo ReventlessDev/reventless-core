@@ -338,7 +338,7 @@ module Make = (
   }
 
   let forPluginEventCollector: ReventlessCore.Runtime.forEventCollector<
-    ReventlessCore.Runtime.effectHandler<
+    ReventlessCore.Runtime.effectInvocationHandler<
       EventCollectorChannel.callbackEvent,
       context,
       unit,
@@ -873,7 +873,7 @@ module Make = (
   }
 
   let forPluginHeartbeat: ReventlessCore.Runtime.forComponent<
-    ReventlessCore.Runtime.eventHandler<unit, context, unit>,
+    ReventlessCore.Runtime.invocationHandler<unit, context, unit>,
     runtimeParts,
     ReventlessCore.Heartbeat.component,
   > = (~handler as _, ~connect, ~memorySize=1024, ~timeout=30, heartbeat) => {
@@ -922,7 +922,7 @@ module Make = (
   // here). Merges slice module paths: auto-registered (from moduleUrl) + manually
   // registered (from registerDcbConfig).
   let forDcbCommandTopic: ReventlessCore.Runtime.forComponent<
-    ReventlessCore.Runtime.effectHandler<'callbackEvent, context, unit, string>,
+    ReventlessCore.Runtime.effectInvocationHandler<'callbackEvent, context, unit, string>,
     runtimeParts,
     ReventlessCore.CommandTopic.component<'op>,
     // `~memorySize`/`~timeout` carry the per-component runtime floor (max across

@@ -97,7 +97,7 @@ module Make = (
 ): Task.T => {
   module Spec = Spec
   type component = Task.component
-  // type handler = Runtime.eventHandler<
+  // type handler = Runtime.invocationHandler<
   //   TaskRuntimeBuilder.callbackEvent,
   //   TaskRuntimeBuilder.context,
   //   array<Task.taskAction>,

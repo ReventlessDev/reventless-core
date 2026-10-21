@@ -17,7 +17,7 @@ let connect: Task_Adapter.connect<bucketParts, runtimeParts> = (
   ~opts as _,
 ) => ()
 
-let makeHandler = (callback: Task.bucketCallback): Runtime.eventHandler<
+let makeHandler = (callback: Task.bucketCallback): Runtime.invocationHandler<
   callbackEvent,
   context,
   array<Task.taskAction>,

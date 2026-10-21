@@ -24,7 +24,7 @@ module type Bucket = {
   type bucketParts
 
   let connect: connect<bucketParts, runtimeParts>
-  let makeHandler: Task.bucketCallback => Runtime.eventHandler<
+  let makeHandler: Task.bucketCallback => Runtime.invocationHandler<
     callbackEvent,
     context,
     array<Task.taskAction>,

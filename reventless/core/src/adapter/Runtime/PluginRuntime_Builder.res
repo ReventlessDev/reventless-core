@@ -5,16 +5,16 @@ module type T = {
 
   let registerPluginName: string => unit
   let forPluginEventCollector: Runtime.forEventCollector<
-    Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+    Runtime.effectInvocationHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     EventCollector.component,
   >
   let forPluginHeartbeat: Runtime.forComponent<
-    Runtime.eventHandler<unit, context, unit>,
+    Runtime.invocationHandler<unit, context, unit>,
     runtimeParts,
     Heartbeat.component,
   >
   let forDcbCommandTopic: Runtime.forComponent<
-    Runtime.effectHandler<'callbackEvent, context, unit, string>,
+    Runtime.effectInvocationHandler<'callbackEvent, context, unit, string>,
     runtimeParts,
     CommandTopic.component<'op>,
   >

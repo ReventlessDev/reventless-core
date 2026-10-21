@@ -18,7 +18,12 @@ let registerReadModel = (~readModelName, ~specModulePath, ~mappingsModulePath, ~
   readModelInfos->Dict.set(readModelName, {specModulePath, mappingsModulePath, queryDbTableName})
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+  ReventlessCore.Runtime.effectInvocationHandler<
+    EventCollectorChannel.callbackEvent,
+    context,
+    unit,
+    string,
+  >,
   ReventlessCore.EventCollector.component,
 > = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource

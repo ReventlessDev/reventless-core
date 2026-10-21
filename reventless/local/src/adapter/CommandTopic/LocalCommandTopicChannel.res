@@ -62,7 +62,7 @@ module Make = (Bus: LocalBus.T) => {
     let handleChannelEvent = (
       handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
     ): Pulumi.Output.t<
-      ReventlessCore.Runtime.effectHandler<callbackEvent, 'context, unit, string>,
+      ReventlessCore.Runtime.effectInvocationHandler<callbackEvent, 'context, unit, string>,
     > => {
       handleCmdsRef.contents = Some(handleCmds)
 

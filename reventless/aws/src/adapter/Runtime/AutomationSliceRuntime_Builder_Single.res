@@ -138,7 +138,12 @@ let storedSpecs: array<storedSpec> = []
 let grandParent = ref(None)
 
 let forEventCollector: ReventlessCore.Runtime.forEventCollector<
-  ReventlessCore.Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+  ReventlessCore.Runtime.effectInvocationHandler<
+    EventCollectorChannel.callbackEvent,
+    context,
+    unit,
+    string,
+  >,
   ReventlessCore.EventCollector.component,
 > = (~handler as _, ~eventTopics, ~resources, ~memorySize=1024, ~timeout=30, eventCollector) => {
   let eventCollectorResource = eventCollector->ReventlessCore.Component.toPulumiResource

@@ -33,7 +33,7 @@ let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
 }
 
 // resolvedHandler populated in beforeAllAsync before tests run.
-// makeHandler returns eventHandler<unit, 'ctx, unit> = (unit, ctx) => promise<unit>.
+// makeHandler returns invocationHandler<unit, 'ctx, unit> = (unit, ctx) => promise<unit>.
 // The runtime handlerRef expects (JSON.t, unit) => promise<unit> — same in JS, safe to cast.
 let resolvedHandler: ref<option<(unit, unit) => promise<unit>>> = ref(None)
 

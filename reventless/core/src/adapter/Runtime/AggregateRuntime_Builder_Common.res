@@ -24,16 +24,21 @@ module Make = (
     memorySize: int,
     timeout: int,
   }
-  type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
+  type effectInvocationHandler = Runtime.effectInvocationHandler<
+    RuntimeEnvironment.event,
+    context,
+    unit,
+    string,
+  >
 
   // Event collectors nested under this aggregate belong to their own element (a
   // ReadModel, an EventMapper, …), so they carry the comp resolved at registration
   // time rather than the hosting aggregate's.
-  type registeredHandler = {comp: string, handler: effectHandler}
+  type registeredHandler = {comp: string, handler: effectInvocationHandler}
 
   let runtimeSpecs: dict<runtimeSpec> = Dict.make()
   let commandGeneratorHandlers: dict<CommandGenerator.effectEventHandler<context>> = Dict.make()
-  let commandTopicHandlers: dict<effectHandler> = Dict.make()
+  let commandTopicHandlers: dict<effectInvocationHandler> = Dict.make()
   let eventCollectorHandlers: dict<array<registeredHandler>> = Dict.make()
 
   let aggregateHandler = aggregateName =>
@@ -197,7 +202,7 @@ module Make = (
 
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     >,
     ~connect,
     ~memorySize=1024,
@@ -228,7 +233,7 @@ module Make = (
   }
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
+      Runtime.effectInvocationHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,

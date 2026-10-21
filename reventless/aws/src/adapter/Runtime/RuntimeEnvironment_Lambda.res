@@ -447,9 +447,9 @@ let extractRetryCount = (event: event) =>
   ->Option.flatMap(attrs => attrs.approximateReceiveCount)
   ->Option.flatMap(Int.fromString(_))
 
-external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'result> =
+external asEventHandler: 'a => ReventlessCore.Runtime.invocationHandler<event, context, 'result> =
   "%identity"
-external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<
+external asEffectHandler: 'a => ReventlessCore.Runtime.effectInvocationHandler<
   event,
   context,
   'result,
