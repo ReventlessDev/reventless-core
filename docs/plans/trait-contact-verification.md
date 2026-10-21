@@ -287,7 +287,7 @@ plan already refuses in its publishing gate.
 **Resolved by making it a capability.** `Secrets.t` — `randomToken(~length, ~alphabet)` and `hash` —
 sits beside `geocode` / `messaging` / `identityProvider`, with a refusing `Capabilities.none` arm, a
 shared Node backend, and `Secrets.fixed` for suites that need to know the secret in advance. The trait's
-own `alphabet` type went away in favour of the capability's: it had been written before there was a
+own `alphabet` type went away in favor of the capability's: it had been written before there was a
 source to draw from, and one vocabulary for what a secret is made of belongs to the source that defines
 it.
 

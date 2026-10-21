@@ -12,7 +12,7 @@ and the online-shop examples.
 ## Goal
 
 Two ids of different entities have different types, so the compiler rejects a mix-up. The
-framework recognises an identity from its type rather than its field name, and derives a
+framework recognizes an identity from its type rather than its field name, and derives a
 reference whenever exactly one view is keyed by that identity.
 
 ## Hard constraints (every phase)
@@ -212,7 +212,7 @@ example builds.
 **Done (2026-09-21).** Every accepted site composes onto `M.schema` through the Phase 3
 helpers. Beyond the plan:
 - **`option<M.t>` is not auto-tagged**, matching `option<string>` today. An optional tag
-  would be a new behaviour for both, not part of this change.
+  would be a new behavior for both, not part of this change.
 - **An identity-typed `@compositePartitionTag` is a compile error.** The member stays
   `string` (open question 1). Left to the string-only pass, it would have dropped out of
   the key silently.
@@ -346,7 +346,7 @@ string, recording the function as `constructor` so a writer can reproduce it.
 `common-modules/Id.md` was rewritten too: it recommended `Id.String` for keeping ids apart,
 which F1 disproved.
 
-## Follow-up (2026-09-21): `@dcbTag("k")` beside `@ref` is honoured
+## Follow-up (2026-09-21): `@dcbTag("k")` beside `@ref` is honored
 
 `@dcbTag("k")` on a field that also declares `@ref` was ignored, and the field was tagged
 under its default key: the field name for a string, the identity's key for an identity. The

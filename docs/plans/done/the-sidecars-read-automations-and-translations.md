@@ -143,7 +143,7 @@ each event's real source id instead of `""`.
   `<Kind>_GWT.FromSlice(<Spec>, <Spec><Suffix>)` and open both. Today that case includes the
   flat `Make(<Spec>)`, which cannot compile for these kinds, so nothing that builds now
   changes;
-- with a local module, keep today's behaviour. Existing adapters go on compiling until
+- with a local module, keep today's behavior. Existing adapters go on compiling until
   phase 5.
 
 **1f. Tests.** Self-tests in `reventless/gwt/tests` for each `FromSlice`, including a
@@ -160,9 +160,9 @@ here rather than in a later release. Details are in
 |---|---|
 | `Capabilities_Fake`: recording fakes for messaging, geocode, secrets and identity provider, scripted answers, `calls()` | `reventless/gwt/src` |
 | `givenCapabilities(fakes)`; `whenTranslated` runs the slice's `translate`; a throw becomes `Error` | `OutboundTranslation_GWT.FromSlice` |
-| `thenSent(calls)`, `thenNothingSent`, modelled on `SideEffect_GWT.thenExternalCalls` | same |
+| `thenSent(calls)`, `thenNothingSent`, modeled on `SideEffect_GWT.thenExternalCalls` | same |
 | `whenExhausted(~lastError) → thenCommand \| thenNoCommand` | same |
-| `thenTodoStatus` takes `#Completed \| #Failed \| #Abandoned`; `whenTranslateRetrying` counts attempts as the runtime does (`maxRetries` attempts in all) | same; **a behaviour change**, so `#Pending` stays as a deprecated alias for `#Failed` for one release |
+| `thenTodoStatus` takes `#Completed \| #Failed \| #Abandoned`; `whenTranslateRetrying` counts attempts as the runtime does (`maxRetries` attempts in all) | same; **a behavior change**, so `#Pending` stays as a deprecated alias for `#Failed` for one release |
 | `whenReceived(json)` decodes through `externalInputSchema`; `thenRefusedInput(reason)`; `thenNotUnderstood(msg)` as the name for `thenTranslateError` (the old name stays); `thenCommands` also round-trips each command through `commandSchema` | `InboundTranslation_GWT.FromSlice` |
 | `Flow_GWT.InboundSlice(Spec, Translation)` with `whenReceived(json)`, which publishes the translated commands into the flow's log | `Flow_GWT` |
 

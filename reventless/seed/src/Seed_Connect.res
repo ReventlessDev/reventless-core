@@ -38,7 +38,7 @@ type roleSwitch = (~client: Seed_Client.t, ~role: option<string>) => promise<opt
     role — the only way to exercise what a restricted caller is refused. */
 type roleChoice = Full | Narrowed(string)
 
-// `SEED_ROLE`: a role name, or `full`/`all` to clear. Honoured whether or not the
+// `SEED_ROLE`: a role name, or `full`/`all` to clear. Honored whether or not the
 // token arrived narrowed, so a deliberate narrowed run needs no TTY.
 let roleFromEnv = (): option<roleChoice> =>
   Seed_Prompt.envValue("SEED_ROLE")->Option.map(v =>
@@ -118,7 +118,7 @@ let applyRole = async (
  * bearer arrived narrowed — the case where the account list says one thing and
  * the token another, which is unreadable from the terminal without it.
  *
- * `SEED_ROLE` answers non-interactively and is honoured even when the token is
+ * `SEED_ROLE` answers non-interactively and is honored even when the token is
  * NOT narrowed, which is what makes a deliberate restricted run possible: acting
  * as one role is the only way to exercise what a restricted caller is refused.
  *

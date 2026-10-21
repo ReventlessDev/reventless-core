@@ -418,7 +418,7 @@ describe("the conformance table, minted locally", () => {
         )
         switch (minted, expected) {
         | (Ok(token), Some(groups)) => expect(decodeOrThrow(token).groups)->toEqual(groups)
-        // `None` means refused — not honoured, not ignored, and not reduced to the
+        // `None` means refused — not honored, not ignored, and not reduced to the
         // empty set. A token minted here at all would be the vulnerability.
         | (Ok(_), None) => JsError.throwWithMessage("expected the request to be refused")
         | (Error(msg), Some(_)) => JsError.throwWithMessage("expected a token, got: " ++ msg)

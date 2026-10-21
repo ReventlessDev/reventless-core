@@ -110,7 +110,7 @@ Lambda env. Preserves the layer; no esbuild; no per-Lambda bloat; one shared edi
 in `makeFromCodeAsset`.
 
 **Still to confirm on the real Rung-2 deploy** (now low-risk): (1) Lambda's
-`nodejs22.x` bootstrap honours `NODE_OPTIONS=--import`; (2) the exact runtime-SDK
+`nodejs22.x` bootstrap honors `NODE_OPTIONS=--import`; (2) the exact runtime-SDK
 fallback path for `@aws-sdk/*` (`/var/runtime/node_modules` expected); (3)
 cold-start cost of the hook (fires only on cache-miss resolutions). Options A
 (esbuild) / B (ship full closure) remain documented fallbacks if any of these
@@ -211,7 +211,7 @@ transitive imports). Build green, all 185 `reventless-aws` tests pass.
   **succeeded** where the pre-fix run failed the whole stack with
   `ERR_MODULE_NOT_FOUND`. CloudWatch: `ensureSchema completed for reventless`;
   payload `"ok"`; `FunctionError: None`; 127 ms (hook overhead negligible). This
-  confirms the three deploy-time unknowns from 1a: (1) `nodejs22.x` honours
+  confirms the three deploy-time unknowns from 1a: (1) `nodejs22.x` honors
   `NODE_OPTIONS=--import`; (2) `@aws-sdk/*` resolves from the runtime dir via the
   `/var/runtime/node_modules` fallback (the in-VPC secret fetch used it through the
   SM endpoint); (3) cold-start cost is trivial. Stack destroyed after (~$0.50).

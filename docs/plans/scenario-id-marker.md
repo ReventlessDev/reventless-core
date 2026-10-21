@@ -80,7 +80,7 @@ assignment, the PPX's own internal names for these, and the guide that documents
   - The existing nearest-preceding assertion becomes: markers on 3 and 7 with tests on 4, 8
     and 10 give `a`, `b` and no id.
   - A form-written test followed by a hand-written one gives the second no id.
-- **Behaviour change, stated in the changelog:** a test that relied on inheriting an earlier
+- **Behavior change, stated in the changelog:** a test that relied on inheriting an earlier
   marker's id loses it. No generated file relies on that, because the forward emitter writes
   a marker directly above every test it emits.
 

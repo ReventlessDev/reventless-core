@@ -74,7 +74,7 @@ repaired for. So adoption checks the schema and refuses, rather than reporting
 success.
 
 The pre-`clientId` store is exactly this case: keyed on the subject alone. An
-operator upgrading meets a sentence instead of a silent misbehaviour.
+operator upgrading meets a sentence instead of a silent misbehavior.
 
 Order-insensitive, because `DescribeTable` does not promise one.
 */

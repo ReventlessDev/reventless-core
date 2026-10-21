@@ -283,7 +283,7 @@ parentheticals mark where B2 would have differed and can be ignored.
   presign resolver returns `{uploadUrl, storageRef}` where both are the same-origin
   `/{prefix}/{key}` (mint is unchanged locally — bytes still go direct via the existing
   `PUT /{prefix}/{key}` route, which stays). The old `POST /__inmemory/upload` HTTP
-  route is removed in favour of the mutation; **no `DELETE /{prefix}/{key}` HTTP route
+  route is removed in favor of the mutation; **no `DELETE /{prefix}/{key}` HTTP route
   is added** — release is a mutation now, not an HTTP method on the served path.
 - The dev store is a process-local map with no identities and no clock to speak of; the
   release resolver enforces the *shape* of the rule (key must be under a served prefix)

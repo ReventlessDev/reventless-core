@@ -22,7 +22,7 @@
 >   `convertOrThrow` / `reverseConvertToJson*OrThrow` / `parseJsonOrThrow` /
 >   `enableJson` onto `Util_Sury`. Git could not flag any of it — they were clean
 >   auto-merges that simply no longer compiled.
-> - **One behavioural defect the merge would have introduced silently.** `alpha`
+> - **One behavioral defect the merge would have introduced silently.** `alpha`
 >   split array-unwrapping out of `Reference.getTarget` into `getFieldTarget`,
 >   while this branch's `toEventDef` still called `getTarget` — so plural
 >   (`array`) references stopped reaching the manifest. Caught by
@@ -128,7 +128,7 @@
 >   **filed upstream as [DZakh/sury#347](https://github.com/DZakh/sury/issues/347)**.
 >   Revisit `Offload.optionSchema` if it is fixed — the wrapped form is simpler, and
 >   the built-in union exists only to dodge this bug. Two details keep the workaround
->   behaviour-preserving: the
+>   behavior-preserving: the
 >   none-arm must be **null-typed** (not json-typed) so the union still advertises
 >   `has.null`, which `Message.fillMissingDefaults` reads to heal an absent field
 >   on replay; and it must encode to an explicit `null`, not an omitted key, so the
@@ -318,7 +318,7 @@ document):
 
 ### Phase 0 — Hot-fix the production deploy (pin sury alpha.4)
 
-**Goal:** restore working deploys today, with zero behaviour change. This
+**Goal:** restore working deploys today, with zero behavior change. This
 buys the runway for the proper migration.
 
 Steps:
@@ -344,7 +344,7 @@ was working two days ago.
 **Goal:** introduce a single `Util_Sury` module that wraps the alpha.5 vocab
 behind alpha.4-compatible names, then port `Message.res` and `Projection.res`
 as **pivot files** (the ones most likely to expose
-behavioural-equivalence drift — open question #1 in the analysis). The build
+behavioral-equivalence drift — open question #1 in the analysis). The build
 won't compile with only those two ported, so this phase also has to port the
 ~55 transitive files in `reventless-spec`, `reventless-infra`,
 `reventless-interop`, `reventless-core`, `reventless-local` as bulk
@@ -402,7 +402,7 @@ Steps:
    `reventless-core/src/Projection.res` to call `Util_Sury.toJson` /
    `fromJson` instead of `S.reverseConvertToJsonOrThrow` /
    `S.parseJsonOrThrow`. Delete `S.enableJson()` calls in any file these
-   pull in. These are the files most likely to expose behavioural
+   pull in. These are the files most likely to expose behavioral
    divergence — the rest of Phase 1 can be scripted.
 4. **Schema-introspection rewrite** (new in this revision). In
    `reventless-spec/src/components/DcbDecode.res` and `DcbTag.res`, replace
@@ -431,7 +431,7 @@ Steps:
    `Util_Sury.…`; outside use `Reventless.Util_Sury.…`.
 6. Run the `reventless-core` (386) and `reventless-local` (416) test
    suites. Resolve any failures — likely categories:
-   - Behavioural equivalence drift between `reverseConvertToJsonOrThrow` and
+   - Behavioral equivalence drift between `reverseConvertToJsonOrThrow` and
      `decodeOrThrow(value, ~from=reverse(s), ~to=S.json)` under `S.transform` /
      `@s.matches` / refinements (open question #1) — document and adjust the
      helper.
@@ -621,7 +621,7 @@ post-stability decision, not part of the migration sweep.
 
 | Risk                                                                                       | Likelihood | Impact | Mitigation                                                                       |
 | ------------------------------------------------------------------------------------------ | ---------- | ------ | -------------------------------------------------------------------------------- |
-| Behaviour divergence in `S.decodeOrThrow(~from=s, ~to=S.json)` vs `reverseConvertToJsonOrThrow` under `S.transform` / refinements | medium     | high   | Phase 1 round-trip property tests catch it before bulk migration                |
+| Behavior divergence in `S.decodeOrThrow(~from=s, ~to=S.json)` vs `reverseConvertToJsonOrThrow` under `S.transform` / refinements | medium     | high   | Phase 1 round-trip property tests catch it before bulk migration                |
 | sury-ppx alpha.8 + sury alpha.8 emit incompatible code (matched versions now exist)        | low        | high   | Phase 1 runs the full test suite on alpha.8 with a real PPX-using surface       |
 | `S.nullAsOption` does not fully replace `js_nullable` in union variants (jsonableValidation regression returns) | low        | medium | Phase 2 step 3 explicitly re-tests `apiSchemaFragment`-style union variants     |
 | Layer 60 build picks up another transitively-bumped library that breaks                    | low        | medium | Phase 4 verifies the locally-resolved tree before push; rollback to Layer 59     |

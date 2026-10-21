@@ -91,7 +91,7 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
         // right with the same `Subscribe` / `Unsubscribe` the storefront offers.
         // The commands are the same ones and the difference is the caller —
         // elevation exempts this role from the `@owner` stamp, so its
-        // `recipientId` is honoured rather than overwritten. That is what makes
+        // `recipientId` is honored rather than overwritten. That is what makes
         // acting on somebody's behalf possible here and impossible from the
         // storefront, without a second pair of commands to keep in step.
         {

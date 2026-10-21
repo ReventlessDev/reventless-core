@@ -8,7 +8,7 @@ change required when a new version goes live.
 
 **Status:** Done (2026-05-23).
 
-**Open decisions resolved:** (1) `versions.html` retired in favour of the in-site
+**Open decisions resolved:** (1) `versions.html` retired in favor of the in-site
 switcher; (2) unpublished versions handled via per-sub-path placeholder pages
 (covers direct links); (3) apex redirects to the default published version when
 stable is unpublished; (4) version model kept as "Latest = main at root", beta/
@@ -212,7 +212,7 @@ no broken links.
 
 ## Open decisions
 
-1. **Keep `versions.html`?** Retire it in favour of the in-site switcher
+1. **Keep `versions.html`?** Retire it in favor of the in-site switcher
    **(recommended)**, or regenerate it from the manifest as a fallback chooser.
 2. **Unpublished UX:** static per-sub-path **placeholder pages (recommended,
    also covers direct links)** vs. an in-site `/unreleased` route reached only via

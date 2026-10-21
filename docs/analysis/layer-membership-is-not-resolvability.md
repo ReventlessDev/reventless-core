@@ -63,7 +63,7 @@ tests membership.
 which the layer excludes as a build tool, so it is absent from the production
 closure while the layer carries it — and every compiled ReScript file imports it.
 
-Modelling only the closure would have made it a user package and put **19 MB into
+Modeling only the closure would have made it a user package and put **19 MB into
 every archive**. `layerIncludedModules` mirrors that list, and says where its
 other half lives so the two stay in step.
 

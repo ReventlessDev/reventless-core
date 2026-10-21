@@ -109,7 +109,7 @@ Export the resulting public base URL per store as part of `objectStores` (a `bas
 consumer then needs no bucket identity at all — it needs a URL — which is both a smaller contract
 and one that cannot collide.
 
-When `~hostUiBundle` *is* passed, keep today's behaviour: the shell's distribution serves the stores
+When `~hostUiBundle` *is* passed, keep today's behavior: the shell's distribution serves the stores
 same-origin, and `config.json` is unchanged. Two serving paths for one store is exactly the
 bucket-policy collision above, so this is either/or, decided by whether the platform deploys a
 shell.
@@ -171,9 +171,9 @@ objectStores    : { "{plugin}.{store}": { bucketName, keyPrefix, baseUrl? } }
 same-origin, and a base URL would be a second and wrong way to reach it.
 
 **`makeServedBucketDistribution` throws on an empty bucket list** rather than building a
-distribution with no origins. CloudFront requires a default cache behaviour and there is no neutral
+distribution with no origins. CloudFront requires a default cache behavior and there is no neutral
 origin to point it at with no bundle behind it; the first served bucket takes it, and every real
-path is matched by its own `{prefix}/*` behaviour first, so the default is reached only by a request
+path is matched by its own `{prefix}/*` behavior first, so the default is reached only by a request
 no store claims — which 404s at S3, the correct answer. `servingFor` already prevents the empty
 call, so the throw is a guard on a second caller, not a reachable path today.
 
@@ -327,7 +327,7 @@ grants what it claims. It does.
      plugin stacks cannot resolve the platform's outputs.
   3. Deploy, PUT through the presign URL, GET through the exported `baseUrl`, then `pulumi destroy`.
 
-  The layer-ARN lookup falls through to `alpha`'s SSM parameter for any unrecognised branch, which
+  The layer-ARN lookup falls through to `alpha`'s SSM parameter for any unrecognized branch, which
   is what this wants — the verification is of the serving path, not of a fresh layer build.
 
   **Why not wait for Stage 3.** Stage 3 changes who *writes* the capability list, not what the

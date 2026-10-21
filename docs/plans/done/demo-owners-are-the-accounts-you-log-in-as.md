@@ -263,7 +263,7 @@ non-interactive path has one identity and cannot check a second.
 
 ## Acceptance
 
-1. ~~Local, unchanged behaviour: seed as `shopper`~~, log in as `shopper`, see 5
+1. ~~Local, unchanged behavior: seed as `shopper`~~, log in as `shopper`, see 5
    orders and 1 subscription row. This must keep passing untouched — the literals
    and the file agree locally, so arm 1 resolves to the same values arm 3 would.
 

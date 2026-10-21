@@ -46,7 +46,7 @@ alongside `SchemaType.fromSuryObject` of the same schema:
 | `Ordering.Customers` (online-shop-dcb) | `email` | `ScalarString` — correct shape, positional pick |
 | `Catalog.Products` (online-shop-hybrid) | `name` | `imageUrl` is `Semantic(storageRef, ScalarString)` |
 
-The first three rows are the finding. The same entity, modelled three ways,
+The first three rows are the finding. The same entity, modeled three ways,
 declares two different labels — and the difference is not the domain. The
 hybrid `Orders` state added
 
@@ -212,7 +212,7 @@ one row of the tables above:
     labelField falls back to "id"`;
   - `Platform_ComponentDefinitions` carries the new field, and a consumer
     reading it warns in turn that `Ordering.Orders` will render raw ids;
-  - **search is the behaviour that actually moved.** `search` and
+  - **search is the behavior that actually moved.** `search` and
     `searchPrefix` match the label field, so they were matching substrings of
     an ISO timestamp. Over the same SQLite-backed list, `searchPrefix: "ord-00"`
     now returns `ord-001…003` and `search: "ord-01"` returns `ord-010…012`,
@@ -262,7 +262,7 @@ than by one side winning.
 
 - **A name-based exclusion list** (`email`, `url`, `phone`). `Customers` in
   online-shop-dcb declares `email` as its label by position, and an email *is* a
-  name a user recognises a customer by — so the exclusion would have to be a
+  name a user recognizes a customer by — so the exclusion would have to be a
   preference, and preference is what `@displayName` already expresses. Revisit
   only with a case where the positional pick is worse than `id`.
 - **Giving the example `Orders` states a real label.** They have no

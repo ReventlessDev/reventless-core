@@ -4,7 +4,7 @@ module Make = (Bus: LocalBus.T) => {
   module EventTopicPublisher = LocalEventTopicPublisher.Make(Bus)
 
   // Use the backend-aware storage functor (as Platform does), not the plain
-  // module: the functor consults BackendState so a standalone DCB log honours
+  // module: the functor consults BackendState so a standalone DCB log honors
   // REVENTLESS_LOCAL_BACKEND=sqlite, and it registers the read with the Bus so
   // `Bus.getDcbEventLogRead` can see it. The plain module did neither — the log
   // silently stayed in memory under SQLite and was invisible to bus readers.

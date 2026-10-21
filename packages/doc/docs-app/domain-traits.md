@@ -82,7 +82,7 @@ directly.
 
 There are three ways a declaration gets into your plugin, and a trait uses whichever
 its host shape allows. The choice is not stylistic — it follows from a question you
-already answered before you modelled anything: **aggregate or DCB slice?**
+already answered before you modeled anything: **aggregate or DCB slice?**
 
 | Route | When | What it costs you |
 |---|---|---|
@@ -408,7 +408,7 @@ the pair-supplying events.
 
 ### Where the packages live
 
-`traits/` in the framework repository, published under the same licence and release
+`traits/` in the framework repository, published under the same license and release
 train as the framework. `pnpm run check:traits` packs each trait, installs it from the
 tarball beside a copy of its specimen host, emits a graft, builds it and runs the
 trait's own conformance suite against what was emitted. Workspace resolution hides

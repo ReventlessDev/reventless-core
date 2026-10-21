@@ -113,7 +113,7 @@ Update existing slice / aggregate GWT tests as needed.
 
 ### Step 5 — Examples and docs
 
-- Update example aggregates' GWT tests in `examples/online-shop-aggregates/*` if any rely on the silent-swallow behaviour (none expected — those tests usually assert on events, not on `Rejected`).
+- Update example aggregates' GWT tests in `examples/online-shop-aggregates/*` if any rely on the silent-swallow behavior (none expected — those tests usually assert on events, not on `Rejected`).
 - Document the rejection contract in [`docs/reventless-components/aggregate.md`](../../reventless-components/aggregate.md): "If `decide` returns `Error`, the producer receives `Rejected({errorCode, errorDetail})`. SQS messages corresponding to rejected commands are removed from the queue (no redelivery)."
 - Move this plan to `done/` and update the analysis to mark resolved.
 

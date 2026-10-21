@@ -14,7 +14,7 @@ dimension; the bare spelling bought nothing.
 The three attribution facts are independent and all three are needed to identify
 a resource (see `ResourceAttribution`):
 
-- `~kind` — the modelling kind of the owning component (Aggregate, …)
+- `~kind` — the modeling kind of the owning component (Aggregate, …)
 - `~role` — the deployment piece this resource implements (EventLog, Runtime, …)
 - `~scope` — component / plugin / platform
 

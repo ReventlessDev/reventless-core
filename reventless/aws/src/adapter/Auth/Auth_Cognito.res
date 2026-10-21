@@ -11,7 +11,7 @@
 //
 //   * `fromAppSyncIdentity` — AppSync-resolver path. Reads the
 //     already-validated identity context attached by AppSync to the
-//     resolver event (`event.identity`). Recognises both the Cognito
+//     resolver event (`event.identity`). Recognizes both the Cognito
 //     UserPool shape (`sub`, `username`, `claims['cognito:groups']`) and
 //     the AWS_IAM additional-provider shape (`userArn`, `accountId`) used
 //     by server-to-server lambdas signed via the existing IAM role.

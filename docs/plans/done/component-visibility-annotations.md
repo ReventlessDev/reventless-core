@@ -71,7 +71,7 @@ Same change. Mirror in `StateViewSliceStream.res`.
 
 **File:** `packages/reventless-ppx/src/ppx/VisibilityInjection.ml` (new) — mirrors `AuthorizationInjection.ml`.
 
-- Recognise file-level `@@reventless.visibility(Public)` and `@@reventless.visibility(Internal)`.
+- Recognize file-level `@@reventless.visibility(Public)` and `@@reventless.visibility(Internal)`.
 - On QueryCarrier-kind files (ReadModel, StateViewSlice, StateViewSliceStream), splice the visibility into the auto-injected `let config = config(...)` call.
 - Default when no attribute present: `Public`.
 - Error if the attribute appears on a non-QueryCarrier file (Aggregate, Slice, Extension, etc.) with a clear message: "@@reventless.visibility is only supported on ReadModel and StateViewSlice files".

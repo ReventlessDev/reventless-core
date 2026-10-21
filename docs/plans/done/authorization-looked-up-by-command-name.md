@@ -131,7 +131,7 @@ once the GWT reads the name.
    fixtures, and the test and integration fixtures that declare their own.
 4. The receiving sites and the deleted fake builders ([§3](#3--the-framework-side)); the GWT's `Acting`.
 5. Tests: the local resolver test (`CommandAuthorizationTest`) and
-   `PluginStructureAccessTest` exercise the same behaviour through the new
+   `PluginStructureAccessTest` exercise the same behavior through the new
    member; a grep in the review confirms no `Obj.magic` remains on an
    authorization path.
 

@@ -46,10 +46,10 @@ The four rules (over the representation):
     and this module stays schema-agnostic by taking the name alone.
 
     `byTag` marks the exception: an identity the *name* does not declare, which an
-    adapter recognised from an explicit `@partitionTag`. A domain's own identifier
+    adapter recognized from an explicit `@partitionTag`. A domain's own identifier
     is often not suffixed — `sku`, `isbn`, `vin` — and without this the annotation
     naming one would be extracted as a hint and then dropped, because `seedOf`
-    only honours a hint already among the produced keys. So the escape hatch would
+    only honors a hint already among the produced keys. So the escape hatch would
     have worked for every field except the ones that need it.
 
     It is carried rather than folded in because removing the annotation removes

@@ -17,7 +17,7 @@ straight to [Run it locally](./run-locally) or
 
 ## Plugin 1: Catalog
 
-Manages the product catalogue — what is available for sale and how it is
+Manages the product catalog — what is available for sale and how it is
 organized. **Products** are listings with a name, description, price, and
 optional image; **Categories** are named groupings that products reference by ID.
 
@@ -28,8 +28,8 @@ optional image; **Categories** are named groupings that products reference by ID
 | `AddCategory` | `CategoryAdded` | Creates a new named grouping |
 | `RenameCategory` | `CategoryRenamed` | Renames a category |
 | `AttachCategoryImage`, `RemoveCategoryImage`, `SetPrimaryCategoryImage`, `SetCategoryImageAltText` | `CategoryImageAttached`, `CategoryImageRemoved`, `CategoryPrimaryImageSet`, `CategoryImageAltTextSet` | The category's attachment set: an ordered set of images with a primary and captions |
-| `ArchiveCategory` | `CategoryArchived` | Withdraws the category from the catalogue |
-| `UnarchiveCategory` | `CategoryUnarchived` | Returns an archived category to the catalogue |
+| `ArchiveCategory` | `CategoryArchived` | Withdraws the category from the catalog |
+| `UnarchiveCategory` | `CategoryUnarchived` | Returns an archived category to the catalog |
 
 ### Product commands and events
 
@@ -110,7 +110,7 @@ to connected clients as it changes:
 | View | Plugin | Shows |
 |---|---|---|
 | `Categories` | Catalog | The category list, with archived ones marked |
-| `Products` | Catalog | The catalogue, with price, image, and category |
+| `Products` | Catalog | The catalog, with price, image, and category |
 | `ProductDemand` | Catalog | How many active orders reference each product |
 | `AvailableProducts` | Ordering | What can currently be ordered |
 | `Customers` | Ordering | Registered buyers and their order counts |
@@ -127,7 +127,7 @@ needed — and each is implemented differently depending on the plugin style (se
   `ShipOrder` without anyone clicking anything.
 - **Import products from a supplier feed** — external supplier data is validated
   and translated into `AddProduct` commands, so bad data is rejected at the
-  boundary instead of corrupting the catalogue.
+  boundary instead of corrupting the catalog.
 - **Send order confirmation email** — a notification triggered by `OrderPlaced`,
   with retry, kept outside the decision that accepted the order.
 

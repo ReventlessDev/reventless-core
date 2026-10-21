@@ -92,7 +92,7 @@ and a broken server look identical.
 2. **Mark a caller-fault error so a transport can surface it.** `Plugin_ResolverError`
    — already the module for "a command that cannot be decoded", and already
    dependency-safe for the Lambda path — gains `throwCallerFault` /
-   `isCallerFault`, which stamp and recognise a `name` on the thrown `Error`.
+   `isCallerFault`, which stamp and recognize a `name` on the thrown `Error`.
    The decode failure and the unidentified-owner refusal use it. Nothing else
    changes: an unmarked error stays masked, which is what masking is for.
 

@@ -36,7 +36,7 @@ let smsSenderKey = "messagingSmsSender"
     Blank matters because the ways to write "nothing" must not differ: a stray
     `REVENTLESS_MESSAGING_EMAIL_SENDER=` in CI, a blank line in
     `Pulumi.local.yaml`, and a key left with a space after the colon all mean the
-    stack named no sender. Honouring any of them would ask SES for an identity
+    stack named no sender. Honoring any of them would ask SES for an identity
     with a blank address — a deploy failure whose cause is whitespace, and one
     that reaches AWS before anything here explains it.
 
@@ -69,7 +69,7 @@ Which transport this stack asked for. SES is the default, so a deployment that
 says nothing gets the real one — the safe direction is that mail works, and a
 stack opting out of sending says so explicitly.
 
-An unrecognised value is refused rather than defaulted. Falling back to SES on a
+An unrecognized value is refused rather than defaulted. Falling back to SES on a
 typo would provision a real identity for a stack that asked to only log, which
 is the one mistake this key exists to prevent.
 */

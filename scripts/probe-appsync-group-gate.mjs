@@ -6,7 +6,7 @@
 // leaving every "admin only" field readable and writable by any authenticated
 // Cognito user. See docs/plans/appsync-group-authorization-unenforced.md.
 //
-// This cannot be a unit test — the behaviour lives in the service, not in our
+// This cannot be a unit test — the behavior lives in the service, not in our
 // SDL. Run it against a deployment after any change to the auth decoration.
 //
 // Usage:

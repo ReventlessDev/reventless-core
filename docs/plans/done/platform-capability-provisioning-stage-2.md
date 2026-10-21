@@ -176,7 +176,7 @@ under `uploads/` in `online-shop-uploads`. Moving to `/{store}/…` therefore **
 already in the event log**, and an append-only log cannot be rewritten.
 
 Keep serving `/uploads/*` from the existing bucket permanently, alongside the new `/{store}/*`
-behaviours. Old refs resolve, new refs use the store name, and no event is touched. Treat the legacy
+behaviors. Old refs resolve, new refs use the store name, and no event is touched. Treat the legacy
 prefix as a store named `uploads` that happens to predate the declaration, not as debt to be
 migrated away.
 
@@ -339,7 +339,7 @@ S3 permits exactly **one** bucket policy per bucket, so the second store's Cloud
 would silently replace the first store's. It deploys green and 404s half the objects.
 
 `servedBucket` is now `{id, prefixes, …}` — one entry per bucket, carrying every prefix served from
-it. One origin, one policy, N cache behaviours. The failure is unrepresentable rather than a rule to
+it. One origin, one policy, N cache behaviors. The failure is unrepresentable rather than a rule to
 remember.
 
 ### The two layouts do not fork in the IAM policy either
@@ -417,7 +417,7 @@ something, and the two that no amount of deploying `alpha` will reach.
 |---|---|
 | Both layouts, and the per-store/shared naming | ✅ `Util_StoreLayoutTest`, 14 assertions, including the `alpha` shares-a-bucket-and-is-still-protected pairing and the accepted fail-open on an unlisted production name |
 | Refs are layout-independent | ✅ asserted on `keyPrefixFor`, the single place the ref's prefix is decided |
-| The declaration drives it | ✅ applied: the one declared store produced `alpha-stores-507202d` + PAB + a `productImages/*` CDN behaviour + `UploadPresign-catalog-productImages` (role, policy, function, URL). Removal-stays-protected is implied by the lock but not separately exercised |
+| The declaration drives it | ✅ applied: the one declared store produced `alpha-stores-507202d` + PAB + a `productImages/*` CDN behavior + `UploadPresign-catalog-productImages` (role, policy, function, URL). Removal-stays-protected is implied by the lock but not separately exercised |
 | **No replacement of the existing store** | ✅ preview `aws:s3/bucket:Bucket::online-shop-uploads (same) 🔒` — no property diff, no replace, **0 replacements and 0 resource deletions** across the whole preview; the apply matched. Judged by the step verb, per Gate 2 |
 | Per-store presign writes only its own prefix | ✅ the new policy's resource is `arn:aws:s3:::alpha-stores-507202d/productImages/*`, and the legacy service *narrowed* from `…/*` to `…/uploads/*` |
 | Refs are rooted at the store, per service | ✅ applied: the declared store's presign mints `/productImages/{uuid}/{file}`; the legacy service still mints `/uploads/{uuid}/{file}` |
@@ -488,7 +488,7 @@ show. A field rename cannot destroy a per-store bucket.
 installed, so they are environment noise and would not appear in a CI preview. The seven real
 creates are the store bucket, its public-access block, the served bucket policy, and the presign
 role/policy/function/URL. CloudFront's `orderedCacheBehaviors` shows a **positional shift**, not a
-rewire: the new `productImages/*` behaviour inserts at index 1 and pushes `/remoteEntry.js`,
+rewire: the new `productImages/*` behavior inserts at index 1 and pushes `/remoteEntry.js`,
 `/index.html`, `/config.json` down one, each keeping its own cache policy.
 
 Reproducing this locally needs the deploy workflow's environment, or the preview reports false
@@ -542,7 +542,7 @@ pre-existing and unchanged here. It does mean **core's suite has to be run expli
 
 - Stage 3's inference, `capabilities.json`, `generate-platform` and the `deployPlugin` assertion.
   `~capabilities` stays hand-written here.
-- Stage 4's wider provider catalogue.
+- Stage 4's wider provider catalog.
 - Stage 5's `UploadableFile.t` — the annotation stays the declaration form.
 - Migrating the example's existing objects to a renamed bucket. If Gate 1 picks per-store buckets,
   the existing `online-shop-uploads` store is a rename, and moving 128 live objects is its own

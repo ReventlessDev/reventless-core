@@ -17,7 +17,7 @@ let updateMeta = (command') => {
 The new `msgId` ends up on the durable event's `meta` field. Two consequences:
 
 1. **Lost causation**: a downstream consumer cannot trace an event back to the producing command via `msgId`. The producer issued command `c1` with `msgId = X`; the durable event has `meta.msgId = Y` (a fresh UUID generated inside the Aggregate). Correlation is unrecoverable from the event alone.
-2. **Retry asymmetry**: on retry-after-partial-write (current behaviour, see sibling plan [aggregate-multi-event-atomic-append.md](aggregate-multi-event-atomic-append.md)) the surviving event from attempt 1 has `msgId = Y1` and any new event from attempt 2 has `msgId = Y2`, even though they belong to the same logical command.
+2. **Retry asymmetry**: on retry-after-partial-write (current behavior, see sibling plan [aggregate-multi-event-atomic-append.md](aggregate-multi-event-atomic-append.md)) the surviving event from attempt 1 has `msgId = Y1` and any new event from attempt 2 has `msgId = Y2`, even though they belong to the same logical command.
 
 The producer's `msgId` is preserved as the SQS `topicItem.reference` for routing only — it never lands in durable storage.
 

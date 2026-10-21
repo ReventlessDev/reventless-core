@@ -148,7 +148,7 @@ Two rules the branch must carry, both of which are silent if got wrong:
   *same* tag `CatalogProductSynced` writes. Deriving the key from `lineItems`
   (or singularising it to `lineItem`) would produce a tag key no producer ever
   writes, and the decision read would return nothing — the identical symptom to
-  no tags at all, from a different cause. `resolveTagKey` already honours a
+  no tags at all, from a different cause. `resolveTagKey` already honors a
   `stringForKey` override, so an author who wants a different key still has one.
 - **Duplicate keys collapse by value, not by position.** Two lines for the same
   product yield two identical `{key: "productId", value: "p1"}` tags. The
@@ -235,7 +235,7 @@ With [§3](#3--the-three-walks-made-path-aware) landed, the domain change is sma
   exist in the Ordering log — `SyncCatalogProduct` writes them
   (`ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res:20-29`) —
   so **pricing an order needs no cross-plugin read and no read-model query from a
-  behaviour.** This is the whole reason totals are cheap here, and it is worth a
+  behavior.** This is the whole reason totals are cheap here, and it is worth a
   comment in the slice: the ordering side already shadows what it needs to decide.
 - `error` gains `OrderIsEmpty` and `InvalidQuantity({productId, quantity})`.
 - event `OrderPlaced` gains `lines: array<orderLine>` and `total: Reventless.Money.t`,
@@ -248,7 +248,7 @@ twice is one line of two, and merging here is what keeps the read side and the
 extension point from having to think about it), prices each line and sums the
 order.
 
-Three decisions to record in the behaviour, because each has a wrong answer that
+Three decisions to record in the behavior, because each has a wrong answer that
 looks right:
 
 - **Price at placement, from the log.** The unit price copied onto the event is
@@ -267,7 +267,7 @@ looks right:
 
 **Keep `productIds` on the event.** `OrderPlaced` carries **both**
 `lines: array<orderLine>` and `productIds: array<string>` (derived by the
-behaviour from the merged lines). It is redundant on purpose:
+behavior from the merged lines). It is redundant on purpose:
 
 - `Orders_ExtensionPointMapping` decomposes `productIds` into per-product
   `ItemOrdered` events (`ordering/src/ExtensionPoint/Orders_ExtensionPointMapping.res:21-27`)
@@ -279,7 +279,7 @@ behaviour from the merged lines). It is redundant on purpose:
   from a domain enrichment, and this plan does not need one.
 - It is a second, independent carrier of the `productId` tags, which means the
   slice keeps working even if [§3.1](#31-tag-extraction-the-correctness-blocker) has a gap. That is a crutch, so [§8](#8--acceptance) asserts the
-  nested tags directly rather than through the slice's behaviour.
+  nested tags directly rather than through the slice's behavior.
 
 **`Orders` view and projection** gain `lines`, `total`, and `itemCount` (the
 summed quantity — a shopper's "how many things is this", and the one number a
@@ -344,7 +344,7 @@ another.
 - **W5 — `@live(true)` on `Orders`.** An order list is operational, an
   `AutoShipOrder` flips a row while the shopper watches, and the hint is one
   type-level annotation. *Trivial; example only.*
-- **W6 — refuse an empty order.** Part of [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost)'s behaviour, called out because it
+- **W6 — refuse an empty order.** Part of [§5](#5--the-example-an-order-that-says-how-many-and-what-it-cost)'s behavior, called out because it
   is the one validation a shopper can trip today: `PlaceOrder` with `productIds:
   []` currently succeeds and produces an order for nothing.
 

@@ -7,7 +7,7 @@
 
 ## Phasing rationale
 
-Order = correctness → verification harness → durable cost wins → robustness guards → profile-gated tuning. Verification (Phase 1) comes early because nothing else here can be *trusted* without a real-DynamoDB test of the fence path — local backends don't use fences, so unit tests only assert transaction *shape*, not DynamoDB *behaviour*.
+Order = correctness → verification harness → durable cost wins → robustness guards → profile-gated tuning. Verification (Phase 1) comes early because nothing else here can be *trusted* without a real-DynamoDB test of the fence path — local backends don't use fences, so unit tests only assert transaction *shape*, not DynamoDB *behavior*.
 
 | Phase | Item | Analysis ref | Class | New work? | Existing plan |
 |---|---|---|---|---|---|
@@ -27,7 +27,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 
 ## Phase 1 — DynamoDB integration test (Issue 3) — **DONE (2026-06-20)**
 
-Implemented per [dcb-dynamodb-atomic-append-integration-test](dcb-dynamodb-atomic-append-integration-test.md). The fence path now has end-to-end behavioural coverage against a real DynamoDB engine (DynamoDB Local via Docker), proving Phase 0's fix and giving every later phase a harness.
+Implemented per [dcb-dynamodb-atomic-append-integration-test](dcb-dynamodb-atomic-append-integration-test.md). The fence path now has end-to-end behavioral coverage against a real DynamoDB engine (DynamoDB Local via Docker), proving Phase 0's fix and giving every later phase a harness.
 
 **What shipped**:
 - `reventless/aws/tests/integration/DcbEventLogStorage_DynamoDb_IntegrationTest.res` (+ `DcbIntegrationHarness.res` for `CreateTable`/`DeleteTable`/fence helpers).
@@ -128,7 +128,7 @@ Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neut
 - New `Reventless.ReadConsistency.t` ([`reventless-spec/src/types/ReadConsistency.res`](../../../reventless/spec/src/types/ReadConsistency.res)) with three cases: `EscalateOnRetry` (default — eventual first, strong on retry), `AlwaysStrong` (known-hot slices), `AlwaysEventual` (cost-sensitive, low-contention).
 - New required field `let readConsistency: ReadConsistency.t` on `StateChangeSlice.Spec`. The callback's `strongConsistency` is now `switch Spec.readConsistency { EscalateOnRetry => retries < maxRetries | AlwaysStrong => true | AlwaysEventual => false }` ([`StateChangeSlice_Callback.res`](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)). Correctness is mode-independent — the conditional-append fence is always strong; the mode only trades replica-lag-conflict suppression against RCU.
 - New PPX pass [`ReadConsistencyInjection.ml`](../../../packages/reventless-ppx/src/ppx/ReadConsistencyInjection.ml) (mirrors `VisibilityInjection`): auto-injects the `EscalateOnRetry` default into StateChangeSlice spec files (folder-detected, plus the `@schema type consumedEvent` + `@schema type event` structural marker that distinguishes a slice from an aggregate/translation slice) and into inline slice specs (test fixtures); a file-level `@@reventless.consistency(AlwaysStrong)` (or `AlwaysEventual`) overrides it; rejected on non-StateChangeSlice files.
-- Tests: 3 mode-behaviour cases in `DcbStateChangeSliceTest.res` (438 core tests green) asserting the `readStrongConsistency` sequence for `AlwaysStrong` (`[true]`, `[true,true,true]`) and `AlwaysEventual` (`[false,false,false]`).
+- Tests: 3 mode-behavior cases in `DcbStateChangeSliceTest.res` (438 core tests green) asserting the `readStrongConsistency` sequence for `AlwaysStrong` (`[true]`, `[true,true,true]`) and `AlwaysEventual` (`[false,false,false]`).
 
 **Release coupling (RESOLVED — republished and merged).** The republish described below happened; ppx is pinned at alpha.51 and CI compiles the injected field against the published binary. Retained for context: adding a *required* field to `StateChangeSlice.Spec` that only the new PPX injects means every slice spec needs the new binary to compile. CI consumes the **published** `@reventlessdev/reventless-ppx-*` packages (it only builds the PPX from source when the published binary is absent — `ci.yml` `ppx_check`), and `--frozen-lockfile` installs the exact binary the lockfile pins. So this change cannot pass CI until reventless-ppx is **republished at a new version with the lockfile updated**. Verified locally via the dev fallback `ppx-osx.exe` (`pnpm run build:ppx` → `cp src/_build/default/bin/bin.exe ppx-osx.exe`): reventless-spec/core/aws build clean (zero warnings), the catalog example's real slice specs receive the field, and the PPX harness passes (203 cases incl. the new readConsistency injection/override/rejection tests).
 
@@ -185,7 +185,7 @@ Shipped per [dcb-phase7-cross-partition-reads](dcb-phase7-cross-partition-reads.
 
 **Cost note**: read-dominated and paid on *both* tags of an M:N event (O(entity degree), eventually-consistent, uncached). Highest-leverage mitigations are framework-level — `Limit:N+1` count-bounded reads for capacity invariants and the Phase 4 decision-model cache — not infra. See analysis Issue 13 § Performance & cost.
 
-**When to do it**: profile-/evidence-gated — only when a real slice needs a cross-partition read. Until then it stays a future capability, and slices that merely *tolerate* over-reads (e.g. `PlaceOrder`) handle it in their behaviour.
+**When to do it**: profile-/evidence-gated — only when a real slice needs a cross-partition read. Until then it stays a future capability, and slices that merely *tolerate* over-reads (e.g. `PlaceOrder`) handle it in their behavior.
 
 ## Suggested execution order
 

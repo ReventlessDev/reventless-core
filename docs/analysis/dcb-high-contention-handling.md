@@ -111,7 +111,7 @@ The user's question: when the contention metric goes up, can we adjust at runtim
 - a **lag probe** (compare an eventual read vs a strong read on the same key and measure divergence) — extra reads, only sampled; or
 - inference from **co-signals** (e.g. high conflict + low concurrency on the key ⇒ likely lag ⇒ strong helps; high conflict + high concurrency ⇒ contention ⇒ strong won't help, route to async/sharding).
 
-**Two safe automatic behaviours we *can* adopt** without solving classification:
+**Two safe automatic behaviors we *can* adopt** without solving classification:
 1. **Escalate-on-retry (§5)** — local, self-targeting, no metric. Recommended as default.
 2. **Backoff + jitter on retry (K2)** — local, helps *P2* directly by de-synchronising contenders; complements escalate-on-retry. Recommended next.
 

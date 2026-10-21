@@ -25,4 +25,4 @@ components.
   quoted version is wrong within a release or two.
 - **D2 diagrams fail silently.** A diagram that does not compile leaves no image
   and no build error — check `static/d2/<page>/` after adding one. Use the
-  semantic classes from `d2/reventless.d2`, never raw colours.
+  semantic classes from `d2/reventless.d2`, never raw colors.

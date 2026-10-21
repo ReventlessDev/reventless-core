@@ -8,7 +8,7 @@
 // the pre-token-generation trigger ([Auth_ActiveRoleTrigger_Ops.res]) reads this
 // row on the next refresh and narrows the group claim to it. Nothing here can
 // grant anything: the trigger re-checks the stored role against real membership
-// before applying it, so a row is at most a request that the trigger may honour.
+// before applying it, so a row is at most a request that the trigger may honor.
 //
 // 🚨 **The subject is taken from the verified identity, never from the arguments.**
 // The row key is `ctx.identity.sub` as the AppSync Cognito authorizer resolved it.
@@ -115,7 +115,7 @@ type appSyncEvent = {
 The name to address this caller by when asking Cognito what groups they are in.
 
 The username when the authorizer supplied one, the subject otherwise. The
-fallback is not a guess at a username: it is the behaviour this handler had
+fallback is not a guess at a username: it is the behavior this handler had
 before the username was forwarded, kept for the pool shapes where it is correct —
 one whose username *is* the subject — rather than turning a working deployment
 into a hard failure on an absent field. Pure so the choice can be tested without

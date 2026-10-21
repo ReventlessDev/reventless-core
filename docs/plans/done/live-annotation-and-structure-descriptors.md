@@ -31,7 +31,7 @@ schema is platform-neutral, so one emission point should cover local and AWS).
   only transports the declaration; what consumers do with it is theirs. (The
   host-ui shell is moving to strictly opt-in live — the toggle defaults to
   off — so there the annotation governs whether a Live control is *offered*:
-  `@live(false)` marks investigative/historical views (catalogues,
+  `@live(false)` marks investigative/historical views (catalogs,
   comparisons, audit histories) where live updates make no sense and the
   control is hidden; `@live(true)` marks operational views where it is
   offered. The user still has to switch it on.)

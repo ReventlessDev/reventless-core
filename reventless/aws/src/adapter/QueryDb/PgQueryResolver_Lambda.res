@@ -143,7 +143,7 @@ let emptyConnection = (): JSON.t =>
 
 // Spec-level authorization then the (optional) user interceptor — mirrors
 // QueryDbResolvers_GraphQL.runInterceptor. Denials return the kind's empty shape
-// (the provider-agnostic resolver behaviour), not an error.
+// (the provider-agnostic resolver behavior), not an error.
 let runInterceptor = async (
   ~binding,
   ~payload,
@@ -192,7 +192,7 @@ let dispatch = async (
       | RefuseOwned => false
       | ScopeTo(field, required) => item->argStr(field)->Option.mapOr(false, v => v == required)
       }
-    // The caller's request to see the archive, honoured only where the
+    // The caller's request to see the archive, honored only where the
     // classification says it counts.
     let askedForRetired =
       payload.arguments

@@ -92,7 +92,7 @@ folding into that index's sort key was in scope and moved out — see Step 3.)
 - **Partitioning the base table by owner** (`@id customerId` + `@subId orderId`).
   Cheapest at runtime, most invasive at design time, and it needs client work
   this plan does not: the generated list door is what AutoUI calls, not the
-  sub-id connection. It is modelling guidance, not framework work.
+  sub-id connection. It is modeling guidance, not framework work.
 - **A Postgres QueryDb read path.** `QueryEnginePostgres.res` already pushes
   owner and retirement scope into the `WHERE` before the `LIMIT` and gets every
   combination right; that is a backend decision on its own merits

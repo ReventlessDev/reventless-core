@@ -3,7 +3,7 @@
 **Status.** BACKLOG 2026-08-16, **investigated and measured 2026-08-17** — the
 cause is located, the blast radius is computed, and what is left is one judgement
 rather than any further work. Filed out of a lint that could not be written. The
-metadata gap is verified, asserted by our own tests as intended behaviour, and
+metadata gap is verified, asserted by our own tests as intended behavior, and
 has three consequences beyond the lint that motivated this file.
 
 **The gap in one sentence.** `consumedEventTypes` lists only the consumed events
@@ -25,7 +25,7 @@ slices whose folds matter most.
 Measured on the shipped hybrid shop: both order slices publish
 `["Ordering.OrderPlaced"]` and nothing else, while each folds four events.
 
-So this is not a bug that slipped in. It is a documented behaviour whose cost was
+So this is not a bug that slipped in. It is a documented behavior whose cost was
 not weighed against the consumers that have since appeared.
 
 ## What it blocks
@@ -72,7 +72,7 @@ let commandVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(sch
 `eventVariantNames` is applied at four sites: `scsProduced`, `aggProduced`,
 `scsConsumed` and `svsConsumed`. **Only the first two are what its comment is
 about.** A *produced* payload-less event cannot be found by a DCB tag lookup, so
-publishing it would claim an edge the runtime cannot honour — correct, and worth
+publishing it would claim an edge the runtime cannot honor — correct, and worth
 keeping. A *consumed* payload-less variant claims nothing of the kind: it states
 what a fold understands, and nothing is asked to look it up. The two share a walk
 because they share a shape, not because they share a reason.
@@ -101,7 +101,7 @@ consumed set is *entirely* payload-less today.
 
 Harmful? Not in these examples. `consistencyRead` is descriptive metadata here —
 it reaches the published component definitions and the MCP tool description
-("Reads: X for consistency"). Its one behavioural consumer is the UI layer, which
+("Reads: X for consistency"). Its one behavioral consumer is the UI layer, which
 uses it to place a slice's per-row commands and falls back to `linkedViews` when
 it is absent. For all six slices both routes reach the same view, so the
 destination is unchanged and only the mechanism differs. Worth knowing that the

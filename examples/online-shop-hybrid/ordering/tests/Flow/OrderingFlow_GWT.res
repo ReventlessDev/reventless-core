@@ -66,7 +66,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         productIds: [p1],
         // The line is priced from the shelf the placement read, and the total is
         // the sum of the lines — two of a €9.99 book is €19.98, computed by
-        // `Money` rather than by the behaviour.
+        // `Money` rather than by the behavior.
         lines: [
           {
             productId: p1,

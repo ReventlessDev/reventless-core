@@ -160,7 +160,7 @@ ReScript (AppSync_Resolver_Templates.res / new files)
 
 ### Pulumi resource change
 
-`AppSync_Resolver.res` args would gain a `runtime` field and drop separate `requestTemplate` / `responseTemplate` in favour of a single `code` field:
+`AppSync_Resolver.res` args would gain a `runtime` field and drop separate `requestTemplate` / `responseTemplate` in favor of a single `code` field:
 
 ```rescript
 type args = {

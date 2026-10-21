@@ -137,7 +137,7 @@ readStream: readStream(resolvedTable, crossPartitionTagKeys),
 ```
 
 `derivePartitionTag` is wrapped in a try/catch that falls back to the old untagged
-behaviour (rather than crashing cold start) on a misconfigured spec the deploy would
+behavior (rather than crashing cold start) on a misconfigured spec the deploy would
 already have rejected. The Postgres branch is unaffected — its `opsFor` ignores
 `partitionTag` (advisory/row locks handle the boundary). This also closes a latent
 cross-partition *read-routing* gap: single-tag `@crossPartition` reads on the

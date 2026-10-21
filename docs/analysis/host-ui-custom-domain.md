@@ -338,7 +338,7 @@ Linear scaling for additional UI bundles is zero — the framework handles them 
 - **Subdomain naming for plugin UIs**: single-segment (`catalog-online-shop-hybrid-alpha.app.reventless.dev`) or nested (`catalog.online-shop-hybrid-alpha.app.reventless.dev`)? Nested is nicer but needs a wildcard cert.
 - **Per-plugin UIs in scope yet?** Currently only the host-shell is deployed; plugin UIs use Auto UI generated from the GraphQL schema. The framework should support per-plugin custom URLs *when* per-plugin UIs land, but the work doesn't have to happen now.
 - **HSTS preload**: if the apex `reventless.dev` is on the HSTS preload list, every subdomain inherits forced HTTPS. Fine for production, mildly annoying for local debugging if you ever need an HTTP fallback. Document but don't gate the work on it.
-- **Prod-stack vocabulary**: default `prodStacks = ["prod", "main"]` covers Reventless's own conventions. Should the framework recognise additional canonical names out of the box (`production`, `live`, `release`) so downstream users rarely need to set the override, or is the override hatch enough? Bias toward "small default, easy override" — adding aliases later is non-breaking, removing them is.
+- **Prod-stack vocabulary**: default `prodStacks = ["prod", "main"]` covers Reventless's own conventions. Should the framework recognize additional canonical names out of the box (`production`, `live`, `release`) so downstream users rarely need to set the override, or is the override hatch enough? Bias toward "small default, easy override" — adding aliases later is non-breaking, removing them is.
 
 ---
 

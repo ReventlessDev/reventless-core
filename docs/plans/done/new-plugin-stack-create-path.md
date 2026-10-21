@@ -159,7 +159,7 @@ existed with the same interface" was inferred from the interface alone. `forEven
 for both, but AWS's `EventCollectorRuntime_Builder_PerEventCollector` dispatches on a
 `readModelInfos` registry populated by `registerReadModel`, and builds `ReadModelEntryPoint.mjs`. A
 side-effect handler is never in that registry. Matching module signatures said nothing about matching
-behaviour, and the `up` that "verified" the fix only showed the *error* was gone.
+behavior, and the `up` that "verified" the fix only showed the *error* was gone.
 
 ## Defect 1b — the eventMappers export resolved the same record twice: FIXED
 

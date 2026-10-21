@@ -14,7 +14,7 @@ type args = {
   evaluationPeriods: Pulumi.Input.t<int>,
   /** How many of the last `evaluationPeriods` datapoints must breach to alarm
     ("M out of N"). Defaults to `evaluationPeriods` when omitted, which is the
-    all-or-nothing behaviour. Setting it below `evaluationPeriods` is how an
+    all-or-nothing behavior. Setting it below `evaluationPeriods` is how an
     alarm rides out an isolated blip without going blind to a sustained one. */
   datapointsToAlarm?: Pulumi.Input.t<int>,
   metricName: Pulumi.Input.t<string>,

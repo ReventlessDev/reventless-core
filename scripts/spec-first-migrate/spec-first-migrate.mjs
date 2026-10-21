@@ -22,7 +22,7 @@
 //   node scripts/spec-first-migrate/spec-first-migrate.mjs [--dry-run] [--report path] <file-or-dir>...
 //
 // `<file-or-dir>` may be a single .res file or a directory; directories are
-// walked recursively for .res files inside any recognised slice folder.
+// walked recursively for .res files inside any recognized slice folder.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -374,7 +374,7 @@ function classifyItem(item, sliceCfg) {
   const n = item.name;
   if (n && sliceCfg.specBindings.has(n)) return 'spec';
   if (n && sliceCfg.implBindings.has(n)) return 'impl';
-  return 'impl'; // default: anything unrecognised goes to implementation
+  return 'impl'; // default: anything unrecognized goes to implementation
 }
 
 function renderChunks(parts) {

@@ -51,7 +51,7 @@ deployed. A snapshot that can only arrive by dependency bump cannot.
   `rescript-relay-compiler`: 6 reader / 6 normalization / 6 operation text, no
   errors, and **zero** churn in `src/__generated__`. The two files differ only by
   a leading `directive @oneOf on INPUT_OBJECT` — graphql 16 here treats it as
-  built-in and omits it, graphql 15 in the shell does not recognise it as
+  built-in and omits it, graphql 15 in the shell does not recognize it as
   built-in and prints it. It is declared and never used, so nothing depends on it.
 - **The subpath resolves.** `reventless-spec` declares no `exports` map, so
   `@reventlessdev/reventless-spec/schema/platform-api.graphql` is importable.

@@ -24,7 +24,7 @@ Chapter membership today is a **filesystem convention inferred at authoring time
 representation in the framework:
 
 - The authoring tool derives a component's chapter from its **source path**: the first
-  path segment under the plugin's `src/` that is not a recognised kind-folder
+  path segment under the plugin's `src/` that is not a recognized kind-folder
   (`chapterOf`: `src/<Chapter>/…/<Component>.res` → `"<Chapter>"`; segments in the
   kind-folder set — aggregates/slices/… — yield "no chapter"). Purely disk-derived.
 - Nothing in the compiled component carries this. At **runtime** a ReScript module does not
@@ -49,7 +49,7 @@ to the deployed read model:
    read model must **agree** so they dedup, never conflict.
    - *Alternative considered:* an explicit `@chapter("Products")` spec annotation
      (author-declared). Rejected as the primary path — it duplicates the folder convention
-     and drifts from the existing tool behaviour; keep it only as an optional override.
+     and drifts from the existing tool behavior; keep it only as an optional override.
 
 2. **Thread through the structure.** Add `chapter: option<string>` to the per-component
    records `Plugin_Structure` builds (aggregates / slices / views / translation slices —

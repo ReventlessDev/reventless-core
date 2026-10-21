@@ -1,6 +1,6 @@
 // Local upload resolver logic (route B), backed by `LocalObjectStore`. Shared by the
 // dev platform (`Platform.res` registers these on the domain server) and
-// `ServedBucketHttpTest`, so the mint/release behaviour has one definition.
+// `ServedBucketHttpTest`, so the mint/release behavior has one definition.
 //
 // The dev store has no identities and no clock, so release enforces only the *shape*
 // of the rule (key under a served prefix), not the identity/age conditions AWS applies

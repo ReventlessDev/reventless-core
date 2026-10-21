@@ -2,7 +2,7 @@
 //
 //   pnpm run verify:client-publish        # pick a stack (or set SEED_STACK), then log in
 //
-// The design this checks rests on one AWS behaviour that cannot be verified
+// The design this checks rests on one AWS behavior that cannot be verified
 // locally: a channel namespace's `publishAuthModes` overriding the API-level
 // `defaultPublishAuthModes`. That override is what lets an authenticated
 // browser publish presence/chat on `/client/**` while read-model change

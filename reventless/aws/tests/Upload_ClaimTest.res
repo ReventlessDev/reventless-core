@@ -4,7 +4,7 @@
 // decided by three functions in `Upload_Claim_S3_Ops`: which table a record came
 // from, which refs a declared field holds, and whether a ref resolves to an
 // object this claimer may touch. The untag itself has no branching left in it,
-// so pinning these pins the behaviour that matters.
+// so pinning these pins the behavior that matters.
 //
 // The direction under test throughout is refusal. An untag this component
 // wrongly *skips* costs a delayed cleanup; one it wrongly *performs* removes the

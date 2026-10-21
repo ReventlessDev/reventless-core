@@ -731,7 +731,7 @@ let inject_endpoint_into_inner_module ~loc (mb : module_binding) : module_bindin
   | _ -> mb
 
 (* Inject the appropriate field into an inline spec module body, if it
-   isn't already present. Honours an inner [@@reventless.authorize(rule)]
+   isn't already present. Honors an inner [@@reventless.authorize(rule)]
    attribute the same way the file-level driver does. *)
 let inject_into_inner_module
     ~loc

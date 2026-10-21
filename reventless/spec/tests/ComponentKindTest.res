@@ -1,6 +1,6 @@
 // Pins `ComponentKind` — the single-source component-kind vocabulary (plan C2)
 // the plugin generator (`Discovery`) and the gwt graph tooling (`ComponentMeta`)
-// both derive from. The bug C2 fixed was the gwt side recognising only singular
+// both derive from. The bug C2 fixed was the gwt side recognizing only singular
 // folder names while the generator accepted plural / short spellings; these
 // cases lock in that every accepted spelling maps to the SAME canonical kind so
 // the two can't silently drift apart again.

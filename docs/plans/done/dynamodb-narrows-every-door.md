@@ -67,7 +67,7 @@ Executed against rows, not just asserted as text — `alice` owns o1 (live) and 
 | IAM service call | `o1, o2` | — |
 
 **One defect found while proving it.** The index templates turn every
-unrecognised argument into a `contains(#key, :key)` filter, so `includeRetired`
+unrecognized argument into a `contains(#key, :key)` filter, so `includeRetired`
 would have become a filter on an attribute no row carries — the door answering
 nothing for the one caller it exists to serve. Unreachable through the API today
 because the index field's SDL does not declare the argument, which is its own
@@ -187,7 +187,7 @@ A read model with `@retired`, deployed on DynamoDB: a non-exempt caller gets
 nothing from `X(id:)`, `XsByIds` and `XBy<Index>` for a retired row, and an
 exempt caller passing `includeRetired: true` gets it from `X(id:)` and `XsByIds`.
 A read model without one emits templates identical to today's, so nothing that
-does not declare a retirement can change behaviour.
+does not declare a retirement can change behavior.
 
 **Met, with the index door's widening half struck out rather than claimed.** The
 acceptance as first written said "gets it from all three"; at the time the index

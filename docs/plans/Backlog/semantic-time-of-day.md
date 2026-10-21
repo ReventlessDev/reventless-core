@@ -108,7 +108,7 @@ thing a wall clock is not. So the options are:
 **Also worth resolving first:** `isoTime` rejecting `"09:00:00.000"` looks like a sury bug (a
 fractional second is valid RFC 3339, and `isoDateTime` accepts one). Confirm it upstream before
 building anything on that schema — if it is a bug, option 3's cost changes, and if it is not, that
-is itself an argument the schema is modelling something narrower than it appears to.
+is itself an argument the schema is modeling something narrower than it appears to.
 
 ## Blocker 3 — a real adopter, and the reader before it
 
@@ -140,7 +140,7 @@ Short, once the three above are settled — which is the point of listing them:
 3. The composite, if Blocker 1 resolves to a per-row zone.
 4. The adopter, and the goldens that move with it.
 5. Tests on the family pattern: the grammar's accepts and rejects pinned as decisions, the emission
-   block, and the midnight-wrap behaviour whichever way it was decided.
+   block, and the midnight-wrap behavior whichever way it was decided.
 
 ## Out of scope even when this runs
 

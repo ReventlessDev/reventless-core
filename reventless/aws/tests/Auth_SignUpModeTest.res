@@ -2,7 +2,7 @@ open JestGlobals
 
 // Sign-up mode is correctable on a live pool, unlike the sign-in attribute, so
 // what these cover is not permanence but silence: absent must mean today's
-// behaviour, an unknown spelling must refuse rather than quietly close the pool,
+// behavior, an unknown spelling must refuse rather than quietly close the pool,
 // and the mapping onto Cognito's inverted field must not be readable backwards.
 
 module SignUpMode = Auth_SignUpMode

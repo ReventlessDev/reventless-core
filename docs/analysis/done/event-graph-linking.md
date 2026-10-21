@@ -227,14 +227,14 @@ A `Platform_UIDefinitions` query resolver walks the plugin registry and computes
 
 **Recommendation**: Start with Option 1 (intra-plugin, at composition time) to expose the data without requiring a full platform deployment. Add Option 2 to fill in cross-plugin edges when a platform is running. Option 3 is a reasonable interim for the resolver layer.
 
-### Plugin Connect/Disconnect Behaviour
+### Plugin Connect/Disconnect Behavior
 
 All three options handle late-connecting and reconnecting plugins correctly, because the underlying mechanism is event-sourced:
 
 - **Initial registration**: a `PluginRegistered` event records the graph fragment; the `Platform_EventGraph` StateViewSlice picks it up on the next projection pass.
 - **Plugin version update**: a new `PluginRegistered` event replaces the previous fragment for that plugin; the StateViewSlice rebuilds the relevant graph portion.
 - **New plugin connecting to an existing platform**: registers normally; cross-plugin edges to already-registered plugins are computed when the StateViewSlice processes the new event.
-- **Plugin deregistration**: requires a `PluginDeregistered` (or `PluginDeprecated`) event to tombstone the fragment. This event is not currently modelled in the platform spec and would need to be added if formal deregistration is required.
+- **Plugin deregistration**: requires a `PluginDeregistered` (or `PluginDeprecated`) event to tombstone the fragment. This event is not currently modeled in the platform spec and would need to be added if formal deregistration is required.
 
 On any full replay (e.g., after a schema migration or a StateViewSlice bug fix), the graph is rebuilt from the complete `PluginRegistered` / `PluginDeregistered` history — no manual state reconstruction is needed. The in-memory equivalent is simpler: because all plugins are wired at startup, graph recomputation is just re-running the `InMemory_Platform.Make(plugins)` constructor.
 

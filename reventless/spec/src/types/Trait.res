@@ -19,7 +19,7 @@
 // annotation — an attribute's fields would all be strings the compiler never
 // checks, which is the failure this program exists to remove.
 //
-// **A declaration is a claim about origin, never about behaviour.** After a graft
+// **A declaration is a claim about origin, never about behavior.** After a graft
 // the developer owns the files and may edit them freely. So this says "grafted
 // from trait X", and it does NOT say "still behaves like trait X" — the thing that
 // answers the second question is the trait's conformance suite, which runs in the

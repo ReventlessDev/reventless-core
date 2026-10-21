@@ -451,7 +451,7 @@ whole structure.
 while it walks the components, because it is the only party that knows which one
 carried the declaration. Nothing in this record is a string a developer typed.
 
-It records ORIGIN, not behaviour — a grafted file is the host's to edit
+It records ORIGIN, not behavior — a grafted file is the host's to edit
 afterwards. What answers "does it still behave like the trait" is the trait's own
 conformance suite, which runs in the consumer's build and is not this field.
 */
@@ -499,7 +499,7 @@ type pluginStructure = {
       component. Absent → None, read as []. The only signal a graft leaves that
       survives into a deployed plugin — every other one (the dependency, the
       variant spread, the rules alias, the conformance binding) is source-side.
-      A claim about origin, never about behaviour: see `Trait`. */
+      A claim about origin, never about behavior: see `Trait`. */
   traitDeclarations: option<array<traitDeclaration>>,
 }
 

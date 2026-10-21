@@ -386,7 +386,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   // ── ReadModel pairing ──────────────────────────────────────────────────────
   // Pairs spec `<Plural>` with impl `<Plural>_Projections.res`. The legacy
   // unpaired forms (`<Plural>ReadModel.res` / `<Plural>Projections.res`) are
-  // no longer recognised — see PR3-5 of the close-ppx-gaps-and-unify-naming
+  // no longer recognized — see PR3-5 of the close-ppx-gaps-and-unify-naming
   // plan for the migration; downstream codebases should rename to the
   // underscored form.
   let pairReadModel = (~stream: bool, rm: string): option<readModelDef> => {

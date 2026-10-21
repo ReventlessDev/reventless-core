@@ -49,12 +49,12 @@ database, request handlers, a REST or GraphQL layer, and an admin UI.
 We would rather you know these before you start than discover them in month
 three.
 
-- **Event-sourced thinking is a genuine shift.** Modelling in facts rather than
+- **Event-sourced thinking is a genuine shift.** Modeling in facts rather than
   rows takes practice, and the first design is usually not the best one.
   Deciding where consistency boundaries belong is real domain work that no
   framework does for you.
 - **History is permanent, which cuts both ways.** Correcting the past means
-  recording a compensating fact, not editing a row. That is the right behaviour
+  recording a compensating fact, not editing a row. That is the right behavior
   for auditable systems and a nuisance for casual data cleanup.
 - **Evolving events needs care.** Once a fact is recorded, code that reads it has
   to keep being able to read it. Adding a field is easy; changing the meaning of

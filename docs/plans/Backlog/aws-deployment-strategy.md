@@ -102,7 +102,7 @@ module Aggregate = {
 
 Same for `Platform.ReadModel`. This is a pure API surface change in
 [reventless-aws/src/Platform.res](../../reventless/reventless-aws/src/Platform.res) —
-no behaviour change.
+no behavior change.
 
 ---
 

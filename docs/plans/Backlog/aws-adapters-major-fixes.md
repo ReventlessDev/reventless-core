@@ -360,11 +360,11 @@ Steps:
    - `dlqDepthAlarm(~dlq, ~periodSeconds=300)` — any message in the DLQ.
    - `dynamodbThrottleAlarm(~tableName, ~periodSeconds=60)` — `ReadThrottleEvents` or `WriteThrottleEvents` > 0.
 
-3. **Per-component opt-in.** Each adapter's `make` accepts an optional `~alarms` parameter (record of which alarms to enable + thresholds). Default `None` (preserves current behaviour); production-grade callers pass `~alarms=Some(Util_Alarms.standardBundle)`.
+3. **Per-component opt-in.** Each adapter's `make` accepts an optional `~alarms` parameter (record of which alarms to enable + thresholds). Default `None` (preserves current behavior); production-grade callers pass `~alarms=Some(Util_Alarms.standardBundle)`.
 
 4. **Alarm notification target.** Alarms publish to an SNS topic configurable per-platform. Default: a platform-level `<stack>-alarms` topic, subscriber-less by default. Operators wire their PagerDuty / Slack subscription externally.
 
-5. **Documentation.** New page in `packages/doc/docs/inner-workings/observability.md` covering the alarm catalogue, recommended thresholds, and how to subscribe.
+5. **Documentation.** New page in `packages/doc/docs/inner-workings/observability.md` covering the alarm catalog, recommended thresholds, and how to subscribe.
 
 **Tests:** verify each `Util_Alarms.*` helper produces the expected `MetricAlarm` resource with correct dimensions. Per-adapter tests are unnecessary — opting in is a single parameter.
 

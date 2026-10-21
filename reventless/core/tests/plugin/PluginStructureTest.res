@@ -410,7 +410,7 @@ describe("commandTransition — the edge as a switch", () => {
   testSync("a guard declares its from-set and no target", () => {
     // A positive claim rather than an omission: legal in these states, and it
     // moves the row nowhere. Distinguishable on the wire from both fields being
-    // None, and consumers are expected to honour it.
+    // None, and consumers are expected to honor it.
     expect((
       byName("Rebook")->Option.flatMap(c => c.allowedStates),
       byName("Rebook")->Option.flatMap(c => c.targetState),
@@ -1431,7 +1431,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       },
     )
 
-    // The one behaviour the rename deliberately changes, so it is asserted rather
+    // The one behavior the rename deliberately changes, so it is asserted rather
     // than assumed. `status` is a promiscuous name — geocoding progress, todo-queue
     // progress, translation audit outcome — and a convention keyed on it guessed
     // often. A record whose lifecycle really does live in a field called `status`
@@ -1700,7 +1700,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     )
 
     // The second rule stays a warning: retirement still works, and which field
-    // carries it is a modelling judgement rather than a name that is wrong.
+    // carries it is a modeling judgement rather than a name that is wrong.
     testSync(
       "a state on a non-lifecycle field is not a failure",
       () => {
@@ -2174,7 +2174,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     testSync("nothing else is collected", () => expect(stores->Array.length)->toBe(4))
 
     // The event field derives the same store as the command field of the same
-    // name, so the two collapse to one declaration site — the behaviour the
+    // name, so the two collapse to one declaration site — the behavior the
     // annotation form already had, reached without an annotation.
     testSync(
       "each requirement keeps its declaring sites",
@@ -2480,7 +2480,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   // the marker where `Reference.to_` returns it: on the element schema, one level
   // inside the array. Reading the field's own schema therefore answers "no
   // reference" for every `@ref` array — and the consuming side treats a missing
-  // declaration as licence to guess, so the field resolves to whatever its name
+  // declaration as license to guess, so the field resolves to whatever its name
   // suggests instead of what the author wrote.
   describe("plural references reach the manifest", () => {
     let withPluralRefs = Plugin_Structure.make(

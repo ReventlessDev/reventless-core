@@ -13,7 +13,7 @@
 // The price is read for the same reason the name is, and it is why pricing an
 // order costs nothing here: Ordering already shadows what a placement needs to
 // decide, so the total is computed from this fold rather than from a cross-plugin
-// read or a read-model query issued out of a behaviour.
+// read or a read-model query issued out of a behavior.
 @schema
 type consumedEvent =
   | OrderPlaced({orderId: OrderId.t})

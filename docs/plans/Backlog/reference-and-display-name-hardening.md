@@ -1,4 +1,4 @@
-# Plan: `@ref` and `@displayName` refuse what they cannot honour, and the ids read scales
+# Plan: `@ref` and `@displayName` refuse what they cannot honor, and the ids read scales
 
 **Date:** 2026-10-07<br/>
 **Status:** Backlog — extracted from [../done/entity-reference-dropdowns.md](../done/entity-reference-dropdowns.md) (the deferred lists of its Phases 2 and 5, and its open question 1) when it closed. None of it blocks anything; each item is a hardening to pick up when it next bites or when the area is touched.<br/>
@@ -15,7 +15,7 @@ many rows by id.
 
 ## What is left
 
-1. **`@displayName` rejects combinations it cannot honour.**
+1. **`@displayName` rejects combinations it cannot honor.**
    `packages/reventless-ppx/src/ppx/DisplayNameInference.ml` refuses only
    non-string fields. Still accepted silently: `@displayName` on the `@id` /
    `@compositeId` field, and on a field that already carries an `@s.matches(...)`

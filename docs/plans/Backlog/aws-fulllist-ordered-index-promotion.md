@@ -152,7 +152,7 @@ table into a single Query-able, globally-ordered partition.
 
    The response is `queryItemsWithSortConditions`' response verbatim: keyset **value**
    cursor = `base64(item['<sortField>#id'])`, `hasNextPage`/`hasPreviousPage` from the
-   `+1` overshoot. `ScanIndexForward` gives correct global order and honours backward
+   `+1` overshoot. `ScanIndexForward` gives correct global order and honors backward
    paging — so promotion **resolves the parent plan's Fix 2** for promoted fields (the
    Scan-path backward-rejection guard only fires on non-promoted fields).
 

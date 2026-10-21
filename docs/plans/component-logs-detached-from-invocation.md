@@ -174,7 +174,7 @@ the surrounding effect, so it runs on the annotated fiber.
   effect — `ReadModel_Callback`'s is inside an `Array.mapWithIndex` whose result
   is an actions array. Threading the log means restructuring the callback into an
   effect and folding it, which changes control flow at 109 sites.
-- Risk of behaviour change: a log currently emitted eagerly becomes ordered with
+- Risk of behavior change: a log currently emitted eagerly becomes ordered with
   the rest of the chain. For the sites inside a fold this is what we want; for a
   site logging *before* a throw it needs checking one by one.
 

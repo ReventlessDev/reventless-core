@@ -27,7 +27,7 @@ For each entity in your plugin, ask:
 3. **Is its lifecycle fully independent?** → Aggregate.
 
 If every entity points the same way, use that pure style. If the answers are
-mixed — which is common — use **Hybrid**, modelling each entity with the
+mixed — which is common — use **Hybrid**, modeling each entity with the
 approach that fits it.
 
 Two App Guide pages go deeper: [What is a DCB?](/app/concepts/dcb) defines the

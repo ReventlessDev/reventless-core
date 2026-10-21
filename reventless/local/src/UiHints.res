@@ -12,7 +12,7 @@
 // withdrawn declaration leaves yesterday's hints in place with nothing in the
 // diff to explain them. Unlike `ShellConfig` there is no merge — AWS writes the
 // declared file verbatim, and layering a deployment's hints over the shell
-// package's demonstration hints would invent a third behaviour neither platform
+// package's demonstration hints would invent a third behavior neither platform
 // has.
 
 let log = ReventlessCore.Logger.fromEnv()

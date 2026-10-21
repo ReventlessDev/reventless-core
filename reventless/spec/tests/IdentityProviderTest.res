@@ -1,7 +1,7 @@
 open JestGlobals
 
-// The capability's refusal, which is the only behaviour it has until a backend
-// lands. What matters is that refusing is *modelled* — a caller must be able to
+// The capability's refusal, which is the only behavior it has until a backend
+// lands. What matters is that refusing is *modeled* — a caller must be able to
 // tell "this deployment has no identity provider" from "this person may not
 // have an account", because the second is a verdict and the first is a gap.
 

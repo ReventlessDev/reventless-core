@@ -199,7 +199,7 @@ module Make = (
   // The state form compares against JSON strings instead of `true`, one
   // `IS DISTINCT FROM` per state, ANDed. Not `NOT IN`: that is ordinary
   // equality, so an absent key makes the predicate NULL and drops a row this
-  // spec keeps. Same shape and same index behaviour as the single-state form —
+  // spec keeps. Same shape and same index behavior as the single-state form —
   // a handful of equality predicates over an enum-valued attribute cost what one
   // over a boolean does — so the `@index` guidance carries over unchanged.
   //

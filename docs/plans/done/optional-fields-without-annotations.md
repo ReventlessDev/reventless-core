@@ -38,7 +38,7 @@ wrong for AWS (see the two sections under step 2).
   the Plugin aggregate's replay killed the process with an uncaught
   `SuryError: Failed at ["_0"]["apiTarget"]: Expected string | undefined, received null`
   out of `EventLog_Operations.decodeEvent`. Fail-loud, seconds after the process
-  looks healthy — which is the behaviour to want, but it means step 2 is not
+  looks healthy — which is the behavior to want, but it means step 2 is not
   optional anywhere the old payloads survive.
 
 **Goal.** One optional encoding across the repo, with **no sury annotation of any

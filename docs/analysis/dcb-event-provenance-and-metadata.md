@@ -185,7 +185,7 @@ Split `service`'s two jobs: keep a **routing/dispatch key** (rename to e.g. `dis
 `eventSource`) distinct from a **producer identity** (`originator`, per Option B). Aggregates set
 both to the aggregate name; DCB sets `dispatchTarget = <plugin>DcbEventLog` and
 `originator = <slice>`.
-- **Pros:** removes the root overloading; makes the aggregate/DCB behaviours principled rather than
+- **Pros:** removes the root overloading; makes the aggregate/DCB behaviors principled rather than
   coincidental; the dispatch semantics stop silently depending on a field that also means
   "producer."
 - **Cons:** `service` is load-bearing across the whole message/dispatch/publish stack (EventCollector

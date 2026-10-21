@@ -160,7 +160,7 @@ nothing that would have to be undone.
 
 **Per-caller manifest projection.** Filtering the baked file by the requesting
 identity's groups requires a server in the path and gives up the static asset.
-Component-level access keys carried *in* the manifest and honoured by the shell
+Component-level access keys carried *in* the manifest and honored by the shell
 cover the same ground without one.
 
 ## §7 — Tests

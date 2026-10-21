@@ -223,7 +223,7 @@ let supplierFeed: array<CatalogPlugin.ImportProduct.externalInput> = [
 // rather than restating its rules here. Stating them twice is how this drifted
 // once already: the translation stopped rejecting non-USD rows when `Money.t`
 // gave the supplier's currency somewhere to live, and a copy of the old rule
-// left here failed the seed's audit-view cross-check against correct behaviour.
+// left here failed the seed's audit-view cross-check against correct behavior.
 let importedSkus =
   supplierFeed
   ->Array.filter(row => CatalogPlugin.ImportProduct_Translation.translate(row)->Result.isOk)
@@ -278,7 +278,7 @@ type product = {
 // currency, and the shop only looks single-currency because its seed is.
 let currency = Reventless.Currency.EUR
 
-// A deterministic demo image per product: a distinct fill colour derived from
+// A deterministic demo image per product: a distinct fill color derived from
 // the product index plus the product name as a label. SVG is tiny, text-based
 // (no repo binaries, no third-party service), and serves cleanly through both
 // the AWS CloudFront read path and the local dev serve route. Uploaded at seed
@@ -302,7 +302,7 @@ let productSvg = (~name: string, ~index: int): string => {
 // The same deterministic scheme for a category, in a wide banner rather than the
 // product tile's 4:3 — a category image is a section header, and two images that
 // differ only in their label are hard to tell apart on a page carrying both. The
-// hue offset keeps a category from sharing a colour with the product that
+// hue offset keeps a category from sharing a color with the product that
 // happens to land on its index.
 let categorySvg = (~name: string, ~index: int): string => {
   let hue = mod(index * 47 + 23, 360)
@@ -447,7 +447,7 @@ let demoMerchandiserUsername = "merch"
 // The `userId` values the local `users.example.yaml` declares. Kept only as the
 // last arm of the resolution below, so a platform that supplies nothing still
 // seeds the walkthrough it always did — locally the file and these agree, which
-// is why local behaviour is unchanged.
+// is why local behavior is unchanged.
 let fallbackShopperId = "local-shopper"
 let fallbackOperatorId = "local-admin"
 let fallbackMerchandiserId = "local-merch"

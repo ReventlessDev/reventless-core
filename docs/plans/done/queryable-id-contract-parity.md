@@ -67,7 +67,7 @@ whether anything actually uses Relay's `node` for refetch. Checked in the shell:
   fields, which are wired with `relay=None` and so never carried global ids.
 
 So global-ids-everywhere would have bought one door nothing calls and a cache
-behaviour nothing uses, in exchange for:
+behavior nothing uses, in exchange for:
 
 - rewriting ~11 generated DynamoDB resolver templates in
   [AppSync_Resolver_Functions](../../../rescript/pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res#L92),

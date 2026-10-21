@@ -297,7 +297,7 @@ per-store line, so "all images were wiped" is an observed fact rather than an in
   verified empty: Catalog.productImages — 0 object(s) remain under alpha-stores-507202d/productImages/
 ```
 
-A non-zero remainder keeps the existing behaviour: fail with the count and tell the operator to
+A non-zero remainder keeps the existing behavior: fail with the count and tell the operator to
 re-run.
 
 ## Verification

@@ -879,7 +879,7 @@ module MakeWithConfig = (
   // Per-session server ports for the VS Code local platform runner (features
   // plan Phase 9). The runner spawns one platform child per app folder; default
   // ports (4000/4001/3001/3002) collide when several run, so each is overridable
-  // via env. Defaults preserve today's behaviour for all non-runner callers.
+  // via env. Defaults preserve today's behavior for all non-runner callers.
   let resolvePort = (key, fallback) =>
     NodeProcess.env->Dict.get(key)->Option.flatMap(v => Int.fromString(v))->Option.getOr(fallback)
   let domainPort = resolvePort("REVENTLESS_DOMAIN_PORT", 4000)
@@ -2196,7 +2196,7 @@ module MakeWithConfig = (
     // own explicit `Platform_UIFragments` flat-array resolver registered
     // above; it isn't exposed as an MCP resource because the auto-generated
     // single/list field shape was removed when the auto-generated query
-    // entry was dropped in favour of that explicit field.
+    // entry was dropped in favor of that explicit field.
     let adminFieldToQueryDb = Dict.fromArray([
       (singleQueryField, pluginQueryDbName),
       (listQueryField, pluginQueryDbName),
@@ -2475,7 +2475,7 @@ module MakeWithConfig = (
     | Platform => None
     }
 
-    // Each plugin creates its own scheduler (mirrors AWS behaviour).
+    // Each plugin creates its own scheduler (mirrors AWS behavior).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
     hooks.api := Some({val: ()->Obj.magic})

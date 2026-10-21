@@ -57,7 +57,7 @@ let describe = (e: error): string =>
 // gives. Unlike the other two, what it selects is not filtered here — there is
 // nothing in a `pluginStructure` to filter, because the pages do not exist until
 // a shell builds them. It travels to the shell instead, which is the only place
-// that can honour it.
+// that can honor it.
 type selection = {
   plugin: string,
   views: option<array<string>>,

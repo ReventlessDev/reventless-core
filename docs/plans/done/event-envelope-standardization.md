@@ -65,7 +65,7 @@ CloudEvents adoption (Phase 2 of the analysis) is **explicitly out of scope** he
 
 ### D1. The `StoredEvent` envelope
 
-Add to `reventless-spec` (new file `reventless/reventless-spec/src/types/StoredEvent.res`, or extend `Message.res`). **Flat** — no `storage` sub-record. Backend-specific extras are recognised optional/top-level fields, exactly as today's records lay them out:
+Add to `reventless-spec` (new file `reventless/reventless-spec/src/types/StoredEvent.res`, or extend `Message.res`). **Flat** — no `storage` sub-record. Backend-specific extras are recognized optional/top-level fields, exactly as today's records lay them out:
 
 ```rescript
 @schema
@@ -90,7 +90,7 @@ type storedEvent<'id> = {
 ```
 
 - `EventLog_Operations.encodeEvent'` and the DCB `toItem`/`fromItem` both go through `StoredEvent`'s sury schema instead of hand-built dicts. Encode and decode share one schema → no drift (§3.1).
-- **`StoredEvent` *is* the on-disk shape** (modulo two DynamoDB-only index artifacts, below). The only "flattening" the adapter still does is for `meta` — keeping `meta.*` projected as top-level DynamoDB attributes so individual meta fields stay GSI-projectable (the §1.2 / §3.2 behaviour today). Whether `meta` is nested in the *type* and flattened by the adapter, or kept flat in the type too, is Q1 — but `position`, `event`, `data`, `tags` are flat in both the type and the item, no indirection.
+- **`StoredEvent` *is* the on-disk shape** (modulo two DynamoDB-only index artifacts, below). The only "flattening" the adapter still does is for `meta` — keeping `meta.*` projected as top-level DynamoDB attributes so individual meta fields stay GSI-projectable (the §1.2 / §3.2 behavior today). Whether `meta` is nested in the *type* and flattened by the adapter, or kept flat in the type too, is Q1 — but `position`, `event`, `data`, `tags` are flat in both the type and the item, no indirection.
 - **DCB query attributes are unaffected.** The DynamoDB DCB adapter still: derives the partition key from `tags`/`partitionTag`; writes the `tag_<key>` attributes and `tag_composite` used by the tag GSIs; sorts by `position`. Those `tag_<key>` / `tag_composite` attributes are **pure DynamoDB index artifacts derived from `tags`** — they are *not* fields on `StoredEvent` (the in-memory backend doesn't need them; it filters the `tags` array directly). So every existing DCB query — `Query` on the tag-derived partition, GSI lookups on `tag_<key>`, range conditions on `position` — works exactly as before; nothing about the consistency-check append or the read path changes.
 - Decision Q2: `seq` vs `position` — unify the *field name* (`position`, always a sortable string) while letting each backend keep its own value format. Don't try to make the values comparable across backends.
 

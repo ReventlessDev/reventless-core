@@ -1,4 +1,4 @@
-// Behavioural tests for the in-memory connection list resolver
+// Behavioral tests for the in-memory connection list resolver
 // (QueryDbResolvers_GraphQL). Phase 1.5 — keyset pagination on top of the
 // Phase 1 filter / sort wiring.
 

@@ -117,7 +117,7 @@ module type T = {
   let registerQueryDbScan: (string, unit => array<JSON.t>) => unit
   let getQueryDbScan: string => option<unit => array<JSON.t>>
   // Stream variant: lazily creates a Stream from current storage contents.
-  // Used by LocalQueryEngine to honour ~limit via Stream.take without loading all items.
+  // Used by LocalQueryEngine to honor ~limit via Stream.take without loading all items.
   let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
   let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
   // Indexed equality lookup: (field, value) → matching items. The SQLite backend

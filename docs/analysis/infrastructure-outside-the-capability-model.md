@@ -23,7 +23,7 @@ monitoring.
 - **The scheduler fits precisely, and is the closest thing to a capability that is
   not one.** It already has the hard half — a provider-neutral port with two
   implementations behind it. What it lacks is the half the capability model adds:
-  a declaration, a deploy gate, a modelled failure, and provenance ([§2](#2-does-it-fit-the-capability-model)).
+  a declaration, a deploy gate, a modeled failure, and provenance ([§2](#2-does-it-fit-the-capability-model)).
 - **The gap is not cosmetic.** Because nothing declares it, it is provisioned
   unconditionally — every deployment carries an IAM role granting `events:*` on
   every resource, whether or not anything is ever scheduled ([§3.1](#31-provisioned-always-because-nothing-declares-it)). Because
@@ -68,7 +68,7 @@ monitoring.
 
 ---
 
-**How this is organised.** §§1–4 work the scheduler end to end, because it is the
+**How this is organized.** §§1–4 work the scheduler end to end, because it is the
 richest case and the one that exercises every part of the model — declaration,
 gate, provisioning, failure vocabulary, and the one place the analogy breaks. [§5](#5-the-survey-everything-else-the-framework-provisions)
 applies the same tests to everything else the framework provisions and says where
@@ -126,7 +126,7 @@ Testing it against each property the model asserts:
 | Declared by the component that needs it | **No** — nothing declares it |
 | Carried to the platform as provenance (`capabilities.json`) | **No** |
 | Refused at deploy when declared and unprovisioned | **No** |
-| Failure is modelled, with a retry rule stated once | **No** — `promise<unit>`, throws |
+| Failure is modeled, with a retry rule stated once | **No** — `promise<unit>`, throws |
 | Absence degrades visibly rather than silently | **No** — [§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for) |
 
 So it satisfies the two properties the adapter pattern already gave it and fails
@@ -321,7 +321,7 @@ Note the ordering hazard the model already documents: the platform deploys first
 and cannot read plugin schemas, so this only works through the committed
 `capabilities.json` manifests and `generate:platform`. A platform regenerated
 before its plugins are rebuilt will provision nothing and refuse — which is the
-designed behaviour, but it means Stage 4 lands with a regenerate step in the
+designed behavior, but it means Stage 4 lands with a regenerate step in the
 release notes.
 
 ### 4.3 Should it go on `Capabilities.t`? — No
@@ -580,7 +580,7 @@ cross-links, is the whole enforcement mechanism:
 
 Rule 4 is the only code change: three files, ~19 identifier sites, no published
 type. Rules 1–3 and 5 are prose and glossary. None of it blocks or is blocked by
-[§6](#6-the-record-is-misnamed), and none of it touches the capability model's behaviour.
+[§6](#6-the-record-is-misnamed), and none of it touches the capability model's behavior.
 
 ---
 
@@ -668,7 +668,7 @@ cheaper than after.
 
 - **Do Stage 1 now, on its own.** The semantics divergence ([§3.3](#33-the-two-implementations-do-not-agree-about-the-vocabulary)) and the `Daily`
   cron ([§3.4](#34-a-latent-defect-in-the-aws-arm)) are defects in shipped code and have no dependency on anything here.
-- **Do Stage 2 next.** A modelled failure is worth having even if the scheduler
+- **Do Stage 2 next.** A modeled failure is worth having even if the scheduler
   never becomes a declared capability, and it is what makes [§3.2](#32-the-absence-is-silent-which-is-the-failure-class-the-gates-exist-for) fixable.
 - **Take Stages 3–4 together, after MCP.** MCP is the cheaper proof that the
   declaration path generalises beyond `OutboundTranslationSlice`; doing it first
@@ -677,7 +677,7 @@ cheaper than after.
 - **Rename the record before growing it** ([§6](#6-the-record-is-misnamed)). It is a one-time breaking change
   and it is cheapest now — six sites in core, and no slice author affected.
 - **Write the vocabulary down** ([§7](#7-the-word-capability-carries-four-meanings)). Three glossary entries and one homonym
-  rename (`serverCapability` → `queryFeatures`); no behaviour, no published type,
+  rename (`serverCapability` → `queryFeatures`); no behavior, no published type,
   and it stops a second phrase for sense A from taking hold.
 - **Close the object store's read half** ([§8](#8-what-else-belongs-on-the-record) #1). It is already owed, the type
   says so, and it removes the exception the doc-site page currently has to
@@ -693,7 +693,7 @@ cheaper than after.
   the declared case; the risk is a plugin that schedules and has not yet been
   rebuilt to declare it. Sequence the release so declaration ships and is adopted
   before provisioning becomes conditional.
-- **Stage 1 changes local timing behaviour** that developers may have
+- **Stage 1 changes local timing behavior** that developers may have
   (unknowingly) calibrated against. A `Daily` that starts firing at the configured
   hour instead of 24h after boot is a fix, but it will look like a regression to
   anyone who built around the old reading.

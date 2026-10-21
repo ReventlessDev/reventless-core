@@ -183,7 +183,7 @@ The derivation (wherever invoked) must:
 
 The PPX stays per-file (it can't see across files) and keeps auto-tagging `*Id`
 fields; the runtime adapter becomes the authority that *re-scopes* them globally. The
-annotations the PPX honours remain valid as escape-hatch overrides.
+annotations the PPX honors remain valid as escape-hatch overrides.
 
 ---
 
@@ -300,7 +300,7 @@ genType; reventless-spec does **not** emit genType. Options:
 3. **Two implementations, no contract.** Rejected — reintroduces exactly the drift the
    tools plan calls out.
 
-### Zero-diff verification (the Phase 1 gate — no behaviour change yet)
+### Zero-diff verification (the Phase 1 gate — no behavior change yet)
 
 `infer` runs **alongside** today's extraction; assert byte-identical output before any
 wiring is switched:
@@ -371,7 +371,7 @@ over to the derived values.
      157/157, zero warnings.
 
    **Not yet done (Phase 2):** switch the wiring to consume the inferred values.
-   The gate shows the only behavioural delta is `ProductAdded` dropping `categoryId`
+   The gate shows the only behavioral delta is `ProductAdded` dropping `categoryId`
    — which is coupled to the example still carrying `@crossPartition` on the emitted
    `categoryId` *and* the `addedProductIds` sibling-leak workaround in
    `AddProduct_Behavior`. So the wiring switch and the `AddProduct` migration are
@@ -398,7 +398,7 @@ over to the derived values.
 3. **Harness parity** — ✅ **Done (read path).** `Behavior_GWT` / `Flow_GWT` derive
    `crossPartitionTagKeys` as `extractCrossPartitionTagKeys ∪
    DcbScopeInference.crossPartitionForSlice` and thread `infer([shape])`'s
-   `tagKeysByEventType`. Backward-compatible (annotations still honoured), so all 5
+   `tagKeysByEventType`. Backward-compatible (annotations still honored), so all 5
    example plugins + reventless-gwt stay green. This is what lets the reachability
    guard pass after `@crossPartition` is removed.
 4. **Migrate the examples** — ⚙️ **Partial (hybrid catalog).** Stripped **all
@@ -548,7 +548,7 @@ over to the derived values.
   was dropped once the read+fence correctness analysis showed the annotation is the
   consistency-critical intent oracle, not a removable leftover.)*
 - The generator emits the same `crossPartitionTagKeys` / `tagKeysByEventType` it
-  does today for every example (zero behavioural diff), now derived rather than
+  does today for every example (zero behavioral diff), now derived rather than
   annotated.
 - Escape-hatch annotations still work and override inference; a contradicting
   annotation is a clear generator error.
@@ -562,7 +562,7 @@ The inference reads identities off field **names** (`*Id` / `*Ids`), which is wh
 `DcbScopeInference` schema-agnostic. That made `@partitionTag` — the intent oracle this plan
 deliberately retained — powerless on exactly the fields that need it most: a domain's own
 identifier is often unsuffixed (`sku`, `isbn`, `vin`), and the hint was extracted from the event
-schema and then dropped, because `seedOf` honours a hint only when it already names a produced
+schema and then dropped, because `seedOf` honors a hint only when it already names a produced
 key. The hatch worked for every field except the ones it was for, and a slice keyed that way
 carried an annotation, a partition nobody chose, and nothing saying the two disagreed.
 

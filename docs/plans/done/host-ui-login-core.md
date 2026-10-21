@@ -14,7 +14,7 @@ Each stage has a verification gate; do not advance until it passes. Stage B is e
 
 - **Stage A** — Abstraction + in-memory baseline (no AWS work).
 - **Stage B** — SPA shell against in-memory (entirely UI-side; see sibling plan).
-- **Stage C** — Cognito UserPool provisioning (no behaviour change).
+- **Stage C** — Cognito UserPool provisioning (no behavior change).
 - **Stage D** — Wire Cognito into AppSync.
 - **Stage E** — Spec-level authz parity on AWS (optional).
 
@@ -128,7 +128,7 @@ This is the only Stage A step that goes beyond the abstraction reference (which 
 
 > **Hand-off to UI sibling plan:** Stage A complete unblocks UI sibling plan Stage B (the SPA shell can drive against the `POST /__inmemory/login` endpoint locally).
 
-## Stage C — Cognito UserPool provisioning (no behaviour change) — ✅ done
+## Stage C — Cognito UserPool provisioning (no behavior change) — ✅ done
 
 (Stage B is entirely UI-side; see sibling plan.)
 

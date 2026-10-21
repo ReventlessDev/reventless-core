@@ -17,7 +17,7 @@ examples, and by compiling the sealing forms below in a scratch project.<br/>
   fifteen conversion calls and one type parameter, and would give up the only compile-time
   guard against mixing up entities. Today that guard does not exist either: every
   generated `X.Id.t` is the same type (F1).
-- **Ids are recognised by name, not by type.** Every id in a command, event or state is a
+- **Ids are recognized by name, not by type.** Every id in a command, event or state is a
   `string`. Tagging, partition inference and read-model keys all find ids by the field
   name `*Id` / `*Ids` (F2).
 - **The Id module is per component, and an identity is not.** Many slices, views and plugins
@@ -38,7 +38,7 @@ examples, and by compiling the sealing forms below in a scratch project.<br/>
   `Orders` (F6).
 - **Nothing changes on the wire.** At runtime the type is a string schema, so no data
   needs migrating.
-- **The PPX must go first for DCB.** Every id-recognising site accepts only a literal
+- **The PPX must go first for DCB.** Every id-recognizing site accepts only a literal
   `string` (F4). Until that changes, a typed id field in a DCB slice silently loses its tag.
   Aggregates carry no DCB tags, so they are the safe place to start.
 
@@ -85,7 +85,7 @@ order id" comes from the name:
 | Read-model key | `@id`, else `<singular(name)>Id`, else the sole `*Id` ([`GraphQL_FragmentGenerator.res:331-358`](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L331)) |
 | Reference fallback | with no `@ref`, a consumer "resolves the field to whatever entity the name suggests" ([`Reference.res`](../../reventless/spec/src/components/Reference.res)) |
 
-Nothing recognises `buyer: string` as an id, and an `orderId` that holds a customer id is
+Nothing recognizes `buyer: string` as an id, and an `orderId` that holds a customer id is
 accepted everywhere.
 
 ### F3: The Id module is per component; an identity is not
@@ -100,7 +100,7 @@ accepted everywhere.
 This rules out the obvious fix. Sealing afresh in every file would make
 `PlaceOrder.Id.t ≠ CancelOrder.Id.t ≠ Orders.Id.t` for the same order.
 
-### F4: Everything that recognises an id requires a literal `string`
+### F4: Everything that recognizes an id requires a literal `string`
 
 | Site | Effect on a field typed `ProductId.t` |
 |---|---|
@@ -205,7 +205,7 @@ identity.
 
 ### Recognition: syntactic in the PPX, authoritative in metadata
 
-The PPX sees one file and cannot resolve types. It recognises the **shape** `<M>Id.t` (a path
+The PPX sees one file and cannot resolve types. It recognizes the **shape** `<M>Id.t` (a path
 whose last module ends in `Id`), including inside `option<…>` and `array<…>`, and uses it
 only to choose the helpers it wraps the field with. The key comes from the schema metadata
 that `Make` sets. That gives the runtime one place to ask "is this an identity, and which
@@ -321,9 +321,9 @@ unreferenced, would be published as `String` and lose its id-ness. Newly typed f
 name does not end in `Id` then change from `String` to `ID`. Clients do not need to know
 this in advance: every mutation argument already carries the type the SDL declares, as
 `x-reventless-graphql-type` (`Plugin_Structure.annotateArgTypes`), rendered by the same call
-that writes the SDL. A client that honours that key cannot disagree with the server.
+that writes the SDL. A client that honors that key cannot disagree with the server.
 
-**Name-based consumers degrade; they do not break.** A client that recognises entity links,
+**Name-based consumers degrade; they do not break.** A client that recognizes entity links,
 reference cells or drill targets by the `*Id` name shows `buyer: CustomerId.t` as plain text
 until it reads the identity semantic. The semantic's key (`customerId`) gives the same entity
 stem the name did, so moving to it is a local change for such a client.
@@ -352,7 +352,7 @@ This belongs in `Plugin_Structure.extractReferences`
 ([:593](../../reventless/core/src/plugin/component/Plugin_Structure.res#L593)), which already
 sees every view schema in the plugin. It emits the same `{fieldName, entity, plugin}` records
 as today, so clients that resolve references from those records need no change. (Clients
-that recognise ids by name are covered under Wire compatibility.)
+that recognize ids by name are covered under Wire compatibility.)
 
 The type cannot choose **which list**. `AvailableProducts` is a filtered subset of the
 products, and preferring it to `Products` is a product decision. `@ref` stays for that
@@ -397,7 +397,7 @@ Step 0 is independent. Steps 1–7 ship one at a time, in this order.
    nothing outside core reads the published key. That replaces the stated invariant ("the
    published key and the filter key cannot disagree") with a weaker one: the key is always
    filterable, but not every filterable field is the key. This is a fix to today's
-   behaviour and needs no identities.
+   behavior and needs no identities.
 1. **`Id.Identity`, `Id.Make`, and the `identity` semantic** with `ReferenceTo` carrying an
    optional identity (open question 2), emitted to JSON Schema, and `SchemaType` typing an
    identity as `ID`. Additive. Correct `Id.T`'s doc comment (F1).
@@ -489,10 +489,10 @@ injection in spec packages.**
 
 - **A copy would drift.** `Make` marks the schema with a semantic from a closed,
   framework-owned vocabulary. A copied `Make` either copies that vocabulary or marks nothing,
-  and the runtime would then not recognise the identity.
+  and the runtime would then not recognize the identity.
 - **It adds no weight for consumers.** Every package that consumes a `*-spec` package is a
   plugin, and every plugin already depends on `reventless-spec`.
-- **The PPX would change behaviour.** `*-spec` packages already run `reventless-ppx`, and only
+- **The PPX would change behavior.** `*-spec` packages already run `reventless-ppx`, and only
   the missing dependency keeps it out of spec mode. With the dependency,
   [`ReventlessPpx.ml:796`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml#L796) would
   inject `module Id = Reventless.Id.String` into every extension-point contract, because that
@@ -532,7 +532,7 @@ example:
 - **Source:** 18 files touched, but **8 conversions**, every one at a seam where the framework
   routes by string: the catalog extension-point mapping (2, `makeFromString` of the delegate's
   id), the ordering extension (2), the ordering extension-point mapping (3, into the untyped
-  ordering-spec contract), and the email side effect (1). Behaviours and projections needed
+  ordering-spec contract), and the email side effect (1). Behaviors and projections needed
   none: an aggregate-sourced projection keys rows by the envelope id, which is now the view's
   own identity.
 - **References:** `Order.Place` drops its `@ref("AvailableProducts") @noDcbTag`; both its

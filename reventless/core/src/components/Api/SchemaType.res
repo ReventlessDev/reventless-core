@@ -421,7 +421,7 @@ let trailShape = (
     let shape = ArrayOf(ObjectRef(entryName, fields))
     // Walking the entries by shape skips the semantic dispatch `fromSury` does,
     // so the marker is re-applied here. Without it the trail reaches a consumer
-    // as an unremarkable array of objects, and recognising it would come down to
+    // as an unremarkable array of objects, and recognizing it would come down to
     // the field's name.
     switch Reventless.Semantic.get(schema) {
     | Some(sem) => Semantic(sem, shape)

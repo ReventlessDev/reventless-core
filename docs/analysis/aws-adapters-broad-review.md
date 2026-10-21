@@ -228,7 +228,7 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 **Effort:** Tiny.
 
 ### 4.7 — **Minor, Correctness** — `saveMode.Any` and `Overwrite` collapse
-[`QueryDbStorage_DynamoDb_Runtime.res:63-95`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L63-L95). The constructor exists but produces identical behaviour. If `Any` was meant for "upsert without clobber on stale state," the implementation is missing.
+[`QueryDbStorage_DynamoDb_Runtime.res:63-95`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L63-L95). The constructor exists but produces identical behavior. If `Any` was meant for "upsert without clobber on stale state," the implementation is missing.
 
 **Fix:** delete the variant or implement `Any` with a `version` condition.
 **Effort:** Small.
@@ -308,7 +308,7 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 **Effort:** Tiny.
 
 ### 6.3 — **Major, Operational** — No SecurityGroup, no `assignPublicIp` config
-[`ClonerRunner_Fargate.res:103-104`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L103-L104). Falls back to VPC default security group (which may be over- or under-permissive). Private subnets without a NAT can't pull the image or call AWS APIs; `assignPublicIp` is unspecified, leaving behaviour subnet-dependent.
+[`ClonerRunner_Fargate.res:103-104`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L103-L104). Falls back to VPC default security group (which may be over- or under-permissive). Private subnets without a NAT can't pull the image or call AWS APIs; `assignPublicIp` is unspecified, leaving behavior subnet-dependent.
 
 **Fix:** thread `securityGroupIds` and `assignPublicIp` through the maker.
 **Effort:** Small.

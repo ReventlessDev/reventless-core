@@ -298,7 +298,7 @@ because the PPX auto-tags `*Id` fields inside a slice folder. See the
 [GraphQL API guide](../graphql-api-guide.md#53-from-an-inboundtranslation)
 for the full mapping.
 
-There is no opt-out. Unlike a StateChangeSlice command, an inbound slice honours
+There is no opt-out. Unlike a StateChangeSlice command, an inbound slice honors
 no `@noApi` — every declared slice gets its mutation.
 
 The field answers under the slice's `authorizationOf`, which defaults to

@@ -71,7 +71,7 @@ concrete defects, all code-verified in `reventless/aws/src`:
 2. **`reventless:role` duplicates `reventless:kind`.** `AWS_Tags.make` sets both to the same
    `componentType->toString`. They are meant to carry two *different* facts: the **piece role** (the
    V2 deployment piece — `EventCollector`, `QueryDb`, `Runtime`, `CommandTopic`, …) and the owning
-   **model-component kind** (the V1 modelling concept — `Aggregate`, `StateViewSlice`, …). Today one
+   **model-component kind** (the V1 modeling concept — `Aggregate`, `StateViewSlice`, …). Today one
    value stands in for both, so neither question can be answered.
 3. **No scope, no platform, wrong plugin, and most resources carry no tags at all.**
    - There is no `reventless:scope` key, so nothing distinguishes a *component-owned* resource from
@@ -92,7 +92,7 @@ concrete defects, all code-verified in `reventless/aws/src`:
 `~unitKind`), and every creator that provisions a resource without tags (audit list below). No
 change outside `reventless/aws`. Backends other than AWS express the same schema as native labels
 (`reventless.io/*` on Kubernetes) — the K8s renderers already emit an `Adapter.resource` record with
-`service`/`role`/`region`, i.e. the same vocabulary, so this plan defines the *schema* both honour.
+`service`/`role`/`region`, i.e. the same vocabulary, so this plan defines the *schema* both honor.
 
 ---
 
@@ -144,7 +144,7 @@ The rule:
   the identical namespace, so the two backends carry one vocabulary, spelled each platform's way.
 
 Net: one namespace for framework facts (`reventless:*` / `reventless.io/*`), a single bare exception
-(`Name`, earned by AWS-console behaviour), and no key duplicated across the two.
+(`Name`, earned by AWS-console behavior), and no key duplicated across the two.
 
 ---
 
@@ -208,7 +208,7 @@ tag vocabulary and the monitoring-registry vocabulary cannot drift. Define them 
   only makes the framework *emit* a complete, correct schema. Kubernetes label emission of the same
   schema is a follow-up once the AWS shape is settled (the K8s adapter already carries the values).
 - **No new bare keys.** `Name` is the sole bare exception; `Environment` → `reventless:environment`,
-  and the redundant bare `Type`/`Plugin` are dropped in favour of their `reventless:` twins (see
+  and the redundant bare `Type`/`Plugin` are dropped in favor of their `reventless:` twins (see
   Naming consistency).
 
 ## Done when

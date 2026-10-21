@@ -14,7 +14,7 @@
 //     its plugin's EventCollector SQS queue.
 //
 // All classic EventLogs in the platform share one selection, mirroring the DCB
-// toggle. Only the Single (sync/async) aggregate strategies honour it; the
+// toggle. Only the Single (sync/async) aggregate strategies honor it; the
 // PerAggregate and Micro strategies stay DynamoDB-only.
 
 type selection = {

@@ -308,7 +308,7 @@ let metaKeys = [
 
   `StoredEvent` is the logical shape (nested `meta:meta`). The on-disk shape is
   a flat top-level dict so DynamoDB GSIs can project individual meta attributes
-  (the §1.2/§3.2 behaviour today, preserved here). These two helpers are the
+  (the §1.2/§3.2 behavior today, preserved here). These two helpers are the
   single bridge between the two — used by both EventLog (aggregate) and
   DcbEventLog (DCB) storage paths.
 */

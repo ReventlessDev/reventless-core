@@ -1,6 +1,6 @@
 // Does the deployed API actually refuse what the specs say it should?
 //
-// Nothing tested that. The GWT suites test behaviour, and a plugin's authorization
+// Nothing tested that. The GWT suites test behavior, and a plugin's authorization
 // annotations become AppSync directives at deploy time — so the whole path from
 // annotation to directive to refusal was only ever exercised by an operator
 // hitting a wall. It cost an afternoon once already: an `admin` account refused on

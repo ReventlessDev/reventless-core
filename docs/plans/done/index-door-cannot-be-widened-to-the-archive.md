@@ -5,7 +5,7 @@
 that made the work easier. It was filed as a widening gap — a door that narrowed
 retirement with no way to ask past it. Measuring it first found the door does not
 answer **on any backend**, for a different reason on each, so there was no
-behaviour to preserve and the signature could be chosen on the merits.
+behavior to preserve and the signature could be chosen on the merits.
 **Stack:** `reventless/core` (the shared derivation), `reventless/local`,
 `reventless/aws`, `rescript/pulumi-aws`. No new deps.
 **Relates to:** [dynamodb-narrows-every-door.md](dynamodb-narrows-every-door.md)

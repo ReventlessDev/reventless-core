@@ -2,7 +2,7 @@
 
 open Catalog_Examples
 
-// The modelling claim that makes the two retired states worth having, asserted
+// The modeling claim that makes the two retired states worth having, asserted
 // rather than left to a comment: one withdrawal can be undone and the other
 // cannot. The declared edge is the framework half and is covered elsewhere; this
 // pins the domain half, so a later edit cannot quietly make `Discontinued`

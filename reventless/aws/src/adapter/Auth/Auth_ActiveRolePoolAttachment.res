@@ -14,7 +14,7 @@
     attachment resource, so something has to call `UpdateUserPool` against a pool
     no stack owns. That belongs in a declared resource executed at deploy time,
     never a hand-run command against a live pool, which would leave the
-    deployment's behaviour depending on an act no source describes.
+    deployment's behavior depending on an act no source describes.
 
     🚨 **The slot is the pool's, and this resource takes it only when it is
     free or already ours.** Cognito allows a pool exactly one

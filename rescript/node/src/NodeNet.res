@@ -20,7 +20,7 @@ type server
 @send external onSocketError: (socket, @as("error") _, JsExn.t => unit) => unit = "on"
 
 /** `keepAlive` is deliberately absent: a caller that wants it sets it per
-    socket, and defaulting it changes the behaviour of every consumer. */
+    socket, and defaulting it changes the behavior of every consumer. */
 @module("node:net")
 external createServer: (socket => unit) => server = "createServer"
 

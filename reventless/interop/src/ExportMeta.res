@@ -16,7 +16,7 @@ type t = {
 // Serialize `value` using its sury schema and return the top-level JSON object
 // keys present in the result.  Optional fields are omitted by sury when None,
 // so absent optional fields will NOT appear in the returned array — which is
-// exactly the behaviour needed for the field manifest.
+// exactly the behavior needed for the field manifest.
 let fieldNamesOf = (value: 'a, schema: S.t<'a>): array<string> =>
   value
   ->S.convertOrThrow(~from=schema, ~to=S.json)

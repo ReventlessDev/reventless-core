@@ -53,7 +53,7 @@ exist**:
 
 - `Platform.capability` has exactly two arms today — `ObjectStore({plugin, store})` and `Geocoding`.
   There is no `Messaging` arm, no provisioner, no injected port, and no local dev implementation.
-- Its shipped behaviour is a `console.log` stub in
+- Its shipped behavior is a `console.log` stub in
   `examples/online-shop-hybrid/ordering/src/Service/EmailService.res` that ignores its injected
   capabilities, so this is not an extraction — there is nothing to strip.
 
@@ -74,7 +74,7 @@ and no obligation placed on the host at all. Delivery state and recipient prefer
 
 This matters beyond notification: it is the fork in the trait model. Geocoding writes back to its
 host; notification does not. A trait contract generalised from the first two specimens alone would
-have hard-coded write-back as universal and mis-modelled this one. Any host contract written here
+have hard-coded write-back as universal and mis-modeled this one. Any host contract written here
 must carry the write-back posture as an explicit flag, not an assumption.
 
 **Consequence for this plan:** the `Order` arms and `confirmationStatus` above are struck. Do not
@@ -233,7 +233,7 @@ unchanged, and so are their reference keys. Six corrections to what is written b
 
 - **`recipientSource` collapsed to a `recipientPath: string`.** `FixedAddress` was dropped:
   `RequestNotification` addresses a *recipient* and the directory resolves the address, so a fixed
-  address is a different door — alerting, [§5](#5-capability-layer-prerequisite) — and an arm the host cannot honour is worse than an
+  address is a different door — alerting, [§5](#5-capability-layer-prerequisite) — and an arm the host cannot honor is worse than an
   absent one. With one arm left, the variant was noise.
 - **The rule carries four fields [§10](#10-p0--the-rule-becomes-a-value) did not name**, each because something concrete needed it:
   `version`, because [§12](#12-p2--provenance-and-a-fourth-outcome)'s `Configured({ruleId, ruleVersion})` has nowhere else to read one;
@@ -257,7 +257,7 @@ unchanged, and so are their reference keys. Six corrections to what is written b
   wrong** — it said such a row "is abandoned in `onExhausted`". It is not: a `None` from `process`
   spends no retry budget (`AutomationSlice_Callback.res` increments `retryCount` only on an encode
   or publish failure), so the row stays `Pending` and is re-swept forever. Corrected in the source
-  comment and the GWT. The behaviour itself is left alone — [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) explains why it is load-bearing.
+  comment and the GWT. The behavior itself is left alone — [§19](#19--2026-09-04-what-the-rails-actually-allow-the-digest-to-be) explains why it is load-bearing.
 
 Fixed in passing: the scaffold emitted an automation `collect` of the wrong arity
 (`(event, _ctx)` rather than `(event, ~sourceId as _, _ctx)`), so an emitted intake relay would not
@@ -407,7 +407,7 @@ in [§14b](#14b-p5--the-delivery-row-stops-carrying-an-address-and-starts-naming
 A second producer of notification requests takes over a *stream of occurrences* — one
 `"<log>:<eventType>"` at a time — and the compiled table of [§10](#10-p0--the-rule-becomes-a-value) stands aside for exactly that stream
 and no other. Everything unclaimed keeps being served by the compiled table, with no configuration
-anywhere and no behavioural change.
+anywhere and no behavioral change.
 
 ### 13.1 Two slices, and the split is forced
 
@@ -704,7 +704,7 @@ receives.
 **Why this belongs in core rather than with whatever consumes it:** it is a property of the domain
 model, declared where the field is declared, and it is wanted by consumers that have nothing to do
 with notifications. A marking that exists only in one consumer is a marking the rest of the system
-cannot honour.
+cannot honor.
 
 Fields already carrying a semantic that implies sensitivity (`email`, `phone`) default to masked
 without an annotation being added.

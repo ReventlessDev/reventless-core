@@ -575,7 +575,7 @@ cold-start path without AWS:
     Postgres 16 sidecar (`docker-compose.postgres.yml`, dedicated host port 55433
     so it never collides with a dev's own Postgres), exports `PG_URL`, runs
     `jest.integration.pg.config.js` with `maxWorkers: 1` (serial), tears down.
-    Skips cleanly if Docker is absent; honours a pre-set `PG_URL`. Wired into CI
+    Skips cleanly if Docker is absent; honors a pre-set `PG_URL`. Wired into CI
     (`continue-on-error`, like the DynamoDB step).
   - The three suites are now **excluded from the default parallel project**
     (`Pg.*IntegrationTest` in `testPathIgnorePatterns`), so `PG_URL=… pnpm test`

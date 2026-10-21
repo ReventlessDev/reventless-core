@@ -12,7 +12,7 @@
 //
 // The unit suite (`DcbEventLogStorage_DynamoDb_RuntimeTest.res`) asserts the
 // *shape* of the built `TransactWriteItems`. This suite asserts DynamoDB's
-// *behaviour* — that the `ConditionExpression`s interpret as we expect — which
+// *behavior* — that the `ConditionExpression`s interpret as we expect — which
 // is the only thing that proves the fence-scope model (Issue 1 fix) and the
 // optimistic-concurrency guarantees end-to-end. See
 // `docs/analysis/dcb-consistency-check-issues.md` and

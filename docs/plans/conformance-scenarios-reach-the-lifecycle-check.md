@@ -9,7 +9,7 @@ and `docs/guides/reverse-codegen-pipeline.md`. `check-lifecycle` is unchanged.
 
 ## Goal
 
-A behaviour scenario that runs is a scenario `check-lifecycle` can read, wherever it was written.
+A behavior scenario that runs is a scenario `check-lifecycle` can read, wherever it was written.
 In particular, the scenarios of a trait's conformance suite, which run against the host's own
 slice, count for the host's lifecycle check like the host's own scenarios do.
 

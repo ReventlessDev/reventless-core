@@ -114,7 +114,7 @@ File: `reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res`.
 File: `reventless/aws/src/components/Api/AppSync_Adapter.res`.
 
 Managed `Cloudwatch.LogGroup` for `/aws/appsync/apis/<id>` (name derived from the
-API id output, tier retention) on every stack by default, honouring the same
+API id output, tier retention) on every stack by default, honoring the same
 `unmanagedLogGroupStacks` escape hatch.
 
 ## Step 5 — First-class `logLevel` config field ✅

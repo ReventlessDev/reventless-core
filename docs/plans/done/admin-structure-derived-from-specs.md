@@ -109,7 +109,7 @@ Answered above: yes. See "Why — four drifts found in one file".
 
 - Lift `extractCommandDefs` from a local binding inside `Plugin_Structure.make`
   ([Plugin_Structure.res:857](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L857))
-  to module level. Mechanical; no behaviour change.
+  to module level. Mechanical; no behavior change.
 - Call it once with `PluginSpec.commandSchema`, the already-exported
   `PluginSpec.commandAuthorization`, and a `mutationFieldFor` composed the way
   `PluginBaseFragment` composes the field it generates.
@@ -131,7 +131,7 @@ The lifecycle board could not be driven — see the decode-failure analysis; the
 no plugin rows on any local platform. Verified against what
 `Platform_ComponentDefinitions` publishes instead.
 
-### Step 2 — Honour `@hidden` in the AutoUI query selection — **DONE (other repo)**
+### Step 2 — Honor `@hidden` in the AutoUI query selection — **DONE (other repo)**
 
 **Cross-repo (`reventless-ui`).** Skip `x-reventless-hidden` properties in
 `buildFieldSelection`. General benefit: today every hidden field is fetched over the
@@ -178,10 +178,10 @@ have) and with `@summary`.
 generated surface; `@owner` / `@retired` remain the enforcement markers.
 
 **First task of this step is a survey, not code** — **DONE, and the answer is
-favourable.** Every path has a single place to honour the marker, and one path turns
+favorable.** Every path has a single place to honor the marker, and one path turns
 out to need nothing at all:
 
-| Path | Where it is honoured | Notes |
+| Path | Where it is honored | Notes |
 |---|---|---|
 | SDL generation | `GraphQL_FragmentGenerator.deriveObjectTypeWithNested(~excludeFields)` | one call site (line ~712), already parameterised — the marker feeds the list `PluginBaseFragment` hand-writes today |
 | `queryableDef.schema` | `SuryToJsonSchema.deriveObjectSchema` | `Plugin_Structure` derives it at two sites, but both go through this one walker |
@@ -210,7 +210,7 @@ check.
 Re-scoping to `Plugins` only is therefore **not** indicated.
 
 **What landed.** `@internal` on a record field, collected by the PPX into
-`stateAnnotationSpec.internal` and honoured in exactly the two places the survey
+`stateAnnotationSpec.internal` and honored in exactly the two places the survey
 named:
 
 - `SuryToJsonSchema.objectRefToJsonSchema` **drops** the property rather than
@@ -373,7 +373,7 @@ the entry point, since it is now a parameter of it rather than a local trick.
 ## Risks
 
 - **Step 3 is the only one that adds surface area.** If the survey finds the marker
-  has to be honoured in many places, prefer re-scoping to `Plugins` only over
+  has to be honored in many places, prefer re-scoping to `Plugins` only over
   threading a half-supported annotation through the codegen.
 - **Step 2 is cross-repo** and changes what every AutoUI list query selects. Low risk
   (it removes fields the UI was already hiding) but it is a wire change; verify a
@@ -432,7 +432,7 @@ two useless columns. Bad, worth avoiding, not a breakage.
 **Correction 2 — the test could not have kept passing.** This plan said the test
 `the two narrowed fields are absent from the published schema` "should keep
 passing across the change — that is what makes it a safe swap rather than a
-behaviour change." That was wrong on its own terms: the entire point of the swap
+behavior change." That was wrong on its own terms: the entire point of the swap
 is that the schema now *carries* the two fields, marked hidden, where the exclude
 list cut them out. The test asserts the new claim, and a sibling asserts the
 contrast that makes the two markers worth having separately:

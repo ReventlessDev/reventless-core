@@ -23,11 +23,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 // the emitter exists to support: that what it writes COMPILES and SATISFIES THE
 // TRAIT'S OWN RULES, with no host policy written at all. A graft with no extra
 // refusal is a complete graft, so a policy-free emit is a legitimate one — which
-// is what makes it checkable without modelling anyone's policy.
+// is what makes it checkable without modeling anyone's policy.
 //
 // Deliberately not a diff against the committed specimen host: reproducing that
 // would mean the emitter knowing about `Product`'s shelf and `Category`'s
-// boolean, and modelling host policy is exactly what makes scaffolders rot.
+// boolean, and modeling host policy is exactly what makes scaffolders rot.
 //
 // `graft.remove` is the aggregate-host variant of the same claim. An aggregate
 // graft cannot land on a fresh entity — its conformance binding names the host's

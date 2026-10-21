@@ -103,4 +103,4 @@ cd reventless/reventless-aws && npm run build
 npm run build 2>&1 | grep -E "Warning|warning|error|Error"
 ```
 
-No runtime behaviour changes — pure additive field.
+No runtime behavior changes — pure additive field.

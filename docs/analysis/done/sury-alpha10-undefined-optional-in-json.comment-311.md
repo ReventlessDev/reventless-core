@@ -33,6 +33,6 @@ Why it bites in practice: these are forward-compatible cross-stack export shapes
 - Switch to `@s.nullable` / `S.nullAsOption` so `None` encodes to `null` → blocked by this very issue on encode at depth, and `nullAsOption` is *present-required on decode*, which breaks the forward-compat the optional markers exist for.
 - Keep plain `option` → forward-compatible on decode, but hits this `undefined`-not-jsonable wall on encode.
 
-A tolerant encode that **omits** `undefined` optional fields when targeting JSON (alpha.4 behaviour) would resolve both the plain-`option` and `@s.nullable` cases without the decode-compat tradeoff.
+A tolerant encode that **omits** `undefined` optional fields when targeting JSON (alpha.4 behavior) would resolve both the plain-`option` and `@s.nullable` cases without the decode-compat tradeoff.
 
 Environment: `sury@11.0.0-alpha.10`, matching `sury-ppx`, `rescript@12.3.0`, Node 22.

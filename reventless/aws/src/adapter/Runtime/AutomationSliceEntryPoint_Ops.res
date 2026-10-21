@@ -399,7 +399,7 @@ channel it cannot send on.
 /** The email transport this deployment chose.
 
     Read per call like the sender beside it, and defaulting to SES on anything it
-    does not recognise — including the empty string a platform that named nothing
+    does not recognize — including the empty string a platform that named nothing
     exports. The deploy already refuses an unknown value (`Capability_Messaging`
     parses it there, where a human is watching); defaulting again here is for the
     case that cannot be refused, a Lambda whose variable was edited by hand. SES

@@ -28,7 +28,7 @@ how an identity provider records that a person has a role: the `groups` in a
 login token, the groups of a user pool, the `groups` of an account in
 `users.yaml`. The platform says which group stands for which role, and a check
 at deploy and at start refuses a plugin that needs a role the platform cannot
-provide. Scenarios in the examples then say, next to each command's behaviour,
+provide. Scenarios in the examples then say, next to each command's behavior,
 which roles may issue it and which are refused.
 
 ---
@@ -308,7 +308,7 @@ covers commands.
 ## §8 — Role-based scenarios in the examples
 
 Every command in the examples whose rule is not the default gets scenarios in its
-`_GWT.res`, beside its behaviour:
+`_GWT.res`, beside its behavior:
 
 - **one accepted scenario per role the rule names** (for `AllowRoles([Admin,
   Merchandiser])`: one as `Admin`, one as `Merchandiser`);
@@ -332,7 +332,7 @@ command, so those two cases are covered by the GWT package's own tests instead.
 The shopper is a named example value (`shopper` in each catalog's examples,
 `c1` in ordering), and no example declares a `Shopper` role: no rule requires
 one, and a case only tests would use reads as evidence that a rule does.
-`UnarchiveCategory` had no scenarios at all and got its behaviour scenarios too.
+`UnarchiveCategory` had no scenarios at all and got its behavior scenarios too.
 
 The lifecycle check already leaves refused scenarios out, and the accepted ones
 add evidence it can use. `pnpm run check:lifecycle:update` refreshes the model
@@ -457,7 +457,7 @@ them on top of the roles this plan introduces ([§2](#2--the-two-words)).
    for a framework version that has it, gated on that version. This repository's
    own generator does not write `@authorize`.
 6. **Per-tenant roles** are out of this plan. A tenant-scoped role ("administrator
-   of organisation X") is not a fixed group and cannot be a gate at the API
+   of organization X") is not a fixed group and cannot be a gate at the API
    layer. Its place already exists: `registerCommandInterceptor` in
    `CommandGenerator_Callback` runs with the caller's identity before a command
    is published, which is where a later permissions layer can decide it, on top

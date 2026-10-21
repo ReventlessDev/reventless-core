@@ -2704,7 +2704,7 @@ module MakeWithConfig = (
     //
     // A platform that provisioned no geocoder yields "", and the plugin's client
     // reports `Unavailable` — retried, then surfaced by the heartbeat sweep. That
-    // is a modelled outcome, which is the point of the empty string: a plugin
+    // is a modeled outcome, which is the point of the empty string: a plugin
     // deployed against a platform without the capability degrades rather than
     // failing to deploy.
     // The place index, not the Function URL. A slice's Lambda reaches Amazon
@@ -2907,7 +2907,7 @@ module MakeWithConfig = (
           // why a *declared* need fails the deploy.
           //
           // Only a declared need. A plugin that says nothing still degrades
-          // exactly as before: the empty endpoint is a modelled outcome for a
+          // exactly as before: the empty endpoint is a modeled outcome for a
           // deployment that simply has no geocoder, and failing those would break
           // deployments that work.
           switch Reventless.CapabilityNeed.unmet(

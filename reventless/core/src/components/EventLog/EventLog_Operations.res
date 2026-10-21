@@ -17,8 +17,8 @@ module type T = {
 
 // Retry schedule for transient storage errors.
 // Exponential backoff: 100ms, ~200ms, ~400ms, ~800ms, ~1600ms — max 5 retries.
-// Only retries on recognised transient error messages; permanent errors propagate immediately.
-// Retry only recognised transient storage failures — never a Conflict (a retry
+// Only retries on recognized transient error messages; permanent errors propagate immediately.
+// Retry only recognized transient storage failures — never a Conflict (a retry
 // of the same append would just conflict again; the OCC retry happens a layer up
 // via replay+re-decide).
 let isTransient = (e: EventLog.appendError) =>

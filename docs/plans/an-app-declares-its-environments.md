@@ -154,7 +154,7 @@ is merged either way.
 ## Risks
 
 - **A push deploys somewhere new.** Only when a file exists; without it E2's no-change test holds
-  the old behaviour.
+  the old behavior.
 - **Review environments cost money.** One stack per open pull request. They start at *ready for
   review* by default and are removed on close; a pull request left open keeps its stack, and
   the guide says so.

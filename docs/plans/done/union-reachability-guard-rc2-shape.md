@@ -14,7 +14,7 @@ synthetic fixed, broken, payload-union and `rc.0` shapes.
 > this repository, 28 still dispatch their object constructors in one inner block, and in every
 > one of them each tag is tested inside the block and none after it — the fixed shape described
 > below. The options below were written for `rc.2` and need revisiting. Retiring the guard
-> in favour of decode tests, each failing when a constructor the union's JSON Schema
+> in favor of decode tests, each failing when a constructor the union's JSON Schema
 > (`S.toOutputJSONSchemaOrThrow`) declares is not decoded, is now a fourth option.
 
 ## What
@@ -47,7 +47,7 @@ this exists for.
 
 ## Options
 
-1. **Teach it the `rc.2` prefix** — recognise both shapes, restoring all 114. Smallest
+1. **Teach it the `rc.2` prefix** — recognize both shapes, restoring all 114. Smallest
    change; still couples the guard to a literal the next release can move again.
 2. **Anchor on the group marker instead of the outer prefix** — locate the inner
    `for(;;)` dispatch and check for `TAG` tests after its closing brace, without asserting

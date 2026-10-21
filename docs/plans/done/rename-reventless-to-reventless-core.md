@@ -276,7 +276,7 @@ After applying the full three steps to the 6 core src files, `Reventless.X` self
 ```
 // Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
 ```
-The build succeeds (556 modules compiled), so these 11 occurrences are correct behaviour, not errors.
+The build succeeds (556 modules compiled), so these 11 occurrences are correct behavior, not errors.
 
 #### rescript.json changes
 

@@ -192,7 +192,7 @@ silently broke the AWS deploy (`deploy-online-shop-hybrid.yml` →
   program → Pulumi reports `"Pulumi SDK has not been installed"` /
   `"could not read plugin pulumi-resource-pulumi-nodejs: EOF"`.
 - Pre-migration this worked because `.npmrc` referenced `${GITHUB_TOKEN}`, which
-  is always set in Actions — so hoisting was always honoured.
+  is always set in Actions — so hoisting was always honored.
 
 Symptom is **registry-independent and Pulumi-version-independent**; pinning the
 CLI (`pulumi/setup-pulumi`) does nothing. The tell is the repeated
@@ -202,7 +202,7 @@ on every pnpm invocation.
 **Fix shipped (commit `61df3b445`):** define `NPM_TOKEN` (optional secret, may be
 empty — install stays anonymous) on both deploy jobs in
 `deploy-reventless-aws.yml` and thread it from the `deploy-online-shop-hybrid.yml`
-caller, so `${NPM_TOKEN}` always expands and pnpm honours `node-linker=hoisted`.
+caller, so `${NPM_TOKEN}` always expands and pnpm honors `node-linker=hoisted`.
 Validated: platform + both plugins deploy green. (Catalog also hit an unrelated
 AWS state-drift error — deleting a `CategoryAggrCmdTopic` SQS QueuePolicy whose
 queue was already gone — which self-healed on a re-dispatch's `pulumi refresh`.)

@@ -279,7 +279,7 @@ high-cost operation.
 
 **4. DCB tag extraction would need a full reimplementation.**
 The current `DcbTag.extractTags` function is ~50 lines of sury-specific AST traversal. It is
-tested, production-ready, and has known behaviour. Replacing it with an Effect Schema
+tested, production-ready, and has known behavior. Replacing it with an Effect Schema
 equivalent would mean writing ReScript bindings for `SchemaAST`, implementing equivalent
 traversal logic, and verifying correctness against existing stored events.
 

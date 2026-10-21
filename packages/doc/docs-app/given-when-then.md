@@ -70,7 +70,7 @@ Two cross-cutting DSLs round out the surface:
    uses for production files. The Aggregate-pattern architectural folders
    `Aggregate` (mapped to the `Behavior` DSL with the
    `Behavior_GWT.MakeFromAggregate` adapter) and `ReadModel` (mapped to
-   `MultiSourceProjection_GWT.Make`) are also recognised. When multiple
+   `MultiSourceProjection_GWT.Make`) are also recognized. When multiple
    segments of the path match, the segment closest to the file wins. Spec
    resolution picks (1) the first top-level module defined in the test
    file, if any, otherwise (2) the filename stem with the `_GWT` /
@@ -934,7 +934,7 @@ SIGINT / SIGTERM cancel in-flight runs cleanly: the in-flight test is marked
 
 | Format    | Shape                                                                          | Typical consumer                                         |
 |-----------|--------------------------------------------------------------------------------|----------------------------------------------------------|
-| `human`   | ANSI-coloured terminal output (auto-disabled on non-TTY). Variants rendered in ReScript syntax (`Added({name: "X"})`) instead of `{TAG: "Added", _0: ...}`. | Local development |
+| `human`   | ANSI-colored terminal output (auto-disabled on non-TTY). Variants rendered in ReScript syntax (`Added({name: "X"})`) instead of `{TAG: "Added", _0: ...}`. | Local development |
 | `json`    | Single envelope by default, NDJSON with `--stream`. `schemaVersion: "1.0.0"`. Every value is dual-rendered as `{type, payload, rendered}`. Includes precomputed `hint` and `fieldDiff` arrays. | AI generation loop, structured CI pipelines |
 | `tap`     | TAP 14 with `1..N` plan and YAML diagnostic blocks on failure.                 | `tap-spec`, `actions/test-reporter`, generic TAP tools  |
 | `junit`   | `<testsuites>` / `<testsuite>` / `<testcase>` with `<failure>` bodies.         | CI dashboards, Jenkins / GitLab / Azure reporters       |
@@ -1035,7 +1035,7 @@ Full field reference lives in
 
 - **Name the scenario, not the test.** `"archived category still rejects a new
   AddCategory"` tells you what broke; `"test3"` makes you read the body.
-- **One behaviour per scenario.** Chaining a second command onto the end makes a
+- **One behavior per scenario.** Chaining a second command onto the end makes a
   failure ambiguous — you learn that something in the chain broke, not which.
 - **Assert the error cases too.** A `decide` is half rejection logic; a suite
   that only covers the happy path leaves the half that protects your invariants

@@ -2,7 +2,7 @@
 
 **Closed 2026-10-07.** Phases 1a, 1b, 2, 3 and 4 shipped: a required-scalar addition fails in CI by name, a dead letter stays on its queue and raises `Errors`, the healer fills and announces missing scalars, and the rule is written on `pluginStructure`. Phase 2's runtime change has been on alpha through every deploy since, though a dead letter has not been deliberately observed raising depth. Leftovers: Phase 5 (lazy decode) and Option E → [../Backlog/plugin-definition-decoded-lazily.md](../Backlog/plugin-definition-decoded-lazily.md).
 
-**Status**: Phases 1a, 1b, 2, 3, 4 implemented 2026-08-01 — full build warning-free, 2540 tests green. `requiredStoreDeclaration.annotation` has since been made `js_nullable`, so no stored payload needs a fabricated value any more and the rule now holds for the field that motivated it. Phase 5 not started; its blocking unknown is **settled** (measured against real stored payloads — see Phase 5), leaving it a value judgement rather than an open question. Two deviations from the plan as written, both recorded in-place below. One open item: Phase 2's runtime behaviour is unverified until a deploy.
+**Status**: Phases 1a, 1b, 2, 3, 4 implemented 2026-08-01 — full build warning-free, 2540 tests green. `requiredStoreDeclaration.annotation` has since been made `js_nullable`, so no stored payload needs a fabricated value any more and the rule now holds for the field that motivated it. Phase 5 not started; its blocking unknown is **settled** (measured against real stored payloads — see Phase 5), leaving it a value judgement rather than an open question. Two deviations from the plan as written, both recorded in-place below. One open item: Phase 2's runtime behavior is unverified until a deploy.
 **Analysis**: [plugin-definition-schema-evolution-wedge.md](../../analysis/plugin-definition-schema-evolution-wedge.md)
 **Prior occurrence**: [platform-infrastructure-in-plugin-list.md](platform-infrastructure-in-plugin-list.md) — same class, fixed 2026-07-11 with schema-migration-on-read; that fix has a blind spot this plan closes.
 
@@ -149,7 +149,7 @@ Options:
   inspectable in the queue itself. Loses the CloudWatch-log copy.
 - **(ii) Keep it for logging, then re-raise.** Restores both depth and `Errors`. Risks a retry loop
   on the DLQ itself (no further redrive target), costing invocations indefinitely.
-- **(iii) Log, delete, and emit a metric.** Keeps today's behaviour and adds an explicit signal, but
+- **(iii) Log, delete, and emit a metric.** Keeps today's behavior and adds an explicit signal, but
   puts provider-specific alerting plumbing into core, against the Monitoring seam's stated position.
 
 **Recommend (i)**, with the `DeadLetterSink` `Monitoring.notify` call kept as-is — a backend that
@@ -185,7 +185,7 @@ to fill an absent scalar with its type's zero (`""` / `0` / `false`).
   guard and a silent data-fabricator: an empty string is a plausible `annotation` but a wrong
   `store`, and a genuinely truncated payload would now decode where before it threw. Healing must be
   visible in logs so it can be found and corrected, not absorbed.
-- Add corpus entries (Phase 1a) for the scalar-fill case so the behaviour is pinned.
+- Add corpus entries (Phase 1a) for the scalar-fill case so the behavior is pinned.
 
 *Optional cleanup while here*: `fillMissingDefaults` is `%raw` inside a `.res` file. Moving it to a
 companion `.mjs` bound via `@module` matches the repo rule on untyped reflection. There is existing
@@ -201,7 +201,7 @@ emits a `Console.warn` naming every invented path and value:
 
 Schema-derived heals stay silent — only invented values are worth a line. The `%raw` → companion
 `.mjs` move was **not** taken: the diff was already substantial and the two changes are unrelated,
-so bundling them would have obscured the behavioural one. The new reflection added in Phase 1b is written in
+so bundling them would have obscured the behavioral one. The new reflection added in Phase 1b is written in
 typed ReScript (`PluginDefinitionScalars.res`), pattern-matching sury's own variant.
 
 ## Phase 4 — Write the rule down
@@ -284,7 +284,7 @@ fraction of its reach.
 1. **Phase 1a** — corpus + test. No runtime change, catches the class.
 2. **Phase 2** — dead-letter signal. No runtime change to the happy path; independent of 1.
 3. **Phase 4** — the rule, written where it is read. Trivial; pairs with 1.
-4. **Phase 3** — healer extension. Runtime change, wants 1a in place first so its behaviour is pinned.
+4. **Phase 3** — healer extension. Runtime change, wants 1a in place first so its behavior is pinned.
 5. **Phase 1b** — judge after 1a lands.
 6. **Phase 5** — gated; re-evaluate after the above have been in place for a few schema changes.
 

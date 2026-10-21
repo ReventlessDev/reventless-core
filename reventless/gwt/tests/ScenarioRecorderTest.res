@@ -1,6 +1,6 @@
 open JestGlobals
 
-// `ScenarioRecorder` writes what a behaviour test runs as a sidecar `check-lifecycle` reads, for
+// `ScenarioRecorder` writes what a behavior test runs as a sidecar `check-lifecycle` reads, for
 // a suite whose source names nothing (one written against a binding). Each case records into a
 // file of its own under the OS temp folder, named by `setFile` as an external runner would.
 

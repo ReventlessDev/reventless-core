@@ -73,7 +73,7 @@ A scenario's id comes from a `// scenario-id: <id>` comment on the line above it
 **Recorded scenario sidecars.** A suite written against a binding names nothing in its source:
 a trait's conformance suite steps through `B.request(…)` and `B.undeliverable(…)`, values the
 host's binding builds, and the host's test file only registers it. The PPX writes no `.gwt.json`
-for it, so `check-lifecycle` would not see its scenarios. A behaviour test (`Behavior_GWT.Make`
+for it, so `check-lifecycle` would not see its scenarios. A behavior test (`Behavior_GWT.Make`
 or `MakeFromAggregate`) run with `REVENTLESS_EMIT_SIDECAR=1` in the test process records what it
 runs instead (`ScenarioRecorder`): per test its title, the history's event names (`given`), the
 command (`when`) and what it expects (`then`: `event`, `error` or `noEvent`), named by the spec's
@@ -95,7 +95,7 @@ Sidecars are **derived artifacts**, emitted **only** when `REVENTLESS_EMIT_SIDEC
 `reventless-ppx-read --vocabulary` prints every attribute the PPX reads, as JSON. It takes no file and needs no `bsc`. Each entry has:
 
 - `name`, as written after `@` or `@@`.
-- `positions`, where the PPX reads it: `file` (a standalone `@@…`), `module` (a module binding), and `type.<owner>`, `case.<owner>` or `field.<owner>`. The owner is `command`, `event`, `consumedEvent`, `state`, or `other` for any other type. An attribute that the PPX only recognises in order to reject it has no positions.
+- `positions`, where the PPX reads it: `file` (a standalone `@@…`), `module` (a module binding), and `type.<owner>`, `case.<owner>` or `field.<owner>`. The owner is `command`, `event`, `consumedEvent`, `state`, or `other` for any other type. An attribute that the PPX only recognizes in order to reject it has no positions.
 - `args`: `none`, `optional` or `required`. `argsExample` is an argument as it would be written in source.
 - `summary`, one sentence on what the attribute does.
 - `replacedBy`, on a renamed attribute: the name to use instead.

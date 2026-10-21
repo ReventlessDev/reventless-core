@@ -755,7 +755,7 @@ describe("GraphQL_SchemaInspector", () => {
         // Per-field eq inputs derived from @id and @index
         expect(sdl->String.includes("input IndexedProductFilter"))->toBe(true)
         expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
-        // ownerId is detected as an entity reference → ID (matches SchemaType.fromSury behaviour)
+        // ownerId is detected as an entity reference → ID (matches SchemaType.fromSury behavior)
         expect(sdl->String.includes("ownerIdEq: ID"))->toBe(true)
         // OrderField enum lists the same fields
         expect(sdl->String.includes("enum IndexedProductOrderField"))->toBe(true)

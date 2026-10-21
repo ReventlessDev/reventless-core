@@ -105,7 +105,7 @@ let makeFromCodeAsset: (
       kind; `makeFromCodeAsset` announces the provisioned Lambda to the
       `Monitoring` registry (no-op unless an extension registered a backend). */
   ~unitKind: ReventlessCore.Monitoring.unitKind,
-  /** The modelling kind of the component this Lambda runs, for resource
+  /** The modeling kind of the component this Lambda runs, for resource
       attribution (`reventless:kind`). Distinct from `~unitKind`, which grades
       the unit by what its failure means — `CommandHandler` covers aggregates,
       state-change slices and extension points alike, so it cannot identify the

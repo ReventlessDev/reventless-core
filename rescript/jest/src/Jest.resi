@@ -1,4 +1,4 @@
-// glennsl's `Jest` surface with this package's behaviour: every matcher runs
+// glennsl's `Jest` surface with this package's behavior: every matcher runs
 // where it is written, and an async test is awaited. A suite on
 // `@glennsl/rescript-jest` compiles against it unchanged.
 

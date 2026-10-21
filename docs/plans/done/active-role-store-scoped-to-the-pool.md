@@ -199,7 +199,7 @@ under another — the original defect in miniature. The trigger has
 `callerContext.clientId`; the write door has to take it from the authorizer
 (`ctx.identity.claims.aud` on an ID token, `client_id` on an access token). **Verify this
 pairing against a live token before building on it** — if the two cannot be made to agree,
-this step stops and the shared-role behaviour stands, rather than being papered over.
+this step stops and the shared-role behavior stands, rather than being papered over.
 
 ### 5. An operator script for the two resources
 
@@ -361,7 +361,7 @@ the `config.json` key list in `ui-fragments-deployment.md`, and the
 ## Verification
 
 - Two stacks configured with one provider id: a switch performed against either stack's
-  resolver is honoured by the next token, whichever stack's trigger holds the slot.
+  resolver is honored by the next token, whichever stack's trigger holds the slot.
 - The same two stacks: a switch in one does **not** narrow the caller's session in the
   other — the per-app-client keying, asserted from decoded tokens on both sides rather
   than from either console.

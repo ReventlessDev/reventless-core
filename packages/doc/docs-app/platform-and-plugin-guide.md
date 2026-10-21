@@ -1660,7 +1660,7 @@ When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` — Auto UI
 
 ### Supplying `uiBundleUrl` per deployment
 
-The bundle URL is deployment configuration. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`). The generator emits the `@val external` declaration at the top of the Composition `Plugin.res`; both local and AWS deploys honour the same variable.
+The bundle URL is deployment configuration. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`). The generator emits the `@val external` declaration at the top of the Composition `Plugin.res`; both local and AWS deploys honor the same variable.
 
 For local dev: `CATALOG_UI_BUNDLE_URL=http://localhost:5001 pnpm dev`. For AWS: set the env var on the Pulumi stack to a CloudFront URL pointing at the uploaded bundle. The platform composition root passes plugins through bare — no wrapper module is needed:
 

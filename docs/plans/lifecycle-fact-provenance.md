@@ -149,6 +149,6 @@ publishing the rung is what makes it possible.
   strings per queryable is small; the pattern generalising to a dozen is not, and
   the "one rung means no field" test above is what keeps it from doing so.
 - **Publishing a rung invites a consumer to branch on it.** The value is in
-  *display* and in the editor action, not in behaviour. A client that starts
+  *display* and in the editor action, not in behavior. A client that starts
   refusing to render a `"convention"`-sourced lifecycle has made the guess worse
   than it was when it was invisible.

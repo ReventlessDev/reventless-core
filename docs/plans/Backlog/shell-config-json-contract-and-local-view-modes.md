@@ -1,4 +1,4 @@
-# Plan: `config.json` keys are checked across the repos, and local dev honours `viewModes`
+# Plan: `config.json` keys are checked across the repos, and local dev honors `viewModes`
 
 **Date:** 2026-10-07<br/>
 **Status:** Backlog — extracted from [../done/host-ui-shell-config-choices.md](../done/host-ui-shell-config-choices.md) when it closed. Optional follow-ups; none blocks a deployment. The escape hatch waits for a trigger (a mode core does not know).<br/>

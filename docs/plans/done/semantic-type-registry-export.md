@@ -16,7 +16,7 @@ and the second run **succeeded having published nothing**. `alpha.137` existed i
 registry. The recovery path added to `release-packages.yml` (`publish-only: true`) is what
 shipped it. See the fallout section of [npmjs-publish-migration.md](npmjs-publish-migration.md).
 
-**The design changed on one point, in its favour.** The plan proposed a test comparing the new
+**The design changed on one point, in its favor.** The plan proposed a test comparing the new
 registry against the ppx's list. While writing it, the ppx's own doc comment turned out to
 state a mechanical rule for both facts — *"`grep -l '^type t = string' reventless/spec/src/semantic/*.res`
 is the list"*, and the flag is whether the module exposes a bare `let schema`. Run against the

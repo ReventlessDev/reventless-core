@@ -212,7 +212,7 @@ Two guards, both independent of the decode strategy:
 ## 6. Recommendation
 
 1. **F.1 and F.2 now** — a fixture-corpus compatibility test and a dead-letter sink that alarms.
-   Neither changes runtime behaviour; together they turn this failure from "discovered by a user
+   Neither changes runtime behavior; together they turn this failure from "discovered by a user
    noticing an empty list" into "caught in CI, or paged within minutes".
 2. **B, with a loud log on the scalar-fill path** — closes the known blind spot at the known
    boundary, and the log keeps the healing visible so masked corruption is still findable.

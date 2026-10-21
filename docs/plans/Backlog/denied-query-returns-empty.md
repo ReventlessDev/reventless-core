@@ -54,13 +54,13 @@ see by introspection.
 
 Recommendation: option 1. It is the shape the rest of the framework already uses,
 and the migration risk is a caller that today silently renders nothing — which is
-the behaviour this plan exists to stop.
+the behavior this plan exists to stop.
 
 ## Care needed
 
 - **Both transports, one change.** The AWS query path must be audited for the
   same branch and land in the same version. Drift between local and deployed
-  authorization behaviour is a known failure mode, and the deployed half is the
+  authorization behavior is a known failure mode, and the deployed half is the
   one nobody runs by hand.
 - The admin/platform queries already refuse loudly; whatever shape is chosen here
   should match theirs rather than invent a third.

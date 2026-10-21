@@ -2,7 +2,7 @@
 
 **Status.** PLAN 2026-08-15. A rename, end to end: the annotation authors write,
 the spec field it fills, the name it is published under — **and the field name the
-convention matches**, which is the one place behaviour changes and the one place
+convention matches**, which is the one place behavior changes and the one place
 this repo's own records have to move with it.
 
 **Goal.** `@status` names the field a record's lifecycle lives in — the enum a
@@ -26,11 +26,11 @@ the author ask the question and answer it correctly.
 `type state` for the record itself, so `@state` would collide with the most
 common identifier in the codebase.
 
-**Non-goal — behaviour, with one deliberate exception.** Nothing new is published
+**Non-goal — behavior, with one deliberate exception.** Nothing new is published
 and no consumer gains or loses a capability. The exception is the conventional
 rung: it moves from a field named `status` to one named `lifecycle`, so an
 unannotated `status` field that resolves today resolves to `None` after. That is a
-real behaviour change, called out here rather than discovered — it is the same
+real behavior change, called out here rather than discovered — it is the same
 decision as refusing a `@status` alias, applied to the other rung. Every site in
 this repo that relies on it is enumerated in step 4 and fixed in the same change.
 Outside those, a diff is a mistake.
@@ -112,7 +112,7 @@ comment above it, which states the ladder.
 ### 4. Framework-generated queryables — annotate, do **not** rename
 
 The convention is load-bearing inside this repo, which is what makes step 3 a
-behaviour change rather than a string swap. Five state records declare an
+behavior change rather than a string swap. Five state records declare an
 unannotated enum field named `status` and resolve their lifecycle entirely by the
 rung being moved. Each is visible in the committed SDL goldens:
 
@@ -203,7 +203,7 @@ about it. This is the case that proves the annotation rung has to survive, and i
 is worth a comment in the file saying so.
 
 The miscategorisation stays where it is already asked. Geocoding progress is not a
-lifecycle, but correcting that is a modelling change with its own consequences and
+lifecycle, but correcting that is a modeling change with its own consequences and
 belongs to `retired-as-a-lifecycle-state.md`. This plan renames it as-is.
 
 **This step moves the GraphQL contract**, and is the only step that does.
@@ -260,7 +260,7 @@ history.
 - **Structure** — `lifecycleField` is filled from the annotation and from a
   `lifecycle`-named enum field, and is `None` otherwise. **Add the negative
   case: an unannotated field named `status` now resolves to `None`.** It is the
-  one behaviour this plan deliberately changes, so it is the one that has to be
+  one behavior this plan deliberately changes, so it is the one that has to be
   asserted rather than assumed — and it is what would otherwise be caught only by
   someone noticing a board had lost its columns.
 - **Framework rows** — the Plugins read model and a generated todo/audit row
@@ -281,7 +281,7 @@ history.
   all** — the convention rung, which is the half of this plan an author actually
   feels.
 - An unannotated field named `status` publishes nothing. Deliberate, asserted, and
-  the only behaviour this plan changes.
+  the only behavior this plan changes.
 - No framework-generated queryable loses its lifecycle: the Plugins read model and
   the generated todo/audit rows declare theirs, and their published field names are
   untouched.

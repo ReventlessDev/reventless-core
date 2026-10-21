@@ -83,7 +83,7 @@ type objectStore = {
   // The prefix this store's object keys are rooted at, and therefore the path
   // it must be served under for a minted `/{key}` ref to resolve. Written once
   // here and read by both the mint side (the presign service) and the serve
-  // side (the CDN behaviour), so the two cannot disagree — the property the
+  // side (the CDN behavior), so the two cannot disagree — the property the
   // single served prefix already had, now carried per store.
   //
   // Rooting keys at the store name in *every* layout is what keeps a stored ref

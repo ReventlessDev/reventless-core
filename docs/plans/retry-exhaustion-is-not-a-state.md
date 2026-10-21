@@ -72,7 +72,7 @@ Three shapes, and they are not alternatives so much as increasing commitments.
 | | What it adds | What it leaves undone |
 | --- | --- | --- |
 | **A. `Abandoned` status** | the todo view stops lying; `Failed` means "will retry" and `Abandoned` means "will not" | the domain still never hears; the read model still says `Pending` |
-| **B. An exhaustion hook** | the slice maps abandonment onto a command of its own choosing | every slice must remember to implement it, and the ones that forget are exactly today's behaviour |
+| **B. An exhaustion hook** | the slice maps abandonment onto a command of its own choosing | every slice must remember to implement it, and the ones that forget are exactly today's behavior |
 | **C. Both** | the view is honest *and* the domain can react | more surface, and B's per-slice question still has to be answered |
 
 *Built as C, in one pass rather than two — see the note under Steps.*

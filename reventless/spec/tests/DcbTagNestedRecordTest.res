@@ -7,7 +7,7 @@
 // decision query with no product clause in it and every order rejected at runtime.
 //
 // So the tags are asserted here **directly**, against the extractors, rather than
-// through a slice whose behaviour a redundant flat field could keep passing.
+// through a slice whose behavior a redundant flat field could keep passing.
 
 open JestGlobals
 

@@ -22,7 +22,7 @@ missed" semantic in the protocol and no replay buffer on the server. The gap
 between the last `data` frame the client received and the first one after
 reconnect is silently lost.
 
-The UI's compensating behaviour today:
+The UI's compensating behavior today:
 
 | View | What it does on reconnect | Outcome |
 |------|---------------------------|---------|
@@ -285,7 +285,7 @@ reads and writes its server-affecting state through `UseSearchParams`:
 The fetch effect's dependency array already includes `serverParamSignature`
 (line 370-403) — a sorted string of the URL params that affect the server
 query. Manual reload reproduces the same page today *because* of this; a
-reconnect-driven refetch gets the same behaviour by just re-firing that
+reconnect-driven refetch gets the same behavior by just re-firing that
 effect with the current URL.
 
 **What this means for Option A.** "Refetch the current page on reconnect"
@@ -414,7 +414,7 @@ matters.
   picked up on the next attempt. Catch-up replay must use the *current*
   identity — if scope changes (user switched tenants), the gap descriptors
   may include rows the user no longer has access to; the journal query must
-  honour subscribe-time authorisation, not publish-time. Practically:
+  honor subscribe-time authorisation, not publish-time. Practically:
   `catchUpChanges` runs through the standard resolver auth context.
 - **Self-change tracking across the gap.** The 60s TTL on `selfChangeIds`
   can expire mid-disconnect. The replay descriptor for the user's own pre-

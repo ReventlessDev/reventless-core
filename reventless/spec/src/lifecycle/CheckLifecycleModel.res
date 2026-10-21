@@ -3,7 +3,7 @@ The lifecycle model each example's own scenarios describe, and what it says abou
 the edges each command declares beside them.
 
 `Moves([Placed], Shipped)` is authored, and until now nothing compared it to
-behaviour. The compiler resolves the state constructors and the platform checks
+behavior. The compiler resolves the state constructors and the platform checks
 they belong to the linked view — both much weaker properties than agreement: a
 command can declare `Moves([Deactivated], Active)` while its `decide` accepts an
 active row, or emit an event the view folds into something else, and every static
@@ -935,7 +935,7 @@ let compare = (
     // effect somewhere agrees with that rather than narrowing it — the corpus
     // covers the states somebody wrote a scenario for, and silence about the
     // rest is not refusal. What DOES refute the claim is a state the command was
-    // exercised in and **refused**: that is the switch and the behaviour
+    // exercised in and **refused**: that is the switch and the behavior
     // disagreeing about the same row.
     //
     // 🚨 **Refused, not merely inert.** `Unrestricted` claims the command is

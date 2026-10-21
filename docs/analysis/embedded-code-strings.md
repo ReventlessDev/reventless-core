@@ -141,7 +141,7 @@ APPSYNC_JS module. Two layers, both cheap:
    infrastructure. Parsing alone kills every unbalanced-splice and
    double-`const _exempt` class of bug; going one step further and *calling*
    `request(fakeCtx)` / `response(fakeCtx)` upgrades the substring assertions
-   into behavioural ones (assert the returned DynamoDB request object, not the
+   into behavioral ones (assert the returned DynamoDB request object, not the
    source text).
 2. **Lint with `@aws-appsync/eslint-plugin`.** Write the instantiated strings
    to the scratch/tmp dir and run eslint with the plugin's base config over

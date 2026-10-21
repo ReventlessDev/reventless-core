@@ -129,7 +129,7 @@ describe("GraphQL_FragmentGenerator emits a union", () => {
     expect(row->String.includes("history: [Geolocation!]!"))->toBe(true)
   })
 
-  // Unchanged behaviour, pinned: without a name there is no type to emit, and
+  // Unchanged behavior, pinned: without a name there is no type to emit, and
   // inventing one would publish a contract nothing can stamp a `__typename` for.
   testSync("an unnamed union stays a String", () => {
     let unnamed = fragmentFor(

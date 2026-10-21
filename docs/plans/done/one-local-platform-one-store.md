@@ -97,7 +97,7 @@ that was merely redundant, never for a destructive one that did not happen.
 A helper in `reventless-local` that each example's `Main.res` calls as its first
 line, **before** `ReventlessLocal.Platform.Make()`:
 
-| live entries in this cwd | behaviour |
+| live entries in this cwd | behavior |
 |---|---|
 | 0 | return, and the platform starts as it does today |
 | 1 | print `→ already running at :4000 · sqlite …/local.db (pid 51055)` and exit 0 |

@@ -84,7 +84,7 @@ SQS redrive is *receive*-counted, not *error*-counted: a message is moved to the
 3. **IAM is least-privilege-ish.** The queue policies pin the consuming Lambda by `SourceArn`; the Lambda role only has logging + the two queue ARNs. No `Resource: "*"`.
 4. **`contentBasedDeduplication` on the FIFO DLQ** means a redelivered-then-DLQ'd message isn't duplicated in the DLQ if its body is byte-identical.
 5. **One handler, one Lambda** — trivially cheap; nothing to operate. (This is also the source of the weaknesses below; it's a fine *default*, just not a fine *only* option.)
-6. **The author already knows the shape is wrong** — the TODO and the existence of the C.5 backlog item mean this isn't an unrecognised gap.
+6. **The author already knows the shape is wrong** — the TODO and the existence of the C.5 backlog item mean this isn't an unrecognized gap.
 
 ---
 

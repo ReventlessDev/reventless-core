@@ -144,7 +144,7 @@ The DCB log carries the union of every event variant produced by every
 StateChangeSlice in the plugin (`OrderPlaced`, `OrderShipped`, `CatalogProductSynced`, …).
 Your `OrderEvents.event` type only needs to enumerate the variants this
 projection cares about. Other variants decode as parse errors and the runtime
-treats them as `Ignore` — same behaviour as Aggregate ReadModels seeing event
+treats them as `Ignore` — same behavior as Aggregate ReadModels seeing event
 variants they don't enumerate.
 
 This means:

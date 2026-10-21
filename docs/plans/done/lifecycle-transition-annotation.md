@@ -150,7 +150,7 @@ operand.
 **The one-sided form is a positive claim, not an omission.** It says *this
 command does not move the row*. That distinction is already representable on the
 wire — `allowedStates: Some(_), targetState: None` differs from
-`allowedStates: None, targetState: None` — and consumers are expected to honour
+`allowedStates: None, targetState: None` — and consumers are expected to honor
 it. This plan only produces the declaration; what a consumer does with it is
 that consumer's own plan.
 
@@ -284,7 +284,7 @@ calls. Traced properly:
 
 So `Plugin_Structure.make` runs at deploy and at local-platform start, and
 nowhere else. **A raise there is a failed deploy, which is precisely the
-intended behaviour** — no "two callers, two dispositions" machinery is needed,
+intended behavior** — no "two callers, two dispositions" machinery is needed,
 and the plan is better for not having built it.
 
 Still true, and still the reason the check lives here rather than in the PPX:
@@ -365,7 +365,7 @@ question this phase's check asks:
 | Rule | Fault | Disposition |
 |---|---|---|
 | `@retired(X)` names a state the field's enum does not declare | unambiguously wrong — no domain means it | **raise** |
-| `@retired` sits on a field that is not the record's lifecycle | a modelling smell: retirement works, command filtering is lost | keep warning |
+| `@retired` sits on a field that is not the record's lifecycle | a modeling smell: retirement works, command filtering is lost | keep warning |
 
 The second is a judgement call, and judgement calls are what §5's dead-end rule
 taught us not to hard-fail on. The first needs no resolution step at all — it
@@ -464,7 +464,7 @@ The sweep does four things:
    state-change command. Convert by reading each slice's `decide`, never
    mechanically: a one-sided conversion is a *claim that the command emits no
    state-moving event*, and a careless one silently drops the command out of
-   every consumer that honours the distinction.
+   every consumer that honors the distinction.
 3. **Annotate the guard-only edit commands** with the one-sided form —
    `UpdateEmail`, `ChangeProductPrice`, `RenameCategory` and their siblings,
    none of which carries any annotation today.
@@ -543,7 +543,7 @@ The four slices now consume the shelf events, fold a `shelf` variant matching
 one:** a product pulled from the catalog for a season is coming back, and its
 price and copy should be right when it does; a discontinued one is terminal. Two
 GWTs per slice cover both halves of the from-set. This also settles the asymmetry
-noted below in favour of the Category behaviour.
+noted below in favor of the Category behavior.
 
 The Category equivalents (`RenameCategory`, `ChangeCategoryImage`) *do* refuse
 with `CategoryAlreadyArchived`, consume both archive events, and are annotated
@@ -552,9 +552,9 @@ things about editing a withdrawn row. That asymmetry is a **domain defect worth
 its own decision** — either products should refuse edits when archived, as
 categories do, or categories should stop refusing. It is deliberately *not*
 fixed here: unlike the `OrderReopened` drift, no declaration is wrong and
-nothing is internally inconsistent, so changing four behaviours would be a
-domain change smuggled into an annotation sweep. *(Settled 2026-08-17 in favour
-of the Category behaviour, as its own change rather than inside the sweep — see
+nothing is internally inconsistent, so changing four behaviors would be a
+domain change smuggled into an annotation sweep. *(Settled 2026-08-17 in favor
+of the Category behavior, as its own change rather than inside the sweep — see
 the resolution above.)*
 
 **The Customer aggregate splits cleanly**, and is the best illustration of the
@@ -674,7 +674,7 @@ can leave, and not marked `@retired`". It is wrong twice:
   one, so the check cannot tell them apart and should not pretend to.
 
 The rule is gone, with the reasoning recorded at the site so it is not
-reintroduced. If terminal-state modelling is worth checking, it needs a way to
+reintroduced. If terminal-state modeling is worth checking, it needs a way to
 *declare* an ending first — which is a vocabulary question, not a lint one.
 
 **Reported, not raised** — unlike §3. A state name that does not exist is
@@ -733,10 +733,10 @@ finding function.
 - **R5 — a careless one-sided conversion is invisible here.** It produces a
   command that declares it does not move rows while its `decide` emits a
   state-moving event. Nothing in this repo catches it; §3 checks names, not
-  behaviour, and §5 checks topology, not agreement between a declaration and a
+  behavior, and §5 checks topology, not agreement between a declaration and a
   fold. Mitigation: §4's rule that conversions are made by reading `decide`, and
   §4's preserved pre-fix fixture, which is exactly this failure captured for
-  whoever builds the behavioural check.
+  whoever builds the behavioral check.
 
 ---
 
@@ -776,4 +776,4 @@ finding function.
   across many commands.
 - **Parallel lifecycle axes.** Two axes on one entity (shelf status × stock
   status) is already representable as two enum fields; what is missing is only
-  `@lifecycle` being singular. A metadata question, not a modelling one.
+  `@lifecycle` being singular. A metadata question, not a modeling one.

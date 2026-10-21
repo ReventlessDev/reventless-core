@@ -71,7 +71,7 @@ let injectAwsSubscribe = (
 // Cognito group gate. `@aws_cognito_user_pools(cognito_groups: [...])` — NOT the
 // single-mode `@aws_auth(cognito_groups: [...])`.
 //
-// `@aws_auth` is honoured only on an API whose sole authorization mode is
+// `@aws_auth` is honored only on an API whose sole authorization mode is
 // AMAZON_COGNITO_USER_POOLS. This adapter always configures AWS_IAM as an
 // additional provider (see AppSync_Adapter's api args — the server-to-server
 // lambdas need it), so every API we provision is multi-auth and the service
@@ -323,7 +323,7 @@ let stampTypeDualAuth = (decl: string): string =>
 //
 // Two conditions, and the second is the one that matters:
 //
-//   1. A root field or object type carrying NO directive AppSync honours here
+//   1. A root field or object type carrying NO directive AppSync honors here
 //      is reachable by any authenticated Cognito caller under `ALLOW`.
 //   2. ANY `@aws_auth` at all. It is the single-mode form, silently ignored on
 //      a multi-auth API — so its presence means something believes it is gated
@@ -332,7 +332,7 @@ let stampTypeDualAuth = (decl: string): string =>
 // Condition 2 is why this is not merely "does it have a directive?". The
 // original outage had `@aws_auth(cognito_groups: ["Admin"])` present on all 18
 // admin fields for its entire life; a presence check would have passed it every
-// single time. Only a check that knows WHICH directive the service honours
+// single time. Only a check that knows WHICH directive the service honors
 // would have failed that deploy.
 let enforcedDirectives = ["@aws_cognito_user_pools", "@aws_iam"]
 

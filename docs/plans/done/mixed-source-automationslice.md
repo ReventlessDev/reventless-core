@@ -127,7 +127,7 @@ The single-source convention from today's AutomationSlice continues to work as a
 
 4. **Topic-dict population** in `AutomationSlice_Builder.Make`. Today it builds a single-entry dict (`Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])`); Plan 04 merges in Aggregate `EventTopic`s from `allEventTopics` (Plan 03's plumbing) and any other DcbEventLog topics the mappings reference. Source filter is by `Mapping.sourceName`.
 
-5. **Framework-synthesized `consumedEvent` union (decision 2b).** A new PPX behaviour: when the slice declares per-source mappings, the PPX synthesizes
+5. **Framework-synthesized `consumedEvent` union (decision 2b).** A new PPX behavior: when the slice declares per-source mappings, the PPX synthesizes
    ```rescript
    type consumedEvent =
      | FromPlugin(PluginSpec.event)
@@ -326,7 +326,7 @@ Plan 04 has no hard dependency on Plan 02 — `AutomationSlice` is already split
 - `toTags` invoked in phase 2 with Error→Failed retry semantics.
 - Source-name typo fail-fast at slice construction.
 - AWS + in-memory builders updated; `Platform.AutomationSlice.Make` 3-arg form.
-- Codegen recognises `_Mappings` as an impl-suffix; emits the new 3-arg form.
+- Codegen recognizes `_Mappings` as an impl-suffix; emits the new 3-arg form.
 - Existing `AutoShipOrder` slices (dcb + hybrid examples) migrated.
 - Integration test (`MixedSourceAutomationSliceTest`) demonstrates multi-source dispatch.
 - Guide page (`docs/guides/mixed-source-automationslice.md`).

@@ -106,7 +106,7 @@ reporting rather than a reason to be invisible.
 
 `LocalSeedTarget.select()` answers "which platform" once, for both tools:
 
-| running platforms | behaviour |
+| running platforms | behavior |
 |---|---|
 | explicit `REVENTLESS_GRAPHQL_ENDPOINT` | use it verbatim, no discovery — the documented escape hatch, unchanged |
 | 0 | say so, fall back to the `localhost:4000` default so a platform from an older build still works |
@@ -115,7 +115,7 @@ reporting rather than a reason to be invisible.
 
 That is the idiom the seed run already uses for every other choice (reset scope /
 `SEED_RESET_SCOPE`, data set / `SEED_SET`, credentials / `REVENTLESS_DEMO_*`),
-including its no-TTY behaviour. `Seed.Prompt.select` already returns a sole
+including its no-TTY behavior. `Seed.Prompt.select` already returns a sole
 option without prompting, so the one-platform case costs nothing.
 
 ### 3 — `seed:reset` follows the selection

@@ -1,6 +1,6 @@
 # Plan: `@whenRetired` — a command's stance on an orthogonally-withdrawn row
 
-**Status.** BACKLOG 2026-08-15. Deferred in favour of
+**Status.** BACKLOG 2026-08-15. Deferred in favor of
 `retired-as-a-lifecycle-state.md`, which solves the motivating case without a new
 annotation. Kept because it remains the answer to a narrower case that plan does
 not reach. Pick it up when that case turns up in a real domain — not before.
@@ -43,7 +43,7 @@ A per-variant command annotation beside `@allowedStates` and `@targetState`:
 `Never` as the default is deliberate: retiring a row withdraws it from ordinary
 use, so a command that still applies is the exception, and an exception is what
 an annotation is for. The usual objection to a restrictive default — it changes
-behaviour for the un-opted-in — does not apply, because the axis exists only
+behavior for the un-opted-in — does not apply, because the axis exists only
 where a record declares `@retired`.
 
 Emitted unconditionally on every command variant, so "absent" means exactly one

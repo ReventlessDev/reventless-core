@@ -1,6 +1,6 @@
-// Behavioural tests for the event-history query resolver's pure core —
+// Behavioral tests for the event-history query resolver's pure core —
 // position ordering, filtering, and keyset pagination. That is where the
-// behaviour lives; the Bus fork around them is two registry lookups.
+// behavior lives; the Bus fork around them is two registry lookups.
 
 @@warning("-44")
 

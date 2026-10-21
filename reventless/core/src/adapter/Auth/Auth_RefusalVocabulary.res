@@ -120,7 +120,7 @@ Classify a refusal without knowing which adapter produced it.
 
 Pass what the response actually carried: its status, the `errorType` of a GraphQL
 error if there was one, and `extensions.code` if there was one. Returns `None`
-when the response is not a refusal this contract recognises — which includes a
+when the response is not a refusal this contract recognizes — which includes a
 successful response, so a caller must not read `None` as "allowed".
 
 Ordering matters and is the point of the function. The transport status is

@@ -65,7 +65,7 @@ Verbatim body for rows 1–2:
 
 ## §2 — Why
 
-`@aws_auth` is the **single-mode** directive. AppSync honours it only when
+`@aws_auth` is the **single-mode** directive. AppSync honors it only when
 `AMAZON_COGNITO_USER_POOLS` is the sole authorization mode. Both APIs configure
 Cognito as primary **plus `AWS_IAM` as an additional provider**, which is what
 `systemCallable` deploy-time callers need. On such an API the service ignores
@@ -296,14 +296,14 @@ Establish what it does and does not cover before assuming any of it.
      the assembly choke point and **refuses to return a schema that cannot be
      gated**, so it is never pushed. Two conditions:
 
-     1. a root field or object type with no directive AppSync honours here;
+     1. a root field or object type with no directive AppSync honors here;
      2. **any `@aws_auth` at all** — inert on a multi-auth API, so its presence
         means something believes it is gated and is not.
 
      Condition 2 is the point. A plain "does it have a directive?" check would
      **not** have caught the original outage: `@aws_auth(cognito_groups:
      ["Admin"])` was present on all 18 admin fields for its entire inert life.
-     Only a check that knows *which* directive the service honours fails that
+     Only a check that knows *which* directive the service honors fails that
      deploy.
 
      **It found a real gap on its first run: `_noop`** — the placeholder mutation

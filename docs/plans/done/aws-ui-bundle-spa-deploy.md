@@ -139,7 +139,7 @@ Done. The CloudFront binding already exposed `defaultRootObject?: Pulumi.Input.t
 
 Existing callers that pass only `~pluginId` and `~bundleVersion` continue to work — they get a distribution with no `BucketObject` uploads and no `customErrorResponses`. The new arguments are all optional with safe defaults.
 
-Note: `defaultRootObject` is now always set to `indexDocument` (defaults to `"index.html"`) even for legacy callers. This is a deliberate behaviour change vs. pre-plan — without it, the bare distribution URL returns 403 on every empty distribution, which is never useful. If a caller actually relied on the prior 403, they can opt out by passing `~indexDocument=""` (CloudFront treats empty string as unset). Worth flagging in the changelog.
+Note: `defaultRootObject` is now always set to `indexDocument` (defaults to `"index.html"`) even for legacy callers. This is a deliberate behavior change vs. pre-plan — without it, the bare distribution URL returns 403 on every empty distribution, which is never useful. If a caller actually relied on the prior 403, they can opt out by passing `~indexDocument=""` (CloudFront treats empty string as unset). Worth flagging in the changelog.
 
 ### 3.2 Document the recommended call site
 
@@ -158,9 +158,9 @@ The helper fails fast in two cases: if `~assetsDir` is supplied but does not exi
 
 - **Custom domain + ACM certificate.** Distribution-level config for `aliases` and `viewerCertificate.acmCertificateArn`. Future helper, separate plan — independent of asset upload and SPA fallback.
 - **Cache-control headers.** Per-file `Cache-Control` (e.g. `max-age=31536000, immutable` for hashed assets, `no-cache` for `index.html`). The default `CachingOptimized` policy already handles most of this at the edge; per-object headers are a tuning step.
-- **Origin behaviours for non-bundle paths.** If a deployment wants the distribution to also serve `/api/*` from a different origin, that's a multi-origin distribution and belongs in a separate helper (`makeMultiOriginDistribution`). The current helper is single-origin by design.
+- **Origin behaviors for non-bundle paths.** If a deployment wants the distribution to also serve `/api/*` from a different origin, that's a multi-origin distribution and belongs in a separate helper (`makeMultiOriginDistribution`). The current helper is single-origin by design.
 - **Source map handling.** Whether to upload `.map` files is deploy-policy. Out of scope; callers can `rm dist/**/*.map` before calling if they want to exclude them.
-- **CloudFront invalidation on deploy.** Pulumi's content-hashed `BucketObject` etag triggers updates; the `CachingOptimized` policy honours `ETag` validators, so clients fetch fresh content on the next request without an explicit `CreateInvalidation` call. If hard cache busting is later needed, add `~invalidateOnDeploy: bool` in a follow-up.
+- **CloudFront invalidation on deploy.** Pulumi's content-hashed `BucketObject` etag triggers updates; the `CachingOptimized` policy honors `ETag` validators, so clients fetch fresh content on the next request without an explicit `CreateInvalidation` call. If hard cache busting is later needed, add `~invalidateOnDeploy: bool` in a follow-up.
 
 ---
 

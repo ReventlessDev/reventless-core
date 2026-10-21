@@ -14,7 +14,7 @@ adapter or `AsyncTest`.
 ## Scope and Principles
 
 **What smoke tests verify:** Each external binding calls the correct JS function with the correct
-arguments and returns the expected shape. A smoke test is not a full behavioural test — it is the
+arguments and returns the expected shape. A smoke test is not a full behavioral test — it is the
 smallest test that would catch a wrong JS function name, wrong argument order, or wrong return type
 assumption.
 

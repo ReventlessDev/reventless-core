@@ -185,7 +185,7 @@ is Public with a composite `subIdConfig`; `PluginHistoryProjection` uses
 Detailed in **[Backlog/plugin-history-indices-and-dashboards.md](Backlog/plugin-history-indices-and-dashboards.md)**:
 `byTransition` / `byDay` (and optional `byActor` / `byVersion`) GSIs, a
 version-lifecycle **summary projection** for SLA/rollback metrics, and counters —
-mapped to the §6.2.4 opportunity catalogue (status dashboards, deployment/SLA
+mapped to the §6.2.4 opportunity catalog (status dashboards, deployment/SLA
 metrics, rollback intelligence, drift detection, audit). Each `@index` yields a
 `By<Index>` query field for free (Part 1). Added incrementally, one per concrete
 dashboard.

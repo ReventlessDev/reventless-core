@@ -186,8 +186,8 @@ gives exactly the three arms this needs, and the mapping matters:
 | no match, or ambiguous per D3 | `Ok(Some(MarkAddressUnresolvable({address, reason})))` | recorded as a fact, **not** retried |
 
 The third row is the one worth being deliberate about. It is a *success* of the translation that
-reports a negative outcome. Modelling it as `Error` would retry a permanently bad address forever;
-modelling it as `Ok(None)` would leave `location: None`, which already means "not geocoded yet" — and
+reports a negative outcome. Modeling it as `Error` would retry a permanently bad address forever;
+modeling it as `Ok(None)` would leave `location: None`, which already means "not geocoded yet" — and
 a state that means two things is a state nobody can act on.
 
 ### D5. A point always travels with the address it belongs to
@@ -350,7 +350,7 @@ has never heard of AWS.
 
 - **Chosen when:** deploy time, by the stack that sets the environment variable.
 - **If it's never chosen:** the plugin gets no endpoint and returns `Unavailable` — which is already
-  a modelled outcome (D4), so it retries and the sweep surfaces it, rather than crashing.
+  a modeled outcome (D4), so it retries and the sweep surfaces it, rather than crashing.
 - **Cost:** the contract is a wire format, so it is checked when it is called, not when it is built.
   A provider swapped behind the URL that answers a different shape fails at the first request. That
   is the standard trade for any adapter that crosses a network, which every other remote adapter here
@@ -1087,7 +1087,7 @@ field, found one blocker later.
 All three callbacks now tag with the target: `AutomationSlice` and `InboundTranslationSlice`
 unconditionally (their `targetName` is a required `string`), `OutboundTranslationSlice` through
 `Option.getOr`, keeping its own name when there is no target — that command goes to the plugin's DCB
-topic, where nothing dispatches on `service`, so the fallback preserves existing behaviour exactly.
+topic, where nothing dispatches on `service`, so the fallback preserves existing behavior exactly.
 
 **The regression test is the point, not the fix.** Every blocker in this plan was invisible to a
 green suite, and this one had the additional insult that the *whole feature* worked end to end while
@@ -1512,7 +1512,7 @@ it should be. Which surfaces one cost that is now measured rather than predicted
 - ~~**The outbound retry/sweep path is unimplemented.**~~ **Fixed, both halves** — see [blocker
   6](#the-proving-deploy-the-wiring-is-confirmed-on-real-infrastructure-and-the-sweep-does-not-exist).
   The TODO table is read back on cold start, and an EventBridge rule sweeps the backlog every five
-  minutes, so D4's retry behaviour and D1's reason for preferring an outbound slice over a hand-rolled
+  minutes, so D4's retry behavior and D1's reason for preferring an outbound slice over a hand-rolled
   `Task` both hold now. Unproven on AWS until the next deploy — in particular the scheduled
   invocation's shell branch, which no test can reach.
 - **Retry-exhausted TODO rows are reloaded forever.** Measured on the deploy: twelve `AutoShipOrder`

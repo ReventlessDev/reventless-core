@@ -242,7 +242,7 @@ After Step 1, that functor signature changes (it now requires adapter parameters
 this delegation breaks.
 
 Since the AWS implementation is out of scope, turn the AWS builder into a standalone
-no-op placeholder with a clear TODO comment. This preserves the same no-op behaviour
+no-op placeholder with a clear TODO comment. This preserves the same no-op behavior
 as today without depending on the core builder at all.
 
 ```rescript
@@ -288,8 +288,8 @@ npm run build
 cd reventless/reventless-in-memory && npm test
 ```
 
-All 5 StateViewSlice E2E tests should still pass — the behaviour is identical,
-only the code organisation changed.
+All 5 StateViewSlice E2E tests should still pass — the behavior is identical,
+only the code organization changed.
 
 **Status**: ✅ Done
 

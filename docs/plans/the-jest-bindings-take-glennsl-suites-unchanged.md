@@ -7,7 +7,7 @@
 directly: every `expect` runs at its line, and an `async` test body is awaited. Test suites
 written against `@glennsl/rescript-jest` cannot use it without a rewrite, because the two APIs
 differ in names and in how an assertion works. This plan adds a second module to the package,
-`Jest`, with glennsl's names and types but this package's behaviour. A suite then moves over by
+`Jest`, with glennsl's names and types but this package's behavior. A suite then moves over by
 changing its dependency, with no edits to its test files.
 
 **Why now.** Under ReScript 12, glennsl 0.13.1 (its latest release, 2025-12-07) does not
@@ -81,7 +81,7 @@ missing from `globalThis`, and under CommonJS it is only a parameter of each tes
 wrapper. They read it off `@jest/globals` instead, which Jest's module registry serves in both
 modes without installing anything.
 
-## 3. The behaviour change a suite will see
+## 3. The behavior change a suite will see
 
 The only difference a suite should notice is the one this plan exists for: assertions that were
 never checked now run.
@@ -112,7 +112,7 @@ checking anything.
 
 ### J2: the package gets tests
 
-The package has none today. Add a Jest project to it, with one test per promise in [§3](#3-the-behaviour-change-a-suite-will-see).
+The package has none today. Add a Jest project to it, with one test per promise in [§3](#3-the-behavior-change-a-suite-will-see).
 Some of these tests have to fail when the run passes, so they run as a child Jest whose result is
 checked:
 

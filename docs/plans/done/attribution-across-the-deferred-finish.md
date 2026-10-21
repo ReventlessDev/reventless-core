@@ -24,7 +24,7 @@ docstring states the invariant that makes this safe:
 > resources inside `Pulumi.Output.apply`**), so everything built between `enter` and `restore`
 > genuinely belongs to that plugin.
 
-`Plugin_Builder.construct` honours the bracket: `enter` at `:73`, `restore` at `:1026`.
+`Plugin_Builder.construct` honors the bracket: `enter` at `:73`, `restore` at `:1026`.
 
 The deferred finish phase does not. `Builder_Helpers` defers runtime creation until every
 registration has landed, and it does so **by waiting on outputs** — which means the finish

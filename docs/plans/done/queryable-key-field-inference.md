@@ -12,7 +12,7 @@ for `ProductDemand` and `"convention"` / `"sole"` for the rest; `Plugins` report
 
 Two notes on what differed:
 
-- **One existing test asserted the old behaviour** and had to be rewritten, not
+- **One existing test asserted the old behavior** and had to be rewritten, not
   patched: `GraphQL_SchemaInspectorTest`'s "read model with no annotations emits
   the unchanged search-only Filter". Its `plainState` fixture has a sole `*Id`
   field, so it now gets that key's filter and order-by. It became two tests — the
@@ -165,7 +165,7 @@ inferred key, and the global-id round-trip asymmetry.
 |---|---|---|
 | Ladder order | `@id` declaration → `singular(name) ++ "Id"` field match → sole `*Id`-suffixed field → decline | Convention can only fire on a field that exists, so it cannot pick a phantom; it beats "sole" because a view with one FK and no own key would otherwise be keyed by the FK. |
 | `~entityName` on `deriveServerCapability` | Required, not optional | All four call sites have a name in scope. An optional arg lets a caller silently lose the convention rung — the quiet-wrong-answer failure this work exists to remove. |
-| Inferred key's capability | Identical to a declared `@id` — eq filter **and** sort field | The point is that inference produces what the annotation would. Sorting by a partition key is of marginal value on the AWS resolver; that is true of a declared `@id` too and is not a reason to split the behaviour. |
+| Inferred key's capability | Identical to a declared `@id` — eq filter **and** sort field | The point is that inference produces what the annotation would. Sorting by a partition key is of marginal value on the AWS resolver; that is true of a declared `@id` too and is not a reason to split the behavior. |
 | Provenance | New `idField` + `idFieldSource` on `queryableDef` (`"annotation"` / `"convention"` / `"sole"`; both `None` when unresolved) | Mirrors `labelField` / `labelFieldSource` exactly, and travels with `singleQueryField` to the same consumers. |
 | `x-reventless-id` | Stays declaration-only | The JSON Schema has no room for provenance; a guess printed as a flat boolean is indistinguishable from a declaration. Revisit with `x-reventless-id-source` if a consumer needs it. |
 | Example annotations | Exactly one: `@id productId` on `ProductDemand` | Every other view is resolved by the ladder once `Customers` carries its key. |

@@ -1,7 +1,7 @@
 # Plan: an AutomationSlice cannot read an aggregate it is allowed to name
 
 **Date:** 2026-09-01<br/>
-**Status:** ✅ **DONE 2026-09-01.** The falsifier resolved in favour of the cheap answer, and the
+**Status:** ✅ **DONE 2026-09-01.** The falsifier resolved in favor of the cheap answer, and the
 change was made.
 
 `AutomationSlice_Callback`'s `phase1` already decodes the envelope —

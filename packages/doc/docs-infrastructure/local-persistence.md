@@ -23,7 +23,7 @@ module Platform = ReventlessLocal.Platform.MakeWithConfig({
 })
 ```
 
-Pass `resetOnStart: true` to wipe the file every time `Platform.MakeWithConfig` runs — matches the fresh-every-time behaviour that Jest relies on. Leave it `false` for dev sessions where you want data to accumulate across restarts.
+Pass `resetOnStart: true` to wipe the file every time `Platform.MakeWithConfig` runs — matches the fresh-every-time behavior that Jest relies on. Leave it `false` for dev sessions where you want data to accumulate across restarts.
 
 ### Option 2 — Environment variable
 
@@ -31,7 +31,7 @@ Pass `resetOnStart: true` to wipe the file every time `Platform.MakeWithConfig` 
 REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db pnpm dev
 ```
 
-The default `Platform.Make()` picks up `REVENTLESS_LOCAL_BACKEND` via `Backend.fromEnv()` — no code change required. Recognised values:
+The default `Platform.Make()` picks up `REVENTLESS_LOCAL_BACKEND` via `Backend.fromEnv()` — no code change required. Recognized values:
 
 | Value | Effect |
 |---|---|

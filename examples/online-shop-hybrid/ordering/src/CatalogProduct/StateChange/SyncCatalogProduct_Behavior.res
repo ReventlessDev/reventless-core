@@ -11,7 +11,7 @@ type state = {
   price: option<Reventless.Money.t>,
   withdrawn: bool,
   // The picture last announced, kept for the same reason `name` is: so a repeat
-  // of the same announcement can be recognised and dropped.
+  // of the same announcement can be recognized and dropped.
   productImage: option<Reventless.UploadableImage.t>,
 }
 let initialState = {name: "", price: None, withdrawn: false, productImage: None}
@@ -60,7 +60,7 @@ let decide = (state, command) =>
     }
   // Idempotent like the rest: Catalog re-announcing the same picture is the
   // ordinary shape of at-least-once delivery, not a change.
-  // Compared as options, so "the picture is gone" is recognised as a change and
+  // Compared as options, so "the picture is gone" is recognized as a change and
   // re-announcing the same absence is not.
   | ChangeSyncedProductImage({productId, ?productImage}) =>
     if state.productImage == productImage {

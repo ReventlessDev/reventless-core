@@ -121,7 +121,7 @@ does not edit.
    shape as `run-platform-generator.mjs`.
 
 2. **G2 — dependency-graph resolution** in `PlatformGenerator.manifestPathFor`, tried after the two
-   existing paths so no current caller changes behaviour. Verify: a root whose only plugin content is
+   existing paths so no current caller changes behavior. Verify: a root whose only plugin content is
    a dependency yields that dependency's manifest, and regenerating is byte-identical.
 
    **Done**, though not in `manifestPathFor` — see step 4 for where it went. Node's directory

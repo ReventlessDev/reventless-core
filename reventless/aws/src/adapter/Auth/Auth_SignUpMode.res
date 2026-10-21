@@ -53,7 +53,7 @@ let allowAdminCreateUserOnly = (mode: t): bool =>
 /**
 The deploy-time choice, or why the deploy cannot proceed.
 
-An unrecognised spelling refuses rather than falling back to the default, and the
+An unrecognized spelling refuses rather than falling back to the default, and the
 reason is *not* [Auth_LoginIdentifier]'s — this setting is correctable at any
 time. It is that the mistake would be silent. The default is closed, so a typo
 fails safe, but it fails safe *invisibly*: the deploy is green, the config says

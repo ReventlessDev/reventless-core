@@ -17,7 +17,7 @@ platforms: the shell serves the hints file the deployment named, and no other.
 
 ## §1 — What is actually wrong
 
-`uiHintsFile` is declared on the shared `hostUiBundleConfig` and honoured only by
+`uiHintsFile` is declared on the shared `hostUiBundleConfig` and honored only by
 the AWS deploy, which reads the named file and writes it as a `BucketObject`
 beside `config.json` (`reventless/aws/src/Platform.res`). The in-memory platform
 ignores it, and says why in a comment at the type
@@ -63,7 +63,7 @@ replaces the package directory costs one restart.
 **Unlike `ShellConfig`, there is no merge.** AWS writes the declared file
 verbatim, so local replaces the served file outright. Layering a deployment's
 hints over the shell package's demonstration hints would invent a third
-behaviour neither platform has, and the winner of any given key would depend on
+behavior neither platform has, and the winner of any given key would depend on
 which repo happened to name it.
 
 ## §3 — Shape

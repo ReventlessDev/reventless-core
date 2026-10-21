@@ -106,7 +106,7 @@ const sources = execSync("git ls-files '*.res' '*.resi'", { cwd: ROOT, encoding:
   .filter(Boolean)
   .filter((f) => !f.includes("/layer-builder/"))
 
-// ReScript spells an option two ways, and BOTH must be recognised — the second
+// ReScript spells an option two ways, and BOTH must be recognized — the second
 // one is why this check reported eight false positives on its first run. The
 // runtime entry points declare `pluginReadModelTableName?: string`, and a scanner
 // that only knew `name: option<…>` did not see them, so the name looked
@@ -256,7 +256,7 @@ for (const file of sources) {
 //   gone         the name is not declared in that file any more. The ratchet
 //                working as designed: the site was removed, so remove the entry.
 //
-//   unrecognised the declaration is still sitting there, and the scanner read it
+//   unrecognized the declaration is still sitting there, and the scanner read it
 //                and did not classify it as `option<Pulumi.Output.t<_>>`.
 //
 // The second is what a formatter reflow produced here: wrapping a long

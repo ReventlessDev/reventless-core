@@ -13,7 +13,7 @@ The fix replaces the read+BatchWriteItem pair with a single `TransactWriteItems`
 - **Correctness**: every successful `append` either commits all events atomically or fails with `Error("Conflict: …")`. No silent invariant violations.
 - **No second read on the append path**: rely on the `headPosition` already produced by the slice's decision-model read.
 - **Minimum incremental cost in the common single-tag case**: one extra write (head pointer update) per command, regardless of event count.
-- **Honest behaviour for tagless queries**: either reject at slice-build time or document the eventual-consistency caveat — no silent unsoundness.
+- **Honest behavior for tagless queries**: either reject at slice-build time or document the eventual-consistency caveat — no silent unsoundness.
 - **No schema migration of existing tables required**: lazy-init sentinels via `attribute_not_exists`.
 
 ## Non-goals
@@ -121,8 +121,8 @@ Implemented (2026-05-08). Pending merge.
 - **Tagless rejection (Step 1)**: runtime error in `append` with explicit message. Build-time check deferred — requires deeper schema introspection. All five example DCB slices have at least one tagged field, so no current example breaks.
 - **Sentinel kind (Step 2)**: always per-individual-tag-value fence. No separate head-pointer fast path. Sentinel id = `fence#<tagKey>:<tagValue>`, sort key = `"FENCE"`. Stored in the same DynamoDB table as events but with a distinct id prefix (no read-side filtering needed).
 - **BatchWriteItem chunking (Step 8)**: deferred to a follow-up plan. Out of scope for the consistency fix.
-- **Tests (Step 7)**: unit-level against new helpers and transact-items input shape. No `dynamodb-local` in workspace; AWS integration testing follow-up. Existing slice GWT tests run against the in-memory adapter and continue to cover end-to-end retry behaviour.
-- **Error classification**: `DynamoDb_Error.classify` did not previously recognise `TransactionCanceledException`. Now handled — cancellation reasons of `ConditionalCheckFailed` map to `StaleState(...)`; `TransactionConflict` / `ProvisionedThroughputExceeded` / `ThrottlingError` map to `Transient(...)`.
+- **Tests (Step 7)**: unit-level against new helpers and transact-items input shape. No `dynamodb-local` in workspace; AWS integration testing follow-up. Existing slice GWT tests run against the in-memory adapter and continue to cover end-to-end retry behavior.
+- **Error classification**: `DynamoDb_Error.classify` did not previously recognize `TransactionCanceledException`. Now handled — cancellation reasons of `ConditionalCheckFailed` map to `StaleState(...)`; `TransactionConflict` / `ProvisionedThroughputExceeded` / `ThrottlingError` map to `Transient(...)`.
 
 ### What landed
 

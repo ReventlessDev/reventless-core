@@ -29,7 +29,7 @@ are still in the tree. They are not a second meaning — they are stale. Left al
 the wrong vocabulary (this is how `ComponentType.Core` came to be used for platform substrate in the
 first place, and had to be undone).
 
-The catalogue below is grep-verified. It is deliberately split by **risk**, because the entries look
+The catalog below is grep-verified. It is deliberately split by **risk**, because the entries look
 alike and are not: two of them are internal identifiers, and one is a deployed cross-plugin contract
 that also appears in physical resource names.
 
@@ -37,7 +37,7 @@ that also appears in physical resource names.
 
 ## Tier 1 — free (internal identifiers and comments)
 
-No behaviour change, no deployed identity, compiler-checked. Do these together.
+No behavior change, no deployed identity, compiler-checked. Do these together.
 
 | Where | Now | Should be |
 |---|---|---|

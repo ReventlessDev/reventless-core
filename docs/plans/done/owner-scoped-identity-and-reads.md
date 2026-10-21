@@ -130,7 +130,7 @@ needs.
 
 **The interceptor is the wrong layer anyway.** It is a *user extension* point,
 filled by an application's `RuntimeExtension`. Stamping an owner is framework
-behaviour derived from a framework annotation; it must hold whether or not an
+behavior derived from a framework annotation; it must hold whether or not an
 application registered anything.
 
 **The right seam is `makeGenerateCommand` itself** — and choosing it is what buys
@@ -345,7 +345,7 @@ plus at least one row owned by neither.
    because the IR is shape-driven and ownership does not change a field's shape.
    Four tests in `SuryToJsonSchemaTest`, of which two are the ones that matter:
    an unmarked sibling field stays bare (a bug marking everything would otherwise
-   pass), and an **optional** owner field is still recognised — the wrapper case
+   pass), and an **optional** owner field is still recognized — the wrapper case
    that fails open.
 2. ✅ **Done 2026-08-12.** `Reventless.OwnerScope` — `resolve` classifies a caller
    as `System` / `Elevated` / `Owned` / `Unidentified`, with `elevatedGroups` as a
@@ -353,15 +353,15 @@ plus at least one row owned by neither.
 
    Two findings while building it, both recorded in the module:
    - **The runtime shape is worse than §4 said.** `Cognito` and `InMemory` compile
-     to bare strings while `Custom(_)` compiles to an object, so a modelled
-     provider is told from an unmodelled one by `typeof`. And the identity can be
+     to bare strings while `Custom(_)` compiles to an object, so a modeled
+     provider is told from an unmodeled one by `typeof`. And the identity can be
      absent *in its entirety* — an internal caller that assembles a payload
      without one arrives as `undefined`, where reading a field raises a TypeError
      and surfaces as a crash rather than as the refusal it is. Every field read in
      the module goes through a nullable cast for that reason.
    - **`systemProviders` is an allowlist, and the direction is the safety
      property.** "Anything not modelled is a system caller" would hand unscoped
-     reads to whoever adds the next provider. Unrecognised now lands in
+     reads to whoever adds the next provider. Unrecognized now lands in
      `Unidentified` and is refused. There is a test for exactly that, because it
      is the branch that fails silently in the wrong direction.
 3. ✅ **Done 2026-08-12.** `stampOwnerFields` in `makeGenerateCommand`, resolving

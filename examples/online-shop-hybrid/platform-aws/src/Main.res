@@ -62,7 +62,7 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // identity asks AWS to mail the address; until somebody follows that link SES
 // refuses everything, and the deploy will have succeeded regardless. The first
 // confirmations queue and are swept rather than being written off, which is the
-// behaviour that makes a pending verification survivable. Reaching unverified
+// behavior that makes a pending verification survivable. Reaching unverified
 // recipients additionally means leaving the SES sandbox, which is an
 // account-level request rather than anything this deploy can do.
 let messagingSender = ReventlessAws.Capability_Messaging.make(~name="online-shop-sender")

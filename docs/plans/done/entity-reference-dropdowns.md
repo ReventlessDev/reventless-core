@@ -47,7 +47,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 **Implementation note.** Plan said "inject a synthetic `displayName: string` field" — landed as `displayName?: string` (optional). A mandatory field would force every projection body's `Create`/`Set` record literal to provide `displayName: "…"` as a placeholder; optional field avoids that migration. Consequence: GraphQL SDL emits `displayName: String` (nullable) instead of the plan's aspirational `String!`. The projection runtime overlay guarantees the field is always populated in practice.
 
-**Also note.** The ppx-injected field must use `Location.none` for the label-declaration / type / attribute locations. When all four locations are equal to a single source `~loc`, the ReScript type-checker refuses to honour the `@res.optional` attribute and treats the field as mandatory — even though sury sees it as optional and the compiled `.res.mjs` is correct. `Location.none` ("ghost" location) is the idiomatic marker for synthesised AST nodes and works around this.
+**Also note.** The ppx-injected field must use `Location.none` for the label-declaration / type / attribute locations. When all four locations are equal to a single source `~loc`, the ReScript type-checker refuses to honor the `@res.optional` attribute and treats the field as mandatory — even though sury sees it as optional and the compiled `.res.mjs` is correct. `Location.none` ("ghost" location) is the idiomatic marker for synthesised AST nodes and works around this.
 
 **Deferred for follow-up** (not blocking Phase 3/4 progress):
 - Explicit error on `@displayName` coexistence with `@id` / `@compositeId` on the same field.

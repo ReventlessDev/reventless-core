@@ -3,7 +3,7 @@
 **Date:** 2026-08-02
 **Repo:** reventless-core only — the mint side of the upload service, a claim component driven by
 declared storage-ref fields, and the store bucket's lifecycle policy. No client change: a caller
-that mints and PUTs exactly as it does today gets the new behaviour.
+that mints and PUTs exactly as it does today gets the new behavior.
 **Status:** Steps 1–4 implemented. Builds clean (zero warnings) and the full suite is green
 (294 suites / 2649 tests). Step 1's verification question was settled against a live scratch
 bucket before anything was written — see the note under Step 1. Step 3 ships **off**: no

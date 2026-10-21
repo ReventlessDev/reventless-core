@@ -5,7 +5,7 @@
 **Author:** Martin Lorenz (with Claude)
 
 **Scope:** how a plugin's lifecycle (connect / heartbeat / supersede / disconnect
-/ retire) should be modelled and owned; where "which version is current" is
+/ retire) should be modeled and owned; where "which version is current" is
 decided; whether multiple versions may run at once; and what a version deploy
 does to infrastructure (incl. zero-downtime). Motivated by the duplicate-menu bug
 but broader than it.
@@ -211,11 +211,11 @@ eventually-consistent intent/view.
 All options below **delete the deploy-time RM-scan retire hook** and feed a
 **name-keyed `Plugins` "current" view** to the manifest — that is the part that
 fixes the duplicate-menu bug. They differ in **who owns the supersession
-decision** and **how each plugin version is modelled**.
+decision** and **how each plugin version is modeled**.
 
 > **Migration cost is explicitly *not* a deciding factor** (per requirement): an
 > alpha event-store wipe is acceptable. The choice is therefore architectural —
-> write-side richness, modelling fidelity, invariant strength, and rework — not
+> write-side richness, modeling fidelity, invariant strength, and rework — not
 > logistics. §8 records what each entails for completeness.
 
 ### Option A — read-model differentiation (supersession *inferred*; baseline)
@@ -718,7 +718,7 @@ the v1→v2 handover continuous at the manifest layer.**
 
 ### 12.1 What is and isn't graceful in the current deploy
 
-| Resource | Update behaviour | Downtime risk |
+| Resource | Update behavior | Downtime risk |
 |---|---|---|
 | Lambdas (EventCollector, command handlers, heartbeat) | in-place code/env update | **Minimal** — in-flight invocations drain on old, new invocations hit new; only normal cold-start |
 | DynamoDB EventLog/QueryDb (name-keyed, persistent) | in-place; **new GSIs backfill async** | **Window** if v2 immediately queries a GSI still backfilling |
@@ -743,7 +743,7 @@ during which the "current" view always serves a working plugin definition:
 So the manifest never shows *nothing*; it transitions v1 → v2. **Option A's
 "newest connected wins" projection preserves exactly this** (and the discarded
 deploy-time retire hook actually *hurt* it, by trying to yank v1 out before v2
-was ready). This is a point in favour of the redesign for zero-downtime, not just
+was ready). This is a point in favor of the redesign for zero-downtime, not just
 for de-duplication.
 
 ### 12.3 What would make it a real guarantee
@@ -843,7 +843,7 @@ Today's connect-time protocol check already lives on the admin side and is
 `ReportIncompatibility` but *"the connection still proceeds"*
 ([PluginExtensionPoint_Plugin.res:145-169](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L145)).
 The real design question is which **case-(I)** invariants should become atomic
-prevention — and that is an *admin-store modelling* choice, not a business-plugin
+prevention — and that is an *admin-store modeling* choice, not a business-plugin
 DCB question.
 
 ### A.2 Examples

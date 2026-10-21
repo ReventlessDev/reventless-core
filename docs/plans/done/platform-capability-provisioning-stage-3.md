@@ -255,7 +255,7 @@ per-artifact debate"*, directly under §6 Option B.
   meaningful for platforms that have not taken this stage.
 - **It does not touch the layout, protection or serving decisions.** Those are settled and tested in
   `Util_StoreLayout`; Stage 3 changes only where the *list* comes from.
-- **It does not extend the capability catalogue.** `Geocoding` and the rest of Stage 4's providers
+- **It does not extend the capability catalog.** `Geocoding` and the rest of Stage 4's providers
   are out of scope; this stage must work for exactly the two that exist.
 
 ## Risks

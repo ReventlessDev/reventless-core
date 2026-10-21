@@ -1,15 +1,15 @@
 /**
-Marks a `string` field as a colour, written as a hex triplet.
+Marks a `string` field as a color, written as a hex triplet.
 
 ## Why hex only
 
 A field carrying this semantic is rendered as a swatch by setting the value as a
-CSS `background`. CSS accepts far more than a colour there — `url(…)`, gradients,
-`var(…)` — so "any CSS colour" would make a colour field a way to write arbitrary
+CSS `background`. CSS accepts far more than a color there — `url(…)`, gradients,
+`var(…)` — so "any CSS colour" would make a color field a way to write arbitrary
 CSS into a log that cannot be edited afterwards. Hex is the form that is a
-colour and nothing else, and it is what a colour picker emits anyway.
+color and nothing else, and it is what a color picker emits anyway.
 
-Named colours (`rebeccapurple`) and functional forms (`rgb(…)`, `oklch(…)`) are
+Named colors (`rebeccapurple`) and functional forms (`rgb(…)`, `oklch(…)`) are
 rejected for the same reason, not because they are worse notation.
 
 ## The grammar
@@ -26,7 +26,7 @@ full triplet, and the triplet with alpha. Case is not significant.
     })
 ```
 */
-/** The colour's representation. Transparent `string`; see `Email.t`. */
+/** The color's representation. Transparent `string`; see `Email.t`. */
 type t = string
 
 external unsafe: string => t = "%identity"
@@ -34,7 +34,7 @@ external toString: t => string = "%identity"
 
 let hex = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
 
-/** Validate a raw string as a hex colour, saying why when it is not one. */
+/** Validate a raw string as a hex color, saying why when it is not one. */
 let fromString = (raw: string): result<t, string> =>
   if hex->RegExp.test(raw) {
     Ok(raw)
@@ -46,5 +46,5 @@ let fromString = (raw: string): result<t, string> =>
     )
   }
 
-/** The sury schema for a colour field. Use with `@s.matches(Reventless.Color.schema)`. */
+/** The sury schema for a color field. Use with `@s.matches(Reventless.Color.schema)`. */
 let schema: S.t<t> = S.string->Semantic.refined(~id=Semantic.Id.color, ~check=fromString)

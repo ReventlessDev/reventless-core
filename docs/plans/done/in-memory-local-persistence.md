@@ -98,7 +98,7 @@ Both adapters land with full schema, prepared statements, and transactional batc
 
 **Files to change.**
 - `reventless/reventless-in-memory/src/adapter/Backend.res` — implement `Backend.fromEnv()` parsing `REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db`.
-- `examples/online-shop-dcb/local-platform/src/Platform.res` (or equivalent) — show a commented opt-in: `Platform.Make({backend: Backend.fromEnv()})`. No behavioural change by default.
+- `examples/online-shop-dcb/local-platform/src/Platform.res` (or equivalent) — show a commented opt-in: `Platform.Make({backend: Backend.fromEnv()})`. No behavioral change by default.
 - `reventless/reventless-in-memory/src/adapter/Backend.res` — add `Bus.reset()` hook that issues `DELETE FROM …` across all known tables when running under `Sqlite`. Test-level reset semantics preserved.
 
 **Files to add.**
@@ -158,7 +158,7 @@ Both adapters land with full schema, prepared statements, and transactional batc
 
 ## ~~Phase 5 — GSI fidelity + TTL~~ ✅ DONE
 
-**TTL.** Added an `expires_at INTEGER NULL` column. Every read clause carries `(expires_at IS NULL OR expires_at > strftime('%s','now'))`, so expired rows disappear from `load`, `loadStream`, and `scanAll` without any background sweeper. `save`/`saveBatch` honour the `option<int>` TTL parameter that was previously ignored. An `ALTER TABLE … ADD COLUMN expires_at` migration runs at table-init for files created by Phase 2.
+**TTL.** Added an `expires_at INTEGER NULL` column. Every read clause carries `(expires_at IS NULL OR expires_at > strftime('%s','now'))`, so expired rows disappear from `load`, `loadStream`, and `scanAll` without any background sweeper. `save`/`saveBatch` honor the `option<int>` TTL parameter that was previously ignored. An `ALTER TABLE … ADD COLUMN expires_at` migration runs at table-init for files created by Phase 2.
 
 **GSI.** For each declared `indexConfig`, `CREATE INDEX IF NOT EXISTS idx_<table>_<sanitisedName> ON <table>(json_extract(item, '$.<field>'))`. Composite keys (`pkFields`/`pkSep`, `skFields`/`skSep`) become `json_extract(...) || '<sep>' || json_extract(...) || ...` expressions. Index names are sanitised so non-identifier characters (`-`, `.`) become underscores. The DynamoDB `projectionType` is recorded but not enforced — every column is on the same SQLite row, so KEYS_ONLY/INCLUDE distinctions don't apply.
 
@@ -174,7 +174,7 @@ Both adapters land with full schema, prepared statements, and transactional batc
 **Goal.** Close the existing gap where the memory backend silently ignores `QueryDb` GSI descriptors and TTLs.
 
 **Files to change.**
-- `reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_Sqlite.res` — for each declared index, generate a `CREATE INDEX` on computed columns extracted from the JSON via `json_extract()`. Honour `KEYS_ONLY` / `INCLUDE` projection types.
+- `reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_Sqlite.res` — for each declared index, generate a `CREATE INDEX` on computed columns extracted from the JSON via `json_extract()`. Honor `KEYS_ONLY` / `INCLUDE` projection types.
 - Add an `expires_at` column when TTL is configured; filter all reads with `WHERE expires_at IS NULL OR expires_at > strftime('%s','now')`. No background cleanup task — lazy expiry is sufficient at dev scale.
 
 **Acceptance.** A QueryDb test that exercises a GSI and a TTL passes under `Sqlite` with results matching DynamoDB semantics. (The same test under `Memory` may still differ — that gap is documented, not closed.)

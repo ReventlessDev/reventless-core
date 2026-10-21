@@ -168,7 +168,7 @@ outer function is called, not each time the closure runs:
 - `reventless/seed-aws/src/ReventlessSeedAws.res.mjs`: `connect`
 
 Every default involved is a literal (`[]`, `true`, `"."`) that the closure only reads, so
-behaviour is the same. The only difference is that one `[]` is now shared across calls of
+behavior is the same. The only difference is that one `[]` is now shared across calls of
 the closure. The bump commit must include these files, or `check:outputs` will show drift.
 
 **Not verified:** the crash case itself, which occurs outside this repository. #8482

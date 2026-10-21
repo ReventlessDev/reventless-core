@@ -23,7 +23,7 @@ users are:
 | Username | Password | Groups | What it is for |
 |---|---|---|---|
 | `admin` | `admin` | `Admin`, `Shopper` | Everything, including the platform's own admin views |
-| `shopper` | `shopper` | `Shopper` | Browses the catalogue and places their own orders |
+| `shopper` | `shopper` | `Shopper` | Browses the catalog and places their own orders |
 | `merch` | `merch` | `Merchandiser`, `Shopper` | Maintains products, categories, prices, images |
 | `fulfil` | `fulfil` | `Fulfilment`, `Shopper` | Works the order board and ships other people's orders |
 

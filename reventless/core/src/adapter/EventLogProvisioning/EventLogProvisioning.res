@@ -1,6 +1,6 @@
 /**
 Deploy-time hook: every event log announces itself as it is provisioned, so an
-extension can attach behaviour to it inside the program that owns it.
+extension can attach behavior to it inside the program that owns it.
 
 No-op by default. Zero behavioral change unless an extension registers a backend
 via `use` before the platform/plugin build. The seam fires once per log at

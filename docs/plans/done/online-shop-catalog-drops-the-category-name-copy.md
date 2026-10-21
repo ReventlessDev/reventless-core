@@ -1,7 +1,7 @@
 # Plan: the Products view stops carrying a copy of the category's name
 
 **Status.** Done 2026-09-07. Scoped to `examples/online-shop-hybrid` — this is
-domain modelling in the example, not a framework capability.
+domain modeling in the example, not a framework capability.
 
 Two things went further than [§4](#4--the-change) said, both because the field they served left
 with `categoryName`: `CategoryAdded`'s `name` is gone from `AddProduct`'s
@@ -106,7 +106,7 @@ Land that side first; this plan is the second half.
 ## §7 — A related trap, not fixed here
 
 `@hidden` marks a field as one no consumer should ask for, and a consumer that
-honours it by omitting the field from its query no longer receives the value
+honors it by omitting the field from its query no longer receives the value
 grouping depends on. So `@hidden` and `@groupBy` on one field is a contradiction:
 the annotations instruct a consumer to drop a value and to section rows by it.
 The ppx validates only that at most one `@groupBy` exists per record

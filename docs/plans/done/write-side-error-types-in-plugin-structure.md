@@ -41,7 +41,7 @@ and they are the only part not currently retrievable.
    One line, and it makes the surrounding comment true.
 
 2. **`Reventless.Plugin.writableDef` gains `errors`.** Mirroring `events: array<eventDef>`, with an
-   `errorDef` modelled on `eventDef` (`{name, schema, references}` — the same walk, so a consumer
+   `errorDef` modeled on `eventDef` (`{name, schema, references}` — the same walk, so a consumer
    reading an error's shape uses the code path it already uses for an event). If the field-level
    detail proves unwanted, the fallback is `array<string>` at parity with `producedEventTypes`;
    decide before implementing rather than shipping both.
@@ -122,7 +122,7 @@ So: **required array on `writableDef`, required list in the SDL**, exactly as `e
   from a structure that cannot say — per whichever way the decision above lands, stated explicitly
   rather than left to a reader's inference.
 - `PluginStructureTest` covers errors alongside the command/event assertions it already makes.
-- No change to any component's runtime behaviour; the existing callback tests pass untouched.
+- No change to any component's runtime behavior; the existing callback tests pass untouched.
 
 ## What landed
 

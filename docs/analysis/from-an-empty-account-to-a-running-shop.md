@@ -56,7 +56,7 @@ and [platform-stack-creates-the-lambda-layer.md](../plans/platform-stack-creates
   layer ([§5](#5-what-it-takes)).
 - **Nothing here has been tried in a new account.** The three problems come from
   reading the code and are clear. The account-level risks in [§3.3](#33-the-aws-account) are general AWS
-  behaviour and need a real empty account to confirm.
+  behavior and need a real empty account to confirm.
 
 ---
 
@@ -214,7 +214,7 @@ names `shopper`, `admin` and `merch`
 - **The region `eu-west-1` is written into every stack file** and into
   `deploy-manifest.yaml`. The AWS CLI's default region, not the stack's, decides where
   the layer is looked up and where the user commands act.
-- **Stack names change behaviour.** Every stack not named `pr-…` gets protected
+- **Stack names change behavior.** Every stack not named `pr-…` gets protected
   storage buckets that cannot be deleted while they hold files
   ([Util_StoreLayout.res](../../reventless/aws/src/util/Util_StoreLayout.res)). That
   includes `alpha`, the name the tutorial uses. Some stored objects are also kept when
@@ -524,7 +524,7 @@ is in [platform-stack-creates-the-lambda-layer.md](../plans/platform-stack-creat
   alpha releases (346).
 - **Not tried:** none of this has been run in a new account. The results in [§2](#2-the-three-problems-that-stop-the-shop-from-working) follow
   directly from the code, but nobody has seen them happen.
-- **General AWS behaviour, not checked here:** CloudFront verification of new accounts,
+- **General AWS behavior, not checked here:** CloudFront verification of new accounts,
   Lambda memory limits of new accounts, and whether Amazon Location is available in a
   region. For [§5.1](#51-who-creates-the-lambda-layer): who a layer can be shared with, that the storage limit applies per
   region, the `lambda:Layer` condition, and that functions keep a deleted layer version

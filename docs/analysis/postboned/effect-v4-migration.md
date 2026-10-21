@@ -17,7 +17,7 @@ releases in ten days means the API surface is still changing daily:
 - **beta.18** (two days ago): major STM refactor — `Effect.atomic` removed, `Effect.withTxState`
   added, new `TxDeferred`/`TxPriorityQueue`/`TxPubSub` modules
 - **beta.19**: further STM stabilisation
-- (hypothetical beta.20+): reverting `Config.withDefault` and `Effect.partition` behaviour back
+- (hypothetical beta.20+): reverting `Config.withDefault` and `Effect.partition` behavior back
   to v3
 
 The v4 source lives in a separate `effect-smol` repository that will merge into the main repo at
@@ -73,7 +73,7 @@ Beyond the bindings package, **consuming code in `reventless-in-memory` and
 ### 2.2 Why NOT to migrate to v4 beta now
 
 **API churn is too high.** Twenty betas in ten days with breaking STM changes, Cause model
-rewrites, and reverted behaviour. Each beta release could invalidate work just done.
+rewrites, and reverted behavior. Each beta release could invalidate work just done.
 
 **No codemods yet.** The Effect team promised codemods for the migration but they do not exist.
 Migrating without codemods means manually auditing every external binding against the v4 source.

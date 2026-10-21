@@ -86,7 +86,7 @@ let encodePluginStructureEntry = (
 
 ### 1.2 Refactor in-memory to consume the shared module
 
-Update [reventless-in-memory/src/Platform.res:1283-1376](../../reventless/reventless-in-memory/src/Platform.res#L1283-L1376) to import `Platform_UIDefinitionsApi` and replace the inline SDL strings + encoder with calls to the shared module. The resolver body stays in-memory (still reads from `pluginStructuresStore.contents`). No behavioural change.
+Update [reventless-in-memory/src/Platform.res:1283-1376](../../reventless/reventless-in-memory/src/Platform.res#L1283-L1376) to import `Platform_UIDefinitionsApi` and replace the inline SDL strings + encoder with calls to the shared module. The resolver body stays in-memory (still reads from `pluginStructuresStore.contents`). No behavioral change.
 
 ### 1.3 Validation
 
@@ -229,7 +229,7 @@ The `structure` field on `pluginDefinition` is `option` (added in a later PPX re
 - Phase 2's projection stores `None` when the plugin doesn't supply one.
 - Phase 3.2's resolver skips entries where `structure = None` rather than emitting partial data.
 
-The console-side behaviour for missing entries is "plugin appears in the platform health view but has no inspector pages", which is the correct degraded state for an outdated plugin.
+The console-side behavior for missing entries is "plugin appears in the platform health view but has no inspector pages", which is the correct degraded state for an outdated plugin.
 
 No SDL-level breaking change: the resolver returns an empty array when no plugins have `structure`, which is the same shape clients already expect from in-memory.
 

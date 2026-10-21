@@ -74,7 +74,7 @@ These don't need AWS — mock the inner send via a counter. The current file `Ut
 
 ### Step 4 — Audit call sites
 
-Run `grep -rn "batchWriteWithRetries"` across `reventless-aws/`. Confirm no caller relies on the old "fails at >25" behaviour as an implicit guard. Today: 2 call sites, neither does.
+Run `grep -rn "batchWriteWithRetries"` across `reventless-aws/`. Confirm no caller relies on the old "fails at >25" behavior as an implicit guard. Today: 2 call sites, neither does.
 
 ### Step 5 — Document
 

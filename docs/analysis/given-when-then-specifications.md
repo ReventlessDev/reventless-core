@@ -802,7 +802,7 @@ For tightly-coupled in-process tooling (e.g. an agent running inside the same No
 | `RenderRescript.res` | Sury-aware value renderer. Walks an `S.t<'a>` schema + a JSON value and produces ReScript syntax (`Added({name: "Electronics"})`). |
 | `Diff.res` | Schema-aware structural diff. Given two values + their schema, produces `fieldDiff`. |
 | `Hint.res` | Maps `Outcome.mismatch.kind` → `{locus, branch, message}`. The single source of truth for fix-locus inference. |
-| `formatters/Human.res` | Terminal-coloured human formatter (~150 lines, biggest single piece). |
+| `formatters/Human.res` | Terminal-colored human formatter (~150 lines, biggest single piece). |
 | `formatters/Json.res` | Structured JSON envelope (default) and NDJSON streaming variant. |
 | `formatters/Tap.res` | TAP 14 line-by-line emitter with YAML diagnostic blocks. |
 | `formatters/Junit.res` | JUnit XML emitter. |
@@ -1267,7 +1267,7 @@ Per-slice and embarrassingly parallel.
 
 Same loop as Stage B but for `ReadModel`/`StateViewSlice` projections, using `Projection_GWT` / `StateViewSlice_GWT` corpus. LLM emits the `project` function.
 
-Edge case: ambiguity between `Set` and `UpdateWithDefault` when the corpus only contains positive cases. Prefer `Set` (overwriting semantics, matches event-sourcing replay) unless a scenario explicitly tests partial-update behaviour.
+Edge case: ambiguity between `Set` and `UpdateWithDefault` when the corpus only contains positive cases. Prefer `Set` (overwriting semantics, matches event-sourcing replay) unless a scenario explicitly tests partial-update behavior.
 
 #### Stage D — LLM synthesises read model query infrastructure
 
@@ -1282,7 +1282,7 @@ Uses `Query_GWT` corpus ([§4.8](#48-query_gwt--read-model-query-patterns)). LLM
 3. `pnpm exec reventless-gwt run` — every GWT runs, must all be `Ok`.
 4. Optionally `pnpm test` — Jest still runs the non-GWT tests (E2E, infrastructure).
 
-If all pass, accept. If any fail, re-invoke the LLM at the relevant stage (B for behaviour failures, C for projection failures, D for query failures). The mismatch JSON tells the orchestrator which stage to retry.
+If all pass, accept. If any fail, re-invoke the LLM at the relevant stage (B for behavior failures, C for projection failures, D for query failures). The mismatch JSON tells the orchestrator which stage to retry.
 
 #### Where each stage gets its truth
 
@@ -1420,7 +1420,7 @@ Mechanical:
 
 Plus optional file rename: `CategoryBehaviorTest.res` → `CategoryBehavior_GWT.res`. Combinator names stay the same — every `givenEvents/whenCmd/thenEvent` call works as-is. With deprecation aliases in place, this can land in any order. ~1 hour to write the codemod, then auto-applies.
 
-If the harmonisation work ([§2.6](#26-duplication-and-inconsistency-audit) item 3) drops `plainPartial` in favour of a synchronous chain, the projection codemod also rewrites `whenEvent(...)->thenState(...)` from `Jest.Expect.plainPartial<...>` to a regular value chain. Slightly bigger but still mechanical (LHS/RHS shapes are deterministic).
+If the harmonisation work ([§2.6](#26-duplication-and-inconsistency-audit) item 3) drops `plainPartial` in favor of a synchronous chain, the projection codemod also rewrites `whenEvent(...)->thenState(...)` from `Jest.Expect.plainPartial<...>` to a regular value chain. Slightly bigger but still mechanical (LHS/RHS shapes are deterministic).
 
 #### Semi-automatic LLM rewrite for DCB hand-rolled tests
 
@@ -1477,5 +1477,5 @@ For DCB slices that today have **no** GWT (raw `expect`), migration is net-new a
 - **Rename and harmonise the existing DSLs** ([§4.1](#41-renaming-the-existing-dsls), [§2.6](#26-duplication-and-inconsistency-audit)): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-local/src/test/*` modules.
 - **Migration is fully additive** ([§6](#6-implementation-plan)): codemods for the existing rename, semi-automatic LLM rewrite for the few DCB hand-rolled tests, deprecation aliases keep every PR green.
 - **AI generation is feasible to a high ceiling** ([§5](#5-ai-assisted-generation)) but only if the GWT corpus covers every cross-entity invariant. The two non-derivable areas — invariants without examples, read-model query patterns — must be made explicit as `_GWT` or `Query_GWT` scenarios. Otherwise an LLM will under-constrain `decide` and over-fit on the supplied examples.
-- **Make the acceptance gate closed-world** ([§5.6](#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product)). "All scenarios pass" is a lower bound; uncovered `(state, command)` cells must refuse explicitly, or generated behaviour exceeds what anyone specified and anything derived from the corpus is unsound.
+- **Make the acceptance gate closed-world** ([§5.6](#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product)). "All scenarios pass" is a lower bound; uncovered `(state, command)` cells must refuse explicitly, or generated behavior exceeds what anyone specified and anything derived from the corpus is unsound.
 - **Harvest the lifecycle state machine from the corpus** ([§5.6](#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product)). With the gate in place, `allowedStates` / `targetState` / Collection-vs-Instance are corpus by-products, and `@transition` becomes a coverage obligation rather than an unverifiable claim. Requires recording the passing `(givenEvents, command, producedEvents)` triple in the Outcome algebra ([§3.2](#32-the-outcome-algebra)).

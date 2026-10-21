@@ -110,7 +110,7 @@ appended after the slice's `after` — matching the local backends exactly.
 - No `StateChangeSlice` author-contract change; no spec/example changes. The fix is
   **adapter-local** — `cond.query` already carries per-clause `eventTypes`, and produced
   types come from `events`, so `buildConditionalTransactItems` has everything it needs.
-- Keep composite/cross-partition (Issue 1 / Issue 13) behaviour correct.
+- Keep composite/cross-partition (Issue 1 / Issue 13) behavior correct.
 
 ## Non-goals
 
@@ -268,14 +268,14 @@ All in
 ## Deploy / data
 
 - **Alpha sentinel-row wipe** of the Catalog DCB table after the fixed Lambda lands — old
-  `fence#*` rows carry the scalar `lastPosition` from the current behaviour (the new code reads
+  `fence#*` rows carry the scalar `lastPosition` from the current behavior (the new code reads
   `pos#*`), and old `create#*` rows are now orphaned (the guard is folded into the fence). Wipe
   **both** prefixes (BatchWriteItem on `fence#*` and `create#*` ids) to avoid stale-scalar
   interplay and leftover clutter. Note the fence-scope-alignment plan already flagged "Catalog
   DCB tables not wiped yet" — fold all wipes into the same `pulumi up` follow-up.
 - Same partition-scoped semantics must be reflected in the **local** backends?
   No — `DcbEventLogStorage_InMemory`/`_Sqlite` are already correct (true query semantics); this
-  fix only brings **DynamoDB up to** their behaviour.
+  fix only brings **DynamoDB up to** their behavior.
 
 ## Documentation — talk pages to update
 

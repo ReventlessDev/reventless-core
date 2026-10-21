@@ -72,7 +72,7 @@ partition from `PluginAggrEventLog-*`.
 
 - **`Inline` structures.** A small plugin's structure may be inline rather than
   offloaded, so there is no key to compare. Treat "no key on either side" as
-  today's behaviour (accept) rather than as a mismatch, or the retry never
+  today's behavior (accept) rather than as a mismatch, or the retry never
   terminates for those plugins.
 - **Delay and attempts.** A retry that fires immediately hits the same
   not-yet-live Lambda. Needs a delay comparable to the propagation window

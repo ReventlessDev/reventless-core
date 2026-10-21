@@ -6,7 +6,7 @@
 **Status:** Proposed — not started.<br/>
 **Scope:** `reventless/spec`, `reventless/aws`, `reventless/local`,
 `examples/online-shop-hybrid`, and `traits/`. **[2026-08-30]** The trait packages live in this
-repo, published by this repo's release train under the same open licence as the framework — not
+repo, published by this repo's release train under the same open license as the framework — not
 in an external repo as built artifacts. This plan covers the framework seams; per-competency
 build detail is in the three plans named in Part 4.
 
@@ -127,7 +127,7 @@ belongs with Part 1, which is where the first second capability arrives.
 ## Part 4 — example changes, per competency
 
 **[2026-08-30] Moved out.** Per-competency build detail now lives in its own plan, so this
-document stays organised by *seam* — a seam serves several traits, and describing both axes here
+document stays organized by *seam* — a seam serves several traits, and describing both axes here
 duplicated each of them.
 
 | Competency | Plan |

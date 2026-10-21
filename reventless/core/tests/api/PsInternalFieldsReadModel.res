@@ -4,7 +4,7 @@
 //
 // A spec file rather than a module inside the test, and named `*ReadModel*`
 // deliberately: the annotation machinery runs under `@@reventless.spec` AND only
-// for a file the PPX recognises as a read model or state view. That is also the
+// for a file the PPX recognizes as a read model or state view. That is also the
 // honest scope for `@internal` — it describes a read model's state.
 
 @@reventless.spec("InternalFieldsReadModel")

@@ -207,7 +207,7 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       },
     )
 
-    // The control the drop is modelled on: absent and explicitly-null must
+    // The control the drop is modeled on: absent and explicitly-null must
     // reach the domain as the same command.
     testPromise(
       "and one simply omitted produce the same command",

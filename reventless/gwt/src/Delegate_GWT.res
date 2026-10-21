@@ -3,7 +3,7 @@ open ReventlessCore
 // Delegate_GWT — GWT for ExtensionPoint mappings and Extension delegates.
 //
 // Both are pure input → published-actions translations and form the one
-// cross-plugin behavioural seam (per `.claude/rules/app-developer.md`). Each
+// cross-plugin behavioral seam (per `.claude/rules/app-developer.md`). Each
 // mapping has TWO directions, and each adapter drives both:
 //
 //   * an ExtensionPoint mapping turns an internal `Delegate` event into public

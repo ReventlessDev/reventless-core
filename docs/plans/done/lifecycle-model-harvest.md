@@ -18,7 +18,7 @@ obligation*.
   [§5.6](../../analysis/given-when-then-specifications.md#56-the-closed-world-gate-and-the-lifecycle-model-as-a-corpus-by-product) — the closed-world gate, which constrains the *generation* pipeline and is
   explicitly out of scope here.
 - [`docs/plans/done/lifecycle-transition-annotation.md`](lifecycle-transition-annotation.md)
-  — built `@transition` and its name check. This plan adds the behaviour check
+  — built `@transition` and its name check. This plan adds the behavior check
   that plan's [§6](lifecycle-transition-annotation.md#6--risks) called for and could not build.
 - [`docs/analysis/rejected/command-lifecycle-guard-defaults.md`](../../analysis/rejected/command-lifecycle-guard-defaults.md)
   — the four options this supersedes.
@@ -27,14 +27,14 @@ obligation*.
 
 ## Why
 
-`@transition` is authored, unenforced, and unchecked against behaviour. The name
+`@transition` is authored, unenforced, and unchecked against behavior. The name
 check added by the prior plan proves the *state names* exist; nothing proves the
 *claim* — that `decide` actually refuses elsewhere. Two live consequences in the
 shipped examples:
 
 - **`Customer.Reactivate`** declares `([Customers.Deactivated]) => Customers.Active`
   and has **zero** GWT scenarios. Nothing has ever exercised the edge it claims.
-- **`Customer.Reactivate` also disagrees with `decide` today.** The behaviour has
+- **`Customer.Reactivate` also disagrees with `decide` today.** The behavior has
   `| (Active(_), Reactivate) => Ok([])` — accepted on an active customer, while
   the annotation says the command belongs only on a deactivated one. Harmless
   (the annotation hides a no-op button), but it is exactly the class of drift
@@ -51,7 +51,7 @@ authored annotations exactly, in both the easy and the hard case:
 
 The third is the case the rejected analysis called the counter-example that
 defeated a retirement-based default: a command deliberately legal on a *retired*
-row. The corpus gets it right because it reads behaviour rather than a proxy.
+row. The corpus gets it right because it reads behavior rather than a proxy.
 
 ---
 
@@ -212,7 +212,7 @@ Automation, Inbound/OutboundTranslation, Mapping, Flow.
 
 ### Where it lives
 
-`scripts/CheckLifecycleModel.res` → `pnpm run check:lifecycle`, modelled on
+`scripts/CheckLifecycleModel.res` → `pnpm run check:lifecycle`, modeled on
 [`scripts/CheckGraphqlContract.res`](../../../scripts/CheckGraphqlContract.res),
 which is the exact precedent: a ReScript script compiled to `.res.mjs`, run from
 the repo root, booting the hybrid example's local platform. Reuse its shape —
@@ -222,7 +222,7 @@ including its `--update` golden flow.
 > [`reventless/spec/src/lifecycle/CheckLifecycleModel.res`](../../../reventless/spec/src/lifecycle/CheckLifecycleModel.res)
 > and ships as the `check-lifecycle` binary of `@reventlessdev/reventless-spec`,
 > so a consumer outside this repository can run it against an app root. The
-> `pnpm run check:lifecycle` entry point and its behaviour with no arguments are
+> `pnpm run check:lifecycle` entry point and its behavior with no arguments are
 > unchanged.
 
 ### Pipeline
@@ -382,7 +382,7 @@ runs the same ordered chain as `pnpm run build`.
 
 All five landed. `commandDef.allowedStatesSource` is `option<string>`, encoded as
 a nullable `String` on `Platform_CommandDef` beside the `labelFieldSource` /
-`idFieldSource` rungs it was modelled on. The hybrid ordering plugin now publishes
+`idFieldSource` rungs it was modeled on. The hybrid ordering plugin now publishes
 `derived` for nine commands and `declared` for `Reactivate` — the one with no
 scenarios — which is the whole precedence rule visible in one plugin.
 
@@ -464,7 +464,7 @@ That is the right failure — published, it would offer the command on no row.
 
   **The sidecar's `exampleValue` gained an `enum` kind**, and that is a wire
   change for whoever reads sidecars back. A reader that decodes the kinds
-  exhaustively will not recognise it. The alternative — writing a constructor as
+  exhaustively will not recognize it. The alternative — writing a constructor as
   the existing `string` kind — was rejected: it renders `shelfStatus: "Listed"`
   where the author wrote `shelfStatus: Listed`, which is a record literal that
   does not compile, and a wrong value is worse than an unknown one. Republishing

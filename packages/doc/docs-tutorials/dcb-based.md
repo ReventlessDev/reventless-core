@@ -12,7 +12,7 @@ A command handler reads only the events it cares about (filtered by tag), makes 
 
 ## Plugin 1: Catalog
 
-Manages the product catalogue — what is available for sale and how it is organized. In the DCB approach, all catalog events live in a single shared event log. Each entity is identified by a tag field embedded in its event payloads, which the framework uses to filter events for that specific entity when processing a command.
+Manages the product catalog — what is available for sale and how it is organized. In the DCB approach, all catalog events live in a single shared event log. Each entity is identified by a tag field embedded in its event payloads, which the framework uses to filter events for that specific entity when processing a command.
 
 ### Chapter: Product
 

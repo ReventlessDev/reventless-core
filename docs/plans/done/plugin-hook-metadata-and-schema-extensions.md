@@ -13,7 +13,7 @@ others except where noted.
 
 ## Group A — `pluginInfo` metadata extensions
 
-**Priority: P2** — backward-compatible additions, no existing behaviour changes.
+**Priority: P2** — backward-compatible additions, no existing behavior changes.
 
 These two optional fields are added to the `pluginInfo` record that every plugin provides.
 Because both are optional (`?`), no existing plugin breaks.

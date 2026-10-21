@@ -212,7 +212,7 @@ This is the one line in the feature where a mistake is a vulnerability rather
 than a bug, and it should read that way in the source: the check belongs at the
 point of minting, before any claim is written, and its test is the one that
 asserts a request for a group the user does not hold is refused rather than
-honoured, ignored, or silently reduced to the empty set.
+honored, ignored, or silently reduced to the empty set.
 
 Refused, specifically — not "ignored and minted as the full set". A client asking
 for something it cannot have is either confused or hostile, and both are better
@@ -257,7 +257,7 @@ read as the latter by someone who never saw this file.
 Same rule, different minting point — but the minting point is Cognito's, not
 ours, and that changes the shape rather than only the location. This section was
 first written as "`custom:activeRole` on the user, plus a trigger that reads it".
-Checking it against the service's documented behaviour before building it turned
+Checking it against the service's documented behavior before building it turned
 up two facts that between them replace that design; both are recorded here
 because each is cheaper to read than to rediscover.
 
@@ -312,7 +312,7 @@ The trigger is a property of the pool and Cognito offers no separate attachment
 resource, so something must call `UpdateUserPool` against a pool no stack owns.
 That belongs in a declared resource in this repository, executed at deploy time —
 never a hand-run command against a live pool, which would leave the deployment's
-behaviour depending on an act no source describes.
+behavior depending on an act no source describes.
 
 🚨 **`UpdateUserPool` resets by omission.** The API requires *"a value for all
 parameters that you don't want set to a default value"*. An attach that sends

@@ -72,7 +72,7 @@ PR series:
 
 `Logger.emit` (`reventless/reventless-core/src/util/Logger.res:76-108`) is
 already sink-aware — Lambda branch emits `{level, message, detail?}` JSON,
-terminal branch emits coloured text. But three helpers pre-format ANSI
+terminal branch emits colored text. But three helpers pre-format ANSI
 codes into the message **before** it reaches `emit`, so the JSON branch
 embeds raw `\x1b[…m` escapes in the `message` field. About 30 stray
 `Console.log/.warn/.error` calls in `reventless-aws/src/` bypass
@@ -85,12 +85,12 @@ for the full trace.
 The Phase 9 runner ([reventless-vscode-local-platform-runner.md](./reventless-vscode-local-platform-runner.md))
 spawns the app's local platform as a **non-TTY child** and forwards its stdout to the "Reventless — Platform"
 view (as `platformLog` NDJSON events). Because `AnsiStyle.bold` / `LogPrefix.fmtComp` bake ANSI **before** sink
-detection (the exact Tier 1.2/1.3 bug), the child emits coloured/bold logs despite being non-TTY.
+detection (the exact Tier 1.2/1.3 bug), the child emits colored/bold logs despite being non-TTY.
 
 - **Resolution (shipped):** rather than fight the ANSI, the runner **embraces** it — the `platformLog` wire
   payload keeps its ANSI ([`PlatformRunner.res`](../../reventless/reventless-gwt/src/PlatformRunner.res) no
   longer strips), and the extension renders it in a **VS Code Pseudoterminal** (an xterm renderer that
-  interprets colour/bold), so the runner log reads exactly as on the command line. (An OutputChannel can't
+  interprets color/bold), so the runner log reads exactly as on the command line. (An OutputChannel can't
   render ANSI — that's why the first attempt stripped it; the terminal is the right surface.)
 - **Still relevant to Tier 1:** this only works because the *consumer* is a terminal. **Non-terminal** sinks
   (CloudWatch, a log file, `tee`) still want ANSI-free text, and the framework's pre-sink ANSI baking remains
@@ -102,7 +102,7 @@ detection (the exact Tier 1.2/1.3 bug), the child emits coloured/bold logs despi
 
 Three tiers, each independently shippable:
 
-- **Tier 1**: stop the bleeding — mechanical, behaviour-preserving for TTY.
+- **Tier 1**: stop the bleeding — mechanical, behavior-preserving for TTY.
 - **Tier 2**: first-class structured fields — plugin/comp/correlationId.
 - **Tier 3**: operational hygiene — truncation, ISO time, sample queries.
 
@@ -192,8 +192,8 @@ let bold = s => _useAnsi ? `\x1b[1m${s}\x1b[0m` : s
 **File**: `reventless/reventless-spec/src/LogPrefix.res`
 
 Today:
-- `fmtComp` (line 150) always emits coloured + bold prefix.
-- `fmtPlainPrefix` (line 135) always emits no-colour, no-bold prefix.
+- `fmtComp` (line 150) always emits colored + bold prefix.
+- `fmtPlainPrefix` (line 135) always emits no-color, no-bold prefix.
 - `Logger.emit` picks `fmtPlainPrefix` in Lambda, `fmtComp` in TTY.
 - `EffectLogger.withComp` (`reventless-core/src/util/EffectLogger.res:118-121`)
   always picks `fmtComp` — this is the main leak.
@@ -229,7 +229,7 @@ and one call through `LogFormat.cmdName` / `LogFormat.eventName`.
 
 ### 1.5 Acceptance
 
-- Existing `LogFormatTest` passes unchanged (TTY behaviour preserved).
+- Existing `LogFormatTest` passes unchanged (TTY behavior preserved).
 - New JSON-sink tests pass.
 - Manual check: deploy a single Lambda function (e.g. the example
   online-shop catalog command Lambda) on `alpha`, trigger one command,

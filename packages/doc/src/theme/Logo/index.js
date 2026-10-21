@@ -11,7 +11,7 @@ import styles from './styles.module.css';
 // rather than separate light/dark files toggled by display: inlining two SVGs
 // makes SVGO collapse both gradient ids to the same value, so the hidden one's
 // id wins and the visible deck tail loses its gradient in dark mode. With one
-// SVG the gradient id is unambiguous and only the text colour switches per theme.
+// SVG the gradient id is unambiguous and only the text color switches per theme.
 export default function Logo(props) {
   // The navbar passes imageClassName / titleClassName for the default <img>
   // markup; we render our own, so drop them and keep the rest (className, etc.).

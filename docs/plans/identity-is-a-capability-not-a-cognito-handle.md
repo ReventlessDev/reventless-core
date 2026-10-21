@@ -247,7 +247,7 @@ framework already has it.** Nothing should be added to the manifest.
 
 | Platform | How `AllowAnonymous` is enforced | What it actually means |
 |---|---|---|
-| local | `Authorization.isAllowed(rule, identity)`, called in the resolver | anonymous callers are admitted — the rule is honoured |
+| local | `Authorization.isAllowed(rule, identity)`, called in the resolver | anonymous callers are admitted — the rule is honored |
 | AWS (mutations) | an SDL directive and nothing else; `AllowAuthenticated \| AllowAnonymous => None` collapses both to `cognitoOpenDirective` | `@aws_cognito_user_pools` — **any *authenticated* Cognito caller**. Anonymous is refused |
 
 There is no runtime `isAllowed` on the AppSync mutation path to catch it: the only `isAllowed` call in
@@ -305,7 +305,7 @@ workstream's to hoard.
 ### Step 3a — the divergence is closed ✅ **2026-09-10**
 
 `AllowAnonymous` no longer compiles into the directive that contradicts it. The deploy is refused
-instead, which is 5a's rule for an unrecognised login identifier applied to the same class of mistake:
+instead, which is 5a's rule for an unrecognized login identifier applied to the same class of mistake:
 a silent contradiction of the source is worse than a stopped deploy, because only one of the two is
 discoverable.
 
@@ -321,7 +321,7 @@ What changed, in `AppSync_Adapter`:
   field names, because the spec declares one permission and the generator emits two fields from it —
   naming one would send the author hunting a declaration that does not exist.
 - The refusal names the fields, says what the emitted schema would have meant, says that the local
-  platform *does* honour the rule so a locally-green spec can still be undeployable here, and points at
+  platform *does* honor the rule so a locally-green spec can still be undeployable here, and points at
   the API-key work that piece 2 would need.
 
 *Evidence:* `reventless/aws` builds warning-free; **851 tests in 73 suites green** (up 5). The five new
@@ -334,7 +334,7 @@ re-collapsed the arms and dropped the refusal together.
 *Blast radius, checked rather than assumed:* **no example, trait or shipped spec declares
 `AllowAnonymous`.** The only declarations are three DynamoDB-Local integration fixtures under
 `reventless/aws/tests/integration/`, and they never reach the SDL path — they exercise the aggregate
-runtime, where the rule is honoured. Nothing that deploys today starts failing.
+runtime, where the rule is honored. Nothing that deploys today starts failing.
 
 **What this does *not* do:** it does not make an anonymous door possible on AWS. It converts a silent
 wrong answer into a loud refusal, which is the whole of its claim. Pieces 2 and 3 are untouched, and
@@ -352,7 +352,7 @@ Three shapes were on the table, none free:
 | A separate narrow door | the risk sits in one place and this API keeps two auth types; more to build, deploy and watch |
 
 **Decision: the third, and not yet.** Nothing that needs the door is ready — the chapter is unbuilt and
-the unauthenticated throttle has no home — and the local platform already honours `AllowAnonymous`, so
+the unauthenticated throttle has no home — and the local platform already honors `AllowAnonymous`, so
 the flow is built and proven there first. The second shape is **rejected, not deferred**: it is not a
 cheaper door, it is a different owner for the proof. Its corollary lands on Step 5b: **`platform:signUpMode`
 stays `adminOnly` on every pool**, because opening it *is* the second shape.
@@ -395,12 +395,12 @@ type failure =
 not a verdict.** `Unavailable` on `createPrincipal` must retry, because the domain has already recorded
 that the address was verified and the person is entitled to an account. `Refused` is permanent and must
 surface. Collapsing them either loses accounts to a transient blip or retries forever against a
-password policy. `Conflict` is a *modelled answer*, not an exception — which is exactly what
+password policy. `Conflict` is a *modeled answer*, not an exception — which is exactly what
 `signUpIfMissing` throws away today.
 
 `Capabilities.none` gets a refusing arm answering `Unavailable` on every operation with
 `operations: []`, so a deployment with no identity provider degrades the way the existing arms already
-do rather than failing in an unmodelled way.
+do rather than failing in an unmodeled way.
 
 **`operations` is why this is a published set rather than a fixed one.** `setActiveRole` is the case
 that decides its shape: Cognito implements active-role narrowing with a pre-token-generation trigger
@@ -471,7 +471,7 @@ the AWS SDK so its two consumers can share it: the auto pool in `Platform_Stack.
 
 - `platform:loginIdentifier` config, through the same env / sidecar / stack-config precedence as
   `identityProviderId`. **Absent means `email`**, so every existing stack redeploys byte-unchanged.
-- **An unrecognised spelling fails the deploy rather than defaulting.** This is the whole point: a typo
+- **An unrecognized spelling fails the deploy rather than defaulting.** This is the whole point: a typo
   that fell back to `email` would create a pool signing in on an attribute nobody can change, and the
   correction is a rebuild that re-registers every account. `"Email"` is refused too — Cognito's
   attribute names are lowercase and two accepted spellings for one pool is a second way to be wrong.
@@ -530,7 +530,7 @@ a call site. Both arms are pinned by a test for that reason.
   should not acquire it by upgrading.
 - `--sign-up-mode` on the provisioning script, same variant, same refusal — applied only when the
   script creates the pool. Since Step 3b, no pool this repo serves should be given `selfService`.
-- **An unrecognised spelling fails the deploy — for a different reason than 5a's, and the plan should
+- **An unrecognized spelling fails the deploy — for a different reason than 5a's, and the plan should
   not be read as if they were the same.** 5a refuses because the mistake is *permanent*. This one is
   correctable at any time; it refuses because the mistake is *silent*. The default is closed, so a typo
   fails safe — and invisibly: the deploy is green, the config reads as though registration is open, and
@@ -612,7 +612,7 @@ capability has to reproduce that property rather than inherit it, so it is worth
   `ownedComponents` and `clientDoor` do not exist — `CapabilityManifest.entry` is `{kind, key,
   declaredBy}`; that `Authorization.permission` already publishes `AllowAnonymous`; that
   `AppSync_Adapter` collapses `AllowAuthenticated | AllowAnonymous` to one group-less Cognito directive
-  while the local resolvers call `isAllowed` and honour the distinction; that the only `isAllowed` in
+  while the local resolvers call `isAllowed` and honor the distinction; that the only `isAllowed` in
   `reventless/aws/src` is on the Postgres query path, so mutations have no runtime check; and that
   `AppSync.GraphQLApi.authenticationType` has no anonymous arm and no `AppSync_ApiKey` binding exists.
 - **Still asserted from outside this repo — three claims, all narrow:** that a replaced pool cannot have

@@ -156,7 +156,7 @@ Aggregate / `*Slice` (command-carrying) files with a clear compile error.
 ### Live updates (`@live`)
 
 Views that render fast-moving operational state benefit from live updates;
-investigative or historical views (catalogues, comparisons, audit histories) do
+investigative or historical views (catalogs, comparisons, audit histories) do
 not. Declare which kind a view is directly on its state declaration:
 
 ```rescript title="Catalog/ReadModel/Products.res" showLineNumbers

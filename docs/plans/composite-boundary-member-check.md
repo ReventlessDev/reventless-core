@@ -3,7 +3,7 @@
 **Status**: Proposed (2026-09-21) — found while giving the VS Code authoring surface a way to
 reason about partitions, not from a failure in the field.<br/>
 **Nature**: a missing build-time guard, symmetric with one the single-key path already has. No
-schema change, no migration, no runtime behaviour change for a correctly modelled boundary.<br/>
+schema change, no migration, no runtime behavior change for a correctly modeled boundary.<br/>
 **Touches**: `reventless/spec/src/components/DcbTag.res` (`deriveBoundaryPartition`), its tests,
 and — separately — the tooling that mirrors the derivation.
 
@@ -37,7 +37,7 @@ not its events know about it.
 ### What actually happens, and why it is not the corruption it first looks like
 
 `getCompositePartitionKeyValue` resolves a missing member with `Option.getOr("")`, and an empty
-tag value is **deliberate, documented behaviour**: D1 of the empty-tag plan skips the `tag_<key>`
+tag value is **deliberate, documented behavior**: D1 of the empty-tag plan skips the `tag_<key>`
 attribute, the event is appended, it stays readable through its partition and appears in composite
 reads. Nothing crashes and nothing is lost.
 
@@ -47,10 +47,10 @@ resolves that segment to `""`, so events that belong in different partitions are
 - their appends contend on a fence that should never have been shared;
 - a decision read scoped to that partition sees foreign events;
 - and the degenerate end of it — every member empty — is exactly the case the empty-tag plan's
-  **D4** described as "putting every event of that slice in one partition", judged *a modelling
+  **D4** described as "putting every event of that slice in one partition", judged *a modeling
   error rather than a storage one* and deferred.
 
-D4 was right that it is a modelling error. This plan is the conclusion that follows: a modelling
+D4 was right that it is a modeling error. This plan is the conclusion that follows: a modeling
 error the build can see should be refused by the build, not surfaced at append time as a debug
 log. The single-key path already takes that position for its own premise.
 

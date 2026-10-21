@@ -1,6 +1,6 @@
 open JestGlobals
 
-// The marker, the classification rules, and the one sury behaviour the marker
+// The marker, the classification rules, and the one sury behavior the marker
 // depends on.
 
 @schema

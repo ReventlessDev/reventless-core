@@ -88,7 +88,7 @@ Fire every loaded extension's `onColdStart`, in the order the deploy program
 registered them, each isolated from the others (see
 `ReventlessCore.RuntimeExtension`).
 
-An unrecognised `runtimeKind` means the layer's `ComponentType` and the
+An unrecognized `runtimeKind` means the layer's `ComponentType` and the
 deploy-time one disagree — a framework version skew, not anything an extension
 can fix. Logged at ERROR and skipped rather than fired under a guessed kind: an
 extension that routes on kind would otherwise attach to the wrong runtime

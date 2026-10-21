@@ -74,7 +74,7 @@ type retiredCheck =
 // says whether that name is a case of the field's enum). A name the enum does not
 // declare is a failure — the predicate then matches no row and every row stays
 // visible. A `value` on a field that is not the lifecycle is only a warning: a
-// modelling judgement rather than a wrong name.
+// modeling judgement rather than a wrong name.
 let checkRetiredValue = (~entityName: string, stateSchema: S.t<unknown>): retiredCheck =>
   switch retiredFromStateSchema(stateSchema) {
   // The boolean form names no state, so there is nothing to compare. Not a skip.

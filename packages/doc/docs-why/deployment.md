@@ -34,7 +34,7 @@ against continuously.
   per environment — or per experiment — practical.
 - **Self-hosted, not a SaaS.** Reventless is open-source software deployed into
   infrastructure you own and control. There is no vendor in the request path, no
-  per-seat licence, and no account to keep in good standing to keep your
+  per-seat license, and no account to keep in good standing to keep your
   application running.
 
 ## Your data stays yours

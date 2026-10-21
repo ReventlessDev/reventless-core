@@ -96,7 +96,7 @@ written once against it and are the only places it appears.
 `Money`'s equivalent question was how closed `Currency` is. Here it is whether a range may be
 half-open in the *unknown* sense — started, not yet finished.
 
-1. **Both ends required.** A range is two points. An in-progress interval is modelled as it already
+1. **Both ends required.** A range is two points. An in-progress interval is modeled as it already
    is: a `DateTime` start field, optionally beside an `option<DateRange.t>` that appears when the
    thing finishes. `duration`, `overlaps`, `contains` and every layout are total.
 2. **`end` optional.** One field expresses both states. Every operation on a range becomes partial,
@@ -172,7 +172,7 @@ is nothing to collapse without inventing it first.
 
 A delivery window on an order is the honest candidate: it is a genuine domain fact, it is optional by
 nature (it exists once a delivery is scheduled), and it gives the scheduler mode an events slot with
-a resource ref already beside it. Touch the command, the event, the view, the behaviour and the seed
+a resource ref already beside it. Touch the command, the event, the view, the behavior and the seed
 data set — `Money` step 4's list, minus the retype cascade, because nothing that already exists
 changes type.
 

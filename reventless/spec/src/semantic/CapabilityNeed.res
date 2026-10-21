@@ -47,7 +47,7 @@ let toString = (need: t): string =>
 
 /** The inverse, for readers of a persisted structure or a committed manifest.
     `None` for a capability this build does not know — a newer plugin's need is
-    reported as unrecognised, never silently dropped into a known arm. */
+    reported as unrecognized, never silently dropped into a known arm. */
 let fromString = (name: string): option<t> =>
   switch name {
   | "Geocoding" => Some(Geocoding)
@@ -65,13 +65,13 @@ Declared capability needs a platform does not provision.
 
 `declared` is `pluginStructure.requiredCapabilities` as persisted: `(capability,
 component)` pairs whose capability is a string, because a structure is replayed
-from an event log. A name this build does not recognise is **skipped** — it
+from an event log. A name this build does not recognize is **skipped** — it
 belongs to a newer framework, and refusing a deploy over a capability this code
 cannot evaluate would be a guess dressed as a check.
 
 Only what was declared. A plugin that declares nothing is unaffected: an
 unprovisioned capability it never named degrades exactly as it always has, which
-is the modelled outcome for a deployment that simply does not have one.
+is the modeled outcome for a deployment that simply does not have one.
 */
 let unmet = (~declared: array<(string, string)>, ~provisioned: array<t>): array<unmet> =>
   declared->Array.filterMap(((capability, component)) =>

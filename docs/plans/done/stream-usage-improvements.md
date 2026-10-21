@@ -60,7 +60,7 @@ Two sub-tasks:
 ship immediately.
 
 **A2 — Remove inner `runCollect`.** This requires deciding on merge semantics for
-multi-queryItem queries. The two options differ in implementation complexity, memory behaviour,
+multi-queryItem queries. The two options differ in implementation complexity, memory behavior,
 and the semantics of the public `readStream` API.
 
 ---
@@ -68,7 +68,7 @@ and the semantics of the public `readStream` API.
 #### Option 1: Keep eager collection — add clarity
 
 **What changes:** Only A1 (bounded concurrency). The `runCollect` stays. Add a doc comment
-explaining the eager behaviour and why it exists.
+explaining the eager behavior and why it exists.
 
 **What does NOT change:** `readStream` continues to collect all DynamoDB pages for all sub-queries
 into memory before emitting the first element.

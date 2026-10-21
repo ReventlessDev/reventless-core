@@ -152,7 +152,7 @@ The resolver run over every spec module under `examples/`:
 | all three | `Catalog.Products`, `Categories`, `AvailableProducts`, … | `name` | `convention` |
 | all three | `Ordering.Orders` | `id` | `fallback` |
 
-Row 2 is the one worth reading: the same entity, modelled without the
+Row 2 is the one worth reading: the same entity, modeled without the
 annotation, is named by whichever string was declared first — and until now a
 consumer was told only `"email"`.
 

@@ -329,7 +329,7 @@ id `string` did.
 in `entry<'state>`. It landed second, so `at: Reventless.DateTime.t` was written bare from the start.
 
 **One consumer outside this repo gets a fix rather than a migration.** `reventless-tools`' codegen
-emits a modelled date-time field as a bare `string` with no marker at all
+emits a modeled date-time field as a bare `string` with no marker at all
 (`SpecEmitter.renderTypeRef`), so a generated spec loses `format: "date-time"` and every view keyed
 off it. Teaching that emitter to write annotations would be a mechanism; a nameable type makes it
 `DateTime => "Reventless.DateTime.t"`, one line. Recorded there, in

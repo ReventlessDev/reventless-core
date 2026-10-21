@@ -524,7 +524,7 @@ let makeUiBundleDistribution = (
 
     // Auto-invalidate CloudFront once every object is (re)uploaded. Stable-named
     // entry files (index.html, the module-federation mf-entry-bootstrap-*.js)
-    // are served by the long-TTL default cache behaviour, so without this a
+    // are served by the long-TTL default cache behavior, so without this a
     // `pulumi up` lands the new bundle in S3 while CloudFront keeps serving the
     // prior build until its TTL expires. Chained on the upload etags so it runs
     // AFTER the new content is in S3; `/*` is a single invalidation path (well

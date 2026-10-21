@@ -105,7 +105,7 @@ module Platform = ReventlessAws.Platform.Make(
 
 The name `commandHandlerConfig` is transport-neutral: the in-memory
 platform ignores Lambda-specific knobs (memorySize, timeout, …) but still
-honours `envVars`. Future transports (e.g. a Kubernetes platform) would
+honors `envVars`. Future transports (e.g. a Kubernetes platform) would
 read the same record and map fields to their own runtime primitives.
 
 The four sub-records map 1:1 to the four Lambdas (`AllAggregates`,

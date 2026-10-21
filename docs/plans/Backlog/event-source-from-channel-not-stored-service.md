@@ -44,7 +44,7 @@ persists it per event even though the source is intrinsic to the channel deliver
 - Once no reader depends on the stored value, stop **writing** it into rows — freeing the
   row's identity meta to carry only true provenance (the producing component; see
   [event-meta-emitting-component-attribution.md](event-meta-emitting-component-attribution.md)).
-- No behavioural change to routing: the same events reach the same handlers; only the
+- No behavioral change to routing: the same events reach the same handlers; only the
   *source* of the source-name changes (channel config instead of stored payload).
 
 ## Non-goals

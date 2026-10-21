@@ -19,7 +19,7 @@ the declaration by `named` — the ppx does it for a variant a state record uses
 and a framework type carrying a union does it beside its `Semantic.mark`.
 
 A union with no name is not emitted as one. It falls through to the IR's
-`Unknown`, which is a `String` in the SDL — the behaviour that predates this
+`Unknown`, which is a `String` in the SDL — the behavior that predates this
 module — except that it is now reported at deploy time instead of silently.
 */
 let unionNameId: S.Metadata.Id.t<string> = S.Metadata.Id.make(

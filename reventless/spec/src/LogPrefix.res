@@ -164,7 +164,7 @@ let fmtPlainPrefix = (~comp=?, ()) => {
 // no trailing space between `[Plugin]` and `[Comp]`.
 //
 // Sink-aware: in a non-TTY/JSON sink it falls back to `fmtPlainPrefix` so no
-// ANSI colour or bold leaks into structured logs. This makes every caller that
+// ANSI color or bold leaks into structured logs. This makes every caller that
 // pre-formats a prefix before reaching `Logger.emit` (EffectLogger.withComp,
 // the infra-layer `compLog`s) correct without per-call-site changes.
 let fmtComp = (~comp=?, ()) =>

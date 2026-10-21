@@ -129,7 +129,7 @@ type consumedEvent =
 Meaning: *the value of this field, in the history this command is decided on,
 names the owner of what the command acts on.* No component marks a consumed
 event `@owner` today; step 1 confirms nothing reads the marker there, so giving
-it this meaning changes no existing behaviour.
+it this meaning changes no existing behavior.
 
 **Scope of the fold.** The owner is taken only from events in the command's own
 partition: the inferred DCB partition for a slice (`DcbScopeInference`), the
@@ -140,7 +140,7 @@ catalog's products) must not have those events consulted for ownership.
 
 | Slice marks an owner | History has an owner | Caller | Result |
 | --- | --- | --- | --- |
-| no | n/a | any | unchanged (today's behaviour) |
+| no | n/a | any | unchanged (today's behavior) |
 | yes | no (nothing created yet) | any identified | allowed; a creating command stamps its own owner |
 | yes | yes, equal to the caller | `Owned` | allowed |
 | yes | yes, different | `Owned` | **refused**, `decide` does not run |
@@ -256,7 +256,7 @@ against the deployed alpha stack on 2026-10-11, in the same run as this plan's
    no schema change but is easier to forge by accident. Recommendation: the typed
    field.
 2. **GWT.** Whether scenarios get an optional caller step (`->asCaller(...)`) so an
-   example can pin its ownership rule next to its behaviour, or whether that stays
+   example can pin its ownership rule next to its behavior, or whether that stays
    a framework concern tested once.
 3. **Refusal wording.** Answered: a refused command answers `CommandRejected`
    with `errorCode: "Forbidden"`, the code an `@authorize` refusal uses.

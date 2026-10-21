@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Catalogue how Reventless currently names the AWS resources it provisions (Lambda functions, DynamoDB tables, SQS queues, SNS topics, IAM roles), document the inconsistencies between the **aggregate/read-model** lineage and the **DCB (Dynamic Consistency Boundary)** lineage, and propose a harmonized scheme that one can apply across both architectural styles without breaking existing identifiers more than necessary.
+Catalog how Reventless currently names the AWS resources it provisions (Lambda functions, DynamoDB tables, SQS queues, SNS topics, IAM roles), document the inconsistencies between the **aggregate/read-model** lineage and the **DCB (Dynamic Consistency Boundary)** lineage, and propose a harmonized scheme that one can apply across both architectural styles without breaking existing identifiers more than necessary.
 
 Scope: the *logical* resource names Reventless feeds to Pulumi (`~name` parameters). The physical AWS names that Pulumi derives from these (with stack suffixes and random IDs) inherit every inconsistency surveyed here.
 
@@ -199,7 +199,7 @@ The `Aggr` segment is retained on aggregate-side resources because it is already
 ### 5.4 Why this resolves the four axes
 
 1. **Vocabulary** — every term has exactly one canonical form (`Aggr`, `Cmd`, `Event`, `Slice`, plus `CmdGen` / `EventColl`). The silent contradictions disappear: `EventMapper` replaces `EvtMapper` in the Micro runtime; the dead `StateChgSlc` value in `ComponentType.toName` becomes `StateChangeSlice`; the hand-rolled `StateChanges` stem on the DCB CommandTopic goes away (see point 2).
-2. **Word order** — universal `<Scope><Stem><Kind>`. The DCB CommandTopic loses its synthetic `StateChanges` stem (which never matched a component type) in favour of `<Plugin>DcbCmdTopic`, mirroring how the aggregate side composes naturally.
+2. **Word order** — universal `<Scope><Stem><Kind>`. The DCB CommandTopic loses its synthetic `StateChanges` stem (which never matched a component type) in favor of `<Plugin>DcbCmdTopic`, mirroring how the aggregate side composes naturally.
 3. **Component-type repetition** — `CatalogStateChangesCmdTopic` becomes `CatalogDcbCmdTopic`: one stem, one kind.
 4. **Strategy leakage** — `AllAggregates` becomes `<Plugin>CmdHandler` (Single), `<Aggregate>AggrCmdHandler` (PerAggregate), or `<Aggregate>Aggr<Sub>Handler` (Micro, where `<Sub>` is `Cmd` / `EventMapper` / `CmdGen`). Switching Single↔PerAggregate still requires replacement (the *number* of Lambdas changes), but switching PerAggregate↔Micro of a single aggregate stops renaming the shared CT/EM/CG names.
 
@@ -233,7 +233,7 @@ Whichever path is chosen, the **single change** that unlocks the rename is to ma
 
 ## 8. Resource families outside the original inventory (follow-up)
 
-§2 inventoried the aggregate/DCB command-handler lineage (event logs, command topics, event topics, collectors, command-handler Lambdas, the subscription/state-topic Lambdas). **That is what §5 harmonized and what shipped** (commit `8f4aadaf5`, deployed). The framework provisions several *other* resource families that the original survey skipped — they were never in scope, so they still carry their pre-harmonization names. This section catalogues them so a follow-up pass has the same per-resource map §2 gave the first pass.
+§2 inventoried the aggregate/DCB command-handler lineage (event logs, command topics, event topics, collectors, command-handler Lambdas, the subscription/state-topic Lambdas). **That is what §5 harmonized and what shipped** (commit `8f4aadaf5`, deployed). The framework provisions several *other* resource families that the original survey skipped — they were never in scope, so they still carry their pre-harmonization names. This section catalogs them so a follow-up pass has the same per-resource map §2 gave the first pass.
 
 Severity legend: 🔴 malformed (broken separator / mixed case), 🟡 off-scheme abbreviation or kind mismatch, 🟢 already consistent, documented for completeness.
 

@@ -22,7 +22,7 @@ open Ppxlib
     [let geolocationSchema = Reventless.TaggedUnion.named(~name="…", geolocationSchema)]
     immediately after the declaration, where it shadows what sury-ppx generates
     from it and is what [type state] then closes over. Without a name the field
-    is emitted as [String] — the behaviour that predates the marker, now reported
+    is emitted as [String] — the behavior that predates the marker, now reported
     at deploy time rather than silent.
 
     The name is [<Plugin>_<Spec><Type>], which is what the enum beside it is

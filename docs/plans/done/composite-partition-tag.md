@@ -189,7 +189,7 @@ let getCompositePartitionKeyValue = (
 
 ## Constraints and validation rules (summary)
 
-| Rule | Behaviour |
+| Rule | Behavior |
 |---|---|
 | `@compositePartitionTag` on non-`string` field | PPX: no-op (leave untouched); log warning if possible |
 | `@compositePartitionTag` and `@partitionTag` on same field | `derivePartitionTagV2` throws |

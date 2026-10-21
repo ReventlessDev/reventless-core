@@ -102,7 +102,7 @@ as information. The slice reads its partition's history, and the id stays on the
   were already visible on the schema. `@dcbTag` was not: it emitted the same
   `DcbTag.string` as auto-tagging. The PPX now emits `DcbTag.declared` /
   `declaredForKey` / `markDeclared` / `markDeclaredForKey`, and the shape carries
-  `idField.declared`. A `@crossPartition` on the slice's **own** events is honoured too,
+  `idField.declared`. A `@crossPartition` on the slice's **own** events is honored too,
   since that is where the M:N capacity read declares it (`SubscribeStudent`).
 - **`buildQueryFromCommand ~payloadTagKeys`** drops the keys from every clause, in both query
   modes. The append condition is the same query, so the fence widens to the partition.

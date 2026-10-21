@@ -173,7 +173,7 @@ evidence step 4 would have produced.
 
 One follow-on: two GWT literals read `"x@y"`, which the type now rejects. They pass regardless — the
 GWT DSL builds commands in-process and never parses through the schema, so the refinement bites at
-the transport boundary, not in behaviour tests. They were corrected anyway, because an invalid
+the transport boundary, not in behavior tests. They were corrected anyway, because an invalid
 literal sitting beside a type that forbids it is a trap for the next reader. Worth knowing generally:
 **GWT tests give no coverage of these refinements.**
 

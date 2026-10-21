@@ -40,7 +40,7 @@ Same root cause: `result` is always `Ok` because `processCommand` only emits `Ok
 ## Non-goals
 
 - Re-introducing real rejection. That's the work of [aggregate-propagate-decide-errors.md](aggregate-propagate-decide-errors.md), which establishes a *typed* rejection path. Doing both at once is fine; this plan can also ship standalone as a tidy-up.
-- Behavioural change. The dead code is dead — removing it is a no-op runtime-wise.
+- Behavioral change. The dead code is dead — removing it is a no-op runtime-wise.
 
 ## Approach
 

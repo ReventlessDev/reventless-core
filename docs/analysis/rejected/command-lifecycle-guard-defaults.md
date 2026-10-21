@@ -5,7 +5,7 @@
 > The four options below all answer *"how short can the claim be?"*. The
 > follow-up analysis found that the claim need not be authored at all: the GWT
 > corpus already contains the lifecycle machine, and reading it off scenarios
-> derives from `decide`'s observed behaviour rather than from the read model's
+> derives from `decide`'s observed behavior rather than from the read model's
 > `@retired`. Two things here still stand and are cited by the successor — the
 > measurement of the redundancy in §2, and the argument in §3 against deriving a
 > claim about `decide` from a read-model annotation. §6's closing note (a GWT
@@ -62,7 +62,7 @@ stays in `decide`. The annotation's whole job is to stop a menu offering what th
 write side would reject.
 
 **1b. The claim's ground truth is `decide`, not the view.** A from-set is a
-statement *about the write side's behaviour*, written in the *read side's*
+statement *about the write side's behavior*, written in the *read side's*
 vocabulary. That asymmetry is the crux of option (A).
 
 **1c. The lifecycle owner is already resolved.** For an aggregate,

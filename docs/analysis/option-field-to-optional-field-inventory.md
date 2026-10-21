@@ -31,9 +31,9 @@ mixes both forms inside the same record.
 |---|---|---|
 | ✅ **Refactor** | **125** | [§8](#8-the-recommended-refactor--125-fields-five-steps) lists them as five independent steps. Every one meets at least one of the four inclusion tests in [§8.1](#81-what-makes-a-field-recommended-rather-than-opportunistic). |
 | ⚠️ **Real bug, different fix** | 16 | `option<Pulumi.Output.t<'a>>` silently destroys the value at runtime — but **`?:` does not fix it** ([§4](#4-tier-2--optionpulumioutputta--16-fields---real-bug-but--is-not-the-fix)). These need one of three other treatments and do not belong in this refactor. |
-| 🟡 **Opportunistic** | 62 | Tier-3 fields that meet none of the four tests — no mirror, no repeated shape, no behavioural consequence. Convert when you are already in the file; a dedicated sweep costs more review than it returns. |
+| 🟡 **Opportunistic** | 62 | Tier-3 fields that meet none of the four tests — no mirror, no repeated shape, no behavioral consequence. Convert when you are already in the file; a dedicated sweep costs more review than it returns. |
 | ⏸️ **Decide first** | 7 | The example *view state* fields. Safe on the wire, but a convention decision already went the other way — [§3](#3-tier-1--schema-types--67-matches--54-recommended). |
-| ❌ **Leave** | 30 | 24 inbound binding fields (no behavioural difference at all), 4 healer regression-test fields, 2 doc-comment samples — [§6](#6--do-not-convert--6-fields), [§7](#7-tier-4--binding-packages--28-fields--4-recommended-24-left-alone). |
+| ❌ **Leave** | 30 | 24 inbound binding fields (no behavioral difference at all), 4 healer regression-test fields, 2 doc-comment samples — [§6](#6--do-not-convert--6-fields), [§7](#7-tier-4--binding-packages--28-fields--4-recommended-24-left-alone). |
 
 ---
 
@@ -114,7 +114,7 @@ field (`?`); the view state stays `option<>`*. Seven of the Tier-1 example rows 
 ×4, `Orders` state ×2, `Products` ×1) are exactly those view states. Converting them is safe on the
 wire but contradicts a decision already made — treat as a convention question, not a cleanup.
 
-That plan also records the one behavioural trap this change ever sprang: making a command/event
+That plan also records the one behavioral trap this change ever sprang: making a command/event
 field `?` exposed that `Behavior_GWT`'s `AssertionCore` compared events with raw structural
 equality, which distinguishes present-but-`undefined` from absent even though both serialize
 identically. **Already fixed** — GWT now compares on the encoded wire form (`encEvents`) — so the
@@ -362,7 +362,7 @@ so they are outliers within their own files.
 Every one of the 240 fields is the same two-line edit. What differs is not the edit's cost but
 **whether leaving it undone costs anything.** A field is recommended if at least one of these holds:
 
-1. **Behaviour** — the emitted JS actually differs in a way something downstream can see ([§2b](#2-the-mechanics-measured)). Fully
+1. **Behavior** — the emitted JS actually differs in a way something downstream can see ([§2b](#2-the-mechanics-measured)). Fully
    objective; applies to 8 fields.
 2. **Same record** — it sits in a type graph where the rest is being converted anyway, so the marginal
    cost is zero and a partial conversion leaves one record in two styles.
@@ -373,7 +373,7 @@ Every one of the 240 fields is the same two-line edit. What differs is not the e
    removes the class entirely instead of leaving a residue nobody will come back for.
 
 Opportunistic means **none of the four applies**: a field or a pair in a file with no mirror, no
-repeated shape, and no behavioural consequence, where the only gain is local tidiness. That gain is
+repeated shape, and no behavioral consequence, where the only gain is local tidiness. That gain is
 real but small, and it is bought with a review, a compile, a test run and a line in someone's
 `git blame`. Bundled into a change you were making anyway, it is free; on its own it is not.
 
@@ -397,7 +397,7 @@ Each step is independently compilable, independently revertible, and worth a com
 | 1 | **`Plugin.res` + `PluginsReadModelSpec.res` + `CheckLifecycleModel.res`** | 57 | 2, 3 | The largest cluster in the repo, finishing a style `Plugin.res` already started. Wire-neutral by fact (a). The three move together because `queryResult` and `declaredCommand` mirror `Plugin.res` field-for-field — splitting them leaves two files disagreeing with their own source of truth. |
 | 2 | **Tier 3 `Runtime/*` + `StateAnnotations.res`** | 45 | 3 | The bulk of the remaining `: None` noise, and `eventCollectorChannelSpec` × 7 converts as one shape. |
 | 3 | **Duplicated config shapes** — `PgQueryResolver_Lambda` + `StateTopic_AppSync`, `RuntimeHints` + `Config.runtimeHints` | 10 | 3 | Two records each declared twice in different packages; convert both copies or neither. |
-| 4 | **`DcbEventLogStorage_DynamoDb_Runtime.res` `scanFilter` + the outbound bindings** | 8 | 1 | The only entries recommended for a behavioural reason rather than tidiness — key-absent is the correct shape where the record reaches a JS SDK. |
+| 4 | **`DcbEventLogStorage_DynamoDb_Runtime.res` `scanFilter` + the outbound bindings** | 8 | 1 | The only entries recommended for a behavioral reason rather than tidiness — key-absent is the correct shape where the record reaches a JS SDK. |
 | 5 | **Remaining Tier-1 singles** — `PluginBehavior`, `LocalPlatformRegistry`, `TaggedUnionFixtures`, `Orders.consumedEvent` | 5 | 4 | Sweep-up; the weakest case in the plan. Drop it without consequence if the appetite runs out. |
 
 Only step 1 crosses a package boundary that matters — `reventless/spec` publishes on every alpha

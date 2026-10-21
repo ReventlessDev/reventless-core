@@ -155,7 +155,7 @@ the flow stops at `Ship Order`.
 
 ## Out of scope
 
-- Touching `CommandStep` semantics. DCB step behaviour is unchanged.
+- Touching `CommandStep` semantics. DCB step behavior is unchanged.
 - Hybrid plan: mixing an aggregate-step with DCB-steps in the same flow.
   Mechanically achievable (the shared log already accommodates both) but
   not needed to close the current example gap. Revisit if the hybrid

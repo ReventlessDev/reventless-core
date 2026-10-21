@@ -35,7 +35,7 @@ Because `ApiConfig.api` is a module-level binding evaluated once at `Make()` tim
 ## Naming cleanup (prerequisite)
 
 Throughout `Platform.res` `Make()`, rename local variables to make the domain/platform
-split explicit. No behaviour change.
+split explicit. No behavior change.
 
 | Old name | New name |
 |---|---|

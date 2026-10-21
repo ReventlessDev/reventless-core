@@ -80,7 +80,7 @@ Writing it compiles, deploys, and silently degrades the field to `String!` in th
 ([SchemaType.res:150-166](../../reventless/core/src/components/Api/SchemaType.res#L150-L166)) and
 `Unknown` is emitted as `String${bang}`
 ([GraphQL_FragmentGenerator.res:88](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res#L88)).
-No error anywhere. **Silent degradation is the current behaviour, which makes this a correctness fix
+No error anywhere. **Silent degradation is the current behavior, which makes this a correctness fix
 as much as a feature** — even if nothing else here is built, the fallthrough deserves to become a
 compile error.
 
@@ -290,7 +290,7 @@ points, with the spec's `stateSchema` threaded from the module the shell already
 module without one leaves rows untouched.
 
 **The lesson worth keeping is about the deploy-time/runtime split**, which this repo takes seriously
-everywhere else: a behaviour added to a builder-side functor does not reach a Lambda that assembles
+everywhere else: a behavior added to a builder-side functor does not reach a Lambda that assembles
 its own operations at cold start. Anything written into `QueryDb_Operations` from here on needs the
 same question asked of it.
 
@@ -383,7 +383,7 @@ decline. The storage arms could not all live beside it: a package's `type: dev` 
 to another package, so the local and AWS round trips redeclare the four-line union.
 
 **7 — the reader half, planned in `reventless-ui`.** *Done there, 2026-08-20, and released as
-`reventless-host-shell@3.0.0-alpha.81`* — every row below is honoured by a generic renderer, so no
+`reventless-host-shell@3.0.0-alpha.81`* — every row below is honored by a generic renderer, so no
 adopter has to ship a reader with it. What this plan owed it is a contract, not a design:
 
 | What the UI reads | Fixed by |
@@ -416,7 +416,7 @@ deliberately outside what it reports on.
 
 - **The silent degradation is gone.** A mixed `AnyOf` that step 1 cannot classify produces a deploy-time
   warning naming the view and the field. Asserted as a test on the emitter, because the current
-  behaviour is that nothing is emitted at all.
+  behavior is that nothing is emitted at all.
 - **The SDL is what the arms say.** `GraphQL_FragmentGeneratorTest` over a three-arm union: the union
   declaration, three member types, and the field typed as the union — and, separately, that two plugins
   declaring the same union emit byte-identical text. The second assertion is the merged-API property,

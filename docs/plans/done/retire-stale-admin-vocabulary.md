@@ -112,7 +112,7 @@ change disguised as a rename. **Every tier below is scoped to the construct-name
 
 ## Tier 1 — free (log labels and comments)
 
-No behaviour change, no deployed identity.
+No behavior change, no deployed identity.
 
 | Where | Now | Should be |
 |---|---|---|
@@ -124,7 +124,7 @@ Prefer binding these to `Platform_Admin_Structure.pluginId` rather than retyping
 Core rename's best outcome was replacing 7 hardcoded strings with the spec constant, which retires
 the drift permanently instead of relocating it.
 
-## Tier 2 — code organisation (module and file names)
+## Tier 2 — code organization (module and file names)
 
 **Decided 2026-07-22: in scope, including the `.mjs`.** `Platform_Admin.res` already carries the
 `Platform_` prefix; these do not and should follow the chosen target name:

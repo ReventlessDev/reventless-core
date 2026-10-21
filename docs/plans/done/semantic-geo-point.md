@@ -182,7 +182,7 @@ a human reads — and the *other* order exists in exactly one place, the codec.
 separately they are each incoherent:
 
 - `Customer.location` retypes from the local record to `Reventless.GeoPoint.t`; the local `location`
-  type goes away. Command, event, behaviour, GWT fixtures.
+  type goes away. Command, event, behavior, GWT fixtures.
 - `Customers` collapses `lat: float, lng: float` into `location: option<Reventless.GeoPoint.t>` —
   `option` because a registered customer has no location until `LocationSet` arrives, which is what
   the `0.0, 0.0` placeholder was standing in for. That placeholder is its own small bug: `(0, 0)` is

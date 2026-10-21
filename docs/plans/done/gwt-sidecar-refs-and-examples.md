@@ -70,7 +70,7 @@ makes this common: it writes named example values and refers to them by name.
   array and a record field; code with the exact text for
   `Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)`; a record field
   holding such a call is present; the literal cases keep their output.
-- **Behaviour change, stated in the changelog:** fields that were missing from the sidecar are
+- **Behavior change, stated in the changelog:** fields that were missing from the sidecar are
   now present, as `ref` or `code`, and a list of named values is no longer empty. The consumer
   (reventless-tools codegen, `Model.exampleValueFromJson`) already decodes `code`; `ref` is new
   to it, and the companion plan adds it.

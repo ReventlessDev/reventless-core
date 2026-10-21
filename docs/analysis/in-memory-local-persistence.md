@@ -11,7 +11,7 @@ The `reventless-local` provider currently keeps every piece of state (event logs
 
 This document compares lightweight embedded databases, scores them against Reventless's storage interfaces, and recommends an approach that:
 
-1. **Keeps the pure in-memory path intact** — zero behavioural change when persistence is disabled.
+1. **Keeps the pure in-memory path intact** — zero behavioral change when persistence is disabled.
 2. **Adds an opt-in on-disk backend** that survives restarts without a server process.
 3. **Lets a developer pick the backend per platform** with a single construction parameter (or one env var).
 
@@ -206,10 +206,10 @@ type t =
 Mechanism:
 
 - `Platform.Make` inspects `backend` and passes the chosen concrete module to each component builder. Because both `EventLogStorage_InMemory` and `EventLogStorage_Sqlite` implement `EventLog_Adapter.Storage`, the swap is a single `module Impl = …` binding.
-- `resetOnStart: true` wipes the SQLite file on construction — matches today's fresh-every-test behaviour for Jest.
+- `resetOnStart: true` wipes the SQLite file on construction — matches today's fresh-every-test behavior for Jest.
 - An env var shortcut (`REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db`) is read inside `Backend.fromEnv()` for developers who prefer to keep platform code unchanged and flip backends per shell.
 
-### Behavioural parity tests
+### Behavioral parity tests
 
 Every test in [reventless-local/tests/](../../reventless/local/tests/) should run under both backends. Concretely: a `describe.each([Memory, Sqlite])` wrapper (ReScript-flavoured via `Jest.describe` + a backend-selector fixture) so any divergence between the two adapters becomes a visible test failure. The small number of timing-sensitive tests (fake timers, subscriber count assertions) are unaffected — SQLite calls are synchronous and do not change microtask counts.
 
@@ -225,7 +225,7 @@ Every test in [reventless-local/tests/](../../reventless/local/tests/) should ru
 
 - **Native binding availability in Bun.** `better-sqlite3` works under Bun via the Node N-API compatibility layer, but `bun:sqlite` is cheaper. If we detect `globalThis.Bun`, we should prefer `bun:sqlite`. Both expose the same `prepare`/`run`/`iterate` shape; a thin 30-line wrapper module abstracts the two.
 - **Schema migration.** Early versions can recreate the schema on start (`CREATE TABLE IF NOT EXISTS`). Once we commit to keeping data across Reventless releases, we need a migration system. Recommendation: punt until after the first usable release; add `PRAGMA user_version` and a migration table then.
-- **GSI semantics.** `QueryDb` already accepts a rich index descriptor (partition/sort, projection type, INCLUDE fields). Memory ignores it; SQLite would honour it via computed columns + indexes. That closes an existing gap where memory diverged from DynamoDB behaviour.
+- **GSI semantics.** `QueryDb` already accepts a rich index descriptor (partition/sort, projection type, INCLUDE fields). Memory ignores it; SQLite would honor it via computed columns + indexes. That closes an existing gap where memory diverged from DynamoDB behavior.
 - **TTL.** `QueryDb.save` takes an optional TTL. Memory ignores it. SQLite would need a lazy-expiry helper (`WHERE expires_at IS NULL OR expires_at > ?`) or a periodic cleanup task.
 - **Interaction with [reventless-livestore-integration.md](./reventless-livestore-integration.md).** LiveStore is SQLite-backed on the client. If we later ship that integration, the server's SQLite schema for EventLog is a natural sync target — so the choice made here does not conflict.
 

@@ -5,7 +5,7 @@ let isNoApi = (commandSchema: S.t<unknown>): bool =>
 
 // Variants excluded by a mark on the member itself. This is the half that
 // survives a spread: splicing copies members, not the metadata of the union they
-// came from, so a command a trait marked internal is only still recognisable here.
+// came from, so a command a trait marked internal is only still recognizable here.
 let excludedByMembers = (commandSchema: S.t<unknown>): array<string> =>
   switch commandSchema {
   | AnyOf({anyOf}) =>

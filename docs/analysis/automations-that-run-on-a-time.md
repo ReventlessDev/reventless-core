@@ -1080,7 +1080,7 @@ on its own.
 
 **T6. Is the slice's `heartbeatInterval` still meaningful?** It no longer sets when the slice is
 swept ([§2](#2-what-exists-today)).
-**Recommendation: decide it with this work**: either honour it per slice, or deprecate it and
+**Recommendation: decide it with this work**: either honor it per slice, or deprecate it and
 document the shared sweep.
 **Decided 2026-10-17: removed.** The field is gone from both slice Specs, the examples, the
 trait scaffolds and the guides; the component guides describe the one five-minute sweep. A slice

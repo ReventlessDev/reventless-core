@@ -113,7 +113,7 @@ module Login = {
   //      every ReScript rebuild, so a per-process secret logs the developer out
   //      several times an hour, mid-task, with a "reconnecting" spinner as the
   //      only explanation.
-  //   3. A random 32 bytes, per process — today's behaviour, kept for the run
+  //   3. A random 32 bytes, per process — today's behavior, kept for the run
   //      that has no `.reventless/` to write to.
   //
   // The directory is used but never created. Its presence is what distinguishes
@@ -389,7 +389,7 @@ let authenticate = async (ctx: ReventlessCore.Auth_Adapter.requestContext): Iden
       | None =>
         // No headers: in-memory mode defaults to defaultUser so local dev
         // against an AllowAuthenticated-defaulted backend "just works" without
-        // setting headers. Anonymous behaviour is reachable only by building
+        // setting headers. Anonymous behavior is reachable only by building
         // an Identity.anonymous explicitly in code.
         Authenticated(defaultUser)
       | Some(g) =>

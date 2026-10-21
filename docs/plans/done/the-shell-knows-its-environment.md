@@ -74,7 +74,7 @@ Two keys in `config.json`, both computed by the platform:
 - **One resolver decides both**, used by the AWS platform and by any tool that needs the same
   answer at deploy time (a step that runs before Pulumi reads `REVENTLESS_ENVIRONMENT_PURPOSE`
   and the stack the same way).
-- **The local platform honours `hostUiBundle.assetsDir`.** When set, the local writers write
+- **The local platform honors `hostUiBundle.assetsDir`.** When set, the local writers write
   there; when absent, they write into the host shell package's `dist/` as today.
 
 ## Steps
@@ -143,7 +143,7 @@ the guide says so.
 
 - Each writer writes into a temporary directory passed as `assetsDir` and leaves the package's
   `dist/` untouched.
-- Without `assetsDir`, behaviour is byte-for-byte today's (the existing tests).
+- Without `assetsDir`, behavior is byte-for-byte today's (the existing tests).
 
 ### U5 — Docs and release
 
@@ -177,7 +177,7 @@ other three and can land first. [U5](#u5--docs-and-release) closes.
    changing its type would break that reader and every hand-written console config.
 2. **Should the platform also write `platformName`,** so the shell's platform scope works
    without a hand-written config? Recommendation: yes, but in its own change; it touches the
-   scope's behaviour, not the badge.
+   scope's behavior, not the badge.
 3. **The local deploy hook reports `environment` as the stack name in two places and `"local"`
    in a third.** Recommendation: align on `"local"` in a separate fix; the badge does not depend
    on it.

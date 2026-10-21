@@ -79,4 +79,4 @@ cd reventless/reventless-interop && npm run build
 cd reventless/reventless-aws && npm run build
 ```
 
-No runtime behaviour changes — pure rename.
+No runtime behavior changes — pure rename.

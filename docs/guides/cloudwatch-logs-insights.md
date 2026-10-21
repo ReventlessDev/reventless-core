@@ -1,7 +1,7 @@
 # Reading Reventless logs in CloudWatch Logs Insights
 
 Reventless emits **structured JSON** to any non-TTY log sink (Lambda, Fargate,
-ECS, CI, piped stdout) and human-readable coloured text in a terminal. The sink
+ECS, CI, piped stdout) and human-readable colored text in a terminal. The sink
 is chosen automatically from `process.stdout.isTTY`; override with
 `REVENTLESS_LOG_FORMAT=json|text`.
 
@@ -180,7 +180,7 @@ fields @timestamp, comp, message, detail.bytes
   deploy an entry-point shell instead). Change one and change the other, or the
   two platforms drift apart in what they emit.
 - To force JSON locally (e.g. when piping to a file or `tee`), set
-  `REVENTLESS_LOG_FORMAT=json`. To force coloured text in a non-TTY, set
+  `REVENTLESS_LOG_FORMAT=json`. To force colored text in a non-TTY, set
   `REVENTLESS_LOG_FORMAT=text`.
 - Raise verbosity with `LOG_LEVEL=debug`; silence framework logs entirely with
   `LOG_LEVEL=silent`.

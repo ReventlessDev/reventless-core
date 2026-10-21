@@ -43,7 +43,7 @@ describe("AppSync_Resolver_Retrying.Functions.listAllItemsConnection", () => {
   )
 })
 
-// Tripwires for the Scan connection's paging. The behaviour itself is exercised
+// Tripwires for the Scan connection's paging. The behavior itself is exercised
 // against the evaluated resolver in `rescript/pulumi-aws`; these guard the wiring
 // this package is responsible for emitting.
 describe("listAllItemsConnection — paging", () => {

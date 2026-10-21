@@ -16,7 +16,7 @@ Phase A exists to avoid).
 **Goal.** A person with no account proves control of an address and ends up with a principal, on both
 platforms, with the admission rules as event-sourced domain state rather than a deploy-time constant.
 
-**Non-goal.** A user manager. Roles, organisations and permission models are a different and much
+**Non-goal.** A user manager. Roles, organizations and permission models are a different and much
 larger thing; this deliberately builds the smallest slice-set that a later one can grow around.
 
 ---
@@ -102,7 +102,7 @@ reasoning says why: messaging keys are configuration because *"a staging stack s
 customers, and nothing about the shop it deploys says so"* and because a verified sender is a
 per-account fact. Config is for **what a repository cannot know and an environment fixes**. Admission is
 neither — it is a product decision, changed by an admin without a deploy, and eventually different per
-organisation inside one deployment. A config key cannot express that at all.
+organization inside one deployment. A config key cannot express that at all.
 
 | Layer | Carries | Changed by | Why there |
 |---|---|---|---|
@@ -132,11 +132,11 @@ rather than adding one, so the decomposition is not reopened.
 ## Key the policy by scope from the first commit
 
 **The cheapest item here and the most expensive to retrofit.** Today there is one admission policy per
-deployment. The moment a per-organisation policy is wanted — one org allowing any `@acme.com` address,
+deployment. The moment a per-organization policy is wanted — one org allowing any `@acme.com` address,
 another invitation-only, both in one deployment — a singleton `RegistrationPolicy` means migrating a
 component that already has live events.
 
-Ship it **keyed by a scope**, with this tier using one well-known scope value. A later per-organisation
+Ship it **keyed by a scope**, with this tier using one well-known scope value. A later per-organization
 layer supplies different keys and nothing moves. The cost today is a single field on the component's
 identity and the tag it is written under.
 
@@ -167,8 +167,8 @@ property rather than inherit it.
 should be issued. In trait terms this is not a special case — it is the **stand-down**, the same arm as
 geocoding's map picker: a verdict arrived through another door, so spend no capability call. It carries
 one policy question of its own, and not a small one: **whose assertions count as proof.** Trusting a
-consumer account's verified email is reasonable; trusting a self-hosted IdP an organisation administers
-is a judgement about that organisation. That is a fourth knob and it belongs beside the other three —
+consumer account's verified email is reasonable; trusting a self-hosted IdP an organization administers
+is a judgement about that organization. That is a fourth knob and it belongs beside the other three —
 the capability federates, the domain decides what federation proves.
 
 **Magic-link sign-in.** Once the trait exists this is nearly free: a login is a repeat verification with
@@ -187,7 +187,7 @@ an access control, and belongs on the registration command as required fields th
 | Send the token | ✅ SES, plus a `log` transport chosen by config | ✅ the log transport writes the message out |
 | Create a principal | ⚠️ needs the capability's Cognito provider | ⚠️ needs the capability's local provider |
 | Throttle the anonymous door | ⚠️ WAF / AppSync throttling — see below | ❌ nothing exists |
-| The anonymous door itself | ❌ **deferred 2026-09-11** — AppSync has no anonymous auth mode, and `AllowAnonymous` refuses the deploy. When built: a separate narrow door, not a third auth type on the platform API | ✅ `AllowAnonymous` is honoured — the resolvers call `Authorization.isAllowed` |
+| The anonymous door itself | ❌ **deferred 2026-09-11** — AppSync has no anonymous auth mode, and `AllowAnonymous` refuses the deploy. When built: a separate narrow door, not a third auth type on the platform API | ✅ `AllowAnonymous` is honored — the resolvers call `Authorization.isAllowed` |
 
 **So this is built and proven locally first.** The door's shape is decided in the identity plan's
 Step 3b: a door of its own, so the platform API keeps two auth types and the risk sits in one place. The
@@ -245,7 +245,7 @@ only while the policy is open — which is exactly when a deployer testing on a 
 ## Honesty ledger
 
 - **Read off code:** `Platform_Stack.res`'s `preventUserExistenceErrors: ENABLED` on both pool paths;
-  the messaging capability's config rationale, quoted; the local log transport's behaviour; and the
+  the messaging capability's config rationale, quoted; the local log transport's behavior; and the
   capability-layer facts recorded in the identity plan. *Added 2026-09-11:* `provision-identity
   --sign-up-mode` applies only when the script **creates** a pool — an existing one is adopted unchanged
   — and a stack given a supplied pool ignores `platform:signUpMode`, so a supplied pool's sign-up
@@ -254,7 +254,7 @@ only while the policy is open — which is exactly when a deployer testing on a 
   `AllowAdminCreateUserOnly: true` — the flag's documented purpose, and what lets the pool stay shut
   while `createPrincipal` works. Confirm when the Cognito provider is built.
 - **Design proposal, not validated:** the mode table, the three-knob decomposition, the three layers,
-  the bounded `Open`, and every claim about what a later per-organisation layer will want. The scope-keying and claim-tag
+  the bounded `Open`, and every claim about what a later per-organization layer will want. The scope-keying and claim-tag
   instructions are cheap insurance argued from that unvalidated shape — they are worth taking anyway,
   because both are single fields now and migrations later.
 - **Not investigated:** the UI half; GDPR erasure of a registration that never completed; whether the

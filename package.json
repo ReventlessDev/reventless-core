@@ -70,6 +70,7 @@
     "check:dcb-scope": "node ./scripts/check-dcb-scope.mjs",
     "check:dcb-scope:update": "node ./scripts/check-dcb-scope.mjs --update",
     "check:pulumi-option": "node ./scripts/check-pulumi-option.mjs",
+    "check:spelling": "node ./scripts/check-spelling.mjs",
     "generate:currency": "node ./scripts/GenerateCurrency.res.mjs",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",
     "test:watch:fail": "ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",

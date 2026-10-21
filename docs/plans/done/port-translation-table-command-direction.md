@@ -274,7 +274,7 @@ and only compiling the repo surfaces them.
   not. The GWT fixtures in `DelegateGwtTest` / `FlowCrossPluginGwtTest` are the population to
   check; a fixture with an unreadable arm needs a hand-written line, not a rewrite.
 - **§4.3 changes what the shipped `publishedEvents` derives.** That is the point — a table that
-  gains an edge it should always have had — but it is a behaviour change to a field consumers
+  gains an edge it should always have had — but it is a behavior change to a field consumers
   already read, so land it visibly rather than folded into the new work.
 - **PPX binary/source lockstep**, per the first plan's §6: this repo builds the PPX from source,
   an external consumer on an older published binary gets no table (a missing field, not a wrong

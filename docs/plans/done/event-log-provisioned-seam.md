@@ -5,9 +5,9 @@ decisions taken on what were open questions; §6 checks off acceptance; §7 list
 deviations from the plan as written. Sections 1–4 are left as written, so where §2's signature
 sketch and §3's premise differ from what shipped, §7 is the record.
 
-**Goal.** Let a package outside the framework attach behaviour to an event log **at the moment
+**Goal.** Let a package outside the framework attach behavior to an event log **at the moment
 it is provisioned**, inside the program that owns it — most importantly, a consumer of the
-log's change stream — without core knowing or caring what that behaviour is.
+log's change stream — without core knowing or caring what that behavior is.
 
 **Non-goal.** Any particular consumer. This plan adds an extension point and nothing that uses
 it.
@@ -79,7 +79,7 @@ Design notes:
   resources land outside the component tree.
 - **Attribution from `ResourceAttribution.current`**, exactly as `Monitoring.notify` does — the
   backend must not have to re-derive plugin/platform.
-- **`Noop` by default.** Zero cost, zero behaviour change for any deployment that registers
+- **`Noop` by default.** Zero cost, zero behavior change for any deployment that registers
   nothing. This is what makes the extension free for framework users who do not want it.
 
 ---
@@ -203,7 +203,7 @@ with its rationale.
   routes to `DynamoDbStream` or Postgres. Rather than edit it into a byte-identical twin of the
   streaming adapter, it was deleted and `EventLogStorage.DynamoDb` aliased to
   `EventLogStorage_DynamoDbStream` — classic tables now stream unconditionally, and out-of-tree
-  references to the exported name keep compiling. No live deployment changes behaviour.
+  references to the exported name keep compiling. No live deployment changes behavior.
 
 ### Verification
 

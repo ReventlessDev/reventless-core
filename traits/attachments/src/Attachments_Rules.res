@@ -22,7 +22,7 @@ How many members a host's set may hold.
 Not a runtime variation: a graft fixes this once, and every command the graft
 emits is shaped by the answer. It reaches `decide` as an argument rather than
 sitting on `t` so that `empty` stays one value and a host that never mentions
-cardinality gets the behaviour it has today.
+cardinality gets the behavior it has today.
 
 Exactly one rule reads it — `Attach` — and that is the whole of the difference:
 a bounded set replaces its member where an unbounded one appends beside it.

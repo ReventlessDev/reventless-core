@@ -7,7 +7,7 @@ date: 2026-05-22
 draft: true
 ---
 
-One of the first modelling decisions in Reventless is whether an entity should be
+One of the first modeling decisions in Reventless is whether an entity should be
 an **aggregate** (one event log per instance) or a **DCB slice** (a shared,
 tag-filtered log with per-command optimistic concurrency). The short answer: it
 depends on whether the entity needs to reason about *other* entities.

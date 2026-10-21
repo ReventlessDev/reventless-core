@@ -44,7 +44,7 @@ let usernameAttributes = (identifier: t): array<string> =>
 /**
 The deploy-time choice, or why the deploy cannot proceed.
 
-An unrecognised spelling refuses rather than falling back to the default: a typo
+An unrecognized spelling refuses rather than falling back to the default: a typo
 that defaulted would create a pool signing in on the wrong attribute, which is
 the one property no later deploy can correct.
 */

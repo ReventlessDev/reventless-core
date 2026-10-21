@@ -59,7 +59,7 @@ provisioning call chain** — `notify` reads the ambient context itself.
    case asserting that a `notify` fired inside a `ResourceAttribution.enter(~platform, ~plugin)` scope
    delivers the expected `~plugin` / `~platform`, and one outside any scope delivers `None`.
 
-No behavioural change for a platform without a registered backend (`Noop` still swallows). The seam
+No behavioral change for a platform without a registered backend (`Noop` still swallows). The seam
 stays "core only says a unit exists, its role, and now who owns it" — no monitoring policy in core.
 
 ### Acceptance

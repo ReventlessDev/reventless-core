@@ -34,7 +34,7 @@ package. Two things differ from a hand-written sketch:
 
 ## Plugin 1: Catalog
 
-Manages the product catalogue — what is available for sale and how it is organized.
+Manages the product catalog — what is available for sale and how it is organized.
 
 ### DCB Entity: Category
 
@@ -253,7 +253,7 @@ type event =
 ```
 
 The catalog log now carries the same Category, Product, and ProductDemand events
-as the **pure DCB** implementation — Catalog is modelled identically in both. The
+as the **pure DCB** implementation — Catalog is modeled identically in both. The
 hybrid difference lives in **Ordering**, whose Customer remains an aggregate with
 its own per-instance event log (see below).
 

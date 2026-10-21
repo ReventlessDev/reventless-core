@@ -7,7 +7,7 @@
 // module types.
 
 // ---------------------------------------------------------------------------
-// Shared Aggregate specs + behaviours used by the Aggr→* cases below.
+// Shared Aggregate specs + behaviors used by the Aggr→* cases below.
 // ---------------------------------------------------------------------------
 
 module CategorySpec = {

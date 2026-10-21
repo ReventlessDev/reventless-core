@@ -78,13 +78,13 @@ records what the code does.
 
 - **`positions`** is a closed list, decided in S0: fields of a `command`, `event`,
   `consumedEvent` and `state`, fields of a named record, a variant case, a type, and a file
-  (`@@…`). An attribute read in no position today, but still recognised to refuse it, has none
+  (`@@…`). An attribute read in no position today, but still recognized to refuse it, has none
   and says `replacedBy`.
 - **`args`** is `none`, `optional` or `required`. `argsExample` is source text, as written.
   Parsing an argument into a value stays with the module that reads it.
 - **`summary`** is one sentence for someone choosing the attribute, not a specification. It is
   kept in the table, next to the name, so it changes when the name's meaning does.
-- **`readBy`** names the modules that read it, so a reader of the table can find the behaviour.
+- **`readBy`** names the modules that read it, so a reader of the table can find the behavior.
 - **Not listed:** `res.*` (the parser's printing hints, `SourceReader.is_authored`), `schema`,
   `s.*` (sury's own), and the `reventless.*` attributes the PPX writes itself.
 
@@ -117,7 +117,7 @@ records what the code does.
   are read on state fields only.
 - **Where a read has an effect.** `@noApi` is read on every `@schema` type, but only a
   command's schema is consumed, so its positions are `type.command` and `case.command`.
-- **Refusals.** The table has six attributes that are recognised only to be refused:
+- **Refusals.** The table has six attributes that are recognized only to be refused:
   `@status` (use `@lifecycle`), `@noTag` (use `@noDcbTag`),
   `@reventless.projections` (use `@@reventless.mappings`), and `@transition`,
   `@allowedStates` and `@targetState`. The last three have no `replacedBy`, because they

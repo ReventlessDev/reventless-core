@@ -270,7 +270,7 @@ describe("AppSync_SdlDecorate.assertGateable", () => {
 
   // The original outage, exactly. A "does it have a directive?" check passes
   // this — @aws_auth was present on all 18 admin fields the whole time it was
-  // inert. Only knowing WHICH directive the service honours catches it.
+  // inert. Only knowing WHICH directive the service honors catches it.
   testSync("refuses @aws_auth, the directive AppSync ignores here", () => {
     let sdl = `type Query @aws_cognito_user_pools {\n  Admin_Thing: String @aws_auth(cognito_groups: ["Admin"])\n}`
     expect(refuses(sdl))->toBe(true)

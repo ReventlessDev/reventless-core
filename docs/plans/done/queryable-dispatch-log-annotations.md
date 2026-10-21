@@ -167,7 +167,7 @@ not re-log these by hand.
 - Two components hosted in one runtime process are separable purely by the `comp` field.
 - `causationId` reconstructs the parent → child chain within one `correlationId`.
 - No runtime builder retains a private `runEffect` that skips the annotations.
-- Existing `logging-output-optimization` behaviour (JSON in cloud, human in TTY, no ANSI in
+- Existing `logging-output-optimization` behavior (JSON in cloud, human in TTY, no ANSI in
   `message`) is unchanged.
 
 ## Non-goals

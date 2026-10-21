@@ -8,7 +8,7 @@ context from `docs/analysis/rejected/sury-vs-effect-schema.md`.
 ## Context and motivation
 
 The TypeScript-client feasibility analysis identified **four blockers** to
-allowing a TS developer to author Reventless aggregates, behaviours, and
+allowing a TS developer to author Reventless aggregates, behaviors, and
 projections natively in TypeScript:
 
 1. **sury-ppx is ReScript-only** — TS callers cannot derive schemas from
@@ -42,7 +42,7 @@ Ship `@reventlessdev/reventless-client-ts` — a TypeScript SDK that:
   `docs/plans/Backlog/reventless-client-transport.md`).
 
 Explicitly **not** in scope for v1:
-- TS-authored aggregate behaviours, projections, or extension points
+- TS-authored aggregate behaviors, projections, or extension points
   running server-side. The SDK is **client-side only**: dispatch commands,
   subscribe to events, decode envelopes.
 - Replacing sury inside the framework. Server-side stays on sury via the

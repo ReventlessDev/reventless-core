@@ -2,7 +2,7 @@
 //
 // Designed against the call sites that already exist rather than the whole
 // spec, because the failure mode here is well documented in this codebase:
-// reventless-ui's `bindings/Fetch.res` modelled `method` as `[#get | #post]`
+// reventless-ui's `bindings/Fetch.res` modeled `method` as `[#get | #post]`
 // and carried no `body` field at all, so nine files bypassed it and hand-rolled
 // their own externals. A binding that cannot express what callers do does not
 // reduce duplication — it adds one more variant.

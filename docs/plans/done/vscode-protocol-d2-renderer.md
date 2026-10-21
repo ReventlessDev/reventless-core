@@ -25,7 +25,7 @@ to `GraphOps`.
 | Module | Role | genType surface |
 |---|---|---|
 | `DomainGraphD2.res` | `toD2` + `nodeClassOf`/`edgeClassOf`/`legend`/`presentKeys`/`applyLegendFilter` | `subgraph` type + the exported functions |
-| `D2Classes.res` | GENERATED semantic class block + shape colours + legend swatches | none |
+| `D2Classes.res` | GENERATED semantic class block + shape colors + legend swatches | none |
 | `D2Legend.res` | shared `legendEntry` shape + entry constructors | `legendEntry` type |
 | `D2Emit.res` | D2 string escaping (`q`/`qLabel`) | none |
 | `D2Shapes.res` | extension-point/extension SVG icons (socket/plug) | none |

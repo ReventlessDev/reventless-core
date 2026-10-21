@@ -26,7 +26,7 @@ open Ppxlib
     semantic — {!StorageRefInference} leaves those fields to this pass rather
     than claiming them, which would downgrade the field to a bare storage ref.
 
-    Modelled on {!StorageRefInference} and ungated for the same reason: this must
+    Modeled on {!StorageRefInference} and ungated for the same reason: this must
     reach command and event records, not only [type state]. *)
 
 let storage_ref_attr = "storageRef"

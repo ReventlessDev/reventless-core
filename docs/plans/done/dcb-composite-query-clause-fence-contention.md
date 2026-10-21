@@ -173,11 +173,11 @@ admin subscription field **no consumer reads**. Rather than patch the one sympto
 **Tests (green).**
 - Unit: `DcbEventLogStorage_DynamoDb_RuntimeTest.res` — `toItem` `tag_composite` equals the key a
   composite read builds from the entity tags (`compositeTagKey`).
-- Integration (DDB Local, deterministic — no reliance on conflict modelling):
+- Integration (DDB Local, deterministic — no reliance on conflict modeling):
   `DcbCommandTopicEntryPoint_IntegrationTest.res` `composite read-back` — `EpCompositeSlice`
   gains a `TouchResource` command requiring state `Added` (i.e. it must read back its own
   `ResourceAdded`); it commits after the fix and rejected `NotFound` before it. Verified as a
-  genuine guard: reintroducing the `originatorSlice`-in-`tag_composite` behaviour turns it red
+  genuine guard: reintroducing the `originatorSlice`-in-`tag_composite` behavior turns it red
   (`decide rejected: NotFound`).
 - Suites: reventless-core **499/499**, reventless-aws unit **209/209**, DCB integration
   **17/17**; zero build warnings across spec/core/local/aws.

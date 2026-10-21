@@ -8,7 +8,7 @@ No-op by default. Zero behavioral change unless an extension registers one via
 no code runs.
 
 `Monitoring` and `EventLogProvisioning` are the deploy-time half of this shape —
-they let an extension attach behaviour to *what gets provisioned*. This is the
+they let an extension attach behavior to *what gets provisioned*. This is the
 runtime half: *what runs inside it*. Without it,
 `CommandGenerator_Callback.registerCommandInterceptor`,
 `QueryDb_Callback.registerQueryInterceptor` and the two
@@ -34,7 +34,7 @@ to internals would make it a second, informal handler API — and the four hooks
 exists to reach already receive their own per-request payloads
 (`commandInterceptor` gets `~componentName` / `~tag` / `~args` on every call).
 
-`~runtimeKind` is the modelling kind of the component the runtime runs — the same
+`~runtimeKind` is the modeling kind of the component the runtime runs — the same
 `ComponentType.t` every AWS runtime builder already passes to
 `RuntimeEnvironment_Lambda.makeFromCodeAsset`, so there is no third taxonomy to
 keep in step with `Monitoring.unitKind` and `ResourceAttribution.Role`.

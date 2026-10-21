@@ -97,7 +97,7 @@ let rec get = (fieldSchema: S.t<'a>): option<t> =>
 ```
 
 Reading the outer schema *first* keeps a marker that was attached to the wrapper itself winning, so
-nothing that works today changes behaviour.
+nothing that works today changes behavior.
 
 **Rejected alternative:** unwrapping at each call site (`storesFromProperties`, the two
 `references` walks, …). It leaves the next reader to rediscover the same trap, and the

@@ -55,7 +55,7 @@ The scope (`PartitionScoped` default / `CrossPartition`) is a property of the **
 Either a synthetic test-fixture slice (course-subscription shape) exercised by core `DcbTagTest` + an AWS integration scenario (two students, capacity check, cross-partition fence conflict), **or** a full worked example app. Test-fixture validation mirrors how `readConsistency` was validated and is proportionate.
 
 ## Cost / non-goals
-- Cross-partition reads are O(entity degree), eventually consistent, uncached, and paid on *both* tags of an M:N event. The highest-leverage mitigation (count-bounded `Limit:N+1` reads for capacity invariants) is a **behaviour** concern, not part of this core capability; the Phase 4 decision cache has outsized value here. Fence sharding (Issue 10) for the hot M:N fences is profile-gated and out of scope.
+- Cross-partition reads are O(entity degree), eventually consistent, uncached, and paid on *both* tags of an M:N event. The highest-leverage mitigation (count-bounded `Limit:N+1` reads for capacity invariants) is a **behavior** concern, not part of this core capability; the Phase 4 decision cache has outsized value here. Fence sharding (Issue 10) for the hot M:N fences is profile-gated and out of scope.
 - No slice-contract change beyond the new field annotation.
 
 ## Sequencing

@@ -2,7 +2,7 @@
 
 ## Overview
 
-StateViewSlice singular queries currently have no `id` parameter (`Plugin_Entity: Plugin_Entity`), causing the resolver to always load from the empty-string partition key — a latent bug that always returns `null`. The fix is Option A from the analysis: enable `includeIdParam: true` for StateViewSlice singular queries, matching ReadModel behaviour.
+StateViewSlice singular queries currently have no `id` parameter (`Plugin_Entity: Plugin_Entity`), causing the resolver to always load from the empty-string partition key — a latent bug that always returns `null`. The fix is Option A from the analysis: enable `includeIdParam: true` for StateViewSlice singular queries, matching ReadModel behavior.
 
 Enabling `includeIdParam` has three cascading effects already handled by existing infrastructure:
 1. SDL changes from `Plugin_Entity: Plugin_Entity` to `Plugin_Entity(id: ID!): Plugin_Entity`
@@ -32,7 +32,7 @@ let queryFieldNamesForStateView = (~plugin, ~viewName, ~connectionSpec=true) => 
   includeIdParam: true,
 ```
 
-This is the authoritative flag that controls SDL generation, type shape, and resolver behaviour downstream.
+This is the authoritative flag that controls SDL generation, type shape, and resolver behavior downstream.
 
 **Scope**: `reventless-core` only.
 

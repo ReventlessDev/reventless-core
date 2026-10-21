@@ -162,7 +162,7 @@ Affected entities: `Category`, `Customer`, `Order`, `Product`, `CatalogProduct`,
 
 ### 3.2 — Aggregate event mappings — ✅ DONE for aggregates (PR3)
 
-- `<Entity>_EventMappings.res` → `<Entity>_Mappings.res` (drop the `Event` prefix; PPX recognises `_Mappings.res` in `Aggregate/` folder).
+- `<Entity>_EventMappings.res` → `<Entity>_Mappings.res` (drop the `Event` prefix; PPX recognizes `_Mappings.res` in `Aggregate/` folder).
 - Replace the hand-rolled wrapper with `@@reventless.mappings` at the top. Resulting file body shrinks to: per-source `Mapping.Make` modules + `let mappings = [module(...)]` + (if needed) `let counter = None`.
 
 **aggregates done in PR3** (only `Order_Mappings.res`). dcb + hybrid only have AutomationSlice `_Mappings.res` siblings (handled by Phase 3.5). `Pairing.findEventMappings` now walks the tree and matches both `_Mappings.res` (in `Aggregate/`) and legacy `_EventMappings.res`.
@@ -194,7 +194,7 @@ Affected: `OrdersView`, `ProductsView`, `ProductDemandView`, `AvailableProductsV
 
 **dcb done in PR4** — renamed: `CategoriesView` → `Categories`, `ProductsView` → `Products`, `ProductDemandView` → `ProductDemand`, `OrdersView` → `Orders`, `CustomersView` → `Customers`, `AvailableProductsView` → `AvailableProducts`, plus all `*View_Projection.res` → `*_Projection.res`. Test files renamed in parallel: `CategoriesViewTest.res` → `CategoriesTest.res` etc. Plugin.res regenerates correctly.
 
-**hybrid done in PR5** — same drop-`View` rename across `StateViewSlice/` (catalog: none — uses `StateViewSliceStream/` instead; ordering: `OrdersView` → `Orders`, `AvailableProductsView` → `AvailableProducts`) AND across the hybrid-only `StateViewSliceStream/` folder (catalog: `ProductsView` → `Products`, `ProductDemandView` → `ProductDemand`). The PPX's `is_stateview_filename` check matches any folder starting with `StateView` (9-char prefix), so both `StateViewSlice/` and `StateViewSliceStream/` get the auto-injection of `open Reventless.Projection`, `let config = config()`, `let subIdConfig = None`. Pairing recognises the parallel `_Projection` body files in either folder.
+**hybrid done in PR5** — same drop-`View` rename across `StateViewSlice/` (catalog: none — uses `StateViewSliceStream/` instead; ordering: `OrdersView` → `Orders`, `AvailableProductsView` → `AvailableProducts`) AND across the hybrid-only `StateViewSliceStream/` folder (catalog: `ProductsView` → `Products`, `ProductDemandView` → `ProductDemand`). The PPX's `is_stateview_filename` check matches any folder starting with `StateView` (9-char prefix), so both `StateViewSlice/` and `StateViewSliceStream/` get the auto-injection of `open Reventless.Projection`, `let config = config()`, `let subIdConfig = None`. Pairing recognizes the parallel `_Projection` body files in either folder.
 
 ### 3.5 — AutomationSlice merge — ✅ DONE for dcb (PR4)
 
@@ -269,7 +269,7 @@ After each example sweep:
 
 `packages/reventless-codegen/` (or wherever `generate-plugin` lives) must:
 
-- Recognise the new file naming: scan for `*_Behavior.res`, `*_Projections.res`, `*_Projection.res`, `*_Extension.res`, `*_ExtensionPoint.res`, `*_ExtensionPointMapping.res`, `*_Automation.res`, `*_Translation.res`, `*_Mappings.res`.
+- Recognize the new file naming: scan for `*_Behavior.res`, `*_Projections.res`, `*_Projection.res`, `*_Extension.res`, `*_ExtensionPoint.res`, `*_ExtensionPointMapping.res`, `*_Automation.res`, `*_Translation.res`, `*_Mappings.res`.
 - Treat the spec file as `<Name>.res` regardless of folder (no fused suffix anymore).
 - Stop emitting the `@reventless.projections` wrapper modules in `Plugin.res` — reference the slice-local `_Projections` modules directly.
 - Emit the 2-arg `Platform.AutomationSlice.Make(Spec, Automation)` form.

@@ -60,7 +60,7 @@ reventless-tools.
 
 ## Done when
 
-Each bullet above has a test that fails when the behaviour it names regresses,
+Each bullet above has a test that fails when the behavior it names regresses,
 and they all run under root `pnpm test`. Note that root `jest.config.js` has
 **no `reventless-layer-builder` project** (checked 2026-10-07), so even the
 existing `DependencyBundler_FilterTest` runs only from the package directory and

@@ -222,7 +222,7 @@ retired state. Mechanical.
 
 **`Products` gains the two-state lifecycle, and is the worked example.** It has no
 lifecycle at all today — `Add`, and four `Change*` commands — so this is a
-modelling addition rather than a rename:
+modeling addition rather than a rename:
 
 ```rescript
 @schema
@@ -379,7 +379,7 @@ close a window, not to support two shapes" rule the lifecycle rename's shim used
   publishes `Updated` with no `state`; a save into a live state publishes it.
 - **`Products` GWT** — `UnarchiveProduct` is accepted on an archived product and
   refused on a discontinued one. The framework half is `@allowedStates`, already
-  covered; this asserts the *modelling* claim that makes the example worth having,
+  covered; this asserts the *modeling* claim that makes the example worth having,
   so a later edit cannot quietly make `Discontinued` reversible.
 - **Goldens** — `pnpm run check:graphql` green with `Catalog_Product.shelfStatus`,
   refreshed in the same commit.

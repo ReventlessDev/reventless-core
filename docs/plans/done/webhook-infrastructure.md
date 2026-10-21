@@ -37,7 +37,7 @@ input came through.
   rotation has no gap. Secrets Manager waits for someone who needs rotation without a
   redeploy.
 - **`auth` is required**, so an open URL is always a written choice. The variants
-  are `Open | SignedBody` — `IAM` and `ApiKey` waited for a transport that can honour
+  are `Open | SignedBody` — `IAM` and `ApiKey` waited for a transport that can honor
   them per slice.
 - **The URL's caller**: a signed request acts as a signed-in identity holding the
   endpoint's `role` (none when absent); an open one as anonymous. The per-command
@@ -245,7 +245,7 @@ GraphQL:
 
 | | no `endpoint` | `endpoint` declared |
 |---|---|---|
-| **default** | mutation only — today's behaviour | mutation **and** URL |
+| **default** | mutation only — today's behavior | mutation **and** URL |
 | **`@noApi`** | build error — unreachable slice | URL only, the pure webhook receiver |
 
 For an inbound slice `@noApi` reads off `externalInputSchema`, not
@@ -417,7 +417,7 @@ GraphQL server's port) can come later if anyone needs to point a tunnel at it.
 | 11 | Thread the provider through the core builder | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res` | Not needed ([Outcome](#where-the-build-differs-from-the-steps)) |
 | 12 | Wire AWS | `reventless/aws/src/components/InboundTranslationSlice_Builder.res`, `reventless/aws/src/Platform.res` | **Done** — registration in the AWS slice builder, the URL in `StateChangeSliceRuntime_Builder_Single` |
 | 13 | Wire local | `reventless/local/src/components/InboundTranslationSlice_Builder.res`, `reventless/local/src/Platform.res` | **Done** (the builder only) |
-| 14 | Honour `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, which now builds each slice's mutation field itself, through `Api_Naming.sliceMutationField`, with `inboundDoorPermission` from the slice's `authorizationOf`; `mutationEntriesFromInboundSlices` no longer exists. Nothing filters today) | **Done** |
+| 14 | Honor `@noApi` on `externalInputSchema`; error when a slice has neither a mutation nor an endpoint | `reventless/core/src/components/Dcb/Dcb_Builder.res` (`inboundTranslationSliceData`, which now builds each slice's mutation field itself, through `Api_Naming.sliceMutationField`, with `inboundDoorPermission` from the slice's `authorizationOf`; `mutationEntriesFromInboundSlices` no longer exists. Nothing filters today) | **Done** |
 | 15 | Record the door on the audit row | `reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res` | **Done** |
 | 16 | Example slice with an endpoint | `examples/online-shop-dcb/<plugin>/src/<Entity>/InboundTranslationSlice/` | **Done** — the DCB shop's `ImportProduct` |
 | 17 | Tests | | **Done**, but for the AWS builder bullet below |

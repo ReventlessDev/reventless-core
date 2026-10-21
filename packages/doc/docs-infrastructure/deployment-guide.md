@@ -309,7 +309,7 @@ so choosing a mail sink must not also decide how texts go out. Two values:
 | `log` | Provisions nothing; every message is written to the Lambda's log in full and none is sent. |
 
 Default `ses`, so a deployment that says nothing still mails — a stack that means
-*not* to send says so, rather than silence meaning it. An unrecognised value fails
+*not* to send says so, rather than silence meaning it. An unrecognized value fails
 the deploy naming the key: defaulting a typo to `ses` would provision a real
 identity for a stack that asked only to log, which is the mistake the key exists to
 prevent. `log` is what the shop's `alpha` and `beta` stacks use.

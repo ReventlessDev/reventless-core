@@ -53,7 +53,7 @@ That `open <Stem>_Fixtures` is deterministic from the file's path — the PPX al
 
 ---
 
-## Target behaviour
+## Target behavior
 
 For a file at `<dir>/<stem>_GWT.res` (with `<stem>` the portion before the final `_GWT`):
 
@@ -140,7 +140,7 @@ The snapshot fixtures need real files on disk (the PPX does `Sys.file_exists`), 
 
 ## Migration / backward compatibility
 
-Fully additive. Existing GWT files without a companion fixtures file see no behavioural change. Existing GWT files that already write `open <Stem>_Fixtures` manually get deduped by the same `Util.has_open` check that already handles the spec open — their source remains valid and produces identical output.
+Fully additive. Existing GWT files without a companion fixtures file see no behavioral change. Existing GWT files that already write `open <Stem>_Fixtures` manually get deduped by the same `Util.has_open` check that already handles the spec open — their source remains valid and produces identical output.
 
 No changes to attribute syntax, no payload additions, no new kinds.
 
@@ -149,4 +149,4 @@ No changes to attribute syntax, no payload additions, no new kinds.
 ## Out of scope
 
 - **Re-export of `open DeploymentTypes` / other spec-adjacent modules.** GWT tests that reference variant constructors from modules beyond the Spec (e.g. a shared types module) still need an explicit `open` in the test body. The auto-open is scoped to the companion fixtures module.
-- **Auto-opening companions named other than `_Fixtures`** (e.g. `_Helpers`, `_Builders`). A single companion naming rule keeps the PPX's filesystem behaviour minimal; other shapes can be revisited if demand emerges.
+- **Auto-opening companions named other than `_Fixtures`** (e.g. `_Helpers`, `_Builders`). A single companion naming rule keeps the PPX's filesystem behavior minimal; other shapes can be revisited if demand emerges.

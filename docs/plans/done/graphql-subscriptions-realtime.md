@@ -418,7 +418,7 @@ The subscription work **cannot start** until Phases 1 and 3 of the stitching pla
 
 3. **Authentication for push Lambda**: The `StateTopic_AppSync` Lambda needs `appsync:EventPublish` permission scoped to the specific API ARN. Should this be part of the Lambda's execution role (simpler) or a separate AppSync service role?
 
-4. **In-memory / local dev subscriptions**: The `reventless-in-memory` package uses GraphQL Yoga. Yoga v5 supports subscriptions via `createPubSub`. An `InMemory` subscription publisher would use the Yoga PubSub internally. This is needed for the test suite to cover subscription behaviour.
+4. **In-memory / local dev subscriptions**: The `reventless-in-memory` package uses GraphQL Yoga. Yoga v5 supports subscriptions via `createPubSub`. An `InMemory` subscription publisher would use the Yoga PubSub internally. This is needed for the test suite to cover subscription behavior.
 
 5. **Subscription event schema vs. state schema**: For Source B (state changes), should the subscription payload be the full current state (re-fetched after update) or just the changed fields (the DynamoDB Stream `NewImage`)? The former is more convenient for clients; the latter is more efficient and avoids a round-trip query.
 

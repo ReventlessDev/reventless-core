@@ -1,7 +1,7 @@
 /***
 How every command-line tool in this repository reads `process.argv`: through
 Node's `parseArgs`, with mistakes worded the way these tools word them, and one
-behaviour on `--help`, on a usage mistake and on a bare invocation (see [run]).
+behavior on `--help`, on a usage mistake and on a bare invocation (see [run]).
 Non-strict with tokens rather than strict mode, because strict mode names the
 offending argument only inside English prose.
 */

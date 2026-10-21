@@ -52,7 +52,7 @@
 
 **Context**: Lambda Layer `reventless-aws-alpha:58` shipped with `sury@11.0.0-alpha.5`
 (npm re-resolved `^11.0.0-alpha.4` upward because the Layer builder downloads from
-the registry and does not honour the workspace `pnpm-lock.yaml`). The heartbeat
+the registry and does not honor the workspace `pnpm-lock.yaml`). The heartbeat
 Lambda — and any other Lambda whose code imports a removed sury export — now
 crashes at init with:
 
@@ -287,7 +287,7 @@ Open questions still outstanding after these findings:
 
 ## Open questions / risks
 
-1. **Behavioural equivalence**: Did `reverseConvertToJsonOrThrow` in alpha.4
+1. **Behavioral equivalence**: Did `reverseConvertToJsonOrThrow` in alpha.4
    apply any transforms that `S.reverse(s)` + `S.json` in alpha.5 won't?
    Specifically: how does each handle schema-level refinements, `S.transform`,
    `S.refine`, and `@s.matches` (sury-ppx)? Needs a focused test pass on
@@ -316,14 +316,14 @@ Open questions still outstanding after these findings:
 
 5. **`enableJson()` removal**: deleting the calls is mechanical, but if the
    function did more than gate tree-shaking (e.g. registered a global) we
-   could lose behaviour silently. Confirmed via reading alpha.4's source: it
+   could lose behavior silently. Confirmed via reading alpha.4's source: it
    only swapped in a non-tree-shaken schema definition. Safe to delete.
 
 ## Recommended approach
 
 **Phase 0 — unblock production**: ship the sury pin (`"sury": "11.0.0-alpha.4"`
 exact, no caret, in `reventless-{aws,core,infra,spec}/package.json`) as a
-hotfix on `alpha`. Restores deploys today; no behaviour change.
+hotfix on `alpha`. Restores deploys today; no behavior change.
 
 **Phase 1 — central helper + smoke test**: add `Util_Sury` with `toJson` /
 `fromJson` / `toJsonString` / `fromJsonString` shims, switch `Message.res` +

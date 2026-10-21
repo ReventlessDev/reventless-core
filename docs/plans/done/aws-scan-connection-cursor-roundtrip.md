@@ -116,7 +116,7 @@ for `first` ≥ the row count of the read model, all rows arrived in **one** pag
 `hasNextPage` was `false`, and nobody ever needed to send `after` back. The bug
 only bites when the result set exceeds one requested page and the client tries to
 continue — exactly what the Relay `first`/`after` contract promises but this
-resolver cannot honour.
+resolver cannot honor.
 
 ### This resolver diverges from the correct pattern that already exists
 
@@ -148,7 +148,7 @@ the response side.
 
 This plan addresses **four** paging defects on `listAllItemsConnection`. The first is
 the original cursor regression; the next three surfaced while auditing whether the
-connection honours the full GraphQL paging contract its SDL advertises.
+connection honors the full GraphQL paging contract its SDL advertises.
 
 | # | Defect | Symptom | Fix locus |
 |---|--------|---------|-----------|
@@ -251,7 +251,7 @@ no sort key), and no "previous key" — the token says where a page *ended*, nev
 the one before it *started*. So the server cannot reconstruct "the N items before
 cursor C" from C alone. The workarounds don't survive this context: embedding the
 previous page-boundary token in each cursor only re-fetches a seen boundary (it can't
-honour an arbitrary `last: N`, and breaks when the table changes); buffering the whole
+honor an arbitrary `last: N`, and breaks when the table changes); buffering the whole
 table to slice its tail needs multi-page accumulation, which APPSYNC_JS forbids (no
 loops/recursion). There is also no *meaningful* backward direction: a raw Scan returns
 hash-traversal order, so "the previous page" is undefined when there is no order to be
@@ -368,7 +368,7 @@ author accepting the caveat knows what they are accepting:
 > globally ordered** — and the Scan is expensive in production. Promote the field to an
 > index sort key for correct, cheap ordering, or accept per-page ordering.
 
-The interim step changes no runtime behaviour — it only sharpens the warning (and its
+The interim step changes no runtime behavior — it only sharpens the warning (and its
 `GraphQL_SchemaInspectorTest.res` assertion) so the per-page limitation is an informed
 choice, not a surprise.
 
@@ -444,10 +444,10 @@ passed as `after` will `JSON.parse`-fail (it is not base64 JSON) and error — t
 same user-visible outcome as before the fix, not a new regression.
 
 Fix 2 turns a previously-silent `last`/`before` call into a hard `UnsupportedPagination`
-error. That is a behaviour change, but not a regression: those args never returned
+error. That is a behavior change, but not a regression: those args never returned
 correct backward results — they returned the forward first page, silently wrong. An
 explicit error is strictly more honest, and no client that relied on the (broken)
-silent behaviour was getting correct data to preserve.
+silent behavior was getting correct data to preserve.
 
 ### Out of scope (still)
 

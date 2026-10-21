@@ -1309,7 +1309,7 @@ let gwt_sidecar_path (fname : string) : string =
    carries no `@@reventless.gwt`. Its scenarios are still scenarios, and the one
    in the shipped hybrid shop is the corpus for a view two other components are
    labelled against — so the emit keys off the filename as well, matching the
-   `_GWT` / `GwtTest` stems the rest of the pipeline already recognises.
+   `_GWT` / `GwtTest` stems the rest of the pipeline already recognizes.
 
    Nothing is forced: a file with no top-level `describe` yields no fragment. *)
 let looks_like_gwt_file (fname : string) : bool =

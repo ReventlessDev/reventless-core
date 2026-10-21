@@ -240,7 +240,7 @@ exposed as a concrete `layer` value) would work just as cleanly.
 
 ### 4.3 Configuration / Environment (Possible, Limited Benefit)
 
-Lambda functions read config from environment variables at startup. This could be modelled as
+Lambda functions read config from environment variables at startup. This could be modeled as
 an injectable `Config` service:
 
 ```rescript

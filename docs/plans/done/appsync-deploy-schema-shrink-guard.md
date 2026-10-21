@@ -69,7 +69,7 @@ In `preResolversSchemaHook`, before `startSchemaCreationRetrying`:
   true, **abort the push** (log at error), leaving the live schema intact.
 - Otherwise push as before.
 
-Behaviour by case (root-field counts, `threshold` default 0.5):
+Behavior by case (root-field counts, `threshold` default 0.5):
 
 | Scenario | live vs new | Action |
 |---|---|---|

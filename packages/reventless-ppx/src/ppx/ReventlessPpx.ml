@@ -159,7 +159,7 @@ let derive_spec_name ~loc name_opt =
     | _ -> entity
 
 (* Derive the Spec module name for an implementation file from its filename.
-   Recognises two conventions:
+   Recognizes two conventions:
    - [X_<Kind>.res] (slice convention, e.g. [ArchiveCategory_Behavior.res] → [ArchiveCategory]).
    - [X<Kind>.res] (Aggregate convention, e.g. [ProductBehavior.res] → [Product]).
    Falls back to the bare filename stem if neither suffix is present. *)
@@ -1014,7 +1014,7 @@ let transform (str : structure) : structure =
            if kind = Automation then
              SidecarEmit.maybe_emit_wiring ~spec_name ~fname raw_spec_body
          in
-         (* Inject type annotations on recognised function bindings. The split
+         (* Inject type annotations on recognized function bindings. The split
             form's Spec puts both [consumedEvent] and [event] in the impl file's
             scope (via [open Spec]); without explicit annotations the merged
             form's declaration-order disambiguation no longer holds. *)

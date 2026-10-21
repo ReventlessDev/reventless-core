@@ -170,7 +170,7 @@ ingests both streams must know which side it came from to interpret the envelope
 
 > **Improvement:** define a **single** "stored event envelope" type that both
 > backends serialise into. Backend-specific extras (sequence vs position, tags)
-> can sit in a `storage: { ... }` sub-object or as recognised optional fields.
+> can sit in a `storage: { ... }` sub-object or as recognized optional fields.
 
 ### 3.3 Missing fields
 
@@ -346,7 +346,7 @@ Plus arbitrary extension attributes (lowercase, alphanumeric), e.g.:
    `data` shape. Our convention (`{ TAG, ...payload }` or `data: { ... }` +
    `event: "TAG"`) becomes a Reventless-specific layering on top.
 8. **Two write modes (binary / structured).** CloudEvents specifies both;
-   transports like SNS/SQS naturally favour binary mode (attributes), HTTP
+   transports like SNS/SQS naturally favor binary mode (attributes), HTTP
    prefers structured. Our adapters would need to pick — and document — a
    mode per transport. More surface area to test.
 9. **Larger payloads on average.** `specversion`, full URI `source`, full

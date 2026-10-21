@@ -88,7 +88,7 @@ all, so it would need the Scan back as its archive path. Prefer the composite.
 - The one-character cursor path tag (`s` Scan / `q` Query). A third read shape
   does not need a third tag — the fold changes the key condition, not the branch.
 - The `derived: true` flag that keeps the index off the SDL, and the four
-  emitters that honour it.
+  emitters that honor it.
 
 ### Consequences to plan for
 

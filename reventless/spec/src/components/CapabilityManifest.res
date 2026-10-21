@@ -76,7 +76,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
   let capabilityKeys =
     needs->Array.map(d => d.capability)->Belt.Set.String.fromArray->Belt.Set.String.toArray
   let capabilities = capabilityKeys->Array.filterMap(key =>
-    // An unrecognised capability is dropped rather than passed through: the
+    // An unrecognized capability is dropped rather than passed through: the
     // generator downstream renders a real `Platform.capability` arm, and a name
     // this build cannot map has no arm to render.
     CapabilityNeed.fromString(key)->Option.map(need => {

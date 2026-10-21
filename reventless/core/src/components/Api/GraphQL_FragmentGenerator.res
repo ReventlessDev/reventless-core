@@ -96,7 +96,7 @@ let rec fromSchemaType = (
   // names come from the schema — see `Reventless.TaggedUnion` — so the same union
   // is the same type wherever it appears, which is what lets AppSync merge each
   // source API's copy back into one, and what lets the write path stamp a
-  // `__typename` the SDL will recognise.
+  // `__typename` the SDL will recognize.
   | TaggedUnion(name, arms) =>
     if asInput {
       // GraphQL has no input unions. A command that wants one takes its arms as

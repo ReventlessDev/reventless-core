@@ -1,4 +1,4 @@
-// Behavioural tests for the in-memory cross-table field resolvers
+// Behavioral tests for the in-memory cross-table field resolvers
 // (`@resolves` / `@resolvesMany`). An Orders view carries a foreign `productId`
 // and a `productIds` array; both follow into a Products view's rows.
 //

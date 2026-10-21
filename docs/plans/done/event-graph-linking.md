@@ -32,7 +32,7 @@ All planned fields were populated:
 | _ => toCommandDef(~isAggregate, commandSchema)->Option.mapOr([], def => [def])
 ```
 
-**`DcbTag.extractVariantNames` excludes payload-less literals.** The function only processes `Object` variants with a TAG field. Payload-less variants (`| OrderPlaced`) serialize as `String({const})` and are excluded. This is correct: they carry no DCB tag data and do not participate in event-type cross-referencing. The `consistencyRead` heuristic works correctly with this behaviour (PlaceOrder SCS consumed `CatalogProductSynced` unambiguously → `Some("AvailableProducts")`; ShipOrder consumed no payload-bearing events → `None`).
+**`DcbTag.extractVariantNames` excludes payload-less literals.** The function only processes `Object` variants with a TAG field. Payload-less variants (`| OrderPlaced`) serialize as `String({const})` and are excluded. This is correct: they carry no DCB tag data and do not participate in event-type cross-referencing. The `consistencyRead` heuristic works correctly with this behavior (PlaceOrder SCS consumed `CatalogProductSynced` unambiguously → `Some("AvailableProducts")`; ShipOrder consumed no payload-bearing events → `None`).
 
 **Level/aggregateIdField heuristic.** For aggregates: always `Instance`, `aggregateIdField: None`. For SCS commands: inspect the command variant's properties for any field (other than TAG) where `DcbTag.isTagged` or `DcbTag.isTaggedArray` returns true → `Instance` with that field name; if none found → `Collection`.
 

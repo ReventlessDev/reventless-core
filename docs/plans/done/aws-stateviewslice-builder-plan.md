@@ -136,7 +136,7 @@ npm run build
 cd reventless/reventless-in-memory && npm test
 ```
 
-All 5 in-memory StateViewSlice E2E tests must still pass (no behaviour change —
+All 5 in-memory StateViewSlice E2E tests must still pass (no behavior change —
 only the AWS package now has a real implementation instead of a no-op).
 
 **Status**: 🔲 TODO

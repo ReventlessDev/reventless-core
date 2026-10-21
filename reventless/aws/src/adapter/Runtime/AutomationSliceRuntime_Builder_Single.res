@@ -533,7 +533,7 @@ let finish = () =>
         // HANDLER_CONFIG: this is one shared Lambda and every slice on it reaches
         // the same capability. A capability the platform did not provision arrives
         // as "", which its client reads as "not configured" and reports as a
-        // retryable `Unavailable` — a modelled outcome rather than a missing
+        // retryable `Unavailable` — a modeled outcome rather than a missing
         // variable that fails as a crash.
         PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
           envVars->Dict.set(name, value->Pulumi.Output.asInput)
@@ -782,7 +782,7 @@ let finishWithDcbEventLog = (
         // HANDLER_CONFIG: this is one shared Lambda and every slice on it reaches
         // the same capability. A capability the platform did not provision arrives
         // as "", which its client reads as "not configured" and reports as a
-        // retryable `Unavailable` — a modelled outcome rather than a missing
+        // retryable `Unavailable` — a modeled outcome rather than a missing
         // variable that fails as a crash.
         PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
           envVars->Dict.set(name, value->Pulumi.Output.asInput)

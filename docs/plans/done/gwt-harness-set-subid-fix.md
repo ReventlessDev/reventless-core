@@ -42,7 +42,7 @@ let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
   }
 ```
 
-`addState` already extracts the sub-ID via `getSubId` and either updates an existing entry with the same sub-ID or appends a new one — exactly matching the production upsert behaviour.
+`addState` already extracts the sub-ID via `getSubId` and either updates an existing entry with the same sub-ID or appends a new one — exactly matching the production upsert behavior.
 
 ### `Init` mode with sub-ID
 
@@ -56,4 +56,4 @@ let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
 
 ## Verification
 
-After the fix, any StateViewSlice GWT test that uses `Set` on a `@subId` table should be able to assert accumulation across multiple events or multiple sub-entries per projection. Downstream consumers with pinned tests can update their expectations to assert the correct (non-clobbered) behaviour.
+After the fix, any StateViewSlice GWT test that uses `Set` on a `@subId` table should be able to assert accumulation across multiple events or multiple sub-entries per projection. Downstream consumers with pinned tests can update their expectations to assert the correct (non-clobbered) behavior.

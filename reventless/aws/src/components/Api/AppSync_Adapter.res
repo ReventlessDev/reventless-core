@@ -197,13 +197,13 @@ let rec waitForMergeSuccess = async (
 // the opposite of what the spec says. AppSync has no anonymous mode to emit
 // instead (`authenticationType` is API_KEY | AWS_IAM | AMAZON_COGNITO_USER_POOLS
 // | OPENID_CONNECT, and this adapter provisions Cognito primary with AWS_IAM
-// additional), so there is no directive that means "no auth". The old behaviour
+// additional), so there is no directive that means "no auth". The old behavior
 // deployed green, passed `assertGateable`, worked on the local platform — whose
-// resolvers call `Authorization.isAllowed` and honour the rule — and refused
+// resolvers call `Authorization.isAllowed` and honor the rule — and refused
 // anonymous callers only on AWS. It failed CLOSED, which is why nothing
 // surfaced it.
 //
-// Refusing follows `Auth_LoginIdentifier`'s rule for an unrecognised spelling:
+// Refusing follows `Auth_LoginIdentifier`'s rule for an unrecognized spelling:
 // a silent contradiction of the source is worse than a stopped deploy, because
 // only one of the two is discoverable. AppSync mutations have no runtime
 // authorization check to fall back on — the only `Authorization.isAllowed` call

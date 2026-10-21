@@ -174,7 +174,7 @@ These are applied to individual nodes with `{ class: <name> }`.
 For state machines whose nodes are **statuses rather than components** — a TODO
 item's lifecycle, say. Reach for these instead of borrowing a component class:
 a box labelled `Completed` styled `read-model` claims the status *is* a read
-model, and picks up a colour that means something else in every other diagram.
+model, and picks up a color that means something else in every other diagram.
 They are deliberately paler than the component classes so a status diagram does
 not read as a diagram of components.
 
@@ -413,5 +413,5 @@ write_side.event_topic -> read_side.view_slices_row: events
 
 Every class used above lives in `packages/doc/d2/reventless.d2`, which the docs
 build prepends to each diagram automatically — there is no import line to write.
-Read that file for the full list; never write a raw colour into a diagram, since
+Read that file for the full list; never write a raw color into a diagram, since
 a hand-picked hex is exactly what stops one page's diagram matching the next.

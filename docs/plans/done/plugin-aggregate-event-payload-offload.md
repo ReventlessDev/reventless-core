@@ -42,7 +42,7 @@ One-time data repair (already done, not migration code — alpha example data): 
 ## Done since — `@offload` ppx shorthand (2026-08-03)
 
 `packages/reventless-ppx/src/ppx/OffloadInference.ml` (new) + wired into `ReventlessPpx.ml` right
-after the `StorageRefInference` line. Modelled on `StorageRefInference.ml`. Surface:
+after the `StorageRefInference` line. Modeled on `StorageRefInference.ml`. Surface:
 
 ```
 @offload("store") structure: option<pluginStructure>          // → optionSchema
@@ -214,7 +214,7 @@ the frozen corpus must decode green** (see Serialization).
 ### The `@offload` marker (ppx) + provisioning
 
 Add `Semantic.Id.offload` alongside `storageRef` (`reventless/spec/src/semantic/Semantic.res:56`)
-and an `Offload` module (`reventless/spec/src/semantic/Offload.res`) modelled on `StorageRef.res`.
+and an `Offload` module (`reventless/spec/src/semantic/Offload.res`) modeled on `StorageRef.res`.
 The `@offload` field marker:
 
 - declares the target store and carries an optional threshold: record form

@@ -44,7 +44,7 @@ entry, and the guide.
 - **Runtime meaning.** Nothing the compiler or the framework sees changes. The PPX only writes
   a file beside the module, and only when asked to.
 - **Identity modules** (`include Reventless.Id.Make(...)`). They declare no `@schema` type of
-  their own, so the rule does not select them, and they stay recognised by name
+  their own, so the rule does not select them, and they stay recognized by name
   (`Util.identity_module`).
 - **Positional payloads.** `Foo(string)` is recorded as payloadless in `.model.json` today
   (`fields_of_args` keeps inline-record payloads only), and the same encoding is reused
@@ -65,7 +65,7 @@ A module gets a `.types.json` when all of these hold:
   sidecar or none, and none of them is a module of shared types;
 - it declares at least one top-level `@schema` type.
 
-A module is selected by what it is, the way an identity module is recognised by its name and
+A module is selected by what it is, the way an identity module is recognized by its name and
 not by an annotation. So a shared type written by hand, or before this existed, is read like
 one a tool wrote.
 

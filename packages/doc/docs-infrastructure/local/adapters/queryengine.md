@@ -13,7 +13,7 @@ sidebar_position: 10
 
 Created via `Make(Bus)` functor. Uses the bus's QueryDb registries to look up data:
 
-- **`scan`** — calls `Bus.getQueryDbStream(readModelName)` and applies `Stream.take(limit)` to honour the limit without loading all items. Falls back to `Bus.getQueryDbScan` for backward compatibility.
+- **`scan`** — calls `Bus.getQueryDbStream(readModelName)` and applies `Stream.take(limit)` to honor the limit without loading all items. Falls back to `Bus.getQueryDbScan` for backward compatibility.
 - **`query`** — calls `Bus.getQueryDb(readModelName)` to get the operations record, then uses `loadStream` with optional `Stream.take(limit)`.
 
 ## Operations

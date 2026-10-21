@@ -178,7 +178,7 @@ describe("semantic scalars:", () => {
     testSync("rejects a named colour", () => expect(accepts("rebeccapurple"))->toBe(false))
 
     // The swatch sets this value as a CSS `background`, where CSS accepts much
-    // more than a colour.
+    // more than a color.
     testSync(
       "rejects a CSS function",
       () => expect(accepts("url(https://evil.example/x.png)"))->toBe(false),

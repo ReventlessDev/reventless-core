@@ -62,7 +62,7 @@ export default function VersionBanner() {
   // to be `position: sticky; top: 60px`, which reserved its height at the very
   // top of the document and then painted itself 60px lower — leaving an empty
   // band above the header on every page. Layout lives in `.version-banner`
-  // (custom.css); only the per-version colour is inline.
+  // (custom.css); only the per-version color is inline.
   return (
     <div className="version-banner" style={{backgroundColor: banner.backgroundColor}}>
       <strong>{banner.label} Version:</strong> {banner.message}

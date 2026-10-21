@@ -1,4 +1,4 @@
-# ReScript Monorepo Build Behaviour
+# ReScript Monorepo Build Behavior
 
 ## How the root build handles dependency packages
 

@@ -42,7 +42,7 @@
 **Implementation.** Reuses the Phase 1 metadata pipeline:
 
 1. `Reventless.StateAnnotations.stateAnnotationSpec` (`reventless/reventless-spec/src/components/StateAnnotations.res`) gained two fields: `hidden: array<string>` and `summary: array<string>`.
-2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognises `@hidden` and `@summary` on fields within `@schema type state` (`has_hidden_field_attr`, `has_summary_field_attr`), strips them via `strip_visibility_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and validates that no field carries both (`validate_visibility_annotations` raises `@hidden and @summary cannot both appear on the same field 'X'`). The collected names are written into the metadata record.
+2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognizes `@hidden` and `@summary` on fields within `@schema type state` (`has_hidden_field_attr`, `has_summary_field_attr`), strips them via `strip_visibility_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and validates that no field carries both (`validate_visibility_annotations` raises `@hidden and @summary cannot both appear on the same field 'X'`). The collected names are written into the metadata record.
 3. `SuryToJsonSchema.mergeAnnotations` (`reventless/reventless-core/src/components/Api/SuryToJsonSchema.res`) emits `"x-reventless-hidden": true` and `"x-reventless-summary": true` on the matching field schemas.
 
 **Tests.**
@@ -62,7 +62,7 @@
 **Implementation.** Reuses the Phase 1 metadata pipeline:
 
 1. `Reventless.StateAnnotations.stateAnnotationSpec` (`reventless/reventless-spec/src/components/StateAnnotations.res`) gained three fields: `drillTargets: array<(string, string)>` (`(fieldName, sliceName)` pairs), `drillTargetKeys: array<(string, string)>` (`(fieldName, keyPath)` pairs — only fields with an explicit `key` parameter), and `collapsed: array<string>`.
-2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognises `@drillTarget(...)` and `@collapsed` on fields within `@schema type state` (`has_drill_target_field_attr`, `has_collapsed_field_attr`, `find_drill_target_attr`, `get_drill_target_args`), strips them via `strip_drill_collapsed_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and writes the collected names/pairs into the metadata record. `@drillTarget` accepts both the short string-literal form `@drillTarget("SliceName")` and the record form `@drillTarget({slice: "SliceName", key: "field1/field2"})`.
+2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognizes `@drillTarget(...)` and `@collapsed` on fields within `@schema type state` (`has_drill_target_field_attr`, `has_collapsed_field_attr`, `find_drill_target_attr`, `get_drill_target_args`), strips them via `strip_drill_collapsed_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and writes the collected names/pairs into the metadata record. `@drillTarget` accepts both the short string-literal form `@drillTarget("SliceName")` and the record form `@drillTarget({slice: "SliceName", key: "field1/field2"})`.
 3. `SuryToJsonSchema.mergeAnnotations` (`reventless/reventless-core/src/components/Api/SuryToJsonSchema.res`) emits `"x-reventless-drillTarget": "SliceName"`, `"x-reventless-drillTargetKey": "field1/field2"` (only when supplied), and `"x-reventless-collapsed": true` on the matching field schemas.
 
 **Tests.**

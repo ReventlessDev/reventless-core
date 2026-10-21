@@ -82,7 +82,7 @@ so a mapping can project `meta.time` into its state today.
 **Consequences of the gap:**
 
 - No DCB-backed view can carry a `registeredAt`/`placedAt`/`shippedAt`
-  timestamp without putting one in the *event payload* — a modelling
+  timestamp without putting one in the *event payload* — a modeling
   regression that has to be repeated in every example and every user's domain.
   The producer already stamped the time; asking the command author to stamp it
   again is asking them to duplicate framework state into their domain events.
@@ -203,7 +203,7 @@ into a feature zoo.
 ## Acceptance
 
 - Every example and test projection compiles; GWT tests pass with unchanged
-  behaviour (the envelope is additive to what the body sees).
+  behavior (the envelope is additive to what the body sees).
 - `Orders` exposes a field with `format: "date-time"` in its plugin structure,
   verified by inspecting the generated structure, not by inference.
 - Downstream check on the UI side: CalendarView is offered as a toggle on the

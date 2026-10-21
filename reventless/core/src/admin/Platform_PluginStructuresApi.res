@@ -43,7 +43,7 @@ let sdlTypes: array<string> = [
   // reason the capability above is: a plugin built against a newer framework,
   // naming a posture this schema has never heard of, still decodes.
   //
-  // It records ORIGIN, never behaviour — a grafted file is the host's to edit
+  // It records ORIGIN, never behavior — a grafted file is the host's to edit
   // afterwards — so a reader must not paint a declared graft as a verified one.
   `type Platform_TraitDeclaration {\n  trait: String!\n  version: String!\n  posture: String!\n  component: String!\n}`,
   // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` /

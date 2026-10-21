@@ -111,7 +111,7 @@ It answers nothing else, and every other read is unchanged: it is absent from th
 list, from the index reads, from `X(id:)`, from the ordinary by-ids door, and
 from the live change frame's payload.
 
-Opt-in per record. Absent the opt-in, today's behaviour holds everywhere.
+Opt-in per record. Absent the opt-in, today's behavior holds everywhere.
 
 ---
 
@@ -148,7 +148,7 @@ projected `displayName` column ([DisplayNameInference.ml](../../../packages/reve
 A per-field opt-in on a composed label has to answer what
 `@displayName(Public) firstName` beside a plain `@displayName lastName` means,
 and every answer is bad: refuse it and the annotation carries a rule about its
-siblings, honour either reading and half a name is public by typo. The property
+siblings, honor either reading and half a name is public by typo. The property
 is the record's — *this kind of row keeps its name* — so it goes on the record.
 
 A file-level `@@reventless.namedWhenRetired` was the third candidate. Rejected
@@ -178,7 +178,7 @@ and because a reference door that resolves a name a caller can never open is hal
 a feature.
 
 **`includeRetired` extends to the single-entity and by-ids doors**, with the
-identical rule it already has on the list: honoured for a caller who was going to
+identical rule it already has on the list: honored for a caller who was going to
 be allowed the row, ignored (not refused) for one who was not. No new predicate,
 no new audience — the same argument reaching two doors that were built to accept
 it and were not given it.

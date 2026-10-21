@@ -377,11 +377,11 @@ let kind_for_base base =
 (* Kind name for a given folder segment or filename stem, or None if the
    segment doesn't correspond to any DSL kind.
 
-   Recognises four spellings of every known slice base:
+   Recognizes four spellings of every known slice base:
      "Foo", "Foos", "FooSlice", "FooSlices"
    The [slice_base_to_kind] table maps each base to its emitted kind name.
 
-   Also recognises the Aggregate-pattern architectural folders [Aggregate]
+   Also recognizes the Aggregate-pattern architectural folders [Aggregate]
    and [ReadModel] (and their plurals) — they aren't slice bases but they
    are valid `tests/<Entity>/Aggregate|ReadModel/<Spec>_GWT.res` host
    folders, mapped to [Behavior] (with the Aggregate-side functor) and
@@ -458,7 +458,7 @@ let dsl_kind_of_segment part : string option =
    Scans folder segments innermost-first (closest-to-file wins) so a path
    like [tests/StateChange/Migrations/StateView/X_GWT.res] classifies as
    StateView rather than StateChange — the immediate folder is a better
-   signal of a test's subject than an outer organisational ancestor.
+   signal of a test's subject than an outer organizational ancestor.
    Falls back to the filename stem if no folder segment matches. *)
 let derive_gwt_kind fname : string option =
   let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
@@ -493,7 +493,7 @@ let gwt_test_suffixes = ["_GWT"; "GwtTest"; "Gwt"]
 
 (* Strip one of the GWT-test suffixes from the filename stem.
    Returns the Spec module name (the remainder), or None if the filename
-   doesn't end in a recognised GWT suffix. *)
+   doesn't end in a recognized GWT suffix. *)
 let spec_name_from_gwt_filename fname : string option =
   let stem =
     let base = Filename.basename fname in

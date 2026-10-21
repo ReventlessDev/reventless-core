@@ -39,7 +39,7 @@ type source =
 ```
 
 — intends the field to be nullable (the `?`), and legacy/older rows that predate the column
-legitimately hold no value. The generator is meant to honour that, and does so for scalars and
+legitimately hold no value. The generator is meant to honor that, and does so for scalars and
 objects, but not for enums.
 
 ## Root cause
@@ -84,7 +84,7 @@ fields with `~required=true` (line 80). `Nullable(inner)` recurses with `~requir
 
 A **required** (non-optional) variant field is unaffected: its sury schema is
 `S.union([literals])` with no null member, so `nonNullVariants == anyOf`, it stays a bare
-`Enum`, and correctly renders `Name!` — this is the existing, desired behaviour for
+`Enum`, and correctly renders `Name!` — this is the existing, desired behavior for
 `Platform_PluginKind` and friends. The fix must preserve that.
 
 ## Change
@@ -126,7 +126,7 @@ branch, mirroring what the single-variant branch already does. In
 
 Scope notes:
 
-- Only the enum branch changes behaviour. The single-variant branch is untouched (it already
+- Only the enum branch changes behavior. The single-variant branch is untouched (it already
   wraps in `Nullable`).
 - A required variant type (no null member) has `isOptional == false` → still a bare `Enum`
   → still renders `Name!`.
@@ -140,7 +140,7 @@ Scope notes:
 generated fragments (e.g. `kind: Platform_PluginKind!` at ~line 910). Add a sibling assertion
 using a fixture fragment that carries **both**:
 
-- a **required** variant field → asserts `field: SomeEnum!` (guards the existing behaviour), and
+- a **required** variant field → asserts `field: SomeEnum!` (guards the existing behavior), and
 - an **optional** variant field (`foo?: variantType`) → asserts the SDL contains `field: SomeEnum`
   and does **not** contain `field: SomeEnum!`.
 

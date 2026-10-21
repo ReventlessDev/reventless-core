@@ -43,7 +43,7 @@ describe("CapabilityNeed", () => {
     )
 
     // The rule that keeps every deployment working today: an unprovisioned
-    // capability nobody named is a modelled outcome, not a deploy failure.
+    // capability nobody named is a modeled outcome, not a deploy failure.
     testSync(
       "a plugin that declares nothing is never unmet",
       () => expect(CapabilityNeed.unmet(~declared=[], ~provisioned=[]))->toEqual([]),

@@ -261,7 +261,7 @@ This is also the answer to *"what if the GWT scenarios aren't there?"*:
 
 | | Missing scenario ⇒ | Failure mode |
 |---|---|---|
-| **Open-world gate** | generator improvises the cell | unspecified behaviour ships silently |
+| **Open-world gate** | generator improvises the cell | unspecified behavior ships silently |
 | **Closed-world gate** | cell refuses | the feature is *absent*, visibly, at first use |
 
 Fail-closed is the correct default for generated domain logic, and it costs one
@@ -273,7 +273,7 @@ scenarios, and everything is fine" true rather than approximately true.
 ## 6. What the corpus still cannot give you
 
 §5.3 of the GWT analysis names cross-entity invariants, side-effect contracts and
-read-model query patterns. The `Customer` behaviour adds a sharper category —
+read-model query patterns. The `Customer` behavior adds a sharper category —
 **guards that compare a payload against current state**:
 
 ```rescript
@@ -347,7 +347,7 @@ coverage obligation, not a claim to be checked.**
 
 | Option | Verdict now |
 |---|---|
-| (A) silent `NotRetired` default | **Unnecessary.** The corpus answers it, and answers it from `decide`'s behaviour rather than the read model's `@retired`. |
+| (A) silent `NotRetired` default | **Unnecessary.** The corpus answers it, and answers it from `decide`'s behavior rather than the read model's `@retired`. |
 | (B) spec-level `@@reventless.transition` | **Unnecessary as a default.** Possibly useful as a *bulk obligation* declaration. |
 | (C) pair the specs by name | **Still dissolved** — `linkedViews` already answers it, and the corpus needs the link only for labelling. |
 | (D) `NotRetired` payload | **Repurposed** — from from-set shorthand to obligation generator (7.1 §4). |
@@ -378,7 +378,7 @@ landing:
 
 ### 7.4 What stays hand-written
 
-Generated behaviour should follow the precedent already set by
+Generated behavior should follow the precedent already set by
 `generate-plugin`: `src/Plugin.res` is generated, **committed to git**, and
 compiled directly by CI. Generate `Customer_Behavior.res` the same way —
 generated once, owned thereafter, regenerable for new constructors without

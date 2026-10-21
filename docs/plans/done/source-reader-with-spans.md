@@ -85,7 +85,7 @@ arrive as `res.doc` attributes and are reported like any other attribute.
 - **Exit:** a test over every spec file of the hybrid example: every span, cut from the file, is
   exactly the member's source.
 
-### S2 — GWT files and behaviour outlines
+### S2 — GWT files and behavior outlines
 
 - For a `@@reventless.gwt` file: each `test(...)` with its title, span, scenario id marker (if
   any), and the chain's steps (`given…`, `when…`, `then…`). Each step has its element and its

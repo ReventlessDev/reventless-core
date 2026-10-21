@@ -18,7 +18,7 @@ interface:
 Both expose identical `load` / `save` / `delete` (+ batch and stream) operations and
 publish the same state-change descriptors on the bus. The notable difference is
 **fidelity to the AWS feature set**: the in-memory backend ignores secondary indexes and
-TTL, while the SQLite backend honours both (see below).
+TTL, while the SQLite backend honors both (see below).
 
 ## Operations
 
@@ -90,7 +90,7 @@ column lives on the same row, so there is no covering-index distinction.
 
 ### TTL
 
-TTL is honoured via **lazy expiry**: every read clause carries
+TTL is honored via **lazy expiry**: every read clause carries
 `(expires_at IS NULL OR expires_at > strftime('%s','now'))`. There is no background
 sweeper — expired rows linger on disk until they are next read (filtered out) or
 overwritten by a new `save`.

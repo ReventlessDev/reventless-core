@@ -204,7 +204,7 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
   the DcbBuilder path was dormant. Confirmed viable; Phase 1 stands up the admin DcbEventLog
   now (so the plan's "low risk" label for Phase 1 was optimistic).
 - **Deregistration rides `DisconnectPlugin`** through the second EP mapping — no automation
-  slice (honours "composition stays lazy / no automation"). The disconnect schedule already
+  slice (honors "composition stays lazy / no automation"). The disconnect schedule already
   sends `DisconnectPlugin` on heartbeat timeout, so timeout and graceful disconnect both
   deregister. (Known gap kept for now: admin `Deactivate`/`Retire` don't flow through the EP,
   so they don't deregister — acceptable per the analysis's blessed UI staleness.)
@@ -1398,7 +1398,7 @@ and the bespoke mjs + 2nd-stream-reader hack both disappear. Local pays a writte
   subsequent plugin deploys' stitches.
 - Final retirement of a plugin removes its fields from the stitched schema; version
   supersession and transient disconnects do not.
-- Host-shell UI behaviour unchanged (same `Platform_UIFragments` response shape).
+- Host-shell UI behavior unchanged (same `Platform_UIFragments` response shape).
 - The Plugin aggregate's events and RM no longer carry fragment payloads.
 - reventless-local exercises both registries fully in-process (no AWS needed for tests).
 - Core-emitted SDL and fragments contain no provider directives (`@aws_*`); the AWS adapter

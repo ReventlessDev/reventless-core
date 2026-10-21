@@ -792,7 +792,7 @@ The composite key value (`"tenant-a/prod-123"`) is then returned in `acceptedRes
 
 ### 8.6 Constraints
 
-- **AWS path**: `publishJsonsAndWait: None` means DCB commands return `Pending` on AWS. `entityId` and `eventCount` are not populated on the AWS path. Consistent with current aggregate behaviour — addressable when AWS sync support is added.
+- **AWS path**: `publishJsonsAndWait: None` means DCB commands return `Pending` on AWS. `entityId` and `eventCount` are not populated on the AWS path. Consistent with current aggregate behavior — addressable when AWS sync support is added.
 - **Extension point commands**: there are three distinct reasons why `entityId` is absent for EP commands, and they compound on each other.
 
   **What an EP command dispatch actually does.** When a client sends an EP mutation, the command travels to the extension point's CommandTopic. `ExtensionPoint_Callback.handleIncomingCommands` collects the batch, runs it through every registered `Mapping` module's `mapIncomingCommand` function, and executes the resulting `abstractCommandAction` values concurrently. Each action is either an `AbstractPublishCommand(aggregateName, reference, cmdJson)` — which fires the encoded command at the named aggregate's CommandTopic — or an `AbstractCall` side-effect. Crucially, `applyCommandAction` uses the aggregate's existing `publishJsons` (fire-and-forget), not `publishJsonsAndWait`. The EP callback returns `Ok(reference)` as soon as the downstream publish call is dispatched, without waiting for the target aggregate to run `decide`.

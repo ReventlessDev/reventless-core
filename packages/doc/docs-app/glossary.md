@@ -39,7 +39,7 @@ types the behavior operates on.
 ## Business capability
 
 **Not a framework concept.** A term from enterprise architecture and business
-analysis (TOGAF, ArchiMate, BIZBOK) for *what an organisation is able to do* —
+analysis (TOGAF, ArchiMate, BIZBOK) for *what an organization is able to do* —
 "Order Fulfilment", "Customer Management" — named so it stays stable while the
 systems realizing it change. Capability maps decompose these into levels and are
 used to plan investment, not to describe software.
@@ -89,13 +89,13 @@ into a map point. A [domain trait](#domain-trait) packages one as compiled rules
 a host calls.
 
 Not a [platform capability](#platform-capability), and the distinction is worth
-keeping sharp: a competency is domain behaviour, a platform capability is
+keeping sharp: a competency is domain behavior, a platform capability is
 infrastructure the deployment provides, and a trait that needs one *declares* it.
 `trait-notification` is a competency, and it declares the `Messaging` platform
 capability.
 
 Not a [business capability](#business-capability) either — that term belongs to
-enterprise architecture, where it names what an organisation does at the
+enterprise architecture, where it names what an organization does at the
 strategic altitude; a competency is a *supporting* one packaged as code.
 
 ## Consumed event
@@ -214,7 +214,7 @@ point and "platform" is claimed by platform engineering. The two name the same
 thing; this is the term used throughout the framework, because the type is
 `Platform.capability`.
 
-Distinct from a [competency](#competency), which is domain behaviour rather than
+Distinct from a [competency](#competency), which is domain behavior rather than
 infrastructure.
 
 ## Plugin

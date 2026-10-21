@@ -30,7 +30,7 @@ type sink = {
   ) => unit,
 }
 
-// The currently-registered sink, if any. `None` → plain Jest behaviour.
+// The currently-registered sink, if any. `None` → plain Jest behavior.
 let current: ref<option<sink>> = ref(None)
 
 let register = (s: sink) => current := Some(s)

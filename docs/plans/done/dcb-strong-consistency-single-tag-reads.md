@@ -31,7 +31,7 @@ GSI-based reads (multi-tag, composite) cannot opt into strong consistency — fu
 
 ## Approach
 
-Add an optional `~strongConsistency: bool=?` parameter to `queryByPartitionKeyStream` (and the parallel non-stream `queryByPartitionKey`). Thread through to `consistentRead` on the `QueryCommand.input`. Default off — preserves current behaviour for callers that don't opt in.
+Add an optional `~strongConsistency: bool=?` parameter to `queryByPartitionKeyStream` (and the parallel non-stream `queryByPartitionKey`). Thread through to `consistentRead` on the `QueryCommand.input`. Default off — preserves current behavior for callers that don't opt in.
 
 Then add a similar opt-in path through `executeQueryItemStream` and `readStream` so the slice can enable it. Important: only the single-tag branch consumes the flag — multi-tag and scan branches ignore it (and would error if they tried, since DynamoDB rejects `consistentRead: true` on GSIs).
 
@@ -98,7 +98,7 @@ Add `consistentRead` to `queryByPartitionKeyStream` (and non-stream variant). Wi
 
 Unit-level: confirm the `QueryCommand.input` carries `consistentRead: true` for the single-tag path and not for the multi-tag / scan paths. Pattern follows the existing `DcbEventLogStorage_DynamoDb_RuntimeTest.res`.
 
-### Step 4 — Verify behaviour in the AWS integration test
+### Step 4 — Verify behavior in the AWS integration test
 
 Once the AWS integration test plan ([dcb-dynamodb-atomic-append-integration-test.md](./dcb-dynamodb-atomic-append-integration-test.md)) lands, add a regression: write event A → immediately read with `strongConsistency=true` → A must be visible. Compare to `strongConsistency=false` where DynamoDB Local may serve stale.
 

@@ -45,7 +45,7 @@ over those days — for real, because the events really happened then.
 - **Running follow-ups on a schedule.** Once a follow-up exists, a scheduled job is
   only a way of starting it. That job, and the credentials it needs, can be a
   plan of its own.
-- **Giving the delivery window behaviour in the domain** — for example, shipping an
+- **Giving the delivery window behavior in the domain** — for example, shipping an
   order only when its window comes close. The window stays display data; this plan
   only makes the seeded windows consistent with what happens to the orders.
 - **A different set of demo data.** Products, categories and names stay as they are.

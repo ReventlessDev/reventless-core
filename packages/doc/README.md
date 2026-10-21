@@ -9,7 +9,7 @@ The site is built with [Docusaurus](https://docusaurus.io/) and published to
 
 ## What's covered
 
-The site is organised as five documentation instances, one per audience, in the
+The site is organized as five documentation instances, one per audience, in the
 order a reader meets them:
 
 - **Why Reventless** (`docs-why`) — evaluating it: the model, what you provide

@@ -230,6 +230,6 @@ Implement the framework-level pieces in this order:
 6. Publish the recommended IAM policy template for layer 4 in the
    deployment guide.
 
-The framework changes are small and reversible. The behavioural change for
+The framework changes are small and reversible. The behavioral change for
 operators is significant: prod wipes now require an explicit two-step
 unprotect, which is exactly the friction the system was missing.

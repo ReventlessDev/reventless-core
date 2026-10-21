@@ -83,7 +83,7 @@ Two options:
 
 Recommendation: accurate. Cost is negligible for typical batch sizes.
 
-Also broaden `SQS_Error.classify` to recognise `BatchRequestTooLong` as a non-retryable size error (currently classifies as `Permanent` but with no telemetry).
+Also broaden `SQS_Error.classify` to recognize `BatchRequestTooLong` as a non-retryable size error (currently classifies as `Permanent` but with no telemetry).
 
 ---
 

@@ -17,7 +17,7 @@ pnpm is chosen because:
 
 - **`workspace:*` protocol.** Explicit, first-class declarations for workspace deps instead of npm's implicit global hoisting. Makes the dep graph legible and lockfile-accurate.
 - **Overlay-based cross-repo linking.** A single gitignored config file toggles between "link mode" (sibling repo as live source) and "release mode" (registry version). No edits to committed files.
-- **Stable workspace semantics.** npm's hoisting behaviour has shifted multiple times; pnpm's rules are explicit.
+- **Stable workspace semantics.** npm's hoisting behavior has shifted multiple times; pnpm's rules are explicit.
 - **No rebuild thrash on topology changes.** Adding/removing a workspace in pnpm re-wires symlinks predictably.
 
 **What pnpm does NOT give us** (demoted from the original plan's thesis): strict hoisting does **not** cleanly fix ReScript's cross-repo duplicate-package traversal. Phase 0 showed that ReScript's compiler walks `node_modules/@reventlessdev/*` via node-module resolution, which requires a *hoisted* layout to satisfy the phantom deps this codebase has accumulated. We therefore run pnpm in `node-linker=hoisted` mode, which produces an npm-like flat layout while preserving pnpm's other benefits.
@@ -355,7 +355,7 @@ In every consumer package that depends on `@reventlessdev/reventless-ui`:
 }
 ```
 
-Behaviour:
+Behavior:
 
 - **Link mode** (sibling path in workspace): resolves to the local working copy.
 - **Release mode** (no sibling): pnpm resolves `workspace:*` to the locked registry version. For a fresh clone in release mode, `pnpm install --frozen-lockfile` is authoritative.

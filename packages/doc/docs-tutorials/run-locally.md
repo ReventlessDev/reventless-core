@@ -42,7 +42,7 @@ pnpm run build      # after any source change (setup did the first one)
 pnpm run dev:full   # backend + UI together
 ```
 
-`dev:full` starts three processes side by side (colour-coded `[rs]` / `[backend]` / `[ui]`):
+`dev:full` starts three processes side by side (color-coded `[rs]` / `[backend]` / `[ui]`):
 a ReScript watcher that recompiles on change, the backend, and the UI dev server. The backend
 exposes two endpoints:
 

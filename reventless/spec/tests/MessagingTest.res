@@ -2,7 +2,7 @@
 // addressed to, which failures are worth retrying, and what a deployment that
 // provisions nothing says about itself.
 //
-// Every transport derives its retry behaviour from `retriable`, so getting these
+// Every transport derives its retry behavior from `retriable`, so getting these
 // wrong is expensive in both directions — retrying a refused address burns the
 // budget on an outcome that will not change, and abandoning a transient outage
 // writes off a message that would have gone.
@@ -176,7 +176,7 @@ describe("Messaging", () => {
     )
 
     // Push presence is a function of `pushServices` and nothing else, so a `Push`
-    // handed to the channel list is dropped rather than honoured.
+    // handed to the channel list is dropped rather than honored.
     testSync(
       "a push channel claimed without a service behind it is dropped",
       () =>

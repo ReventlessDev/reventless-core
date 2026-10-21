@@ -28,7 +28,7 @@ type discoveredFile = {
 let folderToComponentType = ComponentKind.folderToKind
 
 // The intra-plugin grouping band ("chapter") a file belongs to, derived from its
-// path relative to `src/`: the first directory segment that is not a recognised
+// path relative to `src/`: the first directory segment that is not a recognized
 // kind-folder. `src/<Chapter>/<Kind>/<Component>.res` → `Some("<Chapter>")`; a file
 // directly under a kind-folder (`src/<Kind>/<Component>.res`) or at the src root →
 // `None`. Uses the single-source `ComponentKind.isKindFolder`, so a chapter read

@@ -145,5 +145,5 @@ capability list and keep it in the comment describing it.
 `requiredStoreDeclaration` gained a **required** field, and `pluginStructure` is persisted. Plugin
 definitions written before this change no longer decode and must be re-emitted — the same
 alpha-wipe/reconnect that `requiredStores` and `requiredStoreDeclarations` each needed when they
-landed, and for the identical reason. Nothing in the capability list or the deployed behaviour
+landed, and for the identical reason. Nothing in the capability list or the deployed behavior
 changes; the reconnect is purely to re-persist definitions in the new shape.

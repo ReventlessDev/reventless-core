@@ -48,7 +48,7 @@ removing the old spellings once nothing depends on them any more.
 ## Also never recorded
 
 The parent's two-stacks-one-pool verification: two platform stacks on one
-provider id, a role switch through either stack's resolver honoured by the next
+provider id, a role switch through either stack's resolver honored by the next
 token whichever trigger holds the slot, and a switch in one **not** narrowing the
 caller's session in the other (`(sub, clientId)` keying, checked from decoded
 tokens). Single-stack narrowing is live on alpha since 2026-09-09. Worth doing

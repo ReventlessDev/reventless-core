@@ -4,7 +4,7 @@ title: Aggregate-Based Implementation
 
 # Aggregate-Based Implementation
 
-The aggregate-based approach uses a **separate event log per aggregate instance**. Each entity in the domain is modelled as an aggregate with its own stream of events. Commands are processed by loading the aggregate's event history, running business logic, and appending new events to that aggregate's log.
+The aggregate-based approach uses a **separate event log per aggregate instance**. Each entity in the domain is modeled as an aggregate with its own stream of events. Commands are processed by loading the aggregate's event history, running business logic, and appending new events to that aggregate's log.
 
 This is the traditional event sourcing pattern and the starting point for most Reventless applications.
 
@@ -12,7 +12,7 @@ This is the traditional event sourcing pattern and the starting point for most R
 
 ## Plugin 1: Catalog
 
-Manages the product catalogue — what is available for sale and how it is organized.
+Manages the product catalog — what is available for sale and how it is organized.
 
 ### Aggregate: `Product`
 

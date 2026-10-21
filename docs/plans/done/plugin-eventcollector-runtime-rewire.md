@@ -371,7 +371,7 @@ Step 6
 
 3. **Functor application from .mjs is fragile.** `PluginConnectExtension_Builder.Make(Spec)` and friends compile to JS factory calls — getting the Spec object shape right requires care (we hit this exact class of bug with `Util_PulumiShim`/`patchSpecId` earlier this session). Recommendation: write a tiny smoke test (Node script) that constructs the same Spec shape and calls `Make` locally, verifies the returned object has the expected `.ConnectPluginMapping` etc. — cheaper than the manual layer-patch loop.
 
-4. **Admin lambda must not regress.** The admin currently works (modulo Plugin RM population). The new entry point needs to handle admin's `extensionPoints: [{Plugin EP}], extensions: []` configuration as a strict superset of today's behaviour. Step 2.5's verification gate is load-bearing.
+4. **Admin lambda must not regress.** The admin currently works (modulo Plugin RM population). The new entry point needs to handle admin's `extensionPoints: [{Plugin EP}], extensions: []` configuration as a strict superset of today's behavior. Step 2.5's verification gate is load-bearing.
 
 ## Out of scope
 

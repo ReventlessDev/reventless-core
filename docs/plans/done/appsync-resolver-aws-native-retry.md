@@ -179,7 +179,7 @@ followed from this:
 4. **Keep helpful logging in the retry loop.** The
    `[AppSync_Resolver_Retrying] retry N/M after Xms: ...` and
    `giving up after N attempts: ...` log lines are the only way to
-   diagnose propagation behaviour in the wild. Do not remove them
+   diagnose propagation behavior in the wild. Do not remove them
    after launch.
 
 ---

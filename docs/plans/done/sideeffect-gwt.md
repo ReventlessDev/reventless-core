@@ -287,7 +287,7 @@ describe("Order_EmailNotification SideEffect", () => {
 
 1. **Framework**: write `SideEffect_GWT.res` with the API sketched above. No
    PPX changes yet — tests use the long form `include ReventlessGwt.SideEffect_GWT.Make(...)`.
-2. **PPX**: extend `@@reventless.gwt` folder vocabulary to recognise
+2. **PPX**: extend `@@reventless.gwt` folder vocabulary to recognize
    `SideEffect/` and auto-inject the include.
 3. **Examples**: add `EmailService_Mock.res` + `Order_EmailNotification_GWT.res`
    in `online-shop-aggregates` and document the mock convention in the README's

@@ -330,7 +330,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
   // and emitted the same group-less directive, which on this Cognito-primary
   // API means *any authenticated caller* — the inverse of the declaration. It
   // deployed green, passed `assertGateable`, and worked on the local platform,
-  // whose resolvers call `Authorization.isAllowed` and honour the rule. It
+  // whose resolvers call `Authorization.isAllowed` and honor the rule. It
   // failed closed, so no deployment ever reported it.
 
   let refuses = (run: unit => 'a): bool =>

@@ -1,6 +1,6 @@
 open Ppxlib
 
-(** Phase 3b.3 — inject type annotations on recognised function bindings in
+(** Phase 3b.3 — inject type annotations on recognized function bindings in
     implementation files (Behavior, Projection, Automation, Translation).
 
     The merged Spec + Impl form (pre-Plan-02) disambiguated [consumedEvent] vs
@@ -10,7 +10,7 @@ open Ppxlib
     declarations live in the Spec file and are simultaneously in scope inside
     the Impl file via [open Spec]; the order trick stops working.
 
-    Parameter annotations on recognised bindings give the compiler enough
+    Parameter annotations on recognized bindings give the compiler enough
     type-directed disambiguation context to resolve constructor names from
     the parameter type rather than from declaration order. We only annotate
     parameters — not return types or value-level bindings — because:

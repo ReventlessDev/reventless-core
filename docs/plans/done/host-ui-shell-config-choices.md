@@ -213,7 +213,7 @@ matters: naming `Map` is what makes both the map view and the map-backed command
 | 4 — the hybrid opts in | [examples/online-shop-hybrid/platform-aws/src/Main.res](../../../examples/online-shop-hybrid/platform-aws/src/Main.res) — `viewModes: [Map({})]` |
 | 5 — the docs | `packages/doc/docs-infrastructure/ui-fragments-deployment.md` — key list brought current, new *Choosing what the shell does* subsection |
 
-`Map({})` is legal — D1's "settle on contact" question resolved in favour of the inline record; no
+`Map({})` is legal — D1's "settle on contact" question resolved in favor of the inline record; no
 constructor helper was needed.
 
 **Done:** [reventless/aws/tests/Util_ShellConfigTest.res](../../../reventless/aws/tests/Util_ShellConfigTest.res)

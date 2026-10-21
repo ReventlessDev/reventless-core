@@ -103,7 +103,7 @@ type lifecycle = Placed({at: string}) | Shipped({at: string}) | Cancelled({at: s
 ```
 
 It is typed, and it is the wrong place for the data. The current state is the
-field every surface **groups, filters, colours and orders by**, and it can only do
+field every surface **groups, filters, colors and orders by**, and it can only do
 that while two rows in the same state hold the same value. With a payload they
 never do: `Shipped({at: t1})` and `Shipped({at: t2})` are different values, so
 grouping by state, comparing to a state, and `state == Shipped` all stop working
@@ -317,7 +317,7 @@ Four decisions the build made that the plan did not anticipate:
 The trail declares itself with the **shared** `Semantic` marker
 (`Semantic.Id.lifecycleTrail`) rather than a metadata id of its own. That marker
 is the one the JSON Schema walk emits, so a private id would have left the trail
-indistinguishable on the wire from any other array of objects, and recognising it
+indistinguishable on the wire from any other array of objects, and recognizing it
 would have come down to matching a field called `trail` by name. It costs one
 re-application: `SchemaType.trailShape` walks the entries by shape and so skips
 `fromSury`'s semantic dispatch, which is the drop a test now catches.

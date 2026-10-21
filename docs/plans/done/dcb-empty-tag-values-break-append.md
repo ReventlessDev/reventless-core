@@ -67,7 +67,7 @@ Three properties make this cheap:
    derivation and the OCC fence all keep working unchanged.
 2. **The per-tag GSIs have no reader today.** The adapter's own comment records this: they are
    `KEYS_ONLY` because "they have no reader today (single-tag reads use the base-table partition)",
-   with a cross-partition reader planned. So the immediate behavioural delta is nil.
+   with a cross-partition reader planned. So the immediate behavioral delta is nil.
 3. **It is semantically right.** An empty value is not an identity anyone can query for — DynamoDB
    cannot express `tag_x = ""` as a key condition at all. Absence from the index is the honest
    representation.
@@ -115,7 +115,7 @@ it is by design.
 > is an empty *value*, which D1 permits by design.
 
 A composite partition key whose members are *all* empty degenerates to a constant, putting every
-event of that slice in one partition. That is a modelling error rather than a storage one, so it
+event of that slice in one partition. That is a modeling error rather than a storage one, so it
 belongs at most as a debug-level log, not a failure — but it is worth knowing about while the
 composite-key story is still young. Defer unless it shows up.
 

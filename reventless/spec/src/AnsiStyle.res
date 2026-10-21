@@ -5,7 +5,7 @@
 
     This is the lowest layer in the logging stack — LogPrefix and Logger
     depend on it, so the sink decision lives here as the single source of
-    truth. `useAnsi()` ⇒ TTY text mode (colour/bold); `isJsonSink()` ⇒
+    truth. `useAnsi()` ⇒ TTY text mode (color/bold); `isJsonSink()` ⇒
     structured JSON for any non-TTY collector (CloudWatch, Datadog, …). */
 @val external _isTty: option<bool> = "process.stdout.isTTY"
 @val external _logFormat: option<string> = "process.env.REVENTLESS_LOG_FORMAT"
@@ -38,7 +38,7 @@ let _format = ref(_resolveFormat())
 /** Declares what this runtime is, for the pipe case the TTY probe gets wrong.
     Call it at module init, before anything logs. An explicit
     REVENTLESS_LOG_FORMAT still wins, so a developer can always ask for the other
-    one. A runtime that says nothing keeps the TTY behaviour. */
+    one. A runtime that says nothing keeps the TTY behavior. */
 let setDefaultFormat = (format: [#text | #json]) => {
   _default :=
     Some(
@@ -56,7 +56,7 @@ let reload = () => _format := _resolveFormat()
 /** True when output should be structured JSON (non-TTY sink). */
 let isJsonSink = () => _format.contents == "json"
 
-/** True when output should carry ANSI colour/bold (TTY text mode). */
+/** True when output should carry ANSI color/bold (TTY text mode). */
 let useAnsi = () => _format.contents == "text"
 
 /** Wrap a string in ANSI bold escape codes — no-op in a JSON sink. */

@@ -93,7 +93,7 @@ let mergeLines = (lineItems: array<lineItem>): array<lineItem> =>
 
 // Prices one merged line from the shelf as the fold holds it. `Money.times` owns
 // the multiplication — `amount *. float(quantity)` here is exactly the arithmetic
-// that module exists to keep out of a behaviour — and refuses a product past the
+// that module exists to keep out of a behavior — and refuses a product past the
 // range where a float is still an exact integer, which is a quantity nobody meant.
 let priceLine = (state, {productId, quantity}: lineItem): result<orderLine, error> =>
   switch state.shelf->lookup(productId) {

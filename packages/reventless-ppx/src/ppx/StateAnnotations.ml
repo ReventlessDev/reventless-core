@@ -1253,7 +1253,7 @@ let generate_config ~loc ?(owner_index : (string * string) option)
 
 (* ── @hidden / @summary / @internal: visibility annotations ──
 
-   @hidden and @summary have no behavioural effect; they flow through the
+   @hidden and @summary have no behavioral effect; they flow through the
    metadata pipeline so JSON Schema can surface them as x-reventless-hidden /
    x-reventless-summary and a UI can decide what to show.
 
@@ -1370,7 +1370,7 @@ let validate_internal_conflicts (str : structure) : unit =
       end
     ) fields
 
-(* ── @drillTarget / @collapsed: hierarchical rendering hints (no behavioural
+(* ── @drillTarget / @collapsed: hierarchical rendering hints (no behavioral
        effect; flow through the metadata pipeline so JSON Schema can surface
        them as x-reventless-drillTarget / x-reventless-drillTargetKey /
        x-reventless-collapsed). ── *)
@@ -1432,7 +1432,7 @@ let get_drill_target_args (attr : attribute) : (string * string option) =
   | _ -> ("", None)
 
 (* ── @scan / @scanSort: opt-in for non-indexed fields to participate in
-       server-side filter / sort. No behavioural effect at the PPX level —
+       server-side filter / sort. No behavioral effect at the PPX level —
        flow through the metadata pipeline so JSON Schema can surface them as
        x-reventless-scan / x-reventless-scanSort, and so the GraphQL fragment
        generator can fold the field names into Filter / OrderBy. ── *)
@@ -1471,7 +1471,7 @@ let strip_scan_attrs (str : structure) : structure =
   ) str
 
 (* ── @semantic / @metric: declared field semantics + dashboard metrics (no
-       behavioural effect at the PPX level — flow through the metadata pipeline
+       behavioral effect at the PPX level — flow through the metadata pipeline
        so JSON Schema can surface them as x-reventless-semantic /
        x-reventless-metric, read by AutoUI's annotation + dashboard tiers). ── *)
 
@@ -1668,7 +1668,7 @@ let strip_semantic_metric_attrs (str : structure) : structure =
   ) str
 
 (* ── @live: component-level live-updates hint carried on the `@schema type
-       state` declaration itself (no behavioural effect at the PPX level — flows
+       state` declaration itself (no behavioral effect at the PPX level — flows
        through the metadata pipeline so JSON Schema can surface it as a
        top-level x-reventless-live bool, read by UI consumers to decide whether
        a live-updates control is offered for the view). ── *)

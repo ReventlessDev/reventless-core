@@ -138,7 +138,7 @@ module AutoFulfillSlice = Platform.AutomationSlice.Make(AutoFulfill, AutoFulfill
 
 …and registers `AutoFulfillSlice` under `~automationSlices`.
 
-## Runtime behaviour
+## Runtime behavior
 
 ```
 Aggregate / DCB events

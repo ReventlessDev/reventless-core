@@ -8,7 +8,7 @@ host by `AddressGeocoding_Conformance`; the confidence rule stays core's
 */
 /** Whether the graft reports back into its host. This trait does — the two `@noApi`
     commands — and the runner accepts nothing else yet; the flag is here so a
-    competency that only observes is not mis-modelled as one that writes. */
+    competency that only observes is not mis-modeled as one that writes. */
 type posture = WritesBack | Observes
 
 /**

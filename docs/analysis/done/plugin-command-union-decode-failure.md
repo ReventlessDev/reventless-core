@@ -9,7 +9,7 @@ neither caused nor fixed by it.
 
 Option 1 below (reorder so a union-bearing payload leads) is what shipped, and it is
 still in place — it is wire-compatible and costs nothing to keep. The reachability
-sweep that enforces it now only recognises the older codegen shape; see
+sweep that enforces it now only recognizes the older codegen shape; see
 [union-reachability-guard-rc2-shape.md](../plans/Backlog/union-reachability-guard-rc2-shape.md).
 **Where it bites:** every local platform, and AWS equally — the affected schemas live in
 `reventless-core` and `reventless-infra` and are shared by both, though only local was
@@ -207,7 +207,7 @@ publishes) is unaffected, and is what those steps were verified against.
    codegen change, not a pin (see *Which sury versions*). **This is what happened:** the
    fix landed in `rc.2` two days after filing, and option 1 carried the gap.
 3. **Flatten `pluginDefinition`'s unions** — resolve the offload envelope before
-   decode rather than modelling it in the schema. Largest change, and it removes the
+   decode rather than modeling it in the schema. Largest change, and it removes the
    shape rather than working around it. Does not help `directiveSchema` or
    `Products.consumedEventSchema`, which are broken by different payloads.
 

@@ -435,5 +435,5 @@ per-API.)
 - [ ] Deploy to alpha; confirm exactly one `*<eventsApi.name>StateTopicLambda` per events API
 - [ ] `STATE_TOPIC_MAP` env var inspected; one entry per stream-enabled RM
 - [ ] Admin Plugin mutation → `Platform_Plugins` AutoUI list refreshes without reload
-- [ ] User-plugin mutation → existing live-update behaviour unaffected
+- [ ] User-plugin mutation → existing live-update behavior unaffected
 - [ ] CloudWatch logs show eventSourceARN-driven topic routing

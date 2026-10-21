@@ -11,7 +11,7 @@ page — that page covers what a plugin *is*; this page covers how its **version
 and die** at runtime.
 
 The lifecycle is **event-sourced** by a single name-keyed aggregate and projected into
-two read models. Almost every subtle behaviour below follows from one invariant:
+two read models. Almost every subtle behavior below follows from one invariant:
 
 > **`Connected` ⟺ that version's deployed infrastructure is alive and heartbeating.**
 
@@ -87,7 +87,7 @@ deterministic**.
 `VersionDeactivated`, `VersionRetired`, `IncompatiblePluginDetected`, plus the
 `UIFragment*` events (UI-manifest lifecycle, orthogonal to version status).
 
-### Key behaviours (all in `PluginBehavior`)
+### Key behaviors (all in `PluginBehavior`)
 
 - **`current` is derived, never commanded.** Supersession is *not* a command — a
   version that is `Connected` but not `current` is "superseded", a label the read
@@ -116,7 +116,7 @@ proxy.** A version cannot stay `Connected` if its infra is gone — it just take
 the heartbeat-timeout window elapses for the read models to catch up.
 
 > The timeout is not instantaneous. There is a lag (on the order of minutes) between
-> "infra gone" and "status flips to `Disconnected`". Most of the surprising behaviour
+> "infra gone" and "status flips to `Disconnected`". Most of the surprising behavior
 > in §5–§7 lives inside that lag window.
 
 ---

@@ -65,7 +65,7 @@ const publishedVersions = async (name) => {
 
 /** Bump the trailing integer of a prerelease (1.0.0-alpha.71 -> 1.0.0-alpha.72),
     or of the patch when there is no prerelease. Throws rather than guessing at a
-    shape it does not recognise — a wrong bump publishes under a version nobody
+    shape it does not recognize — a wrong bump publishes under a version nobody
     expects, which is worse than stopping. */
 const bump = (version) => {
   const pre = version.match(/^(.*[-.])(\d+)$/)

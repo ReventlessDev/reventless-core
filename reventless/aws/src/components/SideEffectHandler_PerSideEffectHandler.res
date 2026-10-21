@@ -13,7 +13,7 @@
 //     in that registry, so it took the builder's `None` arm, logged
 //     "no bundled info registered", and created nothing — silently.
 //
-// Matching signatures are not matching behaviour. The registry a builder reads is
+// Matching signatures are not matching behavior. The registry a builder reads is
 // the part that has to line up: side-effect handlers need `sideEffectInfos` and
 // `SideEffectEntryPoint.mjs`, which is what `SideEffectHandler_Single` registers into.
 //

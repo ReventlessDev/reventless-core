@@ -73,7 +73,7 @@ Net: **4 files split** (the ones with genuine storage/derivation drift), **12 le
 
 - Each `_Ops.res` compiles under warnings-as-errors — a signature drift in the framework becomes a build failure (the whole point).
 - Per entry point, the existing integration test (where one exists) must stay green; where a shell has no test, add one that drives the core against DynamoDB Local / in-memory before splitting.
-- The compiled `_Ops.res.mjs` for each storage/derivation call must be diff-checked against the current hand-written `.mjs` call once, to confirm behavioural identity (positional order, optional-arg handling). The DcbCommandTopic diff already matched.
+- The compiled `_Ops.res.mjs` for each storage/derivation call must be diff-checked against the current hand-written `.mjs` call once, to confirm behavioral identity (positional order, optional-arg handling). The DcbCommandTopic diff already matched.
 - Deploy verification: the reversal plan's outstanding item ("confirm all Lambda types run in CloudWatch") applies here too — smoke each split Lambda type on the CI deploy of `online-shop-hybrid`.
 
 ## Follow-up tiers (deeper typing beyond storage/derivation)

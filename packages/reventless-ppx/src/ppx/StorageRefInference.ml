@@ -12,7 +12,7 @@ open Ppxlib
       @storageRef("productImages") imageUrls: array<string>
     ]}
 
-    Modelled on {!ReferenceInference}, and deliberately ungated with respect to
+    Modeled on {!ReferenceInference}, and deliberately ungated with respect to
     the declaring type: this must work on command and event records, not only on
     [type state]. A storage ref is validated where the value is first accepted —
     the command — because that is the last moment before it becomes permanent in

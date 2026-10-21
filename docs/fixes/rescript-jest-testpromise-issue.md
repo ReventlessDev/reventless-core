@@ -82,7 +82,7 @@ The chain of calls is:
 The `timeout` argument is also silently dropped because the local `test` function only
 accepts two parameters.
 
-## Expected behaviour
+## Expected behavior
 
 The function registered with `globalThis.test` should return the Promise so that Jest
 awaits it and runs tests sequentially.

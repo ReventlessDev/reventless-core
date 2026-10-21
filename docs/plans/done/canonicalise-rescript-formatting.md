@@ -14,7 +14,7 @@ what the formatter would emit and it rewrites *the whole file*, not the part any
 - an editor with format-on-save turns a two-line edit into a hundred-line diff;
 - a collaborator who does *not* format writes in the file's existing local style, which the
   next save reformats;
-- the two behaviours alternate on the same file, and every alternation is churn — unreadable
+- the two behaviors alternate on the same file, and every alternation is churn — unreadable
   diffs, review noise, and real merge conflicts wherever the reflow touches lines a parallel
   branch also touched.
 
@@ -104,7 +104,7 @@ it in `package.json` and let everything call that:
 Notes:
 
 - The existing `"format": "rescript format"` is repointed deliberately. Bare `rescript format`
-  takes its file set from the project config, which does *not* honour the exclusion — it is the
+  takes its file set from the project config, which does *not* honor the exclusion — it is the
   footgun this plan exists to remove.
 - `-n 300` is required: the full list exceeds `ARG_MAX` in this repo and an unbatched `xargs`
   splits it in a way that silently drops output.
@@ -277,7 +277,7 @@ three exist and step 6 passes locally.
 
 ## Rollback
 
-Step 2 is a pure reprint with no behaviour change, so `git revert` of that one commit restores
+Step 2 is a pure reprint with no behavior change, so `git revert` of that one commit restores
 the previous bytes exactly. Revert the step-3 commit with it, or the CI guard will fail against
 the un-canonical tree.
 

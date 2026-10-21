@@ -8,7 +8,7 @@ module ShelveSlice = {
   let name = "Shelve"
 
   // Inside the spec, so the zero-argument form still finds the spec and its
-  // behaviour first; the rule's `Roles` resolves by ordinary scoping either way.
+  // behavior first; the rule's `Roles` resolves by ordinary scoping either way.
   module Roles = {
     type t =
       | Admin

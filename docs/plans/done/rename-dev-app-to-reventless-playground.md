@@ -108,6 +108,6 @@ From `examples/online-shop-hybrid/platform-in-memory/`:
 
 ## Out of scope
 
-- Any change to the playground's behaviour, bundler, or relay wiring. This plan only swaps a package name and a bin name.
+- Any change to the playground's behavior, bundler, or relay wiring. This plan only swaps a package name and a bin name.
 - Changes to `dev:ui` / `dev:full` script *names* — only the fallback bin inside `dev:ui` changes.
 - Changes to the symlinked-source-repo branch of `dev:ui`. The symlink path and the filtered package name (`./reventless-ui`) are unchanged.

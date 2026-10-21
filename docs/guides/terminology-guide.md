@@ -36,7 +36,7 @@ boundary across platforms, so there is no level above Platform to own resources.
 These two are the most-confused pair in the codebase. They sit on different axes: one names where
 code lives, the other names what gets deployed.
 
-**Core** is a *code-organisation* term. It names the framework layer — the `reventless-core`
+**Core** is a *code-organization* term. It names the framework layer — the `reventless-core`
 package and the `ReventlessCore` namespace. Use it when talking about where code lives ("that
 belongs in core, it is provider-neutral").
 

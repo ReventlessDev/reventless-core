@@ -294,7 +294,7 @@ type event =
 
 **Constraints:**
 
-| Rule | Behaviour |
+| Rule | Behavior |
 |---|---|
 | Non-`string` field annotated | No-op — field is left untouched |
 | `@compositePartitionTag` and `@partitionTag` on the same schema | Throws at startup |
@@ -565,7 +565,7 @@ The PPX emits the field name into `stateAnnotationSpec.groupBy` (sury metadata a
 
 ### `@live` — declare the view's live-updates default
 
-Use on the `@schema type state` **declaration** (not a field) of a ReadModel or StateViewSlice spec to declare whether live updates make sense for the view. `@live(false)` marks investigative/historical views (catalogues, comparisons, audit histories) where a live-updates control is pointless; `@live(true)` marks operational views where one should be offered.
+Use on the `@schema type state` **declaration** (not a field) of a ReadModel or StateViewSlice spec to declare whether live updates make sense for the view. `@live(false)` marks investigative/historical views (catalogs, comparisons, audit histories) where a live-updates control is pointless; `@live(true)` marks operational views where one should be offered.
 
 ```rescript
 @@reventless.spec
@@ -1021,7 +1021,7 @@ The label defaults to empty, which the schema emitter omits so a consumer can te
 - **Absent means not retired**, on all four backends. A row written before the annotation existed carries no flag, and excluding those would empty the view the day someone adds `@retired`.
 - **Annotation or nothing.** Unlike `@lifecycle`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
 
-**Reaching the archive.** A list query gains an `includeRetired: Boolean` argument, honoured **only** for a caller who was going to be allowed those rows anyway; a scoped caller passing it is ignored rather than refused. Note that elevation alone does not lift the restriction — an exempt caller is excluded until they ask, because an archive that is always underfoot is not an archive.
+**Reaching the archive.** A list query gains an `includeRetired: Boolean` argument, honored **only** for a caller who was going to be allowed those rows anyway; a scoped caller passing it is ignored rather than refused. Note that elevation alone does not lift the restriction — an exempt caller is excluded until they ask, because an archive that is always underfoot is not an archive.
 
 **Who is exempt** is the same deployment-wide `REVENTLESS_ELEVATED_GROUPS` that `@owner` uses, and deliberately so: two views must not disagree about who an operator is. There is no per-annotation elevation list.
 

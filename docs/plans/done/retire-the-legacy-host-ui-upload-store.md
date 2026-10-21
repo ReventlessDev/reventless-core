@@ -117,7 +117,7 @@ it — a comment explaining a store that no longer exists is worse than no comme
 
 **Acceptance:** the preview shows the bucket deleted, its public-access block deleted, and the
 `/uploads` prefix dropped from the host-shell distribution's served buckets. The declared store's
-own origin, policy and cache behaviour are untouched — they come from `declaredServedBuckets`, a
+own origin, policy and cache behavior are untouched — they come from `declaredServedBuckets`, a
 different array.
 
 ### 4. Verify what the shell still does

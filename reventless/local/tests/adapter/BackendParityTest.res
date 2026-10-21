@@ -1,4 +1,4 @@
-// Behavioural parity between Memory, Sqlite, and Postgres backends at the adapter
+// Behavioral parity between Memory, Sqlite, and Postgres backends at the adapter
 // layer. Each test runs the same scenario against every BackendState setting.
 //
 // The Postgres arm is exercised only when PG_URL is set (so the default test run

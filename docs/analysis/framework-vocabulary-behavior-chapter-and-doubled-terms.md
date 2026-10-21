@@ -128,7 +128,7 @@ comments say "the deployment's behaviour". The spelling is split too, 570 *behav
 | **Decider**: `_Decider.res`, `Decider.T` | "the AddProduct decider" | Names the pattern exactly, but it would be the only agent noun among the body suffixes (`_Projection`, not `_Projector`). Name the pattern in the glossary, do not use it as the suffix. |
 | **Keep Behavior** | as today | Costs nothing now and keeps paying the three-words toll (behavior, decision model, decide). Defensible only if the toll is judged smaller than one breaking release for every consumer. |
 | **Logic** or **Handler**: `_Logic.res`, `_Handler.res` | "the AddProduct handler" | *Handler* is already the runtime's word for a dispatch entry ([§9](#9-event-handler-or-invocation-handler)); *logic* says nothing a reader can act on. |
-| Rename the `StateChange/` folder to `Decision/` as well | `Decision/AddProduct.res` | No. *State Change*, *State View*, *Automation* and *Translation* are the established slice names of the modelling method the framework follows, and the folder word names the kind, not the file. |
+| Rename the `StateChange/` folder to `Decision/` as well | `Decision/AddProduct.res` | No. *State Change*, *State View*, *Automation* and *Translation* are the established slice names of the modeling method the framework follows, and the folder word names the kind, not the file. |
 | Rename `evolve` to `apply` or `fold` | | No. `evolve` is the decider pattern's own word and is consistent across aggregate and slice. |
 
 ### 3.3 Pros and cons of the rename
@@ -236,7 +236,7 @@ framework datum in [deployed-chapter-grouping.md](../plans/done/deployed-chapter
   move its partition.
 
 So *chapter* is not a label. It is a grouping the framework acts on, with ~100 files in this repo
-using the word and no other word for it in code. The modelling method the framework follows also
+using the word and no other word for it in code. The modeling method the framework follows also
 calls this grouping a chapter. The gap on the framework's side: the docs glossary has no *Chapter*
 entry.
 
@@ -254,7 +254,7 @@ file are its *sections*, and on the same screens a chapter is labelled "a sectio
 
 | Option | Verdict |
 |---|---|
-| **Keep chapter** everywhere, including plain-language surfaces | Recommended. Specific, established by the modelling method, already a deployed datum. |
+| **Keep chapter** everywhere, including plain-language surfaces | Recommended. Specific, established by the modeling method, already a deployed datum. |
 | **Section** everywhere | Collides with the `@groupBy` row sections in every list view and with document sections, and would rename a deployed field for no gain in meaning. |
 | **Area**, **Feature area**, **Group** | Common words with the same problem as *section*; *group* is also Cognito's word for a role's backing group. |
 | **Module** | Collides with ReScript modules (2,700 hits). |
@@ -265,7 +265,7 @@ file are its *sections*, and on the same screens a chapter is labelled "a sectio
 **For chapter everywhere**
 
 - Zero code changes here; the work is on surfaces that chose *section* as a gloss.
-- *Chapter* has one meaning in the framework and one in the modelling method, and they agree.
+- *Chapter* has one meaning in the framework and one in the modeling method, and they agree.
   *Section* has at least three.
 - Developers, the docs, the generated map, and the deployed manifest all say *chapter*. A person
   who learned *section* in a plain-language surface and then opens the source, the docs, or a
@@ -331,7 +331,7 @@ ties them.
 |---|---|---|
 | **Keep plugin** | a part that plugs into a platform, registered, versioned, connected, retired | Recommended. Accurate (the lifecycle verbs are a plugin's), established in the framework's own API, and the most expensive word in the repo to move. |
 | **System** | a separate thing with its own model | The plain-language gloss, and a good one for a first-time author. As the framework's word it collides with `externalSystem` (a *foreign* system) and `systemCallable` (the platform acting as itself), and "the system" already means the whole deployment. In a platform of three plugins, "which system?" is the question *plugin* answers. |
-| **Context**, **Bounded context** | DDD's word for exactly this: its own model, its own language, data not shared across the line | The most precise alternative, and the modelling method's import format uses `context` for a slice's home. But `context` is already `RequestContext` and the Lambda context (~480 hits), *bounded context* is two words nobody will type into an identifier, and it is abstract to a non-developer. Worth naming in the glossary as what a plugin *is*; not worth becoming the word. |
+| **Context**, **Bounded context** | DDD's word for exactly this: its own model, its own language, data not shared across the line | The most precise alternative, and the modeling method's import format uses `context` for a slice's home. But `context` is already `RequestContext` and the Lambda context (~480 hits), *bounded context* is two words nobody will type into an identifier, and it is abstract to a non-developer. Worth naming in the glossary as what a plugin *is*; not worth becoming the word. |
 | **Module** | a unit of code | Collides with ReScript modules (2,700 hits). Fatal. |
 | **Service** | a running thing with an API | Implies one process; a plugin is several Lambdas, tables and queues. `meta.service` is already a dispatch key on the envelope. |
 | **App**, **Application** | the thing a business runs | That is the platform, or the whole deployment. A plugin is a part of it. |
@@ -416,7 +416,7 @@ its rows as a list or a map.
 
 | Option | Verdict |
 |---|---|
-| **View** | Recommended as the word in prose and the glossary. It is already the prose winner, it is the modelling method's word (the view slice, the green box), and it pairs with *decision* on the write side. Its one collision, the UI's "list view", is resolved by calling what the UI draws a page ([§6.4](#64-recommendation)). |
+| **View** | Recommended as the word in prose and the glossary. It is already the prose winner, it is the modeling method's word (the view slice, the green box), and it pairs with *decision* on the write side. Its one collision, the UI's "list view", is resolved by calling what the UI draws a page ([§6.4](#64-recommendation)). |
 | **Read side** | Recommended as the word in identifiers. It is the CQRS term every developer knows, the platform API already uses it with its write-side partner, and it names the half of the architecture a definition belongs to, which is what a type name needs. As a word for one component it reads badly ("a read side lists products"), so it is not the prose word. |
 | **Queryable** | The current ReScript name. Precise, but an adjective used as a noun, nobody says it, and it pairs with *writable*, which describes nothing a reader knows. |
 | **Read model** | The aggregate-style kind's own name. Using it for both kinds would make every "ReadModel" ambiguous between the kind and the umbrella, which is the problem this chapter is solving. |
@@ -427,7 +427,7 @@ its rows as a list or a map.
 
 **For view in words and read side in code**
 
-- One word in prose that already wins, matches the modelling method, and pairs with *decision*:
+- One word in prose that already wins, matches the modeling method, and pairs with *decision*:
   decisions on the write side, views on the read side.
 - One name in code that already exists on the wire. Aligning the ReScript types to the API
   schema changes no field and no type a client selects, so no consumer's query breaks.

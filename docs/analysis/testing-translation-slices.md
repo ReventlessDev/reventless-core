@@ -269,7 +269,7 @@ The fixture suites are good, and they stay. Three additions:
 - an `OutboundStep` that runs `translate` with fakes and passes the real `sourceId`.
 
 A flow can then state a whole integration: *the supplier sends a product → it is added → it
-shows in the catalogue*; or *an order is placed → a confirmation is sent → nothing is sent
+shows in the catalog*; or *an order is placed → a confirmation is sent → nothing is sent
 twice*.
 
 ### 4.4 The door

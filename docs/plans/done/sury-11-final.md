@@ -45,7 +45,7 @@ the [rc.3 → 11.0.0 compare](https://github.com/DZakh/sury/compare/v11.0.0-rc.3
 | Format schemas are nominal (`S.email: S.t<S.email>`, likewise `uri`, `isoDate`, `isoDateTime`, `jsonString`) | `Email`, `Url`, `CalendarDate`, `DateTime` grammars; `Util_Sury.toJsonString` / `fromJsonString`; `PolicyDocument.fromJsonString` |
 | `S.isoDateTime` accepts any RFC 3339 offset; the old Z-only grammar is `S.utcDateTime` | `DateTime` must move to `S.utcDateTime` or it starts accepting `+02:00` |
 | JS export names: `float` → `number`, `int` → `int32`, `bool` → `boolean`; compiled code imports `"sury"`, not `"sury/src/S.res.mjs"` | ~78 tracked `.res.mjs` files are regenerated. The source is unaffected. Lambda entry points already import bare `"sury"` (`DcbCommandTopicEntryPoint.mjs`), so the layer resolves it |
-| `S.Error` is a real `Error` (`name: "SuryError"`) | No change in behaviour: it still carries `RE_EXN_ID: "S.Exn"`, so `\| S.Exn(e)` and `Util_Sury.exnMessage` still match. Checked by a probe in the trial |
+| `S.Error` is a real `Error` (`name: "SuryError"`) | No change in behavior: it still carries `RE_EXN_ID: "S.Exn"`, so `\| S.Exn(e)` and `Util_Sury.exnMessage` still match. Checked by a probe in the trial |
 | Error `path` is an array, messages use dot-paths (`Failed at user.tags[2]: …`) | No test or golden depends on the old text |
 | `S.string→S.number` now rejects `""` (was `0`) and trims | No string-to-number schemas found |
 | `S.unknown` JSON Schema is `{}`; `S.meta` examples are validated | `check:graphql` shows no drift |

@@ -149,7 +149,7 @@ Route admin read models through the **same** machinery ordinary read models use,
 their SDL is generated from the spec (and stays in lockstep with the resolver):
 
 - **Core (deploy-time SDL):** generate the admin read-model query fragment via
-  `GraphQL_FragmentGenerator` from each spec (honouring `subIdConfig` and
+  `GraphQL_FragmentGenerator` from each spec (honoring `subIdConfig` and
   `config.indexes`), replacing the hand-maintained `PluginBaseFragment.queryEntries`
   / `AdminApi.baseFragment` field list. This emits `<single>Items` and `By<Index>`
   fields automatically.
@@ -279,7 +279,7 @@ high-value automation opportunities are unblocked separately on the stream.
 
 **Step 1 (framework, prerequisite): close the admin read-model parity gap.**
 Generate admin read-model query SDL from the spec via `GraphQL_FragmentGenerator`
-(honouring sub-ids + `@index`), in lockstep with the shared resolver layer;
+(honoring sub-ids + `@index`), in lockstep with the shared resolver layer;
 harmonize the local admin resolver registration to the same generated field set;
 retire `Platform_UIFragments_Lambda`. Outcome: admin read models gain composite
 keys, `<single>Items`, GSIs, and filter/sort through the standard path — **no custom

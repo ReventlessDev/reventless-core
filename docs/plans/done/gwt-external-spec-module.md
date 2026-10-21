@@ -76,12 +76,12 @@ The asymmetry is the whole problem: production code lives at `src/StateChange/Ad
 
 ---
 
-## Target behaviour
+## Target behavior
 
 | Form | Emits |
 |---|---|
 | `@@reventless.gwt` at top of `{SpecModule}_GWT.res` in a slice folder | Kind + Spec derived from path; `open <Spec>` + `include <Kind>_GWT.Make(<Spec>)` injected at the attribute's position |
-| `@@reventless.gwt` in a file that has a local spec module | Existing behaviour: first top-level module is the Spec; `open` + include after it |
+| `@@reventless.gwt` in a file that has a local spec module | Existing behavior: first top-level module is the Spec; `open` + include after it |
 | `@@reventless.gwt(ExplicitSpec)` | Kind from path; Spec from payload; PPX does **not** require `ExplicitSpec` to be a local binding — compiler resolves it |
 | `@@reventless.gwt(Spec, Behavior)` in a `Behavior` folder | Unchanged (two-module Behavior DSL) |
 
@@ -136,7 +136,7 @@ let derive_gwt_kind fname : string option =
 
 Every folder segment in the full path is considered, not just the immediate parent — so a deeply nested test like `reventless/platform-inspector/tests/StateChange/Categories/AddCategory_GWT.res` resolves as long as any segment (here `StateChange`) matches the vocabulary.
 
-**Ambiguity policy — innermost wins.** When multiple segments of the path match slice-base names (e.g. `tests/StateChange/Migrations/StateView/X_GWT.res` contains both `StateChange` and `StateView`), the closer-to-file segment is chosen. Rationale: the test's immediate folder is a more specific signal of the test's subject than an outer organisational ancestor, and this matches how developers intuitively read the path ("this test is in the StateView folder, so it's a StateView test"). The rare case where the heuristic gets it wrong is handled by the explicit `@@reventless.gwt(Spec)` payload — pass the Spec whose Kind the path doesn't imply, and combine with a payload-aware Kind override if the explicit form proves insufficient in practice (Stage 6 escape hatch, not shipped initially).
+**Ambiguity policy — innermost wins.** When multiple segments of the path match slice-base names (e.g. `tests/StateChange/Migrations/StateView/X_GWT.res` contains both `StateChange` and `StateView`), the closer-to-file segment is chosen. Rationale: the test's immediate folder is a more specific signal of the test's subject than an outer organizational ancestor, and this matches how developers intuitively read the path ("this test is in the StateView folder, so it's a StateView test"). The rare case where the heuristic gets it wrong is handled by the explicit `@@reventless.gwt(Spec)` payload — pass the Spec whose Kind the path doesn't imply, and combine with a payload-aware Kind override if the explicit form proves insufficient in practice (Stage 6 escape hatch, not shipped initially).
 
 `GwtInference.ml`:
 
@@ -194,7 +194,7 @@ let (spec_name, behavior_name_opt, spec_is_external) =
 
 Injection point:
 
-- **Local Spec** (`spec_is_external = false`): keep existing behaviour — insert `open` + `include` directly after the local spec module (or after Behavior, for Behavior DSLs).
+- **Local Spec** (`spec_is_external = false`): keep existing behavior — insert `open` + `include` directly after the local spec module (or after Behavior, for Behavior DSLs).
 - **External Spec** (`spec_is_external = true`): insert `open` + `include` at the attribute's position in the stripped structure (i.e., the very top, since `@@...` attributes live at file top by convention).
 
 The compiler validates the module reference at the emitted `include` site. Failure surfaces as a standard "Unbound module X" error, which is more actionable than a PPX-specific string.
@@ -248,4 +248,4 @@ Downstream consumers can then rename their existing `*Test.res` files for slice-
 - **`open Spec` shadowing.** The Spec's top-level names (variants, fields of the state record, `initialState`, `evolve`, `decide`) enter the test-file scope. If a test body defines a local `let initialState = …` it will shadow the spec's — which is typically the intended thing. Document in the guide.
 - **External-module resolution errors.** A typo in the Spec name surfaces as "Unbound module X" at the generated `include` line rather than a PPX-specific message. Clear, source-located — accept.
 
-Rollback is additive: every change is a widening of what the PPX accepts. Reverting the `Util.ml` additions and the `GwtInference.ml` simplifications restores exactly today's behaviour.
+Rollback is additive: every change is a widening of what the PPX accepts. Reverting the `Util.ml` additions and the `GwtInference.ml` simplifications restores exactly today's behavior.

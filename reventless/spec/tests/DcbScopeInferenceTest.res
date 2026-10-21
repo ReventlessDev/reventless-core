@@ -3,7 +3,7 @@
 // is what lets the framework infer the "forgot @crossPartition on a cross-entity
 // reference" case instead of requiring a hand annotation, so its rules are worth
 // pinning directly. Also re-ported verbatim by external tooling (plan C3), which
-// makes a shared spec of behaviour doubly valuable.
+// makes a shared spec of behavior doubly valuable.
 
 open JestGlobals
 

@@ -76,14 +76,14 @@ module type Spec = {
   /**
   Event sources this slice subscribes to, by topic key.
 
-  `[]` — the default and the historical behaviour — means this plugin's own DCB
+  `[]` — the default and the historical behavior — means this plugin's own DCB
   event log. Naming sources explicitly subscribes to them instead: an Aggregate's
   `Spec.name`, or a DCB source name (conventionally `"<pluginName>DcbEventLog"`),
   matching the keys `AutomationSlice` mappings already use.
 
   This exists because an outbound slice is the framework's one component for
   *calling an external service and feeding the answer back*, and that job is not
-  specific to DCB-modelled entities. An Aggregate whose events should trigger an
+  specific to DCB-modeled entities. An Aggregate whose events should trigger an
   outbound call had no route to one while this list was hard-wired.
 
   Unlike `AutomationSlice`, the sources are a flat list rather than per-source

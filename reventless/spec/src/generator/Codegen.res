@@ -159,7 +159,7 @@ let renderExtensions = (extensions: array<string>): array<string> =>
     "  module " ++ stem ++ " = Platform.Extension.Make(" ++ stem ++ ".Mapping)"
   )
 
-// AWS-specific renderers were removed in favour of the canonical ones — the
+// AWS-specific renderers were removed in favor of the canonical ones — the
 // AWS Plugin.res now emits `open <Namespace>` so bare stems resolve, and the
 // AWS Platform.{Aggregate,ReadModel}.Make functors delegate to the
 // `*_Builder_Single` strategy under the hood (see reventless-aws/src/Platform.res).
@@ -630,7 +630,7 @@ let renderComposition = (
   // Header
   lines->Array.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.")
   // Federation override URL — empty/unset means Auto UI renders every fragment.
-  // Read once at module init; same env var is honoured by the AWS wrapper.
+  // Read once at module init; same env var is honored by the AWS wrapper.
   lines->Array.push("")
   lines->Array.push(
     "@val external uiBundleUrl: option<string> = \"process.env." ++

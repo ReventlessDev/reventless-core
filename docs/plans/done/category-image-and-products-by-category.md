@@ -88,7 +88,7 @@ convention rather than the product one.
 - **`HybridSeedData.res`** — `categoryImageStore = "Catalog.categoryImages"`;
   `uploadCategoryImages` mirroring
   [uploadProductImages](../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res#L67-L94)
-  and honouring `connection.uploadsSkipped`; `seedCategories` passes `imageUrl`; a
+  and honoring `connection.uploadsSkipped`; `seedCategories` passes `imageUrl`; a
   `ChangeCategoryImage` call in `seedCatalogEdits` so the change path is exercised alongside the
   existing rename/archive churn. Upload before `seedCategories`, as products already do in `run`.
 - **`DemoCommands.res`** — `addCategory` gains the optional `imageUrl` arg with the same

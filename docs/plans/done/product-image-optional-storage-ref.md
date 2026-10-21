@@ -13,7 +13,7 @@ with no image (the supplier-feed import) is forced to invent that sentinel.
 The framework is in alpha with no external consumers. This changes the shape of the `ProductAdded`
 and `ProductImageChanged` **events**, so on any store with existing events those events no longer
 parse against the new schema — the alpha EventLog is **wiped**, not migrated (the standing
-convention for alpha). That cost is only ever lower before there is production data. Modelling
+convention for alpha). That cost is only ever lower before there is production data. Modeling
 "a product may have no image" as `option` instead of a magic empty string is also the honest domain
 model: absence is a first-class value, not a reserved string.
 

@@ -13,7 +13,7 @@ open ReventlessCore
 // each step folds the slice's own `decide`/`evolve`/`collect`/`project` over
 // the shared log. The log is JSON-erased (each step (de)serialises through its
 // own spec's schema, exactly as the runtime routes a DCB event log), and each
-// command step honours DCB tag filtering so downstream deciders never see
+// command step honors DCB tag filtering so downstream deciders never see
 // phantom cross-entity events.
 //
 // The chain is built from per-step functors (one per slice), threaded with
@@ -717,7 +717,7 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
   // Aggregate-style EP mappings address the source aggregate's identity via
   // the first arg (e.g. catalog Product → ProductBecameAvailable uses it as
   // `productId`). DCB upstreams don't set `lastAggregateId` and fall back to
-  // the synthetic `gwt-id` so existing DCB Flow tests keep their behaviour.
+  // the synthetic `gwt-id` so existing DCB Flow tests keep their behavior.
   let runMapping = async (sourceId: string, events: array<M.Delegate.event>): array<
     M.ExtensionPoint.event,
   > =>

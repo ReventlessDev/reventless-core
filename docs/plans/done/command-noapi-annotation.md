@@ -68,7 +68,7 @@ let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
 
 ### PPX Transformation
 
-The PPX recognises `@noApi` and strips it (so it doesn't appear in compiled output).
+The PPX recognizes `@noApi` and strips it (so it doesn't appear in compiled output).
 
 **Type-level**: when the attribute appears on a `@schema type command` declaration, the PPX emits
 a post-binding let that wraps the generated schema:

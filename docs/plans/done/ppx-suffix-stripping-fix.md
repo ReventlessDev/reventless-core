@@ -136,7 +136,7 @@ All existing tests must pass. The two new assertions in Step 2 must pass.
 
 ---
 
-## Behaviour Table (after fix)
+## Behavior Table (after fix)
 
 | File | In slice folder? | Result |
 |------|-----------------|--------|

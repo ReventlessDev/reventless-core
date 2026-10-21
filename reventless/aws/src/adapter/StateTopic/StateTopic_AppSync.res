@@ -388,7 +388,7 @@ let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptio
     // One EventSourceMapping per stream, all targeting the shared Lambda.
     // Retry posture: the handler throws on 5xx / network errors and logs-and-
     // continues on 4xx. `maximumRetryAttempts: 3` bounds the per-record
-    // retries so a permanently broken record (default DDB stream behaviour is
+    // retries so a permanently broken record (default DDB stream behavior is
     // -1 → forever, which would wedge the shard); `bisectBatchOnFunctionError`
     // isolates the bad record across those retries instead of redelivering
     // the whole batch each time.

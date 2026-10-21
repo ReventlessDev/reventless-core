@@ -1,5 +1,5 @@
 // Plugin EventCollector Lambda entry point — shared between the platform and every
-// per-plugin EventCollector Lambda. This module is plugin-agnostic: behaviour is
+// per-plugin EventCollector Lambda. This module is plugin-agnostic: behavior is
 // driven entirely by HANDLER_CONFIG.
 //
 // Thin untyped shell ("typed core, thin shell" —

@@ -9,7 +9,7 @@ schedule and background fiber in the framework. Version 4 rewrites its runtime
 and renames part of its API. Our ReScript bindings
 ([rescript/effect/](../../rescript/effect/)) are the only code that talks to it
 directly, so most of the renames stay inside that package. The risky part is
-**behaviour**, not names: the runtime is new, and errors, layers and background
+**behavior**, not names: the runtime is new, and errors, layers and background
 fibers now act differently.
 
 **Goal.** `rescript-effect` binds `effect@4.x`, the whole suite passes on the
@@ -62,10 +62,10 @@ surviving bindings gets its v4 signature checked by hand.** `Queue.take` /
 `Effect.runPromise` / `runSync` come first, because they carry the most traffic
 (97 and 49 files call the last two).
 
-## 2. Behaviour changes that do not show up as compile errors
+## 2. Behavior changes that do not show up as compile errors
 
 These are the reason this is a plan and not a version bump. Each one needs a
-test that fails on the old behaviour before we trust the port.
+test that fails on the old behavior before we trust the port.
 
 - **Cause is flattened.** It is now a list of reasons instead of a tree. Anything
   that renders or classifies failures goes through it, including the AWS error
@@ -105,8 +105,8 @@ test that fails on the old behaviour before we trust the port.
    fibers a scope or an explicit interrupt on shutdown. Then run the suite with
    `--detectOpenHandles`.
 5. **Full build with zero warnings, then `pnpm test`** across all projects.
-6. **Cause and error behaviour.** Write a test per error path from
-   [§2](#2-behaviour-changes-that-do-not-show-up-as-compile-errors): a rejected
+6. **Cause and error behavior.** Write a test per error path from
+   [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors): a rejected
    command, a forbidden command, an AWS SDK failure mapped through
    `reventless/aws/src/errors/`.
 7. **Deployed check.** Deploy the hybrid example. Run a command through each

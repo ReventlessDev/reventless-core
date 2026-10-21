@@ -167,7 +167,7 @@ works as documented. Candidate 2 (subscription timing) never came into play.
 | 2 | Unwrap `event` before `splitMessage` in `OutboundTranslationSlice_Builder`, matching `StateViewSlice_Builder`. |
 | 3 | `publishJsonsRef` replaced by the `Output.all2` capture; the now-unused `Logger.fromEnv()` and its `publishJsons not yet resolved` error path are gone with it. |
 | 4 | Key harmonised to `<pluginName>DcbEventLog`, derived from the DcbEventLog component's own resource name. |
-| 5 | `OutboundTranslationSlicePlatformTest` + fixtures, modelled on `AutomationSliceSelfDeadlockFixtures`. |
+| 5 | `OutboundTranslationSlicePlatformTest` + fixtures, modeled on `AutomationSliceSelfDeadlockFixtures`. |
 
 ### Step 4's open question, answered
 

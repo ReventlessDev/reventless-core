@@ -2,7 +2,7 @@
 RESOLVED — kept as the internal writeup; nothing left to post.
 
 Upstream #311 ("Nullable option field fails to encode nested `None` as JSON `null`")
-is CLOSED, and the behaviour we needed is FIXED in sury 11.0.0-alpha.11: a nested
+is CLOSED, and the behavior we needed is FIXED in sury 11.0.0-alpha.11: a nested
 `None` optional is omitted on encode again, matching alpha.4's
 `reverseConvertToJsonOrThrow`.
 

@@ -100,7 +100,7 @@ let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(
 Internal sury metadata ID marking a tag field as *cross-partition* — readable
 across every partition that carries it (a secondary-tag read), not just the
 partition it is the partition key of. Opt-in; absence = the default
-partition-scoped behaviour. The scope is a property of the tag *key* and must
+partition-scoped behavior. The scope is a property of the tag *key* and must
 agree across every event type that carries it (the fence-scope half depends on
 it). See `docs/analysis/dcb-consistency-check-issues.md` Issue 13.
 */
@@ -497,7 +497,7 @@ tag the catalog's own events write. A key derived from `lineItems` would name a
 tag no producer has ever written, and the decision read would come back empty —
 the identical symptom to extracting no tags at all, from a different cause. An
 author who wants another key still writes `DcbTag.stringForKey` on the nested
-field, which `resolveTagKey` honours here as it does at the top level.
+field, which `resolveTagKey` honors here as it does at the top level.
 */
 let nestedRecordTags = (fieldSchema: S.t<unknown>, jsonValue: JSON.t): array<tag> =>
   switch nestedRecordProperties(fieldSchema) {
@@ -655,7 +655,7 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
       // intentionally excluded here: DCB event-type lookups can't WHERE-clause
       // on bare-string events, so Plugin_Structure.consumedEventTypes and
       // related graph fields would otherwise claim cross-component edges the
-      // runtime can't honour. Callers that need every constructor (e.g.
+      // runtime can't honor. Callers that need every constructor (e.g.
       // mapping-mode `acceptedTags` filters that match a JSON envelope's
       // `event` TAG against the Delegate's full constructor set) should call
       // [`extractAllVariantNames`] instead.
@@ -729,7 +729,7 @@ let isVariantPayloadBearing = (schema: S.t<'a>, name: string): bool => {
 Extracts tags from a flat JSON object, expanding array values into per-element tags.
 
 For scalar tagged fields, behaves identically to `extractTagsFromProperties`.
-For array tagged fields, produces one tag per element. Tag keys honour an optional
+For array tagged fields, produces one tag per element. Tag keys honor an optional
 `DcbTag.stringForKey(~key=...)` override on the (inner) schema; otherwise the field
 name is used.
 
@@ -1123,7 +1123,7 @@ let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInfer
   let isIdName = (name: string) => name->String.endsWith("Ids") || name->String.endsWith("Id")
   // An explicit `@partitionTag` declares an identity the naming convention cannot
   // express — a domain's own identifier is often unsuffixed (`sku`, `isbn`).
-  // Without this the hint is extracted and then ignored, since `seedOf` honours
+  // Without this the hint is extracted and then ignored, since `seedOf` honors
   // only a hint already among the produced keys, so the escape hatch would work
   // for every field except the ones that need it. Flagged, not folded in: taking
   // the annotation away takes the identity with it, which is what the redundancy

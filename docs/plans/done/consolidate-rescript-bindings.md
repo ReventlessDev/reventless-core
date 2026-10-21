@@ -99,7 +99,7 @@ their common upstream and it already publishes them. It is the wrong home for on
 repository consumes — that is ownership sitting apart from use, and it bills every contributor here
 for an install nothing here compiles.
 
-The relocation is **not a rename**: `@reventlessdev/` is an organisation scope, not a repository
+The relocation is **not a rename**: `@reventlessdev/` is an organization scope, not a repository
 scope, so a relocated package keeps its name and version line and consumers see nothing change. Only
 the publishing repository moves.
 
@@ -186,7 +186,7 @@ distribute the notice at all, whatever the repository contains.
   keep mirroring the npm one.
 - **It does not add convenience helpers to the bindings.** No `readJsonFile`, no path utilities. A
   convenience layer is what makes a bindings package impossible to keep dependency-free.
-- **It does not change any binding's behaviour.** Every signature change in D2 is a widening or a
+- **It does not change any binding's behavior.** Every signature change in D2 is a widening or a
   constant fold. A call site needing more than a mechanical edit is a finding to record, not to fix
   in passing.
 
@@ -199,7 +199,7 @@ distribute the notice at all, whatever the repository contains.
 | **Unifying `readFileSync` silently changes an encoding** at a call site that passed something other than `"utf8"`. | Grep every `readFileSync` call for its second argument *before* migrating; any non-`"utf8"` caller keeps an explicit-encoding binding rather than being folded. |
 | **A relocated package restarts its version line**, so a published version already exists and the release is rejected — or worse, a lower version is published and consumers' ranges silently stop resolving to it. | Step 5 verifies continuation explicitly. Record each package's current version before the move; the first release afterwards must be strictly greater. |
 | **A relocated package's tests stop running** and its coverage goes dark without any signal. | This repository guards that with `scripts/check-jest-projects.mjs` (a declared project discovering 0 suites fails). Step 5 requires the equivalent guard on the receiving side before the move is considered done. |
-| **A reusable workflow pinned to a branch** changes release behaviour in every calling repository the moment this one's branch moves — the same class of silent disagreement this repository's capability generation exists to remove. | Callers pin a tag; the tag moves deliberately. Never `@alpha`. |
+| **A reusable workflow pinned to a branch** changes release behavior in every calling repository the moment this one's branch moves — the same class of silent disagreement this repository's capability generation exists to remove. | Callers pin a tag; the tag moves deliberately. Never `@alpha`. |
 | Relicensing a derivative drops an upstream notice that its license requires be preserved. | D5: the notice is preserved and the holder named, not deleted. Step 6 verifies through `npm pack`, since the repository containing a file and the package shipping it are different things. |
 
 ## What landed (2026-07-31)
@@ -218,7 +218,7 @@ dependencies. `Generator_Node` is down to one helper that is not a binding; `lay
 
 **The compiled JavaScript barely moved, and every hunk that did is the `node:` prefix.** ReScript
 erases externals and inlines them at the call site, so re-pointing a binding cannot change
-behaviour — the generator's compiled output did not change at *all*, and `generate-plugin` /
+behavior — the generator's compiled output did not change at *all*, and `generate-plugin` /
 `generate-platform` produce byte-identical roots on all three examples. The only compiled changes in
 the repository are: `FTPHandler`, `Util_Bundle`, `Util_LocalConfig`, `Util_StaticBundle` and
 `DomainGraphQL_Server` switching `"fs"`/`"path"`/`"crypto"`/`"module"`/`"stream"` to their `node:`
@@ -324,7 +324,7 @@ would have taken — so the output carries the same information the step used to
 It also published `@reventlessdev/rescript-node@2.0.0-alpha.0`, the first release of the merged
 package, which is what step 7 was waiting for.
 
-### Two behaviours that changed, both deliberately
+### Two behaviors that changed, both deliberately
 
 - **A failed post-release dispatch now fails the run.** It used to be the last two steps of the
   release job, so a failed `gh workflow run` failed that job. As a separate job it would have been

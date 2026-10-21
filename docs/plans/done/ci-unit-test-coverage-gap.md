@@ -132,7 +132,7 @@ strictly simpler if it holds.
 
 - **Changing the tracked-`.res.mjs` convention** documented in `CLAUDE.md`. Option C is chosen
   precisely to avoid touching it.
-- **Publishing / release-mode behaviour.** Option A would touch it; C does not.
+- **Publishing / release-mode behavior.** Option A would touch it; C does not.
 - **The 4 "failing" hybrid example suites — RESOLVED 2026-07-22, no repo change.** They failed
   locally with `Cannot find module '@reventlessdev/online-shop-hybrid-ordering-spec/src/…'`.
   Cause was a local install gap: `examples/online-shop-hybrid/catalog` and `.../ordering` were

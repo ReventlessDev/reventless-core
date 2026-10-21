@@ -91,7 +91,7 @@ describe("the lifecycle trail:", () => {
     expect(run(events)->statesOf)->toEqual(run(events)->statesOf)
   })
 
-  // The marker is what makes a trail recognisable to a consumer holding only the
+  // The marker is what makes a trail recognizable to a consumer holding only the
   // schema. `SchemaType.trailShape` walks the entries by shape, which skips the
   // semantic dispatch `fromSury` does, so this is the assertion that catches it
   // being dropped there — the field would still emit as a plain array of objects.

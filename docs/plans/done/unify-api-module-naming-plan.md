@@ -242,4 +242,4 @@ npm run build
 cd reventless/reventless-in-memory && npm test
 ```
 
-All tests must pass (no behaviour change — purely cosmetic renames internal to each functor).
+All tests must pass (no behavior change — purely cosmetic renames internal to each functor).

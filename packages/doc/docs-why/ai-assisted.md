@@ -13,7 +13,7 @@ than merely fast.
 
 ## Describe the domain in your own words
 
-You start from a description a domain expert would recognise:
+You start from a description a domain expert would recognize:
 
 > *"A catalog of products. Products can be added, renamed, and repriced.
 > Categories can be created and archived. Other parts of the system need to know

@@ -38,7 +38,7 @@ surface. Collapsing them either loses accounts to a transient blip or retries
 forever against a password policy.
 */
 type failure =
-  /** The contact is already a principal. A modelled answer, not an exception —
+  /** The contact is already a principal. A modeled answer, not an exception —
         which is what a silent idempotent sign-up throws away. */
   | Conflict
   /** The provider is down or unreachable. The domain fact stands; retry. */

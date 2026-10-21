@@ -23,7 +23,7 @@ This is a per-Lambda-invocation cost. Lambda warm-instance reuse means the same 
 
 - Skip the full re-read when the same Lambda instance has recently handled a command for the same query and knows the resulting state.
 - Cache hit reduces the read to a delta-only query (`~after = cachedHeadPosition`) — typically returning zero events on the happy path.
-- Cache miss falls through to current behaviour. No correctness regression.
+- Cache miss falls through to current behavior. No correctness regression.
 - Bounded memory: per-instance LRU with explicit cap.
 - Correctness preserved across cache staleness: the fence-based atomic append already detects stale reads and forces a retry. The cache must not subvert this — a cached state used in a retry-after-conflict must be invalidated.
 
@@ -162,7 +162,7 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 ## Open questions
 
 - **What happens for multi-tag queries where the slice's `query` array has many items?** The cache key is the full serialised query — same shape, same key. But subtly different command instances may produce slightly different queries (e.g. filtering on different `customerId` values). Each gets its own cache entry. With 100-capacity LRU and a workload spanning thousands of distinct customers, hit rate is low. Profile before tuning capacity.
-- **State serialisability.** The cache stores live ReScript values, not serialised state. They're shared by reference across cache hits — the slice's `evolve` function must not mutate state in place. Reventless conventions already favour immutable updates; document and verify.
+- **State serialisability.** The cache stores live ReScript values, not serialised state. They're shared by reference across cache hits — the slice's `evolve` function must not mutate state in place. Reventless conventions already favor immutable updates; document and verify.
 - **Cache poisoning under bug scenarios.** A `decide` that produces events but then fails to append (network error, not conflict) leaves the cache un-updated, which is correct. A `decide` that produces correct events but the operator manually deletes them from DynamoDB out-of-band leaves the cache pointing at events that don't exist — but the next conditional append will fence-conflict (real `lastPosition` in DynamoDB is older than cached `headPosition`), invalidate, and recover. Out-of-band manipulation is already an edge case; the cache doesn't make it worse.
 - **TTL on cache entries.** LRU alone may keep stale entries warm forever in low-eviction workloads. Consider an additional time-based eviction (e.g. 5 minutes). For workloads where conflict rates are low, this is overcautious; for workloads with infrequent commands per entity, it prevents pathological cases. Default off; revisit if metrics show stale-cache surprises.
 

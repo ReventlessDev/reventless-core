@@ -54,7 +54,7 @@ The framework had solved this exact shape twice, both times at **deploy time**:
   provisioning site.
 - `EventLogProvisioning` — the same, fired as each event log is created.
 
-Both let an out-of-tree package attach behaviour without the framework knowing what the behaviour
+Both let an out-of-tree package attach behavior without the framework knowing what the behavior
 is. Neither had a runtime counterpart, so an extension could shape *what gets provisioned* but not
 *what runs inside it*.
 

@@ -341,7 +341,7 @@ AggCommandTopic -> Aggregate: command
 Besides publishing events and commands — which stay inside the event-sourced
 system — an ExtensionPoint mapping can perform **side effects** that reach outside
 it (call an external API, send a notification, create a schedule). These are
-modelled as **directives**: the `directive` `@schema` type on the Spec, returned
+modeled as **directives**: the `directive` `@schema` type on the Spec, returned
 from a mapping as a `HandleDirective(handler, directive)` action. The runtime then
 calls `handler(directive)` as a fire-and-forget side effect — nothing is
 published, logged to the event store, or replayed.

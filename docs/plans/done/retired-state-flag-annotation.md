@@ -8,7 +8,7 @@ plan below, each deliberate:
   retired rows from an `Elevated` or `System` caller too until they pass
   `includeRetired` — an archive that is always underfoot is not an archive. The
   plan had `retiredScopeOf` returning `None` for those two; Acceptance already
-  described the shipped behaviour ("an elevated caller reaches them by passing
+  described the shipped behavior ("an elevated caller reaches them by passing
   `includeRetired`").
 - **`retiredScopeOf` returns `option<string>`**, not the planned
   `option<(string, bool)>`. The excluded value is always `true`, and a parameter
@@ -122,7 +122,7 @@ shape is worth one coordinated bump of two packages that already release togethe
 **Steps 4–5** (`queryableDef` + codegen) may ride that release or the next one;
 they are inert either way. Fold them in unless a smaller first bite is wanted.
 
-**Steps 6–8** (classification, resolvers, publishers) change behaviour, but still
+**Steps 6–8** (classification, resolvers, publishers) change behavior, but still
 only for annotated fields — of which there are none until the switch is thrown.
 
 The first annotated field belongs after the *consumers* of this capability are
@@ -246,13 +246,13 @@ is what tests most easily exercise.
   FilterExpression path.
 - **`reventless/aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res`** and
   **`.../Runtime/PgQueryResolverEntryPoint_Ops.res`**.
-- **Single-entity resolvers.** A list filter that the get resolver does not honour
+- **Single-entity resolvers.** A list filter that the get resolver does not honor
   is not a filter: a pasted URL, or a reference resolved from another row, walks
   straight around it. Return the null/refused shape for a retired row when
   `retiredScopeOf` is `Some`, mirroring how `RefuseOwned` short-circuits today.
 
 **`includeRetired: Boolean` list argument.** Generated onto the list query SDL and
-honoured **only** when `retiredScopeOf` returns `None` for this caller. A scoped
+honored **only** when `retiredScopeOf` returns `None` for this caller. A scoped
 caller passing it is ignored rather than refused — a refusal reports that the
 argument means something, and there is nothing to gain by saying so. Without this
 argument an elevated caller can never reach the archive at all, so it ships with
@@ -352,7 +352,7 @@ configuration already does.
   N with retired rows interleaved returns N live rows, not N-minus-retired.
 - Single-entity — a scoped caller asking for a retired row by id gets the refused
   shape.
-- `includeRetired` — honoured for elevated, ignored for scoped.
+- `includeRetired` — honored for elevated, ignored for scoped.
 - `StateChangeDescriptorParityTest` — a retiring save publishes `Updated` with no
   `state` in all three implementations; an un-retiring save publishes full state.
 

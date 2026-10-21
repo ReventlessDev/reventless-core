@@ -4,7 +4,7 @@
 // (`generator/Discovery`) and the external tooling that classifies files by
 // folder (`reventless-gwt`'s `ComponentMeta`) both derive from this, so the two
 // can't drift — previously the generator accepted plural/short folder names that
-// the gwt discovery silently didn't recognise.
+// the gwt discovery silently didn't recognize.
 
 type t =
   | StateChangeSlice

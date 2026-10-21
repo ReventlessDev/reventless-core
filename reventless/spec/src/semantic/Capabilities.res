@@ -41,9 +41,9 @@ type t = {
 /**
 The capability set of a platform that provisions nothing.
 
-Every capability here answers `Unavailable`, which is a *modelled* outcome:
+Every capability here answers `Unavailable`, which is a *modeled* outcome:
 `translate` maps it to `Error`, the item is retried and the sweep surfaces it.
-That is the behaviour wanted for a deployment that simply has no geocoder — the
+That is the behavior wanted for a deployment that simply has no geocoder — the
 work stays queued and visible rather than being written off as a verdict on the
 address, which is what `NoMatch` would mean.
 

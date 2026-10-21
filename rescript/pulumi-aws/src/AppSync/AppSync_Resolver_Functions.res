@@ -728,7 +728,7 @@ export function response(ctx) {
 
 /** Refuses backward paging, for the reason `listAllItemsConnection` gives: the
 cursor is DynamoDB's own continuation token, which only walks forward, so
-`last`/`before` cannot be honoured, and handing back the forward page would answer
+`last`/`before` cannot be honored, and handing back the forward page would answer
 a different question without saying so. The arguments stay declared — one that
 came and went with the index's shape would make every client feature-detect — and
 the local backend refuses them with the same message. */
@@ -993,7 +993,7 @@ let listAllItemsConnection = (
   // Reuses `_exempt` when the owner clause computed it; either clause may be the
   // only one present. `includeRetired` IS read from ctx.args, unlike the owner
   // predicate — it asks to lift a restriction rather than naming rows, and is
-  // honoured only inside `_exempt`.
+  // honored only inside `_exempt`.
   //
   // `attribute_not_exists OR = false` rather than `<> true`, because `<>` does not
   // match a missing attribute and the view would empty out the day the annotation

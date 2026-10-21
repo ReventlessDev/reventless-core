@@ -65,7 +65,7 @@ The consequence is a stack that cannot deploy at all, from a subsystem nobody wa
 
 ## §2 — Why the existing escape hatch cannot be the answer
 
-`unmanagedLogGroupStacks` (`Util_LogRetention.parseUnmanagedStacks`, honoured at all three sites)
+`unmanagedLogGroupStacks` (`Util_LogRetention.parseUnmanagedStacks`, honored at all three sites)
 makes the program stop **declaring** log groups. That is the right bridge for a stack that has
 never adopted any group.
 
@@ -128,13 +128,13 @@ name is `/aws/appsync/apis/<server-assigned id>`, so the group can only ever be 
 API, and any window in which the API serves a request before the deploy reaches the group is a
 window the deploy loses permanently.
 
-The behaviour to guarantee is unchanged: **a deploy that meets an existing log group adopts it and
+The behavior to guarantee is unchanged: **a deploy that meets an existing log group adopts it and
 reports that it did, rather than failing.**
 
 ### Spike result — the `import` option cannot be wired in-program
 
 The plan's open question was whether Pulumi's `import` resource option tolerates inputs that differ
-from the live resource. It does: import-then-update in one deployment is the documented behaviour,
+from the live resource. It does: import-then-update in one deployment is the documented behavior,
 so candidate 1 was correct and candidates 2 and 3 were unnecessary. That is not the blocker.
 
 The blocker is one the plan did not anticipate: **`import` takes a plan-time `string`**, and neither
@@ -160,7 +160,7 @@ whose create step does that is idempotent by construction: there is no case to d
 has to be known synchronously, and the group name can be a plain `Output` because it arrives as a
 resource **input** rather than a resource **option**.
 
-Delete tears the group down, so the resource keeps the teardown behaviour the declarative
+Delete tears the group down, so the resource keeps the teardown behavior the declarative
 `Cloudwatch.LogGroup` had, and `unmanagedLogGroupStacks` keeps its meaning.
 
 The known cost is that a Pulumi dynamic provider runs from a serialized closure captured in state:
@@ -254,7 +254,7 @@ metric filters. The warning is correct; the estate was one code path away from n
 | Why the name is physical, not logical | `RuntimeEnvironment_Lambda.res:320-325` |
 | Support-Lambda log group, same shape | `reventless/aws/src/util/Util_LambdaLogging.res:55-80` |
 | AppSync log group, name from a server-assigned id | `reventless/aws/src/components/Api/AppSync_Adapter.res:564-570` |
-| The escape hatch, honoured at all three sites | `Util_LogRetention.parseUnmanagedStacks`; `RuntimeEnvironment_Lambda.res:156`, `Util_LambdaLogging.res:16`, `AppSync_Adapter.res:560` |
+| The escape hatch, honored at all three sites | `Util_LogRetention.parseUnmanagedStacks`; `RuntimeEnvironment_Lambda.res:156`, `Util_LambdaLogging.res:16`, `AppSync_Adapter.res:560` |
 | Retention/level policy this plan does not touch | `reventless/aws/src/util/Util_LogRetention.res` |
 | Lambda binding without `loggingConfig` | `rescript/pulumi-aws/src/Lambda/Lambda.res:218-232` |
 | Metric filters attached to the managed group | `RuntimeEnvironment_Lambda.res:356-372` |

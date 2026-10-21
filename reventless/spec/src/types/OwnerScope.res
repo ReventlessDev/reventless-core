@@ -21,8 +21,8 @@ absent. Every read here goes through a nullable cast for that reason; deleting
 one restores a silent failure rather than a type error.
 */
 /** Whether a JS value is a primitive string — `Cognito` and `InMemory` compile to
-    bare strings while `Custom(_)` compiles to an object, so this is how a modelled
-    provider is told from an unmodelled one that arrived as raw JSON. */
+    bare strings while `Custom(_)` compiles to an object, so this is how a modeled
+    provider is told from an unmodeled one that arrived as raw JSON. */
 let isJsString: 'a => bool = %raw(`v => typeof v === "string"`)
 
 external asNullableString: string => Nullable.t<string> = "%identity"
@@ -213,8 +213,8 @@ let classify = (identity: Identity.t, ~elevated: array<string>): t => {
 
   switch providerName {
   | Some(name) if systemProviders->Array.includes(name) => System
-  // A modelled string provider, or `Custom(_)` (an object, so `providerName` is
-  // None) — either way a caller claiming to be a person. Unmodelled strings fall
+  // A modeled string provider, or `Custom(_)` (an object, so `providerName` is
+  // None) — either way a caller claiming to be a person. Unmodeled strings fall
   // through to the refusal below.
   | Some("Cognito") | Some("InMemory") | None =>
     switch identity.userId->asNullableString->Nullable.toOption {
@@ -415,7 +415,7 @@ type retiredDecision =
 /**
 Combine a view's declared retirement flag with the caller behind the request.
 
-`~asked` is the caller's `includeRetired` request, honoured only where the
+`~asked` is the caller's `includeRetired` request, honored only where the
 caller was going to see those rows anyway. Reading it before classifying would
 make the argument the decision rather than a request.
 

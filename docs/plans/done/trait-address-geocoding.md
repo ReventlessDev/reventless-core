@@ -116,7 +116,7 @@ Three of the four assertions already exist as example GWTs in
   `Customer` graft.
 - **G6** — delete the example GWTs the conformance suite now covers. One source of truth per guard.
 
-**Exit:** event-level behaviour identical to today; conformance green; the package installs from its
+**Exit:** event-level behavior identical to today; conformance green; the package installs from its
 own tarball into a scratch copy of the example and builds (the pack-and-install check — with a Shape
 A package this is the only thing that proves the boundary is real, since there is no linked code).
 

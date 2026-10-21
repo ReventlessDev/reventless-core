@@ -69,7 +69,7 @@ let is_option_string_type (ct : core_type) =
     when the [pld_name] / [pld_type] / [pld_loc] / [attr_loc] locations are
     all identical (as is the default when a ppx synthesises a field from one
     [~loc]). Use [Location.none] for the synthetic field's locations so the
-    checker treats it as a pure "ghost" field and honours the attribute. *)
+    checker treats it as a pure "ghost" field and honors the attribute. *)
 let make_synthetic_display_name_field ~loc:_ : label_declaration =
   let ghost = Location.none in
   let res_optional_attr =

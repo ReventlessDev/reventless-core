@@ -477,7 +477,7 @@ crashing the system.
 The SemVer policy for `@schema` message types differs from infrastructure types because runtime
 codecs must handle **unknown data gracefully**:
 
-| Change | Version bump | Runtime behaviour |
+| Change | Version bump | Runtime behavior |
 |--------|-------------|------------------|
 | Add a new variant to `command`/`event` | MINOR | Old decoders must skip unknown variants gracefully |
 | Add an optional field to a variant payload | MINOR | Old decoders ignore extra fields |

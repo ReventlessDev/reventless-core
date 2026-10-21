@@ -73,7 +73,7 @@ Update [parent plan's "Tests run" section](../done/dcb-dynamodb-atomic-append.md
 
 ## Open questions
 
-- DynamoDB Local has a known divergence from production around GSI propagation — but our atomicity guarantees come from base-table conditional writes, not GSI behaviour. Should be safe.
+- DynamoDB Local has a known divergence from production around GSI propagation — but our atomicity guarantees come from base-table conditional writes, not GSI behavior. Should be safe.
 - Whether to gate on Docker availability or pin a specific dynamodb-local JAR version. Decide during Step 1.
 
 ## Status

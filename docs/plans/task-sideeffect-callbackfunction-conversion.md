@@ -215,7 +215,7 @@ feature?"**
   which is currently the only thing declaring it.
 
 Step 0 (deploy `ordering-aws`, count Lambdas) is still worth doing first and is
-unaffected by this finding — it establishes what the current behaviour actually
+unaffected by this finding — it establishes what the current behavior actually
 is, which neither branch above can be planned against without.
 
 ## Housekeeping while here

@@ -53,7 +53,7 @@ Three independent leaks bypass the `isLambda` branch:
 
 1. **`EffectLogger.withComp` (`reventless-core/src/util/EffectLogger.res:118-121`)**
    builds the `[Plugin][Comp]` prefix with `Logger.fmtComp` —
-   the *coloured* variant — and embeds it into the message string
+   the *colored* variant — and embeds it into the message string
    **before** the message reaches `Logger.emit`. By the time `emit` checks
    `isLambda`, the prefix is already poisoned with `\x1b[…m` escapes.
    It then JSON-stringifies that poisoned string into `message`.
@@ -70,7 +70,7 @@ Three independent leaks bypass the `isLambda` branch:
    - `StateViewSlice_Callback.res:48`: event type is bold
 
 3. **`LogPrefix.fmtComp` (`reventless-spec/src/LogPrefix.res:150-160`)**
-   itself unconditionally injects colour and bold. There is a sibling
+   itself unconditionally injects color and bold. There is a sibling
    `fmtPlainPrefix` (line 135), but only `Logger.emit`'s Lambda branch
    uses it. `EffectLogger`, `ExtensionPointMapping.compLog`, and
    `ExtensionMapping.compLog` all call `fmtComp` regardless of sink.
@@ -165,7 +165,7 @@ call site and don't change the local platform's appearance.
 2. **Fix `EffectLogger.withComp` to use the plain prefix in a JSON sink.**
    Replace the unconditional `Logger.fmtComp` with the same `isLambda`/
    TTY check used in `Logger.emit`. Better: keep `withComp` plain and
-   move the colouring entirely into `Logger.emit` (single responsibility
+   move the coloring entirely into `Logger.emit` (single responsibility
    for sink-specific styling).
 
 3. **Generalise the sink detection.** Replace
@@ -255,7 +255,7 @@ The proposed JSON shape is provider-agnostic. The deciding question
 for any new platform is just: *does stdout go to a TTY, or to a log
 collector?*
 
-- **Local (TTY)**: coloured human format — unchanged.
+- **Local (TTY)**: colored human format — unchanged.
 - **Lambda / Fargate / ECS / CI**: structured JSON.
 - **Azure Functions, GCP Cloud Run, generic Docker / k8s**: same
   structured JSON. All major log collectors (Datadog Agent, Vector,
@@ -273,6 +273,6 @@ answer for all three is "top-level JSON fields".
 ## Suggested next step
 
 Open a focused PR for Tier 1 (items 1-4). It is mechanically small,
-behaviour-preserving for the local platform, and immediately removes
+behavior-preserving for the local platform, and immediately removes
 the `[…m` noise from CloudWatch. Tier 2 and Tier 3 follow as
 separate PRs once Tier 1 is in.

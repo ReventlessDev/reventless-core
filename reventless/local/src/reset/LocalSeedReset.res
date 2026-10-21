@@ -552,7 +552,7 @@ let run = (~dbPath: option<string>=?): unit => {
           Console.log("Nothing to do.")
         } else {
           // Set at all ⇒ it is the answer, affirmative or not. Falling through to
-          // the prompt on an unrecognised value would ask for a TTY the runs this
+          // the prompt on an unrecognized value would ask for a TTY the runs this
           // variable exists for do not have, so `SEED_RESET_CONFIRM=no` would
           // throw where it plainly means "don't". Both arms read the reply
           // through one predicate, which is what keeps the typed `y` and the

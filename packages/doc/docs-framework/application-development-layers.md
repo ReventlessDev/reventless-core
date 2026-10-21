@@ -1,6 +1,6 @@
 # Application Development Layers
 
-Reventless organises application code into three strictly separated layers.
+Reventless organizes application code into three strictly separated layers.
 Each layer has a clearly defined responsibility, a fixed set of package
 dependencies, and its own placement within the source tree.
 
@@ -31,7 +31,7 @@ provider.
 
 ### Purpose
 
-Everything a domain expert would recognise: aggregate state machines, DCB
+Everything a domain expert would recognize: aggregate state machines, DCB
 slices, read model projections, extension point contracts. No Pulumi, no AWS,
 no Effect, no DynamoDB — only `sury` (for JSON schema derivation via the
 `@schema` ppx) and the behavioral contracts from `reventless-spec`.

@@ -10,7 +10,7 @@ outside every stack. That is this.
 🚨 **It does not attach a pre-token-generation trigger, and must not.** The pool's
 one trigger slot is the deploy's business: a script that filled it would be the
 hand-run `UpdateUserPool` this whole area refuses, leaving the deployment's
-behaviour depending on an act no source describes.
+behavior depending on an act no source describes.
 
 The store's name and key schema come from [Auth_ActiveRoleStore_Schema] rather
 than from constants here. A second copy of either would be one edit away from

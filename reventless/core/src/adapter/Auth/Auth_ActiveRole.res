@@ -69,7 +69,7 @@ boundary — and a table copied into two test suites is exactly the drift it exi
 to prevent.
 
 `expected` is the group set the minted token must carry. `None` means the request
-must be **refused** rather than honoured, ignored, or reduced to the empty set —
+must be **refused** rather than honored, ignored, or reduced to the empty set —
 the distinction §3 turns on. A path with no client to refuse (the trigger, reading
 stored state) resolves `None` by minting `membership` and marking
 [staleRoleClaim]; a path answering a live request refuses it.

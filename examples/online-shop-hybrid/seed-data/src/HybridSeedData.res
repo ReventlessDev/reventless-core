@@ -217,7 +217,7 @@ let seedProductGallery = async (
   )
   // The primary is chosen rather than left to the first-attached fallback, so a
   // reader can tell the two apart: a row whose primary is its *second* image is
-  // the only evidence the choice was honoured.
+  // the only evidence the choice was honored.
   let chosen =
     extra
     ->Array.filterMap(((productId, productImage, _)) =>
@@ -734,7 +734,7 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
 
   // The retirements, read back and counted by state. This query runs as the seed's
   // own caller — `admin`, which the deployment lists as elevated — so it returns
-  // retired rows and the view counts above do NOT drop. That is correct behaviour
+  // retired rows and the view counts above do NOT drop. That is correct behavior
   // and reads exactly like a bug, so it is stated rather than left to be
   // rediscovered. The line below is what an elevated caller sees; a scoped one
   // sees neither of these rows.

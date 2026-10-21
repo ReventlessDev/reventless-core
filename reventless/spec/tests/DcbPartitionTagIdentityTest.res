@@ -2,7 +2,7 @@
 // the DCB naming convention (`*Id` / `*Ids`) cannot express it. `@partitionTag`
 // is meant to be the escape hatch for exactly that, but it used to work only
 // where it was not needed: the hint was extracted from the event schema and then
-// dropped, because `seedOf` honours a hint only when it already names a produced
+// dropped, because `seedOf` honors a hint only when it already names a produced
 // key, and produced keys came from names alone.
 //
 // So a slice keyed by `sku` had an annotation in its source, a partition the

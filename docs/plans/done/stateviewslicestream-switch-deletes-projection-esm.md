@@ -114,7 +114,7 @@ moment one of its inputs can go unknown. Remaining sites:
 `ExtensionPoint_Builder.res`, and the Postgres-only pg-secret / appsync-publish
 policies in `StateViewSliceRuntime_Builder_Single.buildLambda`. None is implicated
 in this symptom and none is changed here — flagged so the next occurrence is
-recognised as a class rather than diagnosed from scratch.
+recognized as a class rather than diagnosed from scratch.
 
 The mappings themselves still cannot be hoisted out of an apply: an ESM's Pulumi
 name is derived from the resolved source name, so a **brand-new event log** still

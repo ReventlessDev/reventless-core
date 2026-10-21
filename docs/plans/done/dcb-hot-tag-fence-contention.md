@@ -156,7 +156,7 @@ is required for correctness.** A wipe is optional cleanup — it drops the dead 
 rows and gives a pristine table to validate against; per repo convention (wipe alpha over
 migration) it's the clean way to do that. The only genuinely-remaining step is to **deploy
 and re-observe** the `platform-inspector` deploy-sync burst on the next alpha release to
-confirm the `retries exhausted` cascade is gone — passive confirmation of behaviour the
+confirm the `retries exhausted` cascade is gone — passive confirmation of behavior the
 integration suite already proves against a real DynamoDB engine.
 
 ## Goals
@@ -238,7 +238,7 @@ If profiling shows a small number of hot fences (e.g. one per high-volume status
 
 ### Step 2 — Implement §2 (selective fence bumping) first
 
-Lowest risk, lowest code churn. Adds a PPX annotation that defaults to current behaviour. Only marked tags change semantics. Backwards compatible.
+Lowest risk, lowest code churn. Adds a PPX annotation that defaults to current behavior. Only marked tags change semantics. Backwards compatible.
 
 - New PPX annotation `@dcbTag(~consistencyMode=#LookupOnly)` in [`reventless-ppx`](../../packages/reventless-ppx/).
 - Pass the mode through to `Reventless.DcbTag.tag` as a new field (default `#Strict`).

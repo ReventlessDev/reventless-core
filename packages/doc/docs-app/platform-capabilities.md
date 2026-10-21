@@ -73,8 +73,8 @@ than by luck:
   comparison to fail at runtime.
 - **The wire carries strings.** `pluginStructure` and `capabilities.json` persist
   capability names as text, so a plugin built against a newer framework still
-  decodes in an older reader. A name the reader does not recognise is reported as
-  unrecognised, never folded into a known arm.
+  decodes in an older reader. A name the reader does not recognize is reported as
+  unrecognized, never folded into a known arm.
 - **An older platform does not refuse a newer plugin's unknown need.** The deploy
   gate skips a capability this build cannot evaluate, because refusing over one it
   cannot reason about would be a guess dressed as a check. The capability then
@@ -142,8 +142,8 @@ have run on email.
 
 Both spellings persist as **strings**, not enum members, in `pluginStructure` and
 in `capabilities.json` — so a plugin built against a newer framework still decodes
-in an older reader, and a capability name this build does not recognise is reported
-as unrecognised rather than silently dropped into a known arm.
+in an older reader, and a capability name this build does not recognize is reported
+as unrecognized rather than silently dropped into a known arm.
 
 ## From declaration to provisioning
 
@@ -205,11 +205,11 @@ injected caller yet — the accessor for it belongs in this record and is not th
 So `Capabilities.t` is where two of three capabilities are reached, not the
 definition of what a capability is.
 
-### Unavailable is a modelled outcome
+### Unavailable is a modeled outcome
 
 `Capabilities.none` is the capability set of a platform that provisions nothing.
 Every call answers `Unavailable`, `translate` maps that to `Error`, the item is
-retried and the sweep surfaces it. That is the wanted behaviour for a deployment
+retried and the sweep surfaces it. That is the wanted behavior for a deployment
 that simply has no geocoder: the work stays **queued and visible** rather than
 being written off as a verdict on the data — which is what a `NoMatch` would mean.
 It is named so that a platform passing it is making a statement rather than filling
@@ -252,7 +252,7 @@ defined; **one has a transport today**:
 
 A channel appears when a transport does, not when its config key exists — claiming
 one ahead of its backend would collect preferences that silently deliver nothing.
-So the vocabulary here is also a statement of intent: SMS and push are modelled,
+So the vocabulary here is also a statement of intent: SMS and push are modeled,
 addressed and routed, and what is missing in each case is the provider binding.
 
 A `(channel, address)` pair can be built wrong — `Sms` beside an email address

@@ -185,13 +185,13 @@ the answer to that and are unaffected here. The refusal being legible does not
 make it not a refusal.
 
 **Not a claim that the AWS path is currently wrong.** As far as this plan can
-tell without a deployment, AppSync's behaviour is correct and complete. What is
+tell without a deployment, AppSync's behavior is correct and complete. What is
 missing is on our side: nothing states the correspondence, so nothing can be
 written against it.
 
 ## §6 — Hazards, both to answer before building
 
-### 6.1 — Is `@aws_auth` honoured on a multi-auth API at all? 🚨 **ANSWERED: NO — and fixed**
+### 6.1 — Is `@aws_auth` honored on a multi-auth API at all? 🚨 **ANSWERED: NO — and fixed**
 
 > **Observed 2026-08-14.** It is **ignored**. The third outcome below is the one
 > that happened: the admin surface was gated by nothing on the AWS path. A
@@ -219,12 +219,12 @@ carries the single-mode directive on an API that is configured multi-mode
 (Cognito + IAM).
 
 Three outcomes are possible and only a deployed API can say which: the service
-rejects the schema (it does not — deploys succeed), honours the directive
+rejects the schema (it does not — deploys succeed), honors the directive
 anyway, or **ignores it**. The third would mean the admin surface is gated by
 nothing on the AWS path, which is a security finding that outranks everything
 else in this file. Answer it first, and answer it by observation.
 
-### 6.2 — The §2 table is expected behaviour, not observed **— RESOLVED: one row was wrong**
+### 6.2 — The §2 table is expected behavior, not observed **— RESOLVED: one row was wrong**
 
 Both AWS rows are reasoned from how the service is configured, not from a
 captured response. The whole plan rests on them. Capture real bodies — status
@@ -252,7 +252,7 @@ remaining steps are the original conformance work, now on a sound premise.
 
 **2. Write the correspondence down as data.** ✅ **Done** —
 `reventless/core/src/adapter/Auth/Auth_RefusalVocabulary.res`, a sibling of the
-claim-name table it was modelled on. It carries the four observed signals, a
+claim-name table it was modeled on. It carries the four observed signals, a
 `classify(~httpStatus, ~errorType?, ~extensionsCode?)` that answers
 entitlement-vs-identity without the caller knowing which adapter replied, and
 `warrantsReauthentication`, the one decision the distinction exists to drive.
@@ -296,7 +296,7 @@ resolves the prefix collision in both directions.
   [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md)
   §1 and §8.
 - ✅ §6.1 is answered in writing — "no", and it did outrank this plan. Closed in
-  favour of that finding, fixed in `13926388c`, reopened once the premise held.
+  favor of that finding, fixed in `13926388c`, reopened once the premise held.
 - ✅ The correspondence is expressed as data both adapters are held to:
   `Auth_RefusalVocabulary.res`, with the local adapter emitting its codes from
   that module rather than repeating literals. Not prose in one adapter's

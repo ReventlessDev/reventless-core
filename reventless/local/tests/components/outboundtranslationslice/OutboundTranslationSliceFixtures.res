@@ -72,7 +72,7 @@ module ProcessPaymentSpec = {
     (string, outboundItem) => promise<result<option<(string, inboundCommand)>, string>>,
   > = ref(async (id, _item) => Ok(Some((id, ConfirmPayment({orderId: id})))))
 
-  // The mock stays two-arg: a test that wants to vary behaviour varies it on
+  // The mock stays two-arg: a test that wants to vary behavior varies it on
   // the item, and threading capabilities into every fixture would make each
   // one restate a type it does not use.
   let translate = (id, item, ~capabilities as _) => translateFn.contents(id, item)

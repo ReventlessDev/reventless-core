@@ -18,7 +18,7 @@ external throwAwsError: (string, string) => unit = "throwAwsError"
 
     🚨 **Thrown and caught, not constructed.** ReScript's `exn` for a JS error is
     the wrapper its own `catch` builds — a bare `Error` value is a different thing
-    and `JsExn.fromException` does not recognise it. A fixture that returned one
+    and `JsExn.fromException` does not recognize it. A fixture that returned one
     would make every predicate here look broken while the code was fine, which is
     exactly the wrong way round for a regression test. */
 let awsError = (~name: string, ~message: string): exn =>

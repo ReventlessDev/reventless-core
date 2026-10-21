@@ -111,7 +111,7 @@ the scheduled publisher. No test retries an item that `process` left pending; th
 - `~now` follows `TypeAnnotationInjection`, which already walks `process` through its
   `Function$` wrapper. Adding a labelled layer raises the arity from 2 to 3.
 - `reschedule` is the one with no pass to extend. Today only the wiring sidecar's emitter
-  recognises `Mapping.Make(Source, Target, {...})`. A new walk has to append to the third
+  recognizes `Mapping.Make(Source, Target, {...})`. A new walk has to append to the third
   argument, the way `inject_external_system_into_inner_module` appends to an inner module. The
   older three-file `_Mappings.res` form goes through a different path and needs the same walk.
 - Both sidecars are written from the source *before* any injection. `.model.json` keeps only the
@@ -831,4 +831,4 @@ guide; adding them would add two decisions the shop does not otherwise need.
 
 **P3. How often does the local sweep run?**
 **Recommendation: every five minutes, as on AWS, shortened by an environment variable** for a
-developer who does not want to wait; the default keeps local behaviour equal to deployed.
+developer who does not want to wait; the default keeps local behavior equal to deployed.

@@ -5,7 +5,7 @@
 Reventless plugins move through three lifecycle tiers, each with a distinct
 trigger, recoverability, and effect on the platform's API and UI surface.
 Treating them as a single "is the plugin up?" axis leads to over-reactive
-behaviour — for example, tearing down the GraphQL schema on a transient
+behavior — for example, tearing down the GraphQL schema on a transient
 heartbeat miss, or conflating an admin-driven suspension with a permanent
 removal. Naming the tiers explicitly and assigning each its own surface
 contract keeps the system predictable and gives each future feature a
@@ -56,7 +56,7 @@ the admin tier is [docs/plans/done/aws-plugin-activate-deactivate-resolver.md](.
 - **Status**: this tier is not yet modeled. The gap is acknowledged in
   [event-graph-linking.md:237](done/event-graph-linking.md#L237): "requires a
   `PluginDeregistered` (or `PluginDeprecated`) event to tombstone the
-  fragment. This event is not currently modelled in the platform spec
+  fragment. This event is not currently modeled in the platform spec
   and would need to be added if formal deregistration is required."
 
 ## Cross-cutting: version supersession (`Retired`)
@@ -146,7 +146,7 @@ both leave membership untouched; only the gate flips.
 ## Error-code semantics
 
 The resolver gate must distinguish tier 1 from tier 2 because client
-behaviour differs:
+behavior differs:
 
 - **`PluginUnavailable`** (Disconnected) — auto-recoverable. Clients
   should retry with backoff. The plugin is expected to come back on its
@@ -192,7 +192,7 @@ GraphQL "unknown field" error.
 
 ## Implementation pointers
 
-- **Behaviour**:
+- **Behavior**:
   [PluginBehavior.res](../../reventless/core/src/plugin/lifecycle/PluginBehavior.res)
   — defines the `Detected` / `Connected` / `Disconnected` / `Inactive`
   states and the transitions between them.
@@ -239,5 +239,5 @@ A future plan to add tier 3 would need:
    a toggle.
 
 Until that plan exists, the platform has a 2-tier lifecycle model. This
-is documented behaviour, not a bug — most platforms operate happily
+is documented behavior, not a bug — most platforms operate happily
 without ever needing tier 3.

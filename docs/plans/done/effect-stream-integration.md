@@ -875,7 +875,7 @@ testPromise("second command sees state produced by first command via stream repl
 #### B.3 Acceptance criteria ✅
 
 - All existing `EventLogTest.res` tests pass unchanged (replay still works) ✅
-- All existing `AggregateTest.res` tests pass unchanged (observable behaviour unchanged) ✅
+- All existing `AggregateTest.res` tests pass unchanged (observable behavior unchanged) ✅
 - All new `EventLogStreamTest.res` tests pass (7 tests) ✅
 - `npm run build` from root: zero warnings, all packages compile ✅
 - `npm test` from `reventless-in-memory`: 129 tests pass ✅
@@ -895,7 +895,7 @@ testPromise("second command sees state produced by first command via stream repl
 
 ### Phase C — QueryDb Scan as Stream + Limit Tests ✅ COMPLETE
 
-**Goal:** Make `QueryEngine_InMemory.scan` honour the `~limit` parameter, which has been wired
+**Goal:** Make `QueryEngine_InMemory.scan` honor the `~limit` parameter, which has been wired
 through the type system since the beginning but silently ignored in the in-memory implementation.
 
 **Priority:** Low — `scan` is used in the GraphQL admin/reporting API, not the hot path.
@@ -924,7 +924,7 @@ Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
 
 Where `allItems.contents` is the current in-memory dict converted to a flat array.
 
-**Step 3 — Update `QueryEngine_InMemory` to prefer stream and honour `~limit`**
+**Step 3 — Update `QueryEngine_InMemory` to prefer stream and honor `~limit`**
 
 ```rescript
 scan: async (~readModelName, ~filterConfigs as _, ~limit=?) => {

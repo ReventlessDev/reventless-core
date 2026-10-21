@@ -225,7 +225,7 @@ Pick one; the config flag is simpler.
 ### 3.4 DynamoDB failure fallback
 
 If the read or write fails (permissions, table gone, transient DB
-error), fall back to the current behaviour: always push. This
+error), fall back to the current behavior: always push. This
 preserves correctness at the cost of the optimisation. Log a warning
 so operators notice.
 
@@ -256,7 +256,7 @@ this. With dedup added, the race becomes:
 - Stack B writes fragment F_B → scans (sees F_A, F_B, F_C) → hashes → **gets H2 ≠ H1** → pushes → writes hash H2.
 
 Both pushes happen, both produce consistent end state. No worse than
-today. The optimisation degrades to current behaviour under
+today. The optimisation degrades to current behavior under
 concurrent deploys, which is acceptable.
 
 ### 4.3 Platform deploy (base fragment change)
@@ -309,7 +309,7 @@ perf(aws): skip AppSync schema push when SDL is unchanged
 ```
 
 Body mentions:
-- No behaviour change for deploys that genuinely change the schema.
+- No behavior change for deploys that genuinely change the schema.
 - Significantly faster no-op deploys (~30 s saved per plugin stack).
 - Indirectly reduces propagation-race frequency by not resetting the
   propagation clock on no-op pushes.

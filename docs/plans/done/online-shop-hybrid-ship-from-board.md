@@ -111,5 +111,5 @@ Make `ShipOrder` read order state, mirroring `CancelOrder`. This both:
   either branch — the board already resolves `ShipOrder`→`Shipped` the moment the
   command is linked to the view (manual branch), and already hides `@noApi`
   commands once [the apiExposed UI plan] lands (automation-only branch).
-- This is example-domain modelling, not a framework change; `consistencyReadFor`
+- This is example-domain modeling, not a framework change; `consistencyReadFor`
   is behaving correctly given `ShipOrder`'s current empty consumption.

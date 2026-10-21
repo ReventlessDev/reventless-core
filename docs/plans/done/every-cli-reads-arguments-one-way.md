@@ -70,8 +70,8 @@ wrong:
 |---|---|---|---|
 | The six loop parsers | usage → stdout, exit 0, anywhere in argv | `<bin>: <message>` → stderr, exit 1, no usage | runs on defaults, except `deploy-app`: *"say `up` or `down` (--help for more)"*, exit 1 |
 | The three trait tools | usage → stdout, exit 0, **only as the first argument** | `<bin>: <message>` → stderr, exit 1 | usage → **stdout**, exit 1 |
-| `generate-plugin`, `generate-platform`, `emit-capabilities` | **not recognised**: `generate-plugin -h` takes `-h` as its `<srcDir>` | a bare `Usage: …` line → stderr, exit 1, no `<bin>:` prefix | the same usage error |
-| `check-lifecycle`, `check:graphql` | not recognised | only a missing `--root` value is reported (exit 1); anything else is ignored | runs |
+| `generate-plugin`, `generate-platform`, `emit-capabilities` | **not recognized**: `generate-plugin -h` takes `-h` as its `<srcDir>` | a bare `Usage: …` line → stderr, exit 1, no `<bin>:` prefix | the same usage error |
+| `check-lifecycle`, `check:graphql` | not recognized | only a missing `--root` value is reported (exit 1); anything else is ignored | runs |
 
   Every tool also exits 1 when it *ran and failed*: drift found, a provisioning call refused. So
   exit 1 cannot tell a caller whether the tool was misinvoked or did its job and said no.
@@ -166,7 +166,7 @@ The contract:
 with typed accessors (`CliArgs.string`, `.bool`, `.strings`, `.positionals`, `.pairs`), so no
 tool touches `NodeUtil.values` directly.
 
-### One behaviour for every tool
+### One behavior for every tool
 
 The same situation ends the same way in every tool, so a person learns it once and a caller can
 act on the exit code:
@@ -276,8 +276,8 @@ Internal dependencies are `workspace:*` (`aws` and `local` on `spec` and `rescri
 Extract each untested tool's parsing into a `parseArgs: array<string> => result<args, string>`
 function that keeps its **current** logic, the shape the six tested tools already have. Then
 write tests against it. They pin today's accepted forms and the four contracts above, *not* the
-defects in the table above or today's help, error and exit behaviour: those change on purpose,
-and their tests are written in C2–C5 against the new behaviour. Inventory every caller of the
+defects in the table above or today's help, error and exit behavior: those change on purpose,
+and their tests are written in C2–C5 against the new behavior. Inventory every caller of the
 trait tools, the generators and the two checks (package scripts, CI, examples, `traits/`) before
 any of them becomes strict, and confirm that none tests for exit 1 specifically rather than for
 non-zero.
@@ -299,7 +299,7 @@ and by `LocalPlatformRegistry`'s existing tests.
 
 `parse` against the contract table, case by case. That includes the leading `--`, the `pairs`
 reconstruction against `graft-trait`'s current semantics, and one test per wording the six tools
-use. Then `run` against the behaviour table: help anywhere prints usage to stdout and exits 0,
+use. Then `run` against the behavior table: help anywhere prints usage to stdout and exits 0,
 help wins over an unknown argument, a usage mistake writes `<bin>: <message>` and the usage to
 stderr and exits 2, stdout stays empty on a usage mistake, and `main`'s own failure still exits 1.
 `run` takes the exit function as a parameter in its tests, so they assert the code without
@@ -352,7 +352,7 @@ says what a caller has to rewrite. Downstream tools adapt from this release.
 | **D6** | Drop a leading bare `--`? | **Yes, and only a leading one.** This repository's own CI depends on it |
 | **D7** | `graft-trait`'s open-ended `--key value`: keep it, or change it to `--set key=value`? | **Keep it.** The tokens carry enough to reconstruct it exactly, and the bin's interface does not move |
 | **D8** | Does `NodeProcess.onSignal` leave its polymorphic variant in this release? | **✅ Decided 2026-09-23: yes.** It is a regular `signal` variant, the release marks it breaking, and its two callers change with it |
-| **D9** | One behaviour for help, a usage mistake and a bare invocation across all fourteen? | **✅ Decided 2026-09-23: yes**, owned by `CliArgs.run`. See *One behaviour for every tool* |
+| **D9** | One behavior for help, a usage mistake and a bare invocation across all fourteen? | **✅ Decided 2026-09-23: yes**, owned by `CliArgs.run`. See *One behavior for every tool* |
 | **D10** | Which exit code for a usage mistake? | **2.** It is the POSIX convention, and it lets a caller tell a misinvocation from a run that failed (1). Nothing here tests for 1 specifically, which C0 confirms |
 | **D11** | Does `--help` win over a bad argument? | **Yes.** The person asking what a tool takes is the one least sure of their arguments |
 

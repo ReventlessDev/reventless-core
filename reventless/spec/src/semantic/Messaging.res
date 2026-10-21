@@ -142,7 +142,7 @@ type message = {subject?: string, body: string}
 
 /** The provider accepted the message. `ref` is its own id for it — what a
     support conversation about a missing message is conducted with, and the only
-    thing a caller can record that the provider will recognise. */
+    thing a caller can record that the provider will recognize. */
 type receipt = {ref: string}
 
 /**
@@ -203,7 +203,7 @@ type send = (~recipient: recipient, ~message: message) => promise<result<receipt
 The capability as a slice receives it: what can be attempted, and how.
 
 `channels` is here because a recipient cannot be offered a choice the deployment
-cannot honour. A platform provisions email only, or email and SMS; a preference
+cannot honor. A platform provisions email only, or email and SMS; a preference
 centre that listed all three would collect a subscription every send then answers
 `UnsupportedChannel` for. Published rather than inferred from a failed send,
 because discovering a channel by failing on it costs a real message.

@@ -1,7 +1,7 @@
 open JestGlobals
 
 // The sign-in attribute is the one pool setting no later deploy can correct, so
-// what these cover is the parse: absent must mean today's behaviour, and a
+// what these cover is the parse: absent must mean today's behavior, and a
 // spelling this build does not know must refuse rather than default.
 
 module LoginIdentifier = Auth_LoginIdentifier

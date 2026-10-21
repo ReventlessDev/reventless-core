@@ -10,7 +10,7 @@
 
 `DateRange` (two instants, `[start, end)`) and `GeoPoint` (`{lat, lng}`) are
 semantic composites in `reventless/spec/src/semantic/`: record types the
-framework recognises, with a marker the UI reads and value-object operations
+framework recognizes, with a marker the UI reads and value-object operations
 beside them. Both shipped and are used by the hybrid example. These are the
 decisions both plans deliberately left for evidence.
 

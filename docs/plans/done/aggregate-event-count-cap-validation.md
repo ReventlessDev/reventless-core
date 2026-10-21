@@ -13,7 +13,7 @@ The DCB equivalent ([`DcbEventLogStorage_DynamoDb_Runtime.res:641-644`](../../re
 
 - A command that would produce > 100 events fails immediately with `Error("max 100 events per command")` before any AWS call.
 - No silent truncation, no opaque AWS error messages.
-- Symmetric with the DCB path's behaviour.
+- Symmetric with the DCB path's behavior.
 
 ## Non-goals
 

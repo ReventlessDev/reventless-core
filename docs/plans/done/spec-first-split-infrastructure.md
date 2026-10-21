@@ -211,7 +211,7 @@ Phase 3 is split into two sub-phases. **Phase 3a** is additive: new annotations 
 In [`packages/reventless-ppx/src/ppx/ReventlessPpx.ml`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml):
 
 1. The `mode` ADT now has a unified `Implementation of impl_kind * string option` variant. `impl_kind` is `Behavior | Projection | Automation | Translation` — one variant per implementation file kind. The old `Behavior of string option` was folded into `Implementation (Behavior, _)`.
-2. `detect_mode` and `strip_ppx_attrs` recognise the new annotation names (`reventless.projection`, `reventless.automation`, `reventless.translation`) alongside `reventless.behavior`. Each accepts an optional Spec module name in the same `(SpecModule)` payload form Behavior already supports.
+2. `detect_mode` and `strip_ppx_attrs` recognize the new annotation names (`reventless.projection`, `reventless.automation`, `reventless.translation`) alongside `reventless.behavior`. Each accepts an optional Spec module name in the same `(SpecModule)` payload form Behavior already supports.
 3. The Implementation transform branch:
    - Injects `open <Spec>` and `module Spec = <Spec>` (same as Behavior).
    - For `Projection` only, also injects `open Reventless.Projection` so the `Set` / `Update` / `UpdateWithDefault` / `Delete` action constructors are in scope without an explicit user `open`. This mirrors the auto-open the Spec branch already does for `is_stateview_filename` files in the merged form.
@@ -230,7 +230,7 @@ PPX integration tests added in [`packages/reventless-ppx/test/run.sh`](../../pac
 **Verification:** All 129 PPX integration tests pass (10 new + 119 existing). Full repo rebuild compiles 836 modules with zero warnings; all 1110 tests across 124 suites pass. Both `ppx-osx-x64.exe` and `ppx-linux.exe` binaries committed.
 
 **Deferred to Phase 3b** (would break existing tests; needs coordination with Phases 5 & 6):
-- Type-annotation injection on recognised function bindings to resolve `consumedEvent` / `event` constructor shadowing in split slice files.
+- Type-annotation injection on recognized function bindings to resolve `consumedEvent` / `event` constructor shadowing in split slice files.
 - Folder-to-DSL inference change: `Util.dsl_kind_of_segment` returning the implementation-kind name for `StateChangeSlice/` / `StateViewSlice/` (currently still returns the slice-typed name).
 - `GwtInference` update so the `Projection` kind also uses `gen_include_two` (today only `Behavior` does).
 
@@ -242,7 +242,7 @@ PPX integration tests added in [`packages/reventless-ppx/test/run.sh`](../../pac
 
 2. **`GwtInference` two-arg form** ([`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml)). The `gen_include_two` helper is now parameterised by `~kind` (was hard-coded to `Behavior_GWT`); both `Behavior` and `Projection` go through it via the new `is_two_arg_kind` predicate. The `Empty` payload + two-arg branch first searches for two top-level modules; if only one (or none) is found, it falls back to filename-stem derivation paired with `<Stem>_<Kind>` for the impl module reference (treating both as external).
 
-3. **Type-annotation injection** — new module [`TypeAnnotationInjection.ml`](../../packages/reventless-ppx/src/ppx/TypeAnnotationInjection.ml) walks recognised impl-kind bindings (`evolve`, `decide`, `project`, `collect`, `resolve`, `process`, `translate`) and annotates each parameter with its canonical type. Inbound vs. Outbound translation is discriminated by folder; Aggregate vs. StateChangeSlice Behavior is discriminated by `Util.is_in_slice_folder` (Aggregate's `evolve` consumes `event`; slice's consumes `consumedEvent`). Existing manual parameter annotations are preserved. Return-type annotation is intentionally omitted to avoid conflicting with ReScript v12's `async` sugar — parameter annotations alone suffice for constructor-shadowing disambiguation.
+3. **Type-annotation injection** — new module [`TypeAnnotationInjection.ml`](../../packages/reventless-ppx/src/ppx/TypeAnnotationInjection.ml) walks recognized impl-kind bindings (`evolve`, `decide`, `project`, `collect`, `resolve`, `process`, `translate`) and annotates each parameter with its canonical type. Inbound vs. Outbound translation is discriminated by folder; Aggregate vs. StateChangeSlice Behavior is discriminated by `Util.is_in_slice_folder` (Aggregate's `evolve` consumes `event`; slice's consumes `consumedEvent`). Existing manual parameter annotations are preserved. Return-type annotation is intentionally omitted to avoid conflicting with ReScript v12's `async` sugar — parameter annotations alone suffice for constructor-shadowing disambiguation.
 
    ReScript v12 represents uncurried `(a, b) => c` functions as `Pexp_construct(Function$, Some inner)` wrapping the inner `Pexp_fun` chain. The walker unwraps the `Function$` constructor, descends into the chain, annotates each layer's parameter pattern, and re-wraps. This is the AST-level detail the type-annotation injection had to discover during integration; documented here so future PPX work in this codebase can reuse the unwrap/walk pattern.
 
@@ -255,9 +255,9 @@ PPX integration tests added in [`packages/reventless-ppx/test/run.sh`](../../pac
 Implemented as a standalone Node script at [`scripts/spec-first-migrate/spec-first-migrate.mjs`](../../scripts/spec-first-migrate/spec-first-migrate.mjs) (per the plan's "lighter" option — Node-based rather than Ppxlib-based, justified by the corpus being small and the slice files being structurally regular). See [`scripts/spec-first-migrate/README.md`](../../scripts/spec-first-migrate/README.md) for usage.
 
 The script:
-- Walks `.res` files under any recognised slice folder (`StateChangeSlice/`, `StateViewSlice/`, `AutomationSlice/`, `InboundTranslationSlice/`, `OutboundTranslationSlice/`); skips `node_modules/` and `lib/`.
+- Walks `.res` files under any recognized slice folder (`StateChangeSlice/`, `StateViewSlice/`, `AutomationSlice/`, `InboundTranslationSlice/`, `OutboundTranslationSlice/`); skips `node_modules/` and `lib/`.
 - Parses each file with a custom top-level scanner that tracks bracket depth, string state (`"..."` and template `\`...${...}...\``), and nested block comments — sufficient for the regular shape of slice files (no nested modules, no functors).
-- Classifies each top-level item by binding name against the per-kind tables in §D2. Comments and decorators (`@schema`, etc.) attach to the next binding (per plan §Phase 4 step 2). Unrecognised bindings default to the implementation file with a warning.
+- Classifies each top-level item by binding name against the per-kind tables in §D2. Comments and decorators (`@schema`, etc.) attach to the next binding (per plan §Phase 4 step 2). Unrecognized bindings default to the implementation file with a warning.
 - Emits two files: `X.res` (Spec, retains `@@reventless.spec` + the file-header comments) and `X_<Kind>.res` (Implementation, gets `@@reventless.<kind>`).
 - Is **idempotent**: re-running on already-split files is a no-op (impl files identified by their `@@reventless.<kind>` attribute; spec files identified by an existing sibling `X_<Kind>.res`).
 - Supports `--dry-run` (prints planned splits without writing) and `--report <path>` (structured JSON output).
@@ -300,7 +300,7 @@ A dry-run mode prints the planned splits without writing files.
 Migrated **42 source files** across the example apps via the auto-split script:
 - `examples/online-shop-dcb/catalog/` (12 slice files: 1 InboundTranslation + 8 StateChange + 3 StateView)
 - `examples/online-shop-dcb/ordering/` (16 slice files: StateChange + StateView + Automation + OutboundTranslation)
-- `examples/online-shop-hybrid/catalog/` (8 slice files including 2 StateViewSliceStream files — the script's `SLICE_KINDS` table was extended this phase to recognise `StateViewSliceStream/`)
+- `examples/online-shop-hybrid/catalog/` (8 slice files including 2 StateViewSliceStream files — the script's `SLICE_KINDS` table was extended this phase to recognize `StateViewSliceStream/`)
 - `examples/online-shop-hybrid/ordering/` (6 slice files)
 
 Each migrated app builds clean: `pnpm exec rescript build` reports zero warnings and zero errors after `pnpm run generate`. Aggregates examples (`online-shop-aggregates/`) had no slice folders to migrate.

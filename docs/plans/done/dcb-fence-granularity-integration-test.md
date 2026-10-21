@@ -32,7 +32,7 @@ The original task list below is retained for context.
 
 The unit suite ([`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res),
 45 green) asserts the *shape* of the built `TransactWriteItems`. Only a live DynamoDB run proves
-the `ConditionExpression`s actually interpret as intended — the OCC behaviour end-to-end.
+the `ConditionExpression`s actually interpret as intended — the OCC behavior end-to-end.
 
 The existing suite
 ([`DcbEventLogStorage_DynamoDb_IntegrationTest.res`](../../../reventless/reventless-aws/tests/integration/DcbEventLogStorage_DynamoDb_IntegrationTest.res))

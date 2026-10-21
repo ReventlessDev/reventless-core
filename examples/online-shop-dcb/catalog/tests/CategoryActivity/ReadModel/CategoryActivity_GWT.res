@@ -2,7 +2,7 @@ open Catalog_Examples
 
 // Multi-source ReadModel: one `_GWT` instance per source mapping. The
 // `MultiSourceProjection_GWT.Make` functor is single-source — wire one GWT
-// module per Source view and let each describe its own slice of behaviour.
+// module per Source view and let each describe its own slice of behavior.
 
 module CategoryGwt = ReventlessGwt.MultiSourceProjection_GWT.Make(
   CategoryActivity_Projections.CategoryActivityMapping,

@@ -56,7 +56,7 @@ let targetRole = if Config.splitApi then coreRoleOutput else appSyncApiRole
 Admin.construct(~api=targetApi, ~apiRole=targetRole, ...)
 ```
 
-In unified mode the behaviour is unchanged (same resource).
+In unified mode the behavior is unchanged (same resource).
 
 ---
 

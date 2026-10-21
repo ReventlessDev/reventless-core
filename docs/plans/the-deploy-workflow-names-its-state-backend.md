@@ -57,7 +57,7 @@ Pulumi access token.
   - a new stack gets the provider named, with `{stack}` replaced;
   - a review stack gets the base's provider;
   - `config cp` from the base works;
-  - with no backend input, the behaviour is today's.
+  - with no backend input, the behavior is today's.
 
 ## S2 — A review stack on a self-managed backend
 

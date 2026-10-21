@@ -80,7 +80,7 @@ two tools. Extract them into a module both `provision-admin` and this one import
 one-definition-two-consumers move `Auth_LoginIdentifier` and `Auth_SignUpMode` already made, and for
 the same reason: the alternative is a second copy that drifts.
 
-`provision-admin` keeps its own behaviour exactly. This step must change nothing about it, and its
+`provision-admin` keeps its own behavior exactly. This step must change nothing about it, and its
 tests are what says so.
 
 ### Step 2 — one schema for the manifest, not two

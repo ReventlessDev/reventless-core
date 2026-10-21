@@ -188,7 +188,7 @@ let register = (arg: Slots.registerArg): unit => {
   // the face, so rendering them here shows every offer twice.
   arg.slots.row(Slots.RowSlot.cardsFace, payload => {
     // An order has no name of its own, so its label falls back to its id. A uuid
-    // is not a heading; when it was placed is the thing a person recognises.
+    // is not a heading; when it was placed is the thing a person recognizes.
     let heading = switch Slots.Row.text(payload.row, "placedAt") {
     | Some(at) => Slots.Format.isoDay(at)
     | None => Slots.titleOf(payload)
@@ -314,7 +314,7 @@ let register = (arg: Slots.registerArg): unit => {
   // the day someone added one, and that is the one thing a tracker exists not
   // to do — so nothing below names a state.
   //
-  // An unrecognised `state` reads as upcoming rather than throwing. The strip
+  // An unrecognized `state` reads as upcoming rather than throwing. The strip
   // is a picture of where a row has got to, and a picture that renders one node
   // plainly is better than a region that renders nothing.
   // arg.slots.row(Slots.RowSlot.trackerSteps, payload =>
@@ -371,7 +371,7 @@ let register = (arg: Slots.registerArg): unit => {
   arg.slots.view(Slots.ViewSlot.listSelection, payload => {
     let picked = payload.picked->Option.getOr([])
     let prices = picked->Array.filterMap(p => Slots.Row.money(p.row, "price"))
-    // A total only where one can be told truthfully. This catalogue prices in
+    // A total only where one can be told truthfully. This catalog prices in
     // more than one currency, so adding the numbers would produce a figure in no
     // currency at all. Shown when every picked row carries a price and they all
     // agree on the currency; omitted otherwise, rather than quietly summing

@@ -163,7 +163,7 @@ let forDcbCommandTopic = (
     // InboundTranslationSlice modules — spec + translation paths and the resolved
     // audit table name (Pulumi-generated, so it must be resolved here). Emitted as
     // a `,"inboundTranslationSliceModules":[…]` fragment merged into HANDLER_CONFIG
-    // (absent → the entry point has no Route 0 registry, unchanged behaviour).
+    // (absent → the entry point has no Route 0 registry, unchanged behavior).
     let inboundFragment = switch inboundSlices {
     | [] => Pulumi.Output.make("")
     | slices =>

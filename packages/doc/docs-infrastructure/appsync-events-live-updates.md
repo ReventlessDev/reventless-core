@@ -306,7 +306,7 @@ match; extend it whenever the wire format changes.
 **Local dev caveat:** the in-memory auth path resolves a no-header request to
 `defaultUser`. That is fine for a metadata channel and stays fine for a data
 channel only because local dev is not a security boundary — do not read the
-local behaviour as the deployed one.
+local behavior as the deployed one.
 
 ---
 
@@ -414,7 +414,7 @@ model names), reference-counts channels, lazily opens on first subscribe, and
 disposes after an idle window. It is armed only when `config.json` has
 `liveUpdates: true` **and** the matching `*EventsEndpoint` is present.
 
-### Reconnect behaviour (Tier 1 refetch)
+### Reconnect behavior (Tier 1 refetch)
 
 AppSync Events is fire-and-forget pub/sub — a subscriber connected at time T
 sees publishes from T onward and nothing earlier. When the WebSocket drops

@@ -8,7 +8,7 @@
 analyses. This document consolidates them into one picture — what the framework already emits,
 what is missing, and the order to build it — so downstream observability consumers (any layer
 that reads logs / metrics / traces) have a stable, deliberate substrate rather than incidental
-behaviour. It **does not replace** any existing plan; it sequences them and names the decisions.
+behavior. It **does not replace** any existing plan; it sequences them and names the decisions.
 
 **Consolidates:**
 - `docs/plans/done/logging-output-optimization.md` (JSON log fields — done)

@@ -28,7 +28,7 @@ describe("Util_StoreLayout.layoutFor", () => {
   )
 
   // The accepted fail-open: a production stack whose name is not on the list
-  // gets the weaker layout silently. Asserted so the behaviour is a decision on
+  // gets the weaker layout silently. Asserted so the behavior is a decision on
   // record rather than a surprise, and so the config override is the documented
   // fix rather than a code change.
   testSync("an unlisted production name falls open to the shared layout", () =>

@@ -145,7 +145,7 @@ which of the existing outputs happens to be downstream of the callback.
 
 Low, and bounded by the existing fallback. The publish is fire-and-forget with a try/catch that
 degrades to the next natural heartbeat, exactly as today; the change only moves *when* it is
-attempted. The one new behaviour is that a re-detect now actually reaches the aggregate on every
+attempted. The one new behavior is that a re-detect now actually reaches the aggregate on every
 plugin deploy, which is the designed path (`PluginSpec.res:13-16`) and is already exercised by
 `local/tests/plugin/PluginBehavior_GWT.res:47-62`. Worst case for a plugin whose definition genuinely changed is one
 extra `VersionConnected` per deploy — the event the row needs and currently never gets.

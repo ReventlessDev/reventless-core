@@ -51,7 +51,7 @@ topics deduplicate by content.
 
 ## Operations
 
-| Operation | Behaviour |
+| Operation | Behavior |
 |---|---|
 | `createSchedule` | `CreateSchedule` in the group; when one of that name exists, `UpdateSchedule` replaces it |
 | `deleteSchedule` | `DeleteSchedule`; a schedule already gone, such as a once-only one that fired, is no error |

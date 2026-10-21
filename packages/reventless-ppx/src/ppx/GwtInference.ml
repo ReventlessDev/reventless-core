@@ -71,7 +71,7 @@ open Ppxlib
     well as any filename substring that contains a kind token. When several
     path segments match, the closest-to-file segment wins. The
     Aggregate-pattern architectural folders [Aggregate] / [ReadModel] (and
-    their plurals) are also recognised.
+    their plurals) are also recognized.
 
     The PPX strips the attribute and inserts the generated
     [open <Spec>; include <Kind>_GWT.Make(<Spec>)] pair. When the Spec is a

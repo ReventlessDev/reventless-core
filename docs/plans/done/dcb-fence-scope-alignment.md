@@ -64,7 +64,7 @@ A multi-tag clause reads via the `tag_composite` GSI; its read-scope is "events 
 Pick one (decide during implementation, default **A**):
 
 - **A — Composite fence sentinel.** Maintain `fence#composite:<compositeKey>` analogous to the `tag_composite` index. A composite clause's conditional check guards the composite fence; an append bumps `fence#composite:<k>` when the event's tag set yields composite `<k>`. Fence-scope then equals composite read-scope. +1 fence item per composite clause.
-- **B — Scope the rule to single-tag query tags only.** Keep composite clauses on the existing per-tag fences (current behaviour) and apply the partition-tag rule only where the read is partition-scoped. Smaller change, but leaves composite reads on the old (broader) fences — acceptable only if no current slice depends on cross-partition composite OCC. Audit before choosing.
+- **B — Scope the rule to single-tag query tags only.** Keep composite clauses on the existing per-tag fences (current behavior) and apply the partition-tag rule only where the read is partition-scoped. Smaller change, but leaves composite reads on the old (broader) fences — acceptable only if no current slice depends on cross-partition composite OCC. Audit before choosing.
 
 ## Implementation sketch
 

@@ -1,4 +1,4 @@
-// Behaviour scenarios as they run, written as sidecars `check-lifecycle` reads.
+// Behavior scenarios as they run, written as sidecars `check-lifecycle` reads.
 //
 // The PPX writes a `.gwt.json` sidecar from a `_GWT.res` file's source, so it can only name what
 // the source spells out: a literal constructor in a step. A suite written against a binding (a

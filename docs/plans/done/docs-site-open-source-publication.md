@@ -363,7 +363,7 @@ The left group now wraps and is clipped to exactly one row (`flex-wrap: wrap` +
 `max-height` = row height + `overflow: hidden`), with every child pinned to that
 row height so the clip lands on a row boundary. A link that no longer fits drops
 to the hidden second row: the leading entries that fit are shown, nothing is
-half-drawn, and the behaviour is identical whether the cause is a narrow window
+half-drawn, and the behavior is identical whether the cause is a narrow window
 or an expanded search box. This also replaced the 880 px floor from 9.3 — the
 clip decides, so links are simply enabled from 768 px up. Two traps found while
 verifying: a `> *` form of the row-height rule outranks Infima's
@@ -387,7 +387,7 @@ h1 → h2 → h3, so the hierarchy reads unchanged at ~2/3 of the whitespace.
 trailing margin of its last paragraph or list *on top of* its own padding, and
 the homepage feature cards additionally stretched to the tallest card in the row
 (`height: 100%`) despite being borderless — so a short card ended with a large
-empty area. Dropped the stretch in favour of an explicit row gap, zeroed the
+empty area. Dropped the stretch in favor of an explicit row gap, zeroed the
 trailing margin on the last child of any card, and gave the feature icon a
 tighter line-height (a 40 px emoji was sitting in a ~64 px line box).
 

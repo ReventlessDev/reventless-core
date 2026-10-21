@@ -110,7 +110,7 @@ let _identityProviderId = (~cfg: Pulumi.Config.t): option<string> => {
   `platform:loginIdentifier` (or `REVENTLESS_LOGIN_IDENTIFIER` / the sidecar).
 
   Absent means `email`, which is what every pool so far was created with. An
-  unrecognised spelling fails the deploy — see [Auth_LoginIdentifier] for why
+  unrecognized spelling fails the deploy — see [Auth_LoginIdentifier] for why
   defaulting past a typo here is unrecoverable. */
 let _loginIdentifier = (~cfg: Pulumi.Config.t): Auth_LoginIdentifier.t => {
   let raw = switch Util_LocalConfig.get("loginIdentifier") {
@@ -128,7 +128,7 @@ let _loginIdentifier = (~cfg: Pulumi.Config.t): Auth_LoginIdentifier.t => {
 
   Absent means `adminOnly`, which is what every pool so far was created with, so
   an existing stack redeploys unchanged. Unlike the sign-in attribute this is an
-  ordinary in-place update on a live pool — but an unrecognised spelling still
+  ordinary in-place update on a live pool — but an unrecognized spelling still
   fails the deploy, because defaulting past it would refuse every registration
   while the config read as if it allowed them. See [Auth_SignUpMode]. */
 let _signUpMode = (~cfg: Pulumi.Config.t): Auth_SignUpMode.t => {
@@ -215,7 +215,7 @@ let _resolveUncached = (): cognitoUserPool => {
     // separate attachment resource — so the trigger is attached by a declared
     // resource that describes the pool, merges into what it finds, and sends the
     // result back whole. Never a hand-run command: that would leave the
-    // deployment's behaviour depending on an act no source describes.
+    // deployment's behavior depending on an act no source describes.
     // The code hash is an input so a new build of the trigger reaches this
     // resource: the function ARN is stable, so it alone would let a broken
     // version onto the pool unchecked after the first deploy.

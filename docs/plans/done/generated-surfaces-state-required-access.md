@@ -75,13 +75,13 @@ offer. A component nobody may call has no reason to appear in a manifest.
 
 **Keys are strings and the namespace is shared** with `config.accessTiers`, by
 existing design: the client already unions groups and tiers into one set. That is
-what lets a role and a licence tier gate the same surface without the client
+what lets a role and a license tier gate the same surface without the client
 learning the difference. It also means a group named after a tier collides, which
 is a deployment's problem to avoid and worth one line in the guide.
 
 ## §4 — What still needs authoring
 
-A licence tier has no server-side rule — it is granted by deployment config, not
+A license tier has no server-side rule — it is granted by deployment config, not
 by a token, and no `@authorize` annotation expresses it. So an explicit
 annotation stays necessary for exactly that case, and its documentation should
 say so plainly: **use it for keys the server does not enforce; never to restate a
@@ -152,7 +152,7 @@ not a key.
 **Not done — the consumer.** A shell still passes no access keys into its page
 generation, so nothing gates yet. That work belongs with whoever owns the shell,
 along with the policy question this plan deliberately left open: a denied surface
-can be locked (right for a licence upsell) or absent (right for a role split),
+can be locked (right for a license upsell) or absent (right for a role split),
 and the two are different products, not different opinions.
 
 **A note the golden list already records.** Adding these fields moved

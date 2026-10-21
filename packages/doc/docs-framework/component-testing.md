@@ -229,7 +229,7 @@ These are integration tests. Each test calls a `_Builder.Make(Bus)` functor, cre
 | Retry on conflict | ✅ Counter-based failure injection | — |
 | Adapter contract (storage, publisher) | Mock-based only | ✅ Real in-memory adapter |
 | Builder wiring (Output chains, bus subscriptions) | — | ✅ Primary coverage |
-| Timer / scheduling behaviour | — | ✅ Fake-timer tests |
+| Timer / scheduling behavior | — | ✅ Fake-timer tests |
 | Full pipeline (command → event → projection) | — | ✅ End-to-end |
 
 When adding a new component, write Layer 1 tests first (faster feedback, no bus setup needed), then Layer 2 tests to verify the builder correctly wires everything together.

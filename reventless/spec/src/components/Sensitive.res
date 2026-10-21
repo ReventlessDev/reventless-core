@@ -9,7 +9,7 @@ facts about one field.
 It is declared where the field is declared, and read by anything that composes
 text somebody will read. That is the whole reason it lives here rather than
 beside whichever consumer happens to need it first: a marking that exists in one
-consumer is a marking the rest of the system cannot honour, and the domain model
+consumer is a marking the rest of the system cannot honor, and the domain model
 is the only place that knows which values are sensitive.
 
 ## Absent means "not stated", not "safe"

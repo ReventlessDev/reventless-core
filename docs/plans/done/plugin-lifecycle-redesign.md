@@ -41,7 +41,7 @@ Two intertwined deliverables, sequenced so each commits independently:
 1. **Consolidate all plugin-related files into a dedicated folder** under each
    package's `src/` (and `tests/`). Today they are scattered across
    `src/admin/`, `src/components/Plugin/`, and several `reventless-aws`
-   subdirectories. This is a pure reorganisation — no behaviour change.
+   subdirectories. This is a pure reorganization — no behavior change.
 2. **Redesign the plugin lifecycle around a single name-keyed aggregate.** One
    component owns a plugin name's whole lifecycle — connect / heartbeat /
    supersede / disconnect / retire — deciding synchronously and emitting one
@@ -65,7 +65,7 @@ and `reventless-aws` declare `sources: [{dir: "src", subdirs: true}, {dir:
 "tests", subdirs: true}]`. Subdirectories are recursively compiled and modules
 are referenced by bare name regardless of folder. **Therefore moving a `.res`
 file between folders under `src/` does NOT break any `open Foo` / `Foo.bar`
-reference** — folders are organisational only.
+reference** — folders are organizational only.
 
 Consequences for the plan:
 - No `open`/module-reference edits are needed for the move itself.
@@ -152,7 +152,7 @@ Move the matching test files alongside (folders are cosmetic here too):
    left at old paths (`git ls-files --deleted` then `git add`/checkout as
    needed — see MEMORY: rescript clean wipes tracked `.res.mjs`).
 4. Commit: `refactor(core): consolidate plugin files under src/plugin/` (no
-   behaviour change → `refactor:`, not `feat:`/`fix:`).
+   behavior change → `refactor:`, not `feat:`/`fix:`).
 
 **Verification:** full `pnpm run build` + `pnpm test` green, zero warnings.
 Confirm no stem collisions reported by the compiler.
@@ -390,7 +390,7 @@ its synthetic heartbeat.
 
 ## Sequencing & commits
 
-1. **`refactor:` folder consolidation** (Part 1) — no behaviour change, lands first.
+1. **`refactor:` folder consolidation** (Part 1) — no behavior change, lands first.
 2. **`feat:` lifecycle redesign** (Part 2) — the name-keyed aggregate, both read
    views, retire-hook deletion; fixes the duplicate-menu bug.
 3. **`feat:` zero-downtime handover** (Part 3) — mandatory; depends on Part 2's

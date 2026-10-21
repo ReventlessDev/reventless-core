@@ -39,7 +39,7 @@ The question "what kinds are supported" therefore decomposes into three sub-ques
 
 Every behavioral pattern in the framework has a dedicated GWT DSL. The table is the
 authoritative map from component pattern → DSL → functor → folder vocabulary the PPX
-recognises.
+recognizes.
 
 | Component pattern | Folder(s) | GWT module | Functor | Async? | Status |
 |---|---|---|---|---|---|
@@ -73,7 +73,7 @@ StateView           → Projection
 ReadModel           → MultiSourceProjection
 ```
 
-Filename-suffix fallback (longest match first) recognises `OutboundTranslation`,
+Filename-suffix fallback (longest match first) recognizes `OutboundTranslation`,
 `InboundTranslation`, `Automation`, `StateChangeSlice`, `StateViewSlice`, `Projection`,
 `Behavior` inside the stem after stripping `_GWT` / `GwtTest` / `Gwt`.
 
@@ -125,7 +125,7 @@ stance on infra-bound components.
 
 ## 4. Multi-step capability that already exists (within one component)
 
-"Multi-step" already exists in three narrow, **single-component** forms. Recognising
+"Multi-step" already exists in three narrow, **single-component** forms. Recognizing
 these clarifies what the genuinely-missing cross-slice form would add.
 
 1. **Behavior given-history is multi-event.** `givenEvents([...])` folds an arbitrary
@@ -226,7 +226,7 @@ Key design choices to resolve when this is planned:
 - **Automation reaction is a function, not the bus.** `whenAutomationReacts` calls the
   slice's pure collect/process directly on the new events — no scheduler, no timers. Async
   automations are tested for their *output*, not their delivery.
-- **DCB tag filtering must be honoured.** Per MEMORY, a flow that crosses DCB slices must
+- **DCB tag filtering must be honored.** Per MEMORY, a flow that crosses DCB slices must
   filter the shared log by `@s.matches(DcbTag.string)` exactly as the runtime does, or
   downstream deciders see phantom cross-entity events. The DSL should filter per spec.
 - **PPX kind + folder.** A `Flow/` or `Scenario/` folder (and `@@reventless.gwt(Flow)`)

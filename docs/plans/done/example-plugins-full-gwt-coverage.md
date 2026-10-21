@@ -8,7 +8,7 @@ That means:
 
 - Every Aggregate (Behavior + Mapping), every StateChangeSlice, every StateViewSlice / StateViewSliceStream, every ReadModel projection, every InboundTranslationSlice, every OutboundTranslationSlice, every AutomationSlice → one `*_GWT.res` file using the appropriate `ReventlessGwt.*_GWT` DSL.
 - All other test files in `tests/` (E2E integration tests, ad-hoc `*Test.res` Jest scaffolds, projection tests written against `Projection.Set/Update/Delete` directly) → **deleted**.
-- Platform packages (`platform-in-memory/`, `platform-aws/`) and AWS plugin variants (`catalog-aws/`, `ordering-aws/`) keep zero tests — they wire infrastructure, not behaviour.
+- Platform packages (`platform-in-memory/`, `platform-aws/`) and AWS plugin variants (`catalog-aws/`, `ordering-aws/`) keep zero tests — they wire infrastructure, not behavior.
 - Spec packages (`*-spec/`) keep zero tests.
 
 The canonical reference is `docs/guides/given-when-then.md` and the worked examples in `reventless/reventless-gwt/tests/`. The codegen output under `examples/codegen/dilger/*/tests/` is the gold standard for shape and PPX usage.

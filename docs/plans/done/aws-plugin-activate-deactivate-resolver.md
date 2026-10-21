@@ -38,7 +38,7 @@ Replace this with:
   against the Plugin QueryDb (Set/Update/UpdateWithDefault/Delete).
 - In `seedPluginQueryDb`, instead of writing to the QueryDb directly, dispatch
   a synthetic `Connect(pluginDefinition)` command per plugin via
-  `Bus.dispatchCommand(<aggregate-cmd-topic>, …)`. The aggregate behaviour
+  `Bus.dispatchCommand(<aggregate-cmd-topic>, …)`. The aggregate behavior
   emits `Connected` events that the projection subscriber consumes.
 - Once the seed is event-driven, delete the hand-written Activate/Deactivate
   resolvers — `Plugin_Helpers.registerAdminAggregateMutations` (already firing
@@ -343,7 +343,7 @@ variants (open question — verify before implementing):
 - **If it doesn't** (i.e. the framework assumes commands always have a
   payload field that doubles as the aggregate id): either keep the
   hand-written args and just remove the manual `mutationEntries`
-  registration in favour of letting `mutationResolverHook` fire from the
+  registration in favor of letting `mutationResolverHook` fire from the
   new admin helper in 1.2, OR teach `GraphQL_FragmentGenerator` to
   synthesize the `id` arg for payload-less variants on aggregates.
 

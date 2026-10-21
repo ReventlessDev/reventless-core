@@ -560,7 +560,7 @@ npm install      # one-time — resolves the @reventless/reventless-ui override
 npm run dev:all  # starts backend + 2 remotes + dashboard; open http://localhost:3000
 ```
 
-### 5.3 Stop behaviour
+### 5.3 Stop behavior
 
 `Ctrl+C` in the `dev:all` terminal tears down all four via concurrently's signal forwarding. If any process survives (e.g., tsx spawning a child), the `--kill-others-on-fail` flag handles it. If a port stays wedged: `lsof -ti :4000,4001,5001,5002,3000 | xargs kill -9`.
 

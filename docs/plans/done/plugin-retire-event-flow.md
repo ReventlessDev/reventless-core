@@ -27,7 +27,7 @@ Per workflow rule "Wipe alpha EventLog rather than ship event-replay migration c
 
 ### Domain change — add `Retire` / `Retired`
 
-`PluginSpec.command` gains `Retire` (`@noApi`, payload-less). `PluginSpec.event` gains `Retired(pluginDefinition)`. Behaviour rules:
+`PluginSpec.command` gains `Retire` (`@noApi`, payload-less). `PluginSpec.event` gains `Retired(pluginDefinition)`. Behavior rules:
 
 - `Connected(_) | Disconnected(_) + Retire → Retired(pluginDefinition)`, state evolves to `Inactive`.
 - `Inactive + Retire → Ok([])` (idempotent; already retired).

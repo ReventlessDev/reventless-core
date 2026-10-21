@@ -97,7 +97,7 @@ flagged as incompatible. A MAJOR mismatch is always incompatible.
 Because runtime codecs must handle unknown data gracefully, the version policy for
 `@schema` message types differs from library API SemVer:
 
-| Change | Version bump | Runtime behaviour |
+| Change | Version bump | Runtime behavior |
 |--------|-------------|------------------|
 | Add a new variant to `command`/`event` | MINOR | Old decoders skip unknown variants |
 | Add an optional field to a variant payload | MINOR | Old decoders ignore extra fields |

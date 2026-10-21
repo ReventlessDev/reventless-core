@@ -224,7 +224,7 @@ describe("the schema a generator is built with must answer for its commands:", (
     let _ = await permissive(
       placeOrder(~customerId="cust-B", ~identity=cognito(~userId="cust-A", ~groups=["User"])),
     )->Effect.runPromise
-    // Not the behaviour we want anywhere — recorded so that a change making the
+    // Not the behavior we want anywhere — recorded so that a change making the
     // permissive path stamp correctly is a deliberate one, and so the contrast
     // with the case below cannot be read as incidental.
     expect(lastPublished()->fieldOf("customerId"))->toEqual(Some(str("cust-B")))

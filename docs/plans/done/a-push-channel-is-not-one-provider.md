@@ -209,7 +209,7 @@ from a packed tarball.
 `non-empty iff` invariant holds by construction rather than in a comment. It did not fight the
 record's use as an injected value: consumers still read `provider.channels` and `provider.send`
 directly, and only the four construction sites changed (`Capabilities.none`, both backends, the
-`SendNotification_GWT` stub). A `Push` passed in `emailAndSms` is dropped rather than honoured, and
+`SendNotification_GWT` stub). A `Push` passed in `emailAndSms` is dropped rather than honored, and
 the switch that drops it is exhaustive — so a fourth channel arrives here as a compile error.
 
 One cost worth recording: `Capabilities.none` is now computed by a call at module init, so

@@ -192,7 +192,7 @@ describe("the by-index door's owner scoping", () => {
     )->Expect.toBe(true)
   )
 
-  // The generic argument loop turns an unrecognised arg into a `contains` filter.
+  // The generic argument loop turns an unrecognized arg into a `contains` filter.
   // `includeRetired` is a request to lift a restriction, and filtering on it
   // would match no row at all.
   testSync("never treats includeRetired as a column to match on", () =>

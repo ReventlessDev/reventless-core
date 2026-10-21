@@ -245,7 +245,7 @@ From the codebase documentation:
 - `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`
 - `rescript-node` — Node.js standard-library bindings (`NodeStreams`, `NodeZlib`, `NodeUtil.parseArgs`), `rescript-ssh2`
 - `rescript-graphql-yoga` — bindings for graphql-yoga v5
-- `rescript-jest` — shared Jest-global bindings (`JestGlobals`) with throwing `expect`; the single repo-wide Jest binding for hand-written tests (replaced `@glennsl/rescript-jest`). Its `Jest` module carries glennsl's API on the same behaviour, so a glennsl suite moves over by swapping the dependency; new tests use `JestGlobals`. Its tests run fixture suites in a child Jest on 29 and on 30 (`@jest/core` aliased as `jest-core-30`; an alias of `jest` itself would take over the root `jest` bin)
+- `rescript-jest` — shared Jest-global bindings (`JestGlobals`) with throwing `expect`; the single repo-wide Jest binding for hand-written tests (replaced `@glennsl/rescript-jest`). Its `Jest` module carries glennsl's API on the same behavior, so a glennsl suite moves over by swapping the dependency; new tests use `JestGlobals`. Its tests run fixture suites in a child Jest on 29 and on 30 (`@jest/core` aliased as `jest-core-30`; an alias of `jest` itself would take over the root `jest` bin)
 - `rescript-moment` (shared with UI repo via file reference)
 
 **`examples/` — Example applications:**
@@ -269,7 +269,7 @@ The UI repo references `rescript-moment` from this repo using: `"file:../../../r
 
 ### Command-line tools
 
-Every bin reads its arguments through `Reventless.CliArgs` (in `reventless-spec`), which wraps Node's `util.parseArgs` (bound as `NodeUtil` in `rescript-node`). A tool exports `cli: CliArgs.cli<args> = {bin, usage, parse}` — `usage` starting `Usage: <bin> …` — and `main = () => CliArgs.run(cli, args => …)`. That gives every tool the same behaviour: `-h`/`--help` anywhere prints the usage to stdout and exits 0; a usage mistake prints `<bin>: <message>` and the usage to stderr and exits **2**; a run that failed exits 1. No top-level call: a `run-*.mjs` wrapper calls `main`, so a test can import the module, and `CliArgs.observe(cli, argv)` checks the command line without a process.
+Every bin reads its arguments through `Reventless.CliArgs` (in `reventless-spec`), which wraps Node's `util.parseArgs` (bound as `NodeUtil` in `rescript-node`). A tool exports `cli: CliArgs.cli<args> = {bin, usage, parse}` — `usage` starting `Usage: <bin> …` — and `main = () => CliArgs.run(cli, args => …)`. That gives every tool the same behavior: `-h`/`--help` anywhere prints the usage to stdout and exits 0; a usage mistake prints `<bin>: <message>` and the usage to stderr and exits **2**; a run that failed exits 1. No top-level call: a `run-*.mjs` wrapper calls `main`, so a test can import the module, and `CliArgs.observe(cli, argv)` checks the command line without a process.
 
 ### `.res.mjs` tracking
 

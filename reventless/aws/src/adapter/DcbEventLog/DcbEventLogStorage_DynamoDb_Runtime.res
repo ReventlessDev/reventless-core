@@ -138,7 +138,7 @@ let toItem = (
   item->Dict.set("tags", tagsJson->JSON.Encode.array)
 
   // Flatten meta.* to top-level item attributes so individual meta keys stay
-  // GSI-projectable (matches the EventLog adapter behaviour). The DCB read
+  // GSI-projectable (matches the EventLog adapter behavior). The DCB read
   // path reassembles meta via `Reventless.Message.composeMeta`.
   event.meta
   ->ReventlessCore.Message.decomposeMeta
@@ -986,7 +986,7 @@ let appendUnconditional = async (
 // The synthetic fence tag is keyed on `getCompositePartitionKeyValue` — the same
 // value `derivePartitionKey` uses for the base-table `id` — so it is exactly as
 // selective as the entity's storage partition (and the `tag_composite` read
-// scope). Fencing per-member (the historical behaviour) gave every low-cardinality
+// scope). Fencing per-member (the historical behavior) gave every low-cardinality
 // member (e.g. `environment`, `platformName`) its own fence, which a deploy-time
 // fan-out sharing those prefixes turns into a hot partition → `TransactionConflict`
 // → `retries exhausted`; it also over-fenced (two DISTINCT composite entities

@@ -311,7 +311,7 @@ In a hybrid plugin the same `OrderId.res` serves aggregates and slices alike, wh
 
 The last table says a DCB plugin has one shared CommandTopic and one shared
 EventTopic where the aggregate approach has one of each per aggregate. That is a
-deployment fact with a modelling consequence people meet late, so it is worth
+deployment fact with a modeling consequence people meet late, so it is worth
 saying directly:
 
 > **In a DCB plugin, a command name and an event name are routing keys, and the

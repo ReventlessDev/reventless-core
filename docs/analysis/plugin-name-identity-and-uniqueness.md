@@ -59,7 +59,7 @@ check and is not one:
   *deployable* names, and [`PlatformCodegen.res:76-82`](../../reventless/spec/src/generator/PlatformCodegen.res#L76-L82)
   states that no rule relates a deployable name to a registered plugin name.
 - **The Plugin aggregate is keyed by name**, which merges duplicates rather than rejecting them.
-- **The capability union** merges by key, which is correct behaviour on the assumption that one key
+- **The capability union** merges by key, which is correct behavior on the assumption that one key
   means one store.
 - **`GraphQL_Stitcher`** detects duplicate *types and fields* and skips them with a warning — the
   only duplicate handling in the composition path, and it is downstream of the actual problem.

@@ -1,6 +1,6 @@
 # AutoUI List Ordering and Filtering
 
-**Status:** Analysis of current behaviour and the gaps in default-changing affordances.
+**Status:** Analysis of current behavior and the gaps in default-changing affordances.
 
 Companion implementation history: `docs/plans/done/autoui-schema-annotations.md`, `docs/plans/done/autoui-server-query-capabilities.md`.
 
@@ -141,7 +141,7 @@ The *need* — "sorted, paginated list view" — is table stakes. But the *gap* 
 
 - **Small read model** (≤ one page, or a `first: 1000`-style grab that pulls everything and sorts client-side) → the per-page sort *is* globally correct because there is only one page.
 - **Sort by a key field** (`@id` / `@subId` / `@index`) → already routes to a `Query`; already globally ordered *and* backward-pageable today.
-- **Purpose-built read model** → in CQRS the idiomatic answer is to shape a read model to its query: if you need orders-by-price, give that read model a **sort key of price**. It is then Query-backed and correct for free — no index promotion needed. This is the same reasoning that argues against a generic `@defaultFilter` in favour of an explicit `ActiveOrders` read model (see the *Default filter* gap below).
+- **Purpose-built read model** → in CQRS the idiomatic answer is to shape a read model to its query: if you need orders-by-price, give that read model a **sort key of price**. It is then Query-backed and correct for free — no index promotion needed. This is the same reasoning that argues against a generic `@defaultFilter` in favor of an explicit `ActiveOrders` read model (see the *Default filter* gap below).
 
 What index promotion actually buys, then, is making **one** read model orderable by **many arbitrary non-key attributes** with correct cross-page order — a generic-admin-tool / AutoUI-completeness need, not a hand-built-app need.
 
@@ -162,7 +162,7 @@ What index promotion actually buys, then, is making **one** read model orderable
 **Gap.** No `@defaultSort("createdAt", #desc)` annotation exists. A reasonable design would:
 
 1. Add `defaultSort: option<(string, [#asc | #desc])>` to `stateAnnotationSpec`.
-2. PPX recognises `@@reventless.defaultSort("field", #desc)` (file-level) and writes it into the metadata.
+2. PPX recognizes `@@reventless.defaultSort("field", #desc)` (file-level) and writes it into the metadata.
 3. `deriveServerCapability` carries it through.
 4. The resolver applies it when `orderBy` is `None`, before pagination. The cursor field becomes that same field with id-tiebreak — matches the existing pattern.
 5. Validation: the field must already be in `sortFields` (i.e. backed by `@id`/`@subId`/`@index`/`@scanSort`). Otherwise compile error.

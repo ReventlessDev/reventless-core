@@ -1,6 +1,6 @@
 // Selects which storage backend the in-memory Platform uses.
 //
-// Memory   — pure in-memory dicts/refs, current default behaviour, wiped on restart.
+// Memory   — pure in-memory dicts/refs, current default behavior, wiped on restart.
 // Sqlite   — opt-in on-disk SQLite file via SqliteDriver. Survives process restart.
 //             resetOnStart=true wipes the file when the Platform is constructed.
 
@@ -41,7 +41,7 @@ let removeFileIfExists = (path: string) =>
   | _ => ()
   }
 
-// Parses REVENTLESS_LOCAL_BACKEND. Recognised forms:
+// Parses REVENTLESS_LOCAL_BACKEND. Recognized forms:
 //   sqlite:./local.db        — Sqlite backend, no reset on start
 //   sqlite:./local.db?reset  — Sqlite backend, wipes file at Platform.Make time
 //   memory                   — explicit Memory selector

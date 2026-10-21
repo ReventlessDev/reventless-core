@@ -227,7 +227,7 @@ say *which* rule declined — "ambiguous or low-relevance, said in the reason" �
 confidence rule is precisely what [Geocoding.res](../../reventless/spec/src/semantic/Geocoding.res)
 exists to prevent. So the rule was *widened where it lives* instead: `Geocoding.assess` returns
 `Confident` / `NoCandidates` / `Unscored` / `LowRelevance` / `Ambiguous`, and `confidentMatch` became a
-four-line wrapper over it with its signature and behaviour unchanged — its eight existing tests are the
+four-line wrapper over it with its signature and behavior unchanged — its eight existing tests are the
 proof of that, and they pass untouched. `ofSearch` then reports what came back (which candidates, at
 what score, against what floor) without restating the rule that rejected it.
 

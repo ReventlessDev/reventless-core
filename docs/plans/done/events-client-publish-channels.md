@@ -239,7 +239,7 @@ token to `/client/**` at the fixed URL returns `200 {"successful":[…]}`, and t
 `/default/**` returns `401`. Fixed in `VerifyClientPublish.res`.
 
 The deployed auth-mode table, read off `DomainEventsApi-05eec57` and identically
-off its sibling, is what the run confirms behaviourally:
+off its sibling, is what the run confirms behaviorally:
 
 | | publish | subscribe |
 | --- | --- | --- |

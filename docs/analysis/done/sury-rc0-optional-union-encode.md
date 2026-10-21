@@ -153,7 +153,7 @@ let noneArm = S.literal(JSON.Null)->S.transform(s => {
 S.union([noneArm, taggedArm, plainArm])
 ```
 
-Two details matter for this to be behaviour-preserving:
+Two details matter for this to be behavior-preserving:
 
 - The none-arm must be a genuine **null-typed** schema (`S.literal(JSON.Null)`),
   not a `json`-typed one that merely accepts null. Only a null-typed member makes
@@ -237,7 +237,7 @@ missing a later-added field healed against the reference member instead:
 which then **decodes cleanly** — silent corruption of replayed history, not an
 error. The walker now picks the object member that declares the most of the
 value's own keys, ties keeping the earliest (the declared preference order, i.e.
-the previous behaviour whenever scoring cannot distinguish). An inline payload
+the previous behavior whenever scoring cannot distinguish). An inline payload
 heals as `Inline`, a sentinel-keyed one as `Offloaded`. This was a latent
 fragility in the walker for *any* union of two object shapes; the offload codec is
 just the first union to have two.

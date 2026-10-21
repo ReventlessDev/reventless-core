@@ -7,7 +7,7 @@ attributed to its plugin rather than to nothing — see the progress log.
 
 - **Phase 1** (`20d0021f8`) — `ResourceAttribution.owner {kind, name}` plus an optional `~owner` on
   the five piece adapter makers and ~33 implementations across `aws`, `local` and `postgres`.
-  Behaviour-neutral by design.
+  Behavior-neutral by design.
 - **Phases 2–3** (`2ddd91ae1`) — owning builders populate it; `AWS_Tags.make` takes an optional
   `~owner` that overrides `~kind` and `~component`. A QueryDb table owned by a ReadModel and one
   owned by a StateViewSlice now differ in `reventless:kind` while sharing `role = QueryDb`, and
@@ -50,7 +50,7 @@ Verified: AWS 280/280, local 501/501, build clean with zero warnings.
 **Follows:** `docs/plans/done/resource-attribution-tag-schema.md`, which established the tag schema
 and closed the same gap for Lambdas. This plan closes it for the remaining resource classes.
 
-**Motivation:** `reventless:kind` is meant to carry the **modelling kind of the component that owns
+**Motivation:** `reventless:kind` is meant to carry the **modeling kind of the component that owns
 the resource** (Aggregate, ReadModel, StateViewSlice, …), independent of `reventless:role`, which
 carries the deployment piece (EventLog, QueryDb, Runtime, …). That separation holds today for every
 Lambda — `RuntimeEnvironment_Lambda.makeFromCodeAsset` takes a required `~componentKind` — and for
@@ -67,7 +67,7 @@ Two independent causes:
 1. **The adapter is never told who owns it.** `QueryDbStorage_DynamoDb.make` receives a `~name`
    string and nothing else. The owner is fixed by whichever builder applied the piece functor, one
    or two levels up.
-2. **`ComponentType.t` is a mixed enum.** It holds both modelling kinds (`Aggregate`, `ReadModel`,
+2. **`ComponentType.t` is a mixed enum.** It holds both modeling kinds (`Aggregate`, `ReadModel`,
    `StateViewSlice`, …) and piece names (`EventLog`, `QueryDb`, `CommandTopic`, `EventTopic`,
    `EventCollector`). An adapter passing "its own" component type is naming the *piece*, so `kind`
    necessarily collides with `role`.
@@ -129,7 +129,7 @@ silently fall back to naming its own piece.
 
 Add the record to `ResourceAttribution`; add `~owner: owner=?` to the five adapter module types and
 their piece builders. Update the AWS and local implementations to accept and ignore it. No tag
-behaviour changes yet — this phase is purely the channel, and should be a no-op diff in emitted
+behavior changes yet — this phase is purely the channel, and should be a no-op diff in emitted
 tags.
 
 ### 2. Populate at the owning builders
@@ -159,7 +159,7 @@ any adapter added later.
 
 ## Non-goals
 
-- **Splitting `ComponentType.t` into separate modelling-kind and piece enums.** That is the deeper
+- **Splitting `ComponentType.t` into separate modeling-kind and piece enums.** That is the deeper
   cleanup behind cause (2), but it touches naming, serialization and the plugin generator, and
   `Role.t` already carries the piece axis for attribution purposes. The piece entries in
   `ComponentType.t` simply become vestigial *for tagging*; leave the enum alone here.
@@ -175,7 +175,7 @@ any adapter added later.
 
 ## Done when
 
-- `reventless:kind` names the owning component's modelling kind on every framework-created resource,
+- `reventless:kind` names the owning component's modeling kind on every framework-created resource,
   not the piece — verifiable by two same-role resources under different owner kinds carrying
   different `kind`.
 - `reventless:component` carries the component stem, not the suffixed resource name, at the

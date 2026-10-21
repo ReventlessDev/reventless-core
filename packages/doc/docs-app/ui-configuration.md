@@ -568,7 +568,7 @@ journey gets. Always provide one: a local dev session without a login belongs to
 no declared group, and with no default it would match nothing and render an empty
 shell.
 
-Both platforms honour the same declaration. Locally the files are written into the
+Both platforms honor the same declaration. Locally the files are written into the
 shell's served directory at boot; on AWS the deploy grants the bake a write for
 every key the declaration produces and the post-deploy bake (`pnpm exec
 bake-manifest`, which the deploy workflow runs once every plugin stack is up)
@@ -723,7 +723,7 @@ refuses `ShipOrder` outright.
 **A note on `commandTransition`.** `CancelOrder` declares
 `Moves([Orders.Placed], Orders.Cancelled)`, whose from-set is a **menu filter**: the command is
 offered only on rows whose lifecycle field is `Placed`. It is UX, not a gate — the
-behaviour is what refuses a shipped order, by returning `OrderAlreadyShipped`.
+behavior is what refuses a shipped order, by returning `OrderAlreadyShipped`.
 
 ### 3.3 Acting as one role
 
@@ -1145,7 +1145,7 @@ Platform.makePlatform(
 Platform.startServers()
 ```
 
-The AWS root differs only in the fields a deploy can honour — `viewModes`,
+The AWS root differs only in the fields a deploy can honor — `viewModes`,
 `geocoderPlaceIndex`, and the capabilities it provisions. Everything about *the
 shop* comes from the same shared module, so the two cannot disagree about what the
 shop is.
