@@ -56,8 +56,8 @@ function MakeWithHooks(Bus) {
     let AggregateRuntimeBuilder = LocalAggregateRuntime_Builder$ReventlessLocal.Make(Bus)({
       make: CommandTopicChannel.make
     })(EventCollectorChannel);
-    let Make = Spec => (Behavior => (EventMappings => {
-      let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)({
+    let Make = Spec => (Decision => (EventMappings => {
+      let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Decision)({
         mappings: EventMappings.mappings,
         counter: EventMappings.counter
       })({
@@ -105,8 +105,8 @@ function Make(Bus) {
   let AggregateRuntimeBuilder = LocalAggregateRuntime_Builder$ReventlessLocal.Make(Bus)({
     make: CommandTopicChannel.make
   })(EventCollectorChannel);
-  let Make$1 = Spec => (Behavior => (EventMappings => {
-    let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)({
+  let Make$1 = Spec => (Decision => (EventMappings => {
+    let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Decision)({
       mappings: EventMappings.mappings,
       counter: EventMappings.counter
     })({

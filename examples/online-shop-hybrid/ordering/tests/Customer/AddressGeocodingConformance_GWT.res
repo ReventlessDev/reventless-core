@@ -10,7 +10,7 @@ module Binding = {
   let posture = TraitAddressGeocoding.AddressGeocoding.WritesBack
 
   module Spec = Customer
-  module Behavior = Customer_Behavior
+  module Decision = Customer_Decision
 
   let created = address => [Customer.Registered({email: "alice@x.y", address})]
   let subjectChanged = address => Customer.AddressUpdated({address: address})

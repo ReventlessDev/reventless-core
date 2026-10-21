@@ -3,7 +3,7 @@
 open ReventlessCore
 open Plugin_Fixtures
 
-module Test = ReventlessGwt.Behavior_GWT.Make(UiFragmentRegistry, UiFragmentRegistry_Behavior)
+module Test = ReventlessGwt.Decision_GWT.Make(UiFragmentRegistry, UiFragmentRegistry_Decision)
 open Test
 open UiFragmentRegistry
 

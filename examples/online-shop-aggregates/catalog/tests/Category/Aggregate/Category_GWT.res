@@ -2,7 +2,7 @@
 
 open Catalog_Examples
 
-describe("Category Behavior", () => {
+describe("Category Decision", () => {
   // scenario-id: fb4b109a-87b5-4aa3-a8e2-4fca61d0c050
   test("Add on new aggregate produces Added", () =>
     givenEvents([])
@@ -74,7 +74,7 @@ describe("Who may Archive", () => {
     givenEvents([Added({name: electronics})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(Archive)
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: c4c8e733-7e07-4f3c-b3f2-01bc6b52f601
@@ -82,6 +82,6 @@ describe("Who may Archive", () => {
     givenEvents([Added({name: electronics})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(Archive)
-    ->thenRefused
+    ->thenForbidden
   )
 })

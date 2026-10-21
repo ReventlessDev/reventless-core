@@ -19,20 +19,20 @@ import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateView/Av
 import * as Orders_Projection$OrderingPlugin from "./Order/StateView/Orders_Projection.res.mjs";
 import * as DeactivateCustomer$OrderingPlugin from "./Customer/StateChange/DeactivateCustomer.res.mjs";
 import * as Products_Extension$OrderingPlugin from "./Extension/Products_Extension.res.mjs";
-import * as ShipOrder_Behavior$OrderingPlugin from "./Order/StateChange/ShipOrder_Behavior.res.mjs";
+import * as ShipOrder_Decision$OrderingPlugin from "./Order/StateChange/ShipOrder_Decision.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-dcb-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
-import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChange/PlaceOrder_Behavior.res.mjs";
-import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChange/CancelOrder_Behavior.res.mjs";
-import * as ChangeEmail_Behavior$OrderingPlugin from "./Customer/StateChange/ChangeEmail_Behavior.res.mjs";
+import * as PlaceOrder_Decision$OrderingPlugin from "./Order/StateChange/PlaceOrder_Decision.res.mjs";
+import * as CancelOrder_Decision$OrderingPlugin from "./Order/StateChange/CancelOrder_Decision.res.mjs";
+import * as ChangeEmail_Decision$OrderingPlugin from "./Customer/StateChange/ChangeEmail_Decision.res.mjs";
 import * as Customers_Projection$OrderingPlugin from "./Customer/StateView/Customers_Projection.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslation/SendOrderConfirmation.res.mjs";
-import * as ChangeAddress_Behavior$OrderingPlugin from "./Customer/StateChange/ChangeAddress_Behavior.res.mjs";
+import * as ChangeAddress_Decision$OrderingPlugin from "./Customer/StateChange/ChangeAddress_Decision.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/Automation/AutoShipOrder_Automation.res.mjs";
-import * as RegisterCustomer_Behavior$OrderingPlugin from "./Customer/StateChange/RegisterCustomer_Behavior.res.mjs";
-import * as DeactivateCustomer_Behavior$OrderingPlugin from "./Customer/StateChange/DeactivateCustomer_Behavior.res.mjs";
-import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct_Behavior.res.mjs";
+import * as RegisterCustomer_Decision$OrderingPlugin from "./Customer/StateChange/RegisterCustomer_Decision.res.mjs";
+import * as DeactivateCustomer_Decision$OrderingPlugin from "./Customer/StateChange/DeactivateCustomer_Decision.res.mjs";
+import * as SyncCatalogProduct_Decision$OrderingPlugin from "./CatalogProduct/StateChange/SyncCatalogProduct_Decision.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateView/AvailableProducts_Projection.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendOrderConfirmation_Translation$OrderingPlugin from "./Order/OutboundTranslation/SendOrderConfirmation_Translation.res.mjs";
@@ -109,10 +109,10 @@ function Make(Platform) {
     traits: CancelOrder$OrderingPlugin.traits,
     readConsistency: CancelOrder$OrderingPlugin.readConsistency
   })({
-    initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
-    evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
-    decide: CancelOrder_Behavior$OrderingPlugin.decide,
-    moduleUrl: CancelOrder_Behavior$OrderingPlugin.moduleUrl
+    initialState: CancelOrder_Decision$OrderingPlugin.initialState,
+    evolve: CancelOrder_Decision$OrderingPlugin.evolve,
+    decide: CancelOrder_Decision$OrderingPlugin.decide,
+    moduleUrl: CancelOrder_Decision$OrderingPlugin.moduleUrl
   });
   let ChangeAddressSlice = Platform.StateChangeSlice.Make({
     name: ChangeAddress$OrderingPlugin.name,
@@ -126,10 +126,10 @@ function Make(Platform) {
     traits: ChangeAddress$OrderingPlugin.traits,
     readConsistency: ChangeAddress$OrderingPlugin.readConsistency
   })({
-    initialState: ChangeAddress_Behavior$OrderingPlugin.initialState,
-    evolve: ChangeAddress_Behavior$OrderingPlugin.evolve,
-    decide: ChangeAddress_Behavior$OrderingPlugin.decide,
-    moduleUrl: ChangeAddress_Behavior$OrderingPlugin.moduleUrl
+    initialState: ChangeAddress_Decision$OrderingPlugin.initialState,
+    evolve: ChangeAddress_Decision$OrderingPlugin.evolve,
+    decide: ChangeAddress_Decision$OrderingPlugin.decide,
+    moduleUrl: ChangeAddress_Decision$OrderingPlugin.moduleUrl
   });
   let ChangeEmailSlice = Platform.StateChangeSlice.Make({
     name: ChangeEmail$OrderingPlugin.name,
@@ -143,10 +143,10 @@ function Make(Platform) {
     traits: ChangeEmail$OrderingPlugin.traits,
     readConsistency: ChangeEmail$OrderingPlugin.readConsistency
   })({
-    initialState: ChangeEmail_Behavior$OrderingPlugin.initialState,
-    evolve: ChangeEmail_Behavior$OrderingPlugin.evolve,
-    decide: ChangeEmail_Behavior$OrderingPlugin.decide,
-    moduleUrl: ChangeEmail_Behavior$OrderingPlugin.moduleUrl
+    initialState: ChangeEmail_Decision$OrderingPlugin.initialState,
+    evolve: ChangeEmail_Decision$OrderingPlugin.evolve,
+    decide: ChangeEmail_Decision$OrderingPlugin.decide,
+    moduleUrl: ChangeEmail_Decision$OrderingPlugin.moduleUrl
   });
   let DeactivateCustomerSlice = Platform.StateChangeSlice.Make({
     name: DeactivateCustomer$OrderingPlugin.name,
@@ -160,10 +160,10 @@ function Make(Platform) {
     traits: DeactivateCustomer$OrderingPlugin.traits,
     readConsistency: DeactivateCustomer$OrderingPlugin.readConsistency
   })({
-    initialState: DeactivateCustomer_Behavior$OrderingPlugin.initialState,
-    evolve: DeactivateCustomer_Behavior$OrderingPlugin.evolve,
-    decide: DeactivateCustomer_Behavior$OrderingPlugin.decide,
-    moduleUrl: DeactivateCustomer_Behavior$OrderingPlugin.moduleUrl
+    initialState: DeactivateCustomer_Decision$OrderingPlugin.initialState,
+    evolve: DeactivateCustomer_Decision$OrderingPlugin.evolve,
+    decide: DeactivateCustomer_Decision$OrderingPlugin.decide,
+    moduleUrl: DeactivateCustomer_Decision$OrderingPlugin.moduleUrl
   });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
@@ -177,10 +177,10 @@ function Make(Platform) {
     traits: PlaceOrder$OrderingPlugin.traits,
     readConsistency: PlaceOrder$OrderingPlugin.readConsistency
   })({
-    initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
-    evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
-    decide: PlaceOrder_Behavior$OrderingPlugin.decide,
-    moduleUrl: PlaceOrder_Behavior$OrderingPlugin.moduleUrl
+    initialState: PlaceOrder_Decision$OrderingPlugin.initialState,
+    evolve: PlaceOrder_Decision$OrderingPlugin.evolve,
+    decide: PlaceOrder_Decision$OrderingPlugin.decide,
+    moduleUrl: PlaceOrder_Decision$OrderingPlugin.moduleUrl
   });
   let RegisterCustomerSlice = Platform.StateChangeSlice.Make({
     name: RegisterCustomer$OrderingPlugin.name,
@@ -194,10 +194,10 @@ function Make(Platform) {
     traits: RegisterCustomer$OrderingPlugin.traits,
     readConsistency: RegisterCustomer$OrderingPlugin.readConsistency
   })({
-    initialState: RegisterCustomer_Behavior$OrderingPlugin.initialState,
-    evolve: RegisterCustomer_Behavior$OrderingPlugin.evolve,
-    decide: RegisterCustomer_Behavior$OrderingPlugin.decide,
-    moduleUrl: RegisterCustomer_Behavior$OrderingPlugin.moduleUrl
+    initialState: RegisterCustomer_Decision$OrderingPlugin.initialState,
+    evolve: RegisterCustomer_Decision$OrderingPlugin.evolve,
+    decide: RegisterCustomer_Decision$OrderingPlugin.decide,
+    moduleUrl: RegisterCustomer_Decision$OrderingPlugin.moduleUrl
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
@@ -211,10 +211,10 @@ function Make(Platform) {
     traits: ShipOrder$OrderingPlugin.traits,
     readConsistency: ShipOrder$OrderingPlugin.readConsistency
   })({
-    initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
-    evolve: ShipOrder_Behavior$OrderingPlugin.evolve,
-    decide: ShipOrder_Behavior$OrderingPlugin.decide,
-    moduleUrl: ShipOrder_Behavior$OrderingPlugin.moduleUrl
+    initialState: ShipOrder_Decision$OrderingPlugin.initialState,
+    evolve: ShipOrder_Decision$OrderingPlugin.evolve,
+    decide: ShipOrder_Decision$OrderingPlugin.decide,
+    moduleUrl: ShipOrder_Decision$OrderingPlugin.moduleUrl
   });
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
@@ -228,10 +228,10 @@ function Make(Platform) {
     traits: SyncCatalogProduct$OrderingPlugin.traits,
     readConsistency: SyncCatalogProduct$OrderingPlugin.readConsistency
   })({
-    initialState: SyncCatalogProduct_Behavior$OrderingPlugin.initialState,
-    evolve: SyncCatalogProduct_Behavior$OrderingPlugin.evolve,
-    decide: SyncCatalogProduct_Behavior$OrderingPlugin.decide,
-    moduleUrl: SyncCatalogProduct_Behavior$OrderingPlugin.moduleUrl
+    initialState: SyncCatalogProduct_Decision$OrderingPlugin.initialState,
+    evolve: SyncCatalogProduct_Decision$OrderingPlugin.evolve,
+    decide: SyncCatalogProduct_Decision$OrderingPlugin.decide,
+    moduleUrl: SyncCatalogProduct_Decision$OrderingPlugin.moduleUrl
   });
   let AvailableProductsSlice = Platform.StateViewSlice.Make({
     name: AvailableProducts$OrderingPlugin.name,

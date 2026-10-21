@@ -3,7 +3,7 @@ open ReventlessCore
 // Stage 5 — cross-pattern mapping GWT.
 //
 // Generalises `EventMapping_GWT` so both the source and target of a mapping
-// can be an Aggregate (Behavior) or a StateChangeSlice. Covers all four
+// can be an Aggregate (Decision) or a StateChangeSlice. Covers all four
 // producer/consumer combinations: Aggr→Aggr, Aggr→DCB, DCB→Aggr, DCB→DCB.
 // See `docs/plans/done/reventless-gwt.md` Stage 5 for the migration plan.
 //
@@ -54,20 +54,20 @@ module type Mapping = {
 
 // -- Adapter functors --------------------------------------------------------
 
-// Adapter: any `Aggregate.Spec` + matching `Behavior.T` becomes a `GwtSource`.
+// Adapter: any `Aggregate.Spec` + matching `Decision.T` becomes a `GwtSource`.
 // Aggregates evolve their own events, so `consumedEvent = event`.
-module FromBehavior = (
+module FromDecision = (
   Spec: Reventless.Aggregate.Spec,
-  Behavior: Behavior.T with module Spec = Spec,
+  Decision: Decision.T with module Spec = Spec,
 ) => {
   let name = Spec.name
   module Id = Spec.Id
-  type state = Behavior.state
-  let initialState = Behavior.initialState
+  type state = Decision.state
+  let initialState = Decision.initialState
 
   type consumedEvent = Spec.event
   let consumedEventSchema = Spec.eventSchema
-  let evolve = Behavior.evolve
+  let evolve = Decision.evolve
 
   type command = Spec.command
   let commandSchema = Spec.commandSchema
@@ -78,7 +78,7 @@ module FromBehavior = (
   type error = Spec.error
   let errorSchema = Spec.errorSchema
 
-  let decide = Behavior.decide
+  let decide = Decision.decide
 }
 
 // Adapter: a StateChangeSlice spec becomes a `GwtSource`/`GwtTarget`. DCB

@@ -35,7 +35,7 @@ open Ppxlib
     pass can name, and guessing one by convention would be a second, quieter way
     to get a field's shape wrong. The error says what to write instead.
 
-    Requires a [@@reventless.spec] / [@@reventless.behavior] file: outside one,
+    Requires a [@@reventless.spec] / [@@reventless.decision] file: outside one,
     no pass runs and the attribute reaches the compiler as an unknown one. *)
 
 let has_sensitive_attr (attrs : attributes) =

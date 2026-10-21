@@ -44,7 +44,7 @@ type operations = {
 }
 
 /**
-Module type produced by `Platform.Aggregate.Make(Spec, Behavior, Mappings)`.
+Module type produced by `Platform.Aggregate.Make(Spec, Decision, Mappings)`.
 
 The resulting module exposes `make` for instantiating the aggregate at deploy time
 and `operations` for publishing commands at runtime.
@@ -54,7 +54,7 @@ and `operations` for publishing commands at runtime.
 // CatalogPlugin.res
 module CategoryAggregate = Platform.Aggregate.Make(
   Category,
-  CategoryBehavior,
+  CategoryDecision,
   NoEventMappings.Make(Category),
 )
 

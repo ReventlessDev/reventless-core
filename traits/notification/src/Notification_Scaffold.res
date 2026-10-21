@@ -349,7 +349,7 @@ let postureArms = (c: config) => {
   Array.concat(transactional, [`  | _ => false`])
 }
 
-let sliceBehavior = (c: config): string => {
+let sliceDecision = (c: config): string => {
   let n = namesOf(c)
   let id = n.recipientId
   let first = c.categories->Array.get(0)->Option.getOr("Transactional")
@@ -357,7 +357,7 @@ let sliceBehavior = (c: config): string => {
     Array.flatMap(
       [
         [
-          `@@reventless.behavior`,
+          `@@reventless.decision`,
           ``,
           `// The directory, the matrix and the dispatch decision are the trait's; this file`,
           `// is the mapping onto them, plus the one thing the trait has no opinion about —`,
@@ -622,10 +622,10 @@ let claimsSpec = (c: config): string => {
   ])
 }
 
-let claimsBehavior = (c: config): string => {
+let claimsDecision = (c: config): string => {
   let n = namesOf(c)
   lines([
-    `@@reventless.behavior`,
+    `@@reventless.decision`,
     ``,
     `// The claim set is the trait's, folded through the same value the preferences`,
     `// slice folds. Only the claim half is ever populated here.`,
@@ -861,7 +861,7 @@ let conformanceBinding = (c: config): string => {
     `  let optional: category = ${optional}`,
     ``,
     `  module Spec = ${n.slice}`,
-    `  module Behavior = ${n.slice}_Behavior`,
+    `  module Decision = ${n.slice}_Decision`,
     ``,
     `  let ${id} = "${c.noun->String.toLowerCase}-1"`,
     ``,
@@ -875,9 +875,9 @@ let conformanceBinding = (c: config): string => {
     `    let announced = (${c.contactField}): Spec.consumedEvent =>`,
     `      ${n.announced}({${id}: ${id}, ${c.contactField}: ${c.contactField}})`,
     `    let subscribed = (category, channel): Spec.consumedEvent =>`,
-    `      ${n.subscribed}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `      ${n.subscribed}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `    let unsubscribed = (category, channel): Spec.consumedEvent =>`,
-    `      ${n.unsubscribed}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `      ${n.unsubscribed}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `    // Written by ${n.claims} and read here across partitions — this slice`,
     `    // consumes them and produces neither.`,
     `    let claimed = (source, by): Spec.consumedEvent =>`,
@@ -888,9 +888,9 @@ let conformanceBinding = (c: config): string => {
     `  let announce = ${c.contactField} =>`,
     `    Spec.${n.announceCmd}({${id}: ${id}, ${c.contactField}: ${c.contactField}})`,
     `  let subscribe = (category, channel) =>`,
-    `    Spec.${n.subscribeCmd}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.${n.subscribeCmd}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `  let unsubscribe = (category, channel) =>`,
-    `    Spec.${n.unsubscribeCmd}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.${n.unsubscribeCmd}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `  // The wording and the subject are this host's and the trait carries neither, so`,
     `  // the suite supplies whatever it likes and asserts nothing about them.`,
     `  //`,
@@ -920,15 +920,15 @@ let conformanceBinding = (c: config): string => {
     `  let announced = ${c.contactField} =>`,
     `    Spec.${n.announced}({${id}: ${id}, ${c.contactField}: ${c.contactField}})`,
     `  let subscribed = (category, channel) =>`,
-    `    Spec.${n.subscribed}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.${n.subscribed}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `  let unsubscribed = (category, channel) =>`,
-    `    Spec.${n.unsubscribed}({${id}: ${id}, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.${n.unsubscribed}({${id}: ${id}, category, channel: Decision.channelOf(channel)})`,
     `  let requestedWith = (category, reference, channel, address, origin) =>`,
     `    Spec.${n.requested}({`,
     `      ${id}: ${id},`,
     `      category,`,
     `      reference,`,
-    `      channel: Behavior.channelOf(channel),`,
+    `      channel: Decision.channelOf(channel),`,
     `      address,`,
     `      subjectType: "${subjectTypeOf(c)}",`,
     `      subjectRef: "subject-1",`,
@@ -1224,7 +1224,7 @@ let intakeRelayPatch = (c: config): patch => {
       `        ${id},`,
       `        ${n.intake}.${n.requestCmd}({`,
       `          ${id}: ${id},`,
-      `          category: ${n.slice}_Behavior.categoryOf(rule.category),`,
+      `          category: ${n.slice}_Decision.categoryOf(rule.category),`,
       `          reference: id,`,
       `          subjectType: rule.subjectType,`,
       `          subjectRef: Rule.subjectOf(rule, ~payload),`,
@@ -1261,11 +1261,11 @@ let emit = (~config: config, ~into: string, ~tests: string): output => {
   {
     files: [
       {path: `${into}/StateChange/${n.slice}.res`, contents: sliceSpec(config)},
-      {path: `${into}/StateChange/${n.slice}_Behavior.res`, contents: sliceBehavior(config)},
+      {path: `${into}/StateChange/${n.slice}_Decision.res`, contents: sliceDecision(config)},
       {path: `${into}/StateChange/${n.claims}.res`, contents: claimsSpec(config)},
       {
-        path: `${into}/StateChange/${n.claims}_Behavior.res`,
-        contents: claimsBehavior(config),
+        path: `${into}/StateChange/${n.claims}_Decision.res`,
+        contents: claimsDecision(config),
       },
       {path: `${into}/OutboundTranslation/${n.send}.res`, contents: sendSpec(config)},
       {

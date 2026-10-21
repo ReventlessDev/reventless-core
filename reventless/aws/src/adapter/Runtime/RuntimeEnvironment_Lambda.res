@@ -251,7 +251,7 @@ let makeFromCodeAsset: (
   // ESM self-containment (Option C): every code archive built by
   // Util_Bundle.buildCodeArchive ships register-hook.mjs + layer-resolver.mjs at
   // /var/task. --import registers the resolve hook so the ESM entry point (and the
-  // user spec/behavior modules it dynamically imports) can resolve bare specifiers
+  // user spec/decision modules it dynamically imports) can resolve bare specifiers
   // — @reventlessdev/*, effect, sury from the layer, @aws-sdk/* from the runtime —
   // that ESM `import` would otherwise not find outside /var/task. Framework
   // invariant: set last so it wins over any caller-supplied value.

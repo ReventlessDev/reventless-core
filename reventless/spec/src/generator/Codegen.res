@@ -67,13 +67,13 @@ let renderAutomationSlices = (stems: array<string>): array<string> =>
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
-  aggregates->Array.flatMap(({spec, behavior, eventMappings, isAsync}) => {
+  aggregates->Array.flatMap(({spec, decision, eventMappings, isAsync}) => {
     let em = eventMappings->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ spec ++ ")")
     let factory = isAsync ? "MakeAsync" : "Make"
     [
       "  module " ++ spec ++ "Aggregate = Platform.Aggregate." ++ factory ++ "(",
       "    " ++ spec ++ ",",
-      "    " ++ behavior ++ ",",
+      "    " ++ decision ++ ",",
       "    " ++ em ++ ",",
       "  )",
     ]
@@ -877,7 +877,7 @@ let render = (
   validateSliceTargets(~resolved)
   // Chapter map, keyed by each component's spec stem (= its `Spec.name` for every
   // graph-node kind, which is how `Plugin_Structure` looks the chapter up). Filtered
-  // to the actual component stems so body files (`_Behavior`, `_Projections`, …) —
+  // to the actual component stems so body files (`_Decision`, `_Projections`, …) —
   // which `Discovery` also surfaces and which share their component's chapter — don't
   // leak noise entries into the generated call. Tasks / extensions / extension points
   // carry no chapter field, so they are excluded too.

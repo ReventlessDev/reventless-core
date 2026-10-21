@@ -13,7 +13,7 @@ module Binding = {
   let optional: category = Marketing
 
   module Spec = NotificationPreferences
-  module Behavior = NotificationPreferences_Behavior
+  module Decision = NotificationPreferences_Decision
 
   let recipientId = "recipient-1"
 
@@ -28,12 +28,12 @@ module Binding = {
     let subscribed = (category, channel): Spec.consumedEvent => NotificationSubscribed({
       recipientId,
       category,
-      channel: Behavior.channelOf(channel),
+      channel: Decision.channelOf(channel),
     })
     let unsubscribed = (category, channel): Spec.consumedEvent => NotificationUnsubscribed({
       recipientId,
       category,
-      channel: Behavior.channelOf(channel),
+      channel: Decision.channelOf(channel),
     })
     // Written by NotificationSourceClaims next door and read here across
     // partitions — this slice consumes them and produces neither.
@@ -48,12 +48,12 @@ module Binding = {
   let subscribe = (category, channel) => Spec.Subscribe({
     recipientId,
     category,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
   })
   let unsubscribe = (category, channel) => Spec.Unsubscribe({
     recipientId,
     category,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
   })
   // The wording and the subject are this host's and the trait carries neither, so
   // the suite supplies whatever it likes and asserts nothing about them.
@@ -84,18 +84,18 @@ module Binding = {
   let subscribed = (category, channel) => Spec.NotificationSubscribed({
     recipientId,
     category,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
   })
   let unsubscribed = (category, channel) => Spec.NotificationUnsubscribed({
     recipientId,
     category,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
   })
   let requested = (category, reference, channel, address) => Spec.NotificationRequested({
     recipientId,
     category,
     reference,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
     address,
     subjectType: "Order",
     subjectRef: "o1",
@@ -107,7 +107,7 @@ module Binding = {
     recipientId,
     category,
     reference,
-    channel: Behavior.channelOf(channel),
+    channel: Decision.channelOf(channel),
     address,
     subjectType: "Order",
     subjectRef: "o1",

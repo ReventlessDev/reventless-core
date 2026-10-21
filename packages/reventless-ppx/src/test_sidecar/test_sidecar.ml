@@ -89,9 +89,9 @@ let () =
                    (givenEvents [| ProductAdded { productId = "prod-1" } |])
                    (RenameProduct { productId = "prod-1" })));
           (* `asCaller` is not a step: the walk passes through it, so the
-             scenario keeps its given and when, and `thenRefused` records a
+             scenario keeps its given and when, and `thenForbidden` records a
              kind of its own that a lifecycle reader can leave out. *)
-          (* What ReScript hands a PPX for `chain->thenRefused`: the step is a
+          (* What ReScript hands a PPX for `chain->thenForbidden`: the step is a
              bare identifier on the right of `|.`, not an apply. *)
           test "A stranger cannot archive the product" (fun () ->
               whenCmd
@@ -99,9 +99,9 @@ let () =
                    (givenEvents [| ProductAdded { productId = "prod-1" } |])
                    (Caller.owner "u-2"))
                 (ArchiveProduct { productId = "prod-1" })
-              |. thenRefused);
+              |. thenForbidden);
           test "A stranger cannot rename the product" (fun () ->
-              thenRefused
+              thenForbidden
                 (whenCmd
                    (asCaller
                       (givenEvents [| ProductAdded { productId = "prod-1" } |])
@@ -737,8 +737,8 @@ let () =
        [ "type t = int"; "let double x = x * 2" ]);
       ("no sidecar for a spec", "RegisterOrder.res",
        [ "[@@@reventless.spec]"; "type command = Register [@@schema]" ]);
-      ("no sidecar for a behavior file", "RegisterOrder_Behavior.res",
-       [ "[@@@reventless.behavior]"; "type step = One [@@schema]" ]);
+      ("no sidecar for a decision file", "RegisterOrder_Decision.res",
+       [ "[@@@reventless.decision]"; "type step = One [@@schema]" ]);
       ("no sidecar for a GWT file", "RegisterOrder_GWT.res",
        [ "type fixture = A [@@schema]" ]);
       ("no sidecar for an examples file", "OrderingExamples.res",

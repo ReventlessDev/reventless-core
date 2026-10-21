@@ -168,7 +168,7 @@ function conformanceBinding(c) {
     `  let posture = TraitAddressGeocoding.AddressGeocoding.WritesBack`,
     ``,
     `  module Spec = ` + c.entity,
-    `  module Behavior = ` + c.entity + `_Behavior`,
+    `  module Decision = ` + c.entity + `_Decision`,
     ``,
     `  let created = ` + n.subject + ` => [` + c.entity + `.` + createdValue + `]`,
     `  let subjectChanged = ` + n.subject + ` => ` + c.entity + `.` + n.updated + `({` + n.subject + `: ` + n.subject + `})`,
@@ -284,10 +284,10 @@ function aggregatePatch(c) {
   };
 }
 
-function behaviorPatch(c) {
+function decisionPatch(c) {
   let n = namesOf(c);
   return {
-    into: `Aggregate/` + c.entity + `_Behavior.res`,
+    into: `Aggregate/` + c.entity + `_Decision.res`,
     at: `the state's fields, the \`evolve\` and \`decide\` switches, and two helpers`,
     contents: [
       `module Guards = TraitAddressGeocoding.AddressGeocoding_Guards`,
@@ -427,7 +427,7 @@ function emit(config, into, tests) {
     ],
     patches: [
       aggregatePatch(config),
-      behaviorPatch(config),
+      decisionPatch(config),
       projectionPatch(config)
     ]
   };
@@ -444,7 +444,7 @@ export {
   conformanceBinding,
   transitionArms,
   aggregatePatch,
-  behaviorPatch,
+  decisionPatch,
   projectionPatch,
   emit,
 }

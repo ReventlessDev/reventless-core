@@ -2,7 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Notification_Rules$TraitNotification from "@reventlessdev/trait-notification/src/Notification_Rules.res.mjs";
-import * as NotificationPreferences_Behavior$OrderingPlugin from "../StateChange/NotificationPreferences_Behavior.res.mjs";
+import * as NotificationPreferences_Decision$OrderingPlugin from "../StateChange/NotificationPreferences_Decision.res.mjs";
 
 let categories = [
   "OrderConfirmation",
@@ -18,8 +18,8 @@ function defaultMatrix(email) {
   });
   return categories.flatMap(category => Notification_Rules$TraitNotification.channels.map(channel => ({
     category: category,
-    channel: NotificationPreferences_Behavior$OrderingPlugin.channelOf(channel),
-    enabled: NotificationPreferences_Behavior$OrderingPlugin.posture(NotificationPreferences_Behavior$OrderingPlugin.categoryKey(category), channel),
+    channel: NotificationPreferences_Decision$OrderingPlugin.channelOf(channel),
+    enabled: NotificationPreferences_Decision$OrderingPlugin.posture(NotificationPreferences_Decision$OrderingPlugin.categoryKey(category), channel),
     deliverable: Stdlib_Option.isSome(Notification_Rules$TraitNotification.addressFor(announced, channel))
   })));
 }

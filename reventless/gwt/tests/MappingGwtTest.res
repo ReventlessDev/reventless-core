@@ -7,7 +7,7 @@
 // module types.
 
 // ---------------------------------------------------------------------------
-// Shared Aggregate specs + behaviors used by the Aggr→* cases below.
+// Shared Aggregate specs + decisions used by the Aggr→* cases below.
 // ---------------------------------------------------------------------------
 
 module CategorySpec = {
@@ -26,7 +26,7 @@ module CategorySpec = {
   let moduleUrl = ""
 }
 
-module CategoryBehavior = {
+module CategoryDecision = {
   module Spec = CategorySpec
   type state = NotCreated | Created
   let initialState = NotCreated
@@ -64,7 +64,7 @@ module ProductSpec = {
   let moduleUrl = ""
 }
 
-module ProductBehavior = {
+module ProductDecision = {
   module Spec = ProductSpec
   type state = Pristine | Mirrored
   let initialState = Pristine
@@ -164,8 +164,8 @@ module InventorySlice = {
 // Adapter aliases — built once, shared across mappings.
 // ---------------------------------------------------------------------------
 
-module CategorySource = Mapping_GWT.FromBehavior(CategorySpec, CategoryBehavior)
-module ProductTarget = Mapping_GWT.FromBehavior(ProductSpec, ProductBehavior)
+module CategorySource = Mapping_GWT.FromDecision(CategorySpec, CategoryDecision)
+module ProductTarget = Mapping_GWT.FromDecision(ProductSpec, ProductDecision)
 module NotificationSource = Mapping_GWT.FromStateChangeSlice(NotificationSlice)
 module NotificationTarget = Mapping_GWT.FromStateChangeSlice(NotificationSlice)
 module InventoryTarget = Mapping_GWT.FromStateChangeSlice(InventorySlice)

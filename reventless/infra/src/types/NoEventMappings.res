@@ -10,7 +10,7 @@ aggregate's events do not trigger commands on other aggregates.
 // CatalogPlugin.res
 module CategoryAggregate = Platform.Aggregate.Make(
   Category,
-  CategoryBehavior,
+  CategoryDecision,
   NoEventMappings.Make(Category),
 )
 ```

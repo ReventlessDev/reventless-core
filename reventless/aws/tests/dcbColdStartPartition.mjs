@@ -23,7 +23,7 @@ export async function invokeAfterFailedStartup() {
   process.on("unhandledRejection", onUnhandled);
   process.env.HANDLER_CONFIG = JSON.stringify({
     ...baseConfig,
-    stateChangeSliceModules: [{ spec: "cold-start-test/missing-spec.mjs", behavior: "cold-start-test/missing-behavior.mjs" }],
+    stateChangeSliceModules: [{ spec: "cold-start-test/missing-spec.mjs", decision: "cold-start-test/missing-decision.mjs" }],
   });
   try {
     const { handler } = await import(ENTRY);
@@ -51,12 +51,12 @@ export async function startWithUnresolvedSlice() {
   const { buildHandlersForConfig } = await import(ENTRY);
   const loadModule = async (specifier) => {
     if (specifier === "cold-start-test://spec") return await import("./DcbUnresolvedPartitionSlice.res.mjs");
-    if (specifier === "cold-start-test://behavior") return {};
+    if (specifier === "cold-start-test://decision") return {};
     throw new Error("unknown test specifier: " + specifier);
   };
   try {
     await buildHandlersForConfig(
-      { ...baseConfig, stateChangeSliceModules: [{ spec: "cold-start-test://spec", behavior: "cold-start-test://behavior" }] },
+      { ...baseConfig, stateChangeSliceModules: [{ spec: "cold-start-test://spec", decision: "cold-start-test://decision" }] },
       { loadModule },
     );
     return "started";

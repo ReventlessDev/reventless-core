@@ -8,7 +8,7 @@
 // shape and §3.3 for the JSON rendering. Stage 7 adds sury-aware rendering and
 // structural `fieldDiff`. Stage 4 added `AppendConditionMismatch`.
 
-// The function whose fold produced a state: a behavior's `evolve`, or a view's
+// The function whose fold produced a state: a decision's `evolve`, or a view's
 // `project`. Absent means `Evolve`, so a harness that does not say keeps its hint.
 type fold = Evolve | Project
 

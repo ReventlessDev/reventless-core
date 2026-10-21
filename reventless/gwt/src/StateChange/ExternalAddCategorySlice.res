@@ -4,7 +4,7 @@
 // on command + event, payload-less consumed events.
 //
 // Spec half (Plan 02 Phase 6) — types, schemas, name. The matching impl
-// half lives in [ExternalAddCategorySlice_Behavior.res].
+// half lives in [ExternalAddCategorySlice_Decision.res].
 
 let name = "ExternalAddCategory"
 

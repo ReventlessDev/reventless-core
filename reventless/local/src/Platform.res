@@ -585,21 +585,21 @@ module MakeWithConfig = (
   module Aggregate = {
     module Make = (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (ReventlessInfra.Aggregate.T with type api = unit) => AggregateMaker.Make(
       Spec,
-      Behavior,
+      Decision,
       EventMappings,
     )
     /** Async variant — in-memory uses the same channel (no FIFO distinction). */
     module MakeAsync = (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (ReventlessInfra.Aggregate.T with type api = unit) => AggregateMaker.Make(
       Spec,
-      Behavior,
+      Decision,
       EventMappings,
     )
   }
@@ -717,16 +717,16 @@ module MakeWithConfig = (
   module StateChangeSlice = {
     module Make = (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
-    ) => StateChangeSlice_Builder.Make(Spec, Behavior)
+    ) => StateChangeSlice_Builder.Make(Spec, Decision)
     /** Async variant — in-memory uses the same channel (no FIFO distinction). */
     module MakeAsync = (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ): (ReventlessInfra.StateChangeSlice.T with module Spec = Spec) => {
-      include StateChangeSlice_Builder.Make(Spec, Behavior)
+      include StateChangeSlice_Builder.Make(Spec, Decision)
       let isAsync = true
     }
   }
@@ -746,7 +746,7 @@ module MakeWithConfig = (
   // Built once and passed into Admin.construct below.
   module UiFragmentRegistrySlice = StateChangeSlice.Make(
     ReventlessCore.UiFragmentRegistry,
-    ReventlessCore.UiFragmentRegistry_Behavior,
+    ReventlessCore.UiFragmentRegistry_Decision,
   )
   module UiFragmentsViewSlice = StateViewSlice.Make(
     ReventlessCore.UiFragments,
@@ -822,7 +822,7 @@ module MakeWithConfig = (
   module LocalPluginAggregate: ReventlessInfra.Aggregate.T
     with type api = unit = AggregateMaker.Make(
     ReventlessCore.PluginSpec,
-    ReventlessCore.PluginBehavior,
+    ReventlessCore.PluginDecision,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
   )
 

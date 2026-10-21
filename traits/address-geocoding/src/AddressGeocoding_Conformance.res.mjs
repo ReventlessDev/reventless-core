@@ -6,7 +6,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Outcome.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
-import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
+import * as Decision_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Decision_GWT.res.mjs";
 import * as OutboundTranslation_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/OutboundTranslation_GWT.res.mjs";
 
 function suiteName(host) {
@@ -14,7 +14,7 @@ function suiteName(host) {
 }
 
 function Make(B) {
-  let A = Behavior_GWT$ReventlessGwt.MakeFromAggregate(B.Spec)(B.Behavior);
+  let A = Decision_GWT$ReventlessGwt.MakeFromAggregate(B.Spec)(B.Decision);
   let S = OutboundTranslation_GWT$ReventlessGwt.Make(B.Slice);
   let vienna = {
     lat: 48.2082,

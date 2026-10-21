@@ -55,7 +55,7 @@ describe("Who may ArchiveProduct", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(ArchiveProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 683fa38d-fbca-4036-9e80-25531838f4ac
@@ -63,6 +63,6 @@ describe("Who may ArchiveProduct", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.anonymous)
     ->whenCmd(ArchiveProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

@@ -39,8 +39,8 @@ module type Binding = {
   let refA: ref
   let refB: ref
 
-  module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
-  module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
+  module Spec: ReventlessGwt.Decision_GWT.DecisionSpec
+  module Decision: ReventlessGwt.Decision_GWT.Decision with module Spec = Spec
 
   /** The same facts as the slice **consumes** them, for building history.
 
@@ -103,8 +103,8 @@ module type SingleBinding = {
   let refA: ref
   let refB: ref
 
-  module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
-  module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
+  module Spec: ReventlessGwt.Decision_GWT.DecisionSpec
+  module Decision: ReventlessGwt.Decision_GWT.Decision with module Spec = Spec
 
   /** The facts as the slice **consumes** them — see `Binding.Consumed`. No
       `primarySet`: at this cardinality nothing emits one. */

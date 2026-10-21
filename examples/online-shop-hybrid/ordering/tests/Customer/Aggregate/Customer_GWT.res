@@ -2,7 +2,7 @@
 
 open Ordering_Examples
 
-describe("Customer Behavior", () => {
+describe("Customer Decision", () => {
   // scenario-id: 190d3516-9b61-4ed3-bc89-beea8997f380
   test("Register on new aggregate produces Registered", () =>
     givenEvents([])

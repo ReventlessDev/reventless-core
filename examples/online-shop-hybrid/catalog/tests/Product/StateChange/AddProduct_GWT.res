@@ -167,7 +167,7 @@ describe("Who may AddProduct", () => {
         categoryId: cat1,
       }),
     )
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 91aa6316-15c5-4e79-b7b4-7418f1996d5f
@@ -183,6 +183,6 @@ describe("Who may AddProduct", () => {
         categoryId: cat1,
       }),
     )
-    ->thenRefused
+    ->thenForbidden
   )
 })

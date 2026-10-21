@@ -52,7 +52,7 @@ let chapterOf = (relPath: string): option<string> => {
 // Deduplicated (stem → chapter) pairs across the discovered files, sorted by stem
 // for deterministic codegen. Only files that carry a chapter are included; stems are
 // unique within a plugin (validated), so keying by stem cannot collide. Body files
-// (`_Behavior`, `_Projections`, …) share their component's chapter but are never
+// (`_Decision`, `_Projections`, …) share their component's chapter but are never
 // looked up by `Spec.name`, so their presence is harmless.
 let chaptersByStem = (discovered: array<discoveredFile>): array<(string, string)> => {
   let byStem: Dict.t<string> = Dict.make()
@@ -116,7 +116,7 @@ let isSkipped = (stem: string): bool =>
   // `_EventMappings` and `_Mappings` files in per-entity Aggregate/ folders
   // are picked up by the dedicated [Pairing.findEventMappings] walker;
   // treating them as Aggregate specs would hunt for a non-existent
-  // `_EventMappingsBehavior` / `_MappingsBehavior`.
+  // `_EventMappings_Decision` / `_Mappings_Decision`.
   stem->String.endsWith("_EventMappings") ||
   stem->String.endsWith("_Mappings")
 

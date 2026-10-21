@@ -161,7 +161,7 @@ describe("Who may AttachProductImage", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 4e820975-a1fd-43a4-96b4-424d51c7b95c
@@ -169,7 +169,7 @@ describe("Who may AttachProductImage", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.anonymous)
     ->whenCmd(AttachProductImage({productId: p1, productImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 })
 
@@ -201,7 +201,7 @@ describe("Who may RemoveProductImage", () => {
     givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: f2f8bc52-4f59-4e0f-894b-23a0d3a5a2f7
@@ -209,7 +209,7 @@ describe("Who may RemoveProductImage", () => {
     givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(RemoveProductImage({productId: p1, productImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 })
 
@@ -253,7 +253,7 @@ describe("Who may SetPrimaryProductImage", () => {
     ])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 077c7398-42a7-4aec-ba83-d817c94f6fcd
@@ -265,7 +265,7 @@ describe("Who may SetPrimaryProductImage", () => {
     ])
     ->asCaller(Caller.anonymous)
     ->whenCmd(SetPrimaryProductImage({productId: p1, productImage: sideImageRef}))
-    ->thenRefused
+    ->thenForbidden
   )
 })
 
@@ -291,7 +291,7 @@ describe("Who may SetProductImageAltText", () => {
     givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 62779937-b3b4-4e35-8d47-5c2b86b454c4
@@ -299,6 +299,6 @@ describe("Who may SetProductImageAltText", () => {
     givenEvents([ProductAdded, ProductImageAttached({productImage: img})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(SetProductImageAltText({productId: p1, productImage: img, altText: frontAlt}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

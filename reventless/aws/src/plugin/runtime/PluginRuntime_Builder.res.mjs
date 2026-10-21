@@ -101,10 +101,10 @@ let dcbConfigRef = {
 
 let registeredSliceModulePaths = [];
 
-function registerStateChangeSliceSpec(specPath, behaviorPath) {
+function registerStateChangeSliceSpec(specPath, decisionPath) {
   registeredSliceModulePaths.push({
     specPath: specPath,
-    behaviorPath: behaviorPath
+    decisionPath: decisionPath
   });
 }
 
@@ -547,7 +547,7 @@ function Make(EventCollectorChannel) {
     let dcbConfig = dcbConfigRef.contents;
     let slicePaths = registeredSliceModulePaths.concat(dcbConfig.stateChangeSliceModulePaths).map(param => [
       param.specPath,
-      param.behaviorPath
+      param.decisionPath
     ]);
     let inboundSlices = Stdlib_Array.filterMap(Object.values(registeredInboundSlices), reg => {
       if (reg.specPath === "") {

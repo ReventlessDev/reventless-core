@@ -9,7 +9,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 type aggregateInfo = {
   specModulePath: string,
-  behaviorModulePath: string,
+  decisionModulePath: string,
   eventLogTableName: Pulumi.Output.t<string>,
 }
 
@@ -26,10 +26,10 @@ let setConfig = (c: ReventlessCore.Runtime.commandHandlerConfig) => configRef :=
 let registerAggregate = (
   ~aggregateName,
   ~specModulePath,
-  ~behaviorModulePath,
+  ~decisionModulePath,
   ~eventLogTableName,
 ) =>
-  aggregateInfos->Dict.set(aggregateName, {specModulePath, behaviorModulePath, eventLogTableName})
+  aggregateInfos->Dict.set(aggregateName, {specModulePath, decisionModulePath, eventLogTableName})
 
 // Plugin RM table name for the resolver-level plugin status gate (Part 2.3 of
 // the resolver plan). Set by the platform after Admin.construct returns; consumed
@@ -218,13 +218,13 @@ let finish = () =>
           | Some(info) =>
             // Collect unique user packages for the code asset
             let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
-            let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+            let decisionPkg = Util_Bundle.extractPackageName(info.decisionModulePath)
             packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
-            packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+            packageDirs->Dict.set(decisionPkg, Util_Bundle.resolvePackageRoot(decisionPkg))
 
             // Combine the three Output values into a JSON object string
             let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let behaviorModule = info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let decisionModule = info.decisionModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
             // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
             // deploy-time structure, and the Lambda-name fallback yields nothing for a
@@ -240,7 +240,7 @@ let finish = () =>
                 spec.queueArn,
                 pgConnectionFragment,
               ))->Pulumi.Output.apply(((table, queueUrl, queueArn, pgFragment)) =>
-                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}${pgFragment}}`
+                `{"specModule":${specModule},"decisionModule":${decisionModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}${pgFragment}}`
               )
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

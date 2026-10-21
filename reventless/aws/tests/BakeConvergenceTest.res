@@ -94,10 +94,10 @@ let row = (def: Reventless.Plugin.pluginDefinition, ~at: string): dict<JSON.t> =
   ->JSON.Decode.object
   ->Option.getOr(Dict.make())
 
-let apply = (state, events) => events->Array.reduce(state, ReventlessCore.PluginBehavior.evolve)
+let apply = (state, events) => events->Array.reduce(state, ReventlessCore.PluginDecision.evolve)
 
 let connect = (state, def) =>
-  switch ReventlessCore.PluginBehavior.decide(state, ReventlessCore.PluginSpec.Connect(def)) {
+  switch ReventlessCore.PluginDecision.decide(state, ReventlessCore.PluginSpec.Connect(def)) {
   | Ok(events) => events
   | Error(_) => []
   }
@@ -153,16 +153,16 @@ describe("the bake converges when a plugin's structure changes", () => {
   // unchanged one, so this is the step a broken chain silently skips.
   testSync("a redeploy with a changed structure re-emits VersionConnected", () => {
     let connected =
-      ReventlessCore.PluginBehavior.initialState->apply(
-        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      ReventlessCore.PluginDecision.initialState->apply(
+        connect(ReventlessCore.PluginDecision.initialState, shipped(defA)),
       )
     expect(connect(connected, shipped(defB))->Array.length)->toBe(1)
   })
 
   testSync("once it lands, the plugin reads as registered by this deploy", () => {
     let connected =
-      ReventlessCore.PluginBehavior.initialState->apply(
-        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      ReventlessCore.PluginDecision.initialState->apply(
+        connect(ReventlessCore.PluginDecision.initialState, shipped(defA)),
       )
     let redeployed = connected->apply(connect(connected, shipped(defB)))
     let def = switch redeployed.known->Dict.get("1.0.0") {
@@ -180,8 +180,8 @@ describe("the bake converges when a plugin's structure changes", () => {
   // counts it apart from a plugin that did register.
   testSync("an unchanged structure passes without re-registering", () => {
     let connected =
-      ReventlessCore.PluginBehavior.initialState->apply(
-        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      ReventlessCore.PluginDecision.initialState->apply(
+        connect(ReventlessCore.PluginDecision.initialState, shipped(defA)),
       )
     expect(connect(connected, shipped(defA)))->toEqual([])
     expect(
@@ -198,11 +198,11 @@ describe("the bake converges when a plugin's structure changes", () => {
   // and the changed structure never reaches the read model.
   testSync("a redeploy re-detects an already-connected version", () => {
     let connected =
-      ReventlessCore.PluginBehavior.initialState->apply(
-        connect(ReventlessCore.PluginBehavior.initialState, shipped(defA)),
+      ReventlessCore.PluginDecision.initialState->apply(
+        connect(ReventlessCore.PluginDecision.initialState, shipped(defA)),
       )
     expect(
-      ReventlessCore.PluginBehavior.decide(connected, ReventlessCore.PluginSpec.Redetect("1.0.0")),
+      ReventlessCore.PluginDecision.decide(connected, ReventlessCore.PluginSpec.Redetect("1.0.0")),
     )->toEqual(Ok([ReventlessCore.PluginSpec.VersionDetected("1.0.0")]))
   })
 })

@@ -74,3 +74,82 @@ describe("Pairing.groupExtensionPoints", () => {
     expect(Pairing.groupExtensionPoints([]))->toEqual([])
   )
 })
+
+let file = (~stem, ~componentType, ~relPath): Discovery.discoveredFile => {
+  stem,
+  componentType,
+  epGroup: None,
+  relPath,
+}
+
+describe("Pairing.retiredBehaviorFile", () => {
+  testSync("a slice's _Behavior file beside its spec is found", () =>
+    expect(
+      Pairing.retiredBehaviorFile([
+        file(
+          ~stem="AddProduct",
+          ~componentType=StateChangeSlice,
+          ~relPath="StateChange/AddProduct.res",
+        ),
+        file(
+          ~stem="AddProduct_Behavior",
+          ~componentType=StateChangeSlice,
+          ~relPath="StateChange/AddProduct_Behavior.res",
+        ),
+      ])->Option.map(f => f.relPath),
+    )->toEqual(Some("StateChange/AddProduct_Behavior.res"))
+  )
+
+  testSync("an aggregate's bare <Spec>Behavior file beside its spec is found", () =>
+    expect(
+      Pairing.retiredBehaviorFile([
+        file(~stem="Product", ~componentType=Aggregate, ~relPath="Aggregate/Product.res"),
+        file(
+          ~stem="ProductBehavior",
+          ~componentType=Aggregate,
+          ~relPath="Aggregate/ProductBehavior.res",
+        ),
+      ])->Option.map(f => f.relPath),
+    )->toEqual(Some("Aggregate/ProductBehavior.res"))
+  )
+
+  testSync("the renamed tree has none", () =>
+    expect(
+      Pairing.retiredBehaviorFile([
+        file(~stem="Product", ~componentType=Aggregate, ~relPath="Aggregate/Product.res"),
+        file(
+          ~stem="Product_Decision",
+          ~componentType=Aggregate,
+          ~relPath="Aggregate/Product_Decision.res",
+        ),
+      ]),
+    )->toEqual(None)
+  )
+
+  testSync("resolve refuses it, naming the new file and the codemod", () => {
+    let message = try {
+      let _ = Pairing.resolve(
+        [
+          file(
+            ~stem="AddProduct",
+            ~componentType=StateChangeSlice,
+            ~relPath="StateChange/AddProduct.res",
+          ),
+          file(
+            ~stem="AddProduct_Behavior",
+            ~componentType=StateChangeSlice,
+            ~relPath="StateChange/AddProduct_Behavior.res",
+          ),
+        ],
+        ~srcDir="/no/such/src",
+      )
+      ""
+    } catch {
+    | JsExn(e) => e->JsExn.message->Option.getOr("")
+    }
+    expect((
+      message->String.includes("AddProduct_Decision.res"),
+      message->String.includes("reventless-rename-to-decision"),
+    ))->toEqual((true, true))
+  })
+})

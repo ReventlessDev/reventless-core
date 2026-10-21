@@ -11,7 +11,7 @@ The **specification layer** of [Reventless](https://docs.reventless.dev) — a
 spec-driven, event-sourced CQRS framework written in [ReScript](https://rescript-lang.org).
 This package holds the type specifications and module-type interfaces that the rest of the
 framework is built on: the contracts application domain code implements (commands, events,
-behaviors, projections) and the component-kind vocabulary the whole framework shares. It
+decisions, projections) and the component-kind vocabulary the whole framework shares. It
 has **no** runtime, cloud, or storage dependency, so domain code can declare its shape
 against `reventless-spec` without pulling in an implementation. Modules are exposed under
 the `Reventless` namespace.
@@ -24,8 +24,9 @@ ReScript modules, consumed by adding the package to your `rescript.json` `depend
 
 - **`Message`** — the envelope metadata carried by every event and command (`meta`,
   `event'<>`, `command'<>`), used for audit, correlation, tracing, and routing.
-- **`Behavior`** — the module type application code implements to define aggregate business
-  logic: `initialState`, `evolve(state, event)`, and `decide(command, state)`.
+- **`Decision`** — the module type application code implements to define an aggregate's
+  write-side logic (the decider pattern): `initialState`, `evolve(state, event)`, and
+  `decide(state, command)`. Its file is `<Entity>_Decision.res`.
 - **`Projection`** — `Source` / `Target` module types describing a read model projected
   from an aggregate's events.
 - **`Handler`** — function signatures for handling commands, events, and errors.
@@ -61,6 +62,19 @@ generate-plugin src/          # generate src/Plugin.res from the src/ folder
 
 Wire it into your build via a `prebuild` script so it runs before `rescript build`. The
 generated `Plugin.res` is committed to git, so CI compiles it directly.
+
+**`reventless-rename-to-decision` CLI**
+
+Moves an application from the logic module's former name, *behavior*, to *decision*:
+it renames every `*_Behavior.res` to `*_Decision.res` (with `git mv` inside a work tree)
+and rewrites `@@reventless.behavior`, `Behavior_GWT`, `Reventless.Behavior`,
+`thenRefused` and `<Spec>_Behavior` references in `.res` files. The framework refuses the
+old spellings, so a bump is this command plus a build.
+
+```bash
+reventless-rename-to-decision --dry-run   # print what would change under .
+reventless-rename-to-decision             # rename; skips node_modules and lib
+```
 
 ## Where it fits
 

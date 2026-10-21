@@ -9,17 +9,17 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 
-function FromBehavior(Spec) {
-  return Behavior => ({
+function FromDecision(Spec) {
+  return Decision => ({
     name: Spec.name,
     Id: Spec.Id,
-    initialState: Behavior.initialState,
+    initialState: Decision.initialState,
     consumedEventSchema: Spec.eventSchema,
-    evolve: Behavior.evolve,
+    evolve: Decision.evolve,
     commandSchema: Spec.commandSchema,
     eventSchema: Spec.eventSchema,
     errorSchema: Spec.errorSchema,
-    decide: Behavior.decide
+    decide: Decision.decide
   });
 }
 
@@ -313,7 +313,7 @@ function Make(M) {
 }
 
 export {
-  FromBehavior,
+  FromDecision,
   FromStateChangeSlice,
   Make,
 }

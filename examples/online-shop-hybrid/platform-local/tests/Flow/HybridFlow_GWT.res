@@ -16,20 +16,20 @@
 
 open PlatformLocal_Examples
 
-module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Behavior)
-module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
+module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Decision)
+module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
 module Sync = CommandStep(
   OrderingPlugin.SyncCatalogProduct,
-  OrderingPlugin.SyncCatalogProduct_Behavior,
+  OrderingPlugin.SyncCatalogProduct_Decision,
 )
-module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Behavior)
+module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
 module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping)
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
 module Demand = CommandStep(
   CatalogPlugin.RecordProductDemand,
-  CatalogPlugin.RecordProductDemand_Behavior,
+  CatalogPlugin.RecordProductDemand_Decision,
 )
 
 // Prices are money, so a test writes the amount a person would say and converts

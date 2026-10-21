@@ -66,7 +66,7 @@ describe("Who may ShipOrder", () => {
     givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
     ->asCaller(Caller.owner(c1))
     ->whenCmd(ShipOrder({orderId: o1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 020c3695-3e3d-4343-8d38-d9d33ccf22f0
@@ -74,6 +74,6 @@ describe("Who may ShipOrder", () => {
     givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(ShipOrder({orderId: o1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

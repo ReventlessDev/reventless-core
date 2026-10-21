@@ -1,4 +1,4 @@
-// Behavior scenarios as they run, written as sidecars `check-lifecycle` reads.
+// Decision scenarios as they run, written as sidecars `check-lifecycle` reads.
 //
 // The PPX writes a `.gwt.json` sidecar from a `_GWT.res` file's source, so it can only name what
 // the source spells out: a literal constructor in a step. A suite written against a binding (a
@@ -103,7 +103,7 @@ let write = (~path: string, ~file: string, ~spec: string, scenarios: array<scena
       // What `check-lifecycle` takes the file's component from.
       ("stem", JSON.String(spec)),
       ("file", JSON.String(file)),
-      ("componentKind", JSON.String("Behavior")),
+      ("componentKind", JSON.String("Decision")),
       ("recorded", JSON.Boolean(true)),
       (
         "scenarios",

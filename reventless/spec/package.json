@@ -10,7 +10,8 @@
     "certify-trait": "./run-certify-trait.mjs",
     "trait-manifest": "./run-trait-manifest.mjs",
     "check-lifecycle": "./run-check-lifecycle.mjs",
-    "prepare-accounts": "./run-prepare-accounts.mjs"
+    "prepare-accounts": "./run-prepare-accounts.mjs",
+    "reventless-rename-to-decision": "./run-rename-to-decision.mjs"
   },
   "scripts": {
     "build": "rescript build",

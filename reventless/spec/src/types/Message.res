@@ -76,7 +76,7 @@ type meta = {
 /**
 Context passed into command handlers, carrying the aggregate ID and envelope metadata.
 
-Passed as the second argument to `Behavior.T.create` and `Behavior.T.execute`
+Passed as the second argument to `Decision.T.create` and `Decision.T.execute`
 so business logic can read the caller identity or propagate correlation IDs.
 */
 @schema

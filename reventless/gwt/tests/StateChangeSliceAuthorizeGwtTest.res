@@ -8,7 +8,7 @@ module ShelveSlice = {
   let name = "Shelve"
 
   // Inside the spec, so the zero-argument form still finds the spec and its
-  // behavior first; the rule's `Roles` resolves by ordinary scoping either way.
+  // decision first; the rule's `Roles` resolves by ordinary scoping either way.
   module Roles = {
     type t =
       | Admin
@@ -35,7 +35,7 @@ module ShelveSlice = {
   type event = Done({shelfId: @s.matches(Reventless.DcbTag.string) string})
 }
 
-module ShelveSliceBehavior = {
+module ShelveSliceDecision = {
   module Spec = ShelveSlice
   open ShelveSlice
 
@@ -67,23 +67,23 @@ describe("a command's rule, checked against the caller's roles", () => {
   )
 
   test("refused for a signed-in caller holding none of them", () =>
-    givenEvents([])->asCaller(Caller.owner("c1"))->whenCmd(Shelve({shelfId: s1}))->thenRefused
+    givenEvents([])->asCaller(Caller.owner("c1"))->whenCmd(Shelve({shelfId: s1}))->thenForbidden
   )
 
   test("refused for an anonymous caller", () =>
-    givenEvents([])->asCaller(Caller.anonymous)->whenCmd(Shelve({shelfId: s1}))->thenRefused
+    givenEvents([])->asCaller(Caller.anonymous)->whenCmd(Shelve({shelfId: s1}))->thenForbidden
   )
 
   // Elevation lifts ownership rules, not rules about who may issue a command.
   test("refused for an operator, who holds no role", () =>
-    givenEvents([])->asCaller(Caller.operator)->whenCmd(Shelve({shelfId: s1}))->thenRefused
+    givenEvents([])->asCaller(Caller.operator)->whenCmd(Shelve({shelfId: s1}))->thenForbidden
   )
 
   test("DenyAll refuses every caller, Admin included", () =>
     givenEvents([])
     ->asCaller(Caller.inRoles([Admin]))
     ->whenCmd(Purge({shelfId: s1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   test("AllowAnonymous accepts an anonymous caller", () =>
@@ -94,7 +94,7 @@ describe("a command's rule, checked against the caller's roles", () => {
   )
 
   test("the default rule refuses an anonymous caller", () =>
-    givenEvents([])->asCaller(Caller.anonymous)->whenCmd(Browse({shelfId: s1}))->thenRefused
+    givenEvents([])->asCaller(Caller.anonymous)->whenCmd(Browse({shelfId: s1}))->thenForbidden
   )
 
   test("a scenario without asCaller is checked against no rule", () =>
@@ -132,7 +132,7 @@ module ClaimSlice = {
   type event = Done({shelfId: @s.matches(Reventless.DcbTag.string) string})
 }
 
-module Claim = Behavior_GWT.Make(
+module Claim = Decision_GWT.Make(
   ClaimSlice,
   {
     type state = unit
@@ -162,13 +162,13 @@ describe("the rule, then ownership", () => {
     Claim.givenEvents(claimedByC1)
     ->Claim.asCaller(Claim.Caller.owner("c2", ~roles=[Merchandiser]))
     ->Claim.whenCmd(Shelve({shelfId: s1}))
-    ->Claim.thenRefused
+    ->Claim.thenForbidden
   )
 
   Claim.test("owning a thing does not pass a rule the owner fails", () =>
     Claim.givenEvents(claimedByC1)
     ->Claim.asCaller(Claim.Caller.owner("c1"))
     ->Claim.whenCmd(Shelve({shelfId: s1}))
-    ->Claim.thenRefused
+    ->Claim.thenForbidden
   )
 })

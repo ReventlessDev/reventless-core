@@ -21,7 +21,7 @@ ReScript modules, consumed by adding the package to your `rescript.json` `depend
 
 - **`Platform`** — the AWS platform functor (`Platform.Make()` / `Platform.MakeWithConfig({...})`).
   Applying it wires up AWS builders once; your plugin functor then takes only the
-  application-defined `Spec`, `Behavior`, and `Mappings`.
+  application-defined `Spec`, `Decision`, and `Mappings`.
 - **Component builders** (`Aggregate_Builder`, `ReadModel_Builder`, `Plugin`,
   the slice builders, `Task_Builder`, `Counter_Builder`, `Scheduler`, …) —
   AWS-preconfigured versions of the core hierarchical components, including the

@@ -16,8 +16,8 @@ import * as StateChangeSlice_Callback$ReventlessCore from "./StateChangeSlice_Ca
 let log = Logger$ReventlessCore.fromEnv();
 
 function Make(Spec) {
-  return Behavior => {
-    let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Behavior);
+  return Decision => {
+    let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Decision);
     let makeJsonHandler = (tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLogOps) => (stream => {
       let decodedStream = Stream.flatMap(Stream.mapEffect(stream, param => {
         let reference = param.reference;
@@ -67,7 +67,7 @@ function Make(Spec) {
     };
     return {
       Spec: Spec,
-      Behavior: Behavior,
+      Decision: Decision,
       isAsync: false,
       make: make
     };

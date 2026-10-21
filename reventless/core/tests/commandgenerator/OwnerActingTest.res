@@ -54,7 +54,7 @@ module OrderSlice = {
     | OrderNotFound
 }
 
-module OrderBehavior = {
+module OrderDecision = {
   type state = {placed: bool, cancelled: bool}
   let initialState = {placed: false, cancelled: false}
   let moduleUrl = OrderSlice.moduleUrl
@@ -83,7 +83,7 @@ module OrderBehavior = {
     }
 }
 
-module OrderHandler = StateChangeSlice_Callback.Make(OrderSlice, OrderBehavior)
+module OrderHandler = StateChangeSlice_Callback.Make(OrderSlice, OrderDecision)
 
 let dcbMock = DcbFixtures.makeMockStorage()
 
@@ -128,7 +128,7 @@ module AccountSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 }
 
-module AccountBehavior = {
+module AccountDecision = {
   module Spec = AccountSpec
 
   @schema
@@ -210,7 +210,7 @@ module AccountOps = {
   }
 }
 
-module AccountHandler = Aggregate_Callback.Make(AccountSpec, AccountBehavior, AccountOps)
+module AccountHandler = Aggregate_Callback.Make(AccountSpec, AccountDecision, AccountOps)
 
 // ─── Callers ────────────────────────────────────────────────────────────────
 

@@ -7,7 +7,7 @@ let cust1 = CustomerId.make("cust-1")
 let prod1 = CatalogSpec.ProductId.make("prod-1")
 let prod2 = CatalogSpec.ProductId.make("prod-2")
 
-describe("Order Behavior", () => {
+describe("Order Decision", () => {
   // scenario-id: 4f723805-10e2-4b72-b40a-6cf71e91c375
   test("Place on new aggregate produces Placed", () =>
     givenEvents([])

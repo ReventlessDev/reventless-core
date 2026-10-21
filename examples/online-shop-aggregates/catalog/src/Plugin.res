@@ -6,17 +6,17 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    Category_Behavior,
+    Category_Decision,
     ReventlessInfra.NoEventMappings.Make(Category),
   )
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    Product_Behavior,
+    Product_Decision,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
   module ProductDemandAggregate = Platform.Aggregate.Make(
     ProductDemand,
-    ProductDemand_Behavior,
+    ProductDemand_Decision,
     ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 

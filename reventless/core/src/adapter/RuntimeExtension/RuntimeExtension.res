@@ -67,7 +67,7 @@ runtime handles its first request.
 seam reachable in a *deployed* runtime: registering a first-class module only
 populates the deploy program's process, and the Lambda is a different one, so the
 framework bundles the module's package into the code archive and names the module
-in the runtime's config for the entry shell to import. Spec and behavior modules
+in the runtime's config for the entry shell to import. Spec and decision modules
 are carried into runtimes the same way. The convention matches
 `@@reventless.spec`'s injected `let moduleUrl`, so a ReScript extension can lift
 it from there.

@@ -1,6 +1,6 @@
 module type T = {
   module Spec: Reventless.StateChangeSlice.Spec
-  module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
+  module Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec
   let handleCommands: (
     ~tagKeysByEventType: Dict.t<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
@@ -21,10 +21,10 @@ module type T = {
 
 module Make = (
   Spec: Reventless.StateChangeSlice.Spec,
-  Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
-): (T with module Spec = Spec and module Behavior := Behavior) => {
+  Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
+): (T with module Spec = Spec and module Decision := Decision) => {
   module Spec = Spec
-  module Behavior = Behavior
+  module Decision = Decision
 
   let comp = `StateChangeSlice(${Spec.name})`
 
@@ -164,7 +164,7 @@ module Make = (
   // sees the event that recorded them.
   let projectionCache: Lru.t<
     string,
-    (Behavior.state, option<Reventless.DcbTag.sequencePosition>, array<string>),
+    (Decision.state, option<Reventless.DcbTag.sequencePosition>, array<string>),
   > = Lru.make(~capacity=projectionCacheCapacity)
 
   let resetCache = () => projectionCache->Lru.clear
@@ -174,7 +174,7 @@ module Make = (
   //      model — seeded from the projection cache when warm, so only events after
   //      the cached head are read (delta), else the full history (cold)
   //   2. Decodes raw events using consumedEventSchema
-  //   3. Calls Behavior.decide to produce new events
+  //   3. Calls Decision.decide to produce new events
   //   4. Encodes produced events to raw and appends with a condition
   //   5. On conflict, retries from step 1 (up to maxRetries)
   let handleSingleCommand = (
@@ -303,7 +303,7 @@ module Make = (
     let rec attempt = (~retries) => {
       let (baseState, afterPos, baseOwners) = switch seed.contents {
       | Some((state, head, owners)) => (state, head, owners)
-      | None => (Behavior.initialState, None, [])
+      | None => (Decision.initialState, None, [])
       }
       let cacheHit = seed.contents->Option.isSome
 
@@ -347,7 +347,7 @@ module Make = (
         (dm, _pos, reads, owners),
         (event, position, eventType, eventId, (ownerFields, data)),
       ) => (
-        Behavior.evolve(dm, event),
+        Decision.evolve(dm, event),
         Some(position),
         reads->Array.concat([
           switch eventId {
@@ -406,7 +406,7 @@ module Make = (
               isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
             )->Effect.map(_ => Ok("rejected"))
           | None =>
-            switch Behavior.decide(state, command'.command) {
+            switch Decision.decide(state, command'.command) {
             | Ok(newEvents) if newEvents->Array.length == 0 =>
               // No append, but the read snapshot is valid — cache it for the next command.
               cachePut((state, headPosition, owners))

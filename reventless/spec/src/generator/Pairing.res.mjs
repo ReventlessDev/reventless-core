@@ -4,9 +4,10 @@ import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
-let implSuffixForStateChange = "_Behavior";
+let implSuffixForStateChange = "_Decision";
 
 let implSuffixForStateView = "_Projection";
 
@@ -197,7 +198,34 @@ function groupExtensionPoints(epFiles) {
   return extensionPoints;
 }
 
+let retiredSuffix = "_Behavior";
+
+function retiredBehaviorFile(discovered) {
+  let stems = discovered.map(param => param.stem);
+  return discovered.find(param => {
+    let stem = param.stem;
+    if (stem.endsWith(retiredSuffix)) {
+      return true;
+    } else if (stem.endsWith("Behavior")) {
+      return stems.includes(stem.slice(0, stem.length - 8 | 0));
+    } else {
+      return false;
+    }
+  });
+}
+
+function refuseBehaviorFiles(discovered) {
+  let match = retiredBehaviorFile(discovered);
+  if (match === undefined) {
+    return;
+  }
+  let stem = match.stem;
+  let spec = stem.endsWith(retiredSuffix) ? stem.slice(0, stem.length - 9 | 0) : stem.slice(0, stem.length - 8 | 0);
+  Stdlib_JsError.throwWithMessage(`Generator: ` + match.relPath + ` uses the former name. The logic file is now ` + (spec + `_Decision.res, annotated @@reventless.decision: rename it `) + `(or run reventless-rename-to-decision).`);
+}
+
 function resolve(discovered, srcDir) {
+  refuseBehaviorFiles(discovered);
   let eventMappings = findEventMappings(srcDir);
   let stateChangeSlices = [];
   let stateViewSlices = [];
@@ -212,7 +240,7 @@ function resolve(discovered, srcDir) {
   let aggregateSpecRelPaths = {};
   let stateChangeSliceRelPaths = {};
   let stateViewSliceRelPaths = {};
-  let aggregateBehaviors = [];
+  let aggregateDecisions = [];
   let readModelStems = [];
   let readModelStreamStems = [];
   let projectionsByRelPath = {};
@@ -273,8 +301,8 @@ function resolve(discovered, srcDir) {
           return;
         }
       case "Aggregate" :
-        if (stem.endsWith("Behavior")) {
-          aggregateBehaviors.push(stem);
+        if (stem.endsWith("Decision")) {
+          aggregateDecisions.push(stem);
         } else {
           aggregateSpecs.push(stem);
           aggregateSpecRelPaths[stem] = relPath;
@@ -311,17 +339,17 @@ function resolve(discovered, srcDir) {
     }
   });
   let aggregates = Stdlib_Array.filterMap(sortedStems(aggregateSpecs), spec => {
-    let underscored = spec + "_Behavior";
-    let bare = spec + "Behavior";
-    let behaviorStem = aggregateBehaviors.includes(underscored) ? underscored : (
-        aggregateBehaviors.includes(bare) ? bare : undefined
+    let underscored = spec + "_Decision";
+    let bare = spec + "Decision";
+    let decisionStem = aggregateDecisions.includes(underscored) ? underscored : (
+        aggregateDecisions.includes(bare) ? bare : undefined
       );
-    if (behaviorStem !== undefined) {
+    if (decisionStem !== undefined) {
       let relPath = aggregateSpecRelPaths[spec];
       let isAsync = relPath !== undefined ? hasFileAttribute(Nodepath.join(srcDir, relPath), "@@reventless.async") : false;
       return {
         spec: spec,
-        behavior: behaviorStem,
+        decision: decisionStem,
         eventMappings: eventMappings[spec],
         isAsync: isAsync
       };
@@ -410,6 +438,9 @@ export {
   hasSystemCallableAttribute,
   effectiveSpecName,
   groupExtensionPoints,
+  retiredSuffix,
+  retiredBehaviorFile,
+  refuseBehaviorFiles,
   resolve,
 }
 /* node:fs Not a pure module */

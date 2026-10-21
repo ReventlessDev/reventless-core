@@ -1,7 +1,7 @@
 @@reventless.projection
 
 module Rules = TraitNotification.Notification_Rules
-module Host = NotificationPreferences_Behavior
+module Host = NotificationPreferences_Decision
 
 let categories: array<NotificationPreferences.category> = [
   OrderConfirmation,

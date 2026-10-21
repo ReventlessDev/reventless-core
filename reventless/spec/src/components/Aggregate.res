@@ -2,7 +2,7 @@
 Module type for an aggregate's identity and schema specification.
 
 Every aggregate defines a `Spec` module satisfying this type. The `Spec` is
-used by `Platform.Aggregate.Make` and by `Behavior.T` to fix the aggregate's
+used by `Platform.Aggregate.Make` and by `Decision.T` to fix the aggregate's
 command, event, and error types.
 
 @example

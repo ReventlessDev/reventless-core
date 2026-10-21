@@ -25,7 +25,7 @@ let dcbEventLog: DcbEventLog.operations = {
   appendStream: EventLogOps.appendStream,
 }
 
-module SliceBehavior = {
+module SliceDecision = {
   type state = DcbFixtures.TestCommandSpec.state
   let initialState = DcbFixtures.TestCommandSpec.initialState
   let evolve = DcbFixtures.TestCommandSpec.evolve
@@ -33,7 +33,7 @@ module SliceBehavior = {
   let moduleUrl = DcbFixtures.TestCommandSpec.moduleUrl
 }
 
-module SliceHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec, SliceBehavior)
+module SliceHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec, SliceDecision)
 
 let sliceItem = (reference, command): CommandTopic.topicItem<
   Message.command'<Reventless.Id.String.t, DcbFixtures.TestCommandSpec.command>,

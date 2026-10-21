@@ -2,7 +2,7 @@
 //
 // The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 // The `.mjs` shell owns the untyped seams — reading `HANDLER_CONFIG`, the dynamic
-// `import()` of user Spec/Behavior modules, and the functor wiring that consumes
+// `import()` of user Spec/Decision modules, and the functor wiring that consumes
 // those runtime-loaded modules (`EventLog_Operations.Make`, `Aggregate_Callback.Make`,
 // `CommandTopic_Callback.Make`). This module owns the one piece that is pure
 // typed framework wiring: selecting and building the EventLog storage operations.

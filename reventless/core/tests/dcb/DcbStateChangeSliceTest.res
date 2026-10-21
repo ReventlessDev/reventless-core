@@ -18,7 +18,7 @@ let testDcbEventLog: DcbEventLog.operations = {
   appendStream: EventLogOps.appendStream,
 }
 
-module TestCommandBehavior = {
+module TestCommandDecision = {
   type state = DcbFixtures.TestCommandSpec.state
   let initialState = DcbFixtures.TestCommandSpec.initialState
   let evolve = DcbFixtures.TestCommandSpec.evolve
@@ -27,10 +27,10 @@ module TestCommandBehavior = {
 }
 module TestHandler = StateChangeSlice_Callback.Make(
   DcbFixtures.TestCommandSpec,
-  TestCommandBehavior,
+  TestCommandDecision,
 )
 
-// Per-slice `readConsistency` overrides: same types/behavior as TestCommandSpec,
+// Per-slice `readConsistency` overrides: same types/decision as TestCommandSpec,
 // only the build-time consistency mode differs. The default (TestCommandSpec) is
 // `EscalateOnRetry`; these force strong / eventual on every attempt.
 module StrongSpec = {
@@ -41,8 +41,8 @@ module EventualSpec = {
   include DcbFixtures.TestCommandSpec
   let readConsistency = Reventless.ReadConsistency.AlwaysEventual
 }
-module StrongHandler = StateChangeSlice_Callback.Make(StrongSpec, TestCommandBehavior)
-module EventualHandler = StateChangeSlice_Callback.Make(EventualSpec, TestCommandBehavior)
+module StrongHandler = StateChangeSlice_Callback.Make(StrongSpec, TestCommandDecision)
+module EventualHandler = StateChangeSlice_Callback.Make(EventualSpec, TestCommandDecision)
 
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
   Message.command'<Reventless.Id.String.t, DcbFixtures.TestCommandSpec.command>,

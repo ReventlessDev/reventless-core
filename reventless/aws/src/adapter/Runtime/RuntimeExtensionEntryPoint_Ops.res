@@ -21,7 +21,7 @@ let log = ReventlessCore.Logger.fromEnv()
 extension is registered, which is the only reason a runtime skips the seam.
 
 `modules` are npm specifiers resolvable under `/var/task/node_modules` — the
-extension packages ride in the code archive alongside the spec and behavior
+extension packages ride in the code archive alongside the spec and decision
 packages. The remaining fields are this runtime's identity, resolved at
 provisioning time from the ambient `ResourceAttribution` context.
 */

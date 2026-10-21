@@ -17,7 +17,7 @@ let toResolvedOutputs = (outputs: outputs): Pulumi.Output.t<
 
 module type T = {
   module Spec: Reventless.StateChangeSlice.Spec
-  module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
+  module Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec
   /** `true` when built with `Platform.StateChangeSlice.MakeAsync` — uses FIFO channel, returns `CommandPending`. */
   let isAsync: bool
   type component = Component.t<t, outputs, operations>

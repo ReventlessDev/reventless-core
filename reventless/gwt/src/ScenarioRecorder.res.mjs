@@ -133,7 +133,7 @@ function write(path, file, spec, scenarios) {
     ],
     [
       "componentKind",
-      "Behavior"
+      "Decision"
     ],
     [
       "recorded",

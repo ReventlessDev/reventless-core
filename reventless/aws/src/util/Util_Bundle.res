@@ -254,7 +254,7 @@ type codeArchive = {
  *
  * `ReventlessCore.RuntimeExtension` carries `import.meta.url`s because that is
  * what an extension module can state about itself; the npm specifier a Lambda
- * resolves is derived here, the same conversion spec and behavior modules go
+ * resolves is derived here, the same conversion spec and decision modules go
  * through.
  */
 let runtimeExtensionSpecifiers = (): array<string> =>

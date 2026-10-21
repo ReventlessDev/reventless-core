@@ -18,7 +18,7 @@ type svsComponent = Component.t<
 
 module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsPlaceOrder
-  module Behavior = {
+  module Decision = {
     type state = PsPlaceOrder.state
     let initialState = PsPlaceOrder.initialState
     let evolve = PsPlaceOrder.evolve
@@ -39,7 +39,7 @@ module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
 }
 module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsShipOrder
-  module Behavior = {
+  module Decision = {
     type state = PsShipOrder.state
     let initialState = PsShipOrder.initialState
     let evolve = PsShipOrder.evolve
@@ -106,7 +106,7 @@ module PsCategoriesViewSlice: ReventlessInfra.StateViewSlice.T = {
 
 module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsAttachInvoice
-  module Behavior = {
+  module Decision = {
     type state = PsAttachInvoice.state
     let initialState = PsAttachInvoice.initialState
     let evolve = PsAttachInvoice.evolve
@@ -128,7 +128,7 @@ module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsUploadAvatar
-  module Behavior = {
+  module Decision = {
     type state = PsUploadAvatar.state
     let initialState = PsUploadAvatar.initialState
     let evolve = PsUploadAvatar.evolve
@@ -150,7 +150,7 @@ module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsUploadImagesSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsUploadImages
-  module Behavior = {
+  module Decision = {
     type state = PsUploadImages.state
     let initialState = PsUploadImages.initialState
     let evolve = PsUploadImages.evolve
@@ -172,7 +172,7 @@ module PsUploadImagesSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsTypoStoreSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsTypoStore
-  module Behavior = {
+  module Decision = {
     type state = PsTypoStore.state
     let initialState = PsTypoStore.initialState
     let evolve = PsTypoStore.evolve
@@ -194,7 +194,7 @@ module PsTypoStoreSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsChangePhoto
-  module Behavior = {
+  module Decision = {
     type state = PsChangePhoto.state
     let initialState = PsChangePhoto.initialState
     let evolve = PsChangePhoto.evolve
@@ -216,7 +216,7 @@ module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsReserveStockSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsReserveStock
-  module Behavior = {
+  module Decision = {
     type state = PsReserveStock.state
     let initialState = PsReserveStock.initialState
     let evolve = PsReserveStock.evolve
@@ -238,7 +238,7 @@ module PsReserveStockSlice: ReventlessInfra.StateChangeSlice.T = {
 
 module PsDispatchShipmentSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsDispatchShipment
-  module Behavior = {
+  module Decision = {
     type state = PsDispatchShipment.state
     let initialState = PsDispatchShipment.initialState
     let evolve = PsDispatchShipment.evolve
@@ -259,7 +259,7 @@ module PsDispatchShipmentSlice: ReventlessInfra.StateChangeSlice.T = {
 }
 module PsTransitionSwitchSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsTransitionSwitch
-  module Behavior = {
+  module Decision = {
     type state = PsTransitionSwitch.state
     let initialState = PsTransitionSwitch.initialState
     let evolve = PsTransitionSwitch.evolve

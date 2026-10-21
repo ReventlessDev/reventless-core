@@ -54,7 +54,7 @@ describe("Who may AddCategory", () => {
     givenEvents([])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 25bb6900-8985-4abd-8b21-4052d4e7284e
@@ -62,6 +62,6 @@ describe("Who may AddCategory", () => {
     givenEvents([])
     ->asCaller(Caller.anonymous)
     ->whenCmd(AddCategory({categoryId: c1, name: electronics}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

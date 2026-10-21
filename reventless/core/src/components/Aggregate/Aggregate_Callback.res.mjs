@@ -20,7 +20,7 @@ import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalke
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function Make(Spec) {
-  return Behavior => (Ops => {
+  return Decision => (Ops => {
     let comp = `Aggregate(` + Spec.name + `)`;
     let groupTopicItemsByIdStream = stream => Effect.map(Stream.runFold(stream, {}, (dict, item) => {
       let id = Spec.Id.toString(item.command.id);
@@ -73,10 +73,10 @@ function Make(Spec) {
             ]])
         ];
       }
-      let generatedEvents = Behavior.decide(state, command$p.command);
+      let generatedEvents = Decision.decide(state, command$p.command);
       if (generatedEvents.TAG === "Ok") {
         let generatedEvents$1 = generatedEvents._0;
-        let newState = Stdlib_Array.reduce(generatedEvents$1, state, Behavior.evolve);
+        let newState = Stdlib_Array.reduce(generatedEvents$1, state, Decision.evolve);
         return [
           newState,
           Stdlib_Array.reduce(generatedEvents$1, owners, recordEventOwners),
@@ -112,8 +112,8 @@ function Make(Spec) {
     });
     let replayCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(replayCache);
-    let snapshotConfig = actsOnOwned ? undefined : Behavior.snapshot;
-    if (actsOnOwned && Stdlib_Option.isSome(Behavior.snapshot)) {
+    let snapshotConfig = actsOnOwned ? undefined : Decision.snapshot;
+    if (actsOnOwned && Stdlib_Option.isSome(Decision.snapshot)) {
       Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry"));
     }
     let stateSchemaHash = snapshotConfig !== undefined ? HashObject(Object.fromEntries([[
@@ -153,7 +153,7 @@ function Make(Spec) {
             let snap = snapResult._0;
             if (snap === undefined) {
               return [
-                Behavior.initialState,
+                Decision.initialState,
                 0
               ];
             }
@@ -167,24 +167,24 @@ function Make(Spec) {
               } else {
                 Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot ignored (undecodable): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
                 return [
-                  Behavior.initialState,
+                  Decision.initialState,
                   0
                 ];
               }
             }
             Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot ignored (schema drift): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
             return [
-              Behavior.initialState,
+              Decision.initialState,
               0
             ];
           }
           Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot read failed (ignored): id=` + idStr + `: ` + snapResult._0 + ` — full replay`));
           return [
-            Behavior.initialState,
+            Decision.initialState,
             0
           ];
         }) : Effect.succeed([
-          Behavior.initialState,
+          Decision.initialState,
           0
         ]);
       return Effect.flatMap(seedEffect, param => {
@@ -194,7 +194,7 @@ function Make(Spec) {
           seedSeq,
           []
         ], (param, ev) => [
-          Behavior.evolve(param[0], ev),
+          Decision.evolve(param[0], ev),
           param[1] + 1 | 0,
           recordEventOwners(param[2], ev)
         ]), param => {

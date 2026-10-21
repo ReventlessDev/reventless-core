@@ -27,7 +27,7 @@ type inboundSlicePaths = {
   auditTableName: Pulumi.Output.t<string>,
 }
 
-// `slicePaths`: `(specPath, behaviorPath)` per StateChangeSlice (already merged
+// `slicePaths`: `(specPath, decisionPath)` per StateChangeSlice (already merged
 // from auto- and manually-registered sources by the caller).
 let forDcbCommandTopic = (
   ~slicePaths: array<(string, string)>,
@@ -124,9 +124,9 @@ let forDcbCommandTopic = (
       envVars->Dict.set("LOG_LEVEL", level->Pulumi.Output.make->Pulumi.Output.asInput)
     )
 
-    // The slice registry: an array of {spec, behavior} objects so the entry point
+    // The slice registry: an array of {spec, decision} objects so the entry point
     // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make
-    // functor (Make(Spec)(Behavior)).
+    // functor (Make(Spec)(Decision)).
     //
     // Shipped as a `sliceModules.json` asset rather than inline in HANDLER_CONFIG.
     // Two absolute module specifiers per slice is the one term here that grows
@@ -136,10 +136,10 @@ let forDcbCommandTopic = (
     // and it fails at deploy with the registry already committed to the stack.
     let sliceModulesJson =
       slicePaths
-      ->Array.map(((specPath, behaviorPath)) => {
+      ->Array.map(((specPath, decisionPath)) => {
         let s = specPath->JSON.stringifyAny->Option.getOr(`""`)
-        let b = behaviorPath->JSON.stringifyAny->Option.getOr(`""`)
-        `{"spec":${s},"behavior":${b}}`
+        let b = decisionPath->JSON.stringifyAny->Option.getOr(`""`)
+        `{"spec":${s},"decision":${b}}`
       })
       ->Array.join(",")
 
@@ -201,11 +201,11 @@ let forDcbCommandTopic = (
 
     // Build code asset
     let packageDirs: dict<string> = Dict.make()
-    slicePaths->Array.forEach(((specPath, behaviorPath)) => {
+    slicePaths->Array.forEach(((specPath, decisionPath)) => {
       let specPkg = Util_Bundle.extractPackageName(specPath)
       packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
-      let behaviorPkg = Util_Bundle.extractPackageName(behaviorPath)
-      packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+      let decisionPkg = Util_Bundle.extractPackageName(decisionPath)
+      packageDirs->Dict.set(decisionPkg, Util_Bundle.resolvePackageRoot(decisionPkg))
     })
     // Inbound slice spec + translation packages the entry point imports for Route 0.
     inboundSlices->Array.forEach(s => {

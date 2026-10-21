@@ -42,7 +42,7 @@ function renderAggregates(aggregates) {
     return [
       "  module " + spec + "Aggregate = Platform.Aggregate." + factory + "(",
       "    " + spec + ",",
-      "    " + param.behavior + ",",
+      "    " + param.decision + ",",
       "    " + em + ",",
       "  )"
     ];

@@ -56,7 +56,7 @@ module AddProductSpec = {
   let commandSchema = commandSchema
 }
 
-module AddProductBehavior = {
+module AddProductDecision = {
   module Spec = AddProductSpec
   let moduleUrl: string = %raw(`import.meta.url`)
 
@@ -107,7 +107,7 @@ let eventLog = CatalogLogMaker.make(
 )
 
 // ─── StateChangeSlice, threaded with the INFERRED scope ───
-module AddProductMaker = StateChangeSlice_Builder.Make(AddProductSpec, AddProductBehavior)
+module AddProductMaker = StateChangeSlice_Builder.Make(AddProductSpec, AddProductDecision)
 
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {
   let _ = await cmdJsons

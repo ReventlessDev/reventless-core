@@ -78,7 +78,7 @@ describe("CancelOrder StateChangeSlice", () => {
     givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
     ->asCaller(Caller.owner(c2))
     ->whenCmd(CancelOrder({orderId: o1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: e7561ebf-5566-4a4e-87c0-9aa403d68310
@@ -94,6 +94,6 @@ describe("CancelOrder StateChangeSlice", () => {
     givenEvents([OrderPlaced({productIds: [p1], customerId: c1})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(CancelOrder({orderId: o1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

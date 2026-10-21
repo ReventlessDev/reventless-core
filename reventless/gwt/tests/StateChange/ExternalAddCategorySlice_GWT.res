@@ -1,11 +1,11 @@
 // External-Spec verification test for @@reventless.gwt.
 //
 // Zero payload, no local module, no alias. The PPX resolves:
-//   - Kind from the folder segment "StateChange" -> Behavior
+//   - Kind from the folder segment "StateChange" -> Decision
 //   - Spec from the filename stem (strip "_GWT") -> ExternalAddCategorySlice
-//   - Impl derived as ExternalAddCategorySlice_Behavior
+//   - Impl derived as ExternalAddCategorySlice_Decision
 //   - open ExternalAddCategorySlice +
-//     include Behavior_GWT.Make(ExternalAddCategorySlice, ExternalAddCategorySlice_Behavior)
+//     include Decision_GWT.Make(ExternalAddCategorySlice, ExternalAddCategorySlice_Decision)
 //
 // Mirrors the canonical consumer pattern documented in
 // docs/guides/given-when-then.md § 4.10.

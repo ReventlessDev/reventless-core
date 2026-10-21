@@ -144,9 +144,9 @@ type event = Created
 type error = unit
 EOF
 
-# Behavior file
-cat > "$PLUGIN/src/Aggregate/ProductBehavior.res" <<'EOF'
-@@reventless.behavior
+# Decision file
+cat > "$PLUGIN/src/Aggregate/ProductDecision.res" <<'EOF'
+@@reventless.decision
 
 type state = bool
 let initialState = false
@@ -154,7 +154,7 @@ let evolve = (_s, _e: event) => true
 let decide = (_s, _c: command) => Ok([Created])
 EOF
 
-# Snapshot-enabled behavior — @@reventless.snapshots(N) injects
+# Snapshot-enabled decision — @@reventless.snapshots(N) injects
 # Some({interval: N, stateSchema}); needs @schema type state for sury.
 cat > "$PLUGIN/src/Aggregate/Snapped.res" <<'EOF'
 @@reventless.spec
@@ -164,8 +164,8 @@ type event = Created
 type error = unit
 EOF
 
-cat > "$PLUGIN/src/Aggregate/SnappedBehavior.res" <<'EOF'
-@@reventless.behavior
+cat > "$PLUGIN/src/Aggregate/SnappedDecision.res" <<'EOF'
+@@reventless.decision
 @@reventless.snapshots(25)
 
 @schema
@@ -1896,18 +1896,18 @@ assert_js_contains "$JS" 'let name = "Product"'           "derives name from fil
 assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/Product.res.mjs' "correct moduleUrl specifier"
 
 echo ""
-echo "=== Test: @@reventless.behavior (auto open + module Spec) ==="
-JS="$PLUGIN/src/Aggregate/ProductBehavior.res.mjs"
-assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/ProductBehavior.res.mjs' "behavior moduleUrl"
+echo "=== Test: @@reventless.decision (auto open + module Spec) ==="
+JS="$PLUGIN/src/Aggregate/ProductDecision.res.mjs"
+assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/ProductDecision.res.mjs' "decision moduleUrl"
 # open + module Spec are compile-time only — success proves they were injected correctly
-pass "behavior compiles (open + module Spec injected correctly)"
+pass "decision compiles (open + module Spec injected correctly)"
 # Default snapshot injection: `let snapshot = None` (None compiles to an
 # undefined binding, exported by name)
-assert_js_contains "$JS" 'snapshot'                        "behavior: default let snapshot = None injected"
+assert_js_contains "$JS" 'snapshot'                        "decision: default let snapshot = None injected"
 
 echo ""
 echo "=== Test: @@reventless.snapshots(N) (Some config injection) ==="
-JS="$PLUGIN/src/Aggregate/SnappedBehavior.res.mjs"
+JS="$PLUGIN/src/Aggregate/SnappedDecision.res.mjs"
 assert_js_contains "$JS" 'interval: 25'                    "snapshots: interval from attribute payload"
 assert_js_contains "$JS" 'stateSchema'                     "snapshots: references generated stateSchema"
 
@@ -3193,6 +3193,48 @@ if grep -q 'SpreadView' "$PJS"; then
 else
   pass "no runtime import of the view (so the reference cannot cycle)"
 fi
+
+# ── The former name of the decision ─────────────────────────────────────────
+#
+# No alias: the old attribute and the old DSL name fail the build, and the
+# refusal names the new spelling and the codemod.
+
+echo ""
+echo "=== Test: @@reventless.behavior raises, naming @@reventless.decision ==="
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/Legacy_Behavior.res" <<'EOF'
+@@reventless.behavior
+
+type state = bool
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "removed @@reventless.behavior" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@@reventless.decision" \
+    && echo "$OUTPUT" | grep -q "Legacy_Decision.res" \
+    && echo "$OUTPUT" | grep -q "reventless-rename-to-decision"; then
+    pass "@@reventless.behavior fails the build, naming the attribute, the file and the codemod"
+  else
+    fail "removed @@reventless.behavior" "error did not name the replacement: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/Legacy_Behavior.res"
+
+echo ""
+echo "=== Test: a Behavior_GWT reference raises, naming Decision_GWT ==="
+cat > "$ERROR/src/Aggregate/LegacyGwt.res" <<'EOF'
+module G = ReventlessGwt.Behavior_GWT.Make
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "removed Behavior_GWT" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "Decision_GWT" && echo "$OUTPUT" | grep -q "reventless-rename-to-decision"; then
+    pass "Behavior_GWT fails the build, naming Decision_GWT and the codemod"
+  else
+    fail "removed Behavior_GWT" "error did not name the replacement: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/LegacyGwt.res"
 
 # ── The three removed command-edge attributes ───────────────────────────────
 #

@@ -1,5 +1,5 @@
 // A state mismatch's hint names the fold that produced the state: `project` for
-// a view's scenario, `evolve` for a behavior's.
+// a view's scenario, `evolve` for a decision's.
 
 open JestGlobals
 
@@ -46,7 +46,7 @@ describe("Hint for a StateMismatch", () => {
     }
   })
 
-  testSync("a behavior's differing state still points at evolve", () => {
+  testSync("a decision's differing state still points at evolve", () => {
     let hint = Hint.forMismatch(
       ~slice="AddCategory",
       Outcome.StateMismatch({key: "c1", expected: None, actual: None}),

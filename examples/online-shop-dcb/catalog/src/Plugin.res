@@ -63,31 +63,31 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Decision)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Decision)
   module ArchiveCategorySlice = Platform.StateChangeSlice.Make(
     ArchiveCategory,
-    ArchiveCategory_Behavior,
+    ArchiveCategory_Decision,
   )
   module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(
     ChangeProductDescription,
-    ChangeProductDescription_Behavior,
+    ChangeProductDescription_Decision,
   )
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(
     ChangeProductName,
-    ChangeProductName_Behavior,
+    ChangeProductName_Decision,
   )
   module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(
     ChangeProductPrice,
-    ChangeProductPrice_Behavior,
+    ChangeProductPrice_Decision,
   )
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(
     RecordProductDemand,
-    RecordProductDemand_Behavior,
+    RecordProductDemand_Decision,
   )
   module RenameCategorySlice = Platform.StateChangeSlice.Make(
     RenameCategory,
-    RenameCategory_Behavior,
+    RenameCategory_Decision,
   )
 
   // StateViewSlices

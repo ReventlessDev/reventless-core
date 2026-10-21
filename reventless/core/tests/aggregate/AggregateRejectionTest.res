@@ -1,5 +1,5 @@
 // Tests for the Aggregate decide-rejection propagation path.
-// Verifies that domain rejections from Behavior.decide:
+// Verifies that domain rejections from Decision.decide:
 //   1. Surface to producers via CommandTopic_Helpers.rejectedResultChannel (with errorCode + detail)
 //   2. Return Ok(reference) so async (SQS) consumers delete the message — domain rejections don't redeliver
 //   3. Don't cancel surviving commands inside the same batch

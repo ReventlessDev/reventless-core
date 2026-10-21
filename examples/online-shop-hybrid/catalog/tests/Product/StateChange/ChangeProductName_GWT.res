@@ -61,7 +61,7 @@ describe("Who may ChangeProductName", () => {
     givenEvents([ProductAdded({name: laptop})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 5160f7b6-8c80-4eac-b3ab-f68051f10bd8
@@ -69,6 +69,6 @@ describe("Who may ChangeProductName", () => {
     givenEvents([ProductAdded({name: laptop})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(ChangeProductName({productId: p1, name: gamingLaptop}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

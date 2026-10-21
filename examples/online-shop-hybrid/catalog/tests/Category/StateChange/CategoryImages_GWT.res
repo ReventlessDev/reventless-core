@@ -103,7 +103,7 @@ describe("Who may SetCategoryImage", () => {
     givenEvents([CategoryAdded])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: b458e1f5-9851-46c4-8f54-70f15cd07363
@@ -111,7 +111,7 @@ describe("Who may SetCategoryImage", () => {
     givenEvents([CategoryAdded])
     ->asCaller(Caller.anonymous)
     ->whenCmd(SetCategoryImage({categoryId: c1, categoryImage: img}))
-    ->thenRefused
+    ->thenForbidden
   )
 })
 
@@ -143,7 +143,7 @@ describe("Who may RemoveCategoryImage", () => {
     givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(RemoveCategoryImage({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: d5a1189a-39ca-4621-ad76-f6ad09278de1
@@ -151,7 +151,7 @@ describe("Who may RemoveCategoryImage", () => {
     givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(RemoveCategoryImage({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })
 
@@ -177,7 +177,7 @@ describe("Who may SetCategoryImageAltText", () => {
     givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 3379e5bc-7c2e-4ea4-b174-5572e12edab6
@@ -185,6 +185,6 @@ describe("Who may SetCategoryImageAltText", () => {
     givenEvents([CategoryAdded, CategoryImageAttached({categoryImage: img})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(SetCategoryImageAltText({categoryId: c1, altText: bannerAlt}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

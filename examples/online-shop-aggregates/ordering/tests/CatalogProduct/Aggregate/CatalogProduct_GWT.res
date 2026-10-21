@@ -2,7 +2,7 @@
 
 open Ordering_Examples
 
-describe("CatalogProduct Behavior", () => {
+describe("CatalogProduct Decision", () => {
   // scenario-id: e0d3dd62-1687-4920-a1ad-d61733936926
   test("Sync on new aggregate produces Synced", () =>
     givenEvents([])

@@ -3,12 +3,12 @@
 import * as StateChangeSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res.mjs";
 
 function Make(Spec) {
-  return Behavior => {
-    let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Behavior);
+  return Decision => {
+    let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Decision);
     return {
       Inner: Inner,
       Spec: Spec,
-      Behavior: Behavior,
+      Decision: Decision,
       isAsync: Inner.isAsync,
       make: Inner.make
     };

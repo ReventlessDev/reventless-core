@@ -13,7 +13,7 @@ to send nothing stay three different facts.
 let suiteName = (host: string) => `${host} conforms to the notification trait`
 
 module Make = (B: Notification.Binding) => {
-  module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
+  module G = ReventlessGwt.Decision_GWT.Make(B.Spec, B.Decision)
   module R = Notification_Rules
 
   let announced = Array.concat(B.Consumed.created, [B.Consumed.announced(B.addressA)])

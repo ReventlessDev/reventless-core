@@ -2,7 +2,7 @@
 
 open Catalog_Examples
 
-describe("ProductDemand Behavior", () => {
+describe("ProductDemand Decision", () => {
   // scenario-id: bfe0c68e-f135-447f-9036-c339c9769747
   test("Record on new aggregate produces Recorded", () =>
     givenEvents([])

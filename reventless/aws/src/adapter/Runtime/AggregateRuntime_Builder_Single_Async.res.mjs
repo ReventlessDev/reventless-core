@@ -30,10 +30,10 @@ function setConfig(c) {
   configRef.contents = c;
 }
 
-function registerAggregate(aggregateName, specModulePath, behaviorModulePath, eventLogTableName) {
+function registerAggregate(aggregateName, specModulePath, decisionModulePath, eventLogTableName) {
   aggregateInfos[aggregateName] = {
     specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath,
+    decisionModulePath: decisionModulePath,
     eventLogTableName: eventLogTableName
   };
 }
@@ -162,18 +162,18 @@ function finish() {
           return log.warn("AggregateRuntime_Builder_Single_Async", undefined, `no handler registered for ` + spec.aggregateName);
         }
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
+        let decisionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.decisionModulePath);
         packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
-        packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
+        packageDirs[decisionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, decisionPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-        let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+        let decisionModule = Stdlib_Option.getOr(JSON.stringify(info.decisionModulePath), `""`);
         let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
         let handlerJson = Pulumi.all([
           info.eventLogTableName,
           spec.queueUrl,
           spec.queueArn,
           pgConnectionFragment
-        ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + param[3] + `}`);
+        ]).apply(param => `{"specModule":` + specModule + `,"decisionModule":` + decisionModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + param[3] + `}`);
         handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);

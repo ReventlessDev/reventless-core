@@ -318,7 +318,7 @@ let top_level_only_suffixes = [
   "ExtensionPointMapping";
   "ExtensionPoint";
   "ReadModel";
-  "Behavior";
+  "Decision";
   "Projections";
   "Projection";
   "Aggregate";
@@ -329,14 +329,14 @@ let top_level_only_suffixes = [
    maps a folder/filename segment to the implementation-kind name emitted as
    [<Kind>_GWT.Make]. Plan 01 unified Automation/InboundTranslation/
    OutboundTranslation onto short forms; Plan 02 (Phase 3b) added the
-   StateChange → Behavior and StateView → Projection redirects so all five
+   StateChange → Decision and StateView → Projection redirects so all five
    slice families are uniform. Folder/filename segments still match on the
    short, plural, or [Slice]-suffixed forms for backwards compatibility. *)
 let slice_base_to_kind = [
   ("Automation",          "Automation");
   ("InboundTranslation",  "InboundTranslation");
   ("OutboundTranslation", "OutboundTranslation");
-  ("StateChange",         "Behavior");
+  ("StateChange",         "Decision");
   ("StateView",           "Projection");
 ]
 
@@ -384,19 +384,19 @@ let kind_for_base base =
    Also recognizes the Aggregate-pattern architectural folders [Aggregate]
    and [ReadModel] (and their plurals) — they aren't slice bases but they
    are valid `tests/<Entity>/Aggregate|ReadModel/<Spec>_GWT.res` host
-   folders, mapped to [Behavior] (with the Aggregate-side functor) and
+   folders, mapped to [Decision] (with the Aggregate-side functor) and
    [MultiSourceProjection] respectively. The functor-name selection that
    distinguishes [Make] from [MakeFromAggregate] happens later in
    [GwtInference] based on [is_in_aggregate_folder].
 
    Falls back to substring matching for non-slice kinds (Projection,
-   Behavior) and for filenames like "AutomationGwtTest" or
+   Decision) and for filenames like "AutomationGwtTest" or
    "StateChangeSliceGwtTest" that bundle the kind with a test suffix.
-   The StateChange* / StateView* substrings map to Behavior / Projection —
+   The StateChange* / StateView* substrings map to Decision / Projection —
    which is also what carries [StateViewStream] (and the older
    [StateViewSliceStream]), since the stream variant shares the DSL. *)
 let dsl_kind_of_segment part : string option =
-  if part = "Aggregate" || part = "Aggregates" then Some "Behavior"
+  if part = "Aggregate" || part = "Aggregates" then Some "Decision"
   else if part = "ReadModel" || part = "ReadModels"
           || part = "ReadModelStream" || part = "ReadModelStreams"
   then Some "MultiSourceProjection"
@@ -442,9 +442,11 @@ let dsl_kind_of_segment part : string option =
     if contains_substring part "OutboundTranslation" then Some "OutboundTranslation"
     else if contains_substring part "InboundTranslation" then Some "InboundTranslation"
     else if contains_substring part "Automation" then Some "Automation"
-    else if contains_substring part "StateChange" then Some "Behavior"
+    else if contains_substring part "StateChange" then Some "Decision"
     else if contains_substring part "StateView" then Some "Projection"
     else if contains_substring part "Projection" then Some "Projection"
+    else if contains_substring part "Decision" then Some "Decision"
+    (* The former kind word: kept recognizable so it is refused, not misread. *)
     else if contains_substring part "Behavior" then Some "Behavior"
     (* ExtensionPoint before Extension — the former contains the latter. Catches
        filename stems like "Products_ExtensionPointMapping" / "Orders_Extension". *)

@@ -11,7 +11,7 @@ Slice folder → implementation kind mapping:
 
 | Folder                       | Implementation kind | File attribute              |
 |------------------------------|---------------------|-----------------------------|
-| `StateChangeSlice/`          | `Behavior`          | `@@reventless.behavior`     |
+| `StateChangeSlice/`          | `Decision`          | `@@reventless.decision`     |
 | `StateViewSlice/`            | `Projection`        | `@@reventless.projection`   |
 | `AutomationSlice/`           | `Automation`        | `@@reventless.automation`   |
 | `InboundTranslationSlice/`   | `Translation`       | `@@reventless.translation`  |
@@ -46,7 +46,7 @@ Flags:
 
 Running the script on already-split files is a no-op:
 
-- An implementation file (carries `@@reventless.behavior` / `.projection` /
+- An implementation file (carries `@@reventless.decision` / `.projection` /
   `.automation` / `.translation`) is skipped.
 - A spec file whose sibling `X_<Kind>.res` already exists is skipped.
 - A file outside any recognised slice folder is skipped.

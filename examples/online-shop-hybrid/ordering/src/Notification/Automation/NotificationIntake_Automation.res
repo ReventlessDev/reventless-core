@@ -147,7 +147,7 @@ let process = (id, item: NotificationIntake.todoItem) =>
         recipientId,
         NotificationIntake.RequestNotification({
           recipientId,
-          category: NotificationPreferences_Behavior.categoryOf(rule.category),
+          category: NotificationPreferences_Decision.categoryOf(rule.category),
           reference: id,
           subjectType: rule.subjectType,
           subjectRef: Rule.subjectOf(rule, ~payload),

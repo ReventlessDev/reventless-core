@@ -10,7 +10,7 @@ import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 import * as NotificationIntake$OrderingPlugin from "./NotificationIntake.res.mjs";
 import * as Notification_Rule$TraitNotification from "@reventlessdev/trait-notification/src/Notification_Rule.res.mjs";
-import * as NotificationPreferences_Behavior$OrderingPlugin from "../StateChange/NotificationPreferences_Behavior.res.mjs";
+import * as NotificationPreferences_Decision$OrderingPlugin from "../StateChange/NotificationPreferences_Decision.res.mjs";
 
 let M = AutomationSlice$Reventless.Mappings.Make({
   name: NotificationIntake$OrderingPlugin.name,
@@ -176,7 +176,7 @@ function process(id, item, param) {
     {
       TAG: "RequestNotification",
       recipientId: match$1,
-      category: NotificationPreferences_Behavior$OrderingPlugin.categoryOf(rule.category),
+      category: NotificationPreferences_Decision$OrderingPlugin.categoryOf(rule.category),
       reference: id,
       subjectType: rule.subjectType,
       subjectRef: Notification_Rule$TraitNotification.subjectOf(rule, payload),

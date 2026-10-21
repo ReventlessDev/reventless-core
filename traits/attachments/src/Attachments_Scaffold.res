@@ -423,12 +423,12 @@ let sliceSpec = (c: config): string => {
 
 // ── The slice body ───────────────────────────────────────────────────────────
 
-let sliceBehavior = (c: config): string => {
+let sliceDecision = (c: config): string => {
   let n = namesOf(c)
   let single = isSingle(c)
   lines(
     [
-      `@@reventless.behavior`,
+      `@@reventless.decision`,
       ``,
       `// The set's rules are the trait's. What is left here is this host's own refusal`,
       `// and the mapping between its constructors and the trait's ops and facts.`,
@@ -575,7 +575,7 @@ let conformanceBinding = (c: config): string => {
       `  let refB = "${refB}"`,
       ``,
       `  module Spec = ${n.slice}`,
-      `  module Behavior = ${n.slice}_Behavior`,
+      `  module Decision = ${n.slice}_Decision`,
       ``,
       `  // Annotated: the slice consumes and emits same-named constructors.`,
       `  // The same facts as the slice consumes them: no ${c.entityId}, because the`,
@@ -788,8 +788,8 @@ let emit = (~config: config, ~into: string, ~tests: string): output => {
     files: [
       {path: `${into}/StateChange/${n.slice}.res`, contents: sliceSpec(config)},
       {
-        path: `${into}/StateChange/${n.slice}_Behavior.res`,
-        contents: sliceBehavior(config),
+        path: `${into}/StateChange/${n.slice}_Decision.res`,
+        contents: sliceDecision(config),
       },
       {
         path: `${tests}/${n.slice}Conformance_GWT.res`,

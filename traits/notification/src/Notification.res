@@ -63,8 +63,8 @@ module type Binding = {
   let transactional: category
   let optional: category
 
-  module Spec: ReventlessGwt.Behavior_GWT.BehaviorSpec
-  module Behavior: ReventlessGwt.Behavior_GWT.Behavior with module Spec = Spec
+  module Spec: ReventlessGwt.Decision_GWT.DecisionSpec
+  module Decision: ReventlessGwt.Decision_GWT.Decision with module Spec = Spec
 
   /** The same facts as the slice **consumes** them, for building history.
 

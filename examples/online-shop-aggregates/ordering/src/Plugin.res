@@ -6,15 +6,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CatalogProductAggregate = Platform.Aggregate.Make(
     CatalogProduct,
-    CatalogProduct_Behavior,
+    CatalogProduct_Decision,
     ReventlessInfra.NoEventMappings.Make(CatalogProduct),
   )
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
-    Customer_Behavior,
+    Customer_Decision,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
-  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Behavior, Order_Mappings)
+  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Decision, Order_Mappings)
 
   // ReadModels
   module AvailableProductsReadModel = Platform.ReadModel.Make(

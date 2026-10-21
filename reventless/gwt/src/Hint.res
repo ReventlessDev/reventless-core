@@ -5,7 +5,7 @@
 // See `docs/analysis/given-when-then-specifications.md` §3.2 (locus table)
 // and §3.3 (JSON `hint` field).
 //
-// `locus` is a dotted pointer like "CategoryBehavior.decide" filled in by
+// `locus` is a dotted pointer like "CategoryDecision.decide" filled in by
 // the DSL at `then*` call time when the slice module name is in scope, else a
 // generic pointer. A `StateMismatch` names its fold, so a view's points at
 // `project` rather than `evolve`.

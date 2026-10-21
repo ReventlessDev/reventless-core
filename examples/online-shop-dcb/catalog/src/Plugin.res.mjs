@@ -18,24 +18,24 @@ import * as CategoryActivity$CatalogPlugin from "./CategoryActivity/ReadModel/Ca
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChange/ChangeProductName.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChange/ChangeProductPrice.res.mjs";
-import * as AddProduct_Behavior$CatalogPlugin from "./Product/StateChange/AddProduct_Behavior.res.mjs";
+import * as AddProduct_Decision$CatalogPlugin from "./Product/StateChange/AddProduct_Decision.res.mjs";
 import * as Products_Projection$CatalogPlugin from "./Product/StateView/Products_Projection.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "./ProductDemand/StateChange/RecordProductDemand.res.mjs";
-import * as AddCategory_Behavior$CatalogPlugin from "./Category/StateChange/AddCategory_Behavior.res.mjs";
+import * as AddCategory_Decision$CatalogPlugin from "./Category/StateChange/AddCategory_Decision.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-dcb-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as Categories_Projection$CatalogPlugin from "./Category/StateView/Categories_Projection.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/Products_ExtensionPoint.res.mjs";
-import * as RenameCategory_Behavior$CatalogPlugin from "./Category/StateChange/RenameCategory_Behavior.res.mjs";
-import * as ArchiveCategory_Behavior$CatalogPlugin from "./Category/StateChange/ArchiveCategory_Behavior.res.mjs";
+import * as RenameCategory_Decision$CatalogPlugin from "./Category/StateChange/RenameCategory_Decision.res.mjs";
+import * as ArchiveCategory_Decision$CatalogPlugin from "./Category/StateChange/ArchiveCategory_Decision.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChange/ChangeProductDescription.res.mjs";
 import * as ProductDemand_Projection$CatalogPlugin from "./ProductDemand/StateView/ProductDemand_Projection.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslation/ImportProduct_Translation.res.mjs";
-import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChange/ChangeProductName_Behavior.res.mjs";
-import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChange/ChangeProductPrice_Behavior.res.mjs";
+import * as ChangeProductName_Decision$CatalogPlugin from "./Product/StateChange/ChangeProductName_Decision.res.mjs";
+import * as ChangeProductPrice_Decision$CatalogPlugin from "./Product/StateChange/ChangeProductPrice_Decision.res.mjs";
 import * as CategoryActivity_Projections$CatalogPlugin from "./CategoryActivity/ReadModel/CategoryActivity_Projections.res.mjs";
-import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/StateChange/RecordProductDemand_Behavior.res.mjs";
+import * as RecordProductDemand_Decision$CatalogPlugin from "./ProductDemand/StateChange/RecordProductDemand_Decision.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
-import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChange/ChangeProductDescription_Behavior.res.mjs";
+import * as ChangeProductDescription_Decision$CatalogPlugin from "./Product/StateChange/ChangeProductDescription_Decision.res.mjs";
 
 let dcbSliceSchemas = [
   {
@@ -109,10 +109,10 @@ function Make(Platform) {
     traits: AddCategory$CatalogPlugin.traits,
     readConsistency: AddCategory$CatalogPlugin.readConsistency
   })({
-    initialState: AddCategory_Behavior$CatalogPlugin.initialState,
-    evolve: AddCategory_Behavior$CatalogPlugin.evolve,
-    decide: AddCategory_Behavior$CatalogPlugin.decide,
-    moduleUrl: AddCategory_Behavior$CatalogPlugin.moduleUrl
+    initialState: AddCategory_Decision$CatalogPlugin.initialState,
+    evolve: AddCategory_Decision$CatalogPlugin.evolve,
+    decide: AddCategory_Decision$CatalogPlugin.decide,
+    moduleUrl: AddCategory_Decision$CatalogPlugin.moduleUrl
   });
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
@@ -126,10 +126,10 @@ function Make(Platform) {
     traits: AddProduct$CatalogPlugin.traits,
     readConsistency: AddProduct$CatalogPlugin.readConsistency
   })({
-    initialState: AddProduct_Behavior$CatalogPlugin.initialState,
-    evolve: AddProduct_Behavior$CatalogPlugin.evolve,
-    decide: AddProduct_Behavior$CatalogPlugin.decide,
-    moduleUrl: AddProduct_Behavior$CatalogPlugin.moduleUrl
+    initialState: AddProduct_Decision$CatalogPlugin.initialState,
+    evolve: AddProduct_Decision$CatalogPlugin.evolve,
+    decide: AddProduct_Decision$CatalogPlugin.decide,
+    moduleUrl: AddProduct_Decision$CatalogPlugin.moduleUrl
   });
   let ArchiveCategorySlice = Platform.StateChangeSlice.Make({
     name: ArchiveCategory$CatalogPlugin.name,
@@ -143,10 +143,10 @@ function Make(Platform) {
     traits: ArchiveCategory$CatalogPlugin.traits,
     readConsistency: ArchiveCategory$CatalogPlugin.readConsistency
   })({
-    initialState: ArchiveCategory_Behavior$CatalogPlugin.initialState,
-    evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
-    decide: ArchiveCategory_Behavior$CatalogPlugin.decide,
-    moduleUrl: ArchiveCategory_Behavior$CatalogPlugin.moduleUrl
+    initialState: ArchiveCategory_Decision$CatalogPlugin.initialState,
+    evolve: ArchiveCategory_Decision$CatalogPlugin.evolve,
+    decide: ArchiveCategory_Decision$CatalogPlugin.decide,
+    moduleUrl: ArchiveCategory_Decision$CatalogPlugin.moduleUrl
   });
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
@@ -160,10 +160,10 @@ function Make(Platform) {
     traits: ChangeProductDescription$CatalogPlugin.traits,
     readConsistency: ChangeProductDescription$CatalogPlugin.readConsistency
   })({
-    initialState: ChangeProductDescription_Behavior$CatalogPlugin.initialState,
-    evolve: ChangeProductDescription_Behavior$CatalogPlugin.evolve,
-    decide: ChangeProductDescription_Behavior$CatalogPlugin.decide,
-    moduleUrl: ChangeProductDescription_Behavior$CatalogPlugin.moduleUrl
+    initialState: ChangeProductDescription_Decision$CatalogPlugin.initialState,
+    evolve: ChangeProductDescription_Decision$CatalogPlugin.evolve,
+    decide: ChangeProductDescription_Decision$CatalogPlugin.decide,
+    moduleUrl: ChangeProductDescription_Decision$CatalogPlugin.moduleUrl
   });
   let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductName$CatalogPlugin.name,
@@ -177,10 +177,10 @@ function Make(Platform) {
     traits: ChangeProductName$CatalogPlugin.traits,
     readConsistency: ChangeProductName$CatalogPlugin.readConsistency
   })({
-    initialState: ChangeProductName_Behavior$CatalogPlugin.initialState,
-    evolve: ChangeProductName_Behavior$CatalogPlugin.evolve,
-    decide: ChangeProductName_Behavior$CatalogPlugin.decide,
-    moduleUrl: ChangeProductName_Behavior$CatalogPlugin.moduleUrl
+    initialState: ChangeProductName_Decision$CatalogPlugin.initialState,
+    evolve: ChangeProductName_Decision$CatalogPlugin.evolve,
+    decide: ChangeProductName_Decision$CatalogPlugin.decide,
+    moduleUrl: ChangeProductName_Decision$CatalogPlugin.moduleUrl
   });
   let ChangeProductPriceSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductPrice$CatalogPlugin.name,
@@ -194,10 +194,10 @@ function Make(Platform) {
     traits: ChangeProductPrice$CatalogPlugin.traits,
     readConsistency: ChangeProductPrice$CatalogPlugin.readConsistency
   })({
-    initialState: ChangeProductPrice_Behavior$CatalogPlugin.initialState,
-    evolve: ChangeProductPrice_Behavior$CatalogPlugin.evolve,
-    decide: ChangeProductPrice_Behavior$CatalogPlugin.decide,
-    moduleUrl: ChangeProductPrice_Behavior$CatalogPlugin.moduleUrl
+    initialState: ChangeProductPrice_Decision$CatalogPlugin.initialState,
+    evolve: ChangeProductPrice_Decision$CatalogPlugin.evolve,
+    decide: ChangeProductPrice_Decision$CatalogPlugin.decide,
+    moduleUrl: ChangeProductPrice_Decision$CatalogPlugin.moduleUrl
   });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
@@ -211,10 +211,10 @@ function Make(Platform) {
     traits: RecordProductDemand$CatalogPlugin.traits,
     readConsistency: RecordProductDemand$CatalogPlugin.readConsistency
   })({
-    initialState: RecordProductDemand_Behavior$CatalogPlugin.initialState,
-    evolve: RecordProductDemand_Behavior$CatalogPlugin.evolve,
-    decide: RecordProductDemand_Behavior$CatalogPlugin.decide,
-    moduleUrl: RecordProductDemand_Behavior$CatalogPlugin.moduleUrl
+    initialState: RecordProductDemand_Decision$CatalogPlugin.initialState,
+    evolve: RecordProductDemand_Decision$CatalogPlugin.evolve,
+    decide: RecordProductDemand_Decision$CatalogPlugin.decide,
+    moduleUrl: RecordProductDemand_Decision$CatalogPlugin.moduleUrl
   });
   let RenameCategorySlice = Platform.StateChangeSlice.Make({
     name: RenameCategory$CatalogPlugin.name,
@@ -228,10 +228,10 @@ function Make(Platform) {
     traits: RenameCategory$CatalogPlugin.traits,
     readConsistency: RenameCategory$CatalogPlugin.readConsistency
   })({
-    initialState: RenameCategory_Behavior$CatalogPlugin.initialState,
-    evolve: RenameCategory_Behavior$CatalogPlugin.evolve,
-    decide: RenameCategory_Behavior$CatalogPlugin.decide,
-    moduleUrl: RenameCategory_Behavior$CatalogPlugin.moduleUrl
+    initialState: RenameCategory_Decision$CatalogPlugin.initialState,
+    evolve: RenameCategory_Decision$CatalogPlugin.evolve,
+    decide: RenameCategory_Decision$CatalogPlugin.decide,
+    moduleUrl: RenameCategory_Decision$CatalogPlugin.moduleUrl
   });
   let CategoriesSlice = Platform.StateViewSlice.Make({
     name: Categories$CatalogPlugin.name,

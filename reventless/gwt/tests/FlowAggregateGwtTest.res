@@ -24,7 +24,7 @@ module CatalogProductAggregate = {
   type error = AlreadySynced
 }
 
-module CatalogProductBehavior = {
+module CatalogProductDecision = {
   module Spec = CatalogProductAggregate
 
   type state = NotSynced | Synced
@@ -44,7 +44,7 @@ module CatalogProductBehavior = {
     | (Synced, _) => Error(CatalogProductAggregate.AlreadySynced)
     }
 
-  let moduleUrl = "test://CatalogProductBehavior"
+  let moduleUrl = "test://CatalogProductDecision"
 }
 
 // -- Aggregate: Order ---------------------------------------------------------
@@ -68,7 +68,7 @@ module OrderAggregate = {
     | NotPlaced
 }
 
-module OrderBehavior = {
+module OrderDecision = {
   module Spec = OrderAggregate
 
   type state = {placed: bool, shipped: bool}
@@ -98,13 +98,13 @@ module OrderBehavior = {
       }
     }
 
-  let moduleUrl = "test://OrderBehavior"
+  let moduleUrl = "test://OrderDecision"
 }
 
 // -- Step modules -------------------------------------------------------------
 
-module Sync = AggregateCommandStep(CatalogProductAggregate, CatalogProductBehavior)
-module Place = AggregateCommandStep(OrderAggregate, OrderBehavior)
+module Sync = AggregateCommandStep(CatalogProductAggregate, CatalogProductDecision)
+module Place = AggregateCommandStep(OrderAggregate, OrderDecision)
 
 // -- Flows --------------------------------------------------------------------
 

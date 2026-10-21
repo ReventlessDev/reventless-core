@@ -672,7 +672,7 @@ let endpoint_suffix ~loc fname (body : structure) : structure_item list =
 
    - command-carrier: module body declares [@schema type command]
    - query-carrier: module body declares [@schema type state] AND
-     [let subIdConfig] (the second predicate excludes Behavior modules
+     [let subIdConfig] (the second predicate excludes Decision modules
      that happen to declare their own [type state]).
 
    Idempotent on bodies that already declare the binding, so a hand-

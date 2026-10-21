@@ -47,7 +47,7 @@ describe("Who may ArchiveCategory", () => {
     givenEvents([CategoryAdded])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(ArchiveCategory({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: c48b1b53-1710-49a8-9016-963b9324bb64
@@ -55,6 +55,6 @@ describe("Who may ArchiveCategory", () => {
     givenEvents([CategoryAdded])
     ->asCaller(Caller.anonymous)
     ->whenCmd(ArchiveCategory({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

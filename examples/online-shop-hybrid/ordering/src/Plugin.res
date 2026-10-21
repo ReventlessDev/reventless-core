@@ -56,24 +56,24 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
+  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Decision)
   module EmailVerificationChallengesSlice = Platform.StateChangeSlice.Make(
     EmailVerificationChallenges,
-    EmailVerificationChallenges_Behavior,
+    EmailVerificationChallenges_Decision,
   )
   module NotificationPreferencesSlice = Platform.StateChangeSlice.Make(
     NotificationPreferences,
-    NotificationPreferences_Behavior,
+    NotificationPreferences_Decision,
   )
   module NotificationSourceClaimsSlice = Platform.StateChangeSlice.Make(
     NotificationSourceClaims,
-    NotificationSourceClaims_Behavior,
+    NotificationSourceClaims_Decision,
   )
-  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
-  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
+  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Decision)
+  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Decision)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(
     SyncCatalogProduct,
-    SyncCatalogProduct_Behavior,
+    SyncCatalogProduct_Decision,
   )
 
   // StateViewSliceStreams
@@ -127,7 +127,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
-    Customer_Behavior,
+    Customer_Decision,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
 

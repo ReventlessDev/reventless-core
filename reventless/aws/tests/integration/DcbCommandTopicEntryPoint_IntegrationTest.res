@@ -1,7 +1,7 @@
 // Integration regression guard for the DCB CommandTopic Lambda entry point.
 //
 // Drives the real `DcbCommandTopicEntryPoint.mjs` against a DynamoDB Local
-// table, with a test loader supplying a tiny `EpTestSlice` spec/behavior pair
+// table, with a test loader supplying a tiny `EpTestSlice` spec/decision pair
 // in place of the production Lambda's `/var/task/node_modules` dynamic import.
 // Covers the regression class behind the 2026-06-21 incident: the entry point
 // was passing the wrong number of positional args to ReScript-compiled
@@ -39,14 +39,14 @@ let runOneAppSyncEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
 
     const loadModule = async (specifier) => {
       if (specifier === "ep-test://spec") return await import("./EpTestSlice.res.mjs");
-      if (specifier === "ep-test://behavior") return await import("./EpTestSliceBehavior.res.mjs");
+      if (specifier === "ep-test://decision") return await import("./EpTestSliceDecision.res.mjs");
       throw new Error("unknown test specifier: " + specifier);
     };
 
     const config = {
       pluginName: "EpTestPlugin",
       dcbEventLogTableName: tableName,
-      stateChangeSliceModules: [{ spec: "ep-test://spec", behavior: "ep-test://behavior" }],
+      stateChangeSliceModules: [{ spec: "ep-test://spec", decision: "ep-test://decision" }],
       queueUrl: "https://sqs.eu-west-1.amazonaws.com/000000000000/ep-test-queue",
     };
 
@@ -78,14 +78,14 @@ let runOneCompositeEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
 
     const loadModule = async (specifier) => {
       if (specifier === "ep-composite://spec") return await import("./EpCompositeSlice.res.mjs");
-      if (specifier === "ep-composite://behavior") return await import("./EpCompositeSliceBehavior.res.mjs");
+      if (specifier === "ep-composite://decision") return await import("./EpCompositeSliceDecision.res.mjs");
       throw new Error("unknown test specifier: " + specifier);
     };
 
     const config = {
       pluginName: "EpCompositePlugin",
       dcbEventLogTableName: tableName,
-      stateChangeSliceModules: [{ spec: "ep-composite://spec", behavior: "ep-composite://behavior" }],
+      stateChangeSliceModules: [{ spec: "ep-composite://spec", decision: "ep-composite://decision" }],
       queueUrl: "https://sqs.eu-west-1.amazonaws.com/000000000000/ep-composite-queue",
     };
 

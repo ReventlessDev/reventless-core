@@ -15,7 +15,7 @@ the types are the host's own:
 behavior change for every host: version it `fix:`/`feat:` accordingly.
 
 The graft *is* a StateChangeSlice, so the emitter writes nearly all of it: the slice
-spec, its behavior and the conformance binding, whole. Only the view's projection is
+spec, its decision and the conformance binding, whole. Only the view's projection is
 printed as a patch — the view already exists, and placing an arm in an ordered `switch`
 is an AST operation a text splice gets silently wrong.
 

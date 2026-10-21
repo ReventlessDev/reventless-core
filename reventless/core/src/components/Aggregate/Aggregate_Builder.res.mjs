@@ -16,7 +16,7 @@ import * as CommandGenerator_Builder$ReventlessCore from "../CommandGenerator/Co
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 
 function Make(Spec) {
-  return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => (HooksConfig => {
+  return Decision => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => (HooksConfig => {
     let SpecificEventLog = EventLog_Builder$ReventlessCore.Make(Spec)(EventLogStorage)(EventTopicPublisher);
     let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
       Id: Spec.Id,
@@ -36,7 +36,7 @@ function Make(Spec) {
         name: Spec.name
       }, opts);
       return Component$ReventlessCore.operations(eventLog).apply(eventLogOps => {
-        let AggregateCallback = Aggregate_Callback$ReventlessCore.Make(Spec)(Behavior)({
+        let AggregateCallback = Aggregate_Callback$ReventlessCore.Make(Spec)(Decision)({
           Spec: Spec,
           EventLog: SpecificEventLog,
           eventLog: eventLogOps

@@ -1,12 +1,12 @@
-// Worked example for Behavior_GWT (slice flavor).
+// Worked example for Decision_GWT (slice flavor).
 // Uses the canonical "AddCategory" DCB slice shape — payload-less consumed
 // events, decide that appends `CategoryAdded` unless the category already
 // exists. Command carries a `@s.matches(DcbTag.string)` annotated ID so the
 // DCB optimistic-concurrency query resolves to a single-entity read.
 //
-// Plan 02 Phase 6: split-form Spec/Behavior; PPX inference resolves the
-// folder kind from the test path's "StateChangeSlice" substring → Behavior
-// DSL → emits [include Behavior_GWT.Make(Spec, Behavior)].
+// Plan 02 Phase 6: split-form Spec/Decision; PPX inference resolves the
+// folder kind from the test path's "StateChangeSlice" substring → Decision
+// DSL → emits [include Decision_GWT.Make(Spec, Decision)].
 
 @@reventless.gwt
 
@@ -30,7 +30,7 @@ module AddCategorySlice = {
     CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
 }
 
-module AddCategorySliceBehavior = {
+module AddCategorySliceDecision = {
   module Spec = AddCategorySlice
   open AddCategorySlice
 
@@ -107,7 +107,7 @@ module MissingTagSlice = {
   type event = Done({id: string})
 }
 
-module MissingTagBehavior = {
+module MissingTagDecision = {
   // Qualify references through [Spec] to avoid shadowing the file-scope
   // [consumedEvent] / [command] / [event] / [error] brought in by the PPX-
   // injected [open AddCategorySlice].
@@ -124,7 +124,7 @@ module MissingTagBehavior = {
     }
 }
 
-module MissingTagGwt = Behavior_GWT.Make(MissingTagSlice, MissingTagBehavior)
+module MissingTagGwt = Decision_GWT.Make(MissingTagSlice, MissingTagDecision)
 
 MissingTagGwt.describe("MissingTag slice implicit check", () => {
   MissingTagGwt.test(
@@ -192,7 +192,7 @@ module ShipOrderSlice = {
       })
 }
 
-module ShipOrderBehavior = {
+module ShipOrderDecision = {
   module Spec = ShipOrderSlice
 
   type state = {placed: bool, shipped: bool}
@@ -217,7 +217,7 @@ module ShipOrderBehavior = {
     }
 }
 
-module ShipOrderGwt = Behavior_GWT.Make(ShipOrderSlice, ShipOrderBehavior)
+module ShipOrderGwt = Decision_GWT.Make(ShipOrderSlice, ShipOrderDecision)
 
 ShipOrderGwt.describe("ShipOrder — a command reference no decision reads by", () => {
   ShipOrderGwt.test("reads the order's history without the carrier", () =>

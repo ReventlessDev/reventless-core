@@ -2,7 +2,7 @@
 // tests at [tests/StateChange/WithFixtures_GWT.res] and
 // [tests/StateChange/WithManualOpen_GWT.res].
 //
-// Spec half — pairs with [WithFixtures_Behavior.res].
+// Spec half — pairs with [WithFixtures_Decision.res].
 
 let name = "WithFixtures"
 

@@ -64,19 +64,19 @@ const dcbComp = (plugin) => `DcbCommandTopicRuntime(${plugin})`;
 // already-parsed `HANDLER_CONFIG` shape, with an injectable module loader.
 // In production, `buildHandler` below wraps this with the env-config + the
 // Lambda's `/var/task/node_modules` dynamic-import; integration tests inject
-// their own loader that returns pre-imported spec/behavior modules so the test
+// their own loader that returns pre-imported spec/decision modules so the test
 // can drive the real `cmdGenHandler` end-to-end against DynamoDB Local.
 export async function buildHandlersForConfig(config, opts = {}) {
   const loadModule = opts.loadModule ?? dynamicImport;
 
-  // Untyped boundary: dynamically import + id-patch the user Spec/Behavior
+  // Untyped boundary: dynamically import + id-patch the user Spec/Decision
   // modules. Their types are unknowable here — this is the one seam the typed
   // core (below) cannot own, so it stays in the shell.
   const loadedSlices = await Promise.all(
-    config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
+    config.stateChangeSliceModules.map(async ({ spec, decision }) => {
       const specModule = await loadModule(spec);
-      const behaviorModule = await loadModule(behavior);
-      return { patchedSpec: patchSpecId(specModule), behaviorModule };
+      const decisionModule = await loadModule(decision);
+      return { patchedSpec: patchSpecId(specModule), decisionModule };
     })
   );
 
@@ -108,14 +108,14 @@ export async function buildHandlersForConfig(config, opts = {}) {
     publishJson: async (_name, _meta, _json) => {},
   });
 
-  loadedSlices.forEach(({ patchedSpec, behaviorModule }) => {
+  loadedSlices.forEach(({ patchedSpec, decisionModule }) => {
     // Typed core: builds the slice callback (functor), the JSON→command decode,
     // and the handleCommands invocation — all compiler-checked (was the fragile
     // positional call this file's line-146 comment warned about; see the
     // 2026-06-21 arity-drift incident referenced in the _Ops header).
     const jsonHandler = buildSliceHandler(
       patchedSpec,
-      behaviorModule,
+      decisionModule,
       scope,
       sharedDcbEventLogOps,
     );

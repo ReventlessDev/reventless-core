@@ -66,7 +66,7 @@ describe("Who may UnarchiveProduct", () => {
     givenEvents([ProductAdded, ProductArchived])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(UnarchiveProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 47797f62-337a-47c4-9bb4-56a19cf120af
@@ -74,6 +74,6 @@ describe("Who may UnarchiveProduct", () => {
     givenEvents([ProductAdded, ProductArchived])
     ->asCaller(Caller.anonymous)
     ->whenCmd(UnarchiveProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

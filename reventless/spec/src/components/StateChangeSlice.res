@@ -9,7 +9,7 @@ on no concurrent changes to the same entities.
 Plan 02 splits the merged spec into two module types:
 
 - `Spec` — types, identity, schemas. The structural contract.
-- `Behavior` — `state`, `initialState`, `evolve`, `decide`. The state machine.
+- `Decision` — `state`, `initialState`, `evolve`, `decide`. The state machine.
 
 @example
 ```rescript
@@ -43,7 +43,7 @@ let decide = (state, command) => switch command {
 */
 /**
 The lean Spec for a StateChangeSlice — types and schemas. State and
-state-evolution functions live in the sibling `Behavior` module type. A slice has
+state-evolution functions live in the sibling `Decision` module type. A slice has
 no identity of its own: it decides about the one its partition field carries.
 */
 module type Spec = {
@@ -119,12 +119,13 @@ module type Spec = {
 }
 
 /**
-The Behavior — pure state machine that decides commands and folds events.
+The Decision — pure state machine that decides commands and folds events, in
+the shape of the decider pattern. Its file is `<Slice>_Decision.res`.
 
 `module Spec: Spec` shares the lean Spec's types so `evolve` references
 `Spec.consumedEvent`, `decide` references `Spec.command`/`Spec.event`/`Spec.error`.
 */
-module type Behavior = {
+module type Decision = {
   module Spec: Spec
 
   /**
@@ -148,6 +149,6 @@ module type Behavior = {
   */
   let decide: (state, Spec.command) => result<array<Spec.event>, Spec.error>
 
-  /** File URL of this Behavior module (`import.meta.url`). */
+  /** File URL of this Decision module (`import.meta.url`). */
   let moduleUrl: string
 }

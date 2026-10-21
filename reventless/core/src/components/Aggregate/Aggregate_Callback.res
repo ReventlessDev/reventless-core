@@ -16,7 +16,7 @@ module type T = {
 
 module Make = (
   Spec: Reventless.Aggregate.Spec,
-  Behavior: Behavior.T with module Spec := Spec,
+  Decision: Decision.T with module Spec := Spec,
   Ops: Ops with module Spec = Spec,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
@@ -82,9 +82,9 @@ module Make = (
     | CmdRefused(CommandTopic_Helpers.ownershipRefusal)
 
   // Folds a single command into the running accumulator: (currentState, perCommandOutcomes).
-  // A domain rejection from Behavior.decide is recorded as `CmdRejected` (no state change,
+  // A domain rejection from Decision.decide is recorded as `CmdRejected` (no state change,
   // surviving commands in the batch continue); a successful decide records `CmdOk(events)`
-  // and advances state via `Behavior.evolve`.
+  // and advances state via `Decision.evolve`.
   //
   // `~seq` is the replayed sequence number the batch decides from, carried in so
   // the line below can name the state rather than serialise it.
@@ -94,7 +94,7 @@ module Make = (
   let processCommand = (~seq: int) =>
     (
       (state, owners, outcomes): (
-        Behavior.state,
+        Decision.state,
         array<string>,
         array<(string, cmdOutcome, Message.meta)>,
       ),
@@ -131,9 +131,9 @@ module Make = (
         )->Effect.runSync
         (state, owners, Array.concat(outcomes, [(reference, CmdRefused(refused), meta)]))
       | None =>
-        switch Behavior.decide(state, command'.command) {
+        switch Decision.decide(state, command'.command) {
         | Ok(generatedEvents) =>
-          let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
+          let newState = generatedEvents->Array.reduce(state, Decision.evolve)
           (
             newState,
             generatedEvents->Array.reduce(owners, recordEventOwners),
@@ -179,7 +179,7 @@ module Make = (
   // the fixed capacity (a per-aggregate knob is a future refinement — see
   // docs/plans/done/aggregate-snapshotting.md).
   let replayCacheCapacity = 100
-  let replayCache: Lru.t<string, (Behavior.state, int, array<string>)> = Lru.make(
+  let replayCache: Lru.t<string, (Decision.state, int, array<string>)> = Lru.make(
     ~capacity=replayCacheCapacity,
   )
 
@@ -195,8 +195,8 @@ module Make = (
   // Off for an owner-marked aggregate: a snapshot holds the state alone, so a
   // replay seeded from one would never see the event that recorded the owner,
   // and the ownership check would pass every caller.
-  let snapshotConfig = actsOnOwned ? None : Behavior.snapshot
-  if actsOnOwned && Behavior.snapshot->Option.isSome {
+  let snapshotConfig = actsOnOwned ? None : Decision.snapshot
+  if actsOnOwned && Decision.snapshot->Option.isSome {
     EffectLogger.logWarn(
       ~comp,
       "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry",
@@ -223,7 +223,7 @@ module Make = (
   // State ⇄ JSON via the configured stateSchema. Both swallow sury failures to
   // `None` — an unserializable state just skips the snapshot write, and an
   // undecodable snapshot falls back to full replay; neither can fail a command.
-  let encodeState = (state: Behavior.state): option<JSON.t> =>
+  let encodeState = (state: Decision.state): option<JSON.t> =>
     switch snapshotConfig {
     | Some({stateSchema}) =>
       switch state->Reventless.Util_Sury.toJson(stateSchema) {
@@ -233,7 +233,7 @@ module Make = (
     | None => None
     }
 
-  let decodeState = (json: JSON.t): option<Behavior.state> =>
+  let decodeState = (json: JSON.t): option<Decision.state> =>
     switch snapshotConfig {
     | Some({stateSchema}) =>
       switch json->Reventless.Util_Sury.fromJson(stateSchema) {
@@ -250,7 +250,7 @@ module Make = (
   let coldReadState = id => {
     let idStr = id->Spec.Id.toString
     let seedEffect = switch snapshotConfig {
-    | None => Effect.succeed((Behavior.initialState, 0))
+    | None => Effect.succeed((Decision.initialState, 0))
     | Some(_) =>
       Effect.promise(() => Ops.eventLog.latestSnapshot(id))->Effect.map(snapResult =>
         switch snapResult {
@@ -262,28 +262,28 @@ module Make = (
               ~comp,
               `snapshot ignored (undecodable): id=${idStr}, seq=${snap.seqNr->Int.toString} — full replay`,
             )->Effect.runSync
-            (Behavior.initialState, 0)
+            (Decision.initialState, 0)
           }
         | Ok(Some(snap)) =>
           EffectLogger.logWarn(
             ~comp,
             `snapshot ignored (schema drift): id=${idStr}, seq=${snap.EventLog.seqNr->Int.toString} — full replay`,
           )->Effect.runSync
-          (Behavior.initialState, 0)
-        | Ok(None) => (Behavior.initialState, 0)
+          (Decision.initialState, 0)
+        | Ok(None) => (Decision.initialState, 0)
         | Error(msg) =>
           EffectLogger.logWarn(
             ~comp,
             `snapshot read failed (ignored): id=${idStr}: ${msg} — full replay`,
           )->Effect.runSync
-          (Behavior.initialState, 0)
+          (Decision.initialState, 0)
         }
       )
     }
     seedEffect->Effect.flatMap(((seedState, seedSeq)) =>
       Ops.eventLog.replayStream(id, ~fromSeq=seedSeq)
       ->Stream.runFold((seedState, seedSeq, []), ((st, n, owners), ev) => (
-        Behavior.evolve(st, ev),
+        Decision.evolve(st, ev),
         n + 1,
         owners->recordEventOwners(ev),
       ))

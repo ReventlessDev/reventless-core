@@ -19,9 +19,9 @@ open ReventlessCore
 // The chain is built from per-step functors (one per slice), threaded with
 // pipe-first so it reads top-to-bottom:
 //
-//   module Place = Flow_GWT.CommandStep(PlaceOrder, PlaceOrder_Behavior)
+//   module Place = Flow_GWT.CommandStep(PlaceOrder, PlaceOrder_Decision)
 //   module Auto  = Flow_GWT.AutomationSlice(AutoShipOrder, AutoShipOrder_Automation)
-//   module Ship  = Flow_GWT.CommandStep(ShipOrder, ShipOrder_Behavior)
+//   module Ship  = Flow_GWT.CommandStep(ShipOrder, ShipOrder_Decision)
 //   module View  = Flow_GWT.ViewStep(Orders, Orders_Projection)
 //
 //   start
@@ -279,8 +279,8 @@ let thenBoundaryScopeResolves = async (
 // -- CommandStep: a StateChangeSlice / Aggregate decider ---------------------
 
 module CommandStep = (
-  Spec: Behavior_GWT.BehaviorSpec,
-  Behavior: Behavior_GWT.Behavior with module Spec := Spec,
+  Spec: Decision_GWT.DecisionSpec,
+  Decision: Decision_GWT.Decision with module Spec := Spec,
 ) => {
   let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
   let consumedEventTypes = consumedDecoder.eventTypes
@@ -335,8 +335,8 @@ module CommandStep = (
       ~payloadTagKeys,
     )
     let history = decodeMatching(s.log, consumedDecoder, query)
-    let state = history->Array.reduce(Behavior.initialState, Behavior.evolve)
-    switch Behavior.decide(state, command) {
+    let state = history->Array.reduce(Decision.initialState, Decision.evolve)
+    switch Decision.decide(state, command) {
     | Ok(events) => {
         ...s,
         log: s.log->appendEvents(events, Spec.eventSchema),
@@ -390,8 +390,8 @@ module CommandStep = (
 
 // -- AggregateCommandStep: an Aggregate decider partitioned by aggregate-ID --
 //
-// Mirror of `CommandStep` for `Reventless.Behavior.T` (the aggregate-flavor
-// behavior). Differences from the slice form:
+// Mirror of `CommandStep` for `Reventless.Decision.T` (the aggregate-flavor
+// decision). Differences from the slice form:
 //   * No `consumedEvent` distinction — aggregates fold their own `event`
 //     stream; the decoder uses `Spec.eventSchema`.
 //   * No DCB tag inference — `~id` partitions the history. `givenEvents` and
@@ -404,8 +404,8 @@ module CommandStep = (
 // histories isolated (a `Place` on `o2` does not see the events of `o1`).
 
 module AggregateCommandStep = (
-  Spec: Behavior_GWT.AggregateSpec,
-  Behavior: Reventless.Behavior.T with module Spec = Spec,
+  Spec: Decision_GWT.AggregateSpec,
+  Decision: Reventless.Decision.T with module Spec = Spec,
 ) => {
   let aggregateDecoder = Reventless.DcbDecode.makeDecoder(Spec.eventSchema)
 
@@ -422,8 +422,8 @@ module AggregateCommandStep = (
   let whenCommand = async (flowP: flow, ~id: string, command: Spec.command) => {
     let s = await flowP
     let history = decodeAggregateMatching(s.log, ~id, aggregateDecoder)
-    let state = history->Array.reduce(Behavior.initialState, Behavior.evolve)
-    switch Behavior.decide(state, command) {
+    let state = history->Array.reduce(Decision.initialState, Decision.evolve)
+    switch Decision.decide(state, command) {
     | Ok(events) => {
         ...s,
         log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema),

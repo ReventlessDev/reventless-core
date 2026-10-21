@@ -93,7 +93,7 @@ let messagingProvisioned = () => messagingProvisionedRef.contents
 
 type sliceModulePaths = {
   specPath: string,
-  behaviorPath: string,
+  decisionPath: string,
 }
 
 type dcbConfig = {
@@ -110,8 +110,8 @@ let dcbConfigRef: ref<dcbConfig> = ref({
 
 let registeredSliceModulePaths: array<sliceModulePaths> = []
 
-let registerStateChangeSliceSpec = (~specPath: string, ~behaviorPath: string) => {
-  let _ = registeredSliceModulePaths->Array.push({specPath, behaviorPath})
+let registerStateChangeSliceSpec = (~specPath: string, ~decisionPath: string) => {
+  let _ = registeredSliceModulePaths->Array.push({specPath, decisionPath})
 }
 
 // InboundTranslationSlice registration for the shared DCB command Lambda. Unlike
@@ -933,7 +933,7 @@ module Make = (
     let slicePaths =
       registeredSliceModulePaths
       ->Array.concat(dcbConfig.stateChangeSliceModulePaths)
-      ->Array.map(({specPath, behaviorPath}) => (specPath, behaviorPath))
+      ->Array.map(({specPath, decisionPath}) => (specPath, decisionPath))
     // Drop registrations that never received their module paths (a bare
     // audit-table registration with no matching spec functor — shouldn't happen,
     // but keeps a half-registered slice out of HANDLER_CONFIG).

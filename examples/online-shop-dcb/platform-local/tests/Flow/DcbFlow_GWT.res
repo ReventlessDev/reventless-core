@@ -16,20 +16,20 @@
 
 open PlatformLocal_Examples
 
-module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
+module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
 module Sync = CommandStep(
   OrderingPlugin.SyncCatalogProduct,
-  OrderingPlugin.SyncCatalogProduct_Behavior,
+  OrderingPlugin.SyncCatalogProduct_Decision,
 )
 module Register = CommandStep(
   OrderingPlugin.RegisterCustomer,
-  OrderingPlugin.RegisterCustomer_Behavior,
+  OrderingPlugin.RegisterCustomer_Decision,
 )
-module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Behavior)
+module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
 module Auto = AutomationSlice(OrderingPlugin.AutoShipOrder, OrderingPlugin.AutoShipOrder_Automation)
-module Ship = CommandStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Behavior)
+module Ship = CommandStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Decision)
 module Confirm = OutboundSlice(
   OrderingPlugin.SendOrderConfirmation,
   OrderingPlugin.SendOrderConfirmation_Translation,

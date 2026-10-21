@@ -9,7 +9,7 @@ module Outcome = ReventlessGwt.Outcome
 let suiteName = (host: string) => `${host} conforms to the address-geocoding trait`
 
 module Make = (B: AddressGeocoding.Binding) => {
-  module A = ReventlessGwt.Behavior_GWT.MakeFromAggregate(B.Spec, B.Behavior)
+  module A = ReventlessGwt.Decision_GWT.MakeFromAggregate(B.Spec, B.Decision)
   module S = ReventlessGwt.OutboundTranslation_GWT.Make(B.Slice)
 
   let vienna: Reventless.GeoPoint.t = {lat: 48.2082, lng: 16.3738}

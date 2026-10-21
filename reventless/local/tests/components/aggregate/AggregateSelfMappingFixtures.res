@@ -22,7 +22,7 @@ module ShipmentSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 }
 
-module ShipmentBehavior: ReventlessCore.Behavior.T with module Spec := ShipmentSpec = {
+module ShipmentDecision: ReventlessCore.Decision.T with module Spec := ShipmentSpec = {
   type state = int // events seen
 
   let initialState = 0
@@ -68,7 +68,7 @@ let _ = Bus.subscribeToEvents("TestShipmentAggrEventTopic", async (_, _, _) => {
 let _ = TestRunner.setup()
 
 module ShipmentAggregateMaker = Aggregate_Builder.Make(Bus)
-module ShipmentAgg = ShipmentAggregateMaker.Make(ShipmentSpec, ShipmentBehavior, ShipmentMappings)
+module ShipmentAgg = ShipmentAggregateMaker.Make(ShipmentSpec, ShipmentDecision, ShipmentMappings)
 
 let agg = ShipmentAgg.make(~api=())
 

@@ -254,13 +254,13 @@ function postureArms(c) {
   return transactional.concat([`  | _ => false`]);
 }
 
-function sliceBehavior(c) {
+function sliceDecision(c) {
   let n = namesOf(c);
   let id = n.recipientId;
   let first = Stdlib_Option.getOr(c.categories[0], "Transactional");
   return [
     [
-      `@@reventless.behavior`,
+      `@@reventless.decision`,
       ``,
       `// The directory, the matrix and the dispatch decision are the trait's; this file`,
       `// is the mapping onto them, plus the one thing the trait has no opinion about —`,
@@ -521,10 +521,10 @@ function claimsSpec(c) {
   ].join("\n");
 }
 
-function claimsBehavior(c) {
+function claimsDecision(c) {
   let n = namesOf(c);
   return [
-    `@@reventless.behavior`,
+    `@@reventless.decision`,
     ``,
     `// The claim set is the trait's, folded through the same value the preferences`,
     `// slice folds. Only the claim half is ever populated here.`,
@@ -753,7 +753,7 @@ function conformanceBinding(c) {
     `  let optional: category = ` + optional,
     ``,
     `  module Spec = ` + n.slice,
-    `  module Behavior = ` + n.slice + `_Behavior`,
+    `  module Decision = ` + n.slice + `_Decision`,
     ``,
     `  let ` + id + ` = "` + c.noun.toLowerCase() + `-1"`,
     ``,
@@ -767,9 +767,9 @@ function conformanceBinding(c) {
     `    let announced = (` + c.contactField + `): Spec.consumedEvent =>`,
     `      ` + n.announced + `({` + id + `: ` + id + `, ` + c.contactField + `: ` + c.contactField + `})`,
     `    let subscribed = (category, channel): Spec.consumedEvent =>`,
-    `      ` + n.subscribed + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `      ` + n.subscribed + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `    let unsubscribed = (category, channel): Spec.consumedEvent =>`,
-    `      ` + n.unsubscribed + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `      ` + n.unsubscribed + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `    // Written by ` + n.claims + ` and read here across partitions — this slice`,
     `    // consumes them and produces neither.`,
     `    let claimed = (source, by): Spec.consumedEvent =>`,
@@ -780,9 +780,9 @@ function conformanceBinding(c) {
     `  let announce = ` + c.contactField + ` =>`,
     `    Spec.` + n.announceCmd + `({` + id + `: ` + id + `, ` + c.contactField + `: ` + c.contactField + `})`,
     `  let subscribe = (category, channel) =>`,
-    `    Spec.` + n.subscribeCmd + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.` + n.subscribeCmd + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `  let unsubscribe = (category, channel) =>`,
-    `    Spec.` + n.unsubscribeCmd + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.` + n.unsubscribeCmd + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `  // The wording and the subject are this host's and the trait carries neither, so`,
     `  // the suite supplies whatever it likes and asserts nothing about them.`,
     `  //`,
@@ -812,15 +812,15 @@ function conformanceBinding(c) {
     `  let announced = ` + c.contactField + ` =>`,
     `    Spec.` + n.announced + `({` + id + `: ` + id + `, ` + c.contactField + `: ` + c.contactField + `})`,
     `  let subscribed = (category, channel) =>`,
-    `    Spec.` + n.subscribed + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.` + n.subscribed + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `  let unsubscribed = (category, channel) =>`,
-    `    Spec.` + n.unsubscribed + `({` + id + `: ` + id + `, category, channel: Behavior.channelOf(channel)})`,
+    `    Spec.` + n.unsubscribed + `({` + id + `: ` + id + `, category, channel: Decision.channelOf(channel)})`,
     `  let requestedWith = (category, reference, channel, address, origin) =>`,
     `    Spec.` + n.requested + `({`,
     `      ` + id + `: ` + id + `,`,
     `      category,`,
     `      reference,`,
-    `      channel: Behavior.channelOf(channel),`,
+    `      channel: Decision.channelOf(channel),`,
     `      address,`,
     `      subjectType: "` + subjectTypeOf(c) + `",`,
     `      subjectRef: "subject-1",`,
@@ -1101,7 +1101,7 @@ function intakeRelayPatch(c) {
       `        ` + id + `,`,
       `        ` + n.intake + `.` + n.requestCmd + `({`,
       `          ` + id + `: ` + id + `,`,
-      `          category: ` + n.slice + `_Behavior.categoryOf(rule.category),`,
+      `          category: ` + n.slice + `_Decision.categoryOf(rule.category),`,
       `          reference: id,`,
       `          subjectType: rule.subjectType,`,
       `          subjectRef: Rule.subjectOf(rule, ~payload),`,
@@ -1136,16 +1136,16 @@ function emit(config, into, tests) {
         contents: sliceSpec(config)
       },
       {
-        path: into + `/StateChange/` + n.slice + `_Behavior.res`,
-        contents: sliceBehavior(config)
+        path: into + `/StateChange/` + n.slice + `_Decision.res`,
+        contents: sliceDecision(config)
       },
       {
         path: into + `/StateChange/` + n.claims + `.res`,
         contents: claimsSpec(config)
       },
       {
-        path: into + `/StateChange/` + n.claims + `_Behavior.res`,
-        contents: claimsBehavior(config)
+        path: into + `/StateChange/` + n.claims + `_Decision.res`,
+        contents: claimsDecision(config)
       },
       {
         path: into + `/OutboundTranslation/` + n.send + `.res`,
@@ -1178,9 +1178,9 @@ export {
   categoryArms,
   sliceSpec,
   postureArms,
-  sliceBehavior,
+  sliceDecision,
   claimsSpec,
-  claimsBehavior,
+  claimsDecision,
   sendSpec,
   sendTranslation,
   conformanceBinding,

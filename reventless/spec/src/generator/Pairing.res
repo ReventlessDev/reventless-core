@@ -1,10 +1,10 @@
 // Applies pairing rules to discovered files.
-// - Aggregates: pairs Foo + FooBehavior; finds Foo_EventMappings if present
+// - Aggregates: pairs Foo + Foo_Decision; finds Foo_EventMappings if present
 // - ReadModels: pairs FooReadModel + FooProjections; extracts mapping module names from projections file
 // - Slices (Plan 02): pair X + X_<Kind> where Kind is the implementation
 //   suffix matching the slice's folder. The slice arrays carry only spec
 //   stems; the corresponding impl stem is `<stem>_<implSuffix>`.
-//     * StateChangeSlice / StateViewSlice  → Behavior / Projection
+//     * StateChangeSlice / StateViewSlice  → Decision / Projection
 //     * AutomationSlice                    → Automation
 //     * In/OutboundTranslationSlice        → Translation
 // - ExtensionPoints: groups by epGroup, counts mappings, selects Make variant
@@ -12,7 +12,7 @@
 // Implementation-file suffix per slice kind. Used to filter impl files out
 // of the slice arrays (they're paired with their spec stems via this
 // suffix at codegen time) and to compute the impl module reference.
-let implSuffixForStateChange = "_Behavior"
+let implSuffixForStateChange = "_Decision"
 let implSuffixForStateView = "_Projection"
 let implSuffixForAutomation = "_Automation"
 let implSuffixForTranslation = "_Translation"
@@ -27,7 +27,7 @@ let isImplStem = (stem: string): bool =>
   stem->String.endsWith(implSuffixForTranslation) ||
   stem->String.endsWith(mappingsSuffixForAutomation)
 
-type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>, isAsync: bool}
+type aggregateDef = {spec: string, decision: string, eventMappings: option<string>, isAsync: bool}
 // readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
 // file. Codegen emits `Platform.ReadModel.Make(<spec>, <projections>)` and
 // expects the projections file to declare `let mappings` via
@@ -252,7 +252,37 @@ let groupExtensionPoints = (epFiles: array<Discovery.discoveredFile>): array<ext
   extensionPoints
 }
 
+// The logic file's former name. One beside its spec is refused rather than
+// read as a component of its own.
+let retiredSuffix = "_Behavior"
+
+let retiredBehaviorFile = (discovered: array<Discovery.discoveredFile>): option<
+  Discovery.discoveredFile,
+> => {
+  let stems = discovered->Array.map(({stem}) => stem)
+  discovered->Array.find(({stem}) =>
+    stem->String.endsWith(retiredSuffix) ||
+      (stem->String.endsWith("Behavior") &&
+        stems->Array.includes(stem->String.slice(~start=0, ~end=String.length(stem) - 8)))
+  )
+}
+
+let refuseBehaviorFiles = (discovered: array<Discovery.discoveredFile>) =>
+  switch retiredBehaviorFile(discovered) {
+  | None => ()
+  | Some({stem, relPath}) =>
+    let spec =
+      stem->String.endsWith(retiredSuffix)
+        ? stem->String.slice(~start=0, ~end=String.length(stem) - 9)
+        : stem->String.slice(~start=0, ~end=String.length(stem) - 8)
+    JsError.throwWithMessage(
+      `Generator: ${relPath} uses the former name. The logic file is now ` ++
+      `${spec}_Decision.res, annotated @@reventless.decision: rename it ` ++ `(or run reventless-rename-to-decision).`,
+    )
+  }
+
 let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): resolved => {
+  refuseBehaviorFiles(discovered)
   let eventMappings = findEventMappings(~srcDir)
 
   let stateChangeSlices = []
@@ -270,7 +300,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let stateChangeSliceRelPaths: Dict.t<string> = Dict.make()
   // Shared by StateViewSlice and StateViewSliceStream (stems are unique).
   let stateViewSliceRelPaths: Dict.t<string> = Dict.make()
-  let aggregateBehaviors: array<string> = []
+  let aggregateDecisions: array<string> = []
   let readModelStems: array<string> = []
   // Stream-enabled read model spec stems (the `ReadModelStream/` folder).
   let readModelStreamStems: array<string> = []
@@ -282,7 +312,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let extensions = []
 
   // Classify discovered files by component type. For the five slice
-  // families, impl files (X_Behavior / X_Projection / X_Automation /
+  // families, impl files (X_Decision / X_Projection / X_Automation /
   // X_Translation) are filtered out: they're paired with their spec stems
   // at codegen time via the `_<ImplKind>` suffix convention.
   discovered->Array.forEach(({stem, componentType, epGroup, relPath}) => {
@@ -318,8 +348,8 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         outboundTranslationSliceRelPaths->Dict.set(stem, relPath)
       }
     | Aggregate =>
-      if stem->String.endsWith("Behavior") {
-        aggregateBehaviors->Array.push(stem)
+      if stem->String.endsWith("Decision") {
+        aggregateDecisions->Array.push(stem)
       } else {
         aggregateSpecs->Array.push(stem)
         aggregateSpecRelPaths->Dict.set(stem, relPath)
@@ -343,30 +373,29 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   })
 
   // ── Aggregate pairing ──────────────────────────────────────────────────────
-  // Tries the post-Phase-3.1 `<Spec>_Behavior` form first, then falls back
-  // to the legacy `<Spec>Behavior` (no underscore).
+  // Tries `<Spec>_Decision` first, then `<Spec>Decision` (no underscore).
   let aggregates =
     aggregateSpecs
     ->sortedStems
     ->Array.filterMap(spec => {
-      let underscored = spec ++ "_Behavior"
-      let bare = spec ++ "Behavior"
-      let behaviorStem = if aggregateBehaviors->Array.includes(underscored) {
+      let underscored = spec ++ "_Decision"
+      let bare = spec ++ "Decision"
+      let decisionStem = if aggregateDecisions->Array.includes(underscored) {
         Some(underscored)
-      } else if aggregateBehaviors->Array.includes(bare) {
+      } else if aggregateDecisions->Array.includes(bare) {
         Some(bare)
       } else {
         None
       }
-      switch behaviorStem {
-      | Some(behavior) =>
+      switch decisionStem {
+      | Some(decision) =>
         let isAsync = switch Dict.get(aggregateSpecRelPaths, spec) {
         | None => false
         | Some(relPath) => hasAsyncAttribute(NodePath.join([srcDir, relPath]))
         }
         Some({
           spec,
-          behavior,
+          decision,
           eventMappings: Dict.get(eventMappings, spec),
           isAsync,
         })

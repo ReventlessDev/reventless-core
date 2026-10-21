@@ -26,10 +26,10 @@ module CmdGenAggSpec = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Behavior
+// Decision
 // ─────────────────────────────────────────────────────────────
 
-module CmdGenBehavior = {
+module CmdGenDecision = {
   module Spec = CmdGenAggSpec
   type state = unit
 

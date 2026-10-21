@@ -2,7 +2,7 @@
 //
 // The "typed core, thin shell" split (docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 // The `.mjs` shell owns the one boundary that is inherently untyped: reading
-// `HANDLER_CONFIG` and dynamically `import()`-ing user Spec/Behavior modules at
+// `HANDLER_CONFIG` and dynamically `import()`-ing user Spec/Decision modules at
 // cold start, whose types are unknowable here. Everything below is compiler-
 // checked against the *real* framework signatures, so the invariants that used
 // to live only in `.mjs` comments are now enforced by the build:
@@ -165,18 +165,18 @@ let makeStorageOps = (
 // (a labelled arg added before the positional ones shifts `stream` to
 // undefined, crashing inside `Stream.mapEffect`). Moving the functor call, the
 // JSON→command decode, and the `handleCommands` invocation here makes all three
-// compiler-checked. The loaded Spec/Behavior modules enter opaque (a clean
+// compiler-checked. The loaded Spec/Decision modules enter opaque (a clean
 // pass-through to the functor — not poked at); `dcbEventLog` enters as a
 // boundary-typed parameter (the shell still builds it).
 
 // The loaded slice's `command` type — opaque; flows from the decode straight
 // into `handleCommands`, so decode and consume share one abstract type.
 type command
-type behaviorModule
+type decisionModule
 
 @get external specCommandSchemaTyped: specModule => S.t<command> = "commandSchema"
 
-// `StateChangeSlice_Callback.Make(Spec)(Behavior)` — curried in compiled form.
+// `StateChangeSlice_Callback.Make(Spec)(Decision)` — curried in compiled form.
 type sliceCallback = {
   handleCommands: (
     ~tagKeysByEventType: dict<array<string>>=?,
@@ -195,7 +195,7 @@ type sliceCallback = {
 @module(
   "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs"
 )
-external makeSliceCallback: specModule => behaviorModule => sliceCallback = "Make"
+external makeSliceCallback: specModule => decisionModule => sliceCallback = "Make"
 
 // Builds the per-slice JSON-command handler: decode each topic item's JSON
 // command against the slice's schema (dropping undecodable ones), then dispatch
@@ -203,11 +203,11 @@ external makeSliceCallback: specModule => behaviorModule => sliceCallback = "Mak
 // `Stream.t<topicItem<JSON>> => Effect` the shell's routing map keys on.
 let buildSliceHandler = (
   spec: specModule,
-  behavior: behaviorModule,
+  decision: decisionModule,
   scope: derivedScope,
   dcbEventLog: ReventlessInfra.DcbEventLog.operations,
 ) => {
-  let callback = makeSliceCallback(spec)(behavior)
+  let callback = makeSliceCallback(spec)(decision)
   let commandSchema = spec->specCommandSchemaTyped
   (jsonStream: Stream.t<ReventlessInfra.CommandTopic.topicItem<JSON.t>, string, unit>): Effect.t<
     array<result<string, string>>,

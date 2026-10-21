@@ -33,14 +33,14 @@ module AggSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 }
 
-module TestBehavior = {
+module TestDecision = {
   module Spec = AggSpec
   type state = {names: array<string>}
 
   let initialState = {names: []}
 
-  // Hand-written behavior (no @@reventless.behavior PPX) — satisfy the
-  // Behavior.T snapshot field manually.
+  // Hand-written decision (no @@reventless.decision PPX) — satisfy the
+  // Decision.T snapshot field manually.
   let snapshot = None
 
   let moduleUrl: string = %raw(`import.meta.url`)
@@ -176,7 +176,7 @@ module TestOps = {
   }
 }
 
-module TestHandler = Aggregate_Callback.Make(AggSpec, TestBehavior, TestOps)
+module TestHandler = Aggregate_Callback.Make(AggSpec, TestDecision, TestOps)
 
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
   Message.command'<string, AggSpec.command>,

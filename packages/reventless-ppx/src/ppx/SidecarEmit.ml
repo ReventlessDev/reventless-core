@@ -782,7 +782,7 @@ let step_names =
     "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
     "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenViewState"; "thenViewStates";
     "thenCommand"; "thenCommands"; "thenIssuesCommand"; "thenIssuesCommands";
-    "thenNoCommand"; "thenIssuesNoCommand"; "thenSideEffect"; "thenNoEvent"; "thenRefused";
+    "thenNoCommand"; "thenIssuesNoCommand"; "thenSideEffect"; "thenNoEvent"; "thenForbidden";
     "thenTodos"; "thenScenarioTodos"; "thenResolved"; "thenTranslateError";
     "thenNotUnderstood"; "thenRefusedInput"; "thenSent"; "thenNothingSent"; "thenOutbound";
     "thenOutboundNothing"; "thenTodoStatus"; "thenRetryRecorded"; "thenPublicEvent";
@@ -1046,7 +1046,7 @@ let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : ca
   | "thenNoEvent" -> mk "then" (one "noEvent" ())
   | "thenNoState" -> mk "then" (one "noState" ())
   (* Not `error`: who may act is not something the lifecycle decides. *)
-  | "thenRefused" -> mk "then" (one "forbidden" ())
+  | "thenForbidden" -> mk "then" (one "forbidden" ())
   | "thenCommand" | "thenIssuesCommand" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"command")))
   | "thenCommands" | "thenIssuesCommands" ->
     mk "then" (on_last (each ~none:"noCommand" (ctor_entry ?src ~kind:"command")))

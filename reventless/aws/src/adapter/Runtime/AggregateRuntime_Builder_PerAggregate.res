@@ -9,7 +9,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 type aggregateInfo = {
   specModulePath: string,
-  behaviorModulePath: string,
+  decisionModulePath: string,
   eventLogTableName: Pulumi.Output.t<string>,
 }
 
@@ -18,10 +18,10 @@ let aggregateInfos: dict<aggregateInfo> = Dict.make()
 let registerAggregate = (
   ~aggregateName,
   ~specModulePath,
-  ~behaviorModulePath,
+  ~decisionModulePath,
   ~eventLogTableName,
 ) =>
-  aggregateInfos->Dict.set(aggregateName, {specModulePath, behaviorModulePath, eventLogTableName})
+  aggregateInfos->Dict.set(aggregateName, {specModulePath, decisionModulePath, eventLogTableName})
 
 type storedSpec = {
   aggregateName: string,
@@ -166,7 +166,7 @@ let finish = () =>
 
           // Build HANDLER_CONFIG with single handler
           let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-          let behaviorModule = info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let decisionModule = info.decisionModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
           // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
           // deploy-time structure, and the Lambda-name fallback yields nothing for a
@@ -181,7 +181,7 @@ let finish = () =>
               spec.queueUrl,
               spec.queueArn,
             ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
+              `{"handlers":[{"specModule":${specModule},"decisionModule":${decisionModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
             )
 
           let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -190,9 +190,9 @@ let finish = () =>
           // Collect user packages
           let packageDirs: dict<string> = Dict.make()
           let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
-          let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+          let decisionPkg = Util_Bundle.extractPackageName(info.decisionModulePath)
           packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
-          packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+          packageDirs->Dict.set(decisionPkg, Util_Bundle.resolvePackageRoot(decisionPkg))
 
           // Build AssetArchive: static re-export + user packages
           let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(

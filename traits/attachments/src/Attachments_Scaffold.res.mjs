@@ -268,12 +268,12 @@ function sliceSpec(c) {
   ]).join("\n");
 }
 
-function sliceBehavior(c) {
+function sliceDecision(c) {
   let n = namesOf(c);
   let single = Stdlib_Option.getOr(c.cardinality, "Many") === "Single";
   return Belt_Array.concatMany([
     [
-      `@@reventless.behavior`,
+      `@@reventless.decision`,
       ``,
       `// The set's rules are the trait's. What is left here is this host's own refusal`,
       `// and the mapping between its constructors and the trait's ops and facts.`,
@@ -397,7 +397,7 @@ function conformanceBinding(c) {
       `  let refB = "` + refB + `"`,
       ``,
       `  module Spec = ` + n.slice,
-      `  module Behavior = ` + n.slice + `_Behavior`,
+      `  module Decision = ` + n.slice + `_Decision`,
       ``,
       `  // Annotated: the slice consumes and emits same-named constructors.`,
       `  // The same facts as the slice consumes them: no ` + c.entityId + `, because the`,
@@ -564,8 +564,8 @@ function emit(config, into, tests) {
         contents: sliceSpec(config)
       },
       {
-        path: into + `/StateChange/` + n.slice + `_Behavior.res`,
-        contents: sliceBehavior(config)
+        path: into + `/StateChange/` + n.slice + `_Decision.res`,
+        contents: sliceDecision(config)
       },
       {
         path: tests + `/` + n.slice + `Conformance_GWT.res`,
@@ -594,7 +594,7 @@ export {
   commandTransitionBinding,
   lines,
   sliceSpec,
-  sliceBehavior,
+  sliceDecision,
   conformanceBinding,
   singleProjectionPatch,
   manyProjectionPatch,

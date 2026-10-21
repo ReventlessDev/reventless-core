@@ -1,5 +1,5 @@
 // Aggregate Lambda entry point.
-// At cold start: reads HANDLER_CONFIG, dynamically imports Spec+Behavior modules,
+// At cold start: reads HANDLER_CONFIG, dynamically imports Spec+Decision modules,
 // wires EventLog_Operations, Aggregate_Callback, CommandTopic_Callback.
 // Handles both SQS CommandTopic events (Route 2) and AppSync direct invocation (Route 1).
 
@@ -135,7 +135,7 @@ async function checkPluginStatus(event) {
 // Postgres EventLog runtime; absence keeps the DynamoDB path byte-identical.
 // `eventLogTableName` doubles as the Postgres `event_log.log_name` discriminator
 // (all aggregates share one Postgres table, unlike DynamoDB's table-per-aggregate).
-function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queueUrl, pgConnection) {
+function buildAggregateParts(specModule, decisionModule, eventLogTableName, queueUrl, pgConnection) {
   const patchedSpec = patchSpecId(specModule);
   // Typed core: backend-specific EventLog storage ops (Postgres when pgConnection
   // is present, else DynamoDB). Returns the full 6-field EventLog_Adapter.operations
@@ -147,7 +147,7 @@ function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queu
     eventTopic: { publish: async () => {} },
     storage: rawStorageOps,
   });
-  const aggregateCallback = aggregateCallbackMake(patchedSpec)(behaviorModule)({
+  const aggregateCallback = aggregateCallbackMake(patchedSpec)(decisionModule)({
     Spec: patchedSpec,
     EventLog: { Spec: patchedSpec },
     eventLog: eventLogOps,
@@ -227,7 +227,7 @@ const DISPATCH_MODE = process.env["DISPATCH_MODE"] === "async" ? "async" : "sync
 // already-parsed `HANDLER_CONFIG` shape, with an injectable module loader. In
 // production, `buildAllHandlers` wraps this with the env config + the Lambda's
 // `/var/task/node_modules` dynamic import; the integration test injects a loader
-// returning pre-imported spec/behavior modules so it can drive the real
+// returning pre-imported spec/decision modules so it can drive the real
 // cmdGenHandler end-to-end against DynamoDB Local. (Mirrors the DCB entry point.)
 export async function buildHandlersForConfig(config, opts = {}) {
   const loadModule = opts.loadModule ?? dynamicImport;
@@ -236,8 +236,8 @@ export async function buildHandlersForConfig(config, opts = {}) {
   const cmdGenHandlers = {};
   await Promise.all((config.handlers || []).map(async h => {
     const specModule = await loadModule(h.specModule);
-    const behaviorModule = await loadModule(h.behaviorModule);
-    const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl, h.pgConnection);
+    const decisionModule = await loadModule(h.decisionModule);
+    const parts = buildAggregateParts(specModule, decisionModule, h.eventLogTable, h.queueUrl, h.pgConnection);
     // Pair each handler with the comp of the aggregate it belongs to: this
     // Lambda can host every aggregate in the platform, so the comp is what keeps
     // their log lines separable.

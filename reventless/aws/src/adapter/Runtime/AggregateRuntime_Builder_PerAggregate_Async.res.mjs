@@ -16,10 +16,10 @@ let log = Logger$ReventlessCore.fromEnv();
 
 let aggregateInfos = {};
 
-function registerAggregate(aggregateName, specModulePath, behaviorModulePath, eventLogTableName) {
+function registerAggregate(aggregateName, specModulePath, decisionModulePath, eventLogTableName) {
   aggregateInfos[aggregateName] = {
     specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath,
+    decisionModulePath: decisionModulePath,
     eventLogTableName: eventLogTableName
   };
 }
@@ -138,21 +138,21 @@ function finish() {
       };
       let name = ComponentType$ReventlessCore.name(spec.aggregateName, Aggregate$ReventlessCore.componentType);
       let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-      let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+      let decisionModule = Stdlib_Option.getOr(JSON.stringify(info.decisionModulePath), `""`);
       let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
       let handlerConfigOutput = Pulumi.all([
         info.eventLogTableName,
         spec.queueUrl,
         spec.queueArn
-      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + `}]}`);
+      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"decisionModule":` + decisionModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + `}]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       envVars["DISPATCH_MODE"] = "async";
       let packageDirs = {};
       let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-      let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
+      let decisionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.decisionModulePath);
       packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
-      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
+      packageDirs[decisionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, decisionPkg);
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "Aggregate", match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, undefined, undefined, aggregateOpts);
       spec.connects.forEach(connect => connect(runtime));

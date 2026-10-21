@@ -54,7 +54,7 @@ describe("Who may RenameCategory", () => {
     givenEvents([CategoryAdded({name: electronics})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: c1896219-85d5-463d-9bcd-23fa1484d933
@@ -62,6 +62,6 @@ describe("Who may RenameCategory", () => {
     givenEvents([CategoryAdded({name: electronics})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(RenameCategory({categoryId: c1, name: consumerElectronics}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

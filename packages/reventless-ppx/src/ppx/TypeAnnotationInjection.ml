@@ -1,7 +1,7 @@
 open Ppxlib
 
 (** Phase 3b.3 — inject type annotations on recognized function bindings in
-    implementation files (Behavior, Projection, Automation, Translation).
+    implementation files (Decision, Projection, Automation, Translation).
 
     The merged Spec + Impl form (pre-Plan-02) disambiguated [consumedEvent] vs
     [event] constructor name collisions by *declaration order* — [evolve]
@@ -83,8 +83,8 @@ let is_outbound_translation fname =
 (* --- Per-kind annotation table --------------------------------------- *)
 
 type kind_for_injection =
-  | KBehavior              (* StateChangeSlice — evolve consumes [consumedEvent] *)
-  | KAggregateBehavior     (* Aggregate — evolve consumes [event] *)
+  | KDecision              (* StateChangeSlice — evolve consumes [consumedEvent] *)
+  | KAggregateDecision     (* Aggregate — evolve consumes [event] *)
   | KProjection
   | KAutomation
   | KInboundTranslation
@@ -102,19 +102,19 @@ type signature = {
 let signature_for ~loc kind name : signature option =
   let s = mk_simple ~loc in
   match kind, name with
-  | KBehavior, "initialState" ->
+  | KDecision, "initialState" ->
     Some { params = []; ret = s "state" }
-  | KBehavior, "evolve" ->
+  | KDecision, "evolve" ->
     Some { params = [s "state"; s "consumedEvent"]; ret = s "state" }
-  | KBehavior, "decide" ->
+  | KDecision, "decide" ->
     Some { params = [s "state"; s "command"];
            ret = mk_result ~loc (mk_array ~loc (s "event")) (s "error") }
 
-  | KAggregateBehavior, "initialState" ->
+  | KAggregateDecision, "initialState" ->
     Some { params = []; ret = s "state" }
-  | KAggregateBehavior, "evolve" ->
+  | KAggregateDecision, "evolve" ->
     Some { params = [s "state"; s "event"]; ret = s "state" }
-  | KAggregateBehavior, "decide" ->
+  | KAggregateDecision, "decide" ->
     Some { params = [s "state"; s "command"];
            ret = mk_result ~loc (mk_array ~loc (s "event")) (s "error") }
 
@@ -213,14 +213,14 @@ let transform_structure ~kind (str : structure) : structure =
   ) str
 
 (* Resolve the injection kind from the impl kind + filename. Aggregate
-   Behavior files (outside slice folders) consume [event]; StateChangeSlice
-   Behavior files (inside slice folders) consume [consumedEvent]. Translation
+   Decision files (outside slice folders) consume [event]; StateChangeSlice
+   Decision files (inside slice folders) consume [consumedEvent]. Translation
    needs inbound/outbound folder discrimination. *)
 let kind_from_impl_kind ~fname impl_kind_name =
   match impl_kind_name with
-  | "Behavior" ->
-    if Util.is_in_slice_folder fname then Some KBehavior
-    else Some KAggregateBehavior
+  | "Decision" ->
+    if Util.is_in_slice_folder fname then Some KDecision
+    else Some KAggregateDecision
   | "Projection" -> Some KProjection
   | "Automation" -> Some KAutomation
   | "Translation" ->

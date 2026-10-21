@@ -67,7 +67,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   let sliceModulesJson = slicePaths.map(param => {
     let s = Stdlib_Option.getOr(JSON.stringify(param[0]), `""`);
     let b = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);
-    return `{"spec":` + s + `,"behavior":` + b + `}`;
+    return `{"spec":` + s + `,"decision":` + b + `}`;
   }).join(",");
   let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(pgSelection.lockStrategy, cc))) : Pulumi.output("");
   let inboundFragment = inboundSlices.length !== 0 ? Pulumi.all(inboundSlices.map(s => s.auditTableName)).apply(tableNames => {
@@ -96,8 +96,8 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   slicePaths.forEach(param => {
     let specPkg = Util_Bundle$ReventlessAws.extractPackageName(param[0]);
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
-    let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(param[1]);
-    packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
+    let decisionPkg = Util_Bundle$ReventlessAws.extractPackageName(param[1]);
+    packageDirs[decisionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, decisionPkg);
   });
   inboundSlices.forEach(s => {
     let specPkg = Util_Bundle$ReventlessAws.extractPackageName(s.specPath);

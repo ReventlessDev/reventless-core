@@ -290,7 +290,7 @@ let conformanceBinding = (c: config): string => {
     `  let posture = TraitAddressGeocoding.AddressGeocoding.WritesBack`,
     ``,
     `  module Spec = ${c.entity}`,
-    `  module Behavior = ${c.entity}_Behavior`,
+    `  module Decision = ${c.entity}_Decision`,
     ``,
     `  let created = ${n.subject} => [${c.entity}.${createdValue}]`,
     `  let subjectChanged = ${n.subject} => ${c.entity}.${n.updated}({${n.subject}: ${n.subject}})`,
@@ -432,12 +432,12 @@ let aggregatePatch = (c: config): patch => {
   }
 }
 
-// ── The aggregate behavior patch ─────────────────────────────────────────────
+// ── The aggregate decision patch ─────────────────────────────────────────────
 
-let behaviorPatch = (c: config): patch => {
+let decisionPatch = (c: config): patch => {
   let n = namesOf(c)
   {
-    into: `Aggregate/${c.entity}_Behavior.res`,
+    into: `Aggregate/${c.entity}_Decision.res`,
     at: `the state's fields, the \`evolve\` and \`decide\` switches, and two helpers`,
     contents: lines([
       `module Guards = TraitAddressGeocoding.AddressGeocoding_Guards`,
@@ -587,6 +587,6 @@ let emit = (~config: config, ~into: string, ~tests: string): output => {
         contents: conformanceBinding(config),
       },
     ],
-    patches: [aggregatePatch(config), behaviorPatch(config), projectionPatch(config)],
+    patches: [aggregatePatch(config), decisionPatch(config), projectionPatch(config)],
   }
 }

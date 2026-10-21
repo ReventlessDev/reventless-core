@@ -14,7 +14,7 @@ inside a Jest test file registers one `describe` block over the binding.
 let suiteName = (host: string) => `${host} conforms to the attachments trait`
 
 module Make = (B: Attachments.Binding) => {
-  module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
+  module G = ReventlessGwt.Decision_GWT.Make(B.Spec, B.Decision)
 
   let withA = Array.concat(B.Consumed.created, [B.Consumed.attached(B.refA)])
   let withAB = Array.concat(withA, [B.Consumed.attached(B.refB)])
@@ -132,7 +132,7 @@ replaces rather than joins — plus the ref-less remove and the captions, which 
 single image wants exactly as much as a gallery member does.
 */
 module MakeSingle = (B: Attachments.SingleBinding) => {
-  module G = ReventlessGwt.Behavior_GWT.Make(B.Spec, B.Behavior)
+  module G = ReventlessGwt.Decision_GWT.Make(B.Spec, B.Decision)
 
   let withA = Array.concat(B.Consumed.created, [B.Consumed.attached(B.refA)])
 

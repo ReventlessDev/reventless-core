@@ -1,0 +1,50 @@
+// Product aggregate decision.
+// Implements the state machine for adding and updating products.
+//
+// Snapshotting is enabled (every 50 events): a long-lived product with many
+// price/name updates seeds its cold replay from the latest snapshot instead of
+// folding full history. See the "Replay cost and snapshots" section of the
+// aggregate component docs.
+
+@@reventless.decision
+@@reventless.snapshots(50)
+
+@schema
+type state =
+  | NotCreated
+  | Created({name: string, description: string, price: float, imageUrl: string})
+
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (NotCreated, Added({name, description, price, imageUrl})) =>
+    Created({name, description, price, imageUrl})
+  | (Created(_), Added({name, description, price, imageUrl})) =>
+    Created({name, description, price, imageUrl})
+  | (Created(s), NameUpdated({name})) => Created({...s, name})
+  | (Created(s), DescriptionUpdated({description})) => Created({...s, description})
+  | (Created(s), PriceUpdated({price})) => Created({...s, price})
+  | (Created(s), ImageUpdated({imageUrl})) => Created({...s, imageUrl})
+  | (NotCreated, _) => state
+  }
+
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Add({name, description, price, imageUrl})) =>
+    Ok([Added({name, description, price, imageUrl})])
+  | (NotCreated, UpdateName(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdateDescription(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdatePrice(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdateImage(_)) => Error(ProductNotFound)
+  | (Created(_), Add(_)) => Error(ProductAlreadyExists)
+  | (Created(s), UpdateName({name})) if name == s.name => Ok([])
+  | (Created(_), UpdateName({name})) => Ok([NameUpdated({name: name})])
+  | (Created(s), UpdateDescription({description})) if description == s.description => Ok([])
+  | (Created(_), UpdateDescription({description})) =>
+    Ok([DescriptionUpdated({description: description})])
+  | (Created(s), UpdatePrice({price})) if price == s.price => Ok([])
+  | (Created(_), UpdatePrice({price})) => Ok([PriceUpdated({price: price})])
+  | (Created(s), UpdateImage({imageUrl})) if imageUrl == s.imageUrl => Ok([])
+  | (Created(_), UpdateImage({imageUrl})) => Ok([ImageUpdated({imageUrl: imageUrl})])
+  }

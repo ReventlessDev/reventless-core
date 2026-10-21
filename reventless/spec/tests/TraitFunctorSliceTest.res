@@ -9,7 +9,7 @@
 // P3  the route that is — a wire name computed at instantiation. An event's
 //     identity is the schema's TAG literal, not its ReScript constructor, so one
 //     type carries N identities and one graft's payload is refused by another's.
-// P4  a functor-produced module satisfying StateChangeSlice.Spec/Behavior, which
+// P4  a functor-produced module satisfying StateChangeSlice.Spec/Decision, which
 //     is what `StateChangeSlice_Builder.Make` takes. Its coercions are checked by
 //     the compiler: if this file builds, they hold.
 
@@ -71,10 +71,10 @@ let factSchema = (~prefix: string): S.t<fact> =>
 let productFacts = factSchema(~prefix="Product")
 let categoryFacts = factSchema(~prefix="Category")
 
-// ── P4: does a functor-produced module satisfy StateChangeSlice.Spec/Behavior? ──
+// ── P4: does a functor-produced module satisfy StateChangeSlice.Spec/Decision? ──
 // `StateChangeSlice_Builder.Make` takes exactly these two module types, so
 // conformance here is the gate on "can a trait ship a whole slice". The
-// assertions are the `: Spec` / `: Behavior` coercions below — they are checked
+// assertions are the `: Spec` / `: Decision` coercions below — they are checked
 // by the compiler, so this section passing means the file compiled.
 
 module type GraftConfig = {
@@ -137,7 +137,7 @@ module MakeAttachmentSlice = (H: GraftConfig) => {
   let readConsistency = ReadConsistency.EscalateOnRetry
 }
 
-module MakeAttachmentBehavior = (Spec: StateChangeSlice.Spec) => {
+module MakeAttachmentDecision = (Spec: StateChangeSlice.Spec) => {
   module Spec = Spec
   type state = {count: int}
   let initialState = {count: 0}
@@ -182,8 +182,8 @@ module CategoryImagesSpec = MakeAttachmentSlice({
 module ProductImages: StateChangeSlice.Spec = ProductImagesSpec
 module CategoryImages: StateChangeSlice.Spec = CategoryImagesSpec
 
-module ProductImagesBehavior: StateChangeSlice.Behavior
-  with module Spec := ProductImagesSpec = MakeAttachmentBehavior(ProductImagesSpec)
+module ProductImagesDecision: StateChangeSlice.Decision
+  with module Spec := ProductImagesSpec = MakeAttachmentDecision(ProductImagesSpec)
 
 describe("P1 — @schema variant inside a functor, over an abstract type", () => {
   testSync("the functor's event schema names its constructors", () =>

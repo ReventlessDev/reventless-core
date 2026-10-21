@@ -9,7 +9,7 @@ let added = Added({
   imageUrl: "/productImages/laptop.jpg",
 })
 
-describe("Product Behavior", () => {
+describe("Product Decision", () => {
   // scenario-id: 6126c93a-ba4e-4ce0-8d8e-654cf64cd8ba
   test("Add on new aggregate produces Added", () =>
     givenEvents([])

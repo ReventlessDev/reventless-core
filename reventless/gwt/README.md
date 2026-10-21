@@ -21,7 +21,7 @@ the `reventless-dev` CLI discovers and runs those tests across a workspace.
 Every component kind has a functor that produces the same
 `describe / test / given* / when* / then*` combinator surface:
 
-- **`Behavior_GWT`** — event-sourced behavior tests for aggregates and
+- **`Decision_GWT`** — event-sourced decision tests for aggregates and
   StateChangeSlices (`givenEvents → whenCmd → thenEmits`), including DCB
   append-condition assertions.
 - **`Projection_GWT`** / **`MultiSourceProjection_GWT`** — single-source

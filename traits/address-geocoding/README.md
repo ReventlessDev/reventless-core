@@ -19,7 +19,7 @@ Most of this graft is not emitted at all. The four facts and the two `@noApi` re
 commands are real constructors the host **splices** — `...AddressGeocoding.events` and
 `...AddressGeocoding.reportCommands` — so the compiler carries them, annotations and
 schema included. The emitter writes the outbound slice, which the host does not have
-yet, and prints the arms that belong inside the aggregate, its behavior and the
+yet, and prints the arms that belong inside the aggregate, its decision and the
 projection: those interleave with the host's own state machine, and placing an arm in
 an ordered `switch` is an AST operation a text splice gets silently wrong.
 
@@ -54,7 +54,7 @@ pnpm exec graft-trait @reventlessdev/trait-address-geocoding \
    the suite below needs no hand-written file — and prints three patches.
 
 2. Paste the three patches. The aggregate's is two spread lines plus the arms for
-   `commandTransition`; the behavior's is the state fields and the `evolve` / `decide`
+   `commandTransition`; the decision's is the state fields and the `evolve` / `decide`
    arms; the projection's is the view's `geolocation` field and its arms.
 
    Policy is yours and is not config. Which states an address may change in goes in

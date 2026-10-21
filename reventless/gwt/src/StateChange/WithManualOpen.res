@@ -3,7 +3,7 @@
 // [WithFixtures]; named differently so it gets its own companion
 // [<Stem>_Fixtures] sibling that the PPX considers for auto-open.
 //
-// Spec half — pairs with [WithManualOpen_Behavior.res].
+// Spec half — pairs with [WithManualOpen_Decision.res].
 
 let name = "WithManualOpen"
 

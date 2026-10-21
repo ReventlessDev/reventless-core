@@ -34,7 +34,7 @@ open Ppxlib
     ever asks about and scope nothing. Refusing it is the difference between a
     compile error and a view that silently serves everybody's rows.
 
-    Requires a [@@reventless.spec] / [@@reventless.behavior] file: outside one,
+    Requires a [@@reventless.spec] / [@@reventless.decision] file: outside one,
     no pass runs and the attribute reaches the compiler as an unknown one. *)
 
 let has_owner_attr (attrs : attributes) =

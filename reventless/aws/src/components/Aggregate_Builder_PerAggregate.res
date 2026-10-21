@@ -7,7 +7,7 @@ module AggregateRuntimeBuilder = AggregateRuntime_Builder_PerAggregate
 
 module Make = (
   Spec: Reventless.Aggregate.Spec,
-  Behavior: Reventless.Behavior.T with module Spec := Spec,
+  Decision: Reventless.Decision.T with module Spec := Spec,
   EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
 ): (
   ReventlessInfra.Aggregate.T
@@ -16,7 +16,7 @@ module Make = (
 ) => {
   module Inner = ReventlessCore.Aggregate_Builder.Make(
     Spec,
-    Behavior,
+    Decision,
     EventMappings,
     RuntimeEnvironment,
     CommandGeneratorResolvers,
@@ -44,7 +44,7 @@ module Make = (
     AggregateRuntimeBuilder.registerAggregate(
       ~aggregateName=Spec.name,
       ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
-      ~behaviorModulePath=Util_Bundle.getModuleSpecifier(Behavior.moduleUrl),
+      ~decisionModulePath=Util_Bundle.getModuleSpecifier(Decision.moduleUrl),
       ~eventLogTableName,
     )
 

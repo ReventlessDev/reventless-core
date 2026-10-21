@@ -1,5 +1,5 @@
 // Step 5 of docs/plans/done/aggregate-snapshotting.md — the Aggregate_Callback
-// snapshot wiring: a snapshot-enabled behavior seeds cold replays from the
+// snapshot wiring: a snapshot-enabled decision seeds cold replays from the
 // latest persisted snapshot (hash-gated) and writes a fresh one every
 // `interval` events, fire-and-forget. Snapshots never affect correctness — the
 // OCC append is the only consistency primitive — so a drifted/absent snapshot
@@ -28,7 +28,7 @@ module AggSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 }
 
-module TestBehavior = {
+module TestDecision = {
   module Spec = AggSpec
 
   @schema
@@ -205,11 +205,11 @@ module MakeOps = (
 module TestOps = MakeOps({
   let name = "SnapshotMockEventLog"
 })
-module TestHandler = Aggregate_Callback.Make(AggSpec, TestBehavior, TestOps)
+module TestHandler = Aggregate_Callback.Make(AggSpec, TestDecision, TestOps)
 
-// A second behavior with snapshots DISABLED, sharing the same mock, to prove
+// A second decision with snapshots DISABLED, sharing the same mock, to prove
 // disabled aggregates do zero snapshot traffic.
-module PlainBehavior = {
+module PlainDecision = {
   module Spec = AggSpec
 
   @schema
@@ -233,7 +233,7 @@ module PlainBehavior = {
 module PlainOps = MakeOps({
   let name = "PlainMockEventLog"
 })
-module PlainHandler = Aggregate_Callback.Make(AggSpec, PlainBehavior, PlainOps)
+module PlainHandler = Aggregate_Callback.Make(AggSpec, PlainDecision, PlainOps)
 
 let makeItem = (~id="agg-1", reference, command): CommandTopic.topicItem<
   Message.command'<string, AggSpec.command>,
@@ -318,7 +318,7 @@ describe("Aggregate_Callback — snapshots:", () => {
     | Some(snap) =>
       expect(snap.seqNr)->toBe(20)
       // 20 items folded through the seeded state — no double-count, no gap.
-      let decoded = snap.state->Reventless.Util_Sury.fromJson(TestBehavior.stateSchema)
+      let decoded = snap.state->Reventless.Util_Sury.fromJson(TestDecision.stateSchema)
       expect(decoded.items->Array.length)->toBe(20)
     | None => expect("expected snapshot at 20")->toBe("none")
     }

@@ -2,7 +2,7 @@
 //
 // Creates a platform instance with pre-wired AWS builders (DynamoDB, Lambda, SQS, SNS).
 // Config is applied once at platform creation; component Make functors then take only
-// the application-defined arguments (Spec, Behavior, Mappings).
+// the application-defined arguments (Spec, Decision, Mappings).
 //
 // Example:
 //   module Platform = Platform.Make()
@@ -593,19 +593,19 @@ module MakeWithConfig = (
     // _Micro, _NoResolver) — see docs/plans/Backlog/aws-deployment-strategy.md.
     module Make = (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings)
+    ) => Aggregate_Builder_Single.Make(Spec, Decision, EventMappings)
     /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
     module MakeAsync = (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Single_Async.Make(Spec, Behavior, EventMappings)
+    ) => Aggregate_Builder_Single_Async.Make(Spec, Decision, EventMappings)
   }
 
   module ReadModel = {
@@ -734,16 +734,16 @@ module MakeWithConfig = (
   module StateChangeSlice = {
     module Make = (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
-    ) => StateChangeSlice_Builder.Make(Spec, Behavior)
+    ) => StateChangeSlice_Builder.Make(Spec, Decision)
     /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
     module MakeAsync = (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ): (ReventlessInfra.StateChangeSlice.T with module Spec = Spec) => {
-      include StateChangeSlice_Builder.Make(Spec, Behavior)
+      include StateChangeSlice_Builder.Make(Spec, Decision)
       let isAsync = true
     }
   }
@@ -769,7 +769,7 @@ module MakeWithConfig = (
   // slice's command handler exactly once).
   module UiFragmentRegistrySlice = StateChangeSlice.Make(
     ReventlessCore.UiFragmentRegistry,
-    ReventlessCore.UiFragmentRegistry_Behavior,
+    ReventlessCore.UiFragmentRegistry_Decision,
   )
   module UiFragmentsViewSlice = StateViewSlice.Make(
     ReventlessCore.UiFragments,
@@ -1085,7 +1085,7 @@ module MakeWithConfig = (
   module PluginAggregate: ReventlessInfra.Aggregate.T
     with type api = Types.AppSync.api = Aggregate_Builder_Single.Make(
     ReventlessCore.PluginSpec,
-    ReventlessCore.PluginBehavior,
+    ReventlessCore.PluginDecision,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
   )
 

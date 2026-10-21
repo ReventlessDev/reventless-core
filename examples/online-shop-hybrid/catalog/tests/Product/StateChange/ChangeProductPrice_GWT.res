@@ -74,7 +74,7 @@ describe("Who may ChangeProductPrice", () => {
     givenEvents([ProductAdded({price: laptopPrice})])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 939488ab-716d-420b-ae89-a6a637f394f4
@@ -82,6 +82,6 @@ describe("Who may ChangeProductPrice", () => {
     givenEvents([ProductAdded({price: laptopPrice})])
     ->asCaller(Caller.anonymous)
     ->whenCmd(ChangeProductPrice({productId: p1, price: laptopChangedPrice}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

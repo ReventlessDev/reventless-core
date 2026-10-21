@@ -63,22 +63,22 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
-  module ChangeAddressSlice = Platform.StateChangeSlice.Make(ChangeAddress, ChangeAddress_Behavior)
-  module ChangeEmailSlice = Platform.StateChangeSlice.Make(ChangeEmail, ChangeEmail_Behavior)
+  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Decision)
+  module ChangeAddressSlice = Platform.StateChangeSlice.Make(ChangeAddress, ChangeAddress_Decision)
+  module ChangeEmailSlice = Platform.StateChangeSlice.Make(ChangeEmail, ChangeEmail_Decision)
   module DeactivateCustomerSlice = Platform.StateChangeSlice.Make(
     DeactivateCustomer,
-    DeactivateCustomer_Behavior,
+    DeactivateCustomer_Decision,
   )
-  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
+  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Decision)
   module RegisterCustomerSlice = Platform.StateChangeSlice.Make(
     RegisterCustomer,
-    RegisterCustomer_Behavior,
+    RegisterCustomer_Decision,
   )
-  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
+  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Decision)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(
     SyncCatalogProduct,
-    SyncCatalogProduct_Behavior,
+    SyncCatalogProduct_Decision,
   )
 
   // StateViewSlices

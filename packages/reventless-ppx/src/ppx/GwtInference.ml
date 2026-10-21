@@ -18,7 +18,7 @@ open Ppxlib
          [_Projections] file. When the payload is qualified the [open]
          injection is suppressed (qualified references are kept explicit
          in the test body).}
-      {- [@@reventless.gwt(SpecModule, BehaviorModule)] — for the Behavior /
+      {- [@@reventless.gwt(SpecModule, DecisionModule)] — for the Decision /
          Projection DSLs, which take two functor arguments.}}
 
     Supported DSL kinds (canonical tokens, shared with [@@reventless.spec]
@@ -36,7 +36,7 @@ open Ppxlib
                                        [module X = { ... }] (an adapter)
                                        selects [Make(X)]; an alias or a
                                        functor application does not.}
-      {- [Behavior]                   (Aggregate folder uses
+      {- [Decision]                   (Aggregate folder uses
                                        [MakeFromAggregate]; [StateChange/]
                                        folder uses [Make])}
       {- [Projection]                 ([StateView/] and [StateViewStream/])}
@@ -76,7 +76,7 @@ open Ppxlib
     The PPX strips the attribute and inserts the generated
     [open <Spec>; include <Kind>_GWT.Make(<Spec>)] pair. When the Spec is a
     local top-level module the pair is inserted directly after that module
-    (or after the Behavior module, for Behavior DSLs). When the Spec is
+    (or after the Decision module, for Decision DSLs). When the Spec is
     external (explicit payload, or no local module in the file), the pair is
     prepended to the top of the structure. *)
 
@@ -219,7 +219,7 @@ let is_in_gwt_package loc =
     [<DSL>_GWT.<functor_name>]; for downstream callers, keep the full
     [ReventlessGwt.<DSL>_GWT.<functor_name>] path. The functor name is
     parameterised so the Aggregate-folder variant can emit
-    [Behavior_GWT.MakeFromAggregate] alongside the default
+    [Decision_GWT.MakeFromAggregate] alongside the default
     [<Kind>_GWT.Make]. *)
 let make_functor_lid ~loc ~dsl_module ~functor_name =
   if is_in_gwt_package loc then
@@ -285,12 +285,12 @@ let gen_include_two ~loc ~kind ~functor_name ~spec_module ~impl_module : structu
     };
     pstr_loc = loc }
 
-(* Plan 02 Phase 3b: Behavior and Projection DSLs are both two-functor. The
+(* Plan 02 Phase 3b: Decision and Projection DSLs are both two-functor. The
    shared check is used in payload validation and in default Empty-payload
    resolution. MultiSourceProjection (Aggregate-pattern ReadModel) is a
    one-functor DSL even though it lives next to Projection. *)
 let is_two_arg_kind = function
-  | "Behavior" | "Projection" -> true
+  | "Decision" | "Projection" -> true
   | _ -> false
 
 (** Is this GWT file testing an ExtensionPoint mapping (rather than an
@@ -301,12 +301,12 @@ let is_extensionpoint_file fname =
 
 (** Pick the GWT functor entry-point name for a given (kind, file-context).
     Default is [Make]. Two kinds need a context-dependent functor:
-    - [Behavior] in an Aggregate folder → [Behavior_GWT.MakeFromAggregate]
-      (the Aggregate.Spec / Behavior.T surface differs from the slice form).
+    - [Decision] in an Aggregate folder → [Decision_GWT.MakeFromAggregate]
+      (the Aggregate.Spec / Decision.T surface differs from the slice form).
     - [Delegate] → [Delegate_GWT.FromExtensionPoint] for an ExtensionPoint
       mapping, else [Delegate_GWT.FromExtension] for an Extension delegate. *)
 let functor_name_for ~kind ~fname =
-  if kind = "Behavior" && Util.is_in_aggregate_folder fname then
+  if kind = "Decision" && Util.is_in_aggregate_folder fname then
     "MakeFromAggregate"
   else if kind = "Delegate" then
     (if is_extensionpoint_file fname then "FromExtensionPoint" else "FromExtension")
@@ -343,7 +343,7 @@ let kinds_list_for_error () =
    folders ExtensionPoint / Extension (Delegate kind); the Aggregate-style \
    egress folder SideEffect (SideEffect kind); the cross-slice Flow \
    folder (Flow kind); or a filename / folder containing `Projection`, \
-   `Behavior`, `ExtensionPoint`, `Extension`, `SideEffect`, or `Flow`"
+   `Decision`, `ExtensionPoint`, `Extension`, `SideEffect`, or `Flow`"
 
 (** Detect a companion [<Stem>_Fixtures.res] next to the GWT file.
     Returns the module name if the sibling file exists, else [None].
@@ -362,6 +362,38 @@ let companion_fixtures_module (fname : string) : string option =
     let candidate_file = Filename.concat dir (candidate_module ^ ".res") in
     if Sys.file_exists candidate_file then Some candidate_module else None
 
+(* The former names of the decision DSL, refused with the new spelling. *)
+let renamed_hint = "(or run reventless-rename-to-decision)"
+
+let rec has_behavior_gwt (lid : Longident.t) =
+  match lid with
+  | Lident n -> String.equal n "Behavior_GWT"
+  | Ldot (p, n) -> String.equal n "Behavior_GWT" || has_behavior_gwt p
+  | Lapply (a, b) -> has_behavior_gwt a || has_behavior_gwt b
+
+let refuse_behavior_gwt ~loc =
+  Location.raise_errorf ~loc "Behavior_GWT was renamed to Decision_GWT %s" renamed_hint
+
+let check_no_behavior_gwt (str : structure) =
+  let checker =
+    object
+      inherit Ast_traverse.iter as super
+
+      method! module_expr me =
+        (match me.pmod_desc with
+         | Pmod_ident { txt; loc } when has_behavior_gwt txt -> refuse_behavior_gwt ~loc
+         | _ -> ());
+        super#module_expr me
+
+      method! module_type mt =
+        (match mt.pmty_desc with
+         | Pmty_ident { txt; loc } when has_behavior_gwt txt -> refuse_behavior_gwt ~loc
+         | _ -> ());
+        super#module_type mt
+    end
+  in
+  checker#structure str
+
 let transform (str : structure) : structure =
   match find_gwt_attr str with
   | None -> str
@@ -376,6 +408,11 @@ let transform (str : structure) : structure =
            Expected %s."
           (kinds_list_for_error ())
     in
+    if String.equal kind "Behavior" then
+      Location.raise_errorf ~loc:attr_loc
+        "@@reventless.gwt: the Behavior kind was renamed to Decision; rename %s so it \
+         says Decision, not Behavior %s"
+        (Filename.basename fname) renamed_hint;
     let payload = parse_payload attr in
     let body = strip_gwt_attr str in
     if String.equal kind "Flow" then begin
@@ -445,11 +482,11 @@ let transform (str : structure) : structure =
     | None ->
     let functor_name = functor_name_for ~kind ~fname in
     (* Resolution order:
-       1. Two-arg payload: Behavior / Projection DSL only, two-module form.
+       1. Two-arg payload: Decision / Projection DSL only, two-module form.
        2. One-arg payload: external Spec, no local binding required. May be
           a qualified path (e.g. [Foo_Projections.BarMapping]) for the
           MultiSourceProjection DSL.
-       3. Empty + two-arg kind: two local modules (Spec, Behavior/Projection).
+       3. Empty + two-arg kind: two local modules (Spec, Decision/Projection).
        4. Empty + one-arg kind: one local module if present, else derive
           Spec from the filename stem (external Spec). MultiSourceProjection
           rejects this branch — the filename stem maps to the ReadModel
@@ -465,7 +502,7 @@ let transform (str : structure) : structure =
       | Two _, false ->
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: a two-module payload is only valid for the \
-           Behavior or Projection DSL. Got kind %s." kind
+           Decision or Projection DSL. Got kind %s." kind
       | One spec, true ->
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: the %s DSL needs a (Spec, %s) pair. \
@@ -477,7 +514,7 @@ let transform (str : structure) : structure =
          | _ ->
            (* Try external Spec derivation: filename stem with GWT suffix
               stripped, paired with a derived impl module name (e.g.
-              [<Stem>_Behavior] / [<Stem>_Projection]). *)
+              [<Stem>_Decision] / [<Stem>_Projection]). *)
            (match Util.spec_name_from_gwt_filename fname with
             | Some stem ->
               let impl = stem ^ "_" ^ kind in

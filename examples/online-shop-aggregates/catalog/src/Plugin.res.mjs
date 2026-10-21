@@ -12,14 +12,14 @@ import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as LifecycleModel$CatalogPlugin from "./LifecycleModel.res.mjs";
 import * as ProductDemands$CatalogPlugin from "./ProductDemand/ReadModel/ProductDemands.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
-import * as Product_Behavior$CatalogPlugin from "./Product/Aggregate/Product_Behavior.res.mjs";
-import * as Category_Behavior$CatalogPlugin from "./Category/Aggregate/Category_Behavior.res.mjs";
+import * as Product_Decision$CatalogPlugin from "./Product/Aggregate/Product_Decision.res.mjs";
+import * as Category_Decision$CatalogPlugin from "./Category/Aggregate/Category_Decision.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as Products_Projections$CatalogPlugin from "./Product/ReadModel/Products_Projections.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Categories_Projections$CatalogPlugin from "./Category/ReadModel/Categories_Projections.res.mjs";
-import * as ProductDemand_Behavior$CatalogPlugin from "./ProductDemand/Aggregate/ProductDemand_Behavior.res.mjs";
+import * as ProductDemand_Decision$CatalogPlugin from "./ProductDemand/Aggregate/ProductDemand_Decision.res.mjs";
 import * as ProductDemands_Projections$CatalogPlugin from "./ProductDemand/ReadModel/ProductDemands_Projections.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 
@@ -35,11 +35,11 @@ function Make(Platform) {
     commandTransition: Category$CatalogPlugin.commandTransition,
     traits: Category$CatalogPlugin.traits
   })({
-    initialState: Category_Behavior$CatalogPlugin.initialState,
-    evolve: Category_Behavior$CatalogPlugin.evolve,
-    decide: Category_Behavior$CatalogPlugin.decide,
+    initialState: Category_Decision$CatalogPlugin.initialState,
+    evolve: Category_Decision$CatalogPlugin.evolve,
+    decide: Category_Decision$CatalogPlugin.decide,
     snapshot: undefined,
-    moduleUrl: Category_Behavior$CatalogPlugin.moduleUrl
+    moduleUrl: Category_Decision$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Category$CatalogPlugin.name,
     Id: CategoryId$CatalogPlugin,
@@ -56,11 +56,11 @@ function Make(Platform) {
     commandTransition: Product$CatalogPlugin.commandTransition,
     traits: Product$CatalogPlugin.traits
   })({
-    initialState: Product_Behavior$CatalogPlugin.initialState,
-    evolve: Product_Behavior$CatalogPlugin.evolve,
-    decide: Product_Behavior$CatalogPlugin.decide,
-    snapshot: Product_Behavior$CatalogPlugin.snapshot,
-    moduleUrl: Product_Behavior$CatalogPlugin.moduleUrl
+    initialState: Product_Decision$CatalogPlugin.initialState,
+    evolve: Product_Decision$CatalogPlugin.evolve,
+    decide: Product_Decision$CatalogPlugin.decide,
+    snapshot: Product_Decision$CatalogPlugin.snapshot,
+    moduleUrl: Product_Decision$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Product$CatalogPlugin.name,
     Id: ProductId$CatalogSpec,
@@ -77,11 +77,11 @@ function Make(Platform) {
     commandTransition: ProductDemand$CatalogPlugin.commandTransition,
     traits: ProductDemand$CatalogPlugin.traits
   })({
-    initialState: ProductDemand_Behavior$CatalogPlugin.initialState,
-    evolve: ProductDemand_Behavior$CatalogPlugin.evolve,
-    decide: ProductDemand_Behavior$CatalogPlugin.decide,
+    initialState: ProductDemand_Decision$CatalogPlugin.initialState,
+    evolve: ProductDemand_Decision$CatalogPlugin.evolve,
+    decide: ProductDemand_Decision$CatalogPlugin.decide,
     snapshot: undefined,
-    moduleUrl: ProductDemand_Behavior$CatalogPlugin.moduleUrl
+    moduleUrl: ProductDemand_Decision$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: ProductDemand$CatalogPlugin.name,
     Id: ProductId$CatalogSpec,

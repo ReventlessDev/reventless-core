@@ -18,7 +18,7 @@ type svsComponent = Component.t<
 
 module PsGatedCommandsSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsGatedCommands
-  module Behavior = {
+  module Decision = {
     type state = PsGatedCommands.state
     let initialState = PsGatedCommands.initialState
     let evolve = PsGatedCommands.evolve

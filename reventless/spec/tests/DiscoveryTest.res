@@ -50,10 +50,10 @@ describe("Discovery.chaptersByStem", () => {
       relPath: "Product/Aggregate/Product.res",
     },
     {
-      stem: "Product_Behavior",
+      stem: "Product_Decision",
       componentType: Aggregate,
       epGroup: None,
-      relPath: "Product/Aggregate/Product_Behavior.res",
+      relPath: "Product/Aggregate/Product_Decision.res",
     },
     {
       stem: "Products",
@@ -80,7 +80,7 @@ describe("Discovery.chaptersByStem", () => {
     expect(D.chaptersByStem(files))->toEqual([
       ("Category", "Category"),
       ("Product", "Product"),
-      ("Product_Behavior", "Product"),
+      ("Product_Decision", "Product"),
       ("Products", "Product"),
     ])
   )

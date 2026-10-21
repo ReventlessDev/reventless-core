@@ -1,13 +1,13 @@
 // `Mapping_GWT` exercises Order's self-mapping (auto-ship on placement).
-// Bare `@@reventless.gwt` would derive the Behavior DSL from the Aggregate
+// Bare `@@reventless.gwt` would derive the Decision DSL from the Aggregate
 // folder; the cross-pattern Mapping DSL is wired explicitly instead.
 //
 // Self-mappings need the target's per-id history pre-seeded with the
 // source-emitted event, since Mapping_GWT models source and target as
 // independent aggregates even when they're the same one in production.
 
-module OrderSource = ReventlessGwt.Mapping_GWT.FromBehavior(Order, Order_Behavior)
-module OrderTarget = ReventlessGwt.Mapping_GWT.FromBehavior(Order, Order_Behavior)
+module OrderSource = ReventlessGwt.Mapping_GWT.FromDecision(Order, Order_Decision)
+module OrderTarget = ReventlessGwt.Mapping_GWT.FromDecision(Order, Order_Decision)
 
 module AutoShipGwtMapping = {
   module Source = OrderSource

@@ -10,10 +10,10 @@
       "readBy": [ "ReventlessPpx" ]
     },
     {
-      "name": "reventless.behavior",
+      "name": "reventless.decision",
       "positions": [ "file" ],
       "args": "optional",
-      "summary": "Marks a behavior file: opens its spec and injects Spec and moduleUrl.",
+      "summary": "Marks a decision file: opens its spec and injects Spec and moduleUrl.",
       "readBy": [ "ReventlessPpx" ]
     },
     {
@@ -83,7 +83,7 @@
       "name": "reventless.gwt",
       "positions": [ "file" ],
       "args": "optional",
-      "argsExample": "Product, Product_Behavior",
+      "argsExample": "Product, Product_Decision",
       "summary": "Marks a GWT test file: opens its spec and includes the matching test DSL.",
       "readBy": [ "GwtInference" ]
     },
@@ -131,6 +131,14 @@
       "positions": [ "module" ],
       "args": "none",
       "summary": "Treats this module as a Delegate outside an extension-point or extension file.",
+      "readBy": [ "ReventlessPpx" ]
+    },
+    {
+      "name": "reventless.behavior",
+      "positions": [],
+      "args": "none",
+      "summary": "Renamed. Use `@@reventless.decision` and name the file `<Spec>_Decision.res`.",
+      "replacedBy": "reventless.decision",
       "readBy": [ "ReventlessPpx" ]
     },
     {

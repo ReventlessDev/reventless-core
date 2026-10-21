@@ -94,8 +94,8 @@ function makeStorageOps(tableName, pgConnection, scope) {
   }
 }
 
-function buildSliceHandler(spec, behavior, scope, dcbEventLog) {
-  let callback = StateChangeSlice_CallbackResMjs.Make(spec)(behavior);
+function buildSliceHandler(spec, decision, scope, dcbEventLog) {
+  let callback = StateChangeSlice_CallbackResMjs.Make(spec)(decision);
   let commandSchema = spec.commandSchema;
   return jsonStream => {
     let decodedStream = Stream.flatMap(Stream.mapEffect(jsonStream, topicItem => Effect.sync(() => {

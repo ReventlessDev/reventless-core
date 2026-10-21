@@ -6,7 +6,7 @@ open Ppxlib
    The Spec module name is derived from the filename: a [_<Kind>] or
    [<Kind>] suffix is stripped. *)
 type impl_kind =
-  | Behavior      (* StateChangeSlice + Aggregate *)
+  | Decision      (* StateChangeSlice + Aggregate *)
   | Projection    (* StateViewSlice *)
   | Automation    (* AutomationSlice *)
   | Translation   (* InboundTranslationSlice + OutboundTranslationSlice *)
@@ -15,7 +15,7 @@ type impl_kind =
   | Task          (* Task/<Name>.res *)
 
 let impl_kind_name = function
-  | Behavior -> "Behavior"
+  | Decision -> "Decision"
   | Projection -> "Projection"
   | Automation -> "Automation"
   | Translation -> "Translation"
@@ -24,7 +24,7 @@ let impl_kind_name = function
   | Task -> "Task"
 
 let impl_kind_attr_name = function
-  | Behavior -> "reventless.behavior"
+  | Decision -> "reventless.decision"
   | Projection -> "reventless.projection"
   | Automation -> "reventless.automation"
   | Translation -> "reventless.translation"
@@ -35,9 +35,9 @@ let impl_kind_attr_name = function
 (* Kinds that follow the "open <Spec>; module Spec = <Spec>; let moduleUrl"
    classic implementation shape. The new Mappings/Extension/Task kinds have
    bespoke generation logic. *)
-let classic_impl_kinds = [Behavior; Projection; Automation; Translation]
+let classic_impl_kinds = [Decision; Projection; Automation; Translation]
 
-let all_impl_kinds = [Behavior; Projection; Automation; Translation; Mappings; Extension; Task]
+let all_impl_kinds = [Decision; Projection; Automation; Translation; Mappings; Extension; Task]
 
 type mode =
   | Spec of string option
@@ -160,8 +160,8 @@ let derive_spec_name ~loc name_opt =
 
 (* Derive the Spec module name for an implementation file from its filename.
    Recognizes two conventions:
-   - [X_<Kind>.res] (slice convention, e.g. [ArchiveCategory_Behavior.res] → [ArchiveCategory]).
-   - [X<Kind>.res] (Aggregate convention, e.g. [ProductBehavior.res] → [Product]).
+   - [X_<Kind>.res] (slice convention, e.g. [ArchiveCategory_Decision.res] → [ArchiveCategory]).
+   - [X<Kind>.res] (Aggregate convention, e.g. [ProductDecision.res] → [Product]).
    Falls back to the bare filename stem if neither suffix is present. *)
 let derive_impl_spec_name ~kind fname =
   let stem =
@@ -296,6 +296,28 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
     let new_body = { mb.pmb_expr with pmod_desc = Pmod_structure (prefix @ body @ suffix) } in
     { mb with pmb_expr = new_body; pmb_attributes = attrs }
   | _ -> { mb with pmb_attributes = attrs }
+
+(* --- Renamed: @@reventless.behavior (now @@reventless.decision) --- *)
+
+let retired_behavior_attr = "reventless.behavior"
+
+(* The name the file takes: [X_Behavior.res] -> [X_Decision.res]. *)
+let decision_file_name fname =
+  let base = Filename.basename fname in
+  let stem = match String.index_opt base '.' with Some i -> String.sub base 0 i | None -> base in
+  let spec = Util.strip_suffix (Util.strip_suffix stem "_Behavior") "Behavior" in
+  if String.equal spec stem then "<Spec>_Decision.res" else spec ^ "_Decision.res"
+
+let check_no_behavior_attr (str : structure) =
+  List.iter (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_attribute attr when String.equal attr.attr_name.txt retired_behavior_attr ->
+      Location.raise_errorf ~loc:attr.attr_loc
+        "[reventless-ppx] @@@@reventless.behavior was renamed to @@@@reventless.decision; \
+         rename this file to %s (or run reventless-rename-to-decision)"
+        (decision_file_name attr.attr_loc.loc_start.pos_fname)
+    | _ -> ()
+  ) str
 
 (* --- Retired: @reventless.projections (use @@reventless.mappings instead) --- *)
 
@@ -699,6 +721,8 @@ let is_shared_types_module ~fname (str : structure) : bool =
   && not (SidecarEmit.looks_like_gwt_file fname)
 
 let transform (str : structure) : structure =
+  check_no_behavior_attr str;
+  GwtInference.check_no_behavior_gwt str;
   let () =
     match str with
     | item :: _ ->
@@ -761,7 +785,7 @@ let transform (str : structure) : structure =
   let str = if has_module_attr || is_spec then walk_structure ~specifier ~is_spec str else str in
   match detect_mode str with
   | None ->
-    (* No @reventless.spec or @reventless.behavior, but might have @noApi annotations *)
+    (* No @reventless.spec or @reventless.decision, but might have @noApi annotations *)
     if has_no_api then
       NoApiAnnotation.transform ~loc str
     else
@@ -1003,7 +1027,7 @@ let transform (str : structure) : structure =
            | None -> derive_task_name fname
          in
          dispatch_task_impl ~loc ~specifier ~name body
-       | Behavior | Projection | Automation | Translation ->
+       | Decision | Projection | Automation | Translation ->
          let spec_name = match spec_name_opt with
            | Some n -> n
            | None -> derive_impl_spec_name ~kind fname
@@ -1049,14 +1073,14 @@ let transform (str : structure) : structure =
            then automation_mappings_extension ~loc ~spec_name body
            else body
          in
-         (* Aggregate-behavior snapshot config (docs/plans/done/aggregate-snapshotting.md):
+         (* Aggregate-decision snapshot config (docs/plans/done/aggregate-snapshotting.md):
             default [let snapshot = None]; @@reventless.snapshots(<interval>)
             switches to Some({interval, stateSchema}). Consumes the attribute;
             idempotent on bodies already declaring the binding. Aggregate
-            folders only — StateChangeSlice behaviors satisfy a different
+            folders only — StateChangeSlice decisions satisfy a different
             module type without [snapshot]. *)
          let (body, snap_suffix) =
-           if kind = Behavior then SnapshotInjection.inject ~loc fname body
+           if kind = Decision then SnapshotInjection.inject ~loc fname body
            else (body, [])
          in
          let prefix = ref [] in

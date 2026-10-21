@@ -138,8 +138,8 @@ module type Binding = {
 
   let posture: posture
 
-  module Spec: ReventlessGwt.Behavior_GWT.AggregateSpec
-  module Behavior: Reventless.Behavior.T with module Spec = Spec
+  module Spec: ReventlessGwt.Decision_GWT.AggregateSpec
+  module Decision: Reventless.Decision.T with module Spec = Spec
 
   /** History leaving the entity active at `subject` with nothing resolved. */
   let created: subject => array<Spec.event>

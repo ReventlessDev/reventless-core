@@ -1,8 +1,8 @@
-(* Aggregate-behavior snapshot-config injection.
+(* Aggregate-decision snapshot-config injection.
 
-   [Behavior.T.snapshot : option<Snapshot.config<state>>] is a required
+   [Decision.T.snapshot : option<Snapshot.config<state>>] is a required
    module-type field (docs/plans/done/aggregate-snapshotting.md). This transform
-   keeps every aggregate behavior file source-compatible by synthesising the
+   keeps every aggregate decision file source-compatible by synthesising the
    default, and provides the opt-in sugar:
 
      (nothing)                          -> let snapshot = None
@@ -14,8 +14,8 @@
    from [@schema type state] — reventless-ppx runs before sury-ppx, so the
    reference resolves once sury has processed the type. The attribute is
    rejected when the file has no [@schema type state] (sury would never
-   generate the schema) and on non-aggregate behavior files (StateChangeSlice
-   behaviors satisfy a different module type without [snapshot]; snapshotting
+   generate the schema) and on non-aggregate decision files (StateChangeSlice
+   decisions satisfy a different module type without [snapshot]; snapshotting
    DCB slices is a non-goal — the decision-model cache is their analogue).
 
    No injection happens if the user already declared the binding. Mirrors
@@ -101,8 +101,8 @@ let gen_some ~loc interval_expr =
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr]
 
-(* Injection — Behavior implementation files only (the caller gates on the
-   Behavior kind). Returns the body with the attribute consumed plus the
+(* Injection — Decision implementation files only (the caller gates on the
+   Decision kind). Returns the body with the attribute consumed plus the
    suffix to splice after it. *)
 let inject ~loc fname (body : structure) : structure * structure_item list =
   if is_aggregate_folder fname then begin
@@ -130,5 +130,5 @@ let inject ~loc fname (body : structure) : structure * structure_item list =
   end
   else if has_file_attr body then
     Location.raise_errorf ~loc
-      "[reventless-ppx] @@@@reventless.snapshots is only supported on Aggregate behavior files (Aggregate/<Entity>_Behavior.res). Snapshotting DCB slices is not supported — the decision-model cache covers them."
+      "[reventless-ppx] @@@@reventless.snapshots is only supported on Aggregate decision files (Aggregate/<Entity>_Decision.res). Snapshotting DCB slices is not supported — the decision-model cache covers them."
   else (body, [])

@@ -28,7 +28,7 @@ module PlaceOrderSlice = {
   type event = OrderPlaced({orderId: @s.matches(Reventless.DcbTag.string) string, item: string})
 }
 
-module PlaceOrderBehavior = {
+module PlaceOrderDecision = {
   module Spec = PlaceOrderSlice
   type state = {placed: bool}
   let initialState = {placed: false}
@@ -95,7 +95,7 @@ module ShipOrderSlice = {
   type event = OrderShipped({orderId: @s.matches(Reventless.DcbTag.string) string})
 }
 
-module ShipOrderBehavior = {
+module ShipOrderDecision = {
   module Spec = ShipOrderSlice
   type state = {placed: bool, shipped: bool}
   let initialState = {placed: false, shipped: false}
@@ -167,9 +167,9 @@ module ConfirmSlice = {
 
 // -- Step modules ------------------------------------------------------------
 
-module Place = CommandStep(PlaceOrderSlice, PlaceOrderBehavior)
+module Place = CommandStep(PlaceOrderSlice, PlaceOrderDecision)
 module Auto = AutomationStep(AutoShipSlice)
-module Ship = CommandStep(ShipOrderSlice, ShipOrderBehavior)
+module Ship = CommandStep(ShipOrderSlice, ShipOrderDecision)
 module View = ViewStep(OrdersViewSlice, OrdersViewProjection)
 module Confirm = OutboundStep(ConfirmSlice)
 

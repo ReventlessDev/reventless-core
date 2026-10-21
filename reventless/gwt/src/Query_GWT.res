@@ -12,7 +12,7 @@
 // `subIdConfig`), so both kinds of consumers use the same combinator set.
 // Adapter functors `FromReadModel` and `FromStateViewSlice` lift their
 // respective specs into the shared shape — mirroring how `Mapping_GWT` lifts
-// `Aggregate.Spec`/`StateChangeSlice.Spec` via `FromBehavior`/`FromStateChangeSlice`.
+// `Aggregate.Spec`/`StateChangeSlice.Spec` via `FromDecision`/`FromStateChangeSlice`.
 
 // -- Unified spec shape ------------------------------------------------------
 

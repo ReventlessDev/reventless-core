@@ -39,7 +39,7 @@ module PlaceSpec = {
   let commandSchema = commandSchema
 }
 
-module PlaceBehavior = {
+module PlaceDecision = {
   module Spec = PlaceSpec
   let moduleUrl: string = %raw(`import.meta.url`)
 
@@ -172,7 +172,7 @@ let publishJsonsOutput = publishJsons->Pulumi.Output.make
 // Wire the StateChangeSlice + the OutboundTranslationSlice
 // ─────────────────────────────────────────────────────────────
 
-module PlaceMaker = StateChangeSlice_Builder.Make(PlaceSpec, PlaceBehavior)
+module PlaceMaker = StateChangeSlice_Builder.Make(PlaceSpec, PlaceDecision)
 let _placeSlice = PlaceMaker.make(~dcbEventLog, ~publishJsons=publishJsonsOutput)
 
 let dcbTopicOutputs: ReventlessInfra.EventTopic.outputs = (

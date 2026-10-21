@@ -28,12 +28,12 @@ module MakeWithHooks = (
 
   module Make = (
     Spec: Reventless.Aggregate.Spec,
-    Behavior: Reventless.Behavior.T with module Spec := Spec,
+    Decision: Reventless.Decision.T with module Spec := Spec,
     EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
   ) => {
     include ReventlessCore.Aggregate_Builder.Make(
       Spec,
-      Behavior,
+      Decision,
       EventMappings,
       RuntimeEnvironment,
       CommandGeneratorResolvers_GraphQL,

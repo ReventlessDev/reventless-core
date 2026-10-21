@@ -13,7 +13,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 type aggregateInfo = {
   specModulePath: string,
-  behaviorModulePath: string,
+  decisionModulePath: string,
   eventLogTableName: Pulumi.Output.t<string>,
   mappingsModulePath: option<string>,
 }
@@ -23,13 +23,13 @@ let aggregateInfos: dict<aggregateInfo> = Dict.make()
 let registerAggregate = (
   ~aggregateName,
   ~specModulePath,
-  ~behaviorModulePath,
+  ~decisionModulePath,
   ~eventLogTableName,
   ~mappingsModulePath=?,
 ) =>
   aggregateInfos->Dict.set(
     aggregateName,
-    {specModulePath, behaviorModulePath, eventLogTableName, mappingsModulePath},
+    {specModulePath, decisionModulePath, eventLogTableName, mappingsModulePath},
   )
 
 type storedSpec = {
@@ -177,12 +177,12 @@ let finish = () =>
 
           let packageDirs: dict<string> = Dict.make()
           let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
-          let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+          let decisionPkg = Util_Bundle.extractPackageName(info.decisionModulePath)
           packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
-          packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+          packageDirs->Dict.set(decisionPkg, Util_Bundle.resolvePackageRoot(decisionPkg))
 
           let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-          let behaviorModule = info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let decisionModule = info.decisionModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
           // --- CommandTopic Lambda ---
           // `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
@@ -198,7 +198,7 @@ let finish = () =>
               spec.queueUrl,
               spec.queueArn,
             ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
+              `{"handlers":[{"specModule":${specModule},"decisionModule":${decisionModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
             )
 
           let cmdTopicEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -245,7 +245,7 @@ let finish = () =>
                 spec.queueUrl,
                 spec.queueArn,
               ))->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-                `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
+                `{"handlers":[{"specModule":${specModule},"decisionModule":${decisionModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
               )
 
             let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()

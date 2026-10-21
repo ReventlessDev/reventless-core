@@ -10,7 +10,7 @@
 The **provider-agnostic core** of [Reventless](https://docs.reventless.dev) — a
 spec-driven, event-sourced CQRS framework written in [ReScript](https://rescript-lang.org).
 This package is the runtime you model your domain against: the type-safe building blocks
-for commands, events, projections, and the behaviors that evolve state — with **no** cloud
+for commands, events, projections, and the decisions that evolve state — with **no** cloud
 or storage dependency. The provider-specific adapters live in separate packages
 (see [Where it fits](#where-it-fits)).
 
@@ -19,8 +19,8 @@ or storage dependency. The provider-specific adapters live in separate packages
 ReScript modules, consumed by adding the package to your `rescript.json` `dependencies`:
 
 - **`Message`** — command / event message contracts and their service interface.
-- **`Behavior`** — the write-side behavior spec: event-sourced state transitions
-  (`evolve(state, event) => state`).
+- **`Decision`** — the write side's decision module type (the decider pattern):
+  event-sourced state transitions (`evolve(state, event) => state`) and `decide`.
 - **`Projection`** / **`ProjectionMapper`** — read models projected from event streams.
 - **`Mapper`** / **`Mapper1toN`** / **`MapperNto1`** — cross-component event translation
   (encode/decode between a source and a target contract).

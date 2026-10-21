@@ -43,7 +43,7 @@ import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
 import * as EventLogBackend$ReventlessAws from "./adapter/EventLog/EventLogBackend.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
-import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
+import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as Upload_Claim_S3$ReventlessAws from "./adapter/Upload/Upload_Claim_S3.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "./adapter/Postgres/PgProjectionFeed.res.mjs";
@@ -95,7 +95,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
-import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Behavior.res.mjs";
+import * as UiFragmentRegistry_Decision$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Decision.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Geocoder_AwsLocation_Resolver$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation_Resolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./plugin/stack/Plugin_ExtensionPoint_Builder.res.mjs";
@@ -383,8 +383,8 @@ function MakeWithConfig(Config) {
     api: resolveTargetApi,
     apiRole: resolveTargetApiRole
   };
-  let Make = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
-  let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
+  let Make = Spec => (Decision => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Decision)(EventMappings)));
+  let MakeAsync = Spec => (Decision => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Decision)(EventMappings)));
   let Aggregate = {
     Make: Make,
     MakeAsync: MakeAsync
@@ -464,12 +464,12 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$6 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
-  let MakeAsync$1 = Spec => (Behavior => {
-    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
+  let Make$6 = Spec => (Decision => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Decision));
+  let MakeAsync$1 = Spec => (Decision => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Decision);
     return {
       Spec: include.Spec,
-      Behavior: include.Behavior,
+      Decision: include.Decision,
       isAsync: true,
       make: include.make
     };
@@ -498,9 +498,9 @@ function MakeWithConfig(Config) {
   };
   let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
     initialState: undefined,
-    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+    evolve: UiFragmentRegistry_Decision$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Decision$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Decision$ReventlessCore.moduleUrl
   });
   let UiFragmentsViewSlice = Make$7({
     name: UiFragments$ReventlessCore.name,
@@ -692,11 +692,11 @@ function MakeWithConfig(Config) {
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
-    initialState: PluginBehavior$ReventlessCore.initialState,
-    evolve: PluginBehavior$ReventlessCore.evolve,
-    decide: PluginBehavior$ReventlessCore.decide,
+    initialState: PluginDecision$ReventlessCore.initialState,
+    evolve: PluginDecision$ReventlessCore.evolve,
+    decide: PluginDecision$ReventlessCore.decide,
     snapshot: undefined,
-    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+    moduleUrl: PluginDecision$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,
@@ -1800,8 +1800,8 @@ function Make($star) {
     api: resolveTargetApi,
     apiRole: resolveTargetApiRole
   };
-  let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
-  let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
+  let Make$1 = Spec => (Decision => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Decision)(EventMappings)));
+  let MakeAsync = Spec => (Decision => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Decision)(EventMappings)));
   let Aggregate = {
     Make: Make$1,
     MakeAsync: MakeAsync
@@ -1881,12 +1881,12 @@ function Make($star) {
     Make: Make$6
   };
   let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$7 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
-  let MakeAsync$1 = Spec => (Behavior => {
-    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
+  let Make$7 = Spec => (Decision => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Decision));
+  let MakeAsync$1 = Spec => (Decision => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Decision);
     return {
       Spec: include.Spec,
-      Behavior: include.Behavior,
+      Decision: include.Decision,
       isAsync: true,
       make: include.make
     };
@@ -1915,9 +1915,9 @@ function Make($star) {
   };
   let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
     initialState: undefined,
-    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+    evolve: UiFragmentRegistry_Decision$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Decision$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Decision$ReventlessCore.moduleUrl
   });
   let UiFragmentsViewSlice = Make$8({
     name: UiFragments$ReventlessCore.name,
@@ -2109,11 +2109,11 @@ function Make($star) {
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
-    initialState: PluginBehavior$ReventlessCore.initialState,
-    evolve: PluginBehavior$ReventlessCore.evolve,
-    decide: PluginBehavior$ReventlessCore.decide,
+    initialState: PluginDecision$ReventlessCore.initialState,
+    evolve: PluginDecision$ReventlessCore.evolve,
+    decide: PluginDecision$ReventlessCore.decide,
     snapshot: undefined,
-    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+    moduleUrl: PluginDecision$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,

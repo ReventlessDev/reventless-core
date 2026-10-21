@@ -63,7 +63,7 @@ let all : entry list =
     e ~args:Optional ~ex:{|"Catalog.Products"|} "reventless.spec" [ File ]
       "Marks a spec file: injects its name, Id and moduleUrl, and runs the field passes."
       [ "ReventlessPpx" ];
-    mode "behavior" "Marks a behavior file: opens its spec and injects Spec and moduleUrl.";
+    mode "decision" "Marks a decision file: opens its spec and injects Spec and moduleUrl.";
     mode "projection" "Marks a state view's projection file: opens its spec and injects Spec and moduleUrl.";
     mode "automation" "Marks an automation file: its process and per-source mappings, with the spec opened.";
     mode "translation" "Marks a translation file: opens its spec and injects Spec and moduleUrl.";
@@ -78,7 +78,7 @@ let all : entry list =
     e "reventless.systemCallable" [ File ]
       "Lets a deploy-time system caller (IAM) call this component's GraphQL fields."
       [ "ReventlessPpx" ];
-    e ~args:Optional ~ex:"Product, Product_Behavior" "reventless.gwt" [ File ]
+    e ~args:Optional ~ex:"Product, Product_Decision" "reventless.gwt" [ File ]
       "Marks a GWT test file: opens its spec and includes the matching test DSL."
       [ "GwtInference" ];
     e ~args:Required ~ex:"Internal" "reventless.visibility" [ File ]
@@ -97,6 +97,9 @@ let all : entry list =
       [ "SidecarEmit" ];
     e "reventless.delegate" [ Module ]
       "Treats this module as a Delegate outside an extension-point or extension file."
+      [ "ReventlessPpx" ];
+    e ~replaced_by:"reventless.decision" "reventless.behavior" []
+      "Renamed. Use `@@reventless.decision` and name the file `<Spec>_Decision.res`."
       [ "ReventlessPpx" ];
     e ~replaced_by:"reventless.mappings" "reventless.projections" []
       "Removed. Move the mappings into a `_Projections.res` file marked `@@reventless.mappings`."

@@ -10,18 +10,18 @@ import * as Customers$OrderingPlugin from "./Customer/ReadModel/Customers.res.mj
 import * as CustomerId$OrderingPlugin from "./Customer/CustomerId.res.mjs";
 import * as CatalogProduct$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct.res.mjs";
 import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
-import * as Order_Behavior$OrderingPlugin from "./Order/Aggregate/Order_Behavior.res.mjs";
+import * as Order_Decision$OrderingPlugin from "./Order/Aggregate/Order_Decision.res.mjs";
 import * as Order_Mappings$OrderingPlugin from "./Order/Aggregate/Order_Mappings.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProducts.res.mjs";
-import * as Customer_Behavior$OrderingPlugin from "./Customer/Aggregate/Customer_Behavior.res.mjs";
+import * as Customer_Decision$OrderingPlugin from "./Customer/Aggregate/Customer_Decision.res.mjs";
 import * as OrderNotifications$OrderingPlugin from "./Task/OrderNotifications.res.mjs";
 import * as Orders_Projections$OrderingPlugin from "./Order/ReadModel/Orders_Projections.res.mjs";
 import * as Products_Extension$OrderingPlugin from "./Extension/Products_Extension.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModel/Customers_Projections.res.mjs";
-import * as CatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct_Behavior.res.mjs";
+import * as CatalogProduct_Decision$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct_Decision.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as AvailableProducts_Projections$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProducts_Projections.res.mjs";
 
@@ -37,11 +37,11 @@ function Make(Platform) {
     commandTransition: CatalogProduct$OrderingPlugin.commandTransition,
     traits: CatalogProduct$OrderingPlugin.traits
   })({
-    initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
-    evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
-    decide: CatalogProduct_Behavior$OrderingPlugin.decide,
+    initialState: CatalogProduct_Decision$OrderingPlugin.initialState,
+    evolve: CatalogProduct_Decision$OrderingPlugin.evolve,
+    decide: CatalogProduct_Decision$OrderingPlugin.decide,
     snapshot: undefined,
-    moduleUrl: CatalogProduct_Behavior$OrderingPlugin.moduleUrl
+    moduleUrl: CatalogProduct_Decision$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: CatalogProduct$OrderingPlugin.name,
     Id: ProductId$CatalogSpec,
@@ -58,11 +58,11 @@ function Make(Platform) {
     commandTransition: Customer$OrderingPlugin.commandTransition,
     traits: Customer$OrderingPlugin.traits
   })({
-    initialState: Customer_Behavior$OrderingPlugin.initialState,
-    evolve: Customer_Behavior$OrderingPlugin.evolve,
-    decide: Customer_Behavior$OrderingPlugin.decide,
+    initialState: Customer_Decision$OrderingPlugin.initialState,
+    evolve: Customer_Decision$OrderingPlugin.evolve,
+    decide: Customer_Decision$OrderingPlugin.decide,
     snapshot: undefined,
-    moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
+    moduleUrl: Customer_Decision$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
     Id: CustomerId$OrderingPlugin,
@@ -79,11 +79,11 @@ function Make(Platform) {
     commandTransition: Order$OrderingPlugin.commandTransition,
     traits: Order$OrderingPlugin.traits
   })({
-    initialState: Order_Behavior$OrderingPlugin.initialState,
-    evolve: Order_Behavior$OrderingPlugin.evolve,
-    decide: Order_Behavior$OrderingPlugin.decide,
+    initialState: Order_Decision$OrderingPlugin.initialState,
+    evolve: Order_Decision$OrderingPlugin.evolve,
+    decide: Order_Decision$OrderingPlugin.decide,
     snapshot: undefined,
-    moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
+    moduleUrl: Order_Decision$OrderingPlugin.moduleUrl
   })({
     moduleUrl: Order_Mappings$OrderingPlugin.moduleUrl,
     mappings: Order_Mappings$OrderingPlugin.mappings,

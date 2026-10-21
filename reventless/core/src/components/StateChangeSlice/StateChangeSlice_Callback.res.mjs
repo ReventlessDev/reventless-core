@@ -21,7 +21,7 @@ import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function Make(Spec) {
-  return Behavior => {
+  return Decision => {
     let comp = `StateChangeSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let queryEventTypes = decoder.eventTypes;
@@ -155,7 +155,7 @@ function Make(Spec) {
             match[1],
             match[2]
           ] : [
-            Behavior.initialState,
+            Decision.initialState,
             undefined,
             []
           ];
@@ -202,7 +202,7 @@ function Make(Spec) {
           let eventId = param$1[3];
           let eventType = param$1[2];
           return [
-            Behavior.evolve(param[0], param$1[0]),
+            Decision.evolve(param[0], param$1[0]),
             param$1[1],
             param[2].concat([eventId !== undefined ? LogFormat$ReventlessCore.bold(eventType) + `(` + eventId + `)` : LogFormat$ReventlessCore.bold(eventType)]),
             OwnerScope$Reventless.recordOwners(param[3], match[0], match[1])
@@ -237,7 +237,7 @@ function Make(Spec) {
                 _0: "rejected"
               }));
             }
-            let newEvents = Behavior.decide(state, command$p.command);
+            let newEvents = Decision.decide(state, command$p.command);
             if (newEvents.TAG === "Ok") {
               let newEvents$1 = newEvents._0;
               if (newEvents$1.length === 0) {

@@ -54,7 +54,7 @@ describe("Who may DiscontinueProduct", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(DiscontinueProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: 66155fb5-8d1f-49c1-b18c-4020c20fe572
@@ -62,6 +62,6 @@ describe("Who may DiscontinueProduct", () => {
     givenEvents([ProductAdded])
     ->asCaller(Caller.anonymous)
     ->whenCmd(DiscontinueProduct({productId: p1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

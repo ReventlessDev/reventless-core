@@ -13,23 +13,23 @@ module Roles = {
 
 describe("Caller.owner", () => {
   testSync("takes a typed id as the user id it stands for", () =>
-    expect(Behavior_GWT.Caller.owner(CustomerId.makeFromString("c1")).claim)->toEqual(
+    expect(Decision_GWT.Caller.owner(CustomerId.makeFromString("c1")).claim)->toEqual(
       Reventless.Message.CallerClaim.Owned({userId: "c1"}),
     )
   )
 
   testSync("takes a plain string too", () =>
-    expect(Behavior_GWT.Caller.owner("c1").claim)->toEqual(
+    expect(Decision_GWT.Caller.owner("c1").claim)->toEqual(
       Reventless.Message.CallerClaim.Owned({userId: "c1"}),
     )
   )
 
   testSync("holds no role unless given some", () =>
-    expect(Behavior_GWT.Caller.owner("c1").roles)->toEqual([])
+    expect(Decision_GWT.Caller.owner("c1").roles)->toEqual([])
   )
 
   testSync("holds the roles it is given, by name", () =>
-    expect(Behavior_GWT.Caller.owner("c1", ~roles=[Roles.Merchandiser]).roles)->toEqual([
+    expect(Decision_GWT.Caller.owner("c1", ~roles=[Roles.Merchandiser]).roles)->toEqual([
       "Merchandiser",
     ])
   )
@@ -38,7 +38,7 @@ describe("Caller.owner", () => {
   // with a recorded owner would only ever refuse — a silent wrong answer.
   testSync("refuses a value that is not an id", () =>
     expect(
-      switch Behavior_GWT.Caller.owner(42) {
+      switch Decision_GWT.Caller.owner(42) {
       | _ => false
       | exception _ => true
       },
@@ -48,13 +48,13 @@ describe("Caller.owner", () => {
 
 describe("Caller.inRoles", () => {
   testSync("is signed in, holds the roles, and owns nothing in particular", () => {
-    let caller = Behavior_GWT.Caller.inRoles([Roles.Merchandiser])
+    let caller = Decision_GWT.Caller.inRoles([Roles.Merchandiser])
     expect((caller.signedIn, caller.roles))->toEqual((true, ["Merchandiser"]))
   })
 
   testSync("refuses a role that is not a payload-less case", () =>
     expect(
-      switch Behavior_GWT.Caller.inRoles([42]) {
+      switch Decision_GWT.Caller.inRoles([42]) {
       | _ => false
       | exception _ => true
       },

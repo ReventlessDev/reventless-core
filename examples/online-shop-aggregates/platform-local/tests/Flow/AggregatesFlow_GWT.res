@@ -27,13 +27,13 @@ open PlatformLocal_Examples
 
 module Sync = AggregateCommandStep(
   OrderingPlugin.CatalogProduct,
-  OrderingPlugin.CatalogProduct_Behavior,
+  OrderingPlugin.CatalogProduct_Decision,
 )
-module Place = AggregateCommandStep(OrderingPlugin.Order, OrderingPlugin.Order_Behavior)
+module Place = AggregateCommandStep(OrderingPlugin.Order, OrderingPlugin.Order_Decision)
 
 // Cross-plugin steps --------------------------------------------------------
 
-module Add = AggregateCommandStep(CatalogPlugin.Product, CatalogPlugin.Product_Behavior)
+module Add = AggregateCommandStep(CatalogPlugin.Product, CatalogPlugin.Product_Decision)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
 
@@ -41,7 +41,7 @@ module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
 module Demand = AggregateCommandStep(
   CatalogPlugin.ProductDemand,
-  CatalogPlugin.ProductDemand_Behavior,
+  CatalogPlugin.ProductDemand_Decision,
 )
 
 // Flows ---------------------------------------------------------------------

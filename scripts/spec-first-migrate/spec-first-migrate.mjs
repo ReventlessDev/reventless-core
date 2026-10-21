@@ -6,7 +6,7 @@
 //   - `X_<Kind>.res`   — Implementation only (`@@reventless.<kind>`)
 //
 // Slice folder → implementation kind:
-//   StateChange/         → Behavior
+//   StateChange/         → Decision
 //   StateView/           → Projection
 //   Automation/          → Automation
 //   InboundTranslation/  → Translation
@@ -32,8 +32,8 @@ import process from 'node:process';
 
 const SLICE_KINDS = {
   StateChange: {
-    implKind: 'Behavior',
-    implAttr: '@@reventless.behavior',
+    implKind: 'Decision',
+    implAttr: '@@reventless.decision',
     specBindings: new Set([
       'name', 'moduleUrl', 'Id',
       'command', 'event', 'error', 'consumedEvent', 'commandSchema',
@@ -92,7 +92,7 @@ const SLICE_KINDS = {
 };
 
 const IMPL_ATTRS = new Set([
-  '@@reventless.behavior',
+  '@@reventless.decision',
   '@@reventless.projection',
   '@@reventless.automation',
   '@@reventless.translation',

@@ -46,7 +46,7 @@ module AddProductSlice = {
       })
 }
 
-module AddProductBehavior = {
+module AddProductDecision = {
   module Spec = AddProductSlice
   type state = {added: bool}
   let initialState = {added: false}
@@ -164,7 +164,7 @@ module RecordDemandSlice = {
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
-module RecordDemandBehavior = {
+module RecordDemandDecision = {
   module Spec = RecordDemandSlice
   type state = {count: int}
   let initialState = {count: 0}
@@ -225,7 +225,7 @@ module SyncProductSlice = {
   let commandTransition = (_: command): Reventless.Transition.t<lifecycleState> => Unrestricted
 }
 
-module SyncProductBehavior = {
+module SyncProductDecision = {
   module Spec = SyncProductSlice
   type state = {synced: bool}
   let initialState = {synced: false}
@@ -278,7 +278,7 @@ module PlaceOrderSlice = {
       })
 }
 
-module PlaceOrderBehavior = {
+module PlaceOrderDecision = {
   module Spec = PlaceOrderSlice
   type state = {placed: array<string>, available: array<string>}
   let initialState = {placed: [], available: []}
@@ -308,14 +308,14 @@ module PlaceOrderBehavior = {
 // Step modules
 // ===========================================================================
 
-module AddProduct = CommandStep(AddProductSlice, AddProductBehavior)
+module AddProduct = CommandStep(AddProductSlice, AddProductDecision)
 module ProductsEp = ExtensionPointStep(ProductsEpMapping)
 module ProductsExt = ExtensionStep(ProductsExtMapping)
-module Sync = CommandStep(SyncProductSlice, SyncProductBehavior)
-module Place = CommandStep(PlaceOrderSlice, PlaceOrderBehavior)
+module Sync = CommandStep(SyncProductSlice, SyncProductDecision)
+module Place = CommandStep(PlaceOrderSlice, PlaceOrderDecision)
 module OrdersEp = ExtensionPointStep(OrdersEpMapping)
 module OrdersExt = ExtensionStep(OrdersExtMapping)
-module Demand = CommandStep(RecordDemandSlice, RecordDemandBehavior)
+module Demand = CommandStep(RecordDemandSlice, RecordDemandDecision)
 
 // ===========================================================================
 // Flows

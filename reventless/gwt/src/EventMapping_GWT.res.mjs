@@ -3,9 +3,9 @@
 import * as Mapping_GWT$ReventlessGwt from "./Mapping_GWT.res.mjs";
 
 function Make(Source) {
-  return SourceBehavior => (Target => (TargetBehavior => (EventMapping => {
-    let AdaptedSource = Mapping_GWT$ReventlessGwt.FromBehavior(Source)(SourceBehavior);
-    let AdaptedTarget = Mapping_GWT$ReventlessGwt.FromBehavior(Target)(TargetBehavior);
+  return SourceDecision => (Target => (TargetDecision => (EventMapping => {
+    let AdaptedSource = Mapping_GWT$ReventlessGwt.FromDecision(Source)(SourceDecision);
+    let AdaptedTarget = Mapping_GWT$ReventlessGwt.FromDecision(Target)(TargetDecision);
     let map = EventMapping.map;
     let BoundMapping = {
       Source: undefined,

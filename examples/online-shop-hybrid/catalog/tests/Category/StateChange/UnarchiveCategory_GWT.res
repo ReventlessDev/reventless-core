@@ -43,7 +43,7 @@ describe("Who may UnarchiveCategory", () => {
     givenEvents([CategoryAdded, CategoryArchived])
     ->asCaller(Caller.owner(shopper))
     ->whenCmd(UnarchiveCategory({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 
   // scenario-id: a149da17-77e5-4f6a-b2a3-28865bb6f047
@@ -51,6 +51,6 @@ describe("Who may UnarchiveCategory", () => {
     givenEvents([CategoryAdded, CategoryArchived])
     ->asCaller(Caller.anonymous)
     ->whenCmd(UnarchiveCategory({categoryId: c1}))
-    ->thenRefused
+    ->thenForbidden
   )
 })

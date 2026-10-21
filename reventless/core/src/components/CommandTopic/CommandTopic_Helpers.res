@@ -12,7 +12,7 @@ during inline `publishJsonsAndWait` execution and read by `runInlineAndCollect` 
 type acceptedResult = {entityId?: string, eventCount: int}
 
 /**
-Carries an encoded domain rejection from `Behavior.decide` back to a synchronous producer.
+Carries an encoded domain rejection from `Decision.decide` back to a synchronous producer.
 `errorCode` is the variant tag of `Spec.errorSchema` (e.g. `"AlreadyExists"`); `errorDetail`
 is the JSON-stringified error payload (or empty string for payload-less variants).
 */
@@ -21,7 +21,7 @@ type rejectedResult = {errorCode: string, errorDetail: string}
 /**
 Why a command was refused.
 
-`DomainRejection` is `Behavior.decide` returning `Error` — the model declining the command,
+`DomainRejection` is `Decision.decide` returning `Error` — the model declining the command,
 which is the model working. `InfrastructureFailure` is the decision never landing: an event-log
 append that failed outright or exhausted its conflict retries. Both arrive on `reportRejected`,
 so without this a consumer would read a broken event log as a business rejection.
@@ -92,7 +92,7 @@ let fireCommandOutcome = (~component: string, ~reference: string, outcome: obser
 let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(None)
 
 // Sibling side-channel for domain rejections — populated by callbacks when
-// `Behavior.decide` returns `Error`. Read by runInlineAndCollect to build
+// `Decision.decide` returns `Error`. Read by runInlineAndCollect to build
 // `Rejected` outcomes that carry the real error code and detail.
 let rejectedResultChannel: ref<option<(string, rejectedResult) => unit>> = ref(None)
 
@@ -234,7 +234,7 @@ let runInlineAndCollect = async (
   rejectedResultChannel.contents = None
   jsons->Array.mapWithIndex((cmdJson, i) => {
     let msgId = cmdJson.meta.msgId
-    // Domain rejection from Behavior.decide takes precedence over both Accepted
+    // Domain rejection from Decision.decide takes precedence over both Accepted
     // and the synthesized "Conflict" — it carries the most informative error.
     switch rejectedResults->Dict.get(msgId) {
     | Some({errorCode, errorDetail}) =>

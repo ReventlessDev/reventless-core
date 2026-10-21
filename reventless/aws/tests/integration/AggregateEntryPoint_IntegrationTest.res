@@ -1,7 +1,7 @@
 // Integration regression guard for the Aggregate Lambda entry point.
 //
 // Drives the real `AggregateEntryPoint.mjs` against a DynamoDB Local EventLog
-// table, with a test loader supplying a tiny `AggTestAggregate` spec/behavior
+// table, with a test loader supplying a tiny `AggTestAggregate` spec/decision
 // pair in place of the production Lambda's `/var/task/node_modules` dynamic
 // import. Covers the same regression class as the DCB entry-point test: the
 // shell wires the compiled EventLog/Aggregate/CommandTopic functors and the
@@ -38,14 +38,14 @@ let runOneAppSyncEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
 
     const loadModule = async (specifier) => {
       if (specifier === "agg-test://spec") return await import("./AggTestAggregate.res.mjs");
-      if (specifier === "agg-test://behavior") return await import("./AggTestAggregateBehavior.res.mjs");
+      if (specifier === "agg-test://decision") return await import("./AggTestAggregateDecision.res.mjs");
       throw new Error("unknown test specifier: " + specifier);
     };
 
     const config = {
       handlers: [{
         specModule: "agg-test://spec",
-        behaviorModule: "agg-test://behavior",
+        decisionModule: "agg-test://decision",
         eventLogTable: tableName,
         queueUrl: "https://sqs.eu-west-1.amazonaws.com/000000000000/agg-test-queue",
         queueArn: "arn:aws:sqs:eu-west-1:000000000000:agg-test-queue",

@@ -41,7 +41,7 @@ import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
-import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
+import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as Plugin_Builder$ReventlessLocal from "./components/Plugin_Builder.res.mjs";
 import * as Counter_Builder$ReventlessLocal from "./components/Counter_Builder.res.mjs";
@@ -97,7 +97,7 @@ import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateCha
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
-import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Behavior.res.mjs";
+import * as UiFragmentRegistry_Decision$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Decision.res.mjs";
 import * as Platform_PluginStructuresApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_PluginStructuresApi.res.mjs";
 import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
@@ -489,8 +489,8 @@ function MakeWithConfig(Config) {
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessLocal.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessLocal.Make(Bus);
   let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessLocal.Make(Bus);
-  let Make = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+  let Make = Spec => (Decision => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Decision)(EventMappings);
     return {
       Spec: $$let.Spec,
       make: $$let.make,
@@ -499,8 +499,8 @@ function MakeWithConfig(Config) {
       finish: $$let.finish
     };
   }));
-  let MakeAsync = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+  let MakeAsync = Spec => (Decision => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Decision)(EventMappings);
     return {
       Spec: $$let.Spec,
       make: $$let.make,
@@ -610,20 +610,20 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let Counter = Counter_Builder$ReventlessLocal.Make(Bus);
-  let Make$6 = Spec => (Behavior => {
-    let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let Make$6 = Spec => (Decision => {
+    let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
     return {
       Spec: $$let.Spec,
-      Behavior: $$let.Behavior,
+      Decision: $$let.Decision,
       isAsync: $$let.isAsync,
       make: $$let.make
     };
   });
-  let MakeAsync$1 = Spec => (Behavior => {
-    let include = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let MakeAsync$1 = Spec => (Decision => {
+    let include = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
     return {
       Spec: include.Spec,
-      Behavior: include.Behavior,
+      Decision: include.Decision,
       isAsync: true,
       make: include.make
     };
@@ -655,20 +655,20 @@ function MakeWithConfig(Config) {
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
-  let Behavior = {
+  let Decision = {
     initialState: undefined,
-    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+    evolve: UiFragmentRegistry_Decision$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Decision$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Decision$ReventlessCore.moduleUrl
   };
-  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
   let UiFragmentRegistrySlice_Spec = $$let.Spec;
-  let UiFragmentRegistrySlice_Behavior = $$let.Behavior;
+  let UiFragmentRegistrySlice_Decision = $$let.Decision;
   let UiFragmentRegistrySlice_isAsync = $$let.isAsync;
   let UiFragmentRegistrySlice_make = $$let.make;
   let UiFragmentRegistrySlice = {
     Spec: UiFragmentRegistrySlice_Spec,
-    Behavior: UiFragmentRegistrySlice_Behavior,
+    Decision: UiFragmentRegistrySlice_Decision,
     isAsync: UiFragmentRegistrySlice_isAsync,
     make: UiFragmentRegistrySlice_make
   };
@@ -766,11 +766,11 @@ function MakeWithConfig(Config) {
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
-    initialState: PluginBehavior$ReventlessCore.initialState,
-    evolve: PluginBehavior$ReventlessCore.evolve,
-    decide: PluginBehavior$ReventlessCore.decide,
+    initialState: PluginDecision$ReventlessCore.initialState,
+    evolve: PluginDecision$ReventlessCore.evolve,
+    decide: PluginDecision$ReventlessCore.decide,
     snapshot: undefined,
-    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+    moduleUrl: PluginDecision$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,
@@ -2250,8 +2250,8 @@ function Make($star) {
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessLocal.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessLocal.Make(Bus);
   let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessLocal.Make(Bus);
-  let Make$1 = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+  let Make$1 = Spec => (Decision => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Decision)(EventMappings);
     return {
       Spec: $$let.Spec,
       make: $$let.make,
@@ -2260,8 +2260,8 @@ function Make($star) {
       finish: $$let.finish
     };
   }));
-  let MakeAsync = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+  let MakeAsync = Spec => (Decision => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Decision)(EventMappings);
     return {
       Spec: $$let.Spec,
       make: $$let.make,
@@ -2371,20 +2371,20 @@ function Make($star) {
     Make: Make$6
   };
   let Counter = Counter_Builder$ReventlessLocal.Make(Bus);
-  let Make$7 = Spec => (Behavior => {
-    let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let Make$7 = Spec => (Decision => {
+    let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
     return {
       Spec: $$let.Spec,
-      Behavior: $$let.Behavior,
+      Decision: $$let.Decision,
       isAsync: $$let.isAsync,
       make: $$let.make
     };
   });
-  let MakeAsync$1 = Spec => (Behavior => {
-    let include = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let MakeAsync$1 = Spec => (Decision => {
+    let include = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
     return {
       Spec: include.Spec,
-      Behavior: include.Behavior,
+      Decision: include.Decision,
       isAsync: true,
       make: include.make
     };
@@ -2416,20 +2416,20 @@ function Make($star) {
     traits: UiFragmentRegistry$ReventlessCore.traits,
     readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
   };
-  let Behavior = {
+  let Decision = {
     initialState: undefined,
-    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+    evolve: UiFragmentRegistry_Decision$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Decision$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Decision$ReventlessCore.moduleUrl
   };
-  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Decision);
   let UiFragmentRegistrySlice_Spec = $$let.Spec;
-  let UiFragmentRegistrySlice_Behavior = $$let.Behavior;
+  let UiFragmentRegistrySlice_Decision = $$let.Decision;
   let UiFragmentRegistrySlice_isAsync = $$let.isAsync;
   let UiFragmentRegistrySlice_make = $$let.make;
   let UiFragmentRegistrySlice = {
     Spec: UiFragmentRegistrySlice_Spec,
-    Behavior: UiFragmentRegistrySlice_Behavior,
+    Decision: UiFragmentRegistrySlice_Decision,
     isAsync: UiFragmentRegistrySlice_isAsync,
     make: UiFragmentRegistrySlice_make
   };
@@ -2527,11 +2527,11 @@ function Make($star) {
     commandTransition: PluginSpec$ReventlessCore.commandTransition,
     traits: PluginSpec$ReventlessCore.traits
   })({
-    initialState: PluginBehavior$ReventlessCore.initialState,
-    evolve: PluginBehavior$ReventlessCore.evolve,
-    decide: PluginBehavior$ReventlessCore.decide,
+    initialState: PluginDecision$ReventlessCore.initialState,
+    evolve: PluginDecision$ReventlessCore.evolve,
+    decide: PluginDecision$ReventlessCore.decide,
     snapshot: undefined,
-    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+    moduleUrl: PluginDecision$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,

@@ -2,13 +2,13 @@ let log = Logger.fromEnv()
 
 module Make = (
   Spec: Reventless.StateChangeSlice.Spec,
-  Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+  Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
 ): StateChangeSlice.T => {
   module Spec = Spec
-  module Behavior = Behavior
+  module Decision = Decision
   let isAsync = false
   type component = StateChangeSlice.component
-  module Callback = StateChangeSlice_Callback.Make(Spec, Behavior)
+  module Callback = StateChangeSlice_Callback.Make(Spec, Decision)
 
   let makeJsonHandler = (
     ~tagKeysByEventType,

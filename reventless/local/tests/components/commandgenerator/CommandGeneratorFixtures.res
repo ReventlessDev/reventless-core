@@ -5,7 +5,7 @@
 let _ = TestRunner.setup()
 
 // ─────────────────────────────────────────────────────────────
-// Aggregate spec (matches the Behavior used in CommandGenerator_Builder.Make)
+// Aggregate spec (matches the Decision used in CommandGenerator_Builder.Make)
 // ─────────────────────────────────────────────────────────────
 
 module CGSpec = {
@@ -25,10 +25,10 @@ module CGSpec = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Behavior
+// Decision
 // ─────────────────────────────────────────────────────────────
 
-module CGBehavior = {
+module CGDecision = {
   module Spec = CGSpec
   type state = {name: string}
 

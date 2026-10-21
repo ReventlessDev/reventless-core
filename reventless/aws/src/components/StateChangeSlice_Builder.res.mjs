@@ -5,12 +5,12 @@ import * as PluginRuntime_Builder$ReventlessAws from "../plugin/runtime/PluginRu
 import * as StateChangeSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res.mjs";
 
 function Make(Spec) {
-  return Behavior => {
-    PluginRuntime_Builder$ReventlessAws.registerStateChangeSliceSpec(Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Behavior.moduleUrl));
-    let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Behavior);
+  return Decision => {
+    PluginRuntime_Builder$ReventlessAws.registerStateChangeSliceSpec(Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Decision.moduleUrl));
+    let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Decision);
     return {
       Spec: Spec,
-      Behavior: Behavior,
+      Decision: Decision,
       isAsync: Inner.isAsync,
       make: Inner.make
     };

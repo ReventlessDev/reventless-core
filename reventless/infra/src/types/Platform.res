@@ -7,7 +7,7 @@
 //
 //   // app/MyPlugin.res — imports reventless-infra
 //   module Make = (Platform: ReventlessInfra.Platform.T) => {
-//     module MyAggregate = Platform.Aggregate.Make(MySpec, MyBehavior, MyMappings)
+//     module MyAggregate = Platform.Aggregate.Make(MySpec, MyDecision, MyMappings)
 //     module MyReadModel = Platform.ReadModel.Make(MyRmSpec, MyMappings)
 //     // ...
 //   }
@@ -35,7 +35,7 @@ the composition root, and use its nested `Make` functors everywhere else.
 module Make = (Platform: Platform.T) => {
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    CategoryBehavior,
+    CategoryDecision,
     NoEventMappings.Make(Category),
   )
   module CategoryReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoryMappings)
@@ -284,13 +284,13 @@ module type T = {
   module Aggregate: {
     module Make: (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
     ) => (Aggregate.T with type api = api)
     /** Async variant — uses FIFO channel, returns `CommandPending`. */
     module MakeAsync: (
       Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      Decision: Reventless.Decision.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
     ) => (Aggregate.T with type api = api)
   }
@@ -359,12 +359,12 @@ module type T = {
   module StateChangeSlice: {
     module Make: (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ) => (StateChangeSlice.T with module Spec = Spec)
     /** Async variant — uses FIFO channel, returns `CommandPending`. */
     module MakeAsync: (
       Spec: Reventless.StateChangeSlice.Spec,
-      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+      Decision: Reventless.StateChangeSlice.Decision with module Spec := Spec,
     ) => (StateChangeSlice.T with module Spec = Spec)
   }
 

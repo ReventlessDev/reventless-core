@@ -1,5 +1,5 @@
 // E2E test fixtures for the Aggregate E2E test.
-// Contains specs, behavior, bus setup, and shared test data.
+// Contains specs, decision, bus setup, and shared test data.
 
 // ─────────────────────────────────────────────────────────────
 // Simple Item aggregate spec
@@ -22,16 +22,16 @@ module ItemSpec = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Item behavior: CreateItem → ItemCreated
+// Item decision: CreateItem → ItemCreated
 // ─────────────────────────────────────────────────────────────
 
-module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
+module ItemDecision: ReventlessCore.Decision.T with module Spec := ItemSpec = {
   type state = bool // true = item exists
 
   let initialState = false
 
-  // Hand-written behavior (no @@reventless.behavior PPX) — satisfy the
-  // Behavior.T snapshot field manually.
+  // Hand-written decision (no @@reventless.decision PPX) — satisfy the
+  // Decision.T snapshot field manually.
   let snapshot = None
 
   let moduleUrl: string = %raw(`import.meta.url`)
@@ -75,7 +75,7 @@ let _ = TestRunner.setup()
 module ItemAggregateMaker = Aggregate_Builder.Make(Bus)
 module ItemAgg = ItemAggregateMaker.Make(
   ItemSpec,
-  ItemBehavior,
+  ItemDecision,
   ReventlessInfra.NoEventMappings.Make(ItemSpec),
 )
 

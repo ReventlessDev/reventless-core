@@ -11,7 +11,7 @@ module Binding = {
   let refB = "/uploads/cat/c1-banner.svg"
 
   module Spec = CategoryImages
-  module Behavior = CategoryImages_Behavior
+  module Decision = CategoryImages_Decision
 
   // Same constructor names on both sides; what differs is the type and the id —
   // a consumed fact carries none, because the partition already says whose it is.

@@ -171,7 +171,7 @@ async function thenBoundaryScopeResolves(flowP, name, slices) {
 }
 
 function CommandStep(Spec) {
-  return Behavior => {
+  return Decision => {
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let consumedEventTypes = consumedDecoder.eventTypes;
     let givenEvents = async (flowP, events) => {
@@ -207,8 +207,8 @@ function CommandStep(Spec) {
       let s = await flowP;
       let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
       let history = decodeMatching(s.log, consumedDecoder, query);
-      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
-      let events = Behavior.decide(state, command);
+      let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
+      let events = Decision.decide(state, command);
       if (events.TAG !== "Ok") {
         return {
           log: s.log,
@@ -288,7 +288,7 @@ function CommandStep(Spec) {
 }
 
 function AggregateCommandStep(Spec) {
-  return Behavior => {
+  return Decision => {
     let aggregateDecoder = DcbDecode$Reventless.makeDecoder(Spec.eventSchema);
     let givenEvents = async (flowP, id, events) => {
       let s = await flowP;
@@ -306,8 +306,8 @@ function AggregateCommandStep(Spec) {
     let whenCommand = async (flowP, id, command) => {
       let s = await flowP;
       let history = decodeAggregateMatching(s.log, id, aggregateDecoder);
-      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
-      let events = Behavior.decide(state, command);
+      let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
+      let events = Decision.decide(state, command);
       if (events.TAG !== "Ok") {
         return {
           log: s.log,

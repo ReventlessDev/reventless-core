@@ -12,8 +12,8 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/
 import * as CommandGeneratorResolvers_AppSync_NoOp$ReventlessAws from "../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync_NoOp.res.mjs";
 
 function Make(Spec) {
-  return Behavior => (EventMappings => {
-    let Inner = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)({
+  return Decision => (EventMappings => {
+    let Inner = Aggregate_Builder$ReventlessCore.Make(Spec)(Decision)({
       mappings: EventMappings.mappings,
       counter: EventMappings.counter
     })({
@@ -48,7 +48,7 @@ function Make(Spec) {
       let eventLogOutputs = Inner.outputs(aggregate).eventLog;
       let tableResource = eventLogOutputs.resources[0];
       let eventLogTableName = tableResource.name;
-      AggregateRuntime_Builder_Single$ReventlessAws.registerAggregate(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Behavior.moduleUrl), eventLogTableName);
+      AggregateRuntime_Builder_Single$ReventlessAws.registerAggregate(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Decision.moduleUrl), eventLogTableName);
       return aggregate;
     };
     let finish = () => AggregateRuntime_Builder_Single$ReventlessAws.finish();

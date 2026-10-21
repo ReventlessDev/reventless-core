@@ -99,7 +99,7 @@ let bodySuffixes = [
   "_Projections",
   "_Projection",
   "_Mappings",
-  "_Behavior",
+  "_Decision",
   "_Automation",
   "_Translation",
 ]

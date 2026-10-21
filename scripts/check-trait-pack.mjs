@@ -31,11 +31,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 //
 // `graft.remove` is the aggregate-host variant of the same claim. An aggregate
 // graft cannot land on a fresh entity — its conformance binding names the host's
-// own `Spec` and `Behavior`, and those carry the lifecycle policy a trait must
+// own `Spec` and `Decision`, and those carry the lifecycle policy a trait must
 // not write. So instead of emitting beside the specimen, the check DELETES the
 // files the trait owns and emits them back. Nothing is diffed; the files have to
 // build and conform, which is the property that matters. The aggregate and its
-// behavior — the half the trait only prints patches for — stay untouched, so
+// decision — the half the trait only prints patches for — stay untouched, so
 // what is proven is exactly the emitted half.
 const specimens = {
   "traits/address-geocoding": {
