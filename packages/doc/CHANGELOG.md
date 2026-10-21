@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-21
+- feat(aws): a UI bundle uploads as one resource, putting only the files that changed ([9e28682](https://github.com/ReventlessDev/reventless-core/commit/9e286829817c6679aace100b3f17195a777a4cf4))
+### 2026-10-21
 - docs: the API guide says what a client does with each rejection cause, and which codes the platform reserves ([2257948](https://github.com/ReventlessDev/reventless-core/commit/225794886f1103c8f9434b2e86b555d99cf9d2ae))
 ### 2026-10-21
 - docs: a state view's row key is module Id in the docs and rules ([e863360](https://github.com/ReventlessDev/reventless-core/commit/e8633601dcb9ecf8a4ad21293b8e81d698e19a2f))
