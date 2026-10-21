@@ -115,3 +115,27 @@ describe("a reference to an identity", () => {
     expect(DcbTag.resolveTagKey("buyer", referenced->unk))->toEqual("customerId")
   )
 })
+
+// What `@partitionTag @ref(...)` and `@crossPartition @ref(...)` compile to: the
+// partition marker wraps the reference, and both stay readable.
+describe("a partition marker over a reference", () => {
+  let cases = [
+    ("partition", CustomerId.schema->Reference.mark("Customers")->DcbTag.markPartition->unk),
+    ("partition on a string", Reference.to_("Customers")->DcbTag.markPartition->unk),
+    (
+      "cross-partition",
+      CustomerId.schema->Reference.mark("Customers")->DcbTag.markCrossPartition->unk,
+    ),
+  ]
+
+  cases->Array.forEach(((label, schema)) =>
+    testSync(
+      `${label} keeps the reference and the marker`,
+      () =>
+        expect((
+          Reference.getTarget(schema)->Option.map(t => t.entity),
+          DcbTag.isPartitionTag(schema) || DcbTag.isCrossPartitionTag(schema),
+        ))->toEqual((Some("Customers"), true)),
+    )
+  )
+})

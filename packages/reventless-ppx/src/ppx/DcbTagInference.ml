@@ -62,6 +62,33 @@ let identity_tag_attr ~loc ?key fn m =
     (Ldot (Ldot (Lident "Reventless", "DcbTag"), fn))
     ((Nolabel, Util.identity_schema_expr ~loc m) :: key_args)
 
+(** The [Reventless.Reference.*(...)] call inside a [@s.matches] that [@ref] left on
+    a type, if there is one. A partition marker wraps it rather than replacing it,
+    since the reference carries meaning of its own; any other [@s.matches] on the
+    field is an auto-applied tag, which the marker replaces. *)
+let reference_matches_expr (attrs : attributes) : expression option =
+  List.find_map (fun (attr : attribute) ->
+    if not (String.equal attr.attr_name.txt "s.matches") then None
+    else match attr.attr_payload with
+      | PStr [{ pstr_desc = Pstr_eval (
+                  ({ pexp_desc = Pexp_apply (
+                       { pexp_desc = Pexp_ident
+                           { txt = Ldot (Ldot (Lident "Reventless", "Reference"), _); _ }; _ },
+                       _); _ } as e), _); _ }] -> Some e
+      | _ -> None
+  ) attrs
+
+(** [fn]'s marker for a type: [DcbTag.<fn>(<reference>)] when [@ref] put one there,
+    else [default]. Either way it replaces every [@s.matches] the type carried. *)
+let partition_marker ~loc fn (ct : core_type) default =
+  let attr = match reference_matches_expr ct.ptyp_attributes with
+    | Some inner ->
+      Util.s_matches_apply ~loc
+        (Ldot (Ldot (Lident "Reventless", "DcbTag"), fn)) [ (Nolabel, inner) ]
+    | None -> default
+  in
+  { ct with ptyp_attributes = attr :: strip_s_matches_attr ct.ptyp_attributes }
+
 (** The identity module of an [array<<M>Id.t>] field's element. *)
 let array_identity (ct : core_type) =
   match Util.array_element ct with
@@ -271,52 +298,52 @@ let map_schema_fields (f : label_declaration -> label_declaration)
   ) str
 
 (** @partitionTag → @s.matches(Reventless.DcbTag.partition). Runs unconditionally.
-    Strips any existing @s.matches (e.g. auto-applied DcbTag.string) before injecting
-    DcbTag.partition, so @partitionTag works correctly on *Id fields in slice folders. *)
+    Replaces an auto-applied @s.matches (e.g. DcbTag.string), so @partitionTag works
+    on *Id fields in slice folders, but wraps a @ref's reference instead. *)
 let transform_partition_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
     match Util.identity_module ld.pld_type with
     | Some m when has_partition_tag_field_attr ld.pld_attributes ->
       { ld with
-        pld_type = { ld.pld_type with
-                     ptyp_attributes = identity_tag_attr ~loc "markPartition" m
-                                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_type = partition_marker ~loc "markPartition" ld.pld_type
+                     (identity_tag_attr ~loc "markPartition" m);
         pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
     | _ ->
     if has_partition_tag_field_attr ld.pld_attributes
        && is_string_type ld.pld_type then
       { ld with
-        pld_type = { ld.pld_type with
-                     ptyp_attributes = (dcb_partition_attr ~loc) :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_type = partition_marker ~loc "markPartition" ld.pld_type (dcb_partition_attr ~loc);
         pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
     else ld
   ) str
 
 (** @crossPartition → @s.matches(Reventless.DcbTag.crossPartition) on string
     fields, or on the inner element type of [array<string>] fields. No payload
-    (mirrors @partitionTag). Strips any existing @s.matches (e.g. an auto-applied
-    DcbTag.string) before injecting, so it works on *Id fields in slice folders.
-    Runs unconditionally, after transform_partition_tags. *)
+    (mirrors @partitionTag), and it replaces or wraps an existing @s.matches the
+    same way. Runs unconditionally, after transform_partition_tags. *)
 let transform_cross_partition_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
     if not (has_cross_partition_field_attr ld.pld_attributes) then ld
     else if Util.identity_module ld.pld_type <> None then
       let m = Option.get (Util.identity_module ld.pld_type) in
       { ld with
-        pld_type = { ld.pld_type with
-                     ptyp_attributes = identity_tag_attr ~loc "markCrossPartition" m
-                                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_type = partition_marker ~loc "markCrossPartition" ld.pld_type
+                     (identity_tag_attr ~loc "markCrossPartition" m);
         pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
     else if array_identity ld.pld_type <> None then
       let (elem, m) = Option.get (array_identity ld.pld_type) in
-      { (with_elem_attr ld elem (identity_tag_attr ~loc "markCrossPartition" m)) with
-        pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
+      let new_elem = partition_marker ~loc "markCrossPartition" elem
+                       (identity_tag_attr ~loc "markCrossPartition" m) in
+      (match ld.pld_type.ptyp_desc with
+       | Ptyp_constr (arr_lid, [ _ ]) ->
+         { ld with
+           pld_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [ new_elem ]) };
+           pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
+       | _ -> ld)
     else if is_string_type ld.pld_type then
       { ld with
-        pld_type = { ld.pld_type with
-                     ptyp_attributes =
-                       (dcb_cross_partition_attr ~loc)
-                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_type = partition_marker ~loc "markCrossPartition" ld.pld_type
+                     (dcb_cross_partition_attr ~loc);
         pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
     else
       match ld.pld_type.ptyp_desc with
@@ -324,10 +351,8 @@ let transform_cross_partition_tags ~loc (str : structure) : structure =
         when (match elem.ptyp_desc with
               | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
               | _ -> false) ->
-        let new_elem = { elem with
-                         ptyp_attributes =
-                           (dcb_cross_partition_attr ~loc)
-                           :: strip_s_matches_attr elem.ptyp_attributes } in
+        let new_elem = partition_marker ~loc "markCrossPartition" elem
+                         (dcb_cross_partition_attr ~loc) in
         let new_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [new_elem]) } in
         { ld with
           pld_type = new_type;

@@ -11,8 +11,8 @@ type consumedEvent =
 // @noApi keeps this event-driven command off the GraphQL/MCP/AutoUI surface.
 @schema @noApi
 type command =
-  | RecordDemand({productId: CatalogSpec.ProductId.t, orderId: string})
-  | RevokeDemand({productId: CatalogSpec.ProductId.t, orderId: string})
+  | RecordDemand({@ref("Products") productId: CatalogSpec.ProductId.t, orderId: string})
+  | RevokeDemand({@ref("Products") productId: CatalogSpec.ProductId.t, orderId: string})
 
 @schema
 type error = unit // always succeeds — demand recording is idempotent
@@ -21,5 +21,11 @@ type error = unit // always succeeds — demand recording is idempotent
 type event =
   // A join: product and order are both this slice's own ids. Only the domain says
   // demand is counted per product, so inference cannot choose.
-  | ProductDemandRecorded({@partitionTag productId: CatalogSpec.ProductId.t, orderId: string})
-  | ProductDemandRevoked({@partitionTag productId: CatalogSpec.ProductId.t, orderId: string})
+  | ProductDemandRecorded({
+      @partitionTag @ref("Products") productId: CatalogSpec.ProductId.t,
+      orderId: string,
+    })
+  | ProductDemandRevoked({
+      @partitionTag @ref("Products") productId: CatalogSpec.ProductId.t,
+      orderId: string,
+    })

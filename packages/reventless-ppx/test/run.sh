@@ -628,6 +628,29 @@ type command = Record({
 type error = unit
 EOF
 
+# @partitionTag / @crossPartition beside @ref: the marker wraps the reference
+# rather than replacing it, on identities, strings and arrays of either, in
+# either attribute order.
+cat > "$DCB/src/StateChange/RecordReferencedDemand.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = RecordReferenced({@partitionTag productId: ProductId.t, orderId: string})
+
+@schema
+type event =
+  | ByIdentity({@partitionTag @ref("Products") productId: ProductId.t})
+  | ByIdentityRefFirst({@ref("Products") @partitionTag productId: ProductId.t})
+  | ByString({@partitionTag @ref("Shelves") shelfId: string})
+  | CrossByIdentity({@crossPartition @ref("Buyers") buyer: CustomerId.t})
+  | CrossByString({@crossPartition @ref("Courses") courseId: string})
+  | CrossByIdentities({@crossPartition @ref("Buyers") watchers: array<CustomerId.t>})
+  | CrossByStrings({@crossPartition @ref("Courses") courseIds: array<string>})
+
+@schema
+type error = unit
+EOF
+
 # @crossPartition: marks a tag as a cross-partition (secondary-tag) read, in a
 # slice folder (dcbTags auto-enabled). courseId is the partition; studentId is
 # cross-partition.
@@ -2086,6 +2109,32 @@ assert_js_contains "$JS" 'Reference$Reventless.mark(ProductId$TestDcb.schema' "@
 assert_js_contains "$JS" 'Reference$Reventless.mark(ProductId$TestDcb.schema, undefined, "giftSku", "Products")' \
   "@ref + @dcbTag(key) on an identity keeps the explicit key, not the identity's"
 assert_js_contains "$JS" 'Sury.$option(CustomerId$TestDcb.schema)' "an optional identity is left as it is, like option<string>"
+
+echo ""
+echo "=== Test: @partitionTag / @crossPartition wrap a @ref instead of dropping it ==="
+JS="$DCB/src/StateChange/RecordReferencedDemand.res.mjs"
+REF_PRODUCT='Reference$Reventless.mark(ProductId$TestDcb.schema, undefined, undefined, "Products")'
+REF_BUYER='Reference$Reventless.mark(CustomerId$TestDcb.schema, undefined, undefined, "Buyers")'
+PART_COUNT=$(grep -cF "DcbTag\$Reventless.markPartition($REF_PRODUCT)" "$JS" 2>/dev/null || echo 0)
+if [ "$PART_COUNT" -eq 2 ]; then
+  pass "@partitionTag + @ref on an identity keeps the reference, in either order"
+else
+  fail "@partitionTag + @ref on an identity" "expected 2 wrapped references, got $PART_COUNT"
+fi
+assert_js_contains "$JS" 'DcbTag$Reventless.markPartition(Reference$Reventless.to_(undefined, undefined, "Shelves"))' \
+  "@partitionTag + @ref on a string keeps the reference"
+CROSS_BUYER=$(grep -cF "DcbTag\$Reventless.markCrossPartition($REF_BUYER)" "$JS" 2>/dev/null || echo 0)
+if [ "$CROSS_BUYER" -eq 2 ]; then
+  pass "@crossPartition + @ref on an identity and an array of them keeps the reference"
+else
+  fail "@crossPartition + @ref on identities" "expected 2 wrapped references, got $CROSS_BUYER"
+fi
+assert_js_contains "$JS" 'DcbTag$Reventless.markCrossPartition(Reference$Reventless.to_(undefined, undefined, "Courses"))' \
+  "@crossPartition + @ref on a string keeps the reference"
+assert_js_contains "$JS" 'DcbTag$Reventless.markCrossPartition(Reference$Reventless.to_(undefined, "courseId", "Courses"))' \
+  "@crossPartition + @ref on a string array keeps the reference and its singular key"
+assert_js_contains "$JS" 'DcbTag$Reventless.markPartition(ProductId$TestDcb.schema)' \
+  "@partitionTag without @ref still replaces the auto-applied tag"
 
 echo ""
 echo "=== Test: @id and @owner on identity-typed state fields ==="
