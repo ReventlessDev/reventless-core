@@ -595,7 +595,8 @@ let lifecycleMapFor = (
 
 // ── Rule 2 and 3: the relation a command's own scenarios describe ───────────
 
-type outcome = Emitted | NoChange | Refused
+// `Rejected`: the decision rejected the command, the sidecar's `"error"`.
+type outcome = Emitted | NoChange | Rejected
 
 type observation = {
   title: string,
@@ -646,7 +647,7 @@ let outcomeOf = (s: scenario): outcome =>
   // `thenNoEvent`, and the empty `then` an older sidecar wrote for the same
   // thing. Accepted, and nothing happened.
   | "noEvent" | "" => NoChange
-  | "error" => Refused
+  | "error" => Rejected
   // A `then` this harvest has no reading for — a side effect, a published
   // command. Not an effect on this row either way.
   | _ => NoChange
@@ -739,7 +740,7 @@ let deriveCommands = (
         mine->Array.filterMap(o => o.outcome == Emitted || o.from == noRow ? None : Some(o.from)),
       ),
       refusedStates: sortedUnique(
-        mine->Array.filterMap(o => o.outcome == Refused && o.from != noRow ? Some(o.from) : None),
+        mine->Array.filterMap(o => o.outcome == Rejected && o.from != noRow ? Some(o.from) : None),
       ),
       targets: sortedUnique(
         effective->Array.filterMap(o => o.to == o.from || o.to == noRow ? None : Some(o.to)),
@@ -938,7 +939,7 @@ let compare = (
     // exercised in and **refused**: that is the switch and the behavior
     // disagreeing about the same row.
     //
-    // 🚨 **Refused, not merely inert.** `Unrestricted` claims the command is
+    // 🚨 **Rejected, not merely inert.** `Unrestricted` claims the command is
     // never refused — it does not claim the command always emits. A state where a
     // scenario shows it accepted and silent AGREES with that: returning `Ok([])`
     // for a command that would change nothing is this codebase's idempotency

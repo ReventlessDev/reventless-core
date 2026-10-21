@@ -470,7 +470,7 @@ function outcomeOf(s) {
   let match = s.thenKind;
   switch (match) {
     case "error" :
-      return "Refused";
+      return "Rejected";
     case "event" :
       return "Emitted";
     default:
@@ -561,7 +561,7 @@ function deriveCommands(component, observations, labelled) {
         }
       })),
       refusedStates: sortedUnique(Stdlib_Array.filterMap(mine, o => {
-        if (o.outcome === "Refused" && o.from !== noRow) {
+        if (o.outcome === "Rejected" && o.from !== noRow) {
           return o.from;
         }
       })),

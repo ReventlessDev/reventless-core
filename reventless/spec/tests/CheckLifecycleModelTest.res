@@ -58,7 +58,7 @@ describe("deriveCommands separates a refusal from an accepted no-op", () => {
         ~outcome=Check.Emitted,
         ~to_="Deactivated",
       ),
-      observation(~command="Deactivate", ~from="Deactivated", ~outcome=Check.Refused),
+      observation(~command="Deactivate", ~from="Deactivated", ~outcome=Check.Rejected),
     ])
     expect((guarded.inertStates, guarded.refusedStates))->toEqual((
       ["Deactivated"],
@@ -111,7 +111,7 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
     let found = verdictsFor(
       ~observations=[
         observation(~command="MarkEmailVerified", ~from="Active", ~outcome=Check.Emitted),
-        observation(~command="MarkEmailVerified", ~from="Deactivated", ~outcome=Check.Refused),
+        observation(~command="MarkEmailVerified", ~from="Deactivated", ~outcome=Check.Rejected),
       ],
       ~allowedStatesSource=Some("unrestricted"),
     )
