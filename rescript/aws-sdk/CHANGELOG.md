@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.33 (2026-10-21)
+
+**Note:** Version bump only for package @reventlessdev/rescript-aws-sdk
+
+
+
+
+
 # 3.0.0-alpha.32 (2026-10-16)
 
 * feat!(automation): schedules set by events ([53bc436](https://github.com/ReventlessDev/reventless-core/commit/53bc4363dffce81ef36475728bf0dae704716021))

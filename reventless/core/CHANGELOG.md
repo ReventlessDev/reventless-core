@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.301 (2026-10-21)
+
+* feat!: the write-side logic module is called the decision, and a codemod moves an app over ([cb573ff](https://github.com/ReventlessDev/reventless-core/commit/cb573ff5b928c7d7f3e75988dfaa65066f8c95eb))
+
+### BREAKING CHANGES
+
+* <Spec>_Behavior.res, @@reventless.behavior,
+Reventless.Behavior.T, StateChangeSlice.Behavior, Behavior_GWT and
+thenRefused no longer exist. Run `npx reventless-rename-to-decision` at an
+app's root, then rebuild; comments are not rewritten. The PPX must be the
+matching release.
+
+
+
 # 3.0.0-alpha.300 (2026-10-19)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
