@@ -26,7 +26,7 @@ other two publish it.
 
 ## Why — two rungs are already published, the lifecycle's are not
 
-`queryableDef.labelFieldSource` publishes one of `annotation | convention |
+`readSideDef.labelFieldSource` publishes one of `annotation | convention |
 position | fallback`, and its doc comment gives the reason exactly: the rungs are
 not equally believable, and a consumer with a naming rule of its own has to rank
 the declaration against it. `idFieldSource` does the same with

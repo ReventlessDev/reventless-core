@@ -521,7 +521,7 @@ type state = {
 }
 ```
 
-The PPX emits the annotated field name into `stateAnnotationSpec.lifecycle` (sury metadata attached to the state schema). Codegen reads it when building `queryableDef.lifecycleField`.
+The PPX emits the annotated field name into `stateAnnotationSpec.lifecycle` (sury metadata attached to the state schema). Codegen reads it when building `readSideDef.lifecycleField`.
 
 An enum-shaped field is not automatically a candidate. A field tracking a background job's progress — an export, a delivery attempt, a geocoder — is enum-shaped and often named like a status, and annotating it would section the list by how far that job got and filter the command menu against states no command mentions. The annotation is keyed on `lifecycle` rather than `status` for exactly this reason — a record often carries several statuses and at most one lifecycle.
 
@@ -999,7 +999,7 @@ The boolean form stays the right choice where retirement genuinely *is* a flag r
 Two things follow from the one annotation, and the second is why this is not a presentation hint like `@groupBy`:
 
 - **On the schema:** `SuryToJsonSchema.deriveObjectSchema` stamps `x-reventless-retired: {label?, showWhenFalse, value?}` on the named property, so a consumer renders retirement as a *state of the row* rather than as one more data column. `value` is present only in the state form, and its absence is what tells a consumer which form the view declared.
-- **On every read:** rows that are retired — the flag true, or the field equal to the named state — are withheld from callers who are not exempt — the list query, the single-entity query, the by-ids and by-index doors, and the payload of a live change frame. Codegen carries the field name as `queryableDef.retiredField` and the state as `retiredValue`, so a client holding the def holds the whole predicate; it is pushed into SQL and into the DynamoDB `FilterExpression` rather than applied to the returned page, so `first: 2` yields two live rows.
+- **On every read:** rows that are retired — the flag true, or the field equal to the named state — are withheld from callers who are not exempt — the list query, the single-entity query, the by-ids and by-index doors, and the payload of a live change frame. Codegen carries the field name as `readSideDef.retiredField` and the state as `retiredValue`, so a client holding the def holds the whole predicate; it is pushed into SQL and into the DynamoDB `FilterExpression` rather than applied to the returned page, so `first: 2` yields two live rows.
 
 **Payload forms.** Bare, a state constructor, a string label, or a record:
 

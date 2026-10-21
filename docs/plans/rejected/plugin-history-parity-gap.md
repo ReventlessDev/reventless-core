@@ -143,7 +143,7 @@ lockstep with `QueryDbResolvers_{AppSync,GraphQL}`.
 The visibility config is **already committed** (`8a1d86ee3`): `PluginHistoryReadModelSpec`
 is Public with a composite `subIdConfig`; `PluginHistoryProjection` uses
 `UpdateMultiState`; `PluginBaseFragment` has the `PluginHistory` entry;
-`Platform_Admin_Structure` has the `pluginHistoryReadModel` queryableDef; AWS uses
+`Platform_Admin_Structure` has the `pluginHistoryReadModel` readSideDef; AWS uses
 `Single_Stream`. Part 1 is what makes that config *valid* (the admin SDL now declares
 `<single>Items`). So Part 2 is mostly verification + cleanup, not re-adding.
 

@@ -185,7 +185,7 @@ holds several names for one read model:
 | `returnTypeName` | `Catalog_Product` (**singular**) | GraphQL type name |
 | `listFieldName` | `Catalog_Products` (**plural**) | GraphQL list query field |
 
-The AutoUI manifest sets `queryableDef.queryField = listFieldName`
+The AutoUI manifest sets `readSideDef.queryField = listFieldName`
 ([`Plugin_Structure.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/core/src/components/Plugin/Plugin_Structure.res)),
 and the browser subscribes on `readModel.queryField`. Therefore the **publisher
 must also use `listFieldName`** as the channel root

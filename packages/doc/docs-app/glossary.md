@@ -347,7 +347,7 @@ The event the [Clock](#clock) delivers when one of a slice's schedules comes due
 ## View
 
 A read-side component: a [ReadModel](#readmodel) or a
-[StateViewSlice](#stateviewslice). In the platform API its definition is a
-*read-side def* (`Platform_ReadSideDef`); the plugin structure's ReScript type is
-still `queryableDef`. What the generated UI draws from a view is a page: its list
-page, detail page or board page.
+[StateViewSlice](#stateviewslice). In the code and in the platform API its
+definition is a *read-side def*: `readSideDef` in the plugin structure,
+`Platform_ReadSideDef` in the API. What the generated UI draws from a view is a
+page: its list page, detail page or board page.

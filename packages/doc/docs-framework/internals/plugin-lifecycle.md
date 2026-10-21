@@ -314,7 +314,7 @@ lockstep with the shared `QueryDbResolvers_{AppSync,GraphQL}` resolver layer:
 This means **no custom admin Lambda** is needed to surface a composite-key audit view:
 `PluginHistory` keeps its composite key (`name` / `transitionKey`) and renders in the
 AutoUI through the standard path. The AutoUI discovers the `Items` capability by
-introspecting the live SDL — there is no sub-id hint on the `queryableDef`, which is
+introspecting the live SDL — there is no sub-id hint on the `readSideDef`, which is
 exactly how ordinary composite-key read models work too.
 
 > Historically the admin path was hand-rolled and emitted only `single` + `list`, so
