@@ -11,7 +11,14 @@ module CustomerId = Reventless.Id.Make({
   let key = "customerId"
 })
 
-let refsOf = (~viewsByKey, ~ownIdentities=[], ~minted=?, schema: S.t<'a>) => {
+let refsOf = (
+  ~viewsByKey,
+  ~ownIdentities=[],
+  ~minted=?,
+  ~chapter=?,
+  ~viewChapters=[],
+  schema: S.t<'a>,
+) => {
   let reports = []
   let identityViews: Plugin_Structure.identityViews = {
     viewsByKey: Dict.fromArray(viewsByKey),
@@ -19,6 +26,8 @@ let refsOf = (~viewsByKey, ~ownIdentities=[], ~minted=?, schema: S.t<'a>) => {
     ownIdentities,
     report: message => reports->Array.push(message),
     inform: message => reports->Array.push(`info: ${message}`),
+    ?chapter,
+    viewChapter: view => Dict.fromArray(viewChapters)->Dict.get(view),
   }
   let properties = switch schema->S.castToUnknown {
   | Object({properties}) => properties
@@ -57,6 +66,38 @@ describe("a reference derived from the type", () => {
     )
     expect(refs)->toEqual([("buyer", "Customers")])
     expect(reports->Array.some(r => r->String.includes("Products and ProductDemand")))->toBe(true)
+  })
+
+  // A counter keyed by the product beside the product list: each slice links to
+  // the view in its own chapter, so adding the counter leaves the rest untouched.
+  testSync("of several views keyed by it, the one in the field's chapter is the reference", () => {
+    let viewsByKey = [("customerId", ["Customers"]), ("productId", ["Products", "ProductDemand"])]
+    let viewChapters = [("Products", "Product"), ("ProductDemand", "ProductDemand")]
+    let (product, productReports) = refsOf(~viewsByKey, ~viewChapters, ~chapter="Product", order)
+    let (demand, _) = refsOf(~viewsByKey, ~viewChapters, ~chapter="ProductDemand", order)
+    expect((product, productReports, demand))->toEqual((
+      [("buyer", "Customers"), ("productIds", "Products")],
+      [],
+      [("buyer", "Customers"), ("productIds", "ProductDemand")],
+    ))
+  })
+
+  testSync("a chapter holding none of them, or several, still asks for @ref", () => {
+    let viewsByKey = [("customerId", ["Customers"]), ("productId", ["Products", "ProductDemand"])]
+    let (elsewhere, _) = refsOf(
+      ~viewsByKey,
+      ~viewChapters=[("Products", "Product"), ("ProductDemand", "ProductDemand")],
+      ~chapter="Order",
+      order,
+    )
+    let (both, reports) = refsOf(
+      ~viewsByKey,
+      ~viewChapters=[("Products", "Product"), ("ProductDemand", "Product")],
+      ~chapter="Product",
+      order,
+    )
+    expect((elsewhere, both))->toEqual(([("buyer", "Customers")], [("buyer", "Customers")]))
+    expect(reports->Array.some(r => r->String.includes("no chapter singles one out")))->toBe(true)
   })
 
   testSync("no view keyed by it is reported", () => {

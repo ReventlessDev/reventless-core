@@ -466,18 +466,34 @@ function identityReference(identityViews, fieldName, fieldSchema, declared) {
   let len = keyed.length;
   if (len !== 1) {
     if (len !== 0) {
-      identityViews.report(fieldName + ` is a ` + key + `, and ` + keyed.join(" and ") + ` are all keyed by it. Say which it references with @ref.`);
-      return [];
+      let match = identityViews.chapter;
+      let match$1 = identityViews.viewChapter;
+      let inChapter = match !== undefined ? (
+          match$1 !== undefined ? keyed.filter(view => Primitive_object.equal(match$1(view), match)) : []
+        ) : [];
+      if (inChapter.length !== 1) {
+        identityViews.report(fieldName + ` is a ` + key + `, and ` + keyed.join(" and ") + ` are all keyed by it, and no chapter singles one out. Say which it references with @ref.`);
+        return [];
+      }
+      let view = inChapter[0];
+      return [[
+          fieldName,
+          {
+            entity: view,
+            plugin: undefined,
+            identity: key
+          }
+        ]];
     }
     let say = identityViews.ownIdentities.includes(key) ? identityViews.inform : identityViews.report;
     say(fieldName + ` is a ` + key + `, and no view in this plugin is keyed by it, so it references nothing. List the identity in a view, or reference another plugin's with @ref("Plugin.View").`);
     return [];
   }
-  let view = keyed[0];
+  let view$1 = keyed[0];
   return [[
       fieldName,
       {
-        entity: view,
+        entity: view$1,
         plugin: undefined,
         identity: key
       }
@@ -816,6 +832,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
   let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
   let identities = identitiesOpt !== undefined ? identitiesOpt : [];
+  let chapterOf = compName => componentChapters[compName];
   let model = declaredTransitionsOnly ? [] : lifecycleModel;
   let derivedEdgeFor = (component, command) => model.find(e => {
     if (e.component === component) {
@@ -1214,12 +1231,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let identityViews_viewNames = viewKeys.map(param => param[0]);
   let identityViews_report = message => once(log.warn, message);
   let identityViews_inform = message => once(log.info, message);
+  let identityViews_viewChapter = chapterOf;
   let identityViews = {
     viewsByKey: viewsByKey,
     viewNames: identityViews_viewNames,
     ownIdentities: identities,
     report: identityViews_report,
-    inform: identityViews_inform
+    inform: identityViews_inform,
+    viewChapter: identityViews_viewChapter
+  };
+  let identityViewsOf = component => {
+    let newrecord = {...identityViews};
+    newrecord.chapter = componentChapters[component];
+    return newrecord;
   };
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];
@@ -1228,12 +1252,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(identityViews, false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), name => Authorization$Reventless.named(SCS.Spec.authorizationOf(name)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(identityViewsOf(SCS.Spec.name), false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), name => Authorization$Reventless.named(SCS.Spec.authorizationOf(name)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
       consistencyRead: consistencyReadFor(consumed),
-      events: extractEventDefs(identityViews, SCS.Spec.eventSchema),
+      events: extractEventDefs(identityViewsOf(SCS.Spec.name), SCS.Spec.eventSchema),
       errors: extractErrorDefs(SCS.Spec.errorSchema),
       chapter: componentChapters[SCS.Spec.name]
     };
@@ -1243,12 +1267,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(identityViews, true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), name => Authorization$Reventless.named(A.Spec.authorizationOf(name)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(identityViewsOf(A.Spec.name), true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), name => Authorization$Reventless.named(A.Spec.authorizationOf(name)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
       consistencyRead: undefined,
-      events: extractEventDefs(identityViews, A.Spec.eventSchema),
+      events: extractEventDefs(identityViewsOf(A.Spec.name), A.Spec.eventSchema),
       errors: extractErrorDefs(A.Spec.errorSchema),
       chapter: componentChapters[A.Spec.name]
     };

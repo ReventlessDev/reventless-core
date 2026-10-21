@@ -593,6 +593,8 @@ id find the view that lists it without an `@ref`. `report` says where the type
 cannot decide: several views keyed by the identity, none, or an `@ref` naming a
 view keyed by another. `inform` takes the one case that is not a fault: an
 identity in `ownIdentities`, declared by this plugin, that no view lists yet.
+Where several views are keyed by it, the one in `chapter` (the declaring
+component's) is the reference, if exactly one is there.
 */
 type identityViews = {
   viewsByKey: dict<array<string>>,
@@ -600,6 +602,8 @@ type identityViews = {
   ownIdentities: array<string>,
   report: string => unit,
   inform: string => unit,
+  chapter?: string,
+  viewChapter?: string => option<string>,
 }
 
 // The reference a typed id implies, and the check on one it declares.
@@ -627,12 +631,21 @@ let identityReference = (
         )
         []
       | several =>
-        identityViews.report(
-          `${fieldName} is a ${key}, and ${several->Array.join(
-              " and ",
-            )} are all keyed by it. Say which it references with @ref.`,
-        )
-        []
+        let inChapter = switch (identityViews.chapter, identityViews.viewChapter) {
+        | (Some(chapter), Some(viewChapter)) =>
+          several->Array.filter(view => viewChapter(view) == Some(chapter))
+        | _ => []
+        }
+        switch inChapter {
+        | [view] => [(fieldName, {Reventless.Semantic.entity: view, plugin: None, identity: key})]
+        | _ =>
+          identityViews.report(
+            `${fieldName} is a ${key}, and ${several->Array.join(
+                " and ",
+              )} are all keyed by it, and no chapter singles one out. Say which it references with @ref.`,
+          )
+          []
+        }
       }
     | _ =>
       declared->Array.forEach(((_, target)) =>
@@ -1695,7 +1708,9 @@ let make = (
     ownIdentities: identities,
     report: message => once(log.warn, message),
     inform: message => once(log.info, message),
+    viewChapter: chapterOf,
   }
+  let identityViewsOf = component => {...identityViews, chapter: ?chapterOf(component)}
 
   let stateChangeDefs =
     stateChangeSlices->Array.mapWithIndex((module(SCS: ReventlessInfra.StateChangeSlice.T), i) => {
@@ -1706,7 +1721,7 @@ let make = (
         {
           Reventless.Plugin.name: SCS.Spec.name,
           commands: extractCommandDefs(
-            ~identityViews,
+            ~identityViews=identityViewsOf(SCS.Spec.name),
             ~isAggregate=false,
             ~partitionKey=?partitionBySlice->Dict.get(SCS.Spec.name),
             ~mutationFieldFor=variantName =>
@@ -1725,7 +1740,10 @@ let make = (
           consumedEventTypes: consumed,
           linkedViews: linkedSvsFor(produced),
           consistencyRead: consistencyReadFor(consumed),
-          events: extractEventDefs(~identityViews, SCS.Spec.eventSchema->S.castToUnknown),
+          events: extractEventDefs(
+            ~identityViews=identityViewsOf(SCS.Spec.name),
+            SCS.Spec.eventSchema->S.castToUnknown,
+          ),
           errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
           chapter: chapterOf(SCS.Spec.name),
         }: Reventless.Plugin.writeSideDef
@@ -1742,7 +1760,7 @@ let make = (
       {
         Reventless.Plugin.name: A.Spec.name,
         commands: extractCommandDefs(
-          ~identityViews,
+          ~identityViews=identityViewsOf(A.Spec.name),
           ~isAggregate=true,
           ~mutationFieldFor=variantName =>
             Api_Naming.aggregateMutationField(
@@ -1759,7 +1777,10 @@ let make = (
         consumedEventTypes: [],
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
-        events: extractEventDefs(~identityViews, A.Spec.eventSchema->S.castToUnknown),
+        events: extractEventDefs(
+          ~identityViews=identityViewsOf(A.Spec.name),
+          A.Spec.eventSchema->S.castToUnknown,
+        ),
         errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(A.Spec.name),
       }: Reventless.Plugin.writeSideDef
