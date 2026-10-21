@@ -84,7 +84,8 @@ A StateViewSlice is **split into two files**:
   `let project = ({event}) => [...]` function receiving a `consumed` envelope
   `{event, meta, recordedAt}`.
 
-The spec file. `@@reventless.spec` injects `name`, `module Id`, `moduleUrl`,
+The spec file. `@@reventless.spec` injects `name`, `module Id` (the row key, a plain
+string unless the view declares `module Id = OrderId`), `moduleUrl`,
 `let config = config()`, and `let subIdConfig = None`:
 
 ```rescript title="Item/StateViewStream/Items.res" showLineNumbers

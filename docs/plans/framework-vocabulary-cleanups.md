@@ -1,6 +1,6 @@
 # Plan: the framework's smaller vocabulary cleanups
 
-**Status:** 🚧 [V1](#v1-glossary-entries), [V2](#v2-pages-not-views-for-what-the-ui-draws), [V3](#v3-queryabledef-becomes-readsidedef), [V6](#v6-three-stray-words-in-the-docs) and [V7](#v7-american-spelling-in-prose) done 2026-10-21; [V4](#v4-a-state-views-row-key-is-id) and [V5](#v5-two-identifiers-that-say-the-wrong-thing) not started.<br/>
+**Status:** 🚧 [V1](#v1-glossary-entries), [V2](#v2-pages-not-views-for-what-the-ui-draws), [V3](#v3-queryabledef-becomes-readsidedef), [V4](#v4-a-state-views-row-key-is-id), [V6](#v6-three-stray-words-in-the-docs) and [V7](#v7-american-spelling-in-prose) done 2026-10-21; [V5](#v5-two-identifiers-that-say-the-wrong-thing) not started.<br/>
 **Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
 its [order of work](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#14-order-of-work)
 and [decisions](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
@@ -64,11 +64,13 @@ Source only, no wire change:
 - A hand-written `module Key` in such a file is a compile error naming `module Id`.
 - `StateViewSlice.Spec` requires `module Id: Id.T`; `StateViewSlice_Builder`,
   `StateViewSlice_Callback`, `Projection_GWT` and the runtimes read `Spec.Id`.
-- The five examples that declare `module Key = …` change to `module Id = …`.
+- The eleven views in the examples that declare `module Key = …` change to `module Id = …`, as
+  do the gwt and local test fixtures.
 - Republish the PPX with the core packages. The build that drops the generic injection is the
   proof that nothing read it
   ([§7.2 of the analysis](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#72-what-the-collision-check-found)).
-- `CLAUDE.md`: the `@@reventless.spec` paragraph says `module Id`, not `module Key`.
+- `CLAUDE.md`: the `@@reventless.spec` paragraph says `module Id`, not `module Key`. The
+  paragraph lives in `.claude/rules/app-developer.md`.
 
 ### V5. Two identifiers that say the wrong thing
 

@@ -40,7 +40,7 @@ type command = Place({customerId: CustomerId.t, productIds: array<ProductId.t>})
 
 ```rescript
 // StateView/Orders.res — rows are keyed by it
-module Key = OrderId
+module Id = OrderId
 
 @schema
 type state = {orderId: OrderId.t, customerId: CustomerId.t}
@@ -80,7 +80,7 @@ module TestItemSpec = {
 let testId: TestItemSpec.Id.t = "item-abc"
 ```
 
-It is also the default row key of a StateView (`module Key`), so a view that declares no identity keeps plain `string` keys. In tests for typed specs, make ids from literals once per file: `let oid = OrderId.make`, then `oid("o1")`.
+It is also the default row key of a StateView (`module Id`), so a view that declares no identity keeps plain `string` keys. In tests for typed specs, make ids from literals once per file: `let oid = OrderId.make`, then `oid("o1")`.
 
 ## Converting Ids
 
