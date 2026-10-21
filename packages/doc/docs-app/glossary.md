@@ -259,10 +259,13 @@ queries read. See [ReadModel component](/app/components/readmodel).
 ## Rejection
 
 The outcome a client sees when a command does not go through: a
-`CommandRejected` result with an `errorCode`. Most often the cause is a declared
-[error](#error) that `decide` returned; the platform also rejects a command the
-caller may not send (`Forbidden`) and one it could not record (`AppendFailed`,
-`Conflict`). A plain-language *refusal* is a declared error.
+`CommandRejected` result with an `errorCode` and a `cause`. With cause `DOMAIN`
+the code is a declared [error](#error) that `decide` returned; with `ACCESS` the
+caller may not send the command (`Forbidden`); with `INFRASTRUCTURE` the
+platform could not record it (`AppendFailed`, `Conflict`, …) and a retry may
+succeed. A spec may not declare an error named like one of the platform's codes.
+A plain-language *refusal* is a declared error. See
+[Mutations](/app/graphql-api-guide#5-mutations).
 
 ## Row
 

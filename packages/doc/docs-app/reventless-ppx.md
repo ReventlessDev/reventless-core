@@ -893,7 +893,7 @@ Three things follow, all enforced server-side:
 
 - **On a command:** the framework **overwrites** the field with the authenticated caller's id before publishing. An absent field and a forged field therefore produce the same row — the client's value is ignored, not trusted.
 - **On a queryable's state:** reads of that view are narrowed to the caller's own rows, on every transport.
-- **On a consumed event:** the field names the owner of what the slice's commands act on. Before `decide`, the handler reads that owner from the events of the command's own partition (events read across partitions do not count) and refuses a caller who is not the owner with `errorCode: "Forbidden"`. Exempt callers and commands the platform issues itself are not refused. Two different owners in one partition refuse everyone, as a data defect. An aggregate that marks an owner on its events skips persisted snapshots, which hold its state but not its owner.
+- **On a consumed event:** the field names the owner of what the slice's commands act on. Before `decide`, the handler reads that owner from the events of the command's own partition (events read across partitions do not count) and refuses a caller who is not the owner with `errorCode: "Forbidden"` and `cause: ACCESS`. Exempt callers and commands the platform issues itself are not refused. Two different owners in one partition refuse everyone, as a data defect. An aggregate that marks an owner on its events skips persisted snapshots, which hold its state but not its owner.
 
 ```rescript
 // StateChange/PlaceOrder.res

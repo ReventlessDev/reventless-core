@@ -1,6 +1,6 @@
 # Plan: a rejected command says why it was rejected
 
-**Status:** 📋 Planned 2026-10-21. Not started.<br/>
+**Status:** ✅ Built 2026-10-21, not yet released.<br/>
 **Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
 [§8.3](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#83-alternatives-for-telling-a-client-which-no-it-got),
 decision [D11](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
@@ -72,8 +72,12 @@ platform's codes. Both are breaking for existing clients
   decision file: *"`Conflict` is a code the platform uses for its own rejections; name this
   error for what the model means, such as `AlreadyBooked`"*. The PPX is OCaml and cannot read
   the ReScript list, so it holds a copy, and a spec test asserts the two lists agree.
-- Webhook statuses (`Unsigned`, `InvalidBody`, `PublishFailed`) are HTTP answers, not
-  `CommandRejected`, and are not reserved.
+- Webhook statuses (`Unsigned`, `InvalidBody`) are HTTP answers, not `CommandRejected`, and
+  are not reserved.
+- As built, the list holds every code the platform puts on `CommandRejected`, not only the
+  three above: the plugin status gate's `PluginUnavailable`, `PluginInactive` and
+  `PluginRetired`, and an inbound translation's `PublishFailed` and `TranslationFailed`, which
+  its mutation door answers as `CommandRejected` too.
 
 ### C4. Docs
 
@@ -98,6 +102,18 @@ platform's codes. Both are breaking for existing clients
   for every plugin; a plugin built before this change would declare it without `cause`. Every
   plugin of a platform must be built against the same core version before the field reaches
   the merged schema; check how the shared type names are reconciled before [C2](#c2-the-schema-and-the-resolvers) lands.
+
+  Checked before [C2](#c2-the-schema-and-the-resolvers). The admin source API stamps `CommandRejected` `@canonical`, and a
+  canonical definition shadows a divergent plugin copy instead of failing the merge. With no
+  canonical copy (the split-mode Domain merged API, whose base document carries no
+  `CommandResult` family), the merge unions the plugin copies' fields, and a missing field is
+  compatible. So no mix of versions fails a merge or changes what a client that does not
+  select `cause` gets. The one hazard is a client that selects `cause` from a mutation served
+  by a plugin built before the change: the field is in the merged schema but that plugin's
+  resolver returns no value, so the non-null field errors. Hence the rule stands: rebuild every
+  plugin before clients select `cause`. The new `enum CommandRejectionCause` is left
+  unstamped, like `SortOrder`: every source emits an identical copy, and `@canonical` was
+  spike-validated only on object types, interfaces and unions.
 - **A spec that already declares a reserved name.** None in this repo does. A downstream
   application that does gets a compile error with a rename suggestion, which is the point, but
   the release notes must say it.

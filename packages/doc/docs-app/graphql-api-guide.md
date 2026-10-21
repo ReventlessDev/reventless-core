@@ -117,6 +117,31 @@ union CommandResult = CommandAccepted | CommandPending | CommandRejected
 
 `CommandPending` is what an [async](./reventless-ppx.md) component returns, having handed the command to a queue rather than run it inline. Domain errors arrive as `CommandRejected`, not as a typed error union per command — a client selects the three arms with inline fragments once and reuses that selection everywhere.
 
+```graphql
+type CommandRejected {
+  msgId: ID!
+  errorCode: String!
+  errorDetail: String
+  cause: CommandRejectionCause!
+}
+
+enum CommandRejectionCause {
+  DOMAIN
+  ACCESS
+  INFRASTRUCTURE
+}
+```
+
+`cause` says who said no, and so what a client should do:
+
+| `cause` | Who said no | `errorCode` | What a client does |
+|---|---|---|---|
+| `DOMAIN` | the model: `decide` returned one of the spec's declared errors, or an inbound translation refused its input (`TranslationFailed`) | the declared error's name, such as `CategoryAlreadyExists` | show the reason; retrying the same command is pointless |
+| `ACCESS` | the caller may not act: an `@authorize` rule or an `@owner` check refused before `decide` ran | `Forbidden` | ask the caller to sign in or switch account; do not retry as is |
+| `INFRASTRUCTURE` | the platform: the event log refused the append (`AppendFailed`), the retries could not absorb contention (`Conflict`), the plugin is unavailable, inactive or retired (`PluginUnavailable`, `PluginInactive`, `PluginRetired`), or an inbound translation could not publish (`PublishFailed`) | the platform's code | retry later; the model never said no and nothing was recorded |
+
+`errorCode` is a declared error's name only when `cause` is `DOMAIN`. The platform's codes are reserved: a spec or decision file whose `type error` declares a variant named `Forbidden`, `Conflict`, `AppendFailed`, `PluginUnavailable`, `PluginInactive`, `PluginRetired`, `PublishFailed` or `TranslationFailed` fails to compile, so even a client that does not select `cause` never confuses the two. `cause` is additive: a query that does not select it gets exactly the fields it asked for.
+
 ### 5.1 From an `Aggregate/`
 
 A closed union `command` produces one mutation field per variant. The field name is `<Plugin>_<Entity>_<Variant>`, and an `id: ID!` argument is **prepended** to the variant's native args (because aggregates are keyed by the aggregate id).
