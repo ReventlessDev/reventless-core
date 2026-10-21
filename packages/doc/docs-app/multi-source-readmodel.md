@@ -1,4 +1,4 @@
-# Mixed-source ReadModels — projecting Aggregate + DCB events together
+# Multi-source ReadModels — projecting Aggregate + DCB events together
 
 A ReadModel can subscribe to events from any combination of Aggregate `EventTopic`s
 and a plugin's DCB `EventLog`. The runtime registers all of them in the same
@@ -40,7 +40,7 @@ read in the `Ordering/src/plugin.json` (or that defaults to your folder name).
 > the typo. Without this check, the projection would silently
 > see zero events.
 
-## Authoring a mixed-source ReadModel
+## Authoring a multi-source ReadModel
 
 ### 1. The ReadModel spec
 

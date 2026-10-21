@@ -253,7 +253,7 @@ and the infra entry points at provider-authoring docs.
 - `plugin-system.md` — strongest reference page; the `Platform.T` builder table (`:57-70`)
   and two cross-plugin d2 diagrams (`:113-140`) are genuinely useful. Lists
   automation/translation-slice builders and `Plugin.make` params (`:236-251`) that have no
-  worked example in the journey — link `mixed-source-automationslice.md` etc.
+  worked example in the journey — link `multi-source-automationslice.md` etc.
   **`heartbeatInterval` differs per page for the same Catalog plugin:** `60` in
   `aggregates.md:265,316`, `5` in `dcb-slices.md:233` and `plugin-system.md:84`. Pick one.
 - `component-overview.md` — excellent diagram coverage (full aggregate + full DCB plugin

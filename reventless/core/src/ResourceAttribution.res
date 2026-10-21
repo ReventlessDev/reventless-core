@@ -7,11 +7,11 @@ drifting into private spellings of the same fact.
 
 The three facts are deliberately independent:
 
-- `ComponentType.t` — the *modelling* kind (Aggregate, StateViewSlice, …): what
+- `ComponentType.t` — the *modeling* kind (Aggregate, StateViewSlice, …): what
   the element IS in the domain model.
-- `Role.t` — the *deployment piece* (EventLog, QueryDb, Runtime, …): what job
-  this particular resource does for that element. One component owns several
-  pieces, so kind alone can't identify a resource.
+- `Role.t` — the *deployment role* (EventLog, QueryDb, Runtime, …): what job
+  this particular resource does for that element. One component owns resources in
+  several roles, so kind alone can't identify a resource.
 - `Scope.t` — the level the resource is attributed to: an individual component,
   a plugin's shared substrate, or platform substrate.
 
@@ -40,8 +40,8 @@ module Scope = {
 }
 
 /**
-The deployment piece a resource implements. `Other(string)` is the escape hatch
-for support pieces and future roles (same pattern as `Monitoring.unitKind`).
+The deployment role a resource plays. `Other(string)` is the escape hatch
+for support roles and future ones (same pattern as `Monitoring.unitKind`).
 */
 module Role = {
   type t =
@@ -105,11 +105,11 @@ module Role = {
 /**
 The model component a provisioned resource belongs to.
 
-Piece builders (EventLog, QueryDb, CommandTopic, EventTopic, EventCollector) are
+Role builders (EventLog, QueryDb, CommandTopic, EventTopic, EventCollector) are
 shared building blocks applied as functors by many different component kinds — a
 QueryDb is instantiated by ReadModel, StateViewSlice, AutomationSlice, both
 translation slices and Counter. The adapter that provisions the physical resource
-sits at the bottom of that chain and would otherwise only know its own piece, so
+sits at the bottom of that chain and would otherwise only know its own role, so
 `kind` would collapse onto `role` and the owning component would be unrecoverable.
 The owning builder passes this record down instead.
 

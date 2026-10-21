@@ -12,8 +12,8 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 An AutomationSlice can also run on a time: a due time inside an item, a time its spec declares (*every morning at 06:00*), or a time an event sets per entity (*at the hour each customer chose*). See [Running on a time](#running-on-a-time).
 :::
 
-:::tip Mixed-source automation
-An AutomationSlice can consume events from **multiple sources** — Aggregate `EventTopic`s and DCB `EventLog`s — via per-source `Mapping` modules. `collect` and `resolve` move to the mapping; `process` stays source-agnostic. See the [mixed-source guide](../mixed-source-automationslice.md) for the per-source mapping convention, ambient context, and `toTags` validation.
+:::tip Multi-source automation
+An AutomationSlice can consume events from **multiple sources** — Aggregate `EventTopic`s and DCB `EventLog`s — via per-source `Mapping` modules. `collect` and `resolve` move to the mapping; `process` stays source-agnostic. See the [multi-source guide](../multi-source-automationslice.md) for the per-source mapping convention, ambient context, and `toTags` validation.
 :::
 
 ## Overview

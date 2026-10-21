@@ -49,8 +49,8 @@ leaves no image and no error — check `static/d2/<page>/` after touching one.
   expand/contract material (→ `deployment-guide.md`).
 - **Dedupe to owners:** Lambda layer content → `aws-lambda-layer.md`;
   custom-domain content → `custom-domain.md`; workspace-link mechanics →
-  `cross-repo-dev-linking.md`; mixed-source read model →
-  `mixed-source-readmodel.md`.
+  `cross-repo-dev-linking.md`; multi-source read model →
+  `multi-source-readmodel.md`.
 - **`cross-repo-dev-linking.md` + `ppx-binary-management.md`** into a labelled
   Maintainers grouping, with planning language stripped.
 

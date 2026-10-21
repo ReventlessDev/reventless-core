@@ -271,6 +271,12 @@ const config = {
             from: "/app/concepts/stateviewslice-usage",
             to: "/app/components/stateviewslice",
           },
+          // The two pages took the code's word, multi-source.
+          {from: "/app/mixed-source-readmodel", to: "/app/multi-source-readmodel"},
+          {
+            from: "/app/mixed-source-automationslice",
+            to: "/app/multi-source-automationslice",
+          },
         ],
       },
     ],

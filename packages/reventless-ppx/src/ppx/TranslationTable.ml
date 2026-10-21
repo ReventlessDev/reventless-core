@@ -1,6 +1,6 @@
 open Ppxlib
 
-(* ── The port's translation table, read off the mapping's own arms ──
+(* ── The extension point's translation table, read off the mapping's own arms ──
    Which internal event each `PublishEvent` publishes, and which commands each
    published event routes to. Transcribed from the switch rather than declared,
    so the names cannot be misspelled — they are the constructors the compiler
@@ -60,7 +60,7 @@ let rec pattern_ctors (p : pattern) : string list option =
    sits in the payload. Everything else in the union either carries no name this
    can read (a promise, an opaque forward) or routes nothing (a directive).
 
-   One side per mapping function: the port's two halves are [Published] out and
+   One side per mapping function: the extension point's two halves are [Published] out and
    [Accepted] in, the subscriber's are [Handled] in and [Issued] back. *)
 type side = Published | Handled | Accepted | Issued
 
@@ -248,7 +248,7 @@ let edges_of_switch ~side (expr : expression) : (string * string) list =
                  "a wildcard arm publishes something, so the events it covers have no names" )))
       cases
   (* A mapping that routes nothing at all — the `=> []` idiom for a direction a
-     port does not use. Read to the end, so it is no edges rather than an
+     mapping does not use. Read to the end, so it is no edges rather than an
      unreadable arm. *)
   | Pexp_array [] | Pexp_construct ({ txt = Lident "[]"; _ }, None) -> []
   | _ ->
@@ -256,7 +256,7 @@ let edges_of_switch ~side (expr : expression) : (string * string) list =
       (Unfollowable (expr.pexp_loc, "the mapping is not a switch over the incoming message"))
 
 (* Grouped one way for each side: a published event names the internal events
-   producing it (many-to-one is the case a port exists for), a handled event
+   producing it (many-to-one is the case an extension point exists for), a handled event
    names the commands it routes to. *)
 let group ~(key : string * string -> string) ~(value : string * string -> string)
     (edges : (string * string) list) : (string * string list) list =
@@ -332,7 +332,7 @@ let optional_rows ~side ~what (binding_name : string) (body : structure) =
 
 (* `let publishedEvents` on an ExtensionPoint mapping file, read off
    `mapOutgoingEvent`. Absent or `None` publishes nothing. Keyed by published
-   event, so the many-to-one case a port exists for reads naturally. *)
+   event, so the many-to-one case an extension point exists for reads naturally. *)
 let derive_published ~loc (body : structure) : structure_item option =
   if Util.has_let_binding "publishedEvents" body then None
   else
@@ -343,7 +343,7 @@ let derive_published ~loc (body : structure) : structure_item option =
          (group ~key:snd ~value:fst (optional_rows ~side:Published ~what "mapOutgoingEvent" body)))
 
 (* `let acceptedCommands` on an ExtensionPoint mapping file, read off
-   `mapIncomingCommand` — the port's inbound half. Keyed by the arriving EP
+   `mapIncomingCommand` — the extension point's inbound half. Keyed by the arriving EP
    command, so it mirrors `handledEvents`. *)
 let derive_accepted ~loc (body : structure) : structure_item option =
   if Util.has_let_binding "acceptedCommands" body then None
@@ -359,7 +359,7 @@ let derive_accepted ~loc (body : structure) : structure_item option =
          ~value_name:what ~target_field:"toCommandTypes" (group ~key:fst ~value:snd rows))
 
 (* `let issuedCommands` on an extension mapping, read off its `mapOutgoingEvent`
-   — the commands it sends back to the port. Keyed by the published command, so
+   — the commands it sends back to the extension point. Keyed by the published command, so
    it mirrors `publishedEvents`. *)
 let derive_issued ~loc (inner : structure) : structure_item option =
   if Util.has_let_binding "issuedCommands" inner then None
@@ -385,7 +385,7 @@ let derive_handled ~loc (inner : structure) : structure_item option =
       (binding ~loc ~modul:"ExtensionMapping" ~type_name:"handledEvent" ~value_name:what
          ~target_field:"toCommandTypes" (group ~key:fst ~value:snd rows))
 
-(* The framework's own ports are inner modules inside a functor — a platform
+(* The framework's own extension points are inner modules inside a functor — a platform
    mapping is parameterised by runtime ops it can only receive at build time —
    and test fixtures declare theirs inline. Walk into any module shaped like a
    mapping so those tables are derived too, whatever the file is called.

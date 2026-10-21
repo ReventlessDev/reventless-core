@@ -628,8 +628,9 @@ None of that was applied.
 The GWT DSL and the code say *multi-source*
 ([`MultiSourceProjection_GWT.res`](../../reventless/gwt/src/MultiSourceProjection_GWT.res)).
 The docs say *mixed-source* in two page names and their prose
-([`mixed-source-readmodel.md`](../../packages/doc/docs-app/mixed-source-readmodel.md),
-[`mixed-source-automationslice.md`](../../packages/doc/docs-app/mixed-source-automationslice.md)),
+(`mixed-source-readmodel.md` and `mixed-source-automationslice.md`, since renamed to
+[`multi-source-readmodel.md`](../../packages/doc/docs-app/multi-source-readmodel.md) and
+[`multi-source-automationslice.md`](../../packages/doc/docs-app/multi-source-automationslice.md)),
 about 20 files each way.
 
 ### 10.2 Verdict

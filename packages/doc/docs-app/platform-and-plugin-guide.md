@@ -1221,7 +1221,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     Customer_Behavior,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
-  // Mixed-source: profile from the Customer aggregate + orderCount from the DCB log
+  // Multi-source: profile from the Customer aggregate + orderCount from the DCB log
   module CustomersReadModel = Platform.ReadModelStream.Make(Customers, Customers_Projections)
 
   // --- DCB-based: Order + CatalogProduct (cross-entity consistency) ---
@@ -1321,7 +1321,7 @@ module CustomerOrdersMapping = Mapping.Make(
 let mappings: array<module(Mapping)> = [module(CustomerMapping), module(CustomerOrdersMapping)]
 ```
 
-See `examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers_Projections.res` for the complete mixed-source example.
+See `examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers_Projections.res` for the complete multi-source example.
 
 ### Extension Points in Hybrid Plugins
 

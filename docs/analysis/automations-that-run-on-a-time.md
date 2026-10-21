@@ -794,7 +794,7 @@ after two customers chose a time and one digest went out:
 
 | Function | Needs | Change |
 |---|---|---|
-| `collect` | when the source event was recorded, to compute a due time | add the recorded time to `context`, or pass the event's metadata; the context is deliberately narrow ([mixed-source guide](../../packages/doc/docs-app/mixed-source-automationslice.md#ambient-context)), so this is a framework decision |
+| `collect` | when the source event was recorded, to compute a due time | add the recorded time to `context`, or pass the event's metadata; the context is deliberately narrow ([multi-source guide](../../packages/doc/docs-app/multi-source-automationslice.md#ambient-context)), so this is a framework decision |
 | `process` | the current time, to tell whether an item is due | a `~now` argument, given by the runtime and fixed by the GWT DSL |
 
 Both are additive for slices written with labelled arguments the PPX can default; a positional
@@ -1100,8 +1100,8 @@ a schedule.
 
 **T9. May a schedule be set by an event from another plugin?**
 **Recommendation: yes, as any source**: the mapping that carries `reschedule` reads that
-plugin's events through its extension, as a mixed-source automation already reads other sources
-([mixed-source guide](../../packages/doc/docs-app/mixed-source-automationslice.md)).
+plugin's events through its extension, as a multi-source automation already reads other sources
+([multi-source guide](../../packages/doc/docs-app/multi-source-automationslice.md)).
 
 **T10. Should `Schedule.rate` be restructured into the three shapes, or grow?**
 

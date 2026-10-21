@@ -307,7 +307,7 @@ conformance suite is bound to `Customer` in
 
 ### Read Model: `Customers` (mixed aggregate + DCB)
 
-The canonical **mixed-source** read model: one `Customers` row keyed by
+The canonical **multi-source** read model: one `Customers` row keyed by
 `customerId`, fed by **two sources at once** —
 
 | Source | Contributes | Events |
@@ -326,7 +326,7 @@ Each mapping uses `UpdateWithDefault`, so the merge is order-independent — an
 `OrderPlaced` arriving before its customer's `Registered` still creates the row.
 
 This is the canonical place to study an **aggregate + DCB** projection — see
-[Mixed-source read models](/app/components/readmodel) for the pattern. Note it is
+[Multi-source read models](/app/components/readmodel) for the pattern. Note it is
 a **`ReadModelStream`**: the same multi-source dispatch as a non-stream
 `ReadModel`, plus live updates pushed to subscribed clients, so the blended
 profile-and-order-count row updates in real time.

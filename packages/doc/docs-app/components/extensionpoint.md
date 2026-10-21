@@ -146,7 +146,7 @@ module type Impl = {
 
 ### The translation table
 
-Which internal event becomes which published event is the port's public contract,
+Which internal event becomes which published event is the extension point's public contract,
 and it is published on `extensionPointDef.publishedEvents` so a tool can render,
 diff or document it. You do not declare it: the PPX reads it off the `switch`
 arms below, so the names are the constructors the compiler already checked and a

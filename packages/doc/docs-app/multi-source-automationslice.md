@@ -1,14 +1,14 @@
-# Mixed-source AutomationSlice
+# Multi-source AutomationSlice
 
 An `AutomationSlice` can consume events from multiple sources — Aggregate `EventTopic`s alongside its own (or another) `DcbEventLog` `EventTopic` — react via the same TODO list pattern, and emit commands targeting a downstream slice. This lets an Aggregate event directly trigger a DCB command without an intermediate ReadModel + polling/trigger orchestration.
 
 ## When to use
 
-Choose mixed-source automation when:
+Choose multi-source automation when:
 
 - A reactive process must observe events from **both** sides of the framework (Aggregates and DCB) for the same logical entity.
 - You need the standard automation guarantees — exactly-once command emission, retries, heartbeat sweeps, TODO-list correlation — but the events you observe come from heterogeneous sources.
-- The alternative would be a ReadModel + an external poller/trigger; mixed-source automation collapses both into one runtime component.
+- The alternative would be a ReadModel + an external poller/trigger; multi-source automation collapses both into one runtime component.
 
 The shape to picture is the online shop's **auto-fulfilment** automation: an
 order is a DCB slice, the customer that placed it is an aggregate, and the
@@ -19,7 +19,7 @@ automation observes both and emits the command.
 
 ## Anatomy
 
-A mixed-source automation slice is **two files** in an `Automation/` folder:
+A multi-source automation slice is **two files** in an `Automation/` folder:
 
 ```
 Automation/
@@ -171,7 +171,7 @@ The first writer wins for `collect`: if two mappings produce the same TODO id, o
 
 ## Backfill / replay
 
-Mixed-source slices start from current — same convention as Aggregates. There is no automatic historical replay. If you need to backfill from existing events for a specific use case, ship it as an explicit one-shot tool rather than baking it into normal slice operation.
+Multi-source slices start from current — same convention as Aggregates. There is no automatic historical replay. If you need to backfill from existing events for a specific use case, ship it as an explicit one-shot tool rather than baking it into normal slice operation.
 
 ## Backward compatibility
 

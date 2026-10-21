@@ -124,7 +124,7 @@ A single plugin can **mix both approaches**. Independent entities use aggregates
 
 **This criterion does not decide between the approaches.** Three slice types cover autonomous workflows and external system integration, and they work with both:
 
-- **AutomationSlice** — reacts to events by generating new commands (e.g., auto-ship orders after payment confirmation). It declares one mapping per source, so it can observe an Aggregate's events, the plugin's DCB log, or both. See [Mixed-source AutomationSlice](./mixed-source-automationslice.md).
+- **AutomationSlice** — reacts to events by generating new commands (e.g., auto-ship orders after payment confirmation). It declares one mapping per source, so it can observe an Aggregate's events, the plugin's DCB log, or both. See [Multi-source AutomationSlice](./multi-source-automationslice.md).
 - **OutboundTranslationSlice** — reacts to events by calling external systems (e.g., send order confirmation email). Its `sourceNames` lists the Aggregates or DCB logs it listens to; `[]` means the plugin's own DCB log.
 - **InboundTranslationSlice** — receives external input and translates to commands (e.g., import products from supplier feed).
 
@@ -394,6 +394,6 @@ plugin-wide namespace and collide with the next host.
 | CommandTopic (per aggregate) | CommandTopic (shared per plugin) | Command delivery |
 | EventTopic (per aggregate) | EventTopic (shared) | Event distribution |
 
-The rows pair the closest equivalents; they are not exclusive. AutomationSlice and both translation slices also work alongside aggregates, and a ReadModel can project DCB events (see [Mixed-source ReadModel](./mixed-source-readmodel.md)).
+The rows pair the closest equivalents; they are not exclusive. AutomationSlice and both translation slices also work alongside aggregates, and a ReadModel can project DCB events (see [Multi-source ReadModel](./multi-source-readmodel.md)).
 
 ---

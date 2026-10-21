@@ -107,7 +107,7 @@ module type Impl = {
   >
 
   // Which published event routes to which commands — the subscriber's half of
-  // the port's translation table. Derived by the PPX from `mapIncomingEvent`'s
+  // the extension point's translation table. Derived by the PPX from `mapIncomingEvent`'s
   // own arms; you do not write it.
   let handledEvents: array<handledEvent>
 }
