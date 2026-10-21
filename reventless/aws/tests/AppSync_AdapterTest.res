@@ -1080,3 +1080,36 @@ describe("AppSync_Adapter.injectAwsAuth — subscriptions", () => {
     expect(decodeFragment(aug).subscriptions->Array.length)->toBe(2)
   })
 })
+
+// ── A failed schema push says why ────────────────────────────────────────────
+
+describe("AppSync_Adapter.startSchemaCreationRetrying", () => {
+  // A client whose every call rejects the way the SDK does, with an Error.
+  let rejectingClient: string => AppSync_Adapter.appSyncClient = %raw(`
+    message => ({send: () => Promise.reject(new Error(message))})
+  `)
+
+  test("fails with the API and AWS's message, not [object Object]", async () => {
+    let message = ref("")
+    try {
+      await AppSync_Adapter.startSchemaCreationRetrying(
+        rejectingClient("BadRequestException: Failed to parse schema document"),
+        {apiId: "api-1", definition: "type Query"},
+      )
+    } catch {
+    | exn => message := exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("")
+    }
+    expect(message.contents)->toContain("api-1")
+    expect(message.contents)->toContain("Failed to parse schema document")
+    expect(message.contents)->not_->toContain("[object Object]")
+  })
+
+  testSync("says when the retries ran out", () =>
+    expect(
+      AppSync_Adapter.schemaPushFailure(
+        ~apiId="api-1",
+        Transient("ConcurrentModificationException: Schema is currently being altered"),
+      ),
+    )->toContain("still failed after its retries")
+  )
+})

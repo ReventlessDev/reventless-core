@@ -33,8 +33,16 @@ function startSchemaCreation(client, input) {
   return client.send(new ClientAppsync.StartSchemaCreationCommand(input));
 }
 
+function schemaPushFailure(apiId, err) {
+  if (err.TAG === "Transient") {
+    return `StartSchemaCreation for AppSync API ` + apiId + ` still failed after its retries: ` + err._0;
+  } else {
+    return `StartSchemaCreation for AppSync API ` + apiId + ` failed: ` + err._0;
+  }
+}
+
 function startSchemaCreationRetrying(client, input) {
-  return Effect$1.runPromise(Effect$1.retry(Effect.tryPromise(AppSync_Error$ReventlessAws.classify, () => client.send(new ClientAppsync.StartSchemaCreationCommand(input)).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule));
+  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(AppSync_Error$ReventlessAws.classify, () => client.send(new ClientAppsync.StartSchemaCreationCommand(input)).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(schemaPushFailure(input.apiId, err))));
 }
 
 async function waitForSchemaActive(client, apiId, maxAttemptsOpt, attemptOpt) {
@@ -326,6 +334,7 @@ export {
   log,
   sha256Hex,
   startSchemaCreation,
+  schemaPushFailure,
   startSchemaCreationRetrying,
   waitForSchemaActive,
   _client,

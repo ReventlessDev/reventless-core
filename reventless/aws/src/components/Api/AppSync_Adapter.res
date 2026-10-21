@@ -45,6 +45,15 @@ let startSchemaCreation = (client: appSyncClient, input: startSchemaCreationInpu
 // jittered exponential backoff so a losing call can wait for the in-progress
 // schema to finish and try again. Permanent errors (e.g. invalid SDL) are not
 // retried — see AppSync_Error.classify.
+// What the deploy reports when the push gives up. Carries AWS's own message: the classified
+// error is a variant, which a rejected promise prints as `[object Object]`.
+let schemaPushFailure = (~apiId: string, err: AppSync_Error.t): string =>
+  switch err {
+  | Transient(msg) =>
+    `StartSchemaCreation for AppSync API ${apiId} still failed after its retries: ${msg}`
+  | Permanent(msg) => `StartSchemaCreation for AppSync API ${apiId} failed: ${msg}`
+  }
+
 let startSchemaCreationRetrying = (client: appSyncClient, input: startSchemaCreationInput): promise<
   unit,
 > => {
@@ -52,6 +61,7 @@ let startSchemaCreationRetrying = (client: appSyncClient, input: startSchemaCrea
     startSchemaCreation(client, input)->Promise.then(_ => Promise.resolve())
   )
   ->Effect.retry(AppSync_Error.retrySchedule)
+  ->Effect.catchAll(err => Effect.fail(schemaPushFailure(~apiId=input.apiId, err)))
   ->Effect.runPromise
 }
 
