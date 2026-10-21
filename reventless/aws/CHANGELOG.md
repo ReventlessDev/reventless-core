@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.392 (2026-10-21)
+
+### Features
+
+* **aws:** a UI bundle uploads as one resource, putting only the files that changed ([9e28682](https://github.com/ReventlessDev/reventless-core/commit/9e286829817c6679aace100b3f17195a777a4cf4))
+
+
 # 3.0.0-alpha.391 (2026-10-21)
 
 ### Features
