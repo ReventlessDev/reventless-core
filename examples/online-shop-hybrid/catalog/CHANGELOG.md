@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.284 (2026-10-21)
+
+### Bug Fixes
+
+* **ppx:** [@partition](https://github.com/partition)Tag and [@cross](https://github.com/cross)Partition keep a [@ref](https://github.com/ref) on the same field ([bf1aefd](https://github.com/ReventlessDev/reventless-core/commit/bf1aefdb91eafb3e30c298e927433e511a27f130))
+
+
 # 1.0.0-alpha.283 (2026-10-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

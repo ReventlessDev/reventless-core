@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.393 (2026-10-21)
+
+### Bug Fixes
+
+* **aws:** a failed AppSync schema push names the API and AWS's message ([01f662a](https://github.com/ReventlessDev/reventless-core/commit/01f662a7c664807808c15933f6234b6b6588addd))
+
+
 # 3.0.0-alpha.392 (2026-10-21)
 
 ### Features

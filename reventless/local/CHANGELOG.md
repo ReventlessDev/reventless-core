@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.295 (2026-10-21)
+
+**Note:** Version bump only for package @reventlessdev/reventless-local
+
+
+
+
+
 # 3.0.0-alpha.294 (2026-10-21)
 
 * feat!: a rejected command says whether the model, the access check or the platform said no ([6a8a6b0](https://github.com/ReventlessDev/reventless-core/commit/6a8a6b0f2f31e766ae26a944c23b0904e51a5865))
