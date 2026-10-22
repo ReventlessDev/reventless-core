@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as LocalAuth$ReventlessLocal from "../adapter/Auth/LocalAuth.res.mjs";
+import * as Auth_UserId$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_UserId.res.mjs";
 import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
@@ -60,16 +61,19 @@ function make(path, param) {
       };
     }
     let password = passwordOf(credential);
+    let userId = Auth_UserId$ReventlessCore.mint();
     let message = AccountsManifest$Reventless.editFile(Stdlib_Option.getOr(path, AccountsManifest$Reventless.defaultPath()), [{
         TAG: "Append",
         _0: {
           username: username,
           password: password,
-          groups: groups
+          groups: groups,
+          userId: userId
         }
       }]);
     if (message.TAG === "Ok") {
-      LocalAuth$ReventlessLocal.Login.setCredentials(username, password, identityOf(username, groups));
+      let newrecord = {...identityOf(username, groups)};
+      LocalAuth$ReventlessLocal.Login.setCredentials(username, password, (newrecord.userId = userId, newrecord));
       return {
         TAG: "Ok",
         _0: {

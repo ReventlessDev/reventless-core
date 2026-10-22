@@ -11,11 +11,14 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 
-function make(activeRoleTableName, activeRoleTableArn, nameOpt, opts) {
+function make(activeRoleTableName, activeRoleTableArn, identityTableName, identityTableArn, nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "ActiveRoleTrigger";
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
-  activeRoleTableArn.apply(tableArn => {
+  Pulumi.all([
+    activeRoleTableArn,
+    identityTableArn
+  ]).apply(param => {
     new (Aws.iam.RolePolicy)(name + "Policy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "Policy", [
         {
@@ -32,7 +35,13 @@ function make(activeRoleTableName, activeRoleTableArn, nameOpt, opts) {
           Sid: "AllowReadingStoredRole",
           Effect: "Allow",
           Action: "dynamodb:GetItem",
-          Resource: tableArn
+          Resource: param[0]
+        },
+        {
+          Sid: "AllowReadingDomainId",
+          Effect: "Allow",
+          Action: "dynamodb:GetItem",
+          Resource: param[1]
         }
       ])),
       role: lambdaRole.id
@@ -64,6 +73,10 @@ function make(activeRoleTableName, activeRoleTableArn, nameOpt, opts) {
         [
           "ACTIVE_ROLE_TABLE",
           activeRoleTableName
+        ],
+        [
+          "IDENTITY_STORE_TABLE",
+          identityTableName
         ],
         [
           "NODE_OPTIONS",

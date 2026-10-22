@@ -224,10 +224,34 @@ let resolvePool = async (~args: args): result<string, string> =>
 
 // ── The store ────────────────────────────────────────────────────────────────
 
-let keySchema: array<DynamoDb.DynamoDb.DescribeTableCommand.keySchemaElement> = [
-  {attributeName: Schema.partitionKey, keyType: "HASH"},
-  {attributeName: Schema.sortKey, keyType: "RANGE"},
-]
+/** One store to provision: its name, its key, and the refusal for a table under
+    that name with another key. Two stores share the pool's trigger, and this is
+    the shape both are described in. */
+type store = {
+  tableName: string,
+  keySchema: array<(string, string)>,
+  refusal: (~tableName: string, ~actual: array<(string, string)>) => option<string>,
+}
+
+let activeRoleStore = (~providerId: string): store => {
+  tableName: Schema.derivedStoreName(~identityProviderId=providerId),
+  keySchema: Schema.expectedKeySchema,
+  refusal: Schema.keySchemaRefusal,
+}
+
+let identityStore = (~providerId: string): store => {
+  tableName: Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId),
+  keySchema: Auth_IdentityStore_Schema.expectedKeySchema,
+  refusal: Auth_IdentityStore_Schema.keySchemaRefusal,
+}
+
+let keySchemaOf = (pairs: array<(string, string)>): array<
+  DynamoDb.DynamoDb.DescribeTableCommand.keySchemaElement,
+> =>
+  pairs->Array.map(((attributeName, keyType)) => {
+    DynamoDb.DynamoDb.DescribeTableCommand.attributeName,
+    keyType,
+  })
 
 /** The SDK's shape mapped onto the plain pairs [Schema.keySchemaRefusal] compares.
   The refusal itself lives with the schema it is about, since the schema is what
@@ -248,13 +272,10 @@ let describeTable = async (~tableName: string): option<
   | exn if Util_AwsError.isNotFound(exn) => None
   }
 
-let provisionStore = async (~tableName: string): result<unit, string> =>
+let provisionStore = async ({tableName, keySchema, refusal}: store): result<unit, string> =>
   switch await describeTable(~tableName) {
   | Some(described) =>
-    switch Schema.keySchemaRefusal(
-      ~tableName,
-      ~actual=described.keySchema->Option.getOr([])->asPairs,
-    ) {
+    switch refusal(~tableName, ~actual=described.keySchema->Option.getOr([])->asPairs) {
     | Some(message) => Error(message)
     | None =>
       Console.log(`store    ${tableName} (adopted)`)
@@ -263,11 +284,11 @@ let provisionStore = async (~tableName: string): result<unit, string> =>
   | None =>
     let _ = await DynamoDb.DynamoDb.CreateTableCommand.make({
       tableName,
-      keySchema,
-      attributeDefinitions: [
-        {attributeName: Schema.partitionKey, attributeType: "S"},
-        {attributeName: Schema.sortKey, attributeType: "S"},
-      ],
+      keySchema: keySchemaOf(keySchema),
+      attributeDefinitions: keySchema->Array.map(((attributeName, _)) => {
+        DynamoDb.DynamoDb.CreateTableCommand.attributeName,
+        attributeType: "S",
+      }),
       billingMode: "PAY_PER_REQUEST",
     })->DynamoDb.DynamoDb.CreateTableCommand.send
 
@@ -315,12 +336,15 @@ let run = async (args: args): result<unit, string> =>
   switch await resolvePool(~args) {
   | Error(_) as e => e
   | Ok(providerId) =>
-    let tableName = Schema.derivedStoreName(~identityProviderId=providerId)
-    switch await provisionStore(~tableName) {
+    switch await provisionStore(activeRoleStore(~providerId)) {
     | Error(_) as e => e
     | Ok() =>
-      Console.log(nextSteps(~providerId))
-      Ok()
+      switch await provisionStore(identityStore(~providerId)) {
+      | Error(_) as e => e
+      | Ok() =>
+        Console.log(nextSteps(~providerId))
+        Ok()
+      }
     }
   }
 

@@ -186,3 +186,65 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 })
+
+// ── The domain id claim ─────────────────────────────────────────────────────
+//
+// Both arms, on both entry points. The second arm is the one that will look
+// redundant to a later reader and is not: every `@owner` field written before
+// the identity store existed holds a `sub`, and it keeps matching only while a
+// token without the claim produces exactly that `sub`.
+
+describe("Auth_Cognito and the domain id claim", () => {
+  let claimName = ReventlessCore.Auth_UserId.claim
+
+  testAsync("authenticate: a token carrying the claim yields it, not the sub", async () => {
+    let token = buildJwt(
+      Dict.fromArray([
+        ("sub", JSON.Encode.string("c3741234-aaaa")),
+        (claimName, JSON.Encode.string("u_0123")),
+      ]),
+    )
+    switch await Auth_Cognito.authenticate(buildContext([("authorization", "Bearer " ++ token)])) {
+    | Authenticated(identity) => expect(identity.userId)->toBe("u_0123")
+    | _ => JsError.throwWithMessage("expected Authenticated")
+    }
+  })
+
+  testAsync("authenticate: a token without the claim yields exactly the sub", async () => {
+    let token = buildJwt(Dict.fromArray([("sub", JSON.Encode.string("c3741234-aaaa"))]))
+    switch await Auth_Cognito.authenticate(buildContext([("authorization", "Bearer " ++ token)])) {
+    | Authenticated(identity) => expect(identity.userId)->toBe("c3741234-aaaa")
+    | _ => JsError.throwWithMessage("expected Authenticated")
+    }
+  })
+
+  testSync("fromAppSyncIdentity: the claim wins over the sub", () => {
+    let id: Auth_Cognito.appSyncIdentity = {
+      sub: "c3741234-aaaa",
+      claims: Dict.fromArray([(claimName, JSON.Encode.string("u_0123"))]),
+    }
+    switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
+    | Authenticated(identity) => expect(identity.userId)->toBe("u_0123")
+    | _ => JsError.throwWithMessage("expected Authenticated")
+    }
+  })
+
+  testSync("fromAppSyncIdentity: no claim is exactly the sub", () => {
+    let id: Auth_Cognito.appSyncIdentity = {sub: "c3741234-aaaa", claims: Dict.make()}
+    switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
+    | Authenticated(identity) => expect(identity.userId)->toBe("c3741234-aaaa")
+    | _ => JsError.throwWithMessage("expected Authenticated")
+    }
+  })
+
+  testSync("an empty claim is treated as absent", () => {
+    let id: Auth_Cognito.appSyncIdentity = {
+      sub: "c3741234-aaaa",
+      claims: Dict.fromArray([(claimName, JSON.Encode.string(""))]),
+    }
+    switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
+    | Authenticated(identity) => expect(identity.userId)->toBe("c3741234-aaaa")
+    | _ => JsError.throwWithMessage("expected Authenticated")
+    }
+  })
+})

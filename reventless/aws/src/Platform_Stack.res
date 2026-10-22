@@ -12,6 +12,9 @@ type cognitoUserPool = {
     is declared with the trigger's ARN), while the mutation that writes it is
     provisioned after the API — see [Auth_ActiveRoleStore.res]. */
   activeRoleTable: Auth_ActiveRoleStore.storeTable,
+  /** Rows mapping each subject to the domain's own user id, read by the same
+    trigger and written when an account is created — see [Auth_IdentityStore.res]. */
+  identityTable: Auth_IdentityStore.storeTable,
   /** The sign-in attribute this stack created the pool with. `None` in BYO mode:
     the pool's own choice was made elsewhere and no lookup here reads it back,
     so reporting one would be a guess. */
@@ -179,9 +182,16 @@ let _resolveUncached = (): cognitoUserPool => {
     ~choice=Auth_ActiveRoleStore.chooseStore(~identityProviderId=existingPoolId),
     ~opts={},
   )
+  // Same scope rule, same reason: the trigger that reads it is the pool's.
+  let identityTable = Auth_IdentityStore.resolveTable(
+    ~choice=Auth_IdentityStore.chooseStore(~identityProviderId=existingPoolId),
+    ~opts={},
+  )
   let activeRoleTrigger = Auth_ActiveRoleTrigger.make(
     ~activeRoleTableName=activeRoleTable.name->Pulumi.Output.asInput,
     ~activeRoleTableArn=activeRoleTable.arn->Pulumi.Output.asInput,
+    ~identityTableName=identityTable.name->Pulumi.Output.asInput,
+    ~identityTableArn=identityTable.arn->Pulumi.Output.asInput,
     ~opts={},
   )
 
@@ -239,6 +249,7 @@ let _resolveUncached = (): cognitoUserPool => {
       poolArn: lookup->Pulumi.Output.apply(r => r.arn),
       managed: false,
       activeRoleTable,
+      identityTable,
       loginIdentifier: None,
     }
 
@@ -334,6 +345,7 @@ let _resolveUncached = (): cognitoUserPool => {
       poolArn: pool.arn,
       managed: true,
       activeRoleTable,
+      identityTable,
       loginIdentifier: Some(loginIdentifier),
     }
   }
@@ -409,6 +421,9 @@ let _resolveUncached = (): cognitoUserPool => {
   // the name is derived, not configured, so this is a convenience for checking
   // rather than a value anything is meant to copy into a config.
   Pulumi.Pulumi.export("activeRoleStore", result.activeRoleTable.name)
+  // Read by `provision-accounts` on a stack-owned pool, whose table carries a
+  // generated suffix no derivation can produce.
+  Pulumi.Pulumi.export("identityStore", result.identityTable.name)
 
   result
 }

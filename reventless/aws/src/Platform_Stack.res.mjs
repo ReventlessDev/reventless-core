@@ -10,6 +10,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
+import * as Auth_IdentityStore$ReventlessAws from "./adapter/Auth/Auth_IdentityStore.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
 import * as Util_CognitoGroupUser$ReventlessAws from "./util/Util_CognitoGroupUser.res.mjs";
@@ -66,7 +67,8 @@ function _resolveUncached() {
   let cfg = new Pulumi.Config("platform");
   let existingPoolId = _identityProviderId(cfg);
   let activeRoleTable = Auth_ActiveRoleStore$ReventlessAws.resolveTable(Auth_ActiveRoleStore$ReventlessAws.chooseStore(existingPoolId), {});
-  let activeRoleTrigger = Auth_ActiveRoleTrigger$ReventlessAws.make(activeRoleTable.name, activeRoleTable.arn, undefined, {});
+  let identityTable = Auth_IdentityStore$ReventlessAws.resolveTable(Auth_IdentityStore$ReventlessAws.chooseStore(existingPoolId), {});
+  let activeRoleTrigger = Auth_ActiveRoleTrigger$ReventlessAws.make(activeRoleTable.name, activeRoleTable.arn, identityTable.name, identityTable.arn, undefined, {});
   let result;
   if (existingPoolId !== undefined) {
     let tokenUnits_accessToken = "minutes";
@@ -105,6 +107,7 @@ function _resolveUncached() {
       poolArn: lookup.apply(r => r.arn),
       managed: false,
       activeRoleTable: activeRoleTable,
+      identityTable: identityTable,
       loginIdentifier: undefined
     };
   } else {
@@ -161,6 +164,7 @@ function _resolveUncached() {
       poolArn: pool.arn,
       managed: true,
       activeRoleTable: activeRoleTable,
+      identityTable: identityTable,
       loginIdentifier: loginIdentifier
     };
   }
@@ -183,6 +187,7 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("cognitoUserPoolManaged", managedStr);
   Pulumi$Pulumi.$$export("identityProviderAdminGroup", Pulumi.output(Role$Reventless.adminGroup()));
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
+  Pulumi$Pulumi.$$export("identityStore", result.identityTable.name);
   return result;
 }
 

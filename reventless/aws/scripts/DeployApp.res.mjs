@@ -728,7 +728,7 @@ async function up(manifest, stack) {
   if (match$2 !== undefined) {
     if (match$3 !== undefined) {
       console.log("\n── Creating the accounts ──\n");
-      let e$6 = await ProvisionAccounts$ReventlessAws.provision(match$2, match$3, undefined);
+      let e$6 = await ProvisionAccounts$ReventlessAws.provision(match$2, match$3, outputString(platformOutputs, "identityStore"), undefined);
       accounts = e$6.TAG === "Ok" ? ({
           TAG: "Ok",
           _0: match$2

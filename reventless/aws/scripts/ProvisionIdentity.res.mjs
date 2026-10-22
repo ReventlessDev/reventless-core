@@ -10,6 +10,7 @@ import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs"
 import * as Auth_SignUpMode$ReventlessAws from "../src/adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "../src/adapter/Auth/Auth_LoginIdentifier.res.mjs";
 import * as CognitoIdentityServiceProvider$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/CognitoIdentityServiceProvider.res.mjs";
+import * as Auth_IdentityStore_Schema$ReventlessAws from "../src/adapter/Auth/Auth_IdentityStore_Schema.res.mjs";
 import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
 import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "../src/adapter/Auth/Auth_ActiveRoleStore_Schema.res.mjs";
 
@@ -185,16 +186,28 @@ async function resolvePool(args) {
   }
 }
 
-let keySchema = [
-  {
-    AttributeName: Auth_ActiveRoleStore_Schema$ReventlessAws.partitionKey,
-    KeyType: "HASH"
-  },
-  {
-    AttributeName: Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
-    KeyType: "RANGE"
-  }
-];
+function activeRoleStore(providerId) {
+  return {
+    tableName: Auth_ActiveRoleStore_Schema$ReventlessAws.derivedStoreName(providerId),
+    keySchema: Auth_ActiveRoleStore_Schema$ReventlessAws.expectedKeySchema,
+    refusal: Auth_ActiveRoleStore_Schema$ReventlessAws.keySchemaRefusal
+  };
+}
+
+function identityStore(providerId) {
+  return {
+    tableName: Auth_IdentityStore_Schema$ReventlessAws.derivedStoreName(providerId),
+    keySchema: Auth_IdentityStore_Schema$ReventlessAws.expectedKeySchema,
+    refusal: Auth_IdentityStore_Schema$ReventlessAws.keySchemaRefusal
+  };
+}
+
+function keySchemaOf(pairs) {
+  return pairs.map(param => ({
+    AttributeName: param[0],
+    KeyType: param[1]
+  }));
+}
 
 function asPairs(elements) {
   return elements.map(k => [
@@ -217,10 +230,12 @@ async function describeTable(tableName) {
   }
 }
 
-async function provisionStore(tableName) {
+async function provisionStore(param) {
+  let keySchema = param.keySchema;
+  let tableName = param.tableName;
   let described = await describeTable(tableName);
   if (described !== undefined) {
-    let message = Auth_ActiveRoleStore_Schema$ReventlessAws.keySchemaRefusal(tableName, asPairs(Stdlib_Option.getOr(described.KeySchema, [])));
+    let message = param.refusal(tableName, asPairs(Stdlib_Option.getOr(described.KeySchema, [])));
     if (message !== undefined) {
       return {
         TAG: "Error",
@@ -236,17 +251,11 @@ async function provisionStore(tableName) {
   }
   await DynamoDb_DynamoDb$AwsSdk.CreateTableCommand.send(new ClientDynamodb.CreateTableCommand({
     TableName: tableName,
-    KeySchema: keySchema,
-    AttributeDefinitions: [
-      {
-        AttributeName: Auth_ActiveRoleStore_Schema$ReventlessAws.partitionKey,
-        AttributeType: "S"
-      },
-      {
-        AttributeName: Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
-        AttributeType: "S"
-      }
-    ],
+    KeySchema: keySchemaOf(keySchema),
+    AttributeDefinitions: keySchema.map(param => ({
+      AttributeName: param[0],
+      AttributeType: "S"
+    })),
     BillingMode: "PAY_PER_REQUEST"
   }));
   let waited = await DynamoDb_DynamoDb$AwsSdk.TableExistsWaiter.wait(tableName, undefined);
@@ -296,10 +305,13 @@ async function run(args) {
     return e;
   }
   let providerId = e._0;
-  let tableName = Auth_ActiveRoleStore_Schema$ReventlessAws.derivedStoreName(providerId);
-  let e$1 = await provisionStore(tableName);
+  let e$1 = await provisionStore(activeRoleStore(providerId));
   if (e$1.TAG !== "Ok") {
     return e$1;
+  }
+  let e$2 = await provisionStore(identityStore(providerId));
+  if (e$2.TAG !== "Ok") {
+    return e$2;
   }
   console.log(nextSteps(providerId));
   return {
@@ -347,7 +359,9 @@ export {
   poolSettings,
   findPoolByName,
   resolvePool,
-  keySchema,
+  activeRoleStore,
+  identityStore,
+  keySchemaOf,
   asPairs,
   describeTable,
   provisionStore,

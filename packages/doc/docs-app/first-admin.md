@@ -232,7 +232,8 @@ auto-mode conveniences apply to the pool itself:
 - The elevated-groups default still applies — it is a property of the platform,
   not of who created the pool.
 
-The pool and its active-role store are provisioned by
+The pool and its two stores — the active-role store and the identity store, which
+maps each account to the domain's own user id — are provisioned by
 `pnpm exec provision-identity`, which is a separate bin because it provisions
 infrastructure and this one deliberately does not.
 

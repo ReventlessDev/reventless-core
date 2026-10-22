@@ -58,13 +58,24 @@ let _getHeader = (headers: dict<string>, name: string): option<string> =>
   | None => headers->Dict.get(name)
   }
 
+// The domain id when the token carries one, else the `sub`. The fallback is
+// what every account created before the identity store existed relies on: its
+// rows are keyed by the `sub`, and a different answer here would orphan them.
+let _userIdOf = (~claims: dict<JSON.t>, ~sub: string): string =>
+  claims
+  ->Dict.get(ReventlessCore.Auth_UserId.claim)
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.filter(id => id != "")
+  ->Option.getOr(sub)
+
 let _identityFromClaims = (claims: 'a): Identity.t => {
   let claimsDict: dict<JSON.t> = claims->Obj.magic
-  let userId =
+  let sub =
     claimsDict
     ->Dict.get("sub")
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOr("anonymous")
+  let userId = _userIdOf(~claims=claimsDict, ~sub)
   let username =
     claimsDict
     ->Dict.get("cognito:username")
@@ -154,7 +165,7 @@ let fromAppSyncIdentity = (id: option<appSyncIdentity>): Identity.authResult =>
         ->Array.map(((k, v)) => (k, v->JSON.Decode.string->Option.getOr(v->JSON.stringify)))
         ->Dict.fromArray
       Authenticated({
-        userId: sub,
+        userId: _userIdOf(~claims=rawClaims, ~sub),
         username,
         groups,
         claims,

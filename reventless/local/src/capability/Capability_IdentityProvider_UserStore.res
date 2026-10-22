@@ -56,9 +56,13 @@ let make = (~path: option<string>=?, ()): IdentityProvider.t => {
     | Ok(username) if LocalAuth.Login.credentialsOf(~username)->Option.isSome => Error(Conflict)
     | Ok(username) =>
       let password = passwordOf(credential)
+      // Minted here, never the username: the id reaches the event log as
+      // `meta.user` and every `@owner` field, and a log keyed by login names
+      // cannot survive a rename or a move to another provider.
+      let userId = ReventlessCore.Auth_UserId.mint()
       switch AccountsManifest.editFile(
         ~path=file(),
-        ~edits=[Append({username, password, groups})],
+        ~edits=[Append({username, password, groups, userId})],
       ) {
       | Error(message) if message->String.endsWith("already declared in the manifest") =>
         Error(Conflict)
@@ -67,7 +71,7 @@ let make = (~path: option<string>=?, ()): IdentityProvider.t => {
         LocalAuth.Login.setCredentials(
           ~username,
           ~password,
-          ~identity=identityOf(~username, ~groups),
+          ~identity={...identityOf(~username, ~groups), userId},
         )
         Ok({IdentityProvider.providerId: username})
       }

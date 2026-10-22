@@ -4,8 +4,10 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as Auth_UserId$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_UserId.res.mjs";
 import * as Auth_ActiveRole$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_ActiveRole.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as Auth_IdentityStore_Schema$ReventlessAws from "./Auth_IdentityStore_Schema.res.mjs";
 import * as Auth_ActiveRoleStore_Schema$ReventlessAws from "./Auth_ActiveRoleStore_Schema.res.mjs";
 
 function getEnv(k) {
@@ -22,6 +24,10 @@ function tableName() {
   } else {
     return Stdlib_JsError.throwWithMessage("ACTIVE_ROLE_TABLE is not configured");
   }
+}
+
+function identityTableName() {
+  return getEnv("IDENTITY_STORE_TABLE");
 }
 
 function decide(membership, storedRole) {
@@ -44,15 +50,21 @@ function decide(membership, storedRole) {
   }
 }
 
-function respond(event, decision) {
+function respond(event, decision, userId) {
   let incoming = Stdlib_Option.flatMap(event.request, r => r.groupConfiguration);
   let iamRolesToOverride = Stdlib_Option.getOr(Stdlib_Option.flatMap(incoming, g => g.iamRolesToOverride), []);
   let preferredRole = Stdlib_Option.flatMap(incoming, g => g.preferredRole);
+  let withUserId = claims => {
+    Stdlib_Option.forEach(userId, id => {
+      claims[Auth_UserId$ReventlessCore.claim] = id;
+    });
+    return claims;
+  };
   let overrideWith = (groups, claims) => {
     let newrecord = {...event};
     newrecord.response = {
       claimsOverrideDetails: {
-        claimsToAddOrOverride: claims,
+        claimsToAddOrOverride: withUserId(claims),
         groupOverrideDetails: {
           groupsToOverride: groups,
           iamRolesToOverride: iamRolesToOverride,
@@ -63,7 +75,16 @@ function respond(event, decision) {
     return newrecord;
   };
   if (typeof decision !== "object") {
-    return event;
+    if (userId === undefined) {
+      return event;
+    }
+    let newrecord = {...event};
+    newrecord.response = {
+      claimsOverrideDetails: {
+        claimsToAddOrOverride: withUserId({})
+      }
+    };
+    return newrecord;
   }
   if (decision.TAG === "Narrow") {
     let role = decision.role;
@@ -112,23 +133,49 @@ async function storedRoleFor(sub, clientId, table) {
   }
 }
 
+async function userIdFor(sub, table) {
+  if (table === undefined) {
+    return;
+  }
+  try {
+    let out = await DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+      TableName: table,
+      Key: Object.fromEntries([[
+          Auth_IdentityStore_Schema$ReventlessAws.partitionKey,
+          sub
+        ]])
+    }));
+    return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(out.Item, Stdlib_JSON.Decode.object), o => o[Auth_IdentityStore_Schema$ReventlessAws.userIdAttribute]), Stdlib_JSON.Decode.string);
+  } catch (exn) {
+    return;
+  }
+}
+
 async function handler(event) {
   let membership = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(event.request, r => r.groupConfiguration), g => g.groupsToOverride), []);
   let sub = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(event.request, r => r.userAttributes), u => u.sub), "");
   let clientId = Stdlib_Option.getOr(Stdlib_Option.flatMap(event.callerContext, c => c.clientId), "");
-  if (sub === "" || clientId === "") {
+  if (sub === "") {
     return event;
   }
-  let storedRole = await storedRoleFor(sub, clientId, tableName());
-  return respond(event, decide(membership, storedRole));
+  if (clientId === "") {
+    return respond(event, "Unchanged", await userIdFor(sub, getEnv("IDENTITY_STORE_TABLE")));
+  }
+  let match = await Promise.all([
+    storedRoleFor(sub, clientId, tableName()),
+    userIdFor(sub, getEnv("IDENTITY_STORE_TABLE"))
+  ]);
+  return respond(event, decide(membership, match[0]), match[1]);
 }
 
 export {
   getEnv,
   tableName,
+  identityTableName,
   decide,
   respond,
   storedRoleFor,
+  userIdFor,
   handler,
 }
 /* @aws-sdk/lib-dynamodb Not a pure module */

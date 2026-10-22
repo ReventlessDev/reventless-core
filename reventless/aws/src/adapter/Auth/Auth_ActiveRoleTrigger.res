@@ -30,6 +30,8 @@ type triggerOutputs = {
 let make = (
   ~activeRoleTableName: Pulumi.Input.t<string>,
   ~activeRoleTableArn: Pulumi.Input.t<string>,
+  ~identityTableName: Pulumi.Input.t<string>,
+  ~identityTableArn: Pulumi.Input.t<string>,
   ~name: string="ActiveRoleTrigger",
   ~opts: Pulumi.ComponentResource.options,
 ): triggerOutputs => {
@@ -47,14 +49,14 @@ let make = (
     ~opts,
   )
 
-  // Logs and a single-item read. Nothing else: the trigger needs no Cognito
-  // permission at all, because the membership it checks against arrives in the
-  // event as `request.groupConfiguration.groupsToOverride`. `GetItem` alone —
-  // this function must never be able to write the preference it reads.
+  // Logs and single-item reads of the two stores. Nothing else: the trigger
+  // needs no Cognito permission at all, because the membership it checks
+  // against arrives in the event as `request.groupConfiguration.groupsToOverride`.
+  // `GetItem` alone — this function must never be able to write what it reads.
   let _policy =
-    activeRoleTableArn
-    ->Pulumi.Output.fromInput
-    ->Pulumi.Output.apply(tableArn => {
+    (activeRoleTableArn->Pulumi.Output.fromInput, identityTableArn->Pulumi.Output.fromInput)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((tableArn, identityArn)) => {
       let _ = IAM.RolePolicy.make(
         ~name=name ++ "Policy",
         ~args={
@@ -76,6 +78,12 @@ let make = (
                 effect: Allow,
                 actions: Action("dynamodb:GetItem"),
                 resources: Resource(tableArn),
+              },
+              {
+                sid: "AllowReadingDomainId",
+                effect: Allow,
+                actions: Action("dynamodb:GetItem"),
+                resources: Resource(identityArn),
               },
             ],
           )
@@ -140,6 +148,7 @@ let make = (
           Lambda.Function.variables: Dict.fromArray([
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("ACTIVE_ROLE_TABLE", activeRoleTableName),
+            ("IDENTITY_STORE_TABLE", identityTableName),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
             Util_LambdaLogging.logLevelEntry(),

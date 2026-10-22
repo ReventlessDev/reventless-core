@@ -16,8 +16,10 @@ directive that contradicts it — ✅ shipped 2026-09-10**, as did **Step 5b** (
 verified by deletion). **Step 3b was decided 2026-09-11: the AWS door is deferred, and when built it
 is a separate narrow door** rather than an API key on the platform API. **Step 3c's local half ✅
 shipped 2026-10-22:** the local platform provisions an identity provider over the accounts file, so a
-slice can make, group and unmake a principal and a restarted process sees it. **What remains:** Step 2,
-the Cognito provider on AWS, and the anonymous door itself, which is the registration chapter's.
+slice can make, group and unmake a principal and a restarted process sees it. **Step 2 ✅ built 2026-10-22, not yet deployed:** a domain id minted at creation, carried as a
+token claim the pre-token trigger adds from a pool-scoped identity store, with the `sub` as the
+fallback every older account relies on. **What remains:** the Cognito provider on AWS, the reverse
+index when it has a caller, and the anonymous door itself, which is the registration chapter's.
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -216,8 +218,52 @@ Still unanswered, and it should not be closed by omission: **what happens when t
 the provider** — a principal deleted out-of-band leaves a mapping row pointing at nothing. That is the
 one part of this step that has no precedent to copy.
 
-**Nothing here has been built.** This step remains a decision, and the decision is now being taken
-against measured facts rather than an assumed clean slate.
+### Built 2026-10-22 — the claim, the store behind it, and minting at creation
+
+**The decision: the trigger adds the claim from a pool-scoped table, not from a custom attribute.**
+The repo declined a custom attribute once already, for the active role, because it can never be
+removed or retyped and amends a customer's pool for good; and a schema change on a declared pool is
+the replacement Step 0 measured. The pre-token trigger and a derived, pool-scoped table already
+existed with the ownership rule this step needs, so the identity store takes exactly that shape.
+
+- **`Auth_UserId`** in core: the claim name (`domainUserId`), the minted shape (`u_` on a UUID without
+  dashes, which cannot be read as a bare UUID), and `isMinted`. Shared by both platforms so a seed or a
+  test can tell a minted id from a `sub`.
+- **`Auth_IdentityStore` / `Auth_IdentityStore_Schema`** in aws: `ReventlessIdentityStore-<poolId>`,
+  keyed on the `sub`, holding `userId`. `StackScoped` or `ProviderScoped` by the same total rule as the
+  active-role store, created with the stack or looked up on a supplied pool. `provision-identity`
+  creates it beside the active-role store; the stack exports it as `identityStore`.
+- **The trigger reads both stores at once** and adds the claim when a row exists — on its own, with
+  the group configuration untouched, so a caller with a domain id and no stored role keeps exactly the
+  groups the pool granted. No row, no claim; a read failure adds nothing; a trigger with no store
+  configured behaves as before. The regression line "a caller with no stored role gets byte-identical
+  output" still holds for every account created before the store existed, because such an account has
+  no row.
+- **Both Cognito entry points** take the claim as `userId` when present and non-empty, else the `sub`.
+  Held by five tests, two per entry point plus the empty-claim case.
+- **Minting happens at creation only.** `provision-accounts` mints for an account it created, writes
+  the row, and records the domain id in the manifest; an account that already existed is read back
+  from the store or left on its `sub`. The store is read off the stack's `identityStore` output when
+  a stack is known, else derived; a store that does not exist leaves the account on its `sub` and says
+  so. `deploy-app` passes the same store when it creates the accounts after `pulumi up`.
+- **The local provider mints the same shape** and writes it as the manifest's `userId`, so a new
+  account's id looks the same on both platforms. Declared local accounts keep their declared ids.
+- **The disagreement question, answered rather than skipped.** A row whose principal was deleted out
+  of band is harmless on the hot path: no token is ever minted for it. In the cold direction it is a
+  dangling reference, and the rule is that only `deletePrincipal` removes rows — the Cognito provider,
+  when built, meets it as the pool's not-found and answers `Refused`.
+- **Not here:** the reverse index (domain id to subject) and the Cognito `IdentityProvider` itself.
+  A global index can be added to a live table, so it waits for its first caller.
+
+*Evidence:* the whole repo builds warning-free; aws 1,006 tests in 87 suites, core, local and spec
+3,043 in 253. New: `Auth_UserIdTest`, `Auth_IdentityStore_SchemaTest`, four trigger cases, five
+Cognito cases, and the local provider test now pins the minted id across a reload.
+
+**Deploy note.** The trigger sits in the critical path of every sign-in. The first deploy after this
+adds a table, an environment variable and one `GetItem` to the trigger; an existing account signs in
+unchanged and sees no claim. Verify on alpha: sign in as a declared account, check the token carries
+no `domainUserId`; run `provision-accounts` with a new entry, sign in as it, check the token carries
+one and that its rows are keyed by it.
 
 ## Step 3 — the client door: **the gap is real, and it is not the one this step named**
 
@@ -630,7 +676,7 @@ capability has to reproduce that property rather than inherit it, so it is worth
   deploy — never deploys green meaning `AllowAuthenticated`.** Held by five tests in
   `AppSync_AdapterTest`, one of which pins the *contrast* between the two permissions rather than the
   throw, so re-collapsing the arms cannot pass by also deleting the refusal.
-- **A token carrying a domain-id claim produces an `Identity.userId` that is not the `sub`, and a token
+- ✅ **A token carrying a domain-id claim produces an `Identity.userId` that is not the `sub`, and a token
   without one produces an `Identity.userId` that is exactly the `sub`.** Both arms, held as tests at
   `Auth_Cognito`'s two entry points — the second is what protects every `@owner` field already written,
   and it is the arm that will look redundant to a later reader and is not.

@@ -49,6 +49,8 @@ describe("Capability_IdentityProvider_UserStore", () => {
       (await LocalAuth.Login.issue(~username="new@example.com", ~password="secret-1"))->Result.isOk,
     )->toBe(true)
 
+    let mintedNow = LocalAuth.lookupUser("new@example.com")->Option.map(i => i.userId)
+
     restartFrom(file)
     expect(
       (await LocalAuth.Login.issue(~username="new@example.com", ~password="secret-1"))->Result.isOk,
@@ -56,6 +58,10 @@ describe("Capability_IdentityProvider_UserStore", () => {
     expect(LocalAuth.lookupUser("new@example.com")->Option.map(i => i.groups))->toEqual(
       Some(["Shopper"]),
     )
+    // The domain id is minted, not the login name, and the file carries the
+    // same one the running process handed out.
+    expect(mintedNow->Option.map(ReventlessCore.Auth_UserId.isMinted))->toEqual(Some(true))
+    expect(LocalAuth.lookupUser("new@example.com")->Option.map(i => i.userId))->toEqual(mintedNow)
   })
 
   testPromise("the same contact twice is a Conflict, not a second account", async () => {

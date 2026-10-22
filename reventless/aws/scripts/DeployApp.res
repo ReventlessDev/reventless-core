@@ -587,7 +587,13 @@ let up = async (~manifest: DeployManifest.resolved, ~stack: string): result<unit
                     Error("the platform stack exports no identityProviderId to create accounts in")
                   | (Some(file), Some(providerId)) =>
                     Console.log("\n── Creating the accounts ──\n")
-                    switch await ProvisionAccounts.provision(~file, ~providerId) {
+                    // The stack just deployed is the one that exports the store
+                    // a new account's domain id is written to.
+                    switch await ProvisionAccounts.provision(
+                      ~file,
+                      ~providerId,
+                      ~identityStore=?platformOutputs->outputString("identityStore"),
+                    ) {
                     | Error(_) as e => e
                     | Ok() => Ok(Some(file))
                     }

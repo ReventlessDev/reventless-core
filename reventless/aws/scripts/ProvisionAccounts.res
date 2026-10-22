@@ -178,7 +178,86 @@ drifted from the file is exactly the case a re-run is expected to fix.
 Returns the id the pool minted, which is the value the manifest cannot know until
 the account exists and which nobody should be pasting by hand.
 */
-let applyEntry = async (~providerId: string, ~entry: Manifest.entry): option<string> => {
+/**
+Where the rows mapping a subject to its domain id live, for this pool.
+
+A stack-owned pool's table carries a generated suffix, so it is read off the
+stack's `identityStore` output; a pool no stack owns has the derived name
+`provision-identity` created it under. `None` when neither can be known, which
+is a pool provisioned before the store existed — accounts made then keep their
+`sub`, exactly as every account before them.
+*/
+let // ── The domain id ────────────────────────────────────────────────────────────
+
+identityStoreFor = (~providerId: string, ~stack: option<string>): option<string> =>
+  switch stack->Option.orElse(ProvisionProvider.selectedStack()) {
+  | Some(stack) =>
+    switch ProvisionProvider.pulumi(["stack", "output", "identityStore", "--stack", stack]) {
+    | "" => Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
+    | name => Some(name)
+    | exception _ =>
+      Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
+    }
+  | None => Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
+  }
+
+/** The domain id recorded for a subject, if the store has one. */
+let recordedUserId = async (~store: string, ~sub: string): option<string> =>
+  try {
+    let out = await DynamoDb_DocumentClient.GetCommand.make({
+      tableName: store,
+      key: Dict.fromArray([(Auth_IdentityStore_Schema.partitionKey, JSON.Encode.string(sub))]),
+    })->DynamoDb_DocumentClient.GetCommand.send
+    out.item
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.flatMap(o => o->Dict.get(Auth_IdentityStore_Schema.userIdAttribute))
+    ->Option.flatMap(JSON.Decode.string)
+  } catch {
+  | exn if Util_AwsError.isNotFound(exn) => None
+  }
+
+/**
+The id the manifest should carry for this account.
+
+🚨 **Minted only for an account this run created.** An account that already
+existed has rows keyed by whatever id it has been writing under — its `sub`, or
+a domain id an earlier run minted — and re-minting would orphan every one of
+them. A store that does not exist leaves the account on its `sub`, which is what
+every account before the store did.
+*/
+let domainIdFor = async (~store: option<string>, ~sub: string, ~created: bool): option<string> =>
+  switch store {
+  | None => Some(sub)
+  | Some(store) =>
+    switch await recordedUserId(~store, ~sub) {
+    | Some(_) as recorded => recorded
+    | None if created =>
+      let minted = ReventlessCore.Auth_UserId.mint()
+      try {
+        let _ = await DynamoDb_DocumentClient.PutCommand.make({
+          tableName: store,
+          item: JSON.Encode.object(
+            Dict.fromArray([
+              (Auth_IdentityStore_Schema.partitionKey, JSON.Encode.string(sub)),
+              (Auth_IdentityStore_Schema.userIdAttribute, JSON.Encode.string(minted)),
+            ]),
+          ),
+        })->DynamoDb_DocumentClient.PutCommand.send
+        Some(minted)
+      } catch {
+      | exn if Util_AwsError.isNotFound(exn) =>
+        Console.log(`store    ${store} (missing — the account keeps its pool id)`)
+        Some(sub)
+      }
+    | None => Some(sub)
+    }
+  }
+
+let applyEntry = async (
+  ~providerId: string,
+  ~entry: Manifest.entry,
+  ~identityStore: option<string>,
+): option<string> => {
   let attributes: array<Cognito.AdminCreateUserCommand.attributeType> = looksLikeEmail(
     entry.username,
   )
@@ -200,7 +279,10 @@ let applyEntry = async (~providerId: string, ~entry: Manifest.entry): option<str
     await ProvisionCognito.addToGroup(~providerId, ~username=entry.username, ~group)
     Console.log(`member   ${entry.username} in ${group}`)
   }
-  await ProvisionCognito.subOf(~providerId, ~username=entry.username)
+  switch await ProvisionCognito.subOf(~providerId, ~username=entry.username) {
+  | None => None
+  | Some(sub) => await domainIdFor(~store=identityStore, ~sub, ~created=outcome == Created)
+  }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -233,6 +315,7 @@ is a parameter so a test can refuse without a pool.
 let provision = async (
   ~file: string,
   ~providerId: string,
+  ~identityStore: option<string>=?,
   ~checkPool=checkPoolAcceptsUsernames,
 ): result<unit, string> =>
   switch Manifest.parseFile(file) {
@@ -256,7 +339,7 @@ let provision = async (
         let fills = []
         for index in 0 to entries->Array.length - 1 {
           let entry = entries->Array.getUnsafe(index)
-          let userId = await applyEntry(~providerId, ~entry)
+          let userId = await applyEntry(~providerId, ~entry, ~identityStore)
           fills->Array.push({Manifest.index, password: None, userId})
         }
         switch Manifest.fillFile(~path=file, ~fills) {
@@ -288,7 +371,9 @@ let run = async (args: args): result<unit, string> =>
       Error(`${message}. To fill in the manifest without creating anything, run prepare-accounts`)
     | Ok((providerId, source)) =>
       Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
-      await provision(~file, ~providerId)
+      let identityStore = identityStoreFor(~providerId, ~stack=args.stack)
+      identityStore->Option.forEach(store => Console.log(`store    ${store}`))
+      await provision(~file, ~providerId, ~identityStore?)
     }
   }
 

@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Auth_UserId$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_UserId.res.mjs";
 import * as Platform_Stack$ReventlessAws from "../../Platform_Stack.res.mjs";
 
 let _decodeJwtClaims = (function(token) {
@@ -31,8 +32,13 @@ function _getHeader(headers, name) {
   }
 }
 
+function _userIdOf(claims, sub) {
+  return Stdlib_Option.getOr(Stdlib_Option.filter(Stdlib_Option.flatMap(claims[Auth_UserId$ReventlessCore.claim], Stdlib_JSON.Decode.string), id => id !== ""), sub);
+}
+
 function _identityFromClaims(claims) {
-  let userId = Stdlib_Option.getOr(Stdlib_Option.flatMap(claims["sub"], Stdlib_JSON.Decode.string), "anonymous");
+  let sub = Stdlib_Option.getOr(Stdlib_Option.flatMap(claims["sub"], Stdlib_JSON.Decode.string), "anonymous");
+  let userId = _userIdOf(claims, sub);
   let username = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.orElse(claims["cognito:username"], claims["username"]), Stdlib_JSON.Decode.string), userId);
   let groups = Stdlib_Option.getOr(Stdlib_Option.map(claims["cognito:groups"], g => g), []);
   return {
@@ -81,7 +87,7 @@ function fromAppSyncIdentity(id) {
     return {
       TAG: "Authenticated",
       _0: {
-        userId: sub,
+        userId: _userIdOf(rawClaims, sub),
         username: username,
         groups: groups,
         claims: claims,
@@ -127,6 +133,7 @@ export {
   _decodeJwtClaims,
   _bearerToken,
   _getHeader,
+  _userIdOf,
   _identityFromClaims,
   authenticate,
   fromAppSyncIdentity,

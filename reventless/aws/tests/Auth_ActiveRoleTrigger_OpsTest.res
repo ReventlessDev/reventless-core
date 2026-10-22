@@ -171,3 +171,43 @@ describe("Auth_ActiveRoleTrigger_Ops.respond", () => {
     )->toEqual(Some(["arn:aws:iam::1:role/Shopper"]))
   })
 })
+
+// ── The domain id claim ─────────────────────────────────────────────────────
+//
+// Rides on whatever else the mint adds. The regression line above still holds
+// for every account created before the identity store existed, because such an
+// account has no row and so no `userId` arrives here.
+
+describe("Auth_ActiveRoleTrigger_Ops.respond with a domain id", () => {
+  testSync("no stored role and a domain id adds the claim and nothing else", () => {
+    let input = eventFor(~membership=["Admin", "Shopper"])
+    let event = Trigger.respond(~event=input, ~decision=Unchanged, ~userId="u_abc")
+    expect(claimOf(event, ReventlessCore.Auth_UserId.claim))->toEqual(Some("u_abc"))
+    expect(groupsOf(event))->toEqual(None)
+  })
+
+  testSync("narrowing and a domain id carry both", () => {
+    let event = Trigger.respond(
+      ~event=eventFor(~membership=["Admin", "Shopper"]),
+      ~decision=Narrow({role: "Shopper", membership: ["Admin", "Shopper"]}),
+      ~userId="u_abc",
+    )
+    expect(groupsOf(event))->toEqual(Some(["Shopper"]))
+    expect((
+      claimOf(event, Contract.activeRoleClaim),
+      claimOf(event, ReventlessCore.Auth_UserId.claim),
+    ))->toEqual((Some("Shopper"), Some("u_abc")))
+  })
+
+  testSync("no domain id leaves a narrowed token without the claim", () => {
+    let event = Trigger.respond(
+      ~event=eventFor(~membership=["Admin", "Shopper"]),
+      ~decision=Narrow({role: "Shopper", membership: ["Admin", "Shopper"]}),
+    )
+    expect(claimOf(event, ReventlessCore.Auth_UserId.claim))->toEqual(None)
+  })
+
+  testPromise("no identity store configured reads as no row", async () =>
+    expect(await Trigger.userIdFor(~sub="u-carol", ~table=None))->toEqual(None)
+  )
+})

@@ -41,6 +41,11 @@ let tableName = (): string =>
   | None => JsError.throwWithMessage("ACTIVE_ROLE_TABLE is not configured")
   }
 
+/** The identity store, read for the domain id claim. Optional where the role
+    store is not: a trigger deployed before the store existed must keep minting
+    tokens, and an absent store means exactly what an absent row means. */
+let identityTableName = (): option<string> => getEnv("IDENTITY_STORE_TABLE")
+
 // ── Cognito pre-token-generation event (V1_0) ───────────────────────────────
 
 type userAttributes = {sub?: string}
@@ -124,16 +129,24 @@ exactly one thing.
 `claimsOverrideDetails` is not the same as none, and the regression line for this
 whole feature is that a caller with no stored role gets byte-identical output.
 */
-let respond = (~event: event, ~decision: decision): event => {
+let respond = (~event: event, ~decision: decision, ~userId: option<string>=?): event => {
   let incoming = event.request->Option.flatMap(r => r.groupConfiguration)
   let iamRolesToOverride = incoming->Option.flatMap(g => g.iamRolesToOverride)->Option.getOr([])
   let preferredRole = incoming->Option.flatMap(g => g.preferredRole)
+
+  // The domain id rides on whatever else the mint adds. On its own it adds only
+  // the claim and leaves the group configuration alone, so a caller with a
+  // domain id and no stored role keeps exactly the groups the pool granted.
+  let withUserId = (claims: dict<string>) => {
+    userId->Option.forEach(id => claims->Dict.set(ReventlessCore.Auth_UserId.claim, id))
+    claims
+  }
 
   let overrideWith = (~groups: array<string>, ~claims: dict<string>) => {
     ...event,
     response: {
       claimsOverrideDetails: {
-        claimsToAddOrOverride: claims,
+        claimsToAddOrOverride: withUserId(claims),
         groupOverrideDetails: {
           groupsToOverride: groups,
           iamRolesToOverride,
@@ -143,9 +156,13 @@ let respond = (~event: event, ~decision: decision): event => {
     },
   }
 
-  switch decision {
-  | Unchanged => event
-  | Narrow({role, membership}) =>
+  switch (decision, userId) {
+  | (Unchanged, None) => event
+  | (Unchanged, Some(_)) => {
+      ...event,
+      response: {claimsOverrideDetails: {claimsToAddOrOverride: withUserId(Dict.make())}},
+    }
+  | (Narrow({role, membership}), _) =>
     overrideWith(
       ~groups=[role],
       ~claims=Dict.fromArray([
@@ -153,7 +170,7 @@ let respond = (~event: event, ~decision: decision): event => {
         (ReventlessCore.Auth_ActiveRole.availableRolesClaim, membership->Array.join(",")),
       ]),
     )
-  | Stale({role, membership}) =>
+  | (Stale({role, membership}), _) =>
     // The full set, as the pool granted it — plus the marker that explains why the
     // stored choice did not apply.
     overrideWith(
@@ -194,6 +211,33 @@ let storedRoleFor = async (~sub: string, ~clientId: string, ~table: string): opt
   | _ => None
   }
 
+/**
+The domain id minted for this subject, or `None` for an account created before
+the store existed — whose id is its `sub`, and must stay so: every row it has
+written is keyed by it.
+
+Fails to `None` for the reason [storedRoleFor] does: a claim this trigger could
+not read is a login that must still succeed, and a caller without the claim
+lands on the fallback every older account already uses.
+*/
+let userIdFor = async (~sub: string, ~table: option<string>): option<string> =>
+  switch table {
+  | None => None
+  | Some(table) =>
+    try {
+      let out = await DynamoDb_DocumentClient.GetCommand.make({
+        tableName: table,
+        key: Dict.fromArray([(Auth_IdentityStore_Schema.partitionKey, JSON.Encode.string(sub))]),
+      })->DynamoDb_DocumentClient.GetCommand.send
+      out.item
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(o => o->Dict.get(Auth_IdentityStore_Schema.userIdAttribute))
+      ->Option.flatMap(JSON.Decode.string)
+    } catch {
+    | _ => None
+    }
+  }
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 let handler = async (event: event): event => {
@@ -216,10 +260,16 @@ let handler = async (event: event): event => {
   // granted — the safe direction, and the same one a read failure takes. An
   // absent client id is not worth failing a login over: the caller lands on their
   // full membership, which is their existing privileges and not more.
-  if sub == "" || clientId == "" {
+  if sub == "" {
     event
+  } else if clientId == "" {
+    respond(~event, ~decision=Unchanged, ~userId=?await userIdFor(~sub, ~table=identityTableName()))
   } else {
-    let storedRole = await storedRoleFor(~sub, ~clientId, ~table=tableName())
-    respond(~event, ~decision=decide(~membership, ~storedRole))
+    // Both reads at once: this function is a login's latency.
+    let (storedRole, userId) = await Promise.all2((
+      storedRoleFor(~sub, ~clientId, ~table=tableName()),
+      userIdFor(~sub, ~table=identityTableName()),
+    ))
+    respond(~event, ~decision=decide(~membership, ~storedRole), ~userId?)
   }
 }
