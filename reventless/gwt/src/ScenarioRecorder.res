@@ -120,7 +120,16 @@ let write = (~path: string, ~file: string, ~spec: string, scenarios: array<scena
       ),
     ]),
   )
-  NodeFs.writeFileSync(path, JSON.stringifyAny(json, ~space=2)->Option.getOr("{}") ++ "\n")
+  let text = JSON.stringifyAny(json, ~space=2)->Option.getOr("{}") ++ "\n"
+  // Written only when it says something new: a watch reacts to the write, and the same run
+  // records the same scenarios each time.
+  let same = switch NodeFs.readFileSync(path) {
+  | old => old == text
+  | exception _ => false
+  }
+  if !same {
+    NodeFs.writeFileSync(path, text)
+  }
 }
 
 /** Runs one test's `body`, recording its steps when recording is on, and adds the scenario to

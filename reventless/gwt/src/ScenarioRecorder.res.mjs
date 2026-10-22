@@ -161,7 +161,23 @@ function write(path, file, spec, scenarios) {
       ])))
     ]
   ]);
-  Nodefs.writeFileSync(path, Stdlib_Option.getOr(JSON.stringify(json, undefined, 2), "{}") + "\n", "utf8");
+  let text = Stdlib_Option.getOr(JSON.stringify(json, undefined, 2), "{}") + "\n";
+  let same;
+  let exit = 0;
+  let old;
+  try {
+    old = Nodefs.readFileSync(path, "utf8");
+    exit = 1;
+  } catch (exn) {
+    same = false;
+  }
+  if (exit === 1) {
+    same = old === text;
+  }
+  if (!same) {
+    Nodefs.writeFileSync(path, text, "utf8");
+    return;
+  }
 }
 
 function around(spec, title, body) {
