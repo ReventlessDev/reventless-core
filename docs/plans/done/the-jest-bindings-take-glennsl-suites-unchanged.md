@@ -1,9 +1,10 @@
 # Plan: the Jest bindings take glennsl suites unchanged
 
-**Status.** Planned 2026-10-12. J1 and J2 built 2026-10-12; J3 (release) waits on a push to
-`alpha`.
+**Status.** ✅ Done. J1 and J2 built 2026-10-12; J3 released 2026-10-21 as
+`@reventlessdev/rescript-jest` 1.0.0-alpha.9, whose README names `Jest` as the way to move a
+glennsl suite over.
 
-**In plain words.** [`@reventlessdev/rescript-jest`](../../rescript/jest/) binds Jest's globals
+**In plain words.** [`@reventlessdev/rescript-jest`](../../../rescript/jest/) binds Jest's globals
 directly: every `expect` runs at its line, and an `async` test body is awaited. Test suites
 written against `@glennsl/rescript-jest` cannot use it without a rewrite, because the two APIs
 differ in names and in how an assertion works. This plan adds a second module to the package,
@@ -24,7 +25,7 @@ package necessary in the first place stays: an assertion that isn't returned is 
 `package.json` and `rescript.json` and compiles with no source edits. Every assertion it makes
 then runs, and every async test is awaited.
 
-**Non-goals.** Changing [`JestGlobals`](../../rescript/jest/src/JestGlobals.res), which stays
+**Non-goals.** Changing [`JestGlobals`](../../../rescript/jest/src/JestGlobals.res), which stays
 the API for new tests. Binding glennsl's whole surface on day one: snapshots, `MockJs` and
 `JestJs` come in only when a consumer needs them. Upgrading Jest itself, covered in
 [§5](#5-jest-30).
@@ -123,8 +124,8 @@ checked:
 
 **Exit:** each item above fails exactly when it should.
 
-**Result.** [`tests/JestTest.mjs`](../../rescript/jest/tests/JestTest.mjs) runs
-[`tests/fixtures/`](../../rescript/jest/tests/fixtures/) once per Jest major and checks every
+**Result.** [`tests/JestTest.mjs`](../../../rescript/jest/tests/JestTest.mjs) runs
+[`tests/fixtures/`](../../../rescript/jest/tests/fixtures/) once per Jest major and checks every
 test's outcome and, for the failing ones, their own failure message. One check was added beyond
 the list. On Jest 30, a `testPromise` whose promise is never awaited still fails the right
 test, because Jest 30 attributes a late rejection to the test that caused it. So a fixture

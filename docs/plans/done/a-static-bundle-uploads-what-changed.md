@@ -19,7 +19,7 @@ platform stack, the platform's `pulumi up` grew from about 3½ minutes to 8, 13 
 its bundle grew; the 13-minute update created 228 objects and changed 253 resources, nearly all
 of them bundle files.
 
-The fix is to stop modelling files as resources. One resource uploads the directory: it lists
+The fix is to stop modeling files as resources. One resource uploads the directory: it lists
 what the bucket holds, puts what is new or changed many at a time, and deletes what is two
 generations old. Pulumi then tracks one resource, however many files the bundle has.
 

@@ -1,9 +1,9 @@
 # Plan: the framework's smaller vocabulary cleanups
 
-**Status:** ✅ Done 2026-10-21: [V1](#v1-glossary-entries) to [V7](#v7-american-spelling-in-prose) all done.<br/>
-**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
-its [order of work](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#14-order-of-work)
-and [decisions](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
+**Status:** ✅ Done and released 2026-10-21: [V1](#v1-glossary-entries) to [V7](#v7-american-spelling-in-prose) all done.<br/>
+**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
+its [order of work](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#14-order-of-work)
+and [decisions](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
 **Not here:** the behavior-to-decision rename, which is
 [the-logic-module-is-called-the-decision.md](the-logic-module-is-called-the-decision.md), and the
 rejection cause, which is [a-rejection-says-its-cause.md](a-rejection-says-its-cause.md).
@@ -68,7 +68,7 @@ Source only, no wire change:
   do the gwt and local test fixtures.
 - Republish the PPX with the core packages. The build that drops the generic injection is the
   proof that nothing read it
-  ([§7.2 of the analysis](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#72-what-the-collision-check-found)).
+  ([§7.2 of the analysis](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#72-what-the-collision-check-found)).
 - `CLAUDE.md`: the `@@reventless.spec` paragraph says `module Id`, not `module Key`. The
   paragraph lives in `.claude/rules/app-developer.md`.
 
@@ -82,7 +82,7 @@ One commit each:
   carry the word.
 - **The runtime's handler.** `Runtime.res`: `eventHandler<'event, 'context, 'result>` becomes
   `invocationHandler<'payload, 'context, 'result>`, and `effectHandler` follows, as
-  [event-terminology-disambiguation.md](../analysis/event-terminology-disambiguation.md)
+  [event-terminology-disambiguation.md](../../analysis/event-terminology-disambiguation.md)
   proposed. Internal to the runtime layer.
 
 ### V6. Three stray words in the docs

@@ -1,9 +1,10 @@
 # Plan: a rejected command says why it was rejected
 
-**Status:** ✅ Built 2026-10-21, not yet released.<br/>
-**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
-[§8.3](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#83-alternatives-for-telling-a-client-which-no-it-got),
-decision [D11](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
+**Status:** ✅ Built and released 2026-10-21, in `reventless-core` 3.0.0-alpha.304,
+`reventless-local` 3.0.0-alpha.295 and `reventless-aws` 3.0.0-alpha.393.<br/>
+**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
+[§8.3](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#83-alternatives-for-telling-a-client-which-no-it-got),
+decision [D11](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
 **Touches:** `reventless/core` (command outcomes, the SDL fragment), `reventless/local` (the
 GraphQL resolvers), `reventless/aws` (the AppSync side), `reventless/seed` (its client),
 `packages/reventless-ppx` (the reserved-name check), the GraphQL contract goldens, the docs.
@@ -35,7 +36,7 @@ named `Conflict` or `Forbidden`. This plan sends the cause and reserves the plat
 
 Not in scope: a separate `CommandFailed` member of the result union, or prefixing the
 platform's codes. Both are breaking for existing clients
-([§8.3 of the analysis](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#83-alternatives-for-telling-a-client-which-no-it-got)).
+([§8.3 of the analysis](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#83-alternatives-for-telling-a-client-which-no-it-got)).
 
 ## Phases
 

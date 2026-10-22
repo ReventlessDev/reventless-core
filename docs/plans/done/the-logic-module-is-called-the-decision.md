@@ -1,10 +1,11 @@
 # Plan: the write-side logic module is called the decision
 
-**Status:** ✅ R1–R8 built 2026-10-21, not yet released.<br/>
-**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
-[§3](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#3-behavior-or-decision)
-and [§8.4](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#84-recommendation);
-decisions [D1, D2 and D6](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
+**Status:** ✅ R1–R8 built and released 2026-10-21, in `reventless-spec` 3.0.0-alpha.173,
+`reventless-core` 3.0.0-alpha.304, `reventless-gwt` 1.0.0-alpha.252 and `reventless-ppx` 1.0.0-alpha.107.<br/>
+**Derived from:** [framework-vocabulary-behavior-chapter-and-doubled-terms.md](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md),
+[§3](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#3-behavior-or-decision)
+and [§8.4](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#84-recommendation);
+decisions [D1, D2 and D6](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#15-decisions).<br/>
 **Touches:** `reventless/spec`, `reventless/core`, `reventless/gwt`, `reventless/aws`,
 `reventless/local`, `packages/reventless-ppx`, every example and trait, `packages/doc`,
 `CLAUDE.md` and `.claude/rules/`.
@@ -19,7 +20,7 @@ the file and everything that names it to *decision*, so the file is called what 
 
 The rename is hard: there is no alias. An old spelling stops compiling with a message that names
 the new one and the codemod that makes the change. The analysis gives the reasons
-([§3.5](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#35-a-hard-rename-with-loud-refusals-not-aliases)).
+([§3.5](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#35-a-hard-rename-with-loud-refusals-not-aliases)).
 The test step `thenRefused` becomes `thenForbidden` in the same commit, because it lives in the
 same DSL and the same test files.
 
@@ -128,7 +129,7 @@ Its tests run it over a fixture tree and compare the result.
   to the former term.
 - The doc examples that still write `let apply = (state, event)` or `let handle = (state,
   command)` use `evolve` and `decide`
-  ([§11 of the analysis](../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#11-terms-that-need-a-definition-not-a-rename)).
+  ([§11 of the analysis](../../analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md#11-terms-that-need-a-definition-not-a-rename)).
 - `CLAUDE.md` and `.claude/rules/app-developer.md`: the file-naming table, the PPX annotation
   list, the GWT section, the `thenRefused` mention under the owner marker.
 - The release notes name the codemod.

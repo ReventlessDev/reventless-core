@@ -26,7 +26,7 @@ const ALLOWED = [
     "docs/analysis/framework-vocabulary-behavior-chapter-and-doubled-terms.md",
     "names the British spellings it counts",
   ],
-  ["docs/plans/framework-vocabulary-cleanups.md", "names the British spellings it replaces"],
+  ["docs/plans/done/framework-vocabulary-cleanups.md", "names the British spellings it replaces"],
   [
     "docs/plans/done/the-shell-knows-its-environment.md",
     "other repositories link to this heading's anchor",

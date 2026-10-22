@@ -1,7 +1,11 @@
 # Framework vocabulary: one chapter per term
 
-**Status:** Analysis, 2026-10-21 (first version 2026-10-18). Nothing renamed yet. The open
-decisions are listed in [§15](#15-decisions).
+**Status:** Analysis, 2026-10-21 (first version 2026-10-18). Every decision in
+[§15](#15-decisions) is built and released as of 2026-10-21, through three plans:
+[the-logic-module-is-called-the-decision.md](../plans/done/the-logic-module-is-called-the-decision.md)
+(D1, D2, D6), [a-rejection-says-its-cause.md](../plans/done/a-rejection-says-its-cause.md) (D11)
+and [framework-vocabulary-cleanups.md](../plans/done/framework-vocabulary-cleanups.md) (the rest).
+The source links below name the files as they were when the analysis was written.
 
 **Relates to:** [event-terminology-disambiguation.md](event-terminology-disambiguation.md)
 (the earlier pass over "event" and "handler"),

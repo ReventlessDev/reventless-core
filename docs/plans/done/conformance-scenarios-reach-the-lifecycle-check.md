@@ -1,6 +1,7 @@
 # Plan: a conformance suite's scenarios count for the lifecycle check
 
-**Status:** ✅ R1–R3 built 2026-10-19, not released. On the online shop's ordering plugin, the
+**Status:** ✅ R1–R3 built 2026-10-19, released 2026-10-21 in `reventless-gwt` 1.0.0-alpha.252.
+On the online shop's ordering plugin, the
 notification conformance suite run with the switch on records its 19 scenarios, and
 `check-lifecycle` then shows `RequestNotification` undeliverable (2 scenarios) and deferred (1)
 beside its own.<br/>
