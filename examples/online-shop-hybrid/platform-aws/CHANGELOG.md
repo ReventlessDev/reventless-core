@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.351 (2026-10-22)
+
+### Bug Fixes
+
+* **example:** the hybrid shop declares its environments and stops naming view modes it does not stage ([8506cc8](https://github.com/ReventlessDev/reventless-core/commit/8506cc87471bfbd3525e7d5d7aa80f3def3c072a))
+* feat(aws)!: the host shell's config.json names the identity provider under the neutral keys only ([6ce24ba](https://github.com/ReventlessDev/reventless-core/commit/6ce24ba7dde27da02f76f7f9f6284ad09a48f15a))
+
+### BREAKING CHANGES
+
+* a reader of the host shell's config.json that only knows cognitoClientId
+or cognitoUserPoolId finds neither; read identityProviderClientId and identityProviderId.
+
+
+
 # 1.0.0-alpha.350 (2026-10-22)
 
 ### Bug Fixes

@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.395 (2026-10-22)
+
+* feat(aws)!: the host shell's config.json names the identity provider under the neutral keys only ([6ce24ba](https://github.com/ReventlessDev/reventless-core/commit/6ce24ba7dde27da02f76f7f9f6284ad09a48f15a))
+### Features
+
+* **local:** the local platform provisions an identity provider over the accounts file ([1a46867](https://github.com/ReventlessDev/reventless-core/commit/1a46867ac391b3b4a2d6973606d782547190dcb8))
+
+### BREAKING CHANGES
+
+* a reader of the host shell's config.json that only knows cognitoClientId
+or cognitoUserPoolId finds neither; read identityProviderClientId and identityProviderId.
+
+
+
 # 3.0.0-alpha.394 (2026-10-22)
 
 ### Features

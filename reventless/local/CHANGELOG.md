@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.297 (2026-10-22)
+
+### Bug Fixes
+
+* **local:** a plugin declaring a capability the local platform does not provision is told so ([0f4f504](https://github.com/ReventlessDev/reventless-core/commit/0f4f504e310fb001a760d738767590e91c8c7195))
+### Features
+
+* **local:** the local platform provisions an identity provider over the accounts file ([1a46867](https://github.com/ReventlessDev/reventless-core/commit/1a46867ac391b3b4a2d6973606d782547190dcb8))
+
+
 # 3.0.0-alpha.296 (2026-10-22)
 
 ### Features

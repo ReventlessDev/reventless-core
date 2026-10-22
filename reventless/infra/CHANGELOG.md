@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.203 (2026-10-22)
+
+### Features
+
+* **local:** the local platform provisions an identity provider over the accounts file ([1a46867](https://github.com/ReventlessDev/reventless-core/commit/1a46867ac391b3b4a2d6973606d782547190dcb8))
+
+
 # 3.0.0-alpha.202 (2026-10-22)
 
 ### Features
