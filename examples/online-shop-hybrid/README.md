@@ -252,6 +252,10 @@ and [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md); deployin
 stack by stack is covered in
 [Getting Started with AWS](../../packages/doc/docs-infrastructure/aws/get-started.md).
 
+In CI, [environments.yaml](environments.yaml) says what each branch's stack is for
+(`alpha` is dev, `beta` is test, `main` is production), and the host shell badges the
+purpose; see [deploy environments](../../docs/guides/deploy-environments.md).
+
 ## Seed the deployed shop
 
 `pnpm run shop:seed` seeds the `dev` stack. By hand, run

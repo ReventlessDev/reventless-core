@@ -45,6 +45,7 @@ on:
     branches: [main, beta, alpha]
     paths:
       - examples/online-shop-hybrid/deploy-manifest.yaml
+      - examples/online-shop-hybrid/environments.yaml
       - examples/online-shop-hybrid/platform-aws/package.json
       - examples/online-shop-hybrid/platform-aws/Pulumi.*.yaml
 

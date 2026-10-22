@@ -1,0 +1,12 @@
+# The environments this app deploys to, read by the reusable deploy workflow beside
+# deploy-manifest.yaml. Each branch feeds the stack of its own name, as before the file
+# existed; what the file adds is the purpose, which the deploy writes into the host shell's
+# config.json as `environmentPurpose`. The shell colours its environment badge by it, and
+# a stack with no declared purpose is drawn in the colour reserved for the unknown.
+#
+# No review environment: a pull request keeps its dry run against the base branch's stack.
+# See docs/guides/deploy-environments.md.
+environments:
+  - { name: alpha, purpose: dev, branch: alpha }
+  - { name: beta, purpose: test, branch: beta }
+  - { name: main, purpose: production, branch: main }

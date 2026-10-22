@@ -29,11 +29,9 @@ module Platform = ReventlessAws.Platform.Make()
 // door — a Cognito-authenticated `Query.geocode` resolver on the platform API —
 // and exports the index name for the unattended slice path (D9 half 2).
 //
-// The browser half is only reachable because `~hostUiBundle` below names the `Map`
-// view mode: the shell's geocoder issues the `geocode` query from inside the
-// dynamically-imported map chunk, and that same mode registers the geo-point
-// command input. Drop one and keep the other and this index is a capability no
-// browser reaches.
+// The browser half lives in the commercial map view, which a deployment stages
+// beside the shell under its licence. This example stages none (see `viewModes`
+// below), so here the index serves the unattended path only.
 let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="online-shop-geocoder")
 
 // Backs the notification competency's email channel. Unlike the geocoder there
@@ -76,16 +74,12 @@ let messagingSender = ReventlessAws.Capability_Messaging.make(~name="online-shop
 // before a regenerate.
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  // `Map({})` / `Graph({})` — both known modes, each with its defaults. No
-  // `style`: the mode's built-in demo tiles are the honest default for an
-  // example, and a real style URL is a per-deployment key with an account behind
-  // it. No `layout`: dagre is what the shop's references want.
-  //
-  // `graph` buys two surfaces from one word — the node-link row mode on every
-  // list whose schema carries references, and the Lifecycles page's lane/diagram
-  // toggle. That page hides the toggle when no renderer is registered, so
-  // leaving the mode unnamed did not degrade to a missing diagram; it read as a
-  // feature that had never been built.
+  // No `viewModes`. The map and graph views are commercial packages the shell
+  // loads as federation remotes a deployment stages beside it under its licence
+  // (`uiModules` in config.json). This example stages none: the packages are
+  // private, and a free example must install anonymously. Naming the modes
+  // without their remotes only makes the shell warn at boot that nothing
+  // provides them. The local platform stages every installed view instead.
   //
   // `shellConfig` carries the keys the shell owns and the deploy has no way to
   // compute. `appName` is what the host UI puts in its sidebar and browser tab;
@@ -98,7 +92,6 @@ let default = Platform.deployPlatform(
   // the server is the failure this key exists to avoid — and the shell treats an
   // absent key as "unknown", so leaving it out silently stops hiding anything.
   ~hostUiBundle={
-    viewModes: [Map({}), Graph({})],
     geocoderPlaceIndex: placeIndex,
     messagingSender,
     // The storefront's surface, shared with the in-memory root that hosts the
