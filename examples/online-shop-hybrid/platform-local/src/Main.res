@@ -21,6 +21,11 @@ Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedR
 // with no mailer produces.
 let messagingSender = ReventlessLocal.Capability_Messaging_Log.make()
 
+// Makes, groups and unmakes accounts in `.reventless/users.yaml`, the file the
+// local login already reads, so a principal a slice creates can sign in after
+// the next restart too. The AWS root has no counterpart yet.
+let identityProvider = ReventlessLocal.Capability_IdentityProvider_UserStore.make()
+
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
 
@@ -50,6 +55,7 @@ Platform.makePlatform(
     // source and would quietly move this example off the seam it demonstrates.
     uiSlotsFile: OnlineShopHybridSeed.Storefront.uiSlotsFile,
     messagingSender,
+    identityProvider,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
       // The shop opens on the shop. Per-deployment rather than a nav hint: an

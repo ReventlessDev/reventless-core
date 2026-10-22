@@ -4,10 +4,13 @@ import * as Sury from "sury";
 import * as Yaml from "yaml";
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 import * as Util_Password$Reventless from "../util/Util_Password.res.mjs";
 
 let entrySchema = Sury.$schema(s => ({
@@ -177,6 +180,143 @@ function fillFile(file, fills) {
   }
 }
 
+function applyEdits(yamlText, edits) {
+  let e;
+  let exit = 0;
+  let val;
+  try {
+    val = Yaml.parse(yamlText);
+    exit = 1;
+  } catch (exn) {
+    e = parseString(yamlText);
+  }
+  if (exit === 1) {
+    e = val === null ? ({
+        TAG: "Ok",
+        _0: []
+      }) : parseString(yamlText);
+  }
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  try {
+    let doc = Yaml.parseDocument(yamlText);
+    if (doc.contents == null) {
+      doc.contents = doc.createNode([]);
+    }
+    let usernames = e._0.map(e => e.username);
+    let failed = Stdlib_Array.findMap(edits, edit => {
+      switch (edit.TAG) {
+        case "Append" :
+          let entry = edit._0;
+          if (usernames.indexOf(entry.username) >= 0) {
+            return entry.username + ` is already declared in the manifest`;
+          } else {
+            doc.addIn([], doc.createNode(Util_Sury$Reventless.toJson(entry, entrySchema)));
+            usernames.push(entry.username);
+            return;
+          }
+        case "SetGroups" :
+          let username = edit.username;
+          let index = usernames.indexOf(username);
+          if (index !== -1) {
+            doc.setIn(path(index, "groups"), doc.createNode(edit.groups.map(prim => prim)));
+            return;
+          } else {
+            return username + ` is not declared in the manifest`;
+          }
+        case "Remove" :
+          let username$1 = edit._0;
+          let index$1 = usernames.indexOf(username$1);
+          if (index$1 !== -1) {
+            doc.deleteIn([index$1]);
+            usernames.splice(index$1, 1);
+            return;
+          } else {
+            return username$1 + ` is not declared in the manifest`;
+          }
+      }
+    });
+    if (failed !== undefined) {
+      return {
+        TAG: "Error",
+        _0: failed
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: doc.toString()
+      };
+    }
+  } catch (raw_err) {
+    let err = Primitive_exceptions.internalToException(raw_err);
+    if (err.RE_EXN_ID === "JsExn") {
+      return {
+        TAG: "Error",
+        _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "Cannot rewrite the manifest")
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "Cannot rewrite the manifest"
+      };
+    }
+  }
+}
+
+function editFile(file, edits) {
+  let text;
+  if (Nodefs.existsSync(file)) {
+    try {
+      text = {
+        TAG: "Ok",
+        _0: Nodefs.readFileSync(file, "utf8")
+      };
+    } catch (raw_err) {
+      let err = Primitive_exceptions.internalToException(raw_err);
+      text = err.RE_EXN_ID === "JsExn" ? ({
+          TAG: "Error",
+          _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), `Cannot read ` + file)
+        }) : ({
+          TAG: "Error",
+          _0: `Cannot read ` + file
+        });
+    }
+  } else {
+    text = {
+      TAG: "Ok",
+      _0: ""
+    };
+  }
+  let e = Stdlib_Result.flatMap(text, text => applyEdits(text, edits));
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  try {
+    Nodefs.mkdirSync(Nodepath.dirname(file), {
+      recursive: true
+    });
+    Nodefs.writeFileSync(file, e._0, "utf8");
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  } catch (raw_err$1) {
+    let err$1 = Primitive_exceptions.internalToException(raw_err$1);
+    if (err$1.RE_EXN_ID === "JsExn") {
+      return {
+        TAG: "Error",
+        _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err$1._1), `Cannot write ` + file)
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: `Cannot write ` + file
+      };
+    }
+  }
+}
+
 let templateName = "users.example.yaml";
 
 function pathOf(located) {
@@ -320,6 +460,8 @@ export {
   currentString,
   applyFills,
   fillFile,
+  applyEdits,
+  editFile,
   templateName,
   pathOf,
   locate,

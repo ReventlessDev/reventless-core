@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
@@ -86,6 +87,15 @@ function setCredentials(username, password, identity) {
 
 function resetStore() {
   store.contents = {};
+}
+
+function credentialsOf(username) {
+  return store.contents[username];
+}
+
+function removeCredentials(username) {
+  Stdlib_Dict.$$delete(store.contents, username);
+  Stdlib_Dict.$$delete(users.contents, username);
 }
 
 let _secretFileName = "token-secret";
@@ -286,6 +296,8 @@ let Login = {
   store: store,
   setCredentials: setCredentials,
   resetStore: resetStore,
+  credentialsOf: credentialsOf,
+  removeCredentials: removeCredentials,
   _secretFileName: _secretFileName,
   _secretDir: _secretDir,
   _mint: _mint,

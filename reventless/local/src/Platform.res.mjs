@@ -1264,6 +1264,11 @@ function MakeWithConfig(Config) {
         log.info("Platform", undefined, `messaging: log transport as ` + sender + ` (nothing is sent)`);
       }
     }
+    let provider = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.identityProvider);
+    if (provider !== undefined) {
+      LocalCapabilities$ReventlessLocal.registerIdentityProvider(provider);
+      log.info("Platform", undefined, `identity provider: the accounts file`);
+    }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
@@ -3019,6 +3024,11 @@ function Make($star) {
         LocalCapabilities$ReventlessLocal.registerMessagingSender(sender);
         log.info("Platform", undefined, `messaging: log transport as ` + sender + ` (nothing is sent)`);
       }
+    }
+    let provider = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.identityProvider);
+    if (provider !== undefined) {
+      LocalCapabilities$ReventlessLocal.registerIdentityProvider(provider);
+      log.info("Platform", undefined, `identity provider: the accounts file`);
     }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [

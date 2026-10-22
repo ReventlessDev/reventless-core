@@ -24,13 +24,20 @@ let messagingSenderRef = ref("")
     `PluginRuntime_Builder.registerMessagingSender`. */
 let registerMessagingSender = (sender: string) => messagingSenderRef := sender
 
+// Refusing until a root provides one: the seam exists so a deployment can be
+// asked what it provisions, and answering `Unavailable` leaves the work queued
+// and visible instead of recording a verdict against a person who has done
+// nothing wrong.
+let identityProviderRef = ref(Reventless.Capabilities.none.identityProvider)
+
+/** Provision the identity provider. Called by `makePlatform` from the handle a
+    root declared, `Capability_IdentityProvider_UserStore.make()`. */
+let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
+  identityProviderRef := provider
+
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
-  // Refusing rather than absent: the seam exists so a deployment can be asked
-  // what it provisions. Nothing writes back to the local user store yet, and
-  // answering `Unavailable` leaves the work queued and visible instead of
-  // recording a verdict against a person who has done nothing wrong.
-  identityProvider: Reventless.Capabilities.none.identityProvider,
+  identityProvider: identityProviderRef.contents,
   secrets: ReventlessCore.Secrets_Node_Backend.provider,
 }

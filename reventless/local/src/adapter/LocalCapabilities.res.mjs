@@ -12,11 +12,19 @@ function registerMessagingSender(sender) {
   messagingSenderRef.contents = sender;
 }
 
+let identityProviderRef = {
+  contents: Capabilities$Reventless.none.identityProvider
+};
+
+function registerIdentityProvider(provider) {
+  identityProviderRef.contents = provider;
+}
+
 function capabilities() {
   return {
     geocode: Capabilities$Reventless.none.geocode,
     messaging: Messaging_Log_Backend$ReventlessCore.provider(messagingSenderRef.contents),
-    identityProvider: Capabilities$Reventless.none.identityProvider,
+    identityProvider: identityProviderRef.contents,
     secrets: Secrets_Node_Backend$ReventlessCore.provider
   };
 }
@@ -24,6 +32,8 @@ function capabilities() {
 export {
   messagingSenderRef,
   registerMessagingSender,
+  identityProviderRef,
+  registerIdentityProvider,
   capabilities,
 }
 /* Capabilities-Reventless Not a pure module */

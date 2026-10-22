@@ -100,6 +100,16 @@ module Login = {
     store := Dict.make()
   }
 
+  /** The credentials behind a username, for a caller that rewrites them. */
+  let credentialsOf = (~username: string): option<credentials> => store.contents->Dict.get(username)
+
+  /** Forget an account on both sides, so neither a login nor an `X-User`
+      header resolves it afterwards. */
+  let removeCredentials = (~username: string): unit => {
+    store.contents->Dict.delete(username)
+    users.contents->Dict.delete(username)
+  }
+
   // ── HMAC secret (lazy) ──
   //
   // Resolved once on first use, from three sources in order:

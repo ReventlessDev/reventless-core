@@ -1545,6 +1545,10 @@ module MakeWithConfig = (
     // ignores them.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     messagingSender?: ReventlessInfra.Platform.messagingSender,
+    // Local only, until the AWS platform has a provider to pass the same way:
+    // `Capability_IdentityProvider_UserStore.make()`, writing the accounts file
+    // the auth adapter loads.
+    identityProvider?: Reventless.IdentityProvider.t,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
     // Still ignored: a mode is a shell *build* input locally, turned on in the
     // host-shell package's own `public/config.json`, where the AWS deploy has to
@@ -1585,6 +1589,12 @@ module MakeWithConfig = (
       LocalCapabilities.registerMessagingSender(address)
       log.info(~comp="Platform", `messaging: log transport as ${address} (nothing is sent)`)
     | _ => ()
+    }
+    switch hostUiBundle->Option.flatMap(cfg => cfg.identityProvider) {
+    | Some(provider) =>
+      LocalCapabilities.registerIdentityProvider(provider)
+      log.info(~comp="Platform", `identity provider: the accounts file`)
+    | None => ()
     }
 
     // Runtime extension seam. Fired before anything is built, so an extension's

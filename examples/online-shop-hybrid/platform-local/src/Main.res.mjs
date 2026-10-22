@@ -9,6 +9,7 @@ import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/P
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalPlatformStart.res.mjs";
 import * as Capability_Messaging_Log$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_Messaging_Log.res.mjs";
+import * as Capability_IdentityProvider_UserStore$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_IdentityProvider_UserStore.res.mjs";
 
 LocalPlatformStart$ReventlessLocal.orAddressRunning(undefined, undefined);
 
@@ -17,6 +18,8 @@ let Platform = Platform$ReventlessLocal.Make({});
 OwnerScope$Reventless.setElevatedRoles(Storefront$OnlineShopHybridSeed.elevatedRoles);
 
 let messagingSender = Capability_Messaging_Log$ReventlessLocal.make();
+
+let identityProvider = Capability_IdentityProvider_UserStore$ReventlessLocal.make(undefined, undefined);
 
 let Catalog = Plugin$CatalogPlugin.Make(Platform);
 
@@ -35,6 +38,7 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
   uiSlotsFile: Storefront$OnlineShopHybridSeed.uiSlotsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   messagingSender: messagingSender,
+  identityProvider: identityProvider,
   shellConfig: Object.fromEntries([
     [
       "appName",
@@ -56,6 +60,7 @@ Platform.startServers();
 export {
   Platform,
   messagingSender,
+  identityProvider,
   Catalog,
   Ordering,
 }

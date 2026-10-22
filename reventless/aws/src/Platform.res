@@ -1287,6 +1287,10 @@ module MakeWithConfig = (
     // door: unlike geocoding, a browser has no business sending mail from the
     // deployment's identity. Unset ⇒ no export, no grant.
     messagingSender?: ReventlessInfra.Platform.messagingSender,
+    // Ignored here: an in-process provider cannot reach a Lambda, and no
+    // pool-backed handle exists yet. The deploy gate refuses a plugin that
+    // declares the need, naming this.
+    identityProvider?: Reventless.IdentityProvider.t,
     // Optional object store for direct-to-S3 uploads, as returned by
     // `Capability_ObjectStore_S3.make`. When set, the deploy registers it with
     // the platform's one Upload service (`Upload_Presign_S3`) under the `uploads`

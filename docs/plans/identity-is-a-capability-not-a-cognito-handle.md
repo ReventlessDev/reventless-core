@@ -14,8 +14,10 @@ already exists as `Authorization.AllowAnonymous`, and AWS silently enforces it a
 Step 3 is re-cut into three pieces, and **the first — refusing to compile `AllowAnonymous` into a
 directive that contradicts it — ✅ shipped 2026-09-10**, as did **Step 5b** (862 aws tests green, both
 verified by deletion). **Step 3b was decided 2026-09-11: the AWS door is deferred, and when built it
-is a separate narrow door** rather than an API key on the platform API. **Steps 3c (the door, local
-first) and 2 are what remain.**
+is a separate narrow door** rather than an API key on the platform API. **Step 3c's local half ✅
+shipped 2026-10-22:** the local platform provisions an identity provider over the accounts file, so a
+slice can make, group and unmake a principal and a restarted process sees it. **What remains:** Step 2,
+the Cognito provider on AWS, and the anonymous door itself, which is the registration chapter's.
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -366,6 +368,48 @@ claim still applies if it is a key.
 the rejected shape. It now says anonymous fields are deferred to a separate API and warns against the
 key on this one. Message text only; what is refused is unchanged, and all 150 AppSync tests stay green.
 
+### Step 3c — the local provider ✅ **built 2026-10-22**
+
+The plan named this piece "the door itself, on both platforms". Narrowed before building: the door is
+a GraphQL field whose *domain* logic — `Register`, `SubmitProof`, the policy — is the registration
+chapter's ([self-registration-is-a-chapter-not-a-trait.md](self-registration-is-a-chapter-not-a-trait.md)),
+and that plan lists "needs the capability's local provider" as its own blocker. The provider is what
+this plan owns, and it is what shipped.
+
+- **`Capability_IdentityProvider_UserStore`** in `reventless/local`, beside `Capability_Messaging_Log`
+  and reached the same way: a root calls `make()`, passes the handle as `~identityProvider` in
+  `~hostUiBundle`, and `makePlatform` puts it on the capability record every `translate` receives. A
+  root that passes nothing keeps the refusing arm. The hybrid example's local root passes it.
+- **Its store is `.reventless/users.yaml`**, the file the login already loads — the recommendation
+  under Step 2, so an account made here survives a restart with no second store. Every operation
+  writes the file and the live `LocalAuth.Login` store together. `AccountsManifest` gained the three
+  edits (`Append`, `SetGroups`, `Remove`), round-tripping through the YAML document as `applyFills`
+  does so comments survive, and refusing a duplicate name or an unknown one rather than guessing.
+- **The handle is the username, and the username is the address** — an email recipient signs in as
+  its address, SMS as its number, push is `Refused`. A duplicate contact is `Conflict`; a file the
+  provider cannot read or write is `Unavailable`; grouping an unknown principal is `Refused`;
+  deleting one that is gone is `Ok`, since a retried delete is a delete that happened. All four
+  operations are published.
+- **The domain id is not minted here.** The entry carries no `userId`, so the loader defaults it to
+  the username as every local account already does — which is the fallback Step 2 says the AWS side
+  must reproduce. The minted shape is Step 2's to decide, for both platforms at once; deciding it on
+  one platform first would be the drift this plan exists to prevent.
+- **The file is shared and unlocked.** The seed runner reads it and `provision-accounts` writes it;
+  two processes editing at once can lose one edit. Recorded in the module header, as the Verification
+  section asked, not solved: the loss is a dev account.
+- **`hostUiBundleConfig.identityProvider` is on the shared type**, so the AWS record carries it and
+  ignores it with a comment saying why: an in-process provider cannot reach a Lambda, and the deploy
+  gate still refuses a plugin declaring the need there.
+
+*Evidence:* the whole repo builds warning-free; spec, local and infra 1,739 tests in 167 suites green,
+aws 995 in 86. Nine new tests in `Capability_IdentityProvider_UserStoreTest` (login now and after a
+reload from the file, `Conflict`, `NoCredential`, push refused, groups round-trip, unknown principal,
+idempotent delete, comments surviving) and five in `AccountsManifestTest` for the edits.
+
+**Found and not fixed here:** the local platform's `deployPlugin` runs no unmet-capability gate at
+all, where the AWS deploy refuses a declared need it does not provision. A plugin declaring any need
+deploys locally unchecked. A small separate fix, noted so it is not read as this step's omission.
+
 ## Step 4 — the plugin door
 
 ```rescript
@@ -573,11 +617,12 @@ capability has to reproduce that property rather than inherit it, so it is worth
   the point of the arm, and it is what `Geocoding` and `Messaging` already demonstrate.
 - `Capabilities.none` answers `Unavailable` on every operation, asserted the way the existing
   `geocode` / `messaging` refusals are.
-- A local `createPrincipal` writes `.reventless/users.yaml` and a restarted process sees the account.
+- ✅ A local `createPrincipal` writes `.reventless/users.yaml` and a restarted process sees the account.
   Appending to the file is the recommendation: visible, greppable, survives a restart, and matches how
   developers already work with it. It races two processes — record that rather than pretend otherwise;
-  the file is already shared with the seed runner.
-- Round-trip on both platforms: create, add to group, remove, delete.
+  the file is already shared with the seed runner. Held by `Capability_IdentityProvider_UserStoreTest`,
+  whose reload is a reset of both stores and a `UserStore.load` of the file.
+- Round-trip on both platforms: create, add to group, remove, delete. ✅ local; AWS waits on a provider.
 - ✅ **A spec field declaring `AllowAnonymous` either reaches an anonymous caller on AWS or fails the
   deploy — never deploys green meaning `AllowAuthenticated`.** Held by five tests in
   `AppSync_AdapterTest`, one of which pins the *contrast* between the two permissions rather than the

@@ -173,6 +173,116 @@ let fillFile = (~path as file: string, ~fills: array<fill>): result<array<filled
     }
   }
 
+// ── Editing the cast ─────────────────────────────────────────────────────────
+
+/**
+One change to the accounts a manifest declares, addressed by username because
+that is what an entry is known by on both platforms. What the local identity
+provider writes; on AWS the same edits would follow a pool operation.
+*/
+type edit =
+  | Append(entry)
+  | SetGroups({username: string, groups: array<string>})
+  | Remove(string)
+
+type yamlNode
+
+@send external createNode: (document, JSON.t) => yamlNode = "createNode"
+@send external addIn: (document, array<JSON.t>, yamlNode) => unit = "addIn"
+@send external setInNode: (document, array<JSON.t>, yamlNode) => unit = "setIn"
+@send external deleteIn: (document, array<JSON.t>) => bool = "deleteIn"
+@get external contents: document => Nullable.t<yamlNode> = "contents"
+@set external setContents: (document, yamlNode) => unit = "contents"
+
+/**
+Applies edits to a manifest document, returning its new text.
+
+Round-trips through `parseDocument` for the reason [applyFills] does: the file
+carries more explanation than data. A document that is empty or only comments
+becomes a sequence first. Appending a username the file already declares is
+refused, because two entries for one name is a login that resolves to whichever
+the loader read last; the other edits refuse a name the file does not declare,
+since a change to nothing is a typo and not a no-op.
+*/
+let applyEdits = (yamlText: string, edits: array<edit>): result<string, string> =>
+  switch switch parseYaml(yamlText) {
+  | JSON.Null => Ok([])
+  | _ => parseString(yamlText)
+  | exception _ => parseString(yamlText)
+  } {
+  | Error(_) as e => e
+  | Ok(initial) =>
+    try {
+      let doc = parseDocument(yamlText)
+      if doc->contents->Nullable.isNullable {
+        doc->setContents(doc->createNode(JSON.Encode.array([])))
+      }
+      let usernames = initial->Array.map(e => e.username)
+      let indexOf = username => usernames->Array.indexOf(username)
+      let failed = edits->Array.findMap(edit =>
+        switch edit {
+        | Append(entry) if indexOf(entry.username) >= 0 =>
+          Some(`${entry.username} is already declared in the manifest`)
+        | Append(entry) =>
+          doc->addIn([], doc->createNode(entry->Util_Sury.toJson(entrySchema)))
+          usernames->Array.push(entry.username)
+          None
+        | SetGroups({username, groups}) =>
+          switch indexOf(username) {
+          | -1 => Some(`${username} is not declared in the manifest`)
+          | index =>
+            doc->setInNode(
+              path(index, "groups"),
+              doc->createNode(groups->Array.map(JSON.Encode.string)->JSON.Encode.array),
+            )
+            None
+          }
+        | Remove(username) =>
+          switch indexOf(username) {
+          | -1 => Some(`${username} is not declared in the manifest`)
+          | index =>
+            let _ = doc->deleteIn([JSON.Number(index->Int.toFloat)])
+            let _ = usernames->Array.splice(~start=index, ~remove=1, ~insert=[])
+            None
+          }
+        }
+      )
+      switch failed {
+      | Some(message) => Error(message)
+      | None => Ok(doc->documentToString)
+      }
+    } catch {
+    | JsExn(err) => Error(JsExn.message(err)->Option.getOr("Cannot rewrite the manifest"))
+    | _ => Error("Cannot rewrite the manifest")
+    }
+  }
+
+/** [applyEdits] against a file on disk, creating the file and its directory
+  when there is none: the first account a provider makes should not fail for
+  want of an empty file to put it in. */
+let editFile = (~path as file: string, ~edits: array<edit>): result<unit, string> => {
+  let text = switch NodeFs.existsSync(file) {
+  | true =>
+    try Ok(NodeFs.readFileSync(file)) catch {
+    | JsExn(err) => Error(JsExn.message(err)->Option.getOr(`Cannot read ${file}`))
+    | _ => Error(`Cannot read ${file}`)
+    }
+  | false => Ok("")
+  }
+  switch text->Result.flatMap(text => applyEdits(text, edits)) {
+  | Error(_) as e => e
+  | Ok(rewritten) =>
+    try {
+      NodeFs.mkdirSync(NodePath.dirname(file), {recursive: true})
+      NodeFs.writeFileSync(file, rewritten)
+      Ok()
+    } catch {
+    | JsExn(err) => Error(JsExn.message(err)->Option.getOr(`Cannot write ${file}`))
+    | _ => Error(`Cannot write ${file}`)
+    }
+  }
+}
+
 // ── Finding it ───────────────────────────────────────────────────────────────
 
 /** The template each platform package keeps beside itself, committed, as the

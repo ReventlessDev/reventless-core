@@ -19,6 +19,70 @@ let manifest = `# The cast, and why fulfil is elevated.
   userId: already-known
 `
 
+describe("AccountsManifest.applyEdits", () => {
+  let parsed = text => AccountsManifest.parseString(text)->Result.getOr([])
+
+  testSync("appends an entry and keeps the comments around the others", () => {
+    let edited =
+      AccountsManifest.applyEdits(
+        manifest,
+        [Append({username: "new@example.com", password: "", groups: ["Shopper"]})],
+      )->Result.getOr("")
+    expect(edited->String.includes("# THESE ARE THROWAWAY DEV CREDENTIALS."))->toBe(true)
+    expect(parsed(edited)->Array.map(e => e.username))->toEqual([
+      "admin",
+      "shopper",
+      "new@example.com",
+    ])
+  })
+
+  testSync("replaces an entry's groups and removes an entry by username", () => {
+    let edited =
+      AccountsManifest.applyEdits(
+        manifest,
+        [SetGroups({username: "shopper", groups: ["Shopper", "Reviewer"]}), Remove("admin")],
+      )->Result.getOr("")
+    expect(parsed(edited))->toEqual([
+      {
+        AccountsManifest.username: "shopper",
+        password: "keep-me",
+        groups: ["Shopper", "Reviewer"],
+        userId: "already-known",
+      },
+    ])
+  })
+
+  // The loader resolves a name to whichever entry it read last, so a second
+  // entry for one name is not an account, it is a login that changes meaning.
+  testSync("refuses a second entry for a name the file declares", () =>
+    expect(
+      AccountsManifest.applyEdits(
+        manifest,
+        [Append({username: "admin", password: "x", groups: []})],
+      ),
+    )->toEqual(Error("admin is already declared in the manifest"))
+  )
+
+  testSync("refuses to change or remove a name the file does not declare", () => {
+    expect(
+      AccountsManifest.applyEdits(manifest, [SetGroups({username: "nobody", groups: []})]),
+    )->toEqual(Error("nobody is not declared in the manifest"))
+    expect(AccountsManifest.applyEdits(manifest, [Remove("nobody")]))->toEqual(
+      Error("nobody is not declared in the manifest"),
+    )
+  })
+
+  testSync("starts a sequence in a file that is empty or only comments", () => {
+    let entry: AccountsManifest.entry = {username: "first", password: "pw", groups: []}
+    expect(AccountsManifest.applyEdits("", [Append(entry)])->Result.map(parsed))->toEqual(
+      Ok([entry]),
+    )
+    expect(
+      AccountsManifest.applyEdits("# nobody yet\n", [Append(entry)])->Result.map(parsed),
+    )->toEqual(Ok([entry]))
+  })
+})
+
 describe("AccountsManifest.parseString", () => {
   testSync("reads the entries a manifest declares", () =>
     expect(AccountsManifest.parseString(manifest))->toEqual(
