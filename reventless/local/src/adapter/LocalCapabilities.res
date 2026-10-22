@@ -35,6 +35,48 @@ let identityProviderRef = ref(Reventless.Capabilities.none.identityProvider)
 let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
   identityProviderRef := provider
 
+/** What this platform provisions, in the terms a plugin declares its needs:
+    read off the same refs `capabilities()` reads, so it cannot disagree with
+    what a slice is handed. Geocoding is never here — no local geocoder exists. */
+let provisioned = (): array<Reventless.CapabilityNeed.t> =>
+  Array.concat(
+    messagingSenderRef.contents == "" ? [] : [Reventless.CapabilityNeed.Messaging],
+    identityProviderRef.contents.operations == []
+      ? []
+      : [Reventless.CapabilityNeed.IdentityProvider],
+  )
+
+/**
+The warning for a plugin declaring needs this platform does not provision, or
+`None` when every need is met.
+
+A warning where the AWS deploy refuses, and the difference is deliberate: no
+local geocoder exists, so a refusal would stop every plugin carrying the
+geocoding trait from running locally at all. What the developer loses without
+this is the explanation — the slice's items stay retried and nothing says why.
+*/
+let unmetWarning = (~declared: array<(string, string)>): option<string> =>
+  switch Reventless.CapabilityNeed.unmet(~declared, ~provisioned=provisioned()) {
+  | [] => None
+  | missing =>
+    Some(
+      Reventless.CapabilityNeed.unmetMessage(missing) ++
+      missing
+      ->Array.map(u =>
+        switch u.need {
+        | Geocoding => `\n  Geocoding has no local provider; the slice's items are retried and stay queued.`
+        | Messaging =>
+          `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as ` ++ `\`~messagingSender\`.`
+        | IdentityProvider =>
+          `\n  IdentityProvider is \`Capability_IdentityProvider_UserStore.make()\`, passed to the ` ++ `platform as \`~identityProvider\`.`
+        }
+      )
+      ->Belt.Set.String.fromArray
+      ->Belt.Set.String.toArray
+      ->Array.join(""),
+    )
+  }
+
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),

@@ -1000,6 +1000,13 @@ module MakeWithConfig = (
                   ReventlessCore.StorePrefixCollision.collisionMessage(c),
                 ),
             )
+            // The deployed platform refuses a declared need it does not
+            // provision; here it is a warning, for the reason `unmetWarning` gives.
+            LocalCapabilities.unmetWarning(
+              ~declared=def.requiredCapabilities
+              ->Option.getOr([])
+              ->Array.map(d => (d.capability, d.component)),
+            )->Option.forEach(message => log.warn(~comp="Platform:plugins", message))
           | None => ()
           }
         })

@@ -899,7 +899,10 @@ function MakeWithConfig(Config) {
             qualified: param[0],
             prefix: param[1]
           }))).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
-          return;
+          return Stdlib_Option.forEach(LocalCapabilities$ReventlessLocal.unmetWarning(Stdlib_Option.getOr(ps.requiredCapabilities, []).map(d => [
+            d.capability,
+            d.component
+          ])), message => log.warn("Platform:plugins", undefined, message));
         }
       });
     });
@@ -2665,7 +2668,10 @@ function Make($star) {
             qualified: param[0],
             prefix: param[1]
           }))).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
-          return;
+          return Stdlib_Option.forEach(LocalCapabilities$ReventlessLocal.unmetWarning(Stdlib_Option.getOr(ps.requiredCapabilities, []).map(d => [
+            d.capability,
+            d.component
+          ])), message => log.warn("Platform:plugins", undefined, message));
         }
       });
     });

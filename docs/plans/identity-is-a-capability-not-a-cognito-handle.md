@@ -406,9 +406,12 @@ aws 995 in 86. Nine new tests in `Capability_IdentityProvider_UserStoreTest` (lo
 reload from the file, `Conflict`, `NoCredential`, push refused, groups round-trip, unknown principal,
 idempotent delete, comments surviving) and five in `AccountsManifestTest` for the edits.
 
-**Found and not fixed here:** the local platform's `deployPlugin` runs no unmet-capability gate at
-all, where the AWS deploy refuses a declared need it does not provision. A plugin declaring any need
-deploys locally unchecked. A small separate fix, noted so it is not read as this step's omission.
+**Found beside it, fixed the same day:** the local platform ran no unmet-capability check at all,
+where the AWS deploy refuses a declared need it does not provision. It now **warns** at plugin
+composition, naming each unmet need once and the local helper that provisions it
+(`LocalCapabilities.unmetWarning`). A warning rather than the AWS refusal, deliberately: no local
+geocoder exists, so a refusal would stop every plugin carrying the geocoding trait from running
+locally. What a developer was missing is the explanation, not the stop.
 
 ## Step 4 — the plugin door
 
