@@ -187,10 +187,12 @@ let endpointsFrom = (~stack: string, source: source): endpoints =>
         ~fromSource=fromCfg("region"),
         ~human="region",
       ),
+      // The old `cognitoClientId` spelling is still read for a platform deployed
+      // before the rename.
       cognitoClientId: resolveField(
         ~envKey="COGNITO_CLIENT_ID",
-        ~fromSource=fromCfg("cognitoClientId"),
-        ~human="cognitoClientId",
+        ~fromSource=fromCfg("identityProviderClientId")->Option.orElse(fromCfg("cognitoClientId")),
+        ~human="identityProviderClientId",
       ),
     }
   | StackOutputs(outputs) =>

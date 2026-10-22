@@ -22,9 +22,14 @@ removing the old spellings once nothing depends on them any more.
 2. **The readers' fallback** — `reventless/aws/src/Platform.res` (~409–445): the
    `StackReference` reads fall back to `cognitoUserPoolId` / `cognitoRegion`,
    at both the direct and the ESM `default.<key>` level.
-3. **Old `config.json` keys** — `Util_ShellConfig.identityFields`
+3. ~~**Old `config.json` keys** — `Util_ShellConfig.identityFields`
    (`reventless/aws/src/util/Util_ShellConfig.res`) writes `cognitoUserPoolId`
-   and `cognitoClientId` beside the new keys; update `Util_ShellConfigTest`.
+   and `cognitoClientId` beside the new keys; update `Util_ShellConfigTest`.~~
+   **Done 2026-10-22.** The deploy writes the neutral pair only. Its own readers
+   of `config.json` (`ReventlessSeedAws.endpointsFrom`, the hybrid's
+   `VerifyClientPublish`) and reventless-tools' deployed console prefer the
+   neutral name and still fall back to `cognitoClientId` for a platform deployed
+   before this. The shell's fallback is reventless-ui's step 5.
 4. **The deprecated input key** — `_deprecatedPoolIdKey` in `Platform_Stack.res`
    (~79–88), still read as a fallback for `identityProviderId`.
 5. **The workflow secret fallback** — `COGNITO_USER_POOL_ID` in

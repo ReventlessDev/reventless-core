@@ -96,7 +96,7 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 - Ordered cache behaviors layered on top of the default `CachingOptimized` policy:
   - `/remoteEntry.js`, `/index.html`, `/config.json` use `CachingDisabled` (TTL 0).
   - Hashed `/assets/*.<hash>.js` chunks keep the long-cache default.
-- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `cognitoUserPoolId`, `cognitoClientId`, `liveUpdates`, and (when the corresponding resource is provisioned) `domainApiEventsEndpoint` / `platformApiEventsEndpoint` / `clientEventsNamespace` and `geocoderEndpoint`. Deployment *choices* — `viewModes` and anything passed through `shellConfig` — are merged in beside them. No rebuild of the host shell SPA is needed when any of this changes.
+- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `identityProviderId`, `identityProviderClientId`, `liveUpdates`, and (when the corresponding resource is provisioned) `domainApiEventsEndpoint` / `platformApiEventsEndpoint` / `clientEventsNamespace` and `geocoderEndpoint`. Deployment *choices* — `viewModes` and anything passed through `shellConfig` — are merged in beside them. No rebuild of the host shell SPA is needed when any of this changes.
 - Stack output `hostShellUrl`.
 
 #### Conditional: custom domain
@@ -144,8 +144,6 @@ on purpose: the shell and the schema it renders move together.
   "authMode": "cognito",
   "identityProviderId": "<aws region>_XXXXXXXXX",
   "identityProviderClientId": "<26-char client id>",
-  "cognitoUserPoolId": "<aws region>_XXXXXXXXX",
-  "cognitoClientId": "<26-char client id>",
   "liveUpdates": true,
   "environment": "test",
   "environmentPurpose": "test",
@@ -172,7 +170,7 @@ The first block of keys is always present. The events keys appear only when the 
 `apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. The identity keys come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_IDENTITY_PROVIDER_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`).
 
 :::note Read `identityProviderId` / `identityProviderClientId`
-The `cognitoUserPoolId` / `cognitoClientId` pair is also emitted, carrying identical values, and is transitional.
+The `cognitoUserPoolId` / `cognitoClientId` pair travelled beside them through the rename and is no longer written; a reader of `config.json` reads the neutral names.
 
 `authMode: "cognito"` is **not** renamed: it is a value naming which provider authenticates the deployment, and that stays true.
 :::

@@ -43,14 +43,6 @@ function identityFields(providerId, clientId) {
     [
       "identityProviderClientId",
       clientId
-    ],
-    [
-      "cognitoUserPoolId",
-      providerId
-    ],
-    [
-      "cognitoClientId",
-      clientId
     ]
   ];
 }

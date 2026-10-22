@@ -245,14 +245,14 @@ async function run() {
     };
   }
   let region = Stdlib_Option.getOr(fromCfg("region"), "<unset>");
-  let c = fromCfg("cognitoClientId");
+  let c = Stdlib_Option.orElse(fromCfg("identityProviderClientId"), fromCfg("cognitoClientId"));
   let clientId;
   if (c !== undefined) {
     clientId = c;
   } else {
     throw {
       RE_EXN_ID: Seed$ReventlessSeed.Failed,
-      _1: "config.json carries no cognitoClientId",
+      _1: "config.json carries no identityProviderClientId",
       Error: new Error()
     };
   }

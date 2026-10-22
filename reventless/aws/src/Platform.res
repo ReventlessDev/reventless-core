@@ -2379,7 +2379,7 @@ module MakeWithConfig = (
         ->Pulumi.Output.apply((((domainEp, platformEp, poolId, clientId), eventsEpOpt)) => {
           // `authMode` stays `"cognito"`: it is a value naming which provider
           // authenticates this deployment, and that is true. The identity *keys*
-          // travel under both spellings — see [Util_ShellConfig.identityFields].
+          // are provider-neutral — see [Util_ShellConfig.identityFields].
           let computed =
             [
               ("apiEndpoint", JSON.Encode.string(domainEp)),

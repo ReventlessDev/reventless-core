@@ -161,7 +161,7 @@ function endpointsFrom(stack, source) {
     return {
       graphql: resolveField("REVENTLESS_GRAPHQL_ENDPOINT", fromCfg("apiEndpoint"), "apiEndpoint"),
       cognitoRegion: resolveField("AWS_REGION", fromCfg("region"), "region"),
-      cognitoClientId: resolveField("COGNITO_CLIENT_ID", fromCfg("cognitoClientId"), "cognitoClientId")
+      cognitoClientId: resolveField("COGNITO_CLIENT_ID", Stdlib_Option.orElse(fromCfg("identityProviderClientId"), fromCfg("cognitoClientId")), "identityProviderClientId")
     };
   }
   let outputs = source._0;

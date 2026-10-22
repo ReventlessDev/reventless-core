@@ -31,11 +31,18 @@ let config = (~extra: array<(string, JSON.t)>) =>
       [
         ("apiEndpoint", str("https://api.example/graphql")),
         ("region", str("eu-west-1")),
-        ("cognitoClientId", str("client-abc")),
+        ("identityProviderClientId", str("client-abc")),
       ],
       extra,
     ),
   )
+
+/** The shell config of a platform deployed before the rename: the old spelling only. */
+let oldConfig = obj([
+  ("apiEndpoint", str("https://api.example/graphql")),
+  ("region", str("eu-west-1")),
+  ("cognitoClientId", str("client-old")),
+])
 
 let outputs = (~extra: array<(string, JSON.t)>) =>
   obj(
@@ -55,6 +62,16 @@ describe("endpointsFrom — host shell arm", () => {
   testSync("reads the GraphQL endpoint from the shell config", () => {
     let eps = ReventlessSeedAws.endpointsFrom(~stack="alpha", HostShellConfig(config(~extra=[])))
     expect(eps.graphql)->toBe("https://api.example/graphql")
+  })
+
+  testSync("reads the client id under its provider-neutral name", () => {
+    let eps = ReventlessSeedAws.endpointsFrom(~stack="alpha", HostShellConfig(config(~extra=[])))
+    expect(eps.cognitoClientId)->toBe("client-abc")
+  })
+
+  testSync("still reads the old spelling from a platform deployed before the rename", () => {
+    let eps = ReventlessSeedAws.endpointsFrom(~stack="alpha", HostShellConfig(oldConfig))
+    expect(eps.cognitoClientId)->toBe("client-old")
   })
 })
 

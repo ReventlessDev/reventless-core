@@ -258,9 +258,12 @@ let run = async () => {
   | None => throw(Seed.Failed("config.json carries no domainApiEventsEndpoint"))
   }
   let region = fromCfg("region")->Option.getOr("<unset>")
-  let clientId = switch fromCfg("cognitoClientId") {
+  // The old `cognitoClientId` spelling is still read for a platform deployed before the rename.
+  let clientId = switch fromCfg("identityProviderClientId")->Option.orElse(
+    fromCfg("cognitoClientId"),
+  ) {
   | Some(c) => c
-  | None => throw(Seed.Failed("config.json carries no cognitoClientId"))
+  | None => throw(Seed.Failed("config.json carries no identityProviderClientId"))
   }
   Console.log(`\nEvents API:   ${eventsEndpoint}`)
   Console.log(`Log in to ${region} pool client ${clientId}\n`)

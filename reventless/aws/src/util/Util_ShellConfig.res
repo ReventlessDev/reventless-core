@@ -32,31 +32,20 @@ let modeOptions = (mode: Platform.viewMode): array<(string, JSON.t)> =>
   }
 
 /**
-The identity fields a shell reads, under **both** spellings.
+The identity fields a shell reads. The concept is not AWS-specific, so a second
+cloud's adapter meets the same names.
 
-🚨 **Both, and not as a sequenced rename.** `identityProvider*` is what these
-become — the concept is not AWS-specific, so a second cloud's adapter should meet
-the same names. `cognito*` is what every shipped shell reads today.
+The `cognitoUserPoolId` / `cognitoClientId` pair travelled beside these through
+the rename, because a shell reads `config.json` at runtime and a bundle that
+cannot find its client id gets `None` and a login that silently fails. It went
+once every pinned shell read these names (host shell 3.0.0-alpha.122 and later).
 
-A shell reads `config.json` at runtime and CloudFront serves the previous bundle
-until someone invalidates it, so switching the keys in one deploy leaves a window
-where the served bundle and the served config disagree. `cognitoClientId` is read
-into an `option`: a bundle that cannot find its key does not error, it gets
-`None`, and login, silent refresh and token refresh all quietly fall through —
-the window is a total auth outage that reports nothing.
-
-Writing both removes the ordering dependency rather than managing it: any bundle,
-old or new or stale in a CDN, finds one it understands. The `cognito*` pair goes
-once the shell that prefers the other is the pinned one.
-
-Here rather than inline at the call site so the pairing is one fact in one place,
-and so the property can be asserted without a deploy.
+Here rather than inline at the call site so the key set is one fact in one place,
+and so it can be asserted without a deploy.
 */
 let identityFields = (~providerId: string, ~clientId: string): array<(string, JSON.t)> => [
   ("identityProviderId", JSON.Encode.string(providerId)),
   ("identityProviderClientId", JSON.Encode.string(clientId)),
-  ("cognitoUserPoolId", JSON.Encode.string(providerId)),
-  ("cognitoClientId", JSON.Encode.string(clientId)),
 ]
 
 /**
