@@ -94,6 +94,8 @@ module Make = (
         ~consumesDcbLog,
         // Only the name: the target Aggregate's CommandTopic does not exist yet.
         ~commandTargetName=?Spec.targetName,
+        // What decides whether the shared Lambda may create and delete accounts.
+        ~capabilityNeeds=Spec.capabilityNeeds,
       )
 
       ots

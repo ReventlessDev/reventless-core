@@ -91,6 +91,30 @@ function messagingProvisioned() {
   return messagingProvisionedRef.contents;
 }
 
+let identityProviderRef = {
+  contents: {
+    poolArn: Pulumi.output(""),
+    storeArn: Pulumi.output("")
+  }
+};
+
+let identityProviderProvisionedRef = {
+  contents: false
+};
+
+function registerIdentityProvider(resources) {
+  identityProviderRef.contents = resources;
+  identityProviderProvisionedRef.contents = true;
+}
+
+function identityProvider() {
+  return identityProviderRef.contents;
+}
+
+function identityProviderProvisioned() {
+  return identityProviderProvisionedRef.contents;
+}
+
 let dcbConfigRef = {
   contents: {
     pluginName: "",
@@ -591,6 +615,11 @@ export {
   registerMessagingSender,
   messagingSender,
   messagingProvisioned,
+  identityProviderRef,
+  identityProviderProvisionedRef,
+  registerIdentityProvider,
+  identityProvider,
+  identityProviderProvisioned,
   dcbConfigRef,
   registeredSliceModulePaths,
   registerStateChangeSliceSpec,

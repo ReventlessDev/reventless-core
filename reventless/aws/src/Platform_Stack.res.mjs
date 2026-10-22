@@ -188,6 +188,7 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("identityProviderAdminGroup", Pulumi.output(Role$Reventless.adminGroup()));
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   Pulumi$Pulumi.$$export("identityStore", result.identityTable.name);
+  Pulumi$Pulumi.$$export("identityStoreArn", result.identityTable.arn);
   return result;
 }
 

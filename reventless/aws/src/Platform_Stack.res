@@ -424,6 +424,8 @@ let _resolveUncached = (): cognitoUserPool => {
   // Read by `provision-accounts` on a stack-owned pool, whose table carries a
   // generated suffix no derivation can produce.
   Pulumi.Pulumi.export("identityStore", result.identityTable.name)
+  // What a plugin stack grants its principal-making slices write access to.
+  Pulumi.Pulumi.export("identityStoreArn", result.identityTable.arn)
 
   result
 }

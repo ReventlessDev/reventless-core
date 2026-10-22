@@ -91,6 +91,29 @@ let registerMessagingSender = (sender: Pulumi.Output.t<string>) => {
 let messagingSender = () => messagingSenderRef.contents
 let messagingProvisioned = () => messagingProvisionedRef.contents
 
+/** The pool and the identity store, carried for the grant: a slice making
+    principals needs Cognito's admin calls on the one pool and writes on the one
+    store. Granted only to a plugin with a slice that declares the need — see
+    `AutomationSliceRuntime_Builder_Single.makeIdentityProviderGrant`. */
+type identityProviderResources = {
+  poolArn: Pulumi.Output.t<string>,
+  storeArn: Pulumi.Output.t<string>,
+}
+
+let identityProviderRef: ref<identityProviderResources> = ref({
+  poolArn: Pulumi.Output.make(""),
+  storeArn: Pulumi.Output.make(""),
+})
+let identityProviderProvisionedRef = ref(false)
+
+let registerIdentityProvider = (resources: identityProviderResources) => {
+  identityProviderRef := resources
+  identityProviderProvisionedRef := true
+}
+
+let identityProvider = () => identityProviderRef.contents
+let identityProviderProvisioned = () => identityProviderProvisionedRef.contents
+
 type sliceModulePaths = {
   specPath: string,
   decisionPath: string,

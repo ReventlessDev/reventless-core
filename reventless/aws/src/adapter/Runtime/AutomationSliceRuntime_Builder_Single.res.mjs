@@ -56,12 +56,13 @@ function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName, schedule, schedulesResourcesOpt) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName, schedule, schedulesResourcesOpt, capabilityNeedsOpt) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   let sourceTopics = sourceTopicsOpt !== undefined ? sourceTopicsOpt : ({});
   let consumesDcbLog = consumesDcbLogOpt !== undefined ? consumesDcbLogOpt : true;
   let schedulesResources = schedulesResourcesOpt !== undefined ? schedulesResourcesOpt : [];
+  let capabilityNeeds = capabilityNeedsOpt !== undefined ? capabilityNeedsOpt : [];
   bundledInfos[name] = {
     specModulePath: specModulePath,
     bodyModulePath: bodyModulePath,
@@ -73,7 +74,8 @@ function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackT
     consumesDcbLog: consumesDcbLog,
     commandTargetName: commandTargetName,
     schedule: schedule,
-    schedulesResources: schedulesResources
+    schedulesResources: schedulesResources,
+    capabilityNeeds: capabilityNeeds
   };
 }
 
@@ -170,6 +172,51 @@ function makeMessagingGrant(runtime, opts) {
       Resource: `arn:aws:ses:*:*:identity/` + sender
     }])));
   new (Aws.iam.RolePolicy)("AllAutomationSlicesSendEmail", {
+    policy: policyJson,
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
+}
+
+function declaresIdentityProvider(infos) {
+  return infos.some(info => info.capabilityNeeds.includes("IdentityProvider"));
+}
+
+let identityProviderPoolActions = [
+  "cognito-idp:AdminCreateUser",
+  "cognito-idp:AdminGetUser",
+  "cognito-idp:AdminSetUserPassword",
+  "cognito-idp:AdminAddUserToGroup",
+  "cognito-idp:AdminRemoveUserFromGroup",
+  "cognito-idp:AdminDeleteUser"
+];
+
+function makeIdentityProviderGrant(runtime, opts) {
+  if (!(PluginRuntime_Builder$ReventlessAws.identityProviderProvisioned() && declaresIdentityProvider(Object.values(bundledInfos)))) {
+    return;
+  }
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let match = PluginRuntime_Builder$ReventlessAws.identityProvider();
+  let policyJson = Pulumi.all([
+    match.poolArn,
+    match.storeArn
+  ]).apply(param => {
+    let store = param[1];
+    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAutomationSlicesIdentityProvider", [{
+        Sid: "AllowManagingPrincipals",
+        Effect: "Allow",
+        Action: identityProviderPoolActions,
+        Resource: param[0]
+      }].concat(store === "" ? [] : [{
+          Sid: "AllowRecordingDomainIds",
+          Effect: "Allow",
+          Action: [
+            "dynamodb:PutItem",
+            "dynamodb:DeleteItem"
+          ],
+          Resource: store
+        }])));
+  });
+  new (Aws.iam.RolePolicy)("AllAutomationSlicesIdentityProvider", {
     policy: policyJson,
     role: runtime.parts.lambdaRole.id
   }, customOpts);
@@ -452,6 +499,7 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       makeAutomationSchedules(runtime, schedulerRoleArn, sourceCodeHash, opts);
       makeGeocoderGrant(runtime, opts);
       makeMessagingGrant(runtime, opts);
+      makeIdentityProviderGrant(runtime, opts);
     } else {
       log.warn("AutomationSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -483,6 +531,9 @@ export {
   makeSweepSchedule,
   makeGeocoderGrant,
   makeMessagingGrant,
+  declaresIdentityProvider,
+  identityProviderPoolActions,
+  makeIdentityProviderGrant,
   makeAutomationSchedules,
   finished,
   finish,

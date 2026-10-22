@@ -13,7 +13,6 @@ import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
@@ -26,6 +25,7 @@ import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPo
 import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocoder_AwsLocation_Backend.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
+import * as IdentityProvider_Cognito_Backend$ReventlessAws from "../Identity/IdentityProvider_Cognito_Backend.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "../ScheduledPublisher/ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
@@ -275,7 +275,7 @@ function capabilities() {
   return {
     geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined),
     messaging: messagingEmailProvider(),
-    identityProvider: Capabilities$Reventless.none.identityProvider,
+    identityProvider: IdentityProvider_Cognito_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["IDENTITY_PROVIDER_ID"], ""), Stdlib_Option.getOr(process.env["IDENTITY_STORE_TABLE"], "")),
     secrets: Secrets_Node_Backend$ReventlessCore.provider
   };
 }

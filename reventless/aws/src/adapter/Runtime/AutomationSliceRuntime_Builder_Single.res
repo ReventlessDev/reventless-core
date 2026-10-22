@@ -54,6 +54,9 @@ type sliceInfo = {
   // The schedules store's table, empty for a slice that maps no `Clock`. Granted to
   // the Lambda with the to-do tables, and named in the slice's handler config.
   schedulesResources: array<ReventlessInfra.Adapter.resource>,
+  // The capabilities the slice's spec declares. Read by grants that must not be
+  // handed to every slice on the shared Lambda for one slice's sake.
+  capabilityNeeds: array<Reventless.CapabilityNeed.t>,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
@@ -103,6 +106,7 @@ let registerAutomationSlice = (
   ~commandTargetName=?,
   ~schedule=?,
   ~schedulesResources=[],
+  ~capabilityNeeds=[],
 ) =>
   bundledInfos->Dict.set(
     name,
@@ -118,6 +122,7 @@ let registerAutomationSlice = (
       commandTargetName,
       schedule,
       schedulesResources,
+      capabilityNeeds,
     },
   )
 
@@ -326,6 +331,80 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
     })
     let _ = PulumiAws.IAM.RolePolicy.make(
       ~name="AllAutomationSlicesSendEmail",
+      ~args={
+        policy: policyJson->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
+/** Whether any slice on the shared Lambda declares the identity provider. The
+    grant below is the one that can create and delete accounts, so it follows a
+    declaration rather than the pool merely existing — which on AWS it always
+    does. */
+let declaresIdentityProvider = (infos: array<sliceInfo>): bool =>
+  infos->Array.some(info => info.capabilityNeeds->Array.includes(IdentityProvider))
+
+/** The admin calls the Cognito provider makes, on the one pool. */
+let identityProviderPoolActions = [
+  "cognito-idp:AdminCreateUser",
+  "cognito-idp:AdminGetUser",
+  "cognito-idp:AdminSetUserPassword",
+  "cognito-idp:AdminAddUserToGroup",
+  "cognito-idp:AdminRemoveUserFromGroup",
+  "cognito-idp:AdminDeleteUser",
+]
+
+// Built like the two grants above: a plain bool decides, the ARNs are Outputs,
+// and the RolePolicy is created at top level rather than inside an `apply`.
+let makeIdentityProviderGrant = (
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
+  ~opts,
+) =>
+  if (
+    PluginRuntime_Builder.identityProviderProvisioned() &&
+    declaresIdentityProvider(bundledInfos->Dict.valuesToArray)
+  ) {
+    let customOpts =
+      opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+    let {
+      poolArn,
+      storeArn,
+    }: PluginRuntime_Builder.identityProviderResources = PluginRuntime_Builder.identityProvider()
+    let policyJson = Pulumi.Output.all2((poolArn, storeArn))->Pulumi.Output.apply(((
+      pool,
+      store,
+    )) => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.PolicyDocument.make(
+        ~id="AllAutomationSlicesIdentityProvider",
+        ~statements=Array.concat(
+          [
+            {
+              sid: "AllowManagingPrincipals",
+              effect: Allow,
+              actions: Actions(identityProviderPoolActions),
+              resources: Resource(pool),
+            },
+          ],
+          // A pool provisioned before the store has none, and its principals
+          // keep their `sub`; there is nothing to grant.
+          store == ""
+            ? []
+            : [
+                {
+                  sid: "AllowRecordingDomainIds",
+                  effect: Allow,
+                  actions: Actions(["dynamodb:PutItem", "dynamodb:DeleteItem"]),
+                  resources: Resource(store),
+                },
+              ],
+        ),
+      )->PulumiAws.PolicyDocument.toJsonString
+    })
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name="AllAutomationSlicesIdentityProvider",
       ~args={
         policy: policyJson->Pulumi.Output.asInput,
         role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
@@ -833,6 +912,7 @@ let finishWithDcbEventLog = (
         makeAutomationSchedules(~runtime, ~schedulerRoleArn, ~sourceCodeHash, ~opts)
         makeGeocoderGrant(~runtime, ~opts)
         makeMessagingGrant(~runtime, ~opts)
+        makeIdentityProviderGrant(~runtime, ~opts)
       | None =>
         log.warn(
           ~comp="AutomationSliceRuntime_Builder_Single",

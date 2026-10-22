@@ -18,8 +18,10 @@ is a separate narrow door** rather than an API key on the platform API. **Step 3
 shipped 2026-10-22:** the local platform provisions an identity provider over the accounts file, so a
 slice can make, group and unmake a principal and a restarted process sees it. **Step 2 ✅ built 2026-10-22, not yet deployed:** a domain id minted at creation, carried as a
 token claim the pre-token trigger adds from a pool-scoped identity store, with the `sub` as the
-fallback every older account relies on. **What remains:** the Cognito provider on AWS, the reverse
-index when it has a caller, and the anonymous door itself, which is the registration chapter's.
+fallback every older account relies on. **Step 3c's AWS half ✅ built 2026-10-22, not yet deployed:**
+the Cognito provider, handed to a slice over the platform's pool with no root opt-in, and granted only
+to a plugin whose slice declares the need. **What remains:** the reverse index when it has a caller,
+and the anonymous door itself, which is the registration chapter's.
 **Repos:** `reventless-core` only.
 
 **Goal.** Put the *administrative* half of identity — making, grouping and unmaking principals —
@@ -538,6 +540,43 @@ principal yet, so Step 2's decision was still free — **Step 2's own measuremen
 that**, and the withdrawal is worth leaving visible: the id was reaching the log by a path this step
 never looked at, which is what an unexamined "nothing has happened yet" is usually hiding.
 
+### Step 3c, AWS half — the Cognito provider ✅ **built 2026-10-22**
+
+`IdentityProvider_Cognito_Backend` in `reventless/aws`, the counterpart of the local provider and
+reached the same way: on the capability record the slice Lambda's `translate` receives.
+
+- **No root opt-in.** Messaging needs a configured sender and geocoding a provisioned index; every AWS
+  platform already has a pool. The plugin stack reads `identityProviderId`, `identityProviderArn`,
+  `identityStore` and the new `identityStoreArn` across the same two halves messaging is read across,
+  hands the pool and store to the slice Lambda as `IDENTITY_PROVIDER_ID` and `IDENTITY_STORE_TABLE`,
+  and the deploy gate now counts a non-empty pool as provisioning the need.
+- **The grant follows the declaration, not the pool.** The shared automation Lambda gets Cognito's six
+  admin calls on the one pool, plus `PutItem` and `DeleteItem` on the identity store, only when a slice
+  on it names `IdentityProvider` in `capabilityNeeds` — threaded into the slice registration from the
+  spec. A plugin that declares nothing gets no account-making rights, though the pool exists.
+- **A failure after the account exists undoes it.** Left in place, the retry would meet
+  `UsernameExistsException` and answer `Conflict` to someone whose first attempt timed out. So setting
+  the password, adding groups and minting the domain id are one unit, and the account is deleted
+  before the failure is answered.
+- **Verdicts and outages are told apart by the pool's own codes.** An existing account is `Conflict`;
+  a password the policy rejects, a refused attribute, an unknown user or group is `Refused`; anything
+  else — throttling, a missing grant — is `Unavailable` and retried.
+- **The domain id is minted here, as `provision-accounts` mints it**, into the store keyed by the
+  `sub` the create returned. A pool provisioned before the store still makes principals, and each
+  keeps its `sub`.
+- **Deleting what is gone is `Ok`.** An outage while deleting is `Unavailable`, not a reported delete.
+  The mapping row goes last and best effort: a row whose principal is gone is never read on the
+  request path.
+- **Bindings:** `AdminDeleteUserCommand`, and the created user's `Attributes` so the `sub` needs no
+  second call.
+
+*Evidence:* the whole repo builds warning-free; aws 1,019 tests in 88 suites, core, local, spec and
+infra 3,043 in 253. Thirteen new tests drive the sequencing against fake pool calls — the undo on a
+later failure and the clean retry after it, `Refused` on a weak password, no password for
+`NoCredential`, no mint without a store, push refused before the pool is asked, groups, the double
+delete, the delete outage — and one pins that only a declaring slice earns the grant. The SDK calls
+themselves are exercised only by a deployed stack.
+
 ## Step 5 — the deploy-time handle, which is already leaking
 
 ```rescript
@@ -671,7 +710,8 @@ capability has to reproduce that property rather than inherit it, so it is worth
   developers already work with it. It races two processes — record that rather than pretend otherwise;
   the file is already shared with the seed runner. Held by `Capability_IdentityProvider_UserStoreTest`,
   whose reload is a reset of both stores and a `UserStore.load` of the file.
-- Round-trip on both platforms: create, add to group, remove, delete. ✅ local; AWS waits on a provider.
+- Round-trip on both platforms: create, add to group, remove, delete. ✅ local; AWS against fake pool
+  calls, and on a deployed pool once a plugin declares the need.
 - ✅ **A spec field declaring `AllowAnonymous` either reaches an anonymous caller on AWS or fails the
   deploy — never deploys green meaning `AllowAuthenticated`.** Held by five tests in
   `AppSync_AdapterTest`, one of which pins the *contrast* between the two permissions rather than the

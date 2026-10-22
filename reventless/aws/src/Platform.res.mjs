@@ -1412,6 +1412,20 @@ function MakeWithConfig(Config) {
     PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
     let messagingEmailProvider = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailProvider").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailProviderRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider);
+    let platformOutput = (name, local) => {
+      if (platformStackRef !== undefined) {
+        return Primitive_option.valFromOption(platformStackRef).getOutput(name).apply(o => Stdlib_Option.getOr(o, ""));
+      } else {
+        return local();
+      }
+    };
+    let identityProviderId = platformOutput("identityProviderId", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolId);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_PROVIDER_ID", identityProviderId);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_STORE_TABLE", platformOutput("identityStore", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.name));
+    PluginRuntime_Builder$ReventlessAws.registerIdentityProvider({
+      poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
+      storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
+    });
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -1469,15 +1483,18 @@ function MakeWithConfig(Config) {
         pluginOutputs.pluginStructure,
         stackRef.getOutput("objectStores"),
         geocoderPlaceIndex,
-        messagingEmailSender
+        messagingEmailSender,
+        identityProviderId
       ]).apply(param => {
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
-        ]), (
-          param[2] === "" ? [] : ["Geocoding"]
-        ).concat(param[3] === "" ? [] : ["Messaging"]));
+        ]), [
+          param[2] === "" ? [] : ["Geocoding"],
+          param[3] === "" ? [] : ["Messaging"],
+          param[4] === "" ? [] : ["IdentityProvider"]
+        ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
             let match = u.need;
@@ -1487,7 +1504,7 @@ function MakeWithConfig(Config) {
               case "Messaging" :
                 return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
               case "IdentityProvider" :
-                return `\n  IdentityProvider has no backend on any platform yet — the seam and the refusal exist, the Cognito and local implementations do not. A plugin declaring this need cannot be deployed until one lands; nothing about this deployment's configuration will change that.`;
+                return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
             }
           }))).join(""));
         }
@@ -2804,6 +2821,20 @@ function Make($star) {
     PluginRuntime_Builder$ReventlessAws.registerMessagingSender(messagingEmailSender);
     let messagingEmailProvider = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("messagingEmailProvider").apply(o => Stdlib_Option.getOr(o, "")) : messagingEmailProviderRef.contents;
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider);
+    let platformOutput = (name, local) => {
+      if (platformStackRef !== undefined) {
+        return Primitive_option.valFromOption(platformStackRef).getOutput(name).apply(o => Stdlib_Option.getOr(o, ""));
+      } else {
+        return local();
+      }
+    };
+    let identityProviderId = platformOutput("identityProviderId", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolId);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_PROVIDER_ID", identityProviderId);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_STORE_TABLE", platformOutput("identityStore", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.name));
+    PluginRuntime_Builder$ReventlessAws.registerIdentityProvider({
+      poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
+      storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
+    });
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2861,15 +2892,18 @@ function Make($star) {
         pluginOutputs.pluginStructure,
         stackRef.getOutput("objectStores"),
         geocoderPlaceIndex,
-        messagingEmailSender
+        messagingEmailSender,
+        identityProviderId
       ]).apply(param => {
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
-        ]), (
-          param[2] === "" ? [] : ["Geocoding"]
-        ).concat(param[3] === "" ? [] : ["Messaging"]));
+        ]), [
+          param[2] === "" ? [] : ["Geocoding"],
+          param[3] === "" ? [] : ["Messaging"],
+          param[4] === "" ? [] : ["IdentityProvider"]
+        ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
             let match = u.need;
@@ -2879,7 +2913,7 @@ function Make($star) {
               case "Messaging" :
                 return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
               case "IdentityProvider" :
-                return `\n  IdentityProvider has no backend on any platform yet — the seam and the refusal exist, the Cognito and local implementations do not. A plugin declaring this need cannot be deployed until one lands; nothing about this deployment's configuration will change that.`;
+                return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
             }
           }))).join(""));
         }

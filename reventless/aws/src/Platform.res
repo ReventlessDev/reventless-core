@@ -1287,9 +1287,9 @@ module MakeWithConfig = (
     // door: unlike geocoding, a browser has no business sending mail from the
     // deployment's identity. Unset ⇒ no export, no grant.
     messagingSender?: ReventlessInfra.Platform.messagingSender,
-    // Ignored here: an in-process provider cannot reach a Lambda, and no
-    // pool-backed handle exists yet. The deploy gate refuses a plugin that
-    // declares the need, naming this.
+    // Ignored here: an in-process provider cannot reach a Lambda. Every AWS
+    // platform has a pool, and a plugin whose slice declares the need is handed
+    // a provider over it with no root opt-in — see `deployPlugin`.
     identityProvider?: Reventless.IdentityProvider.t,
     // Optional object store for direct-to-S3 uploads, as returned by
     // `Capability_ObjectStore_S3.make`. When set, the deploy registers it with
@@ -2760,6 +2760,37 @@ module MakeWithConfig = (
     }
     PluginRuntime_Builder.registerCapabilityEnv("MESSAGING_EMAIL_PROVIDER", messagingEmailProvider)
 
+    // The pool and its identity store, read across the same two halves. Every
+    // AWS platform has a pool, so unlike the two above there is no root opt-in:
+    // what a plugin declares decides whether its slices are granted the admin
+    // calls, in the slice runtime's finalizer.
+    let platformOutput = (name: string, ~local: unit => Pulumi.Output.t<string>) =>
+      switch platformStackRef {
+      | Some(stackRef) =>
+        (
+          stackRef->Pulumi.StackReference.getOutput(name): Pulumi.Output.t<option<string>>
+        )->Pulumi.Output.apply(o => o->Option.getOr(""))
+      | None => local()
+      }
+    let identityProviderId = platformOutput("identityProviderId", ~local=() =>
+      Platform_Stack.resolveCognitoUserPool().poolId
+    )
+    PluginRuntime_Builder.registerCapabilityEnv("IDENTITY_PROVIDER_ID", identityProviderId)
+    PluginRuntime_Builder.registerCapabilityEnv(
+      "IDENTITY_STORE_TABLE",
+      platformOutput("identityStore", ~local=() =>
+        Platform_Stack.resolveCognitoUserPool().identityTable.name
+      ),
+    )
+    PluginRuntime_Builder.registerIdentityProvider({
+      poolArn: platformOutput("identityProviderArn", ~local=() =>
+        Platform_Stack.resolveCognitoUserPool().poolArn
+      ),
+      storeArn: platformOutput("identityStoreArn", ~local=() =>
+        Platform_Stack.resolveCognitoUserPool().identityTable.arn
+      ),
+    })
+
     module P = unpack(plugin)
     let pluginComponent = P.make()
     ReventlessCore.Plugin_Helpers.clearOffload()
@@ -2895,10 +2926,17 @@ module MakeWithConfig = (
           stackRef->Pulumi.StackReference.getOutput("objectStores"),
           geocoderPlaceIndex,
           messagingEmailSender,
+          identityProviderId,
         )
-        ->Pulumi.Output.all4
+        ->Pulumi.Output.all5
         ->Pulumi.Output.apply((
-          (structure, objectStores, placeIndex, emailSender): (_, option<JSON.t>, string, string),
+          (structure, objectStores, placeIndex, emailSender, poolId): (
+            _,
+            option<JSON.t>,
+            string,
+            string,
+            string,
+          ),
         ) => {
           // ── Declared capabilities ──────────────────────────────────────────
           //
@@ -2922,10 +2960,11 @@ module MakeWithConfig = (
             // The values the slice Lambdas are actually handed, so this reads
             // what decides the outcome rather than a second record of the same
             // intent. `""` is what an unprovisioned platform exports.
-            ~provisioned=Array.concat(
+            ~provisioned=[
               placeIndex == "" ? [] : [Reventless.CapabilityNeed.Geocoding],
               emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
-            ),
+              poolId == "" ? [] : [Reventless.CapabilityNeed.IdentityProvider],
+            ]->Array.flat,
           ) {
           | [] => ()
           | missing =>
@@ -2942,9 +2981,7 @@ module MakeWithConfig = (
                   `default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or ` ++
                   `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++ `\`platform:messagingEmailProvider: log\` to log every message and send none.`
                 | IdentityProvider =>
-                  `\n  IdentityProvider has no backend on any platform yet — the seam and the ` ++
-                  `refusal exist, the Cognito and local implementations do not. A plugin ` ++
-                  `declaring this need cannot be deployed until one lands; nothing about this ` ++ `deployment's configuration will change that.`
+                  `\n  IdentityProvider is the platform's Cognito pool, exported as ` ++ `\`identityProviderId\`. This platform stack exports none — deploy it first.`
                 }
               )
               // One line per capability, not per declaring component: two slices

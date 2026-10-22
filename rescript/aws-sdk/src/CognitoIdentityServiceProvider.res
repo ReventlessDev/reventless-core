@@ -97,6 +97,9 @@ module AdminCreateUserCommand = {
   type userType = {
     @as("Username") username?: string,
     @as("UserStatus") userStatus?: string,
+    /** Where `sub` lives on the account just created, so a caller need not read
+      it back with `AdminGetUser`. */
+    @as("Attributes") attributes?: array<attributeType>,
   }
 
   type output = {@as("User") user?: userType}
@@ -247,6 +250,30 @@ module AdminRemoveUserFromGroupCommand = {
   module Raw = {
     /**
       see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminRemoveUserFromGroupCommand/
+    */
+    @send
+    external send: (client, t) => promise<unit> = "send"
+  }
+
+  let send: t => promise<unit> = command => Raw.send(client(), command)
+}
+
+module AdminDeleteUserCommand = {
+  type t
+
+  /** A username the pool cannot resolve raises `UserNotFoundException`, which a
+    caller retrying a delete reads as the delete having already happened. */
+  type input = {
+    @as("UserPoolId") userPoolId: string,
+    @as("Username") username: string,
+  }
+
+  @new @module("@aws-sdk/client-cognito-identity-provider")
+  external make: input => t = "AdminDeleteUserCommand"
+
+  module Raw = {
+    /**
+      see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminDeleteUserCommand/
     */
     @send
     external send: (client, t) => promise<unit> = "send"

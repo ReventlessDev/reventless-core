@@ -477,10 +477,10 @@ module type T = {
     messagingSender?: messagingSender,
     // Optional identity provider for the unattended slice path: making,
     // grouping and unmaking principals. A provider that runs in the platform's
-    // own process, which is why only the in-memory platform hosts one today
+    // own process, so only the in-memory platform reads it
     // (`Capability_IdentityProvider_UserStore.make()`, over the accounts file
-    // its login reads). The AWS deploy ignores it until a pool-backed handle
-    // exists; a plugin declaring the need is refused there by the deploy gate.
+    // its login reads). The AWS deploy ignores it: its pool always exists, and a
+    // plugin declaring the need is handed a provider over that pool.
     identityProvider?: Reventless.IdentityProvider.t,
     // Optional object store for direct-to-store uploads. When set, the deploy
     // provisions a presign service against it, threads that service's URL into

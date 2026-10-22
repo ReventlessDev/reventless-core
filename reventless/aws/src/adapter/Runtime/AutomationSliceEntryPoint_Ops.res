@@ -420,10 +420,13 @@ let capabilities = (): Reventless.Capabilities.t => {
       ~text,
     ),
   messaging: messagingEmailProvider(),
-  // Refusing until the Cognito backend lands. The pool is provisioned, but the
-  // store mapping a domain user id to a provider handle is not, and creating a
-  // principal before that exists would write a handle with nowhere to live.
-  identityProvider: Reventless.Capabilities.none.identityProvider,
+  // The platform's pool and identity store, both read per call like the sender
+  // above. An empty pool id is a plugin deployed with no platform to read one
+  // from, and answers `Unavailable` with no operations.
+  identityProvider: IdentityProvider_Cognito_Backend.provider(
+    ~poolId=NodeProcess.env->Dict.get("IDENTITY_PROVIDER_ID")->Option.getOr(""),
+    ~identityStore=NodeProcess.env->Dict.get("IDENTITY_STORE_TABLE")->Option.getOr(""),
+  ),
   secrets: ReventlessCore.Secrets_Node_Backend.provider,
 }
 
