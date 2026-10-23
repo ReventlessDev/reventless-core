@@ -70,6 +70,8 @@ module DescribeTableCommand = {
   /** only the fields a truncate needs; the real description carries far more */
   type tableDescription = {
     @as("TableName") tableName?: string,
+    /** What a grant on an existing table names. */
+    @as("TableArn") tableArn?: string,
     @as("KeySchema") keySchema?: array<keySchemaElement>,
     /** DynamoDB's own approximate row count (updated ~every 6h) */
     @as("ItemCount")

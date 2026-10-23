@@ -19,6 +19,7 @@ function make(activeRoleTableName, activeRoleTableArn, identityTableName, identi
     activeRoleTableArn,
     identityTableArn
   ]).apply(param => {
+    let identityArn = param[1];
     new (Aws.iam.RolePolicy)(name + "Policy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "Policy", [
         {
@@ -36,14 +37,13 @@ function make(activeRoleTableName, activeRoleTableArn, identityTableName, identi
           Effect: "Allow",
           Action: "dynamodb:GetItem",
           Resource: param[0]
-        },
-        {
-          Sid: "AllowReadingDomainId",
-          Effect: "Allow",
-          Action: "dynamodb:GetItem",
-          Resource: param[1]
         }
-      ])),
+      ].concat(identityArn === "" ? [] : [{
+            Sid: "AllowReadingDomainId",
+            Effect: "Allow",
+            Action: "dynamodb:GetItem",
+            Resource: identityArn
+          }]))),
       role: lambdaRole.id
     }, opts$1);
   });

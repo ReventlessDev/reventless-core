@@ -261,6 +261,16 @@ existed with the ownership rule this step needs, so the identity store takes exa
 3,043 in 253. New: `Auth_UserIdTest`, `Auth_IdentityStore_SchemaTest`, four trigger cases, five
 Cognito cases, and the local provider test now pins the minted id across a reload.
 
+**A supplied pool may have no store, and deploys anyway** — fixed 2026-10-23, after the first alpha
+deploy failed on exactly this. A stack given an `identityProviderId` looks the store up by its derived
+name, and alpha's pool predates the store: Pulumi's `getTable` threw on the missing table and stopped
+the platform program midway. The lookup now asks DynamoDB directly and reads a missing table as
+absent — empty name and ARN, a warning naming `provision-identity`, no read grant on the trigger, no
+write grant on the slices — which is the state the trigger and `provision-accounts` already handled:
+no claim, every account on its `sub`. Running `provision-identity` against the pool creates the
+table, and the next deploy picks it up. The active-role store keeps its hard lookup; a supplied pool
+has always had that one.
+
 **Deploy note.** The trigger sits in the critical path of every sign-in. The first deploy after this
 adds a table, an environment variable and one `GetItem` to the trigger; an existing account signs in
 unchanged and sees no claim. Verify on alpha: sign in as a declared account, check the token carries

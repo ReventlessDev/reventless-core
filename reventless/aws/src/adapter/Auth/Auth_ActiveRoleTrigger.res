@@ -64,7 +64,7 @@ let make = (
             ~id=name ++ "Policy",
             ~statements=[
               {
-                sid: "AllowLambdaLogging",
+                PolicyDocument.sid: "AllowLambdaLogging",
                 effect: Allow,
                 actions: Actions([
                   "logs:CreateLogGroup",
@@ -79,13 +79,20 @@ let make = (
                 actions: Action("dynamodb:GetItem"),
                 resources: Resource(tableArn),
               },
-              {
-                sid: "AllowReadingDomainId",
-                effect: Allow,
-                actions: Action("dynamodb:GetItem"),
-                resources: Resource(identityArn),
-              },
-            ],
+            ]->Array.concat(
+              // A supplied pool with no identity store yet: nothing to read, and
+              // an empty resource would make the policy invalid.
+              identityArn == ""
+                ? []
+                : [
+                    {
+                      sid: "AllowReadingDomainId",
+                      effect: Allow,
+                      actions: Action("dynamodb:GetItem"),
+                      resources: Resource(identityArn),
+                    },
+                  ],
+            ),
           )
           ->PolicyDocument.toJsonString
           ->Pulumi.Input.make,
