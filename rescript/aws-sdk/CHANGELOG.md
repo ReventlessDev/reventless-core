@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.35 (2026-10-23)
+
+### Bug Fixes
+
+* **aws:** a supplied pool without an identity store deploys, and its accounts keep their pool id ([49695ef](https://github.com/ReventlessDev/reventless-core/commit/49695ef79de89925c1e718ee9afa9a6ad7abd1f9))
+
+
 # 3.0.0-alpha.34 (2026-10-23)
 
 ### Features
