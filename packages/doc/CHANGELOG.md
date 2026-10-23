@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-22
+- feat(aws): a new account gets a domain user id, carried as a token claim from a pool-scoped identity store ([ccfc90c](https://github.com/ReventlessDev/reventless-core/commit/ccfc90ced0c211cab23843864a2b4e580001b3ae))
+### 2026-10-22
 - feat(aws)!: the host shell's config.json names the identity provider under the neutral keys only ([6ce24ba](https://github.com/ReventlessDev/reventless-core/commit/6ce24ba7dde27da02f76f7f9f6284ad09a48f15a))
 ### 2026-10-22
 - fix(core): a typed id links to the view in its own chapter ([5420e30](https://github.com/ReventlessDev/reventless-core/commit/5420e302b835e11f6b85293239869776068120da))
