@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.307 (2026-10-23)
+
+### Features
+
+* **aws:** a new account gets a domain user id, carried as a token claim from a pool-scoped identity store ([ccfc90c](https://github.com/ReventlessDev/reventless-core/commit/ccfc90ced0c211cab23843864a2b4e580001b3ae))
+
+
 # 3.0.0-alpha.306 (2026-10-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

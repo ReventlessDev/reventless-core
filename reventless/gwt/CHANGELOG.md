@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.255 (2026-10-23)
+
+### Bug Fixes
+
+* **gwt:** a recorded sidecar is written only when it says something new ([a8f3cb9](https://github.com/ReventlessDev/reventless-core/commit/a8f3cb926d779f6a0c763196f73da5df102ca31e))
+
+
 # 1.0.0-alpha.254 (2026-10-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

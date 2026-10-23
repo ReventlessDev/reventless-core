@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.34 (2026-10-23)
+
+### Features
+
+* **aws:** a slice declaring the identity provider is handed one over the platform's Cognito pool ([b3a933b](https://github.com/ReventlessDev/reventless-core/commit/b3a933bbda475d0ce932a8de30616f738d639417))
+
+
 # 3.0.0-alpha.33 (2026-10-21)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

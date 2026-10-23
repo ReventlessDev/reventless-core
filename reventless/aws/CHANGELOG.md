@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.396 (2026-10-23)
+
+### Features
+
+* **aws:** a new account gets a domain user id, carried as a token claim from a pool-scoped identity store ([ccfc90c](https://github.com/ReventlessDev/reventless-core/commit/ccfc90ced0c211cab23843864a2b4e580001b3ae))
+* **aws:** a slice declaring the identity provider is handed one over the platform's Cognito pool ([b3a933b](https://github.com/ReventlessDev/reventless-core/commit/b3a933bbda475d0ce932a8de30616f738d639417))
+
+
 # 3.0.0-alpha.395 (2026-10-22)
 
 * feat(aws)!: the host shell's config.json names the identity provider under the neutral keys only ([6ce24ba](https://github.com/ReventlessDev/reventless-core/commit/6ce24ba7dde27da02f76f7f9f6284ad09a48f15a))

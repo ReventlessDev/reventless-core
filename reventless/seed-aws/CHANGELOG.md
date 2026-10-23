@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.50 (2026-10-23)
+
+**Note:** Version bump only for package @reventlessdev/reventless-seed-aws
+
+
+
+
+
 # 1.0.0-alpha.49 (2026-10-22)
 
 * feat(aws)!: the host shell's config.json names the identity provider under the neutral keys only ([6ce24ba](https://github.com/ReventlessDev/reventless-core/commit/6ce24ba7dde27da02f76f7f9f6284ad09a48f15a))
