@@ -39,12 +39,14 @@ let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
     read off the same refs `capabilities()` reads, so it cannot disagree with
     what a slice is handed. Geocoding is never here — no local geocoder exists. */
 let provisioned = (): array<Reventless.CapabilityNeed.t> =>
-  Array.concat(
+  [
     messagingSenderRef.contents == "" ? [] : [Reventless.CapabilityNeed.Messaging],
     identityProviderRef.contents.operations == []
       ? []
       : [Reventless.CapabilityNeed.IdentityProvider],
-  )
+    // Always: an in-memory stash needs nothing a root could fail to provide.
+    [Reventless.CapabilityNeed.Stash],
+  ]->Array.flat
 
 /**
 The warning for a plugin declaring needs this platform does not provision, or
@@ -69,6 +71,8 @@ let unmetWarning = (~declared: array<(string, string)>): option<string> =>
           `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as ` ++ `\`~messagingSender\`.`
         | IdentityProvider =>
           `\n  IdentityProvider is \`Capability_IdentityProvider_UserStore.make()\`, passed to the ` ++ `platform as \`~identityProvider\`.`
+        // Never unmet here: the local platform always provisions one.
+        | Stash => ``
         }
       )
       ->Belt.Set.String.fromArray
@@ -77,9 +81,17 @@ let unmetWarning = (~declared: array<(string, string)>): option<string> =>
     )
   }
 
+// One stash for the process: the door that puts and the slice that takes both run
+// here, and a stash per call would hand the slice an empty one.
+let stash = ref(ReventlessCore.Stash_Memory_Backend.make())
+
+/** A fresh stash, for a test that must not see another's values. */
+let resetStash = () => stash := ReventlessCore.Stash_Memory_Backend.make()
+
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
   identityProvider: identityProviderRef.contents,
   secrets: ReventlessCore.Secrets_Node_Backend.provider,
+  stash: stash.contents,
 }

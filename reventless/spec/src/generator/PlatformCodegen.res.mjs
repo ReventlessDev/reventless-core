@@ -91,6 +91,11 @@ function renderEntry(entry) {
         TAG: "Ok",
         _0: renderComments(entry).concat(["  IdentityProvider,"])
       };
+    case "Stash" :
+      return {
+        TAG: "Ok",
+        _0: renderComments(entry).concat(["  Stash,"])
+      };
   }
 }
 

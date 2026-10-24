@@ -24,7 +24,7 @@ on it.
 
 ## The capabilities supported today
 
-**Three, and the set is expected to grow.** What follows is the roster this
+**Five, and the set is expected to grow.** What follows is the roster this
 release provisions, not a closed model of what a plugin may ever need — a queue, a
 scheduler, a payment processor and a search index are all the same shape of thing,
 and each would arrive as another arm here. Treat the list as a fact about the
@@ -39,6 +39,8 @@ type capability =
   | ObjectStore({plugin: string, store: string})
   | Geocoding
   | Messaging
+  | IdentityProvider
+  | Stash
 ```
 
 | | **ObjectStore** | **Geocoding** | **Messaging** |
@@ -51,6 +53,20 @@ type capability =
 | Provisioned on AWS | `Capability_ObjectStore_S3` | `Capability_Geocoding_AwsLocation` | `Capability_Messaging` (SES or log) |
 | Locally | in-memory / filesystem store | not provisioned — answers `Unavailable` | log transport, prints and sends nothing |
 | Deploy gate | `Util_StoreLayout.coverageFor` | `CapabilityNeed.unmet` | `CapabilityNeed.unmet` |
+
+Two more are reached the same way, through `capabilities`, and declared by a slice:
+
+| | **IdentityProvider** | **Stash** |
+|---|---|---|
+| What it is | Making, grouping and unmaking accounts | A value held for minutes outside the log, handed over once |
+| Reached at runtime | `capabilities.identityProvider` | `capabilities.stash` |
+| Provisioned on AWS | the platform's Cognito pool, with no root opt-in; the admin grant follows the declaring slice | not yet — a plugin declaring it is refused at deploy |
+| Locally | `Capability_IdentityProvider_UserStore.make()`, over the accounts file the login reads | always, in memory |
+
+The stash exists for one step: a door receives a secret, such as a password, that
+must reach a provider only after a `decide` the door cannot run has said yes. The
+door puts it in the stash under a key both sides can name, and the slice that reacts
+to the decision takes it. Taken once, and gone after its time either way.
 
 `ObjectStore` is the one carrying an identity beyond its own name, and the reason
 is that a deployment has several: two plugins that pick the same store name get two
@@ -177,14 +193,20 @@ as unrecognized rather than silently dropped into a known arm.
 
 ## What is injected, and what is not
 
-A slice's `translate` is handed a record with **two** of the three:
+A translation slice's `translate`, outbound or inbound, is handed this record:
 
 ```rescript
 type t = {
   geocode: Geocoding.search,
   messaging: Messaging.provider,
+  identityProvider: IdentityProvider.t,
+  secrets: Secrets.t,
+  stash: Stash.t,
 }
 ```
+
+`secrets` is not on the roster above: every runtime has a cryptographic source, so
+it is always provided and never declared.
 
 Injected rather than looked up, and required rather than optional, because the
 alternative is a slot filled at cold start that nothing enforces: ES modules
@@ -202,8 +224,8 @@ boundary.** Its runtime half today is client-side: the browser gets a per-store
 presigned PUT and the minted ref is what the field carries. Plugin code that wants
 to read an offloaded value back calls `Offload.resolve(~fetch)`, which has no
 injected caller yet — the accessor for it belongs in this record and is not there.
-So `Capabilities.t` is where two of three capabilities are reached, not the
-definition of what a capability is.
+So `Capabilities.t` is where every capability but the object store is reached,
+not the definition of what a capability is.
 
 ### Unavailable is a modeled outcome
 

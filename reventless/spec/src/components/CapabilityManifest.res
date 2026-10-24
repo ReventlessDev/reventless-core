@@ -24,6 +24,9 @@ type kind =
   /** Making, grouping and unmaking principals, reached through
       `Capabilities.identityProvider`. Slice-declared, so no `field`. */
   | IdentityProvider
+  /** A short-lived handoff outside the log, reached through `Capabilities.stash`.
+      Slice-declared, so no `field`. */
+  | Stash
 
 /** The declaration site: the component's spec name, and — for a store — the field
     carrying the `@storageRef` annotation plus the store exactly as that field
@@ -84,6 +87,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       | Geocoding => Geocoding
       | Messaging => Messaging
       | IdentityProvider => IdentityProvider
+      | Stash => Stash
       },
       key,
       declaredBy: needs->Array.filterMap(

@@ -126,6 +126,7 @@ let renderEntry = (entry: unionEntry): result<array<string>, string> =>
   | Geocoding => Ok(renderComments(entry)->Array.concat(["  Geocoding,"]))
   | Messaging => Ok(renderComments(entry)->Array.concat(["  Messaging,"]))
   | IdentityProvider => Ok(renderComments(entry)->Array.concat(["  IdentityProvider,"]))
+  | Stash => Ok(renderComments(entry)->Array.concat(["  Stash,"]))
   }
 
 /**

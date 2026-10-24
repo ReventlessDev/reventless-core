@@ -111,7 +111,7 @@ function FromSlice(Spec) {
       }
     };
     let whenInput = async (input, fakesOpt) => {
-      let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
       let outcome;
       let exit = 0;
       let pairs;
@@ -140,7 +140,7 @@ function FromSlice(Spec) {
       };
     };
     let whenReceived = async (json, fakesOpt) => {
-      let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
       let input;
       try {
         input = Util_Sury$Reventless.fromJson(json, Spec.externalInputSchema);

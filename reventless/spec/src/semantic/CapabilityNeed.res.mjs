@@ -10,6 +10,8 @@ function toString(need) {
       return "Messaging";
     case "IdentityProvider" :
       return "IdentityProvider";
+    case "Stash" :
+      return "Stash";
   }
 }
 
@@ -21,6 +23,8 @@ function fromString(name) {
       return "IdentityProvider";
     case "Messaging" :
       return "Messaging";
+    case "Stash" :
+      return "Stash";
     default:
       return;
   }

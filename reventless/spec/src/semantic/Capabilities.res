@@ -36,6 +36,10 @@ type t = {
       cannot assert what a flow does with a value it cannot predict. See
       `Secrets.t`. */
   secrets: Secrets.t,
+  /** A value held for minutes outside the log and handed over once — the step
+      between a door that receives a secret and the slice that may act on it only
+      after a `decide`. See `Stash.t`. */
+  stash: Stash.t,
 }
 
 /**
@@ -71,4 +75,5 @@ let none: t = {
   // than declined to provision — and a guessable token would be accepted
   // everywhere while looking exactly like a real one.
   secrets: Secrets.unavailable(~reason="no secret source is configured for this platform"),
+  stash: Stash.unavailable(~reason="no stash is configured for this platform"),
 }

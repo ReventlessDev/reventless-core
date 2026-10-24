@@ -1505,6 +1505,8 @@ function MakeWithConfig(Config) {
                 return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
               case "IdentityProvider" :
                 return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
+              case "Stash" :
+                return `\n  Stash has no deployed backend yet; the local platform keeps one in memory. Host a plugin that needs it on the local platform.`;
             }
           }))).join(""));
         }
@@ -2914,6 +2916,8 @@ function Make($star) {
                 return `\n  Messaging is \`Capability_Messaging.make\`, passed to the platform as \`~messagingSender\`. The sender itself is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or \`platform:messagingEmailProvider: log\` to log every message and send none.`;
               case "IdentityProvider" :
                 return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
+              case "Stash" :
+                return `\n  Stash has no deployed backend yet; the local platform keeps one in memory. Host a plugin that needs it on the local platform.`;
             }
           }))).join(""));
         }

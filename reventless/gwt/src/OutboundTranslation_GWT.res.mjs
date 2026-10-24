@@ -229,7 +229,7 @@ function FromSlice(Spec) {
     let givenTodo = (id, item) => ({
       id: id,
       item: item,
-      fakes: Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined)
+      fakes: Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined)
     });
     let givenCapabilities = (todo, fakes) => ({
       id: todo.id,

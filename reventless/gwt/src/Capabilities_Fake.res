@@ -7,6 +7,7 @@ module Geocoding = Reventless.Geocoding
 module Messaging = Reventless.Messaging
 module IdentityProvider = Reventless.IdentityProvider
 module Secrets = Reventless.Secrets
+module Stash = Reventless.Stash
 
 /** One call a slice made through its capabilities. */
 type call =
@@ -22,6 +23,10 @@ type call =
   | PrincipalDeleted({principal: IdentityProvider.principal})
   | TokenDrawn({length: int, alphabet: Secrets.alphabet})
   | Hashed({input: string})
+  /** A value put in the stash. The value itself is recorded, so a test can
+      assert which secret was handed over — a fake has no log to keep it out of. */
+  | Stashed({key: string, value: string, ttl: Reventless.Duration.t})
+  | Taken({key: string})
 
 type t = {
   capabilities: Capabilities.t,
@@ -34,7 +39,9 @@ Fakes whose answers are given per capability. An answer left out is a plain
 success: a geocoder with no candidates, a send with a numbered receipt, a
 principal with a numbered id, `token` (or `t` repeated to length), and a hash
 that prefixes `"hash:"`. `~secrets` replaces the secret source whole, e.g. with
-`Secrets.unavailable`; its calls are still recorded.
+`Secrets.unavailable`; its calls are still recorded. The stash holds what is put
+in it and hands each value over once, starting from `~stashed`; `~stash`
+replaces it whole, e.g. with `Stash.unavailable`.
 */
 let make = (
   ~geocode: option<Geocoding.search>=?,
@@ -51,6 +58,8 @@ let make = (
   ~token: option<string>=?,
   ~hash: option<string => string>=?,
   ~secrets: option<Secrets.t>=?,
+  ~stashed: array<(string, string)>=[],
+  ~stash: option<Stash.t>=?,
   (),
 ): t => {
   let log: array<call> = []
@@ -76,6 +85,7 @@ let make = (
     | None => Ok({IdentityProvider.providerId: `principal-${Int.toString(log->Array.length)}`})
     }
   }
+  let held = Dict.fromArray(stashed)
   let capabilities: Capabilities.t = {
     geocode,
     messaging: Messaging.makeProvider(~emailAndSms=channels, ~pushServices, ~send),
@@ -108,6 +118,27 @@ let make = (
         switch secrets {
         | Some(s) => s.hash(input)
         | None => Ok(hash->Option.mapOr(`hash:${input}`, f => f(input)))
+        }
+      },
+    },
+    stash: {
+      put: async (~key, ~value, ~ttl) => {
+        record(Stashed({key, value, ttl}))
+        switch stash {
+        | Some(s) => await s.put(~key, ~value, ~ttl)
+        | None =>
+          held->Dict.set(key, value)
+          Ok()
+        }
+      },
+      take: async (~key) => {
+        record(Taken({key: key}))
+        switch stash {
+        | Some(s) => await s.take(~key)
+        | None =>
+          let found = held->Dict.get(key)
+          held->Dict.delete(key)
+          Ok(found)
         }
       },
     },
@@ -153,5 +184,7 @@ let toJson = (c: call): JSON.t => {
     obj("PrincipalDeleted", [("principal", str(principal.providerId))])
   | TokenDrawn({length, _}) => obj("TokenDrawn", [("length", JSON.Encode.int(length))])
   | Hashed({input}) => obj("Hashed", [("input", str(input))])
+  | Stashed({key, ttl, _}) => obj("Stashed", [("key", str(key)), ("ttl", JSON.Encode.int(ttl))])
+  | Taken({key}) => obj("Taken", [("key", str(key))])
   }
 }

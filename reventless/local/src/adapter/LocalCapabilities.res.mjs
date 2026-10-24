@@ -5,6 +5,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
+import * as Stash_Memory_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Stash/Stash_Memory_Backend.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
 
 let messagingSenderRef = {
@@ -24,9 +25,11 @@ function registerIdentityProvider(provider) {
 }
 
 function provisioned() {
-  return (
-    messagingSenderRef.contents === "" ? [] : ["Messaging"]
-  ).concat(Primitive_object.equal(identityProviderRef.contents.operations, []) ? [] : ["IdentityProvider"]);
+  return [
+    messagingSenderRef.contents === "" ? [] : ["Messaging"],
+    Primitive_object.equal(identityProviderRef.contents.operations, []) ? [] : ["IdentityProvider"],
+    ["Stash"]
+  ].flat();
 }
 
 function unmetWarning(declared) {
@@ -41,9 +44,19 @@ function unmetWarning(declared) {
           return `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as \`~messagingSender\`.`;
         case "IdentityProvider" :
           return `\n  IdentityProvider is \`Capability_IdentityProvider_UserStore.make()\`, passed to the platform as \`~identityProvider\`.`;
+        case "Stash" :
+          return ``;
       }
     }))).join("");
   }
+}
+
+let stash = {
+  contents: Stash_Memory_Backend$ReventlessCore.make(undefined)
+};
+
+function resetStash() {
+  stash.contents = Stash_Memory_Backend$ReventlessCore.make(undefined);
 }
 
 function capabilities() {
@@ -51,7 +64,8 @@ function capabilities() {
     geocode: Capabilities$Reventless.none.geocode,
     messaging: Messaging_Log_Backend$ReventlessCore.provider(messagingSenderRef.contents),
     identityProvider: identityProviderRef.contents,
-    secrets: Secrets_Node_Backend$ReventlessCore.provider
+    secrets: Secrets_Node_Backend$ReventlessCore.provider,
+    stash: stash.contents
   };
 }
 
@@ -62,6 +76,8 @@ export {
   registerIdentityProvider,
   provisioned,
   unmetWarning,
+  stash,
+  resetStash,
   capabilities,
 }
-/* Capabilities-Reventless Not a pure module */
+/* stash Not a pure module */

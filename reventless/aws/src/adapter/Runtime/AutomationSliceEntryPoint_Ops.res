@@ -428,6 +428,9 @@ let capabilities = (): Reventless.Capabilities.t => {
     ~identityStore=NodeProcess.env->Dict.get("IDENTITY_STORE_TABLE")->Option.getOr(""),
   ),
   secrets: ReventlessCore.Secrets_Node_Backend.provider,
+  // None deployed yet: a slice declaring the need is refused by the deploy gate,
+  // and this answers `Unavailable` should one run regardless.
+  stash: Reventless.Capabilities.none.stash,
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

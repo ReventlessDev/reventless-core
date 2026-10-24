@@ -13,6 +13,7 @@ import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
@@ -276,7 +277,8 @@ function capabilities() {
     geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined),
     messaging: messagingEmailProvider(),
     identityProvider: IdentityProvider_Cognito_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["IDENTITY_PROVIDER_ID"], ""), Stdlib_Option.getOr(process.env["IDENTITY_STORE_TABLE"], "")),
-    secrets: Secrets_Node_Backend$ReventlessCore.provider
+    secrets: Secrets_Node_Backend$ReventlessCore.provider,
+    stash: Capabilities$Reventless.none.stash
   };
 }
 

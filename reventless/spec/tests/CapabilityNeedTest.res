@@ -10,7 +10,7 @@ open JestGlobals
 
 describe("CapabilityNeed", () => {
   describe("round trip", () => {
-    let all: array<CapabilityNeed.t> = [Geocoding, Messaging, IdentityProvider]
+    let all: array<CapabilityNeed.t> = [Geocoding, Messaging, IdentityProvider, Stash]
 
     testSync(
       "every arm survives toString → fromString",

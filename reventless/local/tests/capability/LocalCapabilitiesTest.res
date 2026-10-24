@@ -18,7 +18,7 @@ let reset = () => {
 describe("LocalCapabilities.unmetWarning", () => {
   testSync("a bare platform provisions nothing, and the warning names each need once", () => {
     reset()
-    expect(LocalCapabilities.provisioned())->toEqual([])
+    expect(LocalCapabilities.provisioned())->toEqual([Reventless.CapabilityNeed.Stash])
     let message = LocalCapabilities.unmetWarning(~declared)->Option.getOr("")
     expect(message->String.includes("Geocoding (GeocodeAddress)"))->toBe(true)
     expect(message->String.includes("Capability_Messaging_Log.make()"))->toBe(true)
@@ -34,6 +34,7 @@ describe("LocalCapabilities.unmetWarning", () => {
     expect(LocalCapabilities.provisioned())->toEqual([
       Reventless.CapabilityNeed.Messaging,
       IdentityProvider,
+      Stash,
     ])
     let message = LocalCapabilities.unmetWarning(~declared)->Option.getOr("")
     expect(message->String.includes("Messaging"))->toBe(false)

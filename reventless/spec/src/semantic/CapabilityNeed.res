@@ -34,6 +34,11 @@ type t =
         `Auth_Adapter.Provider`'s, read at a different time — two seams over one
         provider, the way this type and `Capabilities.t` are already two. */
   | IdentityProvider
+  /** A value held for minutes outside the log and handed over once, reached
+        through `Capabilities.stash`. Declared because not every platform
+        provisions one: the local platform keeps it in memory, and a deployed one
+        has none yet. */
+  | Stash
 
 /** The spelling carried in `pluginStructure` and in `capabilities.json`.
     Persisted structures hold strings, not enum members, so a plugin built
@@ -43,6 +48,7 @@ let toString = (need: t): string =>
   | Geocoding => "Geocoding"
   | Messaging => "Messaging"
   | IdentityProvider => "IdentityProvider"
+  | Stash => "Stash"
   }
 
 /** The inverse, for readers of a persisted structure or a committed manifest.
@@ -53,6 +59,7 @@ let fromString = (name: string): option<t> =>
   | "Geocoding" => Some(Geocoding)
   | "Messaging" => Some(Messaging)
   | "IdentityProvider" => Some(IdentityProvider)
+  | "Stash" => Some(Stash)
   | _ => None
   }
 

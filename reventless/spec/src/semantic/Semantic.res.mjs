@@ -259,6 +259,7 @@ let nonValueModules = [
   "RowImage",
   "Secrets",
   "Semantic",
+  "Stash",
   "Template"
 ];
 

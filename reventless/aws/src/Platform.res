@@ -1858,7 +1858,8 @@ module MakeWithConfig = (
         | ObjectStore({plugin, store}) => Some((plugin, store))
         | Geocoding
         | Messaging
-        | IdentityProvider =>
+        | IdentityProvider
+        | Stash =>
           None
         }
       )
@@ -2982,6 +2983,8 @@ module MakeWithConfig = (
                   `REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES — or ` ++ `\`platform:messagingEmailProvider: log\` to log every message and send none.`
                 | IdentityProvider =>
                   `\n  IdentityProvider is the platform's Cognito pool, exported as ` ++ `\`identityProviderId\`. This platform stack exports none — deploy it first.`
+                | Stash =>
+                  `\n  Stash has no deployed backend yet; the local platform keeps one in ` ++ `memory. Host a plugin that needs it on the local platform.`
                 }
               )
               // One line per capability, not per declaring component: two slices

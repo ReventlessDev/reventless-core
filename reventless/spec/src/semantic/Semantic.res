@@ -303,6 +303,7 @@ let nonValueModules: array<string> = [
   "RowImage",
   "Secrets",
   "Semantic",
+  "Stash",
   "Template",
 ]
 
