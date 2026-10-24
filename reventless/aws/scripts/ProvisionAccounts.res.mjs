@@ -109,10 +109,10 @@ async function ensureGroups(providerId, entries) {
   }
 }
 
-function identityStoreFor(providerId, stack) {
+function identityStoreFor(stack) {
   let stack$1 = Stdlib_Option.orElse(stack, ProvisionProvider$ReventlessAws.selectedStack());
   if (stack$1 === undefined) {
-    return Auth_IdentityStore_Schema$ReventlessAws.derivedStoreName(providerId);
+    return;
   }
   let name;
   try {
@@ -124,10 +124,10 @@ function identityStoreFor(providerId, stack) {
       stack$1
     ]);
   } catch (exn) {
-    return Auth_IdentityStore_Schema$ReventlessAws.derivedStoreName(providerId);
+    return;
   }
   if (name === "") {
-    return Auth_IdentityStore_Schema$ReventlessAws.derivedStoreName(providerId);
+    return;
   } else {
     return name;
   }
@@ -299,10 +299,8 @@ async function run(args) {
   let match = message._0;
   let providerId = match[0];
   console.log(`provider ` + providerId + ` (from ` + ProvisionProvider$ReventlessAws.describe(match[1]) + `)`);
-  let identityStore = identityStoreFor(providerId, args.stack);
-  Stdlib_Option.forEach(identityStore, store => {
-    console.log(`store    ` + store);
-  });
+  let identityStore = identityStoreFor(args.stack);
+  console.log(identityStore !== undefined ? `store    ` + identityStore : `store    none the deployed trigger reads — new accounts keep their pool id`);
   return await provision(file, providerId, identityStore, undefined);
 }
 

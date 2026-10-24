@@ -167,38 +167,30 @@ let ensureGroups = async (~providerId: string, ~entries: array<Manifest.entry>):
   }
 }
 
+// ── The domain id ────────────────────────────────────────────────────────────
+
 /**
-One account: the entry, applied.
+The identity store the pool's trigger reads, or `None` when it reads none.
 
-The password is set unconditionally rather than only for an account this run
-created — the same reason `provision-admin` does it, arriving at a manifest: the
-file is the record of what the credential *is*, so an account whose password
-drifted from the file is exactly the case a re-run is expected to fix.
-
-Returns the id the pool minted, which is the value the manifest cannot know until
-the account exists and which nobody should be pasting by hand.
+Only a deployed stack can say, through its `identityStore` output, because the
+store matters only if the trigger was deployed knowing it. An empty output is a
+supplied pool whose store did not exist at the last deploy; a missing one is a
+stack deployed before the store existed; no stack is a pool nothing here can
+vouch for. In each of those the trigger adds no claim, so an id minted now would
+be one the account's own token never carries — every row it wrote would be keyed
+by its `sub` while the manifest named another id. The account keeps its `sub`
+instead, as every account before the store did, and the next deploy that wires
+the store lets the following run mint.
 */
-/**
-Where the rows mapping a subject to its domain id live, for this pool.
-
-A stack-owned pool's table carries a generated suffix, so it is read off the
-stack's `identityStore` output; a pool no stack owns has the derived name
-`provision-identity` created it under. `None` when neither can be known, which
-is a pool provisioned before the store existed — accounts made then keep their
-`sub`, exactly as every account before them.
-*/
-let // ── The domain id ────────────────────────────────────────────────────────────
-
-identityStoreFor = (~providerId: string, ~stack: option<string>): option<string> =>
+let identityStoreFor = (~stack: option<string>): option<string> =>
   switch stack->Option.orElse(ProvisionProvider.selectedStack()) {
+  | None => None
   | Some(stack) =>
     switch ProvisionProvider.pulumi(["stack", "output", "identityStore", "--stack", stack]) {
-    | "" => Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
+    | "" => None
     | name => Some(name)
-    | exception _ =>
-      Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
+    | exception _ => None
     }
-  | None => Some(Auth_IdentityStore_Schema.derivedStoreName(~identityProviderId=providerId))
   }
 
 /** The domain id recorded for a subject, if the store has one. */
@@ -253,6 +245,17 @@ let domainIdFor = async (~store: option<string>, ~sub: string, ~created: bool): 
     }
   }
 
+/**
+One account: the entry, applied.
+
+The password is set unconditionally rather than only for an account this run
+created — the same reason `provision-admin` does it, arriving at a manifest: the
+file is the record of what the credential *is*, so an account whose password
+drifted from the file is exactly the case a re-run is expected to fix.
+
+Returns the id the pool minted, which is the value the manifest cannot know until
+the account exists and which nobody should be pasting by hand.
+*/
 let applyEntry = async (
   ~providerId: string,
   ~entry: Manifest.entry,
@@ -371,8 +374,13 @@ let run = async (args: args): result<unit, string> =>
       Error(`${message}. To fill in the manifest without creating anything, run prepare-accounts`)
     | Ok((providerId, source)) =>
       Console.log(`provider ${providerId} (from ${source->ProvisionProvider.describe})`)
-      let identityStore = identityStoreFor(~providerId, ~stack=args.stack)
-      identityStore->Option.forEach(store => Console.log(`store    ${store}`))
+      let identityStore = identityStoreFor(~stack=args.stack)
+      Console.log(
+        switch identityStore {
+        | Some(store) => `store    ${store}`
+        | None => `store    none the deployed trigger reads — new accounts keep their pool id`
+        },
+      )
       await provision(~file, ~providerId, ~identityStore?)
     }
   }

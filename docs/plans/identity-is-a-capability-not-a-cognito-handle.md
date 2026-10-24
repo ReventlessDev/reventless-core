@@ -245,9 +245,11 @@ existed with the ownership rule this step needs, so the identity store takes exa
   Held by five tests, two per entry point plus the empty-claim case.
 - **Minting happens at creation only.** `provision-accounts` mints for an account it created, writes
   the row, and records the domain id in the manifest; an account that already existed is read back
-  from the store or left on its `sub`. The store is read off the stack's `identityStore` output when
-  a stack is known, else derived; a store that does not exist leaves the account on its `sub` and says
-  so. `deploy-app` passes the same store when it creates the accounts after `pulumi up`.
+  from the store or left on its `sub`. The store is read off the deployed stack's `identityStore`
+  output and nowhere else: an empty or missing output, or no stack at all, means the trigger reads no
+  store, and an id minted then would be one the account's token never carries — so the account keeps
+  its `sub`. (Corrected 2026-10-23: it first fell back to the derived name, which on alpha named a
+  table created after the trigger was deployed.) `deploy-app` passes the same store when it creates the accounts after `pulumi up`.
 - **The local provider mints the same shape** and writes it as the manifest's `userId`, so a new
   account's id looks the same on both platforms. Declared local accounts keep their declared ids.
 - **The disagreement question, answered rather than skipped.** A row whose principal was deleted out
