@@ -757,12 +757,57 @@ let isCreateCommandName = name =>
     name->String.startsWith(p)
   )
 
+/** Each variant of an event schema by name, with the identity keys its tagged fields carry. */
+let tagKeysByVariant = (schema: S.t<unknown>): array<(string, array<string>)> => {
+  let ofVariant = (v: S.t<unknown>) =>
+    switch v {
+    | Object({properties}) =>
+      switch properties->Dict.get("TAG") {
+      | Some(String({const: ?Some(name)})) =>
+        Some((name, Reventless.DcbTag.tagKeysOfProperties(properties)))
+      | _ => None
+      }
+    | String({const: ?Some(name)}) => Some((name, []))
+    | _ => None
+    }
+  switch schema {
+  | AnyOf({anyOf}) => anyOf->Array.filterMap(ofVariant)
+  | v => ofVariant(v)->Option.mapOr([], x => [x])
+  }
+}
+
+/**
+Whether a slice's decision creates the row its command names, by what it reads:
+it reads its own events, to refuse doing it twice, and no other event about the
+same identity. `CommissionCharger` reads `ChargerCommissioned` (its own), and
+reading `SiteAdded` too would not change that, as it is about a site; it creates
+the charger, whatever its name says. `RetireCharger` reads `ChargerCommissioned`,
+which is about the charger and not its own: the charger must exist. A decision
+that reads none of its own events says nothing here, and its name decides. Nor
+does one that reads another event whose identity it cannot tell (a payload-less
+`OrderPlaced`): that event may be the row's own history.
+
+Answers per identity key, since which of the command's fields is its id is
+settled where the level is.
+*/
+let createsBy = (~produced: S.t<unknown>, ~consumed: S.t<unknown>): (string => bool) => {
+  let own = tagKeysByVariant(produced)->Array.map(((name, _)) => name)
+  let read = tagKeysByVariant(consumed)
+  let readsOwn = read->Array.some(((name, _)) => own->Array.includes(name))
+  let foreign = read->Array.filter(((name, _)) => !(own->Array.includes(name)))
+  let untold = foreign->Array.some(((_, keys)) => keys == [])
+  let foreignKeys = foreign->Array.flatMap(((_, keys)) => keys)
+  key => readsOwn && !untold && !(foreignKeys->Array.includes(key))
+}
+
 // A slice command's id field is the one carrying its slice's partition key, as the
 // boundary infers it; a `@partitionTag` or the first tagged field stands in only
-// where no key was inferred.
+// where no key was inferred. A slice that creates the row its id names, by what
+// it reads (`createsBy`), is Collection-level as a create-stem name is.
 let commandLevelAndId = (
   ~isAggregate,
   ~partitionKey: option<string>=?,
+  ~createsFor: option<string => bool>=?,
   ~variantName,
   properties: dict<S.t<unknown>>,
 ) =>
@@ -794,8 +839,9 @@ let commandLevelAndId = (
       )
       ->Option.orElse(taggedFields->Array.get(0))
     switch taggedField {
-    | Some((fieldName, _)) =>
-      if isCreateCommandName(variantName) {
+    | Some((fieldName, _) as field) =>
+      let creates = createsFor->Option.mapOr(false, f => f(keyOf(field)))
+      if creates || isCreateCommandName(variantName) {
         // Creation command: Collection-level, but UUID is injected into the tagged ID field.
         (Reventless.Plugin.Collection, Some(fieldName))
       } else {
@@ -868,6 +914,7 @@ let toCommandDef = (
   ~identityViews: option<identityViews>=?,
   ~isAggregate,
   ~partitionKey: option<string>=?,
+  ~createsFor: option<string => bool>=?,
   ~mutationFieldFor: string => string,
   ~parentSchema: S.t<unknown>,
   // The spec's `authorizationOf`, by constructor name. Per VARIANT, not per
@@ -898,6 +945,7 @@ let toCommandDef = (
     let (guessedLevel, aggregateIdField) = commandLevelAndId(
       ~isAggregate,
       ~partitionKey?,
+      ~createsFor?,
       ~variantName,
       properties,
     )
@@ -1041,6 +1089,7 @@ let extractCommandDefs = (
   ~identityViews: option<identityViews>=?,
   ~isAggregate,
   ~partitionKey: option<string>=?,
+  ~createsFor: option<string => bool>=?,
   ~mutationFieldFor: string => string,
   ~authorizationOf: string => Reventless.Authorization.permission,
   ~commandTransition: unknown => Reventless.Transition.t<string>,
@@ -1054,6 +1103,7 @@ let extractCommandDefs = (
         ~identityViews?,
         ~isAggregate,
         ~partitionKey?,
+        ~createsFor?,
         ~mutationFieldFor,
         ~parentSchema=commandSchema,
         ~authorizationOf,
@@ -1068,6 +1118,7 @@ let extractCommandDefs = (
       ~identityViews?,
       ~isAggregate,
       ~partitionKey?,
+      ~createsFor?,
       ~mutationFieldFor,
       ~parentSchema=commandSchema,
       ~authorizationOf,
@@ -1729,6 +1780,10 @@ let make = (
             ~identityViews=identityViewsOf(SCS.Spec.name),
             ~isAggregate=false,
             ~partitionKey=?partitionBySlice->Dict.get(SCS.Spec.name),
+            ~createsFor=createsBy(
+              ~produced=SCS.Spec.eventSchema->S.castToUnknown,
+              ~consumed=SCS.Spec.consumedEventSchema->S.castToUnknown,
+            ),
             ~mutationFieldFor=variantName =>
               Api_Naming.sliceMutationFieldFor(
                 ~plugin=name,

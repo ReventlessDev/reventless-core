@@ -579,7 +579,65 @@ function isCreateCommandName(name) {
   ].some(p => name.startsWith(p));
 }
 
-function commandLevelAndId(isAggregate, partitionKey, variantName, properties) {
+function tagKeysByVariant(schema) {
+  let ofVariant = v => {
+    switch (v.type) {
+      case "string" :
+        let name = v.const;
+        if (name !== undefined) {
+          return [
+            name,
+            []
+          ];
+        } else {
+          return;
+        }
+      case "object" :
+        let properties = v.properties;
+        let match = properties["TAG"];
+        if (match === undefined) {
+          return;
+        }
+        if (match.type !== "string") {
+          return;
+        }
+        let name$1 = match.const;
+        if (name$1 !== undefined) {
+          return [
+            name$1,
+            DcbTag$Reventless.tagKeysOfProperties(properties)
+          ];
+        } else {
+          return;
+        }
+      default:
+        return;
+    }
+  };
+  if (schema.type === "anyOf") {
+    return Stdlib_Array.filterMap(schema.anyOf, ofVariant);
+  } else {
+    return Stdlib_Option.mapOr(ofVariant(schema), [], x => [x]);
+  }
+}
+
+function createsBy(produced, consumed) {
+  let own = tagKeysByVariant(produced).map(param => param[0]);
+  let read = tagKeysByVariant(consumed);
+  let readsOwn = read.some(param => own.includes(param[0]));
+  let foreign = read.filter(param => !own.includes(param[0]));
+  let untold = foreign.some(param => Primitive_object.equal(param[1], []));
+  let foreignKeys = foreign.flatMap(param => param[1]);
+  return key => {
+    if (readsOwn && !untold) {
+      return !foreignKeys.includes(key);
+    } else {
+      return false;
+    }
+  };
+}
+
+function commandLevelAndId(isAggregate, partitionKey, createsFor, variantName, properties) {
   if (isAggregate) {
     if (isCreateCommandName(variantName)) {
       return [
@@ -622,7 +680,8 @@ function commandLevelAndId(isAggregate, partitionKey, variantName, properties) {
     ];
   }
   let fieldName = taggedField[0];
-  if (isCreateCommandName(variantName)) {
+  let creates = Stdlib_Option.mapOr(createsFor, false, f => f(keyOf(taggedField)));
+  if (creates || isCreateCommandName(variantName)) {
     return [
       "Collection",
       fieldName
@@ -684,9 +743,9 @@ function annotateArgTypes(schema, argTypes) {
   return schema;
 }
 
-function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, parentSchema, authorizationOf, commandTransition, derivedEdgeFor, v) {
+function toCommandDef(identityViews, isAggregate, partitionKey, createsFor, mutationFieldFor, parentSchema, authorizationOf, commandTransition, derivedEdgeFor, v) {
   let mkDef = (variantName, properties) => {
-    let match = commandLevelAndId(isAggregate, partitionKey, variantName, properties);
+    let match = commandLevelAndId(isAggregate, partitionKey, createsFor, variantName, properties);
     let aggregateIdField = match[1];
     let syntheticCommand$1 = syntheticCommand(parentSchema, variantName);
     let declared = commandTransition(syntheticCommand$1);
@@ -771,12 +830,12 @@ function toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor
   }
 }
 
-function extractCommandDefs(identityViews, isAggregate, partitionKey, mutationFieldFor, authorizationOf, commandTransition, derivedEdgeForOpt, commandSchema) {
+function extractCommandDefs(identityViews, isAggregate, partitionKey, createsFor, mutationFieldFor, authorizationOf, commandTransition, derivedEdgeForOpt, commandSchema) {
   let derivedEdgeFor = derivedEdgeForOpt !== undefined ? derivedEdgeForOpt : param => {};
   if (commandSchema.type === "anyOf") {
-    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, v));
+    return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(identityViews, isAggregate, partitionKey, createsFor, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, v));
   } else {
-    return Stdlib_Option.mapOr(toCommandDef(identityViews, isAggregate, partitionKey, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
+    return Stdlib_Option.mapOr(toCommandDef(identityViews, isAggregate, partitionKey, createsFor, mutationFieldFor, commandSchema, authorizationOf, commandTransition, derivedEdgeFor, commandSchema), [], def => [def]);
   }
 }
 
@@ -1253,7 +1312,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(identityViewsOf(SCS.Spec.name), false, partitionBySlice[SCS.Spec.name], variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), name => Authorization$Reventless.named(SCS.Spec.authorizationOf(name)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(identityViewsOf(SCS.Spec.name), false, partitionBySlice[SCS.Spec.name], createsBy(SCS.Spec.eventSchema, SCS.Spec.consumedEventSchema), variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), name => Authorization$Reventless.named(SCS.Spec.authorizationOf(name)), SCS.Spec.commandTransition, extra => derivedEdgeFor(SCS.Spec.name, extra), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -1268,7 +1327,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(identityViewsOf(A.Spec.name), true, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), name => Authorization$Reventless.named(A.Spec.authorizationOf(name)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
+      commands: extractCommandDefs(identityViewsOf(A.Spec.name), true, undefined, undefined, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), name => Authorization$Reventless.named(A.Spec.authorizationOf(name)), A.Spec.commandTransition, extra => derivedEdgeFor(A.Spec.name, extra), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
@@ -1605,6 +1664,8 @@ export {
   extractEventDefs,
   extractErrorDefs,
   isCreateCommandName,
+  tagKeysByVariant,
+  createsBy,
   commandLevelAndId,
   accessKeysFor,
   nonEmpty,

@@ -2791,3 +2791,82 @@ describe("duplicate DCB command names", () => {
     )->toBe(true)
   )
 })
+
+describe("a slice that reads no earlier event about its own identity creates its row", () => {
+  // Events built as a spec's are: a TAG, and fields tagged with the identity they
+  // file the event under.
+  let event = (name, fields: array<(string, bool)>) =>
+    S.object(s => {
+      s.tag("TAG", name)
+      fields->Array.forEach(
+        ((field, tagged)) => s.field(field, tagged ? Reventless.DcbTag.string : S.string)->ignore,
+      )
+    })->S.castToUnknown
+  let union = (variants: array<S.t<unknown>>) => S.union(variants)->S.castToUnknown
+  let commissioned = event("ChargerCommissioned", [("chargerId", true), ("siteId", true)])
+  let retired = event("ChargerRetired", [("chargerId", true)])
+  let siteAdded = event("SiteAdded", [("siteId", true)])
+
+  testSync("by the events it reads besides its own, and whose they are", () => {
+    // Commission: reads its own event only, or a site's besides: creates the charger.
+    let commission = Plugin_Structure.createsBy(
+      ~produced=union([commissioned]),
+      ~consumed=union([commissioned]),
+    )
+    let commissionAtSite = Plugin_Structure.createsBy(
+      ~produced=union([commissioned]),
+      ~consumed=union([commissioned, siteAdded]),
+    )
+    // Retire: reads that the charger was commissioned, which is about the charger.
+    let retire = Plugin_Structure.createsBy(
+      ~produced=union([retired]),
+      ~consumed=union([retired, commissioned]),
+    )
+    // A decision that reads none of its own events: its name decides.
+    let readsOthers = Plugin_Structure.createsBy(
+      ~produced=union([commissioned]),
+      ~consumed=union([siteAdded]),
+    )
+    // Another event whose identity cannot be told (no fields) may be the row's own.
+    let untold = Plugin_Structure.createsBy(
+      ~produced=union([commissioned]),
+      ~consumed=union([commissioned, event("Placed", [])]),
+    )
+    expect((
+      commission("chargerId"),
+      commissionAtSite("chargerId"),
+      retire("chargerId"),
+      readsOthers("chargerId"),
+      untold("chargerId"),
+    ))->toEqual((true, true, false, false, false))
+  })
+
+  // `ShipOrder` carries a tagged `orderId` and no create stem: Instance-level by
+  // its name, Collection-level once its slice creates the order.
+  testSync("as a create-stem name does, keeping its id field", () => {
+    let properties = switch PsShipOrder.commandSchema->S.castToUnknown {
+    | AnyOf({anyOf}) =>
+      anyOf->Array.findMap(
+        v =>
+          switch v {
+          | Object({properties}) if properties->Dict.get("orderId")->Option.isSome =>
+            Some(properties)
+          | _ => None
+          },
+      )
+    | _ => None
+    }->Option.getOrThrow
+    let level = createsFor =>
+      Plugin_Structure.commandLevelAndId(
+        ~isAggregate=false,
+        ~createsFor,
+        ~variantName="ShipOrder",
+        properties,
+      )
+    expect((level(_ => false), level(key => key == "orderId"), level(_ => false)))->toEqual((
+      (Reventless.Plugin.Instance, Some("orderId")),
+      (Reventless.Plugin.Collection, Some("orderId")),
+      (Reventless.Plugin.Instance, Some("orderId")),
+    ))
+  })
+})
