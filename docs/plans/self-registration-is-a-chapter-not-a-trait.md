@@ -1,15 +1,17 @@
 # Plan: self-registration is a chapter, not a trait
 
 **Date:** 2026-09-10, revised 2026-09-11
-**Status:** 🚧 **Built and proven on the local platform 2026-10-24** — `Closed` / `Open` with an
-optional end, the address claim, verify-then-create, and the oracle-safe answers, in a new plugin the
-local root hosts and the AWS root does not (*As built*, below). **The throttle has a home since 2026-10-24**: a per-source limit on every anonymous door, enforced
-locally, and a per-address cooldown on the notice, in `decide`. **Still open:** the AWS door (deferred
-by the identity plan's [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
-which must enforce the same limit before any public `Open`, and the UI half, which is uninvestigated
-and belongs to the UI repository. Filed 2026-09-10;
-revised 2026-09-11 when the AWS door was deferred and the first requirement arrived — a deployer briefly
-opening their own `Closed` deployment, which a runtime policy flip satisfies.
+**Status:** 🚧 **Built and proven on the local platform 2026-10-24** for one role — `Closed` / `Open` with
+an optional end, the address claim, verify-then-create, the oracle-safe answers, and the throttle's
+two layers — in a new plugin the local root hosts and the AWS root does not (*As built*, below).
+**Revised the same day: admission is per role** — self-service, by invitation, or provisioned — declared
+in code, with whether a self-service role is open kept live per role
+([Admission per role](#admission-per-role--planned-2026-10-24), steps
+[A1](#a1-the-strategy-and-the-declared-table) to [A7](#a7-the-example), not built). **Still
+open besides:** the AWS door (deferred by the identity plan's
+[Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
+which must enforce the same limit before any public sign-up. Filed 2026-09-10; revised 2026-09-11
+when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
 (hard — nothing here works without `createPrincipal`) ·
@@ -297,6 +299,118 @@ the proof settled leaves the registration verified with no account, since the pr
 twice; the door checks the length the pool requires so the common case cannot reach that. The
 "someone tried" notice is held to one an hour per address since the throttle landed — see
 [the throttle section](#the-gap-that-must-close-before-this-ships-anywhere-public).
+
+## Admission per role — planned 2026-10-24
+
+### In plain words
+
+What is built answers one question for everybody: registration is open or closed, and an account
+always lands in the `Shopper` group. A deployment wants a different answer per role. Shoppers sign
+themselves up; staff are made by hand; and a deployment may want a role joined only when someone
+already inside invites. So each role gets an **admission strategy**, declared in code, and whether a
+self-service role is open *right now* stays live domain state, per role. This repository builds
+self-service and provisioned in full. Invitation it declares and checks: a plugin that provides an
+invite door marks it, and a deployment that declares a role by invitation without such a door is
+refused rather than left with a declaration nothing honors.
+
+This is the decomposition [Admission is three orthogonal knobs](#admission-is-three-orthogonal-knobs-not-an-enum)
+argued for, meeting its first real requirement: *who may start* varies by role (anyone, or a
+signed-in inviter), and *what a settled proof grants* is the role's group.
+
+| Strategy | Who starts it | The account lands in | Door |
+|---|---|---|---|
+| `SelfService` | anyone, not signed in | the role's group | `SignUp(email, role)` |
+| `Invitation({by})` | a signed-in caller holding one of the roles in `by` | the invited role's group | provided and marked by a plugin of its own; it completes through the same completion door |
+| `Provisioned` | an administrator, outside this chapter | — | none: the accounts file locally, `provision-accounts` on AWS |
+
+### Decisions
+
+- **Declared in code, not in a UI hints file.** A switch in the presentation file was considered and
+  rejected: it would put a security setting in a file documented as presentation only, and it
+  cannot say different things for different roles. The declaration is the hard cap: a role that is
+  not `SelfService` has no door for visitors at all, and one that is not `Invitation` has no invite.
+- **Open and closed is per role, and live.** The policy's scope becomes the role, replacing the one
+  `default` scope. A role declared `SelfService` is open until an administrator closes it — the
+  declaration is the deployer's opt-in, so requiring a second command to make it do anything would
+  be a trap. Closing and reopening needs no redeploy, on either platform.
+- **One completion door.** A sign-up's code and an invitation's code look the same at the door: an
+  address, a code, a password. The ledger knows which roles each registration grants.
+- **The declaration may name a door this repository does not ship.** `Invitation` is in the type so
+  that one table serves the deploy check, an authoring tool and whichever plugin provides the door;
+  what this repository guarantees is that the declaration is never silently unmet.
+- **The shell is told, not configured.** The platform writes the doors and the self-service roles
+  into the shell's `config.json` from the plugin structure, so nobody names a mutation by hand, and
+  visitors read which self-service roles are open through a public query.
+
+### Steps
+
+Numbered A1 to A7.
+
+#### A1: the strategy and the declared table
+
+`Reventless.Admission` in spec: `type strategy = SelfService | Invitation({by: array<string>}) |
+Provisioned`, and a table keyed by **group** name — accounts are created in groups, and a plugin's
+roles map to groups at the platform root. The app declares it as `src/Admission.res` beside
+`Roles.res`; an authoring tool may write it, as it may write `Roles.res`.
+
+**Exit:** the type, its decoder, and a test that an unknown group or strategy refuses rather than
+defaults.
+
+#### A2: the policy per role
+
+`OpenRegistration` / `CloseRegistration` take a role instead of a scope. A role declared
+`SelfService` reads as open while nothing is recorded; any other role is never open.
+
+**Exit:** GWT for a declared role open by default, closed by command, reopened; and a role not
+declared self-service refusing quietly whatever the policy says.
+
+#### A3: sign-up names the role
+
+`SignUp` takes the role, and a registration records the roles it grants as a set — one for a
+sign-up, so that a door granting several at once records them all and the principal is created in
+all of their groups. A role that is not self-service, or not open, records nothing — answered
+exactly as a closed policy is. `CreateRegisteredPrincipal` grants the registration's roles' groups
+instead of `Shopper`.
+
+**Exit:** GWT per strategy; the live walk of *As built* repeated with two roles.
+
+#### A4: marked doors, written into the shell's config
+
+Each door's spec marks its part — start, complete, and invite where a plugin provides one — and the
+platform collects them from the plugin structure into `config.json` as
+`selfRegistration: {start, complete, roles}`, `roles` being the self-service groups. Written on both
+platforms; on AWS only once the door exists. The invite marker is also what
+[A6](#a6-checks-at-start-and-deploy) looks for before accepting a role declared by invitation.
+
+**Exit:** the local platform serves the key with no line in the root; a test on the collection.
+
+#### A5: a public read of the open roles
+
+An anonymous query answering which self-service roles are open now. It tells a visitor only what
+[Enforced in decide](#enforced-in-decide-and-the-refusals-are-a-security-decision) already counts
+as safe — that registration is or is not open here — and nothing about any address.
+
+**Exit:** the query answers per role, and the throttle counts it like any anonymous door.
+
+#### A6: checks at start and deploy
+
+Refused, naming the role: a strategy for a group no role maps to; `SelfService` for an elevated
+group (the administrator group, or one in `elevatedGroups`); `SelfService` or `Invitation` without
+messaging and an identity provider provisioned; `Invitation` when no plugin in the deployment marks
+an invite door ("Merchandiser is by invitation, but nothing in this deployment provides
+invitations"); and, on AWS, `SelfService` until the door exists.
+
+**Exit:** a test per refusal.
+
+#### A7: the example
+
+The hybrid shop declares `Shopper` self-service and `Merchandiser`, `Fulfilment` and `Admin`
+provisioned — staff are made from the accounts file locally and by `provision-accounts` on AWS; the
+local root drops any hand-written registration key.
+
+**Exit:** the live walk: a shopper signs up, a merchandiser address cannot sign up and is answered
+exactly as a closed role is, `Fulfilment` cannot be declared self-service, and closing `Shopper`
+hides the link.
 
 ## Verification
 
