@@ -13,6 +13,8 @@ let requestedAt = "2026-10-24T09:00:00.000Z"
 let issuedAt = "2026-10-24T09:00:05.000Z"
 let soonAfter = "2026-10-24T09:10:00.000Z"
 let nextDay = "2026-10-25T09:00:06.000Z"
+let nextDayLater = "2026-10-25T09:30:00.000Z"
+let twoHoursOn = "2026-10-25T11:00:07.000Z"
 let windowEnd = "2026-10-24T08:00:00.000Z"
 
 let opened: array<consumedEvent> = [RegistrationOpened({scopeId: scope})]
@@ -111,6 +113,26 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents(completed)
     ->whenCmd(register(~at=nextDay))
     ->thenEvent(RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay}))
+  )
+
+  // The notice is the one thing the door makes the deployment send to someone
+  // who did not ask; a second attempt within the hour sends nothing more.
+  // scenario-id: 8ac35a9c-5d8b-441a-95bc-64768139ef97
+  test("a second attempt on a registered address within the hour sends no second notice", () =>
+    givenEvents(
+      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay})]),
+    )
+    ->whenCmd(register(~at=nextDayLater))
+    ->thenNoEvent
+  )
+
+  // scenario-id: b0425f3e-52a6-40e5-89a4-8b70f8de2fb2
+  test("after the hour, a registered address is told again", () =>
+    givenEvents(
+      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay})]),
+    )
+    ->whenCmd(register(~at=twoHoursOn))
+    ->thenEvent(RegistrationAttemptedOnTakenAddress({email, attemptedAt: twoHoursOn}))
   )
 
   // scenario-id: 5c409dc3-76f6-4311-9943-d655fc11f38e

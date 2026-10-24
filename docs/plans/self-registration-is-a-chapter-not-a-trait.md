@@ -3,9 +3,11 @@
 **Date:** 2026-09-10, revised 2026-09-11
 **Status:** 🚧 **Built and proven on the local platform 2026-10-24** — `Closed` / `Open` with an
 optional end, the address claim, verify-then-create, and the oracle-safe answers, in a new plugin the
-local root hosts and the AWS root does not (*As built*, below). **Still open:** the AWS door (deferred by
-the identity plan's [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)), the unauthenticated throttle (a deploy requirement before any public
-`Open`), and the UI half, which is uninvestigated and belongs to the UI repository. Filed 2026-09-10;
+local root hosts and the AWS root does not (*As built*, below). **The throttle has a home since 2026-10-24**: a per-source limit on every anonymous door, enforced
+locally, and a per-address cooldown on the notice, in `decide`. **Still open:** the AWS door (deferred
+by the identity plan's [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
+which must enforce the same limit before any public `Open`, and the UI half, which is uninvestigated
+and belongs to the UI repository. Filed 2026-09-10;
 revised 2026-09-11 when the AWS door was deferred and the first requirement arrived — a deployer briefly
 opening their own `Closed` deployment, which a runtime policy flip satisfies.
 **Repos:** `reventless-core` only.
@@ -213,6 +215,15 @@ mail to an attacker-chosen address is an abuse target, and the cost rises from s
 money per request the moment an SMS channel exists. Whichever deployment first opens this door
 publicly must land the throttle in the same increment.
 
+**Built 2026-10-24, in the two layers this section separates.** The transport half is
+`AnonymousRequestLimit`: deployment configuration, `requests/seconds`, ten an hour by default, applied
+to every door whose rule is `AllowAnonymous` per source address, and answered with a `Throttled`
+rejection (a platform code, cause `INFRASTRUCTURE`). The local platform enforces it on its GraphQL
+doors; the AWS door will read the same setting, and must, before any public `Open`. The domain half is
+a cooldown in the ledger: a registered address is told someone tried at most once an hour, counted
+from the recorded notice, so it survives a replay. Verified live: with the limit at two, the third
+anonymous sign-up from one address answered `Throttled`, and a signed-in command was not counted.
+
 **A test window counts.** An `Open` with an end bounds the exposure; it does not remove it. `Closed`
 refuses in `decide` before anything is sent, so the mail-abuse cost this throttle exists for is incurred
 only while the policy is open — which is exactly when a deployer testing on a public URL has opened it.
@@ -283,9 +294,9 @@ touched:
 
 **Not here, and why.** The AWS door and the throttle, as above. A password the provider refuses after
 the proof settled leaves the registration verified with no account, since the proof cannot be spent
-twice; the door checks the length the pool requires so the common case cannot reach that. And the
-"someone tried" notice is unthrottled: every attempt on a registered address sends one, which is the
-same abuse the missing throttle covers.
+twice; the door checks the length the pool requires so the common case cannot reach that. The
+"someone tried" notice is held to one an hour per address since the throttle landed — see
+[the throttle section](#the-gap-that-must-close-before-this-ships-anywhere-public).
 
 ## Verification
 

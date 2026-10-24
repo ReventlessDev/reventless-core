@@ -27,9 +27,19 @@ type stage =
   | Verified
   | Completed
 
-type state = {admission: policyState, stage: stage}
+type state = {
+  admission: policyState,
+  stage: stage,
+  /** When a registered address was last told someone tried. */
+  lastNoticeAt: option<Reventless.DateTime.t>,
+}
 
-let initialState = {admission: Closed, stage: Unclaimed}
+let initialState = {admission: Closed, stage: Unclaimed, lastNoticeAt: None}
+
+/** At most one "someone tried" notice per address in this many seconds. The
+    caller is still answered as for a fresh address; only the mail is held back,
+    so the door cannot be used to flood a registered person's inbox. */
+let noticeCooldown = 3600
 
 let evolve = (state, event) =>
   switch event {
@@ -40,7 +50,10 @@ let evolve = (state, event) =>
       stage: Pending({requestedAt, challenge: None, proofHash: None}),
     }
   | RegistrationExpired(_) => {...state, stage: Unclaimed}
-  | RegistrationAttemptedOnTakenAddress(_) => state
+  | RegistrationAttemptedOnTakenAddress({attemptedAt}) => {
+      ...state,
+      lastNoticeAt: Some(attemptedAt),
+    }
   | RegistrationChallengeIssued({email, proofHash, issuedAt}) =>
     switch state.stage {
     | Pending(p) => {
@@ -109,7 +122,12 @@ let decide = (state, command) =>
     } else {
       switch state.stage {
       // The caller is told nothing different; the address is told someone tried.
-      | Completed => Ok([RegistrationAttemptedOnTakenAddress({email, attemptedAt: requestedAt})])
+      | Completed =>
+        switch state.lastNoticeAt {
+        | Some(last) if Guards.elapsedSeconds(~from=last, ~to_=requestedAt) < noticeCooldown =>
+          Ok([])
+        | _ => Ok([RegistrationAttemptedOnTakenAddress({email, attemptedAt: requestedAt})])
+        }
       | Verified => Ok([])
       | Pending(p) if !hasLapsed(p, ~now=requestedAt) => Ok([])
       | Pending(_) =>

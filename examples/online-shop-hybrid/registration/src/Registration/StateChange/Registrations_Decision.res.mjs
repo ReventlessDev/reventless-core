@@ -13,12 +13,14 @@ function evolve(state, event) {
           TAG: "Open",
           _0: event.until
         },
-        stage: state.stage
+        stage: state.stage,
+        lastNoticeAt: state.lastNoticeAt
       };
     case "RegistrationClosed" :
       return {
         admission: "Closed",
-        stage: state.stage
+        stage: state.stage,
+        lastNoticeAt: state.lastNoticeAt
       };
     case "RegistrationRequested" :
       return {
@@ -30,15 +32,21 @@ function evolve(state, event) {
             challenge: undefined,
             proofHash: undefined
           }
-        }
+        },
+        lastNoticeAt: state.lastNoticeAt
       };
     case "RegistrationExpired" :
       return {
         admission: state.admission,
-        stage: "Unclaimed"
+        stage: "Unclaimed",
+        lastNoticeAt: state.lastNoticeAt
       };
     case "RegistrationAttemptedOnTakenAddress" :
-      return state;
+      return {
+        admission: state.admission,
+        stage: state.stage,
+        lastNoticeAt: event.attemptedAt
+      };
     case "RegistrationChallengeIssued" :
       let p = state.stage;
       if (typeof p !== "object") {
@@ -62,13 +70,15 @@ function evolve(state, event) {
               },
               proofHash: event.proofHash
             }
-          }
+          },
+          lastNoticeAt: state.lastNoticeAt
         };
       }
     case "RegistrationProofAccepted" :
       return {
         admission: state.admission,
-        stage: "Verified"
+        stage: "Verified",
+        lastNoticeAt: state.lastNoticeAt
       };
     case "RegistrationProofRefused" :
       let p$1 = state.stage;
@@ -93,7 +103,8 @@ function evolve(state, event) {
               },
               proofHash: p$2.proofHash
             }
-          }
+          },
+          lastNoticeAt: state.lastNoticeAt
         };
       } else {
         return state;
@@ -101,7 +112,8 @@ function evolve(state, event) {
     case "RegistrationCompleted" :
       return {
         admission: state.admission,
-        stage: "Completed"
+        stage: "Completed",
+        lastNoticeAt: state.lastNoticeAt
       };
   }
 }
@@ -193,14 +205,33 @@ function decide(state, command) {
             _0: []
           };
         case "Completed" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "RegistrationAttemptedOnTakenAddress",
-                email: email,
-                attemptedAt: requestedAt
-              }]
-          };
+          let last = state.lastNoticeAt;
+          if (last !== undefined) {
+            if (ContactVerification_Guards$RegistrationPlugin.elapsedSeconds(last, requestedAt) < 3600) {
+              return {
+                TAG: "Ok",
+                _0: []
+              };
+            } else {
+              return {
+                TAG: "Ok",
+                _0: [{
+                    TAG: "RegistrationAttemptedOnTakenAddress",
+                    email: email,
+                    attemptedAt: requestedAt
+                  }]
+              };
+            }
+          } else {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "RegistrationAttemptedOnTakenAddress",
+                  email: email,
+                  attemptedAt: requestedAt
+                }]
+            };
+          }
       }
     case "IssueRegistrationChallenge" :
       let issuedAt = command.issuedAt;
@@ -313,8 +344,11 @@ let policy = ContactVerification$RegistrationPlugin.emailPolicy;
 
 let initialState = {
   admission: "Closed",
-  stage: "Unclaimed"
+  stage: "Unclaimed",
+  lastNoticeAt: undefined
 };
+
+let noticeCooldown = 3600;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/StateChange/Registrations_Decision.res.mjs";
 
@@ -324,6 +358,7 @@ export {
   Guards,
   policy,
   initialState,
+  noticeCooldown,
   evolve,
   admits,
   hasLapsed,
