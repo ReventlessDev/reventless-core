@@ -432,6 +432,29 @@ rather than data:
   is hard to notice. See
   [UI configuration §4.1](/app/ui-configuration).
 
+## Editing accounts without restarting
+
+The accounts the platform signs in, `.reventless/users.yaml` (or the
+`~usersFile` it was given), are followed the same way: add an account, change a
+password or a group, and it signs in a moment after the save.
+
+```
+$ pnpm run serve
+# add an account to .reventless/users.yaml and save
+[LocalAuth] users.yaml changed — reloaded 3 accounts.
+```
+
+- **Removing an account forgets it**, for a new sign-in. A token already issued
+  carries its identity and stays valid until it expires, as after a restart.
+- **A save that does not parse changes nothing.** The accounts read last stay,
+  and the log says why the file was not read.
+- **A role the plugins need and no account provides any more is a warning**, not
+  a stop: at start the platform refuses to run without it, but a running one
+  says which roles every caller is now refused and goes on.
+
+The authoring tools rely on this: they add an account for each role people sign
+in as, and the Screens tab's preview signs in as it.
+
 ## Staying logged in across restarts
 
 Local tokens are signed with an HMAC secret resolved in three steps: the

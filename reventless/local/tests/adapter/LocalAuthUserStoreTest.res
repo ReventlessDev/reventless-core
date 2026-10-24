@@ -233,3 +233,91 @@ describe("UserStore.providedGroups", () => {
     expect(loaded)->toBe(true)
   })
 })
+
+describe("UserStore.reload", () => {
+  let signsIn = async (~username, ~password) =>
+    switch await LocalAuth.Login.issue(~username, ~password) {
+    | Ok(_) => true
+    | Error(_) => false
+    }
+
+  testPromise("adds, changes and forgets accounts as the file now says", async () => {
+    resetAll()
+    let path = _writeYamlFile(`
+- username: alice
+  password: a1
+  groups: [Editor]
+- username: bob
+  password: b1
+  groups: []
+`)
+    let _ = UserStore.load(~usersFile=path, ())
+    NodeFs.writeFileSync(
+      path,
+      `
+- username: alice
+  password: a2
+  groups: [Editor]
+- username: driver
+  password: driver
+  groups: [Driver]
+`,
+    )
+    switch UserStore.reload(path) {
+    | Ok(said) => expect(said)->toEqual("2 accounts, removed: bob")
+    | Error(e) => JsError.throwWithMessage(e)
+    }
+    expect(await signsIn(~username="driver", ~password="driver"))->toBe(true)
+    expect(await signsIn(~username="alice", ~password="a2"))->toBe(true)
+    expect(await signsIn(~username="alice", ~password="a1"))->toBe(false)
+    expect(await signsIn(~username="bob", ~password="b1"))->toBe(false)
+    expect(LocalAuth.lookupUser("bob"))->toEqual(None)
+  })
+
+  testPromise("a file that does not parse changes nothing", async () => {
+    resetAll()
+    let path = _writeYamlFile(`
+- username: alice
+  password: a1
+  groups: [Editor]
+`)
+    let _ = UserStore.load(~usersFile=path, ())
+    NodeFs.writeFileSync(path, "- username: alice\n  groups: [Editor]\n")
+    expect(UserStore.reload(path)->Result.isError)->toBe(true)
+    expect(await signsIn(~username="alice", ~password="a1"))->toBe(true)
+  })
+
+  testPromise("watch reads the file again once it is saved", async () => {
+    resetAll()
+    let path = _writeYamlFile(`
+- username: alice
+  password: a1
+  groups: [Editor]
+`)
+    let _ = UserStore.load(~usersFile=path, ())
+    UserStore.watch(path)
+    NodeFs.writeFileSync(
+      path,
+      `
+- username: alice
+  password: a1
+  groups: [Editor]
+- username: driver
+  password: driver
+  groups: [Driver]
+`,
+    )
+    let rec waitFor = async (tries: int) =>
+      if await signsIn(~username="driver", ~password="driver") {
+        true
+      } else if tries == 0 {
+        false
+      } else {
+        await Promise.make((resolve, _) => setTimeout(() => resolve(), 50)->ignore)
+        await waitFor(tries - 1)
+      }
+    let added = await waitFor(60)
+    UserStore.unwatch()
+    expect(added)->toBe(true)
+  })
+})

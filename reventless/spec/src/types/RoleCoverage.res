@@ -45,6 +45,11 @@ let elevatedNeeds = (roles: array<Role.name>): array<need> =>
     group: Role.groupOf(role),
   })
 
+/** Every need `check` has compared, for a platform that later asks again
+    whether its accounts still provide them (the local one, when its accounts
+    file changes). */
+let checked: ref<array<need>> = ref([])
+
 let unmet = (needs: array<need>, ~provided: array<string>): array<need> =>
   needs->Array.filter(n => !(provided->Array.includes(n.group)))
 
@@ -108,7 +113,9 @@ let check = (structure: Plugin.pluginStructure, ~plugin: string): unit =>
     | _ => ()
     }
     let elevated = OwnerScope.explicitElevatedRoles.contents->Option.getOr([])
-    switch unmet(needsOf(structure, ~plugin)->Array.concat(elevatedNeeds(elevated)), ~provided) {
+    let needs = needsOf(structure, ~plugin)->Array.concat(elevatedNeeds(elevated))
+    checked := checked.contents->Array.concat(needs)
+    switch unmet(needs, ~provided) {
     | [] => ()
     | missing => JsError.throwWithMessage(unmetMessage(missing, ~provided, ~listing?))
     }

@@ -33,6 +33,10 @@ function elevatedNeeds(roles) {
   }));
 }
 
+let checked = {
+  contents: []
+};
+
 function unmet(needs, provided) {
   return needs.filter(n => !provided.includes(n.group));
 }
@@ -74,7 +78,9 @@ function check(structure, plugin) {
     Stdlib_JsError.throwWithMessage(contradictedMessage(match, listing));
   }
   let elevated = Stdlib_Option.getOr(OwnerScope$Reventless.explicitElevatedRoles.contents, []);
-  let missing = unmet(needsOf(structure, plugin).concat(elevatedNeeds(elevated)), provided);
+  let needs = needsOf(structure, plugin).concat(elevatedNeeds(elevated));
+  checked.contents = checked.contents.concat(needs);
+  let missing = unmet(needs, provided);
   if (missing.length !== 0) {
     return Stdlib_JsError.throwWithMessage(unmetMessage(missing, provided, listing));
   }
@@ -83,6 +89,7 @@ function check(structure, plugin) {
 export {
   needsOf,
   elevatedNeeds,
+  checked,
   unmet,
   describe,
   remedy,

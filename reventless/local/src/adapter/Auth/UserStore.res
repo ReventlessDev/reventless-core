@@ -26,6 +26,10 @@ let parseFile = AccountsManifest.parseFile
 
 // ── Resolution & loading ────────────────────────────────────────────────────
 
+/** The usernames the accounts file gave, so a reload can forget those it no
+    longer lists without touching accounts registered some other way. */
+let fromFile: ref<array<string>> = ref([])
+
 let _registerEntries = (entries: array<entry>): unit =>
   entries->Array.forEach(({username, password, groups, ?userId}) => {
     let id: Identity.t = {
@@ -63,6 +67,7 @@ let pluginChecked: ref<bool> = ref(false)
 let resetResolution = (): unit => {
   resolved := false
   pluginChecked := false
+  fromFile := []
 }
 
 /**
@@ -95,6 +100,7 @@ let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): r
     | Some(path) =>
       parseFile(path)->Result.map(entries => {
         _registerEntries(entries)
+        fromFile := entries->Array.map(e => e.username)
         UsersFile(path)
       })
     | None =>
@@ -102,6 +108,7 @@ let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): r
       if NodeFs.existsSync(defaultPath) {
         parseFile(defaultPath)->Result.map(entries => {
           _registerEntries(entries)
+          fromFile := entries->Array.map(e => e.username)
           DefaultFile(defaultPath)
         })
       } else {
@@ -114,13 +121,105 @@ let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): r
   }
 }
 
+// ── Reloading ───────────────────────────────────────────────────────────────
+
+/**
+Reads the accounts file again: accounts it adds can sign in, changed ones sign in
+with their new password and groups, and ones it no longer lists are forgotten. A
+token already issued stays valid until it expires, as it carries its identity.
+A file that does not parse changes nothing, so a half-saved edit never signs
+everyone out. Says what it did, for the log.
+*/
+let reload = (path: string): result<string, string> =>
+  switch parseFile(path) {
+  | Error(e) => Error(e)
+  | Ok(entries) =>
+    let names = entries->Array.map(e => e.username)
+    let dropped = fromFile.contents->Array.filter(n => !(names->Array.includes(n)))
+    dropped->Array.forEach(username => LocalAuth.Login.removeCredentials(~username))
+    _registerEntries(entries)
+    fromFile := names
+    Ok(
+      `${names->Array.length->Int.toString} accounts` ++ (
+        dropped == [] ? "" : `, removed: ${dropped->Array.join(", ")}`
+      ),
+    )
+  }
+
+/** The roles the plugins need that the accounts no longer provide, as the
+    platform's start would have refused them; empty when all are provided. */
+let unmetAfterReload = (): array<RoleCoverage.need> =>
+  switch Role.providedGroups() {
+  | None => []
+  | Some(provided) => RoleCoverage.unmet(RoleCoverage.checked.contents, ~provided)
+  }
+
+let _watcher: ref<option<NodeFs.watcher>> = ref(None)
+let _pending: ref<option<timeoutId>> = ref(None)
+
+/** Stops following the accounts file. */
+let unwatch = (): unit => {
+  _watcher.contents->Option.forEach(NodeFs.watcherClose)
+  _watcher := None
+  _pending.contents->Option.forEach(clearTimeout)
+  _pending := None
+}
+
+/**
+Follows the accounts file, so an account the tools or the developer add can sign
+in without a restart. The folder is watched, not the file, as an editor that
+saves by replacing the file would silence a watch on it. One save fires several
+events; they are read once, a moment after the last.
+*/
+let watch = (path: string): unit => {
+  unwatch()
+  let dir = NodePath.dirname(path)
+  let base = NodePath.basename(path)
+  let last = ref(NodeFs.existsSync(path) ? NodeFs.readFileSync(path) : "")
+  switch NodeFs.watch(dir, (_, file) =>
+    if file->Nullable.toOption->Option.mapOr(true, f => f == base) {
+      _pending.contents->Option.forEach(clearTimeout)
+      _pending := Some(setTimeout(() => {
+            _pending := None
+            switch NodeFs.readFileSync(path) {
+            | text if text != last.contents =>
+              last := text
+              switch reload(path) {
+              | Ok(said) =>
+                Console.log(`[LocalAuth] ${base} changed — reloaded ${said}.`)
+                switch unmetAfterReload() {
+                | [] => ()
+                | missing =>
+                  Console.warn(
+                    `[LocalAuth] No account is in the group of: ` ++
+                    missing
+                    ->Array.map(RoleCoverage.describe)
+                    ->Array.join("; ") ++ ". Every such caller is refused until one is.",
+                  )
+                }
+              | Error(e) => Console.warn(`[LocalAuth] ${base} changed but was not read: ${e}`)
+              }
+            | _ => ()
+            | exception _ => ()
+            }
+          }, 100))
+    }
+  ) {
+  | w => _watcher := Some(w->NodeFs.watcherUnref)
+  | exception _ => ()
+  }
+}
+
 /**
  * Idempotent auto-discovery. Platform.startServers calls this before
  * `DomainGraphQL_Server.start`, so a `.reventless/users.yaml` in cwd
- * hydrates the Login store automatically. No-op once `load` has been
- * called from anywhere.
+ * hydrates the Login store automatically, and follows the file from then on.
+ * No-op once `load` has been called from anywhere.
  */
 let autoLoadOnce = (): unit =>
   if !resolved.contents {
-    let _ = load()
+    switch load() {
+    | Ok(DefaultFile(path)) | Ok(UsersFile(path)) => watch(path)
+    | _ => ()
+    }
   }
