@@ -885,6 +885,9 @@ importers:
       '@reventlessdev/online-shop-hybrid-ordering-spec':
         specifier: workspace:*
         version: link:../ordering-spec
+      '@reventlessdev/online-shop-hybrid-registration':
+        specifier: workspace:*
+        version: link:../registration
       '@reventlessdev/online-shop-hybrid-seed':
         specifier: workspace:*
         version: link:../seed-data
@@ -920,6 +923,37 @@ importers:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.124
         version: 3.0.0-alpha.124(@types/node@25.6.0)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+
+  examples/online-shop-hybrid/registration:
+    dependencies:
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/gwt
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/infra
+      '@reventlessdev/reventless-local':
+        specifier: workspace:*
+        version: link:../../../reventless/local
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/spec
+      sury:
+        specifier: 11.0.0
+        version: 11.0.0(rescript@12.3.1)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: 12.3.1
+        version: 12.3.1
+      sury-ppx:
+        specifier: 11.0.0
+        version: 11.0.0(sury@11.0.0(rescript@12.3.1))
 
   examples/online-shop-hybrid/seed-data:
     dependencies:

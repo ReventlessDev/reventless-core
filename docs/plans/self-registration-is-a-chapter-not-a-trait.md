@@ -1,11 +1,13 @@
 # Plan: self-registration is a chapter, not a trait
 
 **Date:** 2026-09-10, revised 2026-09-11
-**Status:** Not started, and **not ready to step in full** — two gaps below have to close first. Filed
-now because the shape is settled and because the two blockers are cheap to name and expensive to
-discover late. **Revised 2026-09-11:** the AWS door is deferred, so this is built and proven on the
-local platform first (*Both platforms*); and the first real requirement arrived — a deployer briefly
-opening their own `Closed` deployment — which a runtime policy flip already satisfies.
+**Status:** 🚧 **Built and proven on the local platform 2026-10-24** — `Closed` / `Open` with an
+optional end, the address claim, verify-then-create, and the oracle-safe answers, in a new plugin the
+local root hosts and the AWS root does not (*As built*, below). **Still open:** the AWS door (deferred by
+the identity plan's [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)), the unauthenticated throttle (a deploy requirement before any public
+`Open`), and the UI half, which is uninvestigated and belongs to the UI repository. Filed 2026-09-10;
+revised 2026-09-11 when the AWS door was deferred and the first requirement arrived — a deployer briefly
+opening their own `Closed` deployment, which a runtime policy flip satisfies.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
 (hard — nothing here works without `createPrincipal`) ·
@@ -228,17 +230,75 @@ only while the policy is open — which is exactly when a deployer testing on a 
    and what the shell does with a half-completed session. None of it is designed, and it is the half a
    user actually touches.
 
+## As built 2026-10-24
+
+**Where it lives.** `examples/online-shop-hybrid/registration`, a plugin of its own, private, hosted by
+the local root only. Its doors admit anonymous callers, and the hybrid example deploys to AWS on every
+push, where such a field is refused; a plugin the AWS root does not host keeps that deploy green.
+
+**What it is.** One chapter, `Registration/`:
+
+| Component | Kind | What it does |
+|---|---|---|
+| `RegistrationPolicy` | StateChange, `AllowRoles([Admin])` | `OpenRegistration({scopeId, until?})` / `CloseRegistration`. Nothing recorded is closed. Keyed by scope from the first event, with one scope, `default`, today |
+| `Registrations` | StateChange, every command `@noApi` | The ledger, partitioned by `ContactAddressId` — the claim tag `contactAddress`. Reads the policy by scope as its own clause, so a policy change racing a registration fails the append |
+| `SignUp` | Inbound, `AllowAnonymous` | Stamps the arrival time at the edge, so a caller cannot choose the instant an open window is measured against |
+| `SendRegistrationChallenge` | Outbound, `Messaging` | Sends the secret and records its hash; to an address already registered, sends a notice instead |
+| `CompleteRegistration` | Inbound, `AllowAnonymous`, `Stash` | Takes the proof and the password, both `@sensitive`. Hashes the proof, puts the password in the stash under that hash, relays only the hash |
+| `CreateRegisteredPrincipal` | Outbound, `Stash` + `IdentityProvider` | On an accepted proof, takes the password and creates the account in the `Shopper` group |
+
+**The password never reaches the log.** An inbound translation is now async and handed the platform's
+capabilities, and keeps `@sensitive` fields out of its audit row; that still does not let the door see
+whether a proof was valid, which only a `decide` can. The stash closes that: a value held for minutes outside the
+log and handed over once, in memory on the local platform and not yet provisioned on AWS. A refused
+proof leaves the password to expire. A provider outage puts it back for the retry.
+
+**Every arm of the ledger answers `Ok`.** A closed policy and a pending registration record nothing; a
+registered address records the attempt, and the outbound slice tells the address someone tried. The
+caller is answered the same in all four cases — verified live, below.
+
+**Expiry is lazy.** A registration nobody finished stops holding the address after the challenge's
+24-hour window; the next `Register` records `RegistrationExpired` and a fresh `RegistrationRequested`.
+No scheduler.
+
+**The challenge rules are a copy.** A plugin may not import another's source, so `ContactVerification`
+and its guards are copied from the ordering plugin, with a note saying so. Registration exercises the
+arm the first consumer cannot — `hostContact = None` — which is what the trait's extraction —
+[Phase C](trait-contact-verification.md#phase-c--extract-writing-the-procedure-down-as-you-go) of the
+verification plan — needs both copies for.
+
+**Verified on a running local platform**, from a scratch directory so the real accounts file was not
+touched:
+
+- A sign-up while closed and one while open both answer `CommandAccepted`; only the open one sends
+  anything.
+- An anonymous caller opening registration is refused (`Forbidden`, cause `ACCESS`).
+- The logged message carries the 32-character code; a wrong proof is recorded as `ProofMismatch`; the
+  right one settles, and the account appears in the accounts file in `Shopper` with a minted `u_` id.
+- Signing in with the chosen password succeeds and the token carries that id; a wrong password is 401.
+- A second sign-up for the same address answers exactly as the first, and the address receives
+  "Someone tried to register with your address".
+- The completion door's audit rows hold `"proof":"[withheld]","password":"[withheld]"`; the password
+  appears nowhere in the platform's log.
+
+**Not here, and why.** The AWS door and the throttle, as above. A password the provider refuses after
+the proof settled leaves the registration verified with no account, since the proof cannot be spent
+twice; the door checks the length the pool requires so the common case cannot reach that. And the
+"someone tried" notice is unthrottled: every attempt on a registered address sends one, which is the
+same abuse the missing throttle covers.
+
 ## Verification
 
-- Duplicate registration is indistinguishable from a fresh one to an anonymous caller, and the existing
-  account receives the different message. This is the security test.
-- A policy change racing a registration is caught by the append condition rather than slipping through.
-- An abandoned registration expires and releases its claim tag; the address is registrable again.
-- `Closed` refuses at `decide`, not only in the client.
-- The whole flow runs locally end to end with the log transport and no AWS.
+- ✅ Duplicate registration is indistinguishable from a fresh one to an anonymous caller, and the
+  existing account receives the different message. This is the security test.
+- ✅ A policy change racing a registration is caught by the append condition rather than slipping
+  through — pinned by the ledger's decision query in `Registrations_GWT`.
+- ✅ An abandoned registration expires and releases its claim tag; the address is registrable again.
+- ✅ `Closed` refuses at `decide`, not only in the client.
+- ✅ The whole flow runs locally end to end with the log transport and no AWS.
 - On AWS, once a door exists, the flow completes against a pool whose own sign-up is `adminOnly` —
   nothing here leans on the provider's self-service.
-- If the bound is taken: past its end, an `Open` window refuses exactly as `Closed` does, with no event
+- ✅ The bound is taken: past its end, an `Open` window refuses exactly as `Closed` does, with no event
   recorded to close it.
 - Full build warning-free, whole suite green.
 

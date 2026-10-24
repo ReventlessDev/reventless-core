@@ -28,10 +28,15 @@ let identityProvider = ReventlessLocal.Capability_IdentityProvider_UserStore.mak
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
+// Self-registration, hosted here and not by the AWS root: its doors admit
+// callers who are not signed in, and a deployed platform has no door for them
+// yet. With the log transport a registration completes with no mailbox at all —
+// the code it sends is printed in this process's log.
+module Registration = RegistrationPlugin.Plugin.Make(Platform)
 
 Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),
-  ~plugins=[module(Catalog), module(Ordering)],
+  ~plugins=[module(Catalog), module(Ordering), module(Registration)],
   // The storefront's surface is app data, shared with every platform that
   // hosts this shop; this root only decides that it hosts one.
   //

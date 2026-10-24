@@ -392,6 +392,10 @@ type Mutation {
   Platform_Plugin_Activate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Deactivate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Retire(id: ID!, version: String!): CommandResult!
+  Registration_CloseRegistration(scopeId: ID!): CommandResult!
+  Registration_CompleteRegistration(email: String!, password: String!, proof: String!): CommandResult!
+  Registration_OpenRegistration(scopeId: ID!, until: String): CommandResult!
+  Registration_SignUp(email: String!): CommandResult!
   Upload_Presign(contentType: String, fileName: String!, store: ID!): Upload_Ticket
   Upload_Release(storageRef: String!, store: ID!): Upload_ReleaseResult
 }
@@ -1453,8 +1457,248 @@ type Query {
   Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
   Platform_UiFragmentsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_UiFragment!]!
   Platform_UiFragmentsRefs(ids: [ID!]!): [Platform_UiFragmentRef!]!
+  Registration_CompleteRegistrationAudit(id: ID!, includeRetired: Boolean): Registration_CompleteRegistrationAudit
+  Registration_CompleteRegistrationAudits(after: String, before: String, filter: Registration_CompleteRegistrationAuditFilter, first: Int, includeRetired: Boolean, last: Int): Registration_CompleteRegistrationAuditConnection!
+  Registration_CompleteRegistrationAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_CompleteRegistrationAudit!]!
+  Registration_CompleteRegistrationAuditsRefs(ids: [ID!]!): [Registration_CompleteRegistrationAuditRef!]!
+  Registration_CreateRegisteredPrincipalTodo(id: ID!, includeRetired: Boolean): Registration_CreateRegisteredPrincipalTodo
+  Registration_CreateRegisteredPrincipalTodos(after: String, before: String, filter: Registration_CreateRegisteredPrincipalTodoFilter, first: Int, includeRetired: Boolean, last: Int): Registration_CreateRegisteredPrincipalTodoConnection!
+  Registration_CreateRegisteredPrincipalTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_CreateRegisteredPrincipalTodo!]!
+  Registration_CreateRegisteredPrincipalTodosRefs(ids: [ID!]!): [Registration_CreateRegisteredPrincipalTodoRef!]!
+  Registration_RegistrationEventHistory(after: String, before: String, filter: Registration_RegistrationEventHistoryFilter, first: Int, last: Int): Registration_RegistrationEventRecordConnection!
+  Registration_SendRegistrationChallengeTodo(id: ID!, includeRetired: Boolean): Registration_SendRegistrationChallengeTodo
+  Registration_SendRegistrationChallengeTodos(after: String, before: String, filter: Registration_SendRegistrationChallengeTodoFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SendRegistrationChallengeTodoConnection!
+  Registration_SendRegistrationChallengeTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SendRegistrationChallengeTodo!]!
+  Registration_SendRegistrationChallengeTodosRefs(ids: [ID!]!): [Registration_SendRegistrationChallengeTodoRef!]!
+  Registration_SignUpAudit(id: ID!, includeRetired: Boolean): Registration_SignUpAudit
+  Registration_SignUpAudits(after: String, before: String, filter: Registration_SignUpAuditFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SignUpAuditConnection!
+  Registration_SignUpAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SignUpAudit!]!
+  Registration_SignUpAuditsRefs(ids: [ID!]!): [Registration_SignUpAuditRef!]!
   geocode(text: String!): [GeocodeCandidate!]
   node(id: ID!): Node
+}
+
+type RegistrationEventLogEvent {
+  eventType: String!
+  payload: AWSJSON!
+  position: String!
+}
+
+type Registration_CompleteRegistrationAudit implements Node {
+  commandCount: Int
+  door: Registration_CompleteRegistrationAuditDoor
+  error: String
+  id: ID!
+  input: String!
+  receivedAt: String!
+  status: Registration_CompleteRegistrationAuditStatus!
+  targetIds: [ID!]
+}
+
+type Registration_CompleteRegistrationAuditConnection {
+  edges: [Registration_CompleteRegistrationAuditEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum Registration_CompleteRegistrationAuditDoor {
+  Mutation
+  Webhook
+}
+
+type Registration_CompleteRegistrationAuditEdge {
+  cursor: String!
+  node: Registration_CompleteRegistrationAudit!
+}
+
+input Registration_CompleteRegistrationAuditFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Registration_CompleteRegistrationAuditRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Registration_CompleteRegistrationAuditStatus {
+  Failure
+  Success
+}
+
+type Registration_CreateRegisteredPrincipalTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Registration_CreateRegisteredPrincipalTodoItem!
+  lastError: String
+  maxRetries: Int
+  processedAt: String
+  retryCount: Int!
+  status: Registration_CreateRegisteredPrincipalTodoStatus!
+}
+
+type Registration_CreateRegisteredPrincipalTodoConnection {
+  edges: [Registration_CreateRegisteredPrincipalTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Registration_CreateRegisteredPrincipalTodoEdge {
+  cursor: String!
+  node: Registration_CreateRegisteredPrincipalTodo!
+}
+
+input Registration_CreateRegisteredPrincipalTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Registration_CreateRegisteredPrincipalTodoItem {
+  email: String!
+  proofHash: String!
+}
+
+type Registration_CreateRegisteredPrincipalTodoRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Registration_CreateRegisteredPrincipalTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+input Registration_RegistrationEventHistoryFilter {
+  entityId: ID
+  eventTypes: [String!]
+  tagKey: String
+  tagValue: String
+  timeFrom: String
+  timeTo: String
+  user: String
+}
+
+type Registration_RegistrationEventRecord {
+  eventType: String!
+  meta: EventMeta!
+  payload: AWSJSON!
+  position: String!
+  recordedAt: String!
+  tags: [EventTag!]!
+}
+
+type Registration_RegistrationEventRecordConnection {
+  edges: [Registration_RegistrationEventRecordEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Registration_RegistrationEventRecordEdge {
+  cursor: String!
+  node: Registration_RegistrationEventRecord!
+}
+
+type Registration_SendRegistrationChallengeTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Registration_SendRegistrationChallengeTodoItem!
+  lastError: String
+  maxRetries: Int
+  processedAt: String
+  retryCount: Int!
+  status: Registration_SendRegistrationChallengeTodoStatus!
+}
+
+type Registration_SendRegistrationChallengeTodoConnection {
+  edges: [Registration_SendRegistrationChallengeTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Registration_SendRegistrationChallengeTodoEdge {
+  cursor: String!
+  node: Registration_SendRegistrationChallengeTodo!
+}
+
+input Registration_SendRegistrationChallengeTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Registration_SendRegistrationChallengeTodoItem {
+  alreadyRegistered: Boolean!
+  email: String!
+}
+
+type Registration_SendRegistrationChallengeTodoRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Registration_SendRegistrationChallengeTodoStatus {
+  Abandoned
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+type Registration_SignUpAudit implements Node {
+  commandCount: Int
+  door: Registration_SignUpAuditDoor
+  error: String
+  id: ID!
+  input: String!
+  receivedAt: String!
+  status: Registration_SignUpAuditStatus!
+  targetIds: [ID!]
+}
+
+type Registration_SignUpAuditConnection {
+  edges: [Registration_SignUpAuditEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum Registration_SignUpAuditDoor {
+  Mutation
+  Webhook
+}
+
+type Registration_SignUpAuditEdge {
+  cursor: String!
+  node: Registration_SignUpAudit!
+}
+
+input Registration_SignUpAuditFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Registration_SignUpAuditRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
+}
+
+enum Registration_SignUpAuditStatus {
+  Failure
+  Success
 }
 
 enum SortOrder {
@@ -1503,6 +1747,11 @@ type Subscription {
   onOrdering_SyncNewProduct(id: ID): CommandResult
   onOrdering_Unsubscribe(id: ID): CommandResult
   onOrdering_WithdrawSyncedProduct(id: ID): CommandResult
+  onRegistrationEventLog_eventAppended: RegistrationEventLogEvent
+  onRegistration_CloseRegistration(id: ID): CommandResult
+  onRegistration_CompleteRegistration(id: ID): CommandResult
+  onRegistration_OpenRegistration(id: ID): CommandResult
+  onRegistration_SignUp(id: ID): CommandResult
 }
 
 type Upload_ReleaseResult {

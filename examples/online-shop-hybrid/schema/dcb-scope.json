@@ -83,5 +83,25 @@
       "OrderShipped": "orderId",
       "RecipientAnnounced": "recipientId"
     }
+  },
+  "registration": {
+    "partitionBySlice": {
+      "RegistrationPolicy": "scopeId",
+      "Registrations": "contactAddress"
+    },
+    "crossPartitionTagKeys": [
+      "scopeId"
+    ],
+    "partitionKeyByEventType": {
+      "RegistrationAttemptedOnTakenAddress": "contactAddress",
+      "RegistrationChallengeIssued": "contactAddress",
+      "RegistrationClosed": "scopeId",
+      "RegistrationCompleted": "contactAddress",
+      "RegistrationExpired": "contactAddress",
+      "RegistrationOpened": "scopeId",
+      "RegistrationProofAccepted": "contactAddress",
+      "RegistrationProofRefused": "contactAddress",
+      "RegistrationRequested": "contactAddress"
+    }
   }
 }

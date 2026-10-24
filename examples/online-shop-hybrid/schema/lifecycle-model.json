@@ -336,6 +336,22 @@
     "scenarios": 3
   },
   {
+    "component": "RegistrationPolicy",
+    "command": "CloseRegistration",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 2
+  },
+  {
+    "component": "RegistrationPolicy",
+    "command": "OpenRegistration",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 4
+  },
+  {
     "component": "RenameCategory",
     "command": "RenameCategory",
     "level": "Instance",

@@ -5,7 +5,11 @@
 `Customer`, the challenge ledger and the issue-and-send slice are all built in the ordering example —
 202 tests there, with the staleness guard verified by deletion at *both* layers. The blocker it hit
 (nothing in a plugin could produce a secret) was resolved by making one: `Secrets` is now a capability.
-**Phase B (the registration chapter) and Phase C (extraction) not started.**
+**Phase B (the registration chapter) ✅ built 2026-10-24** on the local platform, in its own plugin, with
+the decision rules copied from the ordering plugin (a plugin may not import another's source) — see
+[self-registration-is-a-chapter-not-a-trait.md](self-registration-is-a-chapter-not-a-trait.md). It
+exercises the `hostContact = None` arm. **Phase C (extraction) not started**; the two copies are its
+input.
 **Repos:** `reventless-core` only — the `online-shop-hybrid` ordering plugin it is written in, then a
 new package under `traits/`.
 **Builds on:** [trait-address-geocoding.md](done/trait-address-geocoding.md) and

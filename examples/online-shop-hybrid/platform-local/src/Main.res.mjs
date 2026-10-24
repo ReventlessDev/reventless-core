@@ -6,6 +6,7 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Plugin.res.mjs";
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as Plugin$RegistrationPlugin from "@reventlessdev/online-shop-hybrid-registration/src/Plugin.res.mjs";
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalPlatformStart.res.mjs";
 import * as Capability_Messaging_Log$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_Messaging_Log.res.mjs";
@@ -25,12 +26,17 @@ let Catalog = Plugin$CatalogPlugin.Make(Platform);
 
 let Ordering = Plugin$OrderingPlugin.Make(Platform);
 
+let Registration = Plugin$RegistrationPlugin.Make(Platform);
+
 Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
   {
     make: Catalog.make
   },
   {
     make: Ordering.make
+  },
+  {
+    make: Registration.make
   }
 ], {
   assetsDir: Primitive_option.fromNullable(process.env.REVENTLESS_HOST_UI_DIR),
@@ -63,5 +69,6 @@ export {
   identityProvider,
   Catalog,
   Ordering,
+  Registration,
 }
 /*  Not a pure module */

@@ -257,6 +257,23 @@ module.exports = {
           "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
       },
     },
+    {
+      displayName: "online-shop-hybrid-registration",
+      rootDir: "./examples/online-shop-hybrid/registration",
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
+      moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
+        "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+        "^spdx-license-ids$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
+        "^spdx-license-ids/deprecated$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/deprecated.json",
+        "^spdx-exceptions$":
+          "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
+      },
+    },
     // The platform package, not a plugin: it holds the cross-plugin flow, which
     // is the only suite in the repo that composes two plugins — and the only one
     // positioned to assert a property of a whole DCB boundary. Undeclared, it ran
