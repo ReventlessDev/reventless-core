@@ -81,6 +81,7 @@ module type Spec = {
   type role
   let authorizationOf: string => Authorization.rule<role>
   let endpoint: option<endpointConfig<role>>
+  let capabilityNeeds: array<CapabilityNeed.t>
 }
 ```
 
@@ -98,18 +99,42 @@ when the spec declares no [webhook URL](#a-webhook-url), and `type role`, the pl
 | `command` | `@schema type` | The domain command produced by the anti-corruption layer |
 | `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
 | `endpoint` | `option<endpointConfig<role>>` | The slice's [webhook URL](#a-webhook-url), if it has one |
+| `capabilityNeeds` | `array<CapabilityNeed.t>` | The platform capabilities `translate` reaches for; `[]` for a slice that only maps input. See [Reaching a capability](#reaching-a-capability) |
 
 ### The translate Function
 
 The `translate` function lives in the `_Translation.res` file and is the
 **anti-corruption layer** -- it protects the domain from external data formats. It
-returns `result<array<(string, command)>, string>`:
+takes the input and `~capabilities`, and returns a
+`promise<result<array<(string, command)>, string>>`:
 
 - **`Ok([(targetId, command), ...])`** -- Input is valid; publish one or more commands to the target entities
 - **`Ok([])`** -- Idempotent no-op; nothing to publish
 - **`Error(msg)`** -- Input is invalid or cannot be translated; return error to caller
 
-The function is **synchronous** (no external calls needed) since all the external interaction already happened when the input was received.
+A slice that only maps input ignores `~capabilities` and does no awaiting; it is
+still declared `async`, so every translation has one shape.
+
+### Reaching a capability
+
+Some input has to reach a provider before any command exists, and must not reach
+the log at all: a password on a set-a-password step is the case this was built for.
+`translate` is handed the platform's `Capabilities.t` — the same record an outbound
+slice's `translate` gets — so it can create a principal with the password and
+publish only a command that names the result.
+
+Two declarations make that safe:
+
+- **`capabilityNeeds`** names what `translate` reaches for. It reaches the
+  plugin's `requiredCapabilities`, so a platform that provisions none of it is told.
+- **`@sensitive`** on an `externalInput` field keeps its value out of the slice's
+  audit row. Every request writes one, success or refusal, and operators can read
+  them; a marked field is stored as `[withheld]`, and a webhook body too malformed
+  to redact field by field is not stored at all.
+
+On AWS an inbound slice runs in the shared DCB command Lambda, which is handed no
+capabilities, so a slice declaring any is refused at deploy rather than left to
+answer `Unavailable` at run time. Host it on the local platform for now.
 
 ## Usage Pattern
 
@@ -138,15 +163,16 @@ type command = ConfirmPayment({
 })
 
 let targetName = "ConfirmPayment"
+let capabilityNeeds = []
 ```
 
-The **translation file** (`@@reventless.translation`) holds the synchronous
-`translate`, returning an array of `(targetId, command)` pairs:
+The **translation file** (`@@reventless.translation`) holds `translate`, returning
+an array of `(targetId, command)` pairs:
 
 ```rescript title="Payment/InboundTranslation/PaymentWebhook_Translation.res" showLineNumbers
 @@reventless.translation
 
-let translate = (input: externalInput) =>
+let translate = async (input: externalInput, ~capabilities as _) =>
   switch input.status {
   | "completed" =>
     Ok([
@@ -187,12 +213,13 @@ type command = UpdateShipmentStatus({
 })
 
 let targetName = "UpdateShipmentStatus"
+let capabilityNeeds = []
 ```
 
 ```rescript title="Shipping/InboundTranslation/ShippingUpdate_Translation.res" showLineNumbers
 @@reventless.translation
 
-let translate = (input: externalInput) =>
+let translate = async (input: externalInput, ~capabilities as _) =>
   switch input.event {
   | "picked_up" | "in_transit" | "delivered" =>
     Ok([

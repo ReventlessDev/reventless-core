@@ -15,6 +15,7 @@ module Make = (Bus: LocalBus.T) => {
     QueryDbStorage,
     QueryDbResolvers,
     Api,
+    LocalCapabilities,
   )
 
   module Make = (

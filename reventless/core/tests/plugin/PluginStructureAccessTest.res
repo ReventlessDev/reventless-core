@@ -154,12 +154,16 @@ module PsTwoRuleFeed = {
     | "AddCategory" => AllowRoles([Reventless.Role.make("Admin")])
     | _ => DenyAll
     }
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
 }
 
 module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
   module Spec = PsTwoRuleFeed
   module Translation = {
-    let translate = (_: PsTwoRuleFeed.externalInput) => Ok([])
+    let translate = async (
+      _: PsTwoRuleFeed.externalInput,
+      ~capabilities as _: Reventless.Capabilities.t,
+    ) => Ok([])
     let moduleUrl = PsTwoRuleFeed.moduleUrl
   }
   type component = Component.t<

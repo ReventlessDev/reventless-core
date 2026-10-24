@@ -11,7 +11,7 @@ import * as InboundTranslationSlice$ReventlessCore from "./InboundTranslationSli
 import * as InboundTranslationSlice_Callback$ReventlessCore from "./InboundTranslationSlice_Callback.res.mjs";
 
 function Make(QueryDbStorage) {
-  return QueryDbResolvers => (Api => {
+  return QueryDbResolvers => (Api => (Capabilities => {
     let Make = Spec => (Translation => {
       let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(Spec)(Translation);
       let queryDbName = Spec.name + "Audit";
@@ -58,7 +58,7 @@ function Make(QueryDbStorage) {
           let queryDbOps = param[0];
           return {
             receive: async (inputJson, caller, door) => {
-              let result = await Callback.receive(publishJsonsFn, inputJson, caller, door);
+              let result = await Callback.receive(publishJsonsFn, inputJson, Capabilities.capabilities(), caller, door);
               await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
               return result;
             },
@@ -87,7 +87,7 @@ function Make(QueryDbStorage) {
     return {
       Make: Make
     };
-  });
+  }));
 }
 
 export {

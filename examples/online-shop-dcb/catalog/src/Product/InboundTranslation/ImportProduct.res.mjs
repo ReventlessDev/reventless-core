@@ -20,6 +20,8 @@ let commandSchema = Sury.$schema(s => ({
   price: s.m(Sury.number)
 }));
 
+let capabilityNeeds = [];
+
 function authorizationOf(param) {
   return {
     TAG: "AllowRoles",
@@ -60,6 +62,7 @@ export {
   commandSchema,
   targetName,
   externalSystem,
+  capabilityNeeds,
   endpoint,
   moduleUrl,
   authorizationOf,

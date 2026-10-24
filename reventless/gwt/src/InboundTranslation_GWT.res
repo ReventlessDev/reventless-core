@@ -77,20 +77,28 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     }
 }
 
-// The slice as written: its `Spec` and its `_Translation` body.
+// The slice as written: its `Spec` and its `_Translation` body, run against
+// recording capability fakes as the outbound DSL's `FromSlice` is.
 module FromSlice = (
   Spec: Reventless.InboundTranslationSlice.Spec,
   Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
 ) => {
   let describe = JestBind.describe
-  let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
+  let test = (name, ~timeout=?, body) =>
+    JestBind.testPromise(~slice=Spec.name, name, ~timeout?, body)
 
   /** What became of one input. `InputRefused` is input that did not decode, so
       `translate` never saw it; `NotUnderstood` is input it declined. */
-  type received =
+  type outcome =
     | Translated(array<(string, Spec.command)>)
     | NotUnderstood(string)
     | InputRefused(string)
+
+  /** An outcome, and the capability calls `translate` made reaching it. */
+  type received = {outcome: outcome, sent: array<Capabilities_Fake.call>}
+
+  /** Scripted capabilities for `whenInput(~fakes)`; see `Capabilities_Fake.make`. */
+  let fakes = Capabilities_Fake.make
 
   let encPairs = (pairs: array<(string, Spec.command)>) =>
     pairs->Array.map(((id, cmd)) => {
@@ -100,23 +108,35 @@ module FromSlice = (
       JSON.Encode.object(d)
     })
 
-  let whenInput = (input: Spec.externalInput) =>
-    switch Translation.translate(input) {
+  let errorOf = exn =>
+    switch exn {
+    | S.Exn(e) => e.message
+    | JsExn(e) => JsExn.message(e)->Option.getOr("unknown error")
+    | _ => "unknown error"
+    }
+
+  /** One input through the slice's own `translate`. A throw is input the slice
+      declined, as the runtime records it. */
+  let whenInput = async (input: Spec.externalInput, ~fakes=Capabilities_Fake.make()) => {
+    let outcome = switch await Translation.translate(input, ~capabilities=fakes.capabilities) {
     | Ok(pairs) => Translated(pairs)
     | Error(msg) => NotUnderstood(msg)
+    | exception exn => NotUnderstood(errorOf(exn))
     }
+    {outcome, sent: fakes.calls()}
+  }
 
   /** Input as it arrives: decoded through `externalInputSchema` first. */
-  let whenReceived = (json: JSON.t) =>
+  let whenReceived = async (json: JSON.t, ~fakes=Capabilities_Fake.make()) =>
     switch json->Reventless.Util_Sury.fromJson(Spec.externalInputSchema) {
-    | input => whenInput(input)
+    | input => await whenInput(input, ~fakes)
     // Sury's message names the field that failed.
-    | exception S.Exn(e) => InputRefused(e.message)
-    | exception _ => InputRefused("invalid input")
+    | exception S.Exn(e) => {outcome: InputRefused(e.message), sent: fakes.calls()}
+    | exception _ => {outcome: InputRefused("invalid input"), sent: fakes.calls()}
     }
 
-  let describeOther = received =>
-    switch received {
+  let describeOther = outcome =>
+    switch outcome {
     | Translated(_) => None
     | NotUnderstood(msg) => Some(`not understood: ${msg}`)
     | InputRefused(msg) => Some(`input refused: ${msg}`)
@@ -131,8 +151,8 @@ module FromSlice = (
     | exception _ => false
     }
 
-  let thenCommands = (received, expected) =>
-    switch received {
+  let thenCommands = async (pending: promise<received>, expected) =>
+    switch (await pending).outcome {
     | Translated(actual) if actual == expected =>
       switch actual->Array.find(((_, cmd)) => !roundTrips(cmd)) {
       | None => Outcome.pass
@@ -149,19 +169,19 @@ module FromSlice = (
     | other => Outcome.fail(TranslateError({expected: "(commands)", actual: describeOther(other)}))
     }
 
-  let thenCommand = (received, expectedId, expectedCmd) =>
-    thenCommands(received, [(expectedId, expectedCmd)])
+  let thenCommand = (pending, expectedId, expectedCmd) =>
+    thenCommands(pending, [(expectedId, expectedCmd)])
 
-  let thenNoCommand = received =>
-    switch received {
+  let thenNoCommand = async (pending: promise<received>) =>
+    switch (await pending).outcome {
     | Translated([]) => Outcome.pass
     | Translated(actual) => Outcome.fail(NoEventExpected({actual: encPairs(actual)}))
     | other =>
       Outcome.fail(TranslateError({expected: "(no commands)", actual: describeOther(other)}))
     }
 
-  let thenNotUnderstood = (received, expectedMsg) =>
-    switch received {
+  let thenNotUnderstood = async (pending: promise<received>, expectedMsg) =>
+    switch (await pending).outcome {
     | NotUnderstood(actual) if actual == expectedMsg => Outcome.pass
     | NotUnderstood(actual) =>
       Outcome.fail(TranslateError({expected: expectedMsg, actual: Some(actual)}))
@@ -171,8 +191,8 @@ module FromSlice = (
 
   /** Passes when the input was refused and the reason contains `reason`: the
       decoder words its own messages, so a test pins the part that matters. */
-  let thenRefusedInput = (received, reason) =>
-    switch received {
+  let thenRefusedInput = async (pending: promise<received>, reason) =>
+    switch (await pending).outcome {
     | InputRefused(actual) if actual->String.includes(reason) => Outcome.pass
     | other =>
       Outcome.fail(
@@ -185,4 +205,18 @@ module FromSlice = (
         }),
       )
     }
+
+  /** The capability calls `translate` made, in order. */
+  let thenSent = async (pending: promise<received>, expected: array<Capabilities_Fake.call>) => {
+    let {sent, _} = await pending
+    sent == expected
+      ? Outcome.pass
+      : Outcome.fail(
+          EventsMismatch({
+            expected: expected->Array.map(Capabilities_Fake.toJson),
+            actual: sent->Array.map(Capabilities_Fake.toJson),
+          }),
+        )
+  }
+  let thenNothingSent = pending => thenSent(pending, [])
 }

@@ -15,6 +15,7 @@ type command = AddThing({thingId: string})
 
 let targetName = "AddThing"
 let externalSystem: option<string> = Some("TestFeed")
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
 let endpoint = None
 
 type role = Reventless.Role.name

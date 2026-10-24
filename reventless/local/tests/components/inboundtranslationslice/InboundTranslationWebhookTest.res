@@ -29,6 +29,7 @@ module FeedSpec = {
     | "AddProduct" => AllowRoles([merchandiser])
     | _ => AllowRoles([Reventless.Role.admin])
     }
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
   let endpoint = Some({
     Reventless.InboundTranslationSlice.path: "/feeds/signed/",
     auth: SignedBody({
@@ -41,7 +42,10 @@ module FeedSpec = {
   })
 }
 
-let translateFeed = (input: FeedSpec.externalInput) =>
+let translateFeed = async (
+  input: FeedSpec.externalInput,
+  ~capabilities as _: Reventless.Capabilities.t,
+) =>
   switch input.kind {
   | "product" => Ok([(input.id, FeedSpec.AddProduct({productId: input.id}))])
   | "category" => Ok([(input.id, FeedSpec.AddCategory({categoryId: input.id}))])
@@ -65,15 +69,17 @@ module OpenSpec = {
   let externalSystem = None
   type role = Reventless.Role.name
   let authorizationOf = (_: string): Reventless.Authorization.rule<role> => AllowAuthenticated
+  let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
   let endpoint = Some({Reventless.InboundTranslationSlice.path: "open", auth: Open})
 }
 
 module OpenCallback = Callback.Make(
   OpenSpec,
   {
-    let translate = (input: OpenSpec.externalInput) => Ok([
-      (input.id, OpenSpec.AddProduct({productId: input.id})),
-    ])
+    let translate = async (
+      input: OpenSpec.externalInput,
+      ~capabilities as _: Reventless.Capabilities.t,
+    ) => Ok([(input.id, OpenSpec.AddProduct({productId: input.id}))])
     let moduleUrl = OpenSpec.moduleUrl
   },
 )
@@ -86,12 +92,24 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmds =>
 
 let feedOps: ReventlessInfra.InboundTranslationSlice.operations = {
   receive: (input, ~caller=?, ~door=?) =>
-    FeedCallback.receive(publishJsons, input, ~caller?, ~door?),
+    FeedCallback.receive(
+      publishJsons,
+      input,
+      ~capabilities=Reventless.Capabilities.none,
+      ~caller?,
+      ~door?,
+    ),
   refuse: async (~body, ~errorCode, error) => FeedCallback.refuse(~body, ~errorCode, error),
 }
 let openOps: ReventlessInfra.InboundTranslationSlice.operations = {
   receive: (input, ~caller=?, ~door=?) =>
-    OpenCallback.receive(publishJsons, input, ~caller?, ~door?),
+    OpenCallback.receive(
+      publishJsons,
+      input,
+      ~capabilities=Reventless.Capabilities.none,
+      ~caller?,
+      ~door?,
+    ),
   refuse: async (~body, ~errorCode, error) => OpenCallback.refuse(~body, ~errorCode, error),
 }
 

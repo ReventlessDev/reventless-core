@@ -83,15 +83,31 @@ module type Spec = {
   /** The slice's webhook URL, if it has one. Injected as `None` by
       `@@reventless.spec`. */
   let endpoint: option<endpointConfig<role>>
+
+  /** The platform capabilities `translate` reaches for, as on an outbound slice:
+      `[]` for one that only maps input to commands. A named need reaches the
+      plugin's `requiredCapabilities` and the deploy gate. */
+  let capabilityNeeds: array<CapabilityNeed.t>
 }
 
-/** The synchronous translate function. */
+/** The translate function. */
 module type Translation = {
   module Spec: Spec
 
-  /** External input into `(targetId, command)` pairs; `Ok([])` is an idempotent
-      no-op, `Error(msg)` rejects the input. */
-  let translate: Spec.externalInput => result<array<(string, Spec.command)>, string>
+  /**
+  External input into `(targetId, command)` pairs; `Ok([])` is an idempotent
+  no-op, `Error(msg)` rejects the input.
+
+  Async and handed `~capabilities` so a door can act on what it receives before
+  any command exists — set a password, create a principal — where the input must
+  reach a provider and must not reach the log. A field that carries such a value
+  is marked `@sensitive` on `externalInput`, which keeps it out of the slice's
+  audit row too. A translation that only maps input ignores both.
+  */
+  let translate: (
+    Spec.externalInput,
+    ~capabilities: Capabilities.t,
+  ) => promise<result<array<(string, Spec.command)>, string>>
 
   /** File URL of this Translation module (`import.meta.url`). */
   let moduleUrl: string

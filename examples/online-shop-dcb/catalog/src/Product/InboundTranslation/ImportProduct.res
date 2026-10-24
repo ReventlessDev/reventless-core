@@ -24,6 +24,9 @@ let targetName = "AddProduct"
 // external box outside the Catalog plugin in the Event Graph.
 let externalSystem = Some("SupplierFeed")
 
+// A feed is only mapped, so nothing is provisioned on its behalf.
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
+
 // The supplier signs each post with the secret `supplierFeed`
 // (`pulumi config set --secret webhook:supplierFeed …` on AWS,
 // `REVENTLESS_WEBHOOK_SECRET_SUPPLIERFEED` locally); a signed post acts as Admin.

@@ -118,7 +118,13 @@ describe("InboundTranslationSlice mutation — response envelope", () => {
 
     InboundTranslationResolvers_GraphQL.bindReceive(
       ~fieldName,
-      ~receive=(inputJson, ~caller=?) => Callback.receive(publishJsons, inputJson, ~caller?),
+      ~receive=(inputJson, ~caller=?) =>
+        Callback.receive(
+          publishJsons,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+          ~caller?,
+        ),
     )
   })
 
@@ -221,7 +227,12 @@ describe("InboundTranslationSlice mutation — the door", () => {
     InboundTranslationResolvers_GraphQL.bindReceive(
       ~fieldName=feedField,
       ~receive=(inputJson, ~caller=?) =>
-        CatalogFeedCallback.receive(publishJsons, inputJson, ~caller?),
+        CatalogFeedCallback.receive(
+          publishJsons,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+          ~caller?,
+        ),
     )
   })
 

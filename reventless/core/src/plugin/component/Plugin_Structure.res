@@ -1441,17 +1441,22 @@ let make = (
 
   // Capabilities a slice declares its `translate` reaches for. Sorted and
   // deduplicated for the same reason the store declarations are: the manifest is
-  // committed, so it must not churn on a re-build. Only outbound translation
-  // slices are handed `Capabilities.t`, so only they can declare.
+  // committed, so it must not churn on a re-build. Translation slices are the ones
+  // handed `Capabilities.t`, outbound and inbound alike, so only they can declare.
+  let declarationsOf = (~component, needs) =>
+    needs->Array.map((need): Reventless.Plugin.requiredCapabilityDeclaration => {
+      Reventless.Plugin.capability: Reventless.CapabilityNeed.toString(need),
+      component,
+    })
   let requiredCapabilities =
     outboundTranslationSlices
     ->Array.flatMap((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) =>
-      OTS.Spec.capabilityNeeds->Array.map((
-        need
-      ): Reventless.Plugin.requiredCapabilityDeclaration => {
-        Reventless.Plugin.capability: Reventless.CapabilityNeed.toString(need),
-        component: OTS.Spec.name,
-      })
+      declarationsOf(~component=OTS.Spec.name, OTS.Spec.capabilityNeeds)
+    )
+    ->Array.concat(
+      inboundTranslationSlices->Array.flatMap((
+        module(ITS: ReventlessInfra.InboundTranslationSlice.T),
+      ) => declarationsOf(~component=ITS.Spec.name, ITS.Spec.capabilityNeeds)),
     )
     ->Array.toSorted((a, b) =>
       a.capability == b.capability

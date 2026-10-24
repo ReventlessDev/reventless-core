@@ -271,10 +271,12 @@ async function seedSupplierFeed(client) {
     }
   }
   let countWith = (audits, status) => audits.filter(a => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(a, "status"), status)).length;
-  let expected = DemoData$OnlineShopHybridSeed.expectedImportSuccesses.toString() + ` Success / ` + DemoData$OnlineShopHybridSeed.expectedImportFailures.toString() + ` Failure`;
+  let expectedSuccesses = (await DemoData$OnlineShopHybridSeed.importedSkus()).length;
+  let expectedFailures = DemoData$OnlineShopHybridSeed.supplierFeed.length - expectedSuccesses | 0;
+  let expected = expectedSuccesses.toString() + ` Success / ` + expectedFailures.toString() + ` Failure`;
   let audits = await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_ImportProductAudits", "status", undefined, audits => {
-    if (countWith(audits, "Success") === DemoData$OnlineShopHybridSeed.expectedImportSuccesses) {
-      return countWith(audits, "Failure") === DemoData$OnlineShopHybridSeed.expectedImportFailures;
+    if (countWith(audits, "Success") === expectedSuccesses) {
+      return countWith(audits, "Failure") === expectedFailures;
     } else {
       return false;
     }
@@ -614,7 +616,7 @@ async function run(connection, productCount, customerCount, orderCount) {
   await seedSupplierFeed(client);
   await seedCustomers(customers, client);
   await seedAddressMoves(client, moved);
-  let expected = products.map(p => p.id).concat(DemoData$OnlineShopHybridSeed.importedSkus);
+  let expected = products.map(p => p.id).concat(await DemoData$OnlineShopHybridSeed.importedSkus());
   let available = await Seed_Client$ReventlessSeed.waitForIds(client, "Ordering_AvailableProductsByIds", expected, undefined);
   Seed_Runner$ReventlessSeed.report(`ordering: ` + available.toString() + ` products available`);
   await seedOrders(orders, client);

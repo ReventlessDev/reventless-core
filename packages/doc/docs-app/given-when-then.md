@@ -538,8 +538,12 @@ Runnable copy, with two sources:
 
 ### 4.8 `InboundTranslation_GWT` — external → internal translation
 
-No `given` clause (translation is pure over its input). With no module of its
-own, the test includes `InboundTranslation_GWT.FromSlice(<Spec>, <Spec>_Translation)`.
+No `given` clause: what a translation reads is its input and the capabilities it is
+handed. With no module of its own, the test includes
+`InboundTranslation_GWT.FromSlice(<Spec>, <Spec>_Translation)`. Each step is async,
+like the outbound DSL's: `whenInput` and `whenReceived` run the slice's own
+`translate` against recording capability fakes — pass `~fakes=fakes(...)` to script
+an answer — and `thenSent([...])` / `thenNothingSent` assert the calls it made.
 
 ```rescript
 // tests/Product/InboundTranslation/ImportProduct_GWT.res

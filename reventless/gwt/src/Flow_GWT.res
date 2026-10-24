@@ -680,9 +680,9 @@ module InboundSlice = (
   module I = InboundTranslation_GWT.FromSlice(Spec, Translation)
 
   // Received input becomes the flow's next commands, as an automation's do.
-  let whenReceived = async (flowP: flow, json: JSON.t) => {
+  let whenReceived = async (flowP: flow, json: JSON.t, ~fakes=?) => {
     let s = await flowP
-    switch I.whenReceived(json) {
+    switch (await I.whenReceived(json, ~fakes?)).outcome {
     | Translated(pairs) => {
         ...s,
         lastCommands: pairs->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),

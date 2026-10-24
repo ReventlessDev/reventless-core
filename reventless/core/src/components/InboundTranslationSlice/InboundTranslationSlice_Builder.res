@@ -13,6 +13,13 @@ module Make = (
     let api: unit => QueryDbStorage.api
     let apiRole: unit => QueryDbStorage.role
   },
+  // What the platform provisioned, for `translate` to reach — the outbound
+  // builder's parameter, for the same reason: a platform that omits it does not
+  // compile. Read per request, so a provider registered after this functor is
+  // applied is still the one a request meets.
+  Capabilities: {
+    let capabilities: unit => Reventless.Capabilities.t
+  },
 ) => {
   module Make = (
     Spec: Reventless.InboundTranslationSlice.Spec,
@@ -82,7 +89,13 @@ module Make = (
         ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
           let ops: InboundTranslationSlice.operations = {
             receive: async (inputJson, ~caller=?, ~door=?) => {
-              let result = await Callback.receive(publishJsonsFn, inputJson, ~caller?, ~door?)
+              let result = await Callback.receive(
+                publishJsonsFn,
+                inputJson,
+                ~capabilities=Capabilities.capabilities(),
+                ~caller?,
+                ~door?,
+              )
               await syncToQueryDb(queryDbOps, result->InboundTranslationSlice_Callback.requestIdOf)
               result
             },

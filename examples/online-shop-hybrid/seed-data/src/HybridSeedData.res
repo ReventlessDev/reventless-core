@@ -362,8 +362,8 @@ let seedSupplierFeed = async (~client: Seed.Client.t) => {
   // above.
   let countWith = (audits, status) =>
     audits->Array.filter(a => a->Seed.Client.nodeString("status") == Some(status))->Array.length
-  let expectedSuccesses = DemoData.expectedImportSuccesses
-  let expectedFailures = DemoData.expectedImportFailures
+  let expectedSuccesses = (await DemoData.importedSkus())->Array.length
+  let expectedFailures = DemoData.supplierFeed->Array.length - expectedSuccesses
   let expected = `${expectedSuccesses->Int.toString} Success / ${expectedFailures->Int.toString} Failure`
   let audits = await client->Seed.Client.queryAllNodesUntil(
     ~field="Catalog_ImportProductAudits",
@@ -947,7 +947,7 @@ let run = async (
 
   // Products reach Ordering asynchronously through the Products extension
   // point; PlaceOrder rejects until the shadow copy lands.
-  let expected = Array.concat(products->Array.map(p => p.id), DemoData.importedSkus)
+  let expected = Array.concat(products->Array.map(p => p.id), await DemoData.importedSkus())
   let available = await client->Seed.Client.waitForIds(
     ~field="Ordering_AvailableProductsByIds",
     ~ids=expected,

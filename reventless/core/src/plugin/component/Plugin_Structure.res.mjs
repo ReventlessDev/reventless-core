@@ -1022,10 +1022,11 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   if (found.length !== 0) {
     Stdlib_JsError.throwWithMessage(name + `: two declared object stores look like one store misspelled.\n` + found.map(Capability_Inference$ReventlessCore.collisionMessage).join("\n"));
   }
-  let requiredCapabilities = Stdlib_Array.reduce(outboundTranslationSlices.flatMap(OTS => OTS.Spec.capabilityNeeds.map(need => ({
+  let declarationsOf = (component, needs) => needs.map(need => ({
     capability: CapabilityNeed$Reventless.toString(need),
-    component: OTS.Spec.name
-  }))).toSorted((a, b) => {
+    component: component
+  }));
+  let requiredCapabilities = Stdlib_Array.reduce(outboundTranslationSlices.flatMap(OTS => declarationsOf(OTS.Spec.name, OTS.Spec.capabilityNeeds)).concat(inboundTranslationSlices.flatMap(ITS => declarationsOf(ITS.Spec.name, ITS.Spec.capabilityNeeds))).toSorted((a, b) => {
     if (a.capability === b.capability) {
       return Primitive_string.compare(a.component, b.component);
     } else {

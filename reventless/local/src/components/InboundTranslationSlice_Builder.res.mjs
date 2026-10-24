@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as LocalCapabilities$ReventlessLocal from "../adapter/LocalCapabilities.res.mjs";
 import * as LocalQueryDbStorage$ReventlessLocal from "../adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as LocalWebhookRegistry$ReventlessLocal from "../adapter/Webhook/LocalWebhookRegistry.res.mjs";
 import * as QueryDbResolvers_GraphQL$ReventlessLocal from "../adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
@@ -21,7 +22,9 @@ function Make(Bus) {
     make: QueryDbStorage.make
   })({
     make: QueryDbResolvers.make
-  })(Api);
+  })(Api)({
+    capabilities: LocalCapabilities$ReventlessLocal.capabilities
+  });
   let Make$1 = Spec => (Translation => {
     let Inner = CoreMaker.Make(Spec)(Translation);
     let make = (publishJsons, runtime, opts) => {

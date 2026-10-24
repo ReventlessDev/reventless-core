@@ -8,10 +8,12 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -115,9 +117,39 @@ function checkReachable(plugin, slice, mutation, webhook) {
   }
 }
 
+let withheld = "[withheld]";
+
+function redactInput(inputJson, sensitive) {
+  if (typeof inputJson === "object" && inputJson !== null && !Array.isArray(inputJson) && Primitive_object.notequal(sensitive, [])) {
+    return Object.fromEntries(Object.entries(inputJson).map(param => {
+      let name = param[0];
+      return [
+        name,
+        sensitive.includes(name) ? withheld : param[1]
+      ];
+    }));
+  } else {
+    return inputJson;
+  }
+}
+
+function redactBody(body, sensitive) {
+  if (sensitive.length === 0) {
+    return body;
+  }
+  let json;
+  try {
+    json = JSON.parse(body);
+  } catch (exn) {
+    return "[withheld: unreadable, and this input carries sensitive fields]";
+  }
+  return JSON.stringify(redactInput(json, sensitive));
+}
+
 function Make(Spec) {
   return Translation => {
     let auditLog = {};
+    let sensitive = Sensitive$Reventless.fieldNames(Spec.externalInputSchema);
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
     let failWith = (requestId, input, door, errorCode, error) => {
@@ -156,14 +188,14 @@ function Make(Spec) {
         };
       }
     };
-    let receive = async (publishJsons, inputJson, caller, doorOpt) => {
+    let receive = async (publishJsons, inputJson, capabilities, caller, doorOpt) => {
       let door = doorOpt !== undefined ? doorOpt : "Mutation";
       let requestId = Uuid.v4();
-      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(inputJson), door, errorCode, error);
+      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, errorCode, error);
       let succeed = extra => {
         let commandCount = extra.length;
         auditLog[requestId] = {
-          input: JSON.stringify(inputJson),
+          input: JSON.stringify(redactInput(inputJson, sensitive)),
           status: "Success",
           targetIds: extra,
           commandCount: commandCount,
@@ -195,7 +227,16 @@ function Make(Spec) {
       if (parsed.TAG !== "Ok") {
         return fail(undefined, parsed._0);
       }
-      let msg = Translation.translate(parsed._0);
+      let msg;
+      try {
+        msg = await Translation.translate(parsed._0, capabilities);
+      } catch (raw_exn$1) {
+        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+        msg = {
+          TAG: "Error",
+          _0: messageOf(exn$1, "translate failed")
+        };
+      }
       if (msg.TAG !== "Ok") {
         return fail(undefined, msg._0);
       }
@@ -234,12 +275,12 @@ function Make(Spec) {
       try {
         await publishJsons(msgs);
         return succeed(pairs.map(param => param[0]));
-      } catch (raw_exn$1) {
-        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-        return fail(CommandOutcome$Reventless.code("PublishFailed"), messageOf(exn$1, "publish failed"));
+      } catch (raw_exn$2) {
+        let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
+        return fail(CommandOutcome$Reventless.code("PublishFailed"), messageOf(exn$2, "publish failed"));
       }
     };
-    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), body, "Webhook", errorCode, error);
+    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), redactBody(body, sensitive), "Webhook", errorCode, error);
     let webhook = Stdlib_Option.map(Spec.endpoint, endpoint => InboundTranslationSlice_Webhook$ReventlessCore.routeOf(Spec.name, endpoint));
     return {
       Spec: Spec,
@@ -262,6 +303,9 @@ export {
   doorCaller,
   exposesMutation,
   checkReachable,
+  withheld,
+  redactInput,
+  redactBody,
   Make,
 }
 /* auditStatusSchema Not a pure module */

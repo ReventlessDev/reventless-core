@@ -283,7 +283,8 @@ function Make(Platform) {
     targetName: ImportProduct$CatalogPlugin.targetName,
     externalSystem: ImportProduct$CatalogPlugin.externalSystem,
     authorizationOf: ImportProduct$CatalogPlugin.authorizationOf,
-    endpoint: ImportProduct$CatalogPlugin.endpoint
+    endpoint: ImportProduct$CatalogPlugin.endpoint,
+    capabilityNeeds: ImportProduct$CatalogPlugin.capabilityNeeds
   })({
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl

@@ -32,7 +32,11 @@ describe("InboundTranslationSlice Callback", () => {
           "status": "completed",
         }->Obj.magic
 
-        let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(
+          mockPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Ok({requestId, targetIds, commandCount}) =>
@@ -69,7 +73,11 @@ describe("InboundTranslationSlice Callback", () => {
           "status": "pending",
         }->Obj.magic
 
-        let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(
+          mockPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Error({error}) => expect(error)->toBe("Unknown payment status: pending")
@@ -92,7 +100,11 @@ describe("InboundTranslationSlice Callback", () => {
         // Missing required fields
         let inputJson = {"unexpected": "data"}->Obj.magic
 
-        let result = await Callback.receive(mockPublish, inputJson)
+        let result = await Callback.receive(
+          mockPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Error(_) => expect(true)->toBe(true)
@@ -119,7 +131,11 @@ describe("InboundTranslationSlice Callback", () => {
           "status": "completed",
         }->Obj.magic
 
-        let result = await Callback.receive(failingPublish, inputJson)
+        let result = await Callback.receive(
+          failingPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Error({error}) => expect(error)->toBe("publish failed")
@@ -147,7 +163,11 @@ describe("InboundTranslationSlice Callback", () => {
         let input = status =>
           {"paymentId": "pay-1", "orderId": "ord-1", "status": status}->Obj.magic
 
-        let first = await Callback.receive(mockPublish, input("completed"))
+        let first = await Callback.receive(
+          mockPublish,
+          input("completed"),
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let firstId = first->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
         expect(
           Callback.auditLog
@@ -158,7 +178,11 @@ describe("InboundTranslationSlice Callback", () => {
 
         // A second request drains only its own row — the first one is gone, so it
         // cannot be written a second time.
-        let second = await Callback.receive(mockPublish, input("completed"))
+        let second = await Callback.receive(
+          mockPublish,
+          input("completed"),
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let secondId = second->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
         expect(secondId == firstId)->toBe(false)
         expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(1)
@@ -182,6 +206,7 @@ describe("InboundTranslationSlice Callback", () => {
         let result = await Callback.receive(
           mockPublish,
           {"paymentId": "pay-1", "orderId": "ord-1", "status": "pending"}->Obj.magic,
+          ~capabilities=Reventless.Capabilities.none,
         )
         let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
         switch Callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
@@ -215,9 +240,13 @@ describe("InboundTranslationSlice Callback", () => {
 
           let targetName = "ConfirmPayment"
           let externalSystem = None
+          let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
           let endpoint = None
 
-          let translate = (input: externalInput) => Ok(
+          let translate = async (
+            input: externalInput,
+            ~capabilities as _: Reventless.Capabilities.t,
+          ) => Ok(
             input.items->Array.map(
               item => (input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: item})),
             ),
@@ -248,7 +277,11 @@ describe("InboundTranslationSlice Callback", () => {
           "items": ["pay-1", "pay-2", "pay-3"],
         }->Obj.magic
 
-        let result = await MultiCallback.receive(mockPublish, inputJson)
+        let result = await MultiCallback.receive(
+          mockPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Ok({targetIds, commandCount}) =>
@@ -286,9 +319,13 @@ describe("InboundTranslationSlice Callback", () => {
 
           let targetName = "ConfirmPayment"
           let externalSystem = None
+          let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
           let endpoint = None
 
-          let translate = (_input: externalInput) => Ok([])
+          let translate = async (
+            _input: externalInput,
+            ~capabilities as _: Reventless.Capabilities.t,
+          ) => Ok([])
 
           type role = Reventless.Role.name
 
@@ -312,7 +349,11 @@ describe("InboundTranslationSlice Callback", () => {
 
         let inputJson = {"orderId": "ord-1"}->Obj.magic
 
-        let result = await EmptyCallback.receive(mockPublish, inputJson)
+        let result = await EmptyCallback.receive(
+          mockPublish,
+          inputJson,
+          ~capabilities=Reventless.Capabilities.none,
+        )
 
         switch result {
         | Ok({targetIds, commandCount}) =>
@@ -360,6 +401,7 @@ describe("receive checks each command against its own rule", () => {
       let result = await CatalogFeedCallback.receive(
         publish,
         catalogInput("both"),
+        ~capabilities=Reventless.Capabilities.none,
         ~caller=caller(["Merchandiser"]),
       )
       switch result {
@@ -379,6 +421,7 @@ describe("receive checks each command against its own rule", () => {
     let result = await CatalogFeedCallback.receive(
       publish,
       catalogInput("both"),
+      ~capabilities=Reventless.Capabilities.none,
       ~caller=caller(["Merchandiser", "Admin"]),
     )
     expect(result->Result.isOk)->toBe(true)
@@ -389,6 +432,7 @@ describe("receive checks each command against its own rule", () => {
     let result = await CatalogFeedCallback.receive(
       publish,
       catalogInput("product"),
+      ~capabilities=Reventless.Capabilities.none,
       ~caller=caller(["Merchandiser"]),
     )
     expect(result->Result.isOk)->toBe(true)
@@ -396,7 +440,11 @@ describe("receive checks each command against its own rule", () => {
   })
 
   testPromise("no caller is the platform itself, and publishes", async () => {
-    let result = await CatalogFeedCallback.receive(publish, catalogInput("both"))
+    let result = await CatalogFeedCallback.receive(
+      publish,
+      catalogInput("both"),
+      ~capabilities=Reventless.Capabilities.none,
+    )
     expect(result->Result.isOk)->toBe(true)
     expect(published.contents->Array.length)->toBe(2)
   })
@@ -405,6 +453,7 @@ describe("receive checks each command against its own rule", () => {
     let result = await CatalogFeedCallback.receive(
       publish,
       catalogInput("both"),
+      ~capabilities=Reventless.Capabilities.none,
       ~caller=Reventless.Identity.anonymous,
     )
     switch result->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome {
@@ -430,6 +479,7 @@ describe("receive encodes commands with their schema", () => {
     let _ = await NoteFeedCallback.receive(
       publish,
       Dict.fromArray([("orderId", JSON.Encode.string("ord-1"))])->JSON.Encode.object,
+      ~capabilities=Reventless.Capabilities.none,
     )
 
     let commandJson = (published.contents->Array.getUnsafe(0)).commandJson

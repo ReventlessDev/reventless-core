@@ -104,6 +104,44 @@ let checkReachable = (~plugin: string, ~slice: string, ~mutation: bool, ~webhook
     )
   }
 
+/** What an audit row holds in place of a sensitive value. */
+let withheld = JSON.String("[withheld]")
+
+/**
+The input as an audit row may hold it: every field `externalInput` marks
+`@sensitive` replaced by [withheld].
+
+The row is stored, and readable by operators, so a password a registration door
+receives would otherwise sit there for as long as the row does. Redacted by the
+field names the schema declares rather than by guessing at values, and on the raw
+JSON rather than the decoded input, so a request that failed to decode is
+redacted all the same.
+*/
+let redactInput = (inputJson: JSON.t, ~sensitive: array<string>): JSON.t =>
+  switch inputJson {
+  | Object(fields) if sensitive != [] =>
+    fields
+    ->Dict.toArray
+    ->Array.map(((name, value)) => (name, sensitive->Array.includes(name) ? withheld : value))
+    ->Dict.fromArray
+    ->JSON.Object
+  | other => other
+  }
+
+/**
+A raw body as an audit row may hold it. A body that does not parse cannot be
+redacted field by field, so a slice with sensitive fields keeps none of it.
+*/
+let redactBody = (body: string, ~sensitive: array<string>): string =>
+  switch sensitive {
+  | [] => body
+  | _ =>
+    switch JSON.parseOrThrow(body) {
+    | json => json->redactInput(~sensitive)->JSON.stringify
+    | exception _ => "[withheld: unreadable, and this input carries sensitive fields]"
+    }
+  }
+
 module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
   module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec
@@ -115,6 +153,7 @@ module type T = {
   let receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
+    ~capabilities: Reventless.Capabilities.t,
     ~caller: Reventless.Identity.t=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
@@ -139,6 +178,8 @@ module Make = (
 
   let auditLog: Dict.t<auditRow> = Dict.make()
 
+  let sensitive = Reventless.Sensitive.fieldNames(Spec.externalInputSchema->S.castToUnknown)
+
   let now = () => Date.make()->Date.toISOString
 
   // External input has no upstream meta, so each command starts a correlation
@@ -159,7 +200,7 @@ module Make = (
     auditLog->Dict.set(
       requestId,
       {
-        input: inputJson->JSON.stringify,
+        input: inputJson->redactInput(~sensitive)->JSON.stringify,
         status: Success,
         targetIds,
         commandCount,
@@ -191,12 +232,19 @@ module Make = (
   let receive = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     inputJson: JSON.t,
+    ~capabilities: Reventless.Capabilities.t,
     ~caller: option<Reventless.Identity.t>=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=Mutation,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
     let requestId = Uuid.v4()
     let fail = (~errorCode=?, error) =>
-      failWith(~requestId, ~input=inputJson->JSON.stringify, ~door, ~errorCode?, error)
+      failWith(
+        ~requestId,
+        ~input=inputJson->redactInput(~sensitive)->JSON.stringify,
+        ~door,
+        ~errorCode?,
+        error,
+      )
     let succeed = succeed(~requestId, ~inputJson, ~door, ...)
     let parsed = try Ok(inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)) catch {
     | exn => Error(messageOf(exn, "invalid input"))
@@ -205,7 +253,11 @@ module Make = (
     switch parsed {
     | Error(msg) => fail(msg)
     | Ok(input) =>
-      switch Translation.translate(input) {
+      // A throw is the translation failing, not the platform: it is the input's
+      // answer, recorded like any other refusal.
+      switch try await Translation.translate(input, ~capabilities) catch {
+      | exn => Error(messageOf(exn, "translate failed"))
+      } {
       | Error(msg) => fail(msg)
       | Ok(pairs) =>
         switch pairs->Array.reduce(Ok([]), (acc, pair) =>
@@ -250,7 +302,13 @@ module Make = (
   }
 
   let refuse = (~body, ~errorCode, error) =>
-    failWith(~requestId=Uuid.v4(), ~input=body, ~door=Webhook, ~errorCode, error)
+    failWith(
+      ~requestId=Uuid.v4(),
+      ~input=body->redactBody(~sensitive),
+      ~door=Webhook,
+      ~errorCode,
+      error,
+    )
 
   let webhook =
     Spec.endpoint->Option.map(endpoint =>

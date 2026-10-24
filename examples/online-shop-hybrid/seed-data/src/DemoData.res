@@ -224,13 +224,22 @@ let supplierFeed: array<CatalogPlugin.ImportProduct.externalInput> = [
 // once already: the translation stopped rejecting non-USD rows when `Money.t`
 // gave the supplier's currency somewhere to live, and a copy of the old rule
 // left here failed the seed's audit-view cross-check against correct behavior.
-let importedSkus =
+//
+// Async because `translate` is: it is handed the platform's capabilities. The
+// import reaches none, so none is what it is handed here.
+let importedSkus = async () => {
+  let verdicts = await supplierFeed
+  ->Array.map(row =>
+    CatalogPlugin.ImportProduct_Translation.translate(
+      row,
+      ~capabilities=Reventless.Capabilities.none,
+    )
+  )
+  ->Promise.all
   supplierFeed
-  ->Array.filter(row => CatalogPlugin.ImportProduct_Translation.translate(row)->Result.isOk)
+  ->Array.filterWithIndex((_, i) => verdicts->Array.getUnsafe(i)->Result.isOk)
   ->Array.map(row => row.sku)
-
-let expectedImportSuccesses = importedSkus->Array.length
-let expectedImportFailures = supplierFeed->Array.length - expectedImportSuccesses
+}
 
 // ── Generation helpers ──────────────────────────────────────────────────────
 

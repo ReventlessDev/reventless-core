@@ -32,3 +32,6 @@ let targetName = "AddProduct"
 // Foreign system this anti-corruption slice receives product data from — drawn as an
 // external box outside the Catalog plugin in the Event Graph.
 let externalSystem = Some("SupplierFeed")
+
+// A feed is only mapped, so nothing is provisioned on its behalf.
+let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []

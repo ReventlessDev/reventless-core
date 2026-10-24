@@ -257,6 +257,7 @@ type inboundCallback = {
   receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
+    ~capabilities: Reventless.Capabilities.t,
     ~caller: Reventless.Identity.t=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
@@ -324,9 +325,12 @@ let buildInboundReceiver = (
 ) => {
   let callback = makeInboundCallback(spec)(translation)
   async (args: JSON.t, identity: Nullable.t<Reventless.Identity.t>): JSON.t => {
+    // No capabilities in this Lambda: a slice declaring a need is refused at
+    // deploy, so `none` is what every slice reaching here expects.
     let result = await callback.receive(
       publishJsons,
       args,
+      ~capabilities=Reventless.Capabilities.none,
       ~caller=ReventlessCore.InboundTranslationSlice_Callback.doorCaller(identity),
     )
     await persistAudit(callback, auditQueryDbOps, result)
@@ -354,7 +358,15 @@ let buildWebhookSlice = (
   ->Option.map((route): ReventlessCore.InboundTranslationSlice_Webhook.slice => {
     route,
     receive: async (input, ~caller) =>
-      await persisted(await callback.receive(publishJsons, input, ~caller, ~door=Webhook)),
+      await persisted(
+        await callback.receive(
+          publishJsons,
+          input,
+          ~capabilities=Reventless.Capabilities.none,
+          ~caller,
+          ~door=Webhook,
+        ),
+      ),
     refuse: async (~body, ~errorCode, error) =>
       await persisted(callback.refuse(~body, ~errorCode, error)),
   })

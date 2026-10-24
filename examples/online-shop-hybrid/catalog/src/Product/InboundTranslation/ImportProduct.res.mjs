@@ -24,6 +24,8 @@ let commandSchema = Sury.$schema(s => ({
   categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
 }));
 
+let capabilityNeeds = [];
+
 function authorizationOf(name) {
   if (name === "AddProduct") {
     return {
@@ -59,6 +61,7 @@ export {
   commandSchema,
   targetName,
   externalSystem,
+  capabilityNeeds,
   moduleUrl,
   authorizationOf,
   traits,
