@@ -33,6 +33,9 @@ function register(fieldName, externalInputSchema, permission, server) {
     if (!admitted) {
       return CommandGeneratorResolvers_GraphQL$ReventlessLocal.rejectForbidden(fieldName);
     }
+    if (Stdlib_Option.isSome(Stdlib_Option.flatMap(permission, rule => CommandGeneratorResolvers_GraphQL$ReventlessLocal.throttled(rule, fieldName, ctx)))) {
+      return CommandGeneratorResolvers_GraphQL$ReventlessLocal.rejectThrottled(fieldName);
+    }
     let receive = receiveRegistry[fieldName];
     let result = await receive(args, caller);
     return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));

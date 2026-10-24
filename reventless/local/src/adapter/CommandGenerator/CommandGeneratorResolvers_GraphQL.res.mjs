@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -13,6 +14,7 @@ import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/ty
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as GraphQL_CallerError$ReventlessLocal from "../GraphQL_CallerError.res.mjs";
+import * as LocalAnonymousLimit$ReventlessLocal from "../LocalAnonymousLimit.res.mjs";
 import * as Plugin_ResolverError$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_ResolverError.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -37,6 +39,22 @@ function rejectForbidden(field) {
     errorDetail: `Mutation.` + field + `: identity is not authorized`,
     cause: "AccessRefusal"
   });
+}
+
+function rejectThrottled(field) {
+  return CommandTopic$ReventlessCore.commandOutcomeToJson({
+    TAG: "Rejected",
+    msgId: Message$ReventlessCore.uuid(),
+    errorCode: CommandOutcome$Reventless.code("Throttled"),
+    errorDetail: `Mutation.` + field + `: too many requests from this source; retry later`,
+    cause: "InfrastructureFailure"
+  });
+}
+
+function throttled(rule, field, ctx) {
+  if (typeof rule !== "object" && rule === "AllowAnonymous" && !LocalAnonymousLimit$ReventlessLocal.admit(field, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown"))) {
+    return rejectThrottled(field);
+  }
 }
 
 let pluginStatusGate = {
@@ -157,6 +175,9 @@ function register(fields, commandSchema, authorizationOf, server) {
       if (!Authorization$Reventless.isAllowed(rule, identity)) {
         return rejectForbidden(field);
       }
+      if (Stdlib_Option.isSome(throttled(rule, field, ctx))) {
+        return rejectThrottled(field);
+      }
       let payload_meta = {
         ip: [],
         user: identity.userId,
@@ -199,6 +220,9 @@ function registerDcb(fieldName, commandSchema, authorizationOf, server) {
     let rule = authorizationOf(tag);
     if (!Authorization$Reventless.isAllowed(rule, identity)) {
       return rejectForbidden(fieldName);
+    }
+    if (Stdlib_Option.isSome(throttled(rule, fieldName, ctx))) {
+      return rejectThrottled(fieldName);
     }
     let payload_meta = {
       ip: [],
@@ -255,6 +279,8 @@ let commandOutcomeToJson = CommandTopic$ReventlessCore.commandOutcomeToJson;
 export {
   extractIdentity,
   rejectForbidden,
+  rejectThrottled,
+  throttled,
   pluginStatusGate,
   setPluginStatusGate,
   resetPluginStatusGate,

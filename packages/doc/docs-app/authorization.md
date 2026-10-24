@@ -28,6 +28,27 @@ The four rules:
 | `AllowAnonymous` | Everybody, signed in or not. Use deliberately. |
 | `DenyAll` | Nobody. For a command only another component may issue. |
 
+### A door open to everybody is limited
+
+A command or inbound mutation whose rule is `AllowAnonymous` is counted per source
+address, whoever the caller turns out to be: the limit is on the door, because the
+door is what a script aims at. Past the limit the answer is `CommandRejected` with
+`errorCode: "Throttled"` and cause `INFRASTRUCTURE`, and the count starts again in
+the next window.
+
+The limit is deployment configuration, `requests/seconds`, ten an hour by default:
+
+```bash
+REVENTLESS_ANONYMOUS_REQUEST_LIMIT=10/3600
+```
+
+A value that does not parse fails the request rather than falling back to the
+default. The local platform enforces it on its GraphQL doors; a deployed platform
+admits no anonymous field yet, and the door it will have reads the same setting.
+
+How often an *address* may be written to is a different limit and belongs to the
+domain: count it in a `decide`, where it is recorded and survives a replay.
+
 ## Roles and groups
 
 Two words, with two meanings:

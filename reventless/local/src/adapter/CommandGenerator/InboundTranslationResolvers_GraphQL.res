@@ -61,6 +61,14 @@ let register = (
       permission->Option.mapOr(false, rule => Reventless.Authorization.isAllowed(rule, caller))
     if !admitted {
       CommandGeneratorResolvers_GraphQL.rejectForbidden(~field=fieldName)
+    } else if (
+      permission
+      ->Option.flatMap(rule =>
+        CommandGeneratorResolvers_GraphQL.throttled(~rule, ~field=fieldName, ~ctx)
+      )
+      ->Option.isSome
+    ) {
+      CommandGeneratorResolvers_GraphQL.rejectThrottled(~field=fieldName)
     } else {
       let receive = receiveRegistry->Dict.getUnsafe(fieldName)
       let result = await receive(args->Obj.magic, ~caller)

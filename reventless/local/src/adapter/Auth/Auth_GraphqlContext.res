@@ -20,7 +20,19 @@ module YG = GraphqlYoga
 
 type fetchHeaders
 type fetchRequest = {headers: fetchHeaders}
-type yogaInitialCtx = {request: fetchRequest}
+type socket = {remoteAddress?: string}
+type nodeRequest = {socket?: socket}
+// `req` is the Node request yoga is handed when it serves over `http`; absent
+// when the context is built some other way, such as in a test.
+type yogaInitialCtx = {request: fetchRequest, req?: nodeRequest}
+
+/** Where a request came from, as the socket says — not a forwarded header, which
+    the caller writes. What the limit on anonymous doors counts by. */
+let sourceAddressOf = (ctx: yogaInitialCtx): string =>
+  ctx.req
+  ->Option.flatMap(r => r.socket)
+  ->Option.flatMap(s => s.remoteAddress)
+  ->Option.getOr("unknown")
 
 @send
 external headersForEach: (fetchHeaders, (string, string) => unit) => unit = "forEach"
@@ -65,7 +77,11 @@ let buildAuthContext = async (initial: YG.initialContext): JSON.t => {
   let requestContext: ReventlessCore.Auth_Adapter.requestContext = {headers: headers}
   let result = await LocalAuth.authenticate(requestContext)
   let identity = identityFromAuthResult(result)
-  Obj.magic({"identity": identity, "authenticated": isAuthenticated(result)})
+  Obj.magic({
+    "identity": identity,
+    "authenticated": isAuthenticated(result),
+    "sourceAddress": sourceAddressOf(ctx),
+  })
 }
 
 // Read the identity attached by `buildAuthContext` from the resolver context.

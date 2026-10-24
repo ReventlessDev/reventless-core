@@ -19,6 +19,8 @@ function code(c) {
       return "PublishFailed";
     case "TranslationFailed" :
       return "TranslationFailed";
+    case "Throttled" :
+      return "Throttled";
   }
 }
 
@@ -30,7 +32,8 @@ let all = [
   "PluginInactive",
   "PluginRetired",
   "PublishFailed",
-  "TranslationFailed"
+  "TranslationFailed",
+  "Throttled"
 ];
 
 let platformErrorCodes = all.map(code);

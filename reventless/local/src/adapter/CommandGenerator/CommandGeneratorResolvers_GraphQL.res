@@ -45,6 +45,35 @@ let rejectForbidden = (~field: string): JSON.t =>
     }),
   )
 
+// -- Limit on anonymous doors ---------------------------------------------------
+// A door whose rule admits callers who are not signed in is counted per source
+// address, whoever the caller turns out to be. See `LocalAnonymousLimit`.
+
+@get @return(nullable) external sourceAddressOf: JSON.t => option<string> = "sourceAddress"
+
+let rejectThrottled = (~field: string): JSON.t =>
+  CommandTopic.commandOutcomeToJson(
+    Rejected({
+      msgId: ReventlessCore.Message.uuid(),
+      errorCode: Reventless.CommandOutcome.code(Throttled),
+      errorDetail: Some(`Mutation.${field}: too many requests from this source; retry later`),
+      cause: InfrastructureFailure,
+    }),
+  )
+
+/** `Some(rejection)` when `rule` admits anonymous callers and this request's
+    source has spent its allowance for the door. */
+let throttled = (~rule: Reventless.Authorization.permission, ~field, ~ctx): option<JSON.t> =>
+  switch rule {
+  | AllowAnonymous
+    if !LocalAnonymousLimit.admit(
+      ~door=field,
+      ~source=ctx->sourceAddressOf->Option.getOr("unknown"),
+    ) =>
+    Some(rejectThrottled(~field))
+  | _ => None
+  }
+
 // -- Plugin status gate -------------------------------------------------------
 // Set by the platform after Admin.construct to wire a per-mutation lookup against
 // the Plugin read model. Takes a mutation field name (e.g. "Catalog_Product_Add"),
@@ -213,6 +242,8 @@ let register = (
           let rule = authorizationOf(commandName)
           if !Reventless.Authorization.isAllowed(rule, identity) {
             rejectForbidden(~field)
+          } else if throttled(~rule, ~field, ~ctx)->Option.isSome {
+            rejectThrottled(~field)
           } else {
             let payload: CommandGenerator.payload = {
               command: commandName,
@@ -283,6 +314,8 @@ let registerDcb = (
         let rule = authorizationOf(tag)
         if !Reventless.Authorization.isAllowed(rule, identity) {
           rejectForbidden(~field=fieldName)
+        } else if throttled(~rule, ~field=fieldName, ~ctx)->Option.isSome {
+          rejectThrottled(~field=fieldName)
         } else {
           let payload: CommandGenerator.payload = {
             command: tag,

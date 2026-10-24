@@ -8,7 +8,7 @@ open Ppxlib
     ReScript, and a spec test keeps the two lists equal. *)
 let platform_error_codes = [
   "Forbidden"; "Conflict"; "AppendFailed"; "PluginUnavailable"; "PluginInactive";
-  "PluginRetired"; "PublishFailed"; "TranslationFailed" ]
+  "PluginRetired"; "PublishFailed"; "TranslationFailed"; "Throttled" ]
 
 let check_error_type (td : type_declaration) =
   match td.ptype_name.txt, td.ptype_kind with

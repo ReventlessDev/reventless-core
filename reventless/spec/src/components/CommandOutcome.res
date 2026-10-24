@@ -24,6 +24,9 @@ type platformErrorCode =
   | PublishFailed
   /** An inbound translation refused its input. */
   | TranslationFailed
+  /** A door open to callers who are not signed in has had more requests from
+      this source than its limit allows in the current window; retry later. */
+  | Throttled
 
 let code = (c: platformErrorCode): string =>
   switch c {
@@ -35,6 +38,7 @@ let code = (c: platformErrorCode): string =>
   | PluginRetired => "PluginRetired"
   | PublishFailed => "PublishFailed"
   | TranslationFailed => "TranslationFailed"
+  | Throttled => "Throttled"
   }
 
 /** Every constructor, in declaration order. */
@@ -47,6 +51,7 @@ let all = [
   PluginRetired,
   PublishFailed,
   TranslationFailed,
+  Throttled,
 ]
 
 let platformErrorCodes = all->Array.map(code)
