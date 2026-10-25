@@ -9,14 +9,14 @@ let answersLikeEveryTool = (cli: CliArgs.cli<'args>, ~mistake, ~message) =>
   test(`${cli.bin}: --help and a usage mistake`, async () => {
     let usage = cli.usage->String.trim
     expect(usage->String.startsWith(`Usage: ${cli.bin} `))->toBe(true)
-    let help = {CliArgs.stdout: [usage], stderr: [], exitCode: Some(0), reachedMain: false}
+    let help = {CliArgs.stdout: [usage], stderr: [], exitCode: 0, reachedMain: false}
     expect(await CliArgs.observe(cli, ["-h"]))->toEqual(help)
     // Help wins, and not only as the first argument.
     expect(await CliArgs.observe(cli, mistake->Array.concat(["--help"])))->toEqual(help)
     expect(await CliArgs.observe(cli, mistake))->toEqual({
       CliArgs.stdout: [],
       stderr: [`${cli.bin}: ${message}\n\n${usage}`],
-      exitCode: Some(2),
+      exitCode: 2,
       reachedMain: false,
     })
   })

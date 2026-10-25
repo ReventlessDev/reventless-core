@@ -39,7 +39,6 @@ function parseArgs(argv) {
     let args_manifest = CliArgs$Reventless.string(a, "manifest");
     let args_stack = Stdlib_Option.getOr(CliArgs$Reventless.string(a, "stack"), defaultStack);
     let args = {
-      command: undefined,
       manifest: args_manifest,
       stack: args_stack,
       help: help
@@ -65,24 +64,16 @@ function parseArgs(argv) {
     }
     switch (match) {
       case "down" :
+        let newrecord = {...args};
         return {
           TAG: "Ok",
-          _0: {
-            command: "Down",
-            manifest: args_manifest,
-            stack: args_stack,
-            help: help
-          }
+          _0: (newrecord.command = "Down", newrecord)
         };
       case "up" :
+        let newrecord$1 = {...args};
         return {
           TAG: "Ok",
-          _0: {
-            command: "Up",
-            manifest: args_manifest,
-            stack: args_stack,
-            help: help
-          }
+          _0: (newrecord$1.command = "Up", newrecord$1)
         };
       default:
         return CliArgs$Reventless.extra(match);

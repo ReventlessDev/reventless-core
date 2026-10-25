@@ -14,7 +14,8 @@
 //   4. a pattern's arm      `| {... name: Some(x) ...}` / `name: None` in a pattern
 //                           -> `name: ?Some(x)` / `name: ?None`
 //   5. a spread's `None`    `{...r, name: None}` clears the field, so it becomes
-//                           `name: ?None` rather than going
+//                           `name: ?None` rather than going; so does a
+//                           qualified `{M.name: None, ...}`, whose label carries the type
 //   6. a `Some(` spanning lines is unwrapped with its trailing comma
 // Text inside a string literal is left alone. After `--write` and a build,
 // `--fix-build` rebuilds the root and prefixes `?` wherever the compiler says an
@@ -117,8 +118,8 @@ for (const f of allFiles) {
     let line = lines[n];
     for (const field of fields) {
       const code = codePart(line);
-      const someRe = new RegExp(`(?<![\\w.])${field}\\s*:\\s*Some\\(`);
-      const noneRe = new RegExp(`(?<![\\w.])${field}\\s*:\\s*None\\b`);
+      const someRe = new RegExp(`(?<![\\w.])((?:[A-Z]\\w*\\.)*)${field}\\s*:\\s*Some\\(`);
+      const noneRe = new RegExp(`(?<![\\w.])((?:[A-Z]\\w*\\.)*)${field}\\s*:\\s*None\\b`);
       let m = someRe.exec(code);
       if (m && isFieldAt(code, m.index)) {
         const at = m.index + m[0].length - 5;
@@ -131,11 +132,13 @@ for (const f of allFiles) {
       if (m && isFieldAt(code, m.index)) {
         const before = line;
         let after;
+        // `{M.name: None, ...}` carries the record's type; dropping it would lose that.
+        const qualified = m[1] !== "";
         const spread = !inPattern(code, m.index) && inSpread(lines.slice(0, n).join("\n") + "\n" + line, lines.slice(0, n).join("\n").length + 1 + m.index);
-        if (inPattern(code, m.index) || spread) after = line.replace(noneRe, `${field}: ?None`);
+        if (inPattern(code, m.index) || spread || qualified) after = line.replace(noneRe, `$1${field}: ?None`);
         else if (new RegExp(`^\\s*${field}\\s*:\\s*None\\s*,?\\s*$`).test(code)) after = null;
         else after = line.replace(new RegExp(`\\s*${field}\\s*:\\s*None\\s*,?`), (s) => (s.trim().endsWith(",") ? " " : ""));
-        changes.push({ file: f, line: n + 1, kind: inPattern(code, m.index) ? "pattern None" : spread ? "spread None" : after === null ? "literal None line" : "literal None inline", before: before.trim(), after: after === null ? "(removed)" : after.trim() });
+        changes.push({ file: f, line: n + 1, kind: inPattern(code, m.index) ? "pattern None" : spread ? "spread None" : qualified ? "qualified None" : after === null ? "literal None line" : "literal None inline", before: before.trim(), after: after === null ? "(removed)" : after.trim() });
         if (after === null) { lines.splice(n, 1); n--; touched = true; line = null; break; }
         line = after; touched = true;
       }
@@ -145,7 +148,7 @@ for (const f of allFiles) {
   if (touched) set(f, lines.join("\n"));
   // 6. `name: Some(` whose closing paren is on a later line
   src = read(f);
-  const multi = new RegExp(`(?<![\\w.])(${fields.join("|")})\\s*:\\s*Some\\(`, "g");
+  const multi = new RegExp(`(?<![\\w.])((?:[A-Z]\\w*\\.)*)(${fields.join("|")})\\s*:\\s*Some\\(`, "g");
   let out = "", from = 0, mm;
   while ((mm = multi.exec(src))) {
     const lineStart = src.lastIndexOf("\n", mm.index) + 1;
@@ -158,9 +161,9 @@ for (const f of allFiles) {
     }
     const inner = src.slice(mm.index + mm[0].length, j - 1);
     if (!inner.includes("\n")) continue;
-    out += src.slice(from, mm.index) + `${mm[1]}: ` + inner.trim().replace(/,$/, "");
+    out += src.slice(from, mm.index) + `${mm[1]}${mm[2]}: ` + inner.trim().replace(/,$/, "");
     from = j;
-    changes.push({ file: f, line: src.slice(0, mm.index).split("\n").length, kind: "literal Some, multi-line", before: `${mm[1]}: Some(…)`, after: `${mm[1]}: …` });
+    changes.push({ file: f, line: src.slice(0, mm.index).split("\n").length, kind: "literal Some, multi-line", before: `${mm[2]}: Some(…)`, after: `${mm[2]}: …` });
     multi.lastIndex = j;
   }
   if (from > 0) set(f, out + src.slice(from));

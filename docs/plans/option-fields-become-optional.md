@@ -1,8 +1,9 @@
 # Plan: record fields typed `option` become optional fields
 
 **Date:** 2026-10-25<br/>
-**Status:** [R1](#r1-group-a-the-published-plugin-structure) done; [R2](#r2-group-b-command-line-arguments)
-to [R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
+**Status:** [R1](#r1-group-a-the-published-plugin-structure) and
+[R2](#r2-group-b-command-line-arguments) done; [R3](#r3-group-c-bindings-to-javascript-apis) to
+[R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
 that order.<br/>
 **Repos:** `reventless-core`; `reventless-tools` follows when it takes the new version (see
 [Risks](#risks)).<br/>
@@ -52,6 +53,11 @@ What it cannot know, and the compiler refuses afterwards:
 - **A value computed by a `switch`** that yields `None` or `Some(...)`: the field needs
   `name: ?switch ...`; the build names it and `--fix-build` does not, since the column points at an
   arm.
+- **A record taken apart by punning**, `({manifest, stack}) =>` or `| Ok({summary}) =>`. On an
+  optional field a bare pun binds the unwrapped value and matches only when the field is present,
+  so it becomes `?manifest`. The build names it wherever the binding is then used as an `option`;
+  a pun whose binding is used as the plain value would compile as a partial match, which the
+  zero-warning build reports as a non-exhaustive pattern.
 - **A comment** that quotes a field, which the script skips, and so stays a comment about the old
   spelling until read.
 
@@ -104,6 +110,11 @@ read by one `main`.
 
 **Exit:** the inventory shows no `option` field in a `scripts/` directory or in `CliArgs`; each tool's
 `--help` and one usage mistake still answer as its test says.
+
+**Done.** 21 files. Reverted: the `region` of `Lambda.NotFound` / `CouldNotLook` and of
+`Platform_ProvidedGroups`. By hand: the module-qualified labels the script then did not read
+(`{Provision.providerId: None, ...}`, which it now writes as `?None` so the qualifier stays), and
+three punned destructures in `ProvisionAdmin`, `BakeManifest` and `DeployApp`.
 
 ### R3: group C, bindings to JavaScript APIs
 

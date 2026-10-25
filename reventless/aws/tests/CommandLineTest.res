@@ -11,14 +11,14 @@ let answersLikeEveryTool = (cli: CliArgs.cli<'args>, ~mistake, ~message) =>
   test(`${cli.bin}: --help and a usage mistake`, async () => {
     let usage = cli.usage->String.trim
     expect(usage->String.startsWith(`Usage: ${cli.bin} `))->toBe(true)
-    let help = {CliArgs.stdout: [usage], stderr: [], exitCode: Some(0), reachedMain: false}
+    let help = {CliArgs.stdout: [usage], stderr: [], exitCode: 0, reachedMain: false}
     expect(await CliArgs.observe(cli, ["-h"]))->toEqual(help)
     // Help wins: whoever asks what a tool takes is least sure of their arguments.
     expect(await CliArgs.observe(cli, mistake->Array.concat(["--help"])))->toEqual(help)
     expect(await CliArgs.observe(cli, mistake))->toEqual({
       CliArgs.stdout: [],
       stderr: [`${cli.bin}: ${message}\n\n${usage}`],
-      exitCode: Some(2),
+      exitCode: 2,
       reachedMain: false,
     })
   })
@@ -62,7 +62,7 @@ describe("a string flag's value", () => {
 
   testSync("may be given inline", () =>
     expect(DeployApp.parseArgs(["down", "--manifest=../m.yaml", "--stack=try"]))->toEqual(
-      Ok({DeployApp.command: Some(Down), manifest: Some("../m.yaml"), stack: "try", help: false}),
+      Ok({DeployApp.command: Down, manifest: "../m.yaml", stack: "try", help: false}),
     )
   )
 

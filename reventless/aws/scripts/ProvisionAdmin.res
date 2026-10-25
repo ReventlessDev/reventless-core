@@ -41,9 +41,9 @@ module Cognito = CognitoIdentityServiceProvider
 // ── Arguments ────────────────────────────────────────────────────────────────
 
 type args = {
-  providerId: option<string>,
-  stack: option<string>,
-  email: option<string>,
+  providerId?: string,
+  stack?: string,
+  email?: string,
   help: bool,
 }
 
@@ -56,9 +56,9 @@ let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(~strings=["provider-id", "stack", "email"], argv)
   ->Result.flatMap(Reventless.CliArgs.noPositionals)
   ->Result.map(a => {
-    providerId: a->Reventless.CliArgs.string("provider-id"),
-    stack: a->Reventless.CliArgs.string("stack"),
-    email: a->Reventless.CliArgs.string("email"),
+    providerId: ?(a->Reventless.CliArgs.string("provider-id")),
+    stack: ?(a->Reventless.CliArgs.string("stack")),
+    email: ?(a->Reventless.CliArgs.string("email")),
     help: a->Reventless.CliArgs.help,
   })
 
@@ -207,7 +207,7 @@ type request = {email: string, providerId: option<string>, stack: option<string>
     arguments should say the cheap thing rather than fail on a stack lookup it
     never needed. */
 let parseRequest = (argv: array<string>): result<request, string> =>
-  parseArgs(argv)->Result.flatMap(({email, providerId, stack}) =>
+  parseArgs(argv)->Result.flatMap(({?email, ?providerId, ?stack}) =>
     switch email {
     | None => Error("--email is required — it is the address the administrator signs in with")
     | Some(email) => Ok({email, providerId, stack})

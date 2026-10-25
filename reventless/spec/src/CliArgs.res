@@ -188,7 +188,7 @@ let run = async (
 type observed = {
   stdout: array<string>,
   stderr: array<string>,
-  exitCode: option<int>,
+  exitCode?: int,
   reachedMain: bool,
 }
 
@@ -205,5 +205,5 @@ let observe = async (cli: cli<'args>, argv: array<string>): observed => {
     exit: code => exitCode := Some(code),
   }
   await run(cli, ~argv, ~io, async _ => reachedMain := true)
-  {stdout, stderr, exitCode: exitCode.contents, reachedMain: reachedMain.contents}
+  {stdout, stderr, exitCode: ?exitCode.contents, reachedMain: reachedMain.contents}
 }

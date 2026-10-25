@@ -26,14 +26,14 @@ a password already in the file is never replaced.
 */
 
 type args = {
-  file: option<string>,
+  file?: string,
   help: bool,
 }
 
 let parseArgs = (argv: array<string>): result<args, string> =>
   CliArgs.parse(~strings=["file"], argv)
   ->Result.flatMap(CliArgs.noPositionals)
-  ->Result.map(a => {file: a->CliArgs.string("file"), help: a->CliArgs.help})
+  ->Result.map(a => {file: ?(a->CliArgs.string("file")), help: a->CliArgs.help})
 
 let usage = `
 Usage: prepare-accounts [--file <path>]

@@ -44,9 +44,9 @@ module Manifest = Reventless.AccountsManifest
 // ── Arguments ────────────────────────────────────────────────────────────────
 
 type args = {
-  providerId: option<string>,
-  stack: option<string>,
-  file: option<string>,
+  providerId?: string,
+  stack?: string,
+  file?: string,
   help: bool,
 }
 
@@ -58,9 +58,9 @@ let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(~strings=["provider-id", "stack", "file"], argv)
   ->Result.flatMap(Reventless.CliArgs.noPositionals)
   ->Result.map(a => {
-    providerId: a->Reventless.CliArgs.string("provider-id"),
-    stack: a->Reventless.CliArgs.string("stack"),
-    file: a->Reventless.CliArgs.string("file"),
+    providerId: ?(a->Reventless.CliArgs.string("provider-id")),
+    stack: ?(a->Reventless.CliArgs.string("stack")),
+    file: ?(a->Reventless.CliArgs.string("file")),
     help: a->Reventless.CliArgs.help,
   })
 

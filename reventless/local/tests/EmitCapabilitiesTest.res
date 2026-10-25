@@ -29,7 +29,7 @@ describe("emit-capabilities on the command line", () => {
     expect(await CliArgs.observe(EmitCapabilities.cli, ["src/", "--help"]))->toEqual({
       CliArgs.stdout: [usage],
       stderr: [],
-      exitCode: Some(0),
+      exitCode: 0,
       reachedMain: false,
     })
   )
@@ -38,7 +38,7 @@ describe("emit-capabilities on the command line", () => {
     expect(await CliArgs.observe(EmitCapabilities.cli, ["src", "Catalog", "extra"]))->toEqual({
       CliArgs.stdout: [],
       stderr: [`emit-capabilities: unknown argument "extra"\n\n${usage}`],
-      exitCode: Some(2),
+      exitCode: 2,
       reachedMain: false,
     })
   )

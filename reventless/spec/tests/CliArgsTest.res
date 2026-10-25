@@ -232,13 +232,12 @@ describe("CliArgs.observe", () => {
     expect(await CliArgs.observe(tool, ["--stack", "try"]))->toEqual({
       CliArgs.stdout: [],
       stderr: [],
-      exitCode: None,
       reachedMain: true,
     })
     expect(await CliArgs.observe(tool, ["--nope"]))->toEqual({
       CliArgs.stdout: [],
       stderr: [`tool: unknown argument "--nope"\n\n${usage}`],
-      exitCode: Some(2),
+      exitCode: 2,
       reachedMain: false,
     })
   })

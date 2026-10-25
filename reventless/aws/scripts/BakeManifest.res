@@ -24,9 +24,9 @@ module Lambda = AwsSdk.Lambda
 // ── Arguments ────────────────────────────────────────────────────────────────
 
 type args = {
-  manifest: option<string>,
-  stack: option<string>,
-  since: option<string>,
+  manifest?: string,
+  stack?: string,
+  since?: string,
   review: bool,
   help: bool,
 }
@@ -35,9 +35,9 @@ let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(~strings=["manifest", "stack", "since"], ~bools=["review"], argv)
   ->Result.flatMap(Reventless.CliArgs.noPositionals)
   ->Result.map(a => {
-    manifest: a->Reventless.CliArgs.string("manifest"),
-    stack: a->Reventless.CliArgs.string("stack"),
-    since: a->Reventless.CliArgs.string("since")->Option.flatMap(v => v == "" ? None : Some(v)),
+    manifest: ?(a->Reventless.CliArgs.string("manifest")),
+    stack: ?(a->Reventless.CliArgs.string("stack")),
+    since: ?(a->Reventless.CliArgs.string("since")->Option.flatMap(v => v == "" ? None : Some(v))),
     review: a->Reventless.CliArgs.bool("review"),
     help: a->Reventless.CliArgs.help,
   })
@@ -129,8 +129,8 @@ type registration = {
   plugin: string,
   state: string,
   expected: string,
-  found: option<string>,
-  writtenAt: option<string>,
+  found?: string,
+  writtenAt?: string,
 }
 
 type summary = {plugins: int, registered: int, unchanged: int, matched: int}
@@ -155,8 +155,8 @@ let _registrations = (o: dict<JSON.t>): array<registration> =>
     plugin: r->_string("plugin")->Option.getOr("?"),
     state: r->_string("state")->Option.getOr("?"),
     expected: r->_string("expected")->Option.getOr("?"),
-    found: r->_string("found"),
-    writtenAt: r->_string("writtenAt"),
+    found: ?(r->_string("found")),
+    writtenAt: ?(r->_string("writtenAt")),
   })
 
 let readAnswer = (json: JSON.t): result<answer, string> => {
@@ -215,7 +215,7 @@ let unreachable = (registrations: array<registration>): array<registration> =>
 
 type settled = {
   written: array<written>,
-  summary: option<summary>,
+  summary?: summary,
   registrations: array<registration>,
 }
 
@@ -233,7 +233,7 @@ let converge = async (
     | Ok(json) =>
       switch readAnswer(json) {
       | Error(_) as e => e
-      | Ok(Baked({written, summary, registrations})) => Ok({written, summary, registrations})
+      | Ok(Baked({written, summary, registrations})) => Ok({written, ?summary, registrations})
       | Ok(Pending({pending, registrations})) =>
         registrations->Array.forEach(r => log(registrationLine(r)))
         switch unreachable(registrations) {
@@ -340,7 +340,7 @@ let bake = async (
         ~attempts,
       ) {
       | Error(_) as e => e
-      | Ok({written, summary, registrations}) =>
+      | Ok({written, ?summary, registrations}) =>
         written->Array.forEach(w =>
           Console.log(
             `Wrote ${w.bucket}/${w.key} (${w.bytes->Int.toString} bytes${w.group->Option.mapOr(

@@ -20,7 +20,7 @@ describe("check:graphql on the command line", () => {
     expect(await CliArgs.observe(CheckGraphqlContract.cli, ["--update", "-h"]))->toEqual({
       CliArgs.stdout: [usage],
       stderr: [],
-      exitCode: Some(0),
+      exitCode: 0,
       reachedMain: false,
     })
   )
@@ -30,7 +30,7 @@ describe("check:graphql on the command line", () => {
     expect(await CliArgs.observe(CheckGraphqlContract.cli, ["--updtae"]))->toEqual({
       CliArgs.stdout: [],
       stderr: [`check:graphql: unknown argument "--updtae"\n\n${usage}`],
-      exitCode: Some(2),
+      exitCode: 2,
       reachedMain: false,
     })
   )

@@ -15,9 +15,7 @@ module Provision = ProvisionAccounts
 
 describe("ProvisionAccounts.parseArgs", () => {
   testSync("no arguments leaves every choice unanswered", () =>
-    expect(Provision.parseArgs([]))->toEqual(
-      Ok({Provision.providerId: None, stack: None, file: None, help: false}),
-    )
+    expect(Provision.parseArgs([]))->toEqual(Ok({Provision.providerId: ?None, help: false}))
   )
 
   testSync("a pool and a manifest parse", () =>
@@ -25,9 +23,8 @@ describe("ProvisionAccounts.parseArgs", () => {
       Provision.parseArgs(["--provider-id", "eu-west-1_AbCdEfGhI", "--file", "cast.yaml"]),
     )->toEqual(
       Ok({
-        Provision.providerId: Some("eu-west-1_AbCdEfGhI"),
-        stack: None,
-        file: Some("cast.yaml"),
+        Provision.providerId: "eu-west-1_AbCdEfGhI",
+        file: "cast.yaml",
         help: false,
       }),
     )
@@ -35,7 +32,7 @@ describe("ProvisionAccounts.parseArgs", () => {
 
   testSync("--stack picks the deployment to read the pool id from", () =>
     expect(Provision.parseArgs(["--stack", "beta"]))->toEqual(
-      Ok({Provision.providerId: None, stack: Some("beta"), file: None, help: false}),
+      Ok({Provision.providerId: ?None, stack: "beta", help: false}),
     )
   )
 
@@ -54,9 +51,7 @@ describe("ProvisionAccounts.parseArgs", () => {
   )
 
   testSync("-h asks for the usage", () =>
-    expect(Provision.parseArgs(["-h"]))->toEqual(
-      Ok({Provision.providerId: None, stack: None, file: None, help: true}),
-    )
+    expect(Provision.parseArgs(["-h"]))->toEqual(Ok({Provision.providerId: ?None, help: true}))
   )
 })
 

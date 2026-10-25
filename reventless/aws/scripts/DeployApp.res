@@ -29,8 +29,8 @@ module Manifest = Reventless.AccountsManifest
 type command = Up | Down
 
 type args = {
-  command: option<command>,
-  manifest: option<string>,
+  command?: command,
+  manifest?: string,
   stack: string,
   help: bool,
 }
@@ -41,16 +41,15 @@ let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(~strings=["manifest", "stack"], argv)->Result.flatMap(a => {
     let help = a->Reventless.CliArgs.help
     let args = {
-      command: None,
-      manifest: a->Reventless.CliArgs.string("manifest"),
+      manifest: ?(a->Reventless.CliArgs.string("manifest")),
       stack: a->Reventless.CliArgs.string("stack")->Option.getOr(defaultStack),
       help,
     }
     let positionals = a->Reventless.CliArgs.positionals
     switch (positionals->Array.get(0), positionals->Array.get(1)) {
     | (_, Some(surplus)) => Reventless.CliArgs.extra(surplus)
-    | (Some("up"), None) => Ok({...args, command: Some(Up)})
-    | (Some("down"), None) => Ok({...args, command: Some(Down)})
+    | (Some("up"), None) => Ok({...args, command: Up})
+    | (Some("down"), None) => Ok({...args, command: Down})
     | (Some(other), None) => Reventless.CliArgs.extra(other)
     | (None, None) => help ? Ok(args) : Error("say `up` or `down`")
     }
@@ -86,7 +85,7 @@ type project = {
   projectName: string,
   program: string,
   stackDefaults: dict<string>,
-  region: option<string>,
+  region?: string,
 }
 
 @module("yaml") external parseYaml: string => JSON.t = "parse"
@@ -112,7 +111,7 @@ let projectOf = (p: DeployManifest.project): result<project, string> => {
         projectName,
         program: NodePath.join([p.dir, field("main")->Option.getOr("index.js")]),
         stackDefaults: p.stackDefaults,
-        region: p.region,
+        region: ?p.region,
       })
     }
   }
@@ -693,7 +692,7 @@ let down = async (~manifest: DeployManifest.resolved, ~stack: string): result<un
     }
   }
 
-let run = async ({command, manifest, stack}: args): result<unit, string> =>
+let run = async ({?command, ?manifest, stack}: args): result<unit, string> =>
   switch DeployManifest.load(manifest->Option.getOr(DeployManifest.defaultFile)) {
   | Error(_) as e => e
   | Ok(manifest) =>

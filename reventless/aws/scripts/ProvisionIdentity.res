@@ -37,7 +37,7 @@ module Schema = Auth_ActiveRoleStore_Schema
 
 type args = {
   poolName: string,
-  providerId: option<string>,
+  providerId?: string,
   loginIdentifier: Auth_LoginIdentifier.t,
   signUpMode: Auth_SignUpMode.t,
   help: bool,
@@ -69,7 +69,7 @@ let parseArgs = (argv: array<string>): result<args, string> =>
     | (Ok(loginIdentifier), Ok(signUpMode)) =>
       Ok({
         poolName: given("name")->Option.getOr(defaultPoolName),
-        providerId: given("provider-id"),
+        providerId: ?given("provider-id"),
         loginIdentifier,
         signUpMode,
         help: a->Reventless.CliArgs.help,

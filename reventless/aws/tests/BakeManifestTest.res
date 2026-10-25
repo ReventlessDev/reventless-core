@@ -33,12 +33,11 @@ plugins:
     expect(resolved)->toEqual(
       Ok({
         DeployManifest.file: "/repo/shop/deploy-manifest.yaml",
-        region: Some("eu-west-1"),
+        region: "eu-west-1",
         platform: {
           name: "shop-platform",
           dir: "/repo/shop/platform-aws",
           stackDefaults: Dict.fromArray([("platform:messagingEmailProvider", "log")]),
-          region: None,
           review: true,
         },
         plugins: [
@@ -46,14 +45,13 @@ plugins:
             name: "catalog",
             dir: "/repo/shop/catalog-aws",
             stackDefaults: Dict.make(),
-            region: None,
             review: true,
           },
           {
             name: "ordering",
             dir: "/repo/shop/ordering-aws",
             stackDefaults: Dict.make(),
-            region: Some("eu-central-1"),
+            region: "eu-central-1",
             review: false,
           },
         ],
@@ -79,9 +77,9 @@ describe("BakeManifest.parseArgs", () => {
       ]),
     )->toEqual(
       Ok({
-        Bake.manifest: Some("m.yaml"),
-        stack: Some("alpha"),
-        since: Some("2026-09-16T10:00:00Z"),
+        Bake.manifest: "m.yaml",
+        stack: "alpha",
+        since: "2026-09-16T10:00:00Z",
         review: false,
         help: false,
       }),
@@ -109,7 +107,6 @@ describe("BakeManifest.pluginsToRead", () => {
     DeployManifest.name,
     dir: `/repo/shop/${name}-aws`,
     stackDefaults: Dict.make(),
-    region: None,
     review,
   }
   let plugins = [plugin("catalog", ~review=true), plugin("ingest", ~review=false)]
@@ -213,8 +210,6 @@ describe("BakeManifest.readAnswer", () => {
         plugin: "Catalog",
         state: "missing",
         expected: "sha256/new",
-        found: None,
-        writtenAt: None,
       }),
     )->toBe("  Catalog: missing — expected sha256/new, row holds no row (written never)")
   )

@@ -19,18 +19,15 @@ describe("ProvisionAdmin.parseArgs", () => {
       Provision.parseArgs(["--provider-id", "eu-west-1_AbCdEfGhI", "--email", "me@example.com"]),
     )->toEqual(
       Ok({
-        Provision.providerId: Some("eu-west-1_AbCdEfGhI"),
-        stack: None,
-        email: Some("me@example.com"),
+        Provision.providerId: "eu-west-1_AbCdEfGhI",
+        email: "me@example.com",
         help: false,
       }),
     )
   )
 
   testSync("no arguments leaves both unanswered", () =>
-    expect(Provision.parseArgs([]))->toEqual(
-      Ok({Provision.providerId: None, stack: None, email: None, help: false}),
-    )
+    expect(Provision.parseArgs([]))->toEqual(Ok({Provision.providerId: ?None, help: false}))
   )
 
   // The reason unknown flags refuse rather than being skipped: a typo'd
@@ -48,8 +45,6 @@ describe("ProvisionAdmin.parseArgs", () => {
   )
 
   testSync("-h asks for the usage", () =>
-    expect(Provision.parseArgs(["-h"]))->toEqual(
-      Ok({Provision.providerId: None, stack: None, email: None, help: true}),
-    )
+    expect(Provision.parseArgs(["-h"]))->toEqual(Ok({Provision.providerId: ?None, help: true}))
   )
 })

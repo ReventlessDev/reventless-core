@@ -88,12 +88,12 @@ describe("AccountsManifest.locate", () => {
 
 describe("PrepareAccounts.parseArgs", () => {
   testSync("no arguments reads the default manifest", () =>
-    expect(PrepareAccounts.parseArgs([]))->toEqual(Ok({PrepareAccounts.file: None, help: false}))
+    expect(PrepareAccounts.parseArgs([]))->toEqual(Ok({PrepareAccounts.file: ?None, help: false}))
   )
 
   testSync("--file names one", () =>
     expect(PrepareAccounts.parseArgs(["--file", "cast.yaml"]))->toEqual(
-      Ok({PrepareAccounts.file: Some("cast.yaml"), help: false}),
+      Ok({PrepareAccounts.file: "cast.yaml", help: false}),
     )
   )
 

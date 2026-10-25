@@ -27,8 +27,8 @@ type request =
   | PullRequest({number: int, base: string, draft: bool})
 
 type args = {
-  file: option<string>,
-  manifest: option<string>,
+  file?: string,
+  manifest?: string,
   request: request,
 }
 
@@ -52,7 +52,7 @@ let parseArgs = (argv: array<string>): result<args, string> =>
     | (None, None, None) => Error("say what deploys: --ref, or --pull-request with --base")
     | _ => Error("--ref and --pull-request are two different questions; ask one")
     }
-    request->Result.map(request => {file: string("file"), manifest: string("manifest"), request})
+    request->Result.map(request => {file: ?string("file"), manifest: ?string("manifest"), request})
   })
 
 let usage = `

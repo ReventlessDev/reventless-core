@@ -15,7 +15,6 @@ describe("ProvisionIdentity.parseArgs", () => {
     expect(Provision.parseArgs([]))->toEqual(
       Ok({
         Provision.poolName: Provision.defaultPoolName,
-        providerId: None,
         loginIdentifier: Auth_LoginIdentifier.Email,
         signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
@@ -27,7 +26,7 @@ describe("ProvisionIdentity.parseArgs", () => {
     expect(Provision.parseArgs(["--provider-id", "eu-west-1_AbCdEfGhI"]))->toEqual(
       Ok({
         Provision.poolName: Provision.defaultPoolName,
-        providerId: Some("eu-west-1_AbCdEfGhI"),
+        providerId: "eu-west-1_AbCdEfGhI",
         loginIdentifier: Auth_LoginIdentifier.Email,
         signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
@@ -39,7 +38,6 @@ describe("ProvisionIdentity.parseArgs", () => {
     expect(Provision.parseArgs(["--name", "examples-dev"]))->toEqual(
       Ok({
         Provision.poolName: "examples-dev",
-        providerId: None,
         loginIdentifier: Auth_LoginIdentifier.Email,
         signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,
@@ -51,7 +49,7 @@ describe("ProvisionIdentity.parseArgs", () => {
     expect(Provision.parseArgs(["--name", "ignored", "--provider-id", "eu-west-1_x"]))->toEqual(
       Ok({
         Provision.poolName: "ignored",
-        providerId: Some("eu-west-1_x"),
+        providerId: "eu-west-1_x",
         loginIdentifier: Auth_LoginIdentifier.Email,
         signUpMode: Auth_SignUpMode.AdminOnly,
         help: false,

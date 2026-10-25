@@ -6,13 +6,13 @@ open JestGlobals
 describe("DeployApp.parseArgs", () => {
   testSync("up with the defaults", () =>
     expect(DeployApp.parseArgs(["up"]))->toEqual(
-      Ok({DeployApp.command: Some(Up), manifest: None, stack: "dev", help: false}),
+      Ok({DeployApp.command: Up, stack: "dev", help: false}),
     )
   )
 
   testSync("down with a manifest and a stack", () =>
     expect(DeployApp.parseArgs(["down", "--manifest", "../m.yaml", "--stack", "try"]))->toEqual(
-      Ok({DeployApp.command: Some(Down), manifest: Some("../m.yaml"), stack: "try", help: false}),
+      Ok({DeployApp.command: Down, manifest: "../m.yaml", stack: "try", help: false}),
     )
   )
 
@@ -55,11 +55,10 @@ describe("DeployApp stacks and layer", () => {
     projectName: "shop-platform-aws",
     program: "/app/platform-aws/src/Main.res.mjs",
     stackDefaults: Dict.fromArray([("aws:region", "us-east-1"), ("platform:x", "y")]),
-    region: None,
   }
 
   testSync("a stack the manifest puts in another region is refused", () => {
-    let ingest = {...project, label: "ingest", region: Some("eu-central-1")}
+    let ingest = {...project, label: "ingest", region: "eu-central-1"}
     expect(
       DeployApp.regionProblems(~projects=[project, ingest], ~region="eu-west-1")->Array.length,
     )->toBe(1)
