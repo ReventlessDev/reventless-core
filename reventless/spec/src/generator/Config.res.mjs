@@ -5,6 +5,7 @@ import * as Nodepath from "node:path";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as PluginName$Reventless from "../components/PluginName.res.mjs";
 
 function readJson(path) {
@@ -41,6 +42,26 @@ function getComponentRuntime(json) {
   return result;
 }
 
+function getSlicesFrom(json) {
+  return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["slicesFrom"]), value => {
+    let entries = Stdlib_JSON.Decode.array(value);
+    if (entries !== undefined) {
+      return entries.map(entry => {
+        let $$package = getStrField(entry, "package");
+        if ($$package !== undefined && $$package !== "") {
+          return {
+            package: $$package,
+            with: getStrField(entry, "with")
+          };
+        }
+        return Stdlib_JsError.throwWithMessage(`plugin.json: each \`slicesFrom\` entry names a package, got ` + JSON.stringify(entry));
+      });
+    } else {
+      return Stdlib_JsError.throwWithMessage("plugin.json: `slicesFrom` is a list of packages");
+    }
+  });
+}
+
 function read(srcDir) {
   let packageJsonPath = Nodepath.join(Nodepath.dirname(srcDir), "package.json");
   let packageJsonName = Stdlib_Option.flatMap(readJson(packageJsonPath), j => getStrField(j, "name"));
@@ -51,6 +72,7 @@ function read(srcDir) {
     heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 5),
     exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), []),
     componentRuntime: Stdlib_Option.getOr(Stdlib_Option.map(pluginJson, getComponentRuntime), {}),
+    slicesFrom: Stdlib_Option.flatMap(pluginJson, getSlicesFrom),
     variant: "Composition"
   };
 }
@@ -64,6 +86,7 @@ export {
   getIntField,
   getStrArrayField,
   getComponentRuntime,
+  getSlicesFrom,
   read,
 }
 /* node:fs Not a pure module */

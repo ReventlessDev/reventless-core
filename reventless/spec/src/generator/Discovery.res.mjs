@@ -6,6 +6,15 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
+function pathOf(d, srcDir) {
+  let match = d.origin;
+  if (match !== undefined) {
+    return Nodepath.join(match.srcDir, d.relPath);
+  } else {
+    return Nodepath.join(srcDir, d.relPath);
+  }
+}
+
 function chapterOf(relPath) {
   let segments = relPath.split("/");
   if (segments.length < 2) {
@@ -185,7 +194,7 @@ function scan(srcDir, exclude) {
 function scanAdmissionDoors(srcDir, discovered) {
   return discovered.filter(d => {
     if (d.componentType === "InboundTranslationSlice" && !d.stem.endsWith("_Translation")) {
-      return Nodefs.readFileSync(Nodepath.join(srcDir, d.relPath), "utf8").includes("let admissionDoor");
+      return Nodefs.readFileSync(pathOf(d, srcDir), "utf8").includes("let admissionDoor");
     } else {
       return false;
     }
@@ -223,6 +232,7 @@ function scanIdentities(srcDir, exclude) {
 let folderToComponentType = ComponentKind$Reventless.folderToKind;
 
 export {
+  pathOf,
   folderToComponentType,
   chapterOf,
   chaptersByStem,

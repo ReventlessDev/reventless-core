@@ -17,13 +17,27 @@ type componentType = ComponentKind.t =
   | ExtensionPoint
   | Extension
 
-// relPath: path relative to srcDir (e.g. "ReadModel/ProductsProjections.res")
+/** Where a file listed from an installed package lives: the package's ReScript
+    namespace, which the generated aliases qualify by, and its source directory,
+    which `relPath` is relative to. */
+type origin = {package: string, namespace: string, srcDir: string}
+
+// relPath: path relative to srcDir (e.g. "ReadModel/ProductsProjections.res"),
+// or to the package's source directory when the file has an origin.
 type discoveredFile = {
   stem: string,
   componentType: componentType,
   epGroup?: string,
   relPath: string,
+  origin?: origin,
 }
+
+/** The file on disk: under the plugin's `srcDir`, or under its package's. */
+let pathOf = (d: discoveredFile, ~srcDir: string): string =>
+  switch d.origin {
+  | Some({srcDir: packageSrc}) => NodePath.join([packageSrc, d.relPath])
+  | None => NodePath.join([srcDir, d.relPath])
+  }
 
 let folderToComponentType = ComponentKind.folderToKind
 
@@ -257,7 +271,7 @@ let scanAdmissionDoors = (~srcDir: string, discovered: array<discoveredFile>): a
   ->Array.filter(d =>
     d.componentType == InboundTranslationSlice &&
     !(d.stem->String.endsWith("_Translation")) &&
-    NodePath.join([srcDir, d.relPath])->NodeFs.readFileSync->String.includes("let admissionDoor")
+    d->pathOf(~srcDir)->NodeFs.readFileSync->String.includes("let admissionDoor")
   )
   ->Array.map(d => d.stem)
   ->Array.toSorted(String.compare)

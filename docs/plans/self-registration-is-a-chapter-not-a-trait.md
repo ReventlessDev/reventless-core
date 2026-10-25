@@ -14,8 +14,8 @@ identity plan's
 which must enforce the same limit before any public sign-up, and with it the admission check and the
 shell's configuration on AWS. **Next:** the chapter becomes reusable by other apps
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
-[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices)),
-beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
+[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices);
+R1 built 2026-10-25), beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
 2026-09-11 when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
@@ -472,6 +472,23 @@ structure, with the chapter of each recorded as the plugin's.
 
 **Exit:** a test plugin lists one packaged slice; its structure and its GraphQL API show it as the
 plugin's own; `generate` is byte-identical for a plugin that lists none.
+
+**Built 2026-10-25.** `src/plugin.json` lists `slicesFrom: [{package, with?}]`. The generator
+finds the package in the nearest `node_modules`, scans its `src/` as it scans the plugin's, and
+aliases every module it found at the top of `Plugin.res`
+(`module SignUp = RegistrationSlices.SignUp`), so the rest of the composition is generated from
+bare names exactly as for the plugin's own files and the compiler checks each alias. Everything the
+generator reads off source (`targetName`, `@@reventless.async`, `@@reventless.systemCallable`,
+`admissionDoor`, identities) is read from the package, and the chapter is the folder the package
+files the slice under. A body opening `module Make = (` is applied to the module `with` names, the
+seam [R2](#r2-a-packaged-slice-reads-the-apps-declaration) uses. Refused, naming the file: a package
+not installed, one with no namespace written out, one providing anything but slices, one providing
+nothing, a functor body with no `with`, and a stem the plugin also uses. Pinned by
+`PackagedSlicesTest` on a fixture plugin and package; regenerating every plugin in the repository
+changed no file. The structure-and-API half of the exit is carried by
+[R4](#r4-the-chapter-is-published-as-a-library-of-slices), where the hybrid shop composes a real
+package: an alias composes a slice through the same factory call as a file of the plugin's own, so
+there is no second path for the structure to differ on.
 
 #### R2: a packaged slice reads the app's declaration
 

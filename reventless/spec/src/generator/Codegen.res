@@ -469,7 +469,12 @@ let validateUniqueSpecStems = (~discovered: array<Discovery.discoveredFile>) => 
   let byStem: Dict.t<array<string>> = Dict.make()
   discovered->Array.forEach((d: Discovery.discoveredFile) => {
     let existing = byStem->Dict.get(d.stem)->Option.getOr([])
-    existing->Array.push(d.relPath)
+    existing->Array.push(
+      switch d.origin {
+      | Some({package}) => `${d.relPath} (from ${package})`
+      | None => d.relPath
+      },
+    )
     byStem->Dict.set(d.stem, existing)
   })
   byStem
@@ -638,6 +643,7 @@ let renderComposition = (
   ~identities: array<string>,
   ~hasAdmission: bool,
   ~admissionDoors: array<string>,
+  ~aliases: array<string>,
 ): string => {
   let lines: array<string> = []
 
@@ -650,6 +656,14 @@ let renderComposition = (
     "@val external uiBundleUrl: option<string> = \"process.env." ++
     pluginNameToEnvBase(config.name) ++ "_UI_BUNDLE_URL\"",
   )
+
+  // Slices listed from installed packages, under the bare names the rest of this
+  // file uses for the plugin's own. Omitted when the plugin lists none, so its
+  // generated file is byte-identical.
+  if aliases->Array.length > 0 {
+    lines->Array.push("")
+    aliases->Array.forEach(l => lines->Array.push(l))
+  }
 
   // The DCB boundary's slices as schemas, outside `Make` because the scope they
   // determine is a property of the specs and not of any platform. Emitted rather
@@ -890,6 +904,7 @@ let render = (
   ~identities: array<string>=[],
   ~hasAdmission: bool=false,
   ~admissionDoors: array<string>=[],
+  ~aliases: array<string>=[],
 ): string => {
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
@@ -924,6 +939,7 @@ let render = (
       ~identities,
       ~hasAdmission,
       ~admissionDoors,
+      ~aliases,
     )
   }
 }

@@ -12,6 +12,12 @@ type runtimeHints = {
   timeout?: int,
 }
 
+/** A package whose slices the plugin composes as its own, from plugin.json's
+    `slicesFrom`. `with` names the plugin's module that a functor-shaped body in
+    the package is applied to (`Admission`, say), so the package reads the app's
+    declaration without importing it. */
+type sliceSource = {package: string, @as("with") with_?: string}
+
 type config = {
   name: string,
   heartbeatInterval: int,
@@ -19,6 +25,7 @@ type config = {
   // Keyed by component name (e.g. "Customers", "PlaceOrder"). Empty when the
   // plugin.json has no `runtime` block.
   componentRuntime: dict<runtimeHints>,
+  slicesFrom?: array<sliceSource>,
   variant: variant,
 }
 
@@ -78,6 +85,30 @@ let getComponentRuntime = (json: JSON.t): dict<runtimeHints> => {
   result
 }
 
+// Parse the optional `slicesFrom` array: `[{"package": "...", "with": "..."}]`.
+// An entry without a package is refused rather than skipped: a slice the author
+// listed and the generator silently left out would surface only as a missing
+// door at run time.
+let getSlicesFrom = (json: JSON.t): option<array<sliceSource>> =>
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("slicesFrom"))
+  ->Option.map(value =>
+    switch value->JSON.Decode.array {
+    | None => JsError.throwWithMessage("plugin.json: `slicesFrom` is a list of packages")
+    | Some(entries) =>
+      entries->Array.map(entry =>
+        switch getStrField(entry, "package") {
+        | None | Some("") =>
+          JsError.throwWithMessage(
+            `plugin.json: each \`slicesFrom\` entry names a package, got ${JSON.stringify(entry)}`,
+          )
+        | Some(package) => {package, with_: ?getStrField(entry, "with")}
+        }
+      )
+    }
+  )
+
 let read = (~srcDir: string): config => {
   // Read package.json `name` from the parent of srcDir
   let packageJsonPath = NodePath.join([NodePath.dirname(srcDir), "package.json"])
@@ -101,6 +132,7 @@ let read = (~srcDir: string): config => {
     ->Option.getOr(5),
     exclude: pluginJson->Option.flatMap(j => getStrArrayField(j, "exclude"))->Option.getOr([]),
     componentRuntime: pluginJson->Option.map(getComponentRuntime)->Option.getOr(Dict.make()),
+    slicesFrom: ?(pluginJson->Option.flatMap(getSlicesFrom)),
     variant: Composition,
   }
 }

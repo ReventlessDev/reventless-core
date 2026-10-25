@@ -5,6 +5,7 @@ import * as Nodepath from "node:path";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Discovery$Reventless from "./Discovery.res.mjs";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
 let implSuffixForStateChange = "_Decision";
@@ -232,13 +233,13 @@ function resolve(discovered, srcDir) {
   let automationSlices = [];
   let inboundTranslationSlices = [];
   let outboundTranslationSlices = [];
-  let automationSliceRelPaths = {};
-  let inboundTranslationSliceRelPaths = {};
-  let outboundTranslationSliceRelPaths = {};
+  let automationSlicePaths = {};
+  let inboundTranslationSlicePaths = {};
+  let outboundTranslationSlicePaths = {};
   let aggregateSpecs = [];
-  let aggregateSpecRelPaths = {};
-  let stateChangeSliceRelPaths = {};
-  let stateViewSliceRelPaths = {};
+  let aggregateSpecPaths = {};
+  let stateChangeSlicePaths = {};
+  let stateViewSlicePaths = {};
   let aggregateDecisions = [];
   let readModelStems = [];
   let readModelStreamStems = [];
@@ -246,15 +247,15 @@ function resolve(discovered, srcDir) {
   let tasks = [];
   let epFiles = [];
   let extensions = [];
-  discovered.forEach(param => {
-    let relPath = param.relPath;
-    let componentType = param.componentType;
-    let stem = param.stem;
-    switch (componentType) {
+  discovered.forEach(d => {
+    let relPath = d.relPath;
+    let stem = d.stem;
+    let path = Discovery$Reventless.pathOf(d, srcDir);
+    switch (d.componentType) {
       case "StateChangeSlice" :
         if (!isImplStem(stem)) {
           stateChangeSlices.push(stem);
-          stateChangeSliceRelPaths[stem] = relPath;
+          stateChangeSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -262,7 +263,7 @@ function resolve(discovered, srcDir) {
       case "StateViewSlice" :
         if (!isImplStem(stem)) {
           stateViewSlices.push(stem);
-          stateViewSliceRelPaths[stem] = relPath;
+          stateViewSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -270,7 +271,7 @@ function resolve(discovered, srcDir) {
       case "StateViewSliceStream" :
         if (!isImplStem(stem)) {
           stateViewSlicesStream.push(stem);
-          stateViewSliceRelPaths[stem] = relPath;
+          stateViewSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -278,7 +279,7 @@ function resolve(discovered, srcDir) {
       case "AutomationSlice" :
         if (!isImplStem(stem)) {
           automationSlices.push(stem);
-          automationSliceRelPaths[stem] = relPath;
+          automationSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -286,7 +287,7 @@ function resolve(discovered, srcDir) {
       case "InboundTranslationSlice" :
         if (!isImplStem(stem)) {
           inboundTranslationSlices.push(stem);
-          inboundTranslationSliceRelPaths[stem] = relPath;
+          inboundTranslationSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -294,7 +295,7 @@ function resolve(discovered, srcDir) {
       case "OutboundTranslationSlice" :
         if (!isImplStem(stem)) {
           outboundTranslationSlices.push(stem);
-          outboundTranslationSliceRelPaths[stem] = relPath;
+          outboundTranslationSlicePaths[stem] = path;
           return;
         } else {
           return;
@@ -304,7 +305,7 @@ function resolve(discovered, srcDir) {
           aggregateDecisions.push(stem);
         } else {
           aggregateSpecs.push(stem);
-          aggregateSpecRelPaths[stem] = relPath;
+          aggregateSpecPaths[stem] = path;
         }
         return;
       case "ReadModel" :
@@ -325,12 +326,7 @@ function resolve(discovered, srcDir) {
         tasks.push(stem);
         return;
       case "ExtensionPoint" :
-        epFiles.push({
-          stem: stem,
-          componentType: componentType,
-          epGroup: param.epGroup,
-          relPath: relPath
-        });
+        epFiles.push(d);
         return;
       case "Extension" :
         extensions.push(stem);
@@ -344,8 +340,8 @@ function resolve(discovered, srcDir) {
         aggregateDecisions.includes(bare) ? bare : undefined
       );
     if (decisionStem !== undefined) {
-      let relPath = aggregateSpecRelPaths[spec];
-      let isAsync = relPath !== undefined ? hasFileAttribute(Nodepath.join(srcDir, relPath), "@@reventless.async") : false;
+      let path = aggregateSpecPaths[spec];
+      let isAsync = path !== undefined ? hasFileAttribute(path, "@@reventless.async") : false;
       return {
         spec: spec,
         decision: decisionStem,
@@ -372,25 +368,21 @@ function resolve(discovered, srcDir) {
   };
   let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => pairReadModel(false, rm)).concat(Stdlib_Array.filterMap(sortedStems(readModelStreamStems), rm => pairReadModel(true, rm)));
   let extensionPoints = groupExtensionPoints(epFiles);
-  let buildTargets = (stems, relPaths) => {
+  let buildTargets = (stems, paths) => {
     let dict = {};
     stems.forEach(stem => {
-      let relPath = relPaths[stem];
-      let target = relPath !== undefined ? extractTargetName(Nodepath.join(srcDir, relPath)) : undefined;
+      let path = paths[stem];
+      let target = path !== undefined ? extractTargetName(path) : undefined;
       dict[stem] = target;
     });
     return dict;
   };
   let d = {};
   let names = [];
-  let collect = (stems, relPaths) => {
+  let collect = (stems, paths) => {
     stems.forEach(stem => {
-      let relPath = relPaths[stem];
-      if (relPath === undefined) {
-        return;
-      }
-      let filePath = Nodepath.join(srcDir, relPath);
-      if (hasFileAttribute(filePath, "@@reventless.systemCallable")) {
+      let filePath = paths[stem];
+      if (filePath !== undefined && hasFileAttribute(filePath, "@@reventless.systemCallable")) {
         names.push(effectiveSpecName(filePath, stem));
         return;
       }
@@ -403,17 +395,17 @@ function resolve(discovered, srcDir) {
     automationSlices: sortedStems(automationSlices),
     inboundTranslationSlices: sortedStems(inboundTranslationSlices),
     outboundTranslationSlices: sortedStems(outboundTranslationSlices),
-    automationSliceTargets: buildTargets(automationSlices, automationSliceRelPaths),
-    inboundTranslationSliceTargets: buildTargets(inboundTranslationSlices, inboundTranslationSliceRelPaths),
-    outboundTranslationSliceTargets: buildTargets(outboundTranslationSlices, outboundTranslationSliceRelPaths),
+    automationSliceTargets: buildTargets(automationSlices, automationSlicePaths),
+    inboundTranslationSliceTargets: buildTargets(inboundTranslationSlices, inboundTranslationSlicePaths),
+    outboundTranslationSliceTargets: buildTargets(outboundTranslationSlices, outboundTranslationSlicePaths),
     asyncStateChangeSlices: (stateChangeSlices.forEach(stem => {
-      let relPath = stateChangeSliceRelPaths[stem];
-      if (relPath !== undefined && hasFileAttribute(Nodepath.join(srcDir, relPath), "@@reventless.async")) {
+      let path = stateChangeSlicePaths[stem];
+      if (path !== undefined && hasFileAttribute(path, "@@reventless.async")) {
         d[stem] = true;
         return;
       }
     }), d),
-    systemCallableComponents: (collect(stateChangeSlices, stateChangeSliceRelPaths), collect(stateViewSlices, stateViewSliceRelPaths), collect(stateViewSlicesStream, stateViewSliceRelPaths), sortedStems(names)),
+    systemCallableComponents: (collect(stateChangeSlices, stateChangeSlicePaths), collect(stateViewSlices, stateViewSlicePaths), collect(stateViewSlicesStream, stateViewSlicePaths), sortedStems(names)),
     aggregates: aggregates,
     readModels: readModels,
     tasks: sortedStems(tasks),

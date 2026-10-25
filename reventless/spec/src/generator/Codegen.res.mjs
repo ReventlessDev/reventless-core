@@ -327,7 +327,8 @@ function validateUniqueSpecStems(discovered) {
   let byStem = {};
   discovered.forEach(d => {
     let existing = Stdlib_Option.getOr(byStem[d.stem], []);
-    existing.push(d.relPath);
+    let match = d.origin;
+    existing.push(match !== undefined ? d.relPath + ` (from ` + match.package + `)` : d.relPath);
     byStem[d.stem] = existing;
   });
   Object.entries(byStem).forEach(param => {
@@ -418,11 +419,17 @@ function renderAwsWrapper(compositionNamespace) {
   ].join("\n");
 }
 
-function renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors) {
+function renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors, aliases) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
   lines.push("");
   lines.push("@val external uiBundleUrl: option<string> = \"process.env." + pluginNameToEnvBase(config.name) + "_UI_BUNDLE_URL\"");
+  if (aliases.length !== 0) {
+    lines.push("");
+    aliases.forEach(l => {
+      lines.push(l);
+    });
+  }
   if (resolved.stateChangeSlices.length !== 0) {
     lines.push("");
     lines.push("let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [");
@@ -541,11 +548,12 @@ function renderComposition(config, resolved, componentChapters, hasLifecycleMode
   return lines.join("\n");
 }
 
-function render(config, resolved, discovered, hasLifecycleModelOpt, identitiesOpt, hasAdmissionOpt, admissionDoorsOpt) {
+function render(config, resolved, discovered, hasLifecycleModelOpt, identitiesOpt, hasAdmissionOpt, admissionDoorsOpt, aliasesOpt) {
   let hasLifecycleModel = hasLifecycleModelOpt !== undefined ? hasLifecycleModelOpt : false;
   let identities = identitiesOpt !== undefined ? identitiesOpt : [];
   let hasAdmission = hasAdmissionOpt !== undefined ? hasAdmissionOpt : false;
   let admissionDoors = admissionDoorsOpt !== undefined ? admissionDoorsOpt : [];
+  let aliases = aliasesOpt !== undefined ? aliasesOpt : [];
   validateUniqueSpecStems(discovered);
   validateSliceTargets(resolved);
   let componentStems = [
@@ -561,7 +569,7 @@ function render(config, resolved, discovered, hasLifecycleModelOpt, identitiesOp
   let componentChapters = Discovery$Reventless.chaptersByStem(discovered).filter(param => componentStems.includes(param[0]));
   let match = config.variant;
   if (typeof match !== "object") {
-    return renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors);
+    return renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors, aliases);
   } else {
     return renderAwsWrapper(match.compositionNamespace);
   }

@@ -134,7 +134,7 @@ See the documentation for detailed explanations and examples using EventLog as a
 Plugin packages (`examples/*/catalog/`, `examples/*/ordering/`, etc.) contain a **generated** composition root at `src/Plugin.res`. This file is produced by `generate-plugin` (from `reventless-spec`) before each build:
 
 - `prebuild` script runs `generate-plugin src/` automatically before `rescript build`
-- `src/plugin.json` (optional) sets the plugin name and heartbeat interval
+- `src/plugin.json` (optional) sets the plugin name and heartbeat interval, and may list `slicesFrom`: packages whose slices the plugin composes as its own (aliased at the top of `Plugin.res`; a body opening `module Make = (` is applied to the module the entry's `with` names). Slices only — see `packages/doc/docs-app/components/plugin.md`
 - The generator scans `src/` by folder name (e.g. `Aggregate/`, `StateChange/`) and wires all discovered components
 - `src/Plugin.res` is committed to git — CI compiles it directly without re-running the generator
 

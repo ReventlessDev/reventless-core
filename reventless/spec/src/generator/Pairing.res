@@ -291,15 +291,15 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let automationSlices = []
   let inboundTranslationSlices = []
   let outboundTranslationSlices = []
-  // relPath dicts for slices that declare targetName
-  let automationSliceRelPaths: Dict.t<string> = Dict.make()
-  let inboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
-  let outboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
+  // Spec file paths, for the slices whose source the generator reads
+  let automationSlicePaths: Dict.t<string> = Dict.make()
+  let inboundTranslationSlicePaths: Dict.t<string> = Dict.make()
+  let outboundTranslationSlicePaths: Dict.t<string> = Dict.make()
   let aggregateSpecs: array<string> = []
-  let aggregateSpecRelPaths: Dict.t<string> = Dict.make()
-  let stateChangeSliceRelPaths: Dict.t<string> = Dict.make()
+  let aggregateSpecPaths: Dict.t<string> = Dict.make()
+  let stateChangeSlicePaths: Dict.t<string> = Dict.make()
   // Shared by StateViewSlice and StateViewSliceStream (stems are unique).
-  let stateViewSliceRelPaths: Dict.t<string> = Dict.make()
+  let stateViewSlicePaths: Dict.t<string> = Dict.make()
   let aggregateDecisions: array<string> = []
   let readModelStems: array<string> = []
   // Stream-enabled read model spec stems (the `ReadModelStream/` folder).
@@ -315,44 +315,48 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   // families, impl files (X_Decision / X_Projection / X_Automation /
   // X_Translation) are filtered out: they're paired with their spec stems
   // at codegen time via the `_<ImplKind>` suffix convention.
-  discovered->Array.forEach(({stem, componentType, ?epGroup, relPath}) => {
+  discovered->Array.forEach(d => {
+    let {stem, componentType, relPath} = d
+    // Read from where the file is, so a slice listed from a package is read
+    // from the package.
+    let path = d->Discovery.pathOf(~srcDir)
     switch componentType {
     | StateChangeSlice =>
       if !isImplStem(stem) {
         stateChangeSlices->Array.push(stem)
-        stateChangeSliceRelPaths->Dict.set(stem, relPath)
+        stateChangeSlicePaths->Dict.set(stem, path)
       }
     | StateViewSlice =>
       if !isImplStem(stem) {
         stateViewSlices->Array.push(stem)
-        stateViewSliceRelPaths->Dict.set(stem, relPath)
+        stateViewSlicePaths->Dict.set(stem, path)
       }
     | StateViewSliceStream =>
       if !isImplStem(stem) {
         stateViewSlicesStream->Array.push(stem)
-        stateViewSliceRelPaths->Dict.set(stem, relPath)
+        stateViewSlicePaths->Dict.set(stem, path)
       }
     | AutomationSlice =>
       if !isImplStem(stem) {
         automationSlices->Array.push(stem)
-        automationSliceRelPaths->Dict.set(stem, relPath)
+        automationSlicePaths->Dict.set(stem, path)
       }
     | InboundTranslationSlice =>
       if !isImplStem(stem) {
         inboundTranslationSlices->Array.push(stem)
-        inboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+        inboundTranslationSlicePaths->Dict.set(stem, path)
       }
     | OutboundTranslationSlice =>
       if !isImplStem(stem) {
         outboundTranslationSlices->Array.push(stem)
-        outboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+        outboundTranslationSlicePaths->Dict.set(stem, path)
       }
     | Aggregate =>
       if stem->String.endsWith("Decision") {
         aggregateDecisions->Array.push(stem)
       } else {
         aggregateSpecs->Array.push(stem)
-        aggregateSpecRelPaths->Dict.set(stem, relPath)
+        aggregateSpecPaths->Dict.set(stem, path)
       }
     | ReadModel =>
       if stem->String.endsWith("Projections") {
@@ -367,7 +371,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         readModelStreamStems->Array.push(stem)
       }
     | Task => tasks->Array.push(stem)
-    | ExtensionPoint => epFiles->Array.push({stem, componentType, ?epGroup, relPath})
+    | ExtensionPoint => epFiles->Array.push(d)
     | Extension => extensions->Array.push(stem)
     }
   })
@@ -389,9 +393,9 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
       }
       switch decisionStem {
       | Some(decision) =>
-        let isAsync = switch Dict.get(aggregateSpecRelPaths, spec) {
+        let isAsync = switch Dict.get(aggregateSpecPaths, spec) {
         | None => false
-        | Some(relPath) => hasAsyncAttribute(NodePath.join([srcDir, relPath]))
+        | Some(path) => hasAsyncAttribute(path)
         }
         Some({
           spec,
@@ -447,12 +451,12 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let extensionPoints = groupExtensionPoints(epFiles)
 
   // ── targetName extraction ──────────────────────────────────────────────────
-  let buildTargets = (stems: array<string>, relPaths: Dict.t<string>): Dict.t<option<string>> => {
+  let buildTargets = (stems: array<string>, paths: Dict.t<string>): Dict.t<option<string>> => {
     let dict = Dict.make()
     stems->Array.forEach(stem => {
-      let target = switch Dict.get(relPaths, stem) {
+      let target = switch Dict.get(paths, stem) {
       | None => None
-      | Some(relPath) => extractTargetName(NodePath.join([srcDir, relPath]))
+      | Some(path) => extractTargetName(path)
       }
       dict->Dict.set(stem, target)
     })
@@ -466,22 +470,22 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     automationSlices: automationSlices->sortedStems,
     inboundTranslationSlices: inboundTranslationSlices->sortedStems,
     outboundTranslationSlices: outboundTranslationSlices->sortedStems,
-    automationSliceTargets: buildTargets(automationSlices, automationSliceRelPaths),
+    automationSliceTargets: buildTargets(automationSlices, automationSlicePaths),
     inboundTranslationSliceTargets: buildTargets(
       inboundTranslationSlices,
-      inboundTranslationSliceRelPaths,
+      inboundTranslationSlicePaths,
     ),
     outboundTranslationSliceTargets: buildTargets(
       outboundTranslationSlices,
-      outboundTranslationSliceRelPaths,
+      outboundTranslationSlicePaths,
     ),
     asyncStateChangeSlices: {
       let d = Dict.make()
       stateChangeSlices->Array.forEach(stem => {
-        switch Dict.get(stateChangeSliceRelPaths, stem) {
+        switch Dict.get(stateChangeSlicePaths, stem) {
         | None => ()
-        | Some(relPath) =>
-          if hasAsyncAttribute(NodePath.join([srcDir, relPath])) {
+        | Some(path) =>
+          if hasAsyncAttribute(path) {
             d->Dict.set(stem, true)
           }
         }
@@ -490,20 +494,19 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     },
     systemCallableComponents: {
       let names = []
-      let collect = (stems: array<string>, relPaths: Dict.t<string>) =>
+      let collect = (stems: array<string>, paths: Dict.t<string>) =>
         stems->Array.forEach(stem => {
-          switch Dict.get(relPaths, stem) {
+          switch Dict.get(paths, stem) {
           | None => ()
-          | Some(relPath) =>
-            let filePath = NodePath.join([srcDir, relPath])
+          | Some(filePath) =>
             if hasSystemCallableAttribute(filePath) {
               names->Array.push(effectiveSpecName(filePath, ~stem))
             }
           }
         })
-      collect(stateChangeSlices, stateChangeSliceRelPaths)
-      collect(stateViewSlices, stateViewSliceRelPaths)
-      collect(stateViewSlicesStream, stateViewSliceRelPaths)
+      collect(stateChangeSlices, stateChangeSlicePaths)
+      collect(stateViewSlices, stateViewSlicePaths)
+      collect(stateViewSlicesStream, stateViewSlicePaths)
       names->sortedStems
     },
     aggregates,

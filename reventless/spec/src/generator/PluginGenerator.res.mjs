@@ -2,12 +2,15 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Config$Reventless from "./Config.res.mjs";
 import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Codegen$Reventless from "./Codegen.res.mjs";
 import * as Pairing$Reventless from "./Pairing.res.mjs";
 import * as Nodechild_process from "node:child_process";
+import * as Packaged$Reventless from "./Packaged.res.mjs";
 import * as Discovery$Reventless from "./Discovery.res.mjs";
 
 let usage = `Usage: generate-plugin [--aws <Namespace>] <srcDir>
@@ -77,38 +80,37 @@ function formatted(source, cwd) {
   });
 }
 
+function render(srcDir, variant) {
+  let newrecord = {...Config$Reventless.read(srcDir)};
+  newrecord.variant = variant;
+  let packaged = Stdlib_Option.getOr(newrecord.slicesFrom, []).map(__x => Packaged$Reventless.scan(Nodepath.dirname(srcDir), newrecord.exclude, __x));
+  let discovered = Discovery$Reventless.scan(srcDir, newrecord.exclude).concat(packaged.flatMap(p => p.files));
+  let resolved = Pairing$Reventless.resolve(discovered, srcDir);
+  let hasLifecycleModel = Nodefs.existsSync(Nodepath.join(srcDir, "LifecycleModel.res"));
+  let identities = Discovery$Reventless.scanIdentities(srcDir, newrecord.exclude).concat(packaged.flatMap(p => p.identities)).toSorted(Primitive_string.compare);
+  let hasAdmission = Nodefs.existsSync(Nodepath.join(srcDir, "Admission.res"));
+  let admissionDoors = Discovery$Reventless.scanAdmissionDoors(srcDir, discovered);
+  let source = Codegen$Reventless.render(newrecord, resolved, discovered, hasLifecycleModel, identities, hasAdmission, admissionDoors, Packaged$Reventless.aliases(packaged));
+  return [
+    newrecord,
+    source
+  ];
+}
+
 function main() {
   return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
     let variant = param.variant;
     let srcDir = Nodepath.resolve(param.srcDir);
-    let init = Config$Reventless.read(srcDir);
-    let config_name = init.name;
-    let config_heartbeatInterval = init.heartbeatInterval;
-    let config_exclude = init.exclude;
-    let config_componentRuntime = init.componentRuntime;
-    let config = {
-      name: config_name,
-      heartbeatInterval: config_heartbeatInterval,
-      exclude: config_exclude,
-      componentRuntime: config_componentRuntime,
-      variant: variant
-    };
-    let discovered = Discovery$Reventless.scan(srcDir, config_exclude);
-    let resolved = Pairing$Reventless.resolve(discovered, srcDir);
-    let hasLifecycleModel = Nodefs.existsSync(Nodepath.join(srcDir, "LifecycleModel.res"));
-    let identities = Discovery$Reventless.scanIdentities(srcDir, config_exclude);
-    let hasAdmission = Nodefs.existsSync(Nodepath.join(srcDir, "Admission.res"));
-    let admissionDoors = Discovery$Reventless.scanAdmissionDoors(srcDir, discovered);
-    let source = Codegen$Reventless.render(config, resolved, discovered, hasLifecycleModel, identities, hasAdmission, admissionDoors);
+    let match = render(srcDir, variant);
     let outputDir;
     outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
     let pluginPath = Nodepath.join(outputDir, "Plugin.res");
-    Nodefs.writeFileSync(pluginPath, formatted(source, outputDir), "utf8");
+    Nodefs.writeFileSync(pluginPath, formatted(match[1], outputDir), "utf8");
     console.log("Generated: " + pluginPath);
     if (typeof variant !== "object") {
       return;
     }
-    let mainSource = Codegen$Reventless.renderMain(config);
+    let mainSource = Codegen$Reventless.renderMain(match[0]);
     let mainPath = Nodepath.join(outputDir, "Main.res");
     Nodefs.writeFileSync(mainPath, formatted(mainSource, outputDir), "utf8");
     console.log("Generated: " + mainPath);
@@ -120,6 +122,7 @@ export {
   parseArgs,
   cli,
   formatted,
+  render,
   main,
 }
 /* node:fs Not a pure module */

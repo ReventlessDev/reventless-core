@@ -303,6 +303,34 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 The plugin module is then referenced from the platform as
 `MyDomainPlugin.Plugin.Make(Platform)`.
 
+### Slices from a package
+
+A plugin is per app, so it cannot be installed from a package; its slices can. A
+plugin lists the packages whose slices it composes as its own in `src/plugin.json`:
+
+```json title="src/plugin.json"
+{
+  "name": "Registration",
+  "slicesFrom": [{"package": "@acme/registration-slices", "with": "Admission"}]
+}
+```
+
+The generator scans the package's `src/` as it scans the plugin's, and aliases each
+module at the top of `src/Plugin.res` under its bare name
+(`module SignUp = RegistrationSlices.SignUp`), so the compiler checks every one and
+the slices reach the plugin's structure, chapters and API exactly as the plugin's
+own do. A body file that opens with `module Make = (` is a functor over something
+the app declares, and is applied to the module `with` names
+(`….Make(Admission)`): that is how a packaged slice reads the app's declaration
+without importing it.
+
+The package must be in the plugin's `dependencies` and in its `rescript.json`
+dependencies, and must write its namespace out in its own `rescript.json`. It may
+provide slices only (`StateChange/`, `StateView/`, `StateViewStream/`,
+`Automation/`, `InboundTranslation/`, `OutboundTranslation/`) and identity modules
+beside them; anything else, a stem the plugin also uses, or a functor body with no
+`with` is refused, naming the file.
+
 ## At run time
 
 ### Initialization Sequence

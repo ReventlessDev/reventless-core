@@ -36,33 +36,50 @@ let formatted = (source: string, ~cwd: string): string =>
     {cwd, encoding: "utf8", input: source},
   )
 
+/** The composition for the plugin whose sources are `srcDir`, unformatted.
+    Reads the sources and any package plugin.json lists; writes nothing. */
+let render = (~srcDir: string, ~variant: Config.variant): (Config.config, string) => {
+  let config = {...Config.read(~srcDir), variant}
+  let packaged =
+    config.slicesFrom
+    ->Option.getOr([])
+    ->Array.map(Packaged.scan(~pluginDir=NodePath.dirname(srcDir), ~exclude=config.exclude, _))
+  let discovered = Array.concat(
+    Discovery.scan(~srcDir, ~exclude=config.exclude),
+    packaged->Array.flatMap(p => p.files),
+  )
+  let resolved = Pairing.resolve(discovered, ~srcDir)
+  // Sits at the src root rather than in a kind folder, so `Discovery` never
+  // sees it and it is not a component. Its presence is the whole question.
+  let hasLifecycleModel = NodePath.join([srcDir, "LifecycleModel.res"])->NodeFs.existsSync
+  let identities =
+    Discovery.scanIdentities(~srcDir, ~exclude=config.exclude)
+    ->Array.concat(packaged->Array.flatMap(p => p.identities))
+    ->Array.toSorted(String.compare)
+  // Beside `Roles.res`, at the src root for the same reason as the lifecycle
+  // model: it is a declaration about the plugin, not a component.
+  let hasAdmission = NodePath.join([srcDir, "Admission.res"])->NodeFs.existsSync
+  let admissionDoors = Discovery.scanAdmissionDoors(~srcDir, discovered)
+  let source = Codegen.render(
+    ~config,
+    ~resolved,
+    ~discovered,
+    ~hasLifecycleModel,
+    ~identities,
+    ~hasAdmission,
+    ~admissionDoors,
+    ~aliases=Packaged.aliases(packaged),
+  )
+  (config, source)
+}
+
 // A usage mistake exits non-zero, so `prebuild` (and CI) fail instead of
 // continuing green with no Plugin.res generated.
 let main = () =>
   CliArgs.run(cli, async ({variant, srcDir: srcDirArg}) => {
     // Resolve to absolute path (handles relative paths and trailing slashes)
     let srcDir = NodePath.resolve([srcDirArg])
-
-    let config = {...Config.read(~srcDir), variant}
-    let discovered = Discovery.scan(~srcDir, ~exclude=config.exclude)
-    let resolved = Pairing.resolve(discovered, ~srcDir)
-    // Sits at the src root rather than in a kind folder, so `Discovery` never
-    // sees it and it is not a component. Its presence is the whole question.
-    let hasLifecycleModel = NodePath.join([srcDir, "LifecycleModel.res"])->NodeFs.existsSync
-    let identities = Discovery.scanIdentities(~srcDir, ~exclude=config.exclude)
-    // Beside `Roles.res`, at the src root for the same reason as the lifecycle
-    // model: it is a declaration about the plugin, not a component.
-    let hasAdmission = NodePath.join([srcDir, "Admission.res"])->NodeFs.existsSync
-    let admissionDoors = Discovery.scanAdmissionDoors(~srcDir, discovered)
-    let source = Codegen.render(
-      ~config,
-      ~resolved,
-      ~discovered,
-      ~hasLifecycleModel,
-      ~identities,
-      ~hasAdmission,
-      ~admissionDoors,
-    )
+    let (config, source) = render(~srcDir, ~variant)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir
