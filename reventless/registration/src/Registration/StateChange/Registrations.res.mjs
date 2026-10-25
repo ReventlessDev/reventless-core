@@ -5,7 +5,7 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -19,64 +19,64 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationRequested",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     roles: s.m(Sury.array(Sury.string)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationExpired",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationAttemptedOnTakenAddress",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     attemptedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeIssued",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
     issuedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     roles: s.m(Sury.array(Sury.string)),
     proofHash: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofRefused",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     reason: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationCompleted",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
   }))
 ]);
 
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Register",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     role: s.m(DcbTag$Reventless.mark(Role$Reventless.nameSchema)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "IssueRegistrationChallenge",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
     issuedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "SubmitRegistrationProof",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
     presentedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RecordRegistrationCompleted",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
   }))
 ]);
 
@@ -85,39 +85,39 @@ let errorSchema = Sury.$unit;
 let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationRequested",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     roles: s.m(Sury.array(Sury.string)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationExpired",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationAttemptedOnTakenAddress",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     attemptedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeIssued",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
     issuedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     roles: s.m(Sury.array(Sury.string)),
     proofHash: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofRefused",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     reason: s.m(Sury.string)
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationCompleted",
-    email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
   }))
 ]);
 
@@ -142,7 +142,7 @@ let name = "Registrations";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/StateChange/Registrations.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateChange/Registrations.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
 

@@ -2,7 +2,7 @@
 //
 // Whether visitors may sign themselves up for a role right now, as domain state
 // an administrator changes with a command rather than a deploy. Kept per role:
-// only a role `Admission.res` declares self-service has a policy at all, and
+// only a role the app declares self-service has a policy at all, and
 // such a role is open until an administrator closes it — the declaration is the
 // deployer's opt-in, so needing a second command to make it do anything would be
 // a trap.
@@ -12,6 +12,13 @@
 
 @@reventless.spec
 @@reventless.authorize(AllowRoles([Admin]))
+
+// The one role this slice's rule names: the framework's administrator, whose
+// group the deployment provides. Declared here rather than in a `Roles.res`, so
+// the package has no `Roles` of its own beside the app's.
+module Roles = {
+  type t = Admin
+}
 
 // The role is this slice's partition, tagged by its type: a role is an identity
 // the framework declares, not an id the plugin names.

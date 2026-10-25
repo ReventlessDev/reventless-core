@@ -1,5 +1,8 @@
 @@reventless.gwt
 
+// The door as the shop composes it: over the shop's admission table.
+module SignUp_Translation = SignUp_Translation.Make(Admission)
+
 open Registration_Examples
 
 module Outcome = ReventlessGwt.Outcome

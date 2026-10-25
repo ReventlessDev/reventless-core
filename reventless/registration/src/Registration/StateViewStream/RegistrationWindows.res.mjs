@@ -56,7 +56,7 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/StateViewStream/RegistrationWindows.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateViewStream/RegistrationWindows.res.mjs";
 
 let authorization = "AllowAnonymous";
 

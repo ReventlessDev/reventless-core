@@ -1,5 +1,9 @@
 @@reventless.gwt
 
+// The slice as the shop composes it: over the shop's admission table.
+module Ledger = Registrations
+module ShopLedger = Registrations_Decision.Make(Admission)
+
 open Registration_Examples
 
 // The registration ledger. What it must never do is answer an anonymous caller

@@ -1,0 +1,41 @@
+{
+  "name": "@reventlessdev/reventless-registration",
+  "version": "1.0.0-alpha.0",
+  "description": "Self-registration as a library of slices: a person with no account proves control of an address and ends up with one, admitted per role as the app declares",
+  "license": "Apache-2.0",
+  "files": [
+    "src/**/*.res",
+    "src/**/*.resi",
+    "src/**/*.res.mjs",
+    "rescript.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "echo \"The scenarios run in the plugins that list these slices; see README.md.\""
+  },
+  "dependencies": {
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "11.0.0",
+    "sury-ppx": "11.0.0"
+  },
+  "devDependencies": {
+    "rescript": "12.3.1"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/registration"
+  }
+}

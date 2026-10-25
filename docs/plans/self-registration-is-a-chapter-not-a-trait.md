@@ -15,7 +15,7 @@ which must enforce the same limit before any public sign-up, and with it the adm
 shell's configuration on AWS. **Next:** the chapter becomes reusable by other apps
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
 [R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices);
-R1 built 2026-10-25), beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
+R1, R2 and R4 built 2026-10-25; R3 open), beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
 2026-09-11 when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
@@ -251,7 +251,9 @@ only while the policy is open — which is exactly when a deployer testing on a 
 ## As built 2026-10-24
 
 **Where it lives.** `examples/online-shop-hybrid/registration`, a plugin of its own, private, hosted by
-the local root only. Its doors admit anonymous callers, and the hybrid example deploys to AWS on every
+the local root only. *Since 2026-10-25 the slices live in the package
+`reventless/registration`, which that plugin lists — see
+[R4](#r4-the-chapter-is-published-as-a-library-of-slices).* Its doors admit anonymous callers, and the hybrid example deploys to AWS on every
 push, where such a field is refused; a plugin the AWS root does not host keeps that deploy green.
 
 **What it is.** One chapter, `Registration/`:
@@ -501,6 +503,17 @@ compiler, and the structure already carries the table for the platform's own rea
 **Exit:** the registration slices built with the chosen shape; the hybrid shop's plugin supplies its
 roles and table and nothing else of its own to them.
 
+**Built 2026-10-25, with [R4](#r4-the-chapter-is-published-as-a-library-of-slices), in one
+commit:** a functor body only compiles once something applies it, and only a packaged one is applied
+([R1](#r1-a-plugin-lists-slices-an-installed-package-provides)). The functor was taken. Three bodies
+read the table, and each is now `module Make = (App: Reventless.Admission.Declaration) => {…}`:
+`RegistrationPolicy_Decision`, `Registrations_Decision` and `SignUp_Translation`. The rest of each
+file stays outside the functor. `Declaration` is `{let table: Admission.t}`, which a plugin's
+`src/Admission.res` satisfies as written, so the shop's table is still checked against its
+`Roles.t` by the compiler. The policy's own rule, `AllowRoles([Admin])`, names the framework's
+administrator through a `Roles` module declared inside the spec, so the package has no top-level
+`Roles` beside the app's.
+
 #### R3: the ledger takes an invitation, a reissued code and a withdrawal
 
 `Registrations` gains three `@noApi` commands, reachable only through a door: `Invite({email, roles,
@@ -524,6 +537,51 @@ an app's registration plugin is a declaration plus a list.
 
 **Exit:** the hybrid shop builds and its walk passes from the package; a second plugin in the test
 suite lists the same slices with different roles.
+
+**Built 2026-10-25** as `@reventlessdev/reventless-registration` (`reventless/registration`,
+namespace `ReventlessRegistration`), with the files moved by `git mv` so their history follows them.
+Two corrections to the step as written:
+
+- **The copied challenge rules moved with the slices.** `ContactVerification` and its guards are
+  read by the ledger and the challenge sender, and a package cannot read an app's module, so they
+  live in the package until the trait's
+  [Phase C](trait-contact-verification.md#phase-c--extract-writing-the-procedure-down-as-you-go)
+  extracts them. The hybrid shop's plugin is `Roles.res`, `Admission.res`, `plugin.json`'s list,
+  and what the tools generate from them.
+- **The scenarios stay in the plugin**, as a trait's conformance suite stays in its hosts: they run
+  against the shop's table, the lifecycle harvest finds them where it finds every plugin's, and the
+  package ships no test code. The plugin compiles with `-open ReventlessRegistration`, so a scenario
+  names a packaged slice by its bare name. A test of a functor body applies it itself; for a
+  translation that needed a PPX change — the injected `FromSlice` now follows a module the test
+  declares under the body's own name (`module SignUp_Translation =
+  SignUp_Translation.Make(Admission)`) rather than naming the unapplied one.
+
+Every scenario passes from the package (55), the capability manifest re-emits unchanged, and the
+lifecycle model, the DCB scope golden and the GraphQL goldens do not move.
+
+**Walked live from the package**, on an in-memory local platform run from a scratch directory with
+its own accounts file and ports:
+
+- The SDL shows the slices as the Registration plugin's own (`Registration_SignUp`,
+  `Registration_CompleteRegistration`, `Registration_OpenRegistration`, …), and the shell's
+  `config.json` carries `selfRegistration: {start: "Registration_SignUp", complete:
+  "Registration_CompleteRegistration", roles: ["Shopper"]}`.
+- A sign-up naming no role took the one self-service role, `Shopper`, and the log transport printed
+  the code. A sign-up for `Merchandiser` answered `CommandAccepted` too, and recorded and sent
+  nothing.
+- A wrong proof was recorded as `ProofMismatch`; the right one settled, and the account appeared in
+  the scratch accounts file in `Shopper` with a minted `u_` id. Signing in answered 200 with the
+  chosen password and 401 with another; the password appears nowhere in the log.
+- A second sign-up for the same address answered `CommandAccepted`, and the address got "Someone
+  tried to register with your address".
+- An administrator closed `Shopper`; `Registration_RegistrationWindows` showed it closed, and a
+  sign-up then answered `CommandAccepted` and recorded nothing. Opening `Merchandiser` was refused
+  `NotSelfService`; opening anything without the `Admin` role was refused `Forbidden`.
+
+**The second plugin is not built:** no second app here needs registration, and a plugin made
+only to list the slices would be an example nobody reads. What it would prove — that nothing in the
+slices is the shop's — is carried instead by the package compiling with no app module in reach and by
+`PackagedSlicesTest`, which composes a fixture package under a plugin of its own.
 
 ### Decisions
 

@@ -9,7 +9,8 @@
 //
 // Anonymous because the caller is trying to become someone. The local platform
 // honors that; a deployed one refuses the rule until it has a door of its own,
-// which is why this plugin is hosted by the local platform only.
+// which is why a plugin listing these slices is hosted by the local platform
+// only.
 
 @@reventless.spec
 @@reventless.authorize(AllowAnonymous)

@@ -2,7 +2,7 @@
 
 import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as Stash$Reventless from "@reventlessdev/reventless-spec/src/semantic/Stash.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 async function translate(input, capabilities) {
   let email = Email$Reventless.fromString(input.email.trim());
@@ -35,7 +35,7 @@ async function translate(input, capabilities) {
           email$1,
           {
             TAG: "SubmitRegistrationProof",
-            email: ContactAddressId$RegistrationPlugin.makeFromString(email$1),
+            email: ContactAddressId$ReventlessRegistration.makeFromString(email$1),
             proofHash: proofHash$1,
             presentedAt: new Date().toISOString()
           }
@@ -55,7 +55,7 @@ let passwordTtl = 600;
 
 let minimumPasswordLength = 12;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/InboundTranslation/CompleteRegistration_Translation.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/CompleteRegistration_Translation.res.mjs";
 
 export {
   Spec,

@@ -2,8 +2,8 @@
 
 import * as Duration$Reventless from "@reventlessdev/reventless-spec/src/semantic/Duration.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
-import * as ContactVerification$RegistrationPlugin from "../../ContactVerification.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
+import * as ContactVerification$ReventlessRegistration from "../../ContactVerification.res.mjs";
 
 function collect(event, param) {
   if (event.TAG === "RegistrationRequested") {
@@ -27,7 +27,7 @@ function collect(event, param) {
 }
 
 function challengeBody(token) {
-  return `Your registration code is ` + token + `. Enter it with a password of your choice to finish. It expires in ` + Duration$Reventless.format(ContactVerification$RegistrationPlugin.emailPolicy.tokenTtl) + `.`;
+  return `Your registration code is ` + token + `. Enter it with a password of your choice to finish. It expires in ` + Duration$Reventless.format(ContactVerification$ReventlessRegistration.emailPolicy.tokenTtl) + `.`;
 }
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.";
@@ -57,7 +57,7 @@ async function translate(_id, item, capabilities) {
       };
     }
   }
-  let token = capabilities.secrets.randomToken(ContactVerification$RegistrationPlugin.emailPolicy.proofLength, ContactVerification$RegistrationPlugin.emailPolicy.proofAlphabet);
+  let token = capabilities.secrets.randomToken(ContactVerification$ReventlessRegistration.emailPolicy.proofLength, ContactVerification$ReventlessRegistration.emailPolicy.proofAlphabet);
   if (token.TAG !== "Ok") {
     return {
       TAG: "Error",
@@ -80,7 +80,7 @@ async function translate(_id, item, capabilities) {
         item.email,
         {
           TAG: "IssueRegistrationChallenge",
-          email: ContactAddressId$RegistrationPlugin.makeFromString(item.email),
+          email: ContactAddressId$ReventlessRegistration.makeFromString(item.email),
           proofHash: proofHash._0,
           issuedAt: new Date().toISOString()
         }
@@ -102,9 +102,9 @@ let Spec;
 
 let V;
 
-let policy = ContactVerification$RegistrationPlugin.emailPolicy;
+let policy = ContactVerification$ReventlessRegistration.emailPolicy;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge_Translation.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge_Translation.res.mjs";
 
 export {
   Spec,

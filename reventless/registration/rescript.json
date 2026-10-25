@@ -1,0 +1,28 @@
+{
+  "name": "@reventlessdev/reventless-registration",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": "ReventlessRegistration",
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

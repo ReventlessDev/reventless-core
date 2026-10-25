@@ -28,7 +28,7 @@ function project(param) {
 
 let Spec;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/StateViewStream/RegistrationWindows_Projection.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateViewStream/RegistrationWindows_Projection.res.mjs";
 
 export {
   Spec,

@@ -3,7 +3,7 @@
 import * as Sury from "sury";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let consumedEventSchema = Sury.$schema(s => ({
   TAG: "RegistrationProofAccepted",
@@ -20,7 +20,7 @@ let outboundItemSchema = Sury.$schema(s => ({
 
 let inboundCommandSchema = Sury.$schema(s => ({
   TAG: "RecordRegistrationCompleted",
-  email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema))
+  email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
 }));
 
 let sourceNames = [];
@@ -40,7 +40,7 @@ let maxRetries = 3;
 
 let targetName = "Registrations";
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal.res.mjs";
 
 let externalSystem;
 

@@ -162,7 +162,7 @@ do it when the file is next edited rather than as a sweep.
 |---|---|---|---|
 | [NotificationDeliveries.res](../../../examples/online-shop-hybrid/ordering/src/Notification/StateViewStream/NotificationDeliveries.res) | `state` | 1 | `settledAt` |
 | [Orders.res](../../../examples/online-shop-hybrid/ordering/src/Order/StateViewStream/Orders.res) | `state` | 2 | `deliveryWindow`, `firstProductName` |
-| [RegistrationWindows.res](../../../examples/online-shop-hybrid/registration/src/Registration/StateViewStream/RegistrationWindows.res) | `state` | 1 | `until` |
+| [RegistrationWindows.res](../../../reventless/registration/src/Registration/StateViewStream/RegistrationWindows.res) | `state` | 1 | `until` |
 | [Auth_ActiveRole.res](../../../reventless/core/src/adapter/Auth/Auth_ActiveRole.res) | `conformanceCase` | 2 | `requested`, `expected` |
 | [Platform_Admin.res](../../../reventless/core/src/admin/Platform_Admin.res) | `outputs` | 1 | `dcbEventLogOutputs` |
 | [Platform_BakedManifest.res](../../../reventless/core/src/admin/Platform_BakedManifest.res) | `selection` | 3 | `views`, `commands`, `derived` |
@@ -214,9 +214,9 @@ fine either way. A few have a `None` the code acts on, such as `partitionHint`, 
 | [SyncCatalogProduct_Decision.res](../../../examples/online-shop-hybrid/ordering/src/CatalogProduct/StateChange/SyncCatalogProduct_Decision.res) | `state` | 2 | `price`, `productImage` |
 | [ContactVerification_Guards.res](../../../examples/online-shop-hybrid/ordering/src/ContactVerification_Guards.res) | `verification` | 1 | `verifiedAddress` |
 | [EmailVerificationChallenges_Decision.res](../../../examples/online-shop-hybrid/ordering/src/Customer/StateChange/EmailVerificationChallenges_Decision.res) | `state` | 1 | `current` |
-| [ContactVerification_Guards.res](../../../examples/online-shop-hybrid/registration/src/ContactVerification_Guards.res) | `verification` | 1 | `verifiedAddress` |
-| [Registrations_Decision.res](../../../examples/online-shop-hybrid/registration/src/Registration/StateChange/Registrations_Decision.res) | `pending` | 2 | `challenge`, `proofHash` |
-| [Registrations_Decision.res](../../../examples/online-shop-hybrid/registration/src/Registration/StateChange/Registrations_Decision.res) | `state` | 1 | `lastNoticeAt` |
+| [ContactVerification_Guards.res](../../../reventless/registration/src/ContactVerification_Guards.res) | `verification` | 1 | `verifiedAddress` |
+| [Registrations_Decision.res](../../../reventless/registration/src/Registration/StateChange/Registrations_Decision.res) | `pending` | 2 | `challenge`, `proofHash` |
+| [Registrations_Decision.res](../../../reventless/registration/src/Registration/StateChange/Registrations_Decision.res) | `state` | 1 | `lastNoticeAt` |
 | [DemoData.res](../../../examples/online-shop-hybrid/seed-data/src/DemoData.res) | `category` | 1 | `categoryImage` |
 | [DemoData.res](../../../examples/online-shop-hybrid/seed-data/src/DemoData.res) | `product` | 1 | `productImage` |
 | [DemoData.res](../../../examples/online-shop-hybrid/seed-data/src/DemoData.res) | `order` | 1 | `deliveryWindow` |

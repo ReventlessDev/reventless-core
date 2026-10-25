@@ -475,10 +475,21 @@ let transform (str : structure) : structure =
         | Some name when not (Util.has_open name body) -> [gen_open ~loc name]
         | _ -> []
       in
-      opens @ fixtures_open
-      @ [ gen_include_two ~loc ~kind ~functor_name:"FromSlice" ~spec_module:spec_name
-            ~impl_module:body_name ]
-      @ body
+      let injected =
+        opens @ fixtures_open
+        @ [ gen_include_two ~loc ~kind ~functor_name:"FromSlice" ~spec_module:spec_name
+              ~impl_module:body_name ]
+      in
+      (* A body the test builds itself — [module SignUp_Translation =
+         SignUp_Translation.Make(Admission)], for a body written as a functor
+         over the app's declaration — is the one under test, so the injection
+         follows it rather than naming the unapplied module above it. *)
+      (match find_module_index body_name body with
+       | Some i ->
+         List.filteri (fun j _ -> j <= i) body
+         @ injected
+         @ List.filteri (fun j _ -> j > i) body
+       | None -> injected @ body)
     | None ->
     let functor_name = functor_name_for ~kind ~fname in
     (* Resolution order:

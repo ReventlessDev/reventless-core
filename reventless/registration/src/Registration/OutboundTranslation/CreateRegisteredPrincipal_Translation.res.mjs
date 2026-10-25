@@ -2,7 +2,7 @@
 
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Stash$Reventless from "@reventlessdev/reventless-spec/src/semantic/Stash.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 function groupsOf(roles) {
   return roles.map(Role$Reventless.groupOf);
@@ -28,7 +28,7 @@ function completed(email) {
       email,
       {
         TAG: "RecordRegistrationCompleted",
-        email: ContactAddressId$RegistrationPlugin.makeFromString(email)
+        email: ContactAddressId$ReventlessRegistration.makeFromString(email)
       }
     ]
   };
@@ -84,7 +84,7 @@ let Spec;
 
 let retryTtl = 600;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal_Translation.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal_Translation.res.mjs";
 
 export {
   Spec,

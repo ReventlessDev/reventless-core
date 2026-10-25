@@ -27,9 +27,10 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-local",
+    "@reventlessdev/reventless-registration",
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/rescript-pulumi-pulumi"
   ],
-  "compiler-flags": [],
+  "compiler-flags": ["-open ReventlessRegistration"],
   "suffix": ".res.mjs"
 }

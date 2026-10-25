@@ -26,6 +26,13 @@ type entry = {role: Role.name, strategy: strategy<Role.name>}
 
 type t = array<entry>
 
+/** What a slice from a package is applied to, so it reads the app's table
+    without importing the app's module: a plugin's `src/Admission.res`, which
+    satisfies it as written. */
+module type Declaration = {
+  let table: t
+}
+
 /**
 The part an inbound door plays in admission, declared on the door's spec as
 `let admissionDoor = Reventless.Admission.Start`. The platform collects the marked

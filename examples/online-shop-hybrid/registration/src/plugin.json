@@ -1,3 +1,9 @@
 {
-  "name": "Registration"
+  "name": "Registration",
+  "slicesFrom": [
+    {
+      "package": "@reventlessdev/reventless-registration",
+      "with": "Admission"
+    }
+  ]
 }

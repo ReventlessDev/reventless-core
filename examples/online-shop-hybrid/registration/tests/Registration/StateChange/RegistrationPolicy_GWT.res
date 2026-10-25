@@ -1,5 +1,9 @@
 @@reventless.gwt
 
+// The slice as the shop composes it: over the shop's admission table.
+module Policy = RegistrationPolicy
+module ShopPolicy = RegistrationPolicy_Decision.Make(Admission)
+
 open Registration_Examples
 
 // Whether visitors may sign up for a role right now. A role declared

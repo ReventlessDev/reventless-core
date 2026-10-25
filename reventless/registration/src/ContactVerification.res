@@ -1,5 +1,5 @@
-// A copy of the ordering plugin's `ContactVerification`, held here because a
-// plugin may not import another's source. Registration is this competency's
+// A copy of the `ContactVerification` the hybrid example's ordering plugin
+// holds, since neither may import the other. Registration is this competency's
 // second consumer, and the two copies are the input its extraction into a trait
 // package works from; until then, a change to one is a change to both.
 

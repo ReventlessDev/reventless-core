@@ -2,80 +2,86 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as SignUp$RegistrationPlugin from "./Registration/InboundTranslation/SignUp.res.mjs";
 import * as Admission$RegistrationPlugin from "./Admission.res.mjs";
-import * as Registrations$RegistrationPlugin from "./Registration/StateChange/Registrations.res.mjs";
+import * as SignUp$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/SignUp.res.mjs";
 import * as LifecycleModel$RegistrationPlugin from "./LifecycleModel.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "./Registration/ContactAddressId.res.mjs";
-import * as RegistrationPolicy$RegistrationPlugin from "./Registration/StateChange/RegistrationPolicy.res.mjs";
-import * as SignUp_Translation$RegistrationPlugin from "./Registration/InboundTranslation/SignUp_Translation.res.mjs";
-import * as RegistrationWindows$RegistrationPlugin from "./Registration/StateViewStream/RegistrationWindows.res.mjs";
-import * as CompleteRegistration$RegistrationPlugin from "./Registration/InboundTranslation/CompleteRegistration.res.mjs";
-import * as Registrations_Decision$RegistrationPlugin from "./Registration/StateChange/Registrations_Decision.res.mjs";
-import * as CreateRegisteredPrincipal$RegistrationPlugin from "./Registration/OutboundTranslation/CreateRegisteredPrincipal.res.mjs";
-import * as SendRegistrationChallenge$RegistrationPlugin from "./Registration/OutboundTranslation/SendRegistrationChallenge.res.mjs";
-import * as RegistrationPolicy_Decision$RegistrationPlugin from "./Registration/StateChange/RegistrationPolicy_Decision.res.mjs";
-import * as RegistrationWindows_Projection$RegistrationPlugin from "./Registration/StateViewStream/RegistrationWindows_Projection.res.mjs";
-import * as CompleteRegistration_Translation$RegistrationPlugin from "./Registration/InboundTranslation/CompleteRegistration_Translation.res.mjs";
-import * as CreateRegisteredPrincipal_Translation$RegistrationPlugin from "./Registration/OutboundTranslation/CreateRegisteredPrincipal_Translation.res.mjs";
-import * as SendRegistrationChallenge_Translation$RegistrationPlugin from "./Registration/OutboundTranslation/SendRegistrationChallenge_Translation.res.mjs";
+import * as Registrations$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateChange/Registrations.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/ContactAddressId.res.mjs";
+import * as RegistrationPolicy$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateChange/RegistrationPolicy.res.mjs";
+import * as SignUp_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/SignUp_Translation.res.mjs";
+import * as RegistrationWindows$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateViewStream/RegistrationWindows.res.mjs";
+import * as CompleteRegistration$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/CompleteRegistration.res.mjs";
+import * as Registrations_Decision$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateChange/Registrations_Decision.res.mjs";
+import * as CreateRegisteredPrincipal$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal.res.mjs";
+import * as SendRegistrationChallenge$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge.res.mjs";
+import * as RegistrationPolicy_Decision$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateChange/RegistrationPolicy_Decision.res.mjs";
+import * as RegistrationWindows_Projection$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/StateViewStream/RegistrationWindows_Projection.res.mjs";
+import * as CompleteRegistration_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/CompleteRegistration_Translation.res.mjs";
+import * as CreateRegisteredPrincipal_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal_Translation.res.mjs";
+import * as SendRegistrationChallenge_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge_Translation.res.mjs";
+
+let RegistrationPolicy_Decision = RegistrationPolicy_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+
+let Registrations_Decision = Registrations_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+
+let SignUp_Translation = SignUp_Translation$ReventlessRegistration.Make(Admission$RegistrationPlugin);
 
 let dcbSliceSchemas = [
   {
-    name: RegistrationPolicy$RegistrationPlugin.name,
-    commandSchema: RegistrationPolicy$RegistrationPlugin.commandSchema,
-    consumedEventSchema: RegistrationPolicy$RegistrationPlugin.consumedEventSchema,
-    eventSchema: RegistrationPolicy$RegistrationPlugin.eventSchema,
-    moduleUrl: RegistrationPolicy$RegistrationPlugin.moduleUrl
+    name: RegistrationPolicy$ReventlessRegistration.name,
+    commandSchema: RegistrationPolicy$ReventlessRegistration.commandSchema,
+    consumedEventSchema: RegistrationPolicy$ReventlessRegistration.consumedEventSchema,
+    eventSchema: RegistrationPolicy$ReventlessRegistration.eventSchema,
+    moduleUrl: RegistrationPolicy$ReventlessRegistration.moduleUrl
   },
   {
-    name: Registrations$RegistrationPlugin.name,
-    commandSchema: Registrations$RegistrationPlugin.commandSchema,
-    consumedEventSchema: Registrations$RegistrationPlugin.consumedEventSchema,
-    eventSchema: Registrations$RegistrationPlugin.eventSchema,
-    moduleUrl: Registrations$RegistrationPlugin.moduleUrl
+    name: Registrations$ReventlessRegistration.name,
+    commandSchema: Registrations$ReventlessRegistration.commandSchema,
+    consumedEventSchema: Registrations$ReventlessRegistration.consumedEventSchema,
+    eventSchema: Registrations$ReventlessRegistration.eventSchema,
+    moduleUrl: Registrations$ReventlessRegistration.moduleUrl
   }
 ];
 
 function Make(Platform) {
   let RegistrationPolicySlice = Platform.StateChangeSlice.Make({
-    name: RegistrationPolicy$RegistrationPlugin.name,
-    moduleUrl: RegistrationPolicy$RegistrationPlugin.moduleUrl,
-    consumedEventSchema: RegistrationPolicy$RegistrationPlugin.consumedEventSchema,
-    errorSchema: RegistrationPolicy$RegistrationPlugin.errorSchema,
-    eventSchema: RegistrationPolicy$RegistrationPlugin.eventSchema,
-    commandSchema: RegistrationPolicy$RegistrationPlugin.commandSchema,
-    authorizationOf: RegistrationPolicy$RegistrationPlugin.authorizationOf,
-    commandTransition: RegistrationPolicy$RegistrationPlugin.commandTransition,
-    traits: RegistrationPolicy$RegistrationPlugin.traits,
-    readConsistency: RegistrationPolicy$RegistrationPlugin.readConsistency
+    name: RegistrationPolicy$ReventlessRegistration.name,
+    moduleUrl: RegistrationPolicy$ReventlessRegistration.moduleUrl,
+    consumedEventSchema: RegistrationPolicy$ReventlessRegistration.consumedEventSchema,
+    errorSchema: RegistrationPolicy$ReventlessRegistration.errorSchema,
+    eventSchema: RegistrationPolicy$ReventlessRegistration.eventSchema,
+    commandSchema: RegistrationPolicy$ReventlessRegistration.commandSchema,
+    authorizationOf: RegistrationPolicy$ReventlessRegistration.authorizationOf,
+    commandTransition: RegistrationPolicy$ReventlessRegistration.commandTransition,
+    traits: RegistrationPolicy$ReventlessRegistration.traits,
+    readConsistency: RegistrationPolicy$ReventlessRegistration.readConsistency
   })({
-    initialState: RegistrationPolicy_Decision$RegistrationPlugin.initialState,
-    evolve: RegistrationPolicy_Decision$RegistrationPlugin.evolve,
-    decide: RegistrationPolicy_Decision$RegistrationPlugin.decide,
-    moduleUrl: RegistrationPolicy_Decision$RegistrationPlugin.moduleUrl
+    initialState: RegistrationPolicy_Decision.initialState,
+    evolve: RegistrationPolicy_Decision.evolve,
+    decide: RegistrationPolicy_Decision.decide,
+    moduleUrl: RegistrationPolicy_Decision.moduleUrl
   });
   let RegistrationsSlice = Platform.StateChangeSlice.Make({
-    name: Registrations$RegistrationPlugin.name,
-    moduleUrl: Registrations$RegistrationPlugin.moduleUrl,
-    consumedEventSchema: Registrations$RegistrationPlugin.consumedEventSchema,
-    errorSchema: Registrations$RegistrationPlugin.errorSchema,
-    eventSchema: Registrations$RegistrationPlugin.eventSchema,
-    commandSchema: Registrations$RegistrationPlugin.commandSchema,
-    authorizationOf: Registrations$RegistrationPlugin.authorizationOf,
-    commandTransition: Registrations$RegistrationPlugin.commandTransition,
-    traits: Registrations$RegistrationPlugin.traits,
-    readConsistency: Registrations$RegistrationPlugin.readConsistency
+    name: Registrations$ReventlessRegistration.name,
+    moduleUrl: Registrations$ReventlessRegistration.moduleUrl,
+    consumedEventSchema: Registrations$ReventlessRegistration.consumedEventSchema,
+    errorSchema: Registrations$ReventlessRegistration.errorSchema,
+    eventSchema: Registrations$ReventlessRegistration.eventSchema,
+    commandSchema: Registrations$ReventlessRegistration.commandSchema,
+    authorizationOf: Registrations$ReventlessRegistration.authorizationOf,
+    commandTransition: Registrations$ReventlessRegistration.commandTransition,
+    traits: Registrations$ReventlessRegistration.traits,
+    readConsistency: Registrations$ReventlessRegistration.readConsistency
   })({
-    initialState: Registrations_Decision$RegistrationPlugin.initialState,
-    evolve: Registrations_Decision$RegistrationPlugin.evolve,
-    decide: Registrations_Decision$RegistrationPlugin.decide,
-    moduleUrl: Registrations_Decision$RegistrationPlugin.moduleUrl
+    initialState: Registrations_Decision.initialState,
+    evolve: Registrations_Decision.evolve,
+    decide: Registrations_Decision.decide,
+    moduleUrl: Registrations_Decision.moduleUrl
   });
   let RegistrationWindowsStreamSlice = Platform.StateViewSliceStream.Make({
-    name: RegistrationWindows$RegistrationPlugin.name,
-    moduleUrl: RegistrationWindows$RegistrationPlugin.moduleUrl,
-    stateSchema: RegistrationWindows$RegistrationPlugin.stateSchema,
+    name: RegistrationWindows$ReventlessRegistration.name,
+    moduleUrl: RegistrationWindows$ReventlessRegistration.moduleUrl,
+    stateSchema: RegistrationWindows$ReventlessRegistration.stateSchema,
     Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
@@ -83,78 +89,78 @@ function Make(Platform) {
       toString: prim => prim,
       cmp: Id$Reventless.StringPure.cmp
     },
-    consumedEventSchema: RegistrationWindows$RegistrationPlugin.consumedEventSchema,
-    config: RegistrationWindows$RegistrationPlugin.config,
+    consumedEventSchema: RegistrationWindows$ReventlessRegistration.consumedEventSchema,
+    config: RegistrationWindows$ReventlessRegistration.config,
     subIdConfig: undefined,
-    authorization: RegistrationWindows$RegistrationPlugin.authorization,
-    visibility: RegistrationWindows$RegistrationPlugin.visibility
+    authorization: RegistrationWindows$ReventlessRegistration.authorization,
+    visibility: RegistrationWindows$ReventlessRegistration.visibility
   })({
-    project: RegistrationWindows_Projection$RegistrationPlugin.project,
-    moduleUrl: RegistrationWindows_Projection$RegistrationPlugin.moduleUrl
+    project: RegistrationWindows_Projection$ReventlessRegistration.project,
+    moduleUrl: RegistrationWindows_Projection$ReventlessRegistration.moduleUrl
   });
   let CreateRegisteredPrincipalSlice = Platform.OutboundTranslationSlice.Make({
-    name: CreateRegisteredPrincipal$RegistrationPlugin.name,
-    moduleUrl: CreateRegisteredPrincipal$RegistrationPlugin.moduleUrl,
-    consumedEventSchema: CreateRegisteredPrincipal$RegistrationPlugin.consumedEventSchema,
-    outboundItemSchema: CreateRegisteredPrincipal$RegistrationPlugin.outboundItemSchema,
-    inboundCommandSchema: CreateRegisteredPrincipal$RegistrationPlugin.inboundCommandSchema,
-    maxRetries: CreateRegisteredPrincipal$RegistrationPlugin.maxRetries,
-    targetName: CreateRegisteredPrincipal$RegistrationPlugin.targetName,
-    sourceNames: CreateRegisteredPrincipal$RegistrationPlugin.sourceNames,
+    name: CreateRegisteredPrincipal$ReventlessRegistration.name,
+    moduleUrl: CreateRegisteredPrincipal$ReventlessRegistration.moduleUrl,
+    consumedEventSchema: CreateRegisteredPrincipal$ReventlessRegistration.consumedEventSchema,
+    outboundItemSchema: CreateRegisteredPrincipal$ReventlessRegistration.outboundItemSchema,
+    inboundCommandSchema: CreateRegisteredPrincipal$ReventlessRegistration.inboundCommandSchema,
+    maxRetries: CreateRegisteredPrincipal$ReventlessRegistration.maxRetries,
+    targetName: CreateRegisteredPrincipal$ReventlessRegistration.targetName,
+    sourceNames: CreateRegisteredPrincipal$ReventlessRegistration.sourceNames,
     externalSystem: undefined,
-    capabilityNeeds: CreateRegisteredPrincipal$RegistrationPlugin.capabilityNeeds,
-    traits: CreateRegisteredPrincipal$RegistrationPlugin.traits
+    capabilityNeeds: CreateRegisteredPrincipal$ReventlessRegistration.capabilityNeeds,
+    traits: CreateRegisteredPrincipal$ReventlessRegistration.traits
   })({
-    collect: CreateRegisteredPrincipal_Translation$RegistrationPlugin.collect,
-    translate: CreateRegisteredPrincipal_Translation$RegistrationPlugin.translate,
-    onExhausted: CreateRegisteredPrincipal_Translation$RegistrationPlugin.onExhausted,
-    moduleUrl: CreateRegisteredPrincipal_Translation$RegistrationPlugin.moduleUrl
+    collect: CreateRegisteredPrincipal_Translation$ReventlessRegistration.collect,
+    translate: CreateRegisteredPrincipal_Translation$ReventlessRegistration.translate,
+    onExhausted: CreateRegisteredPrincipal_Translation$ReventlessRegistration.onExhausted,
+    moduleUrl: CreateRegisteredPrincipal_Translation$ReventlessRegistration.moduleUrl
   });
   let SendRegistrationChallengeSlice = Platform.OutboundTranslationSlice.Make({
-    name: SendRegistrationChallenge$RegistrationPlugin.name,
-    moduleUrl: SendRegistrationChallenge$RegistrationPlugin.moduleUrl,
-    consumedEventSchema: SendRegistrationChallenge$RegistrationPlugin.consumedEventSchema,
-    outboundItemSchema: SendRegistrationChallenge$RegistrationPlugin.outboundItemSchema,
-    inboundCommandSchema: SendRegistrationChallenge$RegistrationPlugin.inboundCommandSchema,
-    maxRetries: SendRegistrationChallenge$RegistrationPlugin.maxRetries,
-    targetName: SendRegistrationChallenge$RegistrationPlugin.targetName,
-    sourceNames: SendRegistrationChallenge$RegistrationPlugin.sourceNames,
+    name: SendRegistrationChallenge$ReventlessRegistration.name,
+    moduleUrl: SendRegistrationChallenge$ReventlessRegistration.moduleUrl,
+    consumedEventSchema: SendRegistrationChallenge$ReventlessRegistration.consumedEventSchema,
+    outboundItemSchema: SendRegistrationChallenge$ReventlessRegistration.outboundItemSchema,
+    inboundCommandSchema: SendRegistrationChallenge$ReventlessRegistration.inboundCommandSchema,
+    maxRetries: SendRegistrationChallenge$ReventlessRegistration.maxRetries,
+    targetName: SendRegistrationChallenge$ReventlessRegistration.targetName,
+    sourceNames: SendRegistrationChallenge$ReventlessRegistration.sourceNames,
     externalSystem: undefined,
-    capabilityNeeds: SendRegistrationChallenge$RegistrationPlugin.capabilityNeeds,
-    traits: SendRegistrationChallenge$RegistrationPlugin.traits
+    capabilityNeeds: SendRegistrationChallenge$ReventlessRegistration.capabilityNeeds,
+    traits: SendRegistrationChallenge$ReventlessRegistration.traits
   })({
-    collect: SendRegistrationChallenge_Translation$RegistrationPlugin.collect,
-    translate: SendRegistrationChallenge_Translation$RegistrationPlugin.translate,
-    onExhausted: SendRegistrationChallenge_Translation$RegistrationPlugin.onExhausted,
-    moduleUrl: SendRegistrationChallenge_Translation$RegistrationPlugin.moduleUrl
+    collect: SendRegistrationChallenge_Translation$ReventlessRegistration.collect,
+    translate: SendRegistrationChallenge_Translation$ReventlessRegistration.translate,
+    onExhausted: SendRegistrationChallenge_Translation$ReventlessRegistration.onExhausted,
+    moduleUrl: SendRegistrationChallenge_Translation$ReventlessRegistration.moduleUrl
   });
   let CompleteRegistrationSlice = Platform.InboundTranslationSlice.Make({
-    name: CompleteRegistration$RegistrationPlugin.name,
-    moduleUrl: CompleteRegistration$RegistrationPlugin.moduleUrl,
-    externalInputSchema: CompleteRegistration$RegistrationPlugin.externalInputSchema,
-    commandSchema: CompleteRegistration$RegistrationPlugin.commandSchema,
-    targetName: CompleteRegistration$RegistrationPlugin.targetName,
+    name: CompleteRegistration$ReventlessRegistration.name,
+    moduleUrl: CompleteRegistration$ReventlessRegistration.moduleUrl,
+    externalInputSchema: CompleteRegistration$ReventlessRegistration.externalInputSchema,
+    commandSchema: CompleteRegistration$ReventlessRegistration.commandSchema,
+    targetName: CompleteRegistration$ReventlessRegistration.targetName,
     externalSystem: undefined,
-    authorizationOf: CompleteRegistration$RegistrationPlugin.authorizationOf,
+    authorizationOf: CompleteRegistration$ReventlessRegistration.authorizationOf,
     endpoint: undefined,
-    capabilityNeeds: CompleteRegistration$RegistrationPlugin.capabilityNeeds
+    capabilityNeeds: CompleteRegistration$ReventlessRegistration.capabilityNeeds
   })({
-    translate: CompleteRegistration_Translation$RegistrationPlugin.translate,
-    moduleUrl: CompleteRegistration_Translation$RegistrationPlugin.moduleUrl
+    translate: CompleteRegistration_Translation$ReventlessRegistration.translate,
+    moduleUrl: CompleteRegistration_Translation$ReventlessRegistration.moduleUrl
   });
   let SignUpSlice = Platform.InboundTranslationSlice.Make({
-    name: SignUp$RegistrationPlugin.name,
-    moduleUrl: SignUp$RegistrationPlugin.moduleUrl,
-    externalInputSchema: SignUp$RegistrationPlugin.externalInputSchema,
-    commandSchema: SignUp$RegistrationPlugin.commandSchema,
-    targetName: SignUp$RegistrationPlugin.targetName,
+    name: SignUp$ReventlessRegistration.name,
+    moduleUrl: SignUp$ReventlessRegistration.moduleUrl,
+    externalInputSchema: SignUp$ReventlessRegistration.externalInputSchema,
+    commandSchema: SignUp$ReventlessRegistration.commandSchema,
+    targetName: SignUp$ReventlessRegistration.targetName,
     externalSystem: undefined,
-    authorizationOf: SignUp$RegistrationPlugin.authorizationOf,
+    authorizationOf: SignUp$ReventlessRegistration.authorizationOf,
     endpoint: undefined,
-    capabilityNeeds: SignUp$RegistrationPlugin.capabilityNeeds
+    capabilityNeeds: SignUp$ReventlessRegistration.capabilityNeeds
   })({
-    translate: SignUp_Translation$RegistrationPlugin.translate,
-    moduleUrl: SignUp_Translation$RegistrationPlugin.moduleUrl
+    translate: SignUp_Translation.translate,
+    moduleUrl: SignUp_Translation.moduleUrl
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Registration", undefined, undefined, [RegistrationWindowsStreamSlice], [
     RegistrationPolicySlice,
@@ -194,14 +200,14 @@ function Make(Platform) {
       "SignUp",
       "Registration"
     ]
-  ]), LifecycleModel$RegistrationPlugin.model, [ContactAddressId$RegistrationPlugin.key], Admission$RegistrationPlugin.table, [
+  ]), LifecycleModel$RegistrationPlugin.model, [ContactAddressId$ReventlessRegistration.key], Admission$RegistrationPlugin.table, [
     [
-      CompleteRegistration$RegistrationPlugin.name,
-      CompleteRegistration$RegistrationPlugin.admissionDoor
+      CompleteRegistration$ReventlessRegistration.name,
+      CompleteRegistration$ReventlessRegistration.admissionDoor
     ],
     [
-      SignUp$RegistrationPlugin.name,
-      SignUp$RegistrationPlugin.admissionDoor
+      SignUp$ReventlessRegistration.name,
+      SignUp$ReventlessRegistration.admissionDoor
     ]
   ]);
   let make = () => Platform.Plugin.make("Registration", 5, undefined, undefined, undefined, undefined, undefined, [
@@ -227,8 +233,47 @@ function Make(Platform) {
   };
 }
 
+let CompleteRegistration;
+
+let CompleteRegistration_Translation;
+
+let ContactAddressId;
+
+let CreateRegisteredPrincipal;
+
+let CreateRegisteredPrincipal_Translation;
+
+let RegistrationPolicy;
+
+let RegistrationWindows;
+
+let RegistrationWindows_Projection;
+
+let Registrations;
+
+let SendRegistrationChallenge;
+
+let SendRegistrationChallenge_Translation;
+
+let SignUp;
+
 export {
+  CompleteRegistration,
+  CompleteRegistration_Translation,
+  ContactAddressId,
+  CreateRegisteredPrincipal,
+  CreateRegisteredPrincipal_Translation,
+  RegistrationPolicy,
+  RegistrationPolicy_Decision,
+  RegistrationWindows,
+  RegistrationWindows_Projection,
+  Registrations,
+  Registrations_Decision,
+  SendRegistrationChallenge,
+  SendRegistrationChallenge_Translation,
+  SignUp,
+  SignUp_Translation,
   dcbSliceSchemas,
   Make,
 }
-/* Id-Reventless Not a pure module */
+/* RegistrationPolicy_Decision Not a pure module */

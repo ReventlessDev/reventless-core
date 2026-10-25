@@ -3,7 +3,7 @@
 import * as Sury from "sury";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
-import * as ContactAddressId$RegistrationPlugin from "../ContactAddressId.res.mjs";
+import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
@@ -25,7 +25,7 @@ let outboundItemSchema = Sury.$schema(s => ({
 
 let inboundCommandSchema = Sury.$schema(s => ({
   TAG: "IssueRegistrationChallenge",
-  email: s.m(DcbTag$Reventless.mark(ContactAddressId$RegistrationPlugin.schema)),
+  email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
   proofHash: s.m(Sury.string),
   issuedAt: s.m(DateTime$Reventless.schema)
 }));
@@ -44,7 +44,7 @@ let maxRetries = 3;
 
 let targetName = "Registrations";
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge.res.mjs";
 
 let externalSystem;
 

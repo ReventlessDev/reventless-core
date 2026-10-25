@@ -5,6 +5,8 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 
+let Roles = {};
+
 let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationOpened",
@@ -63,13 +65,14 @@ let name = "RegistrationPolicy";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/StateChange/RegistrationPolicy.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateChange/RegistrationPolicy.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
 
 export {
   name,
   Id,
+  Roles,
   consumedEventSchema,
   commandSchema,
   errorSchema,

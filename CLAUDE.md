@@ -238,6 +238,7 @@ From the codebase documentation:
 - `reventless-local` — local platform for dev and testing (in-memory or SQLite backend, selected via `Backend.Memory`/`Backend.Sqlite` or `REVENTLESS_LOCAL_BACKEND`)
 - `reventless-interop` — JS interop helpers
 - `reventless-seed` — reusable harness for seeding a platform through its public GraphQL command API (transport, deterministic randomness, view verification); domain adapters live in the consuming app
+- `reventless-registration` — self-registration as a library of slices (verify-then-create, admission per role); an app's plugin lists it in `slicesFrom` with `"with": "Admission"`, and its scenarios run in that plugin (`examples/online-shop-hybrid/registration`, which `-open`s the package so they read its slices by bare name). Local platform only until the AWS anonymous door exists
 - `reventless-layer-builder` — Lambda layer builder (private)
 
 **`rescript/` — ReScript bindings:**

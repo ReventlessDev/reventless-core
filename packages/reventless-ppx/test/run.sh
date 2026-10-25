@@ -4780,6 +4780,29 @@ describe("Import", () => {
   test("no command", () => whenInput({sku: "x", unitPrice: 1})->thenNoCommand)
 })
 EOF
+# A body written as a functor over something the app declares: the test applies
+# it under the body's own name, and the injection must follow that module. Only
+# the applied module has a `name`, so the package compiles only if it does.
+cat > "$SLICE_GWT/src/InboundTranslation/Door.res" <<'EOF'
+let name = "Door"
+type externalInput = {email: string}
+type command = Register({email: string})
+EOF
+cat > "$SLICE_GWT/src/InboundTranslation/Door_Translation.res" <<'EOF'
+module Make = (App: {let table: array<string>}) => {
+  let name = "Door_Translation"
+  let roles = App.table
+}
+EOF
+cat > "$SLICE_GWT/src/InboundTranslation/Door_GWT.res" <<'EOF'
+@@reventless.gwt
+
+module Door_Translation = Door_Translation.Make({let table = ["Shopper"]})
+
+describe("Door", () => {
+  test("input", () => whenInput({email: "a@b.c"})->thenCommands([Register({email: "a@b.c"})]))
+})
+EOF
 cat > "$SLICE_GWT/src/Flow/ShopFlow_GWT.res" <<'EOF'
 @@reventless.gwt
 
@@ -4838,6 +4861,7 @@ if ! (cd "$SLICE_GWT" && REVENTLESS_EMIT_SIDECAR=1 npx rescript build 2>&1); the
   fail "slice GWT" "the package did not compile"
 else
   pass "FromSlice(<Spec>, <Spec>_Automation / _Translation) is inferred and compiles"
+  pass "…after a body the test applies itself, under the body's name"
   AJ="$SLICE_GWT/src/Automation/AutoShip_GWT.gwt.json"
   OJ="$SLICE_GWT/src/OutboundTranslation/Geocode_GWT.gwt.json"
   IJ="$SLICE_GWT/src/InboundTranslation/Import_GWT.gwt.json"
