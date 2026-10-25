@@ -1,6 +1,6 @@
 @@reventless.translation
 
-let translate = async (input, ~capabilities as _) =>
+let translate = async (input, ~capabilities as _, ~caller as _) =>
   if input.currency !== "USD" {
     Error("Unsupported currency: " ++ input.currency)
   } else if input.unitPrice <= 0 {

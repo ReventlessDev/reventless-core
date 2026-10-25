@@ -31,6 +31,7 @@ module SignUpTranslation = {
   let translate = async (
     input: SignUpSpec.externalInput,
     ~capabilities: Reventless.Capabilities.t,
+    ~caller as _: option<Reventless.Identity.t>,
   ) =>
     switch await capabilities.identityProvider.createPrincipal(
       ~contact=ToEmail(Reventless.Email.unsafe(input.email)),

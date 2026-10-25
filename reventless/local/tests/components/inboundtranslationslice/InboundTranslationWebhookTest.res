@@ -45,6 +45,7 @@ module FeedSpec = {
 let translateFeed = async (
   input: FeedSpec.externalInput,
   ~capabilities as _: Reventless.Capabilities.t,
+  ~caller as _: option<Reventless.Identity.t>,
 ) =>
   switch input.kind {
   | "product" => Ok([(input.id, FeedSpec.AddProduct({productId: input.id}))])
@@ -79,6 +80,7 @@ module OpenCallback = Callback.Make(
     let translate = async (
       input: OpenSpec.externalInput,
       ~capabilities as _: Reventless.Capabilities.t,
+      ~caller as _: option<Reventless.Identity.t>,
     ) => Ok([(input.id, OpenSpec.AddProduct({productId: input.id}))])
     let moduleUrl = OpenSpec.moduleUrl
   },

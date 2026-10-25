@@ -17,6 +17,10 @@ type auditRow = {
   receivedAt: string,
   /** Absent on rows written before the slice had a second door. */
   door?: ReventlessInfra.InboundTranslationSlice.door,
+  /** Who called the door: their `userId`, `anonymous` for a caller who is not
+      signed in. Absent where the platform acted for itself, and on rows written
+      before doors were handed their caller. */
+  caller?: string,
 }
 
 /** A refused caller is access, a failed publish the platform; anything else is
@@ -190,12 +194,12 @@ module Make = (
     exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
 
   // One audit row per request, whatever the outcome.
-  let failWith = (~requestId, ~input, ~door, ~errorCode=?, error) => {
-    auditLog->Dict.set(requestId, {input, status: Failure, error, receivedAt: now(), door})
+  let failWith = (~requestId, ~input, ~door, ~caller=?, ~errorCode=?, error) => {
+    auditLog->Dict.set(requestId, {input, status: Failure, error, receivedAt: now(), door, ?caller})
     Error({ReventlessInfra.InboundTranslationSlice.requestId, error, ?errorCode})
   }
 
-  let succeed = (~requestId, ~inputJson, ~door, targetIds) => {
+  let succeed = (~requestId, ~inputJson, ~door, ~caller=?, targetIds) => {
     let commandCount = targetIds->Array.length
     auditLog->Dict.set(
       requestId,
@@ -206,6 +210,7 @@ module Make = (
         commandCount,
         receivedAt: now(),
         door,
+        ?caller,
       },
     )
     Ok({ReventlessInfra.InboundTranslationSlice.requestId, targetIds, commandCount})
@@ -237,15 +242,17 @@ module Make = (
     ~door: ReventlessInfra.InboundTranslationSlice.door=Mutation,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
     let requestId = Uuid.v4()
+    let callerId = caller->Option.map(identity => identity.userId)
     let fail = (~errorCode=?, error) =>
       failWith(
         ~requestId,
         ~input=inputJson->redactInput(~sensitive)->JSON.stringify,
         ~door,
+        ~caller=?callerId,
         ~errorCode?,
         error,
       )
-    let succeed = succeed(~requestId, ~inputJson, ~door, ...)
+    let succeed = succeed(~requestId, ~inputJson, ~door, ~caller=?callerId, ...)
     let parsed = try Ok(inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)) catch {
     | exn => Error(messageOf(exn, "invalid input"))
     }
@@ -255,7 +262,7 @@ module Make = (
     | Ok(input) =>
       // A throw is the translation failing, not the platform: it is the input's
       // answer, recorded like any other refusal.
-      switch try await Translation.translate(input, ~capabilities) catch {
+      switch try await Translation.translate(input, ~capabilities, ~caller) catch {
       | exn => Error(messageOf(exn, "translate failed"))
       } {
       | Error(msg) => fail(msg)

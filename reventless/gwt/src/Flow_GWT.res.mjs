@@ -584,7 +584,7 @@ function InboundSlice(Spec) {
     let I = InboundTranslation_GWT$ReventlessGwt.FromSlice(Spec)(Translation);
     let whenReceived = async (flowP, json, fakes) => {
       let s = await flowP;
-      let pairs = (await I.whenReceived(json, fakes)).outcome;
+      let pairs = (await I.whenReceived(json, fakes, undefined)).outcome;
       switch (pairs.TAG) {
         case "Translated" :
           return {

@@ -5,7 +5,7 @@ import * as Currency$Reventless from "@reventlessdev/reventless-spec/src/semanti
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as CategoryId$CatalogPlugin from "../../Category/CategoryId.res.mjs";
 
-async function translate(input, param) {
+async function translate(input, param, param$1) {
   let why = Currency$Reventless.fromString(input.currency);
   if (why.TAG === "Ok") {
     if (input.unitPrice <= 0) {

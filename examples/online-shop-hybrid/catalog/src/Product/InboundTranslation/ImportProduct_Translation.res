@@ -10,7 +10,7 @@
 // check was there because the domain had nowhere to put a currency once it had
 // arrived. With `Money.t` the supplier's own currency survives the boundary, so
 // a JPY feed — which has no decimals at all — needs no special case and gets none.
-let translate = async (input: externalInput, ~capabilities as _) =>
+let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =>
   switch Reventless.Currency.fromString(input.currency) {
   | Error(why) => Error(why)
   | Ok(currency) =>

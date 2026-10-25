@@ -31,7 +31,11 @@ module PaymentWebhookSpec = {
   let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
   let endpoint = None
 
-  let translate = async (input: externalInput, ~capabilities as _: Reventless.Capabilities.t) =>
+  let translate = async (
+    input: externalInput,
+    ~capabilities as _: Reventless.Capabilities.t,
+    ~caller as _: option<Reventless.Identity.t>,
+  ) =>
     switch input.status {
     | "completed" =>
       Ok([(input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId}))])
@@ -67,7 +71,11 @@ module CatalogFeedSpec = {
     | _ => DenyAll
     }
 
-  let translate = async (input: externalInput, ~capabilities as _: Reventless.Capabilities.t) =>
+  let translate = async (
+    input: externalInput,
+    ~capabilities as _: Reventless.Capabilities.t,
+    ~caller as _: option<Reventless.Identity.t>,
+  ) =>
     switch input.kind {
     | "product" => Ok([(input.id, AddProduct({productId: input.id}))])
     | "both" =>
@@ -99,5 +107,6 @@ module NoteFeedSpec = {
   let translate = async (
     input: externalInput,
     ~capabilities as _: Reventless.Capabilities.t,
+    ~caller as _: option<Reventless.Identity.t>,
   ) => Ok([(input.orderId, Annotate({orderId: input.orderId, note: None}))])
 }

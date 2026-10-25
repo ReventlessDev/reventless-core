@@ -20,14 +20,23 @@ module PaymentHook = {
 }
 
 // Confirms a paid order and, through the capability `translate` is handed, tells
-// the buyer — which is what makes the fakes worth asserting on.
+// the buyer — which is what makes the fakes worth asserting on. A payment marked
+// paid by hand is confirmed only for a caller in Finance, which is what makes the
+// caller worth handing in.
 module PaymentHook_Translation = {
   let moduleUrl = ""
   let translate = async (
     input: PaymentHook.externalInput,
     ~capabilities: Reventless.Capabilities.t,
+    ~caller: option<Reventless.Identity.t>,
   ) =>
     switch input.status {
+    | "paidByHand" =>
+      switch caller {
+      | Some(identity) if identity->Reventless.Identity.hasGroup("Finance") =>
+        Ok([(input.orderId, PaymentHook.ConfirmPayment({orderId: input.orderId}))])
+      | _ => Error("only Finance marks a payment paid by hand")
+      }
     | "paid" =>
       switch await capabilities.messaging.send(
         ~recipient=ToEmail(Reventless.Email.unsafe("buyer@example.com")),
@@ -48,7 +57,41 @@ include InboundTranslation_GWT.FromSlice(PaymentHook, PaymentHook_Translation)
 let json = (pairs: array<(string, string)>) =>
   pairs->Array.map(((k, v)) => (k, JSON.Encode.string(v)))->Dict.fromArray->JSON.Encode.object
 
+let financeClerk: Reventless.Identity.t = {
+  ...Reventless.Identity.anonymous,
+  userId: "u_clerk",
+  groups: ["Finance"],
+}
+let visitor = Reventless.Identity.anonymous
+
 describe("InboundTranslation_GWT.FromSlice", () => {
+  test("a door that reads its caller translates for the caller it admits", () =>
+    whenInput({orderId: "o1", status: "paidByHand"}, ~caller=financeClerk)->thenCommand(
+      "o1",
+      ConfirmPayment({orderId: "o1"}),
+    )
+  )
+
+  test("…and declines a caller it does not", () =>
+    whenInput({orderId: "o1", status: "paidByHand"}, ~caller=visitor)->thenNotUnderstood(
+      "only Finance marks a payment paid by hand",
+    )
+  )
+
+  // No caller is the platform acting for itself, which this door does not admit.
+  test("…and an input with no caller at all", () =>
+    whenInput({orderId: "o1", status: "paidByHand"})->thenNotUnderstood(
+      "only Finance marks a payment paid by hand",
+    )
+  )
+
+  test("received JSON carries its caller through the decode", () =>
+    whenReceived(
+      json([("orderId", "o1"), ("status", "paidByHand")]),
+      ~caller=financeClerk,
+    )->thenCommand("o1", ConfirmPayment({orderId: "o1"}))
+  )
+
   test("input translates to a command", () =>
     whenInput({orderId: "o1", status: "paid"})->thenCommand("o1", ConfirmPayment({orderId: "o1"}))
   )

@@ -2,7 +2,7 @@
 
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductId.res.mjs";
 
-async function translate(input, param) {
+async function translate(input, param, param$1) {
   if (input.currency !== "USD") {
     return {
       TAG: "Error",

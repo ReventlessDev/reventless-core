@@ -163,6 +163,7 @@ module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
     let translate = async (
       _: PsTwoRuleFeed.externalInput,
       ~capabilities as _: Reventless.Capabilities.t,
+      ~caller as _: option<Reventless.Identity.t>,
     ) => Ok([])
     let moduleUrl = PsTwoRuleFeed.moduleUrl
   }

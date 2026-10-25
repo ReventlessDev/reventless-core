@@ -225,14 +225,16 @@ let supplierFeed: array<CatalogPlugin.ImportProduct.externalInput> = [
 // gave the supplier's currency somewhere to live, and a copy of the old rule
 // left here failed the seed's audit-view cross-check against correct behavior.
 //
-// Async because `translate` is: it is handed the platform's capabilities. The
-// import reaches none, so none is what it is handed here.
+// Async because `translate` is: it is handed the platform's capabilities and its
+// caller. The import reaches no capability and reads no caller, so it is handed
+// none of either.
 let importedSkus = async () => {
   let verdicts = await supplierFeed
   ->Array.map(row =>
     CatalogPlugin.ImportProduct_Translation.translate(
       row,
       ~capabilities=Reventless.Capabilities.none,
+      ~caller=None,
     )
   )
   ->Promise.all

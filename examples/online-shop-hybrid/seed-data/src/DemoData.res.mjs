@@ -276,7 +276,7 @@ let supplierFeed = [
 ];
 
 async function importedSkus() {
-  let verdicts = await Promise.all(supplierFeed.map(row => ImportProduct_Translation$CatalogPlugin.translate(row, Capabilities$Reventless.none)));
+  let verdicts = await Promise.all(supplierFeed.map(row => ImportProduct_Translation$CatalogPlugin.translate(row, Capabilities$Reventless.none, undefined)));
   return supplierFeed.filter((param, i) => Stdlib_Result.isOk(verdicts[i])).map(row => row.sku);
 }
 

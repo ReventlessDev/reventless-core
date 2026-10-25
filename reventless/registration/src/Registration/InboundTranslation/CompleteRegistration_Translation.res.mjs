@@ -4,7 +4,7 @@ import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/E
 import * as Stash$Reventless from "@reventlessdev/reventless-spec/src/semantic/Stash.res.mjs";
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
-async function translate(input, capabilities) {
+async function translate(input, capabilities, param) {
   let email = Email$Reventless.fromString(input.email.trim());
   if (email.TAG !== "Ok") {
     return {

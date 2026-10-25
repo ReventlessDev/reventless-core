@@ -105,15 +105,37 @@ when the spec declares no [webhook URL](#a-webhook-url), and `type role`, the pl
 
 The `translate` function lives in the `_Translation.res` file and is the
 **anti-corruption layer** -- it protects the domain from external data formats. It
-takes the input and `~capabilities`, and returns a
+takes the input, `~capabilities` and `~caller`, and returns a
 `promise<result<array<(string, command)>, string>>`:
 
 - **`Ok([(targetId, command), ...])`** -- Input is valid; publish one or more commands to the target entities
 - **`Ok([])`** -- Idempotent no-op; nothing to publish
 - **`Error(msg)`** -- Input is invalid or cannot be translated; return error to caller
 
-A slice that only maps input ignores `~capabilities` and does no awaiting; it is
-still declared `async`, so every translation has one shape.
+A slice that only maps input ignores `~capabilities` and `~caller` and does no
+awaiting; it is still declared `async`, so every translation has one shape.
+
+### Reading the caller
+
+`~caller` is who called the door, as its transport identified them: an
+`Identity.t` with the caller's `userId` and groups, `Identity.anonymous` for a
+caller who is not signed in, or `None` where the platform acts for itself. A door
+that must look at the caller before it decides — an invitation only some roles may
+send — refuses here, before it reaches any capability:
+
+```rescript
+let translate = async (input, ~capabilities as _, ~caller: option<Reventless.Identity.t>) =>
+  switch caller {
+  | Some(identity) if identity->Reventless.Identity.hasGroup("Finance") => Ok([/* … */])
+  | _ => Error("only Finance marks a payment paid by hand")
+  }
+```
+
+The refusal is recorded like any other, and the audit row names the caller's
+`userId`. Each command `translate` returns is still checked against the caller's
+rule afterwards, so reading the caller widens nothing. In a scenario, name the
+caller with `whenInput(input, ~caller=identity)` or `whenReceived(json, ~caller=…)`;
+left out, the platform is acting for itself.
 
 ### Reaching a capability
 
@@ -172,7 +194,7 @@ an array of `(targetId, command)` pairs:
 ```rescript title="Payment/InboundTranslation/PaymentWebhook_Translation.res" showLineNumbers
 @@reventless.translation
 
-let translate = async (input: externalInput, ~capabilities as _) =>
+let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =>
   switch input.status {
   | "completed" =>
     Ok([
@@ -219,7 +241,7 @@ let capabilityNeeds = []
 ```rescript title="Shipping/InboundTranslation/ShippingUpdate_Translation.res" showLineNumbers
 @@reventless.translation
 
-let translate = async (input: externalInput, ~capabilities as _) =>
+let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =>
   switch input.event {
   | "picked_up" | "in_transit" | "delivered" =>
     Ok([

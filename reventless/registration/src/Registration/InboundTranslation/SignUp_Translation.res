@@ -13,7 +13,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
   module Spec = Spec
   let moduleUrl = moduleUrl
 
-  let translate = async (input: externalInput, ~capabilities as _) =>
+  let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =>
     switch (Reventless.Email.fromString(input.email->String.trim), input.role) {
     | (Error(_), _) => Error("not an email address")
     | (Ok(email), role) =>

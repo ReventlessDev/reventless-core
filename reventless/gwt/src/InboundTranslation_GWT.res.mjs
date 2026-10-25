@@ -110,13 +110,13 @@ function FromSlice(Spec) {
         return "unknown error";
       }
     };
-    let whenInput = async (input, fakesOpt) => {
+    let whenInput = async (input, fakesOpt, caller) => {
       let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
       let outcome;
       let exit = 0;
       let pairs;
       try {
-        pairs = await Translation.translate(input, fakes.capabilities);
+        pairs = await Translation.translate(input, fakes.capabilities, caller);
         exit = 1;
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
@@ -139,7 +139,7 @@ function FromSlice(Spec) {
         sent: fakes.calls()
       };
     };
-    let whenReceived = async (json, fakesOpt) => {
+    let whenReceived = async (json, fakesOpt, caller) => {
       let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
       let input;
       try {
@@ -164,7 +164,7 @@ function FromSlice(Spec) {
           };
         }
       }
-      return await whenInput(input, fakes);
+      return await whenInput(input, fakes, caller);
     };
     let describeOther = outcome => {
       switch (outcome.TAG) {

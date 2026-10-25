@@ -102,11 +102,20 @@ module type Translation = {
   any command exists — set a password, create a principal — where the input must
   reach a provider and must not reach the log. A field that carries such a value
   is marked `@sensitive` on `externalInput`, which keeps it out of the slice's
-  audit row too. A translation that only maps input ignores both.
+  audit row too.
+
+  Handed `~caller` too: who called the door, as its transport identified them
+  (`Identity.anonymous` for a caller who is not signed in), or `None` where the
+  platform acts for itself. A door that must look at the caller before it
+  decides — an invitation only some roles may send — refuses here, before any
+  capability is touched; each command it returns is still checked against the
+  caller's rule afterwards, so reading the caller widens nothing. A translation
+  that only maps input ignores all three.
   */
   let translate: (
     Spec.externalInput,
     ~capabilities: Capabilities.t,
+    ~caller: option<Identity.t>,
   ) => promise<result<array<(string, Spec.command)>, string>>
 
   /** File URL of this Translation module (`import.meta.url`). */

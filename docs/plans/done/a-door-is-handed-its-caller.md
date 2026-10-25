@@ -1,15 +1,15 @@
 # Plan: a door is handed its caller
 
 **Date:** 2026-10-25<br/>
-**Status:** Filed, not started. Steps numbered [C1](#steps) to [C3](#steps).<br/>
+**Status:** ✅ **Done 2026-10-25.** Steps [C1](#c1-the-seam) to [C3](#c3-the-translations) built; the [open question](#open-questions) decided yes. What landed is under each step<br/>
 **Repos:** `reventless-core` only. `reventless/spec` (`InboundTranslationSlice`), `reventless/core`
 (`InboundTranslationSlice_Callback`), `reventless/gwt` (`InboundTranslation_GWT`), and the eleven
 translations under `examples/` and `reventless/` that take `~capabilities` today.<br/>
 **Found by:** the registration plan's per-role admission
-([Admission per role](self-registration-is-a-chapter-not-a-trait.md#admission-per-role--planned-2026-10-24)):
+([Admission per role](../self-registration-is-a-chapter-not-a-trait.md#admission-per-role--planned-2026-10-24)):
 a door that invites has to know who is inviting before any command exists.<br/>
-**After:** [an inbound translation is gated the same way at every door](done/an-inbound-translation-is-gated-and-encoded-like-a-command.md),
-which carried the caller as far as the callback ([its *Carrying the caller*](done/an-inbound-translation-is-gated-and-encoded-like-a-command.md#carrying-the-caller))
+**After:** [an inbound translation is gated the same way at every door](an-inbound-translation-is-gated-and-encoded-like-a-command.md),
+which carried the caller as far as the callback ([its *Carrying the caller*](an-inbound-translation-is-gated-and-encoded-like-a-command.md#carrying-the-caller))
 and stopped there.
 
 ## In plain words
@@ -62,9 +62,15 @@ Numbered C1 to C3. **C** stands for *caller*.
 The signature in `reventless/spec`, the callback passing the caller, and the structure's reading of
 the door unchanged. A translation that reads the caller must still compile against the module type.
 
-**Exit:** `rescript build` green across the repository once [C3](#steps) is done; the callback's
-test shows a translation refusing on `None` and on an identity lacking a role, each recorded as a
-translation error with no command published.
+**Exit:** `rescript build` green across the repository once [C3](#c3-the-translations) is done; the
+callback's test shows a translation refusing on `None` and on an identity lacking a role, each
+recorded as a translation error with no command published.
+
+**Built.** `Translation.translate` takes `~caller: option<Identity.t>` beside `~capabilities`, and
+`InboundTranslationSlice_Callback.receive` passes on what it was handed, before the per-command
+check it already ran. `InboundTranslationSliceCallbackTest` drives a door that admits only `Admin`:
+with no caller and with a `Shopper` it is refused with the door's own message, no error code, and
+nothing published; an administrator is let through.
 
 ### C2: the harness
 
@@ -73,12 +79,21 @@ say *when the caller is `admin`* and read the outcome.
 
 **Exit:** a GWT on a door that reads the caller, written with the harness.
 
+**Built.** `whenInput(input, ~caller=identity)` and `whenReceived(json, ~caller=…)`, the caller left
+out meaning the platform acting for itself. `InboundFromSliceGwtTest` drives a door that confirms a
+payment marked paid by hand only for a `Finance` caller, through both verbs.
+
 ### C3: the translations
 
 The eleven existing translations take `~caller as _`. The two registration doors keep ignoring it:
 sign-up and completion are anonymous, and the caller tells them nothing they may act on.
 
 **Exit:** every example builds and its suite is green; no behavior changed.
+
+**Built.** Four translations live in sources now, not eleven — the two catalog imports and the two
+registration doors — and the rest were test doors; each takes `~caller as _`. The one direct call of
+a translation outside the platform, the hybrid seed's dry run of the catalog import, passes
+`~caller=None`.
 
 ## Decisions
 
@@ -94,6 +109,9 @@ sign-up and completion are anonymous, and the caller tells them nothing they may
 1. **Should a door's audit row name the caller?** It names the input and the outcome today.
    *Recommendation:* yes, the caller's `userId` beside the input, redacted as the input is; a door
    that refuses on the caller should leave a row that says who was refused.
+   **Decided yes, and built:** the row gains an optional `caller`, the `userId`, written on success
+   and on refusal and absent where the platform acted for itself. It is optional, so rows written
+   before it still decode, and it reaches each door's audit view in the GraphQL schema.
 
 ## Acceptance
 

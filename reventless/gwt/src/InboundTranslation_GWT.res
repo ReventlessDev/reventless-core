@@ -116,9 +116,19 @@ module FromSlice = (
     }
 
   /** One input through the slice's own `translate`. A throw is input the slice
-      declined, as the runtime records it. */
-  let whenInput = async (input: Spec.externalInput, ~fakes=Capabilities_Fake.make()) => {
-    let outcome = switch await Translation.translate(input, ~capabilities=fakes.capabilities) {
+      declined, as the runtime records it. `~caller` is who called the door, as
+      the transport would hand it on; left out, the platform is acting for
+      itself. */
+  let whenInput = async (
+    input: Spec.externalInput,
+    ~fakes=Capabilities_Fake.make(),
+    ~caller: option<Reventless.Identity.t>=?,
+  ) => {
+    let outcome = switch await Translation.translate(
+      input,
+      ~capabilities=fakes.capabilities,
+      ~caller,
+    ) {
     | Ok(pairs) => Translated(pairs)
     | Error(msg) => NotUnderstood(msg)
     | exception exn => NotUnderstood(errorOf(exn))
@@ -127,9 +137,13 @@ module FromSlice = (
   }
 
   /** Input as it arrives: decoded through `externalInputSchema` first. */
-  let whenReceived = async (json: JSON.t, ~fakes=Capabilities_Fake.make()) =>
+  let whenReceived = async (
+    json: JSON.t,
+    ~fakes=Capabilities_Fake.make(),
+    ~caller: option<Reventless.Identity.t>=?,
+  ) =>
     switch json->Reventless.Util_Sury.fromJson(Spec.externalInputSchema) {
-    | input => await whenInput(input, ~fakes)
+    | input => await whenInput(input, ~fakes, ~caller?)
     // Sury's message names the field that failed.
     | exception S.Exn(e) => {outcome: InputRefused(e.message), sent: fakes.calls()}
     | exception _ => {outcome: InputRefused("invalid input"), sent: fakes.calls()}

@@ -7,7 +7,11 @@ let passwordTtl = 600
     does not refuse it after the proof has been spent. */
 let minimumPasswordLength = 12
 
-let translate = async (input: externalInput, ~capabilities: Reventless.Capabilities.t) =>
+let translate = async (
+  input: externalInput,
+  ~capabilities: Reventless.Capabilities.t,
+  ~caller as _: option<Reventless.Identity.t>,
+) =>
   switch Reventless.Email.fromString(input.email->String.trim) {
   | Error(_) => Error("not an email address")
   | Ok(_) if input.password->String.length < minimumPasswordLength =>

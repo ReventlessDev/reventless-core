@@ -246,6 +246,7 @@ describe("InboundTranslationSlice Callback", () => {
           let translate = async (
             input: externalInput,
             ~capabilities as _: Reventless.Capabilities.t,
+            ~caller as _: option<Reventless.Identity.t>,
           ) => Ok(
             input.items->Array.map(
               item => (input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: item})),
@@ -325,6 +326,7 @@ describe("InboundTranslationSlice Callback", () => {
           let translate = async (
             _input: externalInput,
             ~capabilities as _: Reventless.Capabilities.t,
+            ~caller as _: option<Reventless.Identity.t>,
           ) => Ok([])
 
           type role = Reventless.Role.name
@@ -487,5 +489,85 @@ describe("receive encodes commands with their schema", () => {
     let decoded = commandJson->S.parseOrThrow(~to=NoteFeedSpec.commandSchema)
     expect(decoded)->toEqual(NoteFeedSpec.Annotate({orderId: "ord-1", note: None}))
     expect(commandJson->JSON.stringify->String.includes(`"note":null`))->toBe(true)
+  })
+})
+
+// A door that looks at its caller before it decides: only an administrator may
+// send it. It refuses before reaching a capability, and the refusal is recorded
+// like any other translation error, naming who was refused.
+module AdminOnlyTranslation = {
+  let translate = async (input, ~capabilities, ~caller: option<Reventless.Identity.t>) =>
+    switch caller {
+    | None => Error("this door needs a caller")
+    | Some(identity) if !(identity->Reventless.Identity.hasGroup("Admin")) =>
+      Error("only an administrator may send this")
+    | Some(_) => await PaymentWebhookSpec.translate(input, ~capabilities, ~caller)
+    }
+  let moduleUrl = PaymentWebhookSpec.moduleUrl
+}
+module AdminOnlyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+  PaymentWebhookSpec,
+  AdminOnlyTranslation,
+)
+
+describe("receive hands the door its caller", () => {
+  let payment = {"paymentId": "pay-1", "orderId": "ord-1", "status": "completed"}->Obj.magic
+  let identity = (~userId, ~groups): Reventless.Identity.t => {
+    ...Reventless.Identity.anonymous,
+    userId,
+    groups,
+  }
+
+  let receive = async (~caller=?) => {
+    AdminOnlyCallback.auditLog
+    ->Dict.keysToArray
+    ->Array.forEach(k => AdminOnlyCallback.auditLog->Dict.delete(k))
+    let published = ref([])
+    let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds => published := cmds
+    let result = await AdminOnlyCallback.receive(
+      publish,
+      payment,
+      ~capabilities=Reventless.Capabilities.none,
+      ~caller?,
+    )
+    let row = AdminOnlyCallback.auditLog->Dict.valuesToArray->Array.getUnsafe(0)
+    (result, published.contents, row)
+  }
+
+  testPromise("with no caller, the door refuses and nothing is published", async () => {
+    let (result, published, row) = await receive()
+    expect(result->Result.isError)->toBe(true)
+    expect(published)->toEqual([])
+    expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+    expect(row.error)->toEqual(Some("this door needs a caller"))
+    expect(row.caller)->toEqual(None)
+  })
+
+  testPromise(
+    "a caller lacking the role is refused, and the row names who was refused",
+    async () => {
+      let (result, published, row) = await receive(
+        ~caller=identity(~userId="u_visitor", ~groups=["Shopper"]),
+      )
+      switch result {
+      | Error({error, ?errorCode}) =>
+        expect(error)->toBe("only an administrator may send this")
+        // The door's refusal, not the platform's per-command gate.
+        expect(errorCode)->toEqual(None)
+      | Ok(_) => expect(true)->toBe(false)
+      }
+      expect(published)->toEqual([])
+      expect(row.caller)->toEqual(Some("u_visitor"))
+    },
+  )
+
+  testPromise("a caller holding the role is let through, and named", async () => {
+    let (result, published, row) = await receive(
+      ~caller=identity(~userId="u_admin", ~groups=["Admin"]),
+    )
+    expect(result->Result.isOk)->toBe(true)
+    expect(published->Array.length)->toBe(1)
+    expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
+    expect(row.caller)->toEqual(Some("u_admin"))
   })
 })

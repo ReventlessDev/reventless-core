@@ -36,7 +36,8 @@ let auditRowSchema = Sury.$schema(s => ({
   commandCount: s.m(Sury.$option(Sury.int32)),
   error: s.m(Sury.$option(Sury.string)),
   receivedAt: s.m(Sury.string),
-  door: s.m(Sury.$option(InboundTranslationSlice$ReventlessInfra.doorSchema))
+  door: s.m(Sury.$option(InboundTranslationSlice$ReventlessInfra.doorSchema)),
+  caller: s.m(Sury.$option(Sury.string))
 }));
 
 function rejectionCauseOf(errorCode) {
@@ -152,13 +153,14 @@ function Make(Spec) {
     let sensitive = Sensitive$Reventless.fieldNames(Spec.externalInputSchema);
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
-    let failWith = (requestId, input, door, errorCode, error) => {
+    let failWith = (requestId, input, door, caller, errorCode, error) => {
       auditLog[requestId] = {
         input: input,
         status: "Failure",
         error: error,
         receivedAt: new Date().toISOString(),
-        door: door
+        door: door,
+        caller: caller
       };
       return {
         TAG: "Error",
@@ -191,7 +193,8 @@ function Make(Spec) {
     let receive = async (publishJsons, inputJson, capabilities, caller, doorOpt) => {
       let door = doorOpt !== undefined ? doorOpt : "Mutation";
       let requestId = Uuid.v4();
-      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, errorCode, error);
+      let callerId = Stdlib_Option.map(caller, identity => identity.userId);
+      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, callerId, errorCode, error);
       let succeed = extra => {
         let commandCount = extra.length;
         auditLog[requestId] = {
@@ -200,7 +203,8 @@ function Make(Spec) {
           targetIds: extra,
           commandCount: commandCount,
           receivedAt: new Date().toISOString(),
-          door: door
+          door: door,
+          caller: callerId
         };
         return {
           TAG: "Ok",
@@ -229,7 +233,7 @@ function Make(Spec) {
       }
       let msg;
       try {
-        msg = await Translation.translate(parsed._0, capabilities);
+        msg = await Translation.translate(parsed._0, capabilities, caller);
       } catch (raw_exn$1) {
         let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
         msg = {
@@ -280,7 +284,7 @@ function Make(Spec) {
         return fail(CommandOutcome$Reventless.code("PublishFailed"), messageOf(exn$2, "publish failed"));
       }
     };
-    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), redactBody(body, sensitive), "Webhook", errorCode, error);
+    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), redactBody(body, sensitive), "Webhook", undefined, errorCode, error);
     let webhook = Stdlib_Option.map(Spec.endpoint, endpoint => InboundTranslationSlice_Webhook$ReventlessCore.routeOf(Spec.name, endpoint));
     return {
       Spec: Spec,

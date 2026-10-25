@@ -16,8 +16,8 @@ shell's configuration on AWS. **2026-10-25: the chapter is reusable by other app
 package `@reventlessdev/reventless-registration` an app's plugin lists
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
 [R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices),
-all built). **Next:** an invitation door, which needs
-[a door is handed its caller](a-door-is-handed-its-caller.md) first. Filed 2026-09-10; revised
+all built). **Next:** an invitation door, now that
+[a door is handed its caller](done/a-door-is-handed-its-caller.md) (done 2026-10-25). Filed 2026-09-10; revised
 2026-09-11 when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
@@ -540,7 +540,7 @@ a bare `Withdraw` says nothing about what — and each records an event of its o
   These are the ledger's first errors. Every arm a visitor reaches still answers `Ok`; an inviter
   is signed in and is owed the reason. Who may invite — the inviter's own roles against the table's
   `by` — is the door's to check, once
-  [a door is handed its caller](a-door-is-handed-its-caller.md); the ledger records `invitedBy`. An
+  [a door is handed its caller](done/a-door-is-handed-its-caller.md); the ledger records `invitedBy`. An
   address holding an account, or a claim that has not lapsed, is not invited. A visitor's sign-up
   cannot take over an invited address while the invitation holds.
 - **`ReissueRegistrationChallenge`** voids the code and its spent attempts, and the sender mints
