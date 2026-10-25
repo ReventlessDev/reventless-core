@@ -1,4 +1,4 @@
-// The dev accounts a seed run can log in as, read from `.reventless/users.yaml`.
+// The dev accounts a seed run can log in as, read from `.reventless/accounts.yaml`.
 //
 // Both platforms keep that file beside the package the seed runs from: locally
 // the in-memory auth adapter loads it at startup, and on AWS it is the record of
@@ -58,7 +58,7 @@ let userOf = (json: JSON.t): option<user> =>
   }
 
 /**
- * The accounts a users.yaml document defines, in the order it defines them —
+ * The accounts a accounts.yaml document defines, in the order it defines them —
  * the order is what makes "the first one" a stable default.
  *
  * An entry without both a username and a password is skipped rather than
@@ -76,8 +76,15 @@ let parseString = (yamlText: string): array<user> => {
 }
 
 /** Where the file lives for the platform being seeded — the seed runs from that
-    package's directory, which is the same cwd the local auth adapter reads. */
-let defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless", "users.yaml"])
+    package's directory, which is the same cwd the local auth adapter reads. Its new name,
+    else its old one while an app keeps it, as `AccountsManifest.defaultPath` finds it (the seed
+    does not depend on the spec package that holds it). */
+let defaultPath = (): string => {
+  let dir = NodePath.join([NodeProcess.cwd(), ".reventless"])
+  let current = NodePath.join([dir, "accounts.yaml"])
+  let old = NodePath.join([dir, "users.yaml"])
+  !NodeFs.existsSync(current) && NodeFs.existsSync(old) ? old : current
+}
 
 /**
  * The accounts on disk, with the path they came from. `None` when there is no

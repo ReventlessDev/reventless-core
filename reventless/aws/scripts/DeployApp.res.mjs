@@ -87,7 +87,7 @@ Usage: deploy-app up|down [--manifest <path>] [--stack <name>]
 Deploy an app to AWS, or remove it again.
 
   deploy-app up     Deploy the platform and every plugin, bake the component
-                    manifest, create the accounts in .reventless/users.<stack>.yaml,
+                    manifest, create the accounts in .reventless/accounts.<stack>.yaml,
                     and print the web address and the sign-ins.
   deploy-app down   Remove every stack, and the Lambda layer and SSM parameter
                     \`up\` created.
@@ -611,12 +611,18 @@ function outputString(outputs, name) {
 }
 
 function accountsFileName(stack) {
+  return `accounts.` + stack + `.yaml`;
+}
+
+function oldAccountsFileName(stack) {
   return `users.` + stack + `.yaml`;
 }
 
 function accountsFile(platformDir, stack) {
-  let file = Nodepath.join(platformDir, ".reventless", accountsFileName(stack));
-  let template = Nodepath.join(platformDir, AccountsManifest$Reventless.templateName);
+  let current = Nodepath.join(platformDir, ".reventless", accountsFileName(stack));
+  let old = Nodepath.join(platformDir, ".reventless", oldAccountsFileName(stack));
+  let file = !Nodefs.existsSync(current) && Nodefs.existsSync(old) ? (AccountsManifest$Reventless.noticeOldName(old), old) : current;
+  let template = AccountsManifest$Reventless.templateIn(platformDir);
   let match = Nodefs.existsSync(file);
   let match$1 = Nodefs.existsSync(template);
   if (match) {
@@ -946,6 +952,7 @@ export {
   deploy,
   outputString,
   accountsFileName,
+  oldAccountsFileName,
   accountsFile,
   signInLines,
   up,

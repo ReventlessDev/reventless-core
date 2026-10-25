@@ -1,6 +1,6 @@
 open JestGlobals
 
-// `.reventless/users.yaml` is hand-maintained and shared with the auth adapter,
+// `.reventless/accounts.yaml` is hand-maintained and shared with the auth adapter,
 // so the seed reads it defensively: it must survive the comment blocks both
 // copies carry, must not reorder the accounts (the first one is the prompt's
 // default, so order IS the contract), and must never throw — a broken file costs
@@ -22,10 +22,10 @@ let document = `
   password: pw
 `
 
-describe("Seed_Users.parseString:", () => {
+describe("Seed_Accounts.parseString:", () => {
   testSync("reads every account, in the order the file defines them", () => {
-    let users = Seed_Users.parseString(document)
-    expect(users->Array.map(u => u.Seed_Users.username))->Expect.toEqual([
+    let users = Seed_Accounts.parseString(document)
+    expect(users->Array.map(u => u.Seed_Accounts.username))->Expect.toEqual([
       "admin",
       "shopper",
       "noGroups",
@@ -33,8 +33,8 @@ describe("Seed_Users.parseString:", () => {
   })
 
   testSync("carries the password beside the username", () => {
-    let users = Seed_Users.parseString(document)
-    expect(users->Array.map(u => u.Seed_Users.password))->Expect.toEqual([
+    let users = Seed_Accounts.parseString(document)
+    expect(users->Array.map(u => u.Seed_Accounts.password))->Expect.toEqual([
       "admin",
       "Shopper-2026!",
       "pw",
@@ -42,8 +42,8 @@ describe("Seed_Users.parseString:", () => {
   })
 
   testSync("keeps the groups, and reads a missing groups key as none", () => {
-    let users = Seed_Users.parseString(document)
-    expect(users->Array.map(u => u.Seed_Users.groups))->Expect.toEqual([
+    let users = Seed_Accounts.parseString(document)
+    expect(users->Array.map(u => u.Seed_Accounts.groups))->Expect.toEqual([
       ["Admin", "Shopper"],
       ["Shopper"],
       [],
@@ -58,8 +58,8 @@ describe("Seed_Users.parseString:", () => {
   // may omit it and let the auth adapter default it, and an AWS file records a
   // sub no default could invent. Guessing here would look like an answer.
   testSync("keeps the userId an entry declares, and reads a missing one as absent", () => {
-    let users = Seed_Users.parseString(document)
-    expect(users->Array.map(u => u.Seed_Users.userId))->Expect.toEqual([
+    let users = Seed_Accounts.parseString(document)
+    expect(users->Array.map(u => u.Seed_Accounts.userId))->Expect.toEqual([
       Some("local-admin"),
       None,
       None,
@@ -69,36 +69,36 @@ describe("Seed_Users.parseString:", () => {
   // An entry half-written by hand is the likely flaw in this file. Dropping it
   // keeps the other accounts selectable; failing the parse would not.
   testSync("skips an entry that names no password", () => {
-    let users = Seed_Users.parseString(`
+    let users = Seed_Accounts.parseString(`
 - username: admin
   password: admin
 - username: halfWritten
   groups: [Shopper]
 `)
-    expect(users->Array.map(u => u.Seed_Users.username))->Expect.toEqual(["admin"])
+    expect(users->Array.map(u => u.Seed_Accounts.username))->Expect.toEqual(["admin"])
   })
 
   testSync("yields no accounts for a document that is not a list", () => {
-    expect(Seed_Users.parseString("users: {}")->Array.length)->Expect.toBe(0)
+    expect(Seed_Accounts.parseString("users: {}")->Array.length)->Expect.toBe(0)
   })
 
   // The whole point of returning accounts rather than raising: the caller falls
   // back to prompting, and it can only do that if nothing here escapes.
   testSync("yields no accounts for malformed YAML instead of throwing", () => {
-    expect(Seed_Users.parseString("- username: [unclosed")->Array.length)->Expect.toBe(0)
+    expect(Seed_Accounts.parseString("- username: [unclosed")->Array.length)->Expect.toBe(0)
   })
 })
 
-describe("Seed_Users.load:", () => {
+describe("Seed_Accounts.load:", () => {
   testSync("is silent about a file that is not there", () => {
-    expect(Seed_Users.load(~path="/nonexistent/.reventless/users.yaml"))->Expect.toBe(None)
+    expect(Seed_Accounts.load(~path="/nonexistent/.reventless/accounts.yaml"))->Expect.toBe(None)
   })
 })
 
 // A pool that signs in on an email address takes `shopper@example.com`, not
 // `shopper`, so a demo cannot find its accounts by username alone there.
-describe("Seed_Users.playing:", () => {
-  let users = Seed_Users.parseString(`
+describe("Seed_Accounts.playing:", () => {
+  let users = Seed_Accounts.parseString(`
 - username: shopper@example.com
   password: pw
   groups: [Shopper]
@@ -110,25 +110,25 @@ describe("Seed_Users.playing:", () => {
 
   testSync("finds the account whose demoOwner names the person", () => {
     expect(
-      Seed_Users.playing(users, "shopper")->Option.map(u => u.Seed_Users.username),
+      Seed_Accounts.playing(users, "shopper")->Option.map(u => u.Seed_Accounts.username),
     )->Expect.toEqual(Some("shopper@example.com"))
   })
 
   testSync("falls back to the username when no entry declares one", () => {
     expect(
-      Seed_Users.playing(users, "admin")->Option.map(u => u.Seed_Users.username),
+      Seed_Accounts.playing(users, "admin")->Option.map(u => u.Seed_Accounts.username),
     )->Expect.toEqual(Some("admin"))
   })
 
   testSync("finds nobody for a person no entry plays", () => {
-    expect(Seed_Users.playing(users, "merch"))->Expect.toEqual(None)
+    expect(Seed_Accounts.playing(users, "merch"))->Expect.toEqual(None)
   })
 })
 
-describe("Seed_Users.label:", () => {
+describe("Seed_Accounts.label:", () => {
   testSync("names the groups an account carries", () => {
     expect(
-      Seed_Users.label({
+      Seed_Accounts.label({
         username: "admin",
         password: "x",
         groups: ["Admin", "Shopper"],
@@ -138,7 +138,7 @@ describe("Seed_Users.label:", () => {
 
   testSync("is the bare username when the file records no groups", () => {
     expect(
-      Seed_Users.label({
+      Seed_Accounts.label({
         username: "admin",
         password: "x",
         groups: [],
@@ -151,7 +151,7 @@ describe("Seed_Users.label:", () => {
   // they are choosing a login.
   testSync("says nothing about the userId", () => {
     expect(
-      Seed_Users.label({
+      Seed_Accounts.label({
         username: "admin",
         password: "x",
         groups: ["Admin"],

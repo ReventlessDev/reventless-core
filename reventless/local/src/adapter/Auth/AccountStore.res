@@ -1,13 +1,13 @@
 // In-memory user store loader. Hydrates `LocalAuth.Login.store` from
 // three resolution paths (first match wins):
-//   1. `~users` arg — explicit list passed by the caller
-//   2. `~usersFile` arg — explicit YAML path
-//   3. `.reventless/users.yaml` (relative to process.cwd()) — auto-discovery
+//   1. `~accounts` arg — explicit list passed by the caller
+//   2. `~accountsFile` arg — explicit YAML path
+//   3. `.reventless/accounts.yaml` (relative to process.cwd()) — auto-discovery
 //
 // All three are silent on absence: when no path is provided and no default
 // file exists, the store stays empty and `LocalAuth.Login.issue` rejects
 // every credential. A one-line stdout hint is printed so developers know to
-// either set the file or pass `~users` programmatically.
+// either set the file or pass `~accounts` programmatically.
 
 open Reventless
 
@@ -45,13 +45,13 @@ let _defaultPath = AccountsManifest.defaultPath
 
 /**
  * Hydrates the Login store. Returns the resolution path actually used
- * (`InlineUsers`, `UsersFile(path)`, `DefaultFile(path)`, or `Empty`).
+ * (`InlineAccounts`, `AccountsFile(path)`, `DefaultFile(path)`, or `Empty`).
  * Errors from a *resolved* path are returned as `Error`; absence of the
  * auto-discovered default file is silent.
  */
 type resolution =
-  | InlineUsers
-  | UsersFile(string)
+  | InlineAccounts
+  | AccountsFile(string)
   | DefaultFile(string)
   | Empty
 
@@ -79,29 +79,29 @@ makes it from). Never the working directory once another source was loaded.
 let providedGroups = (): array<string> =>
   LocalAuth.knownGroups()->Array.concat(resolved.contents ? [] : AccountsManifest.declaredGroups())
 
-let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): result<
+let load = (~accounts: option<array<entry>>=?, ~accountsFile: option<string>=?, ()): result<
   resolution,
   string,
 > => {
   // The default file is what the check already read; any other source arrives
   // after it, and the check would have compared the plugins with other accounts.
-  if pluginChecked.contents && (users->Option.isSome || usersFile->Option.isSome) {
+  if pluginChecked.contents && (accounts->Option.isSome || accountsFile->Option.isSome) {
     JsError.throwWithMessage(
-      "UserStore.load(~users / ~usersFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call UserStore.load before deploying plugins.",
+      "AccountStore.load(~accounts / ~accountsFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call AccountStore.load before deploying plugins.",
     )
   }
   resolved := true
-  switch users {
+  switch accounts {
   | Some(entries) =>
     _registerEntries(entries)
-    Ok(InlineUsers)
+    Ok(InlineAccounts)
   | None =>
-    switch usersFile {
+    switch accountsFile {
     | Some(path) =>
       parseFile(path)->Result.map(entries => {
         _registerEntries(entries)
         fromFile := entries->Array.map(e => e.username)
-        UsersFile(path)
+        AccountsFile(path)
       })
     | None =>
       let defaultPath = _defaultPath()
@@ -113,7 +113,7 @@ let load = (~users: option<array<entry>>=?, ~usersFile: option<string>=?, ()): r
         })
       } else {
         Console.log(
-          "[LocalAuth] no users configured — POST /__inmemory/login will reject all. " ++ "Provide ~users / ~usersFile or create .reventless/users.yaml relative to cwd.",
+          "[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. " ++ "Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd.",
         )
         Ok(Empty)
       }
@@ -212,14 +212,14 @@ let watch = (path: string): unit => {
 
 /**
  * Idempotent auto-discovery. Platform.startServers calls this before
- * `DomainGraphQL_Server.start`, so a `.reventless/users.yaml` in cwd
+ * `DomainGraphQL_Server.start`, so a `.reventless/accounts.yaml` in cwd
  * hydrates the Login store automatically, and follows the file from then on.
  * No-op once `load` has been called from anywhere.
  */
 let autoLoadOnce = (): unit =>
   if !resolved.contents {
     switch load() {
-    | Ok(DefaultFile(path)) | Ok(UsersFile(path)) => watch(path)
+    | Ok(DefaultFile(path)) | Ok(AccountsFile(path)) => watch(path)
     | _ => ()
     }
   }

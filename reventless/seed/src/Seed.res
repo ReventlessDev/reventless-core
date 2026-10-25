@@ -10,7 +10,7 @@ module Client = Seed_Client
 module Runner = Seed_Runner
 module Upload = Seed_Upload
 module Prompt = Seed_Prompt
-module Users = Seed_Users
+module Users = Seed_Accounts
 module Connect = Seed_Connect
 
 exception Failed = Seed_Types.Failed
@@ -23,8 +23,8 @@ type connection = Seed_Connect.connection = {
   client: Seed_Client.t,
   uploadsSkipped: bool,
   label: string,
-  accounts: array<Seed_Users.user>,
-  caller: Seed_Users.user,
+  accounts: array<Seed_Accounts.user>,
+  caller: Seed_Accounts.user,
   callerId?: string,
   login: (~username: string, ~password: string) => promise<string>,
   roleSwitch?: Seed_Connect.roleSwitch,

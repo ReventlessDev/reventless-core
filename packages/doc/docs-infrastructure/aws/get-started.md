@@ -187,7 +187,7 @@ plugin has registered the structure its stack just deployed. The reusable GitHub
 Actions workflow runs the same command after its plugin stacks are up.
 
 `deploy-app up` does all of this for a try-out stack — the layer, the stacks, the
-manifest and the accounts in `.reventless/users.<stack>.yaml` — and `deploy-app
+manifest and the accounts in `.reventless/accounts.<stack>.yaml` — and `deploy-app
 down` removes it again; the [tutorial](/tutorials/deploy-to-aws) runs it for the
 example. A new stack it creates starts with the settings the app lists under
 `stack-defaults` for that folder in `deploy-manifest.yaml`:

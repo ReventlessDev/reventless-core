@@ -100,8 +100,8 @@ deterministic demo dataset with collaborators.
 ## Users and authorization locally
 
 Reventless is authenticated by default: commands and queries expect a caller.
-Locally, users come from a YAML file at `.reventless/users.yaml` — gitignored, and
-seeded from a committed `users.example.yaml` template:
+Locally, users come from a YAML file at `.reventless/accounts.yaml` — gitignored, and
+seeded from a committed `accounts.example.yaml` template:
 
 ```yaml
 - username: admin
@@ -121,7 +121,7 @@ the process working directory at startup, so restart the server after editing it
 
 `pnpm run seed` reads the same file — it offers these accounts as the login to
 seed as, in the order they appear with the first as the default, and takes the
-password from the entry. A deployed platform keeps a `.reventless/users.yaml`
+password from the entry. A deployed platform keeps a `.reventless/accounts.yaml`
 too, recording the accounts created in its Cognito pool, and the seed offers
 those the same way.
 

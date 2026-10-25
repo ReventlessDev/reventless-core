@@ -1,12 +1,12 @@
 # Local dev users for the in-memory platform — TEMPLATE.
 #
-# `scripts/setup.mjs` copies this to `.reventless/users.yaml` (which is
+# `scripts/setup.mjs` copies this to `.reventless/accounts.yaml` (which is
 # gitignored, so your real local users never get committed). You can also copy
 # it by hand:
 #
-#   cp users.example.yaml .reventless/users.yaml
+#   cp accounts.example.yaml .reventless/accounts.yaml
 #
-# The in-memory auth adapter loads `.reventless/users.yaml` (relative to the
+# The in-memory auth adapter loads `.reventless/accounts.yaml` (relative to the
 # process cwd) at startup. Each entry: username, password, groups[] (required;
 # [] = unprivileged), userId? (defaults to username). "Admin" grants
 # platform/admin access; "User" is a regular shopper. Restart the server after

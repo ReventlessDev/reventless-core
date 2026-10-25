@@ -71,7 +71,7 @@ let remedy = (~provided: array<string>, ~listing: option<Role.listing>): string 
     `  Create the group there (provision-accounts creates the groups of the accounts ` ++ `manifest), or map the role to a group it has (Platform.roleGroups).`
   | None =>
     `  The platform provides the groups: ${provided->Array.join(", ")}.\n` ++
-    `  Add an account in that group to the accounts manifest (.reventless/users.yaml), ` ++
+    `  Add an account in that group to the accounts manifest (.reventless/accounts.yaml), ` ++
     `map the role to a group that exists (Platform.roleGroups), or declare the groups ` ++ `of a user pool this deployment did not create (Platform.providedGroups).`
   }
 

@@ -1,5 +1,5 @@
 /***
-The accounts a deployment is operated as, as a file: `.reventless/users.yaml`.
+The accounts a deployment is operated as, as a file: `.reventless/accounts.yaml`.
 
 Two platforms read it and they must not disagree about its shape. Locally it *is*
 the identity store — the in-memory auth adapter loads it at startup. On AWS it is
@@ -13,7 +13,7 @@ the two platforms share about who is signed in.
 
 🚨 **The password field is a bootstrap credential, not a stored secret.** The file
 is gitignored on every platform, and on AWS the passwords in it are generated per
-deployment rather than committed — see `users.example.yaml` beside each platform.
+deployment rather than committed — see `accounts.example.yaml` beside each platform.
 */
 
 /**
@@ -65,8 +65,49 @@ let parseFile = (path: string): result<array<entry>, string> =>
   | _ => Error(`Cannot read ${path}`)
   }
 
+/** The file's name in `.reventless/`. */
+let fileName = "accounts.yaml"
+
+/** The template each platform package keeps beside itself, committed, as the
+  declaration of its cast. Both examples spell it this way and so does the local
+  setup script, so it is a convention rather than a setting. */
+let templateName = "accounts.example.yaml"
+
+/** The names the file and its template had before. An app made then keeps them until it renames
+  them, so both are read, with a notice. */
+let oldFileName = "users.yaml"
+let oldTemplateName = "users.example.yaml"
+
+let _noticed = ref(false)
+
+/** Says once per process that a file is read under its old name, and how to rename it. */
+let noticeOldName = (path: string) =>
+  if !_noticed.contents {
+    _noticed := true
+    Console.warn(
+      `[accounts] reading ${path}: the accounts file is called ${fileName} now. Rename .reventless/${oldFileName} to .reventless/${fileName}, and ${oldTemplateName} to ${templateName}.`,
+    )
+  }
+
+/** The new name's path in `dir` when it is there; else the old name's when that is there, with
+  the notice; else the new name's, for a file about to be made. */
+let _either = (dir: string, ~name: string, ~old: string): string => {
+  let current = NodePath.join([dir, name])
+  let previous = NodePath.join([dir, old])
+  if !NodeFs.existsSync(current) && NodeFs.existsSync(previous) {
+    noticeOldName(previous)
+    previous
+  } else {
+    current
+  }
+}
+
 /** Where both platforms keep it: beside the package the process runs from. */
-let defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless", "users.yaml"])
+let defaultPath = (): string =>
+  _either(NodePath.join([NodeProcess.cwd(), ".reventless"]), ~name=fileName, ~old=oldFileName)
+
+/** The template a platform package in `dir` keeps, under its new name or its old one. */
+let templateIn = (dir: string): string => _either(dir, ~name=templateName, ~old=oldTemplateName)
 
 // ── Writing back ─────────────────────────────────────────────────────────────
 
@@ -285,11 +326,6 @@ let editFile = (~path as file: string, ~edits: array<edit>): result<unit, string
 
 // ── Finding it ───────────────────────────────────────────────────────────────
 
-/** The template each platform package keeps beside itself, committed, as the
-  declaration of its cast. Both examples spell it this way and so does the local
-  setup script, so it is a convention rather than a setting. */
-let templateName = "users.example.yaml"
-
 type located =
   | Declared(string)
   | SeededFrom(string, string)
@@ -303,7 +339,7 @@ let pathOf = (located: located): string =>
 The manifest to work from, copying the template into place when there is none.
 
 `.reventless/` is gitignored on every platform, so a fresh clone has no manifest
-and the first thing anyone met was `cp users.example.yaml .reventless/users.yaml`
+and the first thing anyone met was `cp accounts.example.yaml .reventless/accounts.yaml`
 — ceremony of the same kind as passing a pool id the deployment already knows.
 `scripts/setup.mjs` has done this for the local platform all along; this generalises
 it to any platform package, which is why it lives beside the format rather than
@@ -324,10 +360,10 @@ let locate = (~given: option<string>=?, ()): result<located, string> =>
     if NodeFs.existsSync(file) {
       Ok(Declared(file))
     } else {
-      let template = NodePath.join([NodeProcess.cwd(), templateName])
+      let template = templateIn(NodeProcess.cwd())
       if !NodeFs.existsSync(template) {
         Error(
-          `no ${file} and no ${templateName} here to start one from. Declare the accounts in .reventless/users.yaml — each entry a username, a password (empty to have one generated) and the groups it belongs to`,
+          `no ${file} and no ${templateName} here to start one from. Declare the accounts in .reventless/${fileName} — each entry a username, a password (empty to have one generated) and the groups it belongs to`,
         )
       } else {
         try {
@@ -337,11 +373,11 @@ let locate = (~given: option<string>=?, ()): result<located, string> =>
         } catch {
         | JsExn(err) =>
           Error(
-            `could not copy ${templateName} into place: ${JsExn.message(err)->Option.getOr(
-                "unknown error",
-              )}`,
+            `could not copy ${NodePath.basename(template)} into place: ${JsExn.message(
+                err,
+              )->Option.getOr("unknown error")}`,
           )
-        | _ => Error(`could not copy ${templateName} into place`)
+        | _ => Error(`could not copy ${NodePath.basename(template)} into place`)
         }
       }
     }
@@ -357,7 +393,7 @@ file `locate` would. The template counts because it is the cast a fresh clone
 provisions; a deploy from CI has no manifest and the same accounts to come.
 */
 let declaredGroups = (): array<string> => {
-  let template = NodePath.join([NodeProcess.cwd(), templateName])
+  let template = templateIn(NodeProcess.cwd())
   let file = NodeFs.existsSync(defaultPath())
     ? Some(defaultPath())
     : NodeFs.existsSync(template)

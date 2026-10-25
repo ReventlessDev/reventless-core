@@ -1,7 +1,7 @@
 /***
 A role is a job someone does — `Merchandiser`, `Fulfilment`, `Admin` — and is what
 a command or a view requires. A group is how an identity provider records that a
-person has one: the `groups` of a token, of a user pool, of `users.yaml`.
+person has one: the `groups` of a token, of a user pool, of `accounts.yaml`.
 
 Plugins speak of roles. Each declares the ones it uses as a payload-less variant in
 its own `src/Roles.res`, and the PPX turns `AllowRoles([Merchandiser])` into these

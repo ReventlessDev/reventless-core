@@ -61,7 +61,7 @@ Usage: deploy-app up|down [--manifest <path>] [--stack <name>]
 Deploy an app to AWS, or remove it again.
 
   deploy-app up     Deploy the platform and every plugin, bake the component
-                    manifest, create the accounts in .reventless/users.<stack>.yaml,
+                    manifest, create the accounts in .reventless/accounts.<stack>.yaml,
                     and print the web address and the sign-ins.
   deploy-app down   Remove every stack, and the Lambda layer and SSM parameter
                     \`up\` created.
@@ -495,12 +495,23 @@ let outputString = (outputs: dict<Automation.outputValue>, name: string): option
 /** The stack's own accounts file beside the platform, started from the app's
     template, or `None` when the app has no template — then there is nothing to
     create. Per stack because the file records the ids one pool minted: sharing
-    `users.yaml` would overwrite another deployment's record of its accounts. */
-let accountsFileName = stack => `users.${stack}.yaml`
+    `accounts.yaml` would overwrite another deployment's record of its accounts. A stack deployed
+    before the file was renamed keeps its `users.<stack>.yaml` until it is renamed. */
+let accountsFileName = stack => `accounts.${stack}.yaml`
+let oldAccountsFileName = stack => `users.${stack}.yaml`
 
 let accountsFile = (~platformDir: string, ~stack: string): option<string> => {
-  let file = NodePath.join([platformDir, ".reventless", accountsFileName(stack)])
-  let template = NodePath.join([platformDir, Manifest.templateName])
+  let file = {
+    let current = NodePath.join([platformDir, ".reventless", accountsFileName(stack)])
+    let old = NodePath.join([platformDir, ".reventless", oldAccountsFileName(stack)])
+    if !NodeFs.existsSync(current) && NodeFs.existsSync(old) {
+      Manifest.noticeOldName(old)
+      old
+    } else {
+      current
+    }
+  }
+  let template = Manifest.templateIn(platformDir)
   switch (NodeFs.existsSync(file), NodeFs.existsSync(template)) {
   | (false, false) => None
   | (true, _) => Some(file)

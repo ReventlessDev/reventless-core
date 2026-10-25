@@ -582,7 +582,7 @@ the same whether it runs locally or on AWS.
 ### 3.1 Roles, and which question each mechanism answers
 
 A **role is a group** — a Cognito group on AWS, a `groups:` entry in
-`.reventless/users.yaml` locally. One vocabulary, but four independent mechanisms
+`.reventless/accounts.yaml` locally. One vocabulary, but four independent mechanisms
 read it, and confusing them is the main way this goes wrong:
 
 | Question | Mechanism | Kind |
@@ -621,7 +621,7 @@ groups in `ui-hints.json` instead.
 
 Take `Shopper`. It appears in four files, and each one answers a different question.
 
-**Membership** — who holds the role. Locally, `.reventless/users.yaml`, loaded at
+**Membership** — who holds the role. Locally, `.reventless/accounts.yaml`, loaded at
 startup relative to the process cwd (restart after editing); on AWS these are
 Cognito groups.
 
@@ -744,8 +744,8 @@ The account to test with is one holding two roles — the hybrid shop's `fulfil`
 works every customer's orders, and acting as `Shopper` it sees only its own and is
 refused `ShipOrder`.
 
-Dev credentials ship in `users.example.yaml`, which `pnpm run setup` copies to the
-gitignored `.reventless/users.yaml`. They are throwaway — never reuse them
+Dev credentials ship in `accounts.example.yaml`, which `pnpm run setup` copies to the
+gitignored `.reventless/accounts.yaml`. They are throwaway — never reuse them
 anywhere real.
 
 ---

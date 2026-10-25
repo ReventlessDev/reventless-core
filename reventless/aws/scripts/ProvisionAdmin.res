@@ -198,7 +198,7 @@ ${passwordNote}
 This script bootstraps the first account only, which is the one that cannot be
 made through a signed-in session because there is no signed-in session yet. The
 rest of the cast is a list rather than a command: declare it in
-.reventless/users.yaml and run \`pnpm exec provision-accounts\`.`
+.reventless/accounts.yaml and run \`pnpm exec provision-accounts\`.`
 
 type request = {email: string, providerId?: string, stack?: string}
 

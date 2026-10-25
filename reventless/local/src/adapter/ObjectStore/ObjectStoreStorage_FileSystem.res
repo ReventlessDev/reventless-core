@@ -205,7 +205,7 @@ let deleteOffloadAll = (~root: string): int => {
 }
 
 // Removes the three trees, leaving the rest of the root (the database file, the
-// dev `users.yaml`) untouched.
+// dev `accounts.yaml`) untouched.
 let reset = (~root: string): unit =>
   [objectsDir(~root), metaDir(~root), offloadDir(~root)]->Array.forEach(dir =>
     try NodeFs.rmSync(dir, {recursive: true, force: true}) catch {

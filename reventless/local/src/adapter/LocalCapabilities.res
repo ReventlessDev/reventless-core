@@ -31,7 +31,7 @@ let registerMessagingSender = (sender: string) => messagingSenderRef := sender
 let identityProviderRef = ref(Reventless.Capabilities.none.identityProvider)
 
 /** Provision the identity provider. Called by `makePlatform` from the handle a
-    root declared, `Capability_IdentityProvider_UserStore.make()`. */
+    root declared, `Capability_IdentityProvider_AccountStore.make()`. */
 let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
   identityProviderRef := provider
 
@@ -70,7 +70,7 @@ let unmetWarning = (~declared: array<(string, string)>): option<string> =>
         | Messaging =>
           `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as ` ++ `\`~messagingSender\`.`
         | IdentityProvider =>
-          `\n  IdentityProvider is \`Capability_IdentityProvider_UserStore.make()\`, passed to the ` ++ `platform as \`~identityProvider\`.`
+          `\n  IdentityProvider is \`Capability_IdentityProvider_AccountStore.make()\`, passed to the ` ++ `platform as \`~identityProvider\`.`
         // Never unmet here: the local platform always provisions one.
         | Stash => ``
         }

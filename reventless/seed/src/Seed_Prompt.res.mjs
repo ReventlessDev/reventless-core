@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Nodereadline from "node:readline";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
-import * as Seed_Users$ReventlessSeed from "./Seed_Users.res.mjs";
+import * as Seed_Accounts$ReventlessSeed from "./Seed_Accounts.res.mjs";
 
 let rlRef = {
   contents: undefined
@@ -176,14 +176,14 @@ async function askCredentials(localDefaults, envUser) {
 }
 
 async function fromUsersFile(envUser) {
-  let match = Seed_Users$ReventlessSeed.load(envValue("SEED_USERS_FILE"));
+  let match = Seed_Accounts$ReventlessSeed.load(envValue("SEED_USERS_FILE"));
   if (match === undefined) {
     return;
   }
   let users = match[1];
   let path = match[0];
   let chosen = envUser !== undefined ? users.find(u => u.username === envUser) : await select(`User (` + path + `):`, users.map(u => [
-      Seed_Users$ReventlessSeed.label(u),
+      Seed_Accounts$ReventlessSeed.label(u),
       u
     ]), "SEED_USER", 0);
   return Stdlib_Option.map(chosen, u => {

@@ -4,7 +4,7 @@
 // `~identityProvider` in `~hostUiBundle`, and the platform puts it on the
 // capability record every slice's `translate` receives.
 //
-// Its store is `.reventless/users.yaml`, the file the in-memory auth adapter
+// Its store is `.reventless/accounts.yaml`, the file the in-memory auth adapter
 // already loads at startup, so an account made here survives a restart with no
 // second store to keep in step. Every write goes to the file and to the live
 // `LocalAuth.Login` store together, so the running process and the next one

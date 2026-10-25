@@ -17,7 +17,7 @@ one alone is enough.
 pnpm exec provision-accounts
 ```
 
-It reads `.reventless/users.yaml`, and knows nothing about any particular
+It reads `.reventless/accounts.yaml`, and knows nothing about any particular
 application's cast: the manifest belongs to whoever is deploying. A demo's four
 roles and a company's twelve staff are the same run. Which pool it writes to is
 [ProvisionProvider]'s question, and usually needs no argument either.
@@ -76,7 +76,7 @@ Turn a declared cast of accounts into working sign-ins.
                        created the pool or was handed one.
   --stack <name>       Read that output from this stack instead of the selected
                        one. The run always names the stack it used.
-  --file <path>        The manifest. Defaults to .reventless/users.yaml relative
+  --file <path>        The manifest. Defaults to .reventless/accounts.yaml relative
                        to the working directory, which is where both platforms
                        keep it.
 

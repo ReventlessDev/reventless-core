@@ -52,7 +52,7 @@ function describe(n) {
 
 function remedy(provided, listing) {
   if (listing === undefined) {
-    return `  The platform provides the groups: ` + provided.join(", ") + `.\n  Add an account in that group to the accounts manifest (.reventless/users.yaml), map the role to a group that exists (Platform.roleGroups), or declare the groups of a user pool this deployment did not create (Platform.providedGroups).`;
+    return `  The platform provides the groups: ` + provided.join(", ") + `.\n  Add an account in that group to the accounts manifest (.reventless/accounts.yaml), map the role to a group that exists (Platform.roleGroups), or declare the groups of a user pool this deployment did not create (Platform.providedGroups).`;
   }
   let source = listing.source;
   let source$1 = source.charAt(0).toUpperCase() + source.slice(1);

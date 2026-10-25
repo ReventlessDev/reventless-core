@@ -12,12 +12,12 @@ model update live.
 
 Reventless is secure by default: commands and queries require an authenticated
 user. Locally, authentication is backed by a YAML file at
-`platform-local/.reventless/users.yaml`. That file is gitignored; it is seeded from the
+`platform-local/.reventless/accounts.yaml`. That file is gitignored; it is seeded from the
 committed template
-[`platform-local/users.example.yaml`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/platform-local/users.example.yaml)
+[`platform-local/accounts.example.yaml`](https://github.com/ReventlessDev/reventless-core/tree/alpha/examples/online-shop-hybrid/platform-local/accounts.example.yaml)
 by `pnpm run setup` (run from the repo root — see
 [Run it locally](./run-locally#bootstrap-the-checkout)), or by hand with
-`cp users.example.yaml .reventless/users.yaml` from `platform-local/`. The seeded
+`cp accounts.example.yaml .reventless/accounts.yaml` from `platform-local/`. The seeded
 users are:
 
 | Username | Password | Groups | What it is for |
@@ -28,7 +28,7 @@ users are:
 | `fulfil` | `fulfil` | `Fulfilment`, `Shopper` | Works the order board and ships other people's orders |
 
 Open the shell at **http://localhost:5180**, go to the login page, and sign in as
-**`admin` / `admin`**. Add your own entries to `.reventless/users.yaml` (restart
+**`admin` / `admin`**. Add your own entries to `.reventless/accounts.yaml` (restart
 the server after editing).
 
 The four accounts exist to show two different questions being answered

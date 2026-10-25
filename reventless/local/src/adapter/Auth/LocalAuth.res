@@ -8,7 +8,7 @@
 //   none of the above              → Authenticated(defaultUser) (dev default)
 //
 // Stage A4 adds the `Login` submodule (token issuance + verification) and
-// the companion `UserStore` module (YAML hydration).
+// the companion `AccountStore` module (YAML hydration).
 
 open Reventless
 
@@ -33,7 +33,7 @@ let adminUser = (): Identity.t => {
 // ── User registry ─────────────────────────────────────────────────────────
 //
 // A `dict<Identity.t>` keyed by `username`. A4 hydrates this from
-// `.reventless/users.yaml`; tests inject via `registerUser`. The built-in
+// `.reventless/accounts.yaml`; tests inject via `registerUser`. The built-in
 // `admin` is answered on lookup, for the reason above, unless one is registered.
 
 let initialUsers = () => Dict.fromArray([("user", defaultUser)])
@@ -86,7 +86,7 @@ let getHeader = (headers: dict<string>, name: string): option<string> =>
 module Login = {
   type credentials = {password: string, identity: Identity.t}
 
-  // Hydrated by `UserStore` at platform start; tests can inject directly.
+  // Hydrated by `AccountStore` at platform start; tests can inject directly.
   let store: ref<dict<credentials>> = ref(Dict.make())
 
   let setCredentials = (~username: string, ~password: string, ~identity: Identity.t): unit => {
@@ -127,13 +127,13 @@ module Login = {
   //      that has no `.reventless/` to write to.
   //
   // The directory is used but never created. Its presence is what distinguishes
-  // a platform someone develops against — `pnpm run setup` puts `users.yaml`
+  // a platform someone develops against — `pnpm run setup` puts `accounts.yaml`
   // there, so anything with logins to preserve has one — from a unit test, and
   // an auth module that made directories would leave one in every test's cwd.
   //
   // Local dev only, as the whole module is: these tokens are not security-grade
   // and AWS never sees them. The file sits in a gitignored directory beside
-  // `users.yaml`, which already holds plaintext dev passwords.
+  // `accounts.yaml`, which already holds plaintext dev passwords.
 
   let _secretFileName = "token-secret"
   let _secretDir = (): string => NodePath.join([NodeProcess.cwd(), ".reventless"])

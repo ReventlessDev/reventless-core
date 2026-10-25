@@ -101,9 +101,9 @@ file *before* it refuses, so the seed then offers accounts that do not exist.
 **What to change.**
 
 1. In [ProvisionAccounts.res](../../reventless/aws/scripts/ProvisionAccounts.res),
-   check the user pool **before** writing anything into `.reventless/users.yaml`.
+   check the user pool **before** writing anything into `.reventless/accounts.yaml`.
 2. In the AWS template
-   [users.example.yaml](../../examples/online-shop-hybrid/platform-aws/users.example.yaml),
+   [accounts.example.yaml](../../examples/online-shop-hybrid/platform-aws/accounts.example.yaml),
    use email addresses under `example.com`, for example `shopper@example.com`.
    `example.com` is reserved, so nobody receives mail there, and provisioning
    already tells Cognito not to send invitations.
@@ -247,8 +247,8 @@ Added beyond the plan, each found by that run:
   name (`getOrganization()/getProject()/getStack()`), and `deploy-app` sets each
   plugin's `platform:stack` from it. This holds on every Pulumi backend.
 - **Per-stack accounts file.** `deploy-app` creates accounts from
-  `.reventless/users.<stack>.yaml`, not `users.yaml`: the file records the ids one pool
-  minted, and a maintainer's `users.yaml` already holds `alpha`'s. `shop:seed` passes
+  `.reventless/accounts.<stack>.yaml`, not `accounts.yaml`: the file records the ids one pool
+  minted, and a maintainer's `accounts.yaml` already holds `alpha`'s. `shop:seed` passes
   `SEED_USERS_FILE` accordingly.
 - **Stack-scoped place index.** `Capability_Geocoding_AwsLocation` named the index
   exactly as the app did (`online-shop-geocoder`), so a second stack in the same

@@ -15,12 +15,54 @@ let template = `- username: admin
 `
 
 describe("AccountsManifest.locate", () => {
+  // An app made before the file was renamed keeps its old names: both are read until they are
+  // renamed, and a new file is made under the new name.
+  testSync(
+    "an app's files under their old names are read, and a new one takes the new name",
+    () => {
+      let old = scratch()
+      NodeFs.writeFileSync(NodePath.join([old, AccountsManifest.oldTemplateName]), template)
+      NodeFs.mkdirSync(NodePath.join([old, ".reventless"]), {recursive: true})
+      NodeFs.writeFileSync(
+        NodePath.join([old, ".reventless", AccountsManifest.oldFileName]),
+        "- username: mine\n  password: kept\n  groups: []\n",
+      )
+      let seeded = scratch()
+      NodeFs.writeFileSync(NodePath.join([seeded, AccountsManifest.oldTemplateName]), template)
+      let both = scratch()
+      NodeFs.mkdirSync(NodePath.join([both, ".reventless"]), {recursive: true})
+      NodeFs.writeFileSync(NodePath.join([both, ".reventless", "accounts.yaml"]), template)
+      NodeFs.writeFileSync(NodePath.join([both, ".reventless", "users.yaml"]), template)
+      let cwd = NodeProcess.cwd()
+      let at = (dir, f) => {
+        NodeProcess.chdir(dir)
+        let r = f()
+        NodeProcess.chdir(cwd)
+        r
+      }
+      let read = at(old, () => AccountsManifest.defaultPath())
+      let template_ = AccountsManifest.templateIn(old)
+      let made = at(seeded, () => AccountsManifest.locate())
+      let preferred = at(both, () => AccountsManifest.defaultPath())
+      expect((
+        read->String.endsWith(NodePath.join([".reventless", "users.yaml"])),
+        template_->String.endsWith("users.example.yaml"),
+        switch made {
+        | Ok(SeededFrom(file, from)) =>
+          file->String.endsWith("accounts.yaml") && from->String.endsWith("users.example.yaml")
+        | _ => false
+        },
+        preferred->String.endsWith("accounts.yaml"),
+      ))->toEqual((true, true, true, true))
+    },
+  )
+
   // The ceremony this removes: `.reventless/` is gitignored on every platform, so
   // a fresh clone has no manifest and the first thing anyone met was a `cp`.
   testSync("copies the committed template into place when there is no manifest", () => {
     let dir = scratch()
     NodeFs.writeFileSync(NodePath.join([dir, AccountsManifest.templateName]), template)
-    let manifest = NodePath.join([dir, ".reventless", "users.yaml"])
+    let manifest = NodePath.join([dir, ".reventless", "accounts.yaml"])
     let cwd = NodeProcess.cwd()
     NodeProcess.chdir(dir)
     let located = AccountsManifest.locate()
@@ -29,7 +71,7 @@ describe("AccountsManifest.locate", () => {
     | Error(message) => fail(message)
     | Ok(SeededFrom(file, from)) =>
       expect(NodeFs.existsSync(manifest))->toBe(true)
-      expect(file->String.endsWith("users.yaml"))->toBe(true)
+      expect(file->String.endsWith("accounts.yaml"))->toBe(true)
       expect(from->String.endsWith(AccountsManifest.templateName))->toBe(true)
     | Ok(Declared(_)) => fail("expected the template to be copied, not an existing manifest")
     }
@@ -40,7 +82,7 @@ describe("AccountsManifest.locate", () => {
     NodeFs.writeFileSync(NodePath.join([dir, AccountsManifest.templateName]), template)
     NodeFs.mkdirSync(NodePath.join([dir, ".reventless"]), {recursive: true})
     NodeFs.writeFileSync(
-      NodePath.join([dir, ".reventless", "users.yaml"]),
+      NodePath.join([dir, ".reventless", "accounts.yaml"]),
       "- username: mine\n  password: kept\n  groups: []\n",
     )
     let cwd = NodeProcess.cwd()
@@ -80,7 +122,7 @@ describe("AccountsManifest.locate", () => {
     let located = AccountsManifest.locate()
     NodeProcess.chdir(cwd)
     switch located {
-    | Error(message) => expect(message->String.includes("users.yaml"))->toBe(true)
+    | Error(message) => expect(message->String.includes("accounts.yaml"))->toBe(true)
     | Ok(_) => fail("expected an error naming what to declare")
     }
   })

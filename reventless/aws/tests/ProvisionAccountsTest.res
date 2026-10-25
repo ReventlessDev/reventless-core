@@ -147,7 +147,7 @@ describe("ProvisionAccounts.provision", () => {
 
   test("a refused pool leaves the manifest untouched", async () => {
     let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "provision-accounts-"]))
-    let file = NodePath.join([dir, "users.yaml"])
+    let file = NodePath.join([dir, "accounts.yaml"])
     NodeFs.writeFileSync(file, manifest)
     let refuse = async (~providerId as _, ~usernames as _) => Error("pool signs in on email")
     let outcome = await Provision.provision(

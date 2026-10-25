@@ -22,14 +22,14 @@ describe("LocalCapabilities.unmetWarning", () => {
     let message = LocalCapabilities.unmetWarning(~declared)->Option.getOr("")
     expect(message->String.includes("Geocoding (GeocodeAddress)"))->toBe(true)
     expect(message->String.includes("Capability_Messaging_Log.make()"))->toBe(true)
-    expect(message->String.includes("Capability_IdentityProvider_UserStore.make()"))->toBe(true)
+    expect(message->String.includes("Capability_IdentityProvider_AccountStore.make()"))->toBe(true)
   })
 
   testSync("a registered provider leaves the warning", () => {
     reset()
     LocalCapabilities.registerMessagingSender("Shop <shop@example.test>")
     LocalCapabilities.registerIdentityProvider(
-      Capability_IdentityProvider_UserStore.make(~path="/nonexistent/users.yaml", ()),
+      Capability_IdentityProvider_AccountStore.make(~path="/nonexistent/accounts.yaml", ()),
     )
     expect(LocalCapabilities.provisioned())->toEqual([
       Reventless.CapabilityNeed.Messaging,

@@ -6,7 +6,7 @@ open JestGlobals
 let here = NodePath.dirname(NodeUrl.fileURLToPath(NodeImportMeta.url))
 
 let template = platform =>
-  NodePath.join([here, "..", "..", platform, "users.example.yaml"])
+  NodePath.join([here, "..", "..", platform, "accounts.example.yaml"])
   ->NodeFs.readFileSync
   ->ReventlessSeed.Seed.Users.parseString
 

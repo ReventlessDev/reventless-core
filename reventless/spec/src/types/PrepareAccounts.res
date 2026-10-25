@@ -5,8 +5,8 @@ Make a platform's accounts manifest ready to use.
 pnpm exec prepare-accounts
 ```
 
-Finds `.reventless/users.yaml` — copying the package's committed
-`users.example.yaml` into place when there is none — validates it, and generates a
+Finds `.reventless/accounts.yaml` — copying the package's committed
+`accounts.example.yaml` into place when there is none — validates it, and generates a
 password into every field left empty.
 
 🚨 **On the local platform this is the whole of provisioning.** The manifest *is*
@@ -40,7 +40,7 @@ Usage: prepare-accounts [--file <path>]
 
 Make a platform's accounts manifest ready to use.
 
-  --file <path>   The manifest. Defaults to .reventless/users.yaml relative to the
+  --file <path>   The manifest. Defaults to .reventless/accounts.yaml relative to the
                   working directory, which is where every platform keeps it. A
                   named path is read, never created.
 

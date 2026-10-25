@@ -72,8 +72,8 @@ across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
 [docs/guides/local-dev.md](../../docs/guides/local-dev.md) for the full matrix.
 
 `pnpm run build` rebuilds after source changes. `setup` seeds four accounts into
-`platform-local/.reventless/users.yaml` from the committed
-[`users.example.yaml`](platform-local/users.example.yaml), one per role the shop
+`platform-local/.reventless/accounts.yaml` from the committed
+[`accounts.example.yaml`](platform-local/accounts.example.yaml), one per role the shop
 distinguishes (password = username):
 
 | Account | Groups | What it is for |
@@ -144,7 +144,7 @@ pnpm run seed            # in another — pick a data set, then an account
 Two data sets ship, so the run first asks which to seed: `full` (above) and a
 compact `sample` (16 products, 8 customers, 40 orders) for a quick check. It then
 asks **which account to seed as**, listing the ones in that platform's
-`.reventless/users.yaml` in the order the file defines them — Enter takes the
+`.reventless/accounts.yaml` in the order the file defines them — Enter takes the
 first. The file records the password beside the username, so nothing is typed;
 local sends both to the dev `/__inmemory/login` route, AWS to Cognito. A platform
 that keeps no such file prompts for a username and password instead.
@@ -262,7 +262,7 @@ purpose; see [deploy environments](../../docs/guides/deploy-environments.md).
 [`pnpm run seed`](#seed-demo-data) from `platform-aws/` — it targets AWS by
 construction. It picks the stack (or `SEED_STACK`), discovers the endpoints from
 the stack's published `config.json` (or its stack outputs), and signs in against
-Cognito with the account you pick from `platform-aws/.reventless/users.yaml`
+Cognito with the account you pick from `platform-aws/.reventless/accounts.yaml`
 (`SEED_USERS_FILE` names another file, such as `users.dev.yaml`).
 That account must exist in the stack's pool with a permanent password, and the
 file is the record of the ones that do — see

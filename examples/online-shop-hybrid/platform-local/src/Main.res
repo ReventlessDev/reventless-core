@@ -21,10 +21,10 @@ Reventless.OwnerScope.setElevatedRoles(OnlineShopHybridSeed.Storefront.elevatedR
 // with no mailer produces.
 let messagingSender = ReventlessLocal.Capability_Messaging_Log.make()
 
-// Makes, groups and unmakes accounts in `.reventless/users.yaml`, the file the
+// Makes, groups and unmakes accounts in `.reventless/accounts.yaml`, the file the
 // local login already reads, so a principal a slice creates can sign in after
 // the next restart too. The AWS root has no counterpart yet.
-let identityProvider = ReventlessLocal.Capability_IdentityProvider_UserStore.make()
+let identityProvider = ReventlessLocal.Capability_IdentityProvider_AccountStore.make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)

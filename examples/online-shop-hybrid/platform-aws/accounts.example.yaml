@@ -4,13 +4,13 @@
 #
 #   pnpm exec provision-accounts
 #
-# On the first run this file is copied to .reventless/users.yaml — that copy is
+# On the first run this file is copied to .reventless/accounts.yaml — that copy is
 # the working file, and the one the tool writes into. The pool comes from the
 # selected Pulumi stack, so it needs no argument either. `pnpm exec
 # prepare-accounts` does the half that creates nothing, if you want to look first.
 #
 # That creates every group named below, creates each account, sets a permanent
-# password, applies the memberships — and writes back into `.reventless/users.yaml`
+# password, applies the memberships — and writes back into `.reventless/accounts.yaml`
 # the two things this file cannot know in advance:
 #
 #   password  generated per deployment, 24 characters. Written only into an EMPTY
@@ -23,7 +23,7 @@
 # account are both adopted rather than refused.
 #
 # 🚨 THIS TEMPLATE SHIPS NO PASSWORDS, and that is the difference from its local
-# counterpart. `platform-local/users.example.yaml` ships `admin`/`admin` because
+# counterpart. `platform-local/accounts.example.yaml` ships `admin`/`admin` because
 # the local store keeps passwords in a plaintext in-memory dictionary that is gone
 # on restart — a development fixture, reachable only from the machine it runs on.
 # A Cognito pool is reachable from the internet, so a committed password here
@@ -44,7 +44,7 @@
 # `shopper@example.com`.
 #
 # The four roles mirror the local ones exactly. See
-# ../platform-local/users.example.yaml for what each is for, why `fulfil` holds
+# ../platform-local/accounts.example.yaml for what each is for, why `fulfil` holds
 # Fulfilment AND Shopper, and why Merchandiser is deliberately not elevated.
 
 - username: admin@example.com

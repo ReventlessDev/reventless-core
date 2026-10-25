@@ -64,8 +64,43 @@ function parseFile(path) {
   }
 }
 
+let fileName = "accounts.yaml";
+
+let templateName = "accounts.example.yaml";
+
+let oldFileName = "users.yaml";
+
+let oldTemplateName = "users.example.yaml";
+
+let _noticed = {
+  contents: false
+};
+
+function noticeOldName(path) {
+  if (!_noticed.contents) {
+    _noticed.contents = true;
+    console.warn(`[accounts] reading ` + path + `: the accounts file is called ` + fileName + ` now. Rename .reventless/` + oldFileName + ` to .reventless/` + fileName + `, and ` + oldTemplateName + ` to ` + templateName + `.`);
+    return;
+  }
+}
+
+function _either(dir, name, old) {
+  let current = Nodepath.join(dir, name);
+  let previous = Nodepath.join(dir, old);
+  if (!Nodefs.existsSync(current) && Nodefs.existsSync(previous)) {
+    noticeOldName(previous);
+    return previous;
+  } else {
+    return current;
+  }
+}
+
 function defaultPath() {
-  return Nodepath.join(process.cwd(), ".reventless", "users.yaml");
+  return _either(Nodepath.join(process.cwd(), ".reventless"), fileName, oldFileName);
+}
+
+function templateIn(dir) {
+  return _either(dir, templateName, oldTemplateName);
 }
 
 function path(index, field) {
@@ -317,8 +352,6 @@ function editFile(file, edits) {
   }
 }
 
-let templateName = "users.example.yaml";
-
 function pathOf(located) {
   return located._0;
 }
@@ -350,11 +383,11 @@ function locate(given, param) {
       }
     };
   }
-  let template = Nodepath.join(process.cwd(), templateName);
+  let template = _either(process.cwd(), templateName, oldTemplateName);
   if (!Nodefs.existsSync(template)) {
     return {
       TAG: "Error",
-      _0: `no ` + file + ` and no ` + templateName + ` here to start one from. Declare the accounts in .reventless/users.yaml — each entry a username, a password (empty to have one generated) and the groups it belongs to`
+      _0: `no ` + file + ` and no ` + templateName + ` here to start one from. Declare the accounts in .reventless/` + fileName + ` — each entry a username, a password (empty to have one generated) and the groups it belongs to`
     };
   }
   try {
@@ -375,19 +408,19 @@ function locate(given, param) {
     if (err.RE_EXN_ID === "JsExn") {
       return {
         TAG: "Error",
-        _0: `could not copy ` + templateName + ` into place: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown error")
+        _0: `could not copy ` + Nodepath.basename(template) + ` into place: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown error")
       };
     } else {
       return {
         TAG: "Error",
-        _0: `could not copy ` + templateName + ` into place`
+        _0: `could not copy ` + Nodepath.basename(template) + ` into place`
       };
     }
   }
 }
 
 function declaredGroups() {
-  let template = Nodepath.join(process.cwd(), templateName);
+  let template = _either(process.cwd(), templateName, oldTemplateName);
   let file = Nodefs.existsSync(defaultPath()) ? defaultPath() : (
       Nodefs.existsSync(template) ? template : undefined
     );
@@ -454,14 +487,21 @@ export {
   entriesSchema,
   parseString,
   parseFile,
+  fileName,
+  templateName,
+  oldFileName,
+  oldTemplateName,
+  _noticed,
+  noticeOldName,
+  _either,
   defaultPath,
+  templateIn,
   path,
   currentString,
   applyFills,
   fillFile,
   applyEdits,
   editFile,
-  templateName,
   pathOf,
   locate,
   declaredGroups,

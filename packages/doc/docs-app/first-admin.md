@@ -132,7 +132,7 @@ session yet. Everyone else — a demo's shopper and merchandiser, a company's
 staff — is a list, and a list belongs in a file rather than in a dozen CLI
 invocations.
 
-Declare them in `users.example.yaml`, beside the platform package you deploy
+Declare them in `accounts.example.yaml`, beside the platform package you deploy
 from — each example ships one already:
 
 ```yaml
@@ -159,8 +159,8 @@ Then, from that package:
 pnpm exec provision-accounts
 ```
 
-There is nothing to copy first. When `.reventless/users.yaml` does not exist yet,
-the committed `users.example.yaml` is copied into place for you — the gitignored
+There is nothing to copy first. When `.reventless/accounts.yaml` does not exist yet,
+the committed `accounts.example.yaml` is copied into place for you — the gitignored
 file is where your deployment's answers accumulate, and the template is what it
 starts from.
 
@@ -176,7 +176,7 @@ file is never replaced**, so a second run is safe — which is the normal case, 
 adding one colleague to a list of four means running it again.
 
 The command knows nothing about any particular application's cast; the manifest is
-yours. Each example ships a `users.example.yaml` beside its `platform-aws` package
+yours. Each example ships a `accounts.example.yaml` beside its `platform-aws` package
 to copy from.
 
 ### The half that is not AWS's

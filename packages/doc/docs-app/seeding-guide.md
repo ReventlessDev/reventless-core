@@ -242,7 +242,7 @@ selects one). Override the local endpoints with `REVENTLESS_GRAPHQL_ENDPOINT` /
 `REVENTLESS_LOGIN_ENDPOINT`; nothing in the harness assumes a local runtime.
 
 **Who it logs in as.** Both providers take their accounts from the platform's
-`.reventless/users.yaml` — the file the local auth adapter already loads, and the
+`.reventless/accounts.yaml` — the file the local auth adapter already loads, and the
 record of the Cognito accounts on AWS. The run lists its entries in file order
 with the first as the default and takes the password from the chosen entry, so
 nothing is typed; `SEED_USER` picks by username or 1-based index and

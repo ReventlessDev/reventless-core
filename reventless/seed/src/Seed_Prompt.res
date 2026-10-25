@@ -190,9 +190,9 @@ let select = async (~title: string, ~options: array<(string, 'a)>, ~env=?, ~defa
  * assume the file was there. `caller` is always populated, but carries no
  * `groups` and no `userId` on those paths: nothing read them off a file.
  */
-type resolved = {caller: Seed_Users.user, accounts: array<Seed_Users.user>}
+type resolved = {caller: Seed_Accounts.user, accounts: array<Seed_Accounts.user>}
 
-let typedUser = (~username: string, ~password: string): Seed_Users.user => {
+let typedUser = (~username: string, ~password: string): Seed_Accounts.user => {
   username,
   password,
   groups: [],
@@ -202,7 +202,7 @@ let typedUser = (~username: string, ~password: string): Seed_Users.user => {
 // when the platform keeps no accounts file. `envUser` is threaded in so a
 // `REVENTLESS_DEMO_USER` that named nobody in the file still skips the username
 // prompt rather than asking for a name that was already given.
-let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): Seed_Users.user => {
+let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): Seed_Accounts.user => {
   let username = switch envUser {
   | Some(u) => u
   | None =>
@@ -220,7 +220,7 @@ let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): See
   typedUser(~username, ~password)
 }
 
-// The accounts file the platform already keeps (`.reventless/users.yaml`, or
+// The accounts file the platform already keeps (`.reventless/accounts.yaml`, or
 // `SEED_USERS_FILE`). It records the password beside the username, so choosing
 // an account is the whole credential step — nothing is typed.
 //
@@ -233,7 +233,7 @@ let askCredentials = async (~localDefaults: bool, ~envUser: option<string>): See
 // up, and reading it once to pick a login and never again is what let a data set
 // seed rows under ids nobody on the platform holds.
 let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
-  switch Seed_Users.load(~path=?envValue("SEED_USERS_FILE")) {
+  switch Seed_Accounts.load(~path=?envValue("SEED_USERS_FILE")) {
   | None => None
   | Some((path, users)) =>
     let chosen = switch envUser {
@@ -242,7 +242,7 @@ let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
       Some(
         await select(
           ~title=`User (${path}):`,
-          ~options=users->Array.map(u => (Seed_Users.label(u), u)),
+          ~options=users->Array.map(u => (Seed_Accounts.label(u), u)),
           ~env="SEED_USER",
           ~defaultIndex=0,
         ),
@@ -262,7 +262,7 @@ let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
  *
  * `REVENTLESS_DEMO_USER` + `REVENTLESS_DEMO_PASSWORD` together are the
  * non-interactive path and skip everything below. Otherwise the platform's
- * `.reventless/users.yaml` supplies the accounts to choose from, and only a
+ * `.reventless/accounts.yaml` supplies the accounts to choose from, and only a
  * platform without one falls back to typing both halves — where, with
  * `localDefaults`, empty input means `admin`/`admin`.
  *

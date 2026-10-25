@@ -1,4 +1,4 @@
-// Stage A4 — UserStore.load resolution order and YAML parsing.
+// Stage A4 — AccountStore.load resolution order and YAML parsing.
 
 @@warning("-44")
 
@@ -7,12 +7,12 @@ open JestGlobals
 let resetAll = () => {
   LocalAuth.resetUsers()
   LocalAuth.Login.resetStore()
-  UserStore.resetResolution()
+  AccountStore.resetResolution()
 }
 
 let _writeYamlFile = (contents: string): string => {
   let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-userstore-"]))
-  let path = NodePath.join([dir, "users.yaml"])
+  let path = NodePath.join([dir, "accounts.yaml"])
   NodeFs.writeFileSync(path, contents)
   path
 }
@@ -26,7 +26,7 @@ testPromise("parseString decodes a well-formed YAML document", async () => {
   password: bob-pw
   groups: []
 `
-  switch UserStore.parseString(yaml) {
+  switch AccountStore.parseString(yaml) {
   | Ok(entries) =>
     expect(entries->Array.length)->toEqual(2)
     let first = entries->Array.getUnsafe(0)
@@ -38,7 +38,7 @@ testPromise("parseString decodes a well-formed YAML document", async () => {
 })
 
 testPromise("parseString rejects malformed YAML", async () => {
-  switch UserStore.parseString("not: valid: yaml: at all: ::") {
+  switch AccountStore.parseString("not: valid: yaml: at all: ::") {
   | Error(_) => ()
   | Ok(_) => JsError.throwWithMessage("expected Error for malformed YAML")
   }
@@ -49,21 +49,21 @@ testPromise("parseString rejects entries missing required fields", async () => {
 - username: alice
   groups: [Editor]
 `
-  switch UserStore.parseString(yaml) {
+  switch AccountStore.parseString(yaml) {
   | Error(_) => ()
   | Ok(_) => JsError.throwWithMessage("expected Error for missing password")
   }
 })
 
-testPromise("load(~users) registers credentials and returns InlineUsers", async () => {
+testPromise("load(~accounts) registers credentials and returns InlineAccounts", async () => {
   resetAll()
-  let entries: array<UserStore.entry> = [
+  let entries: array<AccountStore.entry> = [
     {username: "alice", password: "alice-pw", groups: ["Editor"]},
     {username: "bob", password: "bob-pw", groups: [], userId: "u-bob"},
   ]
-  switch UserStore.load(~users=entries, ()) {
-  | Ok(InlineUsers) => ()
-  | Ok(_) => JsError.throwWithMessage("expected InlineUsers")
+  switch AccountStore.load(~accounts=entries, ()) {
+  | Ok(InlineAccounts) => ()
+  | Ok(_) => JsError.throwWithMessage("expected InlineAccounts")
   | Error(msg) => JsError.throwWithMessage("load failed: " ++ msg)
   }
   // Verify Login.issue accepts the credentials.
@@ -79,16 +79,16 @@ testPromise("load(~users) registers credentials and returns InlineUsers", async 
   }
 })
 
-testPromise("load(~usersFile) reads a YAML file from disk", async () => {
+testPromise("load(~accountsFile) reads a YAML file from disk", async () => {
   resetAll()
   let path = _writeYamlFile(`
 - username: carol
   password: carol-pw
   groups: [Admin]
 `)
-  switch UserStore.load(~usersFile=path, ()) {
-  | Ok(UsersFile(p)) => expect(p)->toEqual(path)
-  | Ok(_) => JsError.throwWithMessage("expected UsersFile resolution")
+  switch AccountStore.load(~accountsFile=path, ()) {
+  | Ok(AccountsFile(p)) => expect(p)->toEqual(path)
+  | Ok(_) => JsError.throwWithMessage("expected AccountsFile resolution")
   | Error(msg) => JsError.throwWithMessage("load failed: " ++ msg)
   }
   let result = await LocalAuth.Login.issue(~username="carol", ~password="carol-pw")
@@ -99,9 +99,9 @@ testPromise("load(~usersFile) reads a YAML file from disk", async () => {
   NodeFs.rmSync(path, {force: true})
 })
 
-testPromise("load(~usersFile) returns Error when the file is missing", async () => {
+testPromise("load(~accountsFile) returns Error when the file is missing", async () => {
   resetAll()
-  switch UserStore.load(~usersFile="/tmp/does-not-exist-reventless.yaml", ()) {
+  switch AccountStore.load(~accountsFile="/tmp/does-not-exist-reventless.yaml", ()) {
   | Error(_) => ()
   | Ok(_) => JsError.throwWithMessage("expected Error for missing file")
   }
@@ -109,12 +109,12 @@ testPromise("load(~usersFile) returns Error when the file is missing", async () 
 
 testPromise("load() with no args + no default file returns Empty", async () => {
   resetAll()
-  // The test's cwd has no .reventless/users.yaml — verify Empty is returned.
+  // The test's cwd has no .reventless/accounts.yaml — verify Empty is returned.
   // (The package's own cwd is reventless-local/ during `pnpm test`, where
   // no such file exists.)
-  switch UserStore.load() {
+  switch AccountStore.load() {
   | Ok(Empty) => ()
-  | Ok(DefaultFile(_)) => // If a .reventless/users.yaml happens to exist in CI, accept it.
+  | Ok(DefaultFile(_)) => // If a .reventless/accounts.yaml happens to exist in CI, accept it.
     ()
   | Ok(_) => JsError.throwWithMessage("expected Empty or DefaultFile")
   | Error(msg) => JsError.throwWithMessage("load failed: " ++ msg)
@@ -128,12 +128,12 @@ testPromise("inline users win over a file path", async () => {
   password: file-pw
   groups: []
 `)
-  let inline: array<UserStore.entry> = [
+  let inline: array<AccountStore.entry> = [
     {username: "inline-user", password: "inline-pw", groups: []},
   ]
-  switch UserStore.load(~users=inline, ~usersFile=path, ()) {
-  | Ok(InlineUsers) => ()
-  | Ok(_) => JsError.throwWithMessage("expected InlineUsers (inline should win)")
+  switch AccountStore.load(~accounts=inline, ~accountsFile=path, ()) {
+  | Ok(InlineAccounts) => ()
+  | Ok(_) => JsError.throwWithMessage("expected InlineAccounts (inline should win)")
   | Error(msg) => JsError.throwWithMessage("load failed: " ++ msg)
   }
   // file-user must NOT be in the registry.
@@ -150,10 +150,10 @@ testPromise("inline users win over a file path", async () => {
 
 testPromise("autoLoadOnce is a no-op after an explicit load", async () => {
   resetAll()
-  let _ = UserStore.load(~users=[{username: "x", password: "x", groups: []}], ())
-  // Second call should not crash even if .reventless/users.yaml doesn't
+  let _ = AccountStore.load(~accounts=[{username: "x", password: "x", groups: []}], ())
+  // Second call should not crash even if .reventless/accounts.yaml doesn't
   // exist; resolved=true prevents the default-discovery branch.
-  UserStore.autoLoadOnce()
+  AccountStore.autoLoadOnce()
   // Sanity: explicit-load registration persists.
   switch LocalAuth.lookupUser("x") {
   | Some(_) => ()
@@ -162,7 +162,7 @@ testPromise("autoLoadOnce is a no-op after an explicit load", async () => {
 })
 
 // What the role check counts as provided, before the servers load the store.
-describe("UserStore.providedGroups", () => {
+describe("AccountStore.providedGroups", () => {
   // Runs `f` in a directory holding `files` (path relative to it → contents).
   let inDir = (files: array<(string, string)>, f) => {
     let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-provided-"]))
@@ -188,8 +188,8 @@ describe("UserStore.providedGroups", () => {
   testSync("counts the default file the servers will load", () => {
     resetAll()
     let groups = inDir(
-      [(".reventless/users.yaml", manifest("Merchandiser"))],
-      () => UserStore.providedGroups(),
+      [(".reventless/accounts.yaml", manifest("Merchandiser"))],
+      () => AccountStore.providedGroups(),
     )
     expect(has("Merchandiser", groups))->toBe(true)
   })
@@ -197,27 +197,27 @@ describe("UserStore.providedGroups", () => {
   testSync("counts the template where setup has not made the file yet", () => {
     resetAll()
     let groups = inDir(
-      [("users.example.yaml", manifest("Fulfilment"))],
-      () => UserStore.providedGroups(),
+      [("accounts.example.yaml", manifest("Fulfilment"))],
+      () => AccountStore.providedGroups(),
     )
     expect(has("Fulfilment", groups))->toBe(true)
   })
 
   testSync("once loaded from elsewhere, counts those accounts and not the directory's", () => {
     resetAll()
-    let _ = UserStore.load(~users=[{username: "i", password: "i", groups: ["Inline"]}], ())
+    let _ = AccountStore.load(~accounts=[{username: "i", password: "i", groups: ["Inline"]}], ())
     let groups = inDir(
-      [(".reventless/users.yaml", manifest("Merchandiser"))],
-      () => UserStore.providedGroups(),
+      [(".reventless/accounts.yaml", manifest("Merchandiser"))],
+      () => AccountStore.providedGroups(),
     )
     expect((has("Inline", groups), has("Merchandiser", groups)))->toEqual((true, false))
   })
 
   testSync("loading other accounts after a plugin was checked is refused", () => {
     resetAll()
-    UserStore.pluginChecked := true
-    let refused = switch UserStore.load(
-      ~users=[{username: "late", password: "l", groups: ["Late"]}],
+    AccountStore.pluginChecked := true
+    let refused = switch AccountStore.load(
+      ~accounts=[{username: "late", password: "l", groups: ["Late"]}],
       (),
     ) {
     | _ => false
@@ -228,13 +228,13 @@ describe("UserStore.providedGroups", () => {
 
   testSync("the default load after a plugin was checked is the one the check read", () => {
     resetAll()
-    UserStore.pluginChecked := true
-    let loaded = inDir([], () => UserStore.load()->Result.isOk)
+    AccountStore.pluginChecked := true
+    let loaded = inDir([], () => AccountStore.load()->Result.isOk)
     expect(loaded)->toBe(true)
   })
 })
 
-describe("UserStore.reload", () => {
+describe("AccountStore.reload", () => {
   let signsIn = async (~username, ~password) =>
     switch await LocalAuth.Login.issue(~username, ~password) {
     | Ok(_) => true
@@ -251,7 +251,7 @@ describe("UserStore.reload", () => {
   password: b1
   groups: []
 `)
-    let _ = UserStore.load(~usersFile=path, ())
+    let _ = AccountStore.load(~accountsFile=path, ())
     NodeFs.writeFileSync(
       path,
       `
@@ -263,7 +263,7 @@ describe("UserStore.reload", () => {
   groups: [Driver]
 `,
     )
-    switch UserStore.reload(path) {
+    switch AccountStore.reload(path) {
     | Ok(said) => expect(said)->toEqual("2 accounts, removed: bob")
     | Error(e) => JsError.throwWithMessage(e)
     }
@@ -281,9 +281,9 @@ describe("UserStore.reload", () => {
   password: a1
   groups: [Editor]
 `)
-    let _ = UserStore.load(~usersFile=path, ())
+    let _ = AccountStore.load(~accountsFile=path, ())
     NodeFs.writeFileSync(path, "- username: alice\n  groups: [Editor]\n")
-    expect(UserStore.reload(path)->Result.isError)->toBe(true)
+    expect(AccountStore.reload(path)->Result.isError)->toBe(true)
     expect(await signsIn(~username="alice", ~password="a1"))->toBe(true)
   })
 
@@ -294,8 +294,8 @@ describe("UserStore.reload", () => {
   password: a1
   groups: [Editor]
 `)
-    let _ = UserStore.load(~usersFile=path, ())
-    UserStore.watch(path)
+    let _ = AccountStore.load(~accountsFile=path, ())
+    AccountStore.watch(path)
     NodeFs.writeFileSync(
       path,
       `
@@ -317,7 +317,7 @@ describe("UserStore.reload", () => {
         await waitFor(tries - 1)
       }
     let added = await waitFor(60)
-    UserStore.unwatch()
+    AccountStore.unwatch()
     expect(added)->toBe(true)
   })
 })

@@ -43,7 +43,7 @@ function unmetWarning(declared) {
         case "Messaging" :
           return `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as \`~messagingSender\`.`;
         case "IdentityProvider" :
-          return `\n  IdentityProvider is \`Capability_IdentityProvider_UserStore.make()\`, passed to the platform as \`~identityProvider\`.`;
+          return `\n  IdentityProvider is \`Capability_IdentityProvider_AccountStore.make()\`, passed to the platform as \`~identityProvider\`.`;
         case "Stash" :
           return ``;
       }

@@ -61,10 +61,10 @@ type connection = {
   // bypasses it entirely. A data set resolves a demo owner through this, so the
   // id it seeds is the id the platform stamps rather than a literal that only
   // happens to match one platform's accounts.
-  accounts: array<Seed_Users.user>,
+  accounts: array<Seed_Accounts.user>,
   // The account this run authenticated as, and the id its bearer actually
   // carries — which is the only id available when there is no accounts file.
-  caller: Seed_Users.user,
+  caller: Seed_Accounts.user,
   callerId?: string,
   // The login this run authenticated with, kept so a data set can mint a second
   // client for another account. An owner-scoped read is only ever verified by
@@ -95,7 +95,7 @@ let applyRole = async (
   ~client: Seed_Client.t,
   ~roleSwitch: roleSwitch,
   ~login: (~username: string, ~password: string) => promise<string>,
-  ~caller: Seed_Users.user,
+  ~caller: Seed_Accounts.user,
   ~role: option<string>,
 ): unit => {
   let minted = await roleSwitch(~client, ~role)
@@ -130,7 +130,7 @@ let resolveRole = async (
   ~client: Seed_Client.t,
   ~roleSwitch: option<roleSwitch>,
   ~login: (~username: string, ~password: string) => promise<string>,
-  ~caller: Seed_Users.user,
+  ~caller: Seed_Accounts.user,
 ): unit =>
   switch roleSwitch {
   | None => ()
@@ -213,7 +213,7 @@ let make = async (
  * an owner-scoped view counts every owner's rows for it and reads non-empty
  * whether or not a single row is reachable by the person it was seeded for.
  */
-let clientFor = async (c: connection, ~account: Seed_Users.user): Seed_Client.t => {
+let clientFor = async (c: connection, ~account: Seed_Accounts.user): Seed_Client.t => {
   let token = await c.login(~username=account.username, ~password=account.password)
   let client = Seed_Client.make(~config={endpoint: Seed_Client.endpoint(c.client)})
   client->Seed_Client.useToken(token)

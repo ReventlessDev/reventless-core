@@ -23,7 +23,7 @@ type requestContext = {
 
 module type Provider = {
   /** Provider-specific deploy-time output (e.g. `{userPoolId, clientId}`
-      for Cognito, `{usersFilePath}` for in-memory). Consumed by the platform
+      for Cognito, `{accountsFilePath}` for in-memory). Consumed by the platform
       stack to wire downstream resources such as the AppSync auth config. */
   type authConfig
 

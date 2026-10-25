@@ -1,7 +1,7 @@
 // The identity provider a deployed platform provisions: principals in its
 // Cognito pool, and each new one's domain id in the identity store the pool's
 // pre-token trigger reads. The AWS counterpart of the local platform's
-// `Capability_IdentityProvider_UserStore`, and reached the same way — on the
+// `Capability_IdentityProvider_AccountStore`, and reached the same way — on the
 // capability record a slice's `translate` receives.
 //
 // Pulumi-free so it ships in the slice Lambda. The pool calls go through an

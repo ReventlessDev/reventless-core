@@ -16,7 +16,7 @@ Usage: prepare-accounts [--file <path>]
 
 Make a platform's accounts manifest ready to use.
 
-  --file <path>   The manifest. Defaults to .reventless/users.yaml relative to the
+  --file <path>   The manifest. Defaults to .reventless/accounts.yaml relative to the
                   working directory, which is where every platform keeps it. A
                   named path is read, never created.
 

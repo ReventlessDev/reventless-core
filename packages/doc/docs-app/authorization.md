@@ -57,7 +57,7 @@ Two words, with two meanings:
   `Admin`. Rules name roles. A role belongs to the plugin.
 - A **group** is how an identity provider records that a person has a role: the
   `groups` in a sign-in token, the groups of a user pool, the `groups` of an
-  account in `users.yaml`. Groups belong to the deployment.
+  account in `accounts.yaml`. Groups belong to the deployment.
 
 A plugin declares the roles its rules use, as a variant in `src/Roles.res`:
 
@@ -117,16 +117,16 @@ Where there is no pool to ask (a program that creates its pool in the same run,
 or a root that does not call `loadProvidedGroups`), the groups provided are:
 
 - the administrator group,
-- the groups of the accounts manifest (`.reventless/users.yaml`, or the
-  `users.example.yaml` it is made from), read from the directory the deploy runs in,
+- the groups of the accounts manifest (`.reventless/accounts.yaml`, or the
+  `accounts.example.yaml` it is made from), read from the directory the deploy runs in,
 - the groups the role mapping names,
 - the groups a platform root declares with `Platform.providedGroups([...])`, for an
   identity provider that cannot be listed.
 
 **Locally,** the groups provided are those of the accounts the platform can sign
 in as: the built-in ones, plus the accounts manifest (or its template) that the
-servers load at start. A root that loads other accounts with `UserStore.load(~users)`
-or `UserStore.load(~usersFile)` must do it before deploying plugins. Then those
+servers load at start. A root that loads other accounts with `AccountStore.load(~accounts)`
+or `AccountStore.load(~accountsFile)` must do it before deploying plugins. Then those
 accounts count, and the working directory's manifest does not. Loading them after
 a plugin has been built is refused, since the check would have compared the plugin
 with other accounts.

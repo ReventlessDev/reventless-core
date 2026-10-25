@@ -62,7 +62,7 @@ exist is a *backend* behind any of them — which is why the gate refuses.
    *"Intentionally silent on failure: user may already exist (idempotent sign-up)"*. Right for a
    seeding helper, wrong for a registration path, where "this address is already a principal" is
    precisely the decision the flow turns on. It is reusable as a reference, not as an implementation.
-3. `UserStore.res` hydrates `LocalAuth.Login.store` from `.reventless/users.yaml` at start and nothing
+3. `AccountStore.res` hydrates `LocalAuth.Login.store` from `.reventless/accounts.yaml` at start and nothing
    writes back, so the local platform has no way to create a principal at all.
 
 ## Step 0 — measured 2026-09-10: **yes, and Step 5 is now the top of the workstream**
@@ -212,7 +212,7 @@ closed.**
 
 Which store, and who provisions it. The recommendation is the shape 5b already argued for the pool
 settings: **the capability owns the mapping, the platform provisions the storage** — a DynamoDB table
-beside `Auth_ActiveRoleStore` with a derived name on AWS, and the existing `.reventless/users.yaml` on
+beside `Auth_ActiveRoleStore` with a derived name on AWS, and the existing `.reventless/accounts.yaml` on
 local, which Step 3's `createPrincipal` has to learn to write to anyway. Both are the identity-adjacent
 state that already exists on each platform, and neither is the event log.
 
@@ -442,11 +442,11 @@ chapter's ([self-registration-is-a-chapter-not-a-trait.md](self-registration-is-
 and that plan lists "needs the capability's local provider" as its own blocker. The provider is what
 this plan owns, and it is what shipped.
 
-- **`Capability_IdentityProvider_UserStore`** in `reventless/local`, beside `Capability_Messaging_Log`
+- **`Capability_IdentityProvider_AccountStore`** in `reventless/local`, beside `Capability_Messaging_Log`
   and reached the same way: a root calls `make()`, passes the handle as `~identityProvider` in
   `~hostUiBundle`, and `makePlatform` puts it on the capability record every `translate` receives. A
   root that passes nothing keeps the refusing arm. The hybrid example's local root passes it.
-- **Its store is `.reventless/users.yaml`**, the file the login already loads — the recommendation
+- **Its store is `.reventless/accounts.yaml`**, the file the login already loads — the recommendation
   under Step 2, so an account made here survives a restart with no second store. Every operation
   writes the file and the live `LocalAuth.Login` store together. `AccountsManifest` gained the three
   edits (`Append`, `SetGroups`, `Remove`), round-tripping through the YAML document as `applyFills`
@@ -468,7 +468,7 @@ this plan owns, and it is what shipped.
   gate still refuses a plugin declaring the need there.
 
 *Evidence:* the whole repo builds warning-free; spec, local and infra 1,739 tests in 167 suites green,
-aws 995 in 86. Nine new tests in `Capability_IdentityProvider_UserStoreTest` (login now and after a
+aws 995 in 86. Nine new tests in `Capability_IdentityProvider_AccountStoreTest` (login now and after a
 reload from the file, `Conflict`, `NoCredential`, push refused, groups round-trip, unknown principal,
 idempotent delete, comments surviving) and five in `AccountsManifestTest` for the edits.
 
@@ -723,11 +723,11 @@ capability has to reproduce that property rather than inherit it, so it is worth
   the point of the arm, and it is what `Geocoding` and `Messaging` already demonstrate.
 - `Capabilities.none` answers `Unavailable` on every operation, asserted the way the existing
   `geocode` / `messaging` refusals are.
-- ✅ A local `createPrincipal` writes `.reventless/users.yaml` and a restarted process sees the account.
+- ✅ A local `createPrincipal` writes `.reventless/accounts.yaml` and a restarted process sees the account.
   Appending to the file is the recommendation: visible, greppable, survives a restart, and matches how
   developers already work with it. It races two processes — record that rather than pretend otherwise;
-  the file is already shared with the seed runner. Held by `Capability_IdentityProvider_UserStoreTest`,
-  whose reload is a reset of both stores and a `UserStore.load` of the file.
+  the file is already shared with the seed runner. Held by `Capability_IdentityProvider_AccountStoreTest`,
+  whose reload is a reset of both stores and a `AccountStore.load` of the file.
 - Round-trip on both platforms: create, add to group, remove, delete. ✅ local; AWS against fake pool
   calls, and on a deployed pool once a plugin declares the need.
 - ✅ **A spec field declaring `AllowAnonymous` either reaches an anonymous caller on AWS or fails the
@@ -747,7 +747,7 @@ capability has to reproduce that property rather than inherit it, so it is worth
   `usernameAttributes: ["email"]` (207); `CapabilityNeed.t`'s two arms and its object-store exclusion
   note; `Capabilities.t` carrying only `geocode` and `messaging`, and `Capabilities.none`'s two
   refusing arms; `Util_Cognito_Runtime.signUpIfMissing`'s silent catch and its comment;
-  `UserStore.res`'s read-only YAML hydration; `Auth_ActiveRoleStore`'s derived store name.
+  `AccountStore.res`'s read-only YAML hydration; `Auth_ActiveRoleStore`'s derived store name.
 - **Measured in-repo 2026-09-10 (Step 0), replacing what was asserted:** that `usernameAttributes` is
   fixed at pool creation — `UpdateUserPoolRequest` cannot express it, `CreateUserPoolRequest` can. Also
   that `AdminCreateUserConfig` *can* be updated in place, and that the Pulumi AWS schema's

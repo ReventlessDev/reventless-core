@@ -109,7 +109,7 @@ module MakeWithConfig = (
   // What this platform provides for the roles its plugins need: every account it
   // can sign in as, built-in and loaded alike, or the file the store will load
   // when the servers start — after the plugins are built and checked.
-  Reventless.Role.provideGroupsFrom(UserStore.providedGroups)
+  Reventless.Role.provideGroupsFrom(AccountStore.providedGroups)
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
   let _ = TestRunner.setup()
@@ -1377,11 +1377,11 @@ module MakeWithConfig = (
   // this is a no-op (start() is called inline inside makePlatform/deployPlugin).
   let startServers = () => {
     if Config.splitApi {
-      // Hydrate Login store from .reventless/users.yaml (or ~users/~usersFile
+      // Hydrate Login store from .reventless/accounts.yaml (or ~accounts/~accountsFile
       // if provided programmatically) before the Domain server accepts
       // requests. Unified mode does this in makePlatform; split mode defers
       // server startup to here so it must do the same.
-      UserStore.autoLoadOnce()
+      AccountStore.autoLoadOnce()
       DomainGraphQL_Server.start(~port=domainPort, ())
       DomainMCP_Server.start(~port=domainMcpPort, ())
       PlatformGraphQL_Server.start(
@@ -1579,7 +1579,7 @@ module MakeWithConfig = (
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     messagingSender?: ReventlessInfra.Platform.messagingSender,
     // Local only, until the AWS platform has a provider to pass the same way:
-    // `Capability_IdentityProvider_UserStore.make()`, writing the accounts file
+    // `Capability_IdentityProvider_AccountStore.make()`, writing the accounts file
     // the auth adapter loads.
     identityProvider?: Reventless.IdentityProvider.t,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
@@ -2350,7 +2350,7 @@ module MakeWithConfig = (
     // (domain and platform) can register their schema first.
     // In unified mode, start immediately (backwards-compatible).
     if !Config.splitApi {
-      UserStore.autoLoadOnce()
+      AccountStore.autoLoadOnce()
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
     }
@@ -2534,7 +2534,7 @@ module MakeWithConfig = (
 
     // The role check below reads the accounts as they stand; a user store
     // loaded from elsewhere after this would leave it compared with the wrong ones.
-    UserStore.pluginChecked := true
+    AccountStore.pluginChecked := true
 
     // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
     // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.

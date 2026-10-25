@@ -57,8 +57,8 @@ across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
 [docs/guides/local-dev.md](../../docs/guides/local-dev.md) for the full matrix.
 
 `pnpm run build` rebuilds after source changes. Sign in as `admin` / `admin`
-(or `user` / `user`) — `setup` seeds these into `platform-local/.reventless/users.yaml`
-from the committed [`users.example.yaml`](platform-local/users.example.yaml).
+(or `user` / `user`) — `setup` seeds these into `platform-local/.reventless/accounts.yaml`
+from the committed [`accounts.example.yaml`](platform-local/accounts.example.yaml).
 Via the UI, use the LoginPage; against the backend directly:
 
 ```bash

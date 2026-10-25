@@ -8,26 +8,28 @@ let email = address => Reventless.Messaging.ToEmail(Reventless.Email.unsafe(addr
 
 let freshFile = (): string => {
   let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-identity-"]))
-  NodePath.join([dir, ".reventless", "users.yaml"])
+  NodePath.join([dir, ".reventless", "accounts.yaml"])
 }
 
 let resetAll = () => {
   LocalAuth.resetUsers()
   LocalAuth.Login.resetStore()
-  UserStore.resetResolution()
+  AccountStore.resetResolution()
 }
 
 let restartFrom = (file: string): unit => {
   resetAll()
-  switch UserStore.load(~usersFile=file, ()) {
+  switch AccountStore.load(~accountsFile=file, ()) {
   | Ok(_) => ()
   | Error(message) => JsError.throwWithMessage(`reload failed: ${message}`)
   }
 }
 
-describe("Capability_IdentityProvider_UserStore", () => {
+describe("Capability_IdentityProvider_AccountStore", () => {
   testSync("publishes all four operations", () =>
-    expect(Capability_IdentityProvider_UserStore.make(~path=freshFile(), ()).operations)->toEqual([
+    expect(
+      Capability_IdentityProvider_AccountStore.make(~path=freshFile(), ()).operations,
+    )->toEqual([
       Reventless.IdentityProvider.CreatePrincipal,
       AddToGroup,
       RemoveFromGroup,
@@ -38,7 +40,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   testPromise("a created principal can log in now and after a restart", async () => {
     resetAll()
     let file = freshFile()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=file, ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=file, ())
     let created = await provider.createPrincipal(
       ~contact=email("new@example.com"),
       ~credential=Password("secret-1"),
@@ -66,7 +68,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
 
   testPromise("the same contact twice is a Conflict, not a second account", async () => {
     resetAll()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=freshFile(), ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=freshFile(), ())
     let create = () =>
       provider.createPrincipal(
         ~contact=email("twice@example.com"),
@@ -81,7 +83,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   // exists for the next provisioning step without a credential anyone holds.
   testPromise("NoCredential writes an account no password opens", async () => {
     resetAll()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=freshFile(), ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=freshFile(), ())
     let _ = await provider.createPrincipal(
       ~contact=email("later@example.com"),
       ~credential=NoCredential,
@@ -94,7 +96,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   })
 
   testPromise("a push address is refused, since nothing signs in with one", async () => {
-    let provider = Capability_IdentityProvider_UserStore.make(~path=freshFile(), ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=freshFile(), ())
     let answer = await provider.createPrincipal(
       ~contact=ToPush(Fcm({registrationToken: "tok"})),
       ~credential=NoCredential,
@@ -111,7 +113,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   testPromise("groups round-trip through the file", async () => {
     resetAll()
     let file = freshFile()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=file, ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=file, ())
     let principal: Reventless.IdentityProvider.principal = {providerId: "grp@example.com"}
     let _ = await provider.createPrincipal(
       ~contact=email("grp@example.com"),
@@ -133,7 +135,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
 
   testPromise("grouping a principal that does not exist is refused", async () => {
     resetAll()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=freshFile(), ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=freshFile(), ())
     let answer = await provider.addToGroup(~principal={providerId: "ghost"}, ~group="Shopper")
     expect(answer)->toEqual(Error(Reventless.IdentityProvider.Refused("no principal ghost")))
   })
@@ -141,7 +143,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   testPromise("deleting removes the account from the file and the login, twice", async () => {
     resetAll()
     let file = freshFile()
-    let provider = Capability_IdentityProvider_UserStore.make(~path=file, ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=file, ())
     let principal: Reventless.IdentityProvider.principal = {providerId: "gone@example.com"}
     let _ = await provider.createPrincipal(
       ~contact=email("gone@example.com"),
@@ -166,7 +168,7 @@ describe("Capability_IdentityProvider_UserStore", () => {
   groups: [Admin]
 `,
     )
-    let provider = Capability_IdentityProvider_UserStore.make(~path=file, ())
+    let provider = Capability_IdentityProvider_AccountStore.make(~path=file, ())
     let _ = await provider.createPrincipal(
       ~contact=email("c@example.com"),
       ~credential=Password("pw"),

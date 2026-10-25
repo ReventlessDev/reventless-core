@@ -8,8 +8,8 @@ import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/M
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
-import * as Seed_Users$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Users.res.mjs";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
+import * as Seed_Accounts$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Accounts.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslation/ImportProduct_Translation.res.mjs";
 
 let firstRunRandom = Seed_Random$ReventlessSeed.make(24301);
@@ -424,7 +424,7 @@ function all(o) {
 }
 
 function resolveOwner(role, username, fallback, accounts, caller, callerId) {
-  let account = Seed_Users$ReventlessSeed.playing(accounts, username);
+  let account = Seed_Accounts$ReventlessSeed.playing(accounts, username);
   let username$1 = Stdlib_Option.mapOr(account, username, a => a.username);
   let id = Stdlib_Option.flatMap(account, a => a.userId);
   if (id !== undefined) {

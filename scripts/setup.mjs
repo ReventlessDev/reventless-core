@@ -8,8 +8,8 @@
 //   3. pnpm install
 //   4. Ensure a ReScript PPX binary exists for this platform (prebuilt from the
 //      registry if available, otherwise built from source via opam/dune)
-//   5. Seed the hybrid example's .reventless/users.yaml from its committed
-//      users.example.yaml so local login works out of the box
+//   5. Seed the hybrid example's .reventless/accounts.yaml from its committed
+//      accounts.example.yaml so local login works out of the box
 //   6. Build the hybrid in-memory example (unless --no-build)
 //
 // Usage:
@@ -153,7 +153,7 @@ function hasOpam() {
 // through `provision-accounts`. Two copies of this had already drifted — the
 // line printed here named a `user` account the template has never declared.
 //
-// It copies users.example.yaml into place and generates a password into any
+// It copies accounts.example.yaml into place and generates a password into any
 // field left empty. The local template ships memorable ones, so here it only
 // copies; the AWS template ships empty ones, so there it mints four. Same
 // command, and the declaration is what differs.
@@ -163,12 +163,12 @@ function hasOpam() {
 // with step 3, and step 3 is also what links the bin.
 function seedUsers() {
   const platform = join(ROOT, 'examples/online-shop-hybrid/platform-local')
-  if (existsSync(join(platform, '.reventless/users.yaml'))) {
-    ok('.reventless/users.yaml already present')
+  if (existsSync(join(platform, '.reventless/accounts.yaml'))) {
+    ok('.reventless/accounts.yaml already present')
     return
   }
-  if (!existsSync(join(platform, 'users.example.yaml'))) {
-    warn('users.example.yaml not found — skipping user seed')
+  if (!existsSync(join(platform, 'accounts.example.yaml'))) {
+    warn('accounts.example.yaml not found — skipping user seed')
     return
   }
   run('pnpm exec prepare-accounts', { cwd: platform })

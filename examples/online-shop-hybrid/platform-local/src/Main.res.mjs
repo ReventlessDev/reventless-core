@@ -10,7 +10,7 @@ import * as Plugin$RegistrationPlugin from "@reventlessdev/online-shop-hybrid-re
 import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalPlatformStart.res.mjs";
 import * as Capability_Messaging_Log$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_Messaging_Log.res.mjs";
-import * as Capability_IdentityProvider_UserStore$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_IdentityProvider_UserStore.res.mjs";
+import * as Capability_IdentityProvider_AccountStore$ReventlessLocal from "@reventlessdev/reventless-local/src/capability/Capability_IdentityProvider_AccountStore.res.mjs";
 
 LocalPlatformStart$ReventlessLocal.orAddressRunning(undefined, undefined);
 
@@ -20,7 +20,7 @@ OwnerScope$Reventless.setElevatedRoles(Storefront$OnlineShopHybridSeed.elevatedR
 
 let messagingSender = Capability_Messaging_Log$ReventlessLocal.make();
 
-let identityProvider = Capability_IdentityProvider_UserStore$ReventlessLocal.make(undefined, undefined);
+let identityProvider = Capability_IdentityProvider_AccountStore$ReventlessLocal.make(undefined, undefined);
 
 let Catalog = Plugin$CatalogPlugin.Make(Platform);
 

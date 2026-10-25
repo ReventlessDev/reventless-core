@@ -49,25 +49,25 @@ function providedGroups() {
   return LocalAuth$ReventlessLocal.knownGroups().concat(resolved.contents ? [] : AccountsManifest$Reventless.declaredGroups());
 }
 
-function load(users, usersFile, param) {
-  if (pluginChecked.contents && (Stdlib_Option.isSome(users) || Stdlib_Option.isSome(usersFile))) {
-    Stdlib_JsError.throwWithMessage("UserStore.load(~users / ~usersFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call UserStore.load before deploying plugins.");
+function load(accounts, accountsFile, param) {
+  if (pluginChecked.contents && (Stdlib_Option.isSome(accounts) || Stdlib_Option.isSome(accountsFile))) {
+    Stdlib_JsError.throwWithMessage("AccountStore.load(~accounts / ~accountsFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call AccountStore.load before deploying plugins.");
   }
   resolved.contents = true;
-  if (users !== undefined) {
-    _registerEntries(users);
+  if (accounts !== undefined) {
+    _registerEntries(accounts);
     return {
       TAG: "Ok",
-      _0: "InlineUsers"
+      _0: "InlineAccounts"
     };
   }
-  if (usersFile !== undefined) {
-    return Stdlib_Result.map(AccountsManifest$Reventless.parseFile(usersFile), entries => {
+  if (accountsFile !== undefined) {
+    return Stdlib_Result.map(AccountsManifest$Reventless.parseFile(accountsFile), entries => {
       _registerEntries(entries);
       fromFile.contents = entries.map(e => e.username);
       return {
-        TAG: "UsersFile",
-        _0: usersFile
+        TAG: "AccountsFile",
+        _0: accountsFile
       };
     });
   }
@@ -82,7 +82,7 @@ function load(users, usersFile, param) {
       };
     });
   } else {
-    console.log("[LocalAuth] no users configured — POST /__inmemory/login will reject all. Provide ~users / ~usersFile or create .reventless/users.yaml relative to cwd.");
+    console.log("[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd.");
     return {
       TAG: "Ok",
       _0: "Empty"

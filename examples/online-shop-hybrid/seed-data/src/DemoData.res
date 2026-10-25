@@ -425,7 +425,7 @@ The demo logins, as customers.
 An order's `customerId` is the authenticated caller's id, so a demo login can
 only have orders if a customer row exists under that exact id — which means the
 id has to be one the platform being seeded actually mints. Locally that is the
-`userId` a users.yaml entry declares; on a Cognito deployment it is the `sub` the
+`userId` a accounts.yaml entry declares; on a Cognito deployment it is the `sub` the
 pool minted, and no literal can name it. So the owners are *resolved* against
 the accounts file and the run's own bearer rather than written down here.
 
@@ -455,7 +455,7 @@ let demoShopperUsername = "shopper"
 let demoOperatorUsername = "admin"
 let demoMerchandiserUsername = "merch"
 
-// The `userId` values the local `users.example.yaml` declares. Kept only as the
+// The `userId` values the local `accounts.example.yaml` declares. Kept only as the
 // last arm of the resolution below, so a platform that supplies nothing still
 // seeds the walkthrough it always did — locally the file and these agree, which
 // is why local behavior is unchanged.

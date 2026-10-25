@@ -434,14 +434,14 @@ rather than data:
 
 ## Editing accounts without restarting
 
-The accounts the platform signs in, `.reventless/users.yaml` (or the
-`~usersFile` it was given), are followed the same way: add an account, change a
+The accounts the platform signs in, `.reventless/accounts.yaml` (or the
+`~accountsFile` it was given), are followed the same way: add an account, change a
 password or a group, and it signs in a moment after the save.
 
 ```
 $ pnpm run serve
-# add an account to .reventless/users.yaml and save
-[LocalAuth] users.yaml changed — reloaded 3 accounts.
+# add an account to .reventless/accounts.yaml and save
+[LocalAuth] accounts.yaml changed — reloaded 3 accounts.
 ```
 
 - **Removing an account forgets it**, for a new sign-in. A token already issued
@@ -471,7 +471,7 @@ random per-process secret and writes nothing.
 
 These tokens are local-dev only and not security-grade; AWS verifies
 Cognito-issued JWTs and never sees them. The file sits in the same gitignored
-directory as `users.yaml`, which already holds plaintext dev passwords.
+directory as `accounts.yaml`, which already holds plaintext dev passwords.
 
 **If a token is refused anyway** — you cleared the file, pinned a different
 secret, or the session genuinely expired — the shell now says so rather than

@@ -30,12 +30,12 @@ import * as AdmissionCheck$Reventless from "@reventlessdev/reventless-spec/src/t
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
-import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
+import * as AccountStore$ReventlessLocal from "./adapter/Auth/AccountStore.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
@@ -146,7 +146,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 }
 
 function MakeWithConfig(Config) {
-  Role$Reventless.provideGroupsFrom(UserStore$ReventlessLocal.providedGroups);
+  Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
   if (typeof match !== "object") {
@@ -1151,7 +1151,7 @@ function MakeWithConfig(Config) {
   };
   let startServers = () => {
     if (Config.splitApi) {
-      UserStore$ReventlessLocal.autoLoadOnce();
+      AccountStore$ReventlessLocal.autoLoadOnce();
       DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
       DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
       PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
@@ -1694,7 +1694,7 @@ function MakeWithConfig(Config) {
     }
     currentDeployTarget.contents = "Domain";
     if (!Config.splitApi) {
-      UserStore$ReventlessLocal.autoLoadOnce();
+      AccountStore$ReventlessLocal.autoLoadOnce();
       DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
       return DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
     }
@@ -1795,7 +1795,7 @@ function MakeWithConfig(Config) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform", undefined, `deployPlugin target=` + tmp);
-    UserStore$ReventlessLocal.pluginChecked.contents = true;
+    AccountStore$ReventlessLocal.pluginChecked.contents = true;
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp$1;
@@ -1948,7 +1948,7 @@ function MakeWithConfig(Config) {
 
 function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
-  Role$Reventless.provideGroupsFrom(UserStore$ReventlessLocal.providedGroups);
+  Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();
@@ -2945,7 +2945,7 @@ function Make($star) {
     });
   };
   let startServers = () => {
-    UserStore$ReventlessLocal.autoLoadOnce();
+    AccountStore$ReventlessLocal.autoLoadOnce();
     DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
     DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
     PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
@@ -3576,7 +3576,7 @@ function Make($star) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform", undefined, `deployPlugin target=` + tmp);
-    UserStore$ReventlessLocal.pluginChecked.contents = true;
+    AccountStore$ReventlessLocal.pluginChecked.contents = true;
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp$1;

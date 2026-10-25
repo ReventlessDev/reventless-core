@@ -123,7 +123,7 @@ See [examples/online-shop-hybrid/README.md](examples/online-shop-hybrid/README.m
 1. **Creates `pnpm-workspace.yaml`** — it is gitignored (a symlink to [`pnpm-workspace.base.yaml`](pnpm-workspace.base.yaml), so the cross-repo dev overlay used by `pnpm link:on` / `link:off` can swap it). A fresh clone has none, so plain `pnpm install` would fail with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`. (Manual equivalent: `node scripts/workspace-setup.mjs`.)
 2. **`pnpm install`** — from the repo root.
 3. **Ensures the ReScript PPX binary** for your platform (prebuilt, or built from source — see below).
-4. **Seeds `examples/.../platform-local/.reventless/users.yaml`** from the committed `users.example.yaml` so local login works (`admin`/`admin`, `user`/`user`).
+4. **Seeds `examples/.../platform-local/.reventless/accounts.yaml`** from the committed `accounts.example.yaml` so local login works (`admin`/`admin`, `user`/`user`).
 5. **Builds** the hybrid in-memory example (skip with `pnpm run setup --no-build`).
 
 To build everything instead of just the example: `pnpm run build`. To run the full test suite: `pnpm test`.
