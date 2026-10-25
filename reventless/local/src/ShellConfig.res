@@ -50,6 +50,7 @@ let computedKeys = [
   journeyManifestsKey,
   ReventlessCore.Platform_UiSlots.configKey,
   ReventlessCore.Platform_AdminGroup.configKey,
+  ReventlessCore.Platform_SelfRegistration.configKey,
 ]
 
 /**
@@ -63,6 +64,9 @@ let overlay = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
+  // Read off the plugin structures once they have landed, so the first write
+  // (from the declaration alone) omits it and the second carries it.
+  ~selfRegistration: option<ReventlessCore.Platform_SelfRegistration.config>=?,
 ): dict<JSON.t> => {
   let out =
     Reventless.ShellEnvironment.local
@@ -82,6 +86,11 @@ let overlay = (
   )
 
   ReventlessCore.Platform_AdminGroup.configEntry()->Option.forEach(((k, v)) => out->Dict.set(k, v))
+
+  selfRegistration->Option.forEach(c => {
+    let (k, v) = ReventlessCore.Platform_SelfRegistration.configEntry(c)
+    out->Dict.set(k, v)
+  })
 
   bakedManifest->Option.forEach(config => {
     out->Dict.set("manifestUrl", JSON.Encode.string(manifestUrlOf(config)))
@@ -138,10 +147,11 @@ let emit = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
+  ~selfRegistration: option<ReventlessCore.Platform_SelfRegistration.config>=?,
   // The platform's chosen `assetsDir`; unset, the host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
-  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig)
+  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig, ~selfRegistration?)
   let declared = overlay->Dict.keysToArray->Array.filter(k => !(environmentKeys->Array.includes(k)))
 
   switch switch dir {

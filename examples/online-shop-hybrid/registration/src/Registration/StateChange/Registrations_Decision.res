@@ -10,11 +10,16 @@ module Guards = ContactVerification_Guards
 let policy = V.emailPolicy
 
 type policyState =
+  /** Nothing recorded about the role: open if `Admission.res` declares it
+      self-service, closed otherwise. */
+  | Unset
   | Closed
   | Open(option<Reventless.DateTime.t>)
 
 type pending = {
   requestedAt: Reventless.DateTime.t,
+  /** What a settled proof grants, as the registration asked for it. */
+  roles: array<string>,
   challenge: option<Guards.challenge>,
   proofHash: option<string>,
 }
@@ -34,7 +39,7 @@ type state = {
   lastNoticeAt: option<Reventless.DateTime.t>,
 }
 
-let initialState = {admission: Closed, stage: Unclaimed, lastNoticeAt: None}
+let initialState = {admission: Unset, stage: Unclaimed, lastNoticeAt: None}
 
 /** At most one "someone tried" notice per address in this many seconds. The
     caller is still answered as for a fresh address; only the mail is held back,
@@ -45,9 +50,9 @@ let evolve = (state, event) =>
   switch event {
   | RegistrationOpened({?until}) => {...state, admission: Open(until)}
   | RegistrationClosed(_) => {...state, admission: Closed}
-  | RegistrationRequested({requestedAt}) => {
+  | RegistrationRequested({roles, requestedAt}) => {
       ...state,
-      stage: Pending({requestedAt, challenge: None, proofHash: None}),
+      stage: Pending({requestedAt, roles, challenge: None, proofHash: None}),
     }
   | RegistrationExpired(_) => {...state, stage: Unclaimed}
   | RegistrationAttemptedOnTakenAddress({attemptedAt}) => {
@@ -85,10 +90,13 @@ let evolve = (state, event) =>
   | RegistrationCompleted(_) => {...state, stage: Completed}
   }
 
-/** Whether the policy admits a registration that arrived at `at`. Past an open
-    window's end it refuses exactly as closed does, with no event to close it. */
-let admits = (admission, ~at) =>
+/** Whether the policy admits a registration for `role` that arrived at `at`.
+    A role nobody has recorded anything about is open exactly when it is declared
+    self-service; past an open window's end it refuses exactly as closed does,
+    with no event to close it. */
+let admits = (admission, ~role, ~at) =>
   switch admission {
+  | Unset => Admission.isSelfService(role)
   | Closed => false
   | Open(None) => true
   | Open(Some(until)) => Reventless.DateTime.isBefore(at, until)
@@ -116,10 +124,11 @@ let decide = (state, command) =>
   // 🚨 Every arm answers `Ok`, and the order is the security decision: the
   // policy is consulted before the address, so a closed deployment sends nothing
   // — not even the notice to an address that is already registered.
-  | Register({email, requestedAt, _}) =>
-    if !admits(state.admission, ~at=requestedAt) {
+  | Register({email, role, requestedAt}) =>
+    if !admits(state.admission, ~role, ~at=requestedAt) {
       Ok([])
     } else {
+      let roles = [(role :> string)]
       switch state.stage {
       // The caller is told nothing different; the address is told someone tried.
       | Completed =>
@@ -131,8 +140,11 @@ let decide = (state, command) =>
       | Verified => Ok([])
       | Pending(p) if !hasLapsed(p, ~now=requestedAt) => Ok([])
       | Pending(_) =>
-        Ok([RegistrationExpired({email: email}), RegistrationRequested({email, requestedAt})])
-      | Unclaimed => Ok([RegistrationRequested({email, requestedAt})])
+        Ok([
+          RegistrationExpired({email: email}),
+          RegistrationRequested({email, roles, requestedAt}),
+        ])
+      | Unclaimed => Ok([RegistrationRequested({email, roles, requestedAt})])
       }
     }
 
@@ -155,7 +167,7 @@ let decide = (state, command) =>
 
   | SubmitRegistrationProof({email, proofHash, presentedAt}) =>
     switch state.stage {
-    | Pending({challenge: Some(c), proofHash: Some(held)}) =>
+    | Pending({challenge: Some(c), proofHash: Some(held), roles}) =>
       switch Guards.onProofPresented(
         c,
         ~hostContact=None,
@@ -163,7 +175,7 @@ let decide = (state, command) =>
         ~now=presentedAt,
         ~policy,
       ) {
-      | Settle => Ok([RegistrationProofAccepted({email, proofHash})])
+      | Settle => Ok([RegistrationProofAccepted({email, roles, proofHash})])
       | Refuse(reason) => Ok([RegistrationProofRefused({email, reason: refusalReason(reason)})])
       }
     // No challenge to answer: nothing to count it against, and nothing to say.

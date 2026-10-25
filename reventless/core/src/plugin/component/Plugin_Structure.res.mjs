@@ -15,6 +15,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Schedule$Reventless from "@reventlessdev/reventless-spec/src/types/Schedule.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
@@ -878,7 +879,7 @@ function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilit
   };
 }
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt, identitiesOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt, lifecycleModelOpt, identitiesOpt, admission, admissionDoorsOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -891,6 +892,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
   let lifecycleModel = lifecycleModelOpt !== undefined ? lifecycleModelOpt : [];
   let identities = identitiesOpt !== undefined ? identitiesOpt : [];
+  let admissionDoors = admissionDoorsOpt !== undefined ? admissionDoorsOpt : [];
   let chapterOf = compName => componentChapters[compName];
   let model = declaredTransitionsOnly ? [] : lifecycleModel;
   let derivedEdgeFor = (component, command) => model.find(e => {
@@ -1623,7 +1625,12 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     requiredStores: requiredStores,
     requiredStoreDeclarations: requiredStoreDeclarations,
     requiredCapabilities: requiredCapabilities,
-    traitDeclarations: traitDeclarations
+    traitDeclarations: traitDeclarations,
+    admission: Stdlib_Option.map(admission, Admission$Reventless.toDefs),
+    admissionDoors: admissionDoors.length !== 0 ? admissionDoors.map(param => ({
+        component: param[0],
+        part: Admission$Reventless.doorName(param[1])
+      })) : undefined
   };
 }
 

@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
@@ -21,6 +22,7 @@ import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
 import * as GraphQL_CallerError$ReventlessLocal from "../GraphQL_CallerError.res.mjs";
+import * as LocalAnonymousLimit$ReventlessLocal from "../LocalAnonymousLimit.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";
 import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -86,6 +88,11 @@ function Make(Bus) {
           TAG: "Deny",
           _0: "Forbidden"
         };
+      }
+      let tmp;
+      tmp = typeof authorization !== "object" && authorization === "AllowAnonymous" ? !LocalAnonymousLimit$ReventlessLocal.admit(name, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown")) : false;
+      if (tmp) {
+        throw GraphQL_CallerError$ReventlessLocal.throttled(`Query.` + name + `: too many requests from this source; retry later`);
       }
       let interceptor = QueryDb_Callback$ReventlessCore.queryInterceptorHook.contents;
       if (interceptor !== undefined) {

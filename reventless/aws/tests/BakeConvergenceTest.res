@@ -53,6 +53,8 @@ let emptyStructure: Reventless.Plugin.pluginStructure = {
   requiredStoreDeclarations: None,
   requiredCapabilities: None,
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 let definition = (~structure): Reventless.Plugin.pluginDefinition => {

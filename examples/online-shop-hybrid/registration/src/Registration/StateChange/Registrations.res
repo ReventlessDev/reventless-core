@@ -21,11 +21,23 @@
 
 @@reventless.spec
 
+// The policy's two events are read by role, a reference to another entity: the
+// role is an identity the framework declares, so the inference reads it across
+// partitions as it reads any id another slice is partitioned by.
 @schema
 type consumedEvent =
-  | RegistrationOpened({scopeId: string, until?: Reventless.DateTime.t})
-  | RegistrationClosed({scopeId: string})
-  | RegistrationRequested({email: ContactAddressId.t, requestedAt: Reventless.DateTime.t})
+  | RegistrationOpened({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+      until?: Reventless.DateTime.t,
+    })
+  | RegistrationClosed({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+    })
+  | RegistrationRequested({
+      email: ContactAddressId.t,
+      roles: array<string>,
+      requestedAt: Reventless.DateTime.t,
+    })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
@@ -36,21 +48,25 @@ type consumedEvent =
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
-  | RegistrationProofAccepted({email: ContactAddressId.t, proofHash: string})
+  | RegistrationProofAccepted({email: ContactAddressId.t, roles: array<string>, proofHash: string})
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})
 
-// `Register` names the scope it is admitted under, which is what the policy is
-// read by; the registration's own events do not carry it. Keeping it off them is
-// what makes the scope a read of another entity — the policy — rather than one of
-// this slice's own keys, so a policy changing while a registration is decided is
-// caught by the append condition.
+// `Register` names the role asked for, and the policy is read by it. The
+// registration records the roles it grants as
+// data, never as a tag: keeping the tag off this slice's own events is what
+// makes the role a read of another entity rather than one of this slice's keys,
+// so a policy changing while a registration is decided is caught by the append
+// condition. A set rather than one role, so a door granting several at once
+// records them all; a sign-up records a set of one. Plain names on the events,
+// since what they carry is what a settled proof grants, not a key the ledger is
+// read by.
 @schema
 type command =
   | @noApi
   Register({
       email: ContactAddressId.t,
-      scopeId: string,
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })
   | @noApi
@@ -75,7 +91,11 @@ type error = unit
 
 @schema
 type event =
-  | RegistrationRequested({email: ContactAddressId.t, requestedAt: Reventless.DateTime.t})
+  | RegistrationRequested({
+      email: ContactAddressId.t,
+      roles: array<string>,
+      requestedAt: Reventless.DateTime.t,
+    })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
@@ -86,6 +106,6 @@ type event =
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
-  | RegistrationProofAccepted({email: ContactAddressId.t, proofHash: string})
+  | RegistrationProofAccepted({email: ContactAddressId.t, roles: array<string>, proofHash: string})
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})

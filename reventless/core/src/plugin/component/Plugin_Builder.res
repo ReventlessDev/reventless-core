@@ -1109,6 +1109,8 @@ module Make = (
     ~componentChapters: dict<string>=Dict.make(),
     ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=[],
     ~identities: array<string>=[],
+    ~admission: option<Reventless.Admission.t>=?,
+    ~admissionDoors: array<(string, Reventless.Admission.door)>=[],
   ): Reventless.Plugin.pluginStructure =>
     Plugin_Structure.make(
       ~name,
@@ -1124,6 +1126,8 @@ module Make = (
       ~componentChapters,
       ~lifecycleModel,
       ~identities,
+      ~admission?,
+      ~admissionDoors,
     )
 
   let make = (

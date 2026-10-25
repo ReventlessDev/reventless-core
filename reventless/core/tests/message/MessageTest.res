@@ -138,6 +138,8 @@ describe("Message should", () => {
             requiredStoreDeclarations: None,
             requiredCapabilities: None,
             traitDeclarations: None,
+            admission: None,
+            admissionDoors: None,
           }),
         ),
         dcbEventLog: None,

@@ -50,7 +50,9 @@ function structure() {
     requiredStores: undefined,
     requiredStoreDeclarations: undefined,
     requiredCapabilities: undefined,
-    traitDeclarations: undefined
+    traitDeclarations: undefined,
+    admission: undefined,
+    admissionDoors: undefined
   };
 }
 

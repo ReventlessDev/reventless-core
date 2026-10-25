@@ -10,7 +10,16 @@ function badUserInput(message) {
   });
 }
 
+function throttled(message) {
+  return new Graphql.GraphQLError(message, {
+    extensions: {
+      code: "Throttled"
+    }
+  });
+}
+
 export {
   badUserInput,
+  throttled,
 }
 /* graphql Not a pure module */

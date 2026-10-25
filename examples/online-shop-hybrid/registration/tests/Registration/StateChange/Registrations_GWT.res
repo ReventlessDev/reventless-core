@@ -8,7 +8,8 @@ open Registration_Examples
 // is a secret: only its hash.
 
 let email = alice
-let scope = defaultScope
+let role = shopper
+let roles = [shopperName]
 let requestedAt = "2026-10-24T09:00:00.000Z"
 let issuedAt = "2026-10-24T09:00:05.000Z"
 let soonAfter = "2026-10-24T09:10:00.000Z"
@@ -17,17 +18,18 @@ let nextDayLater = "2026-10-25T09:30:00.000Z"
 let twoHoursOn = "2026-10-25T11:00:07.000Z"
 let windowEnd = "2026-10-24T08:00:00.000Z"
 
-let opened: array<consumedEvent> = [RegistrationOpened({scopeId: scope})]
-let requested: array<consumedEvent> =
-  opened->Array.concat([RegistrationRequested({email, requestedAt})])
+// Nothing recorded about a self-service role is open, so the ledger's history
+// starts at the request; `opened` is the explicit form, for the window tests.
+let opened: array<consumedEvent> = [RegistrationOpened({role: role})]
+let requested: array<consumedEvent> = [RegistrationRequested({email, roles, requestedAt})]
 let challenged: array<consumedEvent> =
   requested->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
 let verified: array<consumedEvent> =
-  challenged->Array.concat([RegistrationProofAccepted({email, proofHash: secretHash})])
+  challenged->Array.concat([RegistrationProofAccepted({email, roles, proofHash: secretHash})])
 let completed: array<consumedEvent> =
   verified->Array.concat([RegistrationCompleted({email: email})])
 
-let register = (~at=requestedAt) => Register({email, scopeId: scope, requestedAt: at})
+let register = (~role=role, ~at=requestedAt) => Register({email, role, requestedAt: at})
 let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
   email,
   proofHash: hash,
@@ -41,7 +43,7 @@ describe("Registrations StateChangeSlice", () => {
   // rather than slipping past it.
   // scenario-id: 49225316-1861-49eb-a48c-474b197b557c
   test("a registration is conditioned on the policy as well as the address", () =>
-    givenEvents(opened)
+    givenEvents([])
     ->whenCmd(register())
     ->thenAppendsConditionedOn([
       {
@@ -63,40 +65,53 @@ describe("Registrations StateChangeSlice", () => {
       },
       {
         eventTypes: ["RegistrationOpened", "RegistrationClosed"],
-        tags: [{key: "scopeId", value: scope}],
+        tags: [{key: "role", value: shopperName}],
       },
     ])
   )
 
-  // 🚨 Closed is the default, and it sends nothing — not even a notice.
+  // 🚨 A role not declared self-service is closed, whatever anyone records, and
+  // it sends nothing — not even a notice.
   // scenario-id: a093e1a8-62f1-4f28-b7e0-28920fda60bb
-  test("a closed policy records nothing", () => givenEvents([])->whenCmd(register())->thenNoEvent)
+  test("a role no visitor may have records nothing", () =>
+    givenEvents([])->whenCmd(register(~role=merchandiser))->thenNoEvent
+  )
+
+  // scenario-id: 2b7f9c1d-4e6a-4b8c-9d0e-1f2a3b4c5d6e
+  test("a role nobody knows records nothing", () =>
+    givenEvents([])->whenCmd(register(~role=Reventless.Role.make("Guest")))->thenNoEvent
+  )
 
   // scenario-id: 358a6a64-4227-4c3c-b2e9-72e666c27184
-  test("an open policy claims the address", () =>
-    givenEvents(opened)
+  test("a self-service role claims the address before anything is recorded", () =>
+    givenEvents([])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, requestedAt}))
+    ->thenEvent(RegistrationRequested({email, roles, requestedAt}))
+  )
+
+  // scenario-id: 6c1e8a2b-9d3f-4a5e-8b7c-0d1e2f3a4b5c
+  test("a closed self-service role records nothing", () =>
+    givenEvents([RegistrationClosed({role: role})])->whenCmd(register())->thenNoEvent
   )
 
   // A window someone forgot to close closes itself, with no event to close it.
   // scenario-id: ee7d41c0-5f7d-4ae2-a9e2-5af69a071833
   test("past an open window's end, it refuses exactly as closed does", () =>
-    givenEvents([RegistrationOpened({scopeId: scope, until: windowEnd})])
+    givenEvents([RegistrationOpened({role, until: windowEnd})])
     ->whenCmd(register())
     ->thenNoEvent
   )
 
   // scenario-id: 8206c898-8733-4858-996c-2e253f63ea3a
   test("within an open window's end, it claims the address", () =>
-    givenEvents([RegistrationOpened({scopeId: scope, until: nextDay})])
+    givenEvents([RegistrationOpened({role, until: nextDay})])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, requestedAt}))
+    ->thenEvent(RegistrationRequested({email, roles, requestedAt}))
   )
 
   // scenario-id: dd3c4e5d-f19a-48b9-8011-b9cd63849b75
   test("closing the policy stops registrations it had admitted", () =>
-    givenEvents(opened->Array.concat([RegistrationClosed({scopeId: scope})]))
+    givenEvents(opened->Array.concat([RegistrationClosed({role: role})]))
     ->whenCmd(register())
     ->thenNoEvent
   )
@@ -141,7 +156,7 @@ describe("Registrations StateChangeSlice", () => {
     ->whenCmd(register(~at=nextDay))
     ->thenEvents([
       RegistrationExpired({email: email}),
-      RegistrationRequested({email, requestedAt: nextDay}),
+      RegistrationRequested({email, roles, requestedAt: nextDay}),
     ])
   )
 
@@ -163,7 +178,7 @@ describe("Registrations StateChangeSlice", () => {
   test("the right proof settles the registration", () =>
     givenEvents(challenged)
     ->whenCmd(submit())
-    ->thenEvent(RegistrationProofAccepted({email, proofHash: secretHash}))
+    ->thenEvent(RegistrationProofAccepted({email, roles, proofHash: secretHash}))
   )
 
   // scenario-id: 055e3684-db0f-40f0-9e4a-fdba6cddb70c
@@ -197,7 +212,7 @@ describe("Registrations StateChangeSlice", () => {
   // Nothing to count it against, and nothing to tell the caller.
   // scenario-id: 1c30ca00-a65b-48be-a93f-0bed5996894c
   test("a proof with no challenge outstanding records nothing", () =>
-    givenEvents(opened)->whenCmd(submit())->thenNoEvent
+    givenEvents([])->whenCmd(submit())->thenNoEvent
   )
 
   // scenario-id: 0ace1364-f882-406d-adce-e0be15803354

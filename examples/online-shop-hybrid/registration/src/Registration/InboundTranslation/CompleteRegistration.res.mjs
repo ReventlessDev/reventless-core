@@ -33,6 +33,8 @@ let Id;
 
 let targetName = "Registrations";
 
+let admissionDoor = "Complete";
+
 let moduleUrl = "@reventlessdev/online-shop-hybrid-registration/src/Registration/InboundTranslation/CompleteRegistration.res.mjs";
 
 let externalSystem;
@@ -46,6 +48,7 @@ export {
   commandSchema,
   targetName,
   capabilityNeeds,
+  admissionDoor,
   moduleUrl,
   authorizationOf,
   externalSystem,

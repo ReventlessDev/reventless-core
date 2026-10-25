@@ -97,5 +97,7 @@ module type T = {
     ~componentChapters: dict<string>=?,
     ~lifecycleModel: array<Reventless.Plugin.derivedEdge>=?,
     ~identities: array<string>=?,
+    ~admission: Reventless.Admission.t=?,
+    ~admissionDoors: array<(string, Reventless.Admission.door)>=?,
   ) => Reventless.Plugin.pluginStructure
 }

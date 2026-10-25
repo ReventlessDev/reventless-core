@@ -6,16 +6,22 @@
 // takes it now that the ledger has said yes.
 //
 // The account is made in the deployment's identity provider — on the local
-// platform, the accounts file its login reads — and the ledger is told the
-// registration completed.
+// platform, the accounts file its login reads — in the groups that stand for the
+// roles the registration grants, and the ledger is told the registration
+// completed.
 
 @@reventless.spec
 
 @schema
-type consumedEvent = RegistrationProofAccepted({email: string, proofHash: string})
+type consumedEvent =
+  | RegistrationProofAccepted({
+      email: string,
+      roles: array<Reventless.Role.name>,
+      proofHash: string,
+    })
 
 @schema
-type outboundItem = {email: string, proofHash: string}
+type outboundItem = {email: string, roles: array<Reventless.Role.name>, proofHash: string}
 
 @schema
 type inboundCommand = RecordRegistrationCompleted({email: ContactAddressId.t})

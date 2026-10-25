@@ -50,7 +50,19 @@ let main = () =>
     // sees it and it is not a component. Its presence is the whole question.
     let hasLifecycleModel = NodePath.join([srcDir, "LifecycleModel.res"])->NodeFs.existsSync
     let identities = Discovery.scanIdentities(~srcDir, ~exclude=config.exclude)
-    let source = Codegen.render(~config, ~resolved, ~discovered, ~hasLifecycleModel, ~identities)
+    // Beside `Roles.res`, at the src root for the same reason as the lifecycle
+    // model: it is a declaration about the plugin, not a component.
+    let hasAdmission = NodePath.join([srcDir, "Admission.res"])->NodeFs.existsSync
+    let admissionDoors = Discovery.scanAdmissionDoors(~srcDir, discovered)
+    let source = Codegen.render(
+      ~config,
+      ~resolved,
+      ~discovered,
+      ~hasLifecycleModel,
+      ~identities,
+      ~hasAdmission,
+      ~admissionDoors,
+    )
 
     let outputDir = switch variant {
     | Config.Composition => srcDir

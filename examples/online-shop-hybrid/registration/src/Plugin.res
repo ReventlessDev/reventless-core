@@ -27,6 +27,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
   module RegistrationsSlice = Platform.StateChangeSlice.Make(Registrations, Registrations_Decision)
 
+  // StateViewSliceStreams
+  module RegistrationWindowsStreamSlice = Platform.StateViewSliceStream.Make(
+    RegistrationWindows,
+    RegistrationWindows_Projection,
+  )
+
   // OutboundTranslationSlices
   module CreateRegisteredPrincipalSlice = Platform.OutboundTranslationSlice.Make(
     CreateRegisteredPrincipal,
@@ -46,6 +52,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Registration",
+    ~stateViewSlices=[module(RegistrationWindowsStreamSlice)],
     ~stateChangeSlices=[module(RegistrationPolicySlice), module(RegistrationsSlice)],
     ~outboundTranslationSlices=[
       module(CreateRegisteredPrincipalSlice),
@@ -56,12 +63,18 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("CompleteRegistration", "Registration"),
       ("CreateRegisteredPrincipal", "Registration"),
       ("RegistrationPolicy", "Registration"),
+      ("RegistrationWindows", "Registration"),
       ("Registrations", "Registration"),
       ("SendRegistrationChallenge", "Registration"),
       ("SignUp", "Registration"),
     ]),
     ~lifecycleModel=LifecycleModel.model,
     ~identities=[ContactAddressId.key],
+    ~admission=Admission.table,
+    ~admissionDoors=[
+      (CompleteRegistration.name, CompleteRegistration.admissionDoor),
+      (SignUp.name, SignUp.admissionDoor),
+    ],
   )
 
   let make = () =>
@@ -69,6 +82,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~name="Registration",
       ~heartbeatInterval=5,
       ~stateChangeSlices=[module(RegistrationPolicySlice), module(RegistrationsSlice)],
+      ~stateViewSlices=[module(RegistrationWindowsStreamSlice)],
       ~outboundTranslationSlices=[
         module(CreateRegisteredPrincipalSlice),
         module(SendRegistrationChallengeSlice),

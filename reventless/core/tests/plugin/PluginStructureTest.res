@@ -2066,6 +2066,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
                 {capability: "Geocoding", component: "GeocodeDropOff"},
               ]),
               traitDeclarations: None,
+              admission: None,
+              admissionDoors: None,
             }
             let entries = Reventless.CapabilityManifest.fromStructure(withCapability).capabilities
 
@@ -2094,6 +2096,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
                     ...structure,
                     requiredCapabilities: Some([{capability: "Telepathy", component: "Guess"}]),
                     traitDeclarations: None,
+                    admission: None,
+                    admissionDoors: None,
                   }).capabilities,
                 )->toEqual([]),
             )

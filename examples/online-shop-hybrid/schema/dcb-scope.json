@@ -86,19 +86,19 @@
   },
   "registration": {
     "partitionBySlice": {
-      "RegistrationPolicy": "scopeId",
+      "RegistrationPolicy": "role",
       "Registrations": "contactAddress"
     },
     "crossPartitionTagKeys": [
-      "scopeId"
+      "role"
     ],
     "partitionKeyByEventType": {
       "RegistrationAttemptedOnTakenAddress": "contactAddress",
       "RegistrationChallengeIssued": "contactAddress",
-      "RegistrationClosed": "scopeId",
+      "RegistrationClosed": "role",
       "RegistrationCompleted": "contactAddress",
       "RegistrationExpired": "contactAddress",
-      "RegistrationOpened": "scopeId",
+      "RegistrationOpened": "role",
       "RegistrationProofAccepted": "contactAddress",
       "RegistrationProofRefused": "contactAddress",
       "RegistrationRequested": "contactAddress"

@@ -5,13 +5,13 @@ open Registration_Examples
 // Turning an accepted proof into an account. The password is taken from the
 // stash the door put it in, once, and handed to the identity provider.
 
-let item: outboundItem = {email: aliceAddress, proofHash: "h"}
+let item: outboundItem = {email: aliceAddress, roles: [shopper], proofHash: "h"}
 let held = () => fakes(~stashed=[("h", goodPassword)], ())
 
 let created: ReventlessGwt.Capabilities_Fake.call = PrincipalCreated({
   contact: ToEmail(Reventless.Email.unsafe(aliceAddress)),
   credential: Password(goodPassword),
-  groups: defaultGroups,
+  groups: [shopperName],
 })
 
 describe("CreateRegisteredPrincipal OutboundTranslationSlice", () => {
@@ -21,6 +21,22 @@ describe("CreateRegisteredPrincipal OutboundTranslationSlice", () => {
     ->givenCapabilities(held())
     ->whenTranslated
     ->thenSent([Taken({key: "h"}), created])
+  )
+
+  // A registration granting several roles makes one account in all their groups.
+  // scenario-id: 1c7e9a3b-5d2f-4b8a-9e6c-0f3a5b7d9e1c
+  test("several roles land in all their groups", () =>
+    givenTodo("t1", {...item, roles: [shopper, merchandiser]})
+    ->givenCapabilities(held())
+    ->whenTranslated
+    ->thenSent([
+      Taken({key: "h"}),
+      PrincipalCreated({
+        contact: ToEmail(Reventless.Email.unsafe(aliceAddress)),
+        credential: Password(goodPassword),
+        groups: [shopperName, merchandiserName],
+      }),
+    ])
   )
 
   // scenario-id: ef686ab8-6e38-467c-a77c-c4e951e41d83

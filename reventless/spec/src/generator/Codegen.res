@@ -341,6 +341,8 @@ let renderPluginStructureCall = (
   ~componentChapters: array<(string, string)>,
   ~hasLifecycleModel: bool,
   ~identities: array<string>,
+  ~hasAdmission: bool,
+  ~admissionDoors: array<string>,
 ): option<array<string>> => {
   // The structure call carries the EP *mapping* files (one per Delegate
   // connection), not the wrapped ExtensionPoint module — Plugin_Structure reads
@@ -438,6 +440,17 @@ let renderPluginStructureCall = (
     if identities->Array.length > 0 {
       let keys = identities->Array.map(m => m ++ ".key")
       ls->Array.push("    ~identities=[" ++ keys->Array.join(", ") ++ "],")
+    }
+
+    // How each role is admitted, from `src/Admission.res`, and the doors that
+    // say which part of admission they are. Both omitted when absent, so a
+    // plugin declaring neither keeps a byte-identical generated Plugin.res.
+    if hasAdmission {
+      ls->Array.push("    ~admission=Admission.table,")
+    }
+    if admissionDoors->Array.length > 0 {
+      let entries = admissionDoors->Array.map(s => "(" ++ s ++ ".name, " ++ s ++ ".admissionDoor)")
+      ls->Array.push("    ~admissionDoors=[" ++ entries->Array.join(", ") ++ "],")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -624,6 +637,8 @@ let renderComposition = (
   ~componentChapters: array<(string, string)>,
   ~hasLifecycleModel: bool,
   ~identities: array<string>,
+  ~hasAdmission: bool,
+  ~admissionDoors: array<string>,
 ): string => {
   let lines: array<string> = []
 
@@ -769,6 +784,8 @@ let renderComposition = (
     ~componentChapters,
     ~hasLifecycleModel,
     ~identities,
+    ~hasAdmission,
+    ~admissionDoors,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {
@@ -872,6 +889,8 @@ let render = (
   ~discovered: array<Discovery.discoveredFile>,
   ~hasLifecycleModel: bool=false,
   ~identities: array<string>=[],
+  ~hasAdmission: bool=false,
+  ~admissionDoors: array<string>=[],
 ): string => {
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
@@ -898,6 +917,14 @@ let render = (
   switch config.variant {
   | Aws({compositionNamespace}) => renderAwsWrapper(~compositionNamespace)
   | Composition =>
-    renderComposition(~config, ~resolved, ~componentChapters, ~hasLifecycleModel, ~identities)
+    renderComposition(
+      ~config,
+      ~resolved,
+      ~componentChapters,
+      ~hasLifecycleModel,
+      ~identities,
+      ~hasAdmission,
+      ~admissionDoors,
+    )
   }
 }

@@ -642,7 +642,7 @@ function Make(Platform) {
   ]), LifecycleModel$OrderingPlugin.model, [
     CustomerId$OrderingPlugin.key,
     OrderId$OrderingPlugin.key
-  ]);
+  ], undefined, undefined);
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     EmailVerificationChallengesSlice,

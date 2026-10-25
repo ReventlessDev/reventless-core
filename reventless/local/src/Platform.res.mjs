@@ -18,6 +18,7 @@ import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiSt
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Backend$ReventlessLocal from "./adapter/Backend.res.mjs";
@@ -25,6 +26,7 @@ import * as UiHints$ReventlessLocal from "./UiHints.res.mjs";
 import * as UiSlots$ReventlessLocal from "./UiSlots.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
+import * as AdmissionCheck$Reventless from "@reventlessdev/reventless-spec/src/types/AdmissionCheck.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
@@ -94,6 +96,7 @@ import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventl
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
+import * as Platform_SelfRegistration$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_SelfRegistration.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
@@ -884,6 +887,30 @@ function MakeWithConfig(Config) {
       });
     });
   };
+  let whenStructuresLanded = (pluginComponents, f) => {
+    let resolved = [];
+    let expected = pluginComponents.length;
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        let id = param[0];
+        let name = Stdlib_Option.getOr(id.split("@")[0], id);
+        if (ps !== undefined) {
+          resolved.push([
+            name,
+            ps
+          ]);
+        }
+        if (resolved.length === expected) {
+          return f(resolved);
+        }
+      });
+    });
+  };
   let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
@@ -1341,7 +1368,11 @@ function MakeWithConfig(Config) {
     });
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), hostUiDir);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, hostUiDir);
+    whenStructuresLanded(plugins$1, structures => {
+      AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, hostUiDir));
+    });
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
@@ -2653,6 +2684,30 @@ function Make($star) {
       });
     });
   };
+  let whenStructuresLanded = (pluginComponents, f) => {
+    let resolved = [];
+    let expected = pluginComponents.length;
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        let id = param[0];
+        let name = Stdlib_Option.getOr(id.split("@")[0], id);
+        if (ps !== undefined) {
+          resolved.push([
+            name,
+            ps
+          ]);
+        }
+        if (resolved.length === expected) {
+          return f(resolved);
+        }
+      });
+    });
+  };
   let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
@@ -3105,7 +3160,11 @@ function Make($star) {
     });
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), hostUiDir);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, hostUiDir);
+    whenStructuresLanded(plugins$1, structures => {
+      AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, hostUiDir));
+    });
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);

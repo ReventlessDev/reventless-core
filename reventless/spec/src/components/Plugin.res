@@ -501,6 +501,13 @@ type pluginStructure = {
       variant spread, the rules alias, the conformance binding) is source-side.
       A claim about origin, never about behavior: see `Trait`. */
   traitDeclarations: option<array<traitDeclaration>>,
+  /** How a person comes to hold each of this plugin's roles, as its
+      `Admission.res` declares; absent where the plugin declares nothing. The
+      deploy check and the shell's configuration read it. Absent → None. */
+  admission: option<array<Admission.def>>,
+  /** The inbound doors that play a part in admission — start, complete, invite —
+      by component. Absent → None, read as []. */
+  admissionDoors: option<array<Admission.doorDef>>,
 }
 
 let pluginStructureOffloadSchema = Offload.optionSchema(

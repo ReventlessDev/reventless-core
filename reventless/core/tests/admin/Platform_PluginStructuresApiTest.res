@@ -69,6 +69,8 @@ let structure: pluginStructure = {
   ]),
   requiredCapabilities: Some([{capability: "Geocoding", component: "GeocodeAddress"}]),
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 let encoded = Platform_PluginStructuresApi.encodePluginStructureEntry(
@@ -171,6 +173,8 @@ describe("absent optional collections", () => {
     requiredStoreDeclarations: None,
     requiredCapabilities: None,
     traitDeclarations: None,
+    admission: None,
+    admissionDoors: None,
   }
   let bareJson =
     Platform_PluginStructuresApi.encodePluginStructureEntry(

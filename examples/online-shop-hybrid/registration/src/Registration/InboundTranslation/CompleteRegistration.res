@@ -30,3 +30,6 @@ type command =
 
 let targetName = "Registrations"
 let capabilityNeeds = [Reventless.CapabilityNeed.Stash]
+
+/** This door completes a registration; the platform tells the shell so. */
+let admissionDoor = Reventless.Admission.Complete

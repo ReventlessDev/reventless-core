@@ -1208,6 +1208,10 @@ let make = (
   // The keys of the identities the plugin declares in its own `src/`, passed by
   // the plugin generator. One no view lists is reported as information.
   ~identities: array<string>=[],
+  // How each role is admitted, from the plugin's `Admission.res` where it has one.
+  ~admission: option<Reventless.Admission.t>=?,
+  // The inbound doors marked with the part they play in admission.
+  ~admissionDoors: array<(string, Reventless.Admission.door)>=[],
 ): Reventless.Plugin.pluginStructure => {
   let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)
   // The harvest compares its own reading of the corpus with the DECLARATION, so
@@ -2366,5 +2370,16 @@ let make = (
     requiredStoreDeclarations: Some(requiredStoreDeclarations),
     traitDeclarations: Some(traitDeclarations),
     requiredCapabilities: Some(requiredCapabilities),
+    admission: admission->Option.map(Reventless.Admission.toDefs),
+    admissionDoors: switch admissionDoors {
+    | [] => None
+    | doors =>
+      Some(
+        doors->Array.map(((component, door)): Reventless.Admission.doorDef => {
+          component,
+          part: Reventless.Admission.doorName(door),
+        }),
+      )
+    },
   }
 }

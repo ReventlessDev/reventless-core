@@ -23,7 +23,14 @@ type name = private string
 external make: string => name = "%identity"
 external fromStringSchema: S.t<string> => S.t<name> = "%identity"
 
-let nameSchema: S.t<name> = fromStringSchema(S.string)
+/** A role is an identity, keyed `role`: a field typed `Role.name` is read by the
+    DCB scope inference as a reference to the role, the way a field typed by an
+    `Id.Make` identity is read as one to its entity. */
+let nameSchema: S.t<name> =
+  fromStringSchema(S.string)->Semantic.mark(
+    ~id=Semantic.Id.identity,
+    ~payload=IdentityOf({key: "role"}),
+  )
 
 /** The framework's administrator: members administer a deployment. */
 let admin: name = make("Admin")

@@ -87,6 +87,8 @@ let structure: pluginStructure = {
   requiredStoreDeclarations: None,
   requiredCapabilities: None,
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 let structures = [("Ordering@1.0.0", structure)]

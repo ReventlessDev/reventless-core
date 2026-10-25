@@ -170,6 +170,8 @@ let structure = (commands): Plugin.pluginStructure => {
   requiredStoreDeclarations: None,
   requiredCapabilities: None,
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 let refusal = f =>

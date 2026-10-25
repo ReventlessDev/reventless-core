@@ -949,6 +949,34 @@ module MakeWithConfig = (
     })
   }
 
+  // Runs `f` once every plugin's structure has landed, with the plugin names
+  // and structures. The same moment the bake waits for, for the same reason: a
+  // structure only exists once its Output resolves, and anything read off all of
+  // them has to wait for the last.
+  let whenStructuresLanded = (
+    ~pluginComponents: array<ReventlessCore.Plugin.component>,
+    f: array<(string, Reventless.Plugin.pluginStructure)> => unit,
+  ) => {
+    let resolved: array<(string, Reventless.Plugin.pluginStructure)> = []
+    let expected = pluginComponents->Array.length
+    pluginComponents->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.id, outputs.pluginStructure)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((id, ps)) => {
+          let name = id->String.split("@")->Array.get(0)->Option.getOr(id)
+          switch ps {
+          | Some(def) => resolved->Array.push((name, def))
+          | None => ()
+          }
+          if resolved->Array.length === expected {
+            f(resolved)
+          }
+        })
+    })
+  }
+
   // The object stores a plugin's fields declared, as `{plugin}.{store}` keys.
   let declaredStoresOf = (structure: Reventless.Plugin.pluginStructure) =>
     structure.requiredStores->Option.getOr([])
@@ -1771,6 +1799,34 @@ module MakeWithConfig = (
       ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
       ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
     )
+    // What the plugins declare about admission is read once their structures
+    // have landed. First the refusal: a role declared self-service or by
+    // invitation that nothing here honors stops the platform, as a role no
+    // group stands for does. Then the shell is told where the doors are and
+    // which groups a visitor may sign up for, by writing `config.json` again
+    // with the one key the declaration alone could not supply.
+    whenStructuresLanded(~pluginComponents=plugins, structures => {
+      Reventless.AdmissionCheck.check(
+        ~structures,
+        ~provisioned=LocalCapabilities.provisioned(),
+        ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
+        ~adminGroup=Reventless.Role.adminGroup(),
+        // This platform admits callers who are not signed in on every door
+        // whose rule says so.
+        ~anonymousDoors=true,
+      )
+      ReventlessCore.Platform_SelfRegistration.fromStructures(
+        structures,
+      )->Option.forEach(selfRegistration =>
+        ShellConfig.emit(
+          ~dir=?hostUiDir,
+          ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+          ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+          ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+          ~selfRegistration,
+        )
+      )
+    })
     // Unconditional for the same reason, and one file over: it is also what
     // restores the shell package's own hints for a platform that has stopped
     // declaring its own.

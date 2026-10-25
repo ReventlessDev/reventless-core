@@ -136,7 +136,9 @@ function curateStructure(pluginId, def, sel) {
       requiredStores: def.requiredStores,
       requiredStoreDeclarations: def.requiredStoreDeclarations,
       requiredCapabilities: def.requiredCapabilities,
-      traitDeclarations: def.traitDeclarations
+      traitDeclarations: def.traitDeclarations,
+      admission: def.admission,
+      admissionDoors: def.admissionDoors
     };
   });
 }

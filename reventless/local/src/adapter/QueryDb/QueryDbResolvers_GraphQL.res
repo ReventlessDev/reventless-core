@@ -43,6 +43,8 @@ module Make = (Bus: LocalBus.T) => {
   // `Identity.t` to `ctx.identity`. Fallback to anonymous only when ctx is
   // malformed.
 
+  @get @return(nullable) external sourceAddressOf: JSON.t => option<string> = "sourceAddress"
+
   let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
     try {
       switch (ctx->Obj.magic)["identity"]->Nullable.toOption {
@@ -133,6 +135,26 @@ module Make = (Bus: LocalBus.T) => {
       // the user-supplied interceptor (mirrors mutation enforcement).
       if !Reventless.Authorization.isAllowed(authorization, identity) {
         Deny("Forbidden")
+      } else if (
+        // A view open to callers who are not signed in is counted per source
+        // address like any anonymous door, whoever the caller turns out to be.
+        switch authorization {
+        | AllowAnonymous =>
+          !LocalAnonymousLimit.admit(
+            ~door=name,
+            ~source=ctx->sourceAddressOf->Option.getOr("unknown"),
+          )
+        | _ => false
+        }
+      ) {
+        // An error, not a denial: a denied read answers an empty page, and an
+        // empty page from this door would read as "nothing to say" — a visitor
+        // asking which roles are open would be told all of them are.
+        throw(
+          GraphQL_CallerError.throttled(
+            `Query.${name}: too many requests from this source; retry later`,
+          ),
+        )
       } else {
         switch QueryDb_Callback.queryInterceptorHook.contents {
         | None => Allow

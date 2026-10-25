@@ -187,6 +187,8 @@ let structure: pluginStructure = {
   requiredStoreDeclarations: Some([storeDecl]),
   requiredCapabilities: Some([capabilityDecl]),
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 let panel: panelManifestEntry = {

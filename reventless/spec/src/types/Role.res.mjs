@@ -4,8 +4,12 @@ import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 
-let nameSchema = Sury.string;
+let nameSchema = Semantic$Reventless.mark(Sury.string, Semantic$Reventless.Id.identity, {
+  TAG: "IdentityOf",
+  key: "role"
+});
 
 let admin = "Admin";
 

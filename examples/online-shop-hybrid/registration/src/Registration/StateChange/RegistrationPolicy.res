@@ -1,36 +1,51 @@
 // RegistrationPolicy StateChangeSlice.
 //
-// Who may start a registration, as domain state an administrator changes with a
-// command rather than a deploy setting. Nothing recorded means closed: an
-// event-sourced setting has no value until someone sets one, and the safe answer
-// before then is that nobody may register.
+// Whether visitors may sign themselves up for a role right now, as domain state
+// an administrator changes with a command rather than a deploy. Kept per role:
+// only a role `Admission.res` declares self-service has a policy at all, and
+// such a role is open until an administrator closes it — the declaration is the
+// deployer's opt-in, so needing a second command to make it do anything would be
+// a trap.
 //
-// **Keyed by scope from the first event.** One scope is used today, `default`,
-// and a later layer that wants a policy per organization supplies other keys
-// without moving a single event.
-//
-// Of the three admission questions — who may start, what must be true of the
-// address, what a settled proof grants — only the first varies here, between
-// closed and open. An open window may carry an end, checked against the time the
-// registration arrived, so a test window someone forgets to close closes itself.
+// An open window may carry an end, checked against the time the registration
+// arrived, so a test window someone forgets to close closes itself.
 
 @@reventless.spec
 @@reventless.authorize(AllowRoles([Admin]))
 
+// The role is this slice's partition, tagged by its type: a role is an identity
+// the framework declares, not an id the plugin names.
 @schema
 type consumedEvent =
-  | RegistrationOpened({scopeId: string, until?: Reventless.DateTime.t})
-  | RegistrationClosed({scopeId: string})
+  | RegistrationOpened({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+      until?: Reventless.DateTime.t,
+    })
+  | RegistrationClosed({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+    })
 
 @schema
 type command =
-  | OpenRegistration({scopeId: string, until?: Reventless.DateTime.t})
-  | CloseRegistration({scopeId: string})
+  | OpenRegistration({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+      until?: Reventless.DateTime.t,
+    })
+  | CloseRegistration({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+    })
 
+// Told to an administrator, never to a visitor: this slice's commands are an
+// administrator's.
 @schema
-type error = unit
+type error = NotSelfService({role: Reventless.Role.name})
 
 @schema
 type event =
-  | RegistrationOpened({scopeId: string, until?: Reventless.DateTime.t})
-  | RegistrationClosed({scopeId: string})
+  | RegistrationOpened({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+      until?: Reventless.DateTime.t,
+    })
+  | RegistrationClosed({
+      role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
+    })

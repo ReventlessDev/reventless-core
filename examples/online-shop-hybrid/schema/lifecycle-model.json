@@ -338,7 +338,7 @@
   {
     "component": "RegistrationPolicy",
     "command": "CloseRegistration",
-    "level": "",
+    "level": "Collection",
     "allowedStates": [],
     "targets": [],
     "scenarios": 2
@@ -349,7 +349,7 @@
     "level": "",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "RenameCategory",

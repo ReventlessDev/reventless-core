@@ -246,6 +246,21 @@ let scan = (~srcDir: string, ~exclude: array<string>): array<discoveredFile> => 
   acc
 }
 
+/** The inbound doors that say which part they play in admission: an
+    `InboundTranslation/` spec whose source binds `admissionDoor`. Named by stem,
+    so the generated call reads the door off the compiled module
+    (`SignUp.admissionDoor`) and the compiler checks it. Sorted, so the generated
+    file is stable. */
+let scanAdmissionDoors = (~srcDir: string, discovered: array<discoveredFile>): array<string> =>
+  discovered
+  ->Array.filter(d =>
+    d.componentType == InboundTranslationSlice &&
+    !(d.stem->String.endsWith("_Translation")) &&
+    NodePath.join([srcDir, d.relPath])->NodeFs.readFileSync->String.includes("let admissionDoor")
+  )
+  ->Array.map(d => d.stem)
+  ->Array.toSorted(String.compare)
+
 /** The identity modules the plugin declares in its own `src/`: a `<Name>Id.res`
     whose source calls `Id.Make(`. Named by module, so the generated call reads
     each key off the compiled module (`CategoryId.key`) rather than parsing it

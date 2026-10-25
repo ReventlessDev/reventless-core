@@ -392,10 +392,10 @@ type Mutation {
   Platform_Plugin_Activate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Deactivate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Retire(id: ID!, version: String!): CommandResult!
-  Registration_CloseRegistration(scopeId: ID!): CommandResult!
+  Registration_CloseRegistration(role: ID!): CommandResult!
   Registration_CompleteRegistration(email: String!, password: String!, proof: String!): CommandResult!
-  Registration_OpenRegistration(scopeId: ID!, until: String): CommandResult!
-  Registration_SignUp(email: String!): CommandResult!
+  Registration_OpenRegistration(role: ID!, until: String): CommandResult!
+  Registration_SignUp(email: String!, role: String): CommandResult!
   Upload_Presign(contentType: String, fileName: String!, store: ID!): Upload_Ticket
   Upload_Release(storageRef: String!, store: ID!): Upload_ReleaseResult
 }
@@ -1466,6 +1466,10 @@ type Query {
   Registration_CreateRegisteredPrincipalTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_CreateRegisteredPrincipalTodo!]!
   Registration_CreateRegisteredPrincipalTodosRefs(ids: [ID!]!): [Registration_CreateRegisteredPrincipalTodoRef!]!
   Registration_RegistrationEventHistory(after: String, before: String, filter: Registration_RegistrationEventHistoryFilter, first: Int, last: Int): Registration_RegistrationEventRecordConnection!
+  Registration_RegistrationWindow(id: ID!, includeRetired: Boolean): Registration_RegistrationWindow
+  Registration_RegistrationWindows(after: String, before: String, filter: Registration_RegistrationWindowFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Registration_RegistrationWindowOrderBy): Registration_RegistrationWindowConnection!
+  Registration_RegistrationWindowsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_RegistrationWindow!]!
+  Registration_RegistrationWindowsRefs(ids: [ID!]!): [Registration_RegistrationWindowRef!]!
   Registration_SendRegistrationChallengeTodo(id: ID!, includeRetired: Boolean): Registration_SendRegistrationChallengeTodo
   Registration_SendRegistrationChallengeTodos(after: String, before: String, filter: Registration_SendRegistrationChallengeTodoFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SendRegistrationChallengeTodoConnection!
   Registration_SendRegistrationChallengeTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SendRegistrationChallengeTodo!]!
@@ -1560,6 +1564,7 @@ input Registration_CreateRegisteredPrincipalTodoFilter {
 type Registration_CreateRegisteredPrincipalTodoItem {
   email: String!
   proofHash: String!
+  roles: [ID!]!
 }
 
 type Registration_CreateRegisteredPrincipalTodoRef {
@@ -1605,6 +1610,47 @@ type Registration_RegistrationEventRecordConnection {
 type Registration_RegistrationEventRecordEdge {
   cursor: String!
   node: Registration_RegistrationEventRecord!
+}
+
+type Registration_RegistrationWindow implements Node {
+  id: ID!
+  isOpen: Boolean!
+  role: String!
+  until: String
+}
+
+type Registration_RegistrationWindowConnection {
+  edges: [Registration_RegistrationWindowEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Registration_RegistrationWindowEdge {
+  cursor: String!
+  node: Registration_RegistrationWindow!
+}
+
+input Registration_RegistrationWindowFilter {
+  ids: [ID!]
+  roleEq: String
+  search: String
+  searchPrefix: String
+}
+
+input Registration_RegistrationWindowOrderBy {
+  direction: SortOrder!
+  field: Registration_RegistrationWindowOrderField!
+}
+
+enum Registration_RegistrationWindowOrderField {
+  role
+}
+
+type Registration_RegistrationWindowRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 type Registration_SendRegistrationChallengeTodo implements Node {

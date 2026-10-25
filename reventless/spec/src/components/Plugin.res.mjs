@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Offload$Reventless from "../semantic/Offload.res.mjs";
+import * as Admission$Reventless from "../types/Admission.res.mjs";
 
 let nameSchema = Sury.string;
 
@@ -251,7 +252,9 @@ let pluginStructureSchema = Sury.$schema(s => ({
   requiredStores: s.m(Sury.$option(Sury.array(Sury.string))),
   requiredStoreDeclarations: s.m(Sury.$option(Sury.array(requiredStoreDeclarationSchema))),
   requiredCapabilities: s.m(Sury.$option(Sury.array(requiredCapabilityDeclarationSchema))),
-  traitDeclarations: s.m(Sury.$option(Sury.array(traitDeclarationSchema)))
+  traitDeclarations: s.m(Sury.$option(Sury.array(traitDeclarationSchema))),
+  admission: s.m(Sury.$option(Sury.array(Admission$Reventless.defSchema))),
+  admissionDoors: s.m(Sury.$option(Sury.array(Admission$Reventless.doorDefSchema)))
 }));
 
 let pluginStructureOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginStructures", undefined, pluginStructureSchema);

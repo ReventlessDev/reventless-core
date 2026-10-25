@@ -82,6 +82,8 @@ let structure = (): pluginStructure => {
   requiredStoreDeclarations: None,
   requiredCapabilities: None,
   traitDeclarations: None,
+  admission: None,
+  admissionDoors: None,
 }
 
 /** The definition the platform's own EventCollector ships as its

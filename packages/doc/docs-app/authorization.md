@@ -134,6 +134,43 @@ with other accounts.
 A missing group fails with the plugin, the command or view, the role, and what to
 do about it.
 
+### How a person comes to hold a role
+
+A plugin may say, per role, how an account gets into it, in `src/Admission.res`
+beside `Roles.res`:
+
+```rescript
+let table = Reventless.Admission.declare([
+  (Roles.Shopper, SelfService),
+  (Merchandiser, Invitation({by: [Admin]})),
+  (Admin, Provisioned),
+])
+```
+
+`SelfService` means a visitor who is not signed in proves control of an address
+and chooses a password; `Provisioned` means an administrator makes the account by
+hand, from the accounts manifest locally and with `provision-accounts` on AWS; a
+role the table does not name is provisioned. `Invitation` declares that someone
+already inside invites; the framework ships no door for it, so a plugin that
+provides one marks it. The declaration is the hard cap: no runtime state opens a
+role it does not declare self-service. Whether a self-service role is open *right
+now* is domain state an administrator changes with a command, and such a role is
+open until one closes it.
+
+The doors a plugin provides say which part of admission they are, on the spec of
+an inbound translation: `let admissionDoor = Reventless.Admission.Start` (or
+`Complete`, or `Invite`). The platform writes them into the host shell's
+`config.json` as `selfRegistration: {start, complete, roles}`, `roles` being the
+groups a visitor may sign up for, so nobody names a mutation by hand.
+
+At start the platform refuses a declaration it cannot honor, naming the role: a
+self-service role whose group is the administrator's or an elevated one; one with
+no door that starts and completes a registration; one on a platform that admits no
+callers who are not signed in (a deployed platform, today); a self-service or
+invited role without messaging and an identity provider provisioned; and a role by
+invitation when nothing in the deployment provides an invite door. The hybrid
+online shop declares shoppers self-service and its staff provisioned.
+
 ## Narrowing a whole file
 
 Put the rule at the top of the spec file:

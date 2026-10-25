@@ -1,15 +1,17 @@
 @@reventless.translation
 
-/** What a settled proof grants: an ordinary shopper's account. The one admission
-    answer this tier does not vary. */
-let defaultGroups = ["Shopper"]
+/** The groups that stand for the roles a registration grants, as this
+    deployment maps them. */
+let groupsOf = (roles: array<Reventless.Role.name>) => roles->Array.map(Reventless.Role.groupOf)
 
 /** How long a password put back for a retry waits again. */
 let retryTtl = 600
 
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationProofAccepted({email, proofHash}) => [(`${email}:${proofHash}`, {email, proofHash})]
+  | RegistrationProofAccepted({email, roles, proofHash}) => [
+      (`${email}:${proofHash}`, {email, roles, proofHash}),
+    ]
   }
 
 let completed = (email: string) => Ok(
@@ -26,7 +28,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
     switch await capabilities.identityProvider.createPrincipal(
       ~contact=ToEmail(Reventless.Email.unsafe(item.email)),
       ~credential=Password(password),
-      ~groups=defaultGroups,
+      ~groups=groupsOf(item.roles),
     ) {
     | Ok(_) => completed(item.email)
     // The provider already holds this address — an account declared before

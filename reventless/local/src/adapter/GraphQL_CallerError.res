@@ -17,3 +17,7 @@ external make: (string, {"extensions": {"code": string}}) => exn = "GraphQLError
     `BAD_USER_INPUT` sense. */
 let badUserInput = (message: string): exn =>
   make(message, {"extensions": {"code": "BAD_USER_INPUT"}})
+
+/** A door the caller's source has knocked on too often. The same code the
+    mutation side answers with, so a client reads one word for both. */
+let throttled = (message: string): exn => make(message, {"extensions": {"code": "Throttled"}})

@@ -182,6 +182,16 @@ function scan(srcDir, exclude) {
   return acc;
 }
 
+function scanAdmissionDoors(srcDir, discovered) {
+  return discovered.filter(d => {
+    if (d.componentType === "InboundTranslationSlice" && !d.stem.endsWith("_Translation")) {
+      return Nodefs.readFileSync(Nodepath.join(srcDir, d.relPath), "utf8").includes("let admissionDoor");
+    } else {
+      return false;
+    }
+  }).map(d => d.stem).toSorted(Primitive_string.compare);
+}
+
 function scanIdentities(srcDir, exclude) {
   let found = [];
   let walk = (dir, relDir) => {
@@ -224,6 +234,7 @@ export {
   collectFiles,
   walkDir,
   scan,
+  scanAdmissionDoors,
   scanIdentities,
 }
 /* node:fs Not a pure module */

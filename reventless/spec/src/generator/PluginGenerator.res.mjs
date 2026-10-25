@@ -97,7 +97,9 @@ function main() {
     let resolved = Pairing$Reventless.resolve(discovered, srcDir);
     let hasLifecycleModel = Nodefs.existsSync(Nodepath.join(srcDir, "LifecycleModel.res"));
     let identities = Discovery$Reventless.scanIdentities(srcDir, config_exclude);
-    let source = Codegen$Reventless.render(config, resolved, discovered, hasLifecycleModel, identities);
+    let hasAdmission = Nodefs.existsSync(Nodepath.join(srcDir, "Admission.res"));
+    let admissionDoors = Discovery$Reventless.scanAdmissionDoors(srcDir, discovered);
+    let source = Codegen$Reventless.render(config, resolved, discovered, hasLifecycleModel, identities, hasAdmission, admissionDoors);
     let outputDir;
     outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
     let pluginPath = Nodepath.join(outputDir, "Plugin.res");
