@@ -352,6 +352,14 @@
     "scenarios": 6
   },
   {
+    "component": "Registrations",
+    "command": "Invite",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
     "component": "RenameCategory",
     "command": "RenameCategory",
     "level": "Instance",

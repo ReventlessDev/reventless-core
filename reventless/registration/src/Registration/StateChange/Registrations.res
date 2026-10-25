@@ -39,6 +39,18 @@ type consumedEvent =
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
+  | RegistrationInvited({
+      email: ContactAddressId.t,
+      roles: array<string>,
+      invitedBy: string,
+      invitedAt: Reventless.DateTime.t,
+    })
+  | RegistrationChallengeReissued({
+      email: ContactAddressId.t,
+      reissuedAt: Reventless.DateTime.t,
+      invitedBy?: string,
+    })
+  | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
       attemptedAt: Reventless.DateTime.t,
@@ -82,12 +94,34 @@ type command =
       presentedAt: Reventless.DateTime.t,
     })
   | @noApi RecordRegistrationCompleted({email: ContactAddressId.t})
+  // A signed-in inviter claims the address for someone else, as the roles the
+  // app declares by invitation. No door here reaches it: a plugin that provides
+  // invitations marks its door `Invite` and checks the inviter before relaying.
+  | @noApi
+  Invite({
+      email: ContactAddressId.t,
+      roles: array<Reventless.Role.name>,
+      invitedBy: string,
+      requestedAt: Reventless.DateTime.t,
+    })
+  // Voids the code a pending registration holds, so a new one is sent: a code
+  // lost, or its attempts spent. Held to one per resend cooldown.
+  | @noApi
+  ReissueRegistrationChallenge({
+      email: ContactAddressId.t,
+      requestedAt: Reventless.DateTime.t,
+    })
+  // Releases an address a registration holds and nobody has proved yet.
+  | @noApi WithdrawRegistration({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
 
-// Every outcome here is a recorded fact or a quiet no-op, never an error: the
-// commands are relayed for anonymous callers, and an error is the one answer a
-// caller could tell apart.
+// Every outcome of a command relayed for an anonymous caller is a recorded fact
+// or a quiet no-op, never an error: an error is the one answer a caller could
+// tell apart. `Invite` is the exception, because its caller is a signed-in
+// inviter, who is owed the reason an invitation was not recorded.
 @schema
-type error = unit
+type error =
+  | NotByInvitation({role: string})
+  | NoRoleToGrant
 
 @schema
 type event =
@@ -97,6 +131,18 @@ type event =
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
+  | RegistrationInvited({
+      email: ContactAddressId.t,
+      roles: array<string>,
+      invitedBy: string,
+      invitedAt: Reventless.DateTime.t,
+    })
+  | RegistrationChallengeReissued({
+      email: ContactAddressId.t,
+      reissuedAt: Reventless.DateTime.t,
+      invitedBy?: string,
+    })
+  | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
       attemptedAt: Reventless.DateTime.t,

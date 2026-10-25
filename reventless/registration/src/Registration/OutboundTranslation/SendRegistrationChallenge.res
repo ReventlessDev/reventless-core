@@ -2,8 +2,9 @@
 //
 // Writes to the address a registration names. A fresh registration gets a
 // secret to prove control of the address, and the ledger records its hash; an
-// address that is already registered gets a notice instead, saying someone
-// tried. The caller who started either sees the same answer — the difference
+// invitation gets one too, worded as an invitation and holding for a week; a
+// reissued code is a fresh secret worded as its claim was. An address that is
+// already registered gets a notice instead, saying someone tried. The caller who started either sees the same answer — the difference
 // arrives at the address, where only its owner reads it.
 //
 // The plaintext goes to the address and never into the log. On the local
@@ -16,9 +17,17 @@
 type consumedEvent =
   | RegistrationRequested({email: string, requestedAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({email: string, attemptedAt: Reventless.DateTime.t})
+  | RegistrationInvited({email: string, invitedBy: string, invitedAt: Reventless.DateTime.t})
+  | RegistrationChallengeReissued({
+      email: string,
+      reissuedAt: Reventless.DateTime.t,
+      invitedBy?: string,
+    })
 
+/** `invited` words the secret as an invitation; it is left out for a sign-up
+    and for the notice. */
 @schema
-type outboundItem = {email: string, alreadyRegistered: bool}
+type outboundItem = {email: string, alreadyRegistered: bool, invited?: bool}
 
 @schema
 type inboundCommand =

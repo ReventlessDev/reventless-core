@@ -28,7 +28,7 @@ dependencies. The generator composes the slices as the plugin's own, under the
 | Slice | Kind | What it does |
 |---|---|---|
 | `RegistrationPolicy` | StateChange, administrators only | Opens and closes a self-service role, optionally until a time |
-| `Registrations` | StateChange, relayed commands only | The ledger, partitioned by address |
+| `Registrations` | StateChange, relayed commands only | The ledger, partitioned by address. Besides a sign-up's arms, it takes an invitation (`Invite`), a reissued code and a withdrawal, which no door here reaches |
 | `RegistrationWindows` | StateViewStream, anonymous | Which self-service roles are open now |
 | `SignUp` | Inbound, anonymous | Starts a registration for a role |
 | `CompleteRegistration` | Inbound, anonymous | Takes the proof and the password; the password goes to the stash, never to the log |
@@ -37,6 +37,12 @@ dependencies. The generator composes the slices as the plugin's own, under the
 
 A closed role, a role no visitor may have, a taken address and a fresh one all answer
 an anonymous caller alike; only what arrives at the address differs.
+
+The package ships the doors a visitor uses and no invitation door. A plugin that
+provides one lists it beside these slices, marks it `let admissionDoor =
+Reventless.Admission.Invite`, checks the inviter's roles, and relays `Invite` to the
+ledger. The ledger refuses any role the app's table does not declare by invitation.
+An invitation's code holds a week; a sign-up's holds a day.
 
 The scenarios that pin these slices run in the plugins that list them, against that
 plugin's own table: in this repository, `examples/online-shop-hybrid/registration`.

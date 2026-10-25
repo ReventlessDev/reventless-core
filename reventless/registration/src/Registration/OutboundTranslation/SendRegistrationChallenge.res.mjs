@@ -15,12 +15,25 @@ let consumedEventSchema = Sury.union([
     TAG: "RegistrationAttemptedOnTakenAddress",
     email: s.m(Sury.string),
     attemptedAt: s.m(DateTime$Reventless.schema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "RegistrationInvited",
+    email: s.m(Sury.string),
+    invitedBy: s.m(Sury.string),
+    invitedAt: s.m(DateTime$Reventless.schema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "RegistrationChallengeReissued",
+    email: s.m(Sury.string),
+    reissuedAt: s.m(DateTime$Reventless.schema),
+    invitedBy: s.m(Sury.$option(Sury.string))
   }))
 ]);
 
 let outboundItemSchema = Sury.$schema(s => ({
   email: s.m(Sury.string),
-  alreadyRegistered: s.m(Sury.boolean)
+  alreadyRegistered: s.m(Sury.boolean),
+  invited: s.m(Sury.$option(Sury.boolean))
 }));
 
 let inboundCommandSchema = Sury.$schema(s => ({

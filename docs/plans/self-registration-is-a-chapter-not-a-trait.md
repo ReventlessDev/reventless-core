@@ -12,10 +12,12 @@ in code, with whether a self-service role is open kept live per role
 identity plan's
 [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
 which must enforce the same limit before any public sign-up, and with it the admission check and the
-shell's configuration on AWS. **Next:** the chapter becomes reusable by other apps
+shell's configuration on AWS. **2026-10-25: the chapter is reusable by other apps**, as the
+package `@reventlessdev/reventless-registration` an app's plugin lists
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
-[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices);
-R1, R2 and R4 built 2026-10-25; R3 open), beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
+[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices),
+all built). **Next:** an invitation door, which needs
+[a door is handed its caller](a-door-is-handed-its-caller.md) first. Filed 2026-09-10; revised
 2026-09-11 when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
@@ -526,6 +528,36 @@ window is longer than a sign-up's is keyed by purpose in the challenge rules.
 **Exit:** GWT per command; the completion door settles an invited registration into every invited
 role's group with no change to itself; nothing in the hybrid shop reaches the three commands, since
 it declares no role by invitation.
+
+**Built 2026-10-25**, in the package. The commands are `Invite`, `ReissueRegistrationChallenge`
+and `WithdrawRegistration` — the last two named in full beside `IssueRegistrationChallenge`, since
+a bare `Withdraw` says nothing about what — and each records an event of its own:
+`RegistrationInvited`, `RegistrationChallengeReissued`, `RegistrationWithdrawn`.
+
+- **`Invite`** checks the app's table, not the policy: the policy says whether visitors may sign
+  themselves up, and an invitation is not that. Every role must be declared `Invitation`, or the
+  inviter is refused `NotByInvitation`, naming the role; an empty set is refused `NoRoleToGrant`.
+  These are the ledger's first errors. Every arm a visitor reaches still answers `Ok`; an inviter
+  is signed in and is owed the reason. Who may invite — the inviter's own roles against the table's
+  `by` — is the door's to check, once
+  [a door is handed its caller](a-door-is-handed-its-caller.md); the ledger records `invitedBy`. An
+  address holding an account, or a claim that has not lapsed, is not invited. A visitor's sign-up
+  cannot take over an invited address while the invitation holds.
+- **`ReissueRegistrationChallenge`** voids the code and its spent attempts, and the sender mints
+  and sends a new one. Only a code that went out is voided: a reissue while the first code is still
+  on its way would leave the ledger holding whichever arrived first. It is held to the resend
+  cooldown, so a door reaching it cannot flood an inbox.
+- **`WithdrawRegistration`** releases a claim nobody has proved. A settled one is not withdrawn,
+  because the account is already on its way.
+- **The window is keyed by purpose**, in `RegistrationChallenge` beside the copied rules rather than
+  in them, so the copy stays a copy: an invitation's code holds a week, a sign-up's a day. The
+  sender words an invitation as one, and a reissued code as its claim was.
+
+The scenarios run in the hybrid shop. Those its table can reach live in `Registrations_GWT`, where
+an invitation is refused because the shop declares no role by invitation. The accepted invitations
+run in `RegistrationsByInvitation_GWT`, over a table that admits staff by invitation: the same
+slice under a different table. The completion door's several-roles case was already pinned by
+`CreateRegisteredPrincipal_GWT`.
 
 #### R4: the chapter is published as a library of slices
 

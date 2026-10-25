@@ -95,13 +95,16 @@
     "partitionKeyByEventType": {
       "RegistrationAttemptedOnTakenAddress": "contactAddress",
       "RegistrationChallengeIssued": "contactAddress",
+      "RegistrationChallengeReissued": "contactAddress",
       "RegistrationClosed": "role",
       "RegistrationCompleted": "contactAddress",
       "RegistrationExpired": "contactAddress",
+      "RegistrationInvited": "contactAddress",
       "RegistrationOpened": "role",
       "RegistrationProofAccepted": "contactAddress",
       "RegistrationProofRefused": "contactAddress",
-      "RegistrationRequested": "contactAddress"
+      "RegistrationRequested": "contactAddress",
+      "RegistrationWithdrawn": "contactAddress"
     }
   }
 }

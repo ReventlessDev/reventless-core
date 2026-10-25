@@ -40,6 +40,9 @@ let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
   presentedAt: at,
 })
 let wrong: consumedEvent = RegistrationProofRefused({email, reason: "ProofMismatch"})
+let halfAMinuteOn = "2026-10-24T09:00:35.000Z"
+let reissued: array<consumedEvent> =
+  challenged->Array.concat([RegistrationChallengeReissued({email, reissuedAt: soonAfter})])
 
 describe("Registrations StateChangeSlice", () => {
   // 🚨 The policy is read in the same decision as the address, as its own clause,
@@ -59,6 +62,9 @@ describe("Registrations StateChangeSlice", () => {
           "RegistrationClosed",
           "RegistrationRequested",
           "RegistrationExpired",
+          "RegistrationInvited",
+          "RegistrationChallengeReissued",
+          "RegistrationWithdrawn",
           "RegistrationAttemptedOnTakenAddress",
           "RegistrationChallengeIssued",
           "RegistrationProofAccepted",
@@ -231,5 +237,76 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents(challenged)
     ->whenCmd(RecordRegistrationCompleted({email: email}))
     ->thenNoEvent
+  )
+
+  // A code lost, or its attempts spent: the claim keeps the address and waits
+  // for a fresh code.
+  // scenario-id: 91ec32ef-5065-4dec-8854-7aa7a3a7948e
+  test("a code that went out is reissued", () =>
+    givenEvents(challenged)
+    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: soonAfter}))
+    ->thenEvent(RegistrationChallengeReissued({email, reissuedAt: soonAfter}))
+  )
+
+  // scenario-id: 4cd5e9f7-0e91-484b-8aff-69327eb7bf24
+  test("a code is not reissued within the resend cooldown", () =>
+    givenEvents(challenged)
+    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: halfAMinuteOn}))
+    ->thenNoEvent
+  )
+
+  // A second code while the first is still on its way would leave the ledger
+  // holding whichever arrived first.
+  // scenario-id: 4ba66cf6-d624-4edf-b2f1-9541d41daca6
+  test("a code still on its way is not reissued", () =>
+    givenEvents(requested)
+    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: soonAfter}))
+    ->thenNoEvent
+  )
+
+  // scenario-id: 282891a5-c29f-44ff-a9d6-6aaeeaeee26e
+  test("a reissued code settles where the spent one could not", () =>
+    givenEvents(
+      challenged
+      ->Array.concat([wrong, wrong, wrong, wrong, wrong])
+      ->Array.concat([
+        RegistrationChallengeReissued({email, reissuedAt: soonAfter}),
+        RegistrationChallengeIssued({
+          email,
+          proofHash: "hash-of-the-new-secret",
+          issuedAt: soonAfter,
+        }),
+      ]),
+    )
+    ->whenCmd(submit(~hash="hash-of-the-new-secret"))
+    ->thenEvent(RegistrationProofAccepted({email, roles, proofHash: "hash-of-the-new-secret"}))
+  )
+
+  // scenario-id: e0bca4c5-edce-4d95-8ce1-2b500fd0317e
+  test("the voided code no longer settles anything", () =>
+    givenEvents(reissued)->whenCmd(submit(~at=soonAfter))->thenNoEvent
+  )
+
+  // scenario-id: be2adab7-c940-46e8-b957-02f55bcb7916
+  test("withdrawing a pending registration releases the address", () =>
+    givenEvents(challenged)
+    ->whenCmd(WithdrawRegistration({email, withdrawnAt: soonAfter}))
+    ->thenEvent(RegistrationWithdrawn({email, withdrawnAt: soonAfter}))
+  )
+
+  // Once a proof settled, an account is on its way; withdrawing would not stop it.
+  // scenario-id: a06fb615-ee9a-493c-afde-adab251a847e
+  test("a settled registration is not withdrawn", () =>
+    givenEvents(verified)
+    ->whenCmd(WithdrawRegistration({email, withdrawnAt: soonAfter}))
+    ->thenNoEvent
+  )
+
+  // The shop declares no role by invitation, so nothing can be invited to.
+  // scenario-id: 56e1d5a8-23a2-446f-b3bc-29da9af6ac77
+  test("a role the app does not declare by invitation is refused to an inviter", () =>
+    givenEvents([])
+    ->whenCmd(Invite({email, roles: [merchandiser], invitedBy: "u_admin", requestedAt}))
+    ->thenError(NotByInvitation({role: merchandiserName}))
   )
 })
