@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.289 (2026-10-25)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
+
+
+
+
+
 # 1.0.0-alpha.288 (2026-10-25)
 
 * feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))

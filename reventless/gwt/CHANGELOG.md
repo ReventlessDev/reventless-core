@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.257 (2026-10-25)
+
+**Note:** Version bump only for package @reventlessdev/reventless-gwt
+
+
+
+
+
 # 1.0.0-alpha.256 (2026-10-25)
 
 * refactor(spec)!: the plugin structure's optional parts are optional fields ([130bad5](https://github.com/ReventlessDev/reventless-core/commit/130bad581caf725a9d61b5a3df3d012e4f8ba402))

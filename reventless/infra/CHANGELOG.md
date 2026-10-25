@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.206 (2026-10-25)
+
+**Note:** Version bump only for package @reventlessdev/reventless-infra
+
+
+
+
+
 # 3.0.0-alpha.205 (2026-10-25)
 
 * refactor(aws)!: deploy and runtime configuration a function may lack are optional fields ([de80a54](https://github.com/ReventlessDev/reventless-core/commit/de80a546501a97b39cbe71200120f062bb260da4))
