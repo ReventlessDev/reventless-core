@@ -1,10 +1,11 @@
 # Plan: record fields typed `option` become optional fields
 
 **Date:** 2026-10-25<br/>
-**Status:** Filed, not started. Steps [R1](#r1-group-a-the-published-plugin-structure) to
-[R5](#r5-group-e-internal-results-and-tool-records-case-by-case), one inventory group each, in that
-order.<br/>
-**Repos:** `reventless-core` only.<br/>
+**Status:** [R1](#r1-group-a-the-published-plugin-structure) done; [R2](#r2-group-b-command-line-arguments)
+to [R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
+that order.<br/>
+**Repos:** `reventless-core`; `reventless-tools` follows when it takes the new version (see
+[Risks](#risks)).<br/>
 **Grounds:** [the inventory](../analysis/option-fields-that-could-be-optional.md), produced by
 `pnpm run inventory:option-fields`: 245 fields in 133 record types, in six groups. Groups A to E
 move here; group F stays `option`, for the reason the inventory gives.<br/>
@@ -29,9 +30,16 @@ with a script doing the mechanical part and the compiler naming what the script 
 
 For each field of the group's records it rewrites the declaration `name: option<T>` to `name?: T`
 inside the declaring record, then every site in the tracked sources where the field is written: a
-literal's `name: Some(expr)` becomes `name: expr`, a literal's `name: None` disappears, and in a
-pattern (the text before `=>` on a line, or a line starting `|`) `name: Some(x)` and `name: None`
-become `name: ?Some(x)` and `name: ?None`. The dry run lists every edit with its file and line.
+literal's `name: Some(expr)` becomes `name: expr`, also when the `Some(` closes on a later line; a
+literal's `name: None` disappears, except in a record spread (`{...r, name: None}`), where it clears
+the field and so becomes `name: ?None`; and in a pattern (the text before `=>` on a line, or a line
+starting `|`) `name: Some(x)` and `name: None` become `name: ?Some(x)` and `name: ?None`. Text inside
+a string literal is left alone. The dry run lists every edit with its file and line.
+
+After `--write` and a first build, `--fix-build` rebuilds the root and prefixes `?` wherever the
+compiler says an `option` value is passed to the now-optional field (`name: ?value`, punned
+`?name`), until it names nothing more of that kind. In [R1](#r1-group-a-the-published-plugin-structure) that was 42 sites, each a separate
+compiler stop.
 
 What it cannot know, and the compiler refuses afterwards:
 
@@ -39,14 +47,16 @@ What it cannot know, and the compiler refuses afterwards:
   of several groups. Rewriting group A's `plugin` also rewrites a literal of `Semantic.memberTarget`,
   a group E record still typed `option`; the build refuses that hunk and it is reverted (or that
   record is moved early, when it is as simple).
-- **A `Some(` whose closing paren is on a later line.** Left as it is; the build names it.
 - **A value already of type `option`** passed as `name: value`. It needs `name: ?value`; the build
-  names it.
+  names it, and `--fix-build` answers it.
+- **A value computed by a `switch`** that yields `None` or `Some(...)`: the field needs
+  `name: ?switch ...`; the build names it and `--fix-build` does not, since the column points at an
+  arm.
 - **A comment** that quotes a field, which the script skips, and so stays a comment about the old
   spelling until read.
 
-So each step is: dry run, read the report, `--write`, build, fix or revert what the compiler names,
-run the tests, re-emit the outputs, commit.
+So each step is: dry run, read the report, `--write`, `--fix-build`, fix or revert what it leaves,
+format the touched files, run the full `pnpm run build`, the tests and the checks, commit.
 
 ## Rules every step keeps
 
@@ -74,6 +84,17 @@ literals the build will refuse and the step reverts.
 **Exit:** the inventory shows no `option` field in `Plugin.res`; the ten literals carry no `: None,`
 line; the plugin-structure, baked-manifest and admin-API tests pass; the stored structure of a
 running local platform decodes (start the hybrid local platform once).
+
+**Done.** 27 files; the compiled `Plugin.res.mjs` is byte-identical, which is the wire claim
+checked directly. What the build refused and was reverted: `Semantic.referenceTarget.plugin`
+and `memberTarget.plugin`, `ResourceAttribution.context.plugin`, the handler entries' `plugin`
+(group D), `Pairing.extensionPointDef.group`, `CheckLifecycleModel.declaredCommand` and
+`declaredView` (`aggregateIdField`, `allowedStates`, `targetState`, `lifecycleField`),
+`PgQueryResolver_Lambda.binding` (`ownerField`, `retiredField`, `retiredValues`) and the
+`visibility` of `StateAnnotations.stateAnnotationSpec`. The hybrid local platform started on its
+stored database with no decode warning. Three tests were red before this step and still are,
+for a reason it does not touch (the admission fields): `AdminApiSchemaDriftTest`'s two "every
+record field reaches the wire" and `PluginDefinitionRequiredScalarsTest`.
 
 ### R2: group B, command-line arguments
 
@@ -168,6 +189,15 @@ seed suites pass.
 - **The structure's old readers.** A deployed plugin's structure decodes with the new record type
   unchanged, since the schema is unchanged; verified by starting the local platform against the
   stored structures in [R1](#r1-group-a-the-published-plugin-structure).
+- **A spread's `None` is a value.** `{...r, name: None}` clears a field the base record may have
+  set; deleting the line keeps the base's value and still compiles whenever another field remains.
+  [R1](#r1-group-a-the-published-plugin-structure) met sixteen of these in the tests, found after the fact; the script now writes them as
+  `name: ?None`.
+- **Other repositories build these records.** `reventless-tools` builds `Plugin.res` records in
+  about ten files (`dev/`, `codegen/`, mostly tests). A `name: None` or `name: Some(x)` there stops
+  compiling against the next published `reventless-spec`, which makes each step a source-breaking
+  change for that repository even though the wire is unchanged. Each step's commit says so, and
+  the consuming repository moves when it takes the new version.
 - **The script's scope.** It rewrites by field name across the whole tree. Where the name is shared
   with a record that stays `option` the build refuses the hunk; the plan accepts that round trip
   rather than making the script know types.

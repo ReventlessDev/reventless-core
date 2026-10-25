@@ -307,24 +307,18 @@ describe("lifecycle topology", () => {
     producedEventTypes: [],
     consumedEventTypes: [],
     linkedViews: ["Orders"],
-    consistencyRead: None,
     events: [],
     errors: [],
-    chapter: None,
   }
   let command = (~name, ~allowedStates=?, ~targetState=?, ()): Reventless.Plugin.commandDef => {
     name,
     schema: "",
     level: Instance,
-    aggregateIdField: None,
     mutationField: "",
     references: [],
-    allowedStates,
-    targetState,
+    ?allowedStates,
+    ?targetState,
     allowedStatesSource: ?(allowedStates->Option.map(_ => "declared")),
-    apiExposed: None,
-    requiredAccess: None,
-    ownerField: None,
   }
 
   testSync("names a state no command can reach", () => {
@@ -1996,13 +1990,13 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
             store: "TestPlugin.documents",
             component: "AttachInvoice",
             field: "documentUrl",
-            annotation: Some("documents"),
+            annotation: "documents",
           },
           {
             store: "branding.logos",
             component: "AttachInvoice",
             field: "logoUrl",
-            annotation: Some("branding.logos"),
+            annotation: "branding.logos",
           },
         ]
         expect(withStores.requiredStoreDeclarations)->toEqual(Some(expected))
@@ -2056,7 +2050,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           () => {
             let withCapability = {
               ...structure,
-              requiredCapabilities: Some([
+              requiredCapabilities: [
                 (
                   {
                     capability: "Geocoding",
@@ -2064,10 +2058,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
                   }: Reventless.Plugin.requiredCapabilityDeclaration
                 ),
                 {capability: "Geocoding", component: "GeocodeDropOff"},
-              ]),
-              traitDeclarations: None,
-              admission: None,
-              admissionDoors: None,
+              ],
+              traitDeclarations: ?None,
+              admission: ?None,
+              admissionDoors: ?None,
             }
             let entries = Reventless.CapabilityManifest.fromStructure(withCapability).capabilities
 
@@ -2094,10 +2088,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
                 expect(
                   Reventless.CapabilityManifest.fromStructure({
                     ...structure,
-                    requiredCapabilities: Some([{capability: "Telepathy", component: "Guess"}]),
-                    traitDeclarations: None,
-                    admission: None,
-                    admissionDoors: None,
+                    requiredCapabilities: [{capability: "Telepathy", component: "Guess"}],
+                    traitDeclarations: ?None,
+                    admission: ?None,
+                    admissionDoors: ?None,
                   }).capabilities,
                 )->toEqual([]),
             )
@@ -2188,25 +2182,25 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
             store: "TestPlugin.categoryImages",
             component: "UploadImages",
             field: "categoryImage",
-            annotation: Some("categoryImages"),
+            annotation: "categoryImages",
           },
           {
             store: "TestPlugin.datasheets",
             component: "UploadImages",
             field: "datasheets",
-            annotation: Some("datasheets"),
+            annotation: "datasheets",
           },
           {
             store: "TestPlugin.productImages",
             component: "UploadImages",
             field: "productImage",
-            annotation: Some("productImages"),
+            annotation: "productImages",
           },
           {
             store: "branding.logos",
             component: "UploadImages",
             field: "logo",
-            annotation: Some("branding.logos"),
+            annotation: "branding.logos",
           },
         ]
         expect(withUploads.requiredStoreDeclarations)->toEqual(Some(expected))
@@ -2348,7 +2342,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
             store: "TestPlugin.avatars",
             component: "UploadAvatar",
             field: "avatarUrl",
-            annotation: Some("avatars"),
+            annotation: "avatars",
           },
         ]
         expect(withOptional.requiredStoreDeclarations)->toEqual(Some(expected))
@@ -2360,7 +2354,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       () => {
         let cmd = (withOptional.stateChangeSlices->Array.getUnsafe(0)).commands->Array.getUnsafe(0)
         let expected: array<Reventless.Plugin.fieldReference> = [
-          {fieldName: "referredBy", entity: "Customers", plugin: None},
+          {fieldName: "referredBy", entity: "Customers"},
         ]
         expect(cmd.references)->toEqual(expected)
       },
@@ -2527,7 +2521,6 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           Some({
             Reventless.Plugin.fieldName: "lineItems[].productId",
             entity: "AvailableProducts",
-            plugin: None,
           }),
         )
       },
@@ -2551,7 +2544,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       () => {
         let cmd = slice.commands->Array.getUnsafe(0)
         expect(cmd.references->Array.find(({fieldName}) => fieldName == "warehouseIds"))->toEqual(
-          Some({Reventless.Plugin.fieldName: "warehouseIds", entity: "Warehouses", plugin: None}),
+          Some({Reventless.Plugin.fieldName: "warehouseIds", entity: "Warehouses"}),
         )
       },
     )

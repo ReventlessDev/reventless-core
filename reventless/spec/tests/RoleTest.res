@@ -133,15 +133,9 @@ let command = (name, ~roles): Plugin.commandDef => {
   name,
   schema: "{}",
   level: Collection,
-  aggregateIdField: None,
   mutationField: "",
   references: [],
-  allowedStates: None,
-  targetState: None,
-  apiExposed: None,
-  requiredAccess: None,
   requiredRoles: ?roles,
-  ownerField: None,
 }
 
 let structure = (commands): Plugin.pluginStructure => {
@@ -154,10 +148,8 @@ let structure = (commands): Plugin.pluginStructure => {
       producedEventTypes: [],
       consumedEventTypes: [],
       linkedViews: [],
-      consistencyRead: None,
       events: [],
       errors: [],
-      chapter: None,
     },
   ],
   aggregates: [],
@@ -165,13 +157,6 @@ let structure = (commands): Plugin.pluginStructure => {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let refusal = f =>

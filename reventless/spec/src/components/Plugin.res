@@ -92,14 +92,14 @@ type panelManifestEntry = {
   title: string,
   description: string,
   positions: array<string>,
-  requiredAccess: option<string>,
+  requiredAccess?: string,
 }
 
 @schema
 type menuEntry = {
   label: string,
-  icon: option<string>,
-  group: option<string>,
+  icon?: string,
+  group?: string,
   sortOrder: int,
 }
 
@@ -108,7 +108,7 @@ type pageManifestEntry = {
   fragmentId: string,
   title: string,
   menuEntry: menuEntry,
-  requiredAccess: option<string>,
+  requiredAccess?: string,
 }
 
 @schema
@@ -155,7 +155,7 @@ type derivedEdge = {
 type fieldReference = {
   fieldName: string,
   entity: string,
-  plugin: option<string>,
+  plugin?: string,
 }
 
 @schema
@@ -163,15 +163,15 @@ type commandDef = {
   name: string,
   schema: string,
   level: commandLevel,
-  aggregateIdField: option<string>,
+  aggregateIdField?: string,
   mutationField: string,
   references: array<fieldReference>,
   /** The *from* set — lifecycle states this command is meaningful in. `None`
       means always available; `Some([])` means never show. */
-  allowedStates: option<array<string>>,
+  allowedStates?: array<string>,
   /** The *to* state this command's handler writes. `None` with a from-set present
       means the command does not move the row. */
-  targetState: option<string>,
+  targetState?: string,
   /** Where the from-set came from, ranking an inherited edge against an authored
       one the way `readSideDef.labelFieldSource` does for its field:
 
@@ -190,17 +190,17 @@ type commandDef = {
       taking effect without ever showing where it lands. */
   allowedStatesSource?: string,
   /** Whether the variant is exposed in the generated API (non-`@noApi`). */
-  apiExposed: option<bool>,
+  apiExposed?: bool,
   /** Access keys — any one of them — a caller needs to be *offered* this command.
       A hint derived from the server's rule, never the refusal itself. */
-  requiredAccess: option<array<string>>,
+  requiredAccess?: array<string>,
   /** The roles `requiredAccess` was mapped from, as the rule names them. Absent
       where the rule names none; read by the deploy check that every role maps to
       a group the platform provides. */
   requiredRoles?: array<string>,
   /** The `@owner` command field the server stamps with the caller's identity; a
       client omits it from a form, since whatever it collects is discarded. */
-  ownerField: option<string>,
+  ownerField?: string,
 }
 
 @schema
@@ -218,41 +218,41 @@ type readSideDef = {
   searchableFields: array<string>,
   /** Which rung produced `labelField`, so a consumer can rank it against its own
       rule: `"annotation"` | `"convention"` | `"position"` | `"fallback"`. */
-  labelFieldSource: option<string>,
+  labelFieldSource?: string,
   /** The state field holding the row's lifecycle, paired with
       `commandDef.allowedStates`. From `@lifecycle`, else an enum named `lifecycle`. */
-  lifecycleField: option<string>,
+  lifecycleField?: string,
   /** The `@owner` state field. Reads of this view are narrowed server-side to a
       non-elevated caller's own rows. */
-  ownerField: option<string>,
+  ownerField?: string,
   /** The `@retired` state field withdrawing a row from ordinary reads. From the
       annotation only — no fallback by name, since guessing hides data. */
-  retiredField: option<string>,
+  retiredField?: string,
   /** The states a row is retired *in* (state form of `@retired`); `None` is the
       boolean form, where the excluded value is always `true`. */
-  retiredValues: option<array<string>>,
+  retiredValues?: array<string>,
   /** Whether the view publishes the by-ids reference door that names a retired row
       to any caller holding a pointer (`@namedWhenRetired`). Never true without
       `retiredField`. */
-  namedWhenRetired: option<bool>,
+  namedWhenRetired?: bool,
   /** `@@reventless.visibility`. `Some("Internal")` hides the component from AutoUI;
       it is still carried here for developer tooling. `None` means Public. */
-  visibility: option<string>,
+  visibility?: string,
   /** Intra-plugin grouping band, the first non-kind path segment under `src/`.
       `None` renders flat. */
-  chapter: option<string>,
+  chapter?: string,
   /** The singular counterpart of `queryField` (`Plugin_Order`), also the prefix of
       the generated input types. Not derivable without `Api_Naming.singularize`. */
-  singleQueryField: option<string>,
+  singleQueryField?: string,
   /** The state field identifying a row, as opposed to a reference to another entity.
       `None` means unresolved — no key-derived filter or sort until `@id` is declared. */
-  idField: option<string>,
+  idField?: string,
   /** Which rung produced `idField`, as `labelFieldSource` does: `"annotation"` |
       `"convention"` | `"sole"`. */
-  idFieldSource: option<string>,
+  idFieldSource?: string,
   /** Access keys — any one of them — a caller needs to be *offered* this view. A
       denied read comes back empty rather than erroring, hence the hint. */
-  requiredAccess: option<array<string>>,
+  requiredAccess?: array<string>,
   /** The roles `requiredAccess` was mapped from; see `commandDef`. */
   requiredRoles?: array<string>,
 }
@@ -282,7 +282,7 @@ type writeSideDef = {
   producedEventTypes: array<string>,
   consumedEventTypes: array<string>,
   linkedViews: array<string>,
-  consistencyRead: option<string>,
+  consistencyRead?: string,
   /** Emitted-event field schemas; `[]` when there are none. */
   events: array<eventDef>,
   /** Declared-error field schemas. Required, but a persisted structure predating a
@@ -290,7 +290,7 @@ type writeSideDef = {
       `[]` on read, and a new one must be added there too. */
   errors: array<errorDef>,
   /** Chapter grouping band — see `readSideDef.chapter`. */
-  chapter: option<string>,
+  chapter?: string,
 }
 
 @schema
@@ -300,7 +300,7 @@ type automationSliceDef = {
   producedCommandTypes: array<string>,
   targetName: string,
   /** Chapter grouping band — see `readSideDef.chapter`. */
-  chapter: option<string>,
+  chapter?: string,
   /** The declared `schedule`, as the JSON of `Schedule.timeSchema`; `None` for an
       automation started by events only, and in a structure from before the field. */
   schedule?: string,
@@ -311,11 +311,11 @@ type outboundTranslationSliceDef = {
   name: string,
   consumedEventTypes: array<string>,
   inboundCommandTypes: array<string>,
-  targetName: option<string>,
+  targetName?: string,
   // Foreign system this slice publishes to — drives the external box (Event Graph).
-  externalSystem: option<string>,
+  externalSystem?: string,
   /** Chapter grouping band — see `readSideDef.chapter`. */
-  chapter: option<string>,
+  chapter?: string,
   /** The topics this slice subscribes to, as `Spec.sourceNames` declares them —
       an Aggregate's `Spec.name` or a DCB source name. `Some([])` is the declared
       default and means this plugin's own DCB log; `None` is an older structure
@@ -323,7 +323,7 @@ type outboundTranslationSliceDef = {
       which names event types and not where they came from — two topics carrying
       an event of the same name are indistinguishable there. Optional so an older
       reader ignores it. */
-  consumedSources: option<array<string>>,
+  consumedSources?: array<string>,
 }
 
 @schema
@@ -332,9 +332,9 @@ type inboundTranslationSliceDef = {
   commandTypes: array<string>,
   targetName: string,
   // Foreign system this slice receives from — drives the external box (Event Graph).
-  externalSystem: option<string>,
+  externalSystem?: string,
   /** Chapter grouping band — see `readSideDef.chapter`. */
-  chapter: option<string>,
+  chapter?: string,
   /** The roles any of its commands' rules name; see `commandDef`. */
   requiredRoles?: array<string>,
 }
@@ -382,11 +382,11 @@ type extensionDef = {
   commandTypes: array<string>,
   /** Which published event routes to which commands. Optional like
       `extensionPointDef.commandTypes`; re-emit definitions persisted before it. */
-  handledEvents: option<array<handledEventDef>>,
+  handledEvents?: array<handledEventDef>,
   /** Which internal event sends which command back to the port. `None` means a
       definition persisted before the field, NOT an extension that issues nothing —
       a reader joining the two halves must keep them apart. */
-  issuedCommands: option<array<issuedCommandDef>>,
+  issuedCommands?: array<issuedCommandDef>,
 }
 
 /**
@@ -402,12 +402,12 @@ type extensionPointDef = {
   name: string,
   delegateNames: array<string>,
   sourceEventTypes: array<string>,
-  commandTypes: option<array<string>>,
+  commandTypes?: array<string>,
   /** Which internal event becomes which published event. */
-  publishedEvents: option<array<publishedEventDef>>,
+  publishedEvents?: array<publishedEventDef>,
   /** Which arriving command becomes which delegate command. `None` means a
       definition persisted before the field, NOT a port that accepts nothing. */
-  acceptedCommands: option<array<acceptedCommandDef>>,
+  acceptedCommands?: array<acceptedCommandDef>,
 }
 
 /**
@@ -424,7 +424,7 @@ type requiredStoreDeclaration = {
   store: string,
   component: string,
   field: string,
-  annotation: option<string>,
+  annotation?: string,
 }
 
 /**
@@ -484,30 +484,30 @@ type pluginStructure = {
   extensions: array<extensionDef>,
   // Extension points owned by this plugin (producer side). Optional so older
   // definitions still decode (absent → None, read as []).
-  extensionPoints: option<array<extensionPointDef>>,
+  extensionPoints?: array<extensionPointDef>,
   /** The object stores this plugin's fields declare they need, deduplicated and
       qualified as `{plugin}.{store}` even for the same-plugin case. */
-  requiredStores: option<array<string>>,
+  requiredStores?: array<string>,
   /** Provenance for `requiredStores`: one entry per declaring `(component, field)`.
       `requiredStores` is derived from it, so the two cannot disagree. */
-  requiredStoreDeclarations: option<array<requiredStoreDeclaration>>,
+  requiredStoreDeclarations?: array<requiredStoreDeclaration>,
   /** The platform capabilities this plugin's components declare they need, one
       entry per declaring component. Object stores are not here — a store need is
       a field's, and travels as `requiredStores`. Absent → None, read as []. */
-  requiredCapabilities: option<array<requiredCapabilityDeclaration>>,
+  requiredCapabilities?: array<requiredCapabilityDeclaration>,
   /** The domain traits grafted into this plugin, one entry per declaring
       component. Absent → None, read as []. The only signal a graft leaves that
       survives into a deployed plugin — every other one (the dependency, the
       variant spread, the rules alias, the conformance binding) is source-side.
       A claim about origin, never about behavior: see `Trait`. */
-  traitDeclarations: option<array<traitDeclaration>>,
+  traitDeclarations?: array<traitDeclaration>,
   /** How a person comes to hold each of this plugin's roles, as its
       `Admission.res` declares; absent where the plugin declares nothing. The
       deploy check and the shell's configuration read it. Absent → None. */
-  admission: option<array<Admission.def>>,
+  admission?: array<Admission.def>,
   /** The inbound doors that play a part in admission — start, complete, invite —
       by component. Absent → None, read as []. */
-  admissionDoors: option<array<Admission.doorDef>>,
+  admissionDoors?: array<Admission.doorDef>,
 }
 
 let pluginStructureOffloadSchema = Offload.optionSchema(
@@ -538,13 +538,13 @@ type pluginDefinition = {
   option<Offload.payload<apiSchemaFragment>>,
   // Schema routing in split-API mode: None/"Domain" → DomainApi, Some("Platform") →
   // PlatformApi (and excluded from the DomainApi runtime schema).
-  apiTarget: option<string>,
+  apiTarget?: string,
   // Component graph metadata, offloadable like apiSchemaFragment. Absent for older
   // protocol versions.
   structure: @s.matches(pluginStructureOffloadSchema) option<Offload.payload<pluginStructure>>,
   // EventTopic ARN of a bundled DcbEventLog, so the admin can subscribe peer
   // EventCollectors to it. None for plugins without one.
-  dcbEventLog: option<dcbEventLogDefinition>,
+  dcbEventLog?: dcbEventLogDefinition,
   // Mandatory; `Domain` is resolved as the default in Plugin_Builder. Payload-less
   // variant → a bare JSON string.
   kind: pluginKind,

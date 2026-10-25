@@ -12,25 +12,18 @@ let empty: Reventless.Plugin.pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let registration: Reventless.Plugin.pluginStructure = {
   ...empty,
-  admission: Some([
+  admission: [
     {Reventless.Admission.role: "Shopper", strategy: "SelfService"},
     {Reventless.Admission.role: "Admin", strategy: "Provisioned"},
-  ]),
-  admissionDoors: Some([
+  ],
+  admissionDoors: [
     {Reventless.Admission.component: "SignUp", part: "start"},
     {Reventless.Admission.component: "CompleteRegistration", part: "complete"},
-  ]),
+  ],
 }
 
 describe("Platform_SelfRegistration", () => {
@@ -56,7 +49,7 @@ describe("Platform_SelfRegistration", () => {
           "Registration",
           {
             ...registration,
-            admissionDoors: Some([{Reventless.Admission.component: "SignUp", part: "start"}]),
+            admissionDoors: [{Reventless.Admission.component: "SignUp", part: "start"}],
           },
         ),
       ]),

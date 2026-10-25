@@ -1070,9 +1070,7 @@ function MakeWithConfig(Config) {
           eventCollector: param[2].name,
           extensionProtocols: [],
           apiSchemaFragment: Stdlib_Option.map(param[5], f => Plugin_Helpers$ReventlessCore.offloadPayload(f, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments")),
-          apiTarget: undefined,
           structure: Stdlib_Option.map(param[7], s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures")),
-          dcbEventLog: undefined,
           kind: "Domain"
         };
         dispatchPluginCommand(pluginName, {
@@ -2867,9 +2865,7 @@ function Make($star) {
           eventCollector: param[2].name,
           extensionProtocols: [],
           apiSchemaFragment: Stdlib_Option.map(param[5], f => Plugin_Helpers$ReventlessCore.offloadPayload(f, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments")),
-          apiTarget: undefined,
           structure: Stdlib_Option.map(param[7], s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures")),
-          dcbEventLog: undefined,
           kind: "Domain"
         };
         dispatchPluginCommand(pluginName, {

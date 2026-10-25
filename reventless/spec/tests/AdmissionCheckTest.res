@@ -23,13 +23,6 @@ let empty: Plugin.pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let doors = (parts: array<Admission.door>): array<Admission.doorDef> =>
@@ -40,8 +33,8 @@ let doors = (parts: array<Admission.door>): array<Admission.doorDef> =>
 
 let shop = (~admission, ~doors as ds=doors([Start, Complete])): Plugin.pluginStructure => {
   ...empty,
-  admission: Some(admission),
-  admissionDoors: Some(ds),
+  admission,
+  admissionDoors: ds,
 }
 
 let all = [CapabilityNeed.Messaging, CapabilityNeed.IdentityProvider]
@@ -126,7 +119,7 @@ describe("AdmissionCheck", () => {
     expect(
       problems([
         ("Shop", shop(~admission=table([(Roles.Merchandiser, Invitation({by: [Admin]}))]))),
-        ("Accounts", {...empty, admissionDoors: Some(doors([Invite]))}),
+        ("Accounts", {...empty, admissionDoors: doors([Invite])}),
       ]),
     )->toEqual([])
   )

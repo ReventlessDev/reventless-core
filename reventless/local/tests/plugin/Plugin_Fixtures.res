@@ -13,9 +13,7 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,
-  apiTarget: None,
   structure: None,
-  dcbEventLog: None,
   kind: Domain,
 }
 
@@ -55,8 +53,6 @@ let pluginDefinition2 = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,
-  apiTarget: None,
   structure: None,
-  dcbEventLog: None,
   kind: Domain,
 }

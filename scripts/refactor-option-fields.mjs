@@ -13,6 +13,13 @@
 //                           inline `name: None` in `{...}` -> removed with its comma
 //   4. a pattern's arm      `| {... name: Some(x) ...}` / `name: None` in a pattern
 //                           -> `name: ?Some(x)` / `name: ?None`
+//   5. a spread's `None`    `{...r, name: None}` clears the field, so it becomes
+//                           `name: ?None` rather than going
+//   6. a `Some(` spanning lines is unwrapped with its trailing comma
+// Text inside a string literal is left alone. After `--write` and a build,
+// `--fix-build` rebuilds the root and prefixes `?` wherever the compiler says an
+// `option` value is passed to an optional field (`name: ?value`, `?name`), until
+// it names nothing more of that kind; what it prints last is left to read.
 // Sites are matched by field name, so a field another record shares (`plugin`,
 // `chapter`) may be rewritten where that record still uses `option`. The build
 // refuses those, and the report lists every site, so read the report, apply,
@@ -28,6 +35,7 @@ const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 
 const group = flag("--group");
 const only = flag("--only")?.split(",") ?? null;
 const write = args.includes("--write");
+if (args.includes("--fix-build")) { fixBuild(); process.exit(0); }
 if (!group) { console.error("usage: refactor-option-fields.mjs --group <A|B|C|D|E> [--only f.res,g.res] [--write]"); process.exit(2); }
 
 const inventory = JSON.parse(
@@ -83,7 +91,18 @@ const fields = [...new Set(inventory.map((r) => r.field))];
 const codePart = (line) => { const i = line.indexOf("//"); return i < 0 ? line : line.slice(0, i); };
 const isFieldAt = (line, idx) => {
   const before = line.slice(0, idx).trimEnd();
+  if ((line.slice(0, idx).match(/(?<!\\)["`]/g) ?? []).length % 2 === 1) return false; // in a string
   return before === "" || /[{,(]$/.test(before);
+};
+// Whether the record literal enclosing `idx` of `text` opens with a spread.
+const inSpread = (text, idx) => {
+  let depth = 0, i = idx - 1;
+  for (; i >= 0; i--) {
+    const c = text[i];
+    if (c === "}" || c === ")" || c === "]") depth++;
+    else if (c === "{" || c === "(" || c === "[") { if (depth === 0) break; depth--; }
+  }
+  return i >= 0 && text[i] === "{" && text.slice(i + 1).trimStart().startsWith("...");
 };
 const inPattern = (line, idx) => {
   const arrow = line.indexOf("=>");
@@ -112,10 +131,11 @@ for (const f of allFiles) {
       if (m && isFieldAt(code, m.index)) {
         const before = line;
         let after;
-        if (inPattern(code, m.index)) after = line.replace(noneRe, `${field}: ?None`);
+        const spread = !inPattern(code, m.index) && inSpread(lines.slice(0, n).join("\n") + "\n" + line, lines.slice(0, n).join("\n").length + 1 + m.index);
+        if (inPattern(code, m.index) || spread) after = line.replace(noneRe, `${field}: ?None`);
         else if (new RegExp(`^\\s*${field}\\s*:\\s*None\\s*,?\\s*$`).test(code)) after = null;
         else after = line.replace(new RegExp(`\\s*${field}\\s*:\\s*None\\s*,?`), (s) => (s.trim().endsWith(",") ? " " : ""));
-        changes.push({ file: f, line: n + 1, kind: inPattern(code, m.index) ? "pattern None" : after === null ? "literal None line" : "literal None inline", before: before.trim(), after: after === null ? "(removed)" : after.trim() });
+        changes.push({ file: f, line: n + 1, kind: inPattern(code, m.index) ? "pattern None" : spread ? "spread None" : after === null ? "literal None line" : "literal None inline", before: before.trim(), after: after === null ? "(removed)" : after.trim() });
         if (after === null) { lines.splice(n, 1); n--; touched = true; line = null; break; }
         line = after; touched = true;
       }
@@ -123,6 +143,27 @@ for (const f of allFiles) {
     if (line !== null) lines[n] = line;
   }
   if (touched) set(f, lines.join("\n"));
+  // 6. `name: Some(` whose closing paren is on a later line
+  src = read(f);
+  const multi = new RegExp(`(?<![\\w.])(${fields.join("|")})\\s*:\\s*Some\\(`, "g");
+  let out = "", from = 0, mm;
+  while ((mm = multi.exec(src))) {
+    const lineStart = src.lastIndexOf("\n", mm.index) + 1;
+    const lineText = src.slice(lineStart, src.indexOf("\n", mm.index) < 0 ? src.length : src.indexOf("\n", mm.index));
+    const col = mm.index - lineStart;
+    if (!isFieldAt(codePart(lineText), col) || inPattern(lineText, col)) continue;
+    let depth = 1, j = mm.index + mm[0].length;
+    for (; j < src.length && depth; j++) {
+      if ("([{".includes(src[j])) depth++; else if (")]}".includes(src[j])) depth--;
+    }
+    const inner = src.slice(mm.index + mm[0].length, j - 1);
+    if (!inner.includes("\n")) continue;
+    out += src.slice(from, mm.index) + `${mm[1]}: ` + inner.trim().replace(/,$/, "");
+    from = j;
+    changes.push({ file: f, line: src.slice(0, mm.index).split("\n").length, kind: "literal Some, multi-line", before: `${mm[1]}: Some(…)`, after: `${mm[1]}: …` });
+    multi.lastIndex = j;
+  }
+  if (from > 0) set(f, out + src.slice(from));
 }
 
 // report
@@ -137,4 +178,27 @@ if (write) {
   console.log(`\nwrote ${edits.size} files. Build, read the compiler's refusals, revert the hunks it names, then rerun the inventory.`);
 } else {
   console.log("\ndry run; pass --write to apply.");
+}
+
+// Rebuild the root and answer every "you're passing an optional value" refusal with `?`.
+function fixBuild() {
+  for (let round = 0; round < 500; round++) {
+    let text = "";
+    try { execFileSync("pnpm", ["exec", "rescript", "build"], { cwd: root, encoding: "utf8", stdio: "pipe" }); }
+    catch (e) { text = `${e.stdout ?? ""}${e.stderr ?? ""}`.replace(/\x1b\[[0-9;]*m/g, ""); }
+    if (!text) { console.log(`build passes after ${round} fix(es)`); return; }
+    let fixed = 0;
+    for (const block of text.split("We've found a bug for you!").slice(1)) {
+      const at = /(\/\S+\.res):(\d+):(\d+)/.exec(block);
+      if (!at || !block.includes("you're passing an optional value to it")) continue;
+      const lines = fs.readFileSync(at[1], "utf8").split("\n");
+      const l = Number(at[2]) - 1, c = Number(at[3]) - 1, head = lines[l].slice(0, c).trimEnd();
+      if (head !== "" && !/[:,{]$/.test(head)) continue;
+      lines[l] = lines[l].slice(0, c) + "?" + lines[l].slice(c);
+      fs.writeFileSync(at[1], lines.join("\n"));
+      console.log(`${path.relative(root, at[1])}:${l + 1}  ?-prefixed`);
+      fixed++;
+    }
+    if (!fixed) { console.log(text.slice(-4000)); return; }
+  }
 }

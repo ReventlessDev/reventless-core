@@ -30,9 +30,8 @@ let offloadedFragment: Reventless.Plugin.pluginDefinition = {
       bytes: 14594,
     }),
   ),
-  apiTarget: Some("Domain"),
+  apiTarget: "Domain",
   structure: None,
-  dcbEventLog: None,
   kind: Domain,
 }
 

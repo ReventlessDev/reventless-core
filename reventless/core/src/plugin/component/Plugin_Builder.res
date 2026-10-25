@@ -819,9 +819,9 @@ module Make = (
             eventCollector: eventCollectorUrn,
             extensionProtocols: [],
             apiSchemaFragment: Some(apiSchemaFragmentPayload),
-            apiTarget: Some(capturedDeployTarget),
+            apiTarget: capturedDeployTarget,
             structure: structurePayload,
-            dcbEventLog: dcbEventLogDef,
+            dcbEventLog: ?dcbEventLogDef,
             // Business role from the deploy-time metadata registry (set via
             // registerPluginMetadata). Unset → Domain. Rides the handshake to the
             // plugin-lifecycle projection so the admin can segregate infrastructure.
@@ -1065,20 +1065,17 @@ module Make = (
       title: q.name,
       description: "",
       positions: readModelPositions,
-      requiredAccess: None,
     }
     let detailPanel = (w: Reventless.Plugin.writeSideDef): Reventless.Plugin.panelManifestEntry => {
       fragmentId: name ++ "." ++ w.name ++ ".detail",
       title: w.name,
       description: "",
       positions: aggregatePositions,
-      requiredAccess: None,
     }
     let listPage = (q: Reventless.Plugin.readSideDef): Reventless.Plugin.pageManifestEntry => {
       fragmentId: name ++ "." ++ q.name ++ ".list",
       title: q.name,
-      menuEntry: {label: q.name, icon: None, group: None, sortOrder: 0},
-      requiredAccess: None,
+      menuEntry: {label: q.name, sortOrder: 0},
     }
     let panels = Array.flat([
       visibleReadModels->Array.map(listPanel),

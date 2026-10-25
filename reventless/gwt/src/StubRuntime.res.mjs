@@ -31,9 +31,7 @@ let pluginDefinition = {
   eventCollector: "NOT-SET",
   extensionProtocols: [],
   apiSchemaFragment: undefined,
-  apiTarget: undefined,
   structure: undefined,
-  dcbEventLog: undefined,
   kind: "Domain"
 };
 

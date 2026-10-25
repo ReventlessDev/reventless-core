@@ -40,9 +40,7 @@ describe("Message should", () => {
       eventCollector: "testEventCollector",
       extensionProtocols: [],
       apiSchemaFragment: None,
-      apiTarget: None,
       structure: None,
-      dcbEventLog: None,
       kind: Domain,
     })
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
@@ -110,7 +108,6 @@ describe("Message should", () => {
         eventCollector: "arn",
         extensionProtocols: [],
         apiSchemaFragment: None,
-        apiTarget: None,
         structure: Some(
           Reventless.Offload.Inline({
             readModels: [],
@@ -123,26 +120,16 @@ describe("Message should", () => {
                 producedEventTypes: [],
                 consumedEventTypes: [],
                 linkedViews: [],
-                consistencyRead: None,
                 events: [],
                 errors: [],
-                chapter: None,
               },
             ],
             automationSlices: [],
             outboundTranslationSlices: [],
             inboundTranslationSlices: [],
             extensions: [],
-            extensionPoints: None,
-            requiredStores: None,
-            requiredStoreDeclarations: None,
-            requiredCapabilities: None,
-            traitDeclarations: None,
-            admission: None,
-            admissionDoors: None,
           }),
         ),
-        dcbEventLog: None,
         kind: Domain,
       }
       let event' = {
@@ -218,9 +205,7 @@ describe("Message should", () => {
       eventCollector: "arn",
       extensionProtocols: [],
       apiSchemaFragment: None,
-      apiTarget: None,
       structure: None,
-      dcbEventLog: None,
       kind: Domain,
     }
     let variantJson = VersionConnected(def)->Message.encode(PluginSpec.eventSchema)

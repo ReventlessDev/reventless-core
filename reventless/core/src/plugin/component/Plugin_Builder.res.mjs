@@ -61,26 +61,21 @@ function Make(Spec) {
         fragmentId: name + "." + q.name + ".list",
         title: q.name,
         description: "",
-        positions: readModelPositions,
-        requiredAccess: undefined
+        positions: readModelPositions
       });
       let detailPanel = w => ({
         fragmentId: name + "." + w.name + ".detail",
         title: w.name,
         description: "",
-        positions: aggregatePositions,
-        requiredAccess: undefined
+        positions: aggregatePositions
       });
       let listPage = q => ({
         fragmentId: name + "." + q.name + ".list",
         title: q.name,
         menuEntry: {
           label: q.name,
-          icon: undefined,
-          group: undefined,
           sortOrder: 0
-        },
-        requiredAccess: undefined
+        }
       });
       let panels = [
         visibleReadModels.map(listPanel),

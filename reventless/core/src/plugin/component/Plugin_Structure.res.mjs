@@ -1333,7 +1333,6 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
-      consistencyRead: undefined,
       events: extractEventDefs(identityViewsOf(A.Spec.name), A.Spec.eventSchema),
       errors: extractErrorDefs(A.Spec.errorSchema),
       chapter: componentChapters[A.Spec.name]

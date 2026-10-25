@@ -100,7 +100,7 @@ describe("the admin structure's declared transitions are checked", () => {
       commands: [
         {
           ...activate(),
-          targetState: Some("Conected"),
+          targetState: "Conected",
         },
       ],
     }

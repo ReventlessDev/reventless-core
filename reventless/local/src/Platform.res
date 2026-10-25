@@ -1266,7 +1266,6 @@ module MakeWithConfig = (
                   ~store="pluginApiFragments",
                 ),
             ),
-            apiTarget: None,
             structure: pluginStructure->Option.map(
               s =>
                 s->ReventlessCore.Plugin_Helpers.offloadPayload(
@@ -1274,7 +1273,6 @@ module MakeWithConfig = (
                   ~store="pluginStructures",
                 ),
             ),
-            dcbEventLog: None,
             kind: Domain,
           }
           // Dispatch Connect(def) to the Plugin aggregate (id = plugin NAME).

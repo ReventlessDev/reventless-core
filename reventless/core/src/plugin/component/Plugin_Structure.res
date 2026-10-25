@@ -690,7 +690,7 @@ let extractReferences = (
     targets->Array.map(((path, target)): Reventless.Plugin.fieldReference => {
       Reventless.Plugin.fieldName: path,
       entity: target.entity,
-      plugin: target.plugin,
+      plugin: ?target.plugin,
     })
   })
 
@@ -1048,21 +1048,21 @@ let toCommandDef = (
         // marker the PPX put on the fields. Also carries `x-reventless-graphql-type`.
         schema: annotatedSchema->JSON.stringify,
         level,
-        aggregateIdField,
+        ?aggregateIdField,
         // Empty for a `@noApi` variant: `mutationFieldFor` would resolve it to a
         // sibling's field, which reads as callable. Exposed variants are unchanged.
         mutationField,
         references,
-        allowedStates,
-        targetState,
+        ?allowedStates,
+        ?targetState,
         ?allowedStatesSource,
-        apiExposed: Some(apiExposed),
-        requiredAccess,
+        apiExposed,
+        ?requiredAccess,
         requiredRoles: ?rolesFor(rule),
         // Resolved from this constructor's own properties, not the union's: two
         // commands in one slice can disagree about whether they record an owner,
         // and the write path stamps per constructor for the same reason.
-        ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
+        ownerField: ?(Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0)),
       }: Reventless.Plugin.commandDef
     )
   }
@@ -1169,18 +1169,18 @@ let readSideDefFromSpec = (
     linkedWriteSide,
     labelField: label.field,
     searchableFields: label.searchableFields,
-    labelFieldSource: Some(labelFieldSourceToString(label.source)),
-    lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
-    ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
-    retiredField: retiredFieldFromStateSchema(stateSchema),
-    retiredValues: retiredValuesFromStateSchema(stateSchema),
-    namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
-    visibility: visibilityTag(visibility),
-    chapter,
-    singleQueryField: Some(qf.singleFieldName),
-    idField: keyField->Option.map(((f, _)) => f),
-    idFieldSource: keyField->Option.map(((_, rung)) => rung),
-    requiredAccess: accessKeysFor(authorization),
+    labelFieldSource: labelFieldSourceToString(label.source),
+    lifecycleField: ?lifecycleFieldFromStateSchema(stateSchema),
+    ownerField: ?(Reventless.Owner.fieldNames(stateSchema)->Array.get(0)),
+    retiredField: ?retiredFieldFromStateSchema(stateSchema),
+    retiredValues: ?retiredValuesFromStateSchema(stateSchema),
+    namedWhenRetired: namedWhenRetiredFromStateSchema(stateSchema),
+    visibility: ?visibilityTag(visibility),
+    ?chapter,
+    singleQueryField: qf.singleFieldName,
+    idField: ?(keyField->Option.map(((f, _)) => f)),
+    idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
+    requiredAccess: ?accessKeysFor(authorization),
     requiredRoles: ?rolesFor(authorization),
   }
 }
@@ -1353,12 +1353,10 @@ let make = (
         field,
         // The source text, not a guess: `target.plugin` is `None` exactly when the
         // field left the store unqualified, and only here does that survive.
-        annotation: Some(
-          switch target.plugin {
-          | None => target.store
-          | Some(plugin) => plugin ++ "." ++ target.store
-          },
-        ),
+        annotation: switch target.plugin {
+        | None => target.store
+        | Some(plugin) => plugin ++ "." ++ target.store
+        },
       })
     )
 
@@ -1631,23 +1629,23 @@ let make = (
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField: label.field,
         searchableFields: label.searchableFields,
-        labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
+        labelFieldSource: labelFieldSourceToString(label.source),
+        lifecycleField: ?lifecycleFieldFromStateSchema(stateSchema),
         // Same schema `lifecycleField` reads, so the two cannot disagree about which
         // fields this view has.
-        ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
-        retiredField: retiredFieldFromStateSchema(stateSchema),
-        retiredValues: retiredValuesFromStateSchema(stateSchema),
-        namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
-        visibility: visibilityTag(R.Spec.visibility),
-        chapter: chapterOf(R.Spec.name),
+        ownerField: ?(Reventless.Owner.fieldNames(stateSchema)->Array.get(0)),
+        retiredField: ?retiredFieldFromStateSchema(stateSchema),
+        retiredValues: ?retiredValuesFromStateSchema(stateSchema),
+        namedWhenRetired: namedWhenRetiredFromStateSchema(stateSchema),
+        visibility: ?visibilityTag(R.Spec.visibility),
+        chapter: ?chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
         // place that decides how `Products`/`Categories` singularise, and the
         // point of publishing the name is that a consumer stops guessing it.
-        singleQueryField: Some(qf.singleFieldName),
-        idField: keyField->Option.map(((f, _)) => f),
-        idFieldSource: keyField->Option.map(((_, rung)) => rung),
-        requiredAccess: accessKeysFor(R.Spec.authorization->Reventless.Authorization.named),
+        singleQueryField: qf.singleFieldName,
+        idField: ?(keyField->Option.map(((f, _)) => f)),
+        idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
+        requiredAccess: ?accessKeysFor(R.Spec.authorization->Reventless.Authorization.named),
         requiredRoles: ?rolesFor(R.Spec.authorization->Reventless.Authorization.named),
       }: Reventless.Plugin.readSideDef
     )
@@ -1677,18 +1675,18 @@ let make = (
           linkedWriteSide: linkedWriteSideFor(consumed),
           labelField: label.field,
           searchableFields: label.searchableFields,
-          labelFieldSource: Some(labelFieldSourceToString(label.source)),
-          lifecycleField: lifecycleFieldFromStateSchema(stateSchema),
-          ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
-          retiredField: retiredFieldFromStateSchema(stateSchema),
-          retiredValues: retiredValuesFromStateSchema(stateSchema),
-          namedWhenRetired: Some(namedWhenRetiredFromStateSchema(stateSchema)),
-          visibility: visibilityTag(SVS.Spec.visibility),
-          chapter: chapterOf(SVS.Spec.name),
-          singleQueryField: Some(qf.singleFieldName),
-          idField: keyField->Option.map(((f, _)) => f),
-          idFieldSource: keyField->Option.map(((_, rung)) => rung),
-          requiredAccess: accessKeysFor(SVS.Spec.authorization->Reventless.Authorization.named),
+          labelFieldSource: labelFieldSourceToString(label.source),
+          lifecycleField: ?lifecycleFieldFromStateSchema(stateSchema),
+          ownerField: ?(Reventless.Owner.fieldNames(stateSchema)->Array.get(0)),
+          retiredField: ?retiredFieldFromStateSchema(stateSchema),
+          retiredValues: ?retiredValuesFromStateSchema(stateSchema),
+          namedWhenRetired: namedWhenRetiredFromStateSchema(stateSchema),
+          visibility: ?visibilityTag(SVS.Spec.visibility),
+          chapter: ?chapterOf(SVS.Spec.name),
+          singleQueryField: qf.singleFieldName,
+          idField: ?(keyField->Option.map(((f, _)) => f)),
+          idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
+          requiredAccess: ?accessKeysFor(SVS.Spec.authorization->Reventless.Authorization.named),
           requiredRoles: ?rolesFor(SVS.Spec.authorization->Reventless.Authorization.named),
         }: Reventless.Plugin.readSideDef
       )
@@ -1803,13 +1801,13 @@ let make = (
           producedEventTypes: produced,
           consumedEventTypes: consumed,
           linkedViews: linkedSvsFor(produced),
-          consistencyRead: consistencyReadFor(consumed),
+          consistencyRead: ?consistencyReadFor(consumed),
           events: extractEventDefs(
             ~identityViews=identityViewsOf(SCS.Spec.name),
             SCS.Spec.eventSchema->S.castToUnknown,
           ),
           errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
-          chapter: chapterOf(SCS.Spec.name),
+          chapter: ?chapterOf(SCS.Spec.name),
         }: Reventless.Plugin.writeSideDef
       )
     })
@@ -1840,13 +1838,12 @@ let make = (
         producedEventTypes: produced,
         consumedEventTypes: [],
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
-        consistencyRead: None,
         events: extractEventDefs(
           ~identityViews=identityViewsOf(A.Spec.name),
           A.Spec.eventSchema->S.castToUnknown,
         ),
         errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
-        chapter: chapterOf(A.Spec.name),
+        chapter: ?chapterOf(A.Spec.name),
       }: Reventless.Plugin.writeSideDef
     )
   })
@@ -1874,7 +1871,7 @@ let make = (
           consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
           producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
           targetName: AS.Spec.targetName,
-          chapter: chapterOf(AS.Spec.name),
+          chapter: ?chapterOf(AS.Spec.name),
           schedule: ?(
             AS.Spec.schedule->Option.map(time =>
               time->Reventless.Util_Sury.toJson(Reventless.Schedule.timeSchema)->JSON.stringify
@@ -1896,13 +1893,13 @@ let make = (
         ~prefix=name,
         commandVariantNames(OTS.Spec.inboundCommandSchema),
       ),
-      targetName: OTS.Spec.targetName,
-      externalSystem: OTS.Spec.externalSystem,
-      chapter: chapterOf(OTS.Spec.name),
+      targetName: ?OTS.Spec.targetName,
+      externalSystem: ?OTS.Spec.externalSystem,
+      chapter: ?chapterOf(OTS.Spec.name),
       // Published verbatim, `[]` included: `[]` is the declared default meaning
       // this plugin's own DCB log, and resolving it here to a derived name would
       // be a second place that name is spelled.
-      consumedSources: Some(OTS.Spec.sourceNames),
+      consumedSources: OTS.Spec.sourceNames,
     })
 
   // ── Inbound translation slices ────────────────────────────────────────────
@@ -1914,8 +1911,8 @@ let make = (
       Reventless.Plugin.name: ITS.Spec.name,
       commandTypes: qualify(~prefix=name, commandVariantNames(ITS.Spec.commandSchema)),
       targetName: ITS.Spec.targetName,
-      externalSystem: ITS.Spec.externalSystem,
-      chapter: chapterOf(ITS.Spec.name),
+      externalSystem: ?ITS.Spec.externalSystem,
+      chapter: ?chapterOf(ITS.Spec.name),
       // Every role a constructor names: the door's, plus those only the
       // per-command check reads, which must map to a group all the same.
       requiredRoles: ?(
@@ -2017,22 +2014,18 @@ let make = (
         delegateNames,
         eventTypes: qualify(~prefix=E.Spec.name, eventVariantNames(E.Spec.eventSchema)),
         commandTypes: qualify(~prefix=E.Spec.name, commandVariantNames(E.Spec.commandSchema)),
-        handledEvents: Some(
-          commandsByEvent
-          ->Dict.toArray
-          ->Array.map(((eventName, cmds)): Reventless.Plugin.handledEventDef => {
-            Reventless.Plugin.name: eventName,
-            toCommandTypes: dedupe(cmds),
-          }),
-        ),
-        issuedCommands: Some(
-          eventsByCommand
-          ->Dict.toArray
-          ->Array.map(((commandName, evs)): Reventless.Plugin.issuedCommandDef => {
-            Reventless.Plugin.name: commandName,
-            fromEventTypes: dedupe(evs),
-          }),
-        ),
+        handledEvents: commandsByEvent
+        ->Dict.toArray
+        ->Array.map(((eventName, cmds)): Reventless.Plugin.handledEventDef => {
+          Reventless.Plugin.name: eventName,
+          toCommandTypes: dedupe(cmds),
+        }),
+        issuedCommands: eventsByCommand
+        ->Dict.toArray
+        ->Array.map(((commandName, evs)): Reventless.Plugin.issuedCommandDef => {
+          Reventless.Plugin.name: commandName,
+          fromEventTypes: dedupe(evs),
+        }),
       }: Reventless.Plugin.extensionDef
     )
   })
@@ -2288,27 +2281,23 @@ let make = (
       Reventless.Plugin.name: epName,
       delegateNames: dedupe(dels),
       sourceEventTypes: dedupe(evs),
-      commandTypes: Some(dedupe(cmds)),
-      publishedEvents: Some(
-        epPublished
-        ->Dict.get(epName)
-        ->Option.getOr(Dict.make())
-        ->Dict.toArray
-        ->Array.map(((published, sources)): Reventless.Plugin.publishedEventDef => {
-          Reventless.Plugin.name: published,
-          fromEventTypes: dedupe(sources),
-        }),
-      ),
-      acceptedCommands: Some(
-        epAccepted
-        ->Dict.get(epName)
-        ->Option.getOr(Dict.make())
-        ->Dict.toArray
-        ->Array.map(((accepted, routed)): Reventless.Plugin.acceptedCommandDef => {
-          Reventless.Plugin.name: accepted,
-          toCommandTypes: dedupe(routed),
-        }),
-      ),
+      commandTypes: dedupe(cmds),
+      publishedEvents: epPublished
+      ->Dict.get(epName)
+      ->Option.getOr(Dict.make())
+      ->Dict.toArray
+      ->Array.map(((published, sources)): Reventless.Plugin.publishedEventDef => {
+        Reventless.Plugin.name: published,
+        fromEventTypes: dedupe(sources),
+      }),
+      acceptedCommands: epAccepted
+      ->Dict.get(epName)
+      ->Option.getOr(Dict.make())
+      ->Dict.toArray
+      ->Array.map(((accepted, routed)): Reventless.Plugin.acceptedCommandDef => {
+        Reventless.Plugin.name: accepted,
+        toCommandTypes: dedupe(routed),
+      }),
     })
 
   // Dead inbound surface, judged only after every mapping on an EP has been seen:
@@ -2365,13 +2354,13 @@ let make = (
     outboundTranslationSlices: outboundTranslationSliceDefs,
     inboundTranslationSlices: inboundTranslationSliceDefs,
     extensions: extensionDefs,
-    extensionPoints: Some(extensionPointDefs),
-    requiredStores: Some(requiredStores),
-    requiredStoreDeclarations: Some(requiredStoreDeclarations),
-    traitDeclarations: Some(traitDeclarations),
-    requiredCapabilities: Some(requiredCapabilities),
-    admission: admission->Option.map(Reventless.Admission.toDefs),
-    admissionDoors: switch admissionDoors {
+    extensionPoints: extensionPointDefs,
+    requiredStores,
+    requiredStoreDeclarations,
+    traitDeclarations,
+    requiredCapabilities,
+    admission: ?(admission->Option.map(Reventless.Admission.toDefs)),
+    admissionDoors: ?switch admissionDoors {
     | [] => None
     | doors =>
       Some(

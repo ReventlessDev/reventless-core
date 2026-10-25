@@ -15,18 +15,11 @@ let publicRm: readSideDef = {
   linkedWriteSide: ["Product"],
   labelField: "displayName",
   searchableFields: ["displayName"],
-  labelFieldSource: Some("annotation"),
-  lifecycleField: None,
-  visibility: None,
-  chapter: Some("Inventory"),
-  singleQueryField: Some("Catalog_Product"),
-  idField: Some("productId"),
-  idFieldSource: Some("convention"),
-  requiredAccess: None,
-  ownerField: None,
-  retiredField: None,
-  retiredValues: None,
-  namedWhenRetired: None,
+  labelFieldSource: "annotation",
+  chapter: "Inventory",
+  singleQueryField: "Catalog_Product",
+  idField: "productId",
+  idFieldSource: "convention",
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.
@@ -34,7 +27,7 @@ let internalRm: readSideDef = {
   ...publicRm,
   name: "ProductAudit",
   queryField: "Catalog_ProductAudit",
-  visibility: Some("Internal"),
+  visibility: "Internal",
 }
 
 let structure: pluginStructure = {
@@ -46,31 +39,27 @@ let structure: pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: Some([
+  extensionPoints: [
     {
       name: "Catalog.Products",
       delegateNames: ["onAdded"],
       sourceEventTypes: ["Catalog.ProductAdded"],
-      commandTypes: None,
-      publishedEvents: Some([
+      publishedEvents: [
         {
           name: "Catalog.Products.ProductBecameAvailable",
           fromEventTypes: ["Catalog.ProductAdded"],
         },
-      ]),
-      acceptedCommands: Some([
+      ],
+      acceptedCommands: [
         {name: "Catalog.Products.Reserve", toCommandTypes: ["Catalog.ReserveStock"]},
-      ]),
+      ],
     },
-  ]),
-  requiredStores: Some(["Catalog.images"]),
-  requiredStoreDeclarations: Some([
-    {store: "Catalog.images", component: "Product", field: "image", annotation: Some("images")},
-  ]),
-  requiredCapabilities: Some([{capability: "Geocoding", component: "GeocodeAddress"}]),
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
+  ],
+  requiredStores: ["Catalog.images"],
+  requiredStoreDeclarations: [
+    {store: "Catalog.images", component: "Product", field: "image", annotation: "images"},
+  ],
+  requiredCapabilities: [{capability: "Geocoding", component: "GeocodeAddress"}],
 }
 
 let encoded = Platform_PluginStructuresApi.encodePluginStructureEntry(
@@ -168,13 +157,13 @@ describe("Platform_PluginStructures entry", () => {
 describe("absent optional collections", () => {
   let bare: pluginStructure = {
     ...structure,
-    extensionPoints: None,
-    requiredStores: None,
-    requiredStoreDeclarations: None,
-    requiredCapabilities: None,
-    traitDeclarations: None,
-    admission: None,
-    admissionDoors: None,
+    extensionPoints: ?None,
+    requiredStores: ?None,
+    requiredStoreDeclarations: ?None,
+    requiredCapabilities: ?None,
+    traitDeclarations: ?None,
+    admission: ?None,
+    admissionDoors: ?None,
   }
   let bareJson =
     Platform_PluginStructuresApi.encodePluginStructureEntry(

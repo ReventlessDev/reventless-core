@@ -48,13 +48,11 @@ let pluginAggregate: writeSideDef = {
   producedEventTypes: [],
   consumedEventTypes: [],
   linkedViews: ["Plugins"],
-  consistencyRead: None,
   events: [],
   // Derived rather than left empty like `events` above: the two admin commands can
   // be refused, and `[]` here would read as "this aggregate never rejects". Uses
   // the same walk `Plugin_Structure` applies to every other write side.
   errors: Plugin_Structure.extractErrorDefs(PluginSpec.errorSchema->S.castToUnknown),
-  chapter: None,
 }
 
 // Functions, not values: the view's access keys are the group the platform maps
@@ -77,13 +75,6 @@ let structure = (): pluginStructure => {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 /** The definition the platform's own EventCollector ships as its
@@ -105,8 +96,6 @@ let internalPluginDefinition: pluginDefinition = {
   eventCollector: "NOT-SET",
   extensionProtocols: [],
   apiSchemaFragment: None,
-  apiTarget: None,
   structure: None,
-  dcbEventLog: None,
   kind: Domain,
 }

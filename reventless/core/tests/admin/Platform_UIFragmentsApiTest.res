@@ -10,7 +10,6 @@ let panel: panelManifestEntry = {
   title: "Categories",
   description: "",
   positions: ["platform-summary"],
-  requiredAccess: None,
 }
 
 let page: pageManifestEntry = {
@@ -18,11 +17,9 @@ let page: pageManifestEntry = {
   title: "Categories",
   menuEntry: {
     label: "Categories",
-    icon: None,
-    group: None,
     sortOrder: 0,
   },
-  requiredAccess: Some("admin"),
+  requiredAccess: "admin",
 }
 
 let state: UiFragments.state = {

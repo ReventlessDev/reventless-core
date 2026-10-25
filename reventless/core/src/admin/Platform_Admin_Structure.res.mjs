@@ -26,10 +26,8 @@ let pluginAggregate = {
   producedEventTypes: pluginAggregate_producedEventTypes,
   consumedEventTypes: pluginAggregate_consumedEventTypes,
   linkedViews: pluginAggregate_linkedViews,
-  consistencyRead: undefined,
   events: pluginAggregate_events,
-  errors: pluginAggregate_errors,
-  chapter: undefined
+  errors: pluginAggregate_errors
 };
 
 function pluginReadModel() {
@@ -45,14 +43,7 @@ function structure() {
     automationSlices: [],
     outboundTranslationSlices: [],
     inboundTranslationSlices: [],
-    extensions: [],
-    extensionPoints: undefined,
-    requiredStores: undefined,
-    requiredStoreDeclarations: undefined,
-    requiredCapabilities: undefined,
-    traitDeclarations: undefined,
-    admission: undefined,
-    admissionDoors: undefined
+    extensions: []
   };
 }
 
@@ -65,9 +56,7 @@ let internalPluginDefinition = {
   eventCollector: "NOT-SET",
   extensionProtocols: [],
   apiSchemaFragment: undefined,
-  apiTarget: undefined,
   structure: undefined,
-  dcbEventLog: undefined,
   kind: "Domain"
 };
 

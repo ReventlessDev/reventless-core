@@ -9,14 +9,9 @@ let cmd: commandDef = {
   name: "Add",
   schema: "{}",
   level: Collection,
-  aggregateIdField: None,
   mutationField: "AddProduct",
-  references: [{fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")}],
-  allowedStates: None,
-  targetState: None,
-  apiExposed: Some(true),
-  requiredAccess: None,
-  ownerField: None,
+  references: [{fieldName: "categoryId", entity: "Category", plugin: "Catalog"}],
+  apiExposed: true,
 }
 
 let qbl: readSideDef = {
@@ -27,30 +22,20 @@ let qbl: readSideDef = {
   linkedWriteSide: ["Product"],
   labelField: "displayName",
   searchableFields: ["displayName"],
-  labelFieldSource: Some("annotation"),
-  lifecycleField: None,
-  visibility: None,
-  chapter: None,
-  singleQueryField: Some("Catalog_Product"),
-  idField: Some("productId"),
-  idFieldSource: Some("convention"),
-  requiredAccess: None,
-  ownerField: None,
-  retiredField: None,
-  retiredValues: None,
-  namedWhenRetired: None,
+  labelFieldSource: "annotation",
+  singleQueryField: "Catalog_Product",
+  idField: "productId",
+  idFieldSource: "convention",
 }
 
 let wbl: writeSideDef = {
   name: "Product",
   commands: [cmd],
   linkedViews: ["Products"],
-  consistencyRead: None,
   producedEventTypes: ["ProductAdded"],
   consumedEventTypes: [],
   events: [{name: "ProductAdded", schema: "{}", references: []}],
   errors: [{name: "ProductAlreadyExists", schema: "{}", references: []}],
-  chapter: None,
 }
 
 let structure: pluginStructure = {
@@ -64,7 +49,6 @@ let structure: pluginStructure = {
       consumedEventTypes: ["StockLow"],
       producedCommandTypes: ["Restock"],
       targetName: "Product",
-      chapter: None,
     },
   ],
   outboundTranslationSlices: [
@@ -72,10 +56,6 @@ let structure: pluginStructure = {
       name: "ToShipper",
       consumedEventTypes: ["OrderPlaced"],
       inboundCommandTypes: ["Ship"],
-      targetName: None,
-      externalSystem: None,
-      chapter: None,
-      consumedSources: None,
     },
   ],
   inboundTranslationSlices: [
@@ -83,8 +63,6 @@ let structure: pluginStructure = {
       name: "FromBilling",
       commandTypes: ["RecordPayment"],
       targetName: "Order",
-      externalSystem: None,
-      chapter: None,
     },
   ],
   extensions: [
@@ -93,21 +71,10 @@ let structure: pluginStructure = {
       delegateNames: ["onAdded"],
       eventTypes: ["ProductAdded"],
       commandTypes: [],
-      handledEvents: Some([
-        {name: "Catalog.Products.ProductAdded", toCommandTypes: ["Catalog.Watch"]},
-      ]),
-      issuedCommands: Some([
-        {name: "Catalog.Products.Acknowledge", fromEventTypes: ["Catalog.Watched"]},
-      ]),
+      handledEvents: [{name: "Catalog.Products.ProductAdded", toCommandTypes: ["Catalog.Watch"]}],
+      issuedCommands: [{name: "Catalog.Products.Acknowledge", fromEventTypes: ["Catalog.Watched"]}],
     },
   ],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let encoded = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
@@ -225,10 +192,7 @@ describe("translation-slice externalSystem round-trip", () => {
         name: "ToShipper",
         consumedEventTypes: ["OrderPlaced"],
         inboundCommandTypes: ["Ship"],
-        targetName: None,
-        externalSystem: Some("ShipperGateway"),
-        chapter: None,
-        consumedSources: None,
+        externalSystem: "ShipperGateway",
       },
     ],
     inboundTranslationSlices: [
@@ -236,8 +200,7 @@ describe("translation-slice externalSystem round-trip", () => {
         name: "FromBilling",
         commandTypes: ["RecordPayment"],
         targetName: "Order",
-        externalSystem: Some("BillingProvider"),
-        chapter: None,
+        externalSystem: "BillingProvider",
       },
     ],
   }
@@ -268,18 +231,11 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     linkedWriteSide: [],
     labelField: "name",
     searchableFields: ["name"],
-    labelFieldSource: Some("convention"),
-    lifecycleField: None,
-    visibility: Some("Internal"),
-    chapter: None,
-    singleQueryField: Some("Ordering_AvailableProduct"),
-    idField: Some("productId"),
-    idFieldSource: Some("sole"),
-    requiredAccess: None,
-    ownerField: None,
-    retiredField: None,
-    retiredValues: None,
-    namedWhenRetired: None,
+    labelFieldSource: "convention",
+    visibility: "Internal",
+    singleQueryField: "Ordering_AvailableProduct",
+    idField: "productId",
+    idFieldSource: "sole",
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -355,15 +311,13 @@ describe("allowedStates + lifecycleField populated", () => {
     name: "Activate",
     schema: "{}",
     level: Instance,
-    aggregateIdField: Some("id"),
+    aggregateIdField: "id",
     mutationField: "Platform_Plugin_Activate",
     references: [],
-    allowedStates: Some(["Inactive"]),
-    targetState: Some("Active"),
+    allowedStates: ["Inactive"],
+    targetState: "Active",
     allowedStatesSource: "declared",
-    apiExposed: Some(true),
-    requiredAccess: None,
-    ownerField: None,
+    apiExposed: true,
   }
 
   let qblWithStatus: readSideDef = {
@@ -374,30 +328,19 @@ describe("allowedStates + lifecycleField populated", () => {
     linkedWriteSide: ["Plugin"],
     labelField: "name",
     searchableFields: ["name"],
-    labelFieldSource: Some("convention"),
-    lifecycleField: Some("status"),
-    visibility: None,
-    chapter: None,
-    singleQueryField: Some("Platform_Plugin"),
-    idField: None,
-    idFieldSource: None,
-    requiredAccess: None,
-    ownerField: None,
-    retiredField: None,
-    retiredValues: None,
-    namedWhenRetired: None,
+    labelFieldSource: "convention",
+    lifecycleField: "status",
+    singleQueryField: "Platform_Plugin",
   }
 
   let wblWithStates: writeSideDef = {
     name: "Plugin",
     commands: [cmdWithStates],
     linkedViews: ["Plugin"],
-    consistencyRead: None,
     producedEventTypes: [],
     consumedEventTypes: [],
     events: [],
     errors: [],
-    chapter: None,
   }
 
   let structureWithStates: pluginStructure = {
@@ -409,13 +352,6 @@ describe("allowedStates + lifecycleField populated", () => {
     outboundTranslationSlices: [],
     inboundTranslationSlices: [],
     extensions: [],
-    extensionPoints: None,
-    requiredStores: None,
-    requiredStoreDeclarations: None,
-    requiredCapabilities: None,
-    traitDeclarations: None,
-    admission: None,
-    admissionDoors: None,
   }
 
   let json =
@@ -457,7 +393,7 @@ describe("singleQueryField reaches the caller", () => {
   // hand-rolled def that declines to state it, must decode rather than fail.
   testSync("encodes an unstated singular as null", () => {
     let unstated =
-      {...structure, readModels: [{...qbl, singleQueryField: None}]}
+      {...structure, readModels: [{...qbl, singleQueryField: ?None}]}
       ->Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Catalog", _)
       ->JSON.stringify
     expect(unstated->String.includes("\"singleQueryField\":null"))->toEqual(true)
@@ -483,7 +419,7 @@ describe("idField / idFieldSource reach the caller", () => {
   // or none at all) has nothing to report — null, not an invented field name.
   testSync("encodes an unresolved key as null on both fields", () => {
     let unresolved =
-      {...structure, readModels: [{...qbl, idField: None, idFieldSource: None}]}
+      {...structure, readModels: [{...qbl, idField: ?None, idFieldSource: ?None}]}
       ->Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Catalog", _)
       ->JSON.stringify
     expect(unresolved->String.includes("\"idField\":null"))->toEqual(true)

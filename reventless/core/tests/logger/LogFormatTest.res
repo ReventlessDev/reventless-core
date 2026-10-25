@@ -69,9 +69,7 @@ describe("LogFormat", () => {
             eventCollector: "testEventCollector",
             extensionProtocols: [],
             apiSchemaFragment: None,
-            apiTarget: None,
             structure: None,
-            dcbEventLog: None,
             kind: Domain,
           }),
         ]

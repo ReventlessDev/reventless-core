@@ -14,44 +14,31 @@ let readSide = (~name, ~visibility=?, ~ownerField=?, ()): readSideDef => {
   linkedWriteSide: [],
   labelField: "displayName",
   searchableFields: ["displayName"],
-  labelFieldSource: None,
-  lifecycleField: None,
-  visibility,
-  chapter: None,
-  singleQueryField: Some(`Ordering_${name}Single`),
-  idField: Some("id"),
-  idFieldSource: Some("convention"),
-  requiredAccess: None,
-  ownerField,
-  retiredField: None,
-  retiredValues: None,
-  namedWhenRetired: None,
+  ?visibility,
+  singleQueryField: `Ordering_${name}Single`,
+  idField: "id",
+  idFieldSource: "convention",
+  ?ownerField,
 }
 
 let command = (~name, ~references=[], ~ownerField=?, ()): commandDef => {
   name,
   schema: "{}",
   level: Collection,
-  aggregateIdField: None,
   mutationField: name->String.toLowerCase,
   references,
-  allowedStates: None,
-  targetState: None,
-  apiExposed: Some(true),
-  requiredAccess: None,
-  ownerField,
+  apiExposed: true,
+  ?ownerField,
 }
 
 let writeSide = (~name, ~commands): writeSideDef => {
   name,
   commands,
   linkedViews: [],
-  consistencyRead: None,
   producedEventTypes: [],
   consumedEventTypes: [],
   events: [],
   errors: [],
-  chapter: None,
 }
 
 // Mirrors the hybrid example's shape: a public order list, an Internal
@@ -69,7 +56,7 @@ let structure: pluginStructure = {
       ~commands=[
         command(
           ~name="PlaceOrder",
-          ~references=[{fieldName: "productIds", entity: "AvailableProducts", plugin: None}],
+          ~references=[{fieldName: "productIds", entity: "AvailableProducts"}],
           ~ownerField="customerId",
           (),
         ),
@@ -82,13 +69,6 @@ let structure: pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let structures = [("Ordering@1.0.0", structure)]

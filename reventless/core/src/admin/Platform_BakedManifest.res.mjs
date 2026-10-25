@@ -102,17 +102,11 @@ function referencedEntities(pluginName, kept) {
 function curateStructure(pluginId, def, sel) {
   return Stdlib_Result.map(validate(def, sel), () => {
     let pluginName = Plugin$ReventlessCore.name(pluginId);
-    let keepCommands = ws => ws.map(w => ({
-      name: w.name,
-      commands: w.commands.filter(c => isSelected(sel.commands, c.name)),
-      producedEventTypes: w.producedEventTypes,
-      consumedEventTypes: w.consumedEventTypes,
-      linkedViews: w.linkedViews,
-      consistencyRead: w.consistencyRead,
-      events: w.events,
-      errors: w.errors,
-      chapter: w.chapter
-    })).filter(w => w.commands.length !== 0);
+    let keepCommands = ws => ws.map(w => {
+      let newrecord = {...w};
+      newrecord.commands = w.commands.filter(c => isSelected(sel.commands, c.name));
+      return newrecord;
+    }).filter(w => w.commands.length !== 0);
     let stateChangeSlices = keepCommands(def.stateChangeSlices);
     let aggregates = keepCommands(def.aggregates);
     let referenced = referencedEntities(pluginName, stateChangeSlices.concat(aggregates));
@@ -123,23 +117,12 @@ function curateStructure(pluginId, def, sel) {
         return referenced.includes(q.name);
       }
     });
-    return {
-      readModels: keepViews(def.readModels),
-      stateViewSlices: keepViews(def.stateViewSlices),
-      stateChangeSlices: stateChangeSlices,
-      aggregates: aggregates,
-      automationSlices: def.automationSlices,
-      outboundTranslationSlices: def.outboundTranslationSlices,
-      inboundTranslationSlices: def.inboundTranslationSlices,
-      extensions: def.extensions,
-      extensionPoints: def.extensionPoints,
-      requiredStores: def.requiredStores,
-      requiredStoreDeclarations: def.requiredStoreDeclarations,
-      requiredCapabilities: def.requiredCapabilities,
-      traitDeclarations: def.traitDeclarations,
-      admission: def.admission,
-      admissionDoors: def.admissionDoors
-    };
+    let newrecord = {...def};
+    newrecord.aggregates = aggregates;
+    newrecord.stateChangeSlices = stateChangeSlices;
+    newrecord.stateViewSlices = keepViews(def.stateViewSlices);
+    newrecord.readModels = keepViews(def.readModels);
+    return newrecord;
   });
 }
 

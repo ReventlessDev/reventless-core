@@ -59,22 +59,22 @@ let missing = (names: array<string>, from: array<string>): array<string> =>
 let fieldRef: fieldReference = {
   fieldName: "categoryId",
   entity: "Category",
-  plugin: Some("Catalog"),
+  plugin: "Catalog",
 }
 
 let cmd: commandDef = {
   name: "Add",
   schema: "{}",
   level: Collection,
-  aggregateIdField: Some("productId"),
+  aggregateIdField: "productId",
   mutationField: "Catalog_Product_Add",
   references: [fieldRef],
-  allowedStates: Some(["Draft"]),
-  targetState: Some("Active"),
+  allowedStates: ["Draft"],
+  targetState: "Active",
   allowedStatesSource: "declared",
-  apiExposed: Some(true),
-  requiredAccess: Some(["catalog.write"]),
-  ownerField: Some("ownerId"),
+  apiExposed: true,
+  requiredAccess: ["catalog.write"],
+  ownerField: "ownerId",
 }
 
 let evt: eventDef = {name: "ProductAdded", schema: "{}", references: [fieldRef]}
@@ -86,10 +86,10 @@ let writeSide: writeSideDef = {
   producedEventTypes: ["ProductAdded"],
   consumedEventTypes: [],
   linkedViews: ["Products"],
-  consistencyRead: Some("Products"),
+  consistencyRead: "Products",
   events: [evt],
   errors: [err],
-  chapter: Some("Catalogue"),
+  chapter: "Catalogue",
 }
 
 let readSide: readSideDef = {
@@ -100,18 +100,17 @@ let readSide: readSideDef = {
   linkedWriteSide: ["Product"],
   labelField: "displayName",
   searchableFields: ["displayName"],
-  labelFieldSource: Some("annotation"),
-  lifecycleField: Some("lifecycle"),
-  ownerField: Some("ownerId"),
-  retiredField: Some("archived"),
-  retiredValues: Some(["Archived"]),
-  namedWhenRetired: Some(true),
-  visibility: None,
-  chapter: Some("Catalogue"),
-  singleQueryField: Some("Catalog_Product"),
-  idField: Some("productId"),
-  idFieldSource: Some("convention"),
-  requiredAccess: Some(["catalog.read"]),
+  labelFieldSource: "annotation",
+  lifecycleField: "lifecycle",
+  ownerField: "ownerId",
+  retiredField: "archived",
+  retiredValues: ["Archived"],
+  namedWhenRetired: true,
+  chapter: "Catalogue",
+  singleQueryField: "Catalog_Product",
+  idField: "productId",
+  idFieldSource: "convention",
+  requiredAccess: ["catalog.read"],
 }
 
 let automation: automationSliceDef = {
@@ -119,7 +118,7 @@ let automation: automationSliceDef = {
   consumedEventTypes: ["StockLow"],
   producedCommandTypes: ["Restock"],
   targetName: "Product",
-  chapter: Some("Replenishment"),
+  chapter: "Replenishment",
   schedule: `{"TAG":"Every","_0":{"TAG":"Minutes","_0":15}}`,
 }
 
@@ -127,18 +126,18 @@ let outbound: outboundTranslationSliceDef = {
   name: "ToShipper",
   consumedEventTypes: ["OrderPlaced"],
   inboundCommandTypes: ["Ship"],
-  targetName: Some("Shipment"),
-  externalSystem: Some("Shipper"),
-  chapter: Some("Fulfilment"),
-  consumedSources: Some(["OrderingDcbEventLog"]),
+  targetName: "Shipment",
+  externalSystem: "Shipper",
+  chapter: "Fulfilment",
+  consumedSources: ["OrderingDcbEventLog"],
 }
 
 let inbound: inboundTranslationSliceDef = {
   name: "FromPsp",
   commandTypes: ["RecordPayment"],
   targetName: "Order",
-  externalSystem: Some("Psp"),
-  chapter: Some("Payments"),
+  externalSystem: "Psp",
+  chapter: "Payments",
 }
 
 let extension: extensionDef = {
@@ -146,26 +145,26 @@ let extension: extensionDef = {
   delegateNames: ["Product"],
   eventTypes: ["ProductAdded"],
   commandTypes: ["Add"],
-  handledEvents: Some([{name: "ProductAdded", toCommandTypes: ["Ordering.SyncNewProduct"]}]),
-  issuedCommands: Some([{name: "Catalog.Products.Ack", fromEventTypes: ["Ordering.Synced"]}]),
+  handledEvents: [{name: "ProductAdded", toCommandTypes: ["Ordering.SyncNewProduct"]}],
+  issuedCommands: [{name: "Catalog.Products.Ack", fromEventTypes: ["Ordering.Synced"]}],
 }
 
 let extensionPoint: extensionPointDef = {
   name: "Catalog.Products",
   delegateNames: ["Product"],
   sourceEventTypes: ["Catalog.ProductAdded"],
-  commandTypes: Some(["Add"]),
-  publishedEvents: Some([
+  commandTypes: ["Add"],
+  publishedEvents: [
     {name: "Catalog.Products.ProductAdded", fromEventTypes: ["Catalog.ProductAdded"]},
-  ]),
-  acceptedCommands: Some([{name: "Catalog.Products.Add", toCommandTypes: ["Catalog.Add"]}]),
+  ],
+  acceptedCommands: [{name: "Catalog.Products.Add", toCommandTypes: ["Catalog.Add"]}],
 }
 
 let storeDecl: requiredStoreDeclaration = {
   store: "catalog.images",
   component: "Product",
   field: "image",
-  annotation: Some("images"),
+  annotation: "images",
 }
 
 let capabilityDecl: requiredCapabilityDeclaration = {
@@ -182,13 +181,10 @@ let structure: pluginStructure = {
   outboundTranslationSlices: [outbound],
   inboundTranslationSlices: [inbound],
   extensions: [extension],
-  extensionPoints: Some([extensionPoint]),
-  requiredStores: Some(["catalog.images"]),
-  requiredStoreDeclarations: Some([storeDecl]),
-  requiredCapabilities: Some([capabilityDecl]),
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
+  extensionPoints: [extensionPoint],
+  requiredStores: ["catalog.images"],
+  requiredStoreDeclarations: [storeDecl],
+  requiredCapabilities: [capabilityDecl],
 }
 
 let panel: panelManifestEntry = {
@@ -196,13 +192,13 @@ let panel: panelManifestEntry = {
   title: "Products",
   description: "",
   positions: ["platform-summary"],
-  requiredAccess: Some("admin"),
+  requiredAccess: "admin",
 }
 
 let menu: menuEntry = {
   label: "Products",
-  icon: Some("box"),
-  group: Some("Catalog"),
+  icon: "box",
+  group: "Catalog",
   sortOrder: 0,
 }
 
@@ -210,7 +206,7 @@ let page: pageManifestEntry = {
   fragmentId: "Catalog.Products.list",
   title: "Products",
   menuEntry: menu,
-  requiredAccess: Some("admin"),
+  requiredAccess: "admin",
 }
 
 let uiState: UiFragments.state = {

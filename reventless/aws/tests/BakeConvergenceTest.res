@@ -48,13 +48,6 @@ let emptyStructure: Reventless.Plugin.pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  extensionPoints: None,
-  requiredStores: None,
-  requiredStoreDeclarations: None,
-  requiredCapabilities: None,
-  traitDeclarations: None,
-  admission: None,
-  admissionDoors: None,
 }
 
 let definition = (~structure): Reventless.Plugin.pluginDefinition => {
@@ -66,9 +59,7 @@ let definition = (~structure): Reventless.Plugin.pluginDefinition => {
   eventCollector: "arn:aws:sqs:eu-west-1:0:Ordering",
   extensionProtocols: [],
   apiSchemaFragment: None,
-  apiTarget: None,
   structure: Some(structure),
-  dcbEventLog: None,
   kind: Domain,
 }
 
@@ -121,7 +112,7 @@ describe("the bake converges when a plugin's structure changes", () => {
   let (keyA, structureA) = deployStructure(emptyStructure)
   let (keyB, structureB) = deployStructure({
     ...emptyStructure,
-    requiredStores: Some(["Ordering.receipts"]),
+    requiredStores: ["Ordering.receipts"],
   })
   let defA = definition(~structure=structureA)
   let defB = definition(~structure=structureB)
