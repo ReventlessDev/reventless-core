@@ -46,32 +46,27 @@ describe("Discovery.chaptersByStem", () => {
     {
       stem: "Product",
       componentType: Aggregate,
-      epGroup: None,
       relPath: "Product/Aggregate/Product.res",
     },
     {
       stem: "Product_Decision",
       componentType: Aggregate,
-      epGroup: None,
       relPath: "Product/Aggregate/Product_Decision.res",
     },
     {
       stem: "Products",
       componentType: ReadModel,
-      epGroup: None,
       relPath: "Product/ReadModel/Products.res",
     },
     {
       stem: "Category",
       componentType: Aggregate,
-      epGroup: None,
       relPath: "Category/Aggregate/Category.res",
     },
     // Directly under a kind folder — no chapter, excluded from the map.
     {
       stem: "ImportProducts",
       componentType: Task,
-      epGroup: None,
       relPath: "Task/ImportProducts.res",
     },
   ]

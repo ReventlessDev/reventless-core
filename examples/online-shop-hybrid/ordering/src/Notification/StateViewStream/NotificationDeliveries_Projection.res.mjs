@@ -39,8 +39,7 @@ function project(param) {
             subjectRef: event.subjectRef,
             origin: originName(event.origin),
             detail: "",
-            decidedAt: meta.time,
-            settledAt: undefined
+            decidedAt: meta.time
           }
         }];
     case "NotificationSuppressed" :
@@ -86,38 +85,26 @@ function project(param) {
       return [{
           TAG: "Update",
           _0: event.reference,
-          _1: state => ({
-            reference: state.reference,
-            recipientId: state.recipientId,
-            category: state.category,
-            outcome: "Delivered",
-            channel: state.channel,
-            subjectType: state.subjectType,
-            subjectRef: state.subjectRef,
-            origin: state.origin,
-            detail: providerRef,
-            decidedAt: state.decidedAt,
-            settledAt: meta.time
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.settledAt = meta.time;
+            newrecord.detail = providerRef;
+            newrecord.outcome = "Delivered";
+            return newrecord;
+          }
         }];
     case "NotificationFailed" :
       let reason = event.reason;
       return [{
           TAG: "Update",
           _0: event.reference,
-          _1: state => ({
-            reference: state.reference,
-            recipientId: state.recipientId,
-            category: state.category,
-            outcome: "Failed",
-            channel: state.channel,
-            subjectType: state.subjectType,
-            subjectRef: state.subjectRef,
-            origin: state.origin,
-            detail: reason,
-            decidedAt: state.decidedAt,
-            settledAt: meta.time
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.settledAt = meta.time;
+            newrecord.detail = reason;
+            newrecord.outcome = "Failed";
+            return newrecord;
+          }
         }];
   }
 }

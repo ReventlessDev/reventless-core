@@ -83,10 +83,7 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
           {
             Check.command: "MarkEmailVerified",
             level: "Instance",
-            aggregateIdField: None,
-            allowedStates: None,
-            targetState: None,
-            allowedStatesSource,
+            ?allowedStatesSource,
           },
         ],
       },

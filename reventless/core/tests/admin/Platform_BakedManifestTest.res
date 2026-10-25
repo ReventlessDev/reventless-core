@@ -79,9 +79,9 @@ let bake = selections => Platform_BakedManifest.curate(~structures, ~selections)
 // which is exactly what an omitted labelled argument says.
 let sel = (~plugin, ~views=?, ~commands=?, ~derived=?): Platform_BakedManifest.selection => {
   plugin,
-  views,
-  commands,
-  derived,
+  ?views,
+  ?commands,
+  ?derived,
 }
 
 let entries = (json: JSON.t) => json->JSON.Decode.array->Option.getOr([])

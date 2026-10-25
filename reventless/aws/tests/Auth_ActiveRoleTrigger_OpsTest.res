@@ -53,7 +53,7 @@ let claimOf = (e: Trigger.event, key) =>
 let effectiveGroups = (e: Trigger.event, ~membership) => groupsOf(e)->Option.getOr(membership)
 
 describe("the conformance table, minted by the trigger", () => {
-  Contract.conformanceCases->Array.forEach(({label, membership, requested, expected}) =>
+  Contract.conformanceCases->Array.forEach(({label, membership, ?requested, ?expected}) =>
     testSync(
       label,
       () => {

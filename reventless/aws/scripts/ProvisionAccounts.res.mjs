@@ -260,7 +260,6 @@ async function provision(file, providerId, identityStore, checkPoolOpt) {
     let userId = await applyEntry(providerId, entry, identityStore);
     fills.push({
       index: index,
-      password: undefined,
       userId: userId
     });
   }

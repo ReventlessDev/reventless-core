@@ -60,8 +60,6 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: epoch,
         trail: trail([Placed]),
-        deliveryWindow: None,
-        firstProductName: None,
         firstProductImage: None,
       },
     )
@@ -104,8 +102,7 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: epoch,
         trail: trail([Placed]),
-        deliveryWindow: Some(window),
-        firstProductName: None,
+        deliveryWindow: window,
         firstProductImage: None,
       },
     )
@@ -140,8 +137,6 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Pickup,
         placedAt: epoch,
         trail: trail([Placed]),
-        deliveryWindow: None,
-        firstProductName: None,
         firstProductImage: None,
       },
     )
@@ -176,8 +171,6 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Express,
         placedAt: epoch,
         trail: trail([Placed, Shipped]),
-        deliveryWindow: None,
-        firstProductName: None,
         firstProductImage: None,
       },
     )
@@ -212,8 +205,6 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: epoch,
         trail: trail([Placed, Cancelled]),
-        deliveryWindow: None,
-        firstProductName: None,
         firstProductImage: None,
       },
     )
@@ -254,8 +245,6 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: epoch,
         trail: trail([Placed, Cancelled, Placed]),
-        deliveryWindow: None,
-        firstProductName: None,
         firstProductImage: None,
       },
     )

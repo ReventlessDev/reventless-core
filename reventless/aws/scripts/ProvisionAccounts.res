@@ -343,7 +343,7 @@ let provision = async (
         for index in 0 to entries->Array.length - 1 {
           let entry = entries->Array.getUnsafe(index)
           let userId = await applyEntry(~providerId, ~entry, ~identityStore)
-          fills->Array.push({Manifest.index, password: None, userId})
+          fills->Array.push({Manifest.index, ?userId})
         }
         switch Manifest.fillFile(~path=file, ~fills) {
         | Error(message) => Error(`${file}: ${message}`)

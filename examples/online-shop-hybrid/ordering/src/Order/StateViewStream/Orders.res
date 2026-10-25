@@ -89,10 +89,10 @@ type state = {
   shippingMethod: shippingMethod,
   // The requested slot as one declared span, so a scheduler lays a bar out from
   // it directly instead of guessing the pair from field names.
-  deliveryWindow: option<Reventless.DateRange.t>,
+  deliveryWindow?: Reventless.DateRange.t,
   // Carried on the event rather than read from the catalog — see `PlaceOrder`.
   // Absent on orders placed before it was recorded.
-  firstProductName: option<string>,
+  firstProductName?: string,
   // The picture the order recorded, resolved as this row's own. Schema written
   // out because the store is Catalog's — see `catalogProductImage` above.
   firstProductImage: @s.matches(S.option(catalogProductImage)) option<Reventless.UploadableImage.t>,

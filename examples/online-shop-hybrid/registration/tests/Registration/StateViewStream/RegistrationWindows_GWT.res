@@ -13,14 +13,14 @@ describe("RegistrationWindows StateViewSliceStream", () => {
   test("a closed role has a closed row", () =>
     givenEvents([])
     ->whenEvent(RegistrationClosed({role: shopperName}))
-    ->thenStateWithId(shopperName, {role: shopperName, isOpen: false, until: None})
+    ->thenStateWithId(shopperName, {role: shopperName, isOpen: false})
   )
 
   // scenario-id: b5d3f1a7-8c2e-4d9b-a6f0-4e1c7b9d2a3f
   test("opening a role again shows it open, with its end", () =>
     givenEvents([RegistrationClosed({role: shopperName})])
     ->whenEvent(RegistrationOpened({role: shopperName, until}))
-    ->thenStateWithId(shopperName, {role: shopperName, isOpen: true, until: Some(until)})
+    ->thenStateWithId(shopperName, {role: shopperName, isOpen: true, until})
   )
 
   // scenario-id: c9e2a4d6-1f3b-4e7a-9c5d-8b0e2f4a6c1d

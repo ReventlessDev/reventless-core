@@ -12,7 +12,7 @@ type candidate = {
   point: GeoPoint.t,
   /** How well this matches, 0…1. `None` when the provider does not score, which
       `confidentMatch` declines rather than reading as high. */
-  relevance: option<float>,
+  relevance?: float,
 }
 
 /** Why a lookup produced no usable point. Two constructors because the retry

@@ -33,7 +33,7 @@ type diagnostics = {
   resolverMutationCount: int,
   resolverQueryCount: int,
   mismatches: array<string>,
-  fullSdl: option<string>,
+  fullSdl?: string,
   serverRunning: bool,
 }
 
@@ -306,7 +306,7 @@ ${mutations}
       resolverMutationCount: mutResolverNames->Array.length,
       resolverQueryCount: queryResolverNames->Array.length,
       mismatches,
-      fullSdl: lastFullSdl.contents,
+      fullSdl: ?lastFullSdl.contents,
       serverRunning: activeServer.contents->Option.isSome,
     }
   }

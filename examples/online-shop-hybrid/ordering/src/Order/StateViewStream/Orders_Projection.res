@@ -30,8 +30,8 @@ let project = ({event, meta}) =>
           // Opened by the machinery from this envelope's time, like every later
           // entry — the projection never appends to it by hand.
           trail: [],
-          deliveryWindow,
-          // Copied straight through. The event is the record of what was bought;
+          ?deliveryWindow,
+          ?// Copied straight through. The event is the record of what was bought;
           // this view does not go and ask the catalog what the product is called
           // now, which is the whole point of freezing it at placement.
           firstProductName,

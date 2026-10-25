@@ -12,7 +12,7 @@ let template = platform =>
 
 // What `provision-accounts` writes back: the id the pool minted for each account.
 let provisioned = (accounts: array<DemoData.account>) =>
-  accounts->Array.map(a => {...a, userId: Some(`sub-${a.username}`)})
+  accounts->Array.map(a => {...a, userId: `sub-${a.username}`})
 
 let resolve = accounts =>
   DemoData.resolveOwners(

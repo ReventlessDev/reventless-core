@@ -23,9 +23,7 @@ let relayLogs = [];
 function registerRelayLog(logName, aggregateName) {
   relayLogs.push({
     logName: logName,
-    aggregateName: aggregateName,
-    collectorQueueUrl: undefined,
-    collectorQueueArn: undefined
+    aggregateName: aggregateName
   });
 }
 

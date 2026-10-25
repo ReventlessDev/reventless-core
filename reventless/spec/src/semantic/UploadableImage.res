@@ -51,5 +51,5 @@ point of the type.
 let forField = (~plugin: option<string>=?, ~store: string): S.t<t> =>
   StorageRef.refinement->Semantic.mark(
     ~id=Semantic.Id.uploadableImage,
-    ~payload=StoredIn({plugin, store, threshold: None}),
+    ~payload=StoredIn({?plugin, store}),
   )

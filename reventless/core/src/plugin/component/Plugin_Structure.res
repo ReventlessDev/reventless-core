@@ -620,7 +620,7 @@ let identityReference = (
     switch declared {
     | [] =>
       switch keyed {
-      | [view] => [(fieldName, {Reventless.Semantic.entity: view, plugin: None, identity: key})]
+      | [view] => [(fieldName, {Reventless.Semantic.entity: view, identity: key})]
       | [] =>
         let say =
           identityViews.ownIdentities->Array.includes(key)
@@ -637,7 +637,7 @@ let identityReference = (
         | _ => []
         }
         switch inChapter {
-        | [view] => [(fieldName, {Reventless.Semantic.entity: view, plugin: None, identity: key})]
+        | [view] => [(fieldName, {Reventless.Semantic.entity: view, identity: key})]
         | _ =>
           identityViews.report(
             `${fieldName} is a ${key}, and ${several->Array.join(

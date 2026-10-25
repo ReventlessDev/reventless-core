@@ -23,9 +23,7 @@ let relayLogs = [];
 function registerRelayLog(logName, partitionTag) {
   relayLogs.push({
     logName: logName,
-    partitionTag: partitionTag,
-    collectorQueueUrl: undefined,
-    collectorQueueArn: undefined
+    partitionTag: partitionTag
   });
 }
 

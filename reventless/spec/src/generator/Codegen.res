@@ -67,7 +67,7 @@ let renderAutomationSlices = (stems: array<string>): array<string> =>
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
-  aggregates->Array.flatMap(({spec, decision, eventMappings, isAsync}) => {
+  aggregates->Array.flatMap(({spec, decision, ?eventMappings, isAsync}) => {
     let em = eventMappings->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ spec ++ ")")
     let factory = isAsync ? "MakeAsync" : "Make"
     [
@@ -108,7 +108,7 @@ let renderTasks = (tasks: array<string>): array<string> =>
   tasks->Array.map(stem => "  module " ++ stem ++ "Task = Platform.Task.Make(" ++ stem ++ ")")
 
 let renderExtensionPoints = (extensionPoints: array<Pairing.extensionPointDef>): array<string> =>
-  extensionPoints->Array.flatMap(({group, mappings}) => {
+  extensionPoints->Array.flatMap(({?group, mappings}) => {
     let count = mappings->Array.length
     let firstMapping = mappings->Array.getUnsafe(0)
     let moduleName = switch group {
@@ -221,7 +221,7 @@ let renderEpMakeParam = (extensionPoints: array<Pairing.extensionPointDef>): opt
   if extensionPoints->Array.length === 0 {
     None
   } else {
-    let entries = extensionPoints->Array.map(({group, mappings}) => {
+    let entries = extensionPoints->Array.map(({?group, mappings}) => {
       let firstMapping = mappings->Array.getUnsafe(0)
       let moduleName = switch group {
       | None => epModuleName(firstMapping)
@@ -274,7 +274,7 @@ let collectComponentNames = (resolved: Pairing.resolved): array<string> =>
     resolved.inboundTranslationSlices,
     resolved.tasks,
     resolved.extensions,
-    resolved.extensionPoints->Array.map(({group, mappings}) =>
+    resolved.extensionPoints->Array.map(({?group, mappings}) =>
       switch group {
       | Some(g) => g
       | None => epModuleName(mappings->Array.getUnsafe(0))

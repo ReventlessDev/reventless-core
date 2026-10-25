@@ -21,8 +21,7 @@ function project(param) {
       _0: role$1,
       _1: {
         role: role$1,
-        isOpen: false,
-        until: undefined
+        isOpen: false
       }
     }];
 }

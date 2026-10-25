@@ -1,17 +1,16 @@
 # Plan: record fields typed `option` become optional fields
 
 **Date:** 2026-10-25<br/>
-**Status:** [R1](#r1-group-a-the-published-plugin-structure) to
-[R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) done;
-[R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
-that order.<br/>
+**Status:** Done. [R1](#r1-group-a-the-published-plugin-structure) to
+[R5](#r5-group-e-internal-results-and-tool-records-case-by-case) landed one commit each; group E
+stands at its kept baseline of 18 records and 23 fields.<br/>
 **Repos:** `reventless-core`; `reventless-tools` follows when it takes the new version (see
 [Risks](#risks)).<br/>
-**Grounds:** [the inventory](../analysis/option-fields-that-could-be-optional.md), produced by
+**Grounds:** [the inventory](../../analysis/done/option-fields-that-could-be-optional.md), produced by
 `pnpm run inventory:option-fields`: 245 fields in 133 record types, in six groups. Groups A to E
 move here; group F stays `option`, for the reason the inventory gives.<br/>
-**Tools:** [the inventory script](../../scripts/inventory-option-fields.mjs) says what is left, and
-[the refactor script](../../scripts/refactor-option-fields.mjs) (`pnpm run refactor:option-fields
+**Tools:** [the inventory script](../../../scripts/inventory-option-fields.mjs) says what is left, and
+[the refactor script](../../../scripts/refactor-option-fields.mjs) (`pnpm run refactor:option-fields
 --group <A..E> [--only f.res,g.res] [--write]`) rewrites one group: the declarations exactly, and the
 literal and pattern sites by field name. Both stay in `scripts/` for the next refactoring of this
 kind.
@@ -207,6 +206,40 @@ inventory's new baseline for the group.
 **Exit:** the inventory's group E lists exactly the kept records above; the spec, core, local and
 seed suites pass.
 
+**Done.** 36 records, 67 fields. The table held, with two overturned and twelve added:
+
+- **Overturned: `StateAnnotations.stateAnnotationSpec` stays `option`.** The `@@reventless.spec`
+  PPX writes its literals, with `name: None`, into every annotated spec file. Moving it means
+  changing the PPX and republishing it in lockstep, since an app outside this repository runs the
+  published binary; a source-only tidy-up does not justify that.
+- **Also kept, not in the table:** `Plugin.pluginDefinition`'s `apiSchemaFragment` and
+  `structure`. Their schema is an explicit `Offload.optionSchema` written on the type, which wraps
+  the option itself; an optional field would change it. The inventory does not count them, because
+  the attribute sits after the colon.
+- **Added and moved,** by the rule above: the example views' `Orders`, `NotificationDeliveries` and
+  `RegistrationWindows` states, the local backends' `relayLogEntry`, `Platform_ProvidedGroups.pool`,
+  `Pairing.aggregateDef`, `Util_Promise.result` (a binding for `Promise.allSettled`),
+  `EmitCapabilities.args`, `CheckLifecycleModel.declaredView`, `Semantic.referenceTarget` and
+  `storeTarget.threshold`, `ShellEnvironment.t`.
+- **Added and kept:** the GWT harness rows (`Automation_GWT.sourced`, `Query_GWT.row`), as group F
+  keeps its harnesses; `Seed_Client.t.token`, mutable sign-in state the client acts on; and
+  `Template.scope.schema`, beside the kept `value`.
+
+Shared names cost the most here. `expected` belongs to GWT's mismatch records too, `displayName`
+to fixture states, `deliveryWindow` and `firstProductName` to the `OrderPlaced` event that feeds the
+`Orders` view, and `apiSchemaFragment`, `structure` and `kind` to `pluginDefinition`; the build named
+each, and those hunks went back. A pass that put `?` on every pun of a moved field's name was tried
+and withdrawn: a bare pun on a field that was already optional means "present" in a `switch` arm,
+and `?` would have changed which arm matches without a compile error. Puns were fixed where the
+compiler named them, which it does for every one that matters: a bare pun on a now-optional field
+is either a type mismatch or a non-exhaustive match, and both stop the build.
+
+[R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) left one site behind, found here: the plugin generator wrote `RuntimeHints` literals as
+`memorySize: Some(2048), timeout: None`. The refactor rewrote the generated `Plugin.res` files but
+not the generator, so `pnpm run check:traits`, which regenerates them, failed. The generator now
+writes only the hints an entry gives, regenerating is byte-identical, and the fix was folded into
+the [R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) commit.
+
 ## Acceptance
 
 - `pnpm run inventory:option-fields` shows groups A to D empty and group E at its kept baseline.
@@ -239,6 +272,20 @@ seed suites pass.
 - **The script's scope.** It rewrites by field name across the whole tree. Where the name is shared
   with a record that stays `option` the build refuses the hunk; the plan accepts that round trip
   rather than making the script know types.
+
+## Outcome
+
+`pnpm run inventory:option-fields` shows groups A to D empty and group E at 18 records, 23 fields.
+The full root build is warning-free, `check:graphql`, `check:dcb-scope` and `check:lifecycle` pass
+without updates, `check:traits` passes, every test project passes, and the hybrid local platform
+starts on its stored database and serves its plugin structures. The one test that failed in a
+full run, `UserStore.reload watch`, is a file-watch timing test the change does not touch; it
+passes alone.
+
+The inventory's counts at filing were low. Its field pattern let an attribute run across the
+lines after it, so a run of `@as`-attributed fields counted as one, and it read only the first field
+of a one-line record. Both are fixed; the tables in
+[the inventory](../../analysis/done/option-fields-that-could-be-optional.md) are as filed.
 
 ## Honesty ledger
 

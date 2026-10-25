@@ -8,7 +8,7 @@ read outside any `Output.apply`.
 
 module Cognito = AwsSdk.CognitoIdentityServiceProvider
 
-type pool = {id: string, region: option<string>}
+type pool = {id: string, region?: string}
 
 type send = Cognito.ListGroupsCommand.input => promise<Cognito.ListGroupsCommand.output>
 
@@ -39,7 +39,7 @@ let poolFromExports = (~get: string => option<JSON.t>): option<pool> => {
   ->Option.orElse(read("cognitoUserPoolId"))
   ->Option.map(id => {
     id,
-    region: read("identityProviderRegion")->Option.orElse(read("cognitoRegion")),
+    region: ?(read("identityProviderRegion")->Option.orElse(read("cognitoRegion"))),
   })
 }
 
@@ -72,7 +72,7 @@ let resolvePool = async (~stackRef: option<Pulumi.StackReference.t>): option<poo
       ~cfg=Pulumi.Config.make(Some("platform")),
     )->Option.map(id => {
       id,
-      region: Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region"),
+      region: ?(Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")),
     })
   }
 
@@ -86,7 +86,7 @@ let sendTo = (~region: option<string>): send => {
 let load = async (~stackRef: option<Pulumi.StackReference.t>): unit =>
   switch await resolvePool(~stackRef) {
   | None => ()
-  | Some({id, region}) =>
+  | Some({id, ?region}) =>
     let groups = try await listAll(~send=sendTo(~region), ~userPoolId=id) catch {
     | exn if exn->Util_AwsError.hasCode(~code="AccessDeniedException") =>
       JsError.throwWithMessage(

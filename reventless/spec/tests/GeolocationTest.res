@@ -6,7 +6,7 @@ open JestGlobals
 let candidate = (~label, ~lat=48.2082, ~lng=16.3738, ~relevance=?): Geocoding.candidate => {
   label,
   point: {lat, lng},
-  relevance,
+  ?relevance,
 }
 
 describe("Geolocation.ofSearch maps every geocoder outcome:", () => {

@@ -1,4 +1,4 @@
-type result<'a> = {status: string, value: option<'a>, reason: option<exn>}
+type result<'a> = {status: string, value?: 'a, reason?: exn}
 
 let filterRejected = results =>
   results

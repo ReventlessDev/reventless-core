@@ -53,8 +53,8 @@ let isPostgres = (): bool => selectionRef.contents->Option.isSome
 type relayLogEntry = {
   logName: string,
   partitionTag: Reventless.DcbTag.derivedPartitionTag,
-  mutable collectorQueueUrl: option<Pulumi.Output.t<string>>,
-  mutable collectorQueueArn: option<Pulumi.Output.t<string>>,
+  mutable collectorQueueUrl?: Pulumi.Output.t<string>,
+  mutable collectorQueueArn?: Pulumi.Output.t<string>,
 }
 
 let relayLogs: array<relayLogEntry> = []
@@ -62,7 +62,7 @@ let relayLogs: array<relayLogEntry> = []
 /** Step 1: record a Postgres DCB log and its partition tag (from the storage maker). */
 let registerRelayLog = (~logName: string, ~partitionTag: Reventless.DcbTag.derivedPartitionTag) =>
   relayLogs
-  ->Array.push({logName, partitionTag, collectorQueueUrl: None, collectorQueueArn: None})
+  ->Array.push({logName, partitionTag})
   ->ignore
 
 /** Step 2: attach a plugin's EventCollector SQS queue to its DCB log's relay entry. */

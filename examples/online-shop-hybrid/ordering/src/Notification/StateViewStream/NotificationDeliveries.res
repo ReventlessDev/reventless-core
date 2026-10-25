@@ -68,7 +68,7 @@ type state = {
   decidedAt: Reventless.DateTime.t,
   // Absent while the row is still open. A decision that has not settled has no
   // settlement time, and `""` said that with a value the instant grammar rejects.
-  settledAt: option<Reventless.DateTime.t>,
+  settledAt?: Reventless.DateTime.t,
 }
 
 // `address` is on the published event and is not read here — a consumed variant

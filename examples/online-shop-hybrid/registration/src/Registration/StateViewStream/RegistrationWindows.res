@@ -18,7 +18,7 @@ type state = {
   isOpen: bool,
   // The end of an open window, where one was given. Past it the role reads as
   // closed, with no event to say so.
-  until: option<Reventless.DateTime.t>,
+  until?: Reventless.DateTime.t,
 }
 
 @schema

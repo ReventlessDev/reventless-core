@@ -23,8 +23,8 @@ type user = {
   username: string,
   password: string,
   groups: array<string>,
-  userId: option<string>,
-  demoOwner: option<string>,
+  userId?: string,
+  demoOwner?: string,
 }
 
 let asString = (json: JSON.t): option<string> =>
@@ -49,8 +49,8 @@ let userOf = (json: JSON.t): option<user> =>
         username,
         password,
         groups,
-        userId: obj->Dict.get("userId")->Option.flatMap(asString),
-        demoOwner: obj->Dict.get("demoOwner")->Option.flatMap(asString),
+        userId: ?(obj->Dict.get("userId")->Option.flatMap(asString)),
+        demoOwner: ?(obj->Dict.get("demoOwner")->Option.flatMap(asString)),
       })
     | _ => None
     }

@@ -10,7 +10,7 @@
 //
 // Reads every tracked .res file outside tests/, lib/ and the documentation site.
 // The grouping is a heuristic by file role; the analysis that reads this output
-// is docs/analysis/option-fields-that-could-be-optional.md.
+// is docs/analysis/done/option-fields-that-could-be-optional.md.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";

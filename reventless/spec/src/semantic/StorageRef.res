@@ -123,10 +123,7 @@ Prefer the `@storageRef("<store>")` ppx shorthand over writing this by hand.
 Qualify the store as `"<plugin>.<store>"` to point at another plugin's store.
 */
 let forStore = (~plugin: option<string>=?, ~store: string): S.t<t> =>
-  refinement->Semantic.mark(
-    ~id=Semantic.Id.storageRef,
-    ~payload=StoredIn({plugin, store, threshold: None}),
-  )
+  refinement->Semantic.mark(~id=Semantic.Id.storageRef, ~payload=StoredIn({?plugin, store}))
 
 /** The store a field's schema declares its refs live in, if any. */
 let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>

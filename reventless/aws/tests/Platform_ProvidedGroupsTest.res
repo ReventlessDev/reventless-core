@@ -34,7 +34,7 @@ describe("Platform_ProvidedGroups.poolFromExports", () => {
         ("identityProviderId", JSON.Encode.string("p1")),
         ("identityProviderRegion", JSON.Encode.string("eu-west-1")),
       ]),
-    )->toEqual(Some({Platform_ProvidedGroups.id: "p1", region: Some("eu-west-1")}))
+    )->toEqual(Some({Platform_ProvidedGroups.id: "p1", region: "eu-west-1"}))
   )
 
   testSync("reads them nested under default, as an ESM platform exports them", () =>
@@ -45,7 +45,7 @@ describe("Platform_ProvidedGroups.poolFromExports", () => {
           JSON.Encode.object(Dict.fromArray([("cognitoUserPoolId", JSON.Encode.string("p-old"))])),
         ),
       ]),
-    )->toEqual(Some({Platform_ProvidedGroups.id: "p-old", region: None}))
+    )->toEqual(Some({Platform_ProvidedGroups.id: "p-old"}))
   )
 
   testSync("no pool id is no pool to list", () => expect(from([]))->toEqual(None))

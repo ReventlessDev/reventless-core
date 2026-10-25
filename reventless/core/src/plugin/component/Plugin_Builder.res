@@ -992,8 +992,8 @@ module Make = (
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,
-          dcbEventLog: dcbResult.dcbEventLogOutputs,
-          uiFragments: (uiFragments: option<Reventless.Plugin.uiFragmentManifest>),
+          dcbEventLog: ?dcbResult.dcbEventLogOutputs,
+          uiFragments: ?(uiFragments: option<Reventless.Plugin.uiFragmentManifest>),
         }
       })
     }

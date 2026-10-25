@@ -107,14 +107,11 @@ let emptyResult_queryEntries = [];
 let emptyResult_eventLogEntries = [];
 
 let emptyResult = {
-  dcbEventLogOutputs: undefined,
   stateChangeSlicesOutputs: emptyResult_stateChangeSlicesOutputs,
   stateViewSlicesOutputs: emptyResult_stateViewSlicesOutputs,
   automationSlicesOutputs: emptyResult_automationSlicesOutputs,
   outboundTranslationSlicesOutputs: emptyResult_outboundTranslationSlicesOutputs,
   inboundTranslationSlicesOutputs: emptyResult_inboundTranslationSlicesOutputs,
-  dcbRuntimeSetup: undefined,
-  dcbPublishJsons: undefined,
   dcbCommandTopicQueueUrl: emptyResult_dcbCommandTopicQueueUrl,
   mutationEntries: emptyResult_mutationEntries,
   queryEntries: emptyResult_queryEntries,

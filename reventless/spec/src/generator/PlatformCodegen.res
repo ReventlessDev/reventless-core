@@ -22,8 +22,8 @@ type pluginManifest = {
 type provenance = {
   pluginName: string,
   component: string,
-  field: option<string>,
-  annotation: option<string>,
+  field?: string,
+  annotation?: string,
 }
 
 /** One capability the platform must provision: the key — a qualified
@@ -48,8 +48,8 @@ let union = (manifests: array<pluginManifest>): array<unionEntry> => {
         site => {
           pluginName,
           component: site.component,
-          field: site.field,
-          annotation: site.annotation,
+          field: ?site.field,
+          annotation: ?site.annotation,
         },
       )
       switch byKey->Dict.get(entry.key) {

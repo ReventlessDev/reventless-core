@@ -27,8 +27,8 @@ type builderOutputs = {
   tasks: dict<Task.outputs>,
   resolvers: array<ReventlessInfra.Adapter.resource>,
   heartbeat: Heartbeat.outputs,
-  dcbEventLog: option<DcbEventLog.outputs>,
-  uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
+  dcbEventLog?: DcbEventLog.outputs,
+  uiFragments?: Reventless.Plugin.uiFragmentManifest,
 }
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>
@@ -158,7 +158,7 @@ type eventCollectorContext = {
   extensionPoints: array<extensionPointEntry>,
   // The auto-included PluginConnectExtension entry. Some for plugins; None for
   // the admin Lambda (the admin IS the Plugin EP, doesn't consume it).
-  connectExtension: option<connectExtensionEntry>,
+  connectExtension?: connectExtensionEntry,
   // User-declared extensions on this plugin. Empty for the admin Lambda.
   extensions: array<extensionEntry>,
   // SQS URL of the admin's Plugin EP command topic — where extensions publish
@@ -720,7 +720,7 @@ module MakeEventCollectorHelper = (
           pluginDefinitionJson,
           uiFragmentsJson,
           extensionPoints: extensionPointEntries,
-          connectExtension,
+          ?connectExtension,
           extensions,
           pluginExtensionPointCmdTopicUrl,
           publishToAggregates: mergedAggregateUrls,

@@ -15,7 +15,7 @@ let receiveRegistry: dict<receive> = Dict.make()
 
 type pendingCall = {
   inputJson: JSON.t,
-  caller: option<Reventless.Identity.t>,
+  caller?: Reventless.Identity.t,
   resolve: ReventlessInfra.InboundTranslationSlice.receiveResult => unit,
 }
 
@@ -47,7 +47,7 @@ let register = (
 
   let queuingReceive: receive = (inputJson, ~caller=?) =>
     Promise.make((resolve, _reject) => {
-      pendingQueue.contents->Array.push({inputJson, caller, resolve})
+      pendingQueue.contents->Array.push({inputJson, ?caller, resolve})
     })
   receiveRegistry->Dict.set(fieldName, queuingReceive)
 
@@ -90,7 +90,7 @@ let bindReceive = (~fieldName: string, ~receive: receive) => {
   | Some(pendingQueue) =>
     let pending = pendingQueue.contents
     pendingQueue.contents = []
-    pending->Array.forEach(({inputJson, caller, resolve}) => {
+    pending->Array.forEach(({inputJson, ?caller, resolve}) => {
       let _ = receive(inputJson, ~caller?)->Promise.thenResolve(result => resolve(result))
     })
   | None => ()

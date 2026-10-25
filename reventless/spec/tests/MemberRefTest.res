@@ -13,7 +13,7 @@ describe("MemberRef:", () => {
 
   testSync("names the collection, and the view when one is given", () =>
     expect(MemberRef.getTarget(MemberRef.of_(~view="Products", ~field="productImages")))->toEqual(
-      Some({Semantic.view: Some("Products"), field: "productImages", plugin: None, content: None}),
+      Some({Semantic.view: "Products", field: "productImages"}),
     )
   )
 

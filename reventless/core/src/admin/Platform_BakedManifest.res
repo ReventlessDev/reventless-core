@@ -60,9 +60,9 @@ let describe = (e: error): string =>
 // that can honor it.
 type selection = {
   plugin: string,
-  views: option<array<string>>,
-  commands: option<array<string>>,
-  derived: option<array<string>>,
+  views?: array<string>,
+  commands?: array<string>,
+  derived?: array<string>,
 }
 
 let publicViews = (def: pluginStructure): array<readSideDef> =>
@@ -204,9 +204,9 @@ let journeyKey = (~group: string): string => {
 
 let toSelection = (s: ReventlessInfra.Platform.bakedManifestSelection): selection => {
   plugin: s.plugin,
-  views: s.views,
-  commands: s.commands,
-  derived: s.derived,
+  views: ?s.views,
+  commands: ?s.commands,
+  derived: ?s.derived,
 }
 
 /** One declared journey, with everything a platform needs to serve it: the group

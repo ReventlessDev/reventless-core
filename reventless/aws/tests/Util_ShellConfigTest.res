@@ -230,7 +230,7 @@ describe("Util_ShellConfig.fields — journeys", () => {
 // went missing shows as a badge rather than as nothing.
 describe("Util_ShellConfig.fields — environment", () => {
   testSync("the name and the purpose follow the computed keys", () => {
-    let out = Util_ShellConfig.fields(~computed, ~environment={name: "test", purpose: Some("test")})
+    let out = Util_ShellConfig.fields(~computed, ~environment={name: "test", purpose: "test"})
     expect(out->Dict.keysToArray)->toEqual([
       "apiEndpoint",
       "region",
@@ -244,7 +244,7 @@ describe("Util_ShellConfig.fields — environment", () => {
   })
 
   testSync("an unknown purpose leaves its key out", () => {
-    let out = Util_ShellConfig.fields(~computed, ~environment={name: "alpha", purpose: None})
+    let out = Util_ShellConfig.fields(~computed, ~environment={name: "alpha"})
     expect(out->Dict.get("environmentPurpose")->Option.isNone)->toBe(true)
   })
 
@@ -252,7 +252,7 @@ describe("Util_ShellConfig.fields — environment", () => {
     let failure = try {
       let _ = Util_ShellConfig.fields(
         ~computed,
-        ~environment={name: "prod", purpose: Some("production")},
+        ~environment={name: "prod", purpose: "production"},
         ~shellConfig=Dict.fromArray([("environment", JSON.Encode.string("staging"))]),
       )
       None

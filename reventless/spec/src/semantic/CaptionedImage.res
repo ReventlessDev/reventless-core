@@ -86,7 +86,7 @@ let forField = (~plugin: option<string>=?, ~store: string): S.t<t> =>
     // The store rides on the record, not on `ref`: a field reader looks through
     // an optional wrapper and an array element and no further, so a marker one
     // record deeper would be a store declaration nothing provisions.
-    ~payload=StoredIn({plugin, store, threshold: None}),
+    ~payload=StoredIn({?plugin, store}),
   )
 
 /** The text that replaces the image, by the rule above — `altText`, else the

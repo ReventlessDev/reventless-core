@@ -51,7 +51,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
           {
             label: "Stephansplatz 1, Vienna",
             point: vienna,
-            relevance: Some(0.995),
+            relevance: 0.995,
           },
         ]),
       ),
@@ -71,12 +71,12 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
           {
             label: "Springfield, IL",
             point: vienna,
-            relevance: Some(0.99),
+            relevance: 0.99,
           },
           {
             label: "Springfield, MA",
             point: vienna,
-            relevance: Some(0.985),
+            relevance: 0.985,
           },
         ]),
       ),

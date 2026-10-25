@@ -16,7 +16,7 @@ describe("CaptionedImage:", () => {
 
   testSync("declares the store it was built for", () =>
     expect(StorageRef.getStore(field))->toEqual(
-      Some({Semantic.plugin: None, store: "productImages", threshold: None}),
+      Some({Semantic.plugin: ?None, store: "productImages"}),
     )
   )
 

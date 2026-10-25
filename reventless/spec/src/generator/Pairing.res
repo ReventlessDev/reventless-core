@@ -27,7 +27,7 @@ let isImplStem = (stem: string): bool =>
   stem->String.endsWith(implSuffixForTranslation) ||
   stem->String.endsWith(mappingsSuffixForAutomation)
 
-type aggregateDef = {spec: string, decision: string, eventMappings: option<string>, isAsync: bool}
+type aggregateDef = {spec: string, decision: string, eventMappings?: string, isAsync: bool}
 // readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
 // file. Codegen emits `Platform.ReadModel.Make(<spec>, <projections>)` and
 // expects the projections file to declare `let mappings` via
@@ -41,7 +41,7 @@ type readModelDef = {
   projections: string,
   stream: bool,
 }
-type extensionPointDef = {group: option<string>, mappings: array<string>}
+type extensionPointDef = {group?: string, mappings: array<string>}
 
 type resolved = {
   stateChangeSlices: array<string>,
@@ -231,7 +231,7 @@ let groupExtensionPoints = (epFiles: array<Discovery.discoveredFile>): array<ext
   let epByGroup: Dict.t<array<string>> = Dict.make()
   let flatEpMappings: array<string> = []
 
-  epFiles->Array.forEach(({stem, epGroup}) =>
+  epFiles->Array.forEach(({stem, ?epGroup}) =>
     switch epGroup {
     | None => flatEpMappings->Array.push(stem)
     | Some(g) =>
@@ -244,10 +244,10 @@ let groupExtensionPoints = (epFiles: array<Discovery.discoveredFile>): array<ext
 
   let extensionPoints: array<extensionPointDef> = []
   if flatEpMappings->Array.length > 0 {
-    extensionPoints->Array.push({group: None, mappings: flatEpMappings->sortedStems})
+    extensionPoints->Array.push({mappings: flatEpMappings->sortedStems})
   }
   Dict.toArray(epByGroup)->Array.forEach(((group, mappings)) =>
-    extensionPoints->Array.push({group: Some(group), mappings: mappings->sortedStems})
+    extensionPoints->Array.push({group, mappings: mappings->sortedStems})
   )
   extensionPoints
 }
@@ -315,7 +315,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   // families, impl files (X_Decision / X_Projection / X_Automation /
   // X_Translation) are filtered out: they're paired with their spec stems
   // at codegen time via the `_<ImplKind>` suffix convention.
-  discovered->Array.forEach(({stem, componentType, epGroup, relPath}) => {
+  discovered->Array.forEach(({stem, componentType, ?epGroup, relPath}) => {
     switch componentType {
     | StateChangeSlice =>
       if !isImplStem(stem) {
@@ -367,7 +367,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         readModelStreamStems->Array.push(stem)
       }
     | Task => tasks->Array.push(stem)
-    | ExtensionPoint => epFiles->Array.push({stem, componentType, epGroup, relPath})
+    | ExtensionPoint => epFiles->Array.push({stem, componentType, ?epGroup, relPath})
     | Extension => extensions->Array.push(stem)
     }
   })
@@ -396,7 +396,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         Some({
           spec,
           decision,
-          eventMappings: Dict.get(eventMappings, spec),
+          eventMappings: ?Dict.get(eventMappings, spec),
           isAsync,
         })
       | None =>

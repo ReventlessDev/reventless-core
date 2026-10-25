@@ -10,12 +10,12 @@ The payload is a typed variant because the vocabulary is framework-owned and
 closed — which also keeps `Reference.getTarget` total.
 */
 /** Which entity a reference field points to. */
-type referenceTarget = {entity: string, plugin: option<string>, identity?: string}
+type referenceTarget = {entity: string, plugin?: string, identity?: string}
 
 /** Which object store the value lives in. `plugin` is absent for the declaring
     plugin's own store; `threshold` is `@offload`'s per-field byte cut, `None`
     when it defers to the platform default. */
-type storeTarget = {plugin: option<string>, store: string, threshold: option<int>}
+type storeTarget = {plugin?: string, store: string, threshold?: int}
 
 /**
 Which collection a value names a member of.
@@ -38,10 +38,10 @@ holding one field's schema cannot reach a sibling's, and one that renders a cell
 holds exactly that. Absent leaves the reader to its own rules, which is what a
 host attaching something the vocabulary has no word for should get. */
 type memberTarget = {
-  view: option<string>,
+  view?: string,
   field: string,
-  plugin: option<string>,
-  content: option<string>,
+  plugin?: string,
+  content?: string,
 }
 
 /** Per-semantic detail, for the semantics that carry any. */

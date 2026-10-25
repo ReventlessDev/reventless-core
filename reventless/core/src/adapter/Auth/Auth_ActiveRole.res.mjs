@@ -8,7 +8,6 @@ let conformanceCases = [
       "Fulfilment",
       "Shopper"
     ],
-    requested: undefined,
     expected: [
       "Fulfilment",
       "Shopper"
@@ -38,8 +37,7 @@ let conformanceCases = [
       "Fulfilment",
       "Shopper"
     ],
-    requested: "Admin",
-    expected: undefined
+    requested: "Admin"
   },
   {
     label: "a sole role narrows to itself rather than being a special case",
@@ -50,20 +48,17 @@ let conformanceCases = [
   {
     label: "a caller holding nothing can request nothing",
     membership: [],
-    requested: "Shopper",
-    expected: undefined
+    requested: "Shopper"
   },
   {
     label: "the empty string is a request, and one no caller can hold",
     membership: ["Shopper"],
-    requested: "",
-    expected: undefined
+    requested: ""
   },
   {
     label: "group names are matched exactly, not case-insensitively",
     membership: ["Shopper"],
-    requested: "shopper",
-    expected: undefined
+    requested: "shopper"
   }
 ];
 

@@ -61,17 +61,21 @@ let displayState = (
     // write path marshals the raw ReScript value, so a variant would land in DynamoDB
     // as `{TAG, _0}`. The ComponentDefinitions Lambda then reads structure back and
     // resolves the sentinel.
-    apiSchemaFragment: def.apiSchemaFragment->Option.map(
-      Reventless.Offload.toJson(Reventless.Plugin.apiSchemaFragmentSchema, _),
+    apiSchemaFragment: ?(
+      def.apiSchemaFragment->Option.map(
+        Reventless.Offload.toJson(Reventless.Plugin.apiSchemaFragmentSchema, _),
+      )
     ),
-    structure: def.structure->Option.map(
-      Reventless.Offload.toJson(Reventless.Plugin.pluginStructureSchema, _),
+    structure: ?(
+      def.structure->Option.map(
+        Reventless.Offload.toJson(Reventless.Plugin.pluginStructureSchema, _),
+      )
     ),
-    dcbEventLog: def.dcbEventLog,
+    dcbEventLog: ?def.dcbEventLog,
     // A freshly projected row always knows its kind (the definition carries it as a
     // mandatory field). `option` here is purely for rows persisted before `kind`
     // existed — see PluginsReadModelSpec.state.kind.
-    kind: Some(def.kind),
+    kind: def.kind,
     // The current version is never listed among the "other" connected versions.
     otherConnectedVersions: otherConnectedVersions->Util.without(def.version),
   }

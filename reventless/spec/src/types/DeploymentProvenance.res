@@ -10,14 +10,14 @@ an answer to *which commit*, and a reader cannot tell it from one.
 */
 
 type t = {
-  commit: option<string>,
+  commit?: string,
   /** True only when the commit came from git and the working tree had changes:
     what was deployed is not what the commit says. */
   dirty: bool,
-  environment: option<string>,
-  purpose: option<string>,
-  tag: option<string>,
-  pullRequest: option<int>,
+  environment?: string,
+  purpose?: string,
+  tag?: string,
+  pullRequest?: int,
 }
 
 /** What git can say about the checkout the deploy runs in. */
@@ -51,12 +51,12 @@ let fromEnv = (env: dict<string>, ~git: git): t => {
     }
   }
   {
-    commit,
+    ?commit,
     dirty,
-    environment: get("REVENTLESS_ENVIRONMENT"),
-    purpose: get("REVENTLESS_ENVIRONMENT_PURPOSE"),
-    tag: get("GITHUB_REF_TYPE") == Some("tag") ? get("GITHUB_REF_NAME") : None,
-    pullRequest: get("REVENTLESS_PULL_REQUEST")->Option.flatMap(n => Int.fromString(n)),
+    environment: ?get("REVENTLESS_ENVIRONMENT"),
+    purpose: ?get("REVENTLESS_ENVIRONMENT_PURPOSE"),
+    tag: ?(get("GITHUB_REF_TYPE") == Some("tag") ? get("GITHUB_REF_NAME") : None),
+    pullRequest: ?(get("REVENTLESS_PULL_REQUEST")->Option.flatMap(n => Int.fromString(n))),
   }
 }
 

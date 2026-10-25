@@ -88,7 +88,7 @@ let of_ = (
 ): S.t<t> =>
   S.string->Semantic.mark(
     ~id=Semantic.Id.memberRef,
-    ~payload=MemberOf({view, field, plugin, content}),
+    ~payload=MemberOf({?view, field, ?plugin, ?content}),
   )
 
 /** The collection a schema names, if it carries the marker. */

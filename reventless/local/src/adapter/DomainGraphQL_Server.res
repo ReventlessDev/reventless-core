@@ -908,7 +908,7 @@ let diagnostics = (): diagnostics => {
     resolverMutationCount: mutResolverNames->Array.length,
     resolverQueryCount: queryResolverNames->Array.length,
     mismatches,
-    fullSdl: lastFullSdl.contents,
+    fullSdl: ?lastFullSdl.contents,
     serverRunning: activeServer.contents->Option.isSome,
   }
 }

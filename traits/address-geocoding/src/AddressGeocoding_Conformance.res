@@ -161,7 +161,7 @@ module Make = (B: AddressGeocoding.Binding) => {
               {
                 Reventless.Geocoding.label: B.subjectText(B.subjectA),
                 point: vienna,
-                relevance: Some(0.995),
+                relevance: 0.995,
               },
             ]),
           ),

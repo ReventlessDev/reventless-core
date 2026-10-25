@@ -312,7 +312,7 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
     obj->Dict.set("x-reventless-semantic-source", str("type"))
     switch sem.payload {
     | Plain => ()
-    | ReferenceTo({entity, plugin, ?identity}) =>
+    | ReferenceTo({entity, ?plugin, ?identity}) =>
       let pairs = withOptionalPlugin([("entity", str(entity))], plugin)
       let pairs = switch identity {
       | Some(key) => Array.concat(pairs, [("identity", str(key))])
@@ -321,14 +321,14 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
       obj->Dict.set("x-reventless-semantic-target", jsonObject(pairs))
     | IdentityOf({key}) =>
       obj->Dict.set("x-reventless-semantic-target", jsonObject([("key", str(key))]))
-    | StoredIn({plugin, store}) =>
+    | StoredIn({?plugin, store}) =>
       // An absent plugin means "this plugin's own store" — omit the key rather
       // than writing an empty string, so a reader never has to tell those apart.
       obj->Dict.set(
         "x-reventless-semantic-target",
         jsonObject(withOptionalPlugin([("store", str(store))], plugin)),
       )
-    | MemberOf({plugin, view, field, content}) =>
+    | MemberOf({?plugin, ?view, field, ?content}) =>
       // Same channel as the two above, and `view` and `content` are omitted on
       // the same terms as `plugin`: absent means the collection is on the row
       // this field is already part of, and that the member's kind is the

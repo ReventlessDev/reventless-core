@@ -65,7 +65,7 @@ type connection = {
   // The account this run authenticated as, and the id its bearer actually
   // carries — which is the only id available when there is no accounts file.
   caller: Seed_Users.user,
-  callerId: option<string>,
+  callerId?: string,
   // The login this run authenticated with, kept so a data set can mint a second
   // client for another account. An owner-scoped read is only ever verified by
   // the account the rows belong to: the seeding client is elevated, and an
@@ -75,7 +75,7 @@ type connection = {
   // `None` means the deployment has no such door (a unified-mode AWS API does
   // not carry `Platform_SetActiveRole`), and a narrowing can then only be
   // reported, not fixed from here.
-  roleSwitch: option<roleSwitch>,
+  roleSwitch?: roleSwitch,
 }
 
 let announceIdentity = (client: Seed_Client.t, ~prefix: string="Acting as"): unit =>
@@ -198,9 +198,9 @@ let make = async (
     label,
     accounts,
     caller,
-    callerId: Seed_Client.callerId(client),
+    callerId: ?Seed_Client.callerId(client),
     login,
-    roleSwitch,
+    ?roleSwitch,
   }
 }
 

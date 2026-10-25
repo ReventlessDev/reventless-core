@@ -43,7 +43,6 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "",
           decidedAt: meta.time,
-          settledAt: None,
         },
       ),
     ]
@@ -64,7 +63,7 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "the recipient is not subscribed to this notification",
           decidedAt: meta.time,
-          settledAt: Some(meta.time),
+          settledAt: meta.time,
         },
       ),
     ]
@@ -89,7 +88,7 @@ let project = ({event, meta}) =>
           origin: originName(origin),
           detail: "no address on file for a channel the recipient wants",
           decidedAt: meta.time,
-          settledAt: Some(meta.time),
+          settledAt: meta.time,
         },
       ),
     ]
@@ -100,7 +99,7 @@ let project = ({event, meta}) =>
           ...state,
           outcome: Delivered,
           detail: providerRef,
-          settledAt: Some(meta.time),
+          settledAt: meta.time,
         },
       ),
     ]
@@ -111,7 +110,7 @@ let project = ({event, meta}) =>
           ...state,
           outcome: Failed,
           detail: reason,
-          settledAt: Some(meta.time),
+          settledAt: meta.time,
         },
       ),
     ]

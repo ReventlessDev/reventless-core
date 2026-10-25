@@ -11,7 +11,7 @@ open JestGlobals
 let epFile = (~stem, ~epGroup): Discovery.discoveredFile => {
   stem,
   componentType: ExtensionPoint,
-  epGroup,
+  ?epGroup,
   relPath: stem ++ ".res",
 }
 
@@ -23,7 +23,7 @@ describe("Pairing.groupExtensionPoints", () => {
     ])
     expect(eps)->toEqual([
       {
-        Pairing.group: Some("Catalog.Products"),
+        Pairing.group: "Catalog.Products",
         mappings: ["A_ExtensionPointMapping", "B_ExtensionPointMapping"],
       },
     ])
@@ -36,7 +36,7 @@ describe("Pairing.groupExtensionPoints", () => {
     ])
     expect(eps)->toEqual([
       {
-        Pairing.group: Some("G"),
+        Pairing.group: "G",
         mappings: ["Alpha_ExtensionPointMapping", "Zeta_ExtensionPointMapping"],
       },
     ])
@@ -49,7 +49,7 @@ describe("Pairing.groupExtensionPoints", () => {
     ])
     expect(eps)->toEqual([
       {
-        Pairing.group: None,
+        Pairing.group: ?None,
         mappings: ["Other_ExtensionPointMapping", "Solo_ExtensionPointMapping"],
       },
     ])
@@ -62,9 +62,9 @@ describe("Pairing.groupExtensionPoints", () => {
       epFile(~stem="G2_ExtensionPointMapping", ~epGroup=Some("Grp")),
     ])
     expect(eps)->toEqual([
-      {Pairing.group: None, mappings: ["Flat_ExtensionPointMapping"]},
+      {Pairing.group: ?None, mappings: ["Flat_ExtensionPointMapping"]},
       {
-        Pairing.group: Some("Grp"),
+        Pairing.group: "Grp",
         mappings: ["G1_ExtensionPointMapping", "G2_ExtensionPointMapping"],
       },
     ])
@@ -78,7 +78,6 @@ describe("Pairing.groupExtensionPoints", () => {
 let file = (~stem, ~componentType, ~relPath): Discovery.discoveredFile => {
   stem,
   componentType,
-  epGroup: None,
   relPath,
 }
 

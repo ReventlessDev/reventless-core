@@ -343,7 +343,6 @@ module Make = (
           aggregateNames: [ReventlessCore.PluginSpec.name],
         },
       ],
-      connectExtension: None,
       extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.Output.make(""),
       publishToAggregates: Dict.make(),

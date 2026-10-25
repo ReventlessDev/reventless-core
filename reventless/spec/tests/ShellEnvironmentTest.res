@@ -4,12 +4,10 @@ open JestGlobals
 // production: it is the one the shell draws no badge for.
 
 let provenance = (~environment=?, ~purpose=?) => {
-  DeploymentProvenance.commit: None,
+  DeploymentProvenance.commit: ?None,
   dirty: false,
-  environment,
-  purpose,
-  tag: None,
-  pullRequest: None,
+  ?environment,
+  ?purpose,
 }
 
 let resolve = (provenance, ~stack) =>
@@ -19,21 +17,20 @@ describe("ShellEnvironment.resolve", () => {
   testSync("a declared environment wins over the stack", () =>
     expect(resolve(provenance(~environment="test", ~purpose="test"), ~stack="test-eu"))->toEqual({
       ShellEnvironment.name: "test",
-      purpose: Some("test"),
+      purpose: "test",
     })
   )
 
   testSync("an undeclared production stack is production", () =>
     expect(resolve(provenance(), ~stack="prod"))->toEqual({
       ShellEnvironment.name: "prod",
-      purpose: Some("production"),
+      purpose: "production",
     })
   )
 
   testSync("any other undeclared stack has no known purpose", () =>
     expect(resolve(provenance(), ~stack="alpha"))->toEqual({
       ShellEnvironment.name: "alpha",
-      purpose: None,
     })
   )
 
@@ -53,8 +50,8 @@ describe("ShellEnvironment.configFields", () => {
   )
 
   testSync("no purpose key when it is not", () =>
-    expect(
-      {ShellEnvironment.name: "alpha", purpose: None}->ShellEnvironment.configFields,
-    )->toEqual([("environment", JSON.Encode.string("alpha"))])
+    expect({ShellEnvironment.name: "alpha"}->ShellEnvironment.configFields)->toEqual([
+      ("environment", JSON.Encode.string("alpha")),
+    ])
   )
 })

@@ -17,8 +17,8 @@ let tempRoot = (): string =>
 // rather than hitting an unrelated process that happens to be running.
 let deadPid = 2147483646
 
-let sqliteStore = (path): LocalPlatformRegistry.store => {kind: "sqlite", path: Some(path)}
-let memoryStore: LocalPlatformRegistry.store = {kind: "memory", path: None}
+let sqliteStore = (path): LocalPlatformRegistry.store => {kind: "sqlite", path}
+let memoryStore: LocalPlatformRegistry.store = {kind: "memory"}
 
 let writeAt = (~cwd, ~port, ~store, ~pid=NodeProcess.pid) =>
   LocalPlatformRegistry.write(
@@ -127,9 +127,7 @@ describe("LocalSeedTarget.storePath", () => {
 
     expect(target(memoryStore)->reason->String.includes("in memory"))->toEqual(true)
     expect(target(memoryStore)->reason->String.includes("localhost:4000"))->toEqual(true)
-    expect(
-      target({kind: "postgres", path: None})->reason->String.includes("off this machine"),
-    )->toEqual(true)
+    expect(target({kind: "postgres"})->reason->String.includes("off this machine"))->toEqual(true)
     expect(
       {
         endpoint: "http://localhost:4000/graphql",

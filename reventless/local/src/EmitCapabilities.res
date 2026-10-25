@@ -61,7 +61,7 @@ let usage = `Usage: emit-capabilities <srcDir> [<compositionModule>]
 
   Run from the plugin package, after rescript build.`
 
-type args = {srcDir: string, compositionModule: option<string>}
+type args = {srcDir: string, compositionModule?: string}
 
 let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(argv)
@@ -70,14 +70,14 @@ let parseArgs = (argv: array<string>): result<args, string> =>
     let positionals = a->Reventless.CliArgs.positionals
     switch positionals->Array.get(0) {
     | None | Some("") => Error("<srcDir> is required.")
-    | Some(srcDir) => Ok({srcDir, compositionModule: positionals->Array.get(1)})
+    | Some(srcDir) => Ok({srcDir, compositionModule: ?(positionals->Array.get(1))})
     }
   })
 
 let cli: Reventless.CliArgs.cli<args> = {bin: "emit-capabilities", usage, parse: parseArgs}
 
 let main = () =>
-  Reventless.CliArgs.run(cli, async ({srcDir: srcDirArg, compositionModule}) => {
+  Reventless.CliArgs.run(cli, async ({srcDir: srcDirArg, ?compositionModule}) => {
     // The local platform defaults to Debug-level logging; a build step should not.
     switch NodeProcess.env->Dict.get("LOG_LEVEL") {
     | Some(_) => ()

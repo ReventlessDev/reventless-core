@@ -12,7 +12,7 @@ module Ops = Auth_ActiveRoleStore_Ops
 module Contract = ReventlessCore.Auth_ActiveRole
 
 describe("Auth_ActiveRoleStore_Ops.mayActAs — the conformance table", () => {
-  Contract.conformanceCases->Array.forEach(({label, membership, requested, expected}) =>
+  Contract.conformanceCases->Array.forEach(({label, membership, ?requested, ?expected}) =>
     switch requested {
     // "no role requested" has no subset decision to make — it is the clearing
     // path, exercised against the handler rather than the predicate.

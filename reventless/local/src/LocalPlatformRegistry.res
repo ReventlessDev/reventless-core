@@ -11,7 +11,7 @@ type store = {
   // "sqlite" | "memory" | "postgres". A `:memory:` SQLite file reports "memory".
   kind: string,
   // Some only for a store this machine can open by name.
-  path: option<string>,
+  path?: string,
 }
 
 @schema

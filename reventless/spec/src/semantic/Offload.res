@@ -116,7 +116,7 @@ let forStore = (
 ): S.t<payload<'a>> =>
   schema(inner)->Semantic.mark(
     ~id=Semantic.Id.offload,
-    ~payload=StoredIn({plugin, store, threshold}),
+    ~payload=StoredIn({?plugin, store, ?threshold}),
   )
 
 /**
@@ -137,7 +137,7 @@ let optionSchema = (
 ): S.t<option<payload<'a>>> =>
   S.nullAsOption(schema(inner))->Semantic.mark(
     ~id=Semantic.Id.offload,
-    ~payload=StoredIn({plugin, store, threshold}),
+    ~payload=StoredIn({?plugin, store, ?threshold}),
   )
 
 /** Serialize a payload to its **untagged** wire JSON: `Inline` becomes the bare
@@ -260,7 +260,7 @@ let defaultThreshold = 8192
     unset, which defers to the platform default and then {!defaultThreshold}. */
 let getThreshold = (schema: S.t<'a>): option<int> =>
   switch Semantic.get(schema) {
-  | Some({id, payload: StoredIn({threshold})}) if id == Semantic.Id.offload => threshold
+  | Some({id, payload: StoredIn({?threshold})}) if id == Semantic.Id.offload => threshold
   | _ => None
   }
 

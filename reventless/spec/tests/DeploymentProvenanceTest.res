@@ -14,12 +14,8 @@ let provenance = (vars, ~git) => DeploymentProvenance.fromEnv(Dict.fromArray(var
 describe("DeploymentProvenance.fromEnv", () => {
   testSync("CI's commit, never git's, and never dirty", () =>
     expect(provenance([("GITHUB_SHA", "a1f3")], ~git=git(~head="beef", ~dirty=true)))->toEqual({
-      DeploymentProvenance.commit: Some("a1f3"),
+      DeploymentProvenance.commit: "a1f3",
       dirty: false,
-      environment: None,
-      purpose: None,
-      tag: None,
-      pullRequest: None,
     })
   )
 

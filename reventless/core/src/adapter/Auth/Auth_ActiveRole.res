@@ -77,57 +77,52 @@ stored state) resolves `None` by minting `membership` and marking
 type conformanceCase = {
   label: string,
   membership: array<string>,
-  requested: option<string>,
-  expected: option<array<string>>,
+  requested?: string,
+  expected?: array<string>,
 }
 
 let conformanceCases: array<conformanceCase> = [
   {
     label: "no role requested mints exactly what it always minted",
     membership: ["Fulfilment", "Shopper"],
-    requested: None,
-    expected: Some(["Fulfilment", "Shopper"]),
+    expected: ["Fulfilment", "Shopper"],
   },
   {
     label: "a held role narrows to that role alone",
     membership: ["Fulfilment", "Shopper"],
-    requested: Some("Shopper"),
-    expected: Some(["Shopper"]),
+    requested: "Shopper",
+    expected: ["Shopper"],
   },
   {
     label: "the other held role narrows just as well",
     membership: ["Fulfilment", "Shopper"],
-    requested: Some("Fulfilment"),
-    expected: Some(["Fulfilment"]),
+    requested: "Fulfilment",
+    expected: ["Fulfilment"],
   },
   {
     label: "a role the caller does not hold is refused, never widened into",
     membership: ["Fulfilment", "Shopper"],
-    requested: Some("Admin"),
-    expected: None,
+    requested: "Admin",
   },
   {
     label: "a sole role narrows to itself rather than being a special case",
     membership: ["Shopper"],
-    requested: Some("Shopper"),
-    expected: Some(["Shopper"]),
+    requested: "Shopper",
+    expected: ["Shopper"],
   },
   {
     label: "a caller holding nothing can request nothing",
     membership: [],
-    requested: Some("Shopper"),
-    expected: None,
+    requested: "Shopper",
   },
   {
     label: "the empty string is a request, and one no caller can hold",
     membership: ["Shopper"],
-    requested: Some(""),
-    expected: None,
+    requested: "",
   },
   {
     label: "group names are matched exactly, not case-insensitively",
     membership: ["Shopper"],
-    requested: Some("shopper"),
-    expected: None,
+    requested: "shopper",
   },
 ]

@@ -74,10 +74,10 @@ function rewriteActionWith(action, overlays, toDict, fromDict, at) {
     }
   };
   let updated = (fn, state) => apply(fn(state), overlays, priorLifecycleOf(state));
-  let labelled = state => apply(state, {
-    displayName: overlays.displayName,
-    trail: undefined
-  }, undefined);
+  let labelled = state => {
+    let newrecord = {...overlays};
+    return apply(state, (newrecord.trail = undefined, newrecord), undefined);
+  };
   if (typeof action !== "object") {
     return action;
   }
@@ -176,12 +176,14 @@ function rewriteAction(action, at, stateSchema) {
 
 function trailOverlays(stateSchema) {
   let overlays = Stdlib_Option.flatMap(stateSchema, overlaysFor);
-  if (overlays !== undefined && overlays.trail !== undefined) {
-    return {
-      displayName: undefined,
-      trail: overlays.trail
-    };
+  if (overlays === undefined) {
+    return;
   }
+  if (overlays.trail === undefined) {
+    return;
+  }
+  let newrecord = {...overlays};
+  return newrecord.displayName = undefined, newrecord;
 }
 
 function rewriteTrail(action, at, stateSchema) {

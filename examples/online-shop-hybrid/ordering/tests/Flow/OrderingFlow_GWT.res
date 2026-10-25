@@ -115,8 +115,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
           {state: Placed, at: "1970-01-01T00:00:00Z"},
           {state: Shipped, at: "1970-01-01T00:00:00Z"},
         ],
-        deliveryWindow: Some(window),
-        firstProductName: Some("Book"),
+        deliveryWindow: window,
+        firstProductName: "Book",
         firstProductImage: None,
       },
     )

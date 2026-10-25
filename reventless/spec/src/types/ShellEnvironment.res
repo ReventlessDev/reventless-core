@@ -8,13 +8,13 @@ environment ([DeploymentProvenance]) and the stacks the platform treats as
 production. Pure; the caller passes the stack and the list.
 */
 
-type t = {name: string, purpose: option<string>}
+type t = {name: string, purpose?: string}
 
 let nameKey = "environment"
 let purposeKey = "environmentPurpose"
 
 /** What the local platform says about itself. */
-let local = {name: "local", purpose: Some("local")}
+let local = {name: "local", purpose: "local"}
 
 /**
 The declared environment wins over the stack, its purpose over the stack list.
@@ -27,8 +27,10 @@ let resolve = (
   ~prodStacks: array<string>,
 ): t => {
   name: provenance.environment->Option.getOr(stack),
-  purpose: provenance.purpose->Option.orElse(
-    prodStacks->Array.includes(stack) ? Some(Environments.purposeName(Production)) : None,
+  purpose: ?(
+    provenance.purpose->Option.orElse(
+      prodStacks->Array.includes(stack) ? Some(Environments.purposeName(Production)) : None,
+    )
   ),
 }
 

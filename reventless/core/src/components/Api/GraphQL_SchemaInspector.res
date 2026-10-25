@@ -59,9 +59,9 @@ let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): arra
 }
 
 type queryFieldInspection = {
-  typeDef: option<string>,
+  typeDef?: string,
   singleQuery: string,
-  listQuery: option<string>,
+  listQuery?: string,
 }
 
 let inspectQueryFields = (
@@ -83,7 +83,7 @@ let inspectQueryFields = (
       ~pluralTypeName=pluralName,
     ),
   )
-  {typeDef, singleQuery, listQuery}
+  {?typeDef, singleQuery, ?listQuery}
 }
 
 // ── Plugin Level — Fragment Inspector ───────────────────────────────────────

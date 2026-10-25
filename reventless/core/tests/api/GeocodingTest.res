@@ -19,7 +19,7 @@ let point = (~lat, ~lng) =>
 let candidate = (~label, ~relevance=?): Geocoding.candidate => {
   label,
   point: point(~lat=48.2082, ~lng=16.3738),
-  relevance,
+  ?relevance,
 }
 
 describe("Geocoder_AwsLocation_Geocoding.confidentMatch", () => {

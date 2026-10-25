@@ -5,14 +5,12 @@ open JestGlobals
 
 describe("EmitCapabilities.parseArgs", () => {
   testSync("a plugin's postbuild: emit-capabilities src/", () =>
-    expect(EmitCapabilities.parseArgs(["src/"]))->toEqual(
-      Ok({EmitCapabilities.srcDir: "src/", compositionModule: None}),
-    )
+    expect(EmitCapabilities.parseArgs(["src/"]))->toEqual(Ok({EmitCapabilities.srcDir: "src/"}))
   )
 
   testSync("a hand-written composition root is named after the source directory", () =>
     expect(EmitCapabilities.parseArgs(["src", "Catalog"]))->toEqual(
-      Ok({EmitCapabilities.srcDir: "src", compositionModule: Some("Catalog")}),
+      Ok({EmitCapabilities.srcDir: "src", compositionModule: "Catalog"}),
     )
   )
 

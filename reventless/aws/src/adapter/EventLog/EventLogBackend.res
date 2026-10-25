@@ -53,8 +53,8 @@ let isPostgres = (): bool => selectionRef.contents->Option.isSome
 type relayLogEntry = {
   logName: string,
   aggregateName: string,
-  mutable collectorQueueUrl: option<Pulumi.Output.t<string>>,
-  mutable collectorQueueArn: option<Pulumi.Output.t<string>>,
+  mutable collectorQueueUrl?: Pulumi.Output.t<string>,
+  mutable collectorQueueArn?: Pulumi.Output.t<string>,
 }
 
 let relayLogs: array<relayLogEntry> = []
@@ -62,7 +62,7 @@ let relayLogs: array<relayLogEntry> = []
 /** Step 1: record a Postgres classic log (from the storage maker). */
 let registerRelayLog = (~logName: string, ~aggregateName: string) =>
   relayLogs
-  ->Array.push({logName, aggregateName, collectorQueueUrl: None, collectorQueueArn: None})
+  ->Array.push({logName, aggregateName})
   ->ignore
 
 /** Step 2: attach a plugin's EventCollector SQS queue to one aggregate's relay entry. */

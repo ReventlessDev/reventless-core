@@ -47,17 +47,17 @@ let mergedEventSchema = (schemas: array<S.t<unknown>>) =>
   }
 
 type dcbResult = {
-  dcbEventLogOutputs: option<DcbEventLog.outputs>,
+  dcbEventLogOutputs?: DcbEventLog.outputs,
   stateChangeSlicesOutputs: dict<StateChangeSlice.outputs>,
   stateViewSlicesOutputs: dict<StateViewSlice.outputs>,
   automationSlicesOutputs: dict<AutomationSlice.outputs>,
   outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
   inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
-  dcbRuntimeSetup: option<unit => unit>,
+  dcbRuntimeSetup?: unit => unit,
   // Shared publishJsons for all DCB StateChangeSlices in this plugin (same command topic).
   // Used by Plugin_Builder to register slice names in publishToAggregates so extensions
   // can dispatch commands to DCB slices via the same mechanism as regular aggregates.
-  dcbPublishJsons: option<Pulumi.Output.t<CommandTopic.publishJsons>>,
+  dcbPublishJsons?: Pulumi.Output.t<CommandTopic.publishJsons>,
   // SQS URL of the DCB command topic — shared by all StateChangeSlices in this
   // plugin. Surfaced so the bundled Plugin EventCollector Lambda can dispatch
   // PublishStateChangeSliceCommand actions from user extensions to the right
@@ -75,14 +75,11 @@ type dcbResult = {
 }
 
 let emptyResult: dcbResult = {
-  dcbEventLogOutputs: None,
   stateChangeSlicesOutputs: Dict.make(),
   stateViewSlicesOutputs: Dict.make(),
   automationSlicesOutputs: Dict.make(),
   outboundTranslationSlicesOutputs: Dict.make(),
   inboundTranslationSlicesOutputs: Dict.make(),
-  dcbRuntimeSetup: None,
-  dcbPublishJsons: None,
   dcbCommandTopicQueueUrl: Pulumi.Output.make(""),
   mutationEntries: [],
   queryEntries: [],
@@ -1267,7 +1264,7 @@ module Make = (
           }
         })
       {
-        dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
+        dcbEventLogOutputs: dcbEventLog->Component.outputs,
         stateChangeSlicesOutputs: Dict.fromArray(
           Array.concat(
             stateChangeSlicesOutputs->Dict.toArray,
@@ -1278,8 +1275,8 @@ module Make = (
         automationSlicesOutputs,
         outboundTranslationSlicesOutputs,
         inboundTranslationSlicesOutputs,
-        dcbRuntimeSetup: Some(dcbRuntimeSetup),
-        dcbPublishJsons: Some(publishJsons),
+        dcbRuntimeSetup,
+        dcbPublishJsons: publishJsons,
         dcbCommandTopicQueueUrl,
         mutationEntries: Array.concat(mutationEntriesFromSlices, mutationEntriesFromInboundSlices),
         queryEntries: stateViewEntries

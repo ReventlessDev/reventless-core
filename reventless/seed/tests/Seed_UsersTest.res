@@ -132,8 +132,6 @@ describe("Seed_Users.label:", () => {
         username: "admin",
         password: "x",
         groups: ["Admin", "Shopper"],
-        userId: None,
-        demoOwner: None,
       }),
     )->Expect.toBe("admin  [Admin, Shopper]")
   })
@@ -144,8 +142,6 @@ describe("Seed_Users.label:", () => {
         username: "admin",
         password: "x",
         groups: [],
-        userId: None,
-        demoOwner: None,
       }),
     )->Expect.toBe("admin")
   })
@@ -159,8 +155,7 @@ describe("Seed_Users.label:", () => {
         username: "admin",
         password: "x",
         groups: ["Admin"],
-        userId: Some("4275e4a4-00c1-70e1-1cb5-363b06b992b5"),
-        demoOwner: None,
+        userId: "4275e4a4-00c1-70e1-1cb5-363b06b992b5",
       }),
     )->Expect.toBe("admin  [Admin]")
   })

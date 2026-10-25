@@ -185,7 +185,6 @@ function groupExtensionPoints(epFiles) {
   let extensionPoints = [];
   if (flatEpMappings.length !== 0) {
     extensionPoints.push({
-      group: undefined,
       mappings: sortedStems(flatEpMappings)
     });
   }

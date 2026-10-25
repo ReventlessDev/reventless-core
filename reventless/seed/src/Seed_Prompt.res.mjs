@@ -150,9 +150,7 @@ function typedUser(username, password) {
   return {
     username: username,
     password: password,
-    groups: [],
-    userId: undefined,
-    demoOwner: undefined
+    groups: []
   };
 }
 

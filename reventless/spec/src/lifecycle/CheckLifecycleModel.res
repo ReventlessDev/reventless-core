@@ -419,13 +419,13 @@ type declaredCommand = {
   level: string,
   /** The field carrying the id of the row the command addresses, where the
       component has one. Used to tell this row's setup from the rest of it. */
-  aggregateIdField: option<string>,
-  allowedStates: option<array<string>>,
-  targetState: option<string>,
+  aggregateIdField?: string,
+  allowedStates?: array<string>,
+  targetState?: string,
   /** `"unrestricted"` is the one value this reads for: it is how a declared
       "legal in every state" reaches here, since the from-set it publishes is
       the same `None` as saying nothing at all. */
-  allowedStatesSource: option<string>,
+  allowedStatesSource?: string,
 }
 
 type declaredWritable = {
@@ -434,7 +434,7 @@ type declaredWritable = {
   commands: array<declaredCommand>,
 }
 
-type declaredView = {name: string, lifecycleField: option<string>}
+type declaredView = {name: string, lifecycleField?: string}
 
 type declared = {writables: array<declaredWritable>, views: array<declaredView>}
 
@@ -455,10 +455,10 @@ let declaredCommandOf = (d: dict<JSON.t>): option<declaredCommand> =>
   ->Option.map(command => {
     command,
     level: levelOf(d),
-    aggregateIdField: d->getStr("aggregateIdField"),
-    allowedStates: getStrsOpt(d, "allowedStates"),
-    targetState: d->getStr("targetState"),
-    allowedStatesSource: d->getStr("allowedStatesSource"),
+    aggregateIdField: ?(d->getStr("aggregateIdField")),
+    allowedStates: ?getStrsOpt(d, "allowedStates"),
+    targetState: ?(d->getStr("targetState")),
+    allowedStatesSource: ?(d->getStr("allowedStatesSource")),
   })
 
 let declaredOf = (structure: JSON.t): option<declared> =>
@@ -479,7 +479,9 @@ let declaredOf = (structure: JSON.t): option<declared> =>
       )
     let viewsFrom = key =>
       getObjs(s, key)->Array.filterMap(v =>
-        v->getStr("name")->Option.map(name => {name, lifecycleField: v->getStr("lifecycleField")})
+        v
+        ->getStr("name")
+        ->Option.map(name => {name, lifecycleField: ?(v->getStr("lifecycleField"))})
       )
     {
       writables: Array.concat(writablesFrom("aggregates"), writablesFrom("stateChangeSlices")),
@@ -1147,7 +1149,7 @@ let runPlugin = async (
     corpora->Array.forEach(c =>
       if isViewPath(c.path) {
         switch declared.views->Array.find(v => v.name == c.component) {
-        | Some({lifecycleField: Some(field)}) =>
+        | Some({lifecycleField: ?Some(field)}) =>
           mapsByView->Dict.set(
             c.component,
             lifecycleMapFor(~scenarios=c.scenarios, ~field, ~ambiguities, ~view=c.component),

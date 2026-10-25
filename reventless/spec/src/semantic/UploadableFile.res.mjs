@@ -10,8 +10,7 @@ function forField(plugin, store) {
     TAG: "StoredIn",
     _0: {
       plugin: plugin,
-      store: store,
-      threshold: undefined
+      store: store
     }
   });
 }

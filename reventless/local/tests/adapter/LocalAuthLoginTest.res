@@ -394,8 +394,8 @@ describe("the conformance table, minted locally", () => {
   ReventlessCore.Auth_ActiveRole.conformanceCases->Array.forEach(({
     label,
     membership,
-    requested,
-    expected,
+    ?requested,
+    ?expected,
   }) =>
     testPromise(
       label,

@@ -416,8 +416,7 @@ function prepare(file) {
   });
   let fills = minted.map((password, index) => ({
     index: index,
-    password: password,
-    userId: undefined
+    password: password
   }));
   let e$1 = fillFile(file, fills);
   if (e$1.TAG !== "Ok") {

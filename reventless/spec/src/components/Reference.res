@@ -32,7 +32,7 @@ let to_ = (~plugin=?, ~key=?, entity: string): S.t<string> => {
   let base =
     S.string
     ->S.Metadata.set(~id=DcbTag.dcbTagId, true)
-    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin}))
+    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, ?plugin}))
   switch key {
   | Some(k) => base->S.Metadata.set(~id=DcbTag.dcbTagKeyOverrideId, k)
   | None => base
@@ -49,7 +49,7 @@ let mark = (schema: S.t<'a>, ~plugin=?, ~key=?, entity: string): S.t<'a> => {
   let base =
     schema
     ->S.Metadata.set(~id=DcbTag.dcbTagId, true)
-    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin, ?identity}))
+    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, ?plugin, ?identity}))
   switch key {
   | Some(k) => base->S.Metadata.set(~id=DcbTag.dcbTagKeyOverrideId, k)
   | None => base
@@ -61,7 +61,7 @@ let markWithoutDcbTag = (schema: S.t<'a>, ~plugin=?, entity: string): S.t<'a> =>
   let identity = Semantic.identityKey(schema)
   schema->Semantic.mark(
     ~id=Semantic.Id.reference,
-    ~payload=ReferenceTo({entity, plugin, ?identity}),
+    ~payload=ReferenceTo({entity, ?plugin, ?identity}),
   )
 }
 
@@ -149,4 +149,4 @@ Use with `@ref("Entity") @noDcbTag` when the field references another entity
 but should not participate in content-based event routing.
 */
 let toWithoutDcbTag = (~plugin=?, entity: string): S.t<string> =>
-  S.string->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin}))
+  S.string->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, ?plugin}))

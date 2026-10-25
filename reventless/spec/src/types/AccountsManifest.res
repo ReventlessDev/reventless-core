@@ -81,8 +81,8 @@ nobody holds.
 */
 type fill = {
   index: int,
-  password: option<string>,
-  userId: option<string>,
+  password?: string,
+  userId?: string,
 }
 
 /** What a fill actually did, so the caller can report it rather than guess. */
@@ -126,7 +126,7 @@ Empty means empty or whitespace; anything else is somebody's choice.
 let applyFills = (yamlText: string, fills: array<fill>): result<(string, array<filled>), string> =>
   try {
     let doc = parseDocument(yamlText)
-    let report = fills->Array.map(({index, password, userId}) => {
+    let report = fills->Array.map(({index, ?password, ?userId}) => {
       let passwordWritten = switch password {
       | Some(generated)
         if doc->currentString(index, "password")->Option.getOr("")->String.trim == "" =>
@@ -402,7 +402,7 @@ let prepare = (~path as file: string): result<array<prepared>, string> =>
       entries->Array.map(entry =>
         entry.password->String.trim == "" ? Some(Util_Password.generate()) : None
       )
-    let fills = minted->Array.mapWithIndex((password, index) => {index, password, userId: None})
+    let fills = minted->Array.mapWithIndex((password, index) => {index, ?password})
     switch fillFile(~path=file, ~fills) {
     | Error(_) as e => e
     | Ok(report) =>

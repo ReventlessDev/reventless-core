@@ -25,5 +25,5 @@ let fromString = (raw: string): result<t, string> => StorageRef.fromString(raw)
 let forField = (~plugin: option<string>=?, ~store: string): S.t<t> =>
   StorageRef.refinement->Semantic.mark(
     ~id=Semantic.Id.uploadableFile,
-    ~payload=StoredIn({plugin, store, threshold: None}),
+    ~payload=StoredIn({?plugin, store}),
   )

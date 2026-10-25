@@ -21,7 +21,7 @@ type componentType = ComponentKind.t =
 type discoveredFile = {
   stem: string,
   componentType: componentType,
-  epGroup: option<string>,
+  epGroup?: string,
   relPath: string,
 }
 
@@ -139,7 +139,8 @@ let collectFiles = (
       }
       if !isExcluded(relPath, exclude) {
         switch stemOf(filename) {
-        | Some(stem) if !isSkipped(stem) => acc->Array.push({stem, componentType, epGroup, relPath})
+        | Some(stem) if !isSkipped(stem) =>
+          acc->Array.push({stem, componentType, ?epGroup, relPath})
         | _ => ()
         }
       }
@@ -232,7 +233,7 @@ let rec walkDir = (
         if !isExcluded(relPath, exclude) {
           switch stemOf(filename) {
           | Some(stem) if !isSkipped(stem) =>
-            acc->Array.push({stem, componentType: ct, epGroup, relPath})
+            acc->Array.push({stem, componentType: ct, ?epGroup, relPath})
           | _ => ()
           }
         }

@@ -147,7 +147,7 @@ let announce = (t: t): unit =>
     collapsed them would tell an in-memory platform to check its disk. */
 let storePath = (t: t): result<string, string> =>
   switch t.origin {
-  | Running({store: {kind: "sqlite", path: Some(path)}}) => Ok(path)
+  | Running({store: {kind: "sqlite", path: ?Some(path)}}) => Ok(path)
   | Running({store: {kind: "memory"}, endpoint}) =>
     Error(`the platform at ${endpoint} keeps its store in memory; restart it to empty it.`)
   | Running({store: {kind: "postgres"}, endpoint}) =>

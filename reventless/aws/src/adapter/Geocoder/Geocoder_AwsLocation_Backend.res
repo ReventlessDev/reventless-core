@@ -57,7 +57,7 @@ let search = async (~indexName: string, ~text: string, ~maxResults: int=5): resu
                 Some({
                   Reventless.Geocoding.label: place.label->Option.getOr(""),
                   point,
-                  relevance: r.relevance,
+                  relevance: ?r.relevance,
                 })
               // A coordinate that fails the range check is dropped rather than
               // propagated: it cannot be stored, and one bad row should not lose

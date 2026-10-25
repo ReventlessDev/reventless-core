@@ -34,7 +34,7 @@ let row = (category, reference, outcome, detail, settledAt): state => {
   origin: "Default",
   detail,
   decidedAt: "1970-01-01T00:00:00Z",
-  settledAt,
+  ?settledAt,
 }
 
 describe("NotificationDeliveries StateViewSliceStream", () => {

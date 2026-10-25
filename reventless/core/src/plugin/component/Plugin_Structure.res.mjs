@@ -481,7 +481,6 @@ function identityReference(identityViews, fieldName, fieldSchema, declared) {
           fieldName,
           {
             entity: view,
-            plugin: undefined,
             identity: key
           }
         ]];
@@ -495,7 +494,6 @@ function identityReference(identityViews, fieldName, fieldSchema, declared) {
       fieldName,
       {
         entity: view$1,
-        plugin: undefined,
         identity: key
       }
     ]];

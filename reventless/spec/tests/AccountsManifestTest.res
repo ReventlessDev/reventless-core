@@ -109,8 +109,8 @@ describe("AccountsManifest.parseString", () => {
 describe("AccountsManifest.applyFills", () => {
   let fill = (~index, ~password=?, ~userId=?) => {
     AccountsManifest.index,
-    password,
-    userId,
+    ?password,
+    ?userId,
   }
 
   // The reason the rewrite goes through `parseDocument` rather than

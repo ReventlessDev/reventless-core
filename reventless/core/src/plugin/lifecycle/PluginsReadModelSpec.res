@@ -55,7 +55,7 @@ type state = {
   // it through a dedicated resolver path. What it must not be is a column in a
   // generated list view — it is a multi-kilobyte JSON blob, and a query that names
   // it drags one per row over the wire to render a cell nobody reads.
-  @hidden apiSchemaFragment: option<JSON.t>,
+  @hidden apiSchemaFragment?: JSON.t,
   // API target for split-API schema routing. Absent/None means "Domain" (backward compat).
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
@@ -66,12 +66,12 @@ type state = {
   //
   // `@hidden` for the same reason, and more so: this is the larger of the two
   // blobs.
-  @hidden structure: option<JSON.t>,
+  @hidden structure?: JSON.t,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.
   // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
   // for pure-aggregate plugins or for plugins persisted before Phase 4.
-  dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
+  dcbEventLog?: Reventless.Plugin.dcbEventLogDefinition,
   // Business role of the plugin (from pluginDefinition.kind). Lets the admin Plugins
   // view segregate PlatformInfrastructure / Commercial / Marketplace from Domain.
   // @scan opts the field into server-side equality filtering so the connection gains
@@ -88,7 +88,7 @@ type state = {
   // bookkeeping row). Optional here → nullable `Platform_PluginKind` in the SDL, so a
   // blank kind degrades to a missing group (AutoListView's trailing group) instead of
   // taking down the whole list. Backfill then upgrades blanks to real kinds.
-  @scan @groupBy kind: option<Reventless.Plugin.pluginKind>,
+  @scan @groupBy kind?: Reventless.Plugin.pluginKind,
   // Other versions of this name that are currently **Connected** — excludes this
   // row's own `version` (whose status is the `status` field above). Lets the
   // projection recompute which version is current (highest Connected) during a
@@ -108,9 +108,9 @@ type queryResult = {
   extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
-  apiSchemaFragment: option<JSON.t>,
+  apiSchemaFragment?: JSON.t,
   apiTarget?: string,
-  structure: option<JSON.t>,
-  dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
-  kind: option<Reventless.Plugin.pluginKind>,
+  structure?: JSON.t,
+  dcbEventLog?: Reventless.Plugin.dcbEventLogDefinition,
+  kind?: Reventless.Plugin.pluginKind,
 }

@@ -18,7 +18,7 @@ let logAction = makeStr => log.debugLazy(~comp="Projection", makeStr)
 // schema and applied to one JSON round trip per written state.
 
 type overlays = {
-  displayName: option<Reventless.DisplayName.displayNameSpec>,
+  displayName?: Reventless.DisplayName.displayNameSpec,
   // (trail field, lifecycle field). A trail with no lifecycle field to follow
   // records nothing — there is no value to append.
   trail: option<(string, string)>,
@@ -33,7 +33,7 @@ let overlaysFor = (stateSchema: S.t<unknown>): option<overlays> => {
   | (Some(trailField), Some(lifecycleField)) => Some((trailField, lifecycleField))
   | _ => None
   }
-  displayName->Option.isNone && trail->Option.isNone ? None : Some({displayName, trail})
+  displayName->Option.isNone && trail->Option.isNone ? None : Some({?displayName, trail})
 }
 
 // `priorLifecycle` is what the row's lifecycle field held before the action.
@@ -42,7 +42,7 @@ let overlaysFor = (stateSchema: S.t<unknown>): option<overlays> => {
 // read one would produce a different trail on every replay.
 let applyOverlays = (
   stateDict: dict<JSON.t>,
-  {displayName, trail}: overlays,
+  {?displayName, trail}: overlays,
   ~priorLifecycle: option<JSON.t>,
   ~at: string,
 ): unit => {
@@ -135,7 +135,7 @@ let rewriteAction = (action: action<'id, 'state>, ~at: string, stateSchema: S.t<
 // The trail alone, for the two callers that must not compose `displayName`.
 let trailOverlays = (stateSchema: option<S.t<unknown>>): option<overlays> =>
   switch stateSchema->Option.flatMap(overlaysFor) {
-  | Some({trail: Some(_)} as overlays) => Some({...overlays, displayName: None})
+  | Some({trail: Some(_)} as overlays) => Some({...overlays, displayName: ?None})
   | _ => None
   }
 

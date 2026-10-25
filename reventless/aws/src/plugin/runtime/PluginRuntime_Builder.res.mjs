@@ -266,7 +266,6 @@ function Make(EventCollectorChannel) {
           eventTopicArn: adminEpEventTopicArn,
           aggregateNames: [PluginSpec$ReventlessCore.name]
         }],
-      connectExtension: undefined,
       extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.output(""),
       publishToAggregates: {},

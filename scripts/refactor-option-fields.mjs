@@ -4,7 +4,7 @@
 //
 //   node scripts/refactor-option-fields.mjs --group A            # report what would change
 //   node scripts/refactor-option-fields.mjs --group A --write    # apply it
-//   node scripts/refactor-option-fields.mjs --group E --only Discovery.res,Pairing.res
+//   node scripts/refactor-option-fields.mjs --group E --only Discovery.res,StateAnnotations.res:stateAnnotationSpec
 //
 // What it rewrites, per field of the group's records:
 //   1. the declaration      `name: option<T>`        -> `name?: T`
@@ -18,7 +18,7 @@
 //                           qualified `{M.name: None, ...}`, whose label carries the type
 //   6. a `Some(` spanning lines is unwrapped with its trailing comma
 // Text inside a string literal is left alone. After `--write` and a build,
-// `--fix-build` rebuilds the root and prefixes `?` wherever the compiler says an
+// `--fix-build [dir]` rebuilds the root (or that build root) and prefixes `?` wherever the compiler says an
 // `option` value is passed to an optional field (`name: ?value`, `?name`), until
 // it names nothing more of that kind; what it prints last is left to read.
 // Sites are matched by field name, so a field another record shares (`plugin`,
@@ -41,7 +41,11 @@ if (!group) { console.error("usage: refactor-option-fields.mjs --group <A|B|C|D|
 
 const inventory = JSON.parse(
   execFileSync("node", [path.join(root, "scripts/inventory-option-fields.mjs"), "--json"], { encoding: "utf8" }),
-).filter((r) => r.group === group && (!only || only.some((o) => r.file.endsWith(o))));
+).filter((r) => r.group === group && (!only || only.some((o) => {
+  // `File.res` takes every record of the file; `File.res:type` takes that one record.
+  const [file, type] = o.split(":");
+  return r.file.endsWith(file) && (!type || r.type === type);
+})));
 if (inventory.length === 0) { console.log("nothing in that group"); process.exit(0); }
 
 const allFiles = execFileSync("git", ["ls-files", "*.res"], { cwd: root, encoding: "utf8" }).split("\n").filter(Boolean);
@@ -61,7 +65,7 @@ for (const r of inventory) {
   let after = before;
   if (m) {
     let depth = 1, j = m.index + m[0].length;
-    for (; j < before.length && depth; j++) { if (before[j] === "<") depth++; else if (before[j] === ">") depth--; }
+    for (; j < before.length && depth; j++) { if (before[j] === "<") depth++; else if (before[j] === ">" && before[j - 1] !== "=") depth--; }
     after = before.slice(0, m.index) + `${r.field}?: ` + before.slice(m.index + m[0].length, j - 1) + before.slice(j);
   }
   if (after === before) continue;
@@ -180,16 +184,29 @@ if (write) {
   console.log("\ndry run; pass --write to apply.");
 }
 
-// Rebuild the root and answer every "you're passing an optional value" refusal with `?`.
+// Rebuild the root and answer every "you're passing an optional value" refusal with
+// `?`, and every "is not optional ... Use without ?" by taking the `?` back.
 function fixBuild() {
   for (let round = 0; round < 500; round++) {
     let text = "";
-    try { execFileSync("pnpm", ["exec", "rescript", "build"], { cwd: root, encoding: "utf8", stdio: "pipe" }); }
+    try { execFileSync("pnpm", ["exec", "rescript", "build", ...(flag("--fix-build")?.startsWith("-") === false ? [flag("--fix-build")] : [])], { cwd: root, encoding: "utf8", stdio: "pipe" }); }
     catch (e) { text = `${e.stdout ?? ""}${e.stderr ?? ""}`.replace(/\x1b\[[0-9;]*m/g, ""); }
     if (!text) { console.log(`build passes after ${round} fix(es)`); return; }
     let fixed = 0;
     for (const block of text.split("We've found a bug for you!").slice(1)) {
       const at = /(\/\S+\.res):(\d+):(\d+)/.exec(block);
+      if (at && /Field \S+ is not optional in type .*Use without \?/s.test(block)) {
+        const lines = fs.readFileSync(at[1], "utf8").split("\n");
+        const l = Number(at[2]) - 1, c = Number(at[3]) - 1;
+        const q = lines[l].lastIndexOf("?", c);
+        if (q >= 0 && /^\s*$/.test(lines[l].slice(q + 1, c))) {
+          lines[l] = lines[l].slice(0, q) + lines[l].slice(q + 1);
+          fs.writeFileSync(at[1], lines.join("\n"));
+          console.log(`${path.relative(root, at[1])}:${l + 1}  ? taken back`);
+          fixed++;
+        }
+        continue;
+      }
       if (!at || !block.includes("you're passing an optional value to it")) continue;
       const lines = fs.readFileSync(at[1], "utf8").split("\n");
       const l = Number(at[2]) - 1, c = Number(at[3]) - 1, head = lines[l].slice(0, c).trimEnd();
@@ -202,3 +219,4 @@ function fixBuild() {
     if (!fixed) { console.log(text.slice(-4000)); return; }
   }
 }
+
