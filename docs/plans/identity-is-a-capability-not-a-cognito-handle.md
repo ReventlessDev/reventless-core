@@ -423,6 +423,12 @@ What the narrow door authenticates with — its own API key, an unauthenticated 
 something else — is not decided and belongs to whoever builds it. The honesty ledger's API-key expiry
 claim still applies if it is a key.
 
+*Planned 2026-10-25* in the registration plan's
+[Switching it on and off, and the AWS door](self-registration-is-a-chapter-not-a-trait.md#switching-it-on-and-off-and-the-aws-door--planned-2026-10-25):
+a second AppSync API with an API key only, holding exactly the `AllowAnonymous` fields
+([its DWQ2](self-registration-is-a-chapter-not-a-trait.md#open-questions), recommended, not yet
+decided), with the limit and a deployed stash beside it.
+
 ✅ **Its one follow-up in code is made (2026-09-11).** `AppSync_SdlDecorate.refuseAnonymousFields`
 (where 3a's refusal now lives) told the author to add `API_KEY` as a third auth provider on this API —
 the rejected shape. It now says anonymous fields are deferred to a separate API and warns against the

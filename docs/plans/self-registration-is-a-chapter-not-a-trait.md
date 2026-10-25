@@ -12,7 +12,10 @@ in code, with whether a self-service role is open kept live per role
 identity plan's
 [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
 which must enforce the same limit before any public sign-up, and with it the admission check and the
-shell's configuration on AWS. **2026-10-25: the chapter is reusable by other apps**, as the
+shell's configuration on AWS. **Planned 2026-10-25:** those, a deployed stash, a starting state per
+platform (open locally, closed on AWS) and a switch for the administrator in the shell
+([Switching it on and off, and the AWS door](#switching-it-on-and-off-and-the-aws-door--planned-2026-10-25),
+steps [DW1](#dw1-a-starting-state-per-platform) to [DW9](#dw9-the-example-on-aws-and-the-walk)). **2026-10-25: the chapter is reusable by other apps**, as the
 package `@reventlessdev/reventless-registration` an app's plugin lists
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
 [R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices),
@@ -627,6 +630,192 @@ slices is the shop's — is carried instead by the package compiling with no app
   plugin, by [R1](#r1-a-plugin-lists-slices-an-installed-package-provides).
 - A plugin stays per app. What is published is slices; the roles and the table never leave the app.
 
+## Switching it on and off, and the AWS door — planned 2026-10-25
+
+### In plain words
+
+Two things are missing before a deployment on AWS can let visitors sign up, and one of them is
+missing on both platforms.
+
+**Switching.** An administrator can already open and close a self-service role with
+`OpenRegistration` and `CloseRegistration`, live and logged, on the local platform. What is
+missing is the **starting state**: [A2](#a2-the-policy-per-role) made a declared self-service
+role open while nothing is recorded, everywhere. The wanted behavior differs by platform. Locally a
+self-service role starts **open**, and an administrator may close it. On AWS it starts **closed**,
+and an administrator opens it for a while — for a demo, say — with an end, and it closes again by
+itself, with no deploy. And there is no screen for it: the commands are reachable by any client
+signed in as an administrator, but the shell offers no switch.
+
+**The AWS door.** Everything a sign-up needs exists on AWS — SES sends the code, the Cognito
+provider creates the account
+([Step 3c, AWS half](identity-is-a-capability-not-a-cognito-handle.md#step-3c-aws-half--the-cognito-provider--built-2026-10-22)),
+and the pool's own sign-up stays `adminOnly` — except four things: a door a caller who is not
+signed in can reach, the limit on that door, a deployed stash for the password, and the deploy's
+admission check and shell configuration, which today run on the local platform only.
+
+This section plans both. Steps [DW1](#dw1-a-starting-state-per-platform) to
+[DW4](#dw4-a-switch-for-the-administrator) are the switch, useful locally at once;
+[DW5](#dw5-a-narrow-door-for-visitors-on-aws) to [DW9](#dw9-the-example-on-aws-and-the-walk) are
+AWS. The admission per role, the ledger and the doors do not change.
+
+### Decisions
+
+- **The starting state is deploy configuration; the switch is domain state.** This is the layer
+  [Where each knob lives](#where-each-knob-lives--and-only-one-layer-is-config) named — "the safe
+  default at first boot" — and [A2](#a2-the-policy-per-role) skipped. What a deployment starts with
+  is a fact of the environment (a laptop or a public URL), so it is configuration; what an
+  administrator did since is recorded and wins.
+- **Open locally, closed on AWS, by default; a deployment may say otherwise.** A developer
+  registering on their own machine should not need a command first; a public URL should not accept
+  strangers until someone decides so.
+- **An open window that ends returns to the starting state**, not to closed. On AWS that is closed,
+  which is the point of a demo window; locally it is open, which is what nothing-recorded means
+  there. This replaces "past its end, `Open` refuses exactly as `Closed` does" — which said the same
+  thing while the only starting state was open-for-a-closed-deployment.
+- **Who may switch is unchanged:** `RegistrationPolicy` is `AllowRoles([Admin])`, refused to
+  anyone else by the server on both platforms. The shell hiding the switch from others is
+  convenience, not the gate.
+- **The door for visitors is a second, narrow API**, as the identity plan's
+  [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)
+  decided; the platform API keeps its two auth types and goes on refusing `AllowAnonymous` fields.
+
+### Open questions
+
+Numbered DWQ1 to DWQ3.
+
+**DWQ1. How does the ledger learn the starting state?** A `decide` reads events and the command,
+not configuration. **Recommendation:** the sign-up door stamps it onto `Register`, as it already
+stamps the arrival time — the platform hands its inbound translations the setting beside the
+capabilities it hands them, filled from each platform's configuration. `Register` is `@noApi`, so
+no caller can forge it, and the ledger stays a pure function of what it is told. The policy slice
+needs nothing: from nothing recorded, both `OpenRegistration` and `CloseRegistration` record.
+
+**DWQ2. What authenticates the narrow door?** Three shapes:
+
+| Shape | For | Against |
+|---|---|---|
+| A second AppSync API, API key only, holding exactly the `AllowAnonymous` fields | the shell speaks GraphQL to it as to the platform API; AppSync hands the resolver the source address the limit needs; the risk sits in one small API | the key ships in `config.json` (it identifies, it does not protect); a key expires within a year; no `AppSync_ApiKey` binding exists |
+| A guest role from a Cognito identity pool, IAM on the platform API | no key; IAM can name single fields | a third kind of caller on the platform API's IAM directive, which the platform's own callers use; an identity pool to provision; the shell signs requests |
+| An HTTP API and a Lambda of its own, no auth | nothing to rotate | not GraphQL: a second client path in the shell and a second request shape for the same doors |
+
+**Recommendation:** the first. It is the "separate narrow door" Step 3b chose, it keeps one request
+shape, and treating the key as a public identifier is honest — the protection is the limit
+([DW6](#dw6-the-limit-on-aws)) and the oracle-safe answers, as on the local platform. Each deploy
+renews the key before it expires.
+
+**DWQ3. Does the switch need a command line too?** **Recommendation:** not now. The shell's switch
+([DW4](#dw4-a-switch-for-the-administrator)) serves the demo case, and the command is an ordinary
+mutation any signed-in client can send; a command line is cheap to add when a deployer without a
+browser asks.
+
+### Steps
+
+Numbered DW1 to DW9. **DW** stands for *the door and the window*.
+
+#### DW1: a starting state per platform
+
+`Reventless.Admission.initially = InitiallyOpen | InitiallyClosed` in spec, beside
+`AnonymousRequestLimit` and read the same way: `REVENTLESS_SELF_REGISTRATION_INITIALLY` locally,
+`platform:selfRegistrationInitially` on AWS, `open` or `closed`, anything else refused rather than
+defaulted. Unset, the local platform reads open and AWS reads closed.
+
+**Exit:** the type and its parse, with a test that a mistyped value refuses; each platform's
+default pinned by a test.
+
+#### DW2: the ledger and the policy read it
+
+The policy's state gains a third arm for nothing recorded (`Unset | Open(until?) | Closed`), and
+from it both commands record. The ledger reads the stamped starting state
+([DWQ1](#open-questions)) where the policy is unset or its window has passed. The view
+`RegistrationWindows` is unchanged: it holds what was recorded, and a role with no row reads as the
+starting state.
+
+**Exit:** GWT in the hybrid shop for each starting state: unset reads as it; closing from unset
+open and opening from unset closed both record; a window past its end reads as the starting state;
+a role not declared self-service is refused whatever the starting state.
+
+#### DW3: the shell is told the starting state
+
+`Platform_SelfRegistration.config` gains `initially` (`"open"` or `"closed"`), written into
+`config.json` by the platform. The shell's
+[`SelfRegistration.openRoles`](https://github.com/ReventlessDev/reventless-ui/blob/HEAD/reventless/ui-core/src/shell/auth/SelfRegistration.res)
+reads a role with no row, and one whose window has passed, as `initially`; a key without the field
+reads as open, which is what every key written before meant.
+
+**Exit:** a test on the collection per starting state; the shell's tests for a closed start (no
+link offered until a row opens it) and for an older key.
+
+#### DW4: a switch for the administrator
+
+`RegistrationPolicy` marks itself (`let admissionDoor = Reventless.Admission.Policy`), and the key
+gains `policy`, its mutation, so the shell names no plugin. The shell shows a *Registration* panel
+to a session in the administrator's group: one line per self-service role, saying open or closed
+and until when, with **Open for…** (an hour, a day, until closed) and **Close**. It sends the
+existing commands; nothing new on the server.
+
+**Exit:** the panel's tests in the shell (hidden to other sessions, the commands sent, the line
+following the view); a live walk on the local platform closing and reopening `Shopper` and seeing
+the login page follow.
+
+#### DW5: a narrow door for visitors on AWS
+
+The AWS adapter routes every `AllowAnonymous` field — the doors marked `Start` and `Complete`, and
+the `OpenRoles` view — to a second AppSync API authenticated by an API key only
+([DWQ2](#open-questions)), instead of refusing them; the platform API never carries them. The
+resolvers are the ones the platform API would have had: the inbound translation entry point and the
+view's query, handed an anonymous caller. Needs an `AppSync_ApiKey` binding in
+`rescript/pulumi-aws`. A field that is `AllowAnonymous` is refused only where the deployment does
+not host the narrow API.
+
+**Exit:** `AppSync_AdapterTest`: anonymous fields land on the narrow API and nowhere else, the
+platform API's SDL is unchanged for a deployment with none; the key's expiry is renewed by a
+redeploy.
+
+#### DW6: the limit on AWS
+
+The narrow API's resolvers apply `AnonymousRequestLimit`, read from
+`platform:anonymousRequestLimit`, per source address as AppSync reports it, counted in a DynamoDB
+table whose items expire with their window, and answer the same `Throttled` rejection as the local
+platform. The query counts like the writes. A WAF in front is not in: its windows cannot express
+the configured one, and the limit must hold before any public `Open`.
+
+**Exit:** tests over a fake table for the count, the window and the rejection; in the walk
+([DW9](#dw9-the-example-on-aws-and-the-walk)), the request past the limit answers `Throttled`.
+
+#### DW7: the stash on AWS
+
+A `Stash` backend over DynamoDB: `put` with an expiry attribute, `take` as a delete returning the
+old item, so a value is handed over once even under two concurrent takes, and an expired item read
+as `None` because DynamoDB removes expired items late. Encrypted at rest with the table's key. The
+grant follows the declaration, as Cognito's does: only the functions whose slices declare `Stash`.
+The deploy's refusal for `Stash` goes.
+
+**Exit:** tests for take-once, a late expiry read as gone, and the grant following the declaration.
+
+#### DW8: the admission check and the shell's configuration on AWS
+
+The AWS deploy calls `AdmissionCheck` as the local platform does at start
+([A6](#a6-checks-at-start-and-deploy)); "no door for visitors on this platform" now passes where the
+narrow API is hosted. The shell configuration the AWS platform writes gains the `selfRegistration`
+key, with the narrow API's address and key. The shell sends the start, complete and open-roles
+calls there and everything else to the platform API.
+
+**Exit:** a test per refusal on the AWS path; the written key; the shell's test that the three
+calls go to the narrow address with the key and no signed-in token.
+
+#### DW9: the example on AWS, and the walk
+
+The hybrid shop's AWS root hosts the registration plugin, starting closed. It deploys on every
+push, as now, and a closed start means nothing is open to visitors between demos.
+
+**Exit:** the walk on a deployed stack: the login page offers no sign-up; an administrator opens
+`Shopper` for an hour in the panel and the link appears; a visitor signs up, the code arrives by
+SES, the account is created in the `Shopper` group of a pool whose own sign-up is `adminOnly`, and
+the visitor signs in; a second sign-up for the address is answered the same and the address is
+told; the request past the limit is throttled; closing hides the link at once, and an unclosed
+window closes at its end. SES in its sandbox delivers only to verified addresses, so the walk
+uses one.
+
 ## Verification
 
 - ✅ Duplicate registration is indistinguishable from a fresh one to an anonymous caller, and the
@@ -637,7 +826,8 @@ slices is the shop's — is carried instead by the package compiling with no app
 - ✅ `Closed` refuses at `decide`, not only in the client.
 - ✅ The whole flow runs locally end to end with the log transport and no AWS.
 - On AWS, once a door exists, the flow completes against a pool whose own sign-up is `adminOnly` —
-  nothing here leans on the provider's self-service.
+  nothing here leans on the provider's self-service. Walked in
+  [DW9](#dw9-the-example-on-aws-and-the-walk).
 - ✅ The bound is taken: past its end, an `Open` window refuses exactly as `Closed` does, with no event
   recorded to close it.
 - Full build warning-free, whole suite green.
