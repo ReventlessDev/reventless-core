@@ -116,6 +116,8 @@ const sources = execSync("git ls-files '*.res' '*.resi'", { cwd: ROOT, encoding:
 //   name: option<X>   — record field, let binding, ref, labelled argument
 //   name?: X          — optional record field, optional labelled argument
 //
+// Rule 1 counts both spellings when X is a Pulumi Output.
+//
 // Comment lines are dropped first: several of these files discuss
 // `option<Pulumi.Output.t<_>>` in prose precisely because it is banned, and prose
 // must not register as a site.
@@ -207,12 +209,21 @@ for (const file of sources) {
       const [, name, rawType] = optional
       const type = declaredType(lines, i, rawType)
       noteDeclaration(file, name, i + 1, type)
+      // `name?: Pulumi.Output.t<…>` IS `option<Pulumi.Output.t<…>>`, written the
+      // way a field that may be absent is now written, so it is Rule 1's
+      // population exactly as the long spelling is. Missing it is how moving a
+      // field to the optional form would take it out of both rules unseen.
+      if (/^(?:Pulumi\.)?Output\./.test(type.trim())) {
+        declaredOutput.set(`${file}::${name}`, { file, name, line: i + 1 })
+        namesOutput.add(name)
+        return
+      }
       // A `name?: NonOutput` declaration is what disambiguates: it proves the
       // name is used for an option of something that is not a Proxy, so Rule 2
       // must not claim it. `name?: Pulumi.Input.t<…>` contributes nothing — it
       // is the idiom of every Pulumi resource-arg record in rescript/pulumi-aws
       // (hundreds, all legitimate), so it neither disambiguates nor belongs in
-      // Rule 1, which stays on the one spelling CLAUDE.md bans.
+      // Rule 1.
       if (!isOutput(type)) namesOtherOption.add(name)
     }
   })
