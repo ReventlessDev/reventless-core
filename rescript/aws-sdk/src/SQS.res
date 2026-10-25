@@ -52,10 +52,10 @@ module SendMessageCommand = {
   }
 
   type output = {
-    @as("MessageId") messageId: option<string>,
-    @as("MD5OfMessageBody") md5OfMessageBody: option<string>,
-    @as("MD5OfMessageAttributes") md5OfMessageAttributes: option<string>,
-    @as("SequenceNumber") sequenceNumber: option<string>,
+    @as("MessageId") messageId?: string,
+    @as("MD5OfMessageBody") md5OfMessageBody?: string,
+    @as("MD5OfMessageAttributes") md5OfMessageAttributes?: string,
+    @as("SequenceNumber") sequenceNumber?: string,
   }
 
   @new @module("@aws-sdk/client-sqs")
@@ -74,7 +74,7 @@ module BatchResultErrorEntry = {
     @as("Id") id: string,
     @as("SenderFault") senderFault: bool,
     @as("Code") code: string,
-    @as("Message") message: option<string>,
+    @as("Message") message?: string,
   }
 }
 
@@ -97,10 +97,10 @@ module SendMessageBatchCommand = {
 
   type sendMessageBatchResultEntry = {
     @as("Id") id: string,
-    @as("MessageId") messageId: option<string>,
-    @as("MD5OfMessageBody") md5OfMessageBody: option<string>,
-    @as("MD5OfMessageAttributes") md5OfMessageAttributes: option<string>,
-    @as("SequenceNumber") sequenceNumber: option<string>,
+    @as("MessageId") messageId?: string,
+    @as("MD5OfMessageBody") md5OfMessageBody?: string,
+    @as("MD5OfMessageAttributes") md5OfMessageAttributes?: string,
+    @as("SequenceNumber") sequenceNumber?: string,
   }
 
   type output = {

@@ -25,7 +25,9 @@ const files = execFileSync("git", ["ls-files", "*.res"], { cwd: root, encoding: 
 // A record type declaration: `type name = {` or `and name = {`, with the attributes above it.
 const typeRe = /((?:^\s*@[^\n]*\n)*)^\s*(?:type|and)\s+([a-zA-Z_][\w']*)(?:<[^>]*>)?\s*=\s*\{/gm;
 // A field written with an option type. `name?:` is already optional and does not match.
-const fieldRe = /^\s*(?:@[^\n]*\s+)*([a-z_][\w']*)\s*:\s*(option<[^\n,]*>)/gm;
+// An attribute is one token (`@as("X")`, `@s.matches(...)`), so a run of
+// attributed fields is read field by field rather than as one.
+const fieldRe = /^\s*(?:@[\w.]+(?:\([^\n]*?\))?\s+)*([a-z_][\w']*)\s*:\s*(option<[^\n,]*>)/gm;
 
 const rows = [];
 for (const file of files) {
@@ -45,7 +47,8 @@ for (const file of files) {
     if (/^\s*let\s/m.test(body) || /^\s*module\s/m.test(body)) continue;
     let fm;
     while ((fm = fieldRe.exec(body))) {
-      rows.push({ file, type: m[2], field: fm[1], inner: fm[2].replace(/\s+/g, " "), schema: /@schema/.test(m[1]) });
+      const line = code.slice(0, typeRe.lastIndex + fm.index + fm[0].length).split("\n").length;
+      rows.push({ file, line, type: m[2], field: fm[1], inner: fm[2].replace(/\s+/g, " "), schema: /@schema/.test(m[1]) });
     }
   }
 }

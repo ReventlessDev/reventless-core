@@ -219,7 +219,7 @@ type subscription = {
   bucket: t,
   handler: Lambda.CallbackFunction.t,
   args: subscriptionArgs,
-  opts: option<Pulumi.CustomResourceOptions.t>,
+  opts?: Pulumi.CustomResourceOptions.t,
 }
 
 @send

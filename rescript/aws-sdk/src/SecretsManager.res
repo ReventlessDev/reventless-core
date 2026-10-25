@@ -44,9 +44,9 @@ module GetSecretValueCommand = {
   }
 
   type output = {
-    @as("SecretString") secretString: option<string>,
-    @as("VersionId") versionId: option<string>,
-    @as("VersionStage") versionStage: option<string>,
+    @as("SecretString") secretString?: string,
+    @as("VersionId") versionId?: string,
+    @as("VersionStage") versionStage?: string,
   }
 
   @new @module("@aws-sdk/client-secrets-manager")

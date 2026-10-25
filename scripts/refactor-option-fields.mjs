@@ -51,26 +51,16 @@ const edits = new Map(); // file -> new content
 const read = (f) => edits.get(f) ?? fs.readFileSync(path.join(root, f), "utf8");
 const set = (f, s) => edits.set(f, s);
 
-// 1. declarations
+// 1. declarations, on the line the inventory read each one from (a file may
+// declare several records of one name, one per submodule)
 for (const r of inventory) {
-  let src = read(r.file);
-  const decl = new RegExp(`(^[^\\n]*?\\b)${r.field}\\s*:\\s*option<([^\\n]*?)>(\\s*,?\\s*$)`, "m");
-  // Only inside the declaring record: find the type and its body span.
-  const typeRe = new RegExp(`^\\s*(?:type|and)\\s+${r.type}(?:<[^>]*>)?\\s*=\\s*\\{`, "m");
-  const tm = typeRe.exec(src);
-  if (!tm) continue;
-  let depth = 0, end = -1;
-  for (let i = tm.index + tm[0].length - 1; i < src.length; i++) {
-    if (src[i] === "{") depth++; else if (src[i] === "}" && --depth === 0) { end = i; break; }
-  }
-  const body = src.slice(tm.index, end);
-  const fm = decl.exec(body);
-  if (!fm) continue;
-  const before = fm[0].trim();
-  const after = `${fm[1]}${r.field}?: ${fm[2]}${fm[3]}`;
-  const lineNo = src.slice(0, tm.index + fm.index).split("\n").length;
-  changes.push({ file: r.file, line: lineNo, kind: "declaration", before, after: after.trim() });
-  set(r.file, src.slice(0, tm.index) + body.replace(fm[0], after) + src.slice(end));
+  const lines = read(r.file).split("\n");
+  const before = lines[r.line - 1];
+  const after = before.replace(new RegExp(`\\b${r.field}\\s*:\\s*option<(.*)>(\\s*,?\\s*)$`), `${r.field}?: $1$2`);
+  if (after === before) continue;
+  lines[r.line - 1] = after;
+  changes.push({ file: r.file, line: r.line, kind: "declaration", before: before.trim(), after: after.trim() });
+  set(r.file, lines.join("\n"));
 }
 
 // Balanced-paren removal of `Some(` ... `)` starting at index i (pointing at "Some(").

@@ -21,7 +21,7 @@ type clientContextEnv = {
 
 type clientContext = {
   client: clientContextClient,
-  @as("Custom") custom: option<JSON.t>,
+  @as("Custom") custom?: JSON.t,
   env: clientContextEnv,
 }
 

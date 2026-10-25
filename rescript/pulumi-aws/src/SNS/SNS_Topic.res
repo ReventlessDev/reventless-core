@@ -37,15 +37,15 @@ external make: (~name: string, ~args: args=?, ~opts: Pulumi.CustomResourceOption
 
 type message = {
   @as("Message") message: string,
-  @as("SignatureVersion") signatureVersion: option<string>,
-  @as("Timestamp") timestamp: option<string>,
-  @as("Signature") signature: option<string>,
-  @as("SigningCertUrl") signingCertUrl: option<string>,
-  @as("MessageId") messageId: option<string>,
-  @as("Type") type_: option<string>,
-  @as("UnsubscribeUrl") unsubscribeUrl: option<string>,
-  @as("TopicArn") topicArn: option<string>,
-  @as("Subject") subject: option<string>,
+  @as("SignatureVersion") signatureVersion?: string,
+  @as("Timestamp") timestamp?: string,
+  @as("Signature") signature?: string,
+  @as("SigningCertUrl") signingCertUrl?: string,
+  @as("MessageId") messageId?: string,
+  @as("Type") type_?: string,
+  @as("UnsubscribeUrl") unsubscribeUrl?: string,
+  @as("TopicArn") topicArn?: string,
+  @as("Subject") subject?: string,
 }
 
 type record = {

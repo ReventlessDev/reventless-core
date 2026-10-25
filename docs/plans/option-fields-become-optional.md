@@ -1,8 +1,8 @@
 # Plan: record fields typed `option` become optional fields
 
 **Date:** 2026-10-25<br/>
-**Status:** [R1](#r1-group-a-the-published-plugin-structure) and
-[R2](#r2-group-b-command-line-arguments) done; [R3](#r3-group-c-bindings-to-javascript-apis) to
+**Status:** [R1](#r1-group-a-the-published-plugin-structure) to
+[R3](#r3-group-c-bindings-to-javascript-apis) done; [R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) and
 [R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
 that order.<br/>
 **Repos:** `reventless-core`; `reventless-tools` follows when it takes the new version (see
@@ -124,6 +124,13 @@ library, never built here.
 
 **Exit:** the inventory shows no `option` field under `rescript/`; the bindings packages build and
 their tests pass.
+
+**Done.** 22 declarations in eight files and nothing else: no site needed a change, and no
+compiled output moved. The inventory had listed ten. Its field pattern let an attribute
+(`@as("X")`) run across the lines after it, so a run of attributed fields counted as its last
+one; it now reads an attribute as one token and records each field's line, and the refactor
+script rewrites the declaration on that line rather than in the first record of that name (two
+files declare `output` once per submodule). Groups A, B and D to F are unaffected by the fix.
 
 ### R4: group D, runtime and deploy configuration built in one place
 

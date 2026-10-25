@@ -14,7 +14,7 @@ type t = {
   secretBinary: string,
   secretString: string,
   versionId: string,
-  versionStage: option<string>,
+  versionStage?: string,
   versionStages: array<string>,
 }
 

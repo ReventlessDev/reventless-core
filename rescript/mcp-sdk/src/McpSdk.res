@@ -118,7 +118,7 @@ type listToolsResult = {tools: array<toolDefinition>}
 /** tools/call request params. */
 type callToolParams = {
   name: string,
-  arguments: option<JSON.t>,
+  arguments?: JSON.t,
 }
 
 /** tools/call request. */

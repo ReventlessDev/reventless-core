@@ -34,7 +34,7 @@ module PutRecordCommand = {
   type output = {
     @as("ShardId") shardId: string,
     @as("SequenceNumber") sequenceNumber?: string,
-    @as("EncryptionType") encryptionType: option<string>,
+    @as("EncryptionType") encryptionType?: string,
   }
 
   type t
