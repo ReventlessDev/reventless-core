@@ -1,17 +1,22 @@
 # Plan: self-registration is a chapter, not a trait
 
 **Date:** 2026-09-10, revised 2026-09-11
-**Status:** 🚧 **Built and proven on the local platform 2026-10-24** for one role — `Closed` / `Open` with
+**Status:** ✅ **Built on the local platform.** 2026-10-24: one role — `Closed` / `Open` with
 an optional end, the address claim, verify-then-create, the oracle-safe answers, and the throttle's
 two layers — in a new plugin the local root hosts and the AWS root does not (*As built*, below).
-**Revised the same day: admission is per role** — self-service, by invitation, or provisioned — declared
+**2026-10-25: admission is per role** — self-service, by invitation, or provisioned — declared
 in code, with whether a self-service role is open kept live per role
 ([Admission per role](#admission-per-role--planned-2026-10-24), steps
-[A1](#a1-the-strategy-and-the-declared-table) to [A7](#a7-the-example), not built). **Still
-open besides:** the AWS door (deferred by the identity plan's
+[A1](#a1-the-strategy-and-the-declared-table) to [A7](#a7-the-example), built in commit
+`9c37bf50f`; [what landed](#as-built-2026-10-25)). **Still open:** the AWS door (deferred by the
+identity plan's
 [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)),
-which must enforce the same limit before any public sign-up. Filed 2026-09-10; revised 2026-09-11
-when the AWS door was deferred and the first requirement arrived.
+which must enforce the same limit before any public sign-up, and with it the admission check and the
+shell's configuration on AWS. **Next:** the chapter becomes reusable by other apps
+([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
+[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices)),
+beside [a door is handed its caller](a-door-is-handed-its-caller.md). Filed 2026-09-10; revised
+2026-09-11 when the AWS door was deferred and the first requirement arrived.
 **Repos:** `reventless-core` only.
 **Blocks on:** [identity-is-a-capability-not-a-cognito-handle.md](./identity-is-a-capability-not-a-cognito-handle.md)
 (hard — nothing here works without `createPrincipal`) ·
@@ -411,6 +416,104 @@ local root drops any hand-written registration key.
 **Exit:** the live walk: a shopper signs up, a merchandiser address cannot sign up and is answered
 exactly as a closed role is, `Fulfilment` cannot be declared self-service, and closing `Shopper`
 hides the link.
+
+### As built 2026-10-25
+
+Commit `9c37bf50f`, local platform only. What each step became:
+
+| Step | Where | What landed |
+|---|---|---|
+| [A1](#a1-the-strategy-and-the-declared-table) | `reventless/spec` `Admission` | `strategy<'role>`, `declare` over the plugin's own `Roles.t`, `validate`, the JSON and structure forms (`toDefs`/`fromDefs`), an unknown strategy refused |
+| [A2](#a2-the-policy-per-role) | the plugin's `RegistrationPolicy` | keyed by role; a self-service role reads as open while nothing is recorded |
+| [A3](#a3-sign-up-names-the-role) | `SignUp`, `Registrations`, `CreateRegisteredPrincipal` | `Register` names one role; the ledger's events record `roles` as a set; the principal is created in every role's group. **A command that grants several roles at once does not exist yet** — see [R3](#r3-the-ledger-takes-an-invitation-a-reissued-code-and-a-withdrawal) |
+| [A4](#a4-marked-doors-written-into-the-shells-config) | `let admissionDoor` on a door's spec; `Platform_SelfRegistration`; the local `Platform` | the generator collects marked doors into the structure; the platform writes `selfRegistration: {start, complete, roles}` into `config.json` once every structure has landed |
+| [A5](#a5-a-public-read-of-the-open-roles) | `RegistrationWindows` | a view of which roles are open now; anonymous read doors throttled like the writes |
+| [A6](#a6-checks-at-start-and-deploy) | `reventless/spec` `AdmissionCheck`, called by the local `Platform` | refused at start, naming the role: an elevated group self-service; no start-and-complete door; no anonymous door on this platform; no messaging or identity provider; a role by invitation when no structure marks an invite door. **Not called on AWS**, which today would refuse every self-service role since it admits no anonymous caller |
+| [A7](#a7-the-example) | the hybrid shop's `Admission.res` | shoppers self-service, staff provisioned; `Roles.t` grew to the four roles |
+
+Pinned by `AdmissionTest`, `Platform_SelfRegistrationTest`, and the plugin's GWTs. The live walk
+of [A7](#a7-the-example) is not recorded here.
+
+**What the slices read, and why it matters next.** The sign-up translation reads `Admission.table`
+to pick the default role, and the principal creator reads `Role.groupOf`. Both are the plugin's own
+modules, which is right for a chapter copied into one app and is exactly what stops the chapter
+being installed as a package: see [R2](#r2-a-packaged-slice-reads-the-apps-declaration).
+
+## Making the chapter reusable — planned 2026-10-25
+
+### In plain words
+
+The registration chapter exists once, inside the hybrid shop's plugin, with that shop's roles and
+that shop's admission table compiled in. Every other app that wants a self-service role copies it,
+as the trait plan said hosts would until the trait is extracted
+([Phase C](trait-contact-verification.md#phase-c--extract-writing-the-procedure-down-as-you-go)).
+A plugin cannot be published as a package, because a plugin is per app: it carries the app's roles.
+What can be published is its **slices**. So the road to reuse is: let a plugin list slices from an
+installed package, let such a slice read the app's declaration without importing the app's module,
+and publish the chapter as a library of slices the hybrid shop's plugin lists instead of carrying.
+
+Two facts shape the steps. **A door relays only to a slice of its own plugin**: a published command
+goes to the plugin's topic on both platforms, so a door that invites has to be a slice of the same
+plugin as the ledger it writes, which is why the ledger's invitation arms are open and `@noApi` and
+the door that reaches them may come from another package. And **the ledger's arms are generally
+useful** whichever door reaches them: a reissued code serves a sign-up as much as an invitation, and
+a withdrawal is an administrator cancelling a pending registration.
+
+### Steps
+
+Numbered R1 to R4. **R** stands for *reusable*.
+
+#### R1: a plugin lists slices an installed package provides
+
+The generator scans `src/` for slices and writes the composition. It gains a way for a plugin to
+name slices from a package its `rescript.json` depends on: a list beside the discovered ones, read
+off the compiled modules so the compiler checks them, in the generated `Plugin.res` and in the
+structure, with the chapter of each recorded as the plugin's.
+
+**Exit:** a test plugin lists one packaged slice; its structure and its GraphQL API show it as the
+plugin's own; `generate` is byte-identical for a plugin that lists none.
+
+#### R2: a packaged slice reads the app's declaration
+
+A packaged `SignUp` cannot import the app's `Admission`. Two shapes: the slices are functors over a
+small module the app supplies, with its `Roles.t` and its table, so a misspelled role stays a compile
+error; or the platform hands the table to its slices at construction, read off the structure. Decide
+here; *recommendation:* the functor, because the declaration was designed to be checked by the
+compiler, and the structure already carries the table for the platform's own reads.
+
+**Exit:** the registration slices built with the chosen shape; the hybrid shop's plugin supplies its
+roles and table and nothing else of its own to them.
+
+#### R3: the ledger takes an invitation, a reissued code and a withdrawal
+
+`Registrations` gains three `@noApi` commands, reachable only through a door: `Invite({email, roles,
+invitedBy, requestedAt})`, which claims the address and records who invited and as what, with the set
+of roles [A3](#a3-sign-up-names-the-role) left room for; `ReissueChallenge`, which voids the current
+code and records a new one; and `Withdraw`, which releases the address. The events say which arm
+produced them, so a sender can word an invitation differently from a sign-up. Whether an invitation's
+window is longer than a sign-up's is keyed by purpose in the challenge rules.
+
+**Exit:** GWT per command; the completion door settles an invited registration into every invited
+role's group with no change to itself; nothing in the hybrid shop reaches the three commands, since
+it declares no role by invitation.
+
+#### R4: the chapter is published as a library of slices
+
+The registration slices move to a package of their own under `reventless/`, Apache 2.0, built with
+[R2](#r2-a-packaged-slice-reads-the-apps-declaration)'s shape. The hybrid shop's plugin shrinks to
+`Roles.res`, `Admission.res`, the copied challenge rules until the trait is extracted, and the list
+[R1](#r1-a-plugin-lists-slices-an-installed-package-provides) reads. The example is the proof that
+an app's registration plugin is a declaration plus a list.
+
+**Exit:** the hybrid shop builds and its walk passes from the package; a second plugin in the test
+suite lists the same slices with different roles.
+
+### Decisions
+
+- The ledger's arms are open and reachable only through doors; the framework ships the sign-up and
+  completion doors and no invite door. A door another package provides is a slice of the app's
+  plugin, by [R1](#r1-a-plugin-lists-slices-an-installed-package-provides).
+- A plugin stays per app. What is published is slices; the roles and the table never leave the app.
 
 ## Verification
 
