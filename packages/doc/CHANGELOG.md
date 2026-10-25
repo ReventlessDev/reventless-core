@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-25
+- feat(admission): the open-roles view marks itself, and the shell's key names its query ([4b91015](https://github.com/ReventlessDev/reventless-core/commit/4b910153c3c477b6830ce4636b93ed5b4dfde482))
+### 2026-10-25
 - feat!: an inbound translation is handed its caller ([e7e9902](https://github.com/ReventlessDev/reventless-core/commit/e7e990282d47941cf7c1934b4e240f73f48026b3))
 - feat(spec): a plugin composes slices an installed package provides ([521d77a](https://github.com/ReventlessDev/reventless-core/commit/521d77aa01def679aab41f09c079850d6fe43e64))
 - feat: a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
