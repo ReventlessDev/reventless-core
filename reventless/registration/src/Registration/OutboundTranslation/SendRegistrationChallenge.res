@@ -17,7 +17,12 @@
 type consumedEvent =
   | RegistrationRequested({email: string, requestedAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({email: string, attemptedAt: Reventless.DateTime.t})
-  | RegistrationInvited({email: string, invitedBy: string, invitedAt: Reventless.DateTime.t})
+  | RegistrationInvited({
+      email: string,
+      roles: array<string>,
+      invitedBy: string,
+      invitedAt: Reventless.DateTime.t,
+    })
   | RegistrationChallengeReissued({
       email: string,
       reissuedAt: Reventless.DateTime.t,
@@ -25,9 +30,10 @@ type consumedEvent =
     })
 
 /** `invited` words the secret as an invitation; it is left out for a sign-up
-    and for the notice. */
+    and for the notice. `roles` names what the invitation grants, where the
+    event said: a reissued code does not. */
 @schema
-type outboundItem = {email: string, alreadyRegistered: bool, invited?: bool}
+type outboundItem = {email: string, alreadyRegistered: bool, invited?: bool, roles?: array<string>}
 
 @schema
 type inboundCommand =

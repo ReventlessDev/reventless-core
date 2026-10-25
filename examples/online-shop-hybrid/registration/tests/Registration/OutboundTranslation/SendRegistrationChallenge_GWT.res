@@ -10,7 +10,19 @@ module Outcome = ReventlessGwt.Outcome
 
 let fresh: outboundItem = {email: aliceAddress, alreadyRegistered: false}
 let taken: outboundItem = {email: aliceAddress, alreadyRegistered: true}
-let invitation: outboundItem = {email: aliceAddress, alreadyRegistered: false, invited: true}
+let invitation: outboundItem = {
+  email: aliceAddress,
+  alreadyRegistered: false,
+  invited: true,
+  roles: [merchandiserName],
+}
+/** A reissued invitation's code: worded as an invitation, but the event does
+    not say as what. */
+let reissuedInvitation: outboundItem = {
+  email: aliceAddress,
+  alreadyRegistered: false,
+  invited: true,
+}
 
 let policy = ContactVerification.emailPolicy
 
@@ -47,6 +59,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     givenEvent(
       RegistrationInvited({
         email: aliceAddress,
+        roles: [merchandiserName],
         invitedBy: "u_inviter",
         invitedAt: "2026-10-24T09:00:00.000Z",
       }),
@@ -66,7 +79,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
       }),
     )
     ->whenCollect
-    ->thenTodos([("alice@example.com:reissued:2026-10-25T09:00:00.000Z", invitation)])
+    ->thenTodos([("alice@example.com:reissued:2026-10-25T09:00:00.000Z", reissuedInvitation)])
   )
 
   // scenario-id: 90b3573e-65c5-48c5-935a-3bcfa702d8b5
@@ -103,10 +116,26 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     ])
   )
 
-  // The invitation holds a week, which its wording says.
+  // The invitation holds a week, which its wording says, and it names what it
+  // grants.
   // scenario-id: 913f90ca-b8a9-4716-a03f-e2e86a073be3
-  test("an invitation's secret goes out worded as an invitation", () =>
+  test("an invitation's secret goes out worded as an invitation, naming the roles", () =>
     givenTodo("t3", invitation)
+    ->givenCapabilities(withSecrets())
+    ->whenTranslated
+    ->thenSent([
+      TokenDrawn({length: policy.proofLength, alphabet: policy.proofAlphabet}),
+      Hashed({input: "known-secret"}),
+      mail(
+        ~subject="You are invited to create an account",
+        ~body=invitationBody(~token="known-secret", ~roles=[merchandiserName]),
+      ),
+    ])
+  )
+
+  // scenario-id: 6b1d2f8a-4c3e-4a9b-8d7f-2e5c1a9b3d40
+  test("a reissued invitation's secret is worded as an invitation, with no role to name", () =>
+    givenTodo("t4", reissuedInvitation)
     ->givenCapabilities(withSecrets())
     ->whenTranslated
     ->thenSent([

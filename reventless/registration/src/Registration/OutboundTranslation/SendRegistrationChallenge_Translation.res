@@ -7,10 +7,10 @@ let collect = (event, ~sourceId as _) =>
   | RegistrationRequested({email, requestedAt}) => [
       (`${email}:${requestedAt->Reventless.DateTime.toString}`, {email, alreadyRegistered: false}),
     ]
-  | RegistrationInvited({email, invitedAt}) => [
+  | RegistrationInvited({email, roles, invitedAt}) => [
       (
         `${email}:invited:${invitedAt->Reventless.DateTime.toString}`,
-        {email, alreadyRegistered: false, invited: true},
+        {email, alreadyRegistered: false, invited: true, roles},
       ),
     ]
   | RegistrationChallengeReissued({email, reissuedAt, ?invitedBy}) => [
@@ -37,8 +37,18 @@ let challengeBody = (~token) =>
       ~invited=false,
     )}.`
 
-let invitationBody = (~token) =>
-  `You have been invited to create an account. Your code is ${token}. Enter it with this address and a password of your choice to accept. It expires in ${expiresIn(
+/** What the invitation grants, as the mail says it: "as Merchandiser", or
+    nothing where the event did not say. */
+let asRoles = (roles: option<array<string>>) =>
+  switch roles {
+  | Some([]) | None => ""
+  | Some(roles) => ` as ${roles->Array.join(" and ")}`
+  }
+
+let invitationBody = (~token, ~roles=?) =>
+  `You have been invited to create an account${asRoles(
+      roles,
+    )}. Your code is ${token}. Enter it with this address and a password of your choice to accept. It expires in ${expiresIn(
       ~invited=true,
     )}.`
 
@@ -81,7 +91,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
           capabilities,
           ~email=item.email,
           ~subject=invited ? "You are invited to create an account" : "Finish your registration",
-          ~body=invited ? invitationBody(~token) : challengeBody(~token),
+          ~body=invited ? invitationBody(~token, ~roles=?item.roles) : challengeBody(~token),
         ) {
         | Ok(_) =>
           Ok(

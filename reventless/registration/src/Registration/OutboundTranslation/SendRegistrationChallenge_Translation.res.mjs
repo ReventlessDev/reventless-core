@@ -33,7 +33,8 @@ function collect(event, param) {
           {
             email: email$2,
             alreadyRegistered: false,
-            invited: true
+            invited: true,
+            roles: event.roles
           }
         ]];
     case "RegistrationChallengeReissued" :
@@ -57,8 +58,16 @@ function challengeBody(token) {
   return `Your registration code is ` + token + `. Enter it with a password of your choice to finish. It expires in ` + expiresIn(false) + `.`;
 }
 
-function invitationBody(token) {
-  return `You have been invited to create an account. Your code is ` + token + `. Enter it with this address and a password of your choice to accept. It expires in ` + expiresIn(true) + `.`;
+function asRoles(roles) {
+  if (roles !== undefined && roles.length !== 0) {
+    return ` as ` + roles.join(" and ");
+  } else {
+    return "";
+  }
+}
+
+function invitationBody(token, roles) {
+  return `You have been invited to create an account` + asRoles(roles) + `. Your code is ` + token + `. Enter it with this address and a password of your choice to accept. It expires in ` + expiresIn(true) + `.`;
 }
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.";
@@ -105,7 +114,7 @@ async function translate(_id, item, capabilities) {
       _0: `cannot hash a secret: ` + proofHash._0._0
     };
   }
-  let failure$1 = await send(capabilities, item.email, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1) : challengeBody(token$1));
+  let failure$1 = await send(capabilities, item.email, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1, item.roles) : challengeBody(token$1));
   if (failure$1.TAG === "Ok") {
     return {
       TAG: "Ok",
@@ -140,6 +149,7 @@ export {
   collect,
   expiresIn,
   challengeBody,
+  asRoles,
   invitationBody,
   noticeBody,
   send,
