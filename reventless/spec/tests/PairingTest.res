@@ -152,3 +152,50 @@ describe("Pairing.retiredBehaviorFile", () => {
     ))->toEqual((true, true))
   })
 })
+
+// The generator reads a few values straight off source lines, so a quote in a
+// trailing comment must not be read as the value.
+describe("Pairing.codeOf", () => {
+  testSync("drops a trailing comment", () =>
+    expect(
+      Pairing.codeOf(`let targetName = None // or Some("Slice") when a command goes back`),
+    )->toBe("let targetName = None")
+  )
+
+  testSync("keeps a // inside a string literal", () =>
+    expect(Pairing.codeOf(`let targetName = "a//b" // note`))->toBe(`let targetName = "a//b"`)
+  )
+
+  testSync("keeps an escaped quote inside a string literal", () =>
+    expect(
+      Pairing.codeOf(`let x = "say \\"hi\\" // not a comment"`),
+    )->toBe(`let x = "say \\"hi\\" // not a comment"`)
+  )
+
+  testSync("leaves a line with no comment alone", () =>
+    expect(
+      Pairing.codeOf(`let targetName = Some("Orders")`),
+    )->toBe(`let targetName = Some("Orders")`)
+  )
+})
+
+describe("Pairing.extractTargetName", () => {
+  let read = text => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "target-name-"]))
+    let path = NodePath.join([dir, "Spec.res"])
+    NodeFs.writeFileSync(path, text)
+    let found = Pairing.extractTargetName(path)
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+    found
+  }
+
+  testSync("a quote in a trailing comment is not a target", () =>
+    expect(read(`let targetName = None // or Some("Slice") when a command goes back`))->toEqual(
+      None,
+    )
+  )
+
+  testSync("a target followed by a comment is still read", () =>
+    expect(read(`let targetName = Some("Orders") // the ledger`))->toEqual(Some("Orders"))
+  )
+})

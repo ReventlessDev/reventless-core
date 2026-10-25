@@ -91,6 +91,39 @@ function sortedStems(stems) {
   });
 }
 
+function codeOf(line) {
+  let _i = 0;
+  let _inString = false;
+  while (true) {
+    let inString = _inString;
+    let i = _i;
+    if (i >= (line.length - 1 | 0)) {
+      return line;
+    }
+    let match = line.charAt(i);
+    switch (match) {
+      case "/" :
+        if (!inString && line.charAt(i + 1 | 0) === "/") {
+          return line.slice(0, i).trimEnd();
+        }
+        break;
+      case "\"" :
+        _inString = !inString;
+        _i = i + 1 | 0;
+        continue;
+      case "\\" :
+        if (inString) {
+          _inString = true;
+          _i = i + 2 | 0;
+          continue;
+        }
+        break;
+    }
+    _i = i + 1 | 0;
+    continue;
+  };
+}
+
 function extractTargetName(filePath) {
   try {
     let content = Nodefs.readFileSync(filePath, "utf8");
@@ -98,7 +131,7 @@ function extractTargetName(filePath) {
       contents: undefined
     };
     content.split("\n").forEach(line => {
-      let trimmed = line.trimStart();
+      let trimmed = codeOf(line).trimStart();
       if (!trimmed.startsWith("let targetName = ")) {
         return;
       }
@@ -149,7 +182,7 @@ function effectiveSpecName(filePath, stem) {
       contents: undefined
     };
     content.split("\n").forEach(line => {
-      let trimmed = line.trimStart();
+      let trimmed = codeOf(line).trimStart();
       if (!trimmed.startsWith("@@reventless.spec(")) {
         return;
       }
@@ -423,6 +456,7 @@ export {
   isImplStem,
   findEventMappings,
   sortedStems,
+  codeOf,
   extractTargetName,
   hasFileAttribute,
   hasAsyncAttribute,

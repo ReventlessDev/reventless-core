@@ -129,6 +129,24 @@ let sortedStems = (stems: array<string>): array<string> =>
     }
   )
 
+/** The code on a source line, without a trailing `//` comment: a quote in the
+    comment is not part of the value. A `//` inside a string literal is kept. */
+let codeOf = (line: string): string => {
+  let rec scan = (i, inString) =>
+    if i >= line->String.length - 1 {
+      line
+    } else {
+      switch (line->String.charAt(i), inString) {
+      | ("\\", true) => scan(i + 2, true)
+      | ("\"", _) => scan(i + 1, !inString)
+      | ("/", false) if line->String.charAt(i + 1) == "/" =>
+        line->String.slice(~start=0, ~end=i)->String.trimEnd
+      | _ => scan(i + 1, inString)
+      }
+    }
+  scan(0, false)
+}
+
 // Read a slice spec file and extract the value of `let targetName = ...`.
 // Returns Some(name) for string literals (including inside Some("...")),
 // or None for `let targetName = None` or when the line is absent.
@@ -139,7 +157,7 @@ let extractTargetName = (filePath: string): option<string> => {
     content
     ->String.split("\n")
     ->Array.forEach(line => {
-      let trimmed = line->String.trimStart
+      let trimmed = line->codeOf->String.trimStart
       if trimmed->String.startsWith("let targetName = ") {
         let firstQuote = trimmed->String.indexOf("\"")
         let lastQuote = trimmed->String.lastIndexOf("\"")
@@ -205,7 +223,7 @@ let effectiveSpecName = (filePath: string, ~stem: string): string => {
     content
     ->String.split("\n")
     ->Array.forEach(line => {
-      let trimmed = line->String.trimStart
+      let trimmed = line->codeOf->String.trimStart
       if trimmed->String.startsWith("@@reventless.spec(") {
         let firstQuote = trimmed->String.indexOf("\"")
         let lastQuote = trimmed->String.lastIndexOf("\"")
