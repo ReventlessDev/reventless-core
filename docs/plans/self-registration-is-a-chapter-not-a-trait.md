@@ -15,7 +15,8 @@ which must enforce the same limit before any public sign-up, and with it the adm
 shell's configuration on AWS. **Planned 2026-10-25:** those, a deployed stash, a starting state per
 platform (open locally, closed on AWS) and a switch for the administrator in the shell
 ([Switching it on and off, and the AWS door](#switching-it-on-and-off-and-the-aws-door--planned-2026-10-25),
-steps [DW1](#dw1-a-starting-state-per-platform) to [DW9](#dw9-the-example-on-aws-and-the-walk)). **2026-10-25: the chapter is reusable by other apps**, as the
+steps [DW1](#dw1-a-starting-state-per-platform) to [DW12](#dw12-an-alarm-on-the-bill), with the
+guards a public URL needs before any role opens on it). **2026-10-25: the chapter is reusable by other apps**, as the
 package `@reventlessdev/reventless-registration` an app's plugin lists
 ([Making the chapter reusable](#making-the-chapter-reusable--planned-2026-10-25), steps
 [R1](#r1-a-plugin-lists-slices-an-installed-package-provides) to [R4](#r4-the-chapter-is-published-as-a-library-of-slices),
@@ -651,12 +652,17 @@ provider creates the account
 ([Step 3c, AWS half](identity-is-a-capability-not-a-cognito-handle.md#step-3c-aws-half--the-cognito-provider--built-2026-10-22)),
 and the pool's own sign-up stays `adminOnly` — except four things: a door a caller who is not
 signed in can reach, the limit on that door, a deployed stash for the password, and the deploy's
-admission check and shell configuration, which today run on the local platform only.
+admission check and shell configuration, which today run on the local platform only. And a public
+URL needs three guards besides the limit before any role is opened on it: a check that a person,
+not a script, is signing up; a mail sender that cannot be turned against strangers; and an alarm on
+the bill. The limit bounds one source; these bound many.
 
 This section plans both. Steps [DW1](#dw1-a-starting-state-per-platform) to
 [DW4](#dw4-a-switch-for-the-administrator) are the switch, useful locally at once;
-[DW5](#dw5-a-narrow-door-for-visitors-on-aws) to [DW9](#dw9-the-example-on-aws-and-the-walk) are
-AWS. The admission per role, the ledger and the doors do not change.
+[DW5](#dw5-a-narrow-door-for-visitors-on-aws) to [DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws)
+are the door on AWS, [DW10](#dw10-a-check-that-a-person-is-signing-up) to
+[DW12](#dw12-an-alarm-on-the-bill) the guards, and [DW9](#dw9-the-example-on-aws-and-the-walk) the
+walk once both are in. The admission per role, the ledger and the doors do not change.
 
 ### Decisions
 
@@ -678,6 +684,12 @@ AWS. The admission per role, the ledger and the doors do not change.
 - **The door for visitors is a second, narrow API**, as the identity plan's
   [Step 3b](identity-is-a-capability-not-a-cognito-handle.md#step-3b--the-aws-door-decided-2026-09-11-deferred)
   decided; the platform API keeps its two auth types and goes on refusing `AllowAnonymous` fields.
+- **The door and its guards are deployed together, never one at a time.** The AWS deploy refuses a
+  self-service role unless the door, the limit, the person check, the bounded sender and the bill
+  alarm are all in place ([DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws)). A
+  closed starting state does not relax this: a demo opens the role on a public URL.
+- **The guards are part of the framework,** as the limit is: they are safety, and a deployment
+  should not have to assemble them to be safe.
 
 ### Open questions
 
@@ -710,7 +722,7 @@ browser asks.
 
 ### Steps
 
-Numbered DW1 to DW9. **DW** stands for *the door and the window*.
+Numbered DW1 to DW12. **DW** stands for *the door and the window*.
 
 #### DW1: a starting state per platform
 
@@ -773,13 +785,17 @@ redeploy.
 
 #### DW6: the limit on AWS
 
-The narrow API's resolvers apply `AnonymousRequestLimit`, read from
-`platform:anonymousRequestLimit`, per source address as AppSync reports it, counted in a DynamoDB
-table whose items expire with their window, and answer the same `Throttled` rejection as the local
-platform. The query counts like the writes. A WAF in front is not in: its windows cannot express
-the configured one, and the limit must hold before any public `Open`.
+Two layers. **The exact limit:** the narrow API's resolvers apply `AnonymousRequestLimit`, read
+from `platform:anonymousRequestLimit`, per source address as AppSync reports it, counted in a
+DynamoDB table whose items expire with their window, and answer the same `Throttled` rejection as
+the local platform. The query counts like the writes. The count is kept under a keyed hash of the
+address, never the address, which is personal data, and no log line prints it. **A coarse ceiling:**
+a web application firewall rate rule on the narrow API only, set well above the exact limit, so a
+flood from one source is turned away before it runs a function; its windows cannot express the
+configured one, which is why it is the ceiling and not the limit.
 
-**Exit:** tests over a fake table for the count, the window and the rejection; in the walk
+**Exit:** tests over a fake table for the count, the window and the rejection; the firewall rule on
+the narrow API and not on the platform API; no address in a stored row or a log line; in the walk
 ([DW9](#dw9-the-example-on-aws-and-the-walk)), the request past the limit answers `Throttled`.
 
 #### DW7: the stash on AWS
@@ -796,25 +812,66 @@ The deploy's refusal for `Stash` goes.
 
 The AWS deploy calls `AdmissionCheck` as the local platform does at start
 ([A6](#a6-checks-at-start-and-deploy)); "no door for visitors on this platform" now passes where the
-narrow API is hosted. The shell configuration the AWS platform writes gains the `selfRegistration`
-key, with the narrow API's address and key. The shell sends the start, complete and open-roles
-calls there and everything else to the platform API.
+narrow API is hosted. One refusal is new and AWS's own: a self-service role on a deployment that
+lacks any of the limit ([DW6](#dw6-the-limit-on-aws)), the person check
+([DW10](#dw10-a-check-that-a-person-is-signing-up)), the bounded sender
+([DW11](#dw11-a-bounded-mail-sender)) or the bill alarm ([DW12](#dw12-an-alarm-on-the-bill)),
+naming what is missing. The shell configuration the AWS platform writes gains the
+`selfRegistration` key, with the narrow API's address and key. The shell sends the start, complete
+and open-roles calls there and everything else to the platform API.
 
-**Exit:** a test per refusal on the AWS path; the written key; the shell's test that the three
-calls go to the narrow address with the key and no signed-in token.
+**Exit:** a test per refusal on the AWS path, the guards' one included; the written key; the
+shell's test that the three calls go to the narrow address with the key and no signed-in token.
 
 #### DW9: the example on AWS, and the walk
 
-The hybrid shop's AWS root hosts the registration plugin, starting closed. It deploys on every
-push, as now, and a closed start means nothing is open to visitors between demos.
+The hybrid shop's AWS root hosts the registration plugin, starting closed, with
+[DW5](#dw5-a-narrow-door-for-visitors-on-aws) to [DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws)
+and [DW10](#dw10-a-check-that-a-person-is-signing-up) to [DW12](#dw12-an-alarm-on-the-bill) in place.
+It deploys on every push, as now, and a closed start means nothing is open to visitors between
+demos.
 
 **Exit:** the walk on a deployed stack: the login page offers no sign-up; an administrator opens
-`Shopper` for an hour in the panel and the link appears; a visitor signs up, the code arrives by
-SES, the account is created in the `Shopper` group of a pool whose own sign-up is `adminOnly`, and
-the visitor signs in; a second sign-up for the address is answered the same and the address is
-told; the request past the limit is throttled; closing hides the link at once, and an unclosed
-window closes at its end. SES in its sandbox delivers only to verified addresses, so the walk
-uses one.
+`Shopper` for an hour in the panel and the link appears; a visitor passes the person check, signs
+up, the code arrives by SES, the account is created in the `Shopper` group of a pool whose own
+sign-up is `adminOnly`, and the visitor signs in; a sign-up without the check's token, a second
+sign-up for the address and one while closed are answered alike, and the address is told of the
+second; the request past the limit is throttled; closing hides the link at once, and an unclosed
+window closes at its end; a deploy missing a guard is refused. SES in its sandbox delivers only to
+verified addresses, so the walk uses one until the account has production access.
+
+#### DW10: a check that a person is signing up
+
+A capability, as messaging is: the sign-up door asks it to verify a token the form sends, before it
+relays anything, and a missing or failed token is answered as every other sign-up and records
+nothing. The local platform's provider always passes, so the laptop walk is unchanged; on AWS a
+hosted check, chosen in a short analysis first — a puzzle-free hosted check, and a self-hosted
+proof-of-work provider for deployments that cannot send visitors to a third party. The configuration
+names the provider and its public site key; the shell's sign-up form renders the widget it names.
+The provider's secret is deployment configuration, never in `config.json`.
+
+**Exit:** the analysis's choice recorded here; GWT for a sign-up with no token, a bad token and a
+good one; the shell's test that the widget renders and its token is sent.
+
+#### DW11: a bounded mail sender
+
+The SES sender records bounces and complaints and keeps the addresses on the account's suppression
+list, so a mailbox that refused once is not mailed again. A daily cap on registration mail,
+configuration with a small default, stops the sender for the rest of the day and raises the alarm of
+[DW12](#dw12-an-alarm-on-the-bill) rather than a bill; a sign-up past the cap is answered as every
+other. The "someone tried" notice stays at one an hour per address.
+
+**Exit:** a suppressed address is not mailed; the cap stops the sender and the alarm fires, both on a
+fixture stack.
+
+#### DW12: an alarm on the bill
+
+A budget on the platform stack covering mail, the identity provider and API requests, notifying an
+operator address from configuration when a threshold is crossed. The threshold is configuration,
+raised without a code change.
+
+**Exit:** the budget and its notification exist on a deployed stack; a deploy without an operator
+address for it is refused where a self-service role is declared.
 
 ## Verification
 
