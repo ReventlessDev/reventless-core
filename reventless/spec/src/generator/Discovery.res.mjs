@@ -193,7 +193,20 @@ function scan(srcDir, exclude) {
 
 function scanAdmissionDoors(srcDir, discovered) {
   return discovered.filter(d => {
-    if (d.componentType === "InboundTranslationSlice" && !d.stem.endsWith("_Translation")) {
+    let match = d.componentType;
+    let tmp;
+    switch (match) {
+      case "StateViewSlice" :
+      case "StateViewSliceStream" :
+        tmp = !d.stem.endsWith("_Projection");
+        break;
+      case "InboundTranslationSlice" :
+        tmp = !d.stem.endsWith("_Translation");
+        break;
+      default:
+        tmp = false;
+    }
+    if (tmp) {
       return Nodefs.readFileSync(pathOf(d, srcDir), "utf8").includes("let admissionDoor");
     } else {
       return false;

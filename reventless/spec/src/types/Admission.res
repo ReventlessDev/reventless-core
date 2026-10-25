@@ -34,21 +34,26 @@ module type Declaration = {
 }
 
 /**
-The part an inbound door plays in admission, declared on the door's spec as
-`let admissionDoor = Reventless.Admission.Start`. The platform collects the marked
-doors into the shell's configuration, so nobody names a mutation by hand, and the
-deploy check reads them: a role declared by invitation needs a door that invites.
+The part a slice plays in admission, declared on its spec as
+`let admissionDoor = Reventless.Admission.Start`: the inbound doors that start,
+complete and invite, and the one view (`OpenRoles`) that tells a visitor which
+self-service roles are open right now. The platform collects the marked slices
+into the shell's configuration, so nobody names a mutation or a query by hand,
+and the deploy check reads them: a role declared by invitation needs a door that
+invites.
 */
 type door =
   | Start
   | Complete
   | Invite
+  | OpenRoles
 
 let doorName = (door: door) =>
   switch door {
   | Start => "start"
   | Complete => "complete"
   | Invite => "invite"
+  | OpenRoles => "openRoles"
   }
 
 let doorOfName = (name: string): option<door> =>
@@ -56,6 +61,7 @@ let doorOfName = (name: string): option<door> =>
   | "start" => Some(Start)
   | "complete" => Some(Complete)
   | "invite" => Some(Invite)
+  | "openRoles" => Some(OpenRoles)
   | _ => None
   }
 

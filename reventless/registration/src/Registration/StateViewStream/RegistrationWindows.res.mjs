@@ -52,6 +52,8 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
 
 let name = "RegistrationWindows";
 
+let admissionDoor = "OpenRoles";
+
 let Id;
 
 let subIdConfig;
@@ -65,6 +67,7 @@ let visibility = "Public";
 export {
   name,
   consumedEventSchema,
+  admissionDoor,
   config,
   Id,
   subIdConfig,

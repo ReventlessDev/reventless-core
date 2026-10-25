@@ -1,8 +1,9 @@
 // What the host shell needs to let a visitor create an account, read off the
 // plugin structures rather than written by hand: the mutation that starts a
-// registration, the one that completes it, and the groups a visitor may sign up
-// for. Absent when no plugin marks both doors, so a deployment without
-// self-registration writes the same `config.json` it always did.
+// registration, the one that completes it, the groups a visitor may sign up
+// for, and the query that says which of them are open right now. Absent when no
+// plugin marks both doors, so a deployment without self-registration writes the
+// same `config.json` it always did.
 
 let configKey = "selfRegistration"
 
@@ -11,17 +12,34 @@ type config = {
   complete: string,
   /** The groups of the roles declared self-service, as the deployment maps them. */
   roles: array<string>,
+  /** The list query of the view saying which roles are open, where a plugin marks one. */
+  openRoles?: string,
 }
+
+let marked = (
+  structures: array<(string, Reventless.Plugin.pluginStructure)>,
+  part: Reventless.Admission.door,
+): option<(string, Reventless.Admission.doorDef)> =>
+  structures->Array.findMap(((plugin, s)) =>
+    s.admissionDoors
+    ->Option.getOr([])
+    ->Array.find(d => d.part == Reventless.Admission.doorName(part))
+    ->Option.map(d => (plugin, d))
+  )
 
 let doorField = (
   structures: array<(string, Reventless.Plugin.pluginStructure)>,
   part: Reventless.Admission.door,
 ): option<string> =>
-  structures->Array.findMap(((plugin, s)) =>
-    s.admissionDoors
-    ->Option.getOr([])
-    ->Array.find(d => d.part == Reventless.Admission.doorName(part))
-    ->Option.map(d => Api_Naming.sliceMutationField(~plugin, ~slice=d.component))
+  marked(structures, part)->Option.map(((plugin, d)) =>
+    Api_Naming.sliceMutationField(~plugin, ~slice=d.component)
+  )
+
+let openRolesField = (structures: array<(string, Reventless.Plugin.pluginStructure)>): option<
+  string,
+> =>
+  marked(structures, OpenRoles)->Option.map(((plugin, d)) =>
+    Api_Naming.queryFieldNamesForStateView(~plugin, ~viewName=d.component).listFieldName
   )
 
 let selfServiceGroups = (structures: array<(string, Reventless.Plugin.pluginStructure)>) =>
@@ -38,17 +56,24 @@ let fromStructures = (structures: array<(string, Reventless.Plugin.pluginStructu
   config,
 > =>
   switch (doorField(structures, Start), doorField(structures, Complete)) {
-  | (Some(start), Some(complete)) => Some({start, complete, roles: selfServiceGroups(structures)})
+  | (Some(start), Some(complete)) =>
+    Some({
+      start,
+      complete,
+      roles: selfServiceGroups(structures),
+      openRoles: ?openRolesField(structures),
+    })
   | _ => None
   }
 
-let toJson = (c: config): JSON.t =>
-  JSON.Encode.object(
-    Dict.fromArray([
-      ("start", JSON.Encode.string(c.start)),
-      ("complete", JSON.Encode.string(c.complete)),
-      ("roles", c.roles->Array.map(JSON.Encode.string)->JSON.Encode.array),
-    ]),
-  )
+let toJson = (c: config): JSON.t => {
+  let entries = Dict.fromArray([
+    ("start", JSON.Encode.string(c.start)),
+    ("complete", JSON.Encode.string(c.complete)),
+    ("roles", c.roles->Array.map(JSON.Encode.string)->JSON.Encode.array),
+  ])
+  c.openRoles->Option.forEach(q => entries->Dict.set("openRoles", JSON.Encode.string(q)))
+  JSON.Encode.object(entries)
+}
 
 let configEntry = (c: config): (string, JSON.t) => (configKey, toJson(c))

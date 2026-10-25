@@ -8,11 +8,22 @@ import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs
 
 let configKey = "selfRegistration";
 
-function doorField(structures, part) {
+function marked(structures, part) {
   return Stdlib_Array.findMap(structures, param => {
     let plugin = param[0];
-    return Stdlib_Option.map(Stdlib_Option.getOr(param[1].admissionDoors, []).find(d => d.part === Admission$Reventless.doorName(part)), d => Api_Naming$ReventlessCore.sliceMutationField(plugin, d.component));
+    return Stdlib_Option.map(Stdlib_Option.getOr(param[1].admissionDoors, []).find(d => d.part === Admission$Reventless.doorName(part)), d => [
+      plugin,
+      d
+    ]);
   });
+}
+
+function doorField(structures, part) {
+  return Stdlib_Option.map(marked(structures, part), param => Api_Naming$ReventlessCore.sliceMutationField(param[0], param[1].component));
+}
+
+function openRolesField(structures) {
+  return Stdlib_Option.map(marked(structures, "OpenRoles"), param => Api_Naming$ReventlessCore.queryFieldNamesForStateView(param[0], param[1].component, undefined).listFieldName);
 }
 
 function selfServiceGroups(structures) {
@@ -37,13 +48,14 @@ function fromStructures(structures) {
     return {
       start: match,
       complete: match$1,
-      roles: selfServiceGroups(structures)
+      roles: selfServiceGroups(structures),
+      openRoles: openRolesField(structures)
     };
   }
 }
 
 function toJson(c) {
-  return Object.fromEntries([
+  let entries = Object.fromEntries([
     [
       "start",
       c.start
@@ -57,6 +69,10 @@ function toJson(c) {
       c.roles.map(prim => prim)
     ]
   ]);
+  Stdlib_Option.forEach(c.openRoles, q => {
+    entries["openRoles"] = q;
+  });
+  return entries;
 }
 
 function configEntry(c) {
@@ -68,7 +84,9 @@ function configEntry(c) {
 
 export {
   configKey,
+  marked,
   doorField,
+  openRolesField,
   selfServiceGroups,
   fromStructures,
   toJson,

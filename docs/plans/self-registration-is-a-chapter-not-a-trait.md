@@ -391,6 +391,11 @@ platform collects them from the plugin structure into `config.json` as
 platforms; on AWS only once the door exists. The invite marker is also what
 [A6](#a6-checks-at-start-and-deploy) looks for before accepting a role declared by invitation.
 
+*2026-10-25:* the view of [A5](#a5-a-public-read-of-the-open-roles) marks itself too
+(`let admissionDoor = Reventless.Admission.OpenRoles`), and the key gains `openRoles`, the view's
+list query, so the shell can ask which of the self-service roles are open without spelling a
+plugin's name. Left out where no view is marked, so an older deployment's key is unchanged.
+
 **Exit:** the local platform serves the key with no line in the root; a test on the collection.
 
 #### A5: a public read of the open roles
@@ -430,7 +435,7 @@ Commit `9c37bf50f`, local platform only. What each step became:
 | [A1](#a1-the-strategy-and-the-declared-table) | `reventless/spec` `Admission` | `strategy<'role>`, `declare` over the plugin's own `Roles.t`, `validate`, the JSON and structure forms (`toDefs`/`fromDefs`), an unknown strategy refused |
 | [A2](#a2-the-policy-per-role) | the plugin's `RegistrationPolicy` | keyed by role; a self-service role reads as open while nothing is recorded |
 | [A3](#a3-sign-up-names-the-role) | `SignUp`, `Registrations`, `CreateRegisteredPrincipal` | `Register` names one role; the ledger's events record `roles` as a set; the principal is created in every role's group. **A command that grants several roles at once does not exist yet** — see [R3](#r3-the-ledger-takes-an-invitation-a-reissued-code-and-a-withdrawal) |
-| [A4](#a4-marked-doors-written-into-the-shells-config) | `let admissionDoor` on a door's spec; `Platform_SelfRegistration`; the local `Platform` | the generator collects marked doors into the structure; the platform writes `selfRegistration: {start, complete, roles}` into `config.json` once every structure has landed |
+| [A4](#a4-marked-doors-written-into-the-shells-config) | `let admissionDoor` on a door's spec; `Platform_SelfRegistration`; the local `Platform` | the generator collects marked doors into the structure; the platform writes `selfRegistration: {start, complete, roles}` into `config.json` once every structure has landed; since 2026-10-25 also `openRoles`, the marked view's list query |
 | [A5](#a5-a-public-read-of-the-open-roles) | `RegistrationWindows` | a view of which roles are open now; anonymous read doors throttled like the writes |
 | [A6](#a6-checks-at-start-and-deploy) | `reventless/spec` `AdmissionCheck`, called by the local `Platform` | refused at start, naming the role: an elevated group self-service; no start-and-complete door; no anonymous door on this platform; no messaging or identity provider; a role by invitation when no structure marks an invite door. **Not called on AWS**, which today would refuse every self-service role since it admits no anonymous caller |
 | [A7](#a7-the-example) | the hybrid shop's `Admission.res` | shoppers self-service, staff provisioned; `Roles.t` grew to the four roles |

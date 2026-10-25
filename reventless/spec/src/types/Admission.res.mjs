@@ -13,6 +13,8 @@ function doorName(door) {
       return "complete";
     case "Invite" :
       return "invite";
+    case "OpenRoles" :
+      return "openRoles";
   }
 }
 
@@ -22,6 +24,8 @@ function doorOfName(name) {
       return "Complete";
     case "invite" :
       return "Invite";
+    case "openRoles" :
+      return "OpenRoles";
     case "start" :
       return "Start";
     default:

@@ -87,10 +87,10 @@ describe("Admission", () => {
 
   testSync("a door's part is spelled once", () =>
     expect(
-      [Admission.Start, Complete, Invite]->Array.map(
+      [Admission.Start, Complete, Invite, OpenRoles]->Array.map(
         d => d->Admission.doorName->Admission.doorOfName,
       ),
-    )->toEqual([Some(Admission.Start), Some(Complete), Some(Invite)])
+    )->toEqual([Some(Admission.Start), Some(Complete), Some(Invite), Some(OpenRoles)])
   )
 
   testSync("a role declared twice refuses", () =>

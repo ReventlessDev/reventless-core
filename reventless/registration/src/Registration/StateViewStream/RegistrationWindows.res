@@ -25,3 +25,6 @@ type state = {
 type consumedEvent =
   | RegistrationOpened({role: string, until?: Reventless.DateTime.t})
   | RegistrationClosed({role: string})
+
+/** This view says which roles are open; the platform tells the shell where to read it. */
+let admissionDoor = Reventless.Admission.OpenRoles

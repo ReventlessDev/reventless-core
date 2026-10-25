@@ -159,9 +159,11 @@ open until one closes it.
 
 The doors a plugin provides say which part of admission they are, on the spec of
 an inbound translation: `let admissionDoor = Reventless.Admission.Start` (or
-`Complete`, or `Invite`). The platform writes them into the host shell's
-`config.json` as `selfRegistration: {start, complete, roles}`, `roles` being the
-groups a visitor may sign up for, so nobody names a mutation by hand.
+`Complete`, or `Invite`); the view that says which roles are open right now marks
+itself `OpenRoles`. The platform writes them into the host shell's `config.json`
+as `selfRegistration: {start, complete, roles, openRoles}`, `roles` being the
+groups a visitor may sign up for and `openRoles` the view's list query, so nobody
+names a mutation or a query by hand.
 
 At start the platform refuses a declaration it cannot honor, naming the role: a
 self-service role whose group is the administrator's or an elevated one; one with

@@ -92,6 +92,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~admission=Admission.table,
     ~admissionDoors=[
       (CompleteRegistration.name, CompleteRegistration.admissionDoor),
+      (RegistrationWindows.name, RegistrationWindows.admissionDoor),
       (SignUp.name, SignUp.admissionDoor),
     ],
   )

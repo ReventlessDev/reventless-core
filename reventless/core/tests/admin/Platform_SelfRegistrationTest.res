@@ -23,23 +23,43 @@ let registration: Reventless.Plugin.pluginStructure = {
   admissionDoors: [
     {Reventless.Admission.component: "SignUp", part: "start"},
     {Reventless.Admission.component: "CompleteRegistration", part: "complete"},
+    {Reventless.Admission.component: "RegistrationWindows", part: "openRoles"},
   ],
 }
 
 describe("Platform_SelfRegistration", () => {
-  testSync("names the two doors by their mutation fields and the self-service groups", () =>
+  testSync(
+    "names the two doors by their mutation fields, the self-service groups, and the open-roles query",
+    () =>
+      expect(
+        Platform_SelfRegistration.fromStructures([
+          ("Catalog", empty),
+          ("Registration", registration),
+        ]),
+      )->toEqual(
+        Some({
+          Platform_SelfRegistration.start: "Registration_SignUp",
+          complete: "Registration_CompleteRegistration",
+          roles: ["Shopper"],
+          openRoles: "Registration_RegistrationWindows",
+        }),
+      ),
+  )
+
+  testSync("the open-roles query is left out where no view is marked", () =>
     expect(
       Platform_SelfRegistration.fromStructures([
-        ("Catalog", empty),
-        ("Registration", registration),
-      ]),
-    )->toEqual(
-      Some({
-        Platform_SelfRegistration.start: "Registration_SignUp",
-        complete: "Registration_CompleteRegistration",
-        roles: ["Shopper"],
-      }),
-    )
+        (
+          "Registration",
+          {
+            ...registration,
+            admissionDoors: registration.admissionDoors
+            ->Option.getOr([])
+            ->Array.filter(d => d.part != "openRoles"),
+          },
+        ),
+      ])->Option.flatMap(c => c.openRoles),
+    )->toEqual(None)
   )
 
   testSync("absent without both doors", () =>
@@ -62,9 +82,10 @@ describe("Platform_SelfRegistration", () => {
         start: "Registration_SignUp",
         complete: "Registration_CompleteRegistration",
         roles: ["Shopper"],
+        openRoles: "Registration_RegistrationWindows",
       })
       ->Pair.second
       ->JSON.stringify,
-    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"]}`)
+    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"],"openRoles":"Registration_RegistrationWindows"}`)
   )
 })
