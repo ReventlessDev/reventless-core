@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-25
+- refactor(accounts): the accounts file and the store that reads it are called accounts ([9462c95](https://github.com/ReventlessDev/reventless-core/commit/9462c951b562bee8c4c82219feaaa4dedaec989b))
+### 2026-10-25
 - feat(admission): the open-roles view marks itself, and the shell's key names its query ([4b91015](https://github.com/ReventlessDev/reventless-core/commit/4b910153c3c477b6830ce4636b93ed5b4dfde482))
 ### 2026-10-25
 - feat!: an inbound translation is handed its caller ([e7e9902](https://github.com/ReventlessDev/reventless-core/commit/e7e990282d47941cf7c1934b4e240f73f48026b3))
