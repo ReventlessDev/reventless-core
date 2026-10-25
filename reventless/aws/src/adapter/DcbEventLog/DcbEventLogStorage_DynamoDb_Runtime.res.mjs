@@ -468,14 +468,12 @@ function mergeSortedEvents(streams) {
     let emitEvent = Stdlib_Option.getOrThrow(slot.head, undefined);
     return Effect$1.map(Queue.take(slot.queue), nextHead => {
       let newSlots = slots.map((s, i) => {
-        if (i === idx) {
-          return {
-            queue: s.queue,
-            head: nextHead
-          };
-        } else {
+        if (i !== idx) {
           return s;
         }
+        let newrecord = {...s};
+        newrecord.head = nextHead;
+        return newrecord;
       });
       let hasActive = newSlots.some(s => Stdlib_Option.isSome(s.head));
       return [

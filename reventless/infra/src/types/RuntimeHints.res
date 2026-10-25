@@ -11,12 +11,12 @@ not a literal cap — each platform adapter maps it to its own resource model
 See docs/plans/configurable-component-runtime-resources.md.
 */
 type t = {
-  memorySize: option<int>,
-  timeout: option<int>,
+  memorySize?: int,
+  timeout?: int,
 }
 
 /** No hints — every field falls through to the per-kind builder default. */
-let empty: t = {memorySize: None, timeout: None}
+let empty: t = {}
 
 /**
 Resolve a component's memory floor: the per-component override raises the
@@ -25,7 +25,7 @@ the default unchanged.
 */
 let resolveMemory = (hints: option<t>, ~default: int): int =>
   switch hints {
-  | Some({memorySize: Some(m)}) => Math.Int.max(default, m)
+  | Some({memorySize: ?Some(m)}) => Math.Int.max(default, m)
   | _ => default
   }
 
@@ -36,6 +36,6 @@ override yields the default unchanged.
 */
 let resolveTimeout = (hints: option<t>, ~default: int): int =>
   switch hints {
-  | Some({timeout: Some(t)}) => t
+  | Some({timeout: ?Some(t)}) => t
   | _ => default
   }

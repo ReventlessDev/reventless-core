@@ -67,10 +67,7 @@ let Role = {
 };
 
 let current = {
-  contents: {
-    platform: undefined,
-    plugin: undefined
-  }
+  contents: {}
 };
 
 function enter(platform, plugin) {

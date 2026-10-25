@@ -29,8 +29,8 @@ type config = {
   modules: array<string>,
   runtimeKind: string,
   component: string,
-  plugin: option<string>,
-  platform: option<string>,
+  plugin?: string,
+  platform?: string,
 }
 
 let decodeString = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -70,8 +70,8 @@ let parseConfig = (raw: option<string>): option<config> =>
           modules,
           runtimeKind,
           component,
-          plugin: obj->decodeString("plugin"),
-          platform: obj->decodeString("platform"),
+          plugin: ?(obj->decodeString("plugin")),
+          platform: ?(obj->decodeString("platform")),
         })
       | _ =>
         log.error(

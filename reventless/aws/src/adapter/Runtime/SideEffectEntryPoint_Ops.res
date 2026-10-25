@@ -14,8 +14,8 @@ type handlerEntry = {
   // Resolved at deploy time and baked into HANDLER_CONFIG
   // (SideEffectHandlerRuntime_Builder_Single) — the shell has only module paths
   // to identify a handler by.
-  comp: option<string>,
-  plugin: option<string>,
+  comp?: string,
+  plugin?: string,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -31,8 +31,8 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     ->Option.flatMap(JSON.Decode.array)
     ->Option.getOr([])
     ->Array.filterMap(JSON.Decode.string),
-    comp: h->strOf("comp"),
-    plugin: h->strOf("plugin"),
+    comp: ?(h->strOf("comp")),
+    plugin: ?(h->strOf("plugin")),
   })
 
 let parseHandlerConfig = (rawJson: string): array<handlerEntry> =>

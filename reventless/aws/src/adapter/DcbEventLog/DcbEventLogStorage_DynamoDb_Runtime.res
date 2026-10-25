@@ -265,9 +265,9 @@ let queryByCompositeTags = async (
 
 // Filter clause shared by both scan paths.
 type scanFilter = {
-  filterExpression: option<string>,
-  expressionAttributeNames: option<Dict.t<string>>,
-  expressionAttributeValues: option<Dict.t<JSON.t>>,
+  filterExpression?: string,
+  expressionAttributeNames?: Dict.t<string>,
+  expressionAttributeValues?: Dict.t<JSON.t>,
 }
 
 // Builds the scan FilterExpression. Always asserts `attribute_exists(event)` so
@@ -294,9 +294,9 @@ let buildScanFilter = (~eventTypes: option<array<string>>=?): scanFilter => {
 
   let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
   {
-    filterExpression: Some(filterParts->Array.join(" AND ")),
-    expressionAttributeNames: Some(expressionAttributeNames),
-    expressionAttributeValues: hasAttributeValues ? Some(expressionAttributeValues) : None,
+    filterExpression: filterParts->Array.join(" AND "),
+    expressionAttributeNames,
+    expressionAttributeValues: ?(hasAttributeValues ? Some(expressionAttributeValues) : None),
   }
 }
 
@@ -523,7 +523,7 @@ let deduplicateByPosition = (
 
 type mergeSlot = {
   queue: Queue.t<option<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>>,
-  head: option<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>,
+  head?: ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent,
 }
 
 // Wraps a sub-stream in a Queue(1) producer fiber and pulls the first element.
@@ -539,7 +539,9 @@ let initSlot = (
       // unhandled-fiber-failure warning).
       ->Effect.ensuring(Queue.offer(queue, None)->Effect.map(_ => ()))
       ->Effect.catchAll(_ => Effect.succeed())
-    Effect.fork(producer)->Effect.flatMap(_ => Queue.take(queue)->Effect.map(head => {queue, head}))
+    Effect.fork(producer)->Effect.flatMap(_ =>
+      Queue.take(queue)->Effect.map(head => {queue, ?head})
+    )
   })
 
 // Returns the index of the slot with the smallest position, or None if all exhausted.
@@ -596,7 +598,7 @@ let mergeSortedEvents = (
             let newSlots = slots->Array.mapWithIndex(
               (s, i) =>
                 if i == idx {
-                  {...s, head: nextHead}
+                  {...s, head: ?nextHead}
                 } else {
                   s
                 },

@@ -106,7 +106,7 @@ type handlerConfig = {
   schedulerQueueArn: string,
   schedulerQueueName: string,
   extensionPoints: array<extensionPointConfig>,
-  connectExtension: option<connectExtensionConfig>,
+  connectExtension?: connectExtensionConfig,
   extensions: array<extensionConfig>,
   readModelNamesForSourceName: dict<array<string>>,
 }
@@ -234,7 +234,7 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     schedulerQueueArn: obj->strOf("schedulerQueueArn")->Option.getOr(""),
     schedulerQueueName: obj->strOf("schedulerQueueName")->Option.getOr(""),
     extensionPoints,
-    connectExtension,
+    ?connectExtension,
     extensions,
     readModelNamesForSourceName,
   }
@@ -253,7 +253,7 @@ type pluginProjection = {
   eventCollector: string,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   extensionPoints: array<Reventless.Plugin.extensionPointDefinition>,
-  dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
+  dcbEventLog?: Reventless.Plugin.dcbEventLogDefinition,
 }
 
 let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
@@ -323,7 +323,7 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
         eventCollector: obj->strOf("eventCollector")->Option.getOr(""),
         extensions,
         extensionPoints,
-        dcbEventLog,
+        ?dcbEventLog,
       })
     | _ => None
     }
@@ -339,7 +339,7 @@ let projectionOfDefinition = (d: Reventless.Plugin.pluginDefinition): pluginProj
   eventCollector: d.eventCollector,
   extensions: d.extensions,
   extensionPoints: d.extensionPoints,
-  dcbEventLog: d.dcbEventLog->jsOption,
+  dcbEventLog: ?(d.dcbEventLog->jsOption),
 }
 
 // ── Cross-plugin SNS subscription manager ───────────────────────────────────

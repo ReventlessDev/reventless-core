@@ -7,11 +7,11 @@ type secret = Password(password) | Key(privateKey, passphrase)
 
 type connectionParams = {
   host: string,
-  port: option<int>,
+  port?: int,
   path: string,
   userName: string,
   secret: secret,
-  readyTimeout: option<int>,
+  readyTimeout?: int,
   retryCount: int,
   retryInterval: int,
 }
@@ -37,7 +37,7 @@ type ftpAction =
   | Upload(NodeStreams.Readable.t, /* filename on ftp */ string)
 
 let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
-  let {host, port, userName, secret, path, readyTimeout} = connectionParams
+  let {host, ?port, userName, secret, path, ?readyTimeout} = connectionParams
   let (promise, resolve, _reject) = Util.Promise.make()
   let result: ref<result<bool, string>> = ref(Error("Stream ended before action handling!"))
   let client = FTP.Client.make()

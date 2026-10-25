@@ -23,13 +23,13 @@ let hmacFromBuf = (key: NodeCrypto.buffer, data: string): NodeCrypto.buffer =>
 
 // ── SigV4 ───────────────────────────────────────────────────────────────────
 
-type creds = {accessKeyId: string, secretAccessKey: string, sessionToken: option<string>}
+type creds = {accessKeyId: string, secretAccessKey: string, sessionToken?: string}
 
 // Ambient Lambda execution-role credentials (the managed runtime injects these).
 let envCreds = (): creds => {
   accessKeyId: NodeProcess.env->Dict.get("AWS_ACCESS_KEY_ID")->Option.getOr(""),
   secretAccessKey: NodeProcess.env->Dict.get("AWS_SECRET_ACCESS_KEY")->Option.getOr(""),
-  sessionToken: NodeProcess.env->Dict.get("AWS_SESSION_TOKEN"),
+  sessionToken: ?(NodeProcess.env->Dict.get("AWS_SESSION_TOKEN")),
 }
 
 let region = (): string => NodeProcess.env->Dict.get("AWS_REGION")->Option.getOr("eu-west-1")

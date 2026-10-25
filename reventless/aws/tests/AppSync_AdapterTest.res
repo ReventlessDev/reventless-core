@@ -961,10 +961,10 @@ describe("AppSync_Adapter.waitForMergeSuccess", () => {
   }
 
   let response = (~status, ~detail=?): AppSync_Adapter.getSourceApiAssociationResult => {
-    sourceApiAssociation: Some({
-      sourceApiAssociationStatus: Some(status),
-      sourceApiAssociationStatusDetail: detail,
-    }),
+    sourceApiAssociation: {
+      sourceApiAssociationStatus: status,
+      sourceApiAssociationStatusDetail: ?detail,
+    },
   }
 
   test("resolves once the association reports MERGE_SUCCESS", async () => {

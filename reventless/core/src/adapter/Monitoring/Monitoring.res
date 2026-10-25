@@ -123,9 +123,9 @@ type announcement = {
   kind: unitKind,
   name: string,
   component: ReventlessInfra.Adapter.resource,
-  plugin: option<string>,
-  platform: option<string>,
-  logLocator: option<Pulumi.Output.t<string>>,
+  plugin?: string,
+  platform?: string,
+  logLocator?: Pulumi.Output.t<string>,
 }
 
 let pending: ref<array<announcement>> = ref([])
@@ -190,11 +190,11 @@ let notify = (
   // Read here rather than at delivery, because a buffered announcement is replayed from a deploy
   // program's body, where the ambient context is whatever the *next* construct left behind. The
   // owner belongs to the moment the unit was provisioned.
-  let {ResourceAttribution.plugin: plugin, platform} = ResourceAttribution.current.contents
+  let {ResourceAttribution.plugin: ?plugin, ?platform} = ResourceAttribution.current.contents
   // `~logLocator`, unlike the owner, is NOT ambient: only the provisioning site knows where it
   // pointed the unit's logs. So it is passed, and optional — a call site with nothing to say omits
   // it rather than being forced to invent an address.
-  let announcement = {kind, name, component, plugin, platform, logLocator}
+  let announcement = {kind, name, component, ?plugin, ?platform, ?logLocator}
   if registered.contents {
     deliver(backend.contents, announcement)
   } else {

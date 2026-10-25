@@ -26,8 +26,9 @@ const files = execFileSync("git", ["ls-files", "*.res"], { cwd: root, encoding: 
 const typeRe = /((?:^\s*@[^\n]*\n)*)^\s*(?:type|and)\s+([a-zA-Z_][\w']*)(?:<[^>]*>)?\s*=\s*\{/gm;
 // A field written with an option type. `name?:` is already optional and does not match.
 // An attribute is one token (`@as("X")`, `@s.matches(...)`), so a run of
-// attributed fields is read field by field rather than as one.
-const fieldRe = /^\s*(?:@[\w.]+(?:\([^\n]*?\))?\s+)*([a-z_][\w']*)\s*:\s*(option<[^\n,]*>)/gm;
+// attributed fields is read field by field rather than as one. A field starts a
+// line or follows a comma, so a one-line record is read whole.
+const fieldRe = /(?:^|,)\s*(?:(?:mutable\s+)?@[\w.]+(?:\([^\n]*?\))?\s+)*(?:mutable\s+)?([a-z_][\w']*)\s*:\s*(option<[^\n,]*>)/gm;
 
 const rows = [];
 for (const file of files) {

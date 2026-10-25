@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-25<br/>
 **Status:** [R1](#r1-group-a-the-published-plugin-structure) to
-[R3](#r3-group-c-bindings-to-javascript-apis) done; [R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) and
+[R4](#r4-group-d-runtime-and-deploy-configuration-built-in-one-place) done;
 [R5](#r5-group-e-internal-results-and-tool-records-case-by-case) open, one inventory group each, in
 that order.<br/>
 **Repos:** `reventless-core`; `reventless-tools` follows when it takes the new version (see
@@ -58,6 +58,12 @@ What it cannot know, and the compiler refuses afterwards:
   so it becomes `?manifest`. The build names it wherever the binding is then used as an `option`;
   a pun whose binding is used as the plain value would compile as a partial match, which the
   zero-warning build reports as a non-exhaustive pattern.
+- **A field computed by a ternary or a `switch`** yielding `None` / `Some(...)`: it needs
+  `name: ?(c ? Some(x) : None)` or `name: ?switch ...`.
+- **An empty literal.** A record whose every field was `None` becomes `{}`, which needs its type:
+  `ref(({}: context))`.
+- **A punned function parameter** whose type is inferred from the first record it fills: the `?`
+  goes on that first use, which is not where the compiler reports the mismatch.
 - **A comment** that quotes a field, which the script skips, and so stays a comment about the old
   spelling until read.
 
@@ -147,6 +153,20 @@ records.
 **Exit:** the inventory shows no `option` field in the listed files; the aws suite passes; a
 `pulumi preview` of the hybrid AWS platform shows no diff (the entry-point configuration is
 serialized into the function environment, and the serialization of an absent field is unchanged).
+
+**Done.** 74 fields in 39 records, in one commit. Reverted: `Semantic.referenceTarget.plugin`
+and `memberTarget.plugin`, a test's own `call` record, and `Plugin_Helpers.eventCollectorContext`'s
+`connectExtension`, all sharing a name with a moving field. The `pulumi preview` was not run: it
+needs the AWS account, and a preview of this platform submits a CloudFront invalidation. The
+claim it was to check holds by construction instead: every `HANDLER_CONFIG` is written field by
+field (a template string or an explicit JSON encoder), and a literal that drops `name: None` drops
+a key whose value was `undefined`, which `JSON.stringify` omits either way.
+
+The inventory had a second blind spot, found here: in a one-line record (`{a: string, b:
+option<T>}`) it read only the first field. It now reads a field after a comma as well. That
+surfaced three more fields in group B (`BakeManifest.written`, `ProvisionAdmin.request`) and two
+in group D (`AppSyncEventsSigner_Ops.creds`, `AppSync_Adapter.getSchemaCreationStatusResult`), moved
+in this commit, and took group E from 73 fields to 90 and group F from 21 to 22.
 
 ### R5: group E, internal results and tool records, case by case
 

@@ -8,10 +8,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 
 let adminExtras = {
-  contents: {
-    pluginReadModelTableName: undefined,
-    schedulerRoleArn: undefined
-  }
+  contents: {}
 };
 
 function registerPluginExtensionPoint(pluginReadModelTableName, schedulerRoleArn, param) {

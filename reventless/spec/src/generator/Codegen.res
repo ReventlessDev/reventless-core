@@ -241,24 +241,23 @@ let renderExtensionMakeParam = (extensions: array<string>): option<string> =>
   }
 
 // ── Per-component runtime hints (plugin.json `runtime` block) ─────────────────
-// Emits `~componentRuntime=Dict.fromArray([("Customers", {memorySize: Some(2048),
-// timeout: None}), …])` into `Platform.Plugin.make(...)`. Only emitted when the
-// plugin declares a `runtime` block, so plugins without one keep a byte-identical
-// generated Plugin.res.
+// Emits `~componentRuntime=Dict.fromArray([("Customers", {memorySize: 2048}), …])`
+// into `Platform.Plugin.make(...)`, writing only the hints the entry gives. Only
+// emitted when the plugin declares a `runtime` block, so plugins without one keep a
+// byte-identical generated Plugin.res.
 
 let renderRuntimeHints = (h: Config.runtimeHints): string => {
-  let optInt = (o: option<int>) =>
-    switch o {
-    | Some(n) => "Some(" ++ n->Int.toString ++ ")"
-    | None => "None"
-    }
+  let given =
+    [("memorySize", h.memorySize), ("timeout", h.timeout)]->Array.filterMap(((name, o)) =>
+      o->Option.map(n => name ++ ": " ++ n->Int.toString)
+    )
   // Qualify the first field with the full module path so the record type resolves
   // at the `Dict.fromArray([...])` call site (type-directed disambiguation does not
   // propagate through the tuple/dict, so a bare `{memorySize, …}` has no type in scope).
-  "{ReventlessInfra.RuntimeHints.memorySize: " ++
-  optInt(h.memorySize) ++
-  ", timeout: " ++
-  optInt(h.timeout) ++ "}"
+  switch given {
+  | [] => "({}: ReventlessInfra.RuntimeHints.t)"
+  | _ => "{ReventlessInfra.RuntimeHints." ++ given->Array.join(", ") ++ "}"
+  }
 }
 
 // Every component name reachable from the resolved plugin — the valid keys for

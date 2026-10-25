@@ -10,17 +10,14 @@ type runtimeParts = Util.Lambda.runtimeParts
 // scheduler resources; consumed lazily at deploy-resolve time when
 // `forCommandTopic` runs inside its `Pulumi.Output.apply`.
 type adminExtras = {
-  pluginReadModelTableName: option<Pulumi.Output.t<string>>,
-  schedulerRoleArn: option<Pulumi.Output.t<string>>,
+  pluginReadModelTableName?: Pulumi.Output.t<string>,
+  schedulerRoleArn?: Pulumi.Output.t<string>,
 }
 
-let adminExtras: ref<adminExtras> = ref({
-  pluginReadModelTableName: None,
-  schedulerRoleArn: None,
-})
+let adminExtras: ref<adminExtras> = ref(({}: adminExtras))
 
 let registerPluginExtensionPoint = (~pluginReadModelTableName=?, ~schedulerRoleArn=?, ()) =>
-  adminExtras := {pluginReadModelTableName, schedulerRoleArn}
+  adminExtras := {?pluginReadModelTableName, ?schedulerRoleArn}
 
 let forCommandTopic = (
   ~handler as _,

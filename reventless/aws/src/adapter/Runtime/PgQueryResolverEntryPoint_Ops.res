@@ -26,7 +26,7 @@ type handlerEntry = {
 }
 
 type resolverConfig = {
-  pgConnection: option<PgConnection.connectionConfig>,
+  pgConnection?: PgConnection.connectionConfig,
   handlers: array<handlerEntry>,
   nodeTypes: dict<string>,
 }
@@ -59,10 +59,12 @@ let parseResolverConfig = (rawJson: string): resolverConfig => {
     ->JSON.Decode.object
     ->Option.getOr(Dict.make())
   {
-    pgConnection: obj
-    ->Dict.get("pgConnection")
-    ->Option.filter(j => j != JSON.Null)
-    ->Option.map(asPgConnection),
+    pgConnection: ?(
+      obj
+      ->Dict.get("pgConnection")
+      ->Option.filter(j => j != JSON.Null)
+      ->Option.map(asPgConnection)
+    ),
     handlers: obj
     ->Dict.get("handlers")
     ->Option.flatMap(JSON.Decode.array)
@@ -118,8 +120,8 @@ let makePushdowns = (
 // Reventless.Authorization.isAllowed matches on.
 
 type specInfo = {
-  config: option<ProjectionEntryPoint_Ops.specConfig>,
-  subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  config?: ProjectionEntryPoint_Ops.specConfig,
+  subIdConfig?: Reventless.ReadModel.subIdConfig<JSON.t>,
   stateSchema: S.t<unknown>,
   authorization: Reventless.Authorization.permission,
 }
@@ -143,7 +145,7 @@ let registerBinding = (
       ),
       pushdowns,
       indexes,
-      subIdField,
+      ?subIdField,
       capability: ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
         ~entityName=entry.readModelName,
         spec.stateSchema,
@@ -153,24 +155,28 @@ let registerBinding = (
       authorization: spec.authorization->Reventless.Authorization.named,
       // From the same schema `capability` is derived from, one line above, so the
       // two cannot end up disagreeing about this read model's fields.
-      ownerField: Reventless.Owner.fieldNames(spec.stateSchema)->Array.get(0),
-      retiredField: spec.stateSchema
-      ->Reventless.StateAnnotations.getSpec
-      ->Option.flatMap(a => a.retired)
-      ->Option.map(r => r.field),
+      ownerField: ?(Reventless.Owner.fieldNames(spec.stateSchema)->Array.get(0)),
+      retiredField: ?(
+        spec.stateSchema
+        ->Reventless.StateAnnotations.getSpec
+        ->Option.flatMap(a => a.retired)
+        ->Option.map(r => r.field)
+      ),
       // The state form's other half. Carried beside the field rather than
       // re-derived at predicate time, so one place decides which rows are retired.
-      retiredValues: spec.stateSchema
-      ->Reventless.StateAnnotations.getSpec
-      ->Option.flatMap(a => a.retired)
-      ->Option.flatMap(r => r.values),
+      retiredValues: ?(
+        spec.stateSchema
+        ->Reventless.StateAnnotations.getSpec
+        ->Option.flatMap(a => a.retired)
+        ->Option.flatMap(r => r.values)
+      ),
       // Read off the retirement rather than from a second annotation: a record
       // cannot declare the reach of a retirement it does not have.
       namedWhenRetired: spec.stateSchema
       ->Reventless.StateAnnotations.getSpec
       ->Option.flatMap(a => a.retired)
       ->Option.mapOr(false, r => r.namedWhenRetired),
-      imageSource: spec.stateSchema->Reventless.RowImage.sourceFrom,
+      imageSource: ?(spec.stateSchema->Reventless.RowImage.sourceFrom),
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

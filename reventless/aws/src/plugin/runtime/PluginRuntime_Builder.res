@@ -1,22 +1,16 @@
 let log = ReventlessCore.Logger.fromEnv()
 
 type adminConfig = {
-  eventTopicArn: option<Pulumi.Output.t<string>>,
-  pluginReadModelTableName: option<Pulumi.Output.t<string>>,
-  schedulerRoleArn: option<Pulumi.Output.t<string>>,
-  schedulerQueueArn: option<Pulumi.Output.t<string>>,
-  schedulerQueueName: option<Pulumi.Output.t<string>>,
-  appSyncApiId: option<Pulumi.Output.t<string>>,
+  eventTopicArn?: Pulumi.Output.t<string>,
+  pluginReadModelTableName?: Pulumi.Output.t<string>,
+  schedulerRoleArn?: Pulumi.Output.t<string>,
+  schedulerQueueArn?: Pulumi.Output.t<string>,
+  schedulerQueueName?: Pulumi.Output.t<string>,
+  appSyncApiId?: Pulumi.Output.t<string>,
   clonerEnabled: bool,
 }
 
 let configRef: ref<adminConfig> = ref({
-  eventTopicArn: None,
-  pluginReadModelTableName: None,
-  schedulerRoleArn: None,
-  schedulerQueueArn: None,
-  schedulerQueueName: None,
-  appSyncApiId: None,
   clonerEnabled: false,
 })
 
@@ -121,13 +115,12 @@ type sliceModulePaths = {
 
 type dcbConfig = {
   pluginName: string,
-  dcbTableName: option<Pulumi.Output.t<string>>,
+  dcbTableName?: Pulumi.Output.t<string>,
   stateChangeSliceModulePaths: array<sliceModulePaths>,
 }
 
 let dcbConfigRef: ref<dcbConfig> = ref({
   pluginName: "",
-  dcbTableName: None,
   stateChangeSliceModulePaths: [],
 })
 
@@ -219,23 +212,22 @@ compiles; slated for removal.
   "pluginName is auto-registered by Plugin_Builder.make; use registerDcbTableName / registerStateChangeSliceSpec for the other fields. This call is unnecessary and will be removed."
 )
 let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceModulePaths=[], ()) => {
-  dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceModulePaths}
+  dcbConfigRef := {pluginName, ?dcbTableName, stateChangeSliceModulePaths}
   stateChangeSliceModulePaths->Array.length
 }
 
 let registerDcbTableName = (dcbTableName: Pulumi.Output.t<string>) =>
-  dcbConfigRef := {...dcbConfigRef.contents, dcbTableName: Some(dcbTableName)}
+  dcbConfigRef := {...dcbConfigRef.contents, dcbTableName}
 
 type heartbeatConfig = {
   pluginId: string,
   heartbeatTimeout: int,
-  epQueueUrl: option<Pulumi.Output.t<string>>,
+  epQueueUrl?: Pulumi.Output.t<string>,
 }
 
 let heartbeatConfigRef: ref<heartbeatConfig> = ref({
   pluginId: "",
   heartbeatTimeout: 10,
-  epQueueUrl: None,
 })
 
 // heartbeatTimeout is mandatory: it drives the HEARTBEAT_TIMEOUT env var (and thus
@@ -244,7 +236,7 @@ let heartbeatConfigRef: ref<heartbeatConfig> = ref({
 // silently decoupled the two (schedule every 60min, Heartbeat(10) → 12min grace →
 // flapping); make callers supply it so the values can't diverge.
 let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout, ~epQueueUrl=?, ()) =>
-  heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
+  heartbeatConfigRef := {pluginId, heartbeatTimeout, ?epQueueUrl}
 
 // Resolves once this plugin's EventCollector Lambda exists at its new code.
 // `Platform.deployPlugin` gates the deploy-time re-detect on it: the re-detect
@@ -285,12 +277,12 @@ let registerConfig = (
   (),
 ) =>
   configRef := {
-      eventTopicArn,
-      pluginReadModelTableName,
-      schedulerRoleArn,
-      schedulerQueueArn,
-      schedulerQueueName,
-      appSyncApiId,
+      ?eventTopicArn,
+      ?pluginReadModelTableName,
+      ?schedulerRoleArn,
+      ?schedulerQueueArn,
+      ?schedulerQueueName,
+      ?appSyncApiId,
       clonerEnabled,
     }
 

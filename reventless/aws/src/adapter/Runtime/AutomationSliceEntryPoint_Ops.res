@@ -29,11 +29,11 @@ type handlerEntry = {
   /** Whether `dcbQueueUrl` is a FIFO queue. Absent in a config written before
       the flavor travelled with the URL, where `false` — a standard queue — is
       what these command topics actually are. */
-  commandQueueIsFifo: option<bool>,
+  commandQueueIsFifo?: bool,
   sourceUrn: string,
-  context: option<Reventless.AutomationSlice.context>,
+  context?: Reventless.AutomationSlice.context,
   /** The slice's schedules store; absent for a slice that maps no `Clock`. */
-  schedulesTableName: option<string>,
+  schedulesTableName?: string,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -58,10 +58,10 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     callbackType: h->strOf("callbackType")->Option.getOr("automation"),
     queryDbTableName: h->strOf("queryDbTableName")->Option.getOr(""),
     dcbQueueUrl: h->strOf("dcbQueueUrl")->Option.getOr(""),
-    commandQueueIsFifo: h->Dict.get("commandQueueIsFifo")->Option.flatMap(JSON.Decode.bool),
+    commandQueueIsFifo: ?(h->Dict.get("commandQueueIsFifo")->Option.flatMap(JSON.Decode.bool)),
     sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
-    context: h->Dict.get("context")->Option.flatMap(decodeContext),
-    schedulesTableName: h->strOf("schedulesTableName"),
+    context: ?(h->Dict.get("context")->Option.flatMap(decodeContext)),
+    schedulesTableName: ?(h->strOf("schedulesTableName")),
   })
 
 // A compact entry names its slice and carries only what the deploy resolved;
@@ -91,15 +91,15 @@ let decodeCompactEntry = (
     callbackType: m->strOf("callbackType")->Option.getOr("automation"),
     queryDbTableName: h->strOf("q")->Option.getOr(""),
     dcbQueueUrl: h->strOf("k")->Option.getOr(sharedQueueUrl),
-    commandQueueIsFifo: switch h->Dict.get("f")->Option.flatMap(JSON.Decode.bool) {
+    commandQueueIsFifo: ?switch h->Dict.get("f")->Option.flatMap(JSON.Decode.bool) {
     | Some(f) => Some(f)
     | None => sharedIsFifo
     },
     // Only the first, which is all the shell registers today. The remaining
     // urns stay in the config for the multi-source registration to use.
     sourceUrn: urns->Array.get(0)->Option.getOr(""),
-    context: m->Dict.get("context")->Option.flatMap(decodeContext),
-    schedulesTableName: h->strOf("s"),
+    context: ?(m->Dict.get("context")->Option.flatMap(decodeContext)),
+    schedulesTableName: ?(h->strOf("s")),
   }
 }
 
@@ -579,7 +579,7 @@ type builtSlice = {
   tick: option<(~key: string, ~at: float) => promise<unit>>,
   /** Brings the slice's schedules in line with its spec and its rows, at a deploy;
       `None` for an outbound slice. */
-  reconcile: option<unit => promise<unit>>,
+  reconcile?: unit => promise<unit>,
 }
 
 let makeAutomationRegisteredHandler = (
@@ -654,27 +654,25 @@ let makeAutomationRegisteredHandler = (
         await syncTodoItems()
       },
     ),
-    reconcile: Some(
-      async () =>
-        switch schedules() {
-        | Some({load, sync, platform}) =>
-          await load()
-          await ReventlessCore.AutomationSlice_Schedules.reconcile(
-            callback.schedules,
-            platform,
-            ~declaredTime=schedule,
-            ~now=Date.now(),
-          )
-          await sync()
-        // No Clock mapping, so no schedule of the slice may stay on the platform.
-        | None =>
-          let platform = platformSchedulesOf(~slice=sliceName)
-          let names = await platform.names()
-          for i in 0 to names->Array.length - 1 {
-            await platform.removeName(names->Array.getUnsafe(i))
-          }
-        },
-    ),
+    reconcile: async () =>
+      switch schedules() {
+      | Some({load, sync, platform}) =>
+        await load()
+        await ReventlessCore.AutomationSlice_Schedules.reconcile(
+          callback.schedules,
+          platform,
+          ~declaredTime=schedule,
+          ~now=Date.now(),
+        )
+        await sync()
+      // No Clock mapping, so no schedule of the slice may stay on the platform.
+      | None =>
+        let platform = platformSchedulesOf(~slice=sliceName)
+        let names = await platform.names()
+        for i in 0 to names->Array.length - 1 {
+          await platform.removeName(names->Array.getUnsafe(i))
+        }
+      },
   }
 }
 
@@ -721,7 +719,6 @@ let makeOutboundRegisteredHandler = (
     comp,
     name: sliceName,
     tick: None,
-    reconcile: None,
   }
 }
 

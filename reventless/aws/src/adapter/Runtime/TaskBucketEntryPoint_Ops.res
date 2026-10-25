@@ -24,7 +24,7 @@ type handlerConfig = {
   callbackModule: string,
   // aggregateName → env-var name holding the aggregate's cmd-topic SQS URL.
   publishToAggregates: dict<string>,
-  scheduler: option<schedulerEnvConfig>,
+  scheduler?: schedulerEnvConfig,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -45,14 +45,16 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     ->Dict.toArray
     ->Array.filterMap(((k, v)) => v->JSON.Decode.string->Option.map(s => (k, s)))
     ->Dict.fromArray,
-    scheduler: obj
-    ->Dict.get("scheduler")
-    ->Option.flatMap(JSON.Decode.object)
-    ->Option.map(s => {
-      roleArnEnv: s->strOf("roleArnEnv")->Option.getOr(""),
-      targetArnEnv: s->strOf("targetArnEnv")->Option.getOr(""),
-      targetNameEnv: s->strOf("targetNameEnv")->Option.getOr(""),
-    }),
+    scheduler: ?(
+      obj
+      ->Dict.get("scheduler")
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.map(s => {
+        roleArnEnv: s->strOf("roleArnEnv")->Option.getOr(""),
+        targetArnEnv: s->strOf("targetArnEnv")->Option.getOr(""),
+        targetNameEnv: s->strOf("targetNameEnv")->Option.getOr(""),
+      })
+    ),
   }
 }
 

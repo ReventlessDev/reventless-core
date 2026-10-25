@@ -135,7 +135,7 @@ type registration = {
 
 type summary = {plugins: int, registered: int, unchanged: int, matched: int}
 
-type written = {bucket: string, key: string, bytes: int, group: option<string>}
+type written = {bucket: string, key: string, bytes: int, group?: string}
 
 type answer =
   | Baked({written: array<written>, summary: option<summary>, registrations: array<registration>})
@@ -184,7 +184,7 @@ let readAnswer = (json: JSON.t): result<answer, string> => {
           bucket: e->_string("bucket")->Option.getOr("?"),
           key: e->_string("key")->Option.getOr("?"),
           bytes: e->_int("bytes"),
-          group: e->_string("group"),
+          group: ?(e->_string("group")),
         }),
         summary: summaryEntry->Option.map(s => {
           plugins: s->_int("plugins"),

@@ -27,7 +27,6 @@ function deriveScope(specs) {
     return {
       crossPartitionTagKeys: [],
       tagKeysByEventType: {},
-      partitionTag: undefined,
       partitionTagBySlice: {}
     };
   }

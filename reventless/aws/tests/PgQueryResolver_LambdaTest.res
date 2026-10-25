@@ -104,16 +104,16 @@ let makeBinding = (
   indexes: [
     {index: "byStatus", type_: "S", idField: "status", projectionType: Reventless.ReadModel.ALL},
   ],
-  subIdField,
+  ?subIdField,
   capability,
   labelField: "name",
   includeIdParam: true,
   authorization,
-  ownerField,
-  retiredField,
-  retiredValues,
+  ?ownerField,
+  ?retiredField,
+  ?retiredValues,
   namedWhenRetired,
-  imageSource,
+  ?imageSource,
 }
 
 let mkPayload = (
@@ -695,16 +695,12 @@ let geoBinding = (): PgQueryResolver_Lambda.binding => {
   indexes: [
     {index: "byStatus", type_: "S", idField: "status", projectionType: Reventless.ReadModel.ALL},
   ],
-  subIdField: Some("lineNo"),
+  subIdField: "lineNo",
   capability,
   labelField: "name",
   includeIdParam: true,
   authorization: Reventless.Authorization.AllowAnonymous,
-  ownerField: None,
-  retiredField: None,
-  retiredValues: None,
   namedWhenRetired: false,
-  imageSource: None,
 }
 
 // The member type of the first row a door answers with, whatever shape it took.

@@ -23,7 +23,7 @@ type sliceInfo = {
   queryDbResources: array<ReventlessInfra.Adapter.resource>,
   // Threaded to phase 1 collect/resolve on the automation path (mirrors the
   // in-process builder's `~context`); outbound slices take no context.
-  context: option<Reventless.AutomationSlice.context>,
+  context?: Reventless.AutomationSlice.context,
   // The non-DCB topics this slice subscribes to — an Aggregate's EventTopic when
   // it names one by `Spec.name`. Empty for the common DCB-only slice.
   //
@@ -47,10 +47,10 @@ type sliceInfo = {
   // Resolved in the finalizer rather than here: an Aggregate's CommandTopic is
   // created *after* the slices that target it, so a lookup at registration time
   // finds nothing. Only the name is knowable this early.
-  commandTargetName: option<string>,
+  commandTargetName?: string,
   // The automation's declared time; what the deploy's reconcile puts on the
   // platform, and what re-runs it when it changes.
-  schedule: option<Reventless.Schedule.time>,
+  schedule?: Reventless.Schedule.time,
   // The schedules store's table, empty for a slice that maps no `Clock`. Granted to
   // the Lambda with the to-do tables, and named in the slice's handler config.
   schedulesResources: array<ReventlessInfra.Adapter.resource>,
@@ -116,11 +116,11 @@ let registerAutomationSlice = (
       callbackType,
       queryDbTableName,
       queryDbResources,
-      context,
+      ?context,
       sourceTopics,
       consumesDcbLog,
-      commandTargetName,
-      schedule,
+      ?commandTargetName,
+      ?schedule,
       schedulesResources,
       capabilityNeeds,
     },

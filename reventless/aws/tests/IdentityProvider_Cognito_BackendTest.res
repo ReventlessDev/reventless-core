@@ -289,11 +289,8 @@ describe("AutomationSliceRuntime_Builder_Single.declaresIdentityProvider", () =>
     callbackType: "outbound",
     queryDbTableName: Pulumi.Output.make(""),
     queryDbResources: [],
-    context: None,
     sourceTopics: Dict.make(),
     consumesDcbLog: true,
-    commandTargetName: None,
-    schedule: None,
     schedulesResources: [],
     capabilityNeeds: needs,
   }

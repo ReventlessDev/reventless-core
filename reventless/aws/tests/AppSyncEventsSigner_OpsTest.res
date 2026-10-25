@@ -33,7 +33,7 @@ let assertParity = (
   ~secretAccessKey,
   ~sessionToken,
 ) => {
-  let creds: AppSyncEventsSigner_Ops.creds = {accessKeyId, secretAccessKey, sessionToken}
+  let creds: AppSyncEventsSigner_Ops.creds = {accessKeyId, secretAccessKey, ?sessionToken}
   let mine = AppSyncEventsSigner_Ops.signedHeaders(~host, ~path, ~body, ~region, ~isoNow, ~creds)
   let jsCreds: jsCreds = {accessKeyId, secretAccessKey, ?sessionToken}
   let ref = signedHeadersJs(~host, ~path, ~body, ~region, ~isoNow, ~creds=jsCreds)

@@ -45,7 +45,7 @@ type derivedScope = {
   crossPartitionTagKeys: array<string>,
   tagKeysByEventType: dict<array<string>>,
   /** `None` only for a Lambda hosting no StateChangeSlices, which never appends. */
-  partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+  partitionTag?: Reventless.DcbTag.derivedPartitionTag,
   /** Slice name -> its partition: the handler's entity id and each command's envelope id. */
   partitionTagBySlice: dict<Reventless.DcbTag.derivedPartitionTag>,
 }
@@ -55,7 +55,6 @@ let deriveScope = (specs: array<specModule>): derivedScope =>
   | [] => {
       crossPartitionTagKeys: [],
       tagKeysByEventType: Dict.make(),
-      partitionTag: None,
       partitionTagBySlice: Dict.make(),
     }
   | _ =>
@@ -89,7 +88,7 @@ let deriveScope = (specs: array<specModule>): derivedScope =>
     {
       crossPartitionTagKeys: scope.crossPartitionTagKeys,
       tagKeysByEventType: scope.tagKeysByEventType,
-      partitionTag: Some(boundary.partitionTag),
+      partitionTag: boundary.partitionTag,
       partitionTagBySlice,
     }
   }
@@ -266,7 +265,7 @@ type inboundCallback = {
     ~errorCode: string,
     string,
   ) => ReventlessInfra.InboundTranslationSlice.receiveResult,
-  webhook: option<ReventlessCore.InboundTranslationSlice_Webhook.route>,
+  webhook?: ReventlessCore.InboundTranslationSlice_Webhook.route,
   auditLog: dict<ReventlessCore.InboundTranslationSlice_Callback.auditRow>,
 }
 @module(

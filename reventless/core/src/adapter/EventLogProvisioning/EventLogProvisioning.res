@@ -160,6 +160,6 @@ let notify = (
   // The owning plugin/platform come from the ambient context the plugin builder publishes
   // (ResourceAttribution.enter) — populated exactly when this fires, so the call sites need not
   // thread the names. `None` outside a plugin construct.
-  let {ResourceAttribution.plugin: plugin, platform} = ResourceAttribution.current.contents
+  let {ResourceAttribution.plugin: ?plugin, ?platform} = ResourceAttribution.current.contents
   B.onProvisioned(~logStyle, ~name, ~owner, ~plugin, ~platform, ~resources, ~opts)
 }

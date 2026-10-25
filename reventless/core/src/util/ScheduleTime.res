@@ -208,8 +208,8 @@ let nextFiring = (time, ~after) =>
 /** What EventBridge Scheduler is given for a time. */
 type awsSchedule = {
   expression: string,
-  timezone: option<string>,
-  startDate: option<float>,
+  timezone?: string,
+  startDate?: float,
   deleteAfterCompletion: bool,
 }
 
@@ -246,20 +246,17 @@ let toAws = (time, ~setAt) =>
       | Days(n) => rateOf(n, "day")
       | Weeks(n) => rateOf(n * 7, "day")
       },
-      timezone: None,
-      startDate: Some(setAt +. interval->intervalMs),
+      startDate: setAt +. interval->intervalMs,
       deleteAfterCompletion: false,
     }
   | Calendar({calendar, ?zone}) => {
       expression: calendar->cronExpressionOf,
-      timezone: Some(zone->zoneName),
-      startDate: None,
+      timezone: zone->zoneName,
       deleteAfterCompletion: false,
     }
   | Once({moment: At({year, month, day, hour, minute}), ?zone}) => {
       expression: `at(${year->Int.toString}-${month->pad2}-${day->pad2}T${hour->pad2}:${minute->pad2}:00)`,
-      timezone: Some(zone->zoneName),
-      startDate: None,
+      timezone: zone->zoneName,
       deleteAfterCompletion: true,
     }
   | Once({moment: After(_)}) => throw(InvalidTime("unresolved once-only time"))

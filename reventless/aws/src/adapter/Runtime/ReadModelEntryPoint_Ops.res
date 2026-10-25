@@ -22,10 +22,10 @@ type handlerEntry = {
   // ReScript dispatch boundary's `EventCollector(<Name>)` byte for byte. This
   // Lambda hosts every read model, so the comp is what separates their log
   // lines; the plugin beats the Lambda-name-derived fallback in runEffect.
-  comp: option<string>,
-  plugin: option<string>,
-  pgConnection: option<PgConnection.connectionConfig>,
-  stateTopicName: option<string>,
+  comp?: string,
+  plugin?: string,
+  pgConnection?: PgConnection.connectionConfig,
+  stateTopicName?: string,
 }
 
 // The builder writes `pgConnection` via PgConnection.connectionConfigToJson, so
@@ -44,13 +44,15 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     mappingsModule: h->strOf("mappingsModule")->Option.getOr(""),
     queryDbTableName: h->strOf("queryDbTableName")->Option.getOr(""),
     sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
-    comp: h->strOf("comp"),
-    plugin: h->strOf("plugin"),
-    pgConnection: h
-    ->Dict.get("pgConnection")
-    ->Option.filter(j => j != JSON.Null)
-    ->Option.map(asPgConnection),
-    stateTopicName: h->strOf("stateTopicName"),
+    comp: ?(h->strOf("comp")),
+    plugin: ?(h->strOf("plugin")),
+    pgConnection: ?(
+      h
+      ->Dict.get("pgConnection")
+      ->Option.filter(j => j != JSON.Null)
+      ->Option.map(asPgConnection)
+    ),
+    stateTopicName: ?(h->strOf("stateTopicName")),
   })
 
 let parseHandlerConfig = (rawJson: string): array<handlerEntry> =>
@@ -88,10 +90,10 @@ let withInjectedId = (
 }
 
 type specInfo = {
-  config: option<ProjectionEntryPoint_Ops.specConfig>,
-  subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  config?: ProjectionEntryPoint_Ops.specConfig,
+  subIdConfig?: Reventless.ReadModel.subIdConfig<JSON.t>,
   // Read off the runtime-loaded spec module; `None` on a module that predates it.
-  stateSchema: option<S.t<unknown>>,
+  stateSchema?: S.t<unknown>,
 }
 
 let buildOperations = (

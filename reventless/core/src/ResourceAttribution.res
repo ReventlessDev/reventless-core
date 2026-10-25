@@ -150,14 +150,14 @@ importable from code that ends up in a Lambda bundle.
 Outside any plugin construct both are `None` — the correct answer for
 platform-scope substrate.
 */
-type context = {platform: option<string>, plugin: option<string>}
+type context = {platform?: string, plugin?: string}
 
-let current: ref<context> = ref({platform: None, plugin: None})
+let current: ref<context> = ref(({}: context))
 
 /** Publish the plugin being constructed; returns the previous context to restore. */
 let enter = (~platform: string, ~plugin: string) => {
   let previous = current.contents
-  current := {platform: Some(platform), plugin: Some(plugin)}
+  current := {platform, plugin}
   previous
 }
 

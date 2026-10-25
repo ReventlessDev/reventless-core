@@ -18,7 +18,7 @@ type cognitoUserPool = {
   /** The sign-in attribute this stack created the pool with. `None` in BYO mode:
     the pool's own choice was made elsewhere and no lookup here reads it back,
     so reporting one would be a guess. */
-  loginIdentifier: option<Auth_LoginIdentifier.t>,
+  loginIdentifier?: Auth_LoginIdentifier.t,
 }
 
 /**
@@ -250,7 +250,6 @@ let _resolveUncached = (): cognitoUserPool => {
       managed: false,
       activeRoleTable,
       identityTable,
-      loginIdentifier: None,
     }
 
   | None =>
@@ -346,7 +345,7 @@ let _resolveUncached = (): cognitoUserPool => {
       managed: true,
       activeRoleTable,
       identityTable,
-      loginIdentifier: Some(loginIdentifier),
+      loginIdentifier,
     }
   }
 

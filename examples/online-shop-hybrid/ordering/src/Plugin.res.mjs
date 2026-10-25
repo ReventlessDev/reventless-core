@@ -670,15 +670,13 @@ function Make(Platform) {
     [
       "Customers",
       {
-        memorySize: 2048,
-        timeout: undefined
+        memorySize: 2048
       }
     ],
     [
       "Customer",
       {
-        memorySize: 1536,
-        timeout: undefined
+        memorySize: 1536
       }
     ],
     [
@@ -691,8 +689,7 @@ function Make(Platform) {
     [
       "Orders",
       {
-        memorySize: 1024,
-        timeout: undefined
+        memorySize: 1024
       }
     ]
   ]), Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);

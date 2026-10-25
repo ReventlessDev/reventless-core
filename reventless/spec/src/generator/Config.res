@@ -8,8 +8,8 @@ type variant = Composition | Aws({compositionNamespace: string})
 // an omitted field falls through to the per-kind builder default. See
 // docs/plans/configurable-component-runtime-resources.md.
 type runtimeHints = {
-  memorySize: option<int>,
-  timeout: option<int>,
+  memorySize?: int,
+  timeout?: int,
 }
 
 type config = {
@@ -69,8 +69,8 @@ let getComponentRuntime = (json: JSON.t): dict<runtimeHints> => {
       result->Dict.set(
         componentName,
         {
-          memorySize: getIntField(entry, "memorySize"),
-          timeout: getIntField(entry, "timeout"),
+          memorySize: ?getIntField(entry, "memorySize"),
+          timeout: ?getIntField(entry, "timeout"),
         },
       )
     )

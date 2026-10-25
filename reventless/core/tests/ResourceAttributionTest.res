@@ -153,7 +153,7 @@ describe("ResourceAttribution — carrying the context into deferred work", () =
 
   testSync("enterCaptured can express the empty context, which enter cannot", () => {
     let previous = Attribution.enter(~platform="online-shop", ~plugin="Catalog")
-    let restoredToEmpty = Attribution.enterCaptured({platform: None, plugin: None})
+    let restoredToEmpty = Attribution.enterCaptured({})
     expect(Attribution.current.contents.plugin)->toEqual(None)
     expect(restoredToEmpty.plugin)->toEqual(Some("Catalog"))
     Attribution.restore(previous)

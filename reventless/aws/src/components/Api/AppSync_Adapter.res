@@ -68,7 +68,7 @@ let startSchemaCreationRetrying = (client: appSyncClient, input: startSchemaCrea
 // GetSchemaCreationStatus — poll until schema is ACTIVE
 type getSchemaCreationStatusInput = {apiId: string}
 type getSchemaCreationStatusCommand
-type getSchemaCreationStatusResult = {status: string, details: option<string>}
+type getSchemaCreationStatusResult = {status: string, details?: string}
 
 @module("@aws-sdk/client-appsync") @new
 external makeGetSchemaCreationStatusCommand: getSchemaCreationStatusInput => getSchemaCreationStatusCommand =
@@ -119,10 +119,10 @@ type getSourceApiAssociationInput = {
 }
 type getSourceApiAssociationCommand
 type sourceApiAssociationSummary = {
-  sourceApiAssociationStatus: option<string>,
-  sourceApiAssociationStatusDetail: option<string>,
+  sourceApiAssociationStatus?: string,
+  sourceApiAssociationStatusDetail?: string,
 }
-type getSourceApiAssociationResult = {sourceApiAssociation: option<sourceApiAssociationSummary>}
+type getSourceApiAssociationResult = {sourceApiAssociation?: sourceApiAssociationSummary}
 
 @module("@aws-sdk/client-appsync") @new
 external makeGetSourceApiAssociationCommand: getSourceApiAssociationInput => getSourceApiAssociationCommand =

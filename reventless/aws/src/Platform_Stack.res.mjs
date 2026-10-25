@@ -107,8 +107,7 @@ function _resolveUncached() {
       poolArn: lookup.apply(r => r.arn),
       managed: false,
       activeRoleTable: activeRoleTable,
-      identityTable: identityTable,
-      loginIdentifier: undefined
+      identityTable: identityTable
     };
   } else {
     let loginIdentifier = _loginIdentifier(cfg);

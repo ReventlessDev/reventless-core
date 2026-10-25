@@ -80,7 +80,7 @@ type t = {
   /** Full AppSync Events API output — carry this through the stack. */
   api: Api.t,
   /** The `default` channel namespace created on the API. */
-  defaultNamespace: option<ChannelNamespace.t>,
+  defaultNamespace?: ChannelNamespace.t,
   /** The client-publishable `client` namespace. Absent on plugin-stack
       phantoms (namespaces live on the platform stack's API). */
   clientNamespace?: ChannelNamespace.t,
@@ -202,7 +202,7 @@ let make = (
     ~opts=Some({...opts, parent: api->Pulumi.Resource.makeFromJs}),
   )
 
-  {name, api, defaultNamespace: Some(defaultNamespace), clientNamespace}
+  {name, api, defaultNamespace, clientNamespace}
 }
 
 /** HTTP endpoint URL for use as Lambda `APPSYNC_ENDPOINT` env var.

@@ -309,7 +309,6 @@ describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
     comp,
     name: comp,
     tick: None,
-    reconcile: None,
   }
 
   test("sweeps every slice", async () => {
@@ -346,7 +345,6 @@ describe("AutomationSliceEntryPoint_Ops.runTick", () => {
     comp: name,
     name,
     tick,
-    reconcile: None,
   }
   let slices = [
     slice(~name="Outbound", ~tick=None),

@@ -25,10 +25,7 @@ function resolveTimeout(hints, $$default) {
   }
 }
 
-let empty = {
-  memorySize: undefined,
-  timeout: undefined
-};
+let empty = {};
 
 export {
   empty,

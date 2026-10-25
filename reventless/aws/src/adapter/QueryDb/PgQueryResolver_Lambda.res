@@ -89,7 +89,7 @@ type binding = {
   ops: ReventlessCore.QueryDb_Adapter.operations,
   pushdowns: pushdowns,
   indexes: array<Reventless.ReadModel.indexConfig>,
-  subIdField: option<string>,
+  subIdField?: string,
   capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
   labelField: string,
   includeIdParam: bool,
@@ -97,9 +97,9 @@ type binding = {
   /** The state's `@owner` field, when it declares one. Derived at Lambda init
       from the same schema `capability` comes from, so the two cannot disagree
       about which fields this read model has. */
-  ownerField: option<string>,
-  retiredField: option<string>,
-  retiredValues: option<array<string>>,
+  ownerField?: string,
+  retiredField?: string,
+  retiredValues?: array<string>,
   /** Whether a reference to a retired row of this read model still resolves its
       name — the `@namedWhenRetired` opt-in. Read only by the reference door;
       every other door narrows as it always did. */
@@ -107,7 +107,7 @@ type binding = {
   /** The field a reference shows this row's picture from, derived from the same
       schema as `capability` by `Reventless.RowImage`. `None` for a view that
       declares no picture, which is most of them. */
-  imageSource: option<Reventless.RowImage.source>,
+  imageSource?: Reventless.RowImage.source,
 }
 
 // -- arg helpers -------------------------------------------------------------

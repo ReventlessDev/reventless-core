@@ -15,7 +15,7 @@ type aggregateInfo = {
   specModulePath: string,
   decisionModulePath: string,
   eventLogTableName: Pulumi.Output.t<string>,
-  mappingsModulePath: option<string>,
+  mappingsModulePath?: string,
 }
 
 let aggregateInfos: dict<aggregateInfo> = Dict.make()
@@ -29,7 +29,7 @@ let registerAggregate = (
 ) =>
   aggregateInfos->Dict.set(
     aggregateName,
-    {specModulePath, decisionModulePath, eventLogTableName, mappingsModulePath},
+    {specModulePath, decisionModulePath, eventLogTableName, ?mappingsModulePath},
   )
 
 type storedSpec = {

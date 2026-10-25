@@ -502,8 +502,8 @@ type registrationState =
 type registration = {
   plugin: string,
   expected: string,
-  found: option<string>,
-  writtenAt: option<string>,
+  found?: string,
+  writtenAt?: string,
   state: registrationState,
 }
 
@@ -550,7 +550,7 @@ let registrations = (
     let row = current->Dict.get(plugin)
     let found = row->Option.map(((key, _)) => key)
     let writtenAt = row->Option.flatMap(((_, at)) => at)
-    {plugin, expected, found, writtenAt, state: classify(~expected, ~found, ~writtenAt, ~since)}
+    {plugin, expected, ?found, ?writtenAt, state: classify(~expected, ~found, ~writtenAt, ~since)}
   })
 }
 

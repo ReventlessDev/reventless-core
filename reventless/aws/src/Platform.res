@@ -71,7 +71,7 @@ type objectStoreEndpoint = {
   // itself. `None` when a host-UI bundle is deployed — there the shell's own
   // origin serves the store same-origin and a relative `/{prefix}/…` resolves
   // without a base.
-  baseUrl: option<Pulumi.Output.t<string>>,
+  baseUrl?: Pulumi.Output.t<string>,
 }
 let objectStoreEndpointsRef: ref<array<objectStoreEndpoint>> = ref([])
 
@@ -534,7 +534,6 @@ module MakeWithConfig = (
     let eventsApi: AppSync_EventsApi.t = {
       name: "DomainEventsApi",
       api,
-      defaultNamespace: None,
     }
     Some(eventsApi)
   }
@@ -2048,7 +2047,7 @@ module MakeWithConfig = (
       store,
       keyPrefix,
       bucketName: physicalBucketName->Pulumi.Output.fromInput,
-      baseUrl: storeServingBaseUrl,
+      baseUrl: ?storeServingBaseUrl,
     })
     objectStoreEndpointsRef := declaredStoreEndpoints
 

@@ -17,8 +17,8 @@ type handlerEntry = {
   sourceUrn: string,
   // B3.3: per-slice AppSync Events channel root (list field name). Present only
   // for subscription-enabled (Stream) Postgres view slices.
-  stateTopicName: option<string>,
-  pgConnection: option<PgConnection.connectionConfig>,
+  stateTopicName?: string,
+  pgConnection?: PgConnection.connectionConfig,
 }
 
 // The builder writes `pgConnection` via PgConnection.connectionConfigToJson, so
@@ -67,16 +67,16 @@ let parseHandlerConfig = (rawJson: string): array<handlerEntry> =>
                 projectionModule: h->strOf("projectionModule")->Option.getOr(""),
                 queryDbTableName: h->strOf("queryDbTableName")->Option.getOr(""),
                 sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
-                stateTopicName: h->strOf("stateTopicName"),
-                pgConnection: h->pgConnectionOf,
+                stateTopicName: ?(h->strOf("stateTopicName")),
+                pgConnection: ?(h->pgConnectionOf),
               }
             | None => {
                 specModule: base ++ h->strOf("s")->Option.getOr(""),
                 projectionModule: base ++ h->strOf("p")->Option.getOr(""),
                 queryDbTableName: h->strOf("q")->Option.getOr(""),
                 sourceUrn: h->strOf("u")->Option.getOr(sharedUrn),
-                stateTopicName: h->strOf("t"),
-                pgConnection: sharedPgConnection,
+                stateTopicName: ?(h->strOf("t")),
+                pgConnection: ?sharedPgConnection,
               }
             }
           )
@@ -197,10 +197,10 @@ type sliceModules<'event> = {
   project: Reventless.StateViewSlice.consumed<'event> => array<
     Reventless.Projection.action<string, JSON.t>,
   >,
-  config: option<ProjectionEntryPoint_Ops.specConfig>,
-  subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
+  config?: ProjectionEntryPoint_Ops.specConfig,
+  subIdConfig?: Reventless.ReadModel.subIdConfig<JSON.t>,
   // Same union stamp the read-model path needs; a slice's state can hold one too.
-  stateSchema: option<S.t<unknown>>,
+  stateSchema?: S.t<unknown>,
 }
 
 let makeRegisteredHandler = (

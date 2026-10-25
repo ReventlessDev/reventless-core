@@ -200,7 +200,7 @@ made through a signed-in session because there is no signed-in session yet. The
 rest of the cast is a list rather than a command: declare it in
 .reventless/users.yaml and run \`pnpm exec provision-accounts\`.`
 
-type request = {email: string, providerId: option<string>, stack: option<string>}
+type request = {email: string, providerId?: string, stack?: string}
 
 /** The address is required before anything else is looked at: it costs nothing,
     while resolving the provider may shell out to Pulumi, and a run missing both
@@ -210,11 +210,11 @@ let parseRequest = (argv: array<string>): result<request, string> =>
   parseArgs(argv)->Result.flatMap(({?email, ?providerId, ?stack}) =>
     switch email {
     | None => Error("--email is required — it is the address the administrator signs in with")
-    | Some(email) => Ok({email, providerId, stack})
+    | Some(email) => Ok({email, ?providerId, ?stack})
     }
   )
 
-let run = async ({email, providerId, stack}: request): result<unit, string> =>
+let run = async ({email, ?providerId, ?stack}: request): result<unit, string> =>
   switch ProvisionProvider.resolve(~given=providerId, ~stack) {
   | Error(_) as e => e
   | Ok((providerId, source)) =>

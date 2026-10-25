@@ -334,8 +334,7 @@ function MakeWithConfig(Config) {
     };
     domainEventsApiOpt = {
       name: "DomainEventsApi",
-      api: api$2,
-      defaultNamespace: undefined
+      api: api$2
     };
   } else {
     let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
@@ -1770,8 +1769,7 @@ function Make($star) {
     };
     domainEventsApiOpt = {
       name: "DomainEventsApi",
-      api: api$2,
-      defaultNamespace: undefined
+      api: api$2
     };
   } else {
     let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();

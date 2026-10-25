@@ -71,8 +71,8 @@ describe("SideEffectEntryPoint_Ops.makeRegisteredHandler", () => {
     let entry: SideEffectEntryPoint_Ops.handlerEntry = {
       sourceUrn: "arn:stream-1",
       sideEffectModules: [],
-      comp: Some("SideEffectHandler(Mailer)"),
-      plugin: Some("Ordering"),
+      comp: "SideEffectHandler(Mailer)",
+      plugin: "Ordering",
     }
     let registered = SideEffectEntryPoint_Ops.makeRegisteredHandler(
       entry,

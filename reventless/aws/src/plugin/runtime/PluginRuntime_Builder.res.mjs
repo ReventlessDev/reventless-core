@@ -29,12 +29,6 @@ let log = Logger$ReventlessCore.fromEnv();
 
 let configRef = {
   contents: {
-    eventTopicArn: undefined,
-    pluginReadModelTableName: undefined,
-    schedulerRoleArn: undefined,
-    schedulerQueueArn: undefined,
-    schedulerQueueName: undefined,
-    appSyncApiId: undefined,
     clonerEnabled: false
   }
 };
@@ -118,7 +112,6 @@ function identityProviderProvisioned() {
 let dcbConfigRef = {
   contents: {
     pluginName: "",
-    dcbTableName: undefined,
     stateChangeSliceModulePaths: []
   }
 };
@@ -192,19 +185,15 @@ function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceModulePaths
 }
 
 function registerDcbTableName(dcbTableName) {
-  let init = dcbConfigRef.contents;
-  dcbConfigRef.contents = {
-    pluginName: init.pluginName,
-    dcbTableName: dcbTableName,
-    stateChangeSliceModulePaths: init.stateChangeSliceModulePaths
-  };
+  let newrecord = {...dcbConfigRef.contents};
+  newrecord.dcbTableName = dcbTableName;
+  dcbConfigRef.contents = newrecord;
 }
 
 let heartbeatConfigRef = {
   contents: {
     pluginId: "",
-    heartbeatTimeout: 10,
-    epQueueUrl: undefined
+    heartbeatTimeout: 10
   }
 };
 
@@ -252,12 +241,9 @@ function registerConfig(eventTopicArn, pluginReadModelTableName, schedulerRoleAr
 
 function Make(EventCollectorChannel) {
   let registerPluginName = pluginName => {
-    let init = dcbConfigRef.contents;
-    dcbConfigRef.contents = {
-      pluginName: pluginName,
-      dcbTableName: init.dcbTableName,
-      stateChangeSliceModulePaths: init.stateChangeSliceModulePaths
-    };
+    let newrecord = {...dcbConfigRef.contents};
+    newrecord.pluginName = pluginName;
+    dcbConfigRef.contents = newrecord;
   };
   let outputOrPlaceholder = opt => {
     if (opt !== undefined) {

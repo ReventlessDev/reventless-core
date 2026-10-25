@@ -424,8 +424,7 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
     },
     comp: comp,
     name: sliceName,
-    tick: undefined,
-    reconcile: undefined
+    tick: undefined
   };
 }
 

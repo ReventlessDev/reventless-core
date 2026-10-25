@@ -269,8 +269,8 @@ let makeFromCodeAsset: (
   // registered — an extension-free deployment gets the env it always had.
   if !ReventlessCore.RuntimeExtension.isEmpty() {
     let {
-      ReventlessCore.ResourceAttribution.plugin: plugin,
-      platform,
+      ReventlessCore.ResourceAttribution.plugin: ?plugin,
+      ?platform,
     } = ReventlessCore.ResourceAttribution.current.contents
     let orNull = o => o->Option.mapOr(JSON.Null, s => JSON.String(s))
     let config = JSON.Object(

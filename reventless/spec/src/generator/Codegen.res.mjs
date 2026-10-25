@@ -179,14 +179,24 @@ function renderExtensionMakeParam(extensions) {
 }
 
 function renderRuntimeHints(h) {
-  let optInt = o => {
-    if (o !== undefined) {
-      return "Some(" + o.toString() + ")";
-    } else {
-      return "None";
-    }
-  };
-  return "{ReventlessInfra.RuntimeHints.memorySize: " + optInt(h.memorySize) + ", timeout: " + optInt(h.timeout) + "}";
+  let given = Stdlib_Array.filterMap([
+    [
+      "memorySize",
+      h.memorySize
+    ],
+    [
+      "timeout",
+      h.timeout
+    ]
+  ], param => {
+    let name = param[0];
+    return Stdlib_Option.map(param[1], n => name + ": " + n.toString());
+  });
+  if (given.length !== 0) {
+    return "{ReventlessInfra.RuntimeHints." + given.join(", ") + "}";
+  } else {
+    return "({}: ReventlessInfra.RuntimeHints.t)";
+  }
 }
 
 function collectComponentNames(resolved) {

@@ -391,7 +391,6 @@ function toAws(time, setAt) {
       }
       return {
         expression: tmp,
-        timezone: undefined,
         startDate: setAt + intervalMs(interval$1),
         deleteAfterCompletion: false
       };
@@ -399,7 +398,6 @@ function toAws(time, setAt) {
       return {
         expression: cronExpressionOf(interval.calendar),
         timezone: Stdlib_Option.getOr(interval.zone, utc),
-        startDate: undefined,
         deleteAfterCompletion: false
       };
     case "Once" :
@@ -409,7 +407,6 @@ function toAws(time, setAt) {
         return {
           expression: `at(` + match$1.year.toString() + `-` + pad2(match$1.month) + `-` + pad2(match$1.day) + `T` + pad2(match$1.hour) + `:` + pad2(match$1.minute) + `:00)`,
           timezone: Stdlib_Option.getOr(interval.zone, utc),
-          startDate: undefined,
           deleteAfterCompletion: true
         };
       }

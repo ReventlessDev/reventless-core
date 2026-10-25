@@ -56,7 +56,14 @@ const set = (f, s) => edits.set(f, s);
 for (const r of inventory) {
   const lines = read(r.file).split("\n");
   const before = lines[r.line - 1];
-  const after = before.replace(new RegExp(`\\b${r.field}\\s*:\\s*option<(.*)>(\\s*,?\\s*)$`), `${r.field}?: $1$2`);
+  // `name: option<T>` -> `name?: T`, matching the brackets so a one-line record works too
+  const m = new RegExp(`(?<![\\w.])${r.field}\\s*:\\s*option<`).exec(before);
+  let after = before;
+  if (m) {
+    let depth = 1, j = m.index + m[0].length;
+    for (; j < before.length && depth; j++) { if (before[j] === "<") depth++; else if (before[j] === ">") depth--; }
+    after = before.slice(0, m.index) + `${r.field}?: ` + before.slice(m.index + m[0].length, j - 1) + before.slice(j);
+  }
   if (after === before) continue;
   lines[r.line - 1] = after;
   changes.push({ file: r.file, line: r.line, kind: "declaration", before: before.trim(), after: after.trim() });

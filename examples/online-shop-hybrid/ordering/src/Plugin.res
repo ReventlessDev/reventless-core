@@ -237,10 +237,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ],
       ~pluginStructure,
       ~componentRuntime=Dict.fromArray([
-        ("Customers", {ReventlessInfra.RuntimeHints.memorySize: Some(2048), timeout: None}),
-        ("Customer", {ReventlessInfra.RuntimeHints.memorySize: Some(1536), timeout: None}),
-        ("PlaceOrder", {ReventlessInfra.RuntimeHints.memorySize: Some(768), timeout: Some(60)}),
-        ("Orders", {ReventlessInfra.RuntimeHints.memorySize: Some(1024), timeout: None}),
+        ("Customers", {ReventlessInfra.RuntimeHints.memorySize: 2048}),
+        ("Customer", {ReventlessInfra.RuntimeHints.memorySize: 1536}),
+        ("PlaceOrder", {ReventlessInfra.RuntimeHints.memorySize: 768, timeout: 60}),
+        ("Orders", {ReventlessInfra.RuntimeHints.memorySize: 1024}),
       ]),
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
