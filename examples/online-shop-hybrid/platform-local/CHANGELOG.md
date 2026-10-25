@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.310 (2026-10-25)
+
+### Features
+
+* **example:** self-registration on the local platform, verify-then-create with the password kept out of the log ([739719d](https://github.com/ReventlessDev/reventless-core/commit/739719d279b5a4674fad3396c3431f7bf7f05035))
+
+
 # 1.0.0-alpha.309 (2026-10-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

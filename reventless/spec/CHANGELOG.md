@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.176 (2026-10-25)
+
+### Bug Fixes
+
+* **core:** the plugin-structures query carries a plugin's admission and its doors ([c881564](https://github.com/ReventlessDev/reventless-core/commit/c881564eefe9d9d67fd14a792ca4788a89cf40df))
+* **spec:** the generator reads a value off its line without the trailing comment ([46e2e60](https://github.com/ReventlessDev/reventless-core/commit/46e2e60a892eed2fa84cedb806f3132695e77330))
+* refactor!: internal results and tool records whose parts may be absent are optional fields ([7009ddf](https://github.com/ReventlessDev/reventless-core/commit/7009ddf5d522f39ec9946a3b5cd062ceae889bbf))
+* refactor(aws)!: deploy and runtime configuration a function may lack are optional fields ([de80a54](https://github.com/ReventlessDev/reventless-core/commit/de80a546501a97b39cbe71200120f062bb260da4))
+* refactor(aws)!: command-line arguments a tool may not be given are optional fields ([82d5880](https://github.com/ReventlessDev/reventless-core/commit/82d5880e9aeda73fe9625dee73a1ca633b20a59a))
+* refactor(spec)!: the plugin structure's optional parts are optional fields ([130bad5](https://github.com/ReventlessDev/reventless-core/commit/130bad581caf725a9d61b5a3df3d012e4f8ba402))
+* feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))
+### Features
+
+* a door open to anonymous callers is limited per source address, and answers Throttled past the limit ([259a671](https://github.com/ReventlessDev/reventless-core/commit/259a671969dd25579d26227a8fe80cba3194f0aa))
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+* a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+* **local:** the platform reads its accounts file again when it changes ([eeb2b5f](https://github.com/ReventlessDev/reventless-core/commit/eeb2b5f8ec9d5baca2d2d8bfb81260f07713a3a6))
+* self-registration ships as a library of slices an app's plugin lists ([43883ca](https://github.com/ReventlessDev/reventless-core/commit/43883ca382339033f934c3ef92585dc8fde8bd37))
+* **spec:** a plugin composes slices an installed package provides ([521d77a](https://github.com/ReventlessDev/reventless-core/commit/521d77aa01def679aab41f09c079850d6fe43e64))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`; a destructure of one of them binds a
+field that may be absent with `?name`.
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+* code that builds these records drops `name: None`, writes
+`name: x` for `name: Some(x)`, and `name: ?x` for a value already of type
+option.
+* an inbound translation's translate takes ~capabilities and
+returns a promise, and its spec must declare capabilityNeeds ([] for one that
+only maps input). FromSlice steps return promises.
+
+
+
 # 3.0.0-alpha.175 (2026-10-22)
 
 ### Features

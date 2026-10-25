@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.58 (2026-10-25)
+
+* refactor!: internal results and tool records whose parts may be absent are optional fields ([7009ddf](https://github.com/ReventlessDev/reventless-core/commit/7009ddf5d522f39ec9946a3b5cd062ceae889bbf))
+### Features
+
+* a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`; a destructure of one of them binds a
+field that may be absent with `?name`.
+
+
+
 # 1.0.0-alpha.57 (2026-10-23)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding

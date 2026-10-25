@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.308 (2026-10-25)
+
+### Bug Fixes
+
+* **core:** the plugin-structures query carries a plugin's admission and its doors ([c881564](https://github.com/ReventlessDev/reventless-core/commit/c881564eefe9d9d67fd14a792ca4788a89cf40df))
+* refactor!: internal results and tool records whose parts may be absent are optional fields ([7009ddf](https://github.com/ReventlessDev/reventless-core/commit/7009ddf5d522f39ec9946a3b5cd062ceae889bbf))
+* refactor(aws)!: deploy and runtime configuration a function may lack are optional fields ([de80a54](https://github.com/ReventlessDev/reventless-core/commit/de80a546501a97b39cbe71200120f062bb260da4))
+* refactor(spec)!: the plugin structure's optional parts are optional fields ([130bad5](https://github.com/ReventlessDev/reventless-core/commit/130bad581caf725a9d61b5a3df3d012e4f8ba402))
+* feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))
+### Features
+
+* a door open to anonymous callers is limited per source address, and answers Throttled past the limit ([259a671](https://github.com/ReventlessDev/reventless-core/commit/259a671969dd25579d26227a8fe80cba3194f0aa))
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+* a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+* **core:** a slice that reads no earlier event about its own identity creates its row ([21d8efe](https://github.com/ReventlessDev/reventless-core/commit/21d8efe646894689f7afe076244198b25643a15a))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`; a destructure of one of them binds a
+field that may be absent with `?name`.
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+* code that builds these records drops `name: None`, writes
+`name: x` for `name: Some(x)`, and `name: ?x` for a value already of type
+option.
+* an inbound translation's translate takes ~capabilities and
+returns a promise, and its spec must declare capabilityNeeds ([] for one that
+only maps input). FromSlice steps return promises.
+
+
+
 # 3.0.0-alpha.307 (2026-10-23)
 
 ### Features

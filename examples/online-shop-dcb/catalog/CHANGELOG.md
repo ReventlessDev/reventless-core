@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.292 (2026-10-25)
+
+* feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))
+### Features
+
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+
+### BREAKING CHANGES
+
+* an inbound translation's translate takes ~capabilities and
+returns a promise, and its spec must declare capabilityNeeds ([] for one that
+only maps input). FromSlice steps return promises.
+
+
+
 # 1.0.0-alpha.291 (2026-10-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog

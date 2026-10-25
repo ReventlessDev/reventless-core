@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.256 (2026-10-25)
+
+* refactor(spec)!: the plugin structure's optional parts are optional fields ([130bad5](https://github.com/ReventlessDev/reventless-core/commit/130bad581caf725a9d61b5a3df3d012e4f8ba402))
+* feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))
+### Features
+
+* a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None`, writes
+`name: x` for `name: Some(x)`, and `name: ?x` for a value already of type
+option.
+* an inbound translation's translate takes ~capabilities and
+returns a promise, and its spec must declare capabilityNeeds ([] for one that
+only maps input). FromSlice steps return promises.
+
+
+
 # 1.0.0-alpha.255 (2026-10-23)
 
 ### Bug Fixes

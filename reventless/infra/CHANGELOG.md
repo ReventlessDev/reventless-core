@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.205 (2026-10-25)
+
+* refactor(aws)!: deploy and runtime configuration a function may lack are optional fields ([de80a54](https://github.com/ReventlessDev/reventless-core/commit/de80a546501a97b39cbe71200120f062bb260da4))
+### Features
+
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+* a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+
+
+
 # 3.0.0-alpha.204 (2026-10-23)
 
 ### Features

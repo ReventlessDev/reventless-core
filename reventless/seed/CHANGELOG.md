@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.37 (2026-10-25)
+
+* refactor!: internal results and tool records whose parts may be absent are optional fields ([7009ddf](https://github.com/ReventlessDev/reventless-core/commit/7009ddf5d522f39ec9946a3b5cd062ceae889bbf))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`; a destructure of one of them binds a
+field that may be absent with `?name`.
+
+
+
 # 1.0.0-alpha.36 (2026-10-21)
 
 * feat!: a rejected command says whether the model, the access check or the platform said no ([6a8a6b0](https://github.com/ReventlessDev/reventless-core/commit/6a8a6b0f2f31e766ae26a944c23b0904e51a5865))

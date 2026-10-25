@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.288 (2026-10-25)
+
+* refactor!: internal results and tool records whose parts may be absent are optional fields ([7009ddf](https://github.com/ReventlessDev/reventless-core/commit/7009ddf5d522f39ec9946a3b5cd062ceae889bbf))
+* refactor(aws)!: deploy and runtime configuration a function may lack are optional fields ([de80a54](https://github.com/ReventlessDev/reventless-core/commit/de80a546501a97b39cbe71200120f062bb260da4))
+### Features
+
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`; a destructure of one of them binds a
+field that may be absent with `?name`.
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+
+
+
 # 1.0.0-alpha.287 (2026-10-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.288 (2026-10-25)
+
+### Features
+
+* a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+
+
 # 3.0.0-alpha.287 (2026-10-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog

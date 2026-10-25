@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.24 (2026-10-25)
+
+* refactor(bindings)!: response fields AWS may omit are optional fields ([8babc00](https://github.com/ReventlessDev/reventless-core/commit/8babc008c4cdd6e88721d856ca35648f0552d5b9))
+
+### BREAKING CHANGES
+
+* code that builds these records drops `name: None` and
+writes `name: x` for `name: Some(x)`.
+
+
+
 # 1.0.0-alpha.23 (2026-09-21)
 
 ### Bug Fixes
