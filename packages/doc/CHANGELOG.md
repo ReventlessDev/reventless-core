@@ -718,6 +718,15 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-25
+- feat!: an inbound translation is handed its caller ([e7e9902](https://github.com/ReventlessDev/reventless-core/commit/e7e990282d47941cf7c1934b4e240f73f48026b3))
+- feat(spec): a plugin composes slices an installed package provides ([521d77a](https://github.com/ReventlessDev/reventless-core/commit/521d77aa01def679aab41f09c079850d6fe43e64))
+- feat: a plugin declares per role how a person is admitted, and the local platform honors the self-service and provisioned halves ([9c37bf5](https://github.com/ReventlessDev/reventless-core/commit/9c37bf50f15cac1703bf2c351713518121a56211))
+
+### 2026-10-24
+- feat: a door open to anonymous callers is limited per source address, and answers Throttled past the limit ([259a671](https://github.com/ReventlessDev/reventless-core/commit/259a671969dd25579d26227a8fe80cba3194f0aa))
+- feat: a stash capability holds a value for minutes outside the log and hands it over once ([627f285](https://github.com/ReventlessDev/reventless-core/commit/627f28529ead2d2d31bdd091c9f42e7faca40f6f))
+- feat!: an inbound translation is async and handed the platform's capabilities, and its audit row withholds sensitive fields ([dae6049](https://github.com/ReventlessDev/reventless-core/commit/dae6049e084f81408a494a2cd2011ec564dda65c))
 ### 2026-10-22
 - feat(aws): a new account gets a domain user id, carried as a token claim from a pool-scoped identity store ([ccfc90c](https://github.com/ReventlessDev/reventless-core/commit/ccfc90ced0c211cab23843864a2b4e580001b3ae))
 ### 2026-10-22
