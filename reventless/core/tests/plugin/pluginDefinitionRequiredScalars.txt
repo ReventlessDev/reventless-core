@@ -50,6 +50,16 @@
 .structure.$offload.hash: string
 .structure.$offload.key: string
 .structure.$offload.store: string
+# `admission` and `admissionDoors` are themselves optional and NEW, so no persisted
+# payload carries either array: a stored structure heals to `None` and these five are
+# never reached. Required inside them because a row naming no role or no strategy, or a
+# door naming no component or no part, declares nothing; a fabricated `""` role would
+# read as a role nobody holds.
+.structure.admission[].invitedBy[]: string
+.structure.admission[].role: string
+.structure.admission[].strategy: string
+.structure.admissionDoors[].component: string
+.structure.admissionDoors[].part: string
 .structure.aggregates[].commands[].allowedStates[]: string
 .structure.aggregates[].commands[].mutationField: string
 .structure.aggregates[].commands[].name: string

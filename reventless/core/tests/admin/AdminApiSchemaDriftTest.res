@@ -172,6 +172,14 @@ let capabilityDecl: requiredCapabilityDeclaration = {
   component: "GeocodeAddress",
 }
 
+let admissionDef: Reventless.Admission.def = {
+  role: "Clerk",
+  strategy: "Invitation",
+  invitedBy: ["Admin"],
+}
+
+let admissionDoor: Reventless.Admission.doorDef = {component: "SignUp", part: "start"}
+
 let structure: pluginStructure = {
   readModels: [readSide],
   stateViewSlices: [],
@@ -185,6 +193,8 @@ let structure: pluginStructure = {
   requiredStores: ["catalog.images"],
   requiredStoreDeclarations: [storeDecl],
   requiredCapabilities: [capabilityDecl],
+  admission: [admissionDef],
+  admissionDoors: [admissionDoor],
 }
 
 let panel: panelManifestEntry = {
@@ -361,6 +371,10 @@ let guards: array<guard> = [
       // components, and where one came from is the map's question rather than a
       // generated page's. It reaches the wire on `Platform_PluginStructures`.
       "traitDeclarations",
+      // The shell learns the doors from the config.json the platform writes, and
+      // which roles are open from the registration plugin's public view.
+      "admission",
+      "admissionDoors",
     ],
   },
   {
@@ -394,6 +408,22 @@ let guards: array<guard> = [
     wireFields: jsonKeys(
       Platform_PluginStructuresApi.encodeRequiredCapabilityDeclaration(capabilityDecl),
     ),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
+    gqlType: "Platform_AdmissionDef",
+    sdlTypes: structuresSdl,
+    recordFields: schemaKeys(Reventless.Admission.defSchema),
+    wireFields: jsonKeys(Platform_PluginStructuresApi.encodeAdmissionDef(admissionDef)),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
+    gqlType: "Platform_AdmissionDoorDef",
+    sdlTypes: structuresSdl,
+    recordFields: schemaKeys(Reventless.Admission.doorDefSchema),
+    wireFields: jsonKeys(Platform_PluginStructuresApi.encodeAdmissionDoorDef(admissionDoor)),
     wireOnly: [],
     recordOnly: [],
   },

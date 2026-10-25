@@ -11,7 +11,9 @@ let sdlTypes = [
   `type Platform_RequiredStoreDeclaration {\n  store: String!\n  component: String!\n  field: String!\n  annotation: String\n}`,
   `type Platform_RequiredCapabilityDeclaration {\n  capability: String!\n  component: String!\n}`,
   `type Platform_TraitDeclaration {\n  trait: String!\n  version: String!\n  posture: String!\n  component: String!\n}`,
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n}`
+  `type Platform_AdmissionDef {\n  role: String!\n  strategy: String!\n  invitedBy: [String!]\n}`,
+  `type Platform_AdmissionDoorDef {\n  component: String!\n  part: String!\n}`,
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n  admission: [Platform_AdmissionDef!]\n  admissionDoors: [Platform_AdmissionDoorDef!]\n}`
 ];
 
 function encodeTraitDeclaration(d) {
@@ -31,6 +33,36 @@ function encodeTraitDeclaration(d) {
     [
       "component",
       d.component
+    ]
+  ]);
+}
+
+function encodeAdmissionDef(d) {
+  return Object.fromEntries([
+    [
+      "role",
+      d.role
+    ],
+    [
+      "strategy",
+      d.strategy
+    ],
+    [
+      "invitedBy",
+      Stdlib_Option.mapOr(d.invitedBy, null, Platform_ComponentDefinitionsApi$ReventlessCore.encodeStrings)
+    ]
+  ]);
+}
+
+function encodeAdmissionDoorDef(d) {
+  return Object.fromEntries([
+    [
+      "component",
+      d.component
+    ],
+    [
+      "part",
+      d.part
     ]
   ]);
 }
@@ -173,6 +205,14 @@ function encodePluginStructureEntry(pluginId, def) {
     [
       "traitDeclarations",
       Stdlib_Option.mapOr(def.traitDeclarations, null, ds => ds.map(encodeTraitDeclaration))
+    ],
+    [
+      "admission",
+      Stdlib_Option.mapOr(def.admission, null, ds => ds.map(encodeAdmissionDef))
+    ],
+    [
+      "admissionDoors",
+      Stdlib_Option.mapOr(def.admissionDoors, null, ds => ds.map(encodeAdmissionDoorDef))
     ]
   ]);
 }
@@ -183,6 +223,8 @@ export {
   sdlTypes,
   sdlQueryField,
   encodeTraitDeclaration,
+  encodeAdmissionDef,
+  encodeAdmissionDoorDef,
   encodeExtensionPointDef,
   encodeRequiredStoreDeclaration,
   encodeRequiredCapabilityDeclaration,

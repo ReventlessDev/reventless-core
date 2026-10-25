@@ -49,6 +49,17 @@ type Platform_AcceptedCommandDef {
   toCommandTypes: [String!]!
 }
 
+type Platform_AdmissionDef {
+  invitedBy: [String!]
+  role: String!
+  strategy: String!
+}
+
+type Platform_AdmissionDoorDef {
+  component: String!
+  part: String!
+}
+
 type Platform_AutomationSliceDef {
   chapter: String
   consumedEventTypes: [String!]!
@@ -228,6 +239,8 @@ type Platform_PluginStatusChange {
 }
 
 type Platform_PluginStructureEntry {
+  admission: [Platform_AdmissionDef!]
+  admissionDoors: [Platform_AdmissionDoorDef!]
   aggregates: [Platform_WriteSideDef!]!
   automationSlices: [Platform_AutomationSliceDef!]!
   extensionPoints: [Platform_ExtensionPointDef!]

@@ -60,6 +60,11 @@ let structure: pluginStructure = {
     {store: "Catalog.images", component: "Product", field: "image", annotation: "images"},
   ],
   requiredCapabilities: [{capability: "Geocoding", component: "GeocodeAddress"}],
+  admission: [
+    {role: "Shopper", strategy: "SelfService"},
+    {role: "Clerk", strategy: "Invitation", invitedBy: ["Admin"]},
+  ],
+  admissionDoors: [{component: "SignUp", part: "start"}],
 }
 
 let encoded = Platform_PluginStructuresApi.encodePluginStructureEntry(
@@ -86,6 +91,8 @@ describe("Platform_PluginStructures entry", () => {
     let dict = encoded->JSON.Decode.object->Option.getOr(Dict.make())
     let keys = dict->Dict.keysToArray->Array.toSorted(String.compare)
     expect(keys)->toEqual([
+      "admission",
+      "admissionDoors",
       "aggregates",
       "automationSlices",
       "extensionPoints",
@@ -149,6 +156,17 @@ describe("Platform_PluginStructures entry", () => {
       ),
     )->toEqual(true)
   )
+
+  // `invitedBy` is null rather than absent where the strategy names no inviter, so a
+  // reader selecting it gets an answer for every row.
+  testSync("encodes admission per role, and the doors with their part", () =>
+    expect(
+      json->String.includes(
+        "\"admission\":[{\"role\":\"Shopper\",\"strategy\":\"SelfService\",\"invitedBy\":null}," ++
+        "{\"role\":\"Clerk\",\"strategy\":\"Invitation\",\"invitedBy\":[\"Admin\"]}]," ++ "\"admissionDoors\":[{\"component\":\"SignUp\",\"part\":\"start\"}]",
+      ),
+    )->toEqual(true)
+  )
 })
 
 // A structure persisted before these fields existed decodes as None, and null is the
@@ -173,6 +191,10 @@ describe("absent optional collections", () => {
 
   testSync("encodes absent extensionPoints as null", () =>
     expect(bareJson->String.includes("\"extensionPoints\":null"))->toEqual(true)
+  )
+
+  testSync("encodes absent admission and admissionDoors as null", () =>
+    expect(bareJson->String.includes("\"admission\":null,\"admissionDoors\":null"))->toEqual(true)
   )
 
   testSync("encodes absent requiredStores as null", () =>
