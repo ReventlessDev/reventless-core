@@ -1687,6 +1687,7 @@ type Registration_SendRegistrationChallengeTodoItem {
   alreadyRegistered: Boolean!
   email: String!
   invited: Boolean
+  roles: [String!]
 }
 
 type Registration_SendRegistrationChallengeTodoRef {
