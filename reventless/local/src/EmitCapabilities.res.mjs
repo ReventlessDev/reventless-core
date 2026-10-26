@@ -4,8 +4,19 @@ import * as Nodefs from "node:fs";
 import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as CapabilityManifest$Reventless from "@reventlessdev/reventless-spec/src/components/CapabilityManifest.res.mjs";
+
+function manifestText(structure) {
+  if (structure !== undefined) {
+    return CapabilityManifest$Reventless.renderForStructure(structure);
+  } else {
+    return CapabilityManifest$Reventless.render({
+      capabilities: []
+    });
+  }
+}
 
 function compositionModulePath(srcDir, moduleArg) {
   let withExtension = name => {
@@ -84,13 +95,14 @@ function main() {
     let composition = await import(Nodeurl.pathToFileURL(modulePath).href);
     let built = composition.Make(platform);
     let manifestPath = Nodepath.join(srcDir, "capabilities.json");
-    Nodefs.writeFileSync(manifestPath, CapabilityManifest$Reventless.renderForStructure(built.pluginStructure), "utf8");
+    Nodefs.writeFileSync(manifestPath, manifestText(Primitive_option.fromNullable(built.pluginStructure)), "utf8");
     console.log("Generated: " + manifestPath);
     process.exit(0);
   });
 }
 
 export {
+  manifestText,
   compositionModulePath,
   fail,
   usage,

@@ -25,8 +25,18 @@
 
 type platform
 type localPlatformExports = {"Make": unit => platform}
-type builtPlugin = {"pluginStructure": Reventless.Plugin.pluginStructure}
+// A plugin with no parts yet has no structure: `generate-plugin` leaves `pluginStructure` out of
+// its composition root.
+type builtPlugin = {"pluginStructure": Nullable.t<Reventless.Plugin.pluginStructure>}
 type compositionExports = {"Make": platform => builtPlugin}
+
+/** The manifest's text for a plugin's structure. A plugin with no parts yet has none and
+    declares nothing: its manifest says so, as one for a structure with no declarations does. */
+let manifestText = (structure: option<Reventless.Plugin.pluginStructure>): string =>
+  switch structure {
+  | Some(structure) => Reventless.CapabilityManifest.renderForStructure(structure)
+  | None => Reventless.CapabilityManifest.render({capabilities: []})
+  }
 
 // ── Which module holds the composition root ──────────────────────────────────
 
@@ -99,10 +109,7 @@ let main = () =>
     let built = composition["Make"](platform)
 
     let manifestPath = NodePath.join([srcDir, "capabilities.json"])
-    NodeFs.writeFileSync(
-      manifestPath,
-      Reventless.CapabilityManifest.renderForStructure(built["pluginStructure"]),
-    )
+    NodeFs.writeFileSync(manifestPath, manifestText(built["pluginStructure"]->Nullable.toOption))
     Console.log("Generated: " ++ manifestPath)
 
     // Applying the platform functor wires in-process infrastructure; exit

@@ -19,6 +19,12 @@ describe("EmitCapabilities.parseArgs", () => {
   )
 })
 
+describe("EmitCapabilities.manifestText", () => {
+  testSync("a plugin with no parts yet declares nothing", () =>
+    expect(EmitCapabilities.manifestText(None))->toBe(`{\n  "capabilities": []\n}\n`)
+  )
+})
+
 describe("emit-capabilities on the command line", () => {
   module CliArgs = Reventless.CliArgs
   let usage = EmitCapabilities.usage->String.trim
