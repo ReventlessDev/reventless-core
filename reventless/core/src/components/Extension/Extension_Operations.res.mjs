@@ -4,6 +4,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -111,6 +112,9 @@ function Make(MappingSpec) {
       }
     };
     let incomingJsonEventsHandler = async (eventJson$p, pluginDef) => {
+      if (Pii$Reventless.needsPrepare([eventJson$p])) {
+        await Pii$Reventless.prepareOrThrow([eventJson$p]);
+      }
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `incoming EP event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let event$p;
       try {
@@ -124,10 +128,13 @@ function Make(MappingSpec) {
       let apply = async commandActions => await Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
       return await apply(commandActions);
     };
-    let outgoingJsonEventsHandler = (eventJson$p, pluginDef) => {
+    let outgoingJsonEventsHandler = async (eventJson$p, pluginDef) => {
+      if (Pii$Reventless.needsPrepare([eventJson$p])) {
+        await Pii$Reventless.prepareOrThrow([eventJson$p]);
+      }
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `outgoing delegate event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
-      return Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
+      return await Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
     };
     return {
       incomingJsonEventsHandler: incomingJsonEventsHandler,

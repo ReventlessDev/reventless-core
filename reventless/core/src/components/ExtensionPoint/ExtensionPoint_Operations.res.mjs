@@ -3,6 +3,7 @@
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -102,6 +103,9 @@ function Make(MappingSpec) {
       }
     };
     let outgoingJsonEventsHandler = async (eventJson$p, _pluginDef) => {
+      if (Pii$Reventless.needsPrepare([eventJson$p])) {
+        await Pii$Reventless.prepareOrThrow([eventJson$p]);
+      }
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `outgoing event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine, Ops.resourceNaming);
       return await Util_Promise$ReventlessCore.toUnit(Promise.all(eventActions.map(applyEventAction)));

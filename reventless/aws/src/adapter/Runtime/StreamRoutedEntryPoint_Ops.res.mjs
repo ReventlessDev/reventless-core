@@ -2,6 +2,9 @@
 
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as EventCollectorChannel_DynamoDbStream_Runtime$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
 
@@ -41,8 +44,18 @@ function exnMessage(exn) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
 }
 
+function withPreparedKeys(handleJsonEvents) {
+  return stream => handleJsonEvents(Stream.mapEffect(stream, json => {
+    if (Pii$Reventless.needsPrepare([json])) {
+      return Effect.map(Effect.promise(() => Pii$Reventless.prepareOrThrow([json])), () => json);
+    } else {
+      return Effect.succeed(json);
+    }
+  }));
+}
+
 function toStreamHandler(handleJsonEvents) {
-  return (event, context) => EventCollectorChannel_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleJsonEvents, event, context);
+  return (event, context) => EventCollectorChannel_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(withPreparedKeys(handleJsonEvents), event, context);
 }
 
 function addToRegistry(registry, sourceUrn, handler) {
@@ -115,6 +128,7 @@ export {
   logWarn,
   logError,
   exnMessage,
+  withPreparedKeys,
   toStreamHandler,
   addToRegistry,
   groupBySource,

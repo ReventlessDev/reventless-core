@@ -133,6 +133,9 @@ module Make = (
     }
 
   let outgoingJsonEventsHandler = async (eventJson', _pluginDef) => {
+    if Reventless.Pii.needsPrepare([eventJson']) {
+      await Reventless.Pii.prepareOrThrow([eventJson'])
+    }
     EffectLogger.logInfo(
       ~comp=`ExtensionPoint(${MappingSpec.name})`,
       `outgoing event: ${LogFormat.eventSummary(eventJson')}`,

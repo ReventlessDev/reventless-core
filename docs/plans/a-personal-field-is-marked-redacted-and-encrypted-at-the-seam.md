@@ -435,10 +435,12 @@ it is called in `LocalBus.publishEvent`, where every local subscriber decodes in
 both state-view handlers, which also serve catch-up reads from storage. A caller awaits it only when
 the batch names a key (`Pii.needsPrepare`), so paths holding no ciphertext keep their timing.
 [`PiiPrefetchTest`](../../reventless/core/tests/pii/PiiPrefetchTest.res) pins it with a provider
-that opens only what it was asked to fetch. **Open:** `prepare` in each AWS entry point that decodes
-events (automation, event mapper, extension, read model, state view, side effect), each in its own
-Lambda and so its own key cache; the scenario in the conformance kit; the runs against DynamoDB and
-Postgres deployments.
+that opens only what it was asked to fetch. On AWS, `StreamRoutedEntryPoint_Ops.withPreparedKeys` wraps the
+shared stream handler every reader's Lambda goes through (automation, event mapper, read model,
+side effect, state view), so each Lambda fetches into its own cache; the extension and extension-point
+handlers prepare in core, on both platforms. The counter Lambda decodes no personal field.
+**Open:** the scenario in the conformance kit, and the runs against DynamoDB and Postgres
+deployments, which need AWS credentials and a provider that encrypts.
 
 ## Decisions
 

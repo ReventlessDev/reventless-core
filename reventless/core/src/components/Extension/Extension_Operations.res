@@ -152,6 +152,9 @@ module Make = (
     }
 
   let incomingJsonEventsHandler = async (eventJson', pluginDef) => {
+    if Reventless.Pii.needsPrepare([eventJson']) {
+      await Reventless.Pii.prepareOrThrow([eventJson'])
+    }
     EffectLogger.logInfo(
       ~comp,
       `incoming EP event: ${LogFormat.eventSummary(eventJson')}`,
@@ -178,13 +181,16 @@ module Make = (
     }
   }
 
-  let outgoingJsonEventsHandler = (eventJson', pluginDef) => {
+  let outgoingJsonEventsHandler = async (eventJson', pluginDef) => {
+    if Reventless.Pii.needsPrepare([eventJson']) {
+      await Reventless.Pii.prepareOrThrow([eventJson'])
+    }
     EffectLogger.logInfo(
       ~comp,
       `outgoing delegate event: ${LogFormat.eventSummary(eventJson')}`,
     )->Effect.runSync
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
-    commandActions
+    await commandActions
     ->Array.map(applyOutgoingCommandAction)
     ->Promise.all
     ->Util.Promise.toUnit

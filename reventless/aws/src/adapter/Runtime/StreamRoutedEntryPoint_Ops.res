@@ -71,11 +71,29 @@ type registeredHandler = {
   plugin?: string,
 }
 
+// Each Lambda keeps its own key cache, so an event naming a key fetches it here,
+// before the handler decodes it; an event naming none passes straight through.
+let withPreparedKeys = (
+  handleJsonEvents: ReventlessCore.EventCollector.jsonEventsHandler,
+): ReventlessCore.EventCollector.jsonEventsHandler =>
+  stream =>
+    stream
+    ->Stream.mapEffect(json =>
+      Reventless.Pii.needsPrepare([json])
+        ? Effect.promise(() => Reventless.Pii.prepareOrThrow([json]))->Effect.map(_ => json)
+        : Effect.succeed(json)
+    )
+    ->handleJsonEvents
+
 let toStreamHandler = (
   handleJsonEvents: ReventlessCore.EventCollector.jsonEventsHandler,
 ): streamHandler =>
   (event, context) =>
-    EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(handleJsonEvents, event, context)
+    EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(
+      withPreparedKeys(handleJsonEvents),
+      event,
+      context,
+    )
 
 // Multiple components can share one source stream — e.g. every admin read
 // model (Plugins, PluginHistory, PlatformEventGraph, UIFragmentRegistry)
