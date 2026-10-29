@@ -30,6 +30,8 @@ let metaSchema = Sury.$schema(s => ({
   traceparent: s.m(Sury.$option(Sury.string)),
   schemaVersion: s.m(Sury.$option(Sury.string)),
   headers: s.m(Sury.$option(Sury.record(Sury.string))),
+  dataClass: s.m(Sury.$option(Sury.string)),
+  keyRef: s.m(Sury.$option(Sury.string)),
   callerClaim: s.m(Sury.$option(schema))
 }));
 

@@ -1,10 +1,12 @@
 # Plan: a personal field is marked, redacted, and encrypted at the seam
 
 **Date:** 2026-10-25<br/>
-**Status:** Filed, not started. Steps [PD1](#steps) to [PD10](#steps) in two halves: the first six
-decide formats and stop the plaintext copies, and come before any deployment holds a real person's
-data; the last four close the seam so that an installed codec provider encrypts every personal
-field on every transport. Code claims refer to `94466bb9c`.<br/>
+**Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope) and
+[PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed) built 2026-10-29; PD1 revised the
+[Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
+first six decide formats and stop the plaintext copies, and come before any deployment holds a real
+person's data; the last four close the seam so that an installed codec provider encrypts every
+personal field on every transport. Code claims refer to `94466bb9c` unless a step says otherwise.<br/>
 **Repos:** `reventless-core` only. `packages/reventless-ppx` (the attribute and its checks),
 `reventless/spec` (the wrapper type, the provider seam, the schema marker), `reventless/core`
 (the envelope, the loggers, encode-once, the caches, the append), `reventless/aws` (the presign
@@ -103,23 +105,42 @@ operations would decrypt on one path and not on the others. So `@pii` follows `@
 rewrites the field's type and injects a codec at the schema, and ciphertext is what is stored, on
 every path, by construction.
 
-**The codec asks a provider.** `Pii.codec` in `reventless/spec` consults `Pii.Provider.current`,
-installed once per process. The framework ships the plain provider: encode writes the value,
-decode yields `Value`. A deployment may install another, which encodes to one of three stored forms
-and decodes all of them. The seam is the provider's signature, which this plan fixes:
+**The codec reads; a provider seals and opens around it.** *Revised in [PD1](#pd1-the-formats-written-down),
+2026-10-29.* The plan first had the field codec consult the provider. That cannot work: a sury
+codec is synchronous and sees one field, while an encrypting provider fetches keys from a store,
+which is asynchronous, and files a value under its subject, which is a sibling field. So the work
+is split, in [`Pii.res`](../../reventless/spec/src/components/Pii.res):
+
+- **The field codec**, `Pii.schema(inner)`, is synchronous, declarative and knows no provider. It
+  reads a plain value as `Value`, and the two markers a provider leaves for a value that is gone as
+  `Erased` and `Forgotten`. A stored form it was handed unopened does not decode.
+- **The provider**, `Pii.Provider.current`, installed once per process, runs at the event log's
+  seam on the whole encoded payload: `seal` before an append, `open_` after a read, both async,
+  each given the field's subject read off the payload. The framework ships the plain provider,
+  which stores values as they are. A deployment may install one that encrypts.
+
+This is still the schema's seam and not an adapter decorator: the pass walks the event's schema for
+its marked fields, and it runs in the event log's operations, which every runtime and both stores go
+through. A path that skips it is loud on both sides: the append refusal of [PD9](#pd9-the-caches-expire-and-the-append-refuses)
+on the way in, the field codec on the way out.
 
 ```rescript
-type stored = Cipher({version: int, keyId: string, alg: string, bytes: string}) | Erased({version: int}) | Forgotten({version: int, ref: string})
 type provider = {
-  encode: (~subject: string, ~field: string, JSON.t) => promise<result<stored, PiiError.t>>,
-  decode: (~subject: string, stored) => promise<result<Pii.t<JSON.t>, PiiError.t>>,
-  release: (~subject: string, ~ref: string) => promise<result<unit, PiiError.t>>,
+  name: string,
+  encrypts: bool,
+  seal: (~subject: string, ~field: string, ~forgettable: bool, JSON.t) => promise<result<JSON.t, Pii.error>>,
+  open_: (~field: string, JSON.t) => promise<result<JSON.t, Pii.error>>,
+  release: (~subject: string, ~ref: string) => promise<result<unit, Pii.error>>,
 }
 ```
 
-The three stored forms on the wire are `enc:v1:<keyId>:<alg>:<base64>`, `erased:v1` and
-`ref:v1:<ref>`. The decoder never fails on the last two. Without a key id a value could never be
-re-keyed; without a version never migrated.
+**The stored forms sit under one reserved key.** The three forms are `enc:v1:<keyId>:<alg>:<base64>`,
+`erased:v1` and `ref:v1:<ref>`, each stored as `{"$pii": "<form>"}`, as `@offload` stores under
+`$offload`. A bare string form would be ambiguous: a person may well be called `erased:v1`, and the
+plain provider stores names as they are. No ReScript record field encodes to a key starting with `$`,
+so under the sentinel a plain value of any type cannot be taken for a form. An opened value is the
+plain value, or `{"$pii": "erased:v1"}`, or `{"$pii": "forgotten:v1"}`. The decoder never fails on
+the last two. Without a key id a value could never be re-keyed; without a version never migrated.
 
 **A provider is installed per platform, and its keys are platform resources.** A subject's fields are
 written by several plugins, and whatever a provider keeps about a subject must be reachable from every
@@ -198,10 +219,19 @@ re-checked against the current commit before the note is final.
 **Exit:** this section's [Design](#design) is the note; the envelope's schema declares the two keys
 as optional; the GWT that pins the envelope's keys lists them.
 
+**Built 2026-10-29.** [`Pii.res`](../../reventless/spec/src/components/Pii.res) holds the type, the
+three stored forms with their printer and parser, the field codec, the provider type and the plain
+provider; [`PiiTest`](../../reventless/spec/tests/PiiTest.res) pins the spellings, that a plain
+string reading `erased:v1` stays a value, and that an unopened form does not decode. The envelope
+declares `dataClass` and `keyRef` as optional, and `metaKeys` lists them. The two claims hold at
+`0fa525a`: every command and event is logged in full at info, and `meta.ip` was on every event a
+user caused until [PD3](#pd3-the-envelope). The design changed in one place, the provider's
+signature; the [Design](#design) says why.
+
 ### PD2: the recording `@pii`
 
 A new attribute in the vocabulary with a `PiiInference.ml` beside `OffloadInference.ml`. On an event
-field it rewrites the type to `Pii.t<'a>` and injects `Pii.codec` with `@s.matches`; on a command field
+field it rewrites the type to `Pii.t<'a>` and injects `Pii.schema` with `@s.matches`, plus the marker the seal and open pass reads (the subject field, and whether the value is forgettable); on a command field
 it records only. It refuses: a read-model type; a tag or partition-key field, including a member of a
 `@compositePartitionTag`; a field with no `subject` and no `@owner` field to default to; a type whose
 inner codec it cannot derive. It implies `@sensitive`. A build check warns when a command field has the
@@ -224,6 +254,12 @@ absent from domain events.
 **Exit:** on the local platform and on an AWS stack, an event a signed-in user caused carries
 `meta.user` and no `meta.ip`; a grep finds no reader of `meta.ip` outside the request record.
 
+**Built 2026-10-29** (`aa9e8c7`, breaking: `generateMeta` takes no `~ip`). The AppSync command
+templates send no `ip`, the generator copies none, `deriveMeta` and `deriveStableMeta` inherit none,
+and nothing writes `ip: ""` any more; the key stays readable for messages written before. Two parts
+are open: the address is not yet handed to the inspector's history slice (open question 3), and the
+AWS half of the exit waits for a deployment with working credentials.
+
 ### PD4: an upload's path carries nothing a person typed
 
 The presign service mints `{servedPrefix}/{sub}/{uuid}.{ext}`, the extension from the declared
@@ -233,6 +269,11 @@ header because it is part of the signature. The uploadable types' documentation 
 
 **Exit:** the presign GWT asserts the shape; an upload with a personal file name leaves it in no
 event and no log line; a download keeps its name through the header.
+
+**Built 2026-10-29** (`456c88c`), except the header. Both platforms mint `{prefix}/{sub}/{uuid}.{ext}`
+through `StorageRef.objectName`, with the extension from the declared content type. Signing a
+`Content-Disposition` would make every client send that header, so the download name waits until
+the UI kit sends it; until then an upload is downloaded under its opaque name.
 
 ### PD5: the registration ledger's address id
 

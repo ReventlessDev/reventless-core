@@ -249,7 +249,9 @@ function composeMeta(dict) {
     "causationId",
     "traceparent",
     "schemaVersion",
-    "headers"
+    "headers",
+    "dataClass",
+    "keyRef"
   ];
   let optional = Stdlib_Array.filterMap(optionalKeys.map(k => Stdlib_Option.map(dict[k], v => [
     k,
@@ -268,7 +270,9 @@ let metaKeys = [
   "causationId",
   "traceparent",
   "schemaVersion",
-  "headers"
+  "headers",
+  "dataClass",
+  "keyRef"
 ];
 
 function storedEventToFlatJson(stored, idSchema) {

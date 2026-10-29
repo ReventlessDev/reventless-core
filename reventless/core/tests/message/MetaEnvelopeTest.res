@@ -199,3 +199,15 @@ describe("StoredEvent encode/decode round-trip:", () => {
     },
   )
 })
+
+describe("reserved envelope keys", () => {
+  testSync("dataClass and keyRef are optional, round-trip, and are meta keys", () => {
+    let meta = {...generateMeta(~service="svc"), dataClass: "personal", keyRef: "k-1"}
+    let decoded =
+      meta->Reventless.Util_Sury.toJson(metaSchema)->Reventless.Util_Sury.fromJson(metaSchema)
+    expect(decoded.dataClass)->toEqual(Some("personal"))->ignore
+    expect(decoded.keyRef)->toEqual(Some("k-1"))->ignore
+    expect(generateMeta(~service="svc").dataClass)->toEqual(None)->ignore
+    expect(metaKeys->Array.includes("dataClass") && metaKeys->Array.includes("keyRef"))->toBe(true)
+  })
+})

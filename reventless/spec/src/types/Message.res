@@ -68,6 +68,13 @@ type meta = {
   /** Extensible header bag for cross-cutting context (tenantId, feature flags, etc.).
       Absent when empty — consumers normalise with `->Option.getOr(Dict.make())`. */
   headers?: dict<string>,
+  /** Reserved: the class of data the payload holds (personal data, say), for a
+      reader that must route or retain it by class without decoding it. Declared
+      now so its name is fixed before any message is stored; nothing writes it yet. */
+  dataClass?: string,
+  /** Reserved: a reference to the key material the payload's sealed fields were
+      written under. Declared now for the same reason; nothing writes it yet. */
+  keyRef?: string,
   /** Commands only: the caller as the generator classified it. Deliberately not
       inherited by `deriveMeta`, so an event or a follow-up command never carries
       the claim of the command that caused it. */

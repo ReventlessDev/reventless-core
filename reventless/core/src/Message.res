@@ -286,7 +286,16 @@ let composeMeta = (dict: dict<JSON.t>) => {
     ("msgId", dict->Dict.get("msgId")->Option.getOrThrow),
     ("correlationId", dict->Dict.get("correlationId")->Option.getOrThrow),
   ]
-  let optionalKeys = ["ip", "user", "causationId", "traceparent", "schemaVersion", "headers"]
+  let optionalKeys = [
+    "ip",
+    "user",
+    "causationId",
+    "traceparent",
+    "schemaVersion",
+    "headers",
+    "dataClass",
+    "keyRef",
+  ]
   let optional =
     optionalKeys
     ->Array.map(k => dict->Dict.get(k)->Option.map(v => (k, v)))
@@ -307,6 +316,8 @@ let metaKeys = [
   "traceparent",
   "schemaVersion",
   "headers",
+  "dataClass",
+  "keyRef",
 ]
 
 /*
