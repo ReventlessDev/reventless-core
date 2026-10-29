@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-10-29)
+
+### Features
+
+* **registration:** an erased account releases its address ([3731676](https://github.com/ReventlessDev/reventless-core/commit/37316763bbbbcf088d89ae14cd66715b444a142d))
+
+
 # 1.0.0-alpha.11 (2026-10-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-registration
