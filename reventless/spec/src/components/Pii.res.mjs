@@ -3,9 +3,12 @@
 import * as Sury from "sury";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
+import * as Sensitive$Reventless from "./Sensitive.res.mjs";
 
 let sentinelKey = "$pii";
 
@@ -108,6 +111,55 @@ function schema(inner) {
     forgottenArm,
     valueArm
   ]);
+}
+
+let piiId = Sury.$Metadata_Id_make("reventless", "pii");
+
+function marked(subject, forgettableOpt, inner) {
+  let forgettable = forgettableOpt !== undefined ? forgettableOpt : false;
+  return Sensitive$Reventless.mark(Sury.$Metadata_set(schema(inner), piiId, {
+    subject: subject,
+    forgettable: forgettable
+  }));
+}
+
+function mark(subject, forgettableOpt, inner) {
+  let forgettable = forgettableOpt !== undefined ? forgettableOpt : false;
+  return Sensitive$Reventless.mark(Sury.$Metadata_set(inner, piiId, {
+    subject: subject,
+    forgettable: forgettable
+  }));
+}
+
+function markerOf(schema) {
+  return Sury.$Metadata_get(schema, piiId);
+}
+
+function fieldMarker(schema) {
+  let m = Sury.$Metadata_get(schema, piiId);
+  if (m !== undefined) {
+    return m;
+  } else {
+    return Stdlib_Option.flatMap(Semantic$Reventless.unwrapOptional(schema), markerOf);
+  }
+}
+
+function fieldsOf(schema) {
+  if (schema.type === "object") {
+    return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
+      let name = param[0];
+      return Stdlib_Option.map(fieldMarker(param[1]), m => [
+        name,
+        m
+      ]);
+    });
+  } else {
+    return [];
+  }
+}
+
+function variantFields(schema, variant) {
+  return Stdlib_Option.mapOr(Semantic$Reventless.unionVariant(schema, variant), [], fieldsOf);
 }
 
 function toOption(value) {
@@ -231,10 +283,17 @@ export {
   wrap,
   unwrap,
   schema,
+  piiId,
+  marked,
+  mark,
+  markerOf,
+  fieldMarker,
+  fieldsOf,
+  variantFields,
   toOption,
   getOr,
   errorMessage,
   plain,
   Provider,
 }
-/* sury Not a pure module */
+/* piiId Not a pure module */

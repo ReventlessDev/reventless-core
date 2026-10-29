@@ -380,6 +380,7 @@ and objectRefToJsonSchema = (
   ~optional: array<string>=[],
   ~owners: array<string>=[],
   ~sensitive: array<string>=[],
+  ~pii: array<(string, Reventless.Pii.marker)>=[],
   ~inputNames: bool=false,
   fields: dict<SchemaType.schemaType>,
 ): JSON.t => {
@@ -431,6 +432,23 @@ and objectRefToJsonSchema = (
       JSON.Encode.object(obj)
     | None => withAnnotations
     }
+    // `@pii`: whose data the field holds, so a tool can list the personal data an
+    // app keeps and a reader can route it without decoding it.
+    let withAnnotations = switch (
+      pii->Array.find(((name, _)) => name == fieldName),
+      withAnnotations->JSON.Decode.object,
+    ) {
+    | (Some((_, {subject, forgettable})), Some(obj)) =>
+      obj->Dict.set(
+        "x-reventless-pii",
+        Dict.fromArray([
+          ("subject", JSON.Encode.string(subject)),
+          ("forgettable", JSON.Encode.bool(forgettable)),
+        ])->JSON.Encode.object,
+      )
+      JSON.Encode.object(obj)
+    | _ => withAnnotations
+    }
     props->Dict.set(fieldName, withAnnotations)
 
     // Optional two ways, because neither source answers alone. `optional` is
@@ -475,6 +493,7 @@ let deriveObjectSchema = (
       ~optional=SchemaType.optionalFieldNames(schema),
       ~owners=Reventless.Owner.fieldNames(schema),
       ~sensitive=Reventless.Sensitive.fieldNames(schema),
+      ~pii=Reventless.Pii.fieldsOf(schema),
       ~inputNames,
       fields,
     )

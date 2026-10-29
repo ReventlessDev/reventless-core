@@ -9,9 +9,11 @@ let retryTtl = 600
 
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationProofAccepted({email, address, roles, proofHash}) => [
+  | RegistrationProofAccepted({email, address: Value(address), roles, proofHash}) => [
       (`${email}:${proofHash}`, {email, address, roles, proofHash}),
     ]
+  // An address that was erased or forgotten has nobody left to write to.
+  | _ => []
   }
 
 // `email` is already the ledger's id for the address: no key is needed to say so.

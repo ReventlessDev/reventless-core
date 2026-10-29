@@ -19,6 +19,8 @@ module InvitingLedger = Registrations_Decision.Make({
 
 let email = alice
 let address = aliceMail
+/** The address as an event carries it: personal data, still there. */
+let personal = Reventless.Pii.Value(aliceMail)
 let fulfilment = Reventless.Role.make("Fulfilment")
 let staff = [merchandiser, fulfilment]
 let staffNames = [merchandiserName, "Fulfilment"]
@@ -36,7 +38,7 @@ let invite = (~roles=staff, ~at=invitedAt) => Invite({
   requestedAt: at,
 })
 let invited: array<consumedEvent> = [
-  RegistrationInvited({email, address, roles: staffNames, invitedBy, invitedAt}),
+  RegistrationInvited({email, address: personal, roles: staffNames, invitedBy, invitedAt}),
 ]
 let challenged: array<consumedEvent> =
   invited->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
@@ -47,7 +49,9 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   test("an invitation claims the address as every role it names", () =>
     givenEvents([])
     ->whenCmd(invite())
-    ->thenEvent(RegistrationInvited({email, address, roles: staffNames, invitedBy, invitedAt}))
+    ->thenEvent(
+      RegistrationInvited({email, address: personal, roles: staffNames, invitedBy, invitedAt}),
+    )
   )
 
   // The table is the hard cap: a self-service role is signed up for, not invited to.
@@ -69,7 +73,12 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     givenEvents(challenged)
     ->whenCmd(submit(~at=threeDaysOn))
     ->thenEvent(
-      RegistrationProofAccepted({email, address, roles: staffNames, proofHash: secretHash}),
+      RegistrationProofAccepted({
+        email,
+        address: personal,
+        roles: staffNames,
+        proofHash: secretHash,
+      }),
     )
   )
 
@@ -93,7 +102,12 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   test("an address that holds an account is not invited", () =>
     givenEvents(
       challenged->Array.concat([
-        RegistrationProofAccepted({email, address, roles: staffNames, proofHash: secretHash}),
+        RegistrationProofAccepted({
+          email,
+          address: personal,
+          roles: staffNames,
+          proofHash: secretHash,
+        }),
         RegistrationCompleted({email: email}),
       ]),
     )
@@ -107,7 +121,13 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     ->whenCmd(invite(~at=eightDaysOn))
     ->thenEvents([
       RegistrationExpired({email: email}),
-      RegistrationInvited({email, address, roles: staffNames, invitedBy, invitedAt: eightDaysOn}),
+      RegistrationInvited({
+        email,
+        address: personal,
+        roles: staffNames,
+        invitedBy,
+        invitedAt: eightDaysOn,
+      }),
     ])
   )
 
@@ -116,6 +136,8 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   test("a reissued invitation's code says who invited", () =>
     givenEvents(challenged)
     ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: threeDaysOn}))
-    ->thenEvent(RegistrationChallengeReissued({email, address, reissuedAt: threeDaysOn, invitedBy}))
+    ->thenEvent(
+      RegistrationChallengeReissued({email, address: personal, reissuedAt: threeDaysOn, invitedBy}),
+    )
   )
 })

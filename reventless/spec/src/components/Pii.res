@@ -135,6 +135,60 @@ let schema = (inner: S.t<'a>): S.t<t<'a>> => {
   S.union([erasedArm, forgottenArm, valueArm])
 }
 
+/**
+What `@pii` records about a field: whose data it is, and whether the value lives
+in a store. Read by the seal and open pass, by log redaction and by the JSON schema.
+*/
+type marker = {
+  /** The name of the sibling field holding the subject's id, the key's owner. */
+  subject: string,
+  /** The value is a reference to an object in a store: erasure deletes the object
+      rather than destroying a key. */
+  forgettable: bool,
+}
+
+let piiId: S.Metadata.Id.t<marker> = S.Metadata.Id.make(~namespace="reventless", ~name="pii")
+
+/**
+The schema of a personal field of an **event**: the wrapper's codec, the marker,
+and `@sensitive`, which `@pii` implies. What `@pii` expands to on an event field.
+*/
+let marked = (~subject: string, ~forgettable: bool=false, inner: S.t<'a>): S.t<t<'a>> =>
+  schema(inner)->S.Metadata.set(~id=piiId, {subject, forgettable})->Sensitive.mark
+
+/**
+The schema of a personal field of a **command**: the field keeps its plain type,
+because a command is never stored and its handler needs the value, and gains the
+marker and `@sensitive`, so it is redacted in logs. What `@pii` expands to there.
+*/
+let mark = (~subject: string, ~forgettable: bool=false, inner: S.t<'a>): S.t<'a> =>
+  inner->S.Metadata.set(~id=piiId, {subject, forgettable})->Sensitive.mark
+
+/** The marker on this exact schema. Does not look through wrappers. */
+let markerOf = (schema: S.t<unknown>): option<marker> => S.Metadata.get(schema, ~id=piiId)
+
+/** The marker of a *field*, looking through an optional wrapper as
+    `Sensitive.isFieldSensitive` does. */
+let fieldMarker = (schema: S.t<unknown>): option<marker> =>
+  switch markerOf(schema) {
+  | Some(m) => Some(m)
+  | None => schema->Semantic.unwrapOptional->Option.flatMap(markerOf)
+  }
+
+/** The personal fields of an object schema with their markers, in declaration order. */
+let fieldsOf = (schema: S.t<unknown>): array<(string, marker)> =>
+  switch schema {
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((name, field)) => field->fieldMarker->Option.map(m => (name, m)))
+  | _ => []
+  }
+
+/** The personal fields of one constructor of a command or event union. */
+let variantFields = (schema: S.t<unknown>, ~variant: string): array<(string, marker)> =>
+  schema->Semantic.unionVariant(~variant)->Option.mapOr([], fieldsOf)
+
 /** The value, when there is one. */
 let toOption = (value: t<'a>): option<'a> =>
   switch value {

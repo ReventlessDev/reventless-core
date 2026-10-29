@@ -9,48 +9,84 @@ import * as RegistrationChallenge$ReventlessRegistration from "../../Registratio
 function collect(event, param) {
   switch (event.TAG) {
     case "RegistrationRequested" :
+      let address = event.address;
       let email = event.email;
-      return [[
-          email + `:` + event.requestedAt,
-          {
-            email: email,
-            address: event.address,
-            alreadyRegistered: false
-          }
-        ]];
+      if (typeof address !== "object") {
+        if (address === "Erased") {
+          return [];
+        } else {
+          return [];
+        }
+      } else {
+        return [[
+            email + `:` + event.requestedAt,
+            {
+              email: email,
+              address: address._0,
+              alreadyRegistered: false
+            }
+          ]];
+      }
     case "RegistrationAttemptedOnTakenAddress" :
+      let address$1 = event.address;
       let email$1 = event.email;
-      return [[
-          email$1 + `:taken:` + event.attemptedAt,
-          {
-            email: email$1,
-            address: event.address,
-            alreadyRegistered: true
-          }
-        ]];
+      if (typeof address$1 !== "object") {
+        if (address$1 === "Erased") {
+          return [];
+        } else {
+          return [];
+        }
+      } else {
+        return [[
+            email$1 + `:taken:` + event.attemptedAt,
+            {
+              email: email$1,
+              address: address$1._0,
+              alreadyRegistered: true
+            }
+          ]];
+      }
     case "RegistrationInvited" :
+      let address$2 = event.address;
       let email$2 = event.email;
-      return [[
-          email$2 + `:invited:` + event.invitedAt,
-          {
-            email: email$2,
-            address: event.address,
-            alreadyRegistered: false,
-            invited: true,
-            roles: event.roles
-          }
-        ]];
+      if (typeof address$2 !== "object") {
+        if (address$2 === "Erased") {
+          return [];
+        } else {
+          return [];
+        }
+      } else {
+        return [[
+            email$2 + `:invited:` + event.invitedAt,
+            {
+              email: email$2,
+              address: address$2._0,
+              alreadyRegistered: false,
+              invited: true,
+              roles: event.roles
+            }
+          ]];
+      }
     case "RegistrationChallengeReissued" :
+      let address$3 = event.address;
       let email$3 = event.email;
-      return [[
-          email$3 + `:reissued:` + event.reissuedAt,
-          {
-            email: email$3,
-            address: event.address,
-            alreadyRegistered: false,
-            invited: Stdlib_Option.isSome(event.invitedBy)
-          }
-        ]];
+      if (typeof address$3 !== "object") {
+        if (address$3 === "Erased") {
+          return [];
+        } else {
+          return [];
+        }
+      } else {
+        return [[
+            email$3 + `:reissued:` + event.reissuedAt,
+            {
+              email: email$3,
+              address: address$3._0,
+              alreadyRegistered: false,
+              invited: Stdlib_Option.isSome(event.invitedBy)
+            }
+          ]];
+      }
   }
 }
 

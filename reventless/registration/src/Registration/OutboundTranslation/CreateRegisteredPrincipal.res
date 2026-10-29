@@ -16,7 +16,7 @@
 type consumedEvent =
   | RegistrationProofAccepted({
       email: string,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       proofHash: string,
     })
@@ -24,7 +24,7 @@ type consumedEvent =
 @schema
 type outboundItem = {
   email: string,
-  address: Reventless.Email.t,
+  @pii({subject: "email"}) address: Reventless.Email.t,
   roles: array<Reventless.Role.name>,
   proofHash: string,
 }

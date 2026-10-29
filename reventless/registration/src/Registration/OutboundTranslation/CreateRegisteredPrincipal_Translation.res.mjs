@@ -9,13 +9,21 @@ function groupsOf(roles) {
 }
 
 function collect(event, param) {
-  let proofHash = event.proofHash;
+  let address = event.address;
   let email = event.email;
+  if (typeof address !== "object") {
+    if (address === "Erased") {
+      return [];
+    } else {
+      return [];
+    }
+  }
+  let proofHash = event.proofHash;
   return [[
       email + `:` + proofHash,
       {
         email: email,
-        address: event.address,
+        address: address._0,
         roles: event.roles,
         proofHash: proofHash
       }

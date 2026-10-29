@@ -19,7 +19,7 @@ type policyState =
 type pending = {
   /** The address the claim was made for: where its code goes, and what an
       accepted proof makes an account for. */
-  address: Reventless.Email.t,
+  address: Reventless.Pii.t<Reventless.Email.t>,
   /** When the claim was made, or its code last reissued: what a claim with no
       challenge out lapses from. */
   requestedAt: Reventless.DateTime.t,
@@ -53,6 +53,12 @@ let initialState = {admission: Unset, stage: Unclaimed, lastNoticeAt: None}
     so the door cannot be used to flood a registered person's inbox. */
 let noticeCooldown = 3600
 
+/** The contact a challenge is held against. The guards only compare it, so the
+    ledger's id for the address serves, and no address is needed to decide. */
+let contactOf = (email: ContactAddressId.t): ContactVerification.contact => ByEmail(
+  Reventless.Email.unsafe(email->ContactAddressId.toString),
+)
+
 let purposeOf = (p: pending) => RegistrationChallenge.purposeOf(~invitedBy=p.invitedBy)
 
 /** The challenge rules a pending registration is held to: an invitation's code
@@ -83,14 +89,14 @@ let evolve = (state, event) =>
       ...state,
       lastNoticeAt: Some(attemptedAt),
     }
-  | RegistrationChallengeIssued({proofHash, issuedAt}) =>
+  | RegistrationChallengeIssued({email, proofHash, issuedAt}) =>
     switch state.stage {
     | Pending(p) => {
         ...state,
         stage: Pending({
           ...p,
           challenge: Some({
-            contact: ByEmail(p.address),
+            contact: contactOf(email),
             purpose: purposeOf(p),
             issuedAt,
             attempts: 0,
@@ -188,7 +194,13 @@ module Make = (App: Reventless.Admission.Declaration) => {
           | Some(last) if Guards.elapsedSeconds(~from=last, ~to_=requestedAt) < noticeCooldown =>
             Ok([])
           | _ =>
-            Ok([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: requestedAt})])
+            Ok([
+              RegistrationAttemptedOnTakenAddress({
+                email,
+                address: Value(address),
+                attemptedAt: requestedAt,
+              }),
+            ])
           }
         | Verified => Ok([])
         // A visitor cannot take over a claim, an inviter's included, while it holds.
@@ -196,9 +208,10 @@ module Make = (App: Reventless.Admission.Declaration) => {
         | Pending(_) =>
           Ok([
             RegistrationExpired({email: email}),
-            RegistrationRequested({email, address, roles, requestedAt}),
+            RegistrationRequested({email, address: Value(address), roles, requestedAt}),
           ])
-        | Unclaimed => Ok([RegistrationRequested({email, address, roles, requestedAt})])
+        | Unclaimed =>
+          Ok([RegistrationRequested({email, address: Value(address), roles, requestedAt})])
         }
       }
 
@@ -212,7 +225,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
       | None =>
         let invited = RegistrationInvited({
           email,
-          address,
+          address: Value(address),
           roles: roles->Array.map(r => (r :> string)),
           invitedBy,
           invitedAt: requestedAt,
@@ -231,7 +244,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
       switch state.stage {
       | Pending(p) =>
         switch Guards.onIssueRequested(
-          ~contact=ByEmail(p.address),
+          ~contact=contactOf(email),
           ~existing=p.challenge,
           ~now=issuedAt,
           ~policy=policyOf(p),

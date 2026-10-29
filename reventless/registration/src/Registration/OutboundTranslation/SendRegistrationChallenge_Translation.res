@@ -4,30 +4,32 @@
 // or a code reissued, is new work rather than work already done.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationRequested({email, address, requestedAt}) => [
+  | RegistrationRequested({email, address: Value(address), requestedAt}) => [
       (
         `${email}:${requestedAt->Reventless.DateTime.toString}`,
         {email, address, alreadyRegistered: false},
       ),
     ]
-  | RegistrationInvited({email, address, roles, invitedAt}) => [
+  | RegistrationInvited({email, address: Value(address), roles, invitedAt}) => [
       (
         `${email}:invited:${invitedAt->Reventless.DateTime.toString}`,
         {email, address, alreadyRegistered: false, invited: true, roles},
       ),
     ]
-  | RegistrationChallengeReissued({email, address, reissuedAt, ?invitedBy}) => [
+  | RegistrationChallengeReissued({email, address: Value(address), reissuedAt, ?invitedBy}) => [
       (
         `${email}:reissued:${reissuedAt->Reventless.DateTime.toString}`,
         {email, address, alreadyRegistered: false, invited: invitedBy->Option.isSome},
       ),
     ]
-  | RegistrationAttemptedOnTakenAddress({email, address, attemptedAt}) => [
+  | RegistrationAttemptedOnTakenAddress({email, address: Value(address), attemptedAt}) => [
       (
         `${email}:taken:${attemptedAt->Reventless.DateTime.toString}`,
         {email, address, alreadyRegistered: true},
       ),
     ]
+  // An address that was erased or forgotten has nobody left to write to.
+  | _ => []
   }
 
 let expiresIn = (~invited) =>

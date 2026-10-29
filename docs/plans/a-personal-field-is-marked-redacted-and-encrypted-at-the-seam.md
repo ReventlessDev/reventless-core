@@ -2,8 +2,8 @@
 
 **Date:** 2026-10-25<br/>
 **Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope),
-[PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed) and the format half of
-[PD5](#pd5-the-registration-ledgers-address-id) built 2026-10-29; PD1 revised the
+[PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed), [PD5](#pd5-the-registration-ledgers-address-id)
+and [PD2](#pd2-the-recording-pii) built 2026-10-29; PD1 revised the
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
@@ -244,6 +244,20 @@ spec marks `@pii` finds those fields, with the permissive case pinned beside it.
 failing fixture. The template test proves a `@pii` field is withheld from a rendered message. The
 examples that carry an email in an event mark it, and still run.
 
+**Built 2026-10-29**, but for the warning. `PiiInference.ml` runs after the DCB-tag passes and before
+`OwnerInference`. On an event field it rewrites `T` to `Reventless.Pii.t<T>` with
+`Reventless.Pii.marked(~subject, ~forgettable?, <schema>)`; on a command field it keeps the type and
+adds `Reventless.Pii.mark`. Both imply `@sensitive`, and `SuryToJsonSchema` writes
+`x-reventless-pii: {subject, forgettable}`. The spelling is `@pii({subject: "memberId"})` or
+`@pii("memberId")`, since a ReScript attribute payload is an expression and `subject=field` is not one.
+It refuses a `state`, a tag or partition key, the `@owner` field, a missing or unknown subject, a type
+it cannot name, and a field of any other type; each has a failing fixture in the PPX suite.
+[`PiiPpxTest`](../../reventless/core/tests/pii/PiiPpxTest.res) is the relationship test. The ledger's
+`address` is marked, with the registration as its subject (`@pii({subject: "email"})`), and a
+translation writes to nobody when it reads `Erased`. **Not built:** the warning on a command field that
+looks like a `@pii` event field and has no marker. It needs a warning that does not fail the
+zero-warning build, and is left for the tools' personal-data card, which sees the whole app.
+
 ### PD3: the envelope
 
 The AppSync templates stop writing `ip` into the command, `deriveMeta` stops inheriting it, and the
@@ -297,9 +311,9 @@ of the trimmed, lower-cased address under the purpose `contactAddress`, and so i
 doors and translations give a ledger command. The address rides in `address: Reventless.Email.t` on
 `Register`, `Invite` and the five events that must reach the person (requested, invited, reissued,
 attempted on a taken address, proof accepted); a pending claim keeps it in its state for the later ones.
-The translations' work rows are keyed by the fingerprint and carry the address beside it. Two parts
-are open: the `@pii` marker on `address` waits for [PD2](#pd2-the-recording-pii), and the AWS key
-waits for the self-registration door, which is local only. The shared key also serves the keyed hash
+The translations' work rows are keyed by the fingerprint and carry the address beside it. The AWS key
+waits for the self-registration door, which is local only; the `@pii` marker on `address` came with
+[PD2](#pd2-the-recording-pii). The shared key also serves the keyed hash
 of the request limit (DW6), under its own purpose. Breaking for callers of `Invite`: they now send the
 address and a fingerprinted id.
 

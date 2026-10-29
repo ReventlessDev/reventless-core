@@ -2,6 +2,7 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -249,7 +250,7 @@ function fromSchemaType(_inputNamesOpt, _st) {
             ]
           ]);
         case "ObjectRef" :
-          let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, st._1);
+          let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, undefined, inputNames, st._1);
           if (inputNames) {
             return withGraphqlInput(base, st._0);
           } else {
@@ -308,7 +309,7 @@ function armToJsonSchema(inputNamesOpt, tag, armType) {
   if (armType.TAG !== "ObjectRef") {
     return fromSchemaType(inputNames, armType);
   }
-  let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, inputNames, armType._1);
+  let base = objectRefToJsonSchema(undefined, undefined, undefined, undefined, undefined, inputNames, armType._1);
   let obj = Stdlib_JSON.Decode.object(base);
   if (obj === undefined) {
     return base;
@@ -391,10 +392,11 @@ function withSemantic(fieldSchema, sem) {
   return obj;
 }
 
-function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt, inputNamesOpt, fields) {
+function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt, piiOpt, inputNamesOpt, fields) {
   let optional = optionalOpt !== undefined ? optionalOpt : [];
   let owners = ownersOpt !== undefined ? ownersOpt : [];
   let sensitive = sensitiveOpt !== undefined ? sensitiveOpt : [];
+  let pii = piiOpt !== undefined ? piiOpt : [];
   let inputNames = inputNamesOpt !== undefined ? inputNamesOpt : false;
   let props = {};
   let required = [];
@@ -427,7 +429,26 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, sensitiveOpt
     } else {
       withAnnotations$2 = withAnnotations$1;
     }
-    props[fieldName] = withAnnotations$2;
+    let match = pii.find(param => param[0] === fieldName);
+    let match$1 = Stdlib_JSON.Decode.object(withAnnotations$2);
+    let withAnnotations$3;
+    if (match !== undefined && match$1 !== undefined) {
+      let match$2 = match[1];
+      match$1["x-reventless-pii"] = Object.fromEntries([
+        [
+          "subject",
+          match$2.subject
+        ],
+        [
+          "forgettable",
+          match$2.forgettable
+        ]
+      ]);
+      withAnnotations$3 = match$1;
+    } else {
+      withAnnotations$3 = withAnnotations$2;
+    }
+    props[fieldName] = withAnnotations$3;
     if (!optional.includes(fieldName) && !isNullableType(fieldType)) {
       required.push(fieldName);
       return;
@@ -463,7 +484,7 @@ function deriveObjectSchema(inputNamesOpt, typeNameOpt, schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), Sensitive$Reventless.fieldNames(schema), inputNames, fields);
+  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), Sensitive$Reventless.fieldNames(schema), Pii$Reventless.fieldsOf(schema), inputNames, fields);
   if (annotations === undefined) {
     return objSchema;
   }

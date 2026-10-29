@@ -20,24 +20,24 @@
 type consumedEvent =
   | RegistrationRequested({
       email: string,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationAttemptedOnTakenAddress({
       email: string,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationInvited({
       email: string,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: string,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
@@ -50,7 +50,7 @@ type consumedEvent =
 @schema
 type outboundItem = {
   email: string,
-  address: Reventless.Email.t,
+  @pii({subject: "email"}) address: Reventless.Email.t,
   alreadyRegistered: bool,
   invited?: bool,
   roles?: array<string>,

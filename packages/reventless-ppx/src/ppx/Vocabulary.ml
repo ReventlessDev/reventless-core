@@ -148,9 +148,12 @@ let all : entry list =
       [ "OffloadInference" ];
     e ~args:Optional ~ex:"{index: false}" "owner" any_field
       "The caller a row or command belongs to: set from the caller on write, and narrowing reads."
-      [ "OwnerInference"; "StateAnnotations" ];
+      [ "OwnerInference"; "PiiInference"; "StateAnnotations" ];
     e "sensitive" any_field "A value that must not be put into content a person receives."
       [ "SensitiveInference" ];
+    e ~args:Optional ~ex:{|{subject: "memberId"}|} "pii" dcb_fields
+      "A value about a person: encrypted on an event under the subject's key, redacted in logs."
+      [ "PiiInference" ];
     e ~args:Required ~ex:"1" "default" any_field "The value a generated form opens this field on."
       [ "DefaultInference" ];
     (* ── state fields ── *)

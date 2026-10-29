@@ -118,6 +118,16 @@ Place these **before the field name** (`@offload("s") structure: option<x>`), li
   - **Absent means "not stated", not "safe".** A reader that misses the marker renders the value, so the failure is open — which is why `Sensitive.isFieldSensitive` follows the optional wrapper (a marker on `token?: string` sits *inside* it) and `variantFieldNames` handles the single-constructor union that sury compiles to a bare object. Object properties are deliberately not followed: a marker on a nested record's field belongs to that field.
   - Needs a `@@reventless.spec` / `@@reventless.decision` file — elsewhere no pass runs and the attribute reaches the compiler as an unknown one; hand-write `@s.matches(Reventless.Sensitive.string)` there.
 
+### Personal-data marker (values about a person)
+
+- `@pii` — names a field whose value is about a person: a name, an address, a photo. Placed **before the field name**. Payload: none (the subject is the record's `@owner` field), or `@pii({subject: "memberId"})` / `@pii("memberId")` naming the sibling field that holds the id of the person it is about. What it does depends on whose field it is:
+  - **On an event** (`event`, `consumedEvent`) the type `T` becomes `Reventless.Pii.t<T>` = `Value(T) | Erased | Forgotten`, so code that reads it says what it does when the value is gone; `option<T>` becomes `option<Pii.t<T>>`. Without an encrypting provider the value is stored as it is and only ever reads `Value`; a deployment that installs one stores it sealed (`Pii.Provider`, see `reventless/spec/src/components/Pii.res`).
+  - **On a command** (`command`, `inboundCommand`, `externalInput`, `outboundItem`) the type stays: a command is never stored and its handler needs the value. The marker keeps it out of log lines.
+  - **Implies `@sensitive`**, never the reverse, and the JSON schema carries `x-reventless-pii: {subject, forgettable}`.
+  - A field whose value lives in a store (`@offload`, `@storageRef`, an uploadable type) is marked **forgettable**: erasure deletes the object rather than destroying a key. No argument says so; the type does.
+  - **Compile errors:** on a read model's `state` (a deployed projection writes rows without the schema, so a codec would run locally and not on AWS — mark the event the row is projected from); on a DCB tag or partition key (an index key can be neither encrypted nor erased — tag by an opaque id and carry the value in a field of its own); on the `@owner` field; with no subject; with a subject that is not a sibling; on a type whose schema it cannot name (write `@s.matches(Reventless.Pii.marked(~subject, <schema>))` by hand); on any other type's field.
+  - Composes with the schema the field already resolved to; runs after the DCB-tag passes and before `OwnerInference`.
+
 ### Schema annotations
 
 - `@schema` on all serializable types (command, event, error, state)

@@ -832,6 +832,10 @@ let transform (str : structure) : structure =
        [gen_config_let]: the index [@owner] derives is keyed on a field this is
        the last point that can still name. *)
     let owner_index = StateAnnotations.derived_owner_index body in
+    (* After every DCB-tag pass, so a field that became a tag is refused rather
+       than wrapped; before OwnerInference, so the [@owner] a subject defaults to
+       is still on the sibling. See PiiInference's header. *)
+    let body = PiiInference.transform_structure body in
     (* After every DCB-tag pass, on purpose: [@owner] wraps whatever schema the
        field ended up with rather than replacing it, so an owner field keeps the
        tag it would otherwise have had. See OwnerInference's header. *)

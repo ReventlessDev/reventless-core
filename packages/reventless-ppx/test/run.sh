@@ -3670,6 +3670,42 @@ union_arm_case "empty inline record arm"  "Approved({})"      'carries an empty 
 union_arm_case "positional payload arm"   "Approved(string)"  'carries a positional payload'
 
 echo ""
+echo "=== Test: PPX error — @pii where it would do harm ==="
+
+# Each refusal is a place the marker would look like protection and give none: a
+# read model's codec runs locally and not on AWS, a tag cannot be encrypted, a
+# value with no subject has no key to be filed under, and a schema the pass
+# cannot name would be guessed.
+pii_refusal_case() {
+  local label="$1" dir="$2" body="$3" needle="$4"
+  mkdir -p "$ERROR/src/$dir"
+  printf '@@reventless.spec\n\n%s\n' "$body" > "$ERROR/src/$dir/PiiRefusal.res"
+  if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+    fail "$label" "expected compilation to fail but it succeeded"
+  else
+    if echo "$OUTPUT" | grep -q "$needle"; then
+      pass "$label → correct compile error"
+    else
+      fail "$label" "unexpected error output: $OUTPUT"
+    fi
+  fi
+  rm -f "$ERROR/src/$dir/PiiRefusal.res"
+}
+
+pii_refusal_case "@pii on a read model's state" "ReadModel" \
+  '@schema type state = {@id memberId: string, @pii name: string}' \
+  "refused on a read model's state"
+pii_refusal_case "@pii on a partition key" "Pii" \
+  '@schema type event = | Joined({@partitionTag @pii memberId: string, x: string})' \
+  "a DCB tag or partition key"
+pii_refusal_case "@pii with no subject" "Pii" \
+  '@schema type event = | Joined({ref: string, @pii name: string})' \
+  "has no subject"
+pii_refusal_case "@pii on a schema it cannot name" "Pii" \
+  '@schema type event = | Joined({@owner memberId: string, @pii names: array<string>})' \
+  "cannot name the schema"
+
+echo ""
 echo "=== Test: PPX error — key/filter annotations on a union field ==="
 
 # `deriveServerCapability` is annotation-driven: it would emit `<field>Eq: String`

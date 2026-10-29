@@ -41,28 +41,28 @@ type consumedEvent =
     })
   | RegistrationRequested({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationInvited({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
   | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
@@ -72,7 +72,7 @@ type consumedEvent =
     })
   | RegistrationProofAccepted({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       proofHash: string,
     })
@@ -93,7 +93,7 @@ type command =
   | @noApi
   Register({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })
@@ -116,7 +116,7 @@ type command =
   | @noApi
   Invite({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       invitedBy: string,
       requestedAt: Reventless.DateTime.t,
@@ -144,28 +144,28 @@ type error =
 type event =
   | RegistrationRequested({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationInvited({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
   | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
@@ -175,7 +175,7 @@ type event =
     })
   | RegistrationProofAccepted({
       email: ContactAddressId.t,
-      address: Reventless.Email.t,
+      @pii({subject: "email"}) address: Reventless.Email.t,
       roles: array<string>,
       proofHash: string,
     })

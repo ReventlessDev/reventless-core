@@ -290,7 +290,7 @@
       "args": "optional",
       "argsExample": "{index: false}",
       "summary": "The caller a row or command belongs to: set from the caller on write, and narrowing reads.",
-      "readBy": [ "OwnerInference", "StateAnnotations" ]
+      "readBy": [ "OwnerInference", "PiiInference", "StateAnnotations" ]
     },
     {
       "name": "sensitive",
@@ -301,6 +301,14 @@
       "args": "none",
       "summary": "A value that must not be put into content a person receives.",
       "readBy": [ "SensitiveInference" ]
+    },
+    {
+      "name": "pii",
+      "positions": [ "field.command", "field.event", "field.consumedEvent" ],
+      "args": "optional",
+      "argsExample": "{subject: \"memberId\"}",
+      "summary": "A value about a person: encrypted on an event under the subject's key, redacted in logs.",
+      "readBy": [ "PiiInference" ]
     },
     {
       "name": "default",

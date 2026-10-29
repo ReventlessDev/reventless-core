@@ -52,7 +52,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     givenEvent(
       RegistrationRequested({
         email: aliceId,
-        address: aliceMail,
+        address: Reventless.Pii.Value(aliceMail),
         requestedAt: "2026-10-24T09:00:00.000Z",
       }),
     )
@@ -60,12 +60,24 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     ->thenTodos([("fp:contactAddress:alice@example.com:2026-10-24T09:00:00.000Z", fresh)])
   )
 
+  testSync("an erased address is not written to", () =>
+    givenEvent(
+      RegistrationRequested({
+        email: aliceId,
+        address: Reventless.Pii.Erased,
+        requestedAt: "2026-10-24T09:00:00.000Z",
+      }),
+    )
+    ->whenCollect
+    ->thenTodos([])
+  )
+
   // scenario-id: 6102d230-f0c8-46c1-967f-d82fb1f97226
   testSync("an invitation is collected as one, apart from a sign-up at the same time", () =>
     givenEvent(
       RegistrationInvited({
         email: aliceId,
-        address: aliceMail,
+        address: Reventless.Pii.Value(aliceMail),
         roles: [merchandiserName],
         invitedBy: "u_inviter",
         invitedAt: "2026-10-24T09:00:00.000Z",
@@ -83,7 +95,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     givenEvent(
       RegistrationChallengeReissued({
         email: aliceId,
-        address: aliceMail,
+        address: Reventless.Pii.Value(aliceMail),
         reissuedAt: "2026-10-25T09:00:00.000Z",
         invitedBy: "u_inviter",
       }),
@@ -99,7 +111,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     givenEvent(
       RegistrationChallengeReissued({
         email: aliceId,
-        address: aliceMail,
+        address: Reventless.Pii.Value(aliceMail),
         reissuedAt: "2026-10-25T09:00:00.000Z",
       }),
     )
