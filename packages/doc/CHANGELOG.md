@@ -719,6 +719,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-10-29
+- feat(core)!: the caller's IP address leaves the messages a request causes ([aa9e8c7](https://github.com/ReventlessDev/reventless-core/commit/aa9e8c79c0360528a5cfeda2bb88d1da52f28674))
+- feat(upload): an upload's path carries nothing a person typed ([456c88c](https://github.com/ReventlessDev/reventless-core/commit/456c88c4ccee6a50943e3a71011a2e78aef0d770))
+### 2026-10-29
 - feat(core): a handler drops a command it has already handled ([605862b](https://github.com/ReventlessDev/reventless-core/commit/605862bba765b1501eb19d08f3924bf619159e21))
 - feat(infra): a message a mapping derives gets a stable id and names its parent ([a72a08f](https://github.com/ReventlessDev/reventless-core/commit/a72a08f9af4440eff5fa36e9a364a426bc70918c))
 - refactor!: a read model hears another plugin only through an Extension and a slice ([15c7cae](https://github.com/ReventlessDev/reventless-core/commit/15c7cae214d5aa04404779fcd87a8429aad1965c))
