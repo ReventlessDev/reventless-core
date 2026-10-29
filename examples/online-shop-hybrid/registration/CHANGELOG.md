@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.5 (2026-10-29)
+
+* feat(registration)!: the ledger tags an address by its keyed fingerprint ([ccafddf](https://github.com/ReventlessDev/reventless-core/commit/ccafddfc7eb8039687afc62a483ce34b8e7081dd))
+
+### BREAKING CHANGES
+
+* `Secrets.t` has a third field, `fingerprint`; a hand-built provider
+adds it. `Register` and `Invite` take `address`, and their `email` is the
+fingerprint from `ContactAddressId.fingerprint`, not `makeFromString(address)`.
+
+Step PD5 of docs/plans/a-personal-field-is-marked-redacted-and-encrypted-at-the-seam.md.
+Claude-Session: https://claude.ai/code/session_01HiQfdxVEsHwLHRoHSUcus1
+
+
+
 # 1.0.0-alpha.4 (2026-10-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-registration

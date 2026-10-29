@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.292 (2026-10-29)
+
+* feat(core)!: the caller's IP address leaves the messages a request causes ([aa9e8c7](https://github.com/ReventlessDev/reventless-core/commit/aa9e8c79c0360528a5cfeda2bb88d1da52f28674))
+
+### BREAKING CHANGES
+
+* `Message.generateMeta` no longer takes `~ip`. Drop the argument; a
+message that must carry the address declares it as a field of its own payload.
+
+Step PD3 of docs/plans/a-personal-field-is-marked-redacted-and-encrypted-at-the-seam.md.
+Claude-Session: https://claude.ai/code/session_01HiQfdxVEsHwLHRoHSUcus1
+
+
+
 # 3.0.0-alpha.291 (2026-10-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog
