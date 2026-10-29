@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.309 (2026-10-29)
+
+* feat(core)!: every reader opens a sealed field, with the keys its batch prepared ([d4ac204](https://github.com/ReventlessDev/reventless-core/commit/d4ac204c307d34617d4e32c556030b44bb55b178))
+
+### BREAKING CHANGES
+
+* `Pii.provider` has `prefetch` and `openNow` in place of `open_`.
+
+Not yet: `prepare` in the AWS entry points, the conformance scenario, the runs on
+DynamoDB and Postgres.
+
+Begins step PD10 of docs/plans/a-personal-field-is-marked-redacted-and-encrypted-at-the-seam.md.
+Claude-Session: https://claude.ai/code/session_01HiQfdxVEsHwLHRoHSUcus1
+
+
+
 # 3.0.0-alpha.308 (2026-10-29)
 
 * feat(core)!: every reader opens a sealed field, with the keys its batch prepared ([d4ac204](https://github.com/ReventlessDev/reventless-core/commit/d4ac204c307d34617d4e32c556030b44bb55b178))

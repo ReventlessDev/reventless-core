@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.408 (2026-10-29)
+
+### Features
+
+* **aws:** every reader's Lambda fetches the keys its events name before decoding ([62b22c7](https://github.com/ReventlessDev/reventless-core/commit/62b22c74ba6e79783c67db962e43f86c273f4503))
+
+
 # 3.0.0-alpha.407 (2026-10-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
