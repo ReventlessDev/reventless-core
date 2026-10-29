@@ -31,8 +31,10 @@ Rejected: anything with a scheme (`https://…`, `data:…`), protocol-relative
 `//host/path`, relative paths, empty segments, and `.`/`..` traversal.
 
 The framework mints refs in exactly this form — the presign service builds the
-object key as `{servedPrefix}/{identity}{uuid}/{fileName}` and returns `/{key}` —
-so the grammar is the framework's to define, not an application's.
+object key as `{servedPrefix}/{identity}/{uuid}.{ext}` and returns `/{key}` —
+so the grammar is the framework's to define, not an application's. The last
+segment is `objectName`'s: nothing a person typed, because a ref is stored in an
+event, and an event log cannot forget a file name such as `scan-of-my-passport.pdf`.
 
 Note what is *not* checked: that the ref's prefix belongs to this specific store.
 Today every store shares one served prefix, so there is nothing store-specific to
@@ -59,6 +61,46 @@ type t = string
 
 external unsafe: string => t = "%identity"
 external toString: t => string = "%identity"
+
+/**
+The extension an object is stored under, from the content type the uploader
+declared. Never from the file name, which is the uploader's words, and never a
+hash of the content, which would be an oracle over it. An unknown or missing type
+is `bin`; the object is still served with the content type it was put with.
+*/
+let extensionFor = (contentType: option<string>): string =>
+  switch contentType
+  ->Option.map(t =>
+    t->String.split(";")->Array.get(0)->Option.getOr("")->String.trim->String.toLowerCase
+  )
+  ->Option.getOr("") {
+  | "image/jpeg" | "image/jpg" | "image/pjpeg" => "jpg"
+  | "image/png" => "png"
+  | "image/gif" => "gif"
+  | "image/webp" => "webp"
+  | "image/avif" => "avif"
+  | "image/svg+xml" => "svg"
+  | "image/heic" => "heic"
+  | "application/pdf" => "pdf"
+  | "text/plain" => "txt"
+  | "text/csv" => "csv"
+  | "application/json" => "json"
+  | "audio/mpeg" => "mp3"
+  | "audio/ogg" => "ogg"
+  | "audio/webm" | "video/webm" => "webm"
+  | "audio/mp4" => "m4a"
+  | "video/mp4" => "mp4"
+  | "video/quicktime" => "mov"
+  | "application/zip" => "zip"
+  | _ => "bin"
+  }
+
+/**
+The last segment of a minted object key: `{uuid}.{ext}`. The uuid is the
+caller's, so this stays pure; the extension is `extensionFor`'s.
+*/
+let objectName = (~uuid: string, ~contentType: option<string>): string =>
+  `${uuid}.${extensionFor(contentType)}`
 
 let segmentIsSafe = (segment: string) => segment !== "" && segment !== "." && segment !== ".."
 

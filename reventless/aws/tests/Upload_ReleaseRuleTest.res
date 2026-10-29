@@ -88,3 +88,27 @@ describe("Upload_Presign_S3_Ops.decideRelease", () => {
     )
   )
 })
+
+describe("Upload_Presign_S3_Ops.presignKey", () => {
+  testSync("is {prefix}/{sub}/{uuid}.{ext}, with nothing the uploader typed", () =>
+    expect(
+      Ops.presignKey(~servedPrefix=prefix, ~sub, ~uuid="0b1c", ~contentType=Some("image/png")),
+    )->toEqual("uploads/user-1/0b1c.png")
+  )
+
+  testSync("an undeclared content type is stored as bin", () =>
+    expect(Ops.presignKey(~servedPrefix=prefix, ~sub, ~uuid="0b1c", ~contentType=None))->toEqual(
+      "uploads/user-1/0b1c.bin",
+    )
+  )
+
+  testSync("a minted key passes the release rule's scope check for its own caller", () =>
+    expect(
+      Ops.scopeCheck(
+        ~key=Ops.presignKey(~servedPrefix=prefix, ~sub, ~uuid="0b1c", ~contentType=None),
+        ~sub,
+        ~servedPrefix=prefix,
+      ),
+    )->toEqual(Ok())
+  )
+})

@@ -9,6 +9,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as S3RequestPresigner from "@aws-sdk/s3-request-presigner";
 import * as Upload_PendingTag$ReventlessAws from "./Upload_PendingTag.res.mjs";
 
@@ -167,12 +168,15 @@ async function headLastModifiedMs(client, bucket, key) {
   }
 }
 
+function presignKey(servedPrefix, sub, uuid, contentType) {
+  return servedPrefix + `/` + sub + `/` + StorageRef$Reventless.objectName(uuid, contentType);
+}
+
 async function handlePresign(client, bucket, servedPrefix, sub, args) {
   if (sub === "") {
     Stdlib_JsError.throwWithMessage("unauthenticated");
   }
-  let fileName = Stdlib_Option.getOr(args.fileName, "upload");
-  let key = servedPrefix + `/` + sub + `/` + Nodecrypto.randomUUID() + `/` + fileName;
+  let key = presignKey(servedPrefix, sub, Nodecrypto.randomUUID(), args.contentType);
   let command = new ClientS3.PutObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -235,6 +239,7 @@ export {
   releaseResult,
   keyOfRef,
   headLastModifiedMs,
+  presignKey,
   handlePresign,
   handleRelease,
   handler,

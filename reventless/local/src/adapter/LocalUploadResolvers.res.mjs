@@ -3,12 +3,13 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 
-function mintRef(store, fileName) {
+function mintRef(store, contentType) {
   let prefix = Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.storePrefix(store), LocalObjectStore$ReventlessLocal.defaultUploadPrefix);
-  return `/` + prefix + `/` + Nodecrypto.randomUUID() + `/` + fileName;
+  return `/` + prefix + `/` + StorageRef$Reventless.objectName(Nodecrypto.randomUUID(), contentType);
 }
 
 function release(storageRef) {
@@ -31,9 +32,9 @@ function register(server) {
   let resolvers = {};
   resolvers["Upload_Presign"] = async (_root, args, _ctx) => {
     let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
-    let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["fileName"], Stdlib_JSON.Decode.string), "upload");
+    let contentType = Stdlib_Option.flatMap(obj["contentType"], Stdlib_JSON.Decode.string);
     let store = Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["store"], Stdlib_JSON.Decode.string), "");
-    let ref = mintRef(store, fileName);
+    let ref = mintRef(store, contentType);
     return Object.fromEntries([
       [
         "uploadUrl",

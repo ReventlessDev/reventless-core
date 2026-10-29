@@ -11,7 +11,7 @@
 // surface — the earlier `decodeJwtSub` path is gone.
 //
 // Two operations dispatch on the `operation` field the resolver bakes in:
-//   presign → derive `{servedPrefix}/{sub}/{uuid}/{fileName}`, presign a PUT to the
+//   presign → derive `{servedPrefix}/{sub}/{uuid}.{ext}`, presign a PUT to the
 //             store's bucket (expires 300s), return `{uploadUrl, storageRef}`.
 //   release → apply the release rule (scope + age) to a `storageRef` and, if it
 //             passes, `DeleteObject`; return `{released, reason}`.
@@ -211,6 +211,10 @@ let headLastModifiedMs = async (~client: s3Client, ~bucket: string, ~key: string
 
 // ── Operations ──────────────────────────────────────────────────────────────
 
+// The object key a presign mints, pure so a test can pin its shape.
+let presignKey = (~servedPrefix, ~sub, ~uuid, ~contentType) =>
+  `${servedPrefix}/${sub}/${Reventless.StorageRef.objectName(~uuid, ~contentType)}`
+
 let handlePresign = async (
   ~client: s3Client,
   ~bucket: string,
@@ -221,11 +225,12 @@ let handlePresign = async (
   if sub == "" {
     JsError.throwWithMessage("unauthenticated")
   }
-  let fileName = args.fileName->Option.getOr("upload")
   // The object key doubles as the served path segment: rooted at the store's
   // served prefix so the CloudFront `{prefix}/*` behavior fronts it, and namespaced
   // by the verified `sub` so the release rule can tell one caller's objects apart.
-  let key = `${servedPrefix}/${sub}/${NodeCrypto.randomUUID()}/${fileName}`
+  // The `fileName` argument is not used: the key ends in an opaque name, because a
+  // ref is stored in an event and a file name is often personal data.
+  let key = presignKey(~servedPrefix, ~sub, ~uuid=NodeCrypto.randomUUID(), ~contentType=args.contentType)
   // The object is provisional from the moment the bytes land: it carries the
   // pending tag until a committed event referencing it strips it (see
   // `Upload_Claim_S3_Ops`). Written into the signature here, not asked of the

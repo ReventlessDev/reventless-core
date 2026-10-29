@@ -200,13 +200,13 @@ describe("declared store prefixes", () => {
       ~qualified="Catalog.productImages",
       ~prefix=LocalObjectStore.localPrefixFor(~qualified="Catalog.productImages"),
     )
-    let ref = LocalUploadResolvers.mintRef(~store="Catalog.productImages", ~fileName="logo.svg")
+    let ref = LocalUploadResolvers.mintRef(~store="Catalog.productImages", ~contentType="image/svg+xml")
     expect(ref->String.startsWith("/uploads/Catalog/productImages/"))->toEqual(true)
-    expect(ref->String.endsWith("/logo.svg"))->toEqual(true)
+    expect(ref->String.endsWith(".svg"))->toEqual(true)
   })
 
   testSync("an undeclared store falls back to the shared uploads prefix", () => {
-    let ref = LocalUploadResolvers.mintRef(~store="Nobody.knows", ~fileName="logo.svg")
+    let ref = LocalUploadResolvers.mintRef(~store="Nobody.knows", ~contentType="image/svg+xml")
     expect(ref->String.startsWith("/uploads/"))->toEqual(true)
   })
 

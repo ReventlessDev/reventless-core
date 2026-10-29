@@ -175,7 +175,9 @@ testPromise("Upload_Presign returns matching uploadUrl + storageRef under the pr
   // Same same-origin ref serves as both the PUT target and the stored value.
   expect(uploadUrl)->toEqual(storageRef)
   expect(storageRef->String.startsWith("/uploads/"))->toEqual(true)
-  expect(storageRef->String.endsWith("/logo.svg"))->toEqual(true)
+  // The name is opaque; the extension is the declared content type's.
+  expect(storageRef->String.endsWith(".svg"))->toEqual(true)
+  expect(storageRef->String.includes("logo"))->toEqual(false)
 })
 
 testPromise("presign → PUT → GET → release → GET(404) is the full loop", async () => {

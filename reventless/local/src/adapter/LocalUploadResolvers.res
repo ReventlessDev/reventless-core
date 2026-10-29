@@ -7,8 +7,9 @@
 // — dev parity is about the client seeing the same contract, not reproducing AWS's
 // guarantees. See [docs/plans/done/upload-release-path.md] § Step 3.
 
-// Mint a same-origin `/{prefix}/{uuid}/{fileName}` ref: both the PUT target and the
-// stored value, mirroring the AWS presign ticket's shape.
+// Mint a same-origin `/{prefix}/{uuid}.{ext}` ref: both the PUT target and the
+// stored value, mirroring the AWS presign ticket's shape. The name is opaque and the
+// extension comes from the declared content type, never from the file name.
 //
 // The prefix is the declaring store's (`{plugin}/{store}`), so an object carries
 // the plugin that owns it in its own key — what lets a scoped reset attribute it,
@@ -16,12 +17,12 @@
 // back to the shared `uploads/` space rather than being refused: local plugins
 // need not declare a store to upload during development, and refusing here would
 // make dev stricter than deploy about something dev cannot check.
-let mintRef = (~store: string, ~fileName: string): string => {
+let mintRef = (~store: string, ~contentType: option<string>=?): string => {
   let prefix =
     LocalObjectStore.storePrefix(~qualified=store)->Option.getOr(
       LocalObjectStore.defaultUploadPrefix,
     )
-  `/${prefix}/${NodeCrypto.randomUUID()}/${fileName}`
+  `/${prefix}/${Reventless.StorageRef.objectName(~uuid=NodeCrypto.randomUUID(), ~contentType)}`
 }
 
 // Release a ref: delete iff it sits under a served prefix; idempotent (deleting an
@@ -40,10 +41,9 @@ let register = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t): unit 
   let resolvers = Dict.make()
   resolvers->Dict.set("Upload_Presign", async (_root, args, _ctx): JSON.t => {
     let obj = args->JSON.Decode.object->Option.getOr(Dict.make())
-    let fileName =
-      obj->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
+    let contentType = obj->Dict.get("contentType")->Option.flatMap(JSON.Decode.string)
     let store = obj->Dict.get("store")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-    let ref = mintRef(~store, ~fileName)
+    let ref = mintRef(~store, ~contentType?)
     Dict.fromArray([
       ("uploadUrl", JSON.Encode.string(ref)),
       ("storageRef", JSON.Encode.string(ref)),

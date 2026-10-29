@@ -221,7 +221,10 @@ untouched.
 
 **The object store is the exception, and it is an open seam rather than a
 boundary.** Its runtime half today is client-side: the browser gets a per-store
-presigned PUT and the minted ref is what the field carries. Plugin code that wants
+presigned PUT and the minted ref is what the field carries. The ref is
+`/{prefix}/{identity}/{uuid}.{ext}`, the extension from the declared content type:
+the file name the person chose is not in it, because a ref is stored in an event and
+an event log cannot forget a name. Plugin code that wants
 to read an offloaded value back calls `Offload.resolve(~fetch)`, which has no
 injected caller yet — the accessor for it belongs in this record and is not there.
 So `Capabilities.t` is where every capability but the object store is reached,

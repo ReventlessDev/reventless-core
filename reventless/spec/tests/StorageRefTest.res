@@ -117,3 +117,25 @@ describe("StorageRef:", () => {
     )
   })
 })
+
+describe("StorageRef.objectName", () => {
+  testSync("takes its extension from the content type, ignoring parameters and case", () => {
+    expect(StorageRef.objectName(~uuid="u", ~contentType=Some("image/JPEG")))->toBe("u.jpg")
+    expect(StorageRef.objectName(~uuid="u", ~contentType=Some("text/plain; charset=utf-8")))->toBe(
+      "u.txt",
+    )
+  })
+
+  testSync("an unknown or missing type is bin", () => {
+    expect(StorageRef.objectName(~uuid="u", ~contentType=Some("application/x-made-up")))->toBe(
+      "u.bin",
+    )
+    expect(StorageRef.objectName(~uuid="u", ~contentType=None))->toBe("u.bin")
+  })
+
+  testSync("a minted ref is a valid storage ref", () =>
+    expect(
+      StorageRef.fromString(`/uploads/sub/${StorageRef.objectName(~uuid="u", ~contentType=None)}`),
+    )->toEqual(Ok("/uploads/sub/u.bin"))
+  )
+})

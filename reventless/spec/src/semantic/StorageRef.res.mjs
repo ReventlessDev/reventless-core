@@ -5,6 +5,57 @@ import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
 
+function extensionFor(contentType) {
+  let match = Stdlib_Option.getOr(Stdlib_Option.map(contentType, t => Stdlib_Option.getOr(t.split(";")[0], "").trim().toLowerCase()), "");
+  switch (match) {
+    case "application/json" :
+      return "json";
+    case "application/pdf" :
+      return "pdf";
+    case "application/zip" :
+      return "zip";
+    case "audio/mp4" :
+      return "m4a";
+    case "audio/mpeg" :
+      return "mp3";
+    case "audio/ogg" :
+      return "ogg";
+    case "image/avif" :
+      return "avif";
+    case "image/gif" :
+      return "gif";
+    case "image/heic" :
+      return "heic";
+    case "image/jpeg" :
+    case "image/jpg" :
+    case "image/pjpeg" :
+      return "jpg";
+    case "image/png" :
+      return "png";
+    case "image/svg+xml" :
+      return "svg";
+    case "image/webp" :
+      return "webp";
+    case "text/csv" :
+      return "csv";
+    case "text/plain" :
+      return "txt";
+    case "video/mp4" :
+      return "mp4";
+    case "video/quicktime" :
+      return "mov";
+    case "audio/webm" :
+    case "video/webm" :
+      return "webm";
+    default:
+      return "bin";
+  }
+}
+
+function objectName(uuid, contentType) {
+  return uuid + `.` + extensionFor(contentType);
+}
+
 function segmentIsSafe(segment) {
   if (segment !== "" && segment !== ".") {
     return segment !== "..";
@@ -100,6 +151,8 @@ function getFieldStore(schema) {
 }
 
 export {
+  extensionFor,
+  objectName,
   segmentIsSafe,
   fromString,
   refinement,
