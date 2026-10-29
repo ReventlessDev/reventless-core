@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-10-29
+- feat(core): a handler drops a command it has already handled ([605862b](https://github.com/ReventlessDev/reventless-core/commit/605862bba765b1501eb19d08f3924bf619159e21))
+- feat(infra): a message a mapping derives gets a stable id and names its parent ([a72a08f](https://github.com/ReventlessDev/reventless-core/commit/a72a08f9af4440eff5fa36e9a364a426bc70918c))
+- refactor!: a read model hears another plugin only through an Extension and a slice ([15c7cae](https://github.com/ReventlessDev/reventless-core/commit/15c7cae214d5aa04404779fcd87a8429aad1965c))
 ### 2026-10-25
 - refactor(accounts): the accounts file and the store that reads it are called accounts ([9462c95](https://github.com/ReventlessDev/reventless-core/commit/9462c951b562bee8c4c82219feaaa4dedaec989b))
 ### 2026-10-25
