@@ -67,10 +67,6 @@ function finishTasks() {
   }
 }
 
-let readModelNamesForSourceName = {};
-
-let publishToReadModels = {};
-
 function finishReadModels(readModels) {
   Pulumi.all(readModels.map(param => param[1].operations)).apply(param => {
     readModels.forEach(param => param[1].finish());
@@ -89,15 +85,6 @@ function createReadModels(readModels, api, apiRole, componentRuntime, allEventTo
     let readModel = SpecificReadModel.make(api, apiRole, allEventTopics, componentRuntime[SpecificReadModel.Spec.name], opts);
     let rmOutputs = SpecificReadModel.outputs(readModel);
     let rmOperations = SpecificReadModel.operations(readModel);
-    rmOutputs.sourceNames.forEach(sourceName => {
-      let readModelNames = readModelNamesForSourceName[sourceName];
-      if (readModelNames !== undefined) {
-        readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
-      } else {
-        readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
-      }
-    });
-    publishToReadModels[SpecificReadModel.Spec.name] = rmOperations.apply(param => param.enqueueEvent);
     return [
       SpecificReadModel.Spec.name,
       {
@@ -154,8 +141,6 @@ export {
   taskSideEffectFinishFns,
   registerTaskSideEffectHandler,
   finishTasks,
-  readModelNamesForSourceName,
-  publishToReadModels,
   finishReadModels,
   extractReadModelsOutputs,
   createReadModels,

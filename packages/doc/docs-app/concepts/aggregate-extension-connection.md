@@ -88,7 +88,6 @@ let createExtensions = (
   ~pluginName,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,      // ← Extensions can publish to aggregates
-  ~publishToReadModels,
   ~queryEngine,
   ~opts,
 ) => {

@@ -118,9 +118,6 @@ let finishTasks = () =>
       ->Pulumi.Output.apply(_ => taskSideEffectFinishFns->Array.forEach(finishFn => finishFn()))
   }
 
-let readModelNamesForSourceName = Dict.make()
-let publishToReadModels = Dict.make()
-
 let finishReadModels = readModels => {
   let _ =
     readModels
@@ -161,20 +158,6 @@ let createReadModels = (
     )
     let rmOutputs = SpecificReadModel.outputs(readModel)
     let rmOperations = SpecificReadModel.operations(readModel)
-    rmOutputs.sourceNames->Array.forEach(sourceName =>
-      switch readModelNamesForSourceName->Dict.get(sourceName) {
-      | Some(readModelNames) =>
-        readModelNamesForSourceName->Dict.set(
-          sourceName,
-          readModelNames->Array.concat([SpecificReadModel.Spec.name]),
-        )
-      | None => Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
-      }
-    )
-    publishToReadModels->Dict.set(
-      SpecificReadModel.Spec.name,
-      rmOperations->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
-    )
 
     // Deferred to `finishReadModels`, which runs it from an apply — wrap it here
     // so the read model's runtime is attributed to the plugin building it.

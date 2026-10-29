@@ -93,18 +93,28 @@ module Make = (
     // Fail-fast: every Mapping.sourceName must resolve to a topic in allEventTopics,
     // otherwise EventTopic.filter silently drops it and the projection runs on no events.
     // Catches both Aggregate-name typos and DCB-source-name typos (e.g. "FooDcb" instead
-    // of "FooDcbEventLog"). See Plan 03 / Phase 2.
+    // of "FooDcbEventLog"). A dotted name is an extension point's: another plugin's
+    // facts reach a read model only through an Extension and a slice of this plugin.
     sourceNames
     ->Belt.Set.String.toArray
     ->Array.forEach(sourceName =>
       if !(allEventTopics->Dict.has(sourceName)) {
         let availableNames =
           allEventTopics->Dict.keysToArray->Array.toSorted(String.compare)->Array.join(", ")
+        let hint =
+          sourceName->String.includes(".")
+            ? ` "${sourceName}" looks like an extension point name: a read model cannot ` ++
+              `hear another plugin's extension point directly. Declare an Extension that ` ++
+              `maps its events to a command of one of this plugin's slices or aggregates, ` ++
+              `and project that component's events (see the Extension doc, ` ++ `"Targeting a StateChangeSlice instead of an Aggregate").`
+            : ""
         JsError.throwWithMessage(
           `ReadModel "${Spec.name}" has a Mapping with sourceName "${sourceName}", ` ++
           `but no EventTopic with that key exists in allEventTopics. ` ++
           `Available source names: [${availableNames}]. ` ++
-          `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++ `source name (typically "<pluginName>DcbEventLog").`,
+          `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++
+          `source name (typically "<pluginName>DcbEventLog").` ++
+          hint,
         )
       }
     )

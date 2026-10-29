@@ -443,13 +443,11 @@ function Make(Spec) {
           ]),
           Pulumi.all(Plugin_Helpers$ReventlessCore.aggregateResources),
           Pulumi.all(Plugin_Helpers$ReventlessCore.publishToAggregates),
-          Pulumi.all(Plugin_Helpers$ReventlessCore.publishToReadModels),
           scheduler,
           queryEngine
         ]), param => {
-          let queryEngine = param[5];
-          let scheduler = param[4];
-          let publishToReadModels = param[3];
+          let queryEngine = param[4];
+          let scheduler = param[3];
           let publishToAggregates = param[2];
           let aggregateResources = param[1];
           let match = param[0];
@@ -477,7 +475,7 @@ function Make(Spec) {
             coreSetup = undefined;
           }
           let publishToPluginExtensionPoint = coreSetup !== undefined ? coreSetup[1].remotePublish : async param => {};
-          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, extra$1, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
+          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, extra$1, publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts);
           let extensionRegistryInfos = match$2[2];
           let extensionsHandlers = match$2[1];
           let extensionsOutputs = match$2[0];
@@ -541,23 +539,11 @@ function Make(Spec) {
           stateChangeSlices.forEach(Sc => {
             aggregateQueueUrls[Sc.Spec.name] = dcbResult.dcbCommandTopicQueueUrl;
           });
-          let readModelQueueUrls = {};
-          Object.entries(readModelsOutputs).forEach(param => {
-            let urlOutput = Output$Pulumi.flatMap(param[1].eventCollector, ecOutputs => {
-              let r = ecOutputs.resources[0];
-              if (r !== undefined) {
-                return r.id;
-              } else {
-                return Pulumi.output("");
-              }
-            });
-            readModelQueueUrls[param[0]] = urlOutput;
-          });
           if (coreSetup !== undefined) {
-            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, Primitive_option.some(uiFragments), match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, match$1[2], aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, Primitive_option.some(uiFragments), match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, match$1[2], aggregateQueueUrls);
           } else {
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, Primitive_option.some(uiFragments), undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, Primitive_option.some(uiFragments), undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls);
           }
           let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, componentRuntime, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);

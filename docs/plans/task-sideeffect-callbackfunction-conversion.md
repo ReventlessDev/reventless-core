@@ -48,16 +48,16 @@ was commented as dead — "Not called at runtime; all Lambda deployments now use
 makeFromCodeAsset" — and the entry-point conversion plan closed on that basis.
 The comment was wrong.
 
-Three AWS component builders instantiate the core per-collector functor over this
-module:
+Two AWS component builders instantiate the core per-collector functor over this
+module (a third, `ForeignReadModel_Builder`, was deleted on 2026-10-28 with the
+extension-point-to-read-model forwarding it served; it had no caller):
 
-- [ForeignReadModel_Builder.res:3](../../reventless/aws/src/components/ForeignReadModel_Builder.res#L3)
 - [SideEffectHandler_PerSideEffectHandler.res:3](../../reventless/aws/src/components/SideEffectHandler_PerSideEffectHandler.res#L3)
 - [Task_Builder_PerBucket.res:3](../../reventless/aws/src/components/Task_Builder_PerBucket.res#L3)
 
 `ReventlessCore.EventCollectorRuntime_Builder_PerEventCollector.forEventCollector`
 ([EventCollectorRuntime_Builder_PerEventCollector.res:29](../../reventless/core/src/adapter/Runtime/EventCollectorRuntime_Builder_PerEventCollector.res#L29))
-calls `RuntimeEnvironment.make`, so any of those three reaching `forEventCollector`
+calls `RuntimeEnvironment.make`, so either of them reaching `forEventCollector`
 provisions a serialized-closure Lambda.
 
 ### The live route
@@ -171,8 +171,8 @@ Three things surfaced after the approach was drafted. Together they say: do not
 build a new entry point.
 
 **1. Two of the three builders are simply dead.**
-`ForeignReadModel_Builder` has zero references anywhere in `reventless/` or
-`examples/`. And core `Task_Builder` declares `EventCollectorRuntimeBuilder` as a
+`ForeignReadModel_Builder` had zero references anywhere in `reventless/` or
+`examples/` (it has since been deleted). And core `Task_Builder` declares `EventCollectorRuntimeBuilder` as a
 functor parameter ([Task_Builder.res:22](../../reventless/core/src/components/Task/Task_Builder.res#L22))
 that its body never uses — so the core per-collector instantiation in
 `Task_Builder_PerBucket` exists only to satisfy an unused parameter. That leaves

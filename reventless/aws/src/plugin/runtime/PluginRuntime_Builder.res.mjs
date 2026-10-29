@@ -268,9 +268,7 @@ function Make(EventCollectorChannel) {
         }],
       extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.output(""),
-      publishToAggregates: {},
-      readModelQueueUrls: {},
-      readModelNamesForSourceName: {}
+      publishToAggregates: {}
     };
   };
   let forPluginEventCollector = (param, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) => {
@@ -301,10 +299,6 @@ function Make(EventCollectorChannel) {
     let envVars = {};
     Object.entries(context.publishToAggregates).forEach(param => {
       let envVarName = `PTA_` + param[0] + `_QUEUE_URL`;
-      envVars[envVarName] = param[1];
-    });
-    Object.entries(context.readModelQueueUrls).forEach(param => {
-      let envVarName = `PRM_` + param[0] + `_QUEUE_URL`;
       envVars[envVarName] = param[1];
     });
     let epEventTopicArnsOutput = Pulumi.all(context.extensionPoints.map(ep => ep.eventTopicArn));
@@ -371,17 +365,11 @@ function Make(EventCollectorChannel) {
         entryDict["delegateModule"] = ext.delegateModule;
         entryDict["extensionPointName"] = ext.extensionPointName;
         entryDict["aggregateNames"] = ext.aggregateNames.map(prim => prim);
-        entryDict["readModelNames"] = ext.readModelNames.map(prim => prim);
         return entryDict;
       });
       dict["extensions"] = extensionsArr;
-      let rmNamesForSourceDict = {};
-      Object.entries(context.readModelNamesForSourceName).forEach(param => {
-        rmNamesForSourceDict[param[0]] = param[1].map(prim => prim);
-      });
-      dict["readModelNamesForSourceName"] = rmNamesForSourceDict;
       let json = JSON.stringify(dict);
-      let queueUrlKeys = Object.keys(context.publishToAggregates).map(n => `PTA_` + n + `_QUEUE_URL`).concat(Object.keys(context.readModelQueueUrls).map(n => `PRM_` + n + `_QUEUE_URL`));
+      let queueUrlKeys = Object.keys(context.publishToAggregates).map(n => `PTA_` + n + `_QUEUE_URL`);
       Util_LambdaEnvBudget$ReventlessAws.check(name, json, queueUrlKeys);
       return json;
     });
@@ -428,7 +416,6 @@ function Make(EventCollectorChannel) {
       };
       let queueUrlsDict = {};
       queueUrlsDict["publishToAggregates"] = nameMap(Object.keys(context.publishToAggregates), "PTA");
-      queueUrlsDict["readModelQueueUrls"] = nameMap(Object.keys(context.readModelQueueUrls), "PRM");
       extraStringAssets["queueUrls.json"] = JSON.stringify(queueUrlsDict);
       extraStringAssets["uiFragments.json"] = param[1];
       return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs", packageDirs, extraStringAssets, undefined);

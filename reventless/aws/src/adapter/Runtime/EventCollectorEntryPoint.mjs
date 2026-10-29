@@ -42,16 +42,12 @@
 //       "mappingsModule":     string,          // dynamic import for the user extension file (`module Mapping`)
 //       "delegateModule":     string,          // dynamic import for the Delegate spec (aggregate / slice)
 //       "extensionPointName": string,          // service key for incomingExtensionEventHandlers (e.g. "Ordering.Orders")
-//       "aggregateNames":     string[],        // outgoing service keys + filter into top-level publishToAggregates
-//       "readModelNames":     string[]         // RMs this extension may enqueue events into (filter into readModelQueueUrls)
+//       "aggregateNames":     string[]         // outgoing service keys + filter into top-level publishToAggregates
 //     }
-//   ],
-//   (publishToAggregates / readModelQueueUrls moved to the queueUrls.json asset —
-//    one entry per target, so they outgrew the 4KB environment. Each still maps a
-//    target name to the PTA_/PRM_ env var holding its SQS URL.)
-//   "readModelNamesForSourceName": {           // deploy-side inversion of RM.sourceNames; sourceServiceName → [rmName]
-//     "Ordering.Orders": ["ProductDemands"]
-//   }
+//   ]
+//   (publishToAggregates moved to the queueUrls.json asset — one entry per
+//    target, so it outgrew the 4KB environment. It maps a target name to the
+//    PTA_ env var holding its SQS URL.)
 // }
 //
 // Why this shape and not separate entry points per Lambda: at deploy time both the
@@ -187,8 +183,6 @@ async function buildHandler() {
     const ops = extensionOperationsMake(specMod)(extBuilder.ConnectPluginMappings)({
       publishToAggregates,
       publishToPluginExtensionPoint,
-      readModelNamesForSourceName: {},
-      publishToReadModels: {},
       queryEngine,
     });
     connectExtensionHandler = {
@@ -229,12 +223,10 @@ async function buildHandler() {
       mappings: [transformedMapping],
     };
 
-    const dicts = Ops.extensionPublishDicts(config, queueUrlNames, ext);
+    const dicts = Ops.extensionPublishDicts(queueUrlNames, ext);
     const ops = extensionOperationsMake(epSpec)(mappingsModule)({
       publishToAggregates: dicts.publishToAggregates,
       publishToPluginExtensionPoint,
-      readModelNamesForSourceName: dicts.readModelNamesForSourceName,
-      publishToReadModels: dicts.publishToReadModels,
       queryEngine,
     });
 

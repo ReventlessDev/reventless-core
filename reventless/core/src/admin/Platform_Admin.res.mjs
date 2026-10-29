@@ -228,8 +228,6 @@ function Make(RuntimeEnvironment) {
       taskSideEffectFinishFns: Builder_Helpers$ReventlessCore.taskSideEffectFinishFns,
       registerTaskSideEffectHandler: Builder_Helpers$ReventlessCore.registerTaskSideEffectHandler,
       finishTasks: Builder_Helpers$ReventlessCore.finishTasks,
-      readModelNamesForSourceName: Builder_Helpers$ReventlessCore.readModelNamesForSourceName,
-      publishToReadModels: Builder_Helpers$ReventlessCore.publishToReadModels,
       finishReadModels: Builder_Helpers$ReventlessCore.finishReadModels,
       extractReadModelsOutputs: Builder_Helpers$ReventlessCore.extractReadModelsOutputs,
       createReadModels: Builder_Helpers$ReventlessCore.createReadModels,

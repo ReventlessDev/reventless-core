@@ -11,8 +11,6 @@ module type Mappings = {
 module type Ops = {
   let publishToAggregates: dict<CommandTopic.publishJsons>
   let publishToPluginExtensionPoint: CommandTopic.publishJsons
-  let readModelNamesForSourceName: dict<array<string>>
-  let publishToReadModels: dict<EventCollector.enqueueEvent>
   let queryEngine: Reventless.QueryEngine.operations
 }
 
@@ -171,23 +169,6 @@ module Make = (
         ->Util.Promise.toUnit
       }
       await commandActions->apply
-
-      switch Ops.readModelNamesForSourceName
-      ->Dict.get(event'.meta.service)
-      ->Option.map(readModelNames =>
-        readModelNames
-        ->Array.filterMap(readModelName =>
-          Ops.publishToReadModels
-          ->Dict.get(readModelName)
-          ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'->JSON.stringify))
-        ) // FIXME Error handling
-        ->Promise.all
-      ) {
-      | Some(p) =>
-        let _ = await p
-      | None => ()
-      }
-
     | exception err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       EffectLogger.logError(

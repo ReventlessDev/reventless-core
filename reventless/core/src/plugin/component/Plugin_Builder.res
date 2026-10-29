@@ -650,11 +650,10 @@ module Make = (
         (interstackAdminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
-        publishToReadModels->Pulumi.Output.allDict,
         scheduler,
         queryEngine,
       )
-      ->Pulumi.Output.all6
+      ->Pulumi.Output.all5
       // `applyAttributed`, not `apply`: this callback provisions real resources —
       // extension points, tasks, the heartbeat, resolvers — and it runs after
       // this construct has returned, when the ambient attribution context is
@@ -663,7 +662,6 @@ module Make = (
         (interstackAdminExtensionPoints, localAdminResolvedEP, _),
         aggregateResources,
         publishToAggregates,
-        publishToReadModels,
         scheduler,
         queryEngine,
       )) => {
@@ -717,7 +715,6 @@ module Make = (
             ~pluginName=name,
             ~publishToPluginExtensionPoint,
             ~publishToAggregates,
-            ~publishToReadModels,
             ~queryEngine,
             ~opts,
           )
@@ -851,22 +848,6 @@ module Make = (
           aggregateQueueUrls->Dict.set(Sc.Spec.name, dcbResult.dcbCommandTopicQueueUrl)
         )
 
-        // Per-RM EventCollector SQS URL — populated only for plugins that
-        // expose RMs the bundled handler may enqueue events into directly.
-        let readModelQueueUrls: dict<Pulumi.Output.t<string>> = Dict.make()
-        readModelsOutputs
-        ->Dict.toArray
-        ->Array.forEach(((rmName, rmOut)) => {
-          let urlOutput = rmOut.eventCollector->Pulumi.Output.flatMap(
-            ecOutputs =>
-              switch ecOutputs.resources->Array.get(0) {
-              | Some(r) => r.id
-              | None => Pulumi.Output.make("")
-              },
-          )
-          readModelQueueUrls->Dict.set(rmName, urlOutput)
-        })
-
         switch coreSetup {
         | Some((pluginExtensionPointUnwrapped, _)) => {
             let (
@@ -877,8 +858,6 @@ module Make = (
               ~uiFragments,
               ~publishToPluginExtensionPoint,
               ~publishToAggregates,
-              ~readModelNamesForSourceName,
-              ~publishToReadModels,
               ~queryEngine,
               ~opts,
             )
@@ -897,8 +876,6 @@ module Make = (
               ~extensionRegistryInfos,
               ~extensionPointRegistryInfos,
               ~aggregateQueueUrls,
-              ~readModelQueueUrls,
-              ~readModelNamesForSourceName,
             )
           }
         | None =>
@@ -914,8 +891,6 @@ module Make = (
             ~extensionPointsHandlers,
             ~extensionRegistryInfos,
             ~aggregateQueueUrls,
-            ~readModelQueueUrls,
-            ~readModelNamesForSourceName,
           )
         }
 

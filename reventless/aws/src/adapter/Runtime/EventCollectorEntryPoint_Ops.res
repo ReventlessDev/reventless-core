@@ -94,7 +94,6 @@ type extensionConfig = {
   delegateModule: string,
   extensionPointName: string,
   aggregateNames: array<string>,
-  readModelNames: array<string>,
 }
 type handlerConfig = {
   queueUrl: string,
@@ -108,17 +107,13 @@ type handlerConfig = {
   extensionPoints: array<extensionPointConfig>,
   connectExtension?: connectExtensionConfig,
   extensions: array<extensionConfig>,
-  readModelNamesForSourceName: dict<array<string>>,
 }
 
-// The target→env-var maps that used to ride HANDLER_CONFIG, now read from
+// The target→env-var map that used to ride HANDLER_CONFIG, now read from
 // queueUrls.json (PluginRuntime_Builder). Values are env var NAMES, not URLs —
 // the URLs stay in the environment because the builder cannot resolve those
 // Outputs in bulk.
-type queueUrlNames = {
-  publishToAggregates: dict<string>,
-  readModelQueueUrls: dict<string>,
-}
+type queueUrlNames = {publishToAggregates: dict<string>}
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
   obj->Dict.get(key)->Option.flatMap(JSON.Decode.string)
@@ -196,7 +191,6 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
           delegateModule: ext->strOf("delegateModule")->Option.getOr(""),
           extensionPointName,
           aggregateNames: ext->strArrOf("aggregateNames"),
-          readModelNames: ext->strArrOf("readModelNames"),
         }
       })
     )
@@ -211,17 +205,6 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
       mappingsModule: ce->strOf("mappingsModule")->Option.getOr(""),
       extensionPointName: ce->strOf("extensionPointName")->Option.getOr(""),
     })
-  let readModelNamesForSourceName =
-    obj
-    ->Dict.get("readModelNamesForSourceName")
-    ->Option.flatMap(JSON.Decode.object)
-    ->Option.getOr(Dict.make())
-    ->Dict.toArray
-    ->Array.map(((k, v)) => (
-      k,
-      v->JSON.Decode.array->Option.getOr([])->Array.filterMap(JSON.Decode.string),
-    ))
-    ->Dict.fromArray
   {
     queueUrl: obj->strOf("queueUrl")->Option.getOr(""),
     pluginExtensionPointCmdTopicUrl: obj
@@ -236,7 +219,6 @@ let parseHandlerConfig = (rawJson: string): handlerConfig => {
     extensionPoints,
     ?connectExtension,
     extensions,
-    readModelNamesForSourceName,
   }
 }
 
@@ -630,20 +612,12 @@ let buildPublishToAggregates = (map: dict<string>): dict<
   ))
   ->Dict.fromArray
 
-// Per-extension publish dicts, filtered to the extension's declared aggregate /
-// read-model names; entries with no env-var mapping or an empty URL are skipped
-// (same as the former JS `continue`s).
-type extensionDicts = {
-  publishToAggregates: dict<ReventlessCore.CommandTopic.publishJsons>,
-  publishToReadModels: dict<ReventlessCore.CommandTopic.publishJsons>,
-  readModelNamesForSourceName: dict<array<string>>,
-}
+// Per-extension publish dict, filtered to the extension's declared aggregate
+// names; entries with no env-var mapping or an empty URL are skipped (same as
+// the former JS `continue`s).
+type extensionDicts = {publishToAggregates: dict<ReventlessCore.CommandTopic.publishJsons>}
 
-let extensionPublishDicts = (
-  config: handlerConfig,
-  names: queueUrlNames,
-  ext: extensionConfig,
-): extensionDicts => {
+let extensionPublishDicts = (names: queueUrlNames, ext: extensionConfig): extensionDicts => {
   let resolve = (names: array<string>, envVarNames: dict<string>) =>
     names
     ->Array.filterMap(name =>
@@ -654,18 +628,7 @@ let extensionPublishDicts = (
       ->Option.map(queueUrl => (name, makePublishJsons(queueUrl)))
     )
     ->Dict.fromArray
-  {
-    publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates),
-    publishToReadModels: resolve(ext.readModelNames, names.readModelQueueUrls),
-    // Scoped to this extension's EP — Extension_Operations uses this dict to
-    // decide which RMs receive each incoming event.
-    readModelNamesForSourceName: Dict.fromArray([
-      (
-        ext.extensionPointName,
-        config.readModelNamesForSourceName->Dict.get(ext.extensionPointName)->Option.getOr([]),
-      ),
-    ]),
-  }
+  {publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates)}
 }
 
 let warnSkippedExtension = (ext: extensionConfig) =>
@@ -702,8 +665,8 @@ let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
     )
   }
 
-// The target→env-var maps, read once at cold start. A plugin that publishes
-// nowhere writes empty maps rather than omitting the file, so a read failure is
+// The target→env-var map, read once at cold start. A plugin that publishes
+// nowhere writes an empty map rather than omitting the file, so a read failure is
 // a genuinely broken archive and not an empty-map case worth guessing at.
 let loadQueueUrlNames = (): queueUrlNames =>
   try {
@@ -713,10 +676,7 @@ let loadQueueUrlNames = (): queueUrlNames =>
       ->JSON.parseOrThrow
       ->JSON.Decode.object
       ->Option.getOr(Dict.make())
-    {
-      publishToAggregates: obj->strDictOf("publishToAggregates"),
-      readModelQueueUrls: obj->strDictOf("readModelQueueUrls"),
-    }
+    {publishToAggregates: obj->strDictOf("publishToAggregates")}
   } catch {
   | exn =>
     JsError.throwWithMessage("Failed to load queueUrls.json from asset zip: " ++ exnMessage(exn))

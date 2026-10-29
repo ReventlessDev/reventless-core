@@ -346,8 +346,6 @@ module Make = (
       extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.Output.make(""),
       publishToAggregates: Dict.make(),
-      readModelQueueUrls: Dict.make(),
-      readModelNamesForSourceName: Dict.make(),
     }
   }
 
@@ -424,18 +422,6 @@ module Make = (
     ->Array.forEach(((_aggName, queueUrlOutput)) => {
       // Env var name follows the existing convention: PTA_<aggregate>_QUEUE_URL.
       let envVarName = `PTA_${_aggName}_QUEUE_URL`
-      envVars->Dict.set(envVarName, queueUrlOutput->Pulumi.Output.asInput)
-    })
-
-    // Same indirection for ReadModel EventCollector SQS URLs — only populated
-    // when user extensions enqueue directly into RMs (Extension_Operations
-    // publishToReadModels path). Empty for the admin Lambda and for the
-    // current Orders_Extension fixture (its RM is fed via the slice EventLog →
-    // RM EventColl subscription chain instead).
-    context.readModelQueueUrls
-    ->Dict.toArray
-    ->Array.forEach(((_rmName, queueUrlOutput)) => {
-      let envVarName = `PRM_${_rmName}_QUEUE_URL`
       envVars->Dict.set(envVarName, queueUrlOutput->Pulumi.Output.asInput)
     })
 
@@ -523,8 +509,7 @@ module Make = (
       // User-declared extensions — one entry per merged extension group.
       // Each entry carries enough metadata for the bundled handler to
       // dynamic-import the spec / mapping modules and filter the top-level
-      // publishToAggregates + readModelQueueUrls maps down to the subset
-      // this extension actually uses.
+      // publishToAggregates map down to the subset this extension actually uses.
       // Sort by extension name so the serialized JSON is stable across deploys.
       let extensionsArr =
         context.extensions
@@ -540,43 +525,26 @@ module Make = (
             "aggregateNames",
             ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
           )
-          entryDict->Dict.set(
-            "readModelNames",
-            ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-          )
           JSON.Encode.object(entryDict)
         })
       dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
 
-      // publishToAggregates / readModelQueueUrls live in queueUrls.json (see the
-      // asset bundle below). Both are one entry per target, so they grow with the
-      // plugin, and together with the PTA_/PRM_ vars they name they carried the
-      // catalog EventCollector past Lambda's 4KB environment ceiling. Only the
-      // maps move: they are built from Dict.keysToArray, so they hold no Pulumi
-      // Output and can be serialized here. The URLs themselves cannot follow —
-      // see the note on the aggregate walk further down.
-
-      let rmNamesForSourceDict = Dict.make()
-      context.readModelNamesForSourceName
-      ->Dict.toArray
-      ->Array.forEach(((sourceName, rmNames)) =>
-        rmNamesForSourceDict->Dict.set(
-          sourceName,
-          rmNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-        )
-      )
-      dict->Dict.set("readModelNamesForSourceName", JSON.Encode.object(rmNamesForSourceDict))
+      // publishToAggregates lives in queueUrls.json (see the asset bundle below).
+      // It is one entry per target, so it grows with the plugin, and together with
+      // the PTA_ vars it names it carried the catalog EventCollector past Lambda's
+      // 4KB environment ceiling. Only the map moves: it is built from
+      // Dict.keysToArray, so it holds no Pulumi Output and can be serialized here.
+      // The URLs themselves cannot follow — see the note on the aggregate walk
+      // further down.
 
       let json = JSON.Encode.object(dict)->JSON.stringify
-      // The PTA_/PRM_ vars are the rest of this Lambda's environment and the
-      // half that grows with the plugin. Their names are known here; their
-      // values are still Outputs, so the budget check estimates those.
-      let queueUrlKeys = Array.concat(
+      // The PTA_ vars are the rest of this Lambda's environment and the half
+      // that grows with the plugin. Their names are known here; their values
+      // are still Outputs, so the budget check estimates those.
+      let queueUrlKeys =
         context.publishToAggregates
         ->Dict.keysToArray
-        ->Array.map(n => `PTA_${n}_QUEUE_URL`),
-        context.readModelQueueUrls->Dict.keysToArray->Array.map(n => `PRM_${n}_QUEUE_URL`),
-      )
+        ->Array.map(n => `PTA_${n}_QUEUE_URL`)
       Util_LambdaEnvBudget.check(
         ~lambdaName=name,
         ~handlerConfigJson=json,
@@ -659,10 +627,6 @@ module Make = (
         queueUrlsDict->Dict.set(
           "publishToAggregates",
           nameMap(context.publishToAggregates->Dict.keysToArray, "PTA"),
-        )
-        queueUrlsDict->Dict.set(
-          "readModelQueueUrls",
-          nameMap(context.readModelQueueUrls->Dict.keysToArray, "PRM"),
         )
         extraStringAssets->Dict.set(
           "queueUrls.json",

@@ -135,8 +135,7 @@ function parseHandlerConfig(rawJson) {
         mappingsModule: Stdlib_Option.getOr(strOf(ext, "mappingsModule"), ""),
         delegateModule: Stdlib_Option.getOr(strOf(ext, "delegateModule"), ""),
         extensionPointName: extensionPointName,
-        aggregateNames: strArrOf(ext, "aggregateNames"),
-        readModelNames: strArrOf(ext, "readModelNames")
+        aggregateNames: strArrOf(ext, "aggregateNames")
       };
     })) : Stdlib_JsError.throwWithMessage("HANDLER_CONFIG.extensions must be an array");
   let connectExtension = Stdlib_Option.map(Stdlib_Option.flatMap(obj["connectExtension"], Stdlib_JSON.Decode.object), ce => ({
@@ -144,10 +143,6 @@ function parseHandlerConfig(rawJson) {
     mappingsModule: Stdlib_Option.getOr(strOf(ce, "mappingsModule"), ""),
     extensionPointName: Stdlib_Option.getOr(strOf(ce, "extensionPointName"), "")
   }));
-  let readModelNamesForSourceName = Object.fromEntries(Object.entries(Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["readModelNamesForSourceName"], Stdlib_JSON.Decode.object), {})).map(param => [
-    param[0],
-    Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_JSON.Decode.array(param[1]), []), Stdlib_JSON.Decode.string)
-  ]));
   return {
     queueUrl: Stdlib_Option.getOr(strOf(obj, "queueUrl"), ""),
     pluginExtensionPointCmdTopicUrl: Stdlib_Option.getOr(strOf(obj, "pluginExtensionPointCmdTopicUrl"), ""),
@@ -159,8 +154,7 @@ function parseHandlerConfig(rawJson) {
     schedulerQueueName: Stdlib_Option.getOr(strOf(obj, "schedulerQueueName"), ""),
     extensionPoints: extensionPoints,
     connectExtension: connectExtension,
-    extensions: extensions,
-    readModelNamesForSourceName: readModelNamesForSourceName
+    extensions: extensions
   };
 }
 
@@ -494,18 +488,13 @@ function buildPublishToAggregates(map) {
   ]));
 }
 
-function extensionPublishDicts(config, names, ext) {
+function extensionPublishDicts(names, ext) {
   let resolve = (names, envVarNames) => Object.fromEntries(Stdlib_Array.filterMap(names, name => Stdlib_Option.map(Stdlib_Option.filter(Stdlib_Option.flatMap(envVarNames[name], envVarName => process.env[envVarName]), queueUrl => queueUrl !== ""), queueUrl => [
     name,
     makePublishJsons(queueUrl)
   ])));
   return {
-    publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates),
-    publishToReadModels: resolve(ext.readModelNames, names.readModelQueueUrls),
-    readModelNamesForSourceName: Object.fromEntries([[
-        ext.extensionPointName,
-        Stdlib_Option.getOr(config.readModelNamesForSourceName[ext.extensionPointName], [])
-      ]])
+    publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates)
   };
 }
 
@@ -532,8 +521,7 @@ function loadQueueUrlNames() {
   try {
     let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(Nodefs.readFileSync(assetPath("queueUrls.json"), "utf8"))), {});
     return {
-      publishToAggregates: strDictOf(obj, "publishToAggregates"),
-      readModelQueueUrls: strDictOf(obj, "readModelQueueUrls")
+      publishToAggregates: strDictOf(obj, "publishToAggregates")
     };
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);

@@ -30,8 +30,6 @@ module type T = {
   let make: (
     ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
-    ~readModelNamesForSourceName: dict<array<string>>,
-    ~publishToReadModels: dict<EventCollector.enqueueEvent>,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component

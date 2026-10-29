@@ -15,11 +15,11 @@ let additionalIamPolicies: array<iamPolicy> = []
 
 // CallbackFunction path — the last serialized-closure Lambda builder on AWS.
 //
-// REACHABLE, despite most deployments going through makeFromCodeAsset. Three
+// REACHABLE, despite most deployments going through makeFromCodeAsset. Two
 // component builders instantiate ReventlessCore.EventCollectorRuntime_Builder_
-// PerEventCollector.Make over this module — ForeignReadModel_Builder,
-// SideEffectHandler_PerSideEffectHandler and Task_Builder_PerBucket — and that
-// functor's forEventCollector calls `make` below. The live route is a Task whose
+// PerEventCollector.Make over this module — SideEffectHandler_PerSideEffectHandler
+// and Task_Builder_PerBucket — and that functor's forEventCollector calls `make`
+// below. The live route is a Task whose
 // spec returns `Task.sideEffects`: Task_Builder then constructs a
 // SideEffectHandler, which provisions its collector Lambda here.
 //
@@ -29,7 +29,7 @@ let additionalIamPolicies: array<iamPolicy> = []
 // where an ordering-aws deploy came up four Lambdas short). Where it does
 // serialize, it then resolves @aws-sdk against whatever the layer and the runtime
 // each supply, carrying the cold-start SDK-skew failure compiled entry points
-// were introduced to avoid. Converting these three builders to a compiled entry
+// were introduced to avoid. Converting these two builders to a compiled entry
 // point is the fix; until then a side-effect-bearing Task is the exposed surface.
 //
 // `make` cannot simply be dropped: Runtime.Environment requires environmentMaker

@@ -92,7 +92,7 @@ precisely because their contents outgrew the environment.
 ## The blocking unknown, and what the code actually says
 
 The obvious application of the invariant — put the resolved queue URLs in
-`queueUrls.json` and delete the `PTA_*`/`PRM_*` vars — was proposed and then
+`queueUrls.json` and delete the `PTA_*` vars — was proposed and then
 withdrawn, on the strength of this note in `PluginRuntime_Builder.res`:
 
 > the dict is declared as `dict<Output<string>>` but `Plugin_Builder.res` also
@@ -144,11 +144,14 @@ URLs, and step 4's budget has to leave room for them.
 
 **2 — Move the queue URLs into the archive.**
 Given a clean spike: `queueUrls.json` carries `name → URL` instead of
-`name → env-var name`; `PluginRuntime_Builder` stops emitting `PTA_*`/`PRM_*`;
+`name → env-var name`; `PluginRuntime_Builder` stops emitting `PTA_*`;
 `EventCollectorEntryPoint_Ops.loadQueueUrlNames` becomes a URL loader and the
 env lookup in `buildPublishToAggregates` / `extensionPublishDicts` goes away.
 This removes ~1800 bytes from the catalog EventCollector and, more to the point,
-removes the last term in that Lambda that scales with the plugin.
+removes the last term in that Lambda that scales with the plugin. (The `PRM_*`
+half of this step is gone already: the read-model queue URLs went with the
+extension-point-to-read-model forwarding they served, see
+[another-plugins-facts-come-in-through-the-own-log-once.md](another-plugins-facts-come-in-through-the-own-log-once.md).)
 
 **3 — Audit the remaining Lambdas.**
 The four incidents were found by deploying. Enumerate every `makeFromCodeAsset`

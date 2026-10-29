@@ -136,10 +136,6 @@ type extensionEntry = {
   // Subset of top-level publishToAggregates this extension publishes to —
   // derived from Extension.outputs.aggregateNames.
   aggregateNames: array<string>,
-  // RMs this extension's mapping may enqueue events into directly. Derived
-  // from readModelNamesForSourceName by reverse lookup on the extension's
-  // EP name (the source carried on incoming events).
-  readModelNames: array<string>,
 }
 
 type eventCollectorContext = {
@@ -169,12 +165,6 @@ type eventCollectorContext = {
   // any user extension publishes to plus the admin's Plugin aggregate when
   // ConnectExtension is wired.
   publishToAggregates: dict<Pulumi.Output.t<string>>,
-  // rmName → RM EventCollector SQS URL. Populated only for RMs that user
-  // extensions feed directly via Extension_Operations.publishToReadModels.
-  readModelQueueUrls: dict<Pulumi.Output.t<string>>,
-  // Inversion of RM.sourceNames — sourceServiceName → [rmName]. Same dict
-  // surface used by Builder_Helpers; serialised verbatim into HANDLER_CONFIG.
-  readModelNamesForSourceName: dict<array<string>>,
 }
 
 let eventCollectorContextRef: ref<dict<eventCollectorContext>> = ref(Dict.make())
@@ -254,7 +244,6 @@ let createExtensions = (
   ~pluginName,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,
-  ~publishToReadModels,
   ~queryEngine,
   ~opts,
 ) => {
@@ -297,8 +286,6 @@ let createExtensions = (
       let extension = ExtensionMaker.make(
         ~publishToPluginExtensionPoint,
         ~publishToAggregates,
-        ~readModelNamesForSourceName,
-        ~publishToReadModels,
         ~queryEngine,
         ~opts=Some(opts),
       )
@@ -375,8 +362,6 @@ let createConnectPluginExtension = (
   ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,
-  ~readModelNamesForSourceName,
-  ~publishToReadModels,
   ~queryEngine,
   ~opts,
 ) =>
@@ -392,8 +377,6 @@ let createConnectPluginExtension = (
     let connectPluginExtension = ConnectPluginExtension.make(
       ~publishToPluginExtensionPoint,
       ~publishToAggregates,
-      ~readModelNamesForSourceName,
-      ~publishToReadModels,
       ~queryEngine,
       ~opts=Some(opts),
     )
@@ -515,14 +498,6 @@ module MakeEventCollectorHelper = (
     // that a user extension may publish to. The full plugin dict is fine —
     // the runtime filters to ext.aggregateNames when invoking each extension.
     ~aggregateQueueUrls: dict<Pulumi.Output.t<string>>=Dict.make(),
-    // rmName → RM EventCollector SQS URL. Populated only for RMs that
-    // user extensions may enqueue events into directly. Plugin RMs fed
-    // through the normal EventTopic → EventColl subscription path don't
-    // need entries here.
-    ~readModelQueueUrls: dict<Pulumi.Output.t<string>>=Dict.make(),
-    // The global readModelNamesForSourceName inversion (sourceName → [rmName]).
-    // Plain dict — no Pulumi outputs because it's pure name metadata.
-    ~readModelNamesForSourceName: dict<array<string>>=Dict.make(),
   ) => {
     let resources =
       extensionPointsOutputs
@@ -649,10 +624,6 @@ module MakeEventCollectorHelper = (
       ) {
         extensionsOutputs->Array.mapWithIndex((output, i) => {
           let info = extensionRegistryInfos->Array.getUnsafe(i)
-          let rmNames =
-            readModelNamesForSourceName
-            ->Dict.get(output.extensionPointName)
-            ->Option.getOr([])
           {
             name: output.name,
             specModule: info.specModule,
@@ -660,7 +631,6 @@ module MakeEventCollectorHelper = (
             delegateModule: info.delegateModule,
             extensionPointName: output.extensionPointName,
             aggregateNames: output.aggregateNames,
-            readModelNames: rmNames,
           }
         })
       } else {
@@ -724,8 +694,6 @@ module MakeEventCollectorHelper = (
           extensions,
           pluginExtensionPointCmdTopicUrl,
           publishToAggregates: mergedAggregateUrls,
-          readModelQueueUrls,
-          readModelNamesForSourceName,
         },
       )
 

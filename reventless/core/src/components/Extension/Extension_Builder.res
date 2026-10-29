@@ -8,8 +8,6 @@ module Make = (
   let construct = (
     ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
-    ~readModelNamesForSourceName: dict<array<string>>,
-    ~publishToReadModels: dict<EventCollector.enqueueEvent>,
     ~queryEngine,
     self,
     name,
@@ -20,8 +18,6 @@ module Make = (
       {
         let publishToAggregates = publishToAggregates
         let publishToPluginExtensionPoint = publishToPluginExtensionPoint
-        let readModelNamesForSourceName = readModelNamesForSourceName
-        let publishToReadModels = publishToReadModels
         let queryEngine = queryEngine
       },
     )
@@ -55,25 +51,11 @@ module Make = (
     self->Component.setOutputs(extOutputs)
   }
 
-  let make = (
-    ~publishToPluginExtensionPoint,
-    ~publishToAggregates,
-    ~readModelNamesForSourceName,
-    ~publishToReadModels,
-    ~queryEngine,
-    ~opts,
-  ) =>
+  let make = (~publishToPluginExtensionPoint, ~publishToAggregates, ~queryEngine, ~opts) =>
     Component.make(
       ~componentType=Extension.componentType->ComponentType.toString,
       ~name=Spec.name ++ ("." ++ Mappings.name),
-      ~construct=construct(
-        ~publishToPluginExtensionPoint,
-        ~publishToAggregates,
-        ~readModelNamesForSourceName,
-        ~publishToReadModels,
-        ~queryEngine,
-        ...
-      ),
+      ~construct=construct(~publishToPluginExtensionPoint, ~publishToAggregates, ~queryEngine, ...),
       ~opts,
     )
 

@@ -86,20 +86,14 @@ Effect.promise(async () => {
 
 ## Step 4: Fix Extension_Operations.res error handling
 
-**File:** `Extension_Operations.res` (~line 169)
+~~**File:** `Extension_Operations.res` (~line 169)~~
 
-Current pattern has a FIXME — `Promise.all` with no error handling:
-```rescript
-readModelNames->Array.filterMap(readModelName =>
-  Ops.publishToReadModels->Dict.get(readModelName)
-    ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'))
-) // FIXME Error handling
-->Promise.all
-```
-
-- [ ] Replace `Promise.all` with `Effect.all` or `Effect.forEach`
-- [ ] Add error logging for individual enqueue failures
-- [ ] Decide fail-fast vs continue-on-partial-failure semantics
+**Removed, not converted.** The block this step targeted forwarded an incoming extension-point
+event straight into the plugin's read models (`publishToReadModels`, with its `FIXME`). That
+route was deleted together with its index: another plugin's facts reach a read model only
+through an Extension and a slice of the plugin's own, see
+[another-plugins-facts-come-in-through-the-own-log-once.md](../another-plugins-facts-come-in-through-the-own-log-once.md).
+Nothing is left here to convert.
 
 ---
 

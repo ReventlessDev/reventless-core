@@ -62,7 +62,8 @@ function Make(Spec) {
           return;
         }
         let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
-        Stdlib_JsError.throwWithMessage(`ReadModel "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
+        let hint = sourceName.includes(".") ? ` "` + sourceName + `" looks like an extension point name: a read model cannot hear another plugin's extension point directly. Declare an Extension that maps its events to a command of one of this plugin's slices or aggregates, and project that component's events (see the Extension doc, "Targeting a StateChangeSlice instead of an Aggregate").` : "";
+        Stdlib_JsError.throwWithMessage(`ReadModel "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").` + hint);
       });
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let eventCollector = Component$ReventlessCore.operations(queryDb).apply(operations => {

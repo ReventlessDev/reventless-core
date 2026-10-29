@@ -143,7 +143,7 @@ function serviceNameToJsonEventsHandlers(outputs, getServiceNames, handlers, get
   return dict;
 }
 
-function createExtensions(extensions, pluginName, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
+function createExtensions(extensions, pluginName, publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts) {
   let groups = {};
   extensions.forEach(bp => {
     let epName = bp.Spec.name;
@@ -165,7 +165,7 @@ function createExtensions(extensions, pluginName, publishToPluginExtensionPoint,
       mappings: allMappings
     };
     let ExtensionMaker = Extension_Builder$ReventlessCore.Make(First.Spec)(Mappings);
-    let extension = ExtensionMaker.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let extension = ExtensionMaker.make(publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts);
     let ops = ExtensionMaker.operations(extension);
     let registryInfo_specModule = First.Spec.moduleUrl;
     let registryInfo_mappingsModule = First.moduleUrl;
@@ -227,13 +227,13 @@ function extractExtensionDefinitions(extensionsOutputs) {
   }));
 }
 
-function createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
+function createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts) {
   return Output$Pulumi.unzip(ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(pluginDefinition, pluginDefinition => {
     let ConnectPluginExtension = PluginConnectExtension_Builder$ReventlessCore.Make({
       pluginDefinition: pluginDefinition,
       uiFragments: uiFragments
     });
-    let connectPluginExtension = ConnectPluginExtension.make(publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let connectPluginExtension = ConnectPluginExtension.make(publishToPluginExtensionPoint, publishToAggregates, queryEngine, opts);
     let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);
     let connectPluginExtensionIncomingEventHandler = Component$ReventlessCore.operations(connectPluginExtension).apply(param => param.incomingJsonEventsHandler);
     return [
@@ -274,13 +274,11 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorUrn
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, uiFragmentsOpt, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, extensionPointRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, uiFragmentsOpt, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, extensionPointRegistryInfosOpt, aggregateQueueUrlsOpt) => {
       let uiFragments = uiFragmentsOpt !== undefined ? Primitive_option.valFromOption(uiFragmentsOpt) : undefined;
       let extensionRegistryInfos = extensionRegistryInfosOpt !== undefined ? extensionRegistryInfosOpt : [];
       let extensionPointRegistryInfos = extensionPointRegistryInfosOpt !== undefined ? extensionPointRegistryInfosOpt : [];
       let aggregateQueueUrls = aggregateQueueUrlsOpt !== undefined ? aggregateQueueUrlsOpt : ({});
-      let readModelQueueUrls = readModelQueueUrlsOpt !== undefined ? readModelQueueUrlsOpt : ({});
-      let readModelNamesForSourceName = readModelNamesForSourceNameOpt !== undefined ? readModelNamesForSourceNameOpt : ({});
       let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => {
         let base = eventTopics.map(eventTopic => eventTopic.resources).flat();
         if (pluginExtensionPointUnwrapped !== undefined) {
@@ -340,15 +338,13 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           }) : undefined;
         let extensions = extensionsOutputs.length === extensionRegistryInfos.length ? extensionsOutputs.map((output, i) => {
             let info = extensionRegistryInfos[i];
-            let rmNames = Stdlib_Option.getOr(readModelNamesForSourceName[output.extensionPointName], []);
             return {
               name: output.name,
               specModule: info.specModule,
               mappingsModule: info.mappingsModule,
               delegateModule: info.delegateModule,
               extensionPointName: output.extensionPointName,
-              aggregateNames: output.aggregateNames,
-              readModelNames: rmNames
+              aggregateNames: output.aggregateNames
             };
           }) : [];
         let mergedAggregateUrls = {};
@@ -387,9 +383,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           connectExtension: connectExtension,
           extensions: extensions,
           pluginExtensionPointCmdTopicUrl: pluginExtensionPointCmdTopicUrl,
-          publishToAggregates: mergedAggregateUrls,
-          readModelQueueUrls: readModelQueueUrls,
-          readModelNamesForSourceName: readModelNamesForSourceName
+          publishToAggregates: mergedAggregateUrls
         });
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[4], undefined, undefined, eventCollector);
         let r$1 = Component$ReventlessCore.outputs(eventCollector).resources[0];
@@ -999,10 +993,6 @@ let registerTaskSideEffectHandler = Builder_Helpers$ReventlessCore.registerTaskS
 
 let finishTasks = Builder_Helpers$ReventlessCore.finishTasks;
 
-let readModelNamesForSourceName = Builder_Helpers$ReventlessCore.readModelNamesForSourceName;
-
-let publishToReadModels = Builder_Helpers$ReventlessCore.publishToReadModels;
-
 let finishReadModels = Builder_Helpers$ReventlessCore.finishReadModels;
 
 let extractReadModelsOutputs = Builder_Helpers$ReventlessCore.extractReadModelsOutputs;
@@ -1058,8 +1048,6 @@ export {
   taskSideEffectFinishFns,
   registerTaskSideEffectHandler,
   finishTasks,
-  readModelNamesForSourceName,
-  publishToReadModels,
   finishReadModels,
   extractReadModelsOutputs,
   createReadModels,
