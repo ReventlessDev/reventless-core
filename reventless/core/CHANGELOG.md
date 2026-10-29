@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.315 (2026-10-29)
+
+* feat(ppx)!: `@pii` marks a value about a person, and an event reads it as `Pii.t` ([37174c1](https://github.com/ReventlessDev/reventless-core/commit/37174c10eb80e9e3adbb93a52ad7a9ef5def7100))
+### Features
+
+* **bindings:** AES-256-GCM in rescript-node and a KMS client in rescript-aws-sdk ([4c57d9a](https://github.com/ReventlessDev/reventless-core/commit/4c57d9a4572b8d4986670f923b57e5b81912e857))
+* **core:** no log line prints a personal value ([af03709](https://github.com/ReventlessDev/reventless-core/commit/af037090770992c254e5dc69ab71ef251bad2db9))
+
+### BREAKING CHANGES
+
+* the ledger's events carry `address: Pii.t<Email.t>`. Pattern-match
+`Value(address)` where the address is read.
+
+The published per-platform PPX binary does not know `@pii` until it is republished.
+
+Step PD2 of docs/plans/a-personal-field-is-marked-redacted-and-encrypted-at-the-seam.md.
+Claude-Session: https://claude.ai/code/session_01HiQfdxVEsHwLHRoHSUcus1
+
+
+
 # 3.0.0-alpha.314 (2026-10-29)
 
 * feat(ppx)!: `@pii` marks a value about a person, and an event reads it as `Pii.t` ([37174c1](https://github.com/ReventlessDev/reventless-core/commit/37174c10eb80e9e3adbb93a52ad7a9ef5def7100))

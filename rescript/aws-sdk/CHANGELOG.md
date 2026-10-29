@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.37 (2026-10-29)
+
+### Features
+
+* **bindings:** AES-256-GCM in rescript-node and a KMS client in rescript-aws-sdk ([4c57d9a](https://github.com/ReventlessDev/reventless-core/commit/4c57d9a4572b8d4986670f923b57e5b81912e857))
+
+
 # 3.0.0-alpha.36 (2026-10-25)
 
 * refactor(bindings)!: response fields AWS may omit are optional fields ([8babc00](https://github.com/ReventlessDev/reventless-core/commit/8babc008c4cdd6e88721d856ca35648f0552d5b9))

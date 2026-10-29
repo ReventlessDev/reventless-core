@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.24 (2026-10-29)
+
+### Features
+
+* **bindings:** AES-256-GCM in rescript-node and a KMS client in rescript-aws-sdk ([4c57d9a](https://github.com/ReventlessDev/reventless-core/commit/4c57d9a4572b8d4986670f923b57e5b81912e857))
+
+
 # 2.0.0-alpha.23 (2026-10-21)
 
 **Note:** Version bump only for package @reventlessdev/rescript-node

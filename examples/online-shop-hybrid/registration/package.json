@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-registration",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "private": true,
   "description": "Online Shop Hybrid example — Registration plugin: the shop's roles and admission table over the registration slices, hosted by the local platform only",
   "license": "Apache-2.0",

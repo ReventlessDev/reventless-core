@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.405 (2026-10-29)
+
+### Features
+
+* **core:** no log line prints a personal value ([af03709](https://github.com/ReventlessDev/reventless-core/commit/af037090770992c254e5dc69ab71ef251bad2db9))
+
+
 # 3.0.0-alpha.404 (2026-10-29)
 
 ### Features
