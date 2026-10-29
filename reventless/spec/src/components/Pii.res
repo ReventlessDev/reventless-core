@@ -44,7 +44,6 @@ on the last two. Once opened, a value is the plain value again, or one of the tw
 markers `{"$pii": "erased:v1"}` and `{"$pii": "forgotten:v1"}`, which is all the field
 codec ever reads.
 */
-
 /** What app code reads from a personal field. */
 type t<'a> =
   /** The value. Without an encrypting provider, the only case there is. */
@@ -71,8 +70,7 @@ type stored =
 
 let printStored = (form: stored): string =>
   switch form {
-  | Cipher({version, keyId, alg, bytes}) =>
-    `enc:v${version->Int.toString}:${keyId}:${alg}:${bytes}`
+  | Cipher({version, keyId, alg, bytes}) => `enc:v${version->Int.toString}:${keyId}:${alg}:${bytes}`
   | ErasedForm({version}) => `erased:v${version->Int.toString}`
   | ForgottenForm({version, ref}) => `ref:v${version->Int.toString}:${ref}`
   }

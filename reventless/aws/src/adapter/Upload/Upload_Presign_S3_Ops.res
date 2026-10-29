@@ -230,7 +230,12 @@ let handlePresign = async (
   // by the verified `sub` so the release rule can tell one caller's objects apart.
   // The `fileName` argument is not used: the key ends in an opaque name, because a
   // ref is stored in an event and a file name is often personal data.
-  let key = presignKey(~servedPrefix, ~sub, ~uuid=NodeCrypto.randomUUID(), ~contentType=args.contentType)
+  let key = presignKey(
+    ~servedPrefix,
+    ~sub,
+    ~uuid=NodeCrypto.randomUUID(),
+    ~contentType=args.contentType,
+  )
   // The object is provisional from the moment the bytes land: it carries the
   // pending tag until a committed event referencing it strips it (see
   // `Upload_Claim_S3_Ops`). Written into the signature here, not asked of the

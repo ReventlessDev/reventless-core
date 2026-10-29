@@ -42,10 +42,11 @@ type consumedEvent =
       invitedBy?: string,
     })
 
+// `email` is the ledger's id for the address, `address` the address the mail goes to.
+
 /** `invited` words the secret as an invitation; it is left out for a sign-up
     and for the notice. `roles` names what the invitation grants, where the
     event said: a reissued code does not. */
-// `email` is the ledger's id for the address, `address` the address the mail goes to.
 @schema
 type outboundItem = {
   email: string,

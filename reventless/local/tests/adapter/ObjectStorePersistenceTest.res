@@ -200,7 +200,10 @@ describe("declared store prefixes", () => {
       ~qualified="Catalog.productImages",
       ~prefix=LocalObjectStore.localPrefixFor(~qualified="Catalog.productImages"),
     )
-    let ref = LocalUploadResolvers.mintRef(~store="Catalog.productImages", ~contentType="image/svg+xml")
+    let ref = LocalUploadResolvers.mintRef(
+      ~store="Catalog.productImages",
+      ~contentType="image/svg+xml",
+    )
     expect(ref->String.startsWith("/uploads/Catalog/productImages/"))->toEqual(true)
     expect(ref->String.endsWith(".svg"))->toEqual(true)
   })

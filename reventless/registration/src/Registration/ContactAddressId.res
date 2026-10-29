@@ -23,14 +23,8 @@ let normalize = (address: Reventless.Email.t): Reventless.Email.t =>
 
 /** The ledger's id for an address. Refused, never degraded to the address, when
     the deployment holds no key. */
-let fingerprint = (secrets: Reventless.Secrets.t, address: Reventless.Email.t): result<
-  t,
-  string,
-> =>
-  switch secrets.fingerprint(
-    ~purpose,
-    address->normalize->Reventless.Email.toString,
-  ) {
+let fingerprint = (secrets: Reventless.Secrets.t, address: Reventless.Email.t): result<t, string> =>
+  switch secrets.fingerprint(~purpose, address->normalize->Reventless.Email.toString) {
   | Ok(value) => Ok(makeFromString(value))
   | Error(Unavailable(why)) => Error(`cannot fingerprint the address: ${why}`)
   }

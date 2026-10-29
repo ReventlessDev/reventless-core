@@ -90,11 +90,10 @@ let fixed = (
 ): t => {
   randomToken: (~length as _, ~alphabet as _) => Ok(token),
   hash: input => Ok(hashOf(input)),
-  fingerprint: (~purpose, input) =>
-    Ok(
-      switch fingerprintOf {
-      | Some(f) => f(~purpose, input)
-      | None => fixedFingerprint(~purpose, input)
-      },
-    ),
+  fingerprint: (~purpose, input) => Ok(
+    switch fingerprintOf {
+    | Some(f) => f(~purpose, input)
+    | None => fixedFingerprint(~purpose, input)
+    },
+  ),
 }

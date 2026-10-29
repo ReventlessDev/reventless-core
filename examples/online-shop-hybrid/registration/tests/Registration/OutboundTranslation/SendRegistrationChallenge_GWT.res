@@ -50,7 +50,11 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   // scenario-id: 4095f5ec-db7f-40f7-a851-a268a5a779df
   testSync("a request is collected once per address and time", () =>
     givenEvent(
-      RegistrationRequested({email: aliceId, address: aliceMail, requestedAt: "2026-10-24T09:00:00.000Z"}),
+      RegistrationRequested({
+        email: aliceId,
+        address: aliceMail,
+        requestedAt: "2026-10-24T09:00:00.000Z",
+      }),
     )
     ->whenCollect
     ->thenTodos([("fp:contactAddress:alice@example.com:2026-10-24T09:00:00.000Z", fresh)])
@@ -68,7 +72,9 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
       }),
     )
     ->whenCollect
-    ->thenTodos([("fp:contactAddress:alice@example.com:invited:2026-10-24T09:00:00.000Z", invitation)])
+    ->thenTodos([
+      ("fp:contactAddress:alice@example.com:invited:2026-10-24T09:00:00.000Z", invitation),
+    ])
   )
 
   // A reissued code is worded as its claim was.
@@ -83,13 +89,19 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
       }),
     )
     ->whenCollect
-    ->thenTodos([("fp:contactAddress:alice@example.com:reissued:2026-10-25T09:00:00.000Z", reissuedInvitation)])
+    ->thenTodos([
+      ("fp:contactAddress:alice@example.com:reissued:2026-10-25T09:00:00.000Z", reissuedInvitation),
+    ])
   )
 
   // scenario-id: 90b3573e-65c5-48c5-935a-3bcfa702d8b5
   testSync("a reissued sign-up's code is collected as a sign-up", () =>
     givenEvent(
-      RegistrationChallengeReissued({email: aliceId, address: aliceMail, reissuedAt: "2026-10-25T09:00:00.000Z"}),
+      RegistrationChallengeReissued({
+        email: aliceId,
+        address: aliceMail,
+        reissuedAt: "2026-10-25T09:00:00.000Z",
+      }),
     )
     ->whenCollect
     ->thenTodos([

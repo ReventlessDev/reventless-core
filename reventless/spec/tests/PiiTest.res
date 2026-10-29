@@ -10,8 +10,8 @@ describe("Pii stored forms", () => {
       Pii.ErasedForm({version: 1}),
       Pii.ForgottenForm({version: 1, ref: "/uploads/sub/0b1c.jpg"}),
     ]
-    forms->Array.forEach(form =>
-      expect(form->Pii.printStored->Pii.parseStored)->toEqual(Some(form))
+    forms->Array.forEach(
+      form => expect(form->Pii.printStored->Pii.parseStored)->toEqual(Some(form)),
     )
   })
 
@@ -24,7 +24,9 @@ describe("Pii stored forms", () => {
   })
 
   testSync("a ref may hold a colon; a form missing a part does not parse", () => {
-    expect(Pii.parseStored("ref:v1:a:b"))->toEqual(Some(Pii.ForgottenForm({version: 1, ref: "a:b"})))
+    expect(Pii.parseStored("ref:v1:a:b"))->toEqual(
+      Some(Pii.ForgottenForm({version: 1, ref: "a:b"})),
+    )
     expect(Pii.parseStored("enc:v1:k::b"))->toEqual(None)
     expect(Pii.parseStored("erased:1"))->toEqual(None)
     expect(Pii.parseStored("ref:v1:"))->toEqual(None)
@@ -86,7 +88,5 @@ describe("Pii.plain, the provider the framework ships", () => {
     expect(cipher)->toEqual(Error(Pii.UnknownForm({field: "name"})))
   })
 
-  testSync("is what a process starts with", () =>
-    expect(Pii.Provider.get().name)->toBe("plain")
-  )
+  testSync("is what a process starts with", () => expect(Pii.Provider.get().name)->toBe("plain"))
 })

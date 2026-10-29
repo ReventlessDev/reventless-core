@@ -58,10 +58,7 @@ let invitationBody = (~token, ~roles=?) =>
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed."
 
 let send = (capabilities: Reventless.Capabilities.t, ~address, ~subject, ~body) =>
-  capabilities.messaging.send(
-    ~recipient=ToEmail(address),
-    ~message={subject, body},
-  )
+  capabilities.messaging.send(~recipient=ToEmail(address), ~message={subject, body})
 
 /**
 Draw a secret, send it, and open a challenge against its hash — sending first,

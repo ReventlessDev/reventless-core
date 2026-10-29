@@ -33,9 +33,7 @@ describe("SignUp InboundTranslationSlice", () => {
   // The shop has one self-service role, so a sign-up need not say which.
   // scenario-id: 5a9c3e7b-2d4f-4b6a-8c1e-7f0d2a4b6c8e
   test("a sign-up naming no role asks for the one self-service role", () =>
-    whenInput({email: aliceAddress})->thenRegisters(
-      `${aliceId}|${aliceId}|${shopperName}`,
-    )
+    whenInput({email: aliceAddress})->thenRegisters(`${aliceId}|${aliceId}|${shopperName}`)
   )
 
   // The door relays whatever role it is asked for; the ledger is what answers a

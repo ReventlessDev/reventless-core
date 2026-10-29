@@ -28,7 +28,13 @@ let issuedAt = "2026-10-24T09:00:05.000Z"
 let threeDaysOn = "2026-10-27T09:00:00.000Z"
 let eightDaysOn = "2026-11-01T09:00:00.000Z"
 
-let invite = (~roles=staff, ~at=invitedAt) => Invite({email, address, roles, invitedBy, requestedAt: at})
+let invite = (~roles=staff, ~at=invitedAt) => Invite({
+  email,
+  address,
+  roles,
+  invitedBy,
+  requestedAt: at,
+})
 let invited: array<consumedEvent> = [
   RegistrationInvited({email, address, roles: staffNames, invitedBy, invitedAt}),
 ]
@@ -62,7 +68,9 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   test("the proof settles an invitation into every role it names", () =>
     givenEvents(challenged)
     ->whenCmd(submit(~at=threeDaysOn))
-    ->thenEvent(RegistrationProofAccepted({email, address, roles: staffNames, proofHash: secretHash}))
+    ->thenEvent(
+      RegistrationProofAccepted({email, address, roles: staffNames, proofHash: secretHash}),
+    )
   )
 
   // A sign-up's code would have lapsed after a day.

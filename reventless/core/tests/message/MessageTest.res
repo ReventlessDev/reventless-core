@@ -261,7 +261,11 @@ describe("Message.deriveStableMeta", () => {
   })
 
   testSync("a derived message never carries the caller's ip, even from an old parent", () => {
-    let a = deriveStableMeta(~parent={...parent, ip: "10.0.0.1"}, ~service="Ordering.Orders", ~index=0)
+    let a = deriveStableMeta(
+      ~parent={...parent, ip: "10.0.0.1"},
+      ~service="Ordering.Orders",
+      ~index=0,
+    )
     expect(a.ip)->toEqual(None)
   })
 

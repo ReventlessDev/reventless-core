@@ -30,7 +30,9 @@ let requested: array<consumedEvent> = [RegistrationRequested({email, address, ro
 let challenged: array<consumedEvent> =
   requested->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
 let verified: array<consumedEvent> =
-  challenged->Array.concat([RegistrationProofAccepted({email, address, roles, proofHash: secretHash})])
+  challenged->Array.concat([
+    RegistrationProofAccepted({email, address, roles, proofHash: secretHash}),
+  ])
 let completed: array<consumedEvent> =
   verified->Array.concat([RegistrationCompleted({email: email})])
 
@@ -146,7 +148,9 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 8ac35a9c-5d8b-441a-95bc-64768139ef97
   test("a second attempt on a registered address within the hour sends no second notice", () =>
     givenEvents(
-      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay})]),
+      completed->Array.concat([
+        RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay}),
+      ]),
     )
     ->whenCmd(register(~at=nextDayLater))
     ->thenNoEvent
@@ -155,7 +159,9 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: b0425f3e-52a6-40e5-89a4-8b70f8de2fb2
   test("after the hour, a registered address is told again", () =>
     givenEvents(
-      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay})]),
+      completed->Array.concat([
+        RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay}),
+      ]),
     )
     ->whenCmd(register(~at=twoHoursOn))
     ->thenEvent(RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: twoHoursOn}))
@@ -280,7 +286,9 @@ describe("Registrations StateChangeSlice", () => {
       ]),
     )
     ->whenCmd(submit(~hash="hash-of-the-new-secret"))
-    ->thenEvent(RegistrationProofAccepted({email, address, roles, proofHash: "hash-of-the-new-secret"}))
+    ->thenEvent(
+      RegistrationProofAccepted({email, address, roles, proofHash: "hash-of-the-new-secret"}),
+    )
   )
 
   // scenario-id: e0bca4c5-edce-4d95-8ce1-2b500fd0317e
