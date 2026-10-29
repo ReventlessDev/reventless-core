@@ -99,3 +99,38 @@ describe("Lru:", () => {
     )
   })
 })
+
+describe("Lru time limit", () => {
+  testSync("an entry is served until its time limit and missed after, however hot", () => {
+    let clock = ref(0.)
+    let cache: Lru.t<string, int> = Lru.make(~capacity=10, ~ttlMs=1000., ~now=() => clock.contents)
+    cache->Lru.put("a", 1)
+    clock := 999.
+    expect(cache->Lru.get("a"))->toEqual(Some(1))
+    clock := 1000.
+    expect(cache->Lru.get("a"))->toEqual(None)
+    expect(cache->Lru.size)->toBe(0)
+  })
+
+  testSync("a put starts the limit again", () => {
+    let clock = ref(0.)
+    let cache: Lru.t<string, int> = Lru.make(~capacity=10, ~ttlMs=1000., ~now=() => clock.contents)
+    cache->Lru.put("a", 1)
+    clock := 900.
+    cache->Lru.put("a", 2)
+    clock := 1500.
+    expect(cache->Lru.get("a"))->toEqual(Some(2))
+  })
+
+  testSync("without a limit an entry stays until evicted", () => {
+    let clock = ref(0.)
+    let cache: Lru.t<string, int> = Lru.make(~capacity=10, ~now=() => clock.contents)
+    cache->Lru.put("a", 1)
+    clock := 1e12
+    expect(cache->Lru.get("a"))->toEqual(Some(1))
+  })
+
+  testSync("decoded state is held for minutes by default", () =>
+    expect(Lru.decodedStateTtlMs() <= 600_000.)->toBe(true)
+  )
+})

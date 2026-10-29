@@ -129,7 +129,7 @@ function Make(Spec) {
           ]])
       };
     });
-    let replayCache = Lru$ReventlessCore.make(100);
+    let replayCache = Lru$ReventlessCore.make(100, Lru$ReventlessCore.decodedStateTtlMs(), undefined);
     let resetCache = () => Lru$ReventlessCore.clear(replayCache);
     let snapshotConfig = actsOnOwned ? undefined : Decision.snapshot;
     if (actsOnOwned && Stdlib_Option.isSome(Decision.snapshot)) {

@@ -7,7 +7,14 @@ module ItemEventLogSpec = {
   let name = "TestItemEventLog"
 
   @schema
-  type event = ItemCreated({name: string}) | ItemDeleted({id: string})
+  type event =
+    | ItemCreated({name: string})
+    | ItemDeleted({id: string})
+    | PersonNamed({
+        personId: string,
+        name: @s.matches(Reventless.Pii.marked(~subject="personId", S.string))
+        Reventless.Pii.t<string>,
+      })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -64,7 +71,9 @@ let mockStorage: EventLog_Adapter.operations = {
 // Mock EventTopic module (stub make — never called in unit tests)
 // ─────────────────────────────────────────────────────────────
 
-let capturedPublishes: ref<array<Message.event'<string, ItemEventLogSpec.event>>> = ref([])
+// What the event log published, as the JSON the topic received: the event log
+// publishes the form it stored, so a test can compare the two.
+let capturedPublishes: ref<array<JSON.t>> = ref([])
 
 module MockEventTopic: EventTopic.T
   with module Spec.Id = ItemEventLogSpec.Id
@@ -87,10 +96,10 @@ module MockEventTopic: EventTopic.T
 }
 
 let mockEventTopicOps: MockEventTopic.operations = {
-  publish: async events => {
-    capturedPublishes := capturedPublishes.contents->Array.concat(events)
+  publish: async _events => (),
+  publishJson: async (_service, _meta, json) => {
+    capturedPublishes := capturedPublishes.contents->Array.concat([json])
   },
-  publishJson: async (_service, _meta, _json) => (),
   publishJsonStream: _stream => Effect.succeed(),
 }
 

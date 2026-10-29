@@ -44,22 +44,63 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
 ) => {
   module Spec = Spec
 
-  let encodeEvent' = (id, sequenceNr, event') => {
-    let json = event'.Reventless.Message.event->Message.encode(Spec.eventSchema)
-    let (eventType, data) = json->Message.splitMessage
+  // The stored item for an event already encoded and sealed: its type and fields.
+  let storedEventOf = (id, sequenceNr, meta, (eventType, data)) => {
     let stored: Reventless.StoredEvent.storedEvent<Spec.Id.t> = {
       id,
       position: sequenceNr->Int.toString->String.padStart(9, "0"),
       event: eventType,
       data: JSON.Object(data),
-      meta: event'.meta,
+      meta,
       recordedAt: Message.nowAsISOString(),
     }
     stored->Message.storedEventToFlatJson(Spec.Id.schema)
   }
 
-  let encodeEvents' = (events', id, startingSeqNr) =>
-    events'->Array.mapWithIndex((event, i) => encodeEvent'(id, startingSeqNr + i, event))
+  /**
+  Every event encoded once and sealed once: the form both the stored item and the
+  published message are built from. An encrypting provider draws a fresh nonce on
+  every seal, so a second encode would publish a ciphertext the log does not hold.
+  Refused, never degraded, when a personal field cannot be sealed or comes out
+  unsealed; the message names the event type and the field, never the value.
+  */
+  let sealEvents = async (events': array<Message.event'<Spec.Id.t, Spec.event>>): result<
+    array<(string, dict<JSON.t>)>,
+    string,
+  > => {
+    let out = []
+    let failure = ref(None)
+    for i in 0 to events'->Array.length - 1 {
+      if failure.contents->Option.isNone {
+        let (eventType, data) =
+          (events'->Array.getUnsafe(i)).event
+          ->Message.encode(Spec.eventSchema)
+          ->Message.splitMessage
+        switch await Reventless.Pii.sealData(Spec.eventSchema, ~eventType, data) {
+        | Error(e) => failure := Some(`cannot seal ${eventType}: ${e->Reventless.Pii.errorMessage}`)
+        | Ok(sealed) =>
+          switch Reventless.Pii.unsealedField(Spec.eventSchema, ~eventType, sealed) {
+          | Some(field) =>
+            failure := Some(`refused ${eventType}: its personal field ${field} is not sealed`)
+          | None => out->Array.push((eventType, sealed))
+          }
+        }
+      }
+    }
+    switch failure.contents {
+    | Some(msg) => Error(msg)
+    | None => Ok(out)
+    }
+  }
+
+  /** What the topic publishes for one sealed event: the envelope `encodeEvent'`
+      writes, with the sealed fields rather than a second encode. */
+  let publishedJsonOf = (id, meta, (eventType, data)) =>
+    Dict.fromArray([
+      ("id", id->Reventless.Util_Sury.toJson(Spec.Id.schema)),
+      ("meta", meta->Message.encode(Message.metaSchema)),
+      ("event", Message.combineMessage(eventType, data)),
+    ])->JSON.Encode.object
 
   let makePublishedEvent = (idStr, eventsJson, meta): EventPublish_Callback.publishedEvent => {
     componentName: Spec.name,
@@ -104,13 +145,30 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     }
 
   // Returns result<unit, string> — never throws. Publish failures are surfaced as Error.
-  let publishToEventTopic = async (id, events': array<Message.event'<_, _>>, eventsJson) => {
+  // Publishes the sealed form the log stored, never a fresh encode.
+  let publishToEventTopic = async (
+    id,
+    events': array<Message.event'<_, _>>,
+    sealed: array<(string, dict<JSON.t>)>,
+    eventsJson,
+  ) => {
     let idStr = id->Spec.Id.toString
     let firstEvent = events'->Array.getUnsafe(0)
     let meta = firstEvent.meta
     await runBeforePublishHook(idStr, eventsJson, meta)
     try {
-      let _ = await Ops.eventTopic.publish(events')
+      let count = events'->Array.length->Int.toString
+      let _ = await events'
+      ->Array.mapWithIndex(async (event', i) => {
+        let json = publishedJsonOf(event'.id, event'.meta, sealed->Array.getUnsafe(i))
+        let _ = await Ops.eventTopic.publishJson(idStr, event'.meta, json)
+        EffectLogger.logInfo(
+          ~comp=`EventTopic(${Spec.name})`,
+          ~detail=json,
+          `published event ${(i + 1)->Int.toString}/${count}: ${LogFormat.eventDetail(json)}`,
+        )->Effect.runSync
+      })
+      ->Promise.all
       await runAfterPublishHook(idStr, eventsJson, meta)
       Ok()
     } catch {
@@ -126,43 +184,54 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   // Transient storage failures are retried with exponential backoff (up to 5
   // times); a Conflict is returned immediately (retried a layer up), and other
   // failures propagate after retries are exhausted.
-  let append = async (sequenceNr, id, events') => {
-    let eventsJson = events'->encodeEvents'(id, sequenceNr)
-    let idStr = id->Spec.Id.toString
-    // A thrown storage error becomes a StorageFailure; a returned Error keeps its
-    // typed variant. The Effect fails with the typed appendError so the schedule
-    // can retry only transient failures, then we collapse the outcome back into a
-    // result (no Cause stringification / substring matching).
-    let storageEffect =
-      Effect.tryPromise(
-        ~catch=(err: unknown) => EventLog.StorageFailure(
-          Util.Error.messageFromUnknown(err, "storage error"),
-        ),
-        () => Ops.storage.append(sequenceNr, idStr, eventsJson),
-      )
-      ->Effect.flatMap(result =>
-        switch result {
-        | Ok(_) => Effect.succeed()
-        | Error(e) => Effect.fail(e)
-        }
-      )
-      ->Effect.retry(storageRetrySchedule)
-      ->Effect.map(_ => Ok())
-      ->Effect.catchAll(e => Effect.succeed(Error(e)))
-    switch await storageEffect->Effect.runPromise {
-    | Ok() =>
-      (
-        await publishToEventTopic(id, events', eventsJson)
-      )->Result.mapError(msg => EventLog.StorageFailure(msg))
-    | Error(EventLog.Conflict) => Error(EventLog.Conflict)
-    | Error(StorageFailure(msg)) =>
+  let append = async (sequenceNr, id, events') =>
+    switch await sealEvents(events') {
+    | Error(msg) =>
       Error(
         EventLog.StorageFailure(
-          `EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`,
+          `EventLog: Error: Couldn't append for ${Spec.name}(${id->Spec.Id.toString}): ${msg}`,
         ),
       )
+    | Ok(sealed) =>
+      let eventsJson =
+        sealed->Array.mapWithIndex((part, i) =>
+          storedEventOf(id, sequenceNr + i, (events'->Array.getUnsafe(i)).meta, part)
+        )
+      let idStr = id->Spec.Id.toString
+      // A thrown storage error becomes a StorageFailure; a returned Error keeps its
+      // typed variant. The Effect fails with the typed appendError so the schedule
+      // can retry only transient failures, then we collapse the outcome back into a
+      // result (no Cause stringification / substring matching).
+      let storageEffect =
+        Effect.tryPromise(
+          ~catch=(err: unknown) => EventLog.StorageFailure(
+            Util.Error.messageFromUnknown(err, "storage error"),
+          ),
+          () => Ops.storage.append(sequenceNr, idStr, eventsJson),
+        )
+        ->Effect.flatMap(result =>
+          switch result {
+          | Ok(_) => Effect.succeed()
+          | Error(e) => Effect.fail(e)
+          }
+        )
+        ->Effect.retry(storageRetrySchedule)
+        ->Effect.map(_ => Ok())
+        ->Effect.catchAll(e => Effect.succeed(Error(e)))
+      switch await storageEffect->Effect.runPromise {
+      | Ok() =>
+        (
+          await publishToEventTopic(id, events', sealed, eventsJson)
+        )->Result.mapError(msg => EventLog.StorageFailure(msg))
+      | Error(EventLog.Conflict) => Error(EventLog.Conflict)
+      | Error(StorageFailure(msg)) =>
+        Error(
+          EventLog.StorageFailure(
+            `EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`,
+          ),
+        )
+      }
     }
-  }
 
   let decodeEvent = (id, json) =>
     try {
@@ -188,16 +257,58 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
 
   let decodeEvents = (jsons, id) => jsons->Array.map(json => decodeEvent(id, json))
 
+  // The stored item with its sealed personal fields opened by the installed
+  // provider, so the decoder reads values and the markers of values that are gone.
+  // Most items hold nothing sealed and come back as they are, without a promise.
+  let sealedParts = json =>
+    switch json->JSON.Decode.object {
+    | Some(dict) =>
+      switch (dict->Dict.get("event"), dict->Dict.get("data")) {
+      | (Some(JSON.String(eventType)), Some(JSON.Object(data)))
+        if Reventless.Pii.needsOpen(Spec.eventSchema, ~eventType, data) =>
+        Some((dict, eventType, data))
+      | _ => None
+      }
+    | None => None
+    }
+
+  let openStored = async (id, json) =>
+    switch sealedParts(json) {
+    | None => json
+    | Some((dict, eventType, data)) =>
+      switch await Reventless.Pii.openData(Spec.eventSchema, ~eventType, data) {
+      | Ok(opened) =>
+        let out = dict->Dict.copy
+        out->Dict.set("data", JSON.Object(opened))
+        JSON.Object(out)
+      | Error(e) =>
+        JsError.throwWithMessage(
+          `EventLog.replay: Error: id:${id}: cannot open ${eventType}: ${e->Reventless.Pii.errorMessage}`,
+        )
+      }
+    }
+
+  let openAndDecode = (id, json) =>
+    switch sealedParts(json) {
+    | None => Effect.sync(() => decodeEvent(id, json))
+    | Some(_) => Effect.promise(() => openStored(id, json))->Effect.map(j => decodeEvent(id, j))
+    }
+
   let replay = async id => {
-    let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)
-    eventsJson->decodeEvents(id->Spec.Id.toString)
+    let idStr = id->Spec.Id.toString
+    let eventsJson = await Ops.storage.replay(idStr)
+    let opened = []
+    for i in 0 to eventsJson->Array.length - 1 {
+      opened->Array.push(await openStored(idStr, eventsJson->Array.getUnsafe(i)))
+    }
+    opened->decodeEvents(idStr)
   }
 
-  // Lazy streaming replay — wraps decodeEvent in Effect.sync so thrown exceptions
+  // Lazy streaming replay — decodes inside the effect so thrown exceptions
   // surface through the stream's error channel rather than as unhandled exceptions.
   let replayStream = (id, ~fromSeq=?) =>
     Ops.storage.replayStream(id->Spec.Id.toString, ~fromSeq?)->Stream.mapEffect(json =>
-      Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
+      openAndDecode(id->Spec.Id.toString, json)
     )
 
   // The stored item is the flat form `storedEventToFlatJson` writes: meta.* at the
@@ -221,10 +332,10 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   let replayStream' = (id, ~fromSeq=?) => {
     let idStr = id->Spec.Id.toString
     Ops.storage.replayStream(idStr, ~fromSeq?)->Stream.mapEffect(json =>
-      Effect.sync(() => {
+      openAndDecode(idStr, json)->Effect.map(event => {
         Reventless.Message.id,
         meta: decodeMeta(idStr, json),
-        event: decodeEvent(idStr, json),
+        event,
       })
     )
   }
@@ -244,12 +355,22 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     Ops.storage.appendStream(
       startingSeqNr,
       id->Spec.Id.toString,
-      stream->Stream.map(event => {
-        let json = event->Message.encode(Spec.eventSchema)
-        let (eventType, data) = json->Message.splitMessage
-        [("event", JSON.String(eventType)), ("data", JSON.Object(data))]
-        ->Dict.fromArray
-        ->JSON.Encode.object
-      }),
+      // Sealed as `append` seals, so a copied stream stores no personal value in
+      // the clear; a field that cannot be sealed fails the stream.
+      stream->Stream.mapEffect(event =>
+        Effect.promise(async () => {
+          let (eventType, data) = event->Message.encode(Spec.eventSchema)->Message.splitMessage
+          let sealed = switch await Reventless.Pii.sealData(Spec.eventSchema, ~eventType, data) {
+          | Ok(sealed) => sealed
+          | Error(e) =>
+            JsError.throwWithMessage(
+              `EventLog.appendStream: cannot seal ${eventType}: ${e->Reventless.Pii.errorMessage}`,
+            )
+          }
+          [("event", JSON.String(eventType)), ("data", JSON.Object(sealed))]
+          ->Dict.fromArray
+          ->JSON.Encode.object
+        })
+      ),
     )
 }

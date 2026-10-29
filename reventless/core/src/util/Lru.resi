@@ -12,8 +12,14 @@ the cache entirely (`get` always misses, `put` is a no-op) so a slice can opt ou
 */
 type t<'k, 'v>
 
-/** Creates an empty cache holding at most `capacity` entries (`<= 0` disables it). */
-let make: (~capacity: int) => t<'k, 'v>
+/** The time limit a cache of decoded state takes by default: five minutes, or
+    `REVENTLESS_DECODED_CACHE_TTL_SECONDS`. */
+let decodedStateTtlMs: unit => float
+
+/** Creates an empty cache holding at most `capacity` entries (`<= 0` disables it).
+    With `ttlMs`, an entry is served for that long after its `put` and then
+    missed; `now` is the clock, injectable for a test. */
+let make: (~capacity: int, ~ttlMs: float=?, ~now: unit => float=?) => t<'k, 'v>
 
 /** Looks up `key`, marking it most-recently-used on a hit. */
 let get: (t<'k, 'v>, 'k) => option<'v>

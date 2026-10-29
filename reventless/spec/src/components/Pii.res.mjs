@@ -273,6 +273,140 @@ let Provider = {
   get: get
 };
 
+let fieldsMemo = new WeakMap();
+
+function markedFields(schema, variant) {
+  let d = fieldsMemo.get(schema);
+  let byVariant;
+  if (d !== undefined) {
+    byVariant = d;
+  } else {
+    let d$1 = {};
+    fieldsMemo.set(schema, d$1);
+    byVariant = d$1;
+  }
+  let fields = byVariant[variant];
+  if (fields !== undefined) {
+    return fields;
+  }
+  let fields$1 = variantFields(schema, variant);
+  byVariant[variant] = fields$1;
+  return fields$1;
+}
+
+function isPresent(json) {
+  if (json !== undefined) {
+    return json !== null;
+  } else {
+    return false;
+  }
+}
+
+async function sealData(schema, eventType, data) {
+  let provider = current.contents;
+  let fields = markedFields(schema, eventType);
+  if (!provider.encrypts || Primitive_object.equal(fields, [])) {
+    return {
+      TAG: "Ok",
+      _0: data
+    };
+  }
+  let out = Object.assign({}, data);
+  let failure;
+  for (let i = 0, i_finish = fields.length; i < i_finish; ++i) {
+    let match = fields[i];
+    let match$1 = match[1];
+    let subject = match$1.subject;
+    let field = match[0];
+    if (Stdlib_Option.isNone(failure) && isPresent(data[field])) {
+      let subjectId = Stdlib_Option.flatMap(data[subject], Stdlib_JSON.Decode.string);
+      if (subjectId !== undefined) {
+        let sealed = await provider.seal(subjectId, field, match$1.forgettable, data[field]);
+        if (sealed.TAG === "Ok") {
+          out[field] = sealed._0;
+        } else {
+          failure = sealed._0;
+        }
+      } else {
+        failure = {
+          TAG: "KeyUnavailable",
+          subject: `<no ` + subject + ` on ` + eventType + `>`
+        };
+      }
+    }
+  }
+  let e = failure;
+  if (e !== undefined) {
+    return {
+      TAG: "Error",
+      _0: e
+    };
+  } else {
+    return {
+      TAG: "Ok",
+      _0: out
+    };
+  }
+}
+
+async function openData(schema, eventType, data) {
+  let fields = markedFields(schema, eventType);
+  let sealed = fields.filter(param => Stdlib_Option.mapOr(data[param[0]], false, v => Stdlib_Option.isSome(unwrap(v))));
+  if (Primitive_object.equal(sealed, [])) {
+    return {
+      TAG: "Ok",
+      _0: data
+    };
+  }
+  let provider = current.contents;
+  let out = Object.assign({}, data);
+  let failure;
+  for (let i = 0, i_finish = sealed.length; i < i_finish; ++i) {
+    let match = sealed[i];
+    let field = match[0];
+    if (Stdlib_Option.isNone(failure)) {
+      let opened = await provider.open(field, data[field]);
+      if (opened.TAG === "Ok") {
+        out[field] = opened._0;
+      } else {
+        failure = opened._0;
+      }
+    }
+  }
+  let e = failure;
+  if (e !== undefined) {
+    return {
+      TAG: "Error",
+      _0: e
+    };
+  } else {
+    return {
+      TAG: "Ok",
+      _0: out
+    };
+  }
+}
+
+function unsealedField(schema, eventType, data) {
+  if (current.contents.encrypts) {
+    return Stdlib_Option.map(markedFields(schema, eventType).find(param => {
+      let v = data[param[0]];
+      if (v === undefined) {
+        return false;
+      }
+      if (v === null) {
+        return false;
+      }
+      let match = Stdlib_Option.flatMap(unwrap(v), parseStored);
+      return match === undefined;
+    }), param => param[0]);
+  }
+}
+
+function needsOpen(schema, eventType, data) {
+  return markedFields(schema, eventType).some(param => Stdlib_Option.mapOr(data[param[0]], false, v => Stdlib_Option.isSome(unwrap(v))));
+}
+
 export {
   sentinelKey,
   erasedMarker,
@@ -295,5 +429,12 @@ export {
   errorMessage,
   plain,
   Provider,
+  fieldsMemo,
+  markedFields,
+  isPresent,
+  sealData,
+  openData,
+  unsealedField,
+  needsOpen,
 }
 /* piiId Not a pure module */

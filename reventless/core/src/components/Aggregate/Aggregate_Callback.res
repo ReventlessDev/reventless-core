@@ -201,8 +201,11 @@ module Make = (
   // the fixed capacity (a per-aggregate knob is a future refinement — see
   // docs/plans/done/aggregate-snapshotting.md).
   let replayCacheCapacity = 100
+  // Decoded state holds personal values in the clear: it is served for minutes at
+  // most, so an erased person's leaves a warm container within a named bound.
   let replayCache: Lru.t<string, (Decision.state, int, array<string>)> = Lru.make(
     ~capacity=replayCacheCapacity,
+    ~ttlMs=Lru.decodedStateTtlMs(),
   )
 
   let resetCache = () => replayCache->Lru.clear

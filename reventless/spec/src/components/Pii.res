@@ -275,3 +275,143 @@ module Provider = {
   let install = (provider: provider) => current := provider
   let get = () => current.contents
 }
+
+// ── The seal and open pass ───────────────────────────────────────────────────
+//
+// Runs on an encoded payload (`{TAG, …fields}` split into its type and fields) at
+// the event log's seam: `sealData` before an append, `openData` after a read. Both
+// read the schema's markers once per schema and do nothing for a type without
+// any, so a log that holds no personal data pays one dictionary lookup.
+
+let fieldsMemo: WeakMap.t<S.t<unknown>, dict<array<(string, marker)>>> = WeakMap.make()
+
+/** The marked fields of `variant` in `schema`, memoized per schema. */
+let markedFields = (schema: S.t<'a>, ~variant: string): array<(string, marker)> => {
+  let schema = schema->S.castToUnknown
+  let byVariant = switch fieldsMemo->WeakMap.get(schema) {
+  | Some(d) => d
+  | None =>
+    let d = Dict.make()
+    let _ = fieldsMemo->WeakMap.set(schema, d)
+    d
+  }
+  switch byVariant->Dict.get(variant) {
+  | Some(fields) => fields
+  | None =>
+    let fields = variantFields(schema, ~variant)
+    byVariant->Dict.set(variant, fields)
+    fields
+  }
+}
+
+let isPresent = (json: option<JSON.t>) =>
+  switch json {
+  | None | Some(Null) => false
+  | Some(_) => true
+  }
+
+/**
+`data` with every personal field of `eventType` sealed by the installed provider.
+The subject is read off the same payload. Fails, never degrades: a field whose
+subject is missing, or whose key cannot be fetched, is an `Error` and nothing is
+appended.
+*/
+let sealData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
+  dict<JSON.t>,
+  error,
+> => {
+  let provider = Provider.get()
+  let fields = markedFields(schema, ~variant=eventType)
+  if !provider.encrypts || fields == [] {
+    Ok(data)
+  } else {
+    let out = data->Dict.copy
+    let failure = ref(None)
+    for i in 0 to fields->Array.length - 1 {
+      let (field, {subject, forgettable}) = fields->Array.getUnsafe(i)
+      if failure.contents->Option.isNone && data->Dict.get(field)->isPresent {
+        switch data->Dict.get(subject)->Option.flatMap(JSON.Decode.string) {
+        | None => failure := Some(KeyUnavailable({subject: `<no ${subject} on ${eventType}>`}))
+        | Some(subjectId) =>
+          switch await provider.seal(
+            ~subject=subjectId,
+            ~field,
+            ~forgettable,
+            data->Dict.getUnsafe(field),
+          ) {
+          | Ok(sealed) => out->Dict.set(field, sealed)
+          | Error(e) => failure := Some(e)
+          }
+        }
+      }
+    }
+    switch failure.contents {
+    | Some(e) => Error(e)
+    | None => Ok(out)
+    }
+  }
+}
+
+/** `data` with every stored form of `eventType`'s personal fields opened: the
+    plain value, or the marker of a value that is gone. */
+let openData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
+  dict<JSON.t>,
+  error,
+> => {
+  let fields = markedFields(schema, ~variant=eventType)
+  let sealed =
+    fields->Array.filter(((field, _)) =>
+      data->Dict.get(field)->Option.mapOr(false, v => v->unwrap->Option.isSome)
+    )
+  if sealed == [] {
+    Ok(data)
+  } else {
+    let provider = Provider.get()
+    let out = data->Dict.copy
+    let failure = ref(None)
+    for i in 0 to sealed->Array.length - 1 {
+      let (field, _) = sealed->Array.getUnsafe(i)
+      if failure.contents->Option.isNone {
+        switch await provider.open_(~field, data->Dict.getUnsafe(field)) {
+        | Ok(opened) => out->Dict.set(field, opened)
+        | Error(e) => failure := Some(e)
+        }
+      }
+    }
+    switch failure.contents {
+    | Some(e) => Error(e)
+    | None => Ok(out)
+    }
+  }
+}
+
+/**
+The append's last check: with a provider that encrypts installed, the first
+personal field of `eventType` that is present and not in a stored form. `None`
+when every one is sealed, or when nothing encrypts. Names the field, never the
+value.
+*/
+let unsealedField = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): option<string> =>
+  if !Provider.get().encrypts {
+    None
+  } else {
+    markedFields(schema, ~variant=eventType)
+    ->Array.find(((field, _)) =>
+      switch data->Dict.get(field) {
+      | None | Some(Null) => false
+      | Some(v) =>
+        switch v->unwrap->Option.flatMap(parseStored) {
+        | Some(Cipher(_)) | Some(ForgottenForm(_)) | Some(ErasedForm(_)) => false
+        | None => true
+        }
+      }
+    )
+    ->Option.map(((field, _)) => field)
+  }
+
+/** Whether `data` holds a stored form `openData` would open: checked first, so a
+    read of a log with nothing sealed in it costs no promise per event. */
+let needsOpen = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): bool =>
+  markedFields(schema, ~variant=eventType)->Array.some(((field, _)) =>
+    data->Dict.get(field)->Option.mapOr(false, v => v->unwrap->Option.isSome)
+  )

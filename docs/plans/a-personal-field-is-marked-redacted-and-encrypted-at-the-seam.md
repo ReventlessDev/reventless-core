@@ -3,8 +3,8 @@
 **Date:** 2026-10-25<br/>
 **Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope),
 [PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed), [PD5](#pd5-the-registration-ledgers-address-id)
-[PD2](#pd2-the-recording-pii), [PD6](#pd6-no-log-line-holds-a-personal-value) and
-[PD7](#pd7-the-bindings) built 2026-10-29; PD1 revised the
+[PD2](#pd2-the-recording-pii), [PD6](#pd6-no-log-line-holds-a-personal-value),
+[PD7](#pd7-the-bindings), [PD8](#pd8-an-event-is-encoded-once) and [PD9](#pd9-the-caches-expire-and-the-append-refuses) built 2026-10-29; PD1 revised the
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
@@ -374,6 +374,16 @@ stored one.
 
 **Exit:** a counting codec sees one encode per event on both paths.
 
+**Built 2026-10-29, as the seal-once half; the counting test is open.** Since PD1 moved the provider
+out of the codec, the invariant that matters is that the stored and the published copy are one
+sealed form, and both paths now hold it. The aggregate's `EventLog_Operations.append` encodes each
+event once, seals it once (`Pii.sealData`), builds the stored item and the published envelope from
+that one form, and publishes through `publishJson` rather than letting the topic encode again;
+`appendStream` seals too. A DCB slice already stored and published one encoded form; it now seals it
+in `StateChangeSlice_Callback` before the append, where the slice's schema is known. The aggregate
+callback still encodes in the clear for its owner check and its log line; neither is stored, the log
+line is redacted, and the counting test is left for when that is folded in.
+
 ### PD9: the caches expire, and the append refuses
 
 The aggregate replay cache, the DCB projection cache and any provider cache take a time limit of
@@ -384,6 +394,21 @@ type and the field and never the value.
 
 **Exit:** the caches expire under `TestClock`; an event handed the wrong schema is refused at append
 on the DCB and the aggregate path; the refusal's message holds no value.
+
+**Built 2026-10-29.** `Lru` takes `~ttlMs` and an injectable `~now`; the aggregate replay cache and
+the DCB decision-model cache take `Lru.decodedStateTtlMs()`, five minutes unless
+`REVENTLESS_DECODED_CACHE_TTL_SECONDS` says otherwise, counted from the put so a hot key expires too.
+After sealing, both paths call `Pii.unsealedField` and refuse the append, with a message naming the
+event type and the field, when an encrypting provider is installed and a marked field is not in a
+stored form; a seal that fails (no subject, no key) refuses the same way. On read, the aggregate's
+replays and the DCB slice's decision read open sealed fields (`Pii.openData`) before decoding, and a
+history with nothing sealed in it costs no promise per event. Tests: `LruTest`, `EventLogPiiTest`
+and `DcbPiiSliceTest`, with a fake provider that seals by base64. **Open, for
+[PD10](#pd10-the-scenario-every-transport-must-pass):** every other reader of events opens nothing
+yet, namely projections, translations, automations and the deployed resolvers. With the plain provider
+that changes nothing; with an encrypting one such a reader fails on the stored form rather than read
+it, which is what the conformance scenario exists to find, path by path. There is no `TestClock`
+module; the cache tests inject the clock.
 
 ### PD10: the scenario every transport must pass
 

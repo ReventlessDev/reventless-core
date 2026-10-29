@@ -7,12 +7,14 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Duration from "effect/Duration";
 import * as Schedule from "effect/Schedule";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "./EventPublish_Callback.res.mjs";
@@ -33,25 +35,57 @@ let storageRetrySchedule = Schedule.whileInput(Schedule.intersect(Schedule.jitte
 
 function Make(Spec) {
   return Ops => {
-    let encodeEvents$p = (events$p, id, startingSeqNr) => events$p.map((event, i) => {
-      let sequenceNr = startingSeqNr + i | 0;
-      let json = Message$ReventlessCore.encode(event.event, Spec.eventSchema);
-      let match = Message$ReventlessCore.splitMessage(json);
-      let stored_position = sequenceNr.toString().padStart(9, "0");
-      let stored_event = match[0];
-      let stored_data = match[1];
-      let stored_meta = event.meta;
-      let stored_recordedAt = Message$ReventlessCore.nowAsISOString();
-      let stored = {
-        id: id,
-        position: stored_position,
-        event: stored_event,
-        data: stored_data,
-        meta: stored_meta,
-        recordedAt: stored_recordedAt
-      };
-      return Message$ReventlessCore.storedEventToFlatJson(stored, Spec.Id.schema);
-    });
+    let sealEvents = async events$p => {
+      let out = [];
+      let failure;
+      for (let i = 0, i_finish = events$p.length; i < i_finish; ++i) {
+        if (Stdlib_Option.isNone(failure)) {
+          let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(events$p[i].event, Spec.eventSchema));
+          let eventType = match[0];
+          let e = await Pii$Reventless.sealData(Spec.eventSchema, eventType, match[1]);
+          if (e.TAG === "Ok") {
+            let sealed = e._0;
+            let field = Pii$Reventless.unsealedField(Spec.eventSchema, eventType, sealed);
+            if (field !== undefined) {
+              failure = `refused ` + eventType + `: its personal field ` + field + ` is not sealed`;
+            } else {
+              out.push([
+                eventType,
+                sealed
+              ]);
+            }
+          } else {
+            failure = `cannot seal ` + eventType + `: ` + Pii$Reventless.errorMessage(e._0);
+          }
+        }
+      }
+      let msg = failure;
+      if (msg !== undefined) {
+        return {
+          TAG: "Error",
+          _0: msg
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: out
+        };
+      }
+    };
+    let publishedJsonOf = (id, meta, param) => Object.fromEntries([
+      [
+        "id",
+        Util_Sury$Reventless.toJson(id, Spec.Id.schema)
+      ],
+      [
+        "meta",
+        Message$ReventlessCore.encode(meta, Message$ReventlessCore.metaSchema)
+      ],
+      [
+        "event",
+        Message$ReventlessCore.combineMessage(param[0], param[1])
+      ]
+    ]);
     let makePublishedEvent = (idStr, eventsJson, meta) => ({
       componentName: Spec.name,
       entityId: idStr,
@@ -87,13 +121,18 @@ function Make(Spec) {
         return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, `afterPublishHook error: ` + errMsg));
       }
     };
-    let publishToEventTopic = async (id, events$p, eventsJson) => {
+    let publishToEventTopic = async (id, events$p, sealed, eventsJson) => {
       let idStr = Spec.Id.toString(id);
       let firstEvent = events$p[0];
       let meta = firstEvent.meta;
       await runBeforePublishHook(idStr, eventsJson, meta);
       try {
-        await Ops.eventTopic.publish(events$p);
+        let count = events$p.length.toString();
+        await Promise.all(events$p.map(async (event$p, i) => {
+          let json = publishedJsonOf(event$p.id, event$p.meta, sealed[i]);
+          await Ops.eventTopic.publishJson(idStr, event$p.meta, json);
+          return Effect$1.runSync(EffectLogger$ReventlessCore.logInfo(`EventTopic(` + Spec.name + `)`, json, `published event ` + (i + 1 | 0).toString() + `/` + count + `: ` + LogFormat$ReventlessCore.eventDetail(json)));
+        }));
         await runAfterPublishHook(idStr, eventsJson, meta);
         return {
           TAG: "Ok",
@@ -112,7 +151,34 @@ function Make(Spec) {
       }
     };
     let append = async (sequenceNr, id, events$p) => {
-      let eventsJson = encodeEvents$p(events$p, id, sequenceNr);
+      let msg = await sealEvents(events$p);
+      if (msg.TAG !== "Ok") {
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "StorageFailure",
+            _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + Spec.Id.toString(id) + `): ` + msg._0
+          }
+        };
+      }
+      let sealed = msg._0;
+      let eventsJson = sealed.map((part, i) => {
+        let sequenceNr$1 = sequenceNr + i | 0;
+        let meta = events$p[i].meta;
+        let stored_position = sequenceNr$1.toString().padStart(9, "0");
+        let stored_event = part[0];
+        let stored_data = part[1];
+        let stored_recordedAt = Message$ReventlessCore.nowAsISOString();
+        let stored = {
+          id: id,
+          position: stored_position,
+          event: stored_event,
+          data: stored_data,
+          meta: meta,
+          recordedAt: stored_recordedAt
+        };
+        return Message$ReventlessCore.storedEventToFlatJson(stored, Spec.Id.schema);
+      });
       let idStr = Spec.Id.toString(id);
       let storageEffect = Effect$1.catchAll(Effect$1.map(Effect$1.retry(Effect$1.flatMap(Effect.tryPromise(err => ({
         TAG: "StorageFailure",
@@ -132,13 +198,13 @@ function Make(Spec) {
       }));
       let match = await Effect$1.runPromise(storageEffect);
       if (match.TAG === "Ok") {
-        return Stdlib_Result.mapError(await publishToEventTopic(id, events$p, eventsJson), msg => ({
+        return Stdlib_Result.mapError(await publishToEventTopic(id, events$p, sealed, eventsJson), msg => ({
           TAG: "StorageFailure",
           _0: msg
         }));
       }
-      let msg = match._0;
-      if (typeof msg !== "object") {
+      let msg$1 = match._0;
+      if (typeof msg$1 !== "object") {
         return {
           TAG: "Error",
           _0: "Conflict"
@@ -148,7 +214,7 @@ function Make(Spec) {
           TAG: "Error",
           _0: {
             TAG: "StorageFailure",
-            _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + msg._0
+            _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + msg$1._0
           }
         };
       }
@@ -182,12 +248,53 @@ function Make(Spec) {
         throw e;
       }
     };
-    let replay = async id => {
-      let eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
-      let id$1 = Spec.Id.toString(id);
-      return eventsJson.map(json => decodeEvent(id$1, json));
+    let sealedParts = json => {
+      let dict = Stdlib_JSON.Decode.object(json);
+      if (dict === undefined) {
+        return;
+      }
+      let match = dict["event"];
+      let match$1 = dict["data"];
+      if (match !== undefined && typeof match === "string" && match$1 !== undefined && typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) && Pii$Reventless.needsOpen(Spec.eventSchema, match, match$1)) {
+        return [
+          dict,
+          match,
+          match$1
+        ];
+      }
     };
-    let replayStream = (id, fromSeq) => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id), fromSeq), json => Effect$1.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let openStored = async (id, json) => {
+      let match = sealedParts(json);
+      if (match === undefined) {
+        return json;
+      }
+      let eventType = match[1];
+      let opened = await Pii$Reventless.openData(Spec.eventSchema, eventType, match[2]);
+      if (opened.TAG !== "Ok") {
+        return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: cannot open ` + eventType + `: ` + Pii$Reventless.errorMessage(opened._0));
+      }
+      let out = Object.assign({}, match[0]);
+      out["data"] = opened._0;
+      return out;
+    };
+    let openAndDecode = (id, json) => {
+      let match = sealedParts(json);
+      if (match !== undefined) {
+        return Effect$1.map(Effect$1.promise(() => openStored(id, json)), j => decodeEvent(id, j));
+      } else {
+        return Effect$1.sync(() => decodeEvent(id, json));
+      }
+    };
+    let replay = async id => {
+      let idStr = Spec.Id.toString(id);
+      let eventsJson = await Ops.storage.replay(idStr);
+      let opened = [];
+      for (let i = 0, i_finish = eventsJson.length; i < i_finish; ++i) {
+        opened.push(await openStored(idStr, eventsJson[i]));
+      }
+      return opened.map(json => decodeEvent(idStr, json));
+    };
+    let replayStream = (id, fromSeq) => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id), fromSeq), json => openAndDecode(Spec.Id.toString(id), json));
     let decodeMeta = (id, json) => {
       try {
         return Util_Sury$Reventless.fromJson(Message$ReventlessCore.composeMeta(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined)), Message$ReventlessCore.metaSchema);
@@ -198,28 +305,31 @@ function Make(Spec) {
     };
     let replayStream$p = (id, fromSeq) => {
       let idStr = Spec.Id.toString(id);
-      return Stream.mapEffect(Ops.storage.replayStream(idStr, fromSeq), json => Effect$1.sync(() => ({
+      return Stream.mapEffect(Ops.storage.replayStream(idStr, fromSeq), json => Effect$1.map(openAndDecode(idStr, json), event => ({
         id: id,
         meta: decodeMeta(idStr, json),
-        event: decodeEvent(idStr, json)
+        event: event
       })));
     };
     let latestSnapshot = id => Ops.storage.latestSnapshot(Spec.Id.toString(id));
     let writeSnapshot = (id, snap) => Ops.storage.writeSnapshot(Spec.Id.toString(id), snap);
-    let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.map(stream, event => {
-      let json = Message$ReventlessCore.encode(event, Spec.eventSchema);
-      let match = Message$ReventlessCore.splitMessage(json);
+    let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.mapEffect(stream, event => Effect$1.promise(async () => {
+      let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, Spec.eventSchema));
+      let eventType = match[0];
+      let sealed = await Pii$Reventless.sealData(Spec.eventSchema, eventType, match[1]);
+      let sealed$1;
+      sealed$1 = sealed.TAG === "Ok" ? sealed._0 : Stdlib_JsError.throwWithMessage(`EventLog.appendStream: cannot seal ` + eventType + `: ` + Pii$Reventless.errorMessage(sealed._0));
       return Object.fromEntries([
         [
           "event",
-          match[0]
+          eventType
         ],
         [
           "data",
-          match[1]
+          sealed$1
         ]
       ]);
-    }));
+    })));
     return {
       Spec: Spec,
       append: append,
