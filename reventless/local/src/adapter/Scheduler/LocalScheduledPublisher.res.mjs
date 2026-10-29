@@ -9,7 +9,6 @@ function Make(Bus) {
   let scheduleMeta = {
     service: "Scheduler",
     time: "",
-    ip: "",
     user: "Scheduler",
     msgId: "",
     correlationId: ""

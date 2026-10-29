@@ -260,6 +260,11 @@ describe("Message.deriveStableMeta", () => {
     expect(a.headers->Option.flatMap(h => h->Dict.get("tenantId")))->toEqual(Some("t1"))
   })
 
+  testSync("a derived message never carries the caller's ip, even from an old parent", () => {
+    let a = deriveStableMeta(~parent={...parent, ip: "10.0.0.1"}, ~service="Ordering.Orders", ~index=0)
+    expect(a.ip)->toEqual(None)
+  })
+
   testSync("a different parent, emitter, index or item gives a different msgId", () => {
     let base = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=0)
     let otherParent = deriveStableMeta(

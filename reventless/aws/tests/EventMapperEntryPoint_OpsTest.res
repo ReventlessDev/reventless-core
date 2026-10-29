@@ -78,7 +78,7 @@ describe("EventMapperEntryPoint_Ops.makeStreamHandler", () => {
     }
     let command: ReventlessCore.Message.commandJson = {
       id: "prd-1",
-      meta: ReventlessCore.Message.generateMeta(~service="Product", ~ip="", ~user="test"),
+      meta: ReventlessCore.Message.generateMeta(~service="Product", ~user="test"),
       commandJson: JSON.Encode.string("Add"),
     }
     let commonEventsHandler: EventMapperEntryPoint_Ops.commonEventsHandler = async jsons => {

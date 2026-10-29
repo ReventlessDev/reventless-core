@@ -49,7 +49,7 @@ function todoRowSchemaFor(itemSchema) {
 }
 
 function tickEvent(key, at) {
-  let newrecord = {...Message$ReventlessCore.generateMeta(Clock$Reventless.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined)};
+  let newrecord = {...Message$ReventlessCore.generateMeta(Clock$Reventless.name, undefined, undefined, undefined, undefined, undefined, undefined)};
   return Object.fromEntries([
     [
       "id",
@@ -83,7 +83,7 @@ function Make(Spec) {
       return changes;
     };
     let readsClock = Automation.mappings.some(M => M.sourceName === Clock$Reventless.name);
-    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
     let processingTimeoutMs = 15 * 60 * 1000;
     let afterFailedAttempt = row => {
       let retryCount = row.retryCount + 1 | 0;

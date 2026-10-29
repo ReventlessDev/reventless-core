@@ -17,7 +17,7 @@ function Make(Ops) {
   let serviceName = Ops.serviceName;
   let publishToEventTopic = async rawEvents => {
     let re = rawEvents[0];
-    let representativeMeta = re !== undefined ? re.meta : Message$ReventlessCore.generateMeta(serviceName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let representativeMeta = re !== undefined ? re.meta : Message$ReventlessCore.generateMeta(serviceName, undefined, undefined, undefined, undefined, undefined, undefined);
     let rawEventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
     let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
     let finalRawEventsJson;

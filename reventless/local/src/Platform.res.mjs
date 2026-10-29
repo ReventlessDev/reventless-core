@@ -256,7 +256,6 @@ function MakeWithConfig(Config) {
         return `{"error":"no handler for ` + toolName + `"}`;
       }
       let payload_meta = {
-        ip: [],
         user: identity.userId,
         info: `mcp/tools/` + toolName
       };
@@ -937,7 +936,7 @@ function MakeWithConfig(Config) {
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
   let dispatchPluginCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, PluginSpec$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
@@ -948,7 +947,7 @@ function MakeWithConfig(Config) {
   };
   let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
@@ -2050,7 +2049,6 @@ function Make($star) {
         return `{"error":"no handler for ` + toolName + `"}`;
       }
       let payload_meta = {
-        ip: [],
         user: identity.userId,
         info: `mcp/tools/` + toolName
       };
@@ -2731,7 +2729,7 @@ function Make($star) {
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
   let dispatchPluginCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, PluginSpec$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,
@@ -2742,7 +2740,7 @@ function Make($star) {
   };
   let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = Util_Sury$Reventless.toJson(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
       id: pluginName,

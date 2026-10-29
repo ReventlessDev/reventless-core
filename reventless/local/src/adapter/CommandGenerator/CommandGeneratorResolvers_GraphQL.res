@@ -248,7 +248,7 @@ let register = (
             let payload: CommandGenerator.payload = {
               command: commandName,
               arguments: args->Obj.magic,
-              meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
+              meta: {user: identity.userId, info: `Mutation.${field}`},
               identity,
             }
             let outcome = await runCommand(generateCommand, payload)
@@ -320,7 +320,7 @@ let registerDcb = (
           let payload: CommandGenerator.payload = {
             command: tag,
             arguments: args->Obj.magic,
-            meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
+            meta: {user: identity.userId, info: `Mutation.${fieldName}`},
             identity,
           }
           let outcome = await runCommand(generateCommand, payload)

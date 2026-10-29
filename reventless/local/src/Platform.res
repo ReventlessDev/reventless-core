@@ -351,7 +351,7 @@ module MakeWithConfig = (
             let payload: ReventlessCore.CommandGenerator.payload = {
               command: toolName,
               arguments: args->Obj.magic,
-              meta: {ip: [], user: identity.userId, info: `mcp/tools/${toolName}`},
+              meta: {user: identity.userId, info: `mcp/tools/${toolName}`},
               identity,
             }
             let outcome = await generateCommand(payload)->Effect.runPromise

@@ -1552,7 +1552,7 @@ function MakeWithConfig(Config) {
           };
           let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
           let message_id = hbConfig.pluginId;
-          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
+          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
           let message_commandJson = Util_Sury$Reventless.toJson({
             TAG: "RedetectPlugin",
             _0: hbConfig.heartbeatTimeout
@@ -2962,7 +2962,7 @@ function Make($star) {
           };
           let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
           let message_id = hbConfig.pluginId;
-          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
+          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
           let message_commandJson = Util_Sury$Reventless.toJson({
             TAG: "RedetectPlugin",
             _0: hbConfig.heartbeatTimeout

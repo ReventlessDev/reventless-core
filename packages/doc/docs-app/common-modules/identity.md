@@ -101,7 +101,9 @@ If the header is absent or cannot be parsed, the resolver falls back to `Identit
 On AWS, AppSync extracts identity from the Cognito JWT automatically. The VTL request mapping template reads:
 
 - `$context.identity.username` &rarr; `meta.user`
-- `$context.identity.sourceIp` &rarr; `meta.ip`
+
+The caller's source IP is not copied into the message. An address is personal data, and an
+event log cannot forget it.
 
 Cognito groups are available via AppSync directives for field-level authorization.
 

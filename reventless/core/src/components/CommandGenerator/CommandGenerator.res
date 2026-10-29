@@ -13,7 +13,9 @@ The `id` field is the envelope id for the produced command message:
   source of truth.
 */
 type arguments = {id: string}
-type meta = {ip: array<string>, user: string, info: string}
+// `ip` is what a resolver written before the caller's address left the envelope
+// still sends; nothing reads it, so it never reaches a message.
+type meta = {ip?: array<string>, user: string, info: string}
 type payload = {
   command: string,
   arguments: arguments,

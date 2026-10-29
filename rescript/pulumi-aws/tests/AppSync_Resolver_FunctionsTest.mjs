@@ -729,7 +729,8 @@ describe('invokeCommandGenerator', () => {
     expect(payload.identity.userArn).toBe('arn:aws:iam::123:role/SyncRole')
     expect(payload.identity.accountId).toBe('123')
     expect(payload.identity.username).toBe('AROAEXAMPLE:caller')
-    expect(payload.meta.ip).toEqual(['10.0.0.1'])
+    // The caller's address is personal data and never reaches the command.
+    expect(payload.meta).not.toHaveProperty('ip')
     expect(payload.meta.user).toBe('AROAEXAMPLE:caller')
   })
 
@@ -737,7 +738,7 @@ describe('invokeCommandGenerator', () => {
     const ctx = makeCtx({ identity: null })
     const { payload } = request(ctx)
     expect(payload.identity).toBeNull()
-    expect(payload.meta.ip).toBeNull()
+    expect(payload.meta).not.toHaveProperty('ip')
     expect(payload.meta.user).toBeNull()
     expect(payload.command).toBe('CreateProduct')
   })

@@ -170,12 +170,11 @@ function hrtimeToString(hrtime, now) {
   return now.toString() + ("-" + ("0".repeat(9 - milLength | 0) + milString));
 }
 
-function generateMeta(service, ip, user, causationId, traceparent, correlationId, schemaVersion, headers) {
+function generateMeta(service, user, causationId, traceparent, correlationId, schemaVersion, headers) {
   let msgId = Uuid.v4();
   return {
     service: service,
     time: new Date().toISOString(),
-    ip: ip,
     user: user,
     msgId: msgId,
     correlationId: Stdlib_Option.getOr(correlationId, msgId),
@@ -190,7 +189,6 @@ function deriveMeta(parent, service) {
   return {
     service: Stdlib_Option.getOr(service, parent.service),
     time: new Date().toISOString(),
-    ip: parent.ip,
     user: parent.user,
     msgId: Uuid.v4(),
     correlationId: parent.correlationId,

@@ -90,10 +90,10 @@ function Make(RuntimeEnvironment) {
                 try {
                   meta = Util_Sury$Reventless.fromJson(m, Message$ReventlessCore.metaSchema);
                 } catch (exn) {
-                  meta = Message$ReventlessCore.generateMeta(Spec.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+                  meta = Message$ReventlessCore.generateMeta(Spec.name, undefined, undefined, undefined, undefined, undefined, undefined);
                 }
               } else {
-                meta = Message$ReventlessCore.generateMeta(Spec.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+                meta = Message$ReventlessCore.generateMeta(Spec.name, undefined, undefined, undefined, undefined, undefined, undefined);
               }
               let recordedAt = Stdlib_Option.getOr(Stdlib_Option.flatMap(envelopeDict["recordedAt"], Stdlib_JSON.Decode.string), "");
               let match = Message$ReventlessCore.splitMessage(rawEvent);

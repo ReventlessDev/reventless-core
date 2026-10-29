@@ -14,7 +14,6 @@ function Make(Spec) {
         meta: {
           service: PluginExtensionPointSpec$ReventlessInfra.name,
           time: Message$ReventlessCore.nowAsISOString(),
-          ip: "",
           user: "Heartbeat",
           msgId: msgId,
           correlationId: msgId

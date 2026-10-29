@@ -26,7 +26,7 @@ let runtimeExtensionsReady = HandlerFactoryHelpersMjs.runtimeExtensionsReady;
 
 async function handler(_event, _context) {
   await runtimeExtensionsReady;
-  let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, "", "Heartbeat", undefined, undefined, undefined, undefined, undefined);
+  let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, "Heartbeat", undefined, undefined, undefined, undefined, undefined);
   let message_commandJson = Util_Sury$Reventless.toJson({
     TAG: "Heartbeat",
     _0: timeout

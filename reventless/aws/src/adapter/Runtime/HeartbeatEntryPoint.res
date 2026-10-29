@@ -39,7 +39,6 @@ let handler = async (_event: JSON.t, _context: PulumiAws.Lambda.context) => {
     id: pluginId,
     meta: ReventlessCore.Message.generateMeta(
       ~service=ReventlessInfra.PluginExtensionPointSpec.name,
-      ~ip="",
       ~user="Heartbeat",
     ),
     commandJson: ReventlessInfra.PluginExtensionPointSpec.Heartbeat(

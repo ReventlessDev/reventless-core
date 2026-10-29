@@ -18,7 +18,6 @@ module Make = (Spec: Spec) => {
         meta: {
           service: PluginExtensionPointSpec.name,
           time: Message.nowAsISOString(),
-          ip: "",
           user: "Heartbeat",
           msgId,
           correlationId: msgId,

@@ -179,7 +179,6 @@ function register(fields, commandSchema, authorizationOf, server) {
         return rejectThrottled(field);
       }
       let payload_meta = {
-        ip: [],
         user: identity.userId,
         info: `Mutation.` + field
       };
@@ -225,7 +224,6 @@ function registerDcb(fieldName, commandSchema, authorizationOf, server) {
       return rejectThrottled(fieldName);
     }
     let payload_meta = {
-      ip: [],
       user: identity.userId,
       info: `Mutation.` + fieldName
     };

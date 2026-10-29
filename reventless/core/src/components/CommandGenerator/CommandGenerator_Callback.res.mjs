@@ -64,13 +64,11 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
     let msgId = Message$ReventlessCore.uuid();
     let scope = OwnerScope$Reventless.resolve(payload.identity, undefined);
     let meta_time = Message$ReventlessCore.nowAsISOString();
-    let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
     let meta_user = payload.meta.user;
     let meta_callerClaim = OwnerScope$Reventless.toClaim(scope);
     let meta = {
       service: serviceName,
       time: meta_time,
-      ip: meta_ip,
       user: meta_user,
       msgId: msgId,
       correlationId: msgId,

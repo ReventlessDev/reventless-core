@@ -383,7 +383,7 @@ let dispatchTool = async (tool: mcpToolEntry, args: JSON.t, identity: Reventless
   let payload: ReventlessCore.CommandGenerator.payload = {
     command: tool.name,
     arguments: args->Obj.magic,
-    meta: {ip: [], user: identity.userId, info: `mcp/tools/${tool.name}`},
+    meta: {user: identity.userId, info: `mcp/tools/${tool.name}`},
     identity,
   }
   // Route through the shared dispatch helper so this tool call gets the same

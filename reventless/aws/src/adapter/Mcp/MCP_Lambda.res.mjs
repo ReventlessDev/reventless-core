@@ -254,7 +254,6 @@ async function dispatchTool(tool, args, identity) {
   let generateCommand = CommandGenerator_CallbackResMjs.makeGenerateCommand(publishJsons, tool.name, Sury.json, tool.componentKind, false);
   let payload_command = tool.name;
   let payload_meta = {
-    ip: [],
     user: identity.userId,
     info: `mcp/tools/` + tool.name
   };

@@ -46,8 +46,9 @@ type meta = {
   service: service,
   /** ISO-8601 timestamp of when the message was created (producer time). */
   time: string,
-  /** IP address of the service instance that created the message. Absent when unknown
-      (e.g. serverless contexts without a caller IP). */
+  /** Read only: the caller's IP address, which messages written before it left the
+      envelope carry. Nothing writes it any more, because an address is personal data
+      and an event log cannot forget it. */
   ip?: string,
   /** Identity of the actor who initiated the action. Absent for system-initiated messages. */
   user?: string,

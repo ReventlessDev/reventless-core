@@ -151,7 +151,7 @@ function Make(Spec) {
   return Translation => {
     let auditLog = {};
     let sensitive = Sensitive$Reventless.fieldNames(Spec.externalInputSchema);
-    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
     let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
     let failWith = (requestId, input, door, caller, errorCode, error) => {
       auditLog[requestId] = {

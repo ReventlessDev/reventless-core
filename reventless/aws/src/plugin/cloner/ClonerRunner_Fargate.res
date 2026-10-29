@@ -114,7 +114,7 @@ export const handler = async (event) => {
     ["REVENTLESS_CORE_STACK", process.env.STACK_ORG + "/" + process.env.STACK_PROJECT + "/" + process.env.STACK_STACK],
     ["RESTORE_DATE_TIME", event.restoreDateTime],
   ]);
-  console.log("clone: requested by user " + event.meta.user + " from ip " + event.meta.ip);
+  console.log("clone: requested by user " + event.meta.user);
   await client.send(new RunTaskCommand({
     taskDefinition: process.env.TASK_DEFINITION_ARN,
     cluster: process.env.CLUSTER_ARN,
@@ -358,7 +358,6 @@ export function request(ctx) {
     payload: {
       restoreDateTime: ctx.args.restoreDateTime,
       meta: {
-        ip: ctx.identity.sourceIp,
         user: ctx.identity.username
       }
     }

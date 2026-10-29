@@ -44,16 +44,19 @@ describe("Message.meta optional fields:", () => {
 
   testSync("all new optional fields round-trip when set", () => {
     let headers = Dict.fromArray([("tenantId", "t1"), ("feature.x", "on")])
-    let meta = generateMeta(
-      ~service="svc",
-      ~ip="10.0.0.1",
-      ~user="bob",
-      ~causationId="parent-msg-id",
-      ~traceparent="00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
-      ~correlationId="root-msg-id",
-      ~schemaVersion="1.2.0",
-      ~headers,
-    )
+    let meta = {
+      ...generateMeta(
+        ~service="svc",
+        ~user="bob",
+        ~causationId="parent-msg-id",
+        ~traceparent="00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        ~correlationId="root-msg-id",
+        ~schemaVersion="1.2.0",
+        ~headers,
+      ),
+      // Nothing writes `ip` any more; a message written before still carries it.
+      ip: "10.0.0.1",
+    }
     let json = meta->Reventless.Util_Sury.toJson(metaSchema)
     let decoded = json->Reventless.Util_Sury.fromJson(metaSchema)
     expect(decoded.ip)->toEqual(Some("10.0.0.1"))->ignore
@@ -95,17 +98,19 @@ describe("Message.deriveMeta:", () => {
     expect(leaf.causationId)->toEqual(Some(mid.msgId))
   })
 
-  testSync("inherits ip/user/traceparent/schemaVersion/headers from parent", () => {
-    let parent = generateMeta(
-      ~service="svc",
-      ~ip="10.0.0.1",
-      ~user="alice",
-      ~traceparent="tp",
-      ~schemaVersion="1",
-      ~headers=Dict.fromArray([("k", "v")]),
-    )
+  testSync("inherits user/traceparent/schemaVersion/headers from parent, never ip", () => {
+    let parent = {
+      ...generateMeta(
+        ~service="svc",
+        ~user="alice",
+        ~traceparent="tp",
+        ~schemaVersion="1",
+        ~headers=Dict.fromArray([("k", "v")]),
+      ),
+      ip: "10.0.0.1",
+    }
     let child = deriveMeta(~parent)
-    expect(child.ip)->toEqual(Some("10.0.0.1"))->ignore
+    expect(child.ip)->toEqual(None)->ignore
     expect(child.user)->toEqual(Some("alice"))->ignore
     expect(child.traceparent)->toEqual(Some("tp"))->ignore
     expect(child.schemaVersion)->toEqual(Some("1"))->ignore

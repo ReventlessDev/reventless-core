@@ -58,7 +58,6 @@ let deriveStableMeta = (
   ),
   correlationId: parent.correlationId,
   causationId: parent.msgId,
-  ip: ?parent.ip,
   user: ?parent.user,
   traceparent: ?parent.traceparent,
   schemaVersion: ?parent.schemaVersion,

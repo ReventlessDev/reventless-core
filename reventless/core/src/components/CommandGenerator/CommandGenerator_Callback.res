@@ -126,7 +126,6 @@ let makeGenerateCommand = (
       let meta = {
         {
           Message.service: serviceName,
-          ip: payload.meta.ip->Array.shift->Option.getOr(""),
           user: payload.meta.user,
           time: Message.nowAsISOString(),
           msgId,

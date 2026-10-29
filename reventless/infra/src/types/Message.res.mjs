@@ -39,7 +39,6 @@ function deriveStableMeta(parent, service, index, itemOpt) {
   return {
     service: service,
     time: new Date().toISOString(),
-    ip: parent.ip,
     user: parent.user,
     msgId: Uuid.v5(parent.msgId + `/` + service + `/` + index.toString() + `/` + item.toString(), derivedIdNamespace),
     correlationId: parent.correlationId,

@@ -1168,7 +1168,6 @@ export function request(ctx) {
       command: '` + command + `',
       arguments: ctx.args,
       meta: {
-        ip: id?.sourceIp ?? null,
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
@@ -1191,7 +1190,6 @@ export function request(ctx) {
       command: '` + tag + `',
       arguments: ctx.args,
       meta: {
-        ip: id?.sourceIp ?? null,
         user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },

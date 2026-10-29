@@ -14,7 +14,6 @@ module Make = (Bus: LocalBus.T) => {
   let scheduleMeta: ReventlessCore.Message.meta = {
     service: "Scheduler",
     time: "",
-    ip: "",
     user: "Scheduler",
     msgId: "",
     correlationId: "",

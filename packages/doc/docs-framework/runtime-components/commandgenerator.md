@@ -220,7 +220,6 @@ let generateCommand = async (payload: CommandGenerator.payload) => {
   // 2. Create command metadata
   let meta = {
     Message.service: AggregateSpec.name,
-    ip: payload.meta.ip->Array.shift->Option.getOr(""),
     user: payload.meta.user,
     time: Message.nowAsISOString(),
     msgId,

@@ -12,7 +12,6 @@ let importCallback = (~eventName, ~key) => {
     let meta: Message.meta = {
       service: "ImportProducts",
       time: Date.now()->Float.toString,
-      ip: "",
       user: "system",
       msgId: key,
       correlationId: key,

@@ -211,7 +211,6 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
 
 let generateMeta = (
   ~service,
-  ~ip=?,
   ~user=?,
   ~causationId=?,
   ~traceparent=?,
@@ -225,7 +224,6 @@ let generateMeta = (
     time: nowAsISOString(),
     msgId,
     correlationId: correlationId->Option.getOr(msgId),
-    ?ip,
     ?user,
     ?causationId,
     ?traceparent,
@@ -238,7 +236,9 @@ let generateMeta = (
 //   - fresh `msgId` and `time`
 //   - `correlationId` inherited (so the chain root id stays stable)
 //   - `causationId` = parent.msgId (the *direct* parent)
-//   - `ip`, `user`, `traceparent`, `schemaVersion`, `headers` inherited as-is,
+//   - `user`, `traceparent`, `schemaVersion`, `headers` inherited as-is,
+//     never `ip`: the caller's address is personal data and stays out of every
+//     message a request causes
 //     except the stable-id mark: this id is fresh, so the child must not carry it
 //   - `service` overridable; defaults to parent's service
 let deriveMeta = (~parent: meta, ~service=?) => {
@@ -247,7 +247,6 @@ let deriveMeta = (~parent: meta, ~service=?) => {
   msgId: uuid(),
   correlationId: parent.correlationId,
   causationId: parent.msgId,
-  ip: ?parent.ip,
   user: ?parent.user,
   traceparent: ?parent.traceparent,
   schemaVersion: ?parent.schemaVersion,
