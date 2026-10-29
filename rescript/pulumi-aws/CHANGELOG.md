@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.37 (2026-10-29)
+
+### Features
+
+* **pulumi-aws:** bindings for a KMS key and its alias ([e00c4b1](https://github.com/ReventlessDev/reventless-core/commit/e00c4b10b0b1ea74e1440bee4e6a4fd8f5fdbf46))
+
+
 # 3.0.0-alpha.36 (2026-10-29)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
