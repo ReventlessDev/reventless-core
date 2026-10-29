@@ -56,7 +56,12 @@ let entryPointCode = `export const handler = async (event) => {
       " receiveCount=" + receiveCount +
       " bodyBytes=" + (record?.body?.length ?? 0);
     if (receiveCount <= 1) {
-      console.error("DEAD LETTER ITEM: " + identity, JSON.stringify(record));
+      // Ids, type and size, never the body: a dead letter is a command or event,
+      // and its payload may be about a person.
+      const body = (() => { try { return JSON.parse(record?.body ?? "null") } catch { return null } })();
+      const kind = body?.command?.TAG ?? body?.event?.TAG ?? (body?.Message ? "sns" : "unknown");
+      console.error("DEAD LETTER ITEM: " + identity + " kind=" + kind +
+        " attributes=" + JSON.stringify(Object.keys(record?.messageAttributes ?? {})));
     } else {
       console.error("DEAD LETTER REDELIVERY: " + identity);
     }

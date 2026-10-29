@@ -95,3 +95,34 @@ describe("the JSON schema", () => {
     )->toBe(true)
   })
 })
+
+describe("a log line of a @pii event or command", () => {
+  testSync("holds no personal value, whichever formatter prints it", () => {
+    let eventJson = encode(joined)
+    let envelope =
+      Dict.fromArray([
+        ("id", JSON.Encode.string("m-1")),
+        ("meta", Dict.fromArray([("ip", JSON.Encode.string("10.0.0.1"))])->JSON.Encode.object),
+        ("event", eventJson),
+      ])->JSON.Encode.object
+    let lines = [LogFormat.eventDetail(envelope), LogFormat.eventFull(envelope)]
+    lines->Array.forEach(
+      line => {
+        expect(line->String.includes("Ada"))->toBe(false)
+        expect(line->String.includes("ada@example.com"))->toBe(false)
+        expect(line->String.includes("mathematician"))->toBe(false)
+        expect(line->String.includes("10.0.0.1"))->toBe(false)
+        expect(line->String.includes("m-1"))->toBe(true)
+      },
+    )
+    let join: M.command = Join({
+      memberId: "m-1",
+      name: "Ada",
+      address: Reventless.Email.unsafe("ada@example.com"),
+    })
+    let commandJson = join->Reventless.Util_Sury.toJson(M.commandSchema)
+    let label = LogFormat.cmdLabelOfJson(commandJson)
+    expect(label->String.includes("Ada"))->toBe(false)
+    expect(label->String.includes("m-1"))->toBe(true)
+  })
+})

@@ -29,7 +29,8 @@ describe("LogFormat", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
+        // Printed without the caller's address and the header bag.
+        let metaStr = meta->Message.encode(Message.metaSchema)->LogFormat.metaForLog->JSON.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
@@ -80,7 +81,8 @@ describe("LogFormat", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
+        // Printed without the caller's address and the header bag.
+        let metaStr = meta->Message.encode(Message.metaSchema)->LogFormat.metaForLog->JSON.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
@@ -118,7 +120,7 @@ describe("LogFormat", () => {
 
         // sury 11 (alpha.8) serialises meta keys in a different order than alpha.4
         // (msgId/correlationId before ip/user) — same data, JSON-equivalent.
-        let expected = `\x1b[1mVersionDetected\x1b[0m(testId): {"event":{"TAG":"VersionDetected","_0":"0.0.0"},"meta":{"service":"testService","time":"testTime","msgId":"testMsgId","correlationId":"testCorrelationId","ip":"testIp","user":"testUser"},"id":"testId"}`
+        let expected = `\x1b[1mVersionDetected\x1b[0m(testId): {"event":{"TAG":"VersionDetected","_0":"0.0.0"},"meta":{"service":"testService","time":"testTime","msgId":"testMsgId","correlationId":"testCorrelationId","user":"testUser"},"id":"testId"}`
 
         expect(msg)->toEqual(expected)
       },

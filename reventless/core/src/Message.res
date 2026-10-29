@@ -85,7 +85,14 @@ let uuid = Uuid.v4
 let log: ('a, string) => 'a = (value, str) => {
   logger.debug(
     ~comp="Message",
-    ~data=value->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string,
+    ~data=value
+    ->JSON.stringifyAny
+    ->Option.flatMap(s =>
+      try Some(JSON.parseOrThrow(s)) catch {
+      | _ => None
+      }
+    )
+    ->Option.getOr(JSON.Encode.null),
     str,
   )
   value

@@ -148,7 +148,13 @@ let emit = (
       ->Array.concat(pluginField->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]))
       ->Array.concat(comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
       ->Array.concat(annotationFields)
-      ->Array.concat(detail->Option.mapOr([], d => [("detail", truncateDetail(d))]))
+      // Redacted before anything else: a personal value must not reach a log
+      // group, which cannot be swept for one person (`LogRedaction`).
+      ->Array.concat(
+        detail->Option.mapOr([], d => [
+          ("detail", d->Reventless.LogRedaction.redactJson->truncateDetail),
+        ]),
+      )
     Console.log(fields->Dict.fromArray->JSON.Encode.object->JSON.stringify)
   } else {
     // Terminal — colored, human-readable, no detail
@@ -179,7 +185,10 @@ let setDefaultMinLevel = (l: level) => defaultMinLevel := l
 let makeLoggerWith = (shouldLog: level => bool): t => {
   let log = (level, ~comp=?, ~data=?, msg) =>
     if shouldLog(level) {
-      let dataStr = data->Option.map(d => ` ${d->JSON.stringify}`)->Option.getOr("")
+      let dataStr =
+        data
+        ->Option.map(d => ` ${d->Reventless.LogRedaction.redactJson->JSON.stringify}`)
+        ->Option.getOr("")
       emit(~level, ~comp?, `${msg}${dataStr}`)
     }
   {

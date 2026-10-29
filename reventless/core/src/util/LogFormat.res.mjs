@@ -8,6 +8,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../Message.res.mjs";
+import * as LogRedaction$Reventless from "@reventlessdev/reventless-spec/src/util/LogRedaction.res.mjs";
 
 let maxValueChars = Stdlib_Option.getOr(Stdlib_Option.flatMap(process.env["REVENTLESS_LOG_MAX_VALUE"], v => Stdlib_Int.fromString(v, undefined)), 512);
 
@@ -37,10 +38,11 @@ function cmdSummaries(msgs) {
 }
 
 function variantFields(json) {
-  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+  let dict = LogRedaction$Reventless.redactJson(json);
+  if (typeof dict !== "object" || dict === null || Array.isArray(dict)) {
     return "";
   }
-  let fields = Stdlib_Array.filterMap(Object.entries(json).filter(param => param[0] !== "TAG"), param => {
+  let fields = Stdlib_Array.filterMap(Object.entries(dict).filter(param => param[0] !== "TAG"), param => {
     let k = param[0];
     return Stdlib_Option.map(Primitive_option.fromNullable(JSON.stringify(param[1])), s => k + `:` + truncate(s));
   }).join(",");
@@ -69,9 +71,24 @@ function cmdDetailNoId(msg) {
   return cmdLabelOfJson(msg.commandJson);
 }
 
+function metaForLog(meta) {
+  if (typeof meta === "object" && meta !== null && !Array.isArray(meta)) {
+    return Object.fromEntries(Object.entries(meta).filter(param => {
+      let k = param[0];
+      if (k !== "ip") {
+        return k !== "headers";
+      } else {
+        return false;
+      }
+    }));
+  } else {
+    return meta;
+  }
+}
+
 function cmdFull(msg) {
-  let commandStr = JSON.stringify(msg.commandJson);
-  let metaStr = JSON.stringify(Message$ReventlessCore.encode(msg.meta, Message$ReventlessCore.metaSchema));
+  let commandStr = JSON.stringify(LogRedaction$Reventless.redactJson(msg.commandJson));
+  let metaStr = JSON.stringify(metaForLog(Message$ReventlessCore.encode(msg.meta, Message$ReventlessCore.metaSchema)));
   return `{"command":` + commandStr + `,"meta":` + metaStr + `,"id":"` + msg.id + `"}`;
 }
 
@@ -108,7 +125,10 @@ function eventDetails(events) {
 
 function eventFull(j) {
   let match = Message$ReventlessCore.idMetaEventOfEvent$pJson(j);
-  return `{"event":` + match[2] + `,"meta":` + match[1] + `,"id":"` + match[0] + `"}`;
+  let part = key => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(j), d => d[key]), null);
+  let eventStr = JSON.stringify(LogRedaction$Reventless.redactJson(part("event")));
+  let metaStr = JSON.stringify(metaForLog(part("meta")));
+  return `{"event":` + eventStr + `,"meta":` + metaStr + `,"id":"` + match[0] + `"}`;
 }
 
 function eventFulls(events) {
@@ -248,6 +268,7 @@ export {
   cmdDetails,
   cmdLabelOfJson,
   cmdDetailNoId,
+  metaForLog,
   cmdFull,
   cmdFulls,
   eventName,

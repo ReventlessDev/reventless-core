@@ -522,6 +522,9 @@ let _makeApiResourceWith = (
   let appsyncLogConfig: AppSync.GraphQLApi.logConfig = {
     cloudwatchLogsRoleArn: iamRole.arn->Pulumi.Output.asInput,
     fieldLogLevel: AppSync.GraphQLApi.ERROR->Pulumi.Input.make,
+    // Without it an error line carries the request's arguments and the resolver's
+    // context, which hold whatever the caller sent, a person's name included.
+    excludeVerboseContent: true->Pulumi.Input.make,
   }
 
   // Resolve the Cognito UserPool — either supplied by the caller (plugin-stack

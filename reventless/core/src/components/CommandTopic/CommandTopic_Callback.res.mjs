@@ -5,6 +5,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogRedaction$Reventless from "@reventlessdev/reventless-spec/src/util/LogRedaction.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
@@ -19,7 +20,7 @@ function Make(Spec) {
           command$p = Message$ReventlessCore.decodeCommand$p(json, Spec.Id.schema, Spec.commandSchema);
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
-          let commandStr = JSON.stringify(json);
+          let commandStr = JSON.stringify(LogRedaction$Reventless.redactJson(json));
           let errMsg = Util_Sury$Reventless.exnMessage(err, undefined);
           Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decode failed: ` + commandStr + ` err=` + errMsg));
           return;

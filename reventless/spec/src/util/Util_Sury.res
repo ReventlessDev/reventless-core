@@ -6,27 +6,45 @@
 // `S.encoder` in the ReScript API — encoding goes `decodeOrThrow(~from=schema, ~to=S.json)`.
 // See docs/plans/sury-11-migration.md.
 
-let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>
+// Every payload that passes through here teaches the log formatters which of its
+// fields to withhold (`LogRedaction`), once per schema.
+let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) => {
+  LogRedaction.register(schema)
   value->S.convertOrThrow(~from=schema, ~to=S.json)
+}
 
 // `~space` defaults to compact, matching the removed `reverseConvertToJsonStringOrThrow`.
-let toJsonString = (value: 'a, schema: S.t<'a>, ~space: int=0): string =>
+let toJsonString = (value: 'a, schema: S.t<'a>, ~space: int=0): string => {
+  LogRedaction.register(schema)
   (value->S.convertOrThrow(
     ~from=schema,
     ~to=space == 0 ? S.jsonString : S.jsonStringWithSpace(space),
   ) :> string)
+}
 
-let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) => json->S.parseOrThrow(~to=schema)
+let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) => {
+  LogRedaction.register(schema)
+  json->S.parseOrThrow(~to=schema)
+}
 
-let fromJsonString: (string, S.t<'a>) => 'a = (str, schema) =>
+let fromJsonString: (string, S.t<'a>) => 'a = (str, schema) => {
+  LogRedaction.register(schema)
   S.JsonString(str)->S.convertOrThrow(~from=S.jsonString, ~to=schema)
+}
 
 // Sury raises `S.Exn`, which carries `RE_EXN_ID: "S.Exn"` and so is not a `JsExn`
 // even though it is a JS Error at runtime — the usual
 // `JsExn.fromException->flatMap(JsExn.message)` yields None and the reason is
 // logged as "unknown". Reach for this at any site that catches a decode.
+//
+// A decode error names the path and what was expected, never what was received:
+// sury's message repeats the value it was handed, and the value may be a person's
+// name on its way into a log line or a stored `lastError`.
+let withoutReceived = (message: string): string =>
+  message->String.replaceRegExp(/received [^\n]*/g, "received a value of another shape")
+
 let exnMessage = (exn: exn, ~fallback: string="unknown"): string =>
   switch exn {
-  | S.Exn(e) => e.message
+  | S.Exn(e) => e.message->withoutReceived
   | _ => exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
   }

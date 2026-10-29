@@ -4,6 +4,7 @@ import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
+import * as LogRedaction$Reventless from "@reventlessdev/reventless-spec/src/util/LogRedaction.res.mjs";
 
 function serviceName() {
   let s = process.env.REVENTLESS_SERVICE;
@@ -119,7 +120,7 @@ function emit(level, comp, plugin, detail, annotations, msg) {
         c
       ]])).concat(annotationFields).concat(Stdlib_Option.mapOr(detail, [], d => [[
         "detail",
-        truncateDetail(d)
+        truncateDetail(LogRedaction$Reventless.redactJson(d))
       ]]));
     console.log(JSON.stringify(Object.fromEntries(fields)));
     return;
@@ -155,7 +156,7 @@ function makeLoggerWith(shouldLog) {
     if (!shouldLog(level)) {
       return;
     }
-    let dataStr = Stdlib_Option.getOr(Stdlib_Option.map(data, d => ` ` + JSON.stringify(d)), "");
+    let dataStr = Stdlib_Option.getOr(Stdlib_Option.map(data, d => ` ` + JSON.stringify(LogRedaction$Reventless.redactJson(d))), "");
     emit(level, comp, undefined, undefined, undefined, msg + dataStr);
   };
   return {

@@ -193,7 +193,7 @@ function Make(Spec) {
         return Util_Sury$Reventless.fromJson(Message$ReventlessCore.composeMeta(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined)), Message$ReventlessCore.metaSchema);
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: Couldn't decode meta of ` + JSON.stringify(json) + `: ` + Util_Sury$Reventless.exnMessage(exn, undefined));
+        return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: Couldn't decode the event's meta: ` + Util_Sury$Reventless.exnMessage(exn, undefined));
       }
     };
     let replayStream$p = (id, fromSeq) => {

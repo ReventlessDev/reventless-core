@@ -212,7 +212,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     } catch {
     | exn =>
       JsError.throwWithMessage(
-        `EventLog.replay: Error: id:${id}: Couldn't decode meta of ${json->JSON.stringify}: ${Reventless.Util_Sury.exnMessage(
+        `EventLog.replay: Error: id:${id}: Couldn't decode the event's meta: ${Reventless.Util_Sury.exnMessage(
             exn,
           )}`,
       )

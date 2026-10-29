@@ -88,9 +88,10 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
 // bug removes the message that was stranded by it. Seven of them were still
 // cycling twelve hours after the fix that made them impossible.
 //
-// What the loop costs is now a function of the line, not the count: the full
-// record is written once — on the first delivery, the one carrying the diagnostic
-// — and every redelivery after it costs a single identity line. A stranded
+// What the loop costs is now a function of the line, not the count: the first
+// delivery writes the record's ids, kind, size and attribute names — never its
+// body, which is a command or event and may be about a person — and every
+// redelivery after it costs a single identity line. A stranded
 // message is ~150 KB over a fortnight rather than ~17 MB, which is small enough
 // that ending the loop early is an operator's job rather than the topology's.
 let entryPointCode = `export const handler = async (event) => {
@@ -104,7 +105,12 @@ let entryPointCode = `export const handler = async (event) => {
       " receiveCount=" + receiveCount +
       " bodyBytes=" + (record?.body?.length ?? 0);
     if (receiveCount <= 1) {
-      console.error("DEAD LETTER ITEM: " + identity, JSON.stringify(record));
+      // Ids, type and size, never the body: a dead letter is a command or event,
+      // and its payload may be about a person.
+      const body = (() => { try { return JSON.parse(record?.body ?? "null") } catch { return null } })();
+      const kind = body?.command?.TAG ?? body?.event?.TAG ?? (body?.Message ? "sns" : "unknown");
+      console.error("DEAD LETTER ITEM: " + identity + " kind=" + kind +
+        " attributes=" + JSON.stringify(Object.keys(record?.messageAttributes ?? {})));
     } else {
       console.error("DEAD LETTER REDELIVERY: " + identity);
     }

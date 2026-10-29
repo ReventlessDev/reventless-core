@@ -4,28 +4,37 @@ import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as LogRedaction$Reventless from "./LogRedaction.res.mjs";
 
 function toJson(value, schema) {
+  LogRedaction$Reventless.register(schema);
   return S.convertOrThrow(value, schema, undefined, Sury.json);
 }
 
 function toJsonString(value, schema, spaceOpt) {
   let space = spaceOpt !== undefined ? spaceOpt : 0;
+  LogRedaction$Reventless.register(schema);
   return S.convertOrThrow(value, schema, undefined, space === 0 ? Sury.jsonString : Sury.jsonStringWithSpace(space));
 }
 
 function fromJson(json, schema) {
+  LogRedaction$Reventless.register(schema);
   return Sury.parseOrThrow(json, schema);
 }
 
 function fromJsonString(str, schema) {
+  LogRedaction$Reventless.register(schema);
   return S.convertOrThrow(str, Sury.jsonString, undefined, schema);
+}
+
+function withoutReceived(message) {
+  return message.replace(/received [^\n]*/g, "received a value of another shape");
 }
 
 function exnMessage(exn, fallbackOpt) {
   let fallback = fallbackOpt !== undefined ? fallbackOpt : "unknown";
   if (exn.RE_EXN_ID === S.Exn) {
-    return exn._1.message;
+    return withoutReceived(exn._1.message);
   } else {
     return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
   }
@@ -36,6 +45,7 @@ export {
   toJsonString,
   fromJson,
   fromJsonString,
+  withoutReceived,
   exnMessage,
 }
 /* S Not a pure module */

@@ -17,7 +17,9 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec =
         switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
         | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
         | exception err =>
-          let commandStr = json->JSON.stringify
+          // The command as it may be logged: a command that failed to decode is
+          // exactly one whose fields the schema could not vouch for.
+          let commandStr = json->Reventless.LogRedaction.redactJson->JSON.stringify
           let errMsg = err->Reventless.Util_Sury.exnMessage
           EffectLogger.logError(~comp, `decode failed: ${commandStr} err=${errMsg}`)->Effect.runSync
           None

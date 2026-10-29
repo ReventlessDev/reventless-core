@@ -268,9 +268,11 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
     role: iamRole.name
   }, customOpts);
   let appsyncLogConfig_cloudwatchLogsRoleArn = iamRole.arn;
+  let appsyncLogConfig_excludeVerboseContent = true;
   let appsyncLogConfig = {
     cloudwatchLogsRoleArn: appsyncLogConfig_cloudwatchLogsRoleArn,
-    fieldLogLevel: "ERROR"
+    fieldLogLevel: "ERROR",
+    excludeVerboseContent: appsyncLogConfig_excludeVerboseContent
   };
   let userPoolConfigOut = userPoolConfig !== undefined ? userPoolConfig : Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined).apply(c => ({
       userPoolId: c.userPoolId,

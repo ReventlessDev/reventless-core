@@ -3,7 +3,7 @@
 **Date:** 2026-10-25<br/>
 **Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope),
 [PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed), [PD5](#pd5-the-registration-ledgers-address-id)
-and [PD2](#pd2-the-recording-pii) built 2026-10-29; PD1 revised the
+[PD2](#pd2-the-recording-pii) and [PD6](#pd6-no-log-line-holds-a-personal-value) built 2026-10-29; PD1 revised the
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
@@ -331,6 +331,22 @@ personal data: logs 14 days or less, managed, never at debug.
 **Exit:** a test that every framework logging site goes through the redacting formatter; a GWT with a
 `@pii` command and event whose log output holds no value; the manifest rule refuses a stack that
 breaks it.
+
+**Built 2026-10-29**, but for two parts. The formatters see JSON, not schemas, so
+[`LogRedaction`](../../reventless/spec/src/util/LogRedaction.res) learns from the schemas instead:
+every payload encoded or decoded through `Util_Sury` registers its schema once, which records the
+fields marked `@pii` or `@sensitive`, or of an `email` or `phone` semantic, per variant tag. Every
+formatter in `LogFormat`, and the `detail` and `data` of `Logger.emit`, which the Effect logger also
+goes through, print `«pii»` for those fields and for any sealed value; two variants of one name in
+two components share the set, which withholds more, never less. The envelope prints without `ip`
+and `headers`. A sury decode error names the path and what was expected, never what it received; a
+command that fails to decode is logged redacted; the event log's meta-decode error no longer prints
+the item; the dead-letter dump prints ids, kind, size and attribute names; AppSync logs with
+`excludeVerboseContent`. Apps log a value with `LogRedaction.forLog(value, schema)`.
+[`PiiPpxTest`](../../reventless/core/tests/pii/PiiPpxTest.res) runs the `@pii` fixture through the
+formatters. **Not built:** a guard that no framework logging site bypasses `Logger.emit`, and the
+manifest stopgap, which redaction makes unnecessary for any stack on this release; the log messaging
+backend is not yet refused on a production stack.
 
 ### PD7: the bindings
 

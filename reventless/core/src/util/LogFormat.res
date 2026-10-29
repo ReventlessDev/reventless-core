@@ -93,7 +93,7 @@ external stringifiedOrAbsent: string => Nullable.t<string> = "%identity"
 // {"TAG":"Add","name":"Cat 1"} → {name:"Cat 1"}
 // "Add" (bare string variant) → ""
 let variantFields = (json: JSON.t): string =>
-  switch json {
+  switch json->Reventless.LogRedaction.redactJson {
   | Object(dict) =>
     let fields =
       dict
@@ -135,9 +135,23 @@ let cmdLabelOfJson = (json: JSON.t): string => {
 let cmdDetailNoId = (msg: Message.commandJson): string => msg.commandJson->cmdLabelOfJson
 
 // "{\"command\":{...},\"meta\":{...},\"id\":\"1\"}"  (full envelope with meta, no summary prefix)
+/** The envelope as a log line prints it: without the caller's address, which is
+    personal data, and without the header bag, which holds whatever a caller put
+    in it. */
+let metaForLog = (meta: JSON.t): JSON.t =>
+  switch meta {
+  | Object(obj) =>
+    obj
+    ->Dict.toArray
+    ->Array.filter(((k, _)) => k != "ip" && k != "headers")
+    ->Dict.fromArray
+    ->JSON.Encode.object
+  | other => other
+  }
+
 let cmdFull = (msg: Message.commandJson): string => {
-  let commandStr = msg.commandJson->JSON.stringify
-  let metaStr = msg.meta->Message.encode(Message.metaSchema)->JSON.stringify
+  let commandStr = msg.commandJson->Reventless.LogRedaction.redactJson->JSON.stringify
+  let metaStr = msg.meta->Message.encode(Message.metaSchema)->metaForLog->JSON.stringify
   `{"command":${commandStr},"meta":${metaStr},"id":"${msg.id}"}`
 }
 
@@ -178,7 +192,11 @@ let eventDetails = (events: array<JSON.t>): string =>
 
 // "{\"event\":{...},\"meta\":{...},\"id\":\"1\"}"  (full envelope with meta, no summary prefix)
 let eventFull = (j: JSON.t): string => {
-  let (id, metaStr, eventStr) = j->Message.idMetaEventOfEvent'Json
+  let (id, _, _) = j->Message.idMetaEventOfEvent'Json
+  let part = key =>
+    j->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.getOr(JSON.Encode.null)
+  let eventStr = part("event")->Reventless.LogRedaction.redactJson->JSON.stringify
+  let metaStr = part("meta")->metaForLog->JSON.stringify
   `{"event":${eventStr},"meta":${metaStr},"id":"${id}"}`
 }
 

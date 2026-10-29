@@ -66,7 +66,13 @@ function uuid(prim) {
 }
 
 function log(value, str) {
-  logger.debug("Message", Stdlib_Option.getOr(JSON.stringify(value), ""), str);
+  logger.debug("Message", Stdlib_Option.getOr(Stdlib_Option.flatMap(JSON.stringify(value), s => {
+    try {
+      return JSON.parse(s);
+    } catch (exn) {
+      return;
+    }
+  }), null), str);
   return value;
 }
 
