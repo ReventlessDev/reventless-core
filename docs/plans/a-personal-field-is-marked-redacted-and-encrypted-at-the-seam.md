@@ -3,7 +3,8 @@
 **Date:** 2026-10-25<br/>
 **Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope),
 [PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed), [PD5](#pd5-the-registration-ledgers-address-id)
-[PD2](#pd2-the-recording-pii) and [PD6](#pd6-no-log-line-holds-a-personal-value) built 2026-10-29; PD1 revised the
+[PD2](#pd2-the-recording-pii), [PD6](#pd6-no-log-line-holds-a-personal-value) and
+[PD7](#pd7-the-bindings) built 2026-10-29; PD1 revised the
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
@@ -355,6 +356,14 @@ client with `GenerateDataKey`, `Encrypt` and `Decrypt`. Nothing in core calls th
 provider does.
 
 **Exit:** round-trip and tamper tests; a KMS test against a real key on the shared account.
+
+**Built 2026-10-29**, but for the live KMS test. `NodeCrypto.aesGcmEncrypt` / `aesGcmDecrypt` seal a
+UTF-8 value as `nonce ‖ ciphertext ‖ tag` in base64, with optional `aad` that binds a value to its
+subject and field; [`AesGcmTest`](../../reventless/core/tests/pii/AesGcmTest.res) covers the round
+trip, a tampered value, another key, another `aad` and a short input. `rescript-aws-sdk` gains `KMS`
+with `GenerateDataKey`, `Encrypt` and `Decrypt`, on `@aws-sdk/client-kms` pinned to the SDK release
+the other clients resolve to. The live test against a key on the shared account waits for a session
+with working AWS credentials.
 
 ### PD8: an event is encoded once
 
