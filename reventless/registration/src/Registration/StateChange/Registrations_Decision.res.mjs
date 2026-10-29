@@ -165,6 +165,12 @@ function evolve(state, event) {
         stage: "Completed",
         lastNoticeAt: state.lastNoticeAt
       };
+    case "RegistrationReleased" :
+      return {
+        admission: state.admission,
+        stage: "Unclaimed",
+        lastNoticeAt: undefined
+      };
   }
 }
 
@@ -517,6 +523,30 @@ function Make(App) {
                 email: command.email,
                 withdrawnAt: command.withdrawnAt
               }]
+          };
+        }
+      case "ReleaseRegistration" :
+        let match$3 = state.stage;
+        if (typeof match$3 !== "object") {
+          if (match$3 === "Completed") {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "RegistrationReleased",
+                  email: command.email,
+                  releasedAt: command.releasedAt
+                }]
+            };
+          } else {
+            return {
+              TAG: "Ok",
+              _0: []
+            };
+          }
+        } else {
+          return {
+            TAG: "Ok",
+            _0: []
           };
         }
     }

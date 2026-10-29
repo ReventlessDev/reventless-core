@@ -128,6 +128,9 @@ let evolve = (state, event) =>
     }
   | RegistrationProofAccepted(_) => {...state, stage: Verified}
   | RegistrationCompleted(_) => {...state, stage: Completed}
+  // The account was erased: the address is nobody's, and nobody was told of an
+  // attempt on it.
+  | RegistrationReleased(_) => {...state, stage: Unclaimed, lastNoticeAt: None}
   }
 
 /** Whether the policy admits a registration for `role` that arrived at `at`.
@@ -300,6 +303,14 @@ module Make = (App: Reventless.Admission.Declaration) => {
       switch state.stage {
       | Pending(_) => Ok([RegistrationWithdrawn({email, withdrawnAt})])
       | Unclaimed | Verified | Completed => Ok([])
+      }
+
+    // Only an account: a claim nobody proved is withdrawn, and one being turned
+    // into an account is released once the account exists and is erased.
+    | ReleaseRegistration({email, releasedAt}) =>
+      switch state.stage {
+      | Completed => Ok([RegistrationReleased({email, releasedAt})])
+      | Unclaimed | Pending(_) | Verified => Ok([])
       }
 
     | RecordRegistrationCompleted({email}) =>

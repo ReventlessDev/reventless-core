@@ -103,6 +103,7 @@
       "RegistrationOpened": "role",
       "RegistrationProofAccepted": "contactAddress",
       "RegistrationProofRefused": "contactAddress",
+      "RegistrationReleased": "contactAddress",
       "RegistrationRequested": "contactAddress",
       "RegistrationWithdrawn": "contactAddress"
     }

@@ -79,6 +79,7 @@ describe("Registrations StateChangeSlice", () => {
           "RegistrationProofAccepted",
           "RegistrationProofRefused",
           "RegistrationCompleted",
+          "RegistrationReleased",
         ],
         tags: [{key: "contactAddress", value: email->ContactAddressId.toString}],
       },
@@ -323,6 +324,30 @@ describe("Registrations StateChangeSlice", () => {
   test("a settled registration is not withdrawn", () =>
     givenEvents(verified)
     ->whenCmd(WithdrawRegistration({email, withdrawnAt: soonAfter}))
+    ->thenNoEvent
+  )
+
+  // 🚨 An erased account gives its address back, or its person could never
+  // register again.
+  // scenario-id: de1ea12d-dcc4-4539-a6c8-ce90ff8adaa2
+  test("releasing an erased account frees the address", () =>
+    givenEvents(completed)
+    ->whenCmd(ReleaseRegistration({email, releasedAt: nextDay}))
+    ->thenEvent(RegistrationReleased({email, releasedAt: nextDay}))
+  )
+
+  // scenario-id: f74642f6-039b-4f1a-95e3-fa207a2ff5a6
+  test("a released address registers again", () =>
+    givenEvents(completed->Array.concat([RegistrationReleased({email, releasedAt: nextDay})]))
+    ->whenCmd(register(~at=nextDayLater))
+    ->thenEvent(RegistrationRequested({email, address: personal, roles, requestedAt: nextDayLater}))
+  )
+
+  // A claim nobody proved is withdrawn, not released.
+  // scenario-id: f1b6c0a2-d964-4da3-8255-6a767198530e
+  test("a pending registration is not released", () =>
+    givenEvents(challenged)
+    ->whenCmd(ReleaseRegistration({email, releasedAt: soonAfter}))
     ->thenNoEvent
   )
 

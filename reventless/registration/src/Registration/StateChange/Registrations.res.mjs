@@ -77,6 +77,11 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationCompleted",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
+  })),
+  Sury.$schema(s => ({
+    TAG: "RegistrationReleased",
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    releasedAt: s.m(DateTime$Reventless.schema)
   }))
 ]);
 
@@ -121,6 +126,11 @@ let commandSchema = Sury.union([
     TAG: "WithdrawRegistration",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     withdrawnAt: s.m(DateTime$Reventless.schema)
+  })),
+  Sury.$schema(s => ({
+    TAG: "ReleaseRegistration",
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    releasedAt: s.m(DateTime$Reventless.schema)
   }))
 ]);
 
@@ -191,6 +201,11 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationCompleted",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
+  })),
+  Sury.$schema(s => ({
+    TAG: "RegistrationReleased",
+    email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    releasedAt: s.m(DateTime$Reventless.schema)
   }))
 ]);
 
@@ -201,7 +216,8 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "RecordRegistrationCompleted",
   "Invite",
   "ReissueRegistrationChallenge",
-  "WithdrawRegistration"
+  "WithdrawRegistration",
+  "ReleaseRegistration"
 ]);
 
 function authorizationOf(param) {

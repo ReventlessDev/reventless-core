@@ -78,6 +78,7 @@ type consumedEvent =
     })
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})
+  | RegistrationReleased({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
 
 // `Register` names the role asked for, and the policy is read by it. The
 // registration records the roles it grants as
@@ -130,6 +131,9 @@ type command =
     })
   // Releases an address a registration holds and nobody has proved yet.
   | @noApi WithdrawRegistration({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
+  // Releases the address of an account that was erased, so its person may
+  // register again. Only the erasure workflow sends it, after the account is gone.
+  | @noApi ReleaseRegistration({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
 
 // Every outcome of a command relayed for an anonymous caller is a recorded fact
 // or a quiet no-op, never an error: an error is the one answer a caller could
@@ -181,3 +185,4 @@ type event =
     })
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})
+  | RegistrationReleased({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
