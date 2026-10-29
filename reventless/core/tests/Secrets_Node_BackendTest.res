@@ -139,3 +139,35 @@ describe("Secrets.fixed", () => {
     expect(provider.hash("known"))->toEqual(Ok("hashed:known"))
   )
 })
+
+describe("fingerprint", () => {
+  let key = "0123456789abcdef0123456789abcdef"
+  let keyed = Secrets_Node_Backend.make(~fingerprintKey=() => Some(key))
+
+  testSync("is deterministic, keyed and never the input", () => {
+    let a = keyed.fingerprint(~purpose="contactAddress", "alice@example.com")
+    expect(a)->toEqual(keyed.fingerprint(~purpose="contactAddress", "alice@example.com"))
+    switch a {
+    | Ok(value) =>
+      expect(value->String.includes("alice"))->toBe(false)
+      expect(value->String.length)->toBe(64)
+    | Error(_) => fail("expected a fingerprint")
+    }
+    let other = Secrets_Node_Backend.make(~fingerprintKey=() => Some(key ++ "-other"))
+    expect(other.fingerprint(~purpose="contactAddress", "alice@example.com") == a)->toBe(false)
+  })
+
+  testSync("two purposes never share a fingerprint", () =>
+    expect(
+      keyed.fingerprint(~purpose="contactAddress", "x") ==
+        keyed.fingerprint(~purpose="sourceAddress", "x"),
+    )->toBe(false)
+  )
+
+  testSync("is refused, never degraded, without a key or with a short one", () => {
+    let none = Secrets_Node_Backend.make(~fingerprintKey=() => None)
+    expect(none.fingerprint(~purpose="p", "x")->Result.isError)->toBe(true)
+    let short = Secrets_Node_Backend.make(~fingerprintKey=() => Some("short"))
+    expect(short.fingerprint(~purpose="p", "x")->Result.isError)->toBe(true)
+  })
+})

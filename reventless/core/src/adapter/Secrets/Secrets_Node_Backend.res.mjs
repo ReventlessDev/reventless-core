@@ -31,39 +31,81 @@ function _draw(length, from) {
   return out.join("");
 }
 
-function provider_randomToken(length, alphabet) {
-  if (length <= 0) {
-    return {
-      TAG: "Error",
-      _0: {
-        TAG: "Unavailable",
-        _0: `a token needs a positive length, not ` + length.toString()
-      }
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: _draw(length, Secrets$Reventless.characters(alphabet))
-    };
-  }
+let fingerprintKeyVariable = "REVENTLESS_FINGERPRINT_KEY";
+
+function fingerprintWith(key, purpose, input) {
+  return Nodecrypto.createHmac("sha256", key).update(purpose + `\u0000` + input).digest("hex");
 }
 
-function provider_hash(input) {
+function make(fingerprintKey) {
   return {
-    TAG: "Ok",
-    _0: NodeCrypto.sha256Hex(input)
+    randomToken: (length, alphabet) => {
+      if (length <= 0) {
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "Unavailable",
+            _0: `a token needs a positive length, not ` + length.toString()
+          }
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: _draw(length, Secrets$Reventless.characters(alphabet))
+        };
+      }
+    },
+    hash: input => ({
+      TAG: "Ok",
+      _0: NodeCrypto.sha256Hex(input)
+    }),
+    fingerprint: (purpose, input) => {
+      let key = fingerprintKey();
+      if (key !== undefined) {
+        if (key.length >= 32) {
+          return {
+            TAG: "Ok",
+            _0: fingerprintWith(key, purpose, input)
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: {
+              TAG: "Unavailable",
+              _0: `the fingerprint key is shorter than ` + (32).toString() + ` characters`
+            }
+          };
+        }
+      } else {
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "Unavailable",
+            _0: `no fingerprint key: set ` + fingerprintKeyVariable
+          }
+        };
+      }
+    }
   };
 }
 
-let provider = {
-  randomToken: provider_randomToken,
-  hash: provider_hash
-};
+let provider = make(() => {
+  let key = process.env[fingerprintKeyVariable];
+  if (key !== undefined && key !== "") {
+    return key;
+  }
+});
+
+let minimumFingerprintKeyLength = 32;
 
 export {
   _bytes,
   accepts,
   _draw,
+  fingerprintKeyVariable,
+  minimumFingerprintKeyLength,
+  fingerprintWith,
+  make,
   provider,
 }
-/* NodeCrypto Not a pure module */
+/* provider Not a pure module */

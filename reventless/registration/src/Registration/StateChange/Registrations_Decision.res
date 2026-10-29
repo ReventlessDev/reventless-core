@@ -17,6 +17,9 @@ type policyState =
   | Open(option<Reventless.DateTime.t>)
 
 type pending = {
+  /** The address the claim was made for: where its code goes, and what an
+      accepted proof makes an account for. */
+  address: Reventless.Email.t,
   /** When the claim was made, or its code last reissued: what a claim with no
       challenge out lapses from. */
   requestedAt: Reventless.DateTime.t,
@@ -60,27 +63,34 @@ let evolve = (state, event) =>
   switch event {
   | RegistrationOpened({?until}) => {...state, admission: Open(until)}
   | RegistrationClosed(_) => {...state, admission: Closed}
-  | RegistrationRequested({roles, requestedAt}) => {
+  | RegistrationRequested({address, roles, requestedAt}) => {
       ...state,
-      stage: Pending({requestedAt, roles, challenge: None, proofHash: None}),
+      stage: Pending({address, requestedAt, roles, challenge: None, proofHash: None}),
     }
-  | RegistrationInvited({roles, invitedBy, invitedAt}) => {
+  | RegistrationInvited({address, roles, invitedBy, invitedAt}) => {
       ...state,
-      stage: Pending({requestedAt: invitedAt, roles, invitedBy, challenge: None, proofHash: None}),
+      stage: Pending({
+        address,
+        requestedAt: invitedAt,
+        roles,
+        invitedBy,
+        challenge: None,
+        proofHash: None,
+      }),
     }
   | RegistrationExpired(_) | RegistrationWithdrawn(_) => {...state, stage: Unclaimed}
   | RegistrationAttemptedOnTakenAddress({attemptedAt}) => {
       ...state,
       lastNoticeAt: Some(attemptedAt),
     }
-  | RegistrationChallengeIssued({email, proofHash, issuedAt}) =>
+  | RegistrationChallengeIssued({proofHash, issuedAt}) =>
     switch state.stage {
     | Pending(p) => {
         ...state,
         stage: Pending({
           ...p,
           challenge: Some({
-            contact: ByEmail(Reventless.Email.unsafe(email->ContactAddressId.toString)),
+            contact: ByEmail(p.address),
             purpose: purposeOf(p),
             issuedAt,
             attempts: 0,
@@ -166,7 +176,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
     // decision: the policy is consulted before the address, so a closed
     // deployment sends nothing — not even the notice to an address that is
     // already registered.
-    | Register({email, role, requestedAt}) =>
+    | Register({email, address, role, requestedAt}) =>
       if !admits(state.admission, ~table=App.table, ~role, ~at=requestedAt) {
         Ok([])
       } else {
@@ -177,7 +187,8 @@ module Make = (App: Reventless.Admission.Declaration) => {
           switch state.lastNoticeAt {
           | Some(last) if Guards.elapsedSeconds(~from=last, ~to_=requestedAt) < noticeCooldown =>
             Ok([])
-          | _ => Ok([RegistrationAttemptedOnTakenAddress({email, attemptedAt: requestedAt})])
+          | _ =>
+            Ok([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: requestedAt})])
           }
         | Verified => Ok([])
         // A visitor cannot take over a claim, an inviter's included, while it holds.
@@ -185,22 +196,23 @@ module Make = (App: Reventless.Admission.Declaration) => {
         | Pending(_) =>
           Ok([
             RegistrationExpired({email: email}),
-            RegistrationRequested({email, roles, requestedAt}),
+            RegistrationRequested({email, address, roles, requestedAt}),
           ])
-        | Unclaimed => Ok([RegistrationRequested({email, roles, requestedAt})])
+        | Unclaimed => Ok([RegistrationRequested({email, address, roles, requestedAt})])
         }
       }
 
     // The policy is not consulted: it says whether visitors may sign themselves
     // up, and an invitation is not that. The table is, because it is the hard
     // cap on how each role is admitted.
-    | Invite({email, roles, invitedBy, requestedAt}) =>
+    | Invite({email, address, roles, invitedBy, requestedAt}) =>
       switch roles->Array.find(r => !isByInvitation(App.table, r)) {
       | Some(role) => Error(NotByInvitation({role: (role :> string)}))
       | None if roles == [] => Error(NoRoleToGrant)
       | None =>
         let invited = RegistrationInvited({
           email,
+          address,
           roles: roles->Array.map(r => (r :> string)),
           invitedBy,
           invitedAt: requestedAt,
@@ -219,7 +231,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
       switch state.stage {
       | Pending(p) =>
         switch Guards.onIssueRequested(
-          ~contact=ByEmail(Reventless.Email.unsafe(email->ContactAddressId.toString)),
+          ~contact=ByEmail(p.address),
           ~existing=p.challenge,
           ~now=issuedAt,
           ~policy=policyOf(p),
@@ -242,7 +254,12 @@ module Make = (App: Reventless.Admission.Declaration) => {
         if Guards.elapsedSeconds(~from=c.issuedAt, ~to_=requestedAt) >=
         policyOf(p).resendCooldown =>
         Ok([
-          RegistrationChallengeReissued({email, reissuedAt: requestedAt, invitedBy: ?p.invitedBy}),
+          RegistrationChallengeReissued({
+            email,
+            address: p.address,
+            reissuedAt: requestedAt,
+            invitedBy: ?p.invitedBy,
+          }),
         ])
       | _ => Ok([])
       }
@@ -257,7 +274,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
           ~now=presentedAt,
           ~policy=policyOf(p),
         ) {
-        | Settle => Ok([RegistrationProofAccepted({email, roles, proofHash})])
+        | Settle => Ok([RegistrationProofAccepted({email, address: p.address, roles, proofHash})])
         | Refuse(reason) => Ok([RegistrationProofRefused({email, reason: refusalReason(reason)})])
         }
       // No challenge to answer: nothing to count it against, and nothing to say.

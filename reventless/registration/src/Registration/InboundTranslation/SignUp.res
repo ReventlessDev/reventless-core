@@ -24,6 +24,7 @@ type externalInput = {email: string, role?: string}
 type command =
   | Register({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       role: Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })

@@ -16,7 +16,7 @@ function defaultRole(table) {
 }
 
 function Make(App) {
-  let translate = async (input, param, param$1) => {
+  let translate = async (input, capabilities, param) => {
     let match = Email$Reventless.fromString(input.email.trim());
     let match$1 = input.role;
     if (match.TAG !== "Ok") {
@@ -32,14 +32,23 @@ function Make(App) {
         _0: "say which role to sign up for"
       };
     }
-    let email = match._0.toLowerCase();
+    let address = ContactAddressId$ReventlessRegistration.normalize(match._0);
+    let why = ContactAddressId$ReventlessRegistration.fingerprint(capabilities.secrets, address);
+    if (why.TAG !== "Ok") {
+      return {
+        TAG: "Error",
+        _0: why._0
+      };
+    }
+    let id = why._0;
     return {
       TAG: "Ok",
       _0: [[
-          email,
+          ContactAddressId$ReventlessRegistration.toString(id),
           {
             TAG: "Register",
-            email: ContactAddressId$ReventlessRegistration.makeFromString(email),
+            email: id,
+            address: address,
             role: role,
             requestedAt: new Date().toISOString()
           }

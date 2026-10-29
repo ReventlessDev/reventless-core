@@ -15,6 +15,12 @@
 // translations in this chapter: they stamp the time a request arrived, and they
 // hash a presented proof so its plaintext never reaches this slice or the log.
 //
+// **The address is not the key.** `email` is the address's keyed fingerprint
+// (`ContactAddressId`), which is what tags and partitions the ledger; an index key
+// cannot be erased. The address itself rides in `address`, on the events that must
+// reach the person and on the commands that start a claim, so it lives only where
+// a payload field can be encrypted or erased.
+//
 // **Its answers do not tell an anonymous caller anything.** A closed policy, a
 // pending registration and an address already registered all leave the door
 // answering the same way; only what is sent to the address differs.
@@ -35,24 +41,28 @@ type consumedEvent =
     })
   | RegistrationRequested({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationInvited({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
   | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
@@ -60,7 +70,12 @@ type consumedEvent =
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
-  | RegistrationProofAccepted({email: ContactAddressId.t, roles: array<string>, proofHash: string})
+  | RegistrationProofAccepted({
+      email: ContactAddressId.t,
+      address: Reventless.Email.t,
+      roles: array<string>,
+      proofHash: string,
+    })
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})
 
@@ -78,6 +93,7 @@ type command =
   | @noApi
   Register({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })
@@ -100,6 +116,7 @@ type command =
   | @noApi
   Invite({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       invitedBy: string,
       requestedAt: Reventless.DateTime.t,
@@ -127,24 +144,28 @@ type error =
 type event =
   | RegistrationRequested({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationExpired({email: ContactAddressId.t})
   | RegistrationInvited({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
   | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
       email: ContactAddressId.t,
+      address: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
@@ -152,6 +173,11 @@ type event =
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
-  | RegistrationProofAccepted({email: ContactAddressId.t, roles: array<string>, proofHash: string})
+  | RegistrationProofAccepted({
+      email: ContactAddressId.t,
+      address: Reventless.Email.t,
+      roles: array<string>,
+      proofHash: string,
+    })
   | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
   | RegistrationCompleted({email: ContactAddressId.t})

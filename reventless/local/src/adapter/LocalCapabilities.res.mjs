@@ -4,6 +4,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
+import * as LocalFingerprintKey$ReventlessLocal from "./LocalFingerprintKey.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Stash_Memory_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Stash/Stash_Memory_Backend.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
@@ -64,7 +65,7 @@ function capabilities() {
     geocode: Capabilities$Reventless.none.geocode,
     messaging: Messaging_Log_Backend$ReventlessCore.provider(messagingSenderRef.contents),
     identityProvider: identityProviderRef.contents,
-    secrets: Secrets_Node_Backend$ReventlessCore.provider,
+    secrets: Secrets_Node_Backend$ReventlessCore.make(LocalFingerprintKey$ReventlessLocal.get),
     stash: stash.contents
   };
 }

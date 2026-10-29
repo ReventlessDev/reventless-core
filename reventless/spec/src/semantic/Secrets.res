@@ -40,6 +40,14 @@ type t = {
         it. Deterministic: the same input always gives the same digest, which is
         what lets a presented secret be compared against a held one. */
   hash: string => result<string, failure>,
+  /** A keyed, deterministic digest under a key the deployment holds and never
+      rotates: the same input gives the same fingerprint on every run, and nobody
+      without the key can compute one. For a value that must be found again by
+      itself without being stored as itself, such as an email address used as a
+      tag. `purpose` separates uses, so two of them never share a fingerprint for
+      the same input. An address is enumerable, so the key is what protects it:
+      a fingerprint is personal data while the key exists. */
+  fingerprint: (~purpose: string, string) => result<string, failure>,
 }
 
 /** The characters each alphabet draws from. Exposed so an implementation and a
@@ -60,7 +68,12 @@ that would be safe to hand back.
 let unavailable = (~reason: string): t => {
   randomToken: (~length as _, ~alphabet as _) => Error(Unavailable(reason)),
   hash: _ => Error(Unavailable(reason)),
+  fingerprint: (~purpose as _, _) => Error(Unavailable(reason)),
 }
+
+/** The fingerprint `fixed` answers when a test states none: readable, so a
+    scenario can name the tag it expects, and keyed by `purpose` like the real one. */
+let fixedFingerprint = (~purpose: string, input: string) => `fp:${purpose}:${input}`
 
 /**
 A source that returns what it was given, for a test that needs to know the
@@ -70,7 +83,18 @@ Here rather than in each suite because a consumer testing issuance needs exactly
 this and should not be inventing it — and because a fixed generator written per
 suite is one that eventually differs from the real one's alphabet.
 */
-let fixed = (~token: string, ~hash as hashOf: string => string): t => {
+let fixed = (
+  ~token: string,
+  ~hash as hashOf: string => string,
+  ~fingerprint as fingerprintOf: option<(~purpose: string, string) => string>=?,
+): t => {
   randomToken: (~length as _, ~alphabet as _) => Ok(token),
   hash: input => Ok(hashOf(input)),
+  fingerprint: (~purpose, input) =>
+    Ok(
+      switch fingerprintOf {
+      | Some(f) => f(~purpose, input)
+      | None => fixedFingerprint(~purpose, input)
+      },
+    ),
 }

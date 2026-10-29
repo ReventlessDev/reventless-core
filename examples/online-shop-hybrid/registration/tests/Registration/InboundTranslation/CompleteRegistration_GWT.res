@@ -24,7 +24,7 @@ describe("CompleteRegistration InboundTranslationSlice", () => {
   // scenario-id: 06245209-d526-44a9-8b8e-aac5ab65355b
   test("the proof travels as its hash", () =>
     whenInput({email: "Alice@Example.com", proof: "the-secret", password})->thenSubmits(
-      `${aliceAddress}|${aliceAddress}|hash:the-secret`,
+      `${aliceId}|${aliceId}|hash:the-secret`,
     )
   )
 

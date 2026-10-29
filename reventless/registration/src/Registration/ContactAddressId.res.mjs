@@ -6,11 +6,32 @@ let include = Id$Reventless.Make({
   key: "contactAddress"
 });
 
+let makeFromString = include.makeFromString;
+
+let purpose = "contactAddress";
+
+function normalize(address) {
+  return address.trim().toLowerCase();
+}
+
+function fingerprint(secrets, address) {
+  let value = secrets.fingerprint(purpose, address.trim().toLowerCase());
+  if (value.TAG === "Ok") {
+    return {
+      TAG: "Ok",
+      _0: makeFromString(value._0)
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `cannot fingerprint the address: ` + value._0._0
+    };
+  }
+}
+
 let schema = include.schema;
 
 let make = include.make;
-
-let makeFromString = include.makeFromString;
 
 let toString = include.toString;
 
@@ -25,5 +46,8 @@ export {
   toString,
   cmp,
   key,
+  purpose,
+  normalize,
+  fingerprint,
 }
 /* include Not a pure module */

@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
@@ -14,6 +15,7 @@ let externalInputSchema = Sury.$schema(s => ({
 let commandSchema = Sury.$schema(s => ({
   TAG: "Register",
   email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+  address: s.m(Email$Reventless.schema),
   role: s.m(Role$Reventless.nameSchema),
   requestedAt: s.m(DateTime$Reventless.schema)
 }));

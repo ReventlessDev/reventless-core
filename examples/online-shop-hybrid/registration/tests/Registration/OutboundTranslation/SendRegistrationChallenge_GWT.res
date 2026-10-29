@@ -8,10 +8,11 @@ module Outcome = ReventlessGwt.Outcome
 // address gets a notice and nothing else — the difference the caller who
 // started it never sees.
 
-let fresh: outboundItem = {email: aliceAddress, alreadyRegistered: false}
-let taken: outboundItem = {email: aliceAddress, alreadyRegistered: true}
+let fresh: outboundItem = {email: aliceId, address: aliceMail, alreadyRegistered: false}
+let taken: outboundItem = {email: aliceId, address: aliceMail, alreadyRegistered: true}
 let invitation: outboundItem = {
-  email: aliceAddress,
+  email: aliceId,
+  address: aliceMail,
   alreadyRegistered: false,
   invited: true,
   roles: [merchandiserName],
@@ -19,7 +20,8 @@ let invitation: outboundItem = {
 /** A reissued invitation's code: worded as an invitation, but the event does
     not say as what. */
 let reissuedInvitation: outboundItem = {
-  email: aliceAddress,
+  email: aliceId,
+  address: aliceMail,
   alreadyRegistered: false,
   invited: true,
 }
@@ -48,24 +50,25 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   // scenario-id: 4095f5ec-db7f-40f7-a851-a268a5a779df
   testSync("a request is collected once per address and time", () =>
     givenEvent(
-      RegistrationRequested({email: aliceAddress, requestedAt: "2026-10-24T09:00:00.000Z"}),
+      RegistrationRequested({email: aliceId, address: aliceMail, requestedAt: "2026-10-24T09:00:00.000Z"}),
     )
     ->whenCollect
-    ->thenTodos([("alice@example.com:2026-10-24T09:00:00.000Z", fresh)])
+    ->thenTodos([("fp:contactAddress:alice@example.com:2026-10-24T09:00:00.000Z", fresh)])
   )
 
   // scenario-id: 6102d230-f0c8-46c1-967f-d82fb1f97226
   testSync("an invitation is collected as one, apart from a sign-up at the same time", () =>
     givenEvent(
       RegistrationInvited({
-        email: aliceAddress,
+        email: aliceId,
+        address: aliceMail,
         roles: [merchandiserName],
         invitedBy: "u_inviter",
         invitedAt: "2026-10-24T09:00:00.000Z",
       }),
     )
     ->whenCollect
-    ->thenTodos([("alice@example.com:invited:2026-10-24T09:00:00.000Z", invitation)])
+    ->thenTodos([("fp:contactAddress:alice@example.com:invited:2026-10-24T09:00:00.000Z", invitation)])
   )
 
   // A reissued code is worded as its claim was.
@@ -73,25 +76,26 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("a reissued invitation's code is collected as an invitation", () =>
     givenEvent(
       RegistrationChallengeReissued({
-        email: aliceAddress,
+        email: aliceId,
+        address: aliceMail,
         reissuedAt: "2026-10-25T09:00:00.000Z",
         invitedBy: "u_inviter",
       }),
     )
     ->whenCollect
-    ->thenTodos([("alice@example.com:reissued:2026-10-25T09:00:00.000Z", reissuedInvitation)])
+    ->thenTodos([("fp:contactAddress:alice@example.com:reissued:2026-10-25T09:00:00.000Z", reissuedInvitation)])
   )
 
   // scenario-id: 90b3573e-65c5-48c5-935a-3bcfa702d8b5
   testSync("a reissued sign-up's code is collected as a sign-up", () =>
     givenEvent(
-      RegistrationChallengeReissued({email: aliceAddress, reissuedAt: "2026-10-25T09:00:00.000Z"}),
+      RegistrationChallengeReissued({email: aliceId, address: aliceMail, reissuedAt: "2026-10-25T09:00:00.000Z"}),
     )
     ->whenCollect
     ->thenTodos([
       (
-        "alice@example.com:reissued:2026-10-25T09:00:00.000Z",
-        {email: aliceAddress, alreadyRegistered: false, invited: false},
+        "fp:contactAddress:alice@example.com:reissued:2026-10-25T09:00:00.000Z",
+        {email: aliceId, address: aliceMail, alreadyRegistered: false, invited: false},
       ),
     ])
   )
@@ -101,7 +105,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     givenTodo("t1", fresh)
     ->givenCapabilities(withSecrets())
     ->whenTranslated
-    ->thenLedgerTold("alice@example.com|hashed:known-secret")
+    ->thenLedgerTold("fp:contactAddress:alice@example.com|hashed:known-secret")
   )
 
   // scenario-id: 4e43e47e-e5b1-4c5a-9619-a83ec78a9fb8

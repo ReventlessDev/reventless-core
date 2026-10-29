@@ -1563,6 +1563,7 @@ input Registration_CreateRegisteredPrincipalTodoFilter {
 }
 
 type Registration_CreateRegisteredPrincipalTodoItem {
+  address: String!
   email: String!
   proofHash: String!
   roles: [ID!]!
@@ -1683,6 +1684,7 @@ input Registration_SendRegistrationChallengeTodoFilter {
 }
 
 type Registration_SendRegistrationChallengeTodoItem {
+  address: String!
   alreadyRegistered: Boolean!
   email: String!
   invited: Boolean

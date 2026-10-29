@@ -92,6 +92,6 @@ let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
   identityProvider: identityProviderRef.contents,
-  secrets: ReventlessCore.Secrets_Node_Backend.provider,
+  secrets: ReventlessCore.Secrets_Node_Backend.make(~fingerprintKey=LocalFingerprintKey.get),
   stash: stash.contents,
 }

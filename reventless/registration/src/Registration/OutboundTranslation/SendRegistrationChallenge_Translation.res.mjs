@@ -14,6 +14,7 @@ function collect(event, param) {
           email + `:` + event.requestedAt,
           {
             email: email,
+            address: event.address,
             alreadyRegistered: false
           }
         ]];
@@ -23,6 +24,7 @@ function collect(event, param) {
           email$1 + `:taken:` + event.attemptedAt,
           {
             email: email$1,
+            address: event.address,
             alreadyRegistered: true
           }
         ]];
@@ -32,6 +34,7 @@ function collect(event, param) {
           email$2 + `:invited:` + event.invitedAt,
           {
             email: email$2,
+            address: event.address,
             alreadyRegistered: false,
             invited: true,
             roles: event.roles
@@ -43,6 +46,7 @@ function collect(event, param) {
           email$3 + `:reissued:` + event.reissuedAt,
           {
             email: email$3,
+            address: event.address,
             alreadyRegistered: false,
             invited: Stdlib_Option.isSome(event.invitedBy)
           }
@@ -72,10 +76,10 @@ function invitationBody(token, roles) {
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.";
 
-function send(capabilities, email, subject, body) {
+function send(capabilities, address, subject, body) {
   return capabilities.messaging.send({
     TAG: "ToEmail",
-    _0: email
+    _0: address
   }, {
     subject: subject,
     body: body
@@ -84,7 +88,7 @@ function send(capabilities, email, subject, body) {
 
 async function translate(_id, item, capabilities) {
   if (item.alreadyRegistered) {
-    let failure = await send(capabilities, item.email, "Someone tried to register with your address", noticeBody);
+    let failure = await send(capabilities, item.address, "Someone tried to register with your address", noticeBody);
     if (failure.TAG === "Ok") {
       return {
         TAG: "Ok",
@@ -114,7 +118,7 @@ async function translate(_id, item, capabilities) {
       _0: `cannot hash a secret: ` + proofHash._0._0
     };
   }
-  let failure$1 = await send(capabilities, item.email, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1, item.roles) : challengeBody(token$1));
+  let failure$1 = await send(capabilities, item.address, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1, item.roles) : challengeBody(token$1));
   if (failure$1.TAG === "Ok") {
     return {
       TAG: "Ok",

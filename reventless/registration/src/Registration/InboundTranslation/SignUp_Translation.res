@@ -13,7 +13,11 @@ module Make = (App: Reventless.Admission.Declaration) => {
   module Spec = Spec
   let moduleUrl = moduleUrl
 
-  let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =>
+  let translate = async (
+    input: externalInput,
+    ~capabilities: Reventless.Capabilities.t,
+    ~caller as _,
+  ) =>
     switch (Reventless.Email.fromString(input.email->String.trim), input.role) {
     | (Error(_), _) => Error("not an email address")
     | (Ok(email), role) =>
@@ -24,17 +28,24 @@ module Make = (App: Reventless.Admission.Declaration) => {
       ->Option.orElse(defaultRole(App.table)) {
       | None => Error("say which role to sign up for")
       | Some(role) =>
-        let email = email->Reventless.Email.toString->String.toLowerCase
-        Ok([
-          (
-            email,
-            Register({
-              email: ContactAddressId.makeFromString(email),
-              role,
-              requestedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
-            }),
-          ),
-        ])
+        let address = email->ContactAddressId.normalize
+        switch ContactAddressId.fingerprint(capabilities.secrets, address) {
+        | Error(why) => Error(why)
+        | Ok(id) =>
+          // The envelope id is the fingerprint too: an id is stored beside the
+          // event, where the address must not be.
+          Ok([
+            (
+              id->ContactAddressId.toString,
+              Register({
+                email: id,
+                address,
+                role,
+                requestedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
+              }),
+            ),
+          ])
+        }
       }
     }
 }

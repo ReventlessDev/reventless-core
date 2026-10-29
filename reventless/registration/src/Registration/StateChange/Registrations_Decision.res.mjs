@@ -4,7 +4,6 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Registrations$ReventlessRegistration from "./Registrations.res.mjs";
-import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 import * as RegistrationChallenge$ReventlessRegistration from "../../RegistrationChallenge.res.mjs";
 import * as ContactVerification_Guards$ReventlessRegistration from "../../ContactVerification_Guards.res.mjs";
 
@@ -45,6 +44,7 @@ function evolve(state, event) {
         stage: {
           TAG: "Pending",
           _0: {
+            address: event.address,
             requestedAt: event.requestedAt,
             roles: event.roles,
             challenge: undefined,
@@ -59,6 +59,7 @@ function evolve(state, event) {
         stage: {
           TAG: "Pending",
           _0: {
+            address: event.address,
             requestedAt: event.invitedAt,
             roles: event.roles,
             invitedBy: event.invitedBy,
@@ -109,7 +110,7 @@ function evolve(state, event) {
           _0: (newrecord$1.proofHash = event.proofHash, newrecord$1.challenge = {
             contact: {
               TAG: "ByEmail",
-              _0: ContactAddressId$ReventlessRegistration.toString(event.email)
+              _0: p$2.address
             },
             purpose: RegistrationChallenge$ReventlessRegistration.purposeOf(p$2.invitedBy),
             issuedAt: event.issuedAt,
@@ -210,6 +211,7 @@ function Make(App) {
       case "Register" :
         let requestedAt = command.requestedAt;
         let role = command.role;
+        let address = command.address;
         let email = command.email;
         if (!admits(state.admission, App.table, role, requestedAt)) {
           return {
@@ -231,6 +233,7 @@ function Make(App) {
                 {
                   TAG: "RegistrationRequested",
                   email: email,
+                  address: address,
                   roles: roles,
                   requestedAt: requestedAt
                 }
@@ -250,6 +253,7 @@ function Make(App) {
               _0: [{
                   TAG: "RegistrationRequested",
                   email: email,
+                  address: address,
                   roles: roles,
                   requestedAt: requestedAt
                 }]
@@ -273,6 +277,7 @@ function Make(App) {
                   _0: [{
                       TAG: "RegistrationAttemptedOnTakenAddress",
                       email: email,
+                      address: address,
                       attemptedAt: requestedAt
                     }]
                 };
@@ -283,6 +288,7 @@ function Make(App) {
                 _0: [{
                     TAG: "RegistrationAttemptedOnTakenAddress",
                     email: email,
+                    address: address,
                     attemptedAt: requestedAt
                   }]
               };
@@ -290,7 +296,6 @@ function Make(App) {
         }
       case "IssueRegistrationChallenge" :
         let issuedAt = command.issuedAt;
-        let email$1 = command.email;
         let p$1 = state.stage;
         if (typeof p$1 !== "object") {
           return {
@@ -301,14 +306,14 @@ function Make(App) {
         let p$2 = p$1._0;
         let match = ContactVerification_Guards$ReventlessRegistration.onIssueRequested({
           TAG: "ByEmail",
-          _0: ContactAddressId$ReventlessRegistration.toString(email$1)
+          _0: p$2.address
         }, p$2.challenge, issuedAt, RegistrationChallenge$ReventlessRegistration.policyFor(RegistrationChallenge$ReventlessRegistration.purposeOf(p$2.invitedBy)));
         if (match === "Issue") {
           return {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationChallengeIssued",
-                email: email$1,
+                email: command.email,
                 proofHash: command.proofHash,
                 issuedAt: issuedAt
               }]
@@ -321,7 +326,7 @@ function Make(App) {
         }
       case "SubmitRegistrationProof" :
         let proofHash = command.proofHash;
-        let email$2 = command.email;
+        let email$1 = command.email;
         let p$3 = state.stage;
         if (typeof p$3 !== "object") {
           return {
@@ -350,7 +355,8 @@ function Make(App) {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationProofAccepted",
-                email: email$2,
+                email: email$1,
+                address: p$4.address,
                 roles: p$4.roles,
                 proofHash: proofHash
               }]
@@ -360,7 +366,7 @@ function Make(App) {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationProofRefused",
-                email: email$2,
+                email: email$1,
                 reason: refusalReason(reason._0)
               }]
           };
@@ -391,7 +397,7 @@ function Make(App) {
       case "Invite" :
         let requestedAt$1 = command.requestedAt;
         let roles$1 = command.roles;
-        let email$3 = command.email;
+        let email$2 = command.email;
         let role$1 = roles$1.find(r => !isByInvitation(App.table, r));
         if (role$1 !== undefined) {
           return {
@@ -408,13 +414,15 @@ function Make(App) {
             _0: "NoRoleToGrant"
           };
         }
-        let invited_1 = roles$1.map(r => r);
-        let invited_2 = command.invitedBy;
+        let invited_1 = command.address;
+        let invited_2 = roles$1.map(r => r);
+        let invited_3 = command.invitedBy;
         let invited = {
           TAG: "RegistrationInvited",
-          email: email$3,
-          roles: invited_1,
-          invitedBy: invited_2,
+          email: email$2,
+          address: invited_1,
+          roles: invited_2,
+          invitedBy: invited_3,
           invitedAt: requestedAt$1
         };
         let p$5 = state.stage;
@@ -425,7 +433,7 @@ function Make(App) {
               _0: [
                 {
                   TAG: "RegistrationExpired",
-                  email: email$3
+                  email: email$2
                 },
                 invited
               ]
@@ -468,6 +476,7 @@ function Make(App) {
               _0: [{
                   TAG: "RegistrationChallengeReissued",
                   email: command.email,
+                  address: p$7.address,
                   reissuedAt: requestedAt$2,
                   invitedBy: p$7.invitedBy
                 }]

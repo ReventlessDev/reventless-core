@@ -16,12 +16,18 @@
 type consumedEvent =
   | RegistrationProofAccepted({
       email: string,
+      address: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       proofHash: string,
     })
 
 @schema
-type outboundItem = {email: string, roles: array<Reventless.Role.name>, proofHash: string}
+type outboundItem = {
+  email: string,
+  address: Reventless.Email.t,
+  roles: array<Reventless.Role.name>,
+  proofHash: string,
+}
 
 @schema
 type inboundCommand = RecordRegistrationCompleted({email: ContactAddressId.t})

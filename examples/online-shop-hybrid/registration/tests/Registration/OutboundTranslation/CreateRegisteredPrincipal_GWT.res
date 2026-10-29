@@ -5,7 +5,7 @@ open Registration_Examples
 // Turning an accepted proof into an account. The password is taken from the
 // stash the door put it in, once, and handed to the identity provider.
 
-let item: outboundItem = {email: aliceAddress, roles: [shopper], proofHash: "h"}
+let item: outboundItem = {email: aliceId, address: aliceMail, roles: [shopper], proofHash: "h"}
 let held = () => fakes(~stashed=[("h", goodPassword)], ())
 
 let created: ReventlessGwt.Capabilities_Fake.call = PrincipalCreated({
@@ -44,7 +44,7 @@ describe("CreateRegisteredPrincipal OutboundTranslationSlice", () => {
     givenTodo("t1", item)
     ->givenCapabilities(held())
     ->whenTranslated
-    ->thenCommand(aliceAddress, RecordRegistrationCompleted({email: alice}))
+    ->thenCommand(aliceId, RecordRegistrationCompleted({email: alice}))
   )
 
   // An address the provider already holds is as registered as one made here.
@@ -59,7 +59,7 @@ describe("CreateRegisteredPrincipal OutboundTranslationSlice", () => {
       ),
     )
     ->whenTranslated
-    ->thenCommand(aliceAddress, RecordRegistrationCompleted({email: alice}))
+    ->thenCommand(aliceId, RecordRegistrationCompleted({email: alice}))
   )
 
   // scenario-id: 00c97b0d-231a-420e-8570-665945551631

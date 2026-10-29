@@ -1,8 +1,9 @@
 # Plan: a personal field is marked, redacted, and encrypted at the seam
 
 **Date:** 2026-10-25<br/>
-**Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope) and
-[PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed) built 2026-10-29; PD1 revised the
+**Status:** In progress. [PD1](#pd1-the-formats-written-down), [PD3](#pd3-the-envelope),
+[PD4](#pd4-an-uploads-path-carries-nothing-a-person-typed) and the format half of
+[PD5](#pd5-the-registration-ledgers-address-id) built 2026-10-29; PD1 revised the
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
@@ -287,6 +288,20 @@ the format change.
 **Exit:** no event of the ledger carries an address outside a `@pii` field; the tag and partition are
 the fingerprint; the self-registration walk runs end to end on the local platform; the enumeration-safe
 answers are unchanged.
+
+**Built 2026-10-29**, the format half. `Secrets.t` has a keyed `fingerprint(~purpose, input)`: HMAC-SHA256
+under the deployment's key, refused without one. On a deployed runtime the key is
+`REVENTLESS_FINGERPRINT_KEY`; the local platform resolves it as it resolves its token secret, pinned,
+else `.reventless/fingerprint-key` minted once, else per process. `ContactAddressId` is the fingerprint
+of the trimmed, lower-cased address under the purpose `contactAddress`, and so is every envelope id the
+doors and translations give a ledger command. The address rides in `address: Reventless.Email.t` on
+`Register`, `Invite` and the five events that must reach the person (requested, invited, reissued,
+attempted on a taken address, proof accepted); a pending claim keeps it in its state for the later ones.
+The translations' work rows are keyed by the fingerprint and carry the address beside it. Two parts
+are open: the `@pii` marker on `address` waits for [PD2](#pd2-the-recording-pii), and the AWS key
+waits for the self-registration door, which is local only. The shared key also serves the keyed hash
+of the request limit (DW6), under its own purpose. Breaking for callers of `Invite`: they now send the
+address and a fingerprinted id.
 
 ### PD6: no log line holds a personal value
 

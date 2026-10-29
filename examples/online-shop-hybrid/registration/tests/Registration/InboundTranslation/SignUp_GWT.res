@@ -26,7 +26,7 @@ describe("SignUp InboundTranslationSlice", () => {
   // scenario-id: 469fba42-1c66-4548-8014-a5258953e14b
   test("an address registers for the role it names, as one spelling", () =>
     whenInput({email: "  Alice@Example.com ", role: shopperName})->thenRegisters(
-      `${aliceAddress}|${aliceAddress}|${shopperName}`,
+      `${aliceId}|${aliceId}|${shopperName}`,
     )
   )
 
@@ -34,7 +34,7 @@ describe("SignUp InboundTranslationSlice", () => {
   // scenario-id: 5a9c3e7b-2d4f-4b6a-8c1e-7f0d2a4b6c8e
   test("a sign-up naming no role asks for the one self-service role", () =>
     whenInput({email: aliceAddress})->thenRegisters(
-      `${aliceAddress}|${aliceAddress}|${shopperName}`,
+      `${aliceId}|${aliceId}|${shopperName}`,
     )
   )
 
@@ -43,7 +43,7 @@ describe("SignUp InboundTranslationSlice", () => {
   // scenario-id: 9e1b7d3f-6a2c-4e8b-b0d4-3c5a7e9f1b2d
   test("a role no visitor may have is relayed, not refused at the door", () =>
     whenInput({email: aliceAddress, role: merchandiserName})->thenRegisters(
-      `${aliceAddress}|${aliceAddress}|${merchandiserName}`,
+      `${aliceId}|${aliceId}|${merchandiserName}`,
     )
   )
 

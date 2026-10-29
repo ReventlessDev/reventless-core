@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
@@ -20,6 +21,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationRequested",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
@@ -30,6 +32,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationInvited",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     invitedBy: s.m(Sury.string),
     invitedAt: s.m(DateTime$Reventless.schema)
@@ -37,6 +40,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeReissued",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     reissuedAt: s.m(DateTime$Reventless.schema),
     invitedBy: s.m(Sury.$option(Sury.string))
   })),
@@ -48,6 +52,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationAttemptedOnTakenAddress",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     attemptedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
@@ -59,6 +64,7 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     proofHash: s.m(Sury.string)
   })),
@@ -77,6 +83,7 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Register",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     role: s.m(DcbTag$Reventless.mark(Role$Reventless.nameSchema)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
@@ -99,6 +106,7 @@ let commandSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "Invite",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Role$Reventless.nameSchema)),
     invitedBy: s.m(Sury.string),
     requestedAt: s.m(DateTime$Reventless.schema)
@@ -127,6 +135,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationRequested",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     requestedAt: s.m(DateTime$Reventless.schema)
   })),
@@ -137,6 +146,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationInvited",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     invitedBy: s.m(Sury.string),
     invitedAt: s.m(DateTime$Reventless.schema)
@@ -144,6 +154,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeReissued",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     reissuedAt: s.m(DateTime$Reventless.schema),
     invitedBy: s.m(Sury.$option(Sury.string))
   })),
@@ -155,6 +166,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationAttemptedOnTakenAddress",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     attemptedAt: s.m(DateTime$Reventless.schema)
   })),
   Sury.$schema(s => ({
@@ -166,6 +178,7 @@ let eventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",
     email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+    address: s.m(Email$Reventless.schema),
     roles: s.m(Sury.array(Sury.string)),
     proofHash: s.m(Sury.string)
   })),

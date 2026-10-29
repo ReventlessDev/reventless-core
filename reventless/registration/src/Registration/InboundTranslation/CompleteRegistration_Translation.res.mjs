@@ -18,25 +18,32 @@ async function translate(input, capabilities, param) {
       _0: `a password needs at least ` + (12).toString() + ` characters`
     };
   }
-  let email$1 = email._0.toLowerCase();
-  let proofHash = capabilities.secrets.hash(input.proof.trim());
-  if (proofHash.TAG !== "Ok") {
+  let match = ContactAddressId$ReventlessRegistration.fingerprint(capabilities.secrets, email._0);
+  let match$1 = capabilities.secrets.hash(input.proof.trim());
+  if (match.TAG !== "Ok") {
     return {
       TAG: "Error",
-      _0: `cannot hash the proof: ` + proofHash._0._0
+      _0: match._0
     };
   }
-  let proofHash$1 = proofHash._0;
-  let failure = await capabilities.stash.put(proofHash$1, input.password, 600);
+  let id = match._0;
+  if (match$1.TAG !== "Ok") {
+    return {
+      TAG: "Error",
+      _0: `cannot hash the proof: ` + match$1._0._0
+    };
+  }
+  let proofHash = match$1._0;
+  let failure = await capabilities.stash.put(proofHash, input.password, 600);
   if (failure.TAG === "Ok") {
     return {
       TAG: "Ok",
       _0: [[
-          email$1,
+          ContactAddressId$ReventlessRegistration.toString(id),
           {
             TAG: "SubmitRegistrationProof",
-            email: ContactAddressId$ReventlessRegistration.makeFromString(email$1),
-            proofHash: proofHash$1,
+            email: id,
+            proofHash: proofHash,
             presentedAt: new Date().toISOString()
           }
         ]]

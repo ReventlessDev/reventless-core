@@ -4,25 +4,28 @@
 // or a code reissued, is new work rather than work already done.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationRequested({email, requestedAt}) => [
-      (`${email}:${requestedAt->Reventless.DateTime.toString}`, {email, alreadyRegistered: false}),
+  | RegistrationRequested({email, address, requestedAt}) => [
+      (
+        `${email}:${requestedAt->Reventless.DateTime.toString}`,
+        {email, address, alreadyRegistered: false},
+      ),
     ]
-  | RegistrationInvited({email, roles, invitedAt}) => [
+  | RegistrationInvited({email, address, roles, invitedAt}) => [
       (
         `${email}:invited:${invitedAt->Reventless.DateTime.toString}`,
-        {email, alreadyRegistered: false, invited: true, roles},
+        {email, address, alreadyRegistered: false, invited: true, roles},
       ),
     ]
-  | RegistrationChallengeReissued({email, reissuedAt, ?invitedBy}) => [
+  | RegistrationChallengeReissued({email, address, reissuedAt, ?invitedBy}) => [
       (
         `${email}:reissued:${reissuedAt->Reventless.DateTime.toString}`,
-        {email, alreadyRegistered: false, invited: invitedBy->Option.isSome},
+        {email, address, alreadyRegistered: false, invited: invitedBy->Option.isSome},
       ),
     ]
-  | RegistrationAttemptedOnTakenAddress({email, attemptedAt}) => [
+  | RegistrationAttemptedOnTakenAddress({email, address, attemptedAt}) => [
       (
         `${email}:taken:${attemptedAt->Reventless.DateTime.toString}`,
-        {email, alreadyRegistered: true},
+        {email, address, alreadyRegistered: true},
       ),
     ]
   }
@@ -54,9 +57,9 @@ let invitationBody = (~token, ~roles=?) =>
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed."
 
-let send = (capabilities: Reventless.Capabilities.t, ~email, ~subject, ~body) =>
+let send = (capabilities: Reventless.Capabilities.t, ~address, ~subject, ~body) =>
   capabilities.messaging.send(
-    ~recipient=ToEmail(Reventless.Email.unsafe(email)),
+    ~recipient=ToEmail(address),
     ~message={subject, body},
   )
 
@@ -68,7 +71,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
   if item.alreadyRegistered {
     switch await send(
       capabilities,
-      ~email=item.email,
+      ~address=item.address,
       ~subject="Someone tried to register with your address",
       ~body=noticeBody,
     ) {
@@ -89,7 +92,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
       | Ok(proofHash) =>
         switch await send(
           capabilities,
-          ~email=item.email,
+          ~address=item.address,
           ~subject=invited ? "You are invited to create an account" : "Finish your registration",
           ~body=invited ? invitationBody(~token, ~roles=?item.roles) : challengeBody(~token),
         ) {

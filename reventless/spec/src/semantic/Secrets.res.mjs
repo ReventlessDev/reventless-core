@@ -24,11 +24,22 @@ function unavailable(reason) {
         TAG: "Unavailable",
         _0: reason
       }
+    }),
+    fingerprint: (param, param$1) => ({
+      TAG: "Error",
+      _0: {
+        TAG: "Unavailable",
+        _0: reason
+      }
     })
   };
 }
 
-function fixed(token, hashOf) {
+function fixedFingerprint(purpose, input) {
+  return `fp:` + purpose + `:` + input;
+}
+
+function fixed(token, hashOf, fingerprintOf) {
   return {
     randomToken: (param, param$1) => ({
       TAG: "Ok",
@@ -37,6 +48,10 @@ function fixed(token, hashOf) {
     hash: input => ({
       TAG: "Ok",
       _0: hashOf(input)
+    }),
+    fingerprint: (purpose, input) => ({
+      TAG: "Ok",
+      _0: fingerprintOf !== undefined ? fingerprintOf(purpose, input) : fixedFingerprint(purpose, input)
     })
   };
 }
@@ -44,6 +59,7 @@ function fixed(token, hashOf) {
 export {
   characters,
   unavailable,
+  fixedFingerprint,
   fixed,
 }
 /* No side effect */

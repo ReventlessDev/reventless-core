@@ -120,6 +120,11 @@ let make = (
         | None => Ok(hash->Option.mapOr(`hash:${input}`, f => f(input)))
         }
       },
+      fingerprint: (~purpose, input) =>
+        switch secrets {
+        | Some(s) => s.fingerprint(~purpose, input)
+        | None => Ok(Reventless.Secrets.fixedFingerprint(~purpose, input))
+        },
     },
     stash: {
       put: async (~key, ~value, ~ttl) => {

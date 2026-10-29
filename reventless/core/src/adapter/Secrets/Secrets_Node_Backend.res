@@ -44,17 +44,56 @@ let _draw = (~length: int, ~from: string): string => {
   out->Array.join("")
 }
 
+/** The environment variable a deployment states its fingerprint key in. */
+let fingerprintKeyVariable = "REVENTLESS_FINGERPRINT_KEY"
+
+/** The shortest fingerprint key accepted: 16 bytes as hex. A shorter one is
+    refused rather than used, since a guessable key makes every fingerprint an
+    address again. */
+let minimumFingerprintKeyLength = 32
+
+/** HMAC-SHA256 of `purpose`, a NUL and `input`, as hex. The NUL keeps a purpose
+    that is a prefix of another from colliding with it. */
+let fingerprintWith = (~key: string, ~purpose: string, input: string): string =>
+  NodeCrypto.createHmac("sha256", key)
+  ->NodeCrypto.hmacUpdate(`${purpose}\u0000${input}`)
+  ->NodeCrypto.hmacDigest("hex")
+
 /**
-The provider both platforms pass.
+A source whose fingerprints are keyed by what `fingerprintKey` answers, asked on
+every call so a key installed after start is used.
 
 `length` is refused rather than clamped when it is not positive: a caller asking
 for a zero-length token has a bug, and answering `""` would hand back something
 that compares equal to nothing and settles every challenge.
 */
-let provider: Reventless.Secrets.t = {
+let make = (~fingerprintKey: unit => option<string>): Reventless.Secrets.t => {
   randomToken: (~length, ~alphabet) =>
     length <= 0
       ? Error(Unavailable(`a token needs a positive length, not ${length->Int.toString}`))
       : Ok(_draw(~length, ~from=Reventless.Secrets.characters(alphabet))),
   hash: input => Ok(NodeCrypto.sha256Hex(input)),
+  fingerprint: (~purpose, input) =>
+    switch fingerprintKey() {
+    | Some(key) if key->String.length >= minimumFingerprintKeyLength =>
+      Ok(fingerprintWith(~key, ~purpose, input))
+    | Some(_) =>
+      Error(
+        Unavailable(
+          `the fingerprint key is shorter than ${minimumFingerprintKeyLength->Int.toString} characters`,
+        ),
+      )
+    | None => Error(Unavailable(`no fingerprint key: set ${fingerprintKeyVariable}`))
+    },
 }
+
+/**
+The provider a deployed runtime passes: its fingerprint key is the deployment's,
+from `REVENTLESS_FINGERPRINT_KEY`, and fingerprints are refused while none is set.
+*/
+let provider: Reventless.Secrets.t = make(~fingerprintKey=() =>
+  switch NodeProcess.env->Dict.get(fingerprintKeyVariable) {
+  | Some("") | None => None
+  | Some(key) => Some(key)
+  }
+)

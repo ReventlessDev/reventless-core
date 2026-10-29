@@ -3,6 +3,7 @@
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Secrets$Reventless from "@reventlessdev/reventless-spec/src/semantic/Secrets.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
@@ -127,6 +128,16 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
         return {
           TAG: "Ok",
           _0: Stdlib_Option.mapOr(hash, `hash:` + input, f => f(input))
+        };
+      }
+    },
+    fingerprint: (purpose, input) => {
+      if (secrets !== undefined) {
+        return secrets.fingerprint(purpose, input);
+      } else {
+        return {
+          TAG: "Ok",
+          _0: Secrets$Reventless.fixedFingerprint(purpose, input)
         };
       }
     }

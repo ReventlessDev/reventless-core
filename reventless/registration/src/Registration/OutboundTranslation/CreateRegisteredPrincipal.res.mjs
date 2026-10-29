@@ -2,18 +2,21 @@
 
 import * as Sury from "sury";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let consumedEventSchema = Sury.$schema(s => ({
   TAG: "RegistrationProofAccepted",
   email: s.m(Sury.string),
+  address: s.m(Email$Reventless.schema),
   roles: s.m(Sury.array(Role$Reventless.nameSchema)),
   proofHash: s.m(Sury.string)
 }));
 
 let outboundItemSchema = Sury.$schema(s => ({
   email: s.m(Sury.string),
+  address: s.m(Email$Reventless.schema),
   roles: s.m(Sury.array(Role$Reventless.nameSchema)),
   proofHash: s.m(Sury.string)
 }));

@@ -9,11 +9,12 @@ let retryTtl = 600
 
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationProofAccepted({email, roles, proofHash}) => [
-      (`${email}:${proofHash}`, {email, roles, proofHash}),
+  | RegistrationProofAccepted({email, address, roles, proofHash}) => [
+      (`${email}:${proofHash}`, {email, address, roles, proofHash}),
     ]
   }
 
+// `email` is already the ledger's id for the address: no key is needed to say so.
 let completed = (email: string) => Ok(
   Some((email, RecordRegistrationCompleted({email: ContactAddressId.makeFromString(email)}))),
 )
@@ -26,7 +27,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
   | Ok(None) => Error("the password expired before the account was made")
   | Ok(Some(password)) =>
     switch await capabilities.identityProvider.createPrincipal(
-      ~contact=ToEmail(Reventless.Email.unsafe(item.email)),
+      ~contact=ToEmail(item.address),
       ~credential=Password(password),
       ~groups=groupsOf(item.roles),
     ) {

@@ -17,19 +17,22 @@ let translate = async (
   | Ok(_) if input.password->String.length < minimumPasswordLength =>
     Error(`a password needs at least ${minimumPasswordLength->Int.toString} characters`)
   | Ok(email) =>
-    let email = email->Reventless.Email.toString->String.toLowerCase
-    switch capabilities.secrets.hash(input.proof->String.trim) {
-    | Error(Unavailable(why)) => Error(`cannot hash the proof: ${why}`)
-    | Ok(proofHash) =>
+    switch (
+      ContactAddressId.fingerprint(capabilities.secrets, email),
+      capabilities.secrets.hash(input.proof->String.trim),
+    ) {
+    | (Error(why), _) => Error(why)
+    | (_, Error(Unavailable(why))) => Error(`cannot hash the proof: ${why}`)
+    | (Ok(id), Ok(proofHash)) =>
       switch await capabilities.stash.put(~key=proofHash, ~value=input.password, ~ttl=passwordTtl) {
       | Error(failure) =>
         Error(`cannot hold the password: ${failure->Reventless.Stash.failureReason}`)
       | Ok() =>
         Ok([
           (
-            email,
+            id->ContactAddressId.toString,
             SubmitRegistrationProof({
-              email: ContactAddressId.makeFromString(email),
+              email: id,
               proofHash,
               presentedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
             }),

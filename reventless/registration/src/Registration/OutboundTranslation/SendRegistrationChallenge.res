@@ -1,5 +1,8 @@
 // SendRegistrationChallenge OutboundTranslationSlice.
 //
+// Writes to the address a registration names. Work is keyed by the ledger's id
+// for the address, its fingerprint, never by the address.
+//
 // Writes to the address a registration names. A fresh registration gets a
 // secret to prove control of the address, and the ledger records its hash; an
 // invitation gets one too, worded as an invitation and holding for a week; a
@@ -15,16 +18,26 @@
 
 @schema
 type consumedEvent =
-  | RegistrationRequested({email: string, requestedAt: Reventless.DateTime.t})
-  | RegistrationAttemptedOnTakenAddress({email: string, attemptedAt: Reventless.DateTime.t})
+  | RegistrationRequested({
+      email: string,
+      address: Reventless.Email.t,
+      requestedAt: Reventless.DateTime.t,
+    })
+  | RegistrationAttemptedOnTakenAddress({
+      email: string,
+      address: Reventless.Email.t,
+      attemptedAt: Reventless.DateTime.t,
+    })
   | RegistrationInvited({
       email: string,
+      address: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
       email: string,
+      address: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
@@ -32,8 +45,15 @@ type consumedEvent =
 /** `invited` words the secret as an invitation; it is left out for a sign-up
     and for the notice. `roles` names what the invitation grants, where the
     event said: a reissued code does not. */
+// `email` is the ledger's id for the address, `address` the address the mail goes to.
 @schema
-type outboundItem = {email: string, alreadyRegistered: bool, invited?: bool, roles?: array<string>}
+type outboundItem = {
+  email: string,
+  address: Reventless.Email.t,
+  alreadyRegistered: bool,
+  invited?: bool,
+  roles?: array<string>,
+}
 
 @schema
 type inboundCommand =

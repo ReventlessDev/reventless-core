@@ -12,6 +12,7 @@ open Registration_Examples
 // is a secret: only its hash.
 
 let email = alice
+let address = aliceMail
 let role = shopper
 let roles = [shopperName]
 let requestedAt = "2026-10-24T09:00:00.000Z"
@@ -25,15 +26,15 @@ let windowEnd = "2026-10-24T08:00:00.000Z"
 // Nothing recorded about a self-service role is open, so the ledger's history
 // starts at the request; `opened` is the explicit form, for the window tests.
 let opened: array<consumedEvent> = [RegistrationOpened({role: role})]
-let requested: array<consumedEvent> = [RegistrationRequested({email, roles, requestedAt})]
+let requested: array<consumedEvent> = [RegistrationRequested({email, address, roles, requestedAt})]
 let challenged: array<consumedEvent> =
   requested->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
 let verified: array<consumedEvent> =
-  challenged->Array.concat([RegistrationProofAccepted({email, roles, proofHash: secretHash})])
+  challenged->Array.concat([RegistrationProofAccepted({email, address, roles, proofHash: secretHash})])
 let completed: array<consumedEvent> =
   verified->Array.concat([RegistrationCompleted({email: email})])
 
-let register = (~role=role, ~at=requestedAt) => Register({email, role, requestedAt: at})
+let register = (~role=role, ~at=requestedAt) => Register({email, address, role, requestedAt: at})
 let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
   email,
   proofHash: hash,
@@ -42,7 +43,7 @@ let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
 let wrong: consumedEvent = RegistrationProofRefused({email, reason: "ProofMismatch"})
 let halfAMinuteOn = "2026-10-24T09:00:35.000Z"
 let reissued: array<consumedEvent> =
-  challenged->Array.concat([RegistrationChallengeReissued({email, reissuedAt: soonAfter})])
+  challenged->Array.concat([RegistrationChallengeReissued({email, address, reissuedAt: soonAfter})])
 
 describe("Registrations StateChangeSlice", () => {
   // 🚨 The policy is read in the same decision as the address, as its own clause,
@@ -96,7 +97,7 @@ describe("Registrations StateChangeSlice", () => {
   test("a self-service role claims the address before anything is recorded", () =>
     givenEvents([])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, roles, requestedAt}))
+    ->thenEvent(RegistrationRequested({email, address, roles, requestedAt}))
   )
 
   // scenario-id: 6c1e8a2b-9d3f-4a5e-8b7c-0d1e2f3a4b5c
@@ -116,7 +117,7 @@ describe("Registrations StateChangeSlice", () => {
   test("within an open window's end, it claims the address", () =>
     givenEvents([RegistrationOpened({role, until: nextDay})])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, roles, requestedAt}))
+    ->thenEvent(RegistrationRequested({email, address, roles, requestedAt}))
   )
 
   // scenario-id: dd3c4e5d-f19a-48b9-8011-b9cd63849b75
@@ -137,7 +138,7 @@ describe("Registrations StateChangeSlice", () => {
   test("a registered address records the attempt, not a registration", () =>
     givenEvents(completed)
     ->whenCmd(register(~at=nextDay))
-    ->thenEvent(RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay}))
+    ->thenEvent(RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay}))
   )
 
   // The notice is the one thing the door makes the deployment send to someone
@@ -145,7 +146,7 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 8ac35a9c-5d8b-441a-95bc-64768139ef97
   test("a second attempt on a registered address within the hour sends no second notice", () =>
     givenEvents(
-      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay})]),
+      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay})]),
     )
     ->whenCmd(register(~at=nextDayLater))
     ->thenNoEvent
@@ -154,10 +155,10 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: b0425f3e-52a6-40e5-89a4-8b70f8de2fb2
   test("after the hour, a registered address is told again", () =>
     givenEvents(
-      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, attemptedAt: nextDay})]),
+      completed->Array.concat([RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: nextDay})]),
     )
     ->whenCmd(register(~at=twoHoursOn))
-    ->thenEvent(RegistrationAttemptedOnTakenAddress({email, attemptedAt: twoHoursOn}))
+    ->thenEvent(RegistrationAttemptedOnTakenAddress({email, address, attemptedAt: twoHoursOn}))
   )
 
   // scenario-id: 5c409dc3-76f6-4311-9943-d655fc11f38e
@@ -166,7 +167,7 @@ describe("Registrations StateChangeSlice", () => {
     ->whenCmd(register(~at=nextDay))
     ->thenEvents([
       RegistrationExpired({email: email}),
-      RegistrationRequested({email, roles, requestedAt: nextDay}),
+      RegistrationRequested({email, address, roles, requestedAt: nextDay}),
     ])
   )
 
@@ -188,7 +189,7 @@ describe("Registrations StateChangeSlice", () => {
   test("the right proof settles the registration", () =>
     givenEvents(challenged)
     ->whenCmd(submit())
-    ->thenEvent(RegistrationProofAccepted({email, roles, proofHash: secretHash}))
+    ->thenEvent(RegistrationProofAccepted({email, address, roles, proofHash: secretHash}))
   )
 
   // scenario-id: 055e3684-db0f-40f0-9e4a-fdba6cddb70c
@@ -245,7 +246,7 @@ describe("Registrations StateChangeSlice", () => {
   test("a code that went out is reissued", () =>
     givenEvents(challenged)
     ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: soonAfter}))
-    ->thenEvent(RegistrationChallengeReissued({email, reissuedAt: soonAfter}))
+    ->thenEvent(RegistrationChallengeReissued({email, address, reissuedAt: soonAfter}))
   )
 
   // scenario-id: 4cd5e9f7-0e91-484b-8aff-69327eb7bf24
@@ -270,7 +271,7 @@ describe("Registrations StateChangeSlice", () => {
       challenged
       ->Array.concat([wrong, wrong, wrong, wrong, wrong])
       ->Array.concat([
-        RegistrationChallengeReissued({email, reissuedAt: soonAfter}),
+        RegistrationChallengeReissued({email, address, reissuedAt: soonAfter}),
         RegistrationChallengeIssued({
           email,
           proofHash: "hash-of-the-new-secret",
@@ -279,7 +280,7 @@ describe("Registrations StateChangeSlice", () => {
       ]),
     )
     ->whenCmd(submit(~hash="hash-of-the-new-secret"))
-    ->thenEvent(RegistrationProofAccepted({email, roles, proofHash: "hash-of-the-new-secret"}))
+    ->thenEvent(RegistrationProofAccepted({email, address, roles, proofHash: "hash-of-the-new-secret"}))
   )
 
   // scenario-id: e0bca4c5-edce-4d95-8ce1-2b500fd0317e
@@ -306,7 +307,7 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 56e1d5a8-23a2-446f-b3bc-29da9af6ac77
   test("a role the app does not declare by invitation is refused to an inviter", () =>
     givenEvents([])
-    ->whenCmd(Invite({email, roles: [merchandiser], invitedBy: "u_admin", requestedAt}))
+    ->whenCmd(Invite({email, address, roles: [merchandiser], invitedBy: "u_admin", requestedAt}))
     ->thenError(NotByInvitation({role: merchandiserName}))
   )
 })

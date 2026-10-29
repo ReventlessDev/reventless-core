@@ -15,6 +15,7 @@ function collect(event, param) {
       email + `:` + proofHash,
       {
         email: email,
+        address: event.address,
         roles: event.roles,
         proofHash: proofHash
       }
@@ -51,7 +52,7 @@ async function translate(_id, item, capabilities) {
   }
   let match = await capabilities.identityProvider.createPrincipal({
     TAG: "ToEmail",
-    _0: item.email
+    _0: item.address
   }, {
     TAG: "Password",
     _0: password
