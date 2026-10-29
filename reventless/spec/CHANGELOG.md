@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.179 (2026-10-29)
+
+* refactor!: drop `dcbSources`, the cross-plugin DCB subscription nobody declared ([cf3b66d](https://github.com/ReventlessDev/reventless-core/commit/cf3b66d8c1b5d87673197b64eaee174598bb8253))
+
+### BREAKING CHANGES
+
+* `Reventless.Plugin.extensionDefinition` has no `dcbSources`
+field, and `Platform_PluginExtensions.dcbSources` is gone from the GraphQL
+schema. A query that selects it fails as a whole; drop the selection.
+
+
+
 # 3.0.0-alpha.178 (2026-10-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

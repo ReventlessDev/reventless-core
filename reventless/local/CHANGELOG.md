@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.302 (2026-10-29)
+
+### Bug Fixes
+
+* **local:** emit-capabilities writes an empty manifest for a plugin with no parts yet ([56586a6](https://github.com/ReventlessDev/reventless-core/commit/56586a687aa4658e2357c836878b44050b424d41))
+* refactor!: drop `dcbSources`, the cross-plugin DCB subscription nobody declared ([cf3b66d](https://github.com/ReventlessDev/reventless-core/commit/cf3b66d8c1b5d87673197b64eaee174598bb8253))
+* refactor!: a read model hears another plugin only through an Extension and a slice ([15c7cae](https://github.com/ReventlessDev/reventless-core/commit/15c7cae214d5aa04404779fcd87a8429aad1965c))
+### Features
+
+* **core:** a handler drops a command it has already handled ([605862b](https://github.com/ReventlessDev/reventless-core/commit/605862bba765b1501eb19d08f3924bf619159e21))
+
+### BREAKING CHANGES
+
+* `Reventless.Plugin.extensionDefinition` has no `dcbSources`
+field, and `Platform_PluginExtensions.dcbSources` is gone from the GraphQL
+schema. A query that selects it fails as a whole; drop the selection.
+* `ReventlessInfra.Extension.T.make` and the core
+`Extension_Builder.make` no longer take `~readModelNamesForSourceName` and
+`~publishToReadModels`. Both arguments did nothing; drop them at the call site.
+
+
+
 # 3.0.0-alpha.301 (2026-10-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

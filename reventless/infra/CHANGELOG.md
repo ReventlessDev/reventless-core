@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.208 (2026-10-29)
+
+* refactor!: a read model hears another plugin only through an Extension and a slice ([15c7cae](https://github.com/ReventlessDev/reventless-core/commit/15c7cae214d5aa04404779fcd87a8429aad1965c))
+### Features
+
+* **core:** a handler drops a command it has already handled ([605862b](https://github.com/ReventlessDev/reventless-core/commit/605862bba765b1501eb19d08f3924bf619159e21))
+* **infra:** a message a mapping derives gets a stable id and names its parent ([a72a08f](https://github.com/ReventlessDev/reventless-core/commit/a72a08f9af4440eff5fa36e9a364a426bc70918c))
+
+### BREAKING CHANGES
+
+* `ReventlessInfra.Extension.T.make` and the core
+`Extension_Builder.make` no longer take `~readModelNamesForSourceName` and
+`~publishToReadModels`. Both arguments did nothing; drop them at the call site.
+
+
+
 # 3.0.0-alpha.207 (2026-10-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra
