@@ -232,3 +232,51 @@ describe("Message should", () => {
     }
   })
 })
+
+// A message a mapping derives from another: the id is a function of the input,
+// so a mapping run again on a redelivered parent mints the same id.
+describe("Message.deriveStableMeta", () => {
+  let parent: meta = {
+    service: "Order",
+    time: "2024-01-01T00:00:00Z",
+    msgId: "parent-msg",
+    correlationId: "root-msg",
+    causationId: "grandparent-msg",
+    user: "alice",
+    traceparent: "00-trace-span-01",
+    headers: Dict.fromArray([("tenantId", "t1")]),
+  }
+
+  testSync("the same input gives the same msgId; a parent's msgId is its child's cause", () => {
+    let a = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=0)
+    let b = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=0)
+    expect(a.msgId)->toBe(b.msgId)
+    expect(a.msgId != parent.msgId)->toBe(true)
+    expect(a.causationId)->toEqual(Some("parent-msg"))
+    expect(a.correlationId)->toBe("root-msg")
+    expect(a.service)->toBe("Ordering.Orders")
+    expect(a.user)->toEqual(Some("alice"))
+    expect(a.traceparent)->toEqual(Some("00-trace-span-01"))
+    expect(a.headers->Option.flatMap(h => h->Dict.get("tenantId")))->toEqual(Some("t1"))
+  })
+
+  testSync("a different parent, emitter, index or item gives a different msgId", () => {
+    let base = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=0)
+    let otherParent = deriveStableMeta(
+      ~parent={...parent, msgId: "parent-msg-2"},
+      ~service="Ordering.Orders",
+      ~index=0,
+    )
+    let otherEmitter = deriveStableMeta(~parent, ~service="Catalog.Products", ~index=0)
+    let otherIndex = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=1)
+    let otherItem = deriveStableMeta(~parent, ~service="Ordering.Orders", ~index=0, ~item=1)
+    let ids = [base.msgId, otherParent.msgId, otherEmitter.msgId, otherIndex.msgId, otherItem.msgId]
+    expect(ids->Belt.Set.String.fromArray->Belt.Set.String.size)->toBe(5)
+  })
+
+  testSync("a derived message never carries its parent's caller claim", () => {
+    let claimed = {...parent, callerClaim: Reventless.Message.CallerClaim.Exempt}
+    let a = deriveStableMeta(~parent=claimed, ~service="Ordering.Orders", ~index=0)
+    expect(a.callerClaim->Option.isNone)->toBe(true)
+  })
+})

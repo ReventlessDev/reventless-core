@@ -10,6 +10,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
+import * as Message$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Message.res.mjs";
 
 let logger = Logger$ReventlessCore.fromEnv();
 
@@ -401,6 +402,8 @@ let encode = Message$Reventless.encode;
 
 let InvalidEvent = Message$Reventless.InvalidEvent;
 
+let deriveStableMeta = Message$ReventlessInfra.deriveStableMeta;
+
 export {
   logger,
   serviceSchema,
@@ -436,6 +439,7 @@ export {
   hrtimeToString,
   generateMeta,
   deriveMeta,
+  deriveStableMeta,
   decomposeMeta,
   composeEventJson$p,
   composeMeta,

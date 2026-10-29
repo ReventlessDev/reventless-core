@@ -170,7 +170,10 @@ module Make = (MappingImpl: Mapping): (
       CommandTopic.reference: reference,
       command: {Reventless.Message.id: id, command, meta},
     }) =>
-      mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.map(x =>
+      mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.mapWithIndex((
+        x,
+        index,
+      ) =>
         switch x {
         | PublishCommand(targetId, targetCmd) =>
           let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
@@ -186,11 +189,7 @@ module Make = (MappingImpl: Mapping): (
             reference,
             {
               id: targetId,
-              meta: {
-                ...meta,
-                service: Delegate.name,
-                msgId: Message.uuid(),
-              },
+              meta: Message.deriveStableMeta(~parent=meta, ~service=Delegate.name, ~index),
               commandJson: targetCmd->Reventless.Message.encode(Delegate.commandSchema),
             },
           )
@@ -230,12 +229,15 @@ module Make = (MappingImpl: Mapping): (
     } else {
       let {id, meta, event} =
         targetEventJson'->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema)
+      // The published event is derived from the Delegate's: `index` is the
+      // action's position, so a stream redelivery of the same event publishes
+      // the same `msgId`s.
       mapOutgoingEventImpl(
         id->Delegate.Id.toString,
         event,
         meta,
         queryEngine,
-      )->Array.map(eventAction =>
+      )->Array.mapWithIndex((eventAction, index) =>
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
@@ -245,11 +247,7 @@ module Make = (MappingImpl: Mapping): (
               ->Reventless.Message.variantNameOfJson
               ->Reventless.AnsiStyle.bold}(${id})`,
           )
-          let meta = {
-            ...meta,
-            service: Spec.name,
-            msgId: Message.uuid(),
-          }
+          let meta = Message.deriveStableMeta(~parent=meta, ~service=Spec.name, ~index)
           let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson)
           AbstractPublishEvent(id, meta, eventJson')
         | PublishEventAsync(promise) =>
@@ -262,7 +260,8 @@ module Make = (MappingImpl: Mapping): (
                 ->Reventless.Message.variantNameOfJson
                 ->Reventless.AnsiStyle.bold}(${id}) (async)`,
             )
-            let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
+            let meta = Message.deriveStableMeta(~parent=meta, ~service=Spec.name, ~index)
+            let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson)
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')

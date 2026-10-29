@@ -257,28 +257,32 @@ module Make = (MappingImpl: Mapping): (
   let compLog = (comp, msg) =>
     Effect.logInfo(msg)->Effect.annotateLogs("comp", comp)->Effect.runSync
 
-  let encodeMeta = (meta: Reventless.Message.meta, service) => {
-    ...meta,
-    service,
-    msgId: Message.uuid(),
-  }
-
   let doMapIncomingEvent = (
     mapIncomingEventImpl,
     {Reventless.Message.id: id, event, meta},
     pluginDef,
     queryEngine,
   ) => {
-    let encodeTargetCommandJson = (targetCmd, targetId) => {
+    // Every command here is derived from the published event: `index` is the
+    // action's position in the mapping's result, `item` a command's position
+    // inside a multi-command action, so a redelivered event yields the same
+    // `msgId`s and the handler can drop the repeat.
+    let encodeTargetCommandJson = (targetCmd, targetId, ~index, ~item) => {
       let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
       {
         Reventless.Message.id: targetId,
-        meta: encodeMeta(meta, delegateName),
+        meta: Message.deriveStableMeta(~parent=meta, ~service=delegateName, ~index, ~item),
         commandJson: cmdJson,
       }
     }
 
-    let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
+    let encodeExtensionPointCommandJson = (
+      commandJson,
+      ~id,
+      ~extensionPointName,
+      ~action,
+      ~index,
+    ) => {
       compLog(
         `Extension(${extensionPointName})`,
         `${action}: ${commandJson
@@ -287,49 +291,55 @@ module Make = (MappingImpl: Mapping): (
       )
       {
         Reventless.Message.id,
-        meta: encodeMeta(meta, extensionPointName),
+        meta: Message.deriveStableMeta(~parent=meta, ~service=extensionPointName, ~index),
         commandJson,
       }
     }
 
-    let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
+    let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action, ~index) =>
       command
       ->Reventless.Message.encode(Spec.commandSchema)
-      ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
+      ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action, ~index)
 
-    mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Array.map(x =>
+    mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Array.mapWithIndex((x, index) =>
       switch x {
       | PublishAggregateCommand(targetId, targetCmd) =>
-        AbstractPublishAggregateCommand(delegateName, targetCmd->encodeTargetCommandJson(targetId))
+        AbstractPublishAggregateCommand(
+          delegateName,
+          targetCmd->encodeTargetCommandJson(targetId, ~index, ~item=0),
+        )
       | PublishAggregateCommandAsync(promise) =>
         let toCommandJson = async promise => {
           let (targetId, targetCmd) = await promise
-          (delegateName, targetCmd->encodeTargetCommandJson(targetId))
+          (delegateName, targetCmd->encodeTargetCommandJson(targetId, ~index, ~item=0))
         }
         AbstractPublishAggregateCommandAsync(promise->toCommandJson)
       | PublishAggregateCommandsAsync(promise) =>
         let toCommandJsons = async promise =>
-          (await promise)->Array.map(((targetId, targetCmd)) => (
+          (await promise)->Array.mapWithIndex(((targetId, targetCmd), item) => (
             delegateName,
-            targetCmd->encodeTargetCommandJson(targetId),
+            targetCmd->encodeTargetCommandJson(targetId, ~index, ~item),
           ))
         AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
       | PublishStateChangeSliceCommand(targetCmd) =>
         AbstractPublishAggregateCommand(
           delegateName,
-          targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)),
+          targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd), ~index, ~item=0),
         )
       | PublishStateChangeSliceCommandAsync(promise) =>
         let toCommandJson = async promise => {
           let targetCmd = await promise
-          (delegateName, targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)))
+          (
+            delegateName,
+            targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd), ~index, ~item=0),
+          )
         }
         AbstractPublishAggregateCommandAsync(promise->toCommandJson)
       | PublishStateChangeSliceCommandsAsync(promise) =>
         let toCommandJsons = async promise =>
-          (await promise)->Array.map(targetCmd => (
+          (await promise)->Array.mapWithIndex((targetCmd, item) => (
             delegateName,
-            targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)),
+            targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd), ~index, ~item),
           ))
         AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
       | PublishExtensionPointCommand(id, command) if Spec.name == PluginExtensionPointSpec.name =>
@@ -338,6 +348,7 @@ module Make = (MappingImpl: Mapping): (
             ~id,
             ~extensionPointName,
             ~action="Publish PluginExtensionPoint command",
+            ~index,
           ),
         )
       | PublishExtensionPointCommand(id, command) =>
@@ -347,6 +358,7 @@ module Make = (MappingImpl: Mapping): (
             ~id,
             ~extensionPointName,
             ~action="Publish ExtensionPoint command",
+            ~index,
           ),
         )
       | ForwardCommand({extensionPointName, id, commandJson}) =>
@@ -356,6 +368,7 @@ module Make = (MappingImpl: Mapping): (
             ~id,
             ~extensionPointName,
             ~action="Forward ExtensionPoint command",
+            ~index,
           ),
         )
       | HandleDirective(handler, directive) =>
@@ -383,7 +396,13 @@ module Make = (MappingImpl: Mapping): (
     } else {
       let {id, meta, event} =
         targetEvent'Json->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema)
-      let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
+      let encodeExtensionPointCommandJson = (
+        commandJson,
+        ~id,
+        ~extensionPointName,
+        ~action,
+        ~index,
+      ) => {
         compLog(
           `Extension(${delegateName})`,
           `${action}: ${commandJson
@@ -392,17 +411,20 @@ module Make = (MappingImpl: Mapping): (
         )
         {
           Reventless.Message.id,
-          meta: encodeMeta(meta, extensionPointName),
+          meta: Message.deriveStableMeta(~parent=meta, ~service=extensionPointName, ~index),
           commandJson,
         }
       }
 
-      let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
+      let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action, ~index) =>
         command
         ->Reventless.Message.encode(Spec.commandSchema)
-        ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
+        ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action, ~index)
 
-      mapOutgoingEventImpl(id->Delegate.Id.toString, event, meta, pluginDef)->Array.map(x =>
+      mapOutgoingEventImpl(id->Delegate.Id.toString, event, meta, pluginDef)->Array.mapWithIndex((
+        x,
+        index,
+      ) =>
         switch x {
         | PublishExtensionPointCommand(id, command) if Spec.name == PluginExtensionPointSpec.name =>
           AbstractPublishPluginExtensionPointCommand(
@@ -410,6 +432,7 @@ module Make = (MappingImpl: Mapping): (
               ~id,
               ~extensionPointName,
               ~action="Publish PluginExtensionPoint command",
+              ~index,
             ),
           )
 
@@ -420,6 +443,7 @@ module Make = (MappingImpl: Mapping): (
               ~id,
               ~extensionPointName,
               ~action="Publish ExtensionPoint command",
+              ~index,
             ),
           )
         | ForwardCommand({extensionPointName, id, commandJson}) =>
@@ -429,6 +453,7 @@ module Make = (MappingImpl: Mapping): (
               ~id,
               ~extensionPointName,
               ~action="Forward ExtensionPoint command",
+              ~index,
             ),
           )
         | HandleDirective(handler, directive) =>

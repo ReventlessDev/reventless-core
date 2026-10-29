@@ -253,6 +253,10 @@ let deriveMeta = (~parent: meta, ~service=?) => {
   headers: ?parent.headers,
 }
 
+// The same envelope with a `msgId` that is a function of its input, for a message
+// a mapping derives from another; defined beside the mappings in infra.
+let deriveStableMeta = ReventlessInfra.Message.deriveStableMeta
+
 let decomposeMeta = meta =>
   meta
   ->Reventless.Util_Sury.toJson(metaSchema)
