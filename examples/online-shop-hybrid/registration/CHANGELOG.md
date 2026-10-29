@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.9 (2026-10-29)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-registration
+
+
+
+
+
 # 1.0.0-alpha.8 (2026-10-29)
 
 * feat(ppx)!: `@pii` marks a value about a person, and an event reads it as `Pii.t` ([37174c1](https://github.com/ReventlessDev/reventless-core/commit/37174c10eb80e9e3adbb93a52ad7a9ef5def7100))

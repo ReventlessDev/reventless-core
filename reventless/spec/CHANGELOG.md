@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.184 (2026-10-29)
+
+### Features
+
+* **core:** an event's personal fields are sealed once at append and opened on read ([ef3daae](https://github.com/ReventlessDev/reventless-core/commit/ef3daae9ad02090b9ec6de4decbe41c44b5dd554))
+
+
 # 3.0.0-alpha.183 (2026-10-29)
 
 * feat(ppx)!: `@pii` marks a value about a person, and an event reads it as `Pii.t` ([37174c1](https://github.com/ReventlessDev/reventless-core/commit/37174c10eb80e9e3adbb93a52ad7a9ef5def7100))
