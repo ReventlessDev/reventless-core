@@ -79,12 +79,12 @@ describe("Pii.plain, the provider the framework ships", () => {
     expect(sealed)->toEqual(Ok(JSON.Encode.string("Ada")))
   })
 
-  testPromise("opens the forms another provider left, and refuses ciphertext", async () => {
-    let erased = await Pii.plain.open_(~field="name", Pii.wrap("erased:v1"))
+  testSync("opens the forms another provider left, and refuses ciphertext", () => {
+    let erased = Pii.plain.openNow(~field="name", Pii.wrap("erased:v1"))
     expect(erased)->toEqual(Ok(Pii.wrap(Pii.erasedMarker)))
-    let forgotten = await Pii.plain.open_(~field="photo", Pii.wrap("ref:v1:/uploads/a.jpg"))
+    let forgotten = Pii.plain.openNow(~field="photo", Pii.wrap("ref:v1:/uploads/a.jpg"))
     expect(forgotten)->toEqual(Ok(Pii.wrap(Pii.forgottenMarker)))
-    let cipher = await Pii.plain.open_(~field="name", Pii.wrap("enc:v1:k:a:b"))
+    let cipher = Pii.plain.openNow(~field="name", Pii.wrap("enc:v1:k:a:b"))
     expect(cipher)->toEqual(Error(Pii.UnknownForm({field: "name"})))
   })
 

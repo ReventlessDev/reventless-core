@@ -5,6 +5,8 @@ import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
@@ -192,52 +194,52 @@ function plain_seal(param, param$1, param$2, json) {
   });
 }
 
-function plain_open(field, json) {
+function plain_prefetch(param) {
+  return Promise.resolve({
+    TAG: "Ok",
+    _0: undefined
+  });
+}
+
+function plain_openNow(field, json) {
   let form = unwrap(json);
-  let tmp;
-  if (form !== undefined) {
-    let match = parseStored(form);
-    let exit = 0;
-    if (match !== undefined) {
-      switch (match.TAG) {
-        case "Cipher" :
-          exit = 1;
-          break;
-        case "ErasedForm" :
-          tmp = {
-            TAG: "Ok",
-            _0: wrap(erasedMarker)
-          };
-          break;
-        case "ForgottenForm" :
-          tmp = {
-            TAG: "Ok",
-            _0: wrap(forgottenMarker)
-          };
-          break;
-      }
-    } else {
-      exit = 1;
-    }
-    if (exit === 1) {
-      tmp = form === erasedMarker || form === forgottenMarker ? ({
-          TAG: "Ok",
-          _0: json
-        }) : ({
-          TAG: "Error",
-          _0: {
-            TAG: "UnknownForm",
-            field: field
-          }
-        });
-    }
-  } else {
-    tmp = {
+  if (form === undefined) {
+    return {
       TAG: "Ok",
       _0: json
     };
   }
-  return Promise.resolve(tmp);
+  let match = parseStored(form);
+  if (match !== undefined) {
+    switch (match.TAG) {
+      case "Cipher" :
+        break;
+      case "ErasedForm" :
+        return {
+          TAG: "Ok",
+          _0: wrap(erasedMarker)
+        };
+      case "ForgottenForm" :
+        return {
+          TAG: "Ok",
+          _0: wrap(forgottenMarker)
+        };
+    }
+  }
+  if (form === erasedMarker || form === forgottenMarker) {
+    return {
+      TAG: "Ok",
+      _0: json
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: {
+        TAG: "UnknownForm",
+        field: field
+      }
+    };
+  }
 }
 
 function plain_release(param, param$1) {
@@ -251,7 +253,8 @@ let plain = {
   name: "plain",
   encrypts: false,
   seal: plain_seal,
-  open: plain_open,
+  prefetch: plain_prefetch,
+  openNow: plain_openNow,
   release: plain_release
 };
 
@@ -349,7 +352,57 @@ async function sealData(schema, eventType, data) {
   }
 }
 
-async function openData(schema, eventType, data) {
+function needsOpen(schema, eventType, data) {
+  return markedFields(schema, eventType).some(param => Stdlib_Option.mapOr(data[param[0]], false, v => Stdlib_Option.isSome(unwrap(v))));
+}
+
+function keyIdsIn(json, intoOpt) {
+  let into = intoOpt !== undefined ? intoOpt : [];
+  let match = Stdlib_Option.flatMap(unwrap(json), parseStored);
+  if (match !== undefined) {
+    switch (match.TAG) {
+      case "Cipher" :
+        let keyId = match.keyId;
+        if (!into.includes(keyId)) {
+          into.push(keyId);
+        }
+        break;
+      case "ErasedForm" :
+      case "ForgottenForm" :
+        break;
+    }
+  } else if (Array.isArray(json)) {
+    json.forEach(v => {
+      keyIdsIn(v, into);
+    });
+  } else if (json !== null) {
+    switch (typeof json) {
+      case "object" :
+        Object.values(json).forEach(v => {
+          keyIdsIn(v, into);
+        });
+        break;
+    }
+  }
+  return into;
+}
+
+function prepare(jsons) {
+  let into = [];
+  jsons.forEach(j => {
+    keyIdsIn(j, into);
+  });
+  if (Primitive_object.equal(into, [])) {
+    return Promise.resolve({
+      TAG: "Ok",
+      _0: undefined
+    });
+  } else {
+    return current.contents.prefetch(into);
+  }
+}
+
+function openDataNow(schema, eventType, data) {
   let fields = markedFields(schema, eventType);
   let sealed = fields.filter(param => Stdlib_Option.mapOr(data[param[0]], false, v => Stdlib_Option.isSome(unwrap(v))));
   if (Primitive_object.equal(sealed, [])) {
@@ -359,31 +412,53 @@ async function openData(schema, eventType, data) {
     };
   }
   let provider = current.contents;
-  let out = Object.assign({}, data);
-  let failure;
-  for (let i = 0, i_finish = sealed.length; i < i_finish; ++i) {
-    let match = sealed[i];
-    let field = match[0];
-    if (Stdlib_Option.isNone(failure)) {
-      let opened = await provider.open(field, data[field]);
-      if (opened.TAG === "Ok") {
-        out[field] = opened._0;
-      } else {
-        failure = opened._0;
-      }
+  return Stdlib_Array.reduce(sealed, {
+    TAG: "Ok",
+    _0: Object.assign({}, data)
+  }, (acc, param) => {
+    let field = param[0];
+    if (acc.TAG !== "Ok") {
+      return acc;
     }
-  }
-  let e = failure;
-  if (e !== undefined) {
-    return {
-      TAG: "Error",
-      _0: e
-    };
+    let out = acc._0;
+    return Stdlib_Result.map(provider.openNow(field, out[field]), opened => {
+      out[field] = opened;
+      return out;
+    });
+  });
+}
+
+async function openData(schema, eventType, data) {
+  let e = await prepare([data]);
+  if (e.TAG === "Ok") {
+    return openDataNow(schema, eventType, data);
   } else {
     return {
-      TAG: "Ok",
-      _0: out
+      TAG: "Error",
+      _0: e._0
     };
+  }
+}
+
+function openEventNow(schema, json) {
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    return json;
+  }
+  let match = json["TAG"];
+  if (match === undefined) {
+    return json;
+  }
+  if (typeof match !== "string") {
+    return json;
+  }
+  if (!needsOpen(schema, match, json)) {
+    return json;
+  }
+  let opened = openDataNow(schema, match, json);
+  if (opened.TAG === "Ok") {
+    return opened._0;
+  } else {
+    return Stdlib_JsError.throwWithMessage(`cannot open ` + match + `: ` + errorMessage(opened._0));
   }
 }
 
@@ -403,8 +478,21 @@ function unsealedField(schema, eventType, data) {
   }
 }
 
-function needsOpen(schema, eventType, data) {
-  return markedFields(schema, eventType).some(param => Stdlib_Option.mapOr(data[param[0]], false, v => Stdlib_Option.isSome(unwrap(v))));
+async function prepareOrThrow(jsons) {
+  let e = await prepare(jsons);
+  if (e.TAG === "Ok") {
+    return;
+  } else {
+    return Stdlib_JsError.throwWithMessage(`cannot fetch the keys a batch needs: ` + errorMessage(e._0));
+  }
+}
+
+function needsPrepare(jsons) {
+  let into = [];
+  jsons.forEach(j => {
+    keyIdsIn(j, into);
+  });
+  return Primitive_object.notequal(into, []);
 }
 
 export {
@@ -433,8 +521,14 @@ export {
   markedFields,
   isPresent,
   sealData,
-  openData,
-  unsealedField,
   needsOpen,
+  keyIdsIn,
+  prepare,
+  openDataNow,
+  openData,
+  openEventNow,
+  unsealedField,
+  prepareOrThrow,
+  needsPrepare,
 }
 /* piiId Not a pure module */

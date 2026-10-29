@@ -71,7 +71,9 @@ let toCommandSchema' = (idSchema, commandSchema) =>
 // `Reventless.Message.decode` (the other central decoder) is tolerant at the source.
 // See docs/plans/done/platform-infrastructure-in-plugin-list.md (durable fix option 2).
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
+  json
+  ->Reventless.Message.openEnvelope(eventSchema)
+  ->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
 let decodeCommand' = (json, idSchema, commandSchema) =>
   json->parseJsonTolerant(toCommandSchema'(idSchema, commandSchema))
 

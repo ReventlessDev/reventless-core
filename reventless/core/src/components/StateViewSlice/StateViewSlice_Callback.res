@@ -28,6 +28,11 @@ module Make = (
     queryDbOps: queryDbOperations,
     rawEvents: array<ReventlessInfra.DcbEventLog.rawSequencedEvent>,
   ) => {
+    // The keys this batch's sealed fields name, before anything decodes it.
+    let datas = rawEvents->Array.map(raw => raw.data)
+    if Reventless.Pii.needsPrepare(datas) {
+      await Reventless.Pii.prepareOrThrow(datas)
+    }
     let count = rawEvents->Array.length->Int.toString
     let idx = ref(0)
     let allActions = []

@@ -100,6 +100,12 @@ let makeDecoder = (schema: S.t<'event>): makeDecoderResult<'event> => {
     | None => None
     | Some(PayloadLess) => constructors->Dict.get(eventType)
     | Some(WithFields) =>
+      // Opened before the parse and outside its `catch`: a sealed field whose key
+      // is not at hand must fail the read, never be dropped as drift.
+      let data = switch Pii.openDataNow(schema, ~eventType, data) {
+      | Ok(opened) => opened
+      | Error(e) => JsError.throwWithMessage(`cannot open ${eventType}: ${Pii.errorMessage(e)}`)
+      }
       // Reconstruct the JSON with TAG for sury parsing
       let jsonDict = data->Dict.copy
       jsonDict->Dict.set("TAG", JSON.String(eventType))

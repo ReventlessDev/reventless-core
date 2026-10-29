@@ -8,6 +8,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -79,7 +80,13 @@ function Make(RuntimeEnvironment) {
             name: Spec.name
           }, opts);
           let comp = `StateViewSlice(` + Spec.name + `)`;
-          let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), events => {
+          let jsonEventsHandler = stream => Effect.flatMap(Effect.tap(Stream.runCollect(stream), events => {
+            if (Pii$Reventless.needsPrepare(events)) {
+              return Effect.promise(() => Pii$Reventless.prepareOrThrow(events));
+            } else {
+              return Effect.succeed();
+            }
+          }), events => {
             let total = events.length.toString();
             return Stdlib_Array.reduce(events.map((json, i) => {
               let envelopeDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(json), {});

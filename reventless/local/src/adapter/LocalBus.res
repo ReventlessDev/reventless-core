@@ -333,6 +333,11 @@ module Impl = (C: BusConfig): T => {
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
+    // Every subscriber decodes in this process, so the keys the event's sealed
+    // fields name are fetched once, here, before any of them reads it.
+    if Reventless.Pii.needsPrepare([json]) {
+      await Reventless.Pii.prepareOrThrow([json])
+    }
     emitEventTap(~topic=topicName, ~service, ~payload=json)
     switch eventHubs.contents->Dict.get(topicName) {
     | None => ()

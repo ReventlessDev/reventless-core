@@ -46,7 +46,7 @@ function toCommandSchema$p(idSchema, commandSchema) {
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
-  return Message$Reventless.parseJsonTolerant(json, toEventSchema$p(idSchema, eventSchema));
+  return Message$Reventless.parseJsonTolerant(Message$Reventless.openEnvelope(json, eventSchema), toEventSchema$p(idSchema, eventSchema));
 }
 
 function decodeCommand$p(json, idSchema, commandSchema) {
@@ -410,6 +410,8 @@ let encode = Message$Reventless.encode;
 
 let InvalidEvent = Message$Reventless.InvalidEvent;
 
+let openEnvelope = Message$Reventless.openEnvelope;
+
 let deriveStableMeta = Message$ReventlessInfra.deriveStableMeta;
 
 let hasStableMsgId = Message$ReventlessInfra.hasStableMsgId;
@@ -427,6 +429,7 @@ export {
   decode,
   encode,
   InvalidEvent,
+  openEnvelope,
   _rawMemoize,
   memoizeBySchemaPair,
   toEventSchema$p,

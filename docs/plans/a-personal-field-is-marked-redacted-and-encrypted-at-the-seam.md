@@ -131,7 +131,8 @@ type provider = {
   name: string,
   encrypts: bool,
   seal: (~subject: string, ~field: string, ~forgettable: bool, JSON.t) => promise<result<JSON.t, Pii.error>>,
-  open_: (~field: string, JSON.t) => promise<result<JSON.t, Pii.error>>,
+  prefetch: array<string> => promise<result<unit, Pii.error>>, // keys a batch names, before decoding
+  openNow: (~field: string, JSON.t) => result<JSON.t, Pii.error>, // with the keys at hand
   release: (~subject: string, ~ref: string) => promise<result<unit, Pii.error>>,
 }
 ```
@@ -420,6 +421,24 @@ field was computed, are its fixtures. A new transport passes it before it is acc
 
 **Exit:** green on the local platform, DynamoDB and Postgres against real deployments; the kit's
 README lists it among the suites a backend must pass.
+
+**Begun 2026-10-29: every reader opens, with keys a batch prepared.** Most readers decode
+synchronously (`DcbDecode`, `Message.decodeEvent'`), and a key store is asynchronous, so the provider
+seam changed once more: `open_` became `prefetch(keyIds)`, asynchronous and per batch, and
+`openNow`, synchronous and per field, from the keys at hand. The two central decoders open sealed
+fields before they parse (`Pii.openDataNow`, `Message.openEnvelope`), so every reader built on them,
+which is projections, read models, translations, automations and extension mappings, reads values.
+`DcbDecode` opens outside the `catch` that drops a drifted event, so a key not at hand fails the read
+instead of silently shortening a history. A batch makes its keys available with `Pii.prepare`, which
+asks the provider only for the key ids the batch's ciphertext names and nothing when it names none;
+it is called in `LocalBus.publishEvent`, where every local subscriber decodes in one process, and in
+both state-view handlers, which also serve catch-up reads from storage. A caller awaits it only when
+the batch names a key (`Pii.needsPrepare`), so paths holding no ciphertext keep their timing.
+[`PiiPrefetchTest`](../../reventless/core/tests/pii/PiiPrefetchTest.res) pins it with a provider
+that opens only what it was asked to fetch. **Open:** `prepare` in each AWS entry point that decodes
+events (automation, event mapper, extension, read model, state view, side effect), each in its own
+Lambda and so its own key cache; the scenario in the conformance kit; the runs against DynamoDB and
+Postgres deployments.
 
 ## Decisions
 

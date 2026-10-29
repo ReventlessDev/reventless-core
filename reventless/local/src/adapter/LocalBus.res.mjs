@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -137,6 +138,9 @@ function Impl(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Pii$Reventless.needsPrepare([json])) {
+      await Pii$Reventless.prepareOrThrow([json]);
+    }
     emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
@@ -410,6 +414,9 @@ function Make($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Pii$Reventless.needsPrepare([json])) {
+      await Pii$Reventless.prepareOrThrow([json]);
+    }
     emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
@@ -683,6 +690,9 @@ function MakeSilent($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Pii$Reventless.needsPrepare([json])) {
+      await Pii$Reventless.prepareOrThrow([json]);
+    }
     emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
@@ -957,6 +967,9 @@ function MakeBounded(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Pii$Reventless.needsPrepare([json])) {
+      await Pii$Reventless.prepareOrThrow([json]);
+    }
     emitEventTap(topicName, service, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {

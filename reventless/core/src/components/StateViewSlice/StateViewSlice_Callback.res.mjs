@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
@@ -16,6 +17,10 @@ function Make(Spec) {
     let comp = `StateViewSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let eventsHandler = async (queryDbOps, rawEvents) => {
+      let datas = rawEvents.map(raw => raw.data);
+      if (Pii$Reventless.needsPrepare(datas)) {
+        await Pii$Reventless.prepareOrThrow(datas);
+      }
       let count = rawEvents.length.toString();
       let idx = {
         contents: 0

@@ -352,8 +352,28 @@ let toEventSchema' = (idSchema, eventSchema) =>
 /** Decode a raw event JSON envelope into a typed `event'<'id, 'event>`. Tolerant on
     read (see `fillMissingDefaults`) so envelopes persisted before a nested field existed
     still decode. */
+/** An event envelope with its event's sealed personal fields opened, with the keys
+    the batch prepared (`Pii.prepare`). Untouched when nothing in it is sealed. */
+let openEnvelope = (json: JSON.t, eventSchema: S.t<'e>): JSON.t =>
+  switch json {
+  | Object(obj) =>
+    switch obj->Dict.get("event") {
+    | Some(event) =>
+      let opened = Pii.openEventNow(eventSchema, event)
+      if opened === event {
+        json
+      } else {
+        let out = obj->Dict.copy
+        out->Dict.set("event", opened)
+        JSON.Object(out)
+      }
+    | None => json
+    }
+  | _ => json
+  }
+
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
+  json->openEnvelope(eventSchema)->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
 
 /** Extract the variant constructor name from a sury-encoded variant JSON. */
 let variantNameOfJson = json =>

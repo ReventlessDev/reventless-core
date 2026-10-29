@@ -98,6 +98,12 @@ module Make = (
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
             ->Stream.runCollect
+            // The keys this batch's sealed fields name, before anything decodes it.
+            ->Effect.tap(events =>
+              Reventless.Pii.needsPrepare(events)
+                ? Effect.promise(() => Reventless.Pii.prepareOrThrow(events))
+                : Effect.succeed()
+            )
             ->Effect.flatMap(events => {
               let total = events->Array.length->Int.toString
               events

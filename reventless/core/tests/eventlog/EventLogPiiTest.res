@@ -27,7 +27,8 @@ let fakeProvider = (~seals=true): Reventless.Pii.provider => {
     seals
       ? Ok(Reventless.Pii.wrap(`enc:v1:${subject}:fake:${json->JSON.stringify->toBase64}`))
       : Ok(json),
-  open_: async (~field, json) =>
+  prefetch: async _ => Ok(),
+  openNow: (~field, json) =>
     switch json->Reventless.Pii.unwrap->Option.flatMap(Reventless.Pii.parseStored) {
     | Some(Cipher({bytes})) => Ok(bytes->fromBase64->JSON.parseOrThrow)
     | _ => Error(Reventless.Pii.UnknownForm({field: field}))

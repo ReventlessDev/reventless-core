@@ -236,8 +236,13 @@ type provider = {
     ~forgettable: bool,
     JSON.t,
   ) => promise<result<JSON.t, error>>,
-  @as("open")
-  open_: (~field: string, JSON.t) => promise<result<JSON.t, error>>,
+  /** Loads the keys these ids name, so `openNow` can use them without waiting.
+      Called by `prepare` at each batch's entry, never per field. */
+  prefetch: array<string> => promise<result<unit, error>>,
+  /** Opens one stored form with the keys already at hand: synchronous, because
+      the decoders that call it are. A key that was not prefetched is an `Error`,
+      never a wrong value. */
+  openNow: (~field: string, JSON.t) => result<JSON.t, error>,
   release: (~subject: string, ~ref: string) => promise<result<unit, error>>,
 }
 
@@ -251,21 +256,20 @@ let plain: provider = {
   name: "plain",
   encrypts: false,
   seal: (~subject as _, ~field as _, ~forgettable as _, json) => Promise.resolve(Ok(json)),
-  open_: (~field, json) =>
-    Promise.resolve(
-      switch json->unwrap {
-      | None => Ok(json)
-      | Some(form) =>
-        switch form->parseStored {
-        | Some(ErasedForm(_)) => Ok(wrap(erasedMarker))
-        | Some(ForgottenForm(_)) => Ok(wrap(forgottenMarker))
-        | Some(Cipher(_)) | None =>
-          form == erasedMarker || form == forgottenMarker
-            ? Ok(json)
-            : Error(UnknownForm({field: field}))
-        }
-      },
-    ),
+  prefetch: _ => Promise.resolve(Ok()),
+  openNow: (~field, json) =>
+    switch json->unwrap {
+    | None => Ok(json)
+    | Some(form) =>
+      switch form->parseStored {
+      | Some(ErasedForm(_)) => Ok(wrap(erasedMarker))
+      | Some(ForgottenForm(_)) => Ok(wrap(forgottenMarker))
+      | Some(Cipher(_)) | None =>
+        form == erasedMarker || form == forgottenMarker
+          ? Ok(json)
+          : Error(UnknownForm({field: field}))
+      }
+    },
   release: (~subject as _, ~ref as _) => Promise.resolve(Ok()),
 }
 
@@ -352,9 +356,56 @@ let sealData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): 
   }
 }
 
-/** `data` with every stored form of `eventType`'s personal fields opened: the
-    plain value, or the marker of a value that is gone. */
-let openData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
+/** Whether `data` holds a stored form `openData` would open: checked first, so a
+    read of a log with nothing sealed in it costs no promise per event. */
+let needsOpen = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): bool =>
+  markedFields(schema, ~variant=eventType)->Array.some(((field, _)) =>
+    data->Dict.get(field)->Option.mapOr(false, v => v->unwrap->Option.isSome)
+  )
+
+/** The key ids the ciphertext anywhere in `json` names, at any depth. */
+let rec keyIdsIn = (json: JSON.t, ~into: array<string>=[]): array<string> => {
+  switch json->unwrap->Option.flatMap(parseStored) {
+  | Some(Cipher({keyId})) =>
+    if !(into->Array.includes(keyId)) {
+      into->Array.push(keyId)
+    }
+  | Some(_) => ()
+  | None =>
+    switch json {
+    | Object(obj) =>
+      obj
+      ->Dict.valuesToArray
+      ->Array.forEach(v => {
+        let _ = keyIdsIn(v, ~into)
+      })
+    | Array(items) =>
+      items->Array.forEach(v => {
+        let _ = keyIdsIn(v, ~into)
+      })
+    | _ => ()
+    }
+  }
+  into
+}
+
+/**
+Make the keys a batch of stored messages needs available to the decoders. Called
+once at each entry where a batch arrives, before anything decodes it: the decoders
+are synchronous and open with what is at hand. A batch holding no ciphertext asks
+the provider nothing.
+*/
+let prepare = (jsons: array<JSON.t>): promise<result<unit, error>> => {
+  let into = []
+  jsons->Array.forEach(j => {
+    let _ = keyIdsIn(j, ~into)
+  })
+  into == [] ? Promise.resolve(Ok()) : Provider.get().prefetch(into)
+}
+
+/** `data` with every stored form of `eventType`'s personal fields opened, with
+    the keys at hand: the plain value, or the marker of a value that is gone. */
+let openDataNow = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
   dict<JSON.t>,
   error,
 > => {
@@ -367,23 +418,48 @@ let openData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): 
     Ok(data)
   } else {
     let provider = Provider.get()
-    let out = data->Dict.copy
-    let failure = ref(None)
-    for i in 0 to sealed->Array.length - 1 {
-      let (field, _) = sealed->Array.getUnsafe(i)
-      if failure.contents->Option.isNone {
-        switch await provider.open_(~field, data->Dict.getUnsafe(field)) {
-        | Ok(opened) => out->Dict.set(field, opened)
-        | Error(e) => failure := Some(e)
-        }
+    sealed->Array.reduce(Ok(data->Dict.copy), (acc, (field, _)) =>
+      switch acc {
+      | Error(_) => acc
+      | Ok(out) =>
+        provider.openNow(~field, out->Dict.getUnsafe(field))->Result.map(opened => {
+          out->Dict.set(field, opened)
+          out
+        })
       }
-    }
-    switch failure.contents {
-    | Some(e) => Error(e)
-    | None => Ok(out)
-    }
+    )
   }
 }
+
+/** The same, fetching the keys first: for a seam that reads one event at a time. */
+let openData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
+  dict<JSON.t>,
+  error,
+> =>
+  switch await prepare([JSON.Object(data)]) {
+  | Error(e) => Error(e)
+  | Ok() => openDataNow(schema, ~eventType, data)
+  }
+
+/**
+A message's event, opened for a decoder: the `{TAG, …fields}` object with its
+sealed fields opened, or the message untouched when it holds none. Throws, naming
+the event type and the field's error, never the value, when a key is not at hand:
+a decoder that read on would either fail or, worse, drop the event.
+*/
+let openEventNow = (schema: S.t<'a>, json: JSON.t): JSON.t =>
+  switch json {
+  | Object(obj) =>
+    switch obj->Dict.get("TAG") {
+    | Some(String(eventType)) if needsOpen(schema, ~eventType, obj) =>
+      switch openDataNow(schema, ~eventType, obj) {
+      | Ok(opened) => JSON.Object(opened)
+      | Error(e) => JsError.throwWithMessage(`cannot open ${eventType}: ${errorMessage(e)}`)
+      }
+    | _ => json
+    }
+  | _ => json
+  }
 
 /**
 The append's last check: with a provider that encrypts installed, the first
@@ -409,9 +485,21 @@ let unsealedField = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): o
     ->Option.map(((field, _)) => field)
   }
 
-/** Whether `data` holds a stored form `openData` would open: checked first, so a
-    read of a log with nothing sealed in it costs no promise per event. */
-let needsOpen = (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): bool =>
-  markedFields(schema, ~variant=eventType)->Array.some(((field, _)) =>
-    data->Dict.get(field)->Option.mapOr(false, v => v->unwrap->Option.isSome)
-  )
+/** `prepare`, failing the batch when a key cannot be fetched: a reader must not
+    read on past a value it cannot open. */
+let prepareOrThrow = async (jsons: array<JSON.t>): unit =>
+  switch await prepare(jsons) {
+  | Ok() => ()
+  | Error(e) => JsError.throwWithMessage(`cannot fetch the keys a batch needs: ${errorMessage(e)}`)
+  }
+
+/** Whether a batch names any key, checked without waiting: a caller awaits
+    `prepareOrThrow` only when it does, so a path that holds no ciphertext keeps
+    its timing to the microtask. */
+let needsPrepare = (jsons: array<JSON.t>): bool => {
+  let into = []
+  jsons->Array.forEach(j => {
+    let _ = keyIdsIn(j, ~into)
+  })
+  into != []
+}
