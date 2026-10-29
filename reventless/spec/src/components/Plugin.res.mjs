@@ -23,8 +23,7 @@ let extensionPointDefinitionSchema = Sury.$schema(s => ({
 
 let extensionDefinitionSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
-  extensionPointName: s.m(Sury.string),
-  dcbSources: s.m(Sury.array(Sury.string))
+  extensionPointName: s.m(Sury.string)
 }));
 
 let dcbEventLogDefinitionSchema = Sury.$schema(s => ({

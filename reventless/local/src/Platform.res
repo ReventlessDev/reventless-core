@@ -1255,7 +1255,6 @@ module MakeWithConfig = (
               ((_, ext: ReventlessInfra.Extension.outputs)) => {
                 Reventless.Plugin.name: ext.name,
                 extensionPointName: ext.extensionPointName,
-                dcbSources: [],
               },
             ),
             extensionProtocols: [],

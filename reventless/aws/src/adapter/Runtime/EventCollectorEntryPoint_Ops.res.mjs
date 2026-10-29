@@ -7,7 +7,6 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as SNS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -62,14 +61,6 @@ function scanByTableName(prim0, prim1, prim2) {
 
 function exnMessage(exn) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
-}
-
-function jsOption(v) {
-  if (v == null) {
-    return;
-  } else {
-    return Primitive_option.some(v);
-  }
 }
 
 function strOf(obj, key) {
@@ -171,20 +162,9 @@ function projectPluginRow(row) {
   if (match$1 === undefined) {
     return;
   }
-  let dcbEventLog = Stdlib_Option.flatMap(Stdlib_Option.flatMap(obj["dcbEventLog"], Stdlib_JSON.Decode.object), d => {
-    let match = strOf(d, "name");
-    let match$1 = strOf(d, "eventTopicArn");
-    if (match !== undefined && match$1 !== undefined) {
-      return {
-        name: match,
-        eventTopicArn: match$1
-      };
-    }
-  });
   let extensions = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["extensions"], Stdlib_JSON.Decode.array), []), e => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(e), eo => Stdlib_Option.map(strOf(eo, "extensionPointName"), extensionPointName => ({
     name: Stdlib_Option.getOr(strOf(eo, "name"), ""),
-    extensionPointName: extensionPointName,
-    dcbSources: strArrOf(eo, "dcbSources")
+    extensionPointName: extensionPointName
   }))));
   let extensionPoints = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["extensionPoints"], Stdlib_JSON.Decode.array), []), ep => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(ep), epo => {
     let match = strOf(epo, "name");
@@ -202,8 +182,7 @@ function projectPluginRow(row) {
     status: match$1,
     eventCollector: Stdlib_Option.getOr(strOf(obj, "eventCollector"), ""),
     extensions: extensions,
-    extensionPoints: extensionPoints,
-    dcbEventLog: dcbEventLog
+    extensionPoints: extensionPoints
   };
 }
 
@@ -213,8 +192,7 @@ function projectionOfDefinition(d) {
     status: "",
     eventCollector: d.eventCollector,
     extensions: d.extensions,
-    extensionPoints: d.extensionPoints,
-    dcbEventLog: Primitive_option.fromNullable(d.dcbEventLog)
+    extensionPoints: d.extensionPoints
   };
 }
 
@@ -326,37 +304,6 @@ function makeManageSubscriptions(tableName) {
           if (match !== undefined) {
             await op(peer$1.eventCollector, ep.eventTopic, ep.name + ` -> ` + peer$1.id);
           }
-        }
-      }
-      for (let i$2 = 0, i_finish$2 = pluginDef.extensions.length; i$2 < i_finish$2; ++i$2) {
-        let ext$1 = pluginDef.extensions[i$2];
-        for (let j$2 = 0, j_finish$2 = ext$1.dcbSources.length; j$2 < j_finish$2; ++j$2) {
-          let dcbSourceName = ext$1.dcbSources[j$2];
-          let peer$2 = peers.find(p => {
-            let l = p.dcbEventLog;
-            if (l !== undefined) {
-              return l.name === dcbSourceName;
-            } else {
-              return false;
-            }
-          });
-          if (peer$2 !== undefined) {
-            let l = peer$2.dcbEventLog;
-            if (l !== undefined) {
-              await op(pluginDef.eventCollector, l.eventTopicArn, `dcb ` + dcbSourceName + ` -> ` + pluginDef.id);
-            }
-          }
-        }
-      }
-      let myDcb = pluginDef.dcbEventLog;
-      if (myDcb === undefined) {
-        return;
-      }
-      for (let j$3 = 0, j_finish$3 = peers.length; j$3 < j_finish$3; ++j$3) {
-        let peer$3 = peers[j$3];
-        let consuming = peer$3.extensions.some(e => e.dcbSources.includes(myDcb.name));
-        if (consuming) {
-          await op(peer$3.eventCollector, myDcb.eventTopicArn, `dcb ` + myDcb.name + ` -> ` + peer$3.id);
         }
       }
     };
@@ -620,7 +567,6 @@ export {
   logError,
   scanByTableName,
   exnMessage,
-  jsOption,
   strOf,
   strArrOf,
   strDictOf,

@@ -32,9 +32,10 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
     expect(p.eventCollector)->toBe("") // defaulted when absent
     expect(p.extensions->Array.length)->toBe(0)
     expect(p.extensionPoints->Array.length)->toBe(0)
-    expect(p.dcbEventLog->Option.isNone)->toBe(true)
   })
 
+  // A row written before `dcbSources` left the extension definition still
+  // carries the key; the projection reads past it.
   testSync("decodes extensions, dropping entries without extensionPointName", () => {
     let row = obj([
       ("id", str("Ordering@2")),
@@ -46,7 +47,7 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
           obj([
             ("name", str("OrdersExt")),
             ("extensionPointName", str("Catalog.Products")),
-            ("dcbSources", JSON.Encode.array([str("prod"), JSON.Encode.int(7)])),
+            ("dcbSources", JSON.Encode.array([])),
           ]),
           obj([("name", str("Malformed"))]), // no extensionPointName -> dropped
         ]),
@@ -58,11 +59,9 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
     let e = p.extensions->Array.getUnsafe(0)
     expect(e.name)->toBe("OrdersExt")
     expect(e.extensionPointName)->toBe("Catalog.Products")
-    // Non-string dcbSources elements are filtered out.
-    expect(e.dcbSources)->toEqual(["prod"])
   })
 
-  testSync("decodes extensionPoints and dcbEventLog; drops EPs without name/eventTopic", () => {
+  testSync("decodes extensionPoints; drops EPs without name/eventTopic", () => {
     let row = obj([
       ("id", str("Catalog@1")),
       ("status", str("Connected")),
@@ -73,6 +72,7 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
           obj([("name", str("NoTopic"))]), // no eventTopic -> dropped
         ]),
       ),
+      // Still on older rows; the subscription manager no longer reads it.
       ("dcbEventLog", obj([("name", str("catalog-dcb")), ("eventTopicArn", str("dcb-arn"))])),
     ])
     let p = project(row)->Option.getOrThrow
@@ -81,18 +81,6 @@ describe("EventCollectorEntryPoint_Ops.projectPluginRow", () => {
     expect(ep.name)->toBe("Catalog.Products")
     expect(ep.commandTopic)->toBe("") // defaulted
     expect(ep.eventTopic)->toBe("t-arn")
-    let dcb = p.dcbEventLog->Option.getOrThrow
-    expect(dcb.name)->toBe("catalog-dcb")
-    expect(dcb.eventTopicArn)->toBe("dcb-arn")
-  })
-
-  testSync("drops a dcbEventLog missing eventTopicArn", () => {
-    let row = obj([
-      ("id", str("Catalog@1")),
-      ("status", str("Connected")),
-      ("dcbEventLog", obj([("name", str("catalog-dcb"))])),
-    ])
-    expect((project(row)->Option.getOrThrow).dcbEventLog->Option.isNone)->toBe(true)
   })
 })
 

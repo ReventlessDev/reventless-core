@@ -61,15 +61,6 @@ external scanByTableName: (
 let exnMessage = (exn: exn): string =>
   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
 
-// ── Absent-field normalization ──────────────────────────────────────────────
-// pluginDefinition's optionals omit the key, so a plain JSON.parse (not a sury
-// parse) yields `undefined` and ReScript reads it as None unaided. Kept because
-// the same records also arrive from stores and peers written when an absent
-// field was `null`, which ReScript's option would misread as Some.
-
-external optionAsNullable: option<'a> => Nullable.t<'a> = "%identity"
-let jsOption = (v: option<'a>): option<'a> => v->optionAsNullable->Nullable.toOption
-
 // ── HANDLER_CONFIG ──────────────────────────────────────────────────────────
 // Written by PluginRuntime_Builder.forPluginEventCollector; the field-by-field
 // schema is documented in EventCollectorEntryPoint.mjs. Explicitly decoded (no
@@ -235,7 +226,6 @@ type pluginProjection = {
   eventCollector: string,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   extensionPoints: array<Reventless.Plugin.extensionPointDefinition>,
-  dcbEventLog?: Reventless.Plugin.dcbEventLogDefinition,
 }
 
 let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
@@ -244,17 +234,6 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
   | Some(obj) =>
     switch (obj->strOf("id"), obj->strOf("status")) {
     | (Some(id), Some(status)) =>
-      let dcbEventLog =
-        obj
-        ->Dict.get("dcbEventLog")
-        ->Option.flatMap(JSON.Decode.object)
-        ->Option.flatMap(d =>
-          switch (d->strOf("name"), d->strOf("eventTopicArn")) {
-          | (Some(name), Some(eventTopicArn)) =>
-            Some(({name, eventTopicArn}: Reventless.Plugin.dcbEventLogDefinition))
-          | _ => None
-          }
-        )
       let extensions =
         obj
         ->Dict.get("extensions")
@@ -270,7 +249,6 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
               (extensionPointName): Reventless.Plugin.extensionDefinition => {
                 name: eo->strOf("name")->Option.getOr(""),
                 extensionPointName,
-                dcbSources: eo->strArrOf("dcbSources"),
               },
             )
           )
@@ -305,30 +283,26 @@ let projectPluginRow = (row: JSON.t): option<pluginProjection> =>
         eventCollector: obj->strOf("eventCollector")->Option.getOr(""),
         extensions,
         extensionPoints,
-        ?dcbEventLog,
       })
     | _ => None
     }
   }
 
 // A pluginDefinition viewed as a projection (the manage logic reads only the
-// shared subset; `status` is never read for the acting plugin). Array/option
-// fields stay normalized: a definition arriving over the wire, rather than from
-// loadPluginDefinition's decode, may still carry null for an absent field.
+// shared subset; `status` is never read for the acting plugin).
 let projectionOfDefinition = (d: Reventless.Plugin.pluginDefinition): pluginProjection => {
   id: d.id,
   status: "",
   eventCollector: d.eventCollector,
   extensions: d.extensions,
   extensionPoints: d.extensionPoints,
-  dcbEventLog: ?(d.dcbEventLog->jsOption),
 }
 
 // ── Cross-plugin SNS subscription manager ───────────────────────────────────
 // When DoConnectPlugin / DoDisconnectPlugin fires on the admin EP mapping, scan
 // the Plugin RM for currently-Connected peers and wire (or tear down) SNS
 // subscriptions between this plugin's EventCollector queue and peer plugins'
-// EP/DCB event topics — in both directions. subscribeQueueToTopic is idempotent
+// EP event topics — in both directions. subscribeQueueToTopic is idempotent
 // (lists existing subscriptions first); unsubscribeQueueFromTopic is
 // best-effort. Failures are logged but do not throw — admin's RM projection
 // still proceeds and cold-start reconciliation re-attempts missed work.
@@ -434,50 +408,6 @@ let makeManageSubscriptions = (tableName: string): option<
                 | None => ()
                 }
               }
-            }
-            // DCB sources this plugin's extensions consume: owning peer's DCB
-            // EventTopic → this EC queue.
-            for i in 0 to pluginDef.extensions->Array.length - 1 {
-              let ext = pluginDef.extensions->Array.getUnsafe(i)
-              for j in 0 to ext.dcbSources->Array.length - 1 {
-                let dcbSourceName = ext.dcbSources->Array.getUnsafe(j)
-                switch peers->Array.find(p =>
-                  switch p.dcbEventLog {
-                  | Some(l) => l.name == dcbSourceName
-                  | None => false
-                  }
-                ) {
-                | Some(peer) =>
-                  switch peer.dcbEventLog {
-                  | Some(l) =>
-                    await op(
-                      pluginDef.eventCollector,
-                      l.eventTopicArn,
-                      `dcb ${dcbSourceName} -> ${pluginDef.id}`,
-                    )
-                  | None => ()
-                  }
-                | None => ()
-                }
-              }
-            }
-            // If THIS plugin has a DCB EventLog: its topic → each consuming
-            // peer's EC queue.
-            switch pluginDef.dcbEventLog {
-            | Some(myDcb) =>
-              for j in 0 to peers->Array.length - 1 {
-                let peer = peers->Array.getUnsafe(j)
-                let consuming =
-                  peer.extensions->Array.some(e => e.dcbSources->Array.includes(myDcb.name))
-                if consuming {
-                  await op(
-                    peer.eventCollector,
-                    myDcb.eventTopicArn,
-                    `dcb ${myDcb.name} -> ${peer.id}`,
-                  )
-                }
-              }
-            | None => ()
             }
           }
         },

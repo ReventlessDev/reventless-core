@@ -35,9 +35,6 @@ Included in the plugin's `pluginDefinition` for use by the host.
 type extensionDefinition = {
   name: string,
   extensionPointName: string,
-  /** Peer `dcbEventLogDefinition.name`s this extension consumes (`${peer}DcbEventLog`),
-      which the admin turns into cross-plugin SNS subscriptions. */
-  dcbSources: array<string>,
 }
 
 /** A DCB EventLog exposed by a plugin, so the admin can subscribe peer plugins

@@ -34,7 +34,6 @@ describe("Message should", () => {
         {
           name: "testExtension",
           extensionPointName: "testExtensionPoint",
-          dcbSources: [],
         },
       ],
       eventCollector: "testEventCollector",

@@ -41,7 +41,6 @@
 .extensionProtocols[].commandVersion: string
 .extensionProtocols[].eventVersion: string
 .extensionProtocols[].extensionPointName: string
-.extensions[].dcbSources[]: string
 .extensions[].extensionPointName: string
 .extensions[].name: string
 .id: string

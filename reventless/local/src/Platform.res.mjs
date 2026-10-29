@@ -1063,8 +1063,7 @@ function MakeWithConfig(Config) {
             let ext = param[1];
             return {
               name: ext.name,
-              extensionPointName: ext.extensionPointName,
-              dcbSources: []
+              extensionPointName: ext.extensionPointName
             };
           }),
           eventCollector: param[2].name,
@@ -2858,8 +2857,7 @@ function Make($star) {
             let ext = param[1];
             return {
               name: ext.name,
-              extensionPointName: ext.extensionPointName,
-              dcbSources: []
+              extensionPointName: ext.extensionPointName
             };
           }),
           eventCollector: param[2].name,

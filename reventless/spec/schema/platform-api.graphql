@@ -199,7 +199,6 @@ type Platform_PluginExtensionPoints {
 }
 
 type Platform_PluginExtensions {
-  dcbSources: [String!]!
   extensionPointName: String!
   name: String!
 }

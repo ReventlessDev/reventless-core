@@ -1,7 +1,7 @@
 # Plan: cross-plugin event routing has an unobserved teardown, untouched hardening, and dead DCB plumbing
 
 **Date:** 2026-10-07<br/>
-**Status:** Backlog — extracted from [../done/plugin-eventcollector-runtime-rewire-cross-plugin.md](../done/plugin-eventcollector-runtime-rewire-cross-plugin.md) and [../done/plugin-eventcollector-runtime-rewire-dcb-routing.md](../done/plugin-eventcollector-runtime-rewire-dcb-routing.md) when they closed. §1 needs a live deploy; §2 needs evidence (scale, drift, cost); §3 needs a decision and a real use case.<br/>
+**Status:** Backlog — extracted from [../done/plugin-eventcollector-runtime-rewire-cross-plugin.md](../done/plugin-eventcollector-runtime-rewire-cross-plugin.md) and [../done/plugin-eventcollector-runtime-rewire-dcb-routing.md](../done/plugin-eventcollector-runtime-rewire-dcb-routing.md) when they closed. [§1](#1-teardown-on-deactivate-has-never-been-observed) needs a live deploy; [§2](#2-hardening-the-original-plan-named-and-left-out) needs evidence (scale, drift, cost); [§3](#3-dcbsources-is-plumbing-with-no-consumer) was decided as *remove* and done on 2026-10-29.<br/>
 **Relates to:** [../done/aws-plugin-activate-deactivate-resolver.md](../done/aws-plugin-activate-deactivate-resolver.md) (the Deactivate mutation §1 drives)
 
 ---
@@ -40,6 +40,13 @@ For drift, a heartbeat-triggered reconcile reusing `reconcileSubscriptionsOnce` 
 shape.
 
 ## 3. `dcbSources` is plumbing with no consumer
+
+**Decided: remove. Done on 2026-10-29** by
+[another-plugins-facts-come-in-through-the-own-log-once.md](../another-plugins-facts-come-in-through-the-own-log-once.md)
+(its RF3): the field left `extensionDefinition`, the two DCB branches of `manageSubscriptions`
+went with the projection's read of `dcbEventLog`, and `pluginDefinition.dcbEventLog` itself
+stays. The plugin-lifecycle corpus still carries `dcbSources` in its stored events and still
+decodes. What follows is the state before that decision.
 
 `Plugin.extensionDefinition.dcbSources` (in `reventless/spec/src/components/Plugin.res`) and both
 DCB branches of `manageSubscriptions` exist, but
