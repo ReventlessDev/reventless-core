@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.261 (2026-10-29)
+
+**Note:** Version bump only for package @reventlessdev/reventless-gwt
+
+
+
+
+
 # 1.0.0-alpha.260 (2026-10-29)
 
 * feat(registration)!: the ledger tags an address by its keyed fingerprint ([ccafddf](https://github.com/ReventlessDev/reventless-core/commit/ccafddfc7eb8039687afc62a483ce34b8e7081dd))
