@@ -238,7 +238,8 @@ let generateMeta = (
 //   - fresh `msgId` and `time`
 //   - `correlationId` inherited (so the chain root id stays stable)
 //   - `causationId` = parent.msgId (the *direct* parent)
-//   - `ip`, `user`, `traceparent`, `schemaVersion`, `headers` inherited as-is
+//   - `ip`, `user`, `traceparent`, `schemaVersion`, `headers` inherited as-is,
+//     except the stable-id mark: this id is fresh, so the child must not carry it
 //   - `service` overridable; defaults to parent's service
 let deriveMeta = (~parent: meta, ~service=?) => {
   service: service->Option.getOr(parent.service),
@@ -250,12 +251,14 @@ let deriveMeta = (~parent: meta, ~service=?) => {
   user: ?parent.user,
   traceparent: ?parent.traceparent,
   schemaVersion: ?parent.schemaVersion,
-  headers: ?parent.headers,
+  headers: ?ReventlessInfra.Message.withoutStableIdHeader(parent.headers),
 }
 
 // The same envelope with a `msgId` that is a function of its input, for a message
-// a mapping derives from another; defined beside the mappings in infra.
+// a mapping derives from another; defined beside the mappings in infra. A handler
+// asks `hasStableMsgId` whether a repeat of the command can be recognized.
 let deriveStableMeta = ReventlessInfra.Message.deriveStableMeta
+let hasStableMsgId = ReventlessInfra.Message.hasStableMsgId
 
 let decomposeMeta = meta =>
   meta

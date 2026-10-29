@@ -1,10 +1,13 @@
 # Read Side Fed Straight from an Extension Point
 
-> **Status:** Analysis · nothing built. Written 2026-10-28, from the question whether an
-> Extension could update another plugin's read models or StateView slices directly. Extended the
-> same day with the replay analyses, use cases, a comparison with joining, and a recommendation;
-> step 1 and 2 of the recommendation are planned in
-> [another plugin's facts come in through the plugin's own log, once](../plans/another-plugins-facts-come-in-through-the-own-log-once.md).
+> **Status:** Analysis · [§8](#8-recommendation) steps 1 and 2 done on 2026-10-29. Written
+> 2026-10-28, from the question whether an Extension could update another plugin's read models or
+> StateView slices directly. Extended the same day with the replay analyses, use cases, a
+> comparison with joining, and a recommendation; steps 1 and 2 of the recommendation were carried
+> out by
+> [another plugin's facts come in through the plugin's own log, once](../plans/done/another-plugins-facts-come-in-through-the-own-log-once.md):
+> the dormant plumbing is deleted, and a repeated delivery is dropped by the handler
+> ([RSQ3](#11-open-questions) is answered).
 >
 > **Questions and short answers:**
 >
@@ -49,7 +52,7 @@
 [time automations analysis](automations-that-run-on-a-time.md),
 [protecting prod resources analysis](protecting-prod-infrastructure-resources.md),
 [event format review](event-format-and-meta-review.md),
-[the plan](../plans/another-plugins-facts-come-in-through-the-own-log-once.md)
+[the plan](../plans/done/another-plugins-facts-come-in-through-the-own-log-once.md)
 
 **Id prefixes.** The use cases where a direct feed fits are numbered RSU1 to RSU5, those where
 it doesn't RSN1 to RSN7; open questions are RSQ1 to RSQ8. **RS** stands for *read side*; **U**,
@@ -159,7 +162,7 @@ The plumbing survived every refactoring since:
 - `StateViewSlice_Builder` also exposes an `enqueueEvent`
   ([StateViewSlice_Builder.res:215](../../reventless/core/src/components/StateViewSlice/StateViewSlice_Builder.res#L215)),
   but nothing indexes StateView slices by source.
-- [ForeignReadModel_Builder.res](../../reventless/aws/src/components/ForeignReadModel_Builder.res)
+- [ForeignReadModel_Builder.res](https://github.com/ReventlessDev/reventless-core/blob/ebdde3c4e8d6d932c58c1a213cf5ef8870e2c854/reventless/aws/src/components/ForeignReadModel_Builder.res) (deleted since; a permalink)
   still exists, with no references. The side-effect conversion plan already lists it as dead
   ([side-effect entry-point conversion plan](../plans/task-sideeffect-callbackfunction-conversion.md)).
 - A related dormant hook: an extension's `dcbSources` (consume another plugin's DCB log
@@ -551,8 +554,8 @@ framework relies on, and the write route is already cheap where design tools gen
    present state, wired on AWS, unreachable by an assembly check and inert locally, is the worst
    option: it costs upkeep on every refactoring and promises something that doesn't work. It
    also isn't what a revival would need, since it requires an Extension and says nothing about
-   refilling. Planned with step 2 in
-   [another plugin's facts come in through the plugin's own log, once](../plans/another-plugins-facts-come-in-through-the-own-log-once.md).
+   refilling. Done, with step 2, by
+   [another plugin's facts come in through the plugin's own log, once](../plans/done/another-plugins-facts-come-in-through-the-own-log-once.md).
 2. **Keep the write route as the only route**, and make it safe for counting views. A generated
    record slice ([Option C](#73-option-c-keep-the-write-side-generate-the-slice)) should drop an
    event it has already recorded, keyed by the source event's id ([RSQ3](#11-open-questions)).
@@ -625,10 +628,12 @@ a history of subtle bugs. The price is one enqueue hop. Revisit if that hop show
 measured latency budget, or the collector Lambda becomes a hotspot.
 
 **RSQ3. How are repeated deliveries dropped?**
-**Recommendation: on the write route, in the handler, by the command's stable id**, as the plan
-does ([RF4 and RF5](../plans/another-plugins-facts-come-in-through-the-own-log-once.md#steps)),
+**Answered on 2026-10-29: on the write route, in the handler, by the command's stable id**, as
+the plan did ([RF4 and RF5](../plans/done/another-plugins-facts-come-in-through-the-own-log-once.md#steps)),
 not by a field each decision folds: the framework does it once, and a hand-written note can't
-forget it. For directly fed views, if they return: overwrite-only projections, enforced by
+forget it. An Extension's command carries an id derived from the published event, and the
+aggregate and slice handlers accept a command whose events the stream or partition already
+holds without deciding it again. For directly fed views, if they return: overwrite-only projections, enforced by
 refusing an accumulating action (`Update`, `Create`) at run time for such a view. Revisit if a
 directly fed view genuinely has to count, which would need a framework deduplication table with
 a write per event and a TTL policy.

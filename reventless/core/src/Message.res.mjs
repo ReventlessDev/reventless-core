@@ -197,7 +197,7 @@ function deriveMeta(parent, service) {
     causationId: parent.msgId,
     traceparent: parent.traceparent,
     schemaVersion: parent.schemaVersion,
-    headers: parent.headers
+    headers: Message$ReventlessInfra.withoutStableIdHeader(parent.headers)
   };
 }
 
@@ -404,6 +404,8 @@ let InvalidEvent = Message$Reventless.InvalidEvent;
 
 let deriveStableMeta = Message$ReventlessInfra.deriveStableMeta;
 
+let hasStableMsgId = Message$ReventlessInfra.hasStableMsgId;
+
 export {
   logger,
   serviceSchema,
@@ -440,6 +442,7 @@ export {
   generateMeta,
   deriveMeta,
   deriveStableMeta,
+  hasStableMsgId,
   decomposeMeta,
   composeEventJson$p,
   composeMeta,

@@ -10,7 +10,7 @@
 
 **Status:** Proposed (2026-07-27). Found while auditing the open question left by
 [done/entry-point-rescript-conversion.md](done/entry-point-rescript-conversion.md)
-§5 — "verify `RuntimeEnvironment_Lambda.res`'s `CallbackFunction` path is not the
+[§5](done/entry-point-rescript-conversion.md#5-risks--open-questions) — "verify `RuntimeEnvironment_Lambda.res`'s `CallbackFunction` path is not the
 same pattern". It is reachable, but the failure mode is worse than that question
 assumed, and it was knowingly deferred twice before.
 
@@ -18,17 +18,17 @@ assumed, and it was knowingly deferred twice before.
 
 Two completed plans already knew about this path:
 
-- [done/bundled-handler-cleanup.md](done/bundled-handler-cleanup.md) §4a listed
+- [done/bundled-handler-cleanup.md](done/bundled-handler-cleanup.md) [§4a](done/bundled-handler-cleanup.md#4a-delete-non-bundled-component-builders) listed
   twelve component builders under "Delete non-bundled component builders — these
   files use non-bundled runtime builders that create Lambdas via
   `CallbackFunction.make` → fails with Effect-TS". `SideEffectHandler_PerSideEffectHandler.res`
   and `Task_Builder_PerBucket.res` are both on that list. The step was not
   completed for them.
-- [done/complete-bundled-migration.md](done/complete-bundled-migration.md) §7
+- [done/complete-bundled-migration.md](done/complete-bundled-migration.md) [§7](done/complete-bundled-migration.md#step-7-wire-bundled-dcb-slice-builders)
   closed its blocker with: "The non-bundled path **remains broken** but is no
   longer used by bundled plugins." That sentence is the deferral this plan closes.
 
-**That §4a inventory is now stale** — worth not trusting it wholesale. Of the
+**That [§4a](done/bundled-handler-cleanup.md#4a-delete-non-bundled-component-builders) inventory is now stale** — worth not trusting it wholesale. Of the
 twelve files listed, `SideEffectHandlerWithQueue_Single.res` and
 `SideEffectHandlerWithQueue_PerSideEffectHandler.res` are gone, and the rest
 except the three named below have since been repointed at AWS-local runtime

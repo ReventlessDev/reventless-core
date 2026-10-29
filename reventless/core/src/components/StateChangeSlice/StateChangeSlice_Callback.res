@@ -31,6 +31,20 @@ module Make = (
   let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
   let queryEventTypes = decoder.eventTypes
 
+  // For a command with a stable id the read also covers the slice's own produced
+  // types: an event among them whose `causationId` is this command's `msgId` says
+  // the command was handled already. Reading them through the same query, rather
+  // than a tag of their own, keeps every event's tag set — and so the
+  // `tag_composite` key a composite read depends on — exactly what the model
+  // declares; it also puts the produced types under the append condition, so two
+  // concurrent copies cannot both append. The produced types not consumed are
+  // dropped by the decoder and never reach `evolve`.
+  let producedEventTypes = Reventless.DcbTag.extractAllVariantNames(Spec.eventSchema)
+  let queryEventTypesWithOwn = Array.concat(
+    queryEventTypes,
+    producedEventTypes->Array.filter(t => !(queryEventTypes->Array.includes(t))),
+  )
+
   let encodeEvent = (
     ~parentMeta: Message.meta,
     ~tagKeysByEventType: Dict.t<array<string>>,
@@ -199,8 +213,11 @@ module Make = (
       `handling command: ${cmdJson->LogFormat.cmdDetailNoId}`,
     )->Effect.runSync
 
+    // A command an Extension derived carries a stable id: the read then also asks
+    // whether this very command already left events (see `queryEventTypesWithOwn`).
+    let asksForRepeat = Message.hasStableMsgId(command'.meta)
     let query = Reventless.DcbTag.buildQueryFromCommand(
-      ~eventTypes=queryEventTypes,
+      ~eventTypes=asksForRepeat ? queryEventTypesWithOwn : queryEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command'.command,
       ~tagKeysByEventType,
@@ -265,7 +282,12 @@ module Make = (
     // one shared cache slot, so one slice's folded state could seed another's —
     // a silent correctness bug. `None` simply bypasses the cache (cold read, no
     // write) for that operation.
-    let cacheKey = query->JSON.stringifyAny
+    //
+    // A command asking for a repeat bypasses the cache too: a cached head sits
+    // past the events an earlier delivery left, so a delta read could not see
+    // them. Such a command pays a full read of its partition for the guarantee
+    // that a second delivery changes nothing.
+    let cacheKey = asksForRepeat ? None : query->JSON.stringifyAny
     let cacheGet = () =>
       switch cacheKey {
       | Some(k) => Lru.get(projectionCache, k)
@@ -323,41 +345,38 @@ module Make = (
       }
 
       dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
-      ->Stream.map(raw => {
-        let data = raw.data->JSON.Decode.object->Option.getOr(Dict.make())
-        let decoded = decoder.decode(~eventType=raw.eventType, ~data)
-        decoded->Option.map(event => (
-          event,
-          raw.position,
-          raw.eventType,
-          readEventId(~partitionTag, raw.tags),
-          (ownerFieldsOf(raw), data),
-        ))
-      })
-      ->Stream.flatMap(opt =>
-        switch opt {
-        | Some(v) => Stream.fromIterable([v])
-        | None => Stream.empty
-        }
-      )
       // The head accumulator starts at `afterPos` (the seeded head), not `None`,
       // so an empty delta read keeps the cached head — the append must condition
       // on the head that actually exists, not assert "no events exist yet".
-      ->Stream.runFold((baseState, afterPos, [], baseOwners), (
-        (dm, _pos, reads, owners),
-        (event, position, eventType, eventId, (ownerFields, data)),
-      ) => (
-        Decision.evolve(dm, event),
-        Some(position),
-        reads->Array.concat([
-          switch eventId {
-          | Some(id) => `${eventType->LogFormat.bold}(${id})`
-          | None => eventType->LogFormat.bold
-          },
-        ]),
-        owners->Reventless.OwnerScope.recordOwners(~fields=ownerFields, data),
-      ))
-      ->Effect.tap(((_, _, reads, _)) => {
+      // Every read event moves the head and is checked as this command's own
+      // doing before it is decoded; only the consumed ones reach `evolve`.
+      ->Stream.runFold((baseState, afterPos, [], baseOwners, false), (
+        (dm, _pos, reads, owners, repeated),
+        raw,
+      ) => {
+        // Only a command with a stable id asks; a fresh id never matches a stored
+        // cause, and asking would only make the answer depend on what the slice
+        // happens to read.
+        let repeated =
+          repeated || (asksForRepeat && raw.meta.causationId == Some(command'.meta.msgId))
+        let data = raw.data->JSON.Decode.object->Option.getOr(Dict.make())
+        switch decoder.decode(~eventType=raw.eventType, ~data) {
+        | None => (dm, Some(raw.position), reads, owners, repeated)
+        | Some(event) => (
+            Decision.evolve(dm, event),
+            Some(raw.position),
+            reads->Array.concat([
+              switch readEventId(~partitionTag, raw.tags) {
+              | Some(id) => `${raw.eventType->LogFormat.bold}(${id})`
+              | None => raw.eventType->LogFormat.bold
+              },
+            ]),
+            owners->Reventless.OwnerScope.recordOwners(~fields=ownerFieldsOf(raw), data),
+            repeated,
+          )
+        }
+      })
+      ->Effect.tap(((_, _, reads, _, _)) => {
         // On a warm first attempt, record how many events the delta read
         // returned — near-zero on a healthy hit; a large value means the entity
         // churned between commands, so the cache saved little. Gated to the first
@@ -380,7 +399,7 @@ module Make = (
               : ` [${reads->Array.join(", ")}]`}`,
         )
       })
-      ->Effect.flatMap(((state, headPosition, _, owners)) =>
+      ->Effect.flatMap(((state, headPosition, _, owners, repeated)) =>
         // Identity, not content: the decision model folds the whole matched
         // history, so serialising it here makes the line's size a function of
         // how long the entity has been in use.
@@ -391,6 +410,24 @@ module Make = (
             )} cmd=${cmdJson->LogFormat.cmdName}`,
         )->Effect.flatMap(_ =>
           switch ownershipRefusal(owners) {
+          | _ if repeated =>
+            // Before `decide`, and before the ownership check it passed the first
+            // time: the partition already holds events this command caused, so it
+            // was delivered again. Accepted, nothing new.
+            CommandTopic_Helpers.reportAccepted(
+              ~component=Spec.name,
+              cmdJson.meta.msgId,
+              switch entityId {
+              | Some(eid) => {entityId: eid, eventCount: 0}
+              | None => {eventCount: 0}
+              },
+            )
+            EffectLogger.logInfo(
+              ~comp,
+              `repeat dropped: ${cmdJson->LogFormat.cmdName} msgId=${cmdJson.meta.msgId} already caused events in id=${entityId->Option.getOr(
+                  "-",
+                )}`,
+            )->Effect.map(_ => Ok("ok"))
           | Some({rejected, isDefect}) =>
             // Refused before `decide`; the read snapshot is still valid.
             cachePut((state, headPosition, owners))

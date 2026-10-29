@@ -181,6 +181,10 @@ module MakeOps = (
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
+      replayStream': (
+        string,
+        ~fromSeq: int=?,
+      ) => Stream.t<Message.event'<string, AggSpec.event>, string, unit>,
       appendStream: (
         int,
         string,
@@ -196,6 +200,8 @@ module MakeOps = (
     append: mock.appendFn,
     replay: async id => await mock.replayStreamFn(id)->Stream.runCollect->Effect.runPromise,
     replayStream: mock.replayStreamFn,
+    replayStream': (id, ~fromSeq as _=?) =>
+      mock.getAll()->Array.filter(e => e.id == id)->Stream.fromIterable,
     appendStream: (_startingSeqNr, _id, stream) => stream->Stream.runDrain,
     latestSnapshot: mock.latestSnapshotFn,
     writeSnapshot: mock.writeSnapshotFn,

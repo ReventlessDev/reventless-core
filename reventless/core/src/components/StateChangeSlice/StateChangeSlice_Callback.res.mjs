@@ -9,6 +9,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Lru$ReventlessCore from "../../util/Lru.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
@@ -26,6 +28,8 @@ function Make(Spec) {
     let comp = `StateChangeSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let queryEventTypes = decoder.eventTypes;
+    let producedEventTypes = DcbTag$Reventless.extractAllVariantNames(Spec.eventSchema);
+    let queryEventTypesWithOwn = queryEventTypes.concat(producedEventTypes.filter(t => !queryEventTypes.includes(t)));
     let slicePartitionTag = Stdlib_Lazy.make(() => {
       try {
         return DcbTag$Reventless.deriveSlicePartition({
@@ -79,7 +83,8 @@ function Make(Spec) {
     let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, partitionTag, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
-      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
+      let asksForRepeat = Message$ReventlessCore.hasStableMsgId(command$p.meta);
+      let query = DcbTag$Reventless.buildQueryFromCommand(asksForRepeat ? queryEventTypesWithOwn : queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -129,7 +134,7 @@ function Make(Spec) {
           return CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, Stdlib_Option.map(entityId, param => owners)), Spec.name, Message$ReventlessCore.variantNameOfJson(cmdJson.commandJson));
         }
       };
-      let cacheKey = JSON.stringify(query);
+      let cacheKey = asksForRepeat ? undefined : JSON.stringify(query);
       let cacheGet = () => {
         if (cacheKey !== undefined) {
           return Lru$ReventlessCore.get(projectionCache, cacheKey);
@@ -174,39 +179,35 @@ function Make(Spec) {
             strongConsistency = false;
             break;
         }
-        return Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, afterPos, strongConsistency), raw => {
-          let data = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {});
-          let decoded = decoder.decode(raw.eventType, data);
-          return Stdlib_Option.map(decoded, event => [
-            event,
-            raw.position,
-            raw.eventType,
-            readEventId(partitionTag, raw.tags),
-            [
-              ownerFieldsOf(raw),
-              data
-            ]
-          ]);
-        }), opt => {
-          if (opt !== undefined) {
-            return Stream$1.fromIterable([opt]);
-          } else {
-            return Stream$1.empty;
-          }
-        }), [
+        return Effect.flatMap(Effect.tap(Stream$1.runFold(dcbEventLog.readStream(query, afterPos, strongConsistency), [
           match$1[0],
           afterPos,
           [],
-          match$1[2]
-        ], (param, param$1) => {
-          let match = param$1[4];
-          let eventId = param$1[3];
-          let eventType = param$1[2];
+          match$1[2],
+          false
+        ], (param, raw) => {
+          let owners = param[3];
+          let reads = param[2];
+          let dm = param[0];
+          let repeated = param[4] || asksForRepeat && Primitive_object.equal(raw.meta.causationId, command$p.meta.msgId);
+          let data = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {});
+          let event = decoder.decode(raw.eventType, data);
+          if (event === undefined) {
+            return [
+              dm,
+              raw.position,
+              reads,
+              owners,
+              repeated
+            ];
+          }
+          let id = readEventId(partitionTag, raw.tags);
           return [
-            Decision.evolve(param[0], param$1[0]),
-            param$1[1],
-            param[2].concat([eventId !== undefined ? LogFormat$ReventlessCore.bold(eventType) + `(` + eventId + `)` : LogFormat$ReventlessCore.bold(eventType)]),
-            OwnerScope$Reventless.recordOwners(param[3], match[0], match[1])
+            Decision.evolve(dm, Primitive_option.valFromOption(event)),
+            raw.position,
+            reads.concat([id !== undefined ? LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `)` : LogFormat$ReventlessCore.bold(raw.eventType)]),
+            OwnerScope$Reventless.recordOwners(owners, ownerFieldsOf(raw), data),
+            repeated
           ];
         }), param => {
           let reads = param[2];
@@ -219,11 +220,24 @@ function Make(Spec) {
             reads.length === 0 ? "" : ` [` + reads.join(", ") + `]`
           ));
         }), param => {
+          let repeated = param[4];
           let owners = param[3];
           let headPosition = param[1];
           let state = param[0];
           return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
             let match = ownershipRefusal(owners);
+            if (repeated) {
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.msgId, entityId !== undefined ? ({
+                  entityId: entityId,
+                  eventCount: 0
+                }) : ({
+                  eventCount: 0
+                }));
+              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `repeat dropped: ` + LogFormat$ReventlessCore.cmdName(cmdJson) + ` msgId=` + cmdJson.meta.msgId + ` already caused events in id=` + Stdlib_Option.getOr(entityId, "-")), () => ({
+                TAG: "Ok",
+                _0: "ok"
+              }));
+            }
             if (match !== undefined) {
               let rejected = match.rejected;
               cachePut([

@@ -151,7 +151,7 @@ This removes ~1800 bytes from the catalog EventCollector and, more to the point,
 removes the last term in that Lambda that scales with the plugin. (The `PRM_*`
 half of this step is gone already: the read-model queue URLs went with the
 extension-point-to-read-model forwarding they served, see
-[another-plugins-facts-come-in-through-the-own-log-once.md](another-plugins-facts-come-in-through-the-own-log-once.md).)
+[another-plugins-facts-come-in-through-the-own-log-once.md](done/another-plugins-facts-come-in-through-the-own-log-once.md).)
 
 **3 — Audit the remaining Lambdas.**
 The four incidents were found by deploying. Enumerate every `makeFromCodeAsset`

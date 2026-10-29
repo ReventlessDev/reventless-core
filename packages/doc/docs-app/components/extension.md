@@ -35,7 +35,7 @@ PluginB: "Plugin B (Consumer)" {
   RM: ReadModel { class: read-model }
 
   Ext.ExtM -> Agg: command { class: command-flow }
-  Ext.ExtM -> RM: event { class: projection-flow }
+  Agg -> RM: event { class: projection-flow }
   Agg -> Ext.ExtM: event { class: event-flow }
 }
 
@@ -50,7 +50,9 @@ PluginB.Ext -> Admin.PEP: events/commands { class: cross-plugin }
 - **Event Consumption:** Receives events from remote ExtensionPoints
 - **Command Generation:** Transforms incoming events into commands for local Aggregates
 - **Event Forwarding:** Optionally forwards local Aggregate events back to ExtensionPoints
-- **ReadModel Updates:** Can forward events to local ReadModels for projection
+- **The only way in for another plugin's facts:** a ReadModel or StateView slice hears its own
+  plugin's events only; an Extension turns the other plugin's event into a command, and the
+  view projects what that command recorded
 - **Cross-Plugin Integration:** Enables loose coupling between Plugins
 
 ## Extension vs ExtensionPoint
@@ -321,6 +323,24 @@ module Mapping = {
 
 ## Targeting a StateChangeSlice instead of an Aggregate
 
+This is how a view gets another plugin's facts. A ReadModel or StateView slice
+subscribes to its own plugin's event topics only, so it cannot hear an extension
+point directly (the plugin build refuses a `Mapping.sourceName` that names one,
+and says so). The Extension sends the other plugin's event as a command to one of
+this plugin's slices or aggregates, that component records the fact as an event
+of its own, and the view projects that event. The view can then be rebuilt from
+the plugin's own log like any other, and the fact is subject to the slice's
+decision like any other.
+
+Delivery is at-least-once, and the framework drops a repeat for you. The command
+an Extension sends carries an id derived from the published event it came from,
+so a redelivered event yields the same command, and the slice or aggregate handler
+accepts a command whose events it already holds without deciding it again. The
+price is that such a command reads its whole partition or stream rather than a
+cached delta. A decision rule of your own (the shop's `RecordProductDemand` checks
+the order id by hand) is still right where it states a business rule beyond
+redelivery, such as "an order counts once per product".
+
 When the local `Delegate` is a `StateChangeSlice` (the DCB write side) rather than
 an Aggregate, use `PublishStateChangeSliceCommand(command)` — no id is needed
 because the framework uses the command's value of the slice's partition key as
@@ -376,7 +396,7 @@ EC -> ExtOps: "incomingEventHandler(event, pluginDef)"
 ExtOps -> ExtOps: "mapIncomingEvent(event)"
 ExtOps -> AggCT: "command (PublishAggregateCommand)"
 AggCT -> Agg: command
-ExtOps -> RM: "event (Forward to ReadModel)"
+Agg -> RM: event
 ```
 
 ### Outgoing Event Flow
@@ -494,5 +514,5 @@ The Extension's name follows the pattern: `{ExtensionPointName}.{MappingName}` a
 - [Plugin](./plugin.md) - Container for Extensions
 - [ExtensionPoint](./extensionpoint.md) - The interface being consumed
 - [Aggregate](./aggregate.md) - Target of generated commands
-- [ReadModel](./readmodel.md) - Can receive forwarded events
+- [ReadModel](./readmodel.md) - Projects the events the commanded Aggregate or slice recorded
 - [EventCollector](/framework/runtime-components/eventcollector) - Delivers events to Extension handlers

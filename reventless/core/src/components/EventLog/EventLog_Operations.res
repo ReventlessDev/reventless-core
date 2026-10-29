@@ -10,6 +10,7 @@ module type T = {
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
   let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
+  let replayStream': EventLog.replayStream'<Spec.Id.t, Spec.event>
   let appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>
   let latestSnapshot: EventLog.latestSnapshot<Spec.Id.t>
   let writeSnapshot: EventLog.writeSnapshot<Spec.Id.t>
@@ -198,6 +199,35 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     Ops.storage.replayStream(id->Spec.Id.toString, ~fromSeq?)->Stream.mapEffect(json =>
       Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
     )
+
+  // The stored item is the flat form `storedEventToFlatJson` writes: meta.* at the
+  // top level, reassembled the way `flatJsonToStoredEvent` does.
+  let decodeMeta = (id, json) =>
+    try {
+      json
+      ->JSON.Decode.object
+      ->Option.getOrThrow
+      ->Message.composeMeta
+      ->Reventless.Util_Sury.fromJson(Message.metaSchema)
+    } catch {
+    | exn =>
+      JsError.throwWithMessage(
+        `EventLog.replay: Error: id:${id}: Couldn't decode meta of ${json->JSON.stringify}: ${Reventless.Util_Sury.exnMessage(
+            exn,
+          )}`,
+      )
+    }
+
+  let replayStream' = (id, ~fromSeq=?) => {
+    let idStr = id->Spec.Id.toString
+    Ops.storage.replayStream(idStr, ~fromSeq?)->Stream.mapEffect(json =>
+      Effect.sync(() => {
+        Reventless.Message.id,
+        meta: decodeMeta(idStr, json),
+        event: decodeEvent(idStr, json),
+      })
+    )
+  }
 
   // Snapshot passthrough — the state stays JSON at this layer; the consumer
   // (Aggregate_Callback) decodes it against its own state schema and hash-gates

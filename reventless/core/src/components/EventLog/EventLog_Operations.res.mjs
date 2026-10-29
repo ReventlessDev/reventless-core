@@ -11,6 +11,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Duration from "effect/Duration";
 import * as Schedule from "effect/Schedule";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -187,6 +188,22 @@ function Make(Spec) {
       return eventsJson.map(json => decodeEvent(id$1, json));
     };
     let replayStream = (id, fromSeq) => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id), fromSeq), json => Effect$1.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let decodeMeta = (id, json) => {
+      try {
+        return Util_Sury$Reventless.fromJson(Message$ReventlessCore.composeMeta(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined)), Message$ReventlessCore.metaSchema);
+      } catch (raw_exn) {
+        let exn = Primitive_exceptions.internalToException(raw_exn);
+        return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: Couldn't decode meta of ` + JSON.stringify(json) + `: ` + Util_Sury$Reventless.exnMessage(exn, undefined));
+      }
+    };
+    let replayStream$p = (id, fromSeq) => {
+      let idStr = Spec.Id.toString(id);
+      return Stream.mapEffect(Ops.storage.replayStream(idStr, fromSeq), json => Effect$1.sync(() => ({
+        id: id,
+        meta: decodeMeta(idStr, json),
+        event: decodeEvent(idStr, json)
+      })));
+    };
     let latestSnapshot = id => Ops.storage.latestSnapshot(Spec.Id.toString(id));
     let writeSnapshot = (id, snap) => Ops.storage.writeSnapshot(Spec.Id.toString(id), snap);
     let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.map(stream, event => {
@@ -208,6 +225,7 @@ function Make(Spec) {
       append: append,
       replay: replay,
       replayStream: replayStream,
+      replayStream$p: replayStream$p,
       appendStream: appendStream,
       latestSnapshot: latestSnapshot,
       writeSnapshot: writeSnapshot

@@ -33,6 +33,12 @@ type replay<'id, 'event> = 'id => promise<array<'event>>
 // `fromSeq` starts the replay at that sequence number (inclusive; default 0) —
 // the delta read after seeding from a snapshot at seqNr = fromSeq.
 type replayStream<'id, 'event> = ('id, ~fromSeq: int=?) => Stream.t<'event, string, unit>
+// The same replay as envelopes, meta included — for a reader that needs to know
+// which command caused each event, not only what happened.
+type replayStream'<'id, 'event> = (
+  'id,
+  ~fromSeq: int=?,
+) => Stream.t<Message.event'<'id, 'event>, string, unit>
 type appendStream<'id, 'event> = (
   int,
   'id,
@@ -52,6 +58,7 @@ module type T = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     replay: replay<Spec.Id.t, Spec.event>,
     replayStream: replayStream<Spec.Id.t, Spec.event>,
+    replayStream': replayStream'<Spec.Id.t, Spec.event>,
     appendStream: appendStream<Spec.Id.t, Spec.event>,
     latestSnapshot: latestSnapshot<Spec.Id.t>,
     writeSnapshot: writeSnapshot<Spec.Id.t>,

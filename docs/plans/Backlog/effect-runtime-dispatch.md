@@ -92,7 +92,7 @@ Effect.promise(async () => {
 event straight into the plugin's read models (`publishToReadModels`, with its `FIXME`). That
 route was deleted together with its index: another plugin's facts reach a read model only
 through an Extension and a slice of the plugin's own, see
-[another-plugins-facts-come-in-through-the-own-log-once.md](../another-plugins-facts-come-in-through-the-own-log-once.md).
+[another-plugins-facts-come-in-through-the-own-log-once.md](../done/another-plugins-facts-come-in-through-the-own-log-once.md).
 Nothing is left here to convert.
 
 ---

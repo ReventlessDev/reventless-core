@@ -80,26 +80,31 @@ module Make = (
     | CmdOk(array<Spec.event>)
     | CmdRejected({errorCode: string, errorDetail: string})
     | CmdRefused(CommandTopic_Helpers.ownershipRefusal)
+    // A command the stream already holds events for: delivered again, accepted
+    // again, nothing new.
+    | CmdRepeated
 
-  // Folds a single command into the running accumulator: (currentState, perCommandOutcomes).
-  // A domain rejection from Decision.decide is recorded as `CmdRejected` (no state change,
-  // surviving commands in the batch continue); a successful decide records `CmdOk(events)`
+  // What the fold carries from command to command: the state decided on, the
+  // distinct owners the stream records, and the `msgId`s of the commands that
+  // caused its events — the second only for a batch that can be asked about a
+  // repeat, the third only when a batch holds a command with a stable id.
+  type fold = {
+    state: Decision.state,
+    owners: array<string>,
+    causes: array<string>,
+    outcomes: array<(string, cmdOutcome, Message.meta)>,
+  }
+
+  // Folds a single command into the running accumulator. A domain rejection from
+  // Decision.decide is recorded as `CmdRejected` (no state change, surviving
+  // commands in the batch continue); a successful decide records `CmdOk(events)`
   // and advances state via `Decision.evolve`.
   //
   // `~seq` is the replayed sequence number the batch decides from, carried in so
   // the line below can name the state rather than serialise it.
-  //
-  // `owners` are the distinct owners the stream records so far, including any a
-  // command earlier in the same batch just recorded.
   let processCommand = (~seq: int) =>
-    (
-      (state, owners, outcomes): (
-        Decision.state,
-        array<string>,
-        array<(string, cmdOutcome, Message.meta)>,
-      ),
-      topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
-    ) => {
+    (acc: fold, topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>) => {
+      let {state, owners, causes, outcomes} = acc
       let {reference, command: command'} = topicItem
       let meta = command'->updateMeta
       let id = command'.id->Spec.Id.toString
@@ -114,31 +119,46 @@ module Make = (
         ~comp,
         `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
       )->Effect.runSync
-      // Before `decide`: an owner-marked aggregate refuses a caller who does not
-      // own the stream.
-      let refusal = actsOnOwned
-        ? Reventless.OwnerScope.decideActing(
-            ~claim=command'.meta.callerClaim,
-            ~recordedOwners=Some(owners),
-          )->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=cmdVariant)
-        : None
+      // Before `decide`, first: a command with a stable id that the stream already
+      // holds events for was delivered a second time. Accepted, nothing new — the
+      // decision has run once and must not count the fact twice.
+      let repeated =
+        Message.hasStableMsgId(command'.meta) && causes->Array.includes(command'.meta.msgId)
+      // Before `decide`, second: an owner-marked aggregate refuses a caller who
+      // does not own the stream.
+      let refusal =
+        repeated || !actsOnOwned
+          ? None
+          : Reventless.OwnerScope.decideActing(
+              ~claim=command'.meta.callerClaim,
+              ~recordedOwners=Some(owners),
+            )->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=cmdVariant)
       switch refusal {
+      | _ if repeated =>
+        EffectLogger.logInfo(
+          ~comp,
+          `repeat dropped: ${cmdName}(${id}) msgId=${command'.meta.msgId} already caused events`,
+        )->Effect.runSync
+        {...acc, outcomes: Array.concat(outcomes, [(reference, CmdRepeated, meta)])}
       | Some(refused) =>
         let line = `refused: ${refused.rejected.errorDetail} id=${id}`
 
         (
           refused.isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
         )->Effect.runSync
-        (state, owners, Array.concat(outcomes, [(reference, CmdRefused(refused), meta)]))
+        {...acc, outcomes: Array.concat(outcomes, [(reference, CmdRefused(refused), meta)])}
       | None =>
         switch Decision.decide(state, command'.command) {
         | Ok(generatedEvents) =>
           let newState = generatedEvents->Array.reduce(state, Decision.evolve)
-          (
-            newState,
-            generatedEvents->Array.reduce(owners, recordEventOwners),
-            Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]),
-          )
+          {
+            state: newState,
+            owners: generatedEvents->Array.reduce(owners, recordEventOwners),
+            causes: generatedEvents->Array.length == 0
+              ? causes
+              : causes->Array.concat([command'.meta.msgId]),
+            outcomes: Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]),
+          }
         | Error(error) =>
           let errorJson = error->Message.encode(Spec.errorSchema)
           let errorCode = errorJson->Message.variantNameOfJson
@@ -152,11 +172,13 @@ module Make = (
             ~comp,
             `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
           )->Effect.runSync
-          (
-            state,
-            owners,
-            Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]),
-          )
+          {
+            ...acc,
+            outcomes: Array.concat(
+              outcomes,
+              [(reference, CmdRejected({errorCode, errorDetail}), meta)],
+            ),
+          }
         }
       }
     }
@@ -297,6 +319,31 @@ module Make = (
     )
   }
 
+  // The read for a batch holding a command with a stable id: the whole stream, as
+  // envelopes, so the `causationId`s say which commands already produced events.
+  // Neither the in-process cache nor a snapshot carries those, so this read skips
+  // both — a command an Extension derived pays a full replay for the guarantee
+  // that a second delivery of it changes nothing.
+  let coldReadCauses = id => {
+    let idStr = id->Spec.Id.toString
+    Ops.eventLog.replayStream'(id, ~fromSeq=0)
+    ->Stream.runFold((Decision.initialState, 0, [], []), ((st, n, owners, causes), ev') => (
+      Decision.evolve(st, ev'.event),
+      n + 1,
+      owners->recordEventOwners(ev'.event),
+      switch ev'.meta.causationId {
+      | Some(c) if !(causes->Array.includes(c)) => causes->Array.concat([c])
+      | _ => causes
+      },
+    ))
+    ->Effect.tap(((_, n, _, _)) =>
+      EffectLogger.logInfo(
+        ~comp,
+        `replay (with causes, for a stable-id command): id=${idStr}, ${n->Int.toString} event(s)`,
+      )
+    )
+  }
+
   // Fire-and-forget snapshot write — never awaited, never fails the command. A
   // failed write just means the next cold replay reads a longer delta.
   let fireSnapshotWrite = (id, idStr, snap: EventLog.snapshot) => {
@@ -386,6 +433,13 @@ module Make = (
           {entityId, eventCount: appendedEventCount},
         )
         Ok(reference)
+      | CmdRepeated =>
+        CommandTopic_Helpers.reportAccepted(
+          ~component=Spec.name,
+          reference,
+          {entityId, eventCount: 0},
+        )
+        Ok(reference)
       | CmdOk(_) =>
         // The decision succeeded and the append did not — infrastructure, not the model.
         CommandTopic_Helpers.reportRejected(
@@ -408,23 +462,32 @@ module Make = (
   ) => {
     let idStr = id->Spec.Id.toString
 
-    // Warm path: seed from the in-process cache and skip both the snapshot read
-    // and the event-log replay; the OCC append below fences any staleness. Cold
-    // path (`coldReadState`): seed from the persisted snapshot when enabled, else
-    // full replay.
-    let readState = switch replayCache->Lru.get(idStr) {
-    | Some((state, seqNr, owners)) =>
-      EffectLogger.logInfo(
-        ~comp,
-        `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
-      )->Effect.map(_ => (state, seqNr, owners))
-    | None => coldReadState(id)
+    // A batch with a command whose id is stable reads the stream with its causes
+    // (`coldReadCauses`): the cache and the snapshot cannot say what already
+    // happened for that command. Otherwise, warm path: seed from the in-process
+    // cache and skip both the snapshot read and the event-log replay; the OCC
+    // append below fences any staleness. Cold path (`coldReadState`): seed from
+    // the persisted snapshot when enabled, else full replay.
+    let asksForRepeats =
+      topicItemsForId->Array.some(item => Message.hasStableMsgId(item.command.meta))
+    let readState = if asksForRepeats {
+      coldReadCauses(id)
+    } else {
+      switch replayCache->Lru.get(idStr) {
+      | Some((state, seqNr, owners)) =>
+        EffectLogger.logInfo(
+          ~comp,
+          `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
+        )->Effect.map(_ => (state, seqNr, owners, []))
+      | None =>
+        coldReadState(id)->Effect.map(((state, seqNr, owners)) => (state, seqNr, owners, []))
+      }
     }
 
-    readState->Effect.flatMap(((initialState, sequenceNr, initialOwners)) => {
-      let (finalState, finalOwners, outcomes) =
+    readState->Effect.flatMap(((initialState, sequenceNr, initialOwners, causes)) => {
+      let {state: finalState, owners: finalOwners, outcomes} =
         topicItemsForId->Array.reduce(
-          (initialState, initialOwners, []),
+          {state: initialState, owners: initialOwners, causes, outcomes: []},
           processCommand(~seq=sequenceNr),
         )
 
@@ -433,7 +496,7 @@ module Make = (
         ->Array.map(((_reference, outcome, meta)) =>
           switch outcome {
           | CmdOk(events) => events->Array.map(event => {Message.id, meta, event})
-          | CmdRejected(_) | CmdRefused(_) => []
+          | CmdRejected(_) | CmdRefused(_) | CmdRepeated => []
           }
         )
         ->Array.flat
