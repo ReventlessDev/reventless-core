@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.191 (2026-10-30)
+
+### Features
+
+* **spec:** an aggregate keyed by its owner's id refuses other callers ([e05f287](https://github.com/ReventlessDev/reventless-core/commit/e05f287eee959d26190af494691c4fa472797cad))
+
+
 # 3.0.0-alpha.190 (2026-10-30)
 
 ### Features

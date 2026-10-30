@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-registration",
-  "version": "1.0.0-alpha.16",
+  "version": "1.0.0-alpha.17",
   "description": "Self-registration as a library of slices: a person with no account proves control of an address and ends up with one, admitted per role as the app declares",
   "license": "Apache-2.0",
   "files": [
