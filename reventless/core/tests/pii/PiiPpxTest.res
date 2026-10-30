@@ -53,6 +53,15 @@ describe("@pii on an event", () => {
     ])
   })
 
+  testSync("a consumed field naming no subject is about the aggregate it came from", () =>
+    expect(
+      M.consumedEventSchema
+      ->S.castToUnknown
+      ->Reventless.Pii.variantFields(~variant="CustomerRegistered")
+      ->Array.map(((name, m)) => (name, m.subject)),
+    )->toEqual([("email", Reventless.Pii.streamSubject)])
+  )
+
   testSync("@pii implies @sensitive", () =>
     expect(
       M.eventSchema

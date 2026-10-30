@@ -37,8 +37,9 @@ open Ppxlib
       erased, so it must be an opaque id;
     - on an [@owner] field, which is the subject's id, not its data;
     - on a field with no [subject] and no [@owner] sibling to default to,
-      outside an aggregate's spec — there the subject is the aggregate, whose
-      id the event log seals under;
+      outside an aggregate's spec and a [consumedEvent] — in the first the
+      subject is the aggregate, whose id the event log seals under; the second
+      is only opened, which needs the key the value names, not its subject;
     - on a field whose subject names no sibling field;
     - on a type whose schema this pass cannot name;
     - on a field of any other type, where it would mark nothing anybody reads.
@@ -261,6 +262,10 @@ let transform_fields ~stream ~role fields =
 
 let transform_type_decl ~stream (td : type_declaration) : type_declaration =
   let role = role_of_type_name td.ptype_name.txt in
+  (* A consumed event is only ever opened, and opening reads the key a sealed
+     value names, never its subject: a field another slice consumes from an
+     aggregate's event, which carries no id of its own, needs none. *)
+  let stream = stream || String.equal td.ptype_name.txt "consumedEvent" in
   match td.ptype_kind with
   | Ptype_record fields -> { td with ptype_kind = Ptype_record (transform_fields ~stream ~role fields) }
   | Ptype_variant ctors ->

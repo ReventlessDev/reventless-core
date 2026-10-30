@@ -16,3 +16,8 @@ type event =
 
 @schema
 type command = Join({@owner memberId: string, @pii name: string, @pii address: Reventless.Email.t})
+
+// Another slice's view of an aggregate's event, which carries no id of its own:
+// only ever opened, so it needs no subject.
+@schema
+type consumedEvent = CustomerRegistered({@pii email: Reventless.Email.t})
