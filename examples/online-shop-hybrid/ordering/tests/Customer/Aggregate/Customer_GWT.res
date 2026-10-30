@@ -7,12 +7,12 @@ describe("Customer Decision", () => {
   test("Register on new aggregate produces Registered", () =>
     givenEvents([])
     ->whenCmd(Register({email: aliceEmail, address: mainStreet}))
-    ->thenEvent(Registered({email: aliceEmail, address: mainStreet}))
+    ->thenEvent(Registered({email: Value(aliceEmail), address: Value(mainStreet)}))
   )
 
   // scenario-id: 452a23c6-37e2-4ec7-b5eb-d0278a4ddc01
   test("Register on existing aggregate returns CustomerAlreadyRegistered", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(Register({email: "bob@x.y", address: "456 Oak"}))
     ->thenError(CustomerAlreadyRegistered)
   )
@@ -26,35 +26,35 @@ describe("Customer Decision", () => {
 
   // scenario-id: 9bdca4cd-2f47-4f4b-bf53-df742acbe9b2
   test("UpdateEmail on active customer produces EmailUpdated", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(UpdateEmail({email: aliceNewEmail}))
-    ->thenEvent(EmailUpdated({email: aliceNewEmail}))
+    ->thenEvent(EmailUpdated({email: Value(aliceNewEmail)}))
   )
 
   // scenario-id: 1c6780c2-cba6-4e88-8d44-0f67ad7e12fd
   test("UpdateEmail to same email produces no events (idempotent)", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(UpdateEmail({email: aliceEmail}))
     ->thenNoEvent
   )
 
   // scenario-id: 287b5b63-d27d-413e-a092-c88a871a493d
   test("UpdateEmail on deactivated customer returns CustomerAlreadyDeactivated", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet}), Deactivated])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
     ->whenCmd(UpdateEmail({email: anyEmail}))
     ->thenError(CustomerAlreadyDeactivated)
   )
 
   // scenario-id: 4f2b8d33-8e4d-45b4-8177-e3a6da0adc4d
   test("UpdateAddress on active customer produces AddressUpdated", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(UpdateAddress({address: "789 Pine"}))
     ->thenEvent(AddressUpdated({address: "789 Pine"}))
   )
 
   // scenario-id: 997eb9bf-32ba-4b94-b73b-be81e3700715
   test("UpdateAddress to same address produces no events (idempotent)", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(UpdateAddress({address: "123 Main"}))
     ->thenNoEvent
   )
@@ -65,7 +65,7 @@ describe("Customer Decision", () => {
   // scenario-id: 69496313-3f43-4051-a45b-477e7f6660d8
   test("SetAddressLocation with the same address but a new point is a correction", () =>
     givenEvents([
-      Registered({email: aliceEmail, address: mainStreet}),
+      Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
       LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
     ])
     ->whenCmd(SetAddressLocation({address: "123 Main", location: {lat: 51.5, lng: 3.5}}))
@@ -75,7 +75,7 @@ describe("Customer Decision", () => {
   // scenario-id: d1776e95-e536-4b16-9d8b-652546c77b0c
   test("SetAddressLocation repeating both halves is idempotent", () =>
     givenEvents([
-      Registered({email: aliceEmail, address: mainStreet}),
+      Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
       AddressLocated({address: "123 Main", location: {lat: 51.5, lng: 3.5}}),
     ])
     ->whenCmd(SetAddressLocation({address: "123 Main", location: {lat: 51.5, lng: 3.5}}))
@@ -91,21 +91,21 @@ describe("Customer Decision", () => {
 
   // scenario-id: c4235648-a20d-4cc4-9481-23ea840e6b8d
   test("Deactivate on active customer produces Deactivated", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(Deactivate)
     ->thenEvent(Deactivated)
   )
 
   // scenario-id: 9268384d-762b-451a-91d5-ce8edb553b81
   test("Deactivate on deactivated customer produces no events (idempotent)", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet}), Deactivated])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
     ->whenCmd(Deactivate)
     ->thenNoEvent
   )
 
   // scenario-id: 77896a0a-a306-4018-83ad-294419eca258
   test("Reactivate on deactivated customer produces Reactivated", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet}), Deactivated])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
     ->whenCmd(Reactivate)
     ->thenEvent(Reactivated)
   )
@@ -116,7 +116,7 @@ describe("Customer Decision", () => {
   // holds the two answers apart.
   // scenario-id: d611f10b-b550-4aa7-9907-0fe4e8812811
   test("Reactivate on active customer produces no events (idempotent)", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(Reactivate)
     ->thenNoEvent
   )
@@ -135,9 +135,9 @@ describe("Customer Decision", () => {
 describe("Customer email verification", () => {
   // scenario-id: 4c8094de-47ba-4401-ab59-d0ffa9096048
   test("MarkEmailVerified for the current address produces EmailVerified", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet})])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(MarkEmailVerified({email: aliceEmail}))
-    ->thenEvent(EmailVerified({email: aliceEmail}))
+    ->thenEvent(EmailVerified({email: Value(aliceEmail)}))
   )
 
   // 🚨 The verdict names the address it is about, so one naming an address the
@@ -147,8 +147,8 @@ describe("Customer email verification", () => {
   // scenario-id: 0c373007-f4df-4d4f-a686-c1cc9d58a599
   test("a verdict for a superseded address produces no event", () =>
     givenEvents([
-      Registered({email: aliceEmail, address: mainStreet}),
-      EmailUpdated({email: aliceNewEmail}),
+      Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
+      EmailUpdated({email: Value(aliceNewEmail)}),
     ])
     ->whenCmd(MarkEmailVerified({email: aliceEmail}))
     ->thenNoEvent
@@ -158,8 +158,8 @@ describe("Customer email verification", () => {
   // scenario-id: 5678dfb3-da66-4f14-8319-a7cf5783f579
   test("a redelivered verdict produces no second event", () =>
     givenEvents([
-      Registered({email: aliceEmail, address: mainStreet}),
-      EmailVerified({email: aliceEmail}),
+      Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
+      EmailVerified({email: Value(aliceEmail)}),
     ])
     ->whenCmd(MarkEmailVerified({email: aliceEmail}))
     ->thenNoEvent
@@ -170,19 +170,19 @@ describe("Customer email verification", () => {
   // scenario-id: a6c68c84-0109-450e-a483-6907137a8ef0
   test("a re-verified address after a change is recorded again", () =>
     givenEvents([
-      Registered({email: aliceEmail, address: mainStreet}),
-      EmailVerified({email: aliceEmail}),
-      EmailUpdated({email: aliceNewEmail}),
+      Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
+      EmailVerified({email: Value(aliceEmail)}),
+      EmailUpdated({email: Value(aliceNewEmail)}),
     ])
     ->whenCmd(MarkEmailVerified({email: aliceNewEmail}))
-    ->thenEvent(EmailVerified({email: aliceNewEmail}))
+    ->thenEvent(EmailVerified({email: Value(aliceNewEmail)}))
   )
 
   // Swallowed rather than refused, so a proof settling while the customer was
   // being deactivated does not leave the reporting slice retrying forever.
   // scenario-id: 62f40d78-be08-4d03-85b1-2cd1db773d79
   test("a verdict landing after deactivation produces no events", () =>
-    givenEvents([Registered({email: aliceEmail, address: mainStreet}), Deactivated])
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
     ->whenCmd(MarkEmailVerified({email: aliceEmail}))
     ->thenNoEvent
   )

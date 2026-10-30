@@ -12,7 +12,9 @@ module Binding = {
   module Spec = Customer
   module Decision = Customer_Decision
 
-  let created = address => [Customer.Registered({email: "alice@x.y", address})]
+  let created = address => [
+    Customer.Registered({email: Value("alice@x.y"), address: Value(address)}),
+  ]
   let subjectChanged = address => Customer.AddressUpdated({address: address})
   let located = (~point, ~resolvedFrom) => Customer.LocationSet({location: point, resolvedFrom})
   let unresolvable = (~subject, ~reason) => Customer.AddressUnresolvable({address: subject, reason})
@@ -34,7 +36,7 @@ module Binding = {
   // Every event type the slice consumes appears here — the consumed set may
   // not be wider than its triggers, and the suite checks exactly that.
   let triggers = address => [
-    GeocodeCustomerAddress.Registered({email: "alice@x.y", address}),
+    GeocodeCustomerAddress.Registered({email: Value("alice@x.y"), address: Value(address)}),
     GeocodeCustomerAddress.AddressUpdated({address: address}),
   ]
   // The stand-down, as a real constructor rather than a type name: a

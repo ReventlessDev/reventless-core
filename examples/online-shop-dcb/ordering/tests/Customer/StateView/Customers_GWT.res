@@ -6,7 +6,9 @@ describe("Customers StateViewSlice", () => {
   // scenario-id: 56a23bc7-31ce-4e9c-a7f1-d523e75aefba
   test("CustomerRegistered creates a row", () =>
     givenEvents([])
-    ->whenEvent(CustomerRegistered({customerId: c1, email: aliceEmail, address: mainStreet}))
+    ->whenEvent(
+      CustomerRegistered({customerId: c1, email: Value(aliceEmail), address: Value(mainStreet)}),
+    )
     ->thenStateWithId(
       "c1",
       {customerId: c1, email: aliceEmail, address: mainStreet, deactivated: false},
@@ -15,8 +17,10 @@ describe("Customers StateViewSlice", () => {
 
   // scenario-id: 941f8ba9-3740-49f7-bb3a-e3aca90f10bf
   test("EmailChanged updates the email", () =>
-    givenEvents([CustomerRegistered({customerId: c1, email: aliceEmail, address: mainStreet})])
-    ->whenEvent(EmailChanged({customerId: c1, email: aliceNewEmail}))
+    givenEvents([
+      CustomerRegistered({customerId: c1, email: Value(aliceEmail), address: Value(mainStreet)}),
+    ])
+    ->whenEvent(EmailChanged({customerId: c1, email: Value(aliceNewEmail)}))
     ->thenStateWithId(
       "c1",
       {customerId: c1, email: aliceNewEmail, address: mainStreet, deactivated: false},
@@ -25,8 +29,10 @@ describe("Customers StateViewSlice", () => {
 
   // scenario-id: 778d3e61-2b9b-4f55-a4ca-57f5e476a09b
   test("AddressChanged updates the address", () =>
-    givenEvents([CustomerRegistered({customerId: c1, email: aliceEmail, address: mainStreet})])
-    ->whenEvent(AddressChanged({customerId: c1, address: pineStreet}))
+    givenEvents([
+      CustomerRegistered({customerId: c1, email: Value(aliceEmail), address: Value(mainStreet)}),
+    ])
+    ->whenEvent(AddressChanged({customerId: c1, address: Value(pineStreet)}))
     ->thenStateWithId(
       "c1",
       {customerId: c1, email: aliceEmail, address: pineStreet, deactivated: false},
@@ -35,7 +41,9 @@ describe("Customers StateViewSlice", () => {
 
   // scenario-id: 783d84a5-3b4d-41df-bf3c-abaa9c717bd7
   test("CustomerDeactivated sets deactivated flag", () =>
-    givenEvents([CustomerRegistered({customerId: c1, email: aliceEmail, address: mainStreet})])
+    givenEvents([
+      CustomerRegistered({customerId: c1, email: Value(aliceEmail), address: Value(mainStreet)}),
+    ])
     ->whenEvent(CustomerDeactivated({customerId: c1}))
     ->thenStateWithId(
       "c1",

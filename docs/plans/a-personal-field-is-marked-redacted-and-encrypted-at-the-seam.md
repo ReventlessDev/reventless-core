@@ -260,6 +260,18 @@ translation writes to nobody when it reads `Erased`. **Not built:** the warning 
 looks like a `@pii` event field and has no marker. It needs a warning that does not fail the
 zero-warning build, and is left for the tools' personal-data card, which sees the whole app.
 
+**Examples marked 2026-10-30.** The customer's email and address in the three ordering
+plugins, and everywhere they travel in the hybrid one: the email-verification ledger, the
+geocoding and verification translations, and the notification chain (`RecipientAnnounced`,
+`NotificationRequested`'s address and body, the send translation). Two framework changes
+came out of it: in an aggregate's spec a field naming no subject is about the aggregate
+(sealed under the stream id), and a `consumedEvent` field needs no subject. Decisions and
+projections that keep a value unwrap it with `Pii.getOr("")`; translations owe an erased
+customer nothing. Still plain: the geocoding trait's spliced events (`AddressUpdated` and
+its siblings carry the address), and the outbound work items of the verification,
+geocoding and recipient translations, which key by `customerId:address`, so the address is
+in a table key, which cannot be erased.
+
 ### PD3: the envelope
 
 The AppSync templates stop writing `ip` into the command, `deriveMeta` stops inheriting it, and the

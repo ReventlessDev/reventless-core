@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as OrderId$OrderingPlugin from "../../Order/OrderId.res.mjs";
@@ -58,8 +59,8 @@ function project(param) {
   }
   switch (event.TAG) {
     case "Registered" :
-      let address = event.address;
-      let email = event.email;
+      let email = Pii$Reventless.getOr(event.email, "");
+      let address = Pii$Reventless.getOr(event.address, "");
       return {
         TAG: "UpdateWithDefault",
         _0: id,
@@ -91,7 +92,7 @@ function project(param) {
         _1: state => {
           let newrecord = {...state};
           newrecord.emailVerified = false;
-          newrecord.email = email$1;
+          newrecord.email = Pii$Reventless.getOr(email$1, "");
           return newrecord;
         }
       };

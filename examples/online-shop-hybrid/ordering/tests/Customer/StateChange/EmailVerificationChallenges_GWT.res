@@ -18,7 +18,7 @@ let nextDay = "2026-09-11T09:00:01.000Z"
 let openChallenge: array<consumedEvent> = [
   EmailChallengeIssued({
     customerId: c1,
-    email: "alice@x.y",
+    email: Value("alice@x.y"),
     purpose: "ContactChange",
     proofHash: "hash-of-the-secret",
     issuedAt,
@@ -26,11 +26,11 @@ let openChallenge: array<consumedEvent> = [
 ]
 
 let settled: array<consumedEvent> =
-  openChallenge->Array.concat([EmailProofAccepted({customerId: c1, email: "alice@x.y"})])
+  openChallenge->Array.concat([EmailProofAccepted({customerId: c1, email: Value("alice@x.y")})])
 
 let wrongOnce: consumedEvent = EmailProofRefused({
   customerId: c1,
-  email: "alice@x.y",
+  email: Value("alice@x.y"),
   reason: "ProofMismatch",
 })
 
@@ -50,7 +50,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
     ->thenEvent(
       EmailChallengeIssued({
         customerId: c1,
-        email: aliceEmail,
+        email: Value(aliceEmail),
         purpose: contactChange,
         proofHash: secretHash,
         issuedAt,
@@ -87,7 +87,7 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofAccepted({customerId: c1, email: aliceEmail}))
+    ->thenEvent(EmailProofAccepted({customerId: c1, email: Value(aliceEmail)}))
   )
 
   // Recorded rather than returned, so the attempt is counted. A refusal that came
@@ -103,7 +103,9 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: c1, email: aliceEmail, reason: "ProofMismatch"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: c1, email: Value(aliceEmail), reason: "ProofMismatch"}),
+    )
   )
 
   // scenario-id: a497d448-1368-45a4-a618-988e249ea116
@@ -117,7 +119,9 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: c1, email: aliceEmail, reason: "AlreadySettled"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: c1, email: Value(aliceEmail), reason: "AlreadySettled"}),
+    )
   )
 
   // Expiry is decided here, when the proof arrives, against the instant the
@@ -133,7 +137,9 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
         presentedAt: nextDay,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: c1, email: aliceEmail, reason: "ChallengeExpired"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: c1, email: Value(aliceEmail), reason: "ChallengeExpired"}),
+    )
   )
 
   // Five wrong answers spend the budget; the sixth is refused on the budget
@@ -151,7 +157,9 @@ describe("EmailVerificationChallenges StateChangeSlice", () => {
         presentedAt: soonAfter,
       }),
     )
-    ->thenEvent(EmailProofRefused({customerId: c1, email: aliceEmail, reason: "AttemptsExhausted"}))
+    ->thenEvent(
+      EmailProofRefused({customerId: c1, email: Value(aliceEmail), reason: "AttemptsExhausted"}),
+    )
   )
 
   // Nothing to count an attempt against, so this is the one refusal that is an

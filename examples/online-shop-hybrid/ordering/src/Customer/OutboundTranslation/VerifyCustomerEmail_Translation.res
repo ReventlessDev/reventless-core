@@ -7,8 +7,10 @@ module V = ContactVerification
 // reason. `~sourceId` is the entity id, which an aggregate's payload omits.
 let collect = (event, ~sourceId) =>
   switch event {
-  | Registered({email}) => [(`${sourceId}:${email}`, {customerId: sourceId, email})]
-  | EmailUpdated({email}) => [(`${sourceId}:${email}`, {customerId: sourceId, email})]
+  | Registered({email: Value(email)}) => [(`${sourceId}:${email}`, {customerId: sourceId, email})]
+  | EmailUpdated({email: Value(email)}) => [(`${sourceId}:${email}`, {customerId: sourceId, email})]
+  // An erased customer is owed nothing.
+  | Registered(_) | EmailUpdated(_) => []
   }
 
 let policy = V.emailPolicy

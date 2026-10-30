@@ -23,13 +23,13 @@
 type consumedEvent =
   | EmailChallengeIssued({
       customerId: CustomerId.t,
-      email: string,
+      @pii("customerId") email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,
     })
-  | EmailProofAccepted({customerId: CustomerId.t, email: string})
-  | EmailProofRefused({customerId: CustomerId.t, email: string, reason: string})
+  | EmailProofAccepted({customerId: CustomerId.t, @pii("customerId") email: string})
+  | EmailProofRefused({customerId: CustomerId.t, @pii("customerId") email: string, reason: string})
 
 @schema
 type command =
@@ -38,7 +38,7 @@ type command =
   | @noApi
   IssueEmailChallenge({
       customerId: CustomerId.t,
-      email: string,
+      @pii("customerId") email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,
@@ -52,7 +52,7 @@ type command =
   // declare that the door is open to the unauthenticated.
   | SubmitEmailProof({
       customerId: CustomerId.t,
-      email: string,
+      @pii("customerId") email: string,
       proofHash: string,
       presentedAt: string,
     })
@@ -69,10 +69,10 @@ type error =
 type event =
   | EmailChallengeIssued({
       customerId: CustomerId.t,
-      email: string,
+      @pii("customerId") email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,
     })
-  | EmailProofAccepted({customerId: CustomerId.t, email: string})
-  | EmailProofRefused({customerId: CustomerId.t, email: string, reason: string})
+  | EmailProofAccepted({customerId: CustomerId.t, @pii("customerId") email: string})
+  | EmailProofRefused({customerId: CustomerId.t, @pii("customerId") email: string, reason: string})

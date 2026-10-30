@@ -7,18 +7,35 @@ import * as Phone$Reventless from "@reventlessdev/reventless-spec/src/semantic/P
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 
 function collect(event, param) {
+  let address = event.address;
   let reference = event.reference;
-  return [[
-      reference,
-      {
-        recipientId: event.recipientId,
-        reference: reference,
-        channel: event.channel,
-        address: event.address,
-        subject: event.subject,
-        body: event.body
-      }
-    ]];
+  if (typeof address !== "object") {
+    if (address === "Erased") {
+      return [];
+    } else {
+      return [];
+    }
+  }
+  let body = event.body;
+  if (typeof body !== "object") {
+    if (body === "Erased") {
+      return [];
+    } else {
+      return [];
+    }
+  } else {
+    return [[
+        reference,
+        {
+          recipientId: event.recipientId,
+          reference: reference,
+          channel: event.channel,
+          address: address._0,
+          subject: event.subject,
+          body: body._0
+        }
+      ]];
+  }
 }
 
 function recipientFor(item) {

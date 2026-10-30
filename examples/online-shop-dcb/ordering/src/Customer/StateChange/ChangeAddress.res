@@ -4,12 +4,12 @@
 
 @schema
 type consumedEvent =
-  | CustomerRegistered({address: string})
-  | AddressChanged({address: string})
+  | CustomerRegistered({@pii address: string})
+  | AddressChanged({@pii address: string})
   | CustomerDeactivated
 
 @schema
-type command = ChangeAddress({customerId: CustomerId.t, address: string})
+type command = ChangeAddress({customerId: CustomerId.t, @pii("customerId") address: string})
 
 @schema
 type error =
@@ -17,4 +17,4 @@ type error =
   | CustomerAlreadyDeactivated
 
 @schema
-type event = AddressChanged({customerId: CustomerId.t, address: string})
+type event = AddressChanged({customerId: CustomerId.t, @pii("customerId") address: string})

@@ -74,11 +74,16 @@ function channelOf(channel) {
 function evolve(state, event) {
   switch (event.TAG) {
     case "RecipientAnnounced" :
-      return Notification_Rules$TraitNotification.evolve(state, {
-        TAG: "Announced",
-        channel: "Email",
-        address: event.email
-      });
+      let email = event.email;
+      if (typeof email !== "object") {
+        return state;
+      } else {
+        return Notification_Rules$TraitNotification.evolve(state, {
+          TAG: "Announced",
+          channel: "Email",
+          address: email._0
+        });
+      }
     case "NotificationSubscribed" :
       return Notification_Rules$TraitNotification.evolve(state, {
         TAG: "Subscribed",
@@ -111,7 +116,10 @@ function named(recipientId, fact) {
       return {
         TAG: "RecipientAnnounced",
         recipientId: recipientId,
-        email: fact.address
+        email: {
+          TAG: "Value",
+          _0: fact.address
+        }
       };
     case "Subscribed" :
       return {
@@ -134,11 +142,17 @@ function named(recipientId, fact) {
         category: categoryOf(fact.category),
         reference: fact.reference,
         channel: channelOf(fact.channel),
-        address: fact.address,
+        address: {
+          TAG: "Value",
+          _0: fact.address
+        },
         subjectType: "",
         subjectRef: "",
         subject: "",
-        body: "",
+        body: {
+          TAG: "Value",
+          _0: ""
+        },
         origin: "Default"
       };
     case "Suppressed" :
@@ -267,7 +281,10 @@ function decide(state, command) {
               subjectType: subjectType,
               subjectRef: subjectRef,
               subject: subject,
-              body: body,
+              body: {
+                TAG: "Value",
+                _0: body
+              },
               origin: origin
             };
           case "NotificationSuppressed" :

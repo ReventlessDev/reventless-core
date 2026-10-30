@@ -11,11 +11,11 @@
 // because a settled address owes nothing and the slice must not re-open it.
 @schema
 type consumedEvent =
-  | Registered({email: string, address: string})
-  | EmailUpdated({email: string})
+  | Registered({@pii email: string, @pii address: string})
+  | EmailUpdated({@pii email: string})
 
 @schema
-type outboundItem = {customerId: string, email: string}
+type outboundItem = {customerId: string, @pii("customerId") email: string}
 
 // Reported to the challenge ledger rather than to `Customer` — the aggregate
 // learns nothing until a proof settles. Mirrors that slice's command exactly.
@@ -23,7 +23,7 @@ type outboundItem = {customerId: string, email: string}
 type inboundCommand =
   | IssueEmailChallenge({
       customerId: CustomerId.t,
-      email: string,
+      @pii("customerId") email: string,
       purpose: string,
       proofHash: string,
       issuedAt: string,

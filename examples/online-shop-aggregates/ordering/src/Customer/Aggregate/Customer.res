@@ -11,16 +11,16 @@ module Id = CustomerId
 // on read is the risk a branded scalar exists to avoid.
 @schema
 type command =
-  | Register({email: @s.matches(Reventless.Email.schema) string, address: string})
-  | UpdateEmail({email: @s.matches(Reventless.Email.schema) string})
-  | UpdateAddress({address: string})
+  | Register({@pii email: @s.matches(Reventless.Email.schema) string, @pii address: string})
+  | UpdateEmail({@pii email: @s.matches(Reventless.Email.schema) string})
+  | UpdateAddress({@pii address: string})
   | Deactivate
 
 @schema
 type event =
-  | Registered({email: string, address: string})
-  | EmailUpdated({email: string})
-  | AddressUpdated({address: string})
+  | Registered({@pii email: string, @pii address: string})
+  | EmailUpdated({@pii email: string})
+  | AddressUpdated({@pii address: string})
   | Deactivated
 
 @schema

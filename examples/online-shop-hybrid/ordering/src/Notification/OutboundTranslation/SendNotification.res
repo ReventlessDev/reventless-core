@@ -21,9 +21,9 @@ type consumedEvent =
       recipientId: string,
       reference: string,
       channel: NotificationPreferences.channel,
-      address: string,
+      @pii address: string,
       subject: string,
-      body: string,
+      @pii body: string,
     })
 
 @schema
@@ -31,9 +31,9 @@ type outboundItem = {
   recipientId: string,
   reference: string,
   channel: NotificationPreferences.channel,
-  address: string,
+  @pii("recipientId") address: string,
   subject: string,
-  body: string,
+  @pii("recipientId") body: string,
 }
 
 @schema

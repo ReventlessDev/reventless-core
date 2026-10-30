@@ -27,7 +27,11 @@ module CustomerMapping = Mapping.Make(
     open Customer
     let project = ({event, id, _}) =>
       switch event {
+      // The read model holds plaintext; an erased customer's row is cleared by
+      // the app's erasure, and a rebuild after it writes nothing in its place.
       | Registered({email, address}) =>
+        let email = email->Reventless.Pii.getOr("")
+        let address = address->Reventless.Pii.getOr("")
         UpdateWithDefault(
           id,
           {
@@ -44,7 +48,11 @@ module CustomerMapping = Mapping.Make(
       // The new address is unproven whatever the old one was, mirroring the drop
       // the aggregate makes — a row that kept the badge across a change would
       // show an address as proven that nobody has proven.
-      | EmailUpdated({email}) => Update(id, state => {...state, email, emailVerified: false})
+      | EmailUpdated({email}) =>
+        Update(
+          id,
+          state => {...state, email: email->Reventless.Pii.getOr(""), emailVerified: false},
+        )
       | EmailVerified(_) => Update(id, state => {...state, emailVerified: true})
       // A new address invalidates the pin: back to Pending for the new one.
       | AddressUpdated({address}) =>

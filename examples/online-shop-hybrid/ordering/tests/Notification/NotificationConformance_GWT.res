@@ -24,7 +24,10 @@ module Binding = {
     // A DCB slice's entity comes into existence with its first fact, so there is
     // no creation event to seed: an unannounced recipient is one with no history.
     let created: array<Spec.consumedEvent> = []
-    let announced = (email): Spec.consumedEvent => RecipientAnnounced({recipientId, email})
+    let announced = (email): Spec.consumedEvent => RecipientAnnounced({
+      recipientId,
+      email: Value(email),
+    })
     let subscribed = (category, channel): Spec.consumedEvent => NotificationSubscribed({
       recipientId,
       category,
@@ -80,7 +83,7 @@ module Binding = {
   let request = (category, reference) =>
     requestFrom(category, reference, ~source=defaultSource, ~origin=Default)
 
-  let announced = email => Spec.RecipientAnnounced({recipientId, email})
+  let announced = email => Spec.RecipientAnnounced({recipientId, email: Value(email)})
   let subscribed = (category, channel) => Spec.NotificationSubscribed({
     recipientId,
     category,
@@ -96,11 +99,11 @@ module Binding = {
     category,
     reference,
     channel: Decision.channelOf(channel),
-    address,
+    address: Value(address),
     subjectType: "Order",
     subjectRef: "o1",
     subject: "subject",
-    body: "body",
+    body: Value("body"),
     origin: Default,
   })
   let requestedConfigured = (category, reference, channel, address) => Spec.NotificationRequested({
@@ -108,11 +111,11 @@ module Binding = {
     category,
     reference,
     channel: Decision.channelOf(channel),
-    address,
+    address: Value(address),
     subjectType: "Order",
     subjectRef: "o1",
     subject: "subject",
-    body: "body",
+    body: Value("body"),
     // Matches what `requestFrom(~origin=Configured)` above sends in.
     origin: Configured({ruleId: "rule-1", ruleVersion: "1"}),
   })

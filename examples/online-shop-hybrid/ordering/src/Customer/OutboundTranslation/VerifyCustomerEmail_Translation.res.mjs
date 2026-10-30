@@ -8,20 +8,36 @@ import * as ContactVerification$OrderingPlugin from "../../ContactVerification.r
 function collect(event, sourceId) {
   if (event.TAG === "Registered") {
     let email = event.email;
+    if (typeof email !== "object") {
+      if (email === "Erased") {
+        return [];
+      } else {
+        return [];
+      }
+    }
+    let email$1 = email._0;
     return [[
-        sourceId + `:` + email,
+        sourceId + `:` + email$1,
         {
           customerId: sourceId,
-          email: email
+          email: email$1
         }
       ]];
   }
-  let email$1 = event.email;
+  let email$2 = event.email;
+  if (typeof email$2 !== "object") {
+    if (email$2 === "Erased") {
+      return [];
+    } else {
+      return [];
+    }
+  }
+  let email$3 = email$2._0;
   return [[
-      sourceId + `:` + email$1,
+      sourceId + `:` + email$3,
       {
         customerId: sourceId,
-        email: email$1
+        email: email$3
       }
     ]];
 }

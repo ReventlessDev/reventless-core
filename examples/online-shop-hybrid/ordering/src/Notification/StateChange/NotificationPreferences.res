@@ -50,7 +50,7 @@ type origin =
 // another partition — see `RequestNotification` for what makes that read happen.
 @schema
 type consumedEvent =
-  | RecipientAnnounced({recipientId: string, email: string})
+  | RecipientAnnounced({recipientId: string, @pii("recipientId") email: string})
   | NotificationSubscribed({recipientId: string, category: category, channel: channel})
   | NotificationUnsubscribed({recipientId: string, category: category, channel: channel})
   | NotificationSourceClaimed({sourceId: string, by: string})
@@ -61,7 +61,7 @@ type command =
   // Relayed from the host's own announcements, never called by a client — a
   // caller who could register someone else's address would be redirecting their
   // mail.
-  | @noApi AnnounceRecipient({recipientId: string, email: string})
+  | @noApi AnnounceRecipient({recipientId: string, @pii("recipientId") email: string})
   // The client door. A recipient manages one cell of their kind × channel matrix
   // at a time; the screen renders the matrix from the read model beside it.
   // `@owner` is what stops them managing somebody else's: the resolver overwrites
@@ -93,7 +93,7 @@ type command =
       subjectType: string,
       subjectRef: string,
       subject: string,
-      body: string,
+      @pii("recipientId") body: string,
       // Which stream this came from, `"<log>:<eventType>"`, and who is asking.
       // Together they are the handover: a `Default` request for a source another
       // producer has claimed yields, a `Configured` one always goes through.
@@ -127,7 +127,7 @@ type error =
 
 @schema
 type event =
-  | RecipientAnnounced({recipientId: string, email: string})
+  | RecipientAnnounced({recipientId: string, @pii("recipientId") email: string})
   | NotificationSubscribed({recipientId: string, category: category, channel: channel})
   | NotificationUnsubscribed({recipientId: string, category: category, channel: channel})
   | DigestTimeChosen({recipientId: string, hour: int, minute: int, zone: string})
@@ -144,11 +144,11 @@ type event =
       // directory holds. Answering "where was this confirmation sent" therefore
       // means reading the log, which is the right reach for personal data —
       // available to an investigation, not to every reader of a view.
-      address: string,
+      @pii("recipientId") address: string,
       subjectType: string,
       subjectRef: string,
       subject: string,
-      body: string,
+      @pii("recipientId") body: string,
       // What was in force when this went out. A message should record why it was
       // sent, and until this field existed nothing did.
       origin: origin,

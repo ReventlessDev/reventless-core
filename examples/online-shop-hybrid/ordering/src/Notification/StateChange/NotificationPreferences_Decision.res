@@ -60,7 +60,10 @@ let initialState = Rules.empty
 
 let evolve = (state, event: consumedEvent) =>
   switch event {
-  | RecipientAnnounced({email}) => state->Rules.evolve(Announced({channel: Email, address: email}))
+  | RecipientAnnounced({email: Value(email)}) =>
+    state->Rules.evolve(Announced({channel: Email, address: email}))
+  // An erased recipient has no address: what is owed them is undeliverable.
+  | RecipientAnnounced(_) => state
   | NotificationSubscribed({category, channel}) =>
     state->Rules.evolve(Subscribed({category: categoryKey(category), channel: channelKey(channel)}))
   | NotificationUnsubscribed({category, channel}) =>
@@ -86,7 +89,7 @@ let named = (recipientId, fact: Rules.fact) =>
     None
   | Deferred({reference, source}) =>
     Some(NotificationDeferred({recipientId, reference, sourceKey: source}))
-  | Announced({address}) => Some(RecipientAnnounced({recipientId, email: address}))
+  | Announced({address}) => Some(RecipientAnnounced({recipientId, email: Value(address)}))
   | Subscribed({category, channel}) =>
     Some(
       NotificationSubscribed({
@@ -110,14 +113,14 @@ let named = (recipientId, fact: Rules.fact) =>
         category: categoryOf(category),
         reference,
         channel: channelOf(channel),
-        address,
+        address: Value(address),
         // Composed by the requester and carried through untouched — the trait has
         // no opinion about wording, about what an occurrence is, or about which
         // rule asked. All of it rides on the command and is put back in `decide`.
         subjectType: "",
         subjectRef: "",
         subject: "",
-        body: "",
+        body: Value(""),
         origin: Default,
       }),
     )
@@ -205,7 +208,14 @@ let decide = (state, command) =>
       events->Array.map(event =>
         switch event {
         | NotificationRequested(fields) =>
-          NotificationRequested({...fields, subjectType, subjectRef, subject, body, origin})
+          NotificationRequested({
+            ...fields,
+            subjectType,
+            subjectRef,
+            subject,
+            body: Value(body),
+            origin,
+          })
         | NotificationSuppressed(fields) =>
           NotificationSuppressed({...fields, subjectType, subjectRef, origin})
         | NotificationUndeliverable(fields) =>

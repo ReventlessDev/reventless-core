@@ -6,20 +6,28 @@ import * as AddressGeocoding_Translate$TraitAddressGeocoding from "@reventlessde
 function collect(event, sourceId) {
   if (event.TAG === "Registered") {
     let address = event.address;
+    if (typeof address !== "object") {
+      if (address === "Erased") {
+        return [];
+      } else {
+        return [];
+      }
+    }
+    let address$1 = address._0;
     return [[
-        sourceId + `:` + address,
+        sourceId + `:` + address$1,
         {
           customerId: sourceId,
-          address: address
+          address: address$1
         }
       ]];
   }
-  let address$1 = event.address;
+  let address$2 = event.address;
   return [[
-      sourceId + `:` + address$1,
+      sourceId + `:` + address$2,
       {
         customerId: sourceId,
-        address: address$1
+        address: address$2
       }
     ]];
 }

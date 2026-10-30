@@ -4,9 +4,16 @@
 // of the same event lands on the row that is already there.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | NotificationRequested({recipientId, reference, channel, address, subject, body}) => [
-      (reference, {recipientId, reference, channel, address, subject, body}),
-    ]
+  | NotificationRequested({
+      recipientId,
+      reference,
+      channel,
+      address: Value(address),
+      subject,
+      body: Value(body),
+    }) => [(reference, {recipientId, reference, channel, address, subject, body})]
+  // The recipient was erased before the message went: nothing to deliver to.
+  | NotificationRequested(_) => []
   }
 
 // The one place the domain's channel vocabulary meets the platform's. Two

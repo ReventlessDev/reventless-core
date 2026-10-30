@@ -15,6 +15,6 @@ let decide = (state, command) =>
     if state.exists {
       Error(CustomerAlreadyRegistered)
     } else {
-      Ok([CustomerRegistered({customerId, email, address})])
+      Ok([CustomerRegistered({customerId, email: Value(email), address: Value(address)})])
     }
   }

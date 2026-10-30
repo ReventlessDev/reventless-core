@@ -113,13 +113,13 @@ describe("VerifyCustomerEmail collect", () => {
   // Keyed by entity and address together, so changing the address is new work
   // rather than work already done.
   testSync("registering and changing an address are separate work", () =>
-    givenEvent(Registered({email: "alice@x.y", address: "1 Main"}))
+    givenEvent(Registered({email: Value("alice@x.y"), address: Value("1 Main")}))
     ->whenCollect(~sourceId="c1")
     ->thenTodos([("c1:alice@x.y", {customerId: "c1", email: "alice@x.y"})])
   )
 
   testSync("a changed address owes its own challenge", () =>
-    givenEvent(EmailUpdated({email: "alice2@x.y"}))
+    givenEvent(EmailUpdated({email: Value("alice2@x.y")}))
     ->whenCollect(~sourceId="c1")
     ->thenTodos([("c1:alice2@x.y", {customerId: "c1", email: "alice2@x.y"})])
   )

@@ -14,7 +14,9 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
   // scenario-id: 9431f1b4-c0d9-4701-a775-868303d22a44
   CustomerGwt.test("Registered sets initial read model state", () =>
     CustomerGwt.givenEvents([])
-    ->CustomerGwt.whenEvent(Customer.Registered({email: "alice@x.y", address: "123 Main"}))
+    ->CustomerGwt.whenEvent(
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    )
     ->CustomerGwt.thenState({
       Customers.customerId: id,
       email: "alice@x.y",
@@ -28,8 +30,10 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   // scenario-id: 613b1eac-aa5c-45fd-b850-5f1277edb982
   CustomerGwt.test("EmailUpdated updates the email", () =>
-    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
-    ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    ])
+    ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: Value("alice2@x.y")}))
     ->CustomerGwt.thenState({
       Customers.customerId: id,
       email: "alice2@x.y",
@@ -43,8 +47,10 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   // scenario-id: 51912b68-3f7a-4e93-8638-1789c713cbbe
   CustomerGwt.test("EmailVerified marks the address proven", () =>
-    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
-    ->CustomerGwt.whenEvent(Customer.EmailVerified({email: "alice@x.y"}))
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    ])
+    ->CustomerGwt.whenEvent(Customer.EmailVerified({email: Value("alice@x.y")}))
     ->CustomerGwt.thenState({
       Customers.customerId: id,
       email: "alice@x.y",
@@ -62,10 +68,10 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
   // scenario-id: e0c8a59a-2983-41e6-8bd9-8772d75bc319
   CustomerGwt.test("EmailUpdated drops the proof along with the address", () =>
     CustomerGwt.givenEvents([
-      Customer.Registered({email: "alice@x.y", address: "123 Main"}),
-      Customer.EmailVerified({email: "alice@x.y"}),
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+      Customer.EmailVerified({email: Value("alice@x.y")}),
     ])
-    ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
+    ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: Value("alice2@x.y")}))
     ->CustomerGwt.thenState({
       Customers.customerId: id,
       email: "alice2@x.y",
@@ -79,7 +85,9 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   // scenario-id: ebe80da0-b636-4a35-8545-ff397b25c7cd
   CustomerGwt.test("AddressUpdated updates the address", () =>
-    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    ])
     ->CustomerGwt.whenEvent(Customer.AddressUpdated({address: "789 Pine"}))
     ->CustomerGwt.thenState({
       Customers.customerId: id,
@@ -94,7 +102,9 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   // scenario-id: 0968023d-2cc1-493a-bf83-07ee42ab1438
   CustomerGwt.test("LocationSet fills the declared point", () =>
-    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    ])
     ->CustomerGwt.whenEvent(
       Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
     )
@@ -111,7 +121,9 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   // scenario-id: aefc51f3-c008-4eca-b90e-995443e712e6
   CustomerGwt.test("Deactivated sets deactivated flag", () =>
-    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
+    CustomerGwt.givenEvents([
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
+    ])
     ->CustomerGwt.whenEvent(Customer.Deactivated)
     ->CustomerGwt.thenState({
       Customers.customerId: id,
@@ -130,7 +142,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
   // scenario-id: 404f735f-3d33-4b1a-8065-d93531bf887b
   CustomerGwt.test("Reactivated returns the row to active", () =>
     CustomerGwt.givenEvents([
-      Customer.Registered({email: "alice@x.y", address: "123 Main"}),
+      Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
       Customer.Deactivated,
     ])
     ->CustomerGwt.whenEvent(Customer.Reactivated)

@@ -14,7 +14,7 @@ open Ordering_Examples
 
 describe("NotificationPreferences StateChangeSlice", () => {
   let announced: array<consumedEvent> = [
-    RecipientAnnounced({recipientId: "c1", email: "buyer@example.com"}),
+    RecipientAnnounced({recipientId: "c1", email: Value("buyer@example.com")}),
   ]
 
   // The trait's `Requested` fact carries a recipient, a kind, a reference, a
@@ -44,11 +44,11 @@ describe("NotificationPreferences StateChangeSlice", () => {
         category: OrderConfirmation,
         reference: confirmReference,
         channel: Email,
-        address: "buyer@example.com",
+        address: Value("buyer@example.com"),
         subjectType: orderSubject,
         subjectRef: orderRef,
         subject: confirmationSubject,
-        body: confirmationBody,
+        body: Value(confirmationBody),
         origin: Default,
       }),
     )

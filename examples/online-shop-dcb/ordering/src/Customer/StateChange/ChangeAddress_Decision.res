@@ -9,9 +9,10 @@ let evolve = (state, event) =>
   | CustomerRegistered({address}) => {
       exists: true,
       deactivated: false,
-      currentAddress: address,
+      // An erased address matches no address presented later.
+      currentAddress: address->Reventless.Pii.getOr(""),
     }
-  | AddressChanged({address}) => {...state, currentAddress: address}
+  | AddressChanged({address}) => {...state, currentAddress: address->Reventless.Pii.getOr("")}
   | CustomerDeactivated => {...state, deactivated: true}
   }
 
@@ -25,6 +26,6 @@ let decide = (state, command) =>
     } else if address == state.currentAddress {
       Ok([]) // idempotent — address unchanged
     } else {
-      Ok([AddressChanged({customerId, address})])
+      Ok([AddressChanged({customerId, address: Value(address)})])
     }
   }

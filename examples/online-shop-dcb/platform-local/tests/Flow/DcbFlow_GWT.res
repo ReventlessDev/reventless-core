@@ -95,8 +95,8 @@ describe("DCB cross-plugin flow", () => {
     ->Register.thenEvent(
       OrderingPlugin.RegisterCustomer.CustomerRegistered({
         customerId: c1,
-        email: "alice@example.com",
-        address: "1 Test St",
+        email: Value("alice@example.com"),
+        address: Value("1 Test St"),
       }),
     )
     ->Place.whenCommand(

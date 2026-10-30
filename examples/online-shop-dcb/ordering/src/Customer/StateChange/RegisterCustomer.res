@@ -6,10 +6,20 @@
 type consumedEvent = CustomerRegistered
 
 @schema
-type command = RegisterCustomer({customerId: CustomerId.t, email: string, address: string})
+type command =
+  | RegisterCustomer({
+      customerId: CustomerId.t,
+      @pii("customerId") email: string,
+      @pii("customerId") address: string,
+    })
 
 @schema
 type error = CustomerAlreadyRegistered
 
 @schema
-type event = CustomerRegistered({customerId: CustomerId.t, email: string, address: string})
+type event =
+  | CustomerRegistered({
+      customerId: CustomerId.t,
+      @pii("customerId") email: string,
+      @pii("customerId") address: string,
+    })

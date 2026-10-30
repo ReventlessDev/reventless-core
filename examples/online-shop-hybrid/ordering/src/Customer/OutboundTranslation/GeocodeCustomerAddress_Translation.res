@@ -5,7 +5,11 @@
 // which an aggregate's event payload does not repeat.
 let collect = (event, ~sourceId) =>
   switch event {
-  | Registered({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
+  | Registered({address: Value(address)}) => [
+      (`${sourceId}:${address}`, {customerId: sourceId, address}),
+    ]
+  // An erased customer is owed nothing.
+  | Registered(_) => []
   | AddressUpdated({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
   }
 

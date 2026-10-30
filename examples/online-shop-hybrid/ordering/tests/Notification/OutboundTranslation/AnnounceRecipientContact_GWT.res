@@ -7,14 +7,14 @@ let item: AnnounceRecipientContact.outboundItem = {recipientId: "c1", email: "al
 
 describe("AnnounceRecipientContact OutboundTranslationSlice", () => {
   testSync("a registration is relayed, keyed by recipient and address", () =>
-    givenEvent(Registered({email: "alice@x.y"}))
+    givenEvent(Registered({email: Value("alice@x.y")}))
     ->whenCollect(~sourceId="c1")
     ->thenTodos([("c1:alice@x.y", item)])
   )
 
   // A changed address is new work, not work already done.
   testSync("a changed address is relayed under its own key", () =>
-    givenEvent(EmailUpdated({email: "alice2@x.y"}))
+    givenEvent(EmailUpdated({email: Value("alice2@x.y")}))
     ->whenCollect(~sourceId="c1")
     ->thenTodos([("c1:alice2@x.y", {recipientId: "c1", email: "alice2@x.y"})])
   )

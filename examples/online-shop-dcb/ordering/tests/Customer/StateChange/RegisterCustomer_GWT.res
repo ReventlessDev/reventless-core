@@ -7,7 +7,9 @@ describe("RegisterCustomer StateChangeSlice", () => {
   test("empty event log produces CustomerRegistered", () =>
     givenEvents([])
     ->whenCmd(RegisterCustomer({customerId: c1, email: aliceEmail, address: mainStreet}))
-    ->thenEvent(CustomerRegistered({customerId: c1, email: aliceEmail, address: mainStreet}))
+    ->thenEvent(
+      CustomerRegistered({customerId: c1, email: Value(aliceEmail), address: Value(mainStreet)}),
+    )
   )
 
   // scenario-id: d99db741-d659-456e-b84f-9af30a7d8a41

@@ -22,14 +22,14 @@
 // staleness the whole design exists to avoid.
 @schema
 type consumedEvent =
-  | Registered({email: string})
-  | EmailUpdated({email: string})
+  | Registered({@pii email: string})
+  | EmailUpdated({@pii email: string})
 
 @schema
-type outboundItem = {recipientId: string, email: string}
+type outboundItem = {recipientId: string, @pii("recipientId") email: string}
 
 @schema
-type inboundCommand = AnnounceRecipient({recipientId: string, email: string})
+type inboundCommand = AnnounceRecipient({recipientId: string, @pii("recipientId") email: string})
 
 // One attempt is enough for a relay with nothing to fail against, but a budget
 // of one would turn a transient publish error into a lost address. Three, and

@@ -31,7 +31,8 @@ let evolve = (state, event) =>
   | EmailChallengeIssued({email, purpose, proofHash, issuedAt}) => {
       current: Some({
         challenge: {
-          contact: ByEmail(email),
+          // An erased address matches no address presented later.
+          contact: ByEmail(email->Reventless.Pii.getOr("")),
           purpose: purposeOf(purpose),
           issuedAt,
           attempts: 0,
@@ -76,7 +77,8 @@ let decide = (state, command) =>
       ~now=issuedAt,
       ~policy,
     ) {
-    | Issue => Ok([EmailChallengeIssued({customerId, email, purpose, proofHash, issuedAt})])
+    | Issue =>
+      Ok([EmailChallengeIssued({customerId, email: Value(email), purpose, proofHash, issuedAt})])
     // A redelivered request mints nothing and, because nothing is emitted, sends
     // nothing either — the send hangs off the event.
     | AlreadyOpen => Ok([])
@@ -97,9 +99,9 @@ let decide = (state, command) =>
         ~now=presentedAt,
         ~policy,
       ) {
-      | Settle => Ok([EmailProofAccepted({customerId, email})])
+      | Settle => Ok([EmailProofAccepted({customerId, email: Value(email)})])
       | Refuse(reason) =>
-        Ok([EmailProofRefused({customerId, email, reason: refusalReason(reason)})])
+        Ok([EmailProofRefused({customerId, email: Value(email), reason: refusalReason(reason)})])
       }
     }
   }

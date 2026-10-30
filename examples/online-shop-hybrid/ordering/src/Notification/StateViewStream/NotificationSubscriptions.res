@@ -33,7 +33,7 @@ type state = {
 
 @schema
 type consumedEvent =
-  | RecipientAnnounced({recipientId: string, email: string})
+  | RecipientAnnounced({recipientId: string, @pii email: string})
   | NotificationSubscribed({
       recipientId: string,
       category: NotificationPreferences.category,

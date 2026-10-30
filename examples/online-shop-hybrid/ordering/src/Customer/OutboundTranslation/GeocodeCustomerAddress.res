@@ -12,11 +12,11 @@
 // and the conformance suite asserts that this set is no wider than `collect`.
 @schema
 type consumedEvent =
-  | Registered({email: string, address: string})
+  | Registered({@pii email: string, @pii address: string})
   | AddressUpdated({address: string})
 
 @schema
-type outboundItem = {customerId: string, address: string}
+type outboundItem = {customerId: string, @pii("customerId") address: string}
 
 @schema
 type inboundCommand =

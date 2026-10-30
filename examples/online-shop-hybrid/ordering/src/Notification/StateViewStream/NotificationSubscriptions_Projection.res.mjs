@@ -47,17 +47,25 @@ function project(param) {
     case "RecipientAnnounced" :
       let email = event.email;
       let recipientId = event.recipientId;
+      if (typeof email !== "object") {
+        if (email === "Erased") {
+          return [];
+        } else {
+          return [];
+        }
+      }
+      let email$1 = email._0;
       return [{
           TAG: "UpdateWithDefault",
           _0: recipientId,
           _1: {
             recipientId: recipientId,
-            email: email,
-            subscriptions: defaultMatrix(email)
+            email: email$1,
+            subscriptions: defaultMatrix(email$1)
           },
           _2: state => {
             let newrecord = {...state};
-            newrecord.email = email;
+            newrecord.email = email$1;
             return newrecord;
           }
         }];

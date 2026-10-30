@@ -48,15 +48,30 @@ let initialState = NotCreated
 
 let evolve = (state, event) =>
   switch (state, event) {
+  // A personal field reads `Erased` once its customer is erased; the state then
+  // holds nothing in its place, as a profile never written would.
   | (NotCreated, Registered({email, address})) =>
-    Active({email, address, location: None, locationResolvedFrom: None, verifiedEmail: None})
-  | (Active(s), Registered({email, address})) => Active({...s, email, address})
+    Active({
+      email: email->Reventless.Pii.getOr(""),
+      address: address->Reventless.Pii.getOr(""),
+      location: None,
+      locationResolvedFrom: None,
+      verifiedEmail: None,
+    })
+  | (Active(s), Registered({email, address})) =>
+    Active({
+      ...s,
+      email: email->Reventless.Pii.getOr(""),
+      address: address->Reventless.Pii.getOr(""),
+    })
   // 🚨 A new address is unproven, whatever was proven before. Dropping the token
   // here is the host half of the staleness guard: without it a proof issued for
   // the old address would settle against the new one, which is exactly the
   // "change the address, then present the old link" takeover.
-  | (Active(s), EmailUpdated({email})) => Active({...s, email, verifiedEmail: None})
-  | (Active(s), EmailVerified({email})) => Active({...s, verifiedEmail: Some(email)})
+  | (Active(s), EmailUpdated({email})) =>
+    Active({...s, email: email->Reventless.Pii.getOr(""), verifiedEmail: None})
+  | (Active(s), EmailVerified({email})) =>
+    Active({...s, verifiedEmail: email->Reventless.Pii.toOption})
   // A new address invalidates whatever was known about the old one — dropping
   // both is what puts the row back in front of the geocoding slice.
   | (Active(s), AddressUpdated({address})) =>
@@ -116,7 +131,8 @@ let verified = (verdict, event) =>
 
 let decide = (state, command) =>
   switch (state, command) {
-  | (NotCreated, Register({email, address})) => Ok([Registered({email, address})])
+  | (NotCreated, Register({email, address})) =>
+    Ok([Registered({email: Value(email), address: Value(address)})])
   | (NotCreated, UpdateEmail(_)) => Error(CustomerNotFound)
   | (NotCreated, UpdateAddress(_)) => Error(CustomerNotFound)
   | (NotCreated, SetAddressLocation(_)) => Error(CustomerNotFound)
@@ -128,7 +144,7 @@ let decide = (state, command) =>
 
   | (Active(_), Register(_)) => Error(CustomerAlreadyRegistered)
   | (Active(s), UpdateEmail({email})) if email == s.email => Ok([])
-  | (Active(_), UpdateEmail({email})) => Ok([EmailUpdated({email: email})])
+  | (Active(_), UpdateEmail({email})) => Ok([EmailUpdated({email: Value(email)})])
   | (Active(s), UpdateAddress({address})) =>
     Guards.onSubjectUpdate(
       resolution(s.address, s.location, s.locationResolvedFrom),
@@ -164,7 +180,7 @@ let decide = (state, command) =>
     Verification.onVerifiedReport(
       verification(s.email, s.verifiedEmail),
       ~contact=ByEmail(email),
-    )->verified(EmailVerified({email: email}))
+    )->verified(EmailVerified({email: Value(email)}))
 
   | (Active(_), Deactivate) => Ok([Customer.Deactivated])
   // Already where the caller is asking it to be.

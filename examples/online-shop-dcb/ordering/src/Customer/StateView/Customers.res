@@ -15,7 +15,7 @@ type state = {
 
 @schema
 type consumedEvent =
-  | CustomerRegistered({customerId: CustomerId.t, email: string, address: string})
-  | EmailChanged({customerId: CustomerId.t, email: string})
-  | AddressChanged({customerId: CustomerId.t, address: string})
+  | CustomerRegistered({customerId: CustomerId.t, @pii email: string, @pii address: string})
+  | EmailChanged({customerId: CustomerId.t, @pii email: string})
+  | AddressChanged({customerId: CustomerId.t, @pii address: string})
   | CustomerDeactivated({customerId: CustomerId.t})

@@ -27,8 +27,8 @@ module Id = CustomerId
 // wins. That is the whole reason `resolvedFrom` exists.
 @schema
 type command =
-  | Register({email: string, address: string})
-  | UpdateEmail({email: string})
+  | Register({@pii email: string, @pii address: string})
+  | UpdateEmail({@pii email: string})
   // The two public address commands, spliced from the trait: `UpdateAddress` and
   // `SetAddressLocation`. They stayed hand-written here for as long as their
   // lifecycle guard had to live on the constructor; `commandTransition` below
@@ -54,7 +54,7 @@ type command =
   //
   // Carries the address it is a verdict about, so a verdict for an address the
   // customer has since changed can be dropped rather than applied.
-  | @noApi MarkEmailVerified({email: string})
+  | @noApi MarkEmailVerified({@pii email: string})
   | Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
@@ -64,8 +64,8 @@ type command =
 
 @schema
 type event =
-  | Registered({email: string, address: string})
-  | EmailUpdated({email: string})
+  | Registered({@pii email: string, @pii address: string})
+  | EmailUpdated({@pii email: string})
   // The geocoding graft's four facts, spliced from the trait rather than copied:
   // `AddressUpdated`, `LocationSet`, `AddressLocated`, `AddressUnresolvable`.
   // They are matched unqualified below and in the projections, and sury splices
@@ -74,7 +74,7 @@ type event =
   // Names the address that was proven, not just that one was. `EmailUpdated`
   // drops it again, which is what keeps "is this address proven?" decidable
   // instead of assumed.
-  | EmailVerified({email: string})
+  | EmailVerified({@pii email: string})
   | Deactivated
   | Reactivated
 

@@ -41,7 +41,7 @@ let project = ({event, _}) =>
   // `UpdateWithDefault`, because an announcement is repeated every time the host
   // says where a recipient is: the first one builds the grid, and a later address
   // change must not reset the choices they have made since.
-  | RecipientAnnounced({recipientId, email}) => [
+  | RecipientAnnounced({recipientId, email: Value(email)}) => [
       UpdateWithDefault(
         recipientId,
         {
@@ -52,6 +52,9 @@ let project = ({event, _}) =>
         state => {...state, email},
       ),
     ]
+  // An erased recipient's row is cleared by the app's erasure; a rebuild after it
+  // writes nothing in its place.
+  | RecipientAnnounced(_) => []
   | NotificationSubscribed({recipientId, category, channel}) => [
       Update(recipientId, state => withCell(state, category, channel, true)),
     ]

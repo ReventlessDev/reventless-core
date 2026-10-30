@@ -6,8 +6,13 @@ let initialState = {exists: false, deactivated: false, currentEmail: ""}
 
 let evolve = (state, event) =>
   switch event {
-  | CustomerRegistered({email}) => {exists: true, deactivated: false, currentEmail: email}
-  | EmailChanged({email}) => {...state, currentEmail: email}
+  // An erased address matches no address presented later.
+  | CustomerRegistered({email}) => {
+      exists: true,
+      deactivated: false,
+      currentEmail: email->Reventless.Pii.getOr(""),
+    }
+  | EmailChanged({email}) => {...state, currentEmail: email->Reventless.Pii.getOr("")}
   | CustomerDeactivated => {...state, deactivated: true}
   }
 
@@ -21,6 +26,6 @@ let decide = (state, command) =>
     } else if email == state.currentEmail {
       Ok([]) // idempotent — email unchanged
     } else {
-      Ok([EmailChanged({customerId, email})])
+      Ok([EmailChanged({customerId, email: Value(email)})])
     }
   }

@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as GeoPoint$Reventless from "@reventlessdev/reventless-spec/src/semantic/GeoPoint.res.mjs";
 import * as ContactVerification_Guards$OrderingPlugin from "../../ContactVerification_Guards.res.mjs";
 import * as AddressGeocoding_Guards$TraitAddressGeocoding from "@reventlessdev/trait-address-geocoding/src/AddressGeocoding_Guards.res.mjs";
@@ -33,8 +34,8 @@ function evolve(state, event) {
     } else {
       return {
         TAG: "Active",
-        email: event.email,
-        address: event.address,
+        email: Pii$Reventless.getOr(event.email, ""),
+        address: Pii$Reventless.getOr(event.address, ""),
         location: undefined,
         locationResolvedFrom: undefined,
         verifiedEmail: undefined
@@ -73,8 +74,8 @@ function evolve(state, event) {
     case "Registered" :
       return {
         TAG: "Active",
-        email: event.email,
-        address: event.address,
+        email: Pii$Reventless.getOr(event.email, ""),
+        address: Pii$Reventless.getOr(event.address, ""),
         location: state.location,
         locationResolvedFrom: state.locationResolvedFrom,
         verifiedEmail: state.verifiedEmail
@@ -82,7 +83,7 @@ function evolve(state, event) {
     case "EmailUpdated" :
       return {
         TAG: "Active",
-        email: event.email,
+        email: Pii$Reventless.getOr(event.email, ""),
         address: state.address,
         location: state.location,
         locationResolvedFrom: state.locationResolvedFrom,
@@ -132,7 +133,7 @@ function evolve(state, event) {
         address: state.address,
         location: state.location,
         locationResolvedFrom: state.locationResolvedFrom,
-        verifiedEmail: event.email
+        verifiedEmail: Pii$Reventless.toOption(event.email)
       };
   }
 }
@@ -198,8 +199,14 @@ function decide(state, command) {
         TAG: "Ok",
         _0: [{
             TAG: "Registered",
-            email: command.email,
-            address: command.address
+            email: {
+              TAG: "Value",
+              _0: command.email
+            },
+            address: {
+              TAG: "Value",
+              _0: command.address
+            }
           }]
       };
     }
@@ -236,7 +243,10 @@ function decide(state, command) {
             TAG: "Ok",
             _0: [{
                 TAG: "EmailUpdated",
-                email: email
+                email: {
+                  TAG: "Value",
+                  _0: email
+                }
               }]
           };
         }
@@ -292,7 +302,10 @@ function decide(state, command) {
           _0: email$1
         }), {
           TAG: "EmailVerified",
-          email: email$1
+          email: {
+            TAG: "Value",
+            _0: email$1
+          }
         });
     }
   } else {

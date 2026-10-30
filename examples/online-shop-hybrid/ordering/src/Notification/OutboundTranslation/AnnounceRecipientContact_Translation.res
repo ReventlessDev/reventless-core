@@ -6,8 +6,12 @@
 // aggregate's event payload does not repeat.
 let collect = (event, ~sourceId) =>
   switch event {
-  | Registered({email}) => [(`${sourceId}:${email}`, {recipientId: sourceId, email})]
-  | EmailUpdated({email}) => [(`${sourceId}:${email}`, {recipientId: sourceId, email})]
+  | Registered({email: Value(email)}) => [(`${sourceId}:${email}`, {recipientId: sourceId, email})]
+  | EmailUpdated({email: Value(email)}) => [
+      (`${sourceId}:${email}`, {recipientId: sourceId, email}),
+    ]
+  // An erased customer is owed nothing.
+  | Registered(_) | EmailUpdated(_) => []
   }
 
 // No service to call, so nothing can go wrong and there is nothing to await. The

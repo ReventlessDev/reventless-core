@@ -118,9 +118,9 @@ describe("SendNotification OutboundTranslationSlice", () => {
         recipientId: "c1",
         reference: "confirm:o1",
         channel: Email,
-        address: "buyer@example.com",
+        address: Value("buyer@example.com"),
         subject: "Your order o1 is confirmed",
-        body: "Thanks.",
+        body: Value("Thanks."),
       }),
     )
     ->whenCollect

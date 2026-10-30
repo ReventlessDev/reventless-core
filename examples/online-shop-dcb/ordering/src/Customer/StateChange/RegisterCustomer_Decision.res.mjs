@@ -19,8 +19,14 @@ function decide(state, command) {
       _0: [{
           TAG: "CustomerRegistered",
           customerId: command.customerId,
-          email: command.email,
-          address: command.address
+          email: {
+            TAG: "Value",
+            _0: command.email
+          },
+          address: {
+            TAG: "Value",
+            _0: command.address
+          }
         }]
     };
   }
