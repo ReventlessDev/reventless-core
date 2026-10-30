@@ -305,7 +305,7 @@ function Make(Spec) {
         return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: Couldn't decode the event's meta: ` + Util_Sury$Reventless.exnMessage(exn, undefined));
       }
     };
-    let replayStream$p = (id, fromSeq) => {
+    let replayEnvelopes = (id, fromSeq) => {
       let idStr = Spec.Id.toString(id);
       return Stream.mapEffect(Ops.storage.replayStream(idStr, fromSeq), json => Effect$1.map(openAndDecode(idStr, json), event => ({
         id: id,
@@ -337,7 +337,7 @@ function Make(Spec) {
       append: append,
       replay: replay,
       replayStream: replayStream,
-      replayStream$p: replayStream$p,
+      replayEnvelopes: replayEnvelopes,
       appendStream: appendStream,
       latestSnapshot: latestSnapshot,
       writeSnapshot: writeSnapshot

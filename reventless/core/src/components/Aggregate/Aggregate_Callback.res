@@ -329,7 +329,7 @@ module Make = (
   // that a second delivery of it changes nothing.
   let coldReadCauses = id => {
     let idStr = id->Spec.Id.toString
-    Ops.eventLog.replayStream'(id, ~fromSeq=0)
+    Ops.eventLog.replayEnvelopes(id, ~fromSeq=0)
     ->Stream.runFold((Decision.initialState, 0, [], []), ((st, n, owners, causes), ev') => (
       Decision.evolve(st, ev'.event),
       n + 1,

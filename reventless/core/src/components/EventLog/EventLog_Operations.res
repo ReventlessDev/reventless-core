@@ -10,7 +10,7 @@ module type T = {
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
   let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
-  let replayStream': EventLog.replayStream'<Spec.Id.t, Spec.event>
+  let replayEnvelopes: EventLog.replayEnvelopes<Spec.Id.t, Spec.event>
   let appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>
   let latestSnapshot: EventLog.latestSnapshot<Spec.Id.t>
   let writeSnapshot: EventLog.writeSnapshot<Spec.Id.t>
@@ -329,7 +329,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       )
     }
 
-  let replayStream' = (id, ~fromSeq=?) => {
+  let replayEnvelopes = (id, ~fromSeq=?) => {
     let idStr = id->Spec.Id.toString
     Ops.storage.replayStream(idStr, ~fromSeq?)->Stream.mapEffect(json =>
       openAndDecode(idStr, json)->Effect.map(event => {

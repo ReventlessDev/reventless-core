@@ -225,7 +225,7 @@ function Make(Spec) {
     };
     let coldReadCauses = id => {
       let idStr = Spec.Id.toString(id);
-      return Effect.tap(Stream.runFold(Ops.eventLog["replayStream'"](id, 0), [
+      return Effect.tap(Stream.runFold(Ops.eventLog.replayEnvelopes(id, 0), [
         Decision.initialState,
         0,
         [],

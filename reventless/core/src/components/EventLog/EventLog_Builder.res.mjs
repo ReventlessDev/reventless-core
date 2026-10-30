@@ -35,7 +35,7 @@ function Make(Spec) {
           append: Ops.append,
           replay: Ops.replay,
           replayStream: Ops.replayStream,
-          "replayStream'": Ops.replayStream$p,
+          replayEnvelopes: Ops.replayEnvelopes,
           appendStream: Ops.appendStream,
           latestSnapshot: Ops.latestSnapshot,
           writeSnapshot: Ops.writeSnapshot

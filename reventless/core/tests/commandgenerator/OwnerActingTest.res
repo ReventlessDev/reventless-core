@@ -182,7 +182,7 @@ module AccountOps = {
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AccountSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AccountSpec.event, string, unit>,
-      replayStream': (
+      replayEnvelopes: (
         string,
         ~fromSeq: int=?,
       ) => Stream.t<Message.event'<string, AccountSpec.event>, string, unit>,
@@ -205,7 +205,7 @@ module AccountOps = {
     },
     replay: async id => ofId(id),
     replayStream: (id, ~fromSeq as _=?) => ofId(id)->Stream.fromIterable,
-    replayStream': (id, ~fromSeq as _=?) =>
+    replayEnvelopes: (id, ~fromSeq as _=?) =>
       accountEvents.contents->Array.filter(e => e.id == id)->Stream.fromIterable,
     appendStream: (_seqNr, _id, stream) => stream->Stream.runDrain,
     latestSnapshot: async _ => {

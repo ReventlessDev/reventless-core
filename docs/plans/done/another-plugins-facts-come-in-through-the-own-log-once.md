@@ -226,7 +226,7 @@ this command, the handler accepts it with no new events and logs the repeat.
   id never carries the mark, and `Message.hasStableMsgId` reads it. A random-id command skips
   the check and pays nothing (rule 4).
 - **Aggregates:** for a batch holding a marked command the handler replays the whole stream as
-  envelopes (`EventLog.operations.replayStream'`, new), collecting the `causationId`s while it
+  envelopes (`EventLog.operations.replayEnvelopes`, new), collecting the `causationId`s while it
   folds, and compares; neither the in-process cache nor a snapshot carries those, so both are
   skipped for such a batch. The sequence condition on append already stops two concurrent
   copies from both writing.

@@ -67,7 +67,7 @@ module TestOps = {
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
-      replayStream': (
+      replayEnvelopes: (
         string,
         ~fromSeq: int=?,
       ) => Stream.t<Message.event'<string, AggSpec.event>, string, unit>,
@@ -93,7 +93,7 @@ module TestOps = {
     replay: async id => eventsFor(id)->Array.map(e => e.event),
     replayStream: (id, ~fromSeq=0) =>
       eventsFor(id)->Array.map(e => e.event)->Array.slice(~start=fromSeq)->Stream.fromIterable,
-    replayStream': (id, ~fromSeq=0) =>
+    replayEnvelopes: (id, ~fromSeq=0) =>
       eventsFor(id)->Array.slice(~start=fromSeq)->Stream.fromIterable,
     appendStream: (_seqNr, _id, stream) => stream->Stream.runDrain,
     latestSnapshot: async _ => Ok(None),

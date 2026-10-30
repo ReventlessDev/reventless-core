@@ -149,6 +149,12 @@ function buildAggregateParts(specModule, decisionModule, eventLogTableName, queu
     eventTopic: { publish: async () => {} },
     storage: rawStorageOps,
   });
+  // `eventLogOps` is the compiled MODULE standing in for the `EventLog.operations`
+  // RECORD, so each operation must have the same name as an export and as a field.
+  // A primed name breaks that: `replayStream'` is exported as `replayStream$p` but
+  // read as the field `"replayStream'"`, which is how the Plugin aggregate once
+  // died on every command with "replayStream' is not a function". Keep the
+  // operations prime-free, or build the record here field by field.
   const aggregateCallback = aggregateCallbackMake(patchedSpec)(decisionModule)({
     Spec: patchedSpec,
     EventLog: { Spec: patchedSpec },

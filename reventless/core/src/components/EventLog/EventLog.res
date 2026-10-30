@@ -34,8 +34,10 @@ type replay<'id, 'event> = 'id => promise<array<'event>>
 // the delta read after seeding from a snapshot at seqNr = fromSeq.
 type replayStream<'id, 'event> = ('id, ~fromSeq: int=?) => Stream.t<'event, string, unit>
 // The same replay as envelopes, meta included — for a reader that needs to know
-// which command caused each event, not only what happened.
-type replayStream'<'id, 'event> = (
+// which command caused each event, not only what happened. No prime in the name:
+// the AWS shell passes the compiled operations module as this record, so each
+// field must spell the same as its export (`x'` exports as `x$p`).
+type replayEnvelopes<'id, 'event> = (
   'id,
   ~fromSeq: int=?,
 ) => Stream.t<Message.event'<'id, 'event>, string, unit>
@@ -58,7 +60,7 @@ module type T = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     replay: replay<Spec.Id.t, Spec.event>,
     replayStream: replayStream<Spec.Id.t, Spec.event>,
-    replayStream': replayStream'<Spec.Id.t, Spec.event>,
+    replayEnvelopes: replayEnvelopes<Spec.Id.t, Spec.event>,
     appendStream: appendStream<Spec.Id.t, Spec.event>,
     latestSnapshot: latestSnapshot<Spec.Id.t>,
     writeSnapshot: writeSnapshot<Spec.Id.t>,
