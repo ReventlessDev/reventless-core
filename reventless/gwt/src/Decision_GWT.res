@@ -26,7 +26,8 @@ open ReventlessCore
 // Who issues the command. `asCaller` names the caller before `whenCmd`; the
 // command is then checked as production checks it: its `@authorize` rule against
 // the caller's roles, then — for slices and aggregates that mark `@owner` on the
-// events they decide on — against the owners the given events record. Without
+// events they decide on — against the owners the given events record, and for an
+// aggregate owned by its id (`Id.Owned`) against the id `onId` names. Without
 // `asCaller` the command carries no caller claim, which the handler reads as the
 // platform acting for itself — so every scenario written before this existed is
 // unchanged.
@@ -83,6 +84,13 @@ module Caller = {
   /** A caller exempt from ownership rules, acting on anyone's behalf. Holds no
       role: elevation does not grant a command whose rule the caller fails. */
   let operator: t = {claim: Exempt, roles: [], signedIn: true}
+  /** An operator holding `roles`: a role the deployment elevates, such as an
+      administrator acting on someone's behalf. */
+  let operatorIn = (roles: array<'role>): t => {
+    claim: Exempt,
+    roles: roleNames(roles),
+    signedIn: true,
+  }
   /** A caller with no identity. */
   let anonymous: t = {claim: Unidentified, roles: [], signedIn: false}
 }
@@ -96,6 +104,7 @@ module type Callers = {
   let owner: ('id, ~roles: array<role>=?) => t
   let inRoles: array<role> => t
   let operator: t
+  let operatorIn: array<role> => t
   let anonymous: t
 }
 
@@ -109,6 +118,7 @@ module Callers = (
   let owner = (id, ~roles: array<role>=[]) => Caller.owner(id, ~roles)
   let inRoles = (roles: array<role>) => Caller.inRoles(roles)
   let operator = Caller.operator
+  let operatorIn = (roles: array<role>) => Caller.operatorIn(roles)
   let anonymous = Caller.anonymous
 }
 
@@ -120,10 +130,14 @@ module type ActingSpec = {
   type command
   type role
   let authorizationOf: string => Reventless.Authorization.rule<role>
+  // The aggregate's id is its owner (`Id.Owned`).
+  let ownedById: bool
 }
 
 module Acting = (Spec: ActingSpec) => {
   let caller: ref<option<Caller.t>> = ref(None)
+  // The aggregate the next command acts on, when the scenario names one.
+  let streamId: ref<option<string>> = ref(None)
   let refusal: ref<option<CommandTopic_Helpers.rejectedResult>> = ref(None)
 
   let ownerFieldsByEventType = Reventless.Owner.fieldNamesByVariant(
@@ -132,6 +146,11 @@ module Acting = (Spec: ActingSpec) => {
 
   let asCaller = (history, who: Caller.t) => {
     caller := Some(who)
+    history
+  }
+
+  let onId = (history, id: string) => {
+    streamId := Some(id)
     history
   }
 
@@ -164,12 +183,14 @@ module Acting = (Spec: ActingSpec) => {
   // The caller is consumed: the next scenario starts with no claim.
   let refuses = (history: array<Spec.history>, command: Spec.command): bool => {
     let who = caller.contents
+    let id = streamId.contents
     caller := None
+    streamId := None
     refusal := None
     let claim = who->Option.map(w => w.claim)
     if who->Option.mapOr(false, refusedByRule(_, command)) {
       true
-    } else if ownerFieldsByEventType->Dict.keysToArray->Array.length == 0 {
+    } else if ownerFieldsByEventType->Dict.keysToArray->Array.length == 0 && !Spec.ownedById {
       false
     } else {
       let owners = history->Array.reduce([], (owners, event) => {
@@ -179,8 +200,15 @@ module Acting = (Spec: ActingSpec) => {
         | None => owners
         }
       })
+      // An aggregate owned by its id, in a scenario that names none: the
+      // partition cannot be named, as the handler would say.
+      let recordedOwners = switch (Spec.ownedById, id) {
+      | (false, _) => Some(owners)
+      | (true, Some(id)) => Some(owners->Reventless.Owner.streamOwners(~ownedById=true, ~id))
+      | (true, None) => None
+      }
       refusal :=
-        Reventless.OwnerScope.decideActing(~claim, ~recordedOwners=Some(owners))
+        Reventless.OwnerScope.decideActing(~claim, ~recordedOwners)
         ->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=commandName(command))
         ->Option.map(r => r.rejected)
       refusal.contents->Option.isSome
@@ -466,6 +494,7 @@ module Make = (Spec: DecisionSpec, Decision: Decision with module Spec := Spec):
     let commandSchema = Spec.commandSchema
     type role = Spec.role
     let authorizationOf = Spec.authorizationOf
+    let ownedById = false
   })
   let asCaller = Guard.asCaller
 
@@ -757,7 +786,8 @@ module Make = (Spec: DecisionSpec, Decision: Decision with module Spec := Spec):
 // only carries the three @schema types — no `name` — and ReScript's
 // `with module Spec = X` can only equate the inner Spec to a concrete
 // module, not constrain it to a module type that adds `name`.
-module type AggregateSpec = {
+// What a step that only decides needs of an aggregate; `AggregateSpec` adds the id.
+module type AggregateDeciderSpec = {
   let name: string
   @schema
   type command
@@ -767,6 +797,11 @@ module type AggregateSpec = {
   type error
   type role
   let authorizationOf: string => Reventless.Authorization.rule<role>
+}
+
+module type AggregateSpec = {
+  module Id: Reventless.Id.T
+  include AggregateDeciderSpec
 }
 
 module type AggregateT = {
@@ -780,6 +815,9 @@ module type AggregateT = {
   // Who issues the next `whenCmd`; see `Caller`.
   module Caller: Callers with type role = Spec.role
   let asCaller: (array<Spec.event>, Caller.t) => array<Spec.event>
+  // Which aggregate the next `whenCmd` acts on. Matters only where the id is the
+  // owner (`Id.Owned`): there an owner's command on no named id is refused.
+  let onId: (array<Spec.event>, Spec.Id.t) => array<Spec.event>
 
   let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
 
@@ -831,8 +869,10 @@ module MakeFromAggregate = (Spec: AggregateSpec, Decision: Decision.T with modul
     let commandSchema = Spec.commandSchema
     type role = Spec.role
     let authorizationOf = Spec.authorizationOf
+    let ownedById = Reventless.Owner.isOwnedById(Spec.Id.schema)
   })
   let asCaller = Guard.asCaller
+  let onId = (history, id) => history->Guard.onId(id->Spec.Id.toString)
 
   let exec = (history, command): array<Spec.event> => {
     errors := []

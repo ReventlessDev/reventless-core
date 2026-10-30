@@ -18,6 +18,10 @@ let consumedEventSchema = Sury.union([
   Sury.$schema(s => ({
     TAG: "CategoryArchived",
     categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
+  })),
+  Sury.$schema(s => ({
+    TAG: "CategoryUnarchived",
+    categoryId: s.m(DcbTag$Reventless.mark(CategoryId$CatalogPlugin.schema))
   }))
 ]);
 

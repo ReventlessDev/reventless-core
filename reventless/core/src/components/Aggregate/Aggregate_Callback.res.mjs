@@ -34,6 +34,7 @@ function Make(Spec) {
     ]));
     let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.eventSchema);
     let actsOnOwned = Object.keys(ownerFieldsByEventType).length !== 0;
+    let ownedById = Owner$Reventless.isOwnedById(Spec.Id.schema);
     let recordEventOwners = (owners, event) => {
       if (!actsOnOwned) {
         return owners;
@@ -59,7 +60,7 @@ function Make(Spec) {
       let cmdName = LogFormat$ReventlessCore.bold(cmdVariant);
       Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + id + ` seq=` + seq.toString() + ` cmd=` + cmdName));
       let repeated = Message$ReventlessCore.hasStableMsgId(command$p.meta) && causes.includes(command$p.meta.msgId);
-      let refusal = repeated || !actsOnOwned ? undefined : CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, owners), Spec.name, cmdVariant);
+      let refusal = repeated || !(actsOnOwned || ownedById) ? undefined : CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, Owner$Reventless.streamOwners(owners, ownedById, id)), Spec.name, cmdVariant);
       if (repeated) {
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `repeat dropped: ` + cmdName + `(` + id + `) msgId=` + command$p.meta.msgId + ` already caused events`));
         return {

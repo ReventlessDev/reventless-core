@@ -17,7 +17,7 @@
     "targets": [
       "Listed"
     ],
-    "scenarios": 7
+    "scenarios": 8
   },
   {
     "component": "ArchiveCategory",
@@ -140,7 +140,7 @@
     "targets": [
       "Deactivated"
     ],
-    "scenarios": 2
+    "scenarios": 3
   },
   {
     "component": "Customer",
@@ -162,7 +162,7 @@
     "targets": [
       "Active"
     ],
-    "scenarios": 3
+    "scenarios": 4
   },
   {
     "component": "Customer",
@@ -172,7 +172,7 @@
     "targets": [
       "Active"
     ],
-    "scenarios": 2
+    "scenarios": 3
   },
   {
     "component": "Customer",
@@ -210,7 +210,7 @@
       "Active"
     ],
     "targets": [],
-    "scenarios": 4
+    "scenarios": 6
   },
   {
     "component": "DiscontinueProduct",

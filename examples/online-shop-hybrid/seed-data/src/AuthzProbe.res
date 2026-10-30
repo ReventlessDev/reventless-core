@@ -88,6 +88,17 @@ let cases: array<probeCase> = [
       DemoCommands.shipOrder(ShipOrder({orderId: OrderingPlugin.OrderId.make(missing)})),
     ),
   },
+  // Taking a customer out of use, and back, is an administrator's alone.
+  {
+    name: "Ordering_Customer_Deactivate",
+    rule: commandRule(OrderingPlugin.Customer.authorizationOf, "Deactivate"),
+    subject: Command(DemoCommands.customer(~id=missing, Deactivate)),
+  },
+  {
+    name: "Ordering_Customer_Reactivate",
+    rule: commandRule(OrderingPlugin.Customer.authorizationOf, "Reactivate"),
+    subject: Command(DemoCommands.customer(~id=missing, Reactivate)),
+  },
   // An ungated command. Not padding: a run where EVERYTHING is refused — a broken
   // token, an unreachable API — would otherwise read as a clean pass on every row
   // that expects refusal.

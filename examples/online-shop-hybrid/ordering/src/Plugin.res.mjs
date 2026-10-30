@@ -423,7 +423,7 @@ function Make(Platform) {
     moduleUrl: VerifyCustomerEmail_Translation$OrderingPlugin.moduleUrl
   });
   let CustomerAggregate = Platform.Aggregate.Make({
-    Id: CustomerId$OrderingPlugin,
+    Id: Customer$OrderingPlugin.Id,
     name: Customer$OrderingPlugin.name,
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema,
@@ -440,7 +440,7 @@ function Make(Platform) {
     moduleUrl: Customer_Decision$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
-    Id: CustomerId$OrderingPlugin,
+    Id: Customer$OrderingPlugin.Id,
     commandSchema: Customer$OrderingPlugin.commandSchema
   }));
   let CustomersReadModel = Platform.ReadModelStream.Make({

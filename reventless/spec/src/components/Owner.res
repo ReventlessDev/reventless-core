@@ -66,6 +66,17 @@ let optionString: S.t<option<string>> = S.option(string)
 let isOwner = (schema: S.t<unknown>): bool =>
   S.Metadata.get(schema, ~id=ownerId)->Option.getOr(false)
 
+/** Whether an aggregate's id names its owner (`Id.Owned`). */
+let isOwnedById = (idSchema: S.t<'id>): bool => isOwner(idSchema->S.castToUnknown)
+
+/**
+The owners a command is checked against: those the history records, joined by
+the aggregate's own id where `isOwnedById`. Distinct, so an id the history also
+records counts once.
+*/
+let streamOwners = (recorded: array<string>, ~ownedById: bool, ~id: string): array<string> =>
+  ownedById && !(recorded->Array.includes(id)) ? recorded->Array.concat([id]) : recorded
+
 /**
 Whether a *field* is the owner, wherever inside the field's type the marker sits.
 

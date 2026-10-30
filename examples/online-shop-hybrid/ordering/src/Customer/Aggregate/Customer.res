@@ -3,7 +3,9 @@
 
 @@reventless.spec
 
-module Id = CustomerId
+// The customer is the shopper whose account id keys them: only they, or an
+// elevated caller, may act on this aggregate.
+module Id = Reventless.Id.Owned(CustomerId)
 
 // A map coordinate carried by location commands/events. `GeoPoint.t` rather than
 // a local `{lat, lng}` record: the wire shape is identical — so every event
@@ -55,12 +57,12 @@ type command =
   // Carries the address it is a verdict about, so a verdict for an address the
   // customer has since changed can be dropped rather than applied.
   | @noApi MarkEmailVerified({@pii email: string})
-  | Deactivate
+  | @authorize(AllowRoles([Admin])) Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
   // the state, and asking a caller to re-supply an email they never changed
   // would be a second chance to get it wrong.
-  | Reactivate
+  | @authorize(AllowRoles([Admin])) Reactivate
 
 @schema
 type event =

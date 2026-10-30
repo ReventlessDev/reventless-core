@@ -404,7 +404,7 @@ module CommandStep = (
 // histories isolated (a `Place` on `o2` does not see the events of `o1`).
 
 module AggregateCommandStep = (
-  Spec: Decision_GWT.AggregateSpec,
+  Spec: Decision_GWT.AggregateDeciderSpec,
   Decision: Reventless.Decision.T with module Spec = Spec,
 ) => {
   let aggregateDecoder = Reventless.DcbDecode.makeDecoder(Spec.eventSchema)

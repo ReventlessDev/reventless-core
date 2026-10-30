@@ -61,6 +61,33 @@ describe("AddProduct StateChangeSlice", () => {
     ->thenError(CategoryNotFound)
   )
 
+  // scenario-id: 567fa06c-2483-4965-9569-e2f34468a84b
+  test("adds product when the referenced category was archived and brought back", () =>
+    givenEvents([
+      CategoryAdded({categoryId: cat1}),
+      CategoryArchived({categoryId: cat1}),
+      CategoryUnarchived({categoryId: cat1}),
+    ])
+    ->whenCmd(
+      AddProduct({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+    ->thenEvent(
+      ProductAdded({
+        productId: p1,
+        name: laptop,
+        description: anyDescription,
+        price: laptopPrice,
+        categoryId: cat1,
+      }),
+    )
+  )
+
   // scenario-id: b1673c80-7868-46e7-b2a2-81f05df79a29
   test("existing product returns ProductAlreadyExists", () =>
     givenEvents([CategoryAdded({categoryId: cat1}), ProductAdded({productId: p1})])
@@ -78,7 +105,7 @@ describe("AddProduct StateChangeSlice", () => {
 
   // A sibling product in the same category is NOT in this product's decision read:
   // `categoryId` is an inferred cross-partition reference, so the category clause
-  // reads only `CategoryAdded` / `CategoryArchived`, and the `productId` clause
+  // reads only the category events, and the `productId` clause
   // returns only p2's own (absent) `ProductAdded`. So p2's history carries no
   // sibling `ProductAdded` — exactly what makes the plain existence check correct.
   // scenario-id: b8e3a265-efe3-479d-8c4f-2b5cb0a1141a

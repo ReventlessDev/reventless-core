@@ -19,6 +19,16 @@ function isOwner(schema) {
   return Stdlib_Option.getOr(Sury.$Metadata_get(schema, ownerId), false);
 }
 
+let isOwnedById = isOwner;
+
+function streamOwners(recorded, ownedById, id) {
+  if (ownedById && !recorded.includes(id)) {
+    return recorded.concat([id]);
+  } else {
+    return recorded;
+  }
+}
+
 function isFieldOwner(schema) {
   if (isOwner(schema)) {
     return true;
@@ -131,6 +141,8 @@ export {
   string,
   optionString,
   isOwner,
+  isOwnedById,
+  streamOwners,
   isFieldOwner,
   fieldNamesOfProperties,
   fieldNames,

@@ -194,3 +194,115 @@ describe("Customer email verification", () => {
     ->thenError(CustomerNotFound)
   )
 })
+
+// A customer is the shopper their id names: they, or an administrator, change
+// their profile. Taking a customer out of use, or back, is an administrator's.
+describe("Who may act on a Customer", () => {
+  // scenario-id: 6dc19620-bd20-4e98-a67b-a78aa39083ca
+  test("a customer may register themself", () =>
+    givenEvents([])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c1))
+    ->whenCmd(Register({email: aliceEmail, address: mainStreet}))
+    ->thenEvent(Registered({email: Value(aliceEmail), address: Value(mainStreet)}))
+  )
+
+  // scenario-id: ded81926-2cd1-4b9b-8fbf-2683e23e8114
+  test("a customer may not register someone else", () =>
+    givenEvents([])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c2))
+    ->whenCmd(Register({email: aliceEmail, address: mainStreet}))
+    ->thenForbidden
+  )
+
+  // scenario-id: f9cd0f95-17f7-477b-be54-8a60c3010bbd
+  test("a customer may change their own email", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c1))
+    ->whenCmd(UpdateEmail({email: aliceNewEmail}))
+    ->thenEvent(EmailUpdated({email: Value(aliceNewEmail)}))
+  )
+
+  // scenario-id: 786b0aa7-aef7-4e2a-8889-f603c78098ca
+  test("another customer may not change the email", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c2))
+    ->whenCmd(UpdateEmail({email: aliceNewEmail}))
+    ->thenForbidden
+  )
+
+  // scenario-id: 5e8240aa-2a3c-49c1-ae4a-ffb29a97d138
+  test("another customer may not change the address", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c2))
+    ->whenCmd(UpdateAddress({address: "789 Pine"}))
+    ->thenForbidden
+  )
+
+  // scenario-id: 46bfc29e-4cfc-42d8-b2f6-296b28609001
+  test("an administrator may change any customer's email", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.operatorIn([Admin]))
+    ->whenCmd(UpdateEmail({email: aliceNewEmail}))
+    ->thenEvent(EmailUpdated({email: Value(aliceNewEmail)}))
+  )
+
+  // scenario-id: 019e2283-a3b3-4972-8fdf-b470320b5ce3
+  test("a caller who is not signed in may not change the email", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.anonymous)
+    ->whenCmd(UpdateEmail({email: aliceNewEmail}))
+    ->thenForbidden
+  )
+
+  // scenario-id: 69dbc4f8-4009-4caa-9e14-f1dd248d7a2a
+  test("a customer may not deactivate themself", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c1))
+    ->whenCmd(Deactivate)
+    ->thenForbidden
+  )
+
+  // scenario-id: 7d4c5293-934e-4fb5-81d2-b3b8f96c3e5e
+  test("an operator who is not an administrator may not deactivate a customer", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.operatorIn([Fulfilment]))
+    ->whenCmd(Deactivate)
+    ->thenForbidden
+  )
+
+  // scenario-id: 13f06620-a184-4099-be1c-fc727e74788b
+  test("an administrator may deactivate a customer", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+    ->onId(c1)
+    ->asCaller(Caller.operatorIn([Admin]))
+    ->whenCmd(Deactivate)
+    ->thenEvent(Deactivated)
+  )
+
+  // scenario-id: c5375866-bf51-47fe-8633-b1b2887e2ab2
+  test("a customer may not reactivate themself", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
+    ->onId(c1)
+    ->asCaller(Caller.owner(c1))
+    ->whenCmd(Reactivate)
+    ->thenForbidden
+  )
+
+  // scenario-id: f2696c97-6582-4ee7-a403-ee5aed6d8c19
+  test("an administrator may reactivate a customer", () =>
+    givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)}), Deactivated])
+    ->onId(c1)
+    ->asCaller(Caller.operatorIn([Admin]))
+    ->whenCmd(Reactivate)
+    ->thenEvent(Reactivated)
+  )
+})

@@ -14,7 +14,7 @@ let initialState = {exists: false, liveCategoryIds: []}
 let evolve = (state, event: consumedEvent) =>
   switch event {
   | ProductAdded(_) => {...state, exists: true}
-  | CategoryAdded({categoryId}) => {
+  | CategoryAdded({categoryId}) | CategoryUnarchived({categoryId}) => {
       ...state,
       liveCategoryIds: state.liveCategoryIds->Array.includes(categoryId)
         ? state.liveCategoryIds

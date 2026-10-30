@@ -13,6 +13,7 @@ type consumedEvent =
   | ProductAdded({productId: CatalogSpec.ProductId.t})
   | CategoryAdded({categoryId: CategoryId.t})
   | CategoryArchived({categoryId: CategoryId.t})
+  | CategoryUnarchived({categoryId: CategoryId.t})
 
 @schema
 type command =

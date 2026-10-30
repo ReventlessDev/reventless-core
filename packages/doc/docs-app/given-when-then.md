@@ -108,7 +108,8 @@ Every DSL uses the same verbs for the same roles:
 | Verb                                  | Meaning                                         |
 |---------------------------------------|-------------------------------------------------|
 | `givenEvents([...])` / `givenEvent(e)`| prior events on the entity (sets up `evolve`)   |
-| `asCaller(c)`                         | name who issues the next `whenCmd` (`Caller.owner(id)`, `Caller.inRoles([...])`, `Caller.operator`, `Caller.anonymous`) |
+| `asCaller(c)`                         | name who issues the next `whenCmd` (`Caller.owner(id)`, `Caller.inRoles([...])`, `Caller.operator`, `Caller.operatorIn([...])`, `Caller.anonymous`) |
+| `onId(id)`                            | aggregate only: name the aggregate the next `whenCmd` acts on |
 | `whenCmd(c)`                          | dispatch a command to `decide`                  |
 | `whenEvent(e)` / `whenEvents([...])`  | push an event through `project` / `map`         |
 | `whenInput(i)`                        | feed external input to a translation slice      |
@@ -177,7 +178,9 @@ production checks it before `decide`:
    holds;
 2. when the slice marks `@owner` on an event it consumes (or an aggregate on one
    of its events), the owners the given events record, so it may act only on what
-   the caller owns.
+   the caller owns. An aggregate whose id is its owner (`Id.Owned`) is checked
+   against the id `onId` names; an owner's command on no named id is refused, as
+   the handler refuses a partition it cannot name.
 
 ```rescript
 test("a Merchandiser may add a product", () =>
@@ -195,7 +198,7 @@ test("a shopper may not add a product", () =>
 )
 ```
 
-And for ownership:
+And for ownership, on a slice:
 
 ```rescript
 test("another customer cannot cancel the order", () =>
@@ -210,6 +213,18 @@ test("an operator may cancel any customer's order", () =>
   ->asCaller(Caller.operator)
   ->whenCmd(CancelOrder({orderId: o1}))
   ->thenEvent(OrderCancelled({orderId: o1, productIds: [p1]}))
+)
+```
+
+and on an aggregate whose id is its owner:
+
+```rescript
+test("another customer may not change the email", () =>
+  givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
+  ->onId(c1)
+  ->asCaller(Caller.owner(c2))
+  ->whenCmd(UpdateEmail({email: aliceNewEmail}))
+  ->thenForbidden
 )
 ```
 
@@ -228,6 +243,8 @@ The callers:
   where the administrator group is on the list, or the platform's own traffic.
   It holds no role, because elevation does not grant a command whose rule the
   caller fails. See [Who is exempt](./authorization.md#who-is-exempt).
+- `Caller.operatorIn([Admin])`: an operator holding those roles, for a command
+  whose rule names a role and which acts on someone else's thing.
 - `Caller.anonymous`: a caller with no identity, refused by every rule but
   `AllowAnonymous` and on anything owned.
 

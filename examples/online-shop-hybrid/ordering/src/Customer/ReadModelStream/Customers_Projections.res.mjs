@@ -169,7 +169,7 @@ function project(param) {
 }
 
 let CustomerMapping = Projection$Reventless.Mapping.Make({
-  Id: CustomerId$OrderingPlugin,
+  Id: Customer$OrderingPlugin.Id,
   name: Customer$OrderingPlugin.name,
   eventSchema: Customer$OrderingPlugin.eventSchema
 })({

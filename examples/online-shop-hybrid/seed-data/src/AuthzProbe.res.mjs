@@ -6,6 +6,7 @@ import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.re
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as OrderId$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/OrderId.res.mjs";
 import * as Products$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewStream/Products.res.mjs";
+import * as Customer$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/Aggregate/Customer.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as CategoryId$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/CategoryId.res.mjs";
 import * as Customers$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers.res.mjs";
@@ -76,6 +77,22 @@ let cases = [
         TAG: "ShipOrder",
         orderId: OrderId$OrderingPlugin.make(missing)
       })
+    }
+  },
+  {
+    name: "Ordering_Customer_Deactivate",
+    rule: Authorization$Reventless.named(Customer$OrderingPlugin.authorizationOf("Deactivate")),
+    subject: {
+      TAG: "Command",
+      _0: DemoCommands$OnlineShopHybridSeed.customer(missing, "Deactivate")
+    }
+  },
+  {
+    name: "Ordering_Customer_Reactivate",
+    rule: Authorization$Reventless.named(Customer$OrderingPlugin.authorizationOf("Reactivate")),
+    subject: {
+      TAG: "Command",
+      _0: DemoCommands$OnlineShopHybridSeed.customer(missing, "Reactivate")
     }
   },
   {

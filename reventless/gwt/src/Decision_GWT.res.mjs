@@ -64,6 +64,14 @@ let operator = {
   signedIn: true
 };
 
+function operatorIn(roles) {
+  return {
+    claim: "Exempt",
+    roles: roleNames(roles),
+    signedIn: true
+  };
+}
+
 let anonymous_roles = [];
 
 let anonymous = {
@@ -77,6 +85,7 @@ let Caller = {
   owner: owner,
   inRoles: inRoles,
   operator: operator,
+  operatorIn: operatorIn,
   anonymous: anonymous
 };
 
@@ -86,10 +95,12 @@ function Callers(R) {
     return owner(id, roles);
   };
   let inRoles$1 = inRoles;
+  let operatorIn$1 = operatorIn;
   return {
     owner: owner$1,
     inRoles: inRoles$1,
     operator: operator,
+    operatorIn: operatorIn$1,
     anonymous: anonymous
   };
 }
@@ -98,12 +109,19 @@ function Acting(Spec) {
   let caller = {
     contents: undefined
   };
+  let streamId = {
+    contents: undefined
+  };
   let refusal = {
     contents: undefined
   };
   let ownerFieldsByEventType = Owner$Reventless.fieldNamesByVariant(Spec.historySchema);
   let asCaller = (history, who) => {
     caller.contents = who;
+    return history;
+  };
+  let onId = (history, id) => {
+    streamId.contents = id;
     return history;
   };
   let commandName = command => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema));
@@ -120,13 +138,15 @@ function Acting(Spec) {
   };
   let refuses = (history, command) => {
     let who = caller.contents;
+    let id = streamId.contents;
     caller.contents = undefined;
+    streamId.contents = undefined;
     refusal.contents = undefined;
     let claim = Stdlib_Option.map(who, w => w.claim);
     if (Stdlib_Option.mapOr(who, false, __x => refusedByRule(__x, command))) {
       return true;
     }
-    if (Object.keys(ownerFieldsByEventType).length === 0) {
+    if (Object.keys(ownerFieldsByEventType).length === 0 && !Spec.ownedById) {
       return false;
     }
     let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
@@ -138,7 +158,10 @@ function Acting(Spec) {
         return owners;
       }
     });
-    refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), Spec.name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema))), r => r.rejected);
+    let recordedOwners = Spec.ownedById ? (
+        id !== undefined ? Owner$Reventless.streamOwners(owners, true, id) : undefined
+      ) : owners;
+    refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, recordedOwners), Spec.name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, Spec.commandSchema))), r => r.rejected);
     return Stdlib_Option.isSome(refusal.contents);
   };
   let encRefusal = r => Object.fromEntries([
@@ -175,9 +198,11 @@ function Acting(Spec) {
   };
   return {
     caller: caller,
+    streamId: streamId,
     refusal: refusal,
     ownerFieldsByEventType: ownerFieldsByEventType,
     asCaller: asCaller,
+    onId: onId,
     commandName: commandName,
     refusedByRule: refusedByRule,
     refuses: refuses,
@@ -369,10 +394,12 @@ function Make(Spec) {
       return owner(id, roles);
     };
     let inRoles$1 = inRoles;
+    let operatorIn$1 = operatorIn;
     let Caller = {
       owner: owner$1,
       inRoles: inRoles$1,
       operator: operator,
+      operatorIn: operatorIn$1,
       anonymous: anonymous
     };
     let name = Spec.name;
@@ -380,6 +407,9 @@ function Make(Spec) {
     let commandSchema = Spec.commandSchema;
     let authorizationOf = Spec.authorizationOf;
     let caller = {
+      contents: undefined
+    };
+    let streamId = {
       contents: undefined
     };
     let refusal = {
@@ -393,6 +423,7 @@ function Make(Spec) {
     let refuses = (history, command) => {
       let who = caller.contents;
       caller.contents = undefined;
+      streamId.contents = undefined;
       refusal.contents = undefined;
       let claim = Stdlib_Option.map(who, w => w.claim);
       if (Stdlib_Option.mapOr(who, false, __x => {
@@ -408,7 +439,7 @@ function Make(Spec) {
         })) {
         return true;
       }
-      if (Object.keys(ownerFieldsByEventType).length === 0) {
+      if (Object.keys(ownerFieldsByEventType).length === 0 && true) {
         return false;
       }
       let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
@@ -420,7 +451,8 @@ function Make(Spec) {
           return owners;
         }
       });
-      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
+      let recordedOwners = owners;
+      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, recordedOwners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
       return Stdlib_Option.isSome(refusal.contents);
     };
     let encRefusal = r => Object.fromEntries([
@@ -758,17 +790,23 @@ function MakeFromAggregate(Spec) {
       return owner(id, roles);
     };
     let inRoles$1 = inRoles;
+    let operatorIn$1 = operatorIn;
     let Caller = {
       owner: owner$1,
       inRoles: inRoles$1,
       operator: operator,
+      operatorIn: operatorIn$1,
       anonymous: anonymous
     };
     let name = Spec.name;
     let historySchema = Spec.eventSchema;
     let commandSchema = Spec.commandSchema;
     let authorizationOf = Spec.authorizationOf;
+    let ownedById = Owner$Reventless.isOwnedById(Spec.Id.schema);
     let caller = {
+      contents: undefined
+    };
+    let streamId = {
       contents: undefined
     };
     let refusal = {
@@ -781,7 +819,9 @@ function MakeFromAggregate(Spec) {
     };
     let refuses = (history, command) => {
       let who = caller.contents;
+      let id = streamId.contents;
       caller.contents = undefined;
+      streamId.contents = undefined;
       refusal.contents = undefined;
       let claim = Stdlib_Option.map(who, w => w.claim);
       if (Stdlib_Option.mapOr(who, false, __x => {
@@ -797,7 +837,7 @@ function MakeFromAggregate(Spec) {
         })) {
         return true;
       }
-      if (Object.keys(ownerFieldsByEventType).length === 0) {
+      if (Object.keys(ownerFieldsByEventType).length === 0 && !ownedById) {
         return false;
       }
       let owners = Stdlib_Array.reduce(history, [], (owners, event) => {
@@ -809,7 +849,10 @@ function MakeFromAggregate(Spec) {
           return owners;
         }
       });
-      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, owners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
+      let recordedOwners = ownedById ? (
+          id !== undefined ? Owner$Reventless.streamOwners(owners, true, id) : undefined
+        ) : owners;
+      refusal.contents = Stdlib_Option.map(CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(claim, recordedOwners), name, Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command, commandSchema))), r => r.rejected);
       return Stdlib_Option.isSome(refusal.contents);
     };
     let encRefusal = r => Object.fromEntries([
@@ -828,6 +871,11 @@ function MakeFromAggregate(Spec) {
       actual: encRefusal(r),
       actualEvents: []
     }));
+    let onId = (history, id) => {
+      let id$1 = Spec.Id.toString(id);
+      streamId.contents = id$1;
+      return history;
+    };
     let givenEvents = events => events;
     let whenCmd = (history, cmd) => {
       if (ScenarioRecorder$ReventlessGwt.recording()) {
@@ -936,6 +984,7 @@ function MakeFromAggregate(Spec) {
       givenEvents: givenEvents,
       Caller: Caller,
       asCaller: asCaller,
+      onId: onId,
       whenCmd: whenCmd,
       thenEvent: thenEvent,
       thenCompareEvent: thenCompareEvent,

@@ -1,8 +1,8 @@
 # Plan: the online shop example closes its gaps, and runs its whole story locally
 
 **Date:** 2026-10-30<br/>
-**Status:** 📝 Proposed 2026-10-30. Nothing built.<br/>
-**Owns:** two behaviour gaps in
+**Status:** 🚧 [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) built 2026-10-30, uncommitted; they ship as the next alpha once committed and pushed. [OE4](#oe4-a-stand-in-geocoder-for-the-local-platform) to [OE7](#oe7-the-examples-readme-says-it) not started.<br/>
+**Owns:** two behavior gaps in
 [examples/online-shop-hybrid](../../examples/online-shop-hybrid/README.md), a plugin with no
 slices yet that fails its build, and a stand-in geocoder for the local platform. It also orders
 two pieces other plans own: the contact-verification trait's extraction
@@ -59,7 +59,7 @@ Two further things keep the example from running its whole story on one machine:
 
 ## 2. Rules every step keeps
 
-1. **The example's behaviour changes only where [§1](#1-why) names it**; every other scenario stays as it
+1. **The example's behavior changes only where [§1](#1-why) names it**; every other scenario stays as it
    is, and each fix comes with the scenario that failed before it.
 2. **The stand-in is opt-in and honest**: without its file, the local platform behaves exactly
    as today.
@@ -78,6 +78,12 @@ example's alone.
 
 **Exit:** the new scenario passes; the existing ones are unchanged. Size S.
 
+**Built 2026-10-30.** `AddProduct` consumes `CategoryUnarchived` and folds it as it folds
+`CategoryAdded`. The new scenario failed before the fix (`CategoryNotFound`) and passes now;
+the catalog's 214 tests pass. `pnpm run check:lifecycle:update` moved
+[lifecycle-model.json](../../examples/online-shop-hybrid/schema/lifecycle-model.json) (the
+model sidecars are build outputs and are not tracked); the DCB scope golden is unchanged.
+
 ### OE2: who may change a customer
 
 - `Deactivate` and `Reactivate` get `@authorize(AllowRoles([Admin]))`.
@@ -89,6 +95,29 @@ example's alone.
 **Exit:** a shopper's `Deactivate` is refused by the API; the seed's `full`, `sample` and `next`
 runs pass locally. Size S, or M if [OEQ2](#5-open-questions) needs the aggregate to learn an owner.
 
+**Built 2026-10-30, with the owner rule** ([OEQ2](#5-open-questions) took the recommended answer).
+
+- `Deactivate` and `Reactivate` carry `@authorize(AllowRoles([Admin]))`.
+- `Customer` declares `module Id = Reventless.Id.Owned(CustomerId)`. `Id.Owned` (spec) marks
+  the id's schema with `Owner`; the aggregate handler then checks every command, the creating
+  one included, against the aggregate's own id, through the same `OwnerScope.decideActing` the
+  event-recorded owner uses. Exempt callers and claimless platform commands pass, as before.
+  Unlike an event-recorded owner, snapshots stay on.
+- The aggregate GWT harness mirrors it: `onId(id)` names the aggregate a scenario acts on, and
+  `Caller.operatorIn([Admin])` is an elevated caller holding roles. `Decision_GWT.AggregateSpec`
+  now requires `module Id`; the flow harness's aggregate step takes the new
+  `AggregateDeciderSpec`, which does not.
+- Tests: 8 new rows in `OwnerActingTest` (42 pass; 3 fail with the check switched off), 12 new
+  `Customer_GWT` scenarios (34 pass; 3 fail without `Id.Owned`). Documented in
+  [authorization.md](../../packages/doc/docs-app/authorization.md#rows-that-belong-to-a-caller)
+  and [given-when-then.md](../../packages/doc/docs-app/given-when-then.md#who-may-act-ascaller-and-thenforbidden).
+- `AuthzProbe` probes `Customer_Deactivate` and `Customer_Reactivate`; it compares role rules
+  only, so the owner rule is not one of its rows.
+- Run against the local platform (memory backend, uploads skipped, signed in as `admin`):
+  `full`, `next` and `sample` passed with no refusal, and `authz` matched all 36 pairs, shopper,
+  merchandiser and fulfilment refused on both new rows. By hand, a shopper's `UpdateEmail` on
+  another customer answered `Forbidden` and on their own was accepted. Not run on AWS.
+
 ### OE3: a plugin with no slices yet builds
 
 `emit-capabilities` treats a missing `pluginStructure` as an empty plugin and writes an empty
@@ -96,6 +125,13 @@ runs pass locally. Size S, or M if [OEQ2](#5-open-questions) needs the aggregate
 
 **Exit:** a plugin package with only `plugin.json` and an empty `LifecycleModel.res` builds with
 its `postbuild` step in place. Size S.
+
+**Already built** on 2026-10-26, before this plan, in `fix(local): emit-capabilities writes an
+empty manifest for a plugin with no parts yet`, and released since: `EmitCapabilities` reads
+`pluginStructure` as nullable and renders `{"capabilities": []}`, and `EmitCapabilitiesTest`
+holds the case. Checked again 2026-10-30: a throwaway package with only `plugin.json` and an
+empty `LifecycleModel.res` ran `generate-plugin`, `rescript build` and `emit-capabilities`
+and wrote the empty manifest. No change was needed.
 
 **Release:** [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) together, as the next alpha.
 
@@ -163,6 +199,9 @@ id, but nothing tells the framework to compare the two.
 `@owner` on its `Id` module**, and refuse otherwise unless the caller holds an elevated role, as
 `PlaceOrder` already behaves. If that is more than a small change, ship [OE2](#oe2-who-may-change-a-customer) with the
 administrator rule only, and file the owner rule as its own plan.
+**Answered 2026-10-30: built as recommended**, since it was small. The marker is a functor,
+`Reventless.Id.Owned(CustomerId)`, not an attribute, so the PPX did not change. See
+[OE2](#oe2-who-may-change-a-customer).
 
 ## 6. Acceptance
 

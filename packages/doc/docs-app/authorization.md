@@ -265,6 +265,18 @@ A slice keyed by its owner needs none of this. When the owner field is the
 slice's partition, as with a caller's own notification preferences, stamping
 already confines every command to the caller's partition.
 
+An aggregate keyed by its owner's account id, such as a customer profile, says
+so on its id instead:
+
+```rescript
+module Id = Reventless.Id.Owned(CustomerId)
+```
+
+The aggregate's id is then its owner. Every command, the creating one included,
+is refused unless the caller's id is the aggregate's id, with the same refusal
+and the same exemptions as above. No event needs to record the owner, so the
+aggregate keeps its snapshots.
+
 ## Who is exempt
 
 Some roles exist precisely to read across owners — a fulfilment desk works other

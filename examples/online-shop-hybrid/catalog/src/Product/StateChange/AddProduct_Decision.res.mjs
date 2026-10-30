@@ -15,19 +15,21 @@ function evolve(state, event) {
         exists: true,
         liveCategoryIds: state.liveCategoryIds
       };
-    case "CategoryAdded" :
+    case "CategoryArchived" :
       let categoryId = event.categoryId;
       return {
         exists: state.exists,
-        liveCategoryIds: state.liveCategoryIds.includes(categoryId) ? state.liveCategoryIds : state.liveCategoryIds.concat([categoryId])
+        liveCategoryIds: state.liveCategoryIds.filter(id => id !== categoryId)
       };
-    case "CategoryArchived" :
-      let categoryId$1 = event.categoryId;
-      return {
-        exists: state.exists,
-        liveCategoryIds: state.liveCategoryIds.filter(id => id !== categoryId$1)
-      };
+    case "CategoryAdded" :
+    case "CategoryUnarchived" :
+      break;
   }
+  let categoryId$1 = event.categoryId;
+  return {
+    exists: state.exists,
+    liveCategoryIds: state.liveCategoryIds.includes(categoryId$1) ? state.liveCategoryIds : state.liveCategoryIds.concat([categoryId$1])
+  };
 }
 
 function decide(state, command) {

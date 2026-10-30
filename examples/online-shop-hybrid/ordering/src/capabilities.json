@@ -36,6 +36,9 @@
       "declaredBy": [
         {
           "component": "SendNotification"
+        },
+        {
+          "component": "VerifyCustomerEmail"
         }
       ]
     }

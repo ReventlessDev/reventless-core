@@ -103,3 +103,23 @@ module Make = (
   let key = K.key
   let schema = schema->Semantic.mark(~id=Semantic.Id.identity, ~payload=IdentityOf({key: K.key}))
 }
+
+/**
+An aggregate's id that is also its owner: the caller whose id it is may act on
+the aggregate, and nobody else unless elevated. For an aggregate keyed by its
+holder's account id, such as a customer profile.
+
+Marks the id's schema with `Owner`, so the command handler compares the
+aggregate's id with the caller before `decide`, on every command, creating ones
+included. A command without a caller claim (the platform's own) is not checked.
+
+@example
+```rescript
+// Customer.res
+module Id = Reventless.Id.Owned(CustomerId)
+```
+*/
+module Owned = (I: T): (T with type t = I.t and type input = I.input) => {
+  include I
+  let schema = I.schema->Owner.mark
+}

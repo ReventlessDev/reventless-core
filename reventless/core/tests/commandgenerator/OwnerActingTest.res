@@ -605,3 +605,205 @@ describe("acting on an owned thing — aggregate specifics:", () => {
     expect(snapshotReads.contents)->toBe(0)
   })
 })
+
+// ─── An aggregate owned by its id ───────────────────────────────────────────
+
+// Keyed by its holder's account id, and records no owner in any event: the id
+// says whose it is, from the first command on.
+module ProfileSpec = {
+  module Id = Reventless.Id.Owned(Reventless.Id.StringPure)
+  let name = "OwnedProfile"
+
+  @schema
+  type command =
+    | Create({name: string})
+    | Rename({newName: string})
+
+  @schema
+  type event =
+    | Created({name: string})
+    | Renamed({newName: string})
+
+  @schema
+  type error =
+    | AlreadyCreated
+    | NotFound
+
+  let moduleUrl: string = %raw(`import.meta.url`)
+}
+
+module ProfileDecision = {
+  module Spec = ProfileSpec
+
+  @schema
+  type state = Absent | Present({name: string})
+
+  let initialState = Absent
+
+  // Kept on: the id carries the owner, so a snapshot loses nothing.
+  let snapshot = Some({Reventless.Snapshot.interval: 1, stateSchema})
+
+  let moduleUrl = ProfileSpec.moduleUrl
+
+  let evolve = (_state, event: ProfileSpec.event) =>
+    switch event {
+    | Created({name}) => Present({name: name})
+    | Renamed({newName}) => Present({name: newName})
+    }
+
+  let decide = (state, command: ProfileSpec.command): result<
+    array<ProfileSpec.event>,
+    ProfileSpec.error,
+  > =>
+    switch (state, command) {
+    | (Absent, Create({name})) => Ok([ProfileSpec.Created({name: name})])
+    | (Absent, Rename(_)) => Error(NotFound)
+    | (Present(_), Create(_)) => Error(AlreadyCreated)
+    | (Present(_), Rename({newName})) => Ok([ProfileSpec.Renamed({newName: newName})])
+    }
+}
+
+let profileEvents: ref<array<Message.event'<string, ProfileSpec.event>>> = ref([])
+let profileSnapshotReads = ref(0)
+
+module ProfileOps = {
+  module Spec = ProfileSpec
+  module EventLog = {
+    module Spec = {
+      module Id = ProfileSpec.Id
+      let name = "OwnedProfileEventLog"
+      @schema
+      type event = ProfileSpec.event
+    }
+    type operations = {
+      append: (
+        int,
+        string,
+        array<Message.event'<string, ProfileSpec.event>>,
+      ) => promise<result<unit, OuterEventLog.appendError>>,
+      replay: string => promise<array<ProfileSpec.event>>,
+      replayStream: (string, ~fromSeq: int=?) => Stream.t<ProfileSpec.event, string, unit>,
+      replayEnvelopes: (
+        string,
+        ~fromSeq: int=?,
+      ) => Stream.t<Message.event'<string, ProfileSpec.event>, string, unit>,
+      appendStream: (
+        int,
+        string,
+        Stream.t<ProfileSpec.event, string, unit>,
+      ) => Effect.t<unit, string, unit>,
+      latestSnapshot: string => promise<result<option<OuterEventLog.snapshot>, string>>,
+      writeSnapshot: (string, OuterEventLog.snapshot) => promise<result<unit, string>>,
+    }
+    type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
+    let make = (~name as _: string, ~owner as _=?, ~opts as _=?): component => Obj.magic(0)
+  }
+  let ofId = id => profileEvents.contents->Array.filter(e => e.id == id)->Array.map(e => e.event)
+  let eventLog: EventLog.operations = {
+    append: async (_seqNr, _id, newEvents) => {
+      profileEvents := profileEvents.contents->Array.concat(newEvents)
+      Ok()
+    },
+    replay: async id => ofId(id),
+    replayStream: (id, ~fromSeq as _=?) => ofId(id)->Stream.fromIterable,
+    replayEnvelopes: (id, ~fromSeq as _=?) =>
+      profileEvents.contents->Array.filter(e => e.id == id)->Stream.fromIterable,
+    appendStream: (_seqNr, _id, stream) => stream->Stream.runDrain,
+    latestSnapshot: async _ => {
+      profileSnapshotReads := profileSnapshotReads.contents + 1
+      Ok(None)
+    },
+    writeSnapshot: async (_, _) => Ok(),
+  }
+}
+
+module ProfileHandler = Aggregate_Callback.Make(ProfileSpec, ProfileDecision, ProfileOps)
+
+let profileGenerate = generator(
+  ~serviceName=ProfileSpec.name,
+  ~commandSchema=ProfileSpec.commandSchema->S.castToUnknown,
+  ~componentKind=CommandGenerator_Callback.Aggregate,
+)
+
+let deliverProfile = async (cmd: Message.commandJson) => {
+  let item = {
+    ReventlessInfra.CommandTopic.command: cross(Inline, cmd)->Message.decodeCommand'(
+      ProfileSpec.Id.schema,
+      ProfileSpec.commandSchema,
+    ),
+    reference: cmd.meta.msgId,
+  }
+  let _ = await ProfileHandler.handleCommands(Stream.fromIterable([item]))->Effect.runPromise
+  cmd.meta.msgId
+}
+
+let profileCommand = (~command, ~id, ~identity, ~args=[]) =>
+  profileGenerate->generateOne(~command, ~args=Array.concat([("id", str(id))], args), ~identity)
+
+describe("acting on an aggregate owned by its id:", () => {
+  let _ = beforeEach(() => {
+    profileEvents := []
+    profileSnapshotReads := 0
+    ProfileHandler.resetCache()
+  })
+
+  let create = async (~id, ~identity) =>
+    await deliverProfile(
+      await profileCommand(~command="Create", ~id, ~identity, ~args=[("name", str("Ann"))]),
+    )
+
+  // The creating command is checked too: there is no history to wait for.
+  testPromise("only the holder of the id, or an operator, may create it", async () => {
+    let mine = await create(~id="cust-A", ~identity=owner)
+    let theirs = await create(~id="cust-C", ~identity=stranger)
+    let ops = await create(~id="cust-D", ~identity=operator)
+    expect((outcomeOf(mine), outcomeOf(theirs), outcomeOf(ops)))->toEqual((
+      Accepted,
+      forbidden,
+      Accepted,
+    ))
+  })
+
+  let renameAs = async identity =>
+    await deliverProfile(
+      await profileCommand(
+        ~command="Rename",
+        ~id="cust-A",
+        ~identity,
+        ~args=[("newName", str("Renamed"))],
+      ),
+    )
+
+  let table: array<(string, Reventless.Identity.t, outcome)> = [
+    ("the holder of the id", owner, Accepted),
+    ("another owner", stranger, forbidden),
+    ("an operator, on the holder's behalf", operator, Accepted),
+    ("the platform's own IAM traffic", iam, Accepted),
+    ("an anonymous caller", Reventless.Identity.anonymous, forbidden),
+  ]
+  table->Array.forEach(((who, identity, expected)) =>
+    testPromise(
+      `${who}: ${expected == Accepted ? "accepted" : "refused before decide"}`,
+      async () => {
+        let _ = await create(~id="cust-A", ~identity=owner)
+        expect(outcomeOf(await renameAs(identity)))->toEqual(expected)
+      },
+    )
+  )
+
+  testPromise("an internal route, with no claim, is not checked", async () => {
+    let _ = await create(~id="cust-A", ~identity=owner)
+    let cmd = await profileCommand(
+      ~command="Rename",
+      ~id="cust-A",
+      ~identity=stranger,
+      ~args=[("newName", str("Renamed"))],
+    )
+    expect(outcomeOf(await deliverProfile(withoutClaim(cmd))))->toEqual(Accepted)
+  })
+
+  testPromise("an aggregate owned by its id keeps its snapshots", async () => {
+    let _ = await create(~id="cust-A", ~identity=owner)
+    expect(profileSnapshotReads.contents)->toBe(1)
+  })
+})

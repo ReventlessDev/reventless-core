@@ -63,6 +63,9 @@ module Make = (
     Spec.eventSchema->S.castToUnknown,
   )
   let actsOnOwned = ownerFieldsByEventType->Dict.keysToArray->Array.length > 0
+  // An aggregate whose id is its owner (`Id.Owned`) needs no recorded event, so
+  // it keeps its snapshots.
+  let ownedById = Reventless.Owner.isOwnedById(Spec.Id.schema)
 
   let recordEventOwners = (owners, event: Spec.event) =>
     if actsOnOwned {
@@ -127,11 +130,11 @@ module Make = (
       // Before `decide`, second: an owner-marked aggregate refuses a caller who
       // does not own the stream.
       let refusal =
-        repeated || !actsOnOwned
+        repeated || !(actsOnOwned || ownedById)
           ? None
           : Reventless.OwnerScope.decideActing(
               ~claim=command'.meta.callerClaim,
-              ~recordedOwners=Some(owners),
+              ~recordedOwners=Some(owners->Reventless.Owner.streamOwners(~ownedById, ~id)),
             )->CommandTopic_Helpers.ownershipRefusal(~component=Spec.name, ~command=cmdVariant)
       switch refusal {
       | _ if repeated =>
