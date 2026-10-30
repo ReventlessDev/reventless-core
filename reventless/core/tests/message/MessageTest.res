@@ -283,6 +283,27 @@ describe("Message.deriveStableMeta", () => {
     expect(ids->Belt.Set.String.fromArray->Belt.Set.String.size)->toBe(5)
   })
 
+  // The SQS transport writes the body through `toMessageBody`. It used to mint a
+  // fresh id on every send, which dropped the stable one at the first hop on AWS.
+  testSync("the SQS message body keeps a stable id and still re-mints a random one", () => {
+    let msgIdOfBody = body =>
+      body
+      ->JSON.parseOrThrow
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("meta"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(m => m->Dict.get("msgId"))
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.getOr("")
+    let commandJson = JSON.Encode.string("Noop")
+    let stable = deriveStableMeta(~parent, ~service="RecordProductDemand", ~index=0)
+    expect(msgIdOfBody(toMessageBody({id: "p-1", meta: stable, commandJson})))->toBe(stable.msgId)
+    let plain = deriveMeta(~parent, ~service="RecordProductDemand")
+    expect(msgIdOfBody(toMessageBody({id: "p-1", meta: plain, commandJson})) != plain.msgId)->toBe(
+      true,
+    )
+  })
+
   testSync("a derived message never carries its parent's caller claim", () => {
     let claimed = {...parent, callerClaim: Reventless.Message.CallerClaim.Exempt}
     let a = deriveStableMeta(~parent=claimed, ~service="Ordering.Orders", ~index=0)

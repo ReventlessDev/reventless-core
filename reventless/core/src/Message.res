@@ -104,8 +104,11 @@ let now = () => Date.make()->Date.getTime
 
 let nowAsISOString = () => Date.make()->Date.toISOString
 
+// A stable id is kept: it is what a handler recognizes a redelivered command by,
+// and minting a fresh one here, on every SQS send, made the drop inert on AWS.
 let toMessageBody = ({id, meta, commandJson}) => {
-  let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
+  let msgId = ReventlessInfra.Message.hasStableMsgId(meta) ? meta.msgId : uuid()
+  let commandMeta: meta = {...meta, msgId, time: nowAsISOString()}
   [
     ("id", id->JSON.Encode.string),
     ("meta", commandMeta->Reventless.Util_Sury.toJson(metaSchema)),

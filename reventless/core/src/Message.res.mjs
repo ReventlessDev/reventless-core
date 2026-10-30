@@ -85,8 +85,10 @@ function nowAsISOString() {
 }
 
 function toMessageBody(param) {
-  let newrecord = {...param.meta};
-  newrecord.msgId = Uuid.v4();
+  let meta = param.meta;
+  let msgId = Message$ReventlessInfra.hasStableMsgId(meta) ? meta.msgId : Uuid.v4();
+  let newrecord = {...meta};
+  newrecord.msgId = msgId;
   newrecord.time = new Date().toISOString();
   return JSON.stringify(Object.fromEntries([
     [
