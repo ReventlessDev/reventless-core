@@ -808,6 +808,7 @@ module type AggregateT = {
   module Spec: AggregateSpec
 
   let describe: (string, unit => unit) => unit
+  let todo: string => unit
   let test: (string, unit => Outcome.outcome) => unit
 
   let givenEvents: array<Spec.event> => array<Spec.event>
@@ -848,6 +849,7 @@ module MakeFromAggregate = (Spec: AggregateSpec, Decision: Decision.T with modul
   module Spec = Spec
 
   let describe = JestBind.describe
+  let todo = JestBind.todo
   let test = (name, body) =>
     JestBind.test(~slice=Spec.name, name, () =>
       ScenarioRecorder.around(~spec=Spec.name, name, body)

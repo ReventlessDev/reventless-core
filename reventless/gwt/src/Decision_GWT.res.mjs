@@ -980,6 +980,7 @@ function MakeFromAggregate(Spec) {
     return {
       Spec: Spec,
       describe: JestBind$ReventlessGwt.describe,
+      todo: JestBind$ReventlessGwt.todo,
       test: test,
       givenEvents: givenEvents,
       Caller: Caller,
