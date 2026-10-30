@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.187 (2026-10-30)
+
+### Features
+
+* **pii:** a provider can be installed while it is built, and a deployment can require one ([3ce346f](https://github.com/ReventlessDev/reventless-core/commit/3ce346f66063af9221800278595abcfb7bf95884))
+
+
 # 3.0.0-alpha.186 (2026-10-29)
 
 * feat(core)!: every reader opens a sealed field, with the keys its batch prepared ([d4ac204](https://github.com/ReventlessDev/reventless-core/commit/d4ac204c307d34617d4e32c556030b44bb55b178))
