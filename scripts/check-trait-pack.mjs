@@ -43,7 +43,7 @@ const specimens = {
     graft: {
       args: [
         "--entity", "Customer", "--entityId", "customerId", "--created", "Registered",
-        "--createdFields", "email: string", "--createdValues", 'email: "alice@x.y"',
+        "--createdFields", "@pii email: string", "--createdValues", 'email: Value("alice@x.y")',
         "--externalSystem", "AwsLocation",
       ],
       into: "src/Customer",
