@@ -273,11 +273,94 @@ let plain: provider = {
   release: (~subject as _, ~ref as _) => Promise.resolve(Ok()),
 }
 
+@val
+external requireEncryptionEnv: Nullable.t<string> = "process.env.REVENTLESS_PII_REQUIRE_ENCRYPTION"
+
 /** The provider of this process. A deployment installs its own once, at start. */
 module Provider = {
   let current: ref<provider> = ref(plain)
-  let install = (provider: provider) => current := provider
+  /** An install still in flight, which sealing and key fetching wait for. */
+  let pending: ref<option<promise<unit>>> = ref(None)
+  /** Why the last install in flight failed: until another install, nothing that
+      needs the provider proceeds. */
+  let failed: ref<option<string>> = ref(None)
+
+  let install = (provider: provider) => {
+    current := provider
+    pending := None
+    failed := None
+  }
   let get = () => current.contents
+
+  /**
+  Install a provider that is still being built, such as one that must unwrap its
+  key with a remote service at cold start. Until it settles, `sealData` and
+  `prepare` wait for it rather than run with whatever was installed before; if it
+  fails, they refuse with its reason. A deployment's cold-start hook calls this
+  without awaiting, so the runtime starts at once and only the first write or
+  read of personal data waits.
+  */
+  let installWhen = (building: promise<result<provider, string>>) => {
+    failed := None
+    let waiting = ref(Promise.resolve())
+    waiting :=
+      building
+      ->Promise.thenResolve(result =>
+        // A later `install` or `installWhen` replaced this one: it decides.
+        if pending.contents->Option.mapOr(false, p => p === waiting.contents) {
+          switch result {
+          | Ok(provider) => install(provider)
+          | Error(why) =>
+            failed := Some(why)
+            pending := None
+          }
+        }
+      )
+      ->Promise.catch(exn => {
+        if pending.contents->Option.mapOr(false, p => p === waiting.contents) {
+          failed :=
+            Some(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
+          pending := None
+        }
+        Promise.resolve()
+      })
+    pending := Some(waiting.contents)
+  }
+
+  /**
+  Whether this deployment requires an encrypting provider: the deploy program
+  says so with `REVENTLESS_PII_REQUIRE_ENCRYPTION=true` when it provisions one.
+  Then a marked field is never stored as it is: a runtime whose provider failed
+  to install, or was never installed, refuses the write instead.
+  */
+  let isRequired = () =>
+    switch requireEncryptionEnv->Nullable.toOption {
+    | Some("true") | Some("1") => true
+    | _ => false
+    }
+
+  /** The installed provider, once any install in flight has settled. */
+  let ready = async (): result<provider, error> => {
+    switch pending.contents {
+    | Some(waiting) => await waiting
+    | None => ()
+    }
+    switch failed.contents {
+    | Some(why) =>
+      Error(ProviderFailed({message: `the personal-data provider did not install: ${why}`}))
+    | None =>
+      let provider = current.contents
+      if isRequired() && !provider.encrypts {
+        Error(
+          ProviderFailed({
+            message: "this deployment requires an encrypting personal-data provider and none is installed",
+          }),
+        )
+      } else {
+        Ok(provider)
+      }
+    }
+  }
 }
 
 // ── The seal and open pass ───────────────────────────────────────────────────
@@ -324,11 +407,13 @@ let sealData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): 
   dict<JSON.t>,
   error,
 > => {
-  let provider = Provider.get()
   let fields = markedFields(schema, ~variant=eventType)
-  if !provider.encrypts || fields == [] {
-    Ok(data)
-  } else {
+  // A type without personal fields never waits for, or needs, a provider.
+  let provider = fields == [] ? Ok(plain) : await Provider.ready()
+  switch provider {
+  | Error(e) => Error(e)
+  | Ok(provider) if !provider.encrypts || fields == [] => Ok(data)
+  | Ok(provider) =>
     let out = data->Dict.copy
     let failure = ref(None)
     for i in 0 to fields->Array.length - 1 {
@@ -400,7 +485,19 @@ let prepare = (jsons: array<JSON.t>): promise<result<unit, error>> => {
   jsons->Array.forEach(j => {
     let _ = keyIdsIn(j, ~into)
   })
-  into == [] ? Promise.resolve(Ok()) : Provider.get().prefetch(into)
+  if into == [] {
+    Promise.resolve(Ok())
+  } else {
+    Provider.ready()->Promise.then(provider =>
+      switch provider {
+      | Ok(provider) => provider.prefetch(into)
+      // A reader is not refused for a deployment's requirement: a plain provider
+      // still opens what it can, and says which forms it cannot.
+      | Error(_) if Provider.failed.contents->Option.isNone => Provider.get().prefetch(into)
+      | Error(e) => Promise.resolve(Error(e))
+      }
+    )
+  }
 }
 
 /** `data` with every stored form of `eventType`'s personal fields opened, with

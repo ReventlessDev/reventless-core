@@ -4,9 +4,11 @@ import * as Sury from "sury";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
@@ -262,18 +264,103 @@ let current = {
   contents: plain
 };
 
+let pending = {
+  contents: undefined
+};
+
+let failed = {
+  contents: undefined
+};
+
 function install(provider) {
   current.contents = provider;
+  pending.contents = undefined;
+  failed.contents = undefined;
 }
 
 function get() {
   return current.contents;
 }
 
+function installWhen(building) {
+  failed.contents = undefined;
+  let waiting = {
+    contents: Promise.resolve()
+  };
+  waiting.contents = Stdlib_Promise.$$catch(building.then(result => {
+    if (!Stdlib_Option.mapOr(pending.contents, false, p => p === waiting.contents)) {
+      return;
+    }
+    if (result.TAG === "Ok") {
+      return install(result._0);
+    }
+    failed.contents = result._0;
+    pending.contents = undefined;
+  }), exn => {
+    if (Stdlib_Option.mapOr(pending.contents, false, p => p === waiting.contents)) {
+      failed.contents = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+      pending.contents = undefined;
+    }
+    return Promise.resolve();
+  });
+  pending.contents = waiting.contents;
+}
+
+function isRequired() {
+  let match = process.env.REVENTLESS_PII_REQUIRE_ENCRYPTION;
+  if (match == null) {
+    return false;
+  }
+  switch (match) {
+    case "1" :
+    case "true" :
+      return true;
+    default:
+      return false;
+  }
+}
+
+async function ready() {
+  let waiting = pending.contents;
+  if (waiting !== undefined) {
+    await waiting;
+  }
+  let why = failed.contents;
+  if (why !== undefined) {
+    return {
+      TAG: "Error",
+      _0: {
+        TAG: "ProviderFailed",
+        message: `the personal-data provider did not install: ` + why
+      }
+    };
+  }
+  let provider = current.contents;
+  if (isRequired() && !provider.encrypts) {
+    return {
+      TAG: "Error",
+      _0: {
+        TAG: "ProviderFailed",
+        message: "this deployment requires an encrypting personal-data provider and none is installed"
+      }
+    };
+  } else {
+    return {
+      TAG: "Ok",
+      _0: provider
+    };
+  }
+}
+
 let Provider = {
   current: current,
+  pending: pending,
+  failed: failed,
   install: install,
-  get: get
+  get: get,
+  installWhen: installWhen,
+  isRequired: isRequired,
+  ready: ready
 };
 
 let fieldsMemo = new WeakMap();
@@ -306,9 +393,19 @@ function isPresent(json) {
 }
 
 async function sealData(schema, eventType, data) {
-  let provider = current.contents;
   let fields = markedFields(schema, eventType);
-  if (!provider.encrypts || Primitive_object.equal(fields, [])) {
+  let provider = Primitive_object.equal(fields, []) ? ({
+      TAG: "Ok",
+      _0: plain
+    }) : await ready();
+  if (provider.TAG !== "Ok") {
+    return {
+      TAG: "Error",
+      _0: provider._0
+    };
+  }
+  let provider$1 = provider._0;
+  if (!provider$1.encrypts || Primitive_object.equal(fields, [])) {
     return {
       TAG: "Ok",
       _0: data
@@ -324,7 +421,7 @@ async function sealData(schema, eventType, data) {
     if (Stdlib_Option.isNone(failure) && isPresent(data[field])) {
       let subjectId = Stdlib_Option.flatMap(data[subject], Stdlib_JSON.Decode.string);
       if (subjectId !== undefined) {
-        let sealed = await provider.seal(subjectId, field, match$1.forgettable, data[field]);
+        let sealed = await provider$1.seal(subjectId, field, match$1.forgettable, data[field]);
         if (sealed.TAG === "Ok") {
           out[field] = sealed._0;
         } else {
@@ -398,7 +495,18 @@ function prepare(jsons) {
       _0: undefined
     });
   } else {
-    return current.contents.prefetch(into);
+    return ready().then(provider => {
+      if (provider.TAG === "Ok") {
+        return provider._0.prefetch(into);
+      } else if (Stdlib_Option.isNone(failed.contents)) {
+        return current.contents.prefetch(into);
+      } else {
+        return Promise.resolve({
+          TAG: "Error",
+          _0: provider._0
+        });
+      }
+    });
   }
 }
 
