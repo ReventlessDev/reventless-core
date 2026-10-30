@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.413 (2026-10-30)
+
+### Features
+
+* **automation:** a work item with personal data is stored like an event ([f9e173f](https://github.com/ReventlessDev/reventless-core/commit/f9e173fb6f1dc671900052f2c4b6590ee99b5bdf))
+
+
 # 3.0.0-alpha.412 (2026-10-30)
 
 ### Features
