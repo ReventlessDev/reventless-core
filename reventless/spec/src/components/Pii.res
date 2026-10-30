@@ -590,10 +590,16 @@ field its plain value, or the marker of a value that is gone (`goneField` names
 the first such field). A field still in the clear, written before a provider was
 installed, is left as it is.
 */
-let openRecord = async (schema: S.t<'a>, data: dict<JSON.t>): result<dict<JSON.t>, error> => {
+/** `openRecord` over named fields rather than a schema's: for a value stored
+    beside a record's own fields, such as the key a work item was collected
+    under. */
+let openFields = async (~fields: array<string>, data: dict<JSON.t>): result<
+  dict<JSON.t>,
+  error,
+> => {
   let out = data->Dict.copy
   let sealed = []
-  recordFields(schema)->Array.forEach(((field, _)) =>
+  fields->Array.forEach(field =>
     switch out->Dict.get(field) {
     | Some(String(form)) if form->parseStored->Option.isSome =>
       out->Dict.set(field, wrap(form))
@@ -622,6 +628,9 @@ let openRecord = async (schema: S.t<'a>, data: dict<JSON.t>): result<dict<JSON.t
     }
   }
 }
+
+let openRecord = (schema: S.t<'a>, data: dict<JSON.t>): promise<result<dict<JSON.t>, error>> =>
+  openFields(~fields=recordFields(schema)->Array.map(((field, _)) => field), data)
 
 /** The first personal field of an opened record whose value is gone: its subject
     was erased, or its object forgotten. */

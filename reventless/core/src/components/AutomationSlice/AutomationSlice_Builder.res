@@ -26,6 +26,12 @@ module Make = (
   Schedules: {
     let platformFor: (~slice: string) => ReventlessInfra.AutomationSlice.platformSchedules
   },
+  // What the platform provisioned: the key a work item carrying personal data is
+  // fingerprinted with. A thunk, as on the outbound builder, so a platform
+  // resolves it when the runtime exists.
+  Capabilities: {
+    let capabilities: unit => Reventless.Capabilities.t
+  },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
   module Make = (
@@ -227,7 +233,7 @@ module Make = (
               Effect.promise(
                 async () => {
                   // Phase 1: per-source decode + collect/resolve, threaded with context
-                  Callback.phase1(jsons, context)
+                  await Callback.phase1(jsons, context, ~capabilities=Capabilities.capabilities())
                   // Sync the post-phase-1 TODO state so consumers awaiting the
                   // originating publishEvent observe Pending rows immediately.
                   await syncToQueryDb(queryDbOps)
@@ -307,7 +313,11 @@ module Make = (
             // As the AWS sweep does: the rows phase 2 moved are written back.
             processPending,
             tick: async (~key, ~at) => {
-              Callback.phase1([AutomationSlice_Callback.tickEvent(~key, ~at)], context)
+              await Callback.phase1(
+                [AutomationSlice_Callback.tickEvent(~key, ~at)],
+                context,
+                ~capabilities=Capabilities.capabilities(),
+              )
               await syncToQueryDb(queryDbOps)
               // A once-only schedule's row went when it fired, and a Clock mapping
               // may change schedules too.

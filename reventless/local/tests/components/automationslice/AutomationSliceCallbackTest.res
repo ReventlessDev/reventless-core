@@ -29,7 +29,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       "OrderPlaced JSON creates a pending TODO item",
       async () => {
         let json = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
-        Callback.phase1([json], testContext)
+        await Callback.phase1([json], testContext, ~capabilities=Reventless.Capabilities.none)
         let items = Callback.todoItems
         expect(items->Dict.toArray->Array.length)->toBe(1)
         let row = items->Dict.get("ord-1")->Option.getOrThrow
@@ -43,8 +43,8 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       async () => {
         let j1 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
         let j2 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "456 Oak Ave"}))
-        Callback.phase1([j1], testContext)
-        Callback.phase1([j2], testContext)
+        await Callback.phase1([j1], testContext, ~capabilities=Reventless.Capabilities.none)
+        await Callback.phase1([j2], testContext, ~capabilities=Reventless.Capabilities.none)
         expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(1)
       },
     )
@@ -54,7 +54,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       async () => {
         let j1 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
         let j2 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-2", address: "456 Oak Ave"}))
-        Callback.phase1([j1, j2], testContext)
+        await Callback.phase1([j1, j2], testContext, ~capabilities=Reventless.Capabilities.none)
         expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(2)
       },
     )
@@ -63,7 +63,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       "ShipmentCreated does not create a TODO item",
       async () => {
         let json = encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))
-        Callback.phase1([json], testContext)
+        await Callback.phase1([json], testContext, ~capabilities=Reventless.Capabilities.none)
         expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(0)
       },
     )
@@ -73,11 +73,16 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "ShipmentCreated marks pending TODO item as completed",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
-        Callback.phase1([encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))], testContext)
+        await Callback.phase1(
+          [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+          testContext,
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
         expect(row.status)->toBe(Completed)
       },
@@ -86,7 +91,11 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "ShipmentCreated for unknown id is a no-op",
       async () => {
-        Callback.phase1([encodeShipOrderEvent(ShipmentCreated({orderId: "unknown"}))], testContext)
+        await Callback.phase1(
+          [encodeShipOrderEvent(ShipmentCreated({orderId: "unknown"}))],
+          testContext,
+          ~capabilities=Reventless.Capabilities.none,
+        )
         expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(0)
       },
     )
@@ -96,9 +105,10 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "pending items produce commands via publishJsons",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
@@ -118,11 +128,16 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "completed items are not processed",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
-        Callback.phase1([encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))], testContext)
+        await Callback.phase1(
+          [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+          testContext,
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := cmds
@@ -136,7 +151,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       "items where process returns None are skipped",
       async () => {
         let json = encodeSkipProcessEvent(OrderPlaced({orderId: "ord-1"}))
-        SkipCallback.phase1([json], testContext)
+        await SkipCallback.phase1([json], testContext, ~capabilities=Reventless.Capabilities.none)
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := cmds
@@ -163,9 +178,10 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "publishJsons failure marks items as Failed",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
         let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
           JsError.throwWithMessage("publish failed")
@@ -180,9 +196,10 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "failed items with retryCount < maxRetries are retried",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
         let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
           JsError.throwWithMessage("publish failed")
@@ -210,10 +227,11 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds =>
       JsError.throwWithMessage("publish failed")
 
-    let collectOne = () =>
-      Callback.phase1(
+    let collectOne = async () =>
+      await Callback.phase1(
         [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
         testContext,
+        ~capabilities=Reventless.Capabilities.none,
       )
 
     let statusOf = id => (Callback.todoItems->Dict.get(id)->Option.getOrThrow).status
@@ -221,7 +239,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "the attempt that spends the budget writes Abandoned, not Failed",
       async () => {
-        collectOne()
+        await collectOne()
         // ShipOrderSpec.maxRetries is 3: attempts at retryCount 0, 1 and 2 leave the
         // row retriable, and the third failure is the one that ends it.
         await Callback.phase2(failingPublish)
@@ -237,7 +255,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "an abandoned row is not picked up again",
       async () => {
-        collectOne()
+        await collectOne()
         await Callback.phase2(failingPublish)
         await Callback.phase2(failingPublish)
         await Callback.phase2(failingPublish)
@@ -256,7 +274,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "a row left stranded at the ceiling is normalised on the next pass",
       async () => {
-        collectOne()
+        await collectOne()
         // What an older build wrote, and what a Spec that lowered maxRetries leaves
         // behind: Failed at the ceiling, which no pass would ever pick up or mark.
         let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
@@ -272,7 +290,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "the row carries the ceiling its count is racing",
       async () => {
-        collectOne()
+        await collectOne()
         expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).maxRetries)->toEqual(
           Some(ShipOrderSpec.maxRetries),
         )
@@ -284,9 +302,10 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     testPromise(
       "collect → process → resolve completes the TODO item",
       async () => {
-        Callback.phase1(
+        await Callback.phase1(
           [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
           testContext,
+          ~capabilities=Reventless.Capabilities.none,
         )
         expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Pending)
 
@@ -298,7 +317,11 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         expect(publishedCommands.contents->Array.length)->toBe(1)
         expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Processing)
 
-        Callback.phase1([encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))], testContext)
+        await Callback.phase1(
+          [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+          testContext,
+          ~capabilities=Reventless.Capabilities.none,
+        )
         expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Completed)
 
         let publishedCommands2 = ref([])

@@ -18,7 +18,7 @@ open Ppxlib
       absent value stays absent. Code that reads the field then says what it does
       when the value is gone.
     - {b On a command} ([command], [inboundCommand], [externalInput],
-      [outboundItem]) the type stays and the schema gains the marker and
+      [outboundItem], an automation's [todoItem]) the type stays and the schema gains the marker and
       [@sensitive] through [Reventless.Pii.mark]: a command is never stored, its
       handler needs the value, and the marker is what keeps it out of a log line.
     - {b On a read model's [state]} it is refused. The deployed projection path
@@ -100,7 +100,7 @@ type role = Wraps | Marks | Refused_state | Refused_other of string
 
 let role_of_type_name = function
   | "event" | "consumedEvent" -> Wraps
-  | "command" | "inboundCommand" | "externalInput" | "outboundItem" -> Marks
+  | "command" | "inboundCommand" | "externalInput" | "outboundItem" | "todoItem" -> Marks
   | "state" -> Refused_state
   | other -> Refused_other other
 

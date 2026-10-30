@@ -218,7 +218,7 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
     let receivedCtx = ref(None)
     let callback: AutomationSliceEntryPoint_Ops.automationCallback = {
       todoItems: Dict.make(),
-      phase1: (jsons, ctx) => {
+      phase1: async (jsons, ctx, ~capabilities as _) => {
         receivedJsons := jsons
         receivedCtx := Some(ctx)
         steps->Array.push("phase1")
@@ -261,7 +261,7 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
     let daily = Reventless.Schedule.Calendar({calendar: Daily({hour: 6, minute: 0})})
     let callback: AutomationSliceEntryPoint_Ops.automationCallback = {
       todoItems: Dict.make(),
-      phase1: (_jsons, _ctx) => steps->Array.push("phase1"),
+      phase1: async (_jsons, _ctx, ~capabilities as _) => steps->Array.push("phase1"),
       phase2: async _publish => steps->Array.push("phase2"),
       schedules: Dict.make(),
       takeScheduleChanges: () => [Put({key: "r1", time: daily})],

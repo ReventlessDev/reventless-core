@@ -36,6 +36,7 @@ module Make = (
     EventCollectorRuntimeBuilder,
     Api,
     DeployTimeSchedules,
+    OutboundTranslationSlice_Builder.DeployTimeCapabilities,
   )
 
   module Make = (

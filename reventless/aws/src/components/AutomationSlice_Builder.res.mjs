@@ -10,6 +10,7 @@ import * as QueryDbStorage_DynamoDb$ReventlessAws from "../adapter/QueryDb/Query
 import * as AutomationSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res.mjs";
 import * as QueryDbResolvers_AppSync$ReventlessAws from "../adapter/QueryDb/QueryDbResolvers_AppSync.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as OutboundTranslationSlice_Builder$ReventlessAws from "./OutboundTranslationSlice_Builder.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
 
@@ -51,7 +52,7 @@ function Make(Api) {
     },
     forEventCollector: AutomationSliceRuntime_Builder_Single$ReventlessAws.forEventCollector,
     finish: AutomationSliceRuntime_Builder_Single$ReventlessAws.finish
-  })(Api)(DeployTimeSchedules);
+  })(Api)(DeployTimeSchedules)(OutboundTranslationSlice_Builder$ReventlessAws.DeployTimeCapabilities);
   let Make$1 = Spec => (Automation => {
     let InnerMake = Inner.Make(Spec)(Automation);
     let sourceNames = InnerMake.sourceNames;

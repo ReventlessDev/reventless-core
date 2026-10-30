@@ -28,7 +28,7 @@ import * as AutomationSlice_Callback$ReventlessCore from "./AutomationSlice_Call
 import * as AutomationSlice_Schedules$ReventlessCore from "./AutomationSlice_Schedules.res.mjs";
 
 function Make(RuntimeEnvironment) {
-  return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => (Schedules => {
+  return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => (Schedules => (Capabilities => {
     let Make = Spec => (Automation => {
       let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation);
       let queryDbName = Spec.name + "Todo";
@@ -131,7 +131,7 @@ function Make(RuntimeEnvironment) {
             name: Spec.name
           }, opts);
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
-            Callback.phase1(jsons, context);
+            await Callback.phase1(jsons, context, Capabilities.capabilities());
             await syncToQueryDb(queryDbOps);
             let changes = Callback.takeScheduleChanges();
             if (changes.length !== 0) {
@@ -172,7 +172,7 @@ function Make(RuntimeEnvironment) {
             enqueueEvent: param[0].enqueueEvent,
             processPending: processPending,
             tick: async (key, at) => {
-              Callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context);
+              await Callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context, Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
               await syncSchedules(schedulesOps, storedSchedules);
               await AutomationSlice_Schedules$ReventlessCore.tell(platform, Callback.takeScheduleChanges());
@@ -208,7 +208,7 @@ function Make(RuntimeEnvironment) {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make
     };
-  })))));
+  }))))));
 }
 
 export {

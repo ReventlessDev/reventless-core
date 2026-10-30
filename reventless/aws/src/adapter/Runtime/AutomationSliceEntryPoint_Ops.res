@@ -502,7 +502,7 @@ let makeAutomationJsonEventsHandler = (
       Effect.promise(async () => {
         await loadTodoItems()
         await loadSchedules(schedules())
-        callback.phase1(jsons, context)
+        await callback.phase1(jsons, context, ~capabilities=capabilities())
         await syncTodoItems()
         await followSchedules(schedules(), callback)
         await callback.phase2(publishJsons)
@@ -643,7 +643,11 @@ let makeAutomationRegisteredHandler = (
       async (~key, ~at) => {
         await loadTodoItems()
         await loadSchedules(schedules())
-        callback.phase1([ReventlessCore.AutomationSlice_Callback.tickEvent(~key, ~at)], context)
+        await callback.phase1(
+          [ReventlessCore.AutomationSlice_Callback.tickEvent(~key, ~at)],
+          context,
+          ~capabilities=capabilities(),
+        )
         await syncTodoItems()
         // A once-only schedule's row goes when it fires.
         switch schedules() {

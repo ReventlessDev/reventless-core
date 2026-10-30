@@ -304,7 +304,7 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTo
   return stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
     await loadTodoItems();
     await loadSchedules(schedules());
-    callback.phase1(jsons, context);
+    await callback.phase1(jsons, context, capabilities());
     await syncTodoItems();
     await followSchedules(schedules(), callback);
     await callback.phase2(publishJsons);
@@ -382,7 +382,7 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
     tick: async (key, at) => {
       await loadTodoItems();
       await loadSchedules(schedules());
-      callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context);
+      await callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context, capabilities());
       await syncTodoItems();
       let match = schedules();
       if (match !== undefined) {

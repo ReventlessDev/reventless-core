@@ -53,6 +53,14 @@ describe("@pii on an event", () => {
     ])
   })
 
+  testSync("an automation's work item is marked and keeps its type", () => {
+    let item: M.todoItem = {memberId: "m-1", name: "Ada"}
+    expect(
+      M.todoItemSchema->Reventless.Pii.recordFields->Array.map(((name, m)) => (name, m.subject)),
+    )->toEqual([("name", "memberId")])
+    expect(item.name)->toBe("Ada")
+  })
+
   testSync("a consumed field naming no subject is about the aggregate it came from", () =>
     expect(
       M.consumedEventSchema

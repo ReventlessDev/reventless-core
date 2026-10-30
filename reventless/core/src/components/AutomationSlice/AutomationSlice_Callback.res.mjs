@@ -3,13 +3,14 @@
 import * as Sury from "sury";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
-import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Clock from "effect/Clock";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
@@ -84,6 +85,98 @@ function Make(Spec) {
     };
     let readsClock = Automation.mappings.some(M => M.sourceName === Clock$Reventless.name);
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
+    let personalFields = Pii$Reventless.recordFields(Spec.todoItemSchema);
+    let keyField = "$key";
+    let fingerprintPurpose = `automationWorkItem:` + Spec.name;
+    let warnedUnkeyed = {
+      contents: false
+    };
+    let storedKey = (key, capabilities) => {
+      if (Primitive_object.equal(personalFields, [])) {
+        return key;
+      }
+      let fingerprint = capabilities.secrets.fingerprint(fingerprintPurpose, key);
+      if (fingerprint.TAG === "Ok") {
+        return fingerprint._0;
+      }
+      let why = fingerprint._0._0;
+      if (Pii$Reventless.Provider.isRequired()) {
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
+        return;
+      } else {
+        if (!warnedUnkeyed.contents) {
+          warnedUnkeyed.contents = true;
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`AutomationSlice(` + Spec.name + `)`, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
+        }
+        return key;
+      }
+    };
+    let storedItem = async (key, item) => {
+      let json = Util_Sury$Reventless.toJson(item, Spec.todoItemSchema);
+      let match = personalFields[0];
+      if (match === undefined) {
+        return {
+          TAG: "Ok",
+          _0: json
+        };
+      }
+      if (typeof json !== "object" || json === null || Array.isArray(json)) {
+        return {
+          TAG: "Ok",
+          _0: json
+        };
+      }
+      let data = Object.assign({}, json);
+      data[keyField] = key;
+      return Stdlib_Result.mapError(Stdlib_Result.map(await Pii$Reventless.sealFields(personalFields.concat([[
+          keyField,
+          match[1]
+        ]]), Spec.name, undefined, true, data), d => (d)), Pii$Reventless.errorMessage);
+    };
+    let openRow = async (id, row) => {
+      let decode = (json, key) => {
+        let item;
+        try {
+          item = Util_Sury$Reventless.fromJson(json, Spec.todoItemSchema);
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          return {
+            TAG: "Unopened",
+            _0: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown")
+          };
+        }
+        return {
+          TAG: "Open",
+          key: key,
+          item: item
+        };
+      };
+      let data = row.item;
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
+        return decode(data, id);
+      }
+      if (!Primitive_object.notequal(personalFields, [])) {
+        return decode(data, id);
+      }
+      let e = await Pii$Reventless.openFields(personalFields.map(param => param[0]).concat([keyField]), data);
+      if (e.TAG !== "Ok") {
+        return {
+          TAG: "Unopened",
+          _0: Pii$Reventless.errorMessage(e._0)
+        };
+      }
+      let data$1 = e._0;
+      let field = Pii$Reventless.goneField(Spec.todoItemSchema, data$1);
+      if (field !== undefined) {
+        return {
+          TAG: "Gone",
+          _0: field
+        };
+      }
+      let key = Stdlib_Option.getOr(Stdlib_Option.flatMap(data$1[keyField], Stdlib_JSON.Decode.string), id);
+      Stdlib_Dict.$$delete(data$1, keyField);
+      return decode(data$1, key);
+    };
     let processingTimeoutMs = 15 * 60 * 1000;
     let afterFailedAttempt = row => {
       let retryCount = row.retryCount + 1 | 0;
@@ -91,6 +184,31 @@ function Make(Spec) {
       newrecord.retryCount = retryCount;
       newrecord.status = retryCount >= Spec.maxRetries ? "Abandoned" : "Failed";
       return newrecord;
+    };
+    let abandonmentCommand = async (id, row) => {
+      let match = await openRow(id, row);
+      switch (match.TAG) {
+        case "Open" :
+          return Stdlib_Option.flatMap(Automation.onExhausted(match.key, match.item), param => {
+            let commandJson;
+            try {
+              commandJson = Util_Sury$Reventless.toJson(param[1], Spec.commandSchema);
+            } catch (exn) {
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be encoded`));
+              return;
+            }
+            return {
+              id: param[0],
+              meta: makeMeta(),
+              commandJson: commandJson
+            };
+          });
+        case "Gone" :
+          return;
+        case "Unopened" :
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
+          return;
+      }
     };
     let Route = AutomationSlice_Route$ReventlessCore.Make(Spec)(Automation);
     let recordedAtOf = time => {
@@ -101,26 +219,32 @@ function Make(Spec) {
         return millis;
       }
     };
-    let apply = param => {
-      param.collected.forEach(param => {
-        let id = param[0];
-        let match = todoItems[id];
-        if (match !== undefined) {
-          return;
+    let apply = async (param, capabilities) => {
+      let collected = param.collected;
+      for (let i = 0, i_finish = collected.length; i < i_finish; ++i) {
+        let match = collected[i];
+        let key = match[0];
+        let id = storedKey(key, capabilities);
+        if (id !== undefined && !Stdlib_Option.isSome(todoItems[id])) {
+          let why = await storedItem(key, match[1]);
+          if (why.TAG === "Ok") {
+            let row_item = why._0;
+            let row_createdAt = new Date().toISOString();
+            let row_maxRetries = Spec.maxRetries;
+            let row = {
+              item: row_item,
+              status: "Pending",
+              createdAt: row_createdAt,
+              retryCount: 0,
+              maxRetries: row_maxRetries
+            };
+            todoItems[id] = row;
+          } else {
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: ` + why._0));
+          }
         }
-        let row_item = Util_Sury$Reventless.toJson(param[1], Spec.todoItemSchema);
-        let row_createdAt = new Date().toISOString();
-        let row_maxRetries = Spec.maxRetries;
-        let row = {
-          item: row_item,
-          status: "Pending",
-          createdAt: row_createdAt,
-          retryCount: 0,
-          maxRetries: row_maxRetries
-        };
-        todoItems[id] = row;
-      });
-      Stdlib_Option.forEach(param.resolved, id => Stdlib_Option.forEach(todoItems[id], row => {
+      }
+      return Stdlib_Option.forEach(Stdlib_Option.flatMap(param.resolved, key => storedKey(key, capabilities)), id => Stdlib_Option.forEach(todoItems[id], row => {
         let newrecord = {...row};
         newrecord.completedAt = new Date().toISOString();
         newrecord.status = "Completed";
@@ -143,8 +267,9 @@ function Make(Spec) {
         });
       });
     };
-    let phase1 = (events, sliceCtx) => {
-      events.forEach(json => {
+    let phase1 = async (events, sliceCtx, capabilities) => {
+      for (let i = 0, i_finish = events.length; i < i_finish; ++i) {
+        let json = events[i];
         let context = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema);
         let recordedAt = recordedAtOf(context.meta.time);
         let ctx;
@@ -159,12 +284,14 @@ function Make(Spec) {
         let dict = Stdlib_JSON.Decode.object(json);
         let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
         let routed = Route.route(eventPayload, sourceName, context.id, ctx);
-        routed.forEach(apply);
+        for (let j = 0, j_finish = routed.length; j < j_finish; ++j) {
+          await apply(routed[j], capabilities);
+        }
         reschedule(routed, context.meta.msgId, Stdlib_Option.getOr(ctx.recordedAt, Date.now()));
         if (sourceName === Clock$Reventless.name) {
-          return AutomationSlice_Schedules$ReventlessCore.fired(schedules, context.id);
+          AutomationSlice_Schedules$ReventlessCore.fired(schedules, context.id);
         }
-      });
+      }
     };
     let rebuildSchedules = events => {
       Object.keys(schedules).forEach(key => Stdlib_Dict.$$delete(schedules, key));
@@ -229,60 +356,64 @@ function Make(Spec) {
         }
       });
       let commands = [];
-      pending.forEach(param => {
-        let row = param[1];
-        let id = param[0];
-        let item;
-        try {
-          item = Primitive_option.some(Util_Sury$Reventless.fromJson(row.item, Spec.todoItemSchema));
-        } catch (raw_exn) {
-          let exn = Primitive_exceptions.internalToException(raw_exn);
-          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to decode todoItem: ` + errMsg));
-          item = undefined;
-        }
-        Stdlib_Option.forEach(item, item => {
-          let match = Automation.process(id, item, currentTime);
-          if (match === undefined) {
-            return;
-          }
-          let targetId = match[0];
-          let newrecord = {...row};
-          newrecord.processedAt = new Date().toISOString();
-          newrecord.status = "Processing";
-          todoItems[id] = newrecord;
-          let commandJson;
-          try {
-            commandJson = Util_Sury$Reventless.toJson(match[1], Spec.commandSchema);
-          } catch (raw_exn) {
-            let exn = Primitive_exceptions.internalToException(raw_exn);
-            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
-            let updated = afterFailedAttempt(row);
-            todoItems[id] = updated;
-            if (updated.status === "Abandoned") {
-              newlyAbandoned.push(id);
+      for (let i = 0, i_finish = pending.length; i < i_finish; ++i) {
+        let match = pending[i];
+        let row = match[1];
+        let id = match[0];
+        let field = await openRow(id, row);
+        switch (field.TAG) {
+          case "Open" :
+            let match$1 = Automation.process(field.key, field.item, currentTime);
+            if (match$1 !== undefined) {
+              let targetId = match$1[0];
+              let newrecord = {...row};
+              newrecord.processedAt = new Date().toISOString();
+              newrecord.status = "Processing";
+              todoItems[id] = newrecord;
+              let commandJson;
+              try {
+                commandJson = Util_Sury$Reventless.toJson(match$1[1], Spec.commandSchema);
+              } catch (raw_exn) {
+                let exn = Primitive_exceptions.internalToException(raw_exn);
+                let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
+                let updated = afterFailedAttempt(row);
+                todoItems[id] = updated;
+                if (updated.status === "Abandoned") {
+                  newlyAbandoned.push(id);
+                }
+                commandJson = undefined;
+              }
+              Stdlib_Option.forEach(commandJson, commandJson => {
+                let msg_meta = makeMeta();
+                let msg = {
+                  id: targetId,
+                  meta: msg_meta,
+                  commandJson: commandJson
+                };
+                commands.push(msg);
+              });
             }
-            commandJson = undefined;
-          }
-          Stdlib_Option.forEach(commandJson, commandJson => {
-            let msg_meta = makeMeta();
-            let msg = {
-              id: targetId,
-              meta: msg_meta,
-              commandJson: commandJson
-            };
-            commands.push(msg);
-          });
-        });
-      });
+            break;
+          case "Gone" :
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`AutomationSlice(` + Spec.name + `)`, undefined, id + `: its ` + field._0 + ` was erased; nothing to do`));
+            let newrecord$1 = {...row};
+            newrecord$1.completedAt = new Date().toISOString();
+            newrecord$1.status = "Completed";
+            todoItems[id] = newrecord$1;
+            break;
+          case "Unopened" :
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to decode todoItem: ` + field._0));
+            break;
+        }
+      }
       if (commands.length !== 0) {
         try {
           await publishJsons(commands);
-        } catch (raw_exn) {
-          let exn = Primitive_exceptions.internalToException(raw_exn);
-          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg));
+        } catch (raw_exn$1) {
+          let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+          let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg$1));
           pending.forEach(param => {
             let id = param[0];
             let current = todoItems[id];
@@ -301,38 +432,26 @@ function Make(Spec) {
           });
         }
       }
-      let abandonmentCommands = Stdlib_Array.filterMap(newlyAbandoned, id => Stdlib_Option.flatMap(todoItems[id], row => {
-        let item;
-        try {
-          item = Util_Sury$Reventless.fromJson(row.item, Spec.todoItemSchema);
-        } catch (exn) {
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
-          return;
-        }
-        return Stdlib_Option.flatMap(Automation.onExhausted(id, item), param => {
-          let commandJson;
-          try {
-            commandJson = Util_Sury$Reventless.toJson(param[1], Spec.commandSchema);
-          } catch (exn) {
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be encoded`));
-            return;
+      let abandonmentCommands = [];
+      for (let i$1 = 0, i_finish$1 = newlyAbandoned.length; i$1 < i_finish$1; ++i$1) {
+        let id$1 = newlyAbandoned[i$1];
+        let row$1 = todoItems[id$1];
+        if (row$1 !== undefined) {
+          let command = await abandonmentCommand(id$1, row$1);
+          if (command !== undefined) {
+            abandonmentCommands.push(command);
           }
-          return {
-            id: param[0],
-            meta: makeMeta(),
-            commandJson: commandJson
-          };
-        });
-      }));
+        }
+      }
       if (abandonmentCommands.length === 0) {
         return;
       }
       try {
         return await publishJsons(abandonmentCommands);
-      } catch (raw_exn$1) {
-        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-        let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish abandonment commands: ` + errMsg$1));
+      } catch (raw_exn$2) {
+        let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
+        let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish abandonment commands: ` + errMsg$2));
       }
     };
     return {

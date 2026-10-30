@@ -26,6 +26,7 @@ module Make = (Bus: LocalBus.T) => {
     EventCollectorRuntimeBuilder,
     Api,
     LocalAutomationSchedules,
+    LocalCapabilities,
   )
 
   module Make = (

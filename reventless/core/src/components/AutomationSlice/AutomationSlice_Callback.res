@@ -82,7 +82,11 @@ Unlike outbound, phase 1 here takes *raw* envelope JSONs: the callback routes by
 `meta.service` and unwraps `{id, meta, event}` itself, per-source, through the
 registered Mappings.
 */
-type phase1 = (array<JSON.t>, Reventless.AutomationSlice.context) => unit
+type phase1 = (
+  array<JSON.t>,
+  Reventless.AutomationSlice.context,
+  ~capabilities: Reventless.Capabilities.t,
+) => promise<unit>
 
 /** Phase 2: process all pending items, publishing commands. */
 type phase2 = ReventlessInfra.CommandTopic.publishJsons => promise<unit>
@@ -178,6 +182,98 @@ module Make = (
   // the slice here makes the target's own events unmatchable, silently.
   let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
 
+  // A work item that carries personal data is stored the way an event is: its
+  // marked fields sealed, its row keyed by a fingerprint of the key the mapping
+  // chose, and that key sealed inside the item under `keyField`, so `process`,
+  // `resolve` and `onExhausted` still see the key the slice wrote.
+  let personalFields = Reventless.Pii.recordFields(Spec.todoItemSchema)
+  let keyField = "$key"
+  let fingerprintPurpose = `automationWorkItem:${Spec.name}`
+  let warnedUnkeyed = ref(false)
+
+  /** The id a row is stored under, or `None` when it cannot be stored safely. */
+  let storedKey = (key, ~capabilities: Reventless.Capabilities.t): option<string> =>
+    if personalFields == [] {
+      Some(key)
+    } else {
+      switch capabilities.secrets.fingerprint(~purpose=fingerprintPurpose, key) {
+      | Ok(fingerprint) => Some(fingerprint)
+      | Error(Unavailable(why)) =>
+        if Reventless.Pii.Provider.isRequired() {
+          EffectLogger.logError(
+            ~comp=`AutomationSlice(${Spec.name})`,
+            `a work item was not stored: its row id cannot be fingerprinted (${why})`,
+          )->Effect.runSync
+          None
+        } else {
+          if !warnedUnkeyed.contents {
+            warnedUnkeyed := true
+            EffectLogger.logWarn(
+              ~comp=`AutomationSlice(${Spec.name})`,
+              `work items carrying personal data are keyed in the clear: no key to fingerprint them with (${why})`,
+            )->Effect.runSync
+          }
+          Some(key)
+        }
+      }
+    }
+
+  /** The item as a row stores it: sealed, with the key it was collected under. */
+  let storedItem = async (~key, item: Spec.todoItem): result<JSON.t, string> => {
+    let json = item->Reventless.Util_Sury.toJson(Spec.todoItemSchema)
+    switch (json, personalFields->Array.get(0)) {
+    | (_, None) => Ok(json)
+    | (Object(data), Some((_, marker))) =>
+      let data = data->Dict.copy
+      data->Dict.set(keyField, JSON.Encode.string(key))
+
+      (
+        await Reventless.Pii.sealFields(
+          ~fields=personalFields->Array.concat([(keyField, marker)]),
+          ~label=Spec.name,
+          ~bare=true,
+          data,
+        )
+      )
+      ->Result.map(d => JSON.Object(d))
+      ->Result.mapError(Reventless.Pii.errorMessage)
+    | (other, _) => Ok(other)
+    }
+  }
+
+  type opened =
+    | Open({key: string, item: Spec.todoItem})
+    | Gone(string)
+    | Unopened(string)
+
+  /** A row's item and the key it was collected under, opened. */
+  let openRow = async (~id, row: todoRow): opened => {
+    let decode = (json, ~key) =>
+      switch json->Reventless.Util_Sury.fromJson(Spec.todoItemSchema) {
+      | item => Open({key, item})
+      | exception exn =>
+        Unopened(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
+      }
+    switch row.item {
+    | Object(data) if personalFields != [] =>
+      switch await Reventless.Pii.openFields(
+        ~fields=personalFields->Array.map(((f, _)) => f)->Array.concat([keyField]),
+        data,
+      ) {
+      | Error(e) => Unopened(e->Reventless.Pii.errorMessage)
+      | Ok(data) =>
+        switch Reventless.Pii.goneField(Spec.todoItemSchema, data) {
+        | Some(field) => Gone(field)
+        | None =>
+          let key = data->Dict.get(keyField)->Option.flatMap(JSON.Decode.string)->Option.getOr(id)
+          data->Dict.delete(keyField)
+          JSON.Object(data)->decode(~key)
+        }
+      }
+    | json => json->decode(~key=id)
+    }
+  }
+
   /** How long a row may stay `Processing` before its command is sent again. */
   let processingTimeoutMs =
     15. *. 60. *. 1000.
@@ -193,10 +289,12 @@ module Make = (
 
   /** The command a slice wants published now that this item will never be
       processed again, if it wants one. The row is `Abandoned` either way. */
-  let abandonmentCommand = (~id: string, ~row: todoRow): option<Reventless.Message.commandJson> =>
-    switch row.item->Reventless.Util_Sury.fromJson(Spec.todoItemSchema) {
-    | item =>
-      Automation.onExhausted(id, item)->Option.flatMap(((targetId, command)) =>
+  let abandonmentCommand = async (~id: string, ~row: todoRow): option<
+    Reventless.Message.commandJson,
+  > =>
+    switch await openRow(~id, row) {
+    | Open({key, item}) =>
+      Automation.onExhausted(key, item)->Option.flatMap(((targetId, command)) =>
         switch command->Reventless.Util_Sury.toJson(Spec.commandSchema) {
         | commandJson => Some({Reventless.Message.id: targetId, meta: makeMeta(), commandJson})
         | exception _ =>
@@ -207,7 +305,8 @@ module Make = (
           None
         }
       )
-    | exception _ =>
+    | Gone(_) => None
+    | Unopened(_) =>
       EffectLogger.logError(
         ~comp=`AutomationSlice(${Spec.name})`,
         `retries exhausted for ${id}, and its item could not be decoded to announce it`,
@@ -224,24 +323,37 @@ module Make = (
     | millis => Some(millis)
     }
 
-  let apply = ({collected, resolved}: AutomationSlice_Route.routed<Spec.todoItem>) => {
-    // Collect — append new items keyed by ID; first writer wins (idempotent).
-    collected->Array.forEach(((id, item)) => {
-      switch todoItems->Dict.get(id) {
-      | Some(_) => () // Already exists — skip
-      | None =>
-        let row: todoRow = {
-          item: item->Reventless.Util_Sury.toJson(Spec.todoItemSchema),
-          status: Pending,
-          createdAt: now(),
-          retryCount: 0,
-          maxRetries: Spec.maxRetries,
+  let apply = async (
+    {collected, resolved}: AutomationSlice_Route.routed<Spec.todoItem>,
+    ~capabilities,
+  ) => {
+    for i in 0 to collected->Array.length - 1 {
+      let (key, item) = collected->Array.getUnsafe(i)
+      switch storedKey(key, ~capabilities) {
+      | None => ()
+      | Some(id) if todoItems->Dict.get(id)->Option.isSome => () // Already exists — skip
+      | Some(id) =>
+        switch await storedItem(~key, item) {
+        | Error(why) =>
+          EffectLogger.logError(
+            ~comp=`AutomationSlice(${Spec.name})`,
+            `a work item was not stored: ${why}`,
+          )->Effect.runSync
+        | Ok(stored) =>
+          let row: todoRow = {
+            item: stored,
+            status: Pending,
+            createdAt: now(),
+            retryCount: 0,
+            maxRetries: Spec.maxRetries,
+          }
+          todoItems->Dict.set(id, row)
         }
-        todoItems->Dict.set(id, row)
       }
-    })
-    // Resolve — mark a pending item as completed.
-    resolved->Option.forEach(id =>
+    }
+    resolved
+    ->Option.flatMap(key => storedKey(key, ~capabilities))
+    ->Option.forEach(id =>
       todoItems
       ->Dict.get(id)
       ->Option.forEach(row => {
@@ -276,8 +388,13 @@ module Make = (
       )
     )
 
-  let phase1 = (events: array<JSON.t>, sliceCtx: Reventless.AutomationSlice.context) => {
-    events->Array.forEach(json => {
+  let phase1 = async (
+    events: array<JSON.t>,
+    sliceCtx: Reventless.AutomationSlice.context,
+    ~capabilities: Reventless.Capabilities.t,
+  ) =>
+    for i in 0 to events->Array.length - 1 {
+      let json = events->Array.getUnsafe(i)
       let context = json->Message.decode(Reventless.Message.contextSchema)
       let ctx = switch recordedAtOf(context.meta.time) {
       | Some(recordedAt) => {...sliceCtx, recordedAt}
@@ -293,7 +410,9 @@ module Make = (
       }
       // Multiple mappings can share a sourceName; all matching dispatches run.
       let routed = Route.route(eventPayload, ~sourceName, ~sourceId=context.id, ctx)
-      routed->Array.forEach(apply)
+      for j in 0 to routed->Array.length - 1 {
+        await apply(routed->Array.getUnsafe(j), ~capabilities)
+      }
       reschedule(
         routed,
         ~setBy=context.meta.msgId,
@@ -304,8 +423,7 @@ module Make = (
       if sourceName == Reventless.Clock.name {
         schedules->AutomationSlice_Schedules.fired(~key=context.id)
       }
-    })
-  }
+    }
 
   let rebuildSchedules = (events: array<JSON.t>) => {
     schedules->Dict.keysToArray->Array.forEach(key => schedules->Dict.delete(key))
@@ -367,20 +485,22 @@ module Make = (
 
     let commands = []
 
-    pending->Array.forEach(((id, row)) => {
-      let item = try row.item->Reventless.Util_Sury.fromJson(Spec.todoItemSchema)->Some catch {
-      | exn =>
-        let errMsg =
-          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+    for i in 0 to pending->Array.length - 1 {
+      let (id, row) = pending->Array.getUnsafe(i)
+      switch await openRow(~id, row) {
+      | Gone(field) =>
+        EffectLogger.logInfo(
+          ~comp=`AutomationSlice(${Spec.name})`,
+          `${id}: its ${field} was erased; nothing to do`,
+        )->Effect.runSync
+        todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+      | Unopened(errMsg) =>
         EffectLogger.logError(
           ~comp=`AutomationSlice(${Spec.name})`,
           `failed to decode todoItem: ${errMsg}`,
         )->Effect.runSync
-        None
-      }
-
-      item->Option.forEach(item => {
-        switch Automation.process(id, item, ~now=currentTime) {
+      | Open({key, item}) =>
+        switch Automation.process(key, item, ~now=currentTime) {
         | Some((targetId, command)) =>
           todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
           let commandJson = try command
@@ -400,20 +520,18 @@ module Make = (
             }
             None
           }
-          commandJson->Option.forEach(
-            commandJson => {
-              let msg: Reventless.Message.commandJson = {
-                id: targetId,
-                meta: makeMeta(),
-                commandJson,
-              }
-              let _ = commands->Array.push(msg)
-            },
-          )
+          commandJson->Option.forEach(commandJson => {
+            let msg: Reventless.Message.commandJson = {
+              id: targetId,
+              meta: makeMeta(),
+              commandJson,
+            }
+            let _ = commands->Array.push(msg)
+          })
         | None => () // Skip — process returned None
         }
-      })
-    })
+      }
+    }
 
     if commands->Array.length > 0 {
       try await publishJsons(commands) catch {
@@ -442,10 +560,18 @@ module Make = (
     // Announced after the batch, so a publish failure above has already had its
     // say on which rows ran out of budget. A failure here cannot mark anything for
     // retry — the budget is what ran out — so the rows stay `Abandoned` regardless.
-    let abandonmentCommands =
-      newlyAbandoned->Array.filterMap(id =>
-        todoItems->Dict.get(id)->Option.flatMap(row => abandonmentCommand(~id, ~row))
-      )
+    let abandonmentCommands = []
+    for i in 0 to newlyAbandoned->Array.length - 1 {
+      let id = newlyAbandoned->Array.getUnsafe(i)
+      switch todoItems->Dict.get(id) {
+      | Some(row) =>
+        switch await abandonmentCommand(~id, ~row) {
+        | Some(command) => abandonmentCommands->Array.push(command)
+        | None => ()
+        }
+      | None => ()
+      }
+    }
     if abandonmentCommands->Array.length > 0 {
       try await publishJsons(abandonmentCommands) catch {
       | exn =>

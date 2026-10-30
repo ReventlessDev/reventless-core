@@ -21,3 +21,8 @@ type command = Join({@owner memberId: string, @pii name: string, @pii address: R
 // only ever opened, so it needs no subject.
 @schema
 type consumedEvent = CustomerRegistered({@pii email: Reventless.Email.t})
+
+// An automation's work item: the type stays, and the mark keeps it out of logs
+// and makes the work list seal it.
+@schema
+type todoItem = {memberId: string, @pii("memberId") name: string}

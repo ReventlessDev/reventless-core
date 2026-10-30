@@ -565,11 +565,10 @@ async function openData(schema, eventType, data) {
   }
 }
 
-async function openRecord(schema, data) {
+async function openFields(fields, data) {
   let out = Object.assign({}, data);
   let sealed = [];
-  fieldsOf(schema).forEach(param => {
-    let field = param[0];
+  fields.forEach(field => {
     let v = out[field];
     if (v === undefined) {
       return;
@@ -611,6 +610,10 @@ async function openRecord(schema, data) {
       return out;
     });
   });
+}
+
+function openRecord(schema, data) {
+  return openFields(fieldsOf(schema).map(param => param[0]), data);
 }
 
 function goneField(schema, data) {
@@ -718,6 +721,7 @@ export {
   prepare,
   openDataNow,
   openData,
+  openFields,
   openRecord,
   goneField,
   openEventNow,

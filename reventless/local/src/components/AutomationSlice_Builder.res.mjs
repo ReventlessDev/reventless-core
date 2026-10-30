@@ -7,6 +7,7 @@ import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessLocal from "../test/TestRunner.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as LocalCapabilities$ReventlessLocal from "../adapter/LocalCapabilities.res.mjs";
 import * as LocalQueryDbStorage$ReventlessLocal from "../adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as LocalAutomationSweep$ReventlessLocal from "./LocalAutomationSweep.res.mjs";
 import * as AutomationSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res.mjs";
@@ -42,6 +43,8 @@ function Make(Bus) {
     make: QueryDbResolvers.make
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api)({
     platformFor: LocalAutomationSchedules$ReventlessLocal.platformFor
+  })({
+    capabilities: LocalCapabilities$ReventlessLocal.capabilities
   });
   let Make$1 = Spec => (Automation => {
     let Inner = CoreMaker.Make(Spec)(Automation);
