@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.415 (2026-10-30)
+
+### Bug Fixes
+
+* **aws:** the aggregate handler's no-op event topic has publishJson ([ad0f35e](https://github.com/ReventlessDev/reventless-core/commit/ad0f35ed0aa36b7447b7869cff85f3ba7e7374b3))
+
+
 # 3.0.0-alpha.414 (2026-10-30)
 
 ### Bug Fixes
