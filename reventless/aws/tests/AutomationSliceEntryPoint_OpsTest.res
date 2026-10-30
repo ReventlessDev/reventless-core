@@ -388,7 +388,7 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
     let received = ref([])
     let callback: AutomationSliceEntryPoint_Ops.outboundCallback<outboundEvent> = {
       todoItems: Dict.make(),
-      phase1: events => {
+      phase1: async (events, ~capabilities as _) => {
         received := events
         steps->Array.push("phase1")
       },

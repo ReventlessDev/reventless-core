@@ -394,8 +394,8 @@ function isPresent(json) {
 
 let streamSubject = "$stream";
 
-async function sealData(schema, eventType, streamId, data) {
-  let fields = markedFields(schema, eventType);
+async function sealFields(fields, label, streamId, bareOpt, data) {
+  let bare = bareOpt !== undefined ? bareOpt : false;
   let provider = Primitive_object.equal(fields, []) ? ({
       TAG: "Ok",
       _0: plain
@@ -423,16 +423,21 @@ async function sealData(schema, eventType, streamId, data) {
     if (Stdlib_Option.isNone(failure) && isPresent(data[field])) {
       let subjectId = subject === streamSubject ? streamId : Stdlib_Option.flatMap(data[subject], Stdlib_JSON.Decode.string);
       if (subjectId !== undefined) {
-        let sealed = await provider$1.seal(subjectId, field, match$1.forgettable, data[field]);
+        let value = data[field];
+        let sealed = await provider$1.seal(subjectId, field, match$1.forgettable, value);
         if (sealed.TAG === "Ok") {
-          out[field] = sealed._0;
+          let sealed$1 = sealed._0;
+          let match$2 = unwrap(sealed$1);
+          let tmp;
+          tmp = bare && typeof value === "string" && match$2 !== undefined ? match$2 : sealed$1;
+          out[field] = tmp;
         } else {
           failure = sealed._0;
         }
       } else {
         failure = {
           TAG: "KeyUnavailable",
-          subject: subject === streamSubject ? `<no stream id for ` + eventType + `>` : `<no ` + subject + ` on ` + eventType + `>`
+          subject: subject === streamSubject ? `<no stream id for ` + label + `>` : `<no ` + subject + ` on ` + label + `>`
         };
       }
     }
@@ -449,6 +454,16 @@ async function sealData(schema, eventType, streamId, data) {
       _0: out
     };
   }
+}
+
+function sealData(schema, eventType, streamId, data) {
+  return sealFields(markedFields(schema, eventType), eventType, streamId, undefined, data);
+}
+
+let recordFields = fieldsOf;
+
+function sealRecord(schema, data) {
+  return sealFields(fieldsOf(schema), "the record", undefined, true, data);
 }
 
 function needsOpen(schema, eventType, data) {
@@ -550,6 +565,69 @@ async function openData(schema, eventType, data) {
   }
 }
 
+async function openRecord(schema, data) {
+  let out = Object.assign({}, data);
+  let sealed = [];
+  fieldsOf(schema).forEach(param => {
+    let field = param[0];
+    let v = out[field];
+    if (v === undefined) {
+      return;
+    }
+    if (typeof v === "string" && Stdlib_Option.isSome(parseStored(v))) {
+      out[field] = wrap(v);
+      sealed.push(field);
+      return;
+    }
+    if (Stdlib_Option.isSome(unwrap(v))) {
+      sealed.push(field);
+      return;
+    }
+  });
+  if (Primitive_object.equal(sealed, [])) {
+    return {
+      TAG: "Ok",
+      _0: out
+    };
+  }
+  let e = await prepare([out]);
+  if (e.TAG !== "Ok") {
+    return {
+      TAG: "Error",
+      _0: e._0
+    };
+  }
+  let provider = current.contents;
+  return Stdlib_Array.reduce(sealed, {
+    TAG: "Ok",
+    _0: out
+  }, (acc, field) => {
+    if (acc.TAG !== "Ok") {
+      return acc;
+    }
+    let out = acc._0;
+    return Stdlib_Result.map(provider.openNow(field, out[field]), opened => {
+      out[field] = opened;
+      return out;
+    });
+  });
+}
+
+function goneField(schema, data) {
+  return Stdlib_Option.map(fieldsOf(schema).find(param => {
+    let form = Stdlib_Option.flatMap(data[param[0]], unwrap);
+    if (form !== undefined) {
+      if (form === erasedMarker) {
+        return true;
+      } else {
+        return form === forgottenMarker;
+      }
+    } else {
+      return false;
+    }
+  }), param => param[0]);
+}
+
 function openEventNow(schema, json) {
   if (typeof json !== "object" || json === null || Array.isArray(json)) {
     return json;
@@ -631,12 +709,17 @@ export {
   markedFields,
   isPresent,
   streamSubject,
+  sealFields,
   sealData,
+  recordFields,
+  sealRecord,
   needsOpen,
   keyIdsIn,
   prepare,
   openDataNow,
   openData,
+  openRecord,
+  goneField,
   openEventNow,
   unsealedField,
   prepareOrThrow,

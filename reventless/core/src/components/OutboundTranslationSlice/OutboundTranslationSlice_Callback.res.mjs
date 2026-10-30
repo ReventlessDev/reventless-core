@@ -4,7 +4,10 @@ import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Effect from "effect/Effect";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
@@ -82,27 +85,63 @@ function Make(Spec) {
         return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be published: ` + errMsg));
       }
     };
-    let phase1 = events => {
-      events.forEach(param => {
-        Translation.collect(param[1], param[0]).forEach(param => {
-          let id = param[0];
-          let match = todoItems[id];
-          if (match !== undefined) {
-            return;
+    let personalFields = Pii$Reventless.recordFields(Spec.outboundItemSchema);
+    let fingerprintPurpose = `outboundWorkItem:` + Spec.name;
+    let warnedUnkeyed = {
+      contents: false
+    };
+    let storedKey = (key, capabilities) => {
+      if (Primitive_object.equal(personalFields, [])) {
+        return key;
+      }
+      let fingerprint = capabilities.secrets.fingerprint(fingerprintPurpose, key);
+      if (fingerprint.TAG === "Ok") {
+        return fingerprint._0;
+      }
+      let why = fingerprint._0._0;
+      if (Pii$Reventless.Provider.isRequired()) {
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
+        return;
+      } else {
+        if (!warnedUnkeyed.contents) {
+          warnedUnkeyed.contents = true;
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
+        }
+        return key;
+      }
+    };
+    let phase1 = async (events, capabilities) => {
+      for (let i = 0, i_finish = events.length; i < i_finish; ++i) {
+        let match = events[i];
+        let collected = Translation.collect(match[1], match[0]);
+        for (let j = 0, j_finish = collected.length; j < j_finish; ++j) {
+          let match$1 = collected[j];
+          let id = storedKey(match$1[0], capabilities);
+          if (id !== undefined && !Stdlib_Option.isSome(todoItems[id])) {
+            let json = Util_Sury$Reventless.toJson(match$1[1], Spec.outboundItemSchema);
+            let stored;
+            stored = typeof json === "object" && json !== null && !Array.isArray(json) && Primitive_object.notequal(personalFields, []) ? Stdlib_Result.map(await Pii$Reventless.sealRecord(Spec.outboundItemSchema, json), d => (d)) : ({
+                TAG: "Ok",
+                _0: json
+              });
+            if (stored.TAG === "Ok") {
+              let row_item = stored._0;
+              let row_createdAt = new Date().toISOString();
+              let row_maxRetries = Spec.maxRetries;
+              let row = {
+                item: row_item,
+                status: "Pending",
+                createdAt: row_createdAt,
+                retryCount: 0,
+                maxRetries: row_maxRetries
+              };
+              todoItems[id] = row;
+            } else {
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: ` + Pii$Reventless.errorMessage(stored._0)));
+            }
           }
-          let row_item = Util_Sury$Reventless.toJson(param[1], Spec.outboundItemSchema);
-          let row_createdAt = new Date().toISOString();
-          let row_maxRetries = Spec.maxRetries;
-          let row = {
-            item: row_item,
-            status: "Pending",
-            createdAt: row_createdAt,
-            retryCount: 0,
-            maxRetries: row_maxRetries
-          };
-          todoItems[id] = row;
-        });
-      });
+        }
+      }
     };
     let phase2 = async (publishJsons, capabilities) => {
       let newlyAbandoned = [];
@@ -131,22 +170,75 @@ function Make(Spec) {
         let row = param[1];
         let id = param[0];
         await prev;
+        let data = row.item;
+        let opened;
+        if (typeof data === "object" && data !== null && !Array.isArray(data) && Primitive_object.notequal(personalFields, [])) {
+          let data$1 = await Pii$Reventless.openRecord(Spec.outboundItemSchema, data);
+          if (data$1.TAG === "Ok") {
+            let data$2 = data$1._0;
+            let field = Pii$Reventless.goneField(Spec.outboundItemSchema, data$2);
+            opened = field !== undefined ? ({
+                TAG: "Error",
+                _0: {
+                  NAME: "Gone",
+                  VAL: field
+                }
+              }) : ({
+                TAG: "Ok",
+                _0: data$2
+              });
+          } else {
+            opened = {
+              TAG: "Error",
+              _0: {
+                NAME: "Unopened",
+                VAL: Pii$Reventless.errorMessage(data$1._0)
+              }
+            };
+          }
+        } else {
+          opened = {
+            TAG: "Ok",
+            _0: data
+          };
+        }
         let item;
-        try {
-          item = Primitive_option.some(Util_Sury$Reventless.fromJson(row.item, Spec.outboundItemSchema));
-        } catch (raw_exn) {
-          let exn = Primitive_exceptions.internalToException(raw_exn);
-          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to decode outboundItem: ` + errMsg));
-          item = undefined;
+        if (opened.TAG === "Ok") {
+          try {
+            item = Primitive_option.some(Util_Sury$Reventless.fromJson(opened._0, Spec.outboundItemSchema));
+          } catch (raw_exn) {
+            let exn = Primitive_exceptions.internalToException(raw_exn);
+            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to decode outboundItem: ` + errMsg));
+            item = undefined;
+          }
+        } else {
+          let match = opened._0;
+          if (match.NAME === "Gone") {
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, id + `: its ` + match.VAL + ` was erased; nothing to do`));
+            let newrecord = {...row};
+            newrecord.completedAt = new Date().toISOString();
+            newrecord.status = "Completed";
+            todoItems[id] = newrecord;
+            item = undefined;
+          } else {
+            let why = match.VAL;
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, id + `: its work item does not open: ` + why));
+            let updated = afterFailedAttempt(row, why);
+            todoItems[id] = updated;
+            if (updated.status === "Abandoned") {
+              newlyAbandoned.push(id);
+            }
+            item = undefined;
+          }
         }
         if (item === undefined) {
           return;
         }
-        let newrecord = {...row};
-        newrecord.processedAt = new Date().toISOString();
-        newrecord.status = "Processing";
-        todoItems[id] = newrecord;
+        let newrecord$1 = {...row};
+        newrecord$1.processedAt = new Date().toISOString();
+        newrecord$1.status = "Processing";
+        todoItems[id] = newrecord$1;
         let result;
         try {
           result = await Translation.translate(id, Primitive_option.valFromOption(item), capabilities);
@@ -159,11 +251,11 @@ function Make(Spec) {
           };
         }
         if (result.TAG === "Ok") {
-          let match = result._0;
-          if (match !== undefined) {
+          let match$1 = result._0;
+          if (match$1 !== undefined) {
             let commandJson;
             try {
-              commandJson = Util_Sury$Reventless.toJson(match[1], Spec.inboundCommandSchema);
+              commandJson = Util_Sury$Reventless.toJson(match$1[1], Spec.inboundCommandSchema);
             } catch (raw_exn$2) {
               let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
               let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
@@ -172,7 +264,7 @@ function Make(Spec) {
             }
             if (commandJson !== undefined) {
               try {
-                let msg_id = match[0];
+                let msg_id = match$1[0];
                 let msg_meta = makeMeta();
                 let msg$1 = {
                   id: msg_id,
@@ -180,18 +272,18 @@ function Make(Spec) {
                   commandJson: commandJson
                 };
                 await publishJsons([msg$1]);
-                let newrecord$1 = {...row};
-                newrecord$1.completedAt = new Date().toISOString();
-                newrecord$1.status = "Completed";
-                todoItems[id] = newrecord$1;
+                let newrecord$2 = {...row};
+                newrecord$2.completedAt = new Date().toISOString();
+                newrecord$2.status = "Completed";
+                todoItems[id] = newrecord$2;
                 return;
               } catch (raw_exn$3) {
                 let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
                 let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to publish command: ` + errMsg$2));
-                let updated = afterFailedAttempt(row, errMsg$2);
-                todoItems[id] = updated;
-                if (updated.status === "Abandoned") {
+                let updated$1 = afterFailedAttempt(row, errMsg$2);
+                todoItems[id] = updated$1;
+                if (updated$1.status === "Abandoned") {
                   newlyAbandoned.push(id);
                   return;
                 } else {
@@ -199,9 +291,9 @@ function Make(Spec) {
                 }
               }
             } else {
-              let updated$1 = afterFailedAttempt(row, undefined);
-              todoItems[id] = updated$1;
-              if (updated$1.status === "Abandoned") {
+              let updated$2 = afterFailedAttempt(row, undefined);
+              todoItems[id] = updated$2;
+              if (updated$2.status === "Abandoned") {
                 newlyAbandoned.push(id);
                 return;
               } else {
@@ -209,16 +301,16 @@ function Make(Spec) {
               }
             }
           } else {
-            let newrecord$2 = {...row};
-            newrecord$2.completedAt = new Date().toISOString();
-            newrecord$2.status = "Completed";
-            todoItems[id] = newrecord$2;
+            let newrecord$3 = {...row};
+            newrecord$3.completedAt = new Date().toISOString();
+            newrecord$3.status = "Completed";
+            todoItems[id] = newrecord$3;
             return;
           }
         } else {
-          let updated$2 = afterFailedAttempt(row, result._0);
-          todoItems[id] = updated$2;
-          if (updated$2.status === "Abandoned") {
+          let updated$3 = afterFailedAttempt(row, result._0);
+          todoItems[id] = updated$3;
+          if (updated$3.status === "Abandoned") {
             newlyAbandoned.push(id);
             return;
           } else {

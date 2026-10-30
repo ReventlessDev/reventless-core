@@ -409,13 +409,17 @@ appended.
     to `sealData` as `~streamId`. The PPX writes it; kept in step there. */
 let streamSubject = "$stream"
 
-let sealData = async (
-  schema: S.t<'a>,
-  ~eventType: string,
+/** Seal `fields` of `data` with the installed provider. `label` names the type in
+    an error; `~bare` stores a sealed string as its stored form alone, for a store
+    whose readers see the type's own field types (a work item served as a
+    `String`). */
+let sealFields = async (
+  ~fields: array<(string, marker)>,
+  ~label: string,
   ~streamId: option<string>=?,
+  ~bare: bool=false,
   data: dict<JSON.t>,
 ): result<dict<JSON.t>, error> => {
-  let fields = markedFields(schema, ~variant=eventType)
   // A type without personal fields never waits for, or needs, a provider.
   let provider = fields == [] ? Ok(plain) : await Provider.ready()
   switch provider {
@@ -437,18 +441,21 @@ let sealData = async (
             Some(
               KeyUnavailable({
                 subject: subject == streamSubject
-                  ? `<no stream id for ${eventType}>`
-                  : `<no ${subject} on ${eventType}>`,
+                  ? `<no stream id for ${label}>`
+                  : `<no ${subject} on ${label}>`,
               }),
             )
         | Some(subjectId) =>
-          switch await provider.seal(
-            ~subject=subjectId,
-            ~field,
-            ~forgettable,
-            data->Dict.getUnsafe(field),
-          ) {
-          | Ok(sealed) => out->Dict.set(field, sealed)
+          let value = data->Dict.getUnsafe(field)
+          switch await provider.seal(~subject=subjectId, ~field, ~forgettable, value) {
+          | Ok(sealed) =>
+            out->Dict.set(
+              field,
+              switch (bare, value, sealed->unwrap) {
+              | (true, String(_), Some(form)) => JSON.Encode.string(form)
+              | _ => sealed
+              },
+            )
           | Error(e) => failure := Some(e)
           }
         }
@@ -460,6 +467,25 @@ let sealData = async (
     }
   }
 }
+
+let sealData = (
+  schema: S.t<'a>,
+  ~eventType: string,
+  ~streamId: option<string>=?,
+  data: dict<JSON.t>,
+): promise<result<dict<JSON.t>, error>> =>
+  sealFields(~fields=markedFields(schema, ~variant=eventType), ~label=eventType, ~streamId?, data)
+
+/** The personal fields of a record type, such as an outbound work item. */
+let recordFields = (schema: S.t<'a>): array<(string, marker)> => schema->S.castToUnknown->fieldsOf
+
+/**
+A record's personal fields sealed for a store its own readers serve, such as an
+outbound work list: a string field holds its bare stored form, so it still reads
+as a string. `openRecord` reverses it.
+*/
+let sealRecord = (schema: S.t<'a>, data: dict<JSON.t>): promise<result<dict<JSON.t>, error>> =>
+  sealFields(~fields=recordFields(schema), ~label="the record", ~bare=true, data)
 
 /** Whether `data` holds a stored form `openData` would open: checked first, so a
     read of a log with nothing sealed in it costs no promise per event. */
@@ -557,6 +583,57 @@ let openData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): 
   | Error(e) => Error(e)
   | Ok() => openDataNow(schema, ~eventType, data)
   }
+
+/**
+A record `sealRecord` stored, opened with the installed provider: each personal
+field its plain value, or the marker of a value that is gone (`goneField` names
+the first such field). A field still in the clear, written before a provider was
+installed, is left as it is.
+*/
+let openRecord = async (schema: S.t<'a>, data: dict<JSON.t>): result<dict<JSON.t>, error> => {
+  let out = data->Dict.copy
+  let sealed = []
+  recordFields(schema)->Array.forEach(((field, _)) =>
+    switch out->Dict.get(field) {
+    | Some(String(form)) if form->parseStored->Option.isSome =>
+      out->Dict.set(field, wrap(form))
+      sealed->Array.push(field)
+    | Some(v) if v->unwrap->Option.isSome => sealed->Array.push(field)
+    | _ => ()
+    }
+  )
+  if sealed == [] {
+    Ok(out)
+  } else {
+    switch await prepare([JSON.Object(out)]) {
+    | Error(e) => Error(e)
+    | Ok() =>
+      let provider = Provider.get()
+      sealed->Array.reduce(Ok(out), (acc, field) =>
+        switch acc {
+        | Error(_) => acc
+        | Ok(out) =>
+          provider.openNow(~field, out->Dict.getUnsafe(field))->Result.map(opened => {
+            out->Dict.set(field, opened)
+            out
+          })
+        }
+      )
+    }
+  }
+}
+
+/** The first personal field of an opened record whose value is gone: its subject
+    was erased, or its object forgotten. */
+let goneField = (schema: S.t<'a>, data: dict<JSON.t>): option<string> =>
+  recordFields(schema)
+  ->Array.find(((field, _)) =>
+    switch data->Dict.get(field)->Option.flatMap(unwrap) {
+    | Some(form) => form == erasedMarker || form == forgottenMarker
+    | None => false
+    }
+  )
+  ->Option.map(((field, _)) => field)
 
 /**
 A message's event, opened for a decoder: the `{TAG, …fields}` object with its

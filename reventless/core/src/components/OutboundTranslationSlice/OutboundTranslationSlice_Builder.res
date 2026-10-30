@@ -189,7 +189,7 @@ module Make = (
               Effect.promise(
                 async () => {
                   // Phase 1: collect outbound items
-                  Callback.phase1(eventsArr)
+                  await Callback.phase1(eventsArr, ~capabilities=Capabilities.capabilities())
                   // Sync the post-phase-1 TODO state so consumers awaiting the
                   // originating publishEvent observe Pending rows immediately.
                   await syncToQueryDb(queryDbOps)

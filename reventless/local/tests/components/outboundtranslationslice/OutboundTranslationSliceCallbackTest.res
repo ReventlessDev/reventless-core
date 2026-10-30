@@ -45,9 +45,10 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "OrderShipped event creates a pending outbound item",
       async () => {
-        FireForgetCallback.phase1([
-          ("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"})),
-        ])
+        await FireForgetCallback.phase1(
+          [("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let items = FireForgetCallback.todoItems
         expect(items->Dict.toArray->Array.length)->toBe(1)
         let row = items->Dict.get("ord-1")
@@ -61,12 +62,14 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "duplicate event does not create a second item (idempotent)",
       async () => {
-        FireForgetCallback.phase1([
-          ("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"})),
-        ])
-        FireForgetCallback.phase1([
-          ("evt", OrderShipped({orderId: "ord-1", email: "other@example.com"})),
-        ])
+        await FireForgetCallback.phase1(
+          [("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        await FireForgetCallback.phase1(
+          [("evt", OrderShipped({orderId: "ord-1", email: "other@example.com"}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let items = FireForgetCallback.todoItems
         expect(items->Dict.toArray->Array.length)->toBe(1)
       },
@@ -75,10 +78,13 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "multiple different events create multiple items",
       async () => {
-        FireForgetCallback.phase1([
-          ("evt", OrderShipped({orderId: "ord-1", email: "a@example.com"})),
-          ("evt", OrderShipped({orderId: "ord-2", email: "b@example.com"})),
-        ])
+        await FireForgetCallback.phase1(
+          [
+            ("evt", OrderShipped({orderId: "ord-1", email: "a@example.com"})),
+            ("evt", OrderShipped({orderId: "ord-2", email: "b@example.com"})),
+          ],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let items = FireForgetCallback.todoItems
         expect(items->Dict.toArray->Array.length)->toBe(2)
       },
@@ -89,9 +95,10 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "Ok(None) marks item as Completed, no command published",
       async () => {
-        FireForgetCallback.phase1([
-          ("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"})),
-        ])
+        await FireForgetCallback.phase1(
+          [("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := cmds
@@ -120,7 +127,10 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "Ok(Some(...)) marks item as Completed and publishes command",
       async () => {
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := Array.concat(publishedCommands.contents, cmds)
@@ -142,7 +152,10 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "published command is tagged with the target's name",
       async () => {
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := Array.concat(publishedCommands.contents, cmds)
@@ -158,7 +171,10 @@ describe("OutboundTranslationSlice Callback", () => {
       async () => {
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("gateway timeout"))
 
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
         await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
 
@@ -173,7 +189,10 @@ describe("OutboundTranslationSlice Callback", () => {
       async () => {
         // First attempt fails
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
         await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
         let row1 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
@@ -198,7 +217,10 @@ describe("OutboundTranslationSlice Callback", () => {
       async () => {
         // ProcessPaymentSpec.maxRetries = 2, so after 2 failures it should stop
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
 
         // Fail once — still retriable, and the status says so.
@@ -234,7 +256,10 @@ describe("OutboundTranslationSlice Callback", () => {
       "a row left stranded at the ceiling is normalised on the next pass",
       async () => {
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let row = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
         CommandBackCallback.todoItems->Dict.set("ord-1", {...row, status: Failed, retryCount: 2})
 
@@ -252,7 +277,10 @@ describe("OutboundTranslationSlice Callback", () => {
       "the last error survives the transition to Abandoned",
       async () => {
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("gateway down"))
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
         await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
         await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
@@ -265,7 +293,10 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise(
       "the row carries the ceiling its count is racing",
       async () => {
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         expect(
           (CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow).maxRetries,
         )->toEqual(Some(ProcessPaymentSpec.maxRetries))
@@ -281,7 +312,10 @@ describe("OutboundTranslationSlice Callback", () => {
         ProcessPaymentSpec.onExhaustedFn :=
           ((id, _item, _lastError) => Some((id, ProcessPaymentSpec.ConfirmPayment({orderId: id}))))
 
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let published = ref([])
         let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds =>
           published := Array.concat(published.contents, cmds)
@@ -313,7 +347,10 @@ describe("OutboundTranslationSlice Callback", () => {
             }
           )
 
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
         await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
         await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
@@ -326,7 +363,10 @@ describe("OutboundTranslationSlice Callback", () => {
       async () => {
         ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("gateway down"))
         // onExhaustedFn stays at its default None (reset in beforeEach).
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let published = ref([])
         let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds =>
           published := Array.concat(published.contents, cmds)
@@ -348,7 +388,10 @@ describe("OutboundTranslationSlice Callback", () => {
         ProcessPaymentSpec.onExhaustedFn :=
           ((id, _item, _lastError) => Some((id, ProcessPaymentSpec.ConfirmPayment({orderId: id}))))
 
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let failOnAbandonment: ReventlessInfra.CommandTopic.publishJsons = async _cmds =>
           JsError.throwWithMessage("topic unavailable")
         await CommandBackCallback.phase2(
@@ -372,7 +415,10 @@ describe("OutboundTranslationSlice Callback", () => {
       async () => {
         ProcessPaymentSpec.onExhaustedFn :=
           ((id, _item, _lastError) => Some((id, ProcessPaymentSpec.ConfirmPayment({orderId: id}))))
-        CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let row = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
         CommandBackCallback.todoItems->Dict.set("ord-1", {...row, status: Failed, retryCount: 2})
 
@@ -404,10 +450,13 @@ describe("OutboundTranslationSlice Callback", () => {
             }
           )
 
-        CommandBackCallback.phase1([
-          ("evt", PaymentReceived({orderId: "ord-1", amount: 50.0})),
-          ("evt", PaymentReceived({orderId: "ord-2", amount: 75.0})),
-        ])
+        await CommandBackCallback.phase1(
+          [
+            ("evt", PaymentReceived({orderId: "ord-1", amount: 50.0})),
+            ("evt", PaymentReceived({orderId: "ord-2", amount: 75.0})),
+          ],
+          ~capabilities=Reventless.Capabilities.none,
+        )
         let publishedCommands = ref([])
         let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
           publishedCommands := Array.concat(publishedCommands.contents, cmds)

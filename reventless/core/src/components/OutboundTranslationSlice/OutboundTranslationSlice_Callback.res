@@ -79,7 +79,10 @@ the AWS entry point kept passing bare events and nothing complained, because its
 hand-written copy was internally consistent. The mismatch surfaced only at
 runtime, as `undefined` destructured from a tuple that was never a tuple.
 */
-type phase1<'event> = array<(string, 'event)> => unit
+type phase1<'event> = (
+  array<(string, 'event)>,
+  ~capabilities: Reventless.Capabilities.t,
+) => promise<unit>
 
 /** Phase 2: translate all pending items, optionally publishing commands.
 
@@ -109,7 +112,8 @@ module type T = {
 
   /** Phase 1: update TODO list from a batch of `(sourceId, event)` pairs
       (collect only, no resolve). `sourceId` is the envelope id of the entity the
-      event was published for. */
+      event was published for. `~capabilities` supplies the key a personal item's
+      row id is fingerprinted with. */
   let phase1: phase1<Spec.consumedEvent>
 
   /** Phase 2: translate all pending items, optionally publishing commands via publishJsons. */
@@ -201,25 +205,82 @@ module Make = (
       )->Effect.runSync
     }
 
-  let phase1 = (events: array<(string, Spec.consumedEvent)>) => {
-    events->Array.forEach(((sourceId, event)) => {
-      // Collect new outbound items
-      Translation.collect(event, ~sourceId)->Array.forEach(((id, item)) => {
-        switch todoItems->Dict.get(id) {
-        | Some(_) => () // Already exists -- skip (idempotent)
-        | None =>
-          let row: todoRow = {
-            item: item->Reventless.Util_Sury.toJson(Spec.outboundItemSchema),
-            status: Pending,
-            createdAt: now(),
-            retryCount: 0,
-            maxRetries: Spec.maxRetries,
+  // A work item that carries personal data is stored the way an event is: its
+  // marked fields sealed, and its row keyed by a fingerprint of the key `collect`
+  // chose, which may hold the address the work is about. A table key can be
+  // neither encrypted nor erased.
+  let personalFields = Reventless.Pii.recordFields(Spec.outboundItemSchema)
+  let fingerprintPurpose = `outboundWorkItem:${Spec.name}`
+  let warnedUnkeyed = ref(false)
+
+  /** The id a row is stored under, or `None` when it cannot be stored safely. */
+  let storedKey = (key, ~capabilities: Reventless.Capabilities.t): option<string> =>
+    if personalFields == [] {
+      Some(key)
+    } else {
+      switch capabilities.secrets.fingerprint(~purpose=fingerprintPurpose, key) {
+      | Ok(fingerprint) => Some(fingerprint)
+      | Error(Unavailable(why)) =>
+        if Reventless.Pii.Provider.isRequired() {
+          EffectLogger.logError(
+            ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            `a work item was not stored: its row id cannot be fingerprinted (${why})`,
+          )->Effect.runSync
+          None
+        } else {
+          if !warnedUnkeyed.contents {
+            warnedUnkeyed := true
+            EffectLogger.logWarn(
+              ~comp=`OutboundTranslationSlice(${Spec.name})`,
+              `work items carrying personal data are keyed in the clear: no key to fingerprint them with (${why})`,
+            )->Effect.runSync
           }
-          todoItems->Dict.set(id, row)
+          Some(key)
         }
-      })
-    })
-  }
+      }
+    }
+
+  let phase1 = async (
+    events: array<(string, Spec.consumedEvent)>,
+    ~capabilities: Reventless.Capabilities.t,
+  ) =>
+    for i in 0 to events->Array.length - 1 {
+      let (sourceId, event) = events->Array.getUnsafe(i)
+      // Collect new outbound items
+      let collected = Translation.collect(event, ~sourceId)
+      for j in 0 to collected->Array.length - 1 {
+        let (key, item) = collected->Array.getUnsafe(j)
+        switch storedKey(key, ~capabilities) {
+        | None => ()
+        | Some(id) if todoItems->Dict.get(id)->Option.isSome => () // idempotent
+        | Some(id) =>
+          let json = item->Reventless.Util_Sury.toJson(Spec.outboundItemSchema)
+          let stored = switch json {
+          | Object(data) if personalFields != [] =>
+            (
+              await Reventless.Pii.sealRecord(Spec.outboundItemSchema, data)
+            )->Result.map(d => JSON.Object(d))
+          | other => Ok(other)
+          }
+          switch stored {
+          | Error(e) =>
+            EffectLogger.logError(
+              ~comp=`OutboundTranslationSlice(${Spec.name})`,
+              `a work item was not stored: ${e->Reventless.Pii.errorMessage}`,
+            )->Effect.runSync
+          | Ok(stored) =>
+            let row: todoRow = {
+              item: stored,
+              status: Pending,
+              createdAt: now(),
+              retryCount: 0,
+              maxRetries: Spec.maxRetries,
+            }
+            todoItems->Dict.set(id, row)
+          }
+        }
+      }
+    }
 
   let phase2 = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
@@ -253,15 +314,50 @@ module Make = (
     let _ = await pending->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
       let _ = await prev
 
-      let item = try row.item->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema)->Some catch {
-      | exn =>
-        let errMsg =
-          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      // Opened first: a personal field is sealed in the row, and one whose
+      // subject was erased since leaves nothing to send.
+      let opened = switch row.item {
+      | Object(data) if personalFields != [] =>
+        switch await Reventless.Pii.openRecord(Spec.outboundItemSchema, data) {
+        | Ok(data) =>
+          switch Reventless.Pii.goneField(Spec.outboundItemSchema, data) {
+          | Some(field) => Error(#Gone(field))
+          | None => Ok(JSON.Object(data))
+          }
+        | Error(e) => Error(#Unopened(e->Reventless.Pii.errorMessage))
+        }
+      | other => Ok(other)
+      }
+      let item = switch opened {
+      | Error(#Gone(field)) =>
+        EffectLogger.logInfo(
+          ~comp=`OutboundTranslationSlice(${Spec.name})`,
+          `${id}: its ${field} was erased; nothing to do`,
+        )->Effect.runSync
+        todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+        None
+      | Error(#Unopened(why)) =>
         EffectLogger.logError(
           ~comp=`OutboundTranslationSlice(${Spec.name})`,
-          `failed to decode outboundItem: ${errMsg}`,
+          `${id}: its work item does not open: ${why}`,
         )->Effect.runSync
+        let updated = row->afterFailedAttempt(~lastError=why)
+        todoItems->Dict.set(id, updated)
+        if updated.status == Abandoned {
+          newlyAbandoned->Array.push(id)
+        }
         None
+      | Ok(itemJson) =>
+        try itemJson->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema)->Some catch {
+        | exn =>
+          let errMsg =
+            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          EffectLogger.logError(
+            ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            `failed to decode outboundItem: ${errMsg}`,
+          )->Effect.runSync
+          None
+        }
       }
 
       switch item {

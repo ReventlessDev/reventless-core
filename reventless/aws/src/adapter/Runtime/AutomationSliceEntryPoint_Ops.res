@@ -549,7 +549,7 @@ let makeOutboundJsonEventsHandler = (
     ->Effect.flatMap(events =>
       Effect.promise(async () => {
         await loadTodoItems()
-        callback.phase1(events)
+        await callback.phase1(events, ~capabilities=capabilities())
         await syncTodoItems()
         await callback.phase2(publishJsons, ~capabilities=capabilities())
         await syncTodoItems()

@@ -330,7 +330,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
     }
   })), events => Stream$1.fromIterable(events))), events => Effect.promise(async () => {
     await loadTodoItems();
-    callback.phase1(events);
+    await callback.phase1(events, capabilities());
     await syncTodoItems();
     await callback.phase2(publishJsons, capabilities());
     return await syncTodoItems();

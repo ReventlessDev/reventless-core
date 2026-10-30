@@ -108,7 +108,7 @@ function Make(RuntimeEnvironment) {
                 return [];
               }
             })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
-              Callback.phase1(eventsArr);
+              await Callback.phase1(eventsArr, Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
               Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities()).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
