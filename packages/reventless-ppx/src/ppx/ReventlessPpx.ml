@@ -835,7 +835,10 @@ let transform (str : structure) : structure =
     (* After every DCB-tag pass, so a field that became a tag is refused rather
        than wrapped; before OwnerInference, so the [@owner] a subject defaults to
        is still on the sibling. See PiiInference's header. *)
-    let body = PiiInference.transform_structure body in
+    let body =
+      PiiInference.transform_structure
+        ~stream:(Util.is_in_aggregate_folder loc.loc_start.pos_fname) body
+    in
     (* After every DCB-tag pass, on purpose: [@owner] wraps whatever schema the
        field ended up with rather than replacing it, so an owner field keeps the
        tag it would otherwise have had. See OwnerInference's header. *)

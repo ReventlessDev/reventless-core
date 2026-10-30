@@ -392,7 +392,9 @@ function isPresent(json) {
   }
 }
 
-async function sealData(schema, eventType, data) {
+let streamSubject = "$stream";
+
+async function sealData(schema, eventType, streamId, data) {
   let fields = markedFields(schema, eventType);
   let provider = Primitive_object.equal(fields, []) ? ({
       TAG: "Ok",
@@ -419,7 +421,7 @@ async function sealData(schema, eventType, data) {
     let subject = match$1.subject;
     let field = match[0];
     if (Stdlib_Option.isNone(failure) && isPresent(data[field])) {
-      let subjectId = Stdlib_Option.flatMap(data[subject], Stdlib_JSON.Decode.string);
+      let subjectId = subject === streamSubject ? streamId : Stdlib_Option.flatMap(data[subject], Stdlib_JSON.Decode.string);
       if (subjectId !== undefined) {
         let sealed = await provider$1.seal(subjectId, field, match$1.forgettable, data[field]);
         if (sealed.TAG === "Ok") {
@@ -430,7 +432,7 @@ async function sealData(schema, eventType, data) {
       } else {
         failure = {
           TAG: "KeyUnavailable",
-          subject: `<no ` + subject + ` on ` + eventType + `>`
+          subject: subject === streamSubject ? `<no stream id for ` + eventType + `>` : `<no ` + subject + ` on ` + eventType + `>`
         };
       }
     }
@@ -628,6 +630,7 @@ export {
   fieldsMemo,
   markedFields,
   isPresent,
+  streamSubject,
   sealData,
   needsOpen,
   keyIdsIn,

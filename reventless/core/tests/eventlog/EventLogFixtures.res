@@ -15,6 +15,11 @@ module ItemEventLogSpec = {
         name: @s.matches(Reventless.Pii.marked(~subject="personId", S.string))
         Reventless.Pii.t<string>,
       })
+    // An aggregate's field that names no subject: the aggregate is it.
+    | PersonEmailed({
+        email: @s.matches(Reventless.Pii.marked(~subject=Reventless.Pii.streamSubject, S.string))
+        Reventless.Pii.t<string>,
+      })
 }
 
 // ─────────────────────────────────────────────────────────────

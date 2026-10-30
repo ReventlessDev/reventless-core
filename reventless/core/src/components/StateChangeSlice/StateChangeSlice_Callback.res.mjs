@@ -41,7 +41,7 @@ function Make(Spec) {
         let match$1 = raw.data;
         if (match === undefined) {
           if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1)) {
-            let e = await Pii$Reventless.sealData(Spec.eventSchema, raw.eventType, match$1);
+            let e = await Pii$Reventless.sealData(Spec.eventSchema, raw.eventType, undefined, match$1);
             if (e.TAG === "Ok") {
               let sealed = e._0;
               let field = Pii$Reventless.unsealedField(Spec.eventSchema, raw.eventType, sealed);

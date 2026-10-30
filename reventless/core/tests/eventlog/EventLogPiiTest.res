@@ -73,6 +73,24 @@ describe("EventLog with a personal-data provider", () => {
     expect(replayed)->toEqual([named])
   })
 
+  testPromise("seals a field that names no subject under the aggregate's id", async () => {
+    Reventless.Pii.Provider.install(fakeProvider())
+    let emailed: ItemEventLogSpec.event = PersonEmailed({email: Value("ada@example.org")})
+    let result = await Log.append(0, "p-9", [makeEvent'("p-9", emailed)])
+    expect(result)->toEqual(Ok())
+    let stored =
+      storedEvents.contents
+      ->Dict.get("p-9")
+      ->Option.flatMap(a => a->Array.get(0))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get("data"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get("email"))
+      ->Option.flatMap(Reventless.Pii.unwrap)
+    expect(stored->Option.mapOr(false, s => s->String.startsWith("enc:v1:p-9:")))->toBe(true)
+    expect(await Log.replay("p-9"))->toEqual([emailed])
+  })
+
   testPromise("refuses an append whose personal field comes out unsealed", async () => {
     Reventless.Pii.Provider.install(fakeProvider(~seals=false))
     let result = await Log.append(0, "p-1", [makeEvent'("p-1", named)])

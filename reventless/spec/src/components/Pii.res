@@ -399,14 +399,22 @@ let isPresent = (json: option<JSON.t>) =>
 
 /**
 `data` with every personal field of `eventType` sealed by the installed provider.
-The subject is read off the same payload. Fails, never degrades: a field whose
+The subject is read off the same payload, or, for an aggregate's field
+that names none, is the stream's id the event log passes as `~streamId`. Fails, never degrades: a field whose
 subject is missing, or whose key cannot be fetched, is an `Error` and nothing is
 appended.
 */
-let sealData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): result<
-  dict<JSON.t>,
-  error,
-> => {
+/** The subject of a field in an aggregate's event that names none: the aggregate
+    itself. Its id names the stream and is not a field, so the event log hands it
+    to `sealData` as `~streamId`. The PPX writes it; kept in step there. */
+let streamSubject = "$stream"
+
+let sealData = async (
+  schema: S.t<'a>,
+  ~eventType: string,
+  ~streamId: option<string>=?,
+  data: dict<JSON.t>,
+): result<dict<JSON.t>, error> => {
   let fields = markedFields(schema, ~variant=eventType)
   // A type without personal fields never waits for, or needs, a provider.
   let provider = fields == [] ? Ok(plain) : await Provider.ready()
@@ -419,8 +427,20 @@ let sealData = async (schema: S.t<'a>, ~eventType: string, data: dict<JSON.t>): 
     for i in 0 to fields->Array.length - 1 {
       let (field, {subject, forgettable}) = fields->Array.getUnsafe(i)
       if failure.contents->Option.isNone && data->Dict.get(field)->isPresent {
-        switch data->Dict.get(subject)->Option.flatMap(JSON.Decode.string) {
-        | None => failure := Some(KeyUnavailable({subject: `<no ${subject} on ${eventType}>`}))
+        let subjectId =
+          subject == streamSubject
+            ? streamId
+            : data->Dict.get(subject)->Option.flatMap(JSON.Decode.string)
+        switch subjectId {
+        | None =>
+          failure :=
+            Some(
+              KeyUnavailable({
+                subject: subject == streamSubject
+                  ? `<no stream id for ${eventType}>`
+                  : `<no ${subject} on ${eventType}>`,
+              }),
+            )
         | Some(subjectId) =>
           switch await provider.seal(
             ~subject=subjectId,

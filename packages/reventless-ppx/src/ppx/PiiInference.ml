@@ -36,7 +36,9 @@ open Ppxlib
     - on a DCB tag or partition key — an index key can be neither encrypted nor
       erased, so it must be an opaque id;
     - on an [@owner] field, which is the subject's id, not its data;
-    - on a field with no [subject] and no [@owner] sibling to default to;
+    - on a field with no [subject] and no [@owner] sibling to default to,
+      outside an aggregate's spec — there the subject is the aggregate, whose
+      id the event log seals under;
     - on a field whose subject names no sibling field;
     - on a type whose schema this pass cannot name;
     - on a field of any other type, where it would mark nothing anybody reads.
@@ -146,7 +148,12 @@ let is_forgettable_schema e =
 
 let is_tag_schema e = mentions e "DcbTag"
 
-let transform_label_decl ~role ~(siblings : label_declaration list) (ld : label_declaration)
+(** The subject an aggregate's events default to: the aggregate itself, whose id
+    names the stream and is not a field of the event. The event log reads it and
+    seals under the stream's id. Kept in step with [Reventless.Pii.streamSubject]. *)
+let stream_subject = "$stream"
+
+let transform_label_decl ~stream ~role ~(siblings : label_declaration list) (ld : label_declaration)
   : label_declaration =
   if not (has_pii_attr ld.pld_attributes) then ld
   else begin
@@ -193,11 +200,13 @@ let transform_label_decl ~role ~(siblings : label_declaration list) (ld : label_
         (match List.find_opt (fun (s' : label_declaration) -> has_attr "owner" s'.pld_attributes)
                  siblings with
          | Some owner -> owner.pld_name.txt
+         | None when stream -> stream_subject
          | None ->
            Location.raise_errorf ~loc
              "@pii on %s has no subject: name the field holding the id of the \
               person the value is about, @pii({subject: \"memberId\"}), or mark \
-              that field @owner." field)
+              that field @owner. In an aggregate's spec the subject is the \
+              aggregate." field)
     in
     let clean = strip_pii_attr ld.pld_attributes in
     let cannot_name () =
@@ -247,13 +256,13 @@ let transform_label_decl ~role ~(siblings : label_declaration list) (ld : label_
               with_type { ty with ptyp_desc = (pii_type ~loc inner).ptyp_desc } marked))
   end
 
-let transform_fields ~role fields =
-  List.map (transform_label_decl ~role ~siblings:fields) fields
+let transform_fields ~stream ~role fields =
+  List.map (transform_label_decl ~stream ~role ~siblings:fields) fields
 
-let transform_type_decl (td : type_declaration) : type_declaration =
+let transform_type_decl ~stream (td : type_declaration) : type_declaration =
   let role = role_of_type_name td.ptype_name.txt in
   match td.ptype_kind with
-  | Ptype_record fields -> { td with ptype_kind = Ptype_record (transform_fields ~role fields) }
+  | Ptype_record fields -> { td with ptype_kind = Ptype_record (transform_fields ~stream ~role fields) }
   | Ptype_variant ctors ->
     { td with
       ptype_kind =
@@ -261,15 +270,16 @@ let transform_type_decl (td : type_declaration) : type_declaration =
           (List.map (fun (cd : constructor_declaration) ->
              match cd.pcd_args with
              | Pcstr_record fields ->
-               { cd with pcd_args = Pcstr_record (transform_fields ~role fields) }
+               { cd with pcd_args = Pcstr_record (transform_fields ~stream ~role fields) }
              | _ -> cd) ctors) }
   | _ -> td
 
-(* Top-level types only, like every sibling field-marker pass. *)
-let transform_structure (str : structure) : structure =
+(* Top-level types only, like every sibling field-marker pass. [stream] is set for
+   an aggregate's spec, where a field with no subject is about the aggregate. *)
+let transform_structure ?(stream = false) (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_type (rf, decls) ->
-      { item with pstr_desc = Pstr_type (rf, List.map transform_type_decl decls) }
+      { item with pstr_desc = Pstr_type (rf, List.map (transform_type_decl ~stream) decls) }
     | _ -> item
   ) str

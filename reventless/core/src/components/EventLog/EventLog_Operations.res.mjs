@@ -40,9 +40,11 @@ function Make(Spec) {
       let failure;
       for (let i = 0, i_finish = events$p.length; i < i_finish; ++i) {
         if (Stdlib_Option.isNone(failure)) {
-          let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(events$p[i].event, Spec.eventSchema));
+          let event$p = events$p[i];
+          let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
           let eventType = match[0];
-          let e = await Pii$Reventless.sealData(Spec.eventSchema, eventType, match[1]);
+          let streamId = Spec.Id.toString(event$p.id);
+          let e = await Pii$Reventless.sealData(Spec.eventSchema, eventType, streamId, match[1]);
           if (e.TAG === "Ok") {
             let sealed = e._0;
             let field = Pii$Reventless.unsealedField(Spec.eventSchema, eventType, sealed);
@@ -316,7 +318,7 @@ function Make(Spec) {
     let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.mapEffect(stream, event => Effect$1.promise(async () => {
       let match = Message$ReventlessCore.splitMessage(Message$ReventlessCore.encode(event, Spec.eventSchema));
       let eventType = match[0];
-      let sealed = await Pii$Reventless.sealData(Spec.eventSchema, eventType, match[1]);
+      let sealed = await Pii$Reventless.sealData(Spec.eventSchema, eventType, Spec.Id.toString(id), match[1]);
       let sealed$1;
       sealed$1 = sealed.TAG === "Ok" ? sealed._0 : Stdlib_JsError.throwWithMessage(`EventLog.appendStream: cannot seal ` + eventType + `: ` + Pii$Reventless.errorMessage(sealed._0));
       return Object.fromEntries([

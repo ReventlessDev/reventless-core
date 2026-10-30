@@ -72,11 +72,11 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     let failure = ref(None)
     for i in 0 to events'->Array.length - 1 {
       if failure.contents->Option.isNone {
-        let (eventType, data) =
-          (events'->Array.getUnsafe(i)).event
-          ->Message.encode(Spec.eventSchema)
-          ->Message.splitMessage
-        switch await Reventless.Pii.sealData(Spec.eventSchema, ~eventType, data) {
+        let event' = events'->Array.getUnsafe(i)
+        let (eventType, data) = event'.event->Message.encode(Spec.eventSchema)->Message.splitMessage
+        // The aggregate is the subject of a field that names none.
+        let streamId = event'.id->Spec.Id.toString
+        switch await Reventless.Pii.sealData(Spec.eventSchema, ~eventType, ~streamId, data) {
         | Error(e) => failure := Some(`cannot seal ${eventType}: ${e->Reventless.Pii.errorMessage}`)
         | Ok(sealed) =>
           switch Reventless.Pii.unsealedField(Spec.eventSchema, ~eventType, sealed) {
@@ -360,7 +360,12 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       stream->Stream.mapEffect(event =>
         Effect.promise(async () => {
           let (eventType, data) = event->Message.encode(Spec.eventSchema)->Message.splitMessage
-          let sealed = switch await Reventless.Pii.sealData(Spec.eventSchema, ~eventType, data) {
+          let sealed = switch await Reventless.Pii.sealData(
+            Spec.eventSchema,
+            ~eventType,
+            ~streamId=id->Spec.Id.toString,
+            data,
+          ) {
           | Ok(sealed) => sealed
           | Error(e) =>
             JsError.throwWithMessage(
