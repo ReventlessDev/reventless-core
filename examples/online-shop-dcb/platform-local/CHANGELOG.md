@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.305 (2026-10-30)
+
+### Features
+
+* **examples:** the customer's email and address are marked personal data ([768e985](https://github.com/ReventlessDev/reventless-core/commit/768e9853c4943eaad8926b9cb4df55e2a54f4fa8))
+
+
 # 1.0.0-alpha.304 (2026-10-30)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local

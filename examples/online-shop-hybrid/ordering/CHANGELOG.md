@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.301 (2026-10-30)
+
+### Features
+
+* **examples:** the customer's email and address are marked personal data ([768e985](https://github.com/ReventlessDev/reventless-core/commit/768e9853c4943eaad8926b9cb4df55e2a54f4fa8))
+* **trait-address-geocoding:** the address is personal data ([865d811](https://github.com/ReventlessDev/reventless-core/commit/865d811b0dc801a32d7f9de3a50e7a5089a13b48))
+
+
 # 1.0.0-alpha.300 (2026-10-30)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

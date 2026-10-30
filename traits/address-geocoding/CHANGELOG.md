@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.71 (2026-10-30)
+
+### Bug Fixes
+
+* **trait-address-geocoding:** the scaffold's conformance binding wraps the address ([b447daa](https://github.com/ReventlessDev/reventless-core/commit/b447daa515d1352023a1a672df8751cdd2a85877))
+### Features
+
+* **trait-address-geocoding:** the address is personal data ([865d811](https://github.com/ReventlessDev/reventless-core/commit/865d811b0dc801a32d7f9de3a50e7a5089a13b48))
+
+
 # 1.0.0-alpha.70 (2026-10-30)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding
