@@ -93,7 +93,7 @@ function evolve(state, event) {
       return {
         TAG: "Active",
         email: state.email,
-        address: event.address,
+        address: Pii$Reventless.getOr(event.address, ""),
         location: undefined,
         locationResolvedFrom: undefined,
         verifiedEmail: state.verifiedEmail
@@ -104,11 +104,11 @@ function evolve(state, event) {
         email: state.email,
         address: state.address,
         location: event.location,
-        locationResolvedFrom: event.resolvedFrom,
+        locationResolvedFrom: Pii$Reventless.toOption(event.resolvedFrom),
         verifiedEmail: state.verifiedEmail
       };
     case "AddressLocated" :
-      let address = event.address;
+      let address = Pii$Reventless.getOr(event.address, "");
       return {
         TAG: "Active",
         email: state.email,
@@ -123,7 +123,7 @@ function evolve(state, event) {
         email: state.email,
         address: state.address,
         location: undefined,
-        locationResolvedFrom: event.address,
+        locationResolvedFrom: Pii$Reventless.toOption(event.address),
         verifiedEmail: state.verifiedEmail
       };
     case "EmailVerified" :
@@ -258,7 +258,10 @@ function decide(state, command) {
           resolvedFrom: state.locationResolvedFrom
         }, address), {
           TAG: "AddressUpdated",
-          address: address
+          address: {
+            TAG: "Value",
+            _0: address
+          }
         });
       case "SetAddressLocation" :
         let location = command.location;
@@ -269,7 +272,10 @@ function decide(state, command) {
           resolvedFrom: state.locationResolvedFrom
         }, address$1, location), {
           TAG: "AddressLocated",
-          address: address$1,
+          address: {
+            TAG: "Value",
+            _0: address$1
+          },
           location: location
         });
       case "SetLocation" :
@@ -282,7 +288,10 @@ function decide(state, command) {
         }, location$1, resolvedFrom), {
           TAG: "LocationSet",
           location: location$1,
-          resolvedFrom: resolvedFrom
+          resolvedFrom: {
+            TAG: "Value",
+            _0: resolvedFrom
+          }
         });
       case "MarkAddressUnresolvable" :
         let address$2 = command.address;
@@ -292,7 +301,10 @@ function decide(state, command) {
           resolvedFrom: state.locationResolvedFrom
         }, address$2), {
           TAG: "AddressUnresolvable",
-          address: address$2,
+          address: {
+            TAG: "Value",
+            _0: address$2
+          },
           reason: command.reason
         });
       case "MarkEmailVerified" :

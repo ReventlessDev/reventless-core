@@ -13,7 +13,7 @@
 @schema
 type consumedEvent =
   | Registered({@pii email: string, @pii address: string})
-  | AddressUpdated({address: string})
+  | AddressUpdated({@pii address: string})
 
 @schema
 type outboundItem = {customerId: string, @pii("customerId") address: string}

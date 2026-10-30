@@ -10,7 +10,10 @@ let collect = (event, ~sourceId) =>
     ]
   // An erased customer is owed nothing.
   | Registered(_) => []
-  | AddressUpdated({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
+  | AddressUpdated({address: Value(address)}) => [
+      (`${sourceId}:${address}`, {customerId: sourceId, address}),
+    ]
+  | AddressUpdated(_) => []
   }
 
 // Asking the geocoder and reading its answer are the trait's — including the

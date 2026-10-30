@@ -88,7 +88,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([
       Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
     ])
-    ->CustomerGwt.whenEvent(Customer.AddressUpdated({address: "789 Pine"}))
+    ->CustomerGwt.whenEvent(Customer.AddressUpdated({address: Value("789 Pine")}))
     ->CustomerGwt.thenState({
       Customers.customerId: id,
       email: "alice@x.y",
@@ -106,7 +106,10 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customer.Registered({email: Value("alice@x.y"), address: Value("123 Main")}),
     ])
     ->CustomerGwt.whenEvent(
-      Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
+      Customer.LocationSet({
+        location: {lat: 51.2093, lng: 3.2247},
+        resolvedFrom: Value("123 Main"),
+      }),
     )
     ->CustomerGwt.thenState({
       Customers.customerId: id,

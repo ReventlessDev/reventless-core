@@ -15,9 +15,15 @@ module Binding = {
   let created = address => [
     Customer.Registered({email: Value("alice@x.y"), address: Value(address)}),
   ]
-  let subjectChanged = address => Customer.AddressUpdated({address: address})
-  let located = (~point, ~resolvedFrom) => Customer.LocationSet({location: point, resolvedFrom})
-  let unresolvable = (~subject, ~reason) => Customer.AddressUnresolvable({address: subject, reason})
+  let subjectChanged = address => Customer.AddressUpdated({address: Value(address)})
+  let located = (~point, ~resolvedFrom) => Customer.LocationSet({
+    location: point,
+    resolvedFrom: Value(resolvedFrom),
+  })
+  let unresolvable = (~subject, ~reason) => Customer.AddressUnresolvable({
+    address: Value(subject),
+    reason,
+  })
   let setLocation = (~point, ~resolvedFrom) => Customer.SetLocation({location: point, resolvedFrom})
   let markUnresolvable = (~subject, ~reason) => Customer.MarkAddressUnresolvable({
     address: subject,
@@ -37,11 +43,13 @@ module Binding = {
   // not be wider than its triggers, and the suite checks exactly that.
   let triggers = address => [
     GeocodeCustomerAddress.Registered({email: Value("alice@x.y"), address: Value(address)}),
-    GeocodeCustomerAddress.AddressUpdated({address: address}),
+    GeocodeCustomerAddress.AddressUpdated({address: Value(address)}),
   ]
   // The stand-down, as a real constructor rather than a type name: a
   // misspelled name would pass the assertion for the wrong reason.
-  let standsDownOn = [Customer.AddressLocated({address: subjectA, location: {lat: 0.0, lng: 0.0}})]
+  let standsDownOn = [
+    Customer.AddressLocated({address: Value(subjectA), location: {lat: 0.0, lng: 0.0}}),
+  ]
   let isLocation = (cmd: GeocodeCustomerAddress.inboundCommand) =>
     switch cmd {
     | SetLocation(_) => true

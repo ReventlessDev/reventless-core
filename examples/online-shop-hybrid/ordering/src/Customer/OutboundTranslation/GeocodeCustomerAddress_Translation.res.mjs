@@ -23,11 +23,19 @@ function collect(event, sourceId) {
       ]];
   }
   let address$2 = event.address;
+  if (typeof address$2 !== "object") {
+    if (address$2 === "Erased") {
+      return [];
+    } else {
+      return [];
+    }
+  }
+  let address$3 = address$2._0;
   return [[
-      sourceId + `:` + address$2,
+      sourceId + `:` + address$3,
       {
         customerId: sourceId,
-        address: address$2
+        address: address$3
       }
     ]];
 }

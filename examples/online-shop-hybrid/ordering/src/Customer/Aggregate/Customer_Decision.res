@@ -75,17 +75,27 @@ let evolve = (state, event) =>
   // A new address invalidates whatever was known about the old one — dropping
   // both is what puts the row back in front of the geocoding slice.
   | (Active(s), AddressUpdated({address})) =>
-    Active({...s, address, location: None, locationResolvedFrom: None})
+    Active({
+      ...s,
+      address: address->Reventless.Pii.getOr(""),
+      location: None,
+      locationResolvedFrom: None,
+    })
   | (Active(s), LocationSet({location, resolvedFrom})) =>
-    Active({...s, location: Some(location), locationResolvedFrom: Some(resolvedFrom)})
+    Active({
+      ...s,
+      location: Some(location),
+      locationResolvedFrom: resolvedFrom->Reventless.Pii.toOption,
+    })
   // Both halves at once, from a client. `locationResolvedFrom` is the address
   // itself: the caller supplied the pair, so there is nothing left to resolve.
   | (Active(s), AddressLocated({address, location})) =>
+    let address = address->Reventless.Pii.getOr("")
     Active({...s, address, location: Some(location), locationResolvedFrom: Some(address)})
   // Tried, and no usable answer. Recording the address keeps the slice from
   // handing it back for another round.
   | (Active(s), AddressUnresolvable({address})) =>
-    Active({...s, location: None, locationResolvedFrom: Some(address)})
+    Active({...s, location: None, locationResolvedFrom: address->Reventless.Pii.toOption})
   | (
       Active({email, address, location, locationResolvedFrom, verifiedEmail}),
       Customer.Deactivated,
@@ -149,27 +159,27 @@ let decide = (state, command) =>
     Guards.onSubjectUpdate(
       resolution(s.address, s.location, s.locationResolvedFrom),
       ~subject=address,
-    )->appended(AddressUpdated({address: address}))
+    )->appended(AddressUpdated({address: Value(address)}))
 
   | (Active(s), SetAddressLocation({address, location})) =>
     Guards.onSuppliedPair(
       resolution(s.address, s.location, s.locationResolvedFrom),
       ~subject=address,
       ~location,
-    )->appended(AddressLocated({address, location}))
+    )->appended(AddressLocated({address: Value(address), location}))
 
   | (Active(s), SetLocation({location, resolvedFrom})) =>
     Guards.onLocationReport(
       resolution(s.address, s.location, s.locationResolvedFrom),
       ~location,
       ~resolvedFrom,
-    )->appended(LocationSet({location, resolvedFrom}))
+    )->appended(LocationSet({location, resolvedFrom: Value(resolvedFrom)}))
 
   | (Active(s), MarkAddressUnresolvable({address, reason})) =>
     Guards.onUnresolvableReport(
       resolution(s.address, s.location, s.locationResolvedFrom),
       ~subject=address,
-    )->appended(AddressUnresolvable({address, reason}))
+    )->appended(AddressUnresolvable({address: Value(address), reason}))
 
   // 🚨 The security control at the host boundary. A verdict naming an address
   // the customer has since changed is dropped rather than applied — and it is

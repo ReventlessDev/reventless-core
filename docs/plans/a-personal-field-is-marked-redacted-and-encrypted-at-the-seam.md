@@ -267,10 +267,11 @@ geocoding and verification translations, and the notification chain (`RecipientA
 came out of it: in an aggregate's spec a field naming no subject is about the aggregate
 (sealed under the stream id), and a `consumedEvent` field needs no subject. Decisions and
 projections that keep a value unwrap it with `Pii.getOr("")`; translations owe an erased
-customer nothing. Still plain: the geocoding trait's spliced events (`AddressUpdated` and
-its siblings carry the address), and the outbound work items of the verification,
-geocoding and recipient translations, which key by `customerId:address`, so the address is
-in a table key, which cannot be erased.
+customer nothing. The two left plain that day were closed the same day: an outbound work item with
+`@pii` fields is sealed in its row and keyed by a fingerprint of the key `collect` chose
+(`5588bbe`), and the geocoding trait marks the address in its four events and its commands,
+its scaffold printing the same handling into a new host. Still open: an automation's work
+items, whose rows have the same shape.
 
 ### PD3: the envelope
 

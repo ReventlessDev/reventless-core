@@ -97,7 +97,7 @@ function project(param) {
         }
       };
     case "AddressUpdated" :
-      let address$1 = event.address;
+      let address$1 = Pii$Reventless.getOr(event.address, "");
       return {
         TAG: "Update",
         _0: id,
@@ -127,7 +127,7 @@ function project(param) {
       };
     case "AddressLocated" :
       let location$1 = event.location;
-      let address$2 = event.address;
+      let address$2 = Pii$Reventless.getOr(event.address, "");
       return {
         TAG: "Update",
         _0: id,

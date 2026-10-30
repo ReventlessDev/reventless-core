@@ -49,7 +49,7 @@ describe("Customer Decision", () => {
   test("UpdateAddress on active customer produces AddressUpdated", () =>
     givenEvents([Registered({email: Value(aliceEmail), address: Value(mainStreet)})])
     ->whenCmd(UpdateAddress({address: "789 Pine"}))
-    ->thenEvent(AddressUpdated({address: "789 Pine"}))
+    ->thenEvent(AddressUpdated({address: Value("789 Pine")}))
   )
 
   // scenario-id: 997eb9bf-32ba-4b94-b73b-be81e3700715
@@ -66,17 +66,17 @@ describe("Customer Decision", () => {
   test("SetAddressLocation with the same address but a new point is a correction", () =>
     givenEvents([
       Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
-      LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}),
+      LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: Value("123 Main")}),
     ])
     ->whenCmd(SetAddressLocation({address: "123 Main", location: {lat: 51.5, lng: 3.5}}))
-    ->thenEvent(AddressLocated({address: "123 Main", location: {lat: 51.5, lng: 3.5}}))
+    ->thenEvent(AddressLocated({address: Value("123 Main"), location: {lat: 51.5, lng: 3.5}}))
   )
 
   // scenario-id: d1776e95-e536-4b16-9d8b-652546c77b0c
   test("SetAddressLocation repeating both halves is idempotent", () =>
     givenEvents([
       Registered({email: Value(aliceEmail), address: Value(mainStreet)}),
-      AddressLocated({address: "123 Main", location: {lat: 51.5, lng: 3.5}}),
+      AddressLocated({address: Value("123 Main"), location: {lat: 51.5, lng: 3.5}}),
     ])
     ->whenCmd(SetAddressLocation({address: "123 Main", location: {lat: 51.5, lng: 3.5}}))
     ->thenNoEvent

@@ -37,6 +37,11 @@ no error. A host that spells this reaches a deploy-time refusal instead.
 */
 let capabilityNeeds: array<Reventless.CapabilityNeed.t> = [Geocoding]
 
+// The address is personal data, about the entity the host's aggregate is: each
+// field is marked by hand (this is not a spec file, so no PPX pass runs), with the
+// aggregate as its subject, sealed under the stream id the event log passes. The
+// events read `Pii.t<string>`; the commands keep their type and stay out of logs.
+
 /**
 The four facts the graft appends, as real constructors a host splices into its own
 event type:
@@ -67,18 +72,35 @@ record inside it would turn every reshaping release into a migration.
 type events =
   /** A new address invalidates what was resolved, which is what puts the row back
       in front of the slice. */
-  | AddressUpdated({address: string})
+  | AddressUpdated({
+      address: @s.matches(Reventless.Pii.marked(~subject=Reventless.Pii.streamSubject, S.string))
+      Reventless.Pii.t<string>,
+    })
   /** `resolvedFrom` is provenance, not the address of record; it is what makes "is
       the pin still current?" decidable rather than assumed. */
-  | LocationSet({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  | LocationSet({
+      location: Reventless.GeoPoint.t,
+      resolvedFrom: @s.matches(
+        Reventless.Pii.marked(~subject=Reventless.Pii.streamSubject, S.string)
+      )
+      Reventless.Pii.t<string>,
+    })
   /** Both halves from a client. Deliberately not `AddressUpdated` + `LocationSet`:
       the slice collects the former, so emitting it here would spend a request
       re-geocoding an address a human just pinned, then race the machine's answer
       against theirs. This event is not in the slice's consumed set — the stand-down. */
-  | AddressLocated({address: string, location: Reventless.GeoPoint.t})
+  | AddressLocated({
+      address: @s.matches(Reventless.Pii.marked(~subject=Reventless.Pii.streamSubject, S.string))
+      Reventless.Pii.t<string>,
+      location: Reventless.GeoPoint.t,
+    })
   /** A fact, not an absence: `location: None` already means "not looked up yet",
       and one state meaning two things is one nobody can act on. */
-  | AddressUnresolvable({address: string, reason: string})
+  | AddressUnresolvable({
+      address: @s.matches(Reventless.Pii.marked(~subject=Reventless.Pii.streamSubject, S.string))
+      Reventless.Pii.t<string>,
+      reason: string,
+    })
 
 /**
 The two commands the outbound slice reports its answer through, as constructors a
@@ -93,8 +115,18 @@ on this union — so a host that splices these does not publish them.
 */
 @schema
 type reportCommands =
-  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
-  | @noApi MarkAddressUnresolvable({address: string, reason: string})
+  | @noApi
+  SetLocation({
+      location: Reventless.GeoPoint.t,
+      resolvedFrom: @s.matches(Reventless.Pii.mark(~subject=Reventless.Pii.streamSubject, S.string))
+      string,
+    })
+  | @noApi
+  MarkAddressUnresolvable({
+      address: @s.matches(Reventless.Pii.mark(~subject=Reventless.Pii.streamSubject, S.string))
+      string,
+      reason: string,
+    })
 
 /**
 The two commands a caller changes the address through, as constructors a host
@@ -120,11 +152,18 @@ correction too, as the same address with a new point.
 @schema
 type addressCommands =
   /** Change the address and let the geocoder find the point. */
-  | UpdateAddress({address: string})
+  | UpdateAddress({
+      address: @s.matches(Reventless.Pii.mark(~subject=Reventless.Pii.streamSubject, S.string))
+      string,
+    })
   /** Change the address *and* say where it is — a client that already has a
       point, because it geocoded or a human dragged the pin. Suppresses the
       geocoder for this address, there being nothing left to look up. */
-  | SetAddressLocation({address: string, location: Reventless.GeoPoint.t})
+  | SetAddressLocation({
+      address: @s.matches(Reventless.Pii.mark(~subject=Reventless.Pii.streamSubject, S.string))
+      string,
+      location: Reventless.GeoPoint.t,
+    })
 
 /** One host, bound. Written over an abstract `subject` (the address) so retyping it
     is a re-instantiation of this module, not a break in the trait. */

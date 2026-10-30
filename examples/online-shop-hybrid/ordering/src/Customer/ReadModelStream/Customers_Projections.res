@@ -56,11 +56,13 @@ module CustomerMapping = Mapping.Make(
       | EmailVerified(_) => Update(id, state => {...state, emailVerified: true})
       // A new address invalidates the pin: back to Pending for the new one.
       | AddressUpdated({address}) =>
+        let address = address->Reventless.Pii.getOr("")
         Update(id, state => {...state, address, geolocation: Pending({requestedFor: address})})
       | LocationSet({location}) =>
         Update(id, state => {...state, geolocation: Located({point: location})})
       // The client supplied the pair, so no geocode is owed.
       | AddressLocated({address, location}) =>
+        let address = address->Reventless.Pii.getOr("")
         Update(id, state => {...state, address, geolocation: Located({point: location})})
       | AddressUnresolvable({reason: why}) =>
         Update(id, state => {...state, geolocation: Unresolvable({reason: why})})

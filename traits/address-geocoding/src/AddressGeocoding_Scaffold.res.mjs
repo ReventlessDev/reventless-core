@@ -45,7 +45,7 @@ function lines(ls) {
 
 function createdPayload(c, n, values) {
   let extra = values ? Stdlib_Option.getOr(c.createdValues, []) : Stdlib_Option.getOr(c.createdFields, []);
-  let own = values ? n.subject : n.subject + ": string";
+  let own = values ? n.subject + ": Value(" + n.subject + ")" : "@pii " + n.subject + ": string";
   return extra.concat([own]).join(", ");
 }
 
@@ -67,10 +67,10 @@ function sliceSpec(c) {
     `@schema`,
     `type consumedEvent =`,
     `  | ` + c.created + `({` + createdPayload(c, n, false) + `})`,
-    `  | ` + n.updated + `({` + n.subject + `: string})`,
+    `  | ` + n.updated + `({@pii ` + n.subject + `: string})`,
     ``,
     `@schema`,
-    `type outboundItem = {` + c.entityId + `: string, ` + n.subject + `: string}`,
+    `type outboundItem = {` + c.entityId + `: string, @pii("` + c.entityId + `") ` + n.subject + `: string}`,
     ``,
     `@schema`,
     `type inboundCommand =`,
@@ -105,7 +105,7 @@ function sliceSpec(c) {
 function sliceTranslation(c) {
   let n = namesOf(c);
   let key = "`${sourceId}:${" + n.subject + "}`";
-  let collectArm = event => "  | " + event + "({" + n.subject + "}) => [(" + key + ", {" + c.entityId + ": sourceId, " + n.subject + "})]";
+  let collectArm = event => "  | " + event + "({" + n.subject + ": Value(" + n.subject + ")}) => [(" + key + ", {" + c.entityId + ": sourceId, " + n.subject + "})]";
   return [
     `@@reventless.translation`,
     ``,
@@ -116,6 +116,8 @@ function sliceTranslation(c) {
     `  switch event {`,
     collectArm(c.created),
     collectArm(n.updated),
+    `  // An erased entity is owed nothing.`,
+    `  | ` + c.created + `(_) | ` + n.updated + `(_) => []`,
     `  }`,
     ``,
     `// Asking the geocoder and reading its answer are the trait's — including the`,
@@ -171,11 +173,11 @@ function conformanceBinding(c) {
     `  module Decision = ` + c.entity + `_Decision`,
     ``,
     `  let created = ` + n.subject + ` => [` + c.entity + `.` + createdValue + `]`,
-    `  let subjectChanged = ` + n.subject + ` => ` + c.entity + `.` + n.updated + `({` + n.subject + `: ` + n.subject + `})`,
+    `  let subjectChanged = ` + n.subject + ` => ` + c.entity + `.` + n.updated + `({` + n.subject + `: Value(` + n.subject + `)})`,
     `  let located = (~point, ~resolvedFrom) =>`,
-    `    ` + c.entity + `.LocationSet({location: point, resolvedFrom})`,
+    `    ` + c.entity + `.LocationSet({location: point, resolvedFrom: Value(resolvedFrom)})`,
     `  let unresolvable = (~subject, ~reason) =>`,
-    `    ` + c.entity + `.` + n.unresolvable + `({` + n.subject + `: subject, reason})`,
+    `    ` + c.entity + `.` + n.unresolvable + `({` + n.subject + `: Value(subject), reason})`,
     `  let setLocation = (~point, ~resolvedFrom) =>`,
     `    ` + c.entity + `.SetLocation({location: point, resolvedFrom})`,
     `  let markUnresolvable = (~subject, ~reason) =>`,
@@ -246,12 +248,12 @@ function aggregatePatch(c) {
     ] : [
       `  // Spelled out rather than spliced: this host calls the subject`,
       `  // "` + n.subject + `", and a spread cannot rename what it splices.`,
-      `  | ` + n.updateCmd + `({` + n.subject + `: string})`,
-      `  | ` + n.suppliedPairCmd + `({` + n.subject + `: string, location: Reventless.GeoPoint.t})`,
+      `  | ` + n.updateCmd + `({@pii ` + n.subject + `: string})`,
+      `  | ` + n.suppliedPairCmd + `({@pii ` + n.subject + `: string, location: Reventless.GeoPoint.t})`,
       `  // Deliberately unguarded — legal in every state, \`Ok([])\` on a retired`,
       `  // entity, so an in-flight answer never parks a TODO row forever.`,
-      `  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})`,
-      `  | @noApi ` + n.markUnresolvableCmd + `({` + n.subject + `: string, reason: string})`
+      `  | @noApi SetLocation({location: Reventless.GeoPoint.t, @pii resolvedFrom: string})`,
+      `  | @noApi ` + n.markUnresolvableCmd + `({@pii ` + n.subject + `: string, reason: string})`
     ];
   let eventArms = n.spreadable ? [
       `  // The graft's four facts, spliced from the trait: \`` + n.updated + `\`,`,
@@ -260,16 +262,16 @@ function aggregatePatch(c) {
       `  // flat, so the wire format is what hand-written arms produced.`,
       `  | ...TraitAddressGeocoding.AddressGeocoding.events`
     ] : [
-      `  | ` + n.updated + `({` + n.subject + `: string})`,
+      `  | ` + n.updated + `({@pii ` + n.subject + `: string})`,
       `  // \`resolvedFrom\` is provenance, not the ` + n.subject + ` of record; it is what`,
       `  // makes "is the pin still current?" decidable.`,
-      `  | LocationSet({location: Reventless.GeoPoint.t, resolvedFrom: string})`,
+      `  | LocationSet({location: Reventless.GeoPoint.t, @pii resolvedFrom: string})`,
       `  // Both halves from a client. Not \`` + n.updated + `\` + \`LocationSet\`: the slice`,
       `  // collects the former, and this event is not in its consumed set — the`,
       `  // stand-down.`,
-      `  | ` + n.located + `({` + n.subject + `: string, location: Reventless.GeoPoint.t})`,
+      `  | ` + n.located + `({@pii ` + n.subject + `: string, location: Reventless.GeoPoint.t})`,
       `  // A fact, not an absence: \`location: None\` already means "not looked up yet".`,
-      `  | ` + n.unresolvable + `({` + n.subject + `: string, reason: string})`
+      `  | ` + n.unresolvable + `({@pii ` + n.subject + `: string, reason: string})`
     ];
   return {
     into: `Aggregate/` + c.entity + `.res`,
@@ -305,12 +307,15 @@ function decisionPatch(c) {
       `// --- evolve arms -------------------------------------------------------------`,
       `  // A new ` + n.subject + ` invalidates what was known; dropping both puts the row`,
       `  // back in front of the slice.`,
+      `  // The ` + n.subject + ` is personal data: it reads \`Erased\` once the entity is`,
+      `  // erased, and the state then holds nothing in its place.`,
       `  | (Active(s), ` + n.updated + `({` + n.subject + `})) =>`,
-      `    Active({...s, ` + n.subject + `, location: None, locationResolvedFrom: None})`,
+      `    Active({...s, ` + n.subject + `: ` + n.subject + `->Reventless.Pii.getOr(""), location: None, locationResolvedFrom: None})`,
       `  | (Active(s), LocationSet({location, resolvedFrom})) =>`,
-      `    Active({...s, location: Some(location), locationResolvedFrom: Some(resolvedFrom)})`,
+      `    Active({...s, location: Some(location), locationResolvedFrom: resolvedFrom->Reventless.Pii.toOption})`,
       `  // The caller supplied the pair, so there is nothing left to resolve.`,
       `  | (Active(s), ` + n.located + `({` + n.subject + `, location})) =>`,
+      `    let ` + n.subject + ` = ` + n.subject + `->Reventless.Pii.getOr("")`,
       `    Active({`,
       `      ...s,`,
       `      ` + n.subject + `,`,
@@ -319,7 +324,7 @@ function decisionPatch(c) {
       `    })`,
       `  // Recording the ` + n.subject + ` keeps the slice from handing it back for another round.`,
       `  | (Active(s), ` + n.unresolvable + `({` + n.subject + `})) =>`,
-      `    Active({...s, location: None, locationResolvedFrom: Some(` + n.subject + `)})`,
+      `    Active({...s, location: None, locationResolvedFrom: ` + n.subject + `->Reventless.Pii.toOption})`,
       ``,
       `// --- the trait's view, and what it decides ------------------------------------`,
       `// Built per call, because the inline record of \`Active\` cannot escape its`,
@@ -341,27 +346,27 @@ function decisionPatch(c) {
       `    Guards.onSubjectUpdate(`,
       `      resolution(s.` + n.subject + `, s.location, s.locationResolvedFrom),`,
       `      ~subject=` + n.subject + `,`,
-      `    )->appended(` + n.updated + `({` + n.subject + `: ` + n.subject + `}))`,
+      `    )->appended(` + n.updated + `({` + n.subject + `: Value(` + n.subject + `)}))`,
       ``,
       `  | (Active(s), ` + n.suppliedPairCmd + `({` + n.subject + `, location})) =>`,
       `    Guards.onSuppliedPair(`,
       `      resolution(s.` + n.subject + `, s.location, s.locationResolvedFrom),`,
       `      ~subject=` + n.subject + `,`,
       `      ~location,`,
-      `    )->appended(` + n.located + `({` + n.subject + `, location}))`,
+      `    )->appended(` + n.located + `({` + n.subject + `: Value(` + n.subject + `), location}))`,
       ``,
       `  | (Active(s), SetLocation({location, resolvedFrom})) =>`,
       `    Guards.onLocationReport(`,
       `      resolution(s.` + n.subject + `, s.location, s.locationResolvedFrom),`,
       `      ~location,`,
       `      ~resolvedFrom,`,
-      `    )->appended(LocationSet({location, resolvedFrom}))`,
+      `    )->appended(LocationSet({location, resolvedFrom: Value(resolvedFrom)}))`,
       ``,
       `  | (Active(s), ` + n.markUnresolvableCmd + `({` + n.subject + `, reason})) =>`,
       `    Guards.onUnresolvableReport(`,
       `      resolution(s.` + n.subject + `, s.location, s.locationResolvedFrom),`,
       `      ~subject=` + n.subject + `,`,
-      `    )->appended(` + n.unresolvable + `({` + n.subject + `, reason}))`,
+      `    )->appended(` + n.unresolvable + `({` + n.subject + `: Value(` + n.subject + `), reason}))`,
       ``,
       `  // TODO(graft): the two report commands must be legal in every state this`,
       `  // host has. On a retired entity, swallow rather than refuse — an in-flight`,
@@ -392,6 +397,7 @@ function projectionPatch(c) {
       ``,
       `// A new ` + n.subject + ` invalidates the pin: back to Pending for the new one.`,
       `| ` + n.updated + `({` + n.subject + `}) =>`,
+      `  let ` + n.subject + ` = ` + n.subject + `->Reventless.Pii.getOr("")`,
       `  Update(id, state => {`,
       `    ...state,`,
       `    ` + n.subject + `,`,
@@ -401,6 +407,7 @@ function projectionPatch(c) {
       `  Update(id, state => {...state, geolocation: Located({point: location})})`,
       `// The client supplied the pair, so no geocode is owed.`,
       `| ` + n.located + `({` + n.subject + `, location}) =>`,
+      `  let ` + n.subject + ` = ` + n.subject + `->Reventless.Pii.getOr("")`,
       `  Update(id, state => {...state, ` + n.subject + `, geolocation: Located({point: location})})`,
       `| ` + n.unresolvable + `({reason: why}) =>`,
       `  Update(id, state => {...state, geolocation: Unresolvable({reason: why})})`

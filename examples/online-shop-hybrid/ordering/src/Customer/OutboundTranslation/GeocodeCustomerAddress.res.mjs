@@ -13,7 +13,7 @@ let consumedEventSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "AddressUpdated",
-    address: s.m(Sury.string)
+    address: s.m(Pii$Reventless.marked("$stream", undefined, Sury.string))
   }))
 ]);
 
