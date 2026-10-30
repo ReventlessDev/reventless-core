@@ -146,7 +146,10 @@ function buildAggregateParts(specModule, decisionModule, eventLogTableName, queu
   const eventLogOps = eventLogOperationsMake(patchedSpec)({
     Spec: patchedSpec,
     EventTopic: { Spec: patchedSpec },
-    eventTopic: { publish: async () => {} },
+    // A no-op topic: on AWS the event log's DynamoDB stream is what publishes.
+    // Every operation EventLog_Operations calls must be here, under its field
+    // name — append calls `publishJson` since events are sealed at append.
+    eventTopic: { publish: async () => {}, publishJson: async () => {} },
     storage: rawStorageOps,
   });
   // `eventLogOps` is the compiled MODULE standing in for the `EventLog.operations`
