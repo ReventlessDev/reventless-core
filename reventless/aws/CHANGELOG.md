@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.414 (2026-10-30)
+
+### Bug Fixes
+
+* **core:** the envelope replay is reachable from the deployed aggregate handler ([4f42ed1](https://github.com/ReventlessDev/reventless-core/commit/4f42ed190482c9f3de90357a1f7509e943ed1a04))
+
+
 # 3.0.0-alpha.413 (2026-10-30)
 
 ### Features
