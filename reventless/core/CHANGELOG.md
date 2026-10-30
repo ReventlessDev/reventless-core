@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.320 (2026-10-30)
+
+### Features
+
+* **pii:** a consumed event's field needs no subject ([e2b71a7](https://github.com/ReventlessDev/reventless-core/commit/e2b71a7f4cc9b5a34db42501e3bb2ee31712a909))
+* **pii:** in an aggregate's spec, a field that names no subject is about the aggregate ([dc77529](https://github.com/ReventlessDev/reventless-core/commit/dc7752955fb97c34fd9512ac79fbd0242f05ce32))
+
+
 # 3.0.0-alpha.319 (2026-10-30)
 
 ### Features

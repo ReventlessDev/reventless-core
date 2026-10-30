@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.188 (2026-10-30)
+
+### Features
+
+* **pii:** in an aggregate's spec, a field that names no subject is about the aggregate ([dc77529](https://github.com/ReventlessDev/reventless-core/commit/dc7752955fb97c34fd9512ac79fbd0242f05ce32))
+
+
 # 3.0.0-alpha.187 (2026-10-30)
 
 ### Features
