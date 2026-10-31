@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.274 (2026-10-31)
+
+### Bug Fixes
+
+* **gwt:** an aggregate's scenarios can hold a todo, as a slice's can ([4101db4](https://github.com/ReventlessDev/reventless-core/commit/4101db4c501e8c935745a3c7e73170d624750039))
+
+
 # 1.0.0-alpha.273 (2026-10-30)
 
 ### Features
