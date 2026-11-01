@@ -7,6 +7,46 @@
 // both backends.
 
 let makeMemoryStorage = (~name as _name, ~opts as _) => {
+  // Every event of the log in the order it was appended, across entities, for
+  // the read that runs newest first. The insertion number is its position.
+  let ordered: array<LocalEventLogRead.stored> = []
+  let keepOrdered = (~track: bool, id: string, jsons: array<JSON.t>) =>
+    jsons->Array.forEach(json => {
+      let position = (ordered->Array.length + 1)->Int.toFloat
+      ordered->Array.push(LocalEventLogRead.storedOfFlat(~log=_name, ~position, ~entityId=id, json))
+      if track {
+        json
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get("msgId"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.forEach(msgId => LocalEventLogRead.note(~log=_name, ~msgId, ~position))
+      }
+    })
+  LocalEventLogRead.register(~log=_name, ~kind=Aggregate, async (
+    ~bound,
+    ~limit,
+    ~correlationId,
+  ) => {
+    let out = []
+    let i = ref(ordered->Array.length - 1)
+    while i.contents >= 0 && out->Array.length < limit {
+      let r = ordered->Array.getUnsafe(i.contents)
+      let inBound = switch bound {
+      | Some(LocalEventLogRead.Below(p)) => r.position < p
+      | Some(AtMost(p)) => r.position <= p
+      | None => true
+      }
+      let inFlow =
+        correlationId->Option.mapOr(true, id =>
+          LocalEventLogRead.metaString(r.meta, "correlationId") == Some(id)
+        )
+      if inBound && inFlow {
+        out->Array.push(r)
+      }
+      i := i.contents - 1
+    }
+    out
+  })
   let eventsRef =
     Stm.TRef.make(Dict.make())
     ->Stm.commit
@@ -16,8 +56,8 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
   // writes are fire-and-forget upserts, so a plain dict suffices (no Stm).
   let snapshots: dict<ReventlessCore.EventLog.snapshot> = Dict.make()
 
-  let append: ReventlessCore.EventLog.append<string, JSON.t> = (seqNr, id, jsons) =>
-    Stm.TRef.modify(eventsRef, events => {
+  let append: ReventlessCore.EventLog.append<string, JSON.t> = async (seqNr, id, jsons) => {
+    let result = await Stm.TRef.modify(eventsRef, events => {
       let existing = events->Dict.get(id)->Option.getOr([])
       let currentCount = existing->Array.length
       if seqNr != currentCount {
@@ -29,6 +69,12 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
     })
     ->Stm.commit
     ->Effect.runPromise
+    switch result {
+    | Ok() => keepOrdered(~track=true, id, jsons)
+    | Error(_) => ()
+    }
+    result
+  }
 
   // The in-memory array is already resident; expose it as a stream for API uniformity.
   // The real performance gain from streaming comes from the DynamoDB adapter.
@@ -83,6 +129,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
         switch result {
         | Ok() =>
           seqNrRef := seqNrRef.contents + 1
+          keepOrdered(~track=false, id, [json])
           Effect.succeed()
         | Error(msg) => Effect.fail(msg)
         }

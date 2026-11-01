@@ -1,7 +1,12 @@
 # Plan: the local platform serves its logs, events and view changes to whoever watches it
 
 **Date:** 2026-10-31<br/>
-**Status:** 📝 Planned 2026-10-31, nothing built.<br/>
+**Status:** 🚧 The feeds built 2026-11-01: [PF1](#pf1-log-sinks-and-the-recent-rings) to
+[PF6](#pf6-mcp-resources-for-recent-logs-and-all-events) and
+[PF11](#pf11-the-feeds-on-the-platform-api-and-its-subscriptions-checked). The chain
+([PF7](#pf7-the-command-outcome-hook-takes-several-listeners) to
+[PF10](#pf10-the-view-change-line)) and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain)
+not started.<br/>
 **Repos:** `reventless-core` only.<br/>
 **Builds on:** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md)
 (a component's log line keeps its invocation's ids; [PF9](#pf9-ids-on-every-log-line) needs it) ·
@@ -36,6 +41,10 @@ query, which stays as it is) · [done/mcp-event-history-resource.md](done/mcp-ev
 >     [PF9](#pf9-ids-on-every-log-line)).
 > - *Does the wire change?* **Only by addition:** new optional fields, new admin fields, new
 >   lines on the feeds. Nothing existing changes shape ([PFD4](#4-decisions)).
+> - *What is built, and where is its wire?* **The feeds, 2026-11-01:** the log feed, the bounded
+>   tap with its filter line, the read across every log, the correlation indexes, the log level
+>   while running, the MCP resources and the two subscriptions. Every line, field and variable
+>   as built is in [§7](#7-the-wire-as-built).
 
 ---
 
@@ -99,6 +108,12 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   `REVENTLESS_LOG_PROBLEM_RING` set them.
 - **Exit:** tests that a record in the ring equals the JSON line's fields, that `detail` is
   redacted in the ring, and that both bounds hold.
+- **Built 2026-11-01.** `Logger.record`, `Logger.addSink` (returns its removal) and
+  `Logger.recordToJson`, which the JSON line now prints, so the line and the record cannot
+  differ. A sink that throws is skipped for that line and noted once, on stderr, never through a
+  sink. The rings are `LocalLogFeed`'s: defaults 5,000 records or 8 MB, and 1,000 warnings and
+  errors or 2 MB; each variable takes `<count>` or `<count>,<bytes>`, and `0` keeps nothing.
+  Tests: `LoggerSinkTest` in core, `LocalFeedTest` in local.
 
 ### PF2: one bounded feed for the tap and the log feed
 
@@ -120,6 +135,28 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
 - **Exit:** a test with a listener that never reads, which shows the platform's memory flat and
   a `skipped` line on resume; a test that a filter line narrows both feeds; the existing tap
   tests pass unchanged.
+- **Built 2026-11-01**, with these details the step left open ([§7](#7-the-wire-as-built) has
+  the shapes):
+  - **A feed starts when the filter line arrives, or 100 ms after connect without one.** Lines
+    published in between are not sent to that listener: a filtered listener then never receives
+    an unfiltered line, and the existing tap test, which reads one whole line per chunk, passes
+    unchanged. The log feed loses nothing by it, since its rings hold those records; a tap reader
+    finds them with the read of [PF4](#pf4-one-read-across-all-event-logs).
+  - **Each feed applies the filter fields that fit its lines** and ignores the rest, so one
+    filter line can go to both: the tap narrows by plugins, event types and correlation id; the
+    log feed by plugins, minimum level, components and correlation id. A line without the field
+    a filter names (a log line with no correlation id, say) does not pass it.
+  - **The `skipped` line is sent bare on both feeds**, without the tap's sentinel prefix, so a
+    reader that picks tap lines by the prefix passes over it as it does over any other line.
+  - **The per-listener queue** holds 10,000 lines or 8 MB on the tap, 16 MB on the log feed (so
+    the rings fit). The test writes 20 MB to a paused reader: the platform holds no more than the
+    queue and one socket buffer, and every line is either received or counted as skipped.
+  - **The tap's `log` and `position`**: each storage notes an event's position as it appends it,
+    and the bus takes the note when it publishes the event. Both are absent on an event
+    published without a log. Postgres returns one cursor per DCB append, so the local platform
+    reads the positions of that append's events back once.
+  Tests: `LocalFeedTest`, `LocalEventLogReadTest` (the tap line), and the existing
+  `LocalEventTapTest`, `EventTapTest` and `LocalPlatformRegistryTest`, unchanged.
 
 ### PF3: the log level while running
 
@@ -130,6 +167,14 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   comp, level)` (mutation, admin-checked). A level set this way lasts until the platform stops.
 - **Exit:** tests that a level per component wins over the plugin's, which wins over the
   default, which wins over `LOG_LEVEL`; a line below its level never reaches a sink.
+- **Built 2026-11-01.** `Logger.setLevel(~plugin?, ~comp?, level)`, where `None` removes a level
+  so the next wider one applies again. A level can also be set for one component of one plugin,
+  which wins over the component's. `Platform_SetLogLevel` with `level: null` removes one, and
+  both fields return the `base` (`LOG_LEVEL` or the platform default) beside the settings. A line
+  logged through the Effect helpers is gated by its component's level at the call; a level set
+  for a plugin that only the line's `plugin` annotation names is applied when the line is
+  written, and only while some level is set, so lines logged without the helpers keep today's
+  behaviour. Tests: `LoggerSinkTest`, `LocalPlatformObserveTest`.
 
 ### PF4: one read across all event logs
 
@@ -149,6 +194,19 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   - Postgres reads by `global_seq`.
 - **Exit:** tests on SQLite, memory and Postgres with two plugins, aggregate and DCB logs: pages
   join without a gap or a double while events are appended; every filter narrows.
+- **Built 2026-11-01** in `LocalEventLogRead`, as [PFQ1](#5-open-questions) recommends:
+  - **A stored aggregate event is flat** (`Message.storedEventToFlatJson`: the meta fields sit
+    beside `event`, `data` and `recordedAt`), and it has its own `recordedAt`; the read puts the
+    meta back together and orders by that time.
+  - **Positions:** an aggregate log's row id on SQLite, its `global_seq` on Postgres, and, in
+    memory, its insertion number from a new ordered list beside the per-entity one; a DCB log's
+    `position`, on Postgres the numeric column rather than the read cursor. A new index on
+    `event_log(log_name)` on SQLite and `(log_name, global_seq)` on Postgres serve the read.
+  - **The first page pins each log at its newest event**, so events appended while a reader
+    pages are newer than every page and are left to the tap. The cursor is URL-safe base64, so
+    it can travel in the MCP resource's query string.
+  Tests: `LocalEventLogReadTest` on memory and SQLite. Its Postgres case runs only with
+  `PG_URL`; no Postgres was reachable when it was built, so it has not run yet.
 
 ### PF5: the correlation index
 
@@ -160,6 +218,13 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   ([`PgSchema.res`](../../reventless/postgres/src/PgSchema.res)).
 - **Exit:** the query plan of a correlation filter in [PF4](#pf4-one-read-across-all-event-logs)
   uses the index, on both stores.
+- **Built 2026-11-01, with two changes.** The path is `$.correlationId` on `event_log`, and
+  `payload->>'correlationId'` on Postgres, since the stored aggregate event is flat (see
+  [PF4](#pf4-one-read-across-all-event-logs)); `$.meta.correlationId` matches nothing. Each
+  index leads with `log_name` and the DCB ones end with `position`: with the correlation id
+  alone, SQLite's planner chose the primary key, which also serves the order. Tests in
+  `LocalEventLogReadTest`: the SQLite plans use both indexes, and an existing store gains them on
+  open. The Postgres plan test needs `PG_URL` and has not run yet.
 
 ### PF6: MCP resources for recent logs and all events
 
@@ -169,6 +234,11 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   [PF4](#pf4-one-read-across-all-event-logs)), so an assistant connected to the platform can
   read what happened in a flow.
 - **Exit:** MCP tests that both resources answer and filter.
+- **Built 2026-11-01** in `LocalPlatformObserve`, as `platform/logs/recent` and
+  `platform/events`: the platform MCP server finds a resource by a name its URI contains, so the
+  `platform/` prefix keeps them apart from a plugin's resources. Their query parameters are in
+  [§7](#7-the-wire-as-built). Tests: `LocalPlatformObserveTest` calls both handlers; the MCP SDK
+  still does not load under Jest, so the server itself is not started.
 
 ### PF7: the command outcome hook takes several listeners
 
@@ -251,6 +321,13 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   admin-checked subscriptions, for readers that speak only HTTP and WebSocket.
 - **Exit:** a test that a subscription without the admin group is refused; both feeds deliver
   filtered records over WebSocket.
+- **Built 2026-11-01.** The WebSocket server builds each operation's context with the server's
+  own factory, from the upgrade request's headers with the client's `connectionParams` on top (a
+  browser cannot set headers on a WebSocket). Each subscription value is one feed line as JSON,
+  the same lines the sockets send, `skipped` included; a subscriber is one more listener on the
+  feed, with its queue and filter. The two feed subscriptions check the admin group themselves,
+  so they are checked also when one API serves both. Tests: `PlatformSubscriptionsTest`, over a
+  real WebSocket.
 
 ### PF12: the CloudWatch guide follows the chain
 
@@ -315,3 +392,99 @@ was sent, as its callers expect.
 - The platform API's subscriptions refuse a caller without the admin group.
 - The CloudWatch guide's correlation-id timeline crosses an automation.
 - `pnpm test` passes on memory, SQLite and Postgres.
+
+## 7. The wire as built
+
+What a reader outside the platform can rely on, as built on 2026-11-01. Everything is additive
+([PFD4](#4-decisions)).
+
+**The registry entry** (`.reventless/running/<port>.json`) gains `logPort` beside `tapPort`, both
+optional and filled in once the socket is bound.
+
+**Environment:**
+
+| Variable | Values | Default |
+|---|---|---|
+| `REVENTLESS_LOG_FEED` | `off`, `false`, `none`, or a port from 1024 to 65535 | on, ephemeral port |
+| `REVENTLESS_LOG_RING` | `<count>` or `<count>,<bytes>` | `5000,8388608` |
+| `REVENTLESS_LOG_PROBLEM_RING` | `<count>` or `<count>,<bytes>` (warnings and errors) | `1000,2097152` |
+| `REVENTLESS_EVENT_TAP` | unchanged | unchanged |
+
+**The filter line**, which a listener may send once, right after it connects, on either feed:
+
+```json
+{"plugins":["Ordering"],"level":"warn","components":["Aggregate(Order)"],"eventTypes":["Placed"],"correlationId":"…"}
+```
+
+Every field is optional; `level` is `debug`, `info`, `warn` or `error`, in any case. A line that
+is not a JSON object counts as no filter. Without a line, the feed starts after 100 ms
+([PF2](#pf2-one-bounded-feed-for-the-tap-and-the-log-feed)).
+
+**The skipped line**, on both feeds, without a prefix, where the dropped lines would have been:
+
+```json
+{"kind":"skipped","count":412}
+```
+
+**A log feed line** is the record's JSON line, the one stdout prints with
+`REVENTLESS_LOG_FORMAT=json`; the rings come first, oldest first:
+
+```json
+{"time":"2026-11-01T10:00:00.000Z","level":"WARN","message":"…","service":"…","plugin":"Ordering","comp":"Aggregate(Order)","correlationId":"…","detail":{}}
+```
+
+`service`, `plugin`, `comp` and `detail` appear when the record has them; every annotation
+(`correlationId`, `requestId`, …) is a top-level string field.
+
+**A tap line** keeps every field and gains `log` and `position` (a string), when the event was
+stored:
+
+```text
+@@RVLESS_EVT@@ {"event":"domainEvent","seq":17,"topic":"…","service":"…","payload":{},"ts":"…","log":"OrderAggrEventLog","position":"42"}
+```
+
+**The platform API**, every field admin-checked:
+
+```graphql
+Platform_EventLog(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!
+Platform_LogLevels: Platform_LogLevels!
+Platform_SetLogLevel(plugin: String, comp: String, level: Platform_LogLevel): Platform_LogLevels!   # mutation; level null removes
+Platform_LogAppended(filter: Platform_FeedFilter): AWSJSON!     # subscription: one log feed line
+Platform_EventAppended(filter: Platform_FeedFilter): AWSJSON!   # subscription: one tap line, no prefix
+
+input Platform_EventLogFilter {
+  plugins: [String!]  logs: [String!]  eventTypes: [String!]
+  entityId: String  tagKey: String  tagValue: String
+  msgId: String  correlationId: String  causationId: String
+  user: String  timeFrom: String  timeTo: String
+}
+type Platform_EventLogConnection { edges: [Platform_EventLogEdge!]!  pageInfo: Platform_EventLogPageInfo! }
+type Platform_EventLogEdge { node: Platform_EventLogRecord!  cursor: String! }
+type Platform_EventLogPageInfo { hasNextPage: Boolean!  endCursor: String }
+type Platform_EventLogRecord {
+  plugin: String  log: String!  position: String!  eventType: String!
+  entityId: String  tags: [Platform_EventLogTag!]!
+  payload: AWSJSON!  meta: AWSJSON!  recordedAt: String!
+}
+type Platform_EventLogTag { key: String!  value: String! }
+enum Platform_LogLevel { DEBUG INFO WARN ERROR }
+type Platform_LogLevels { base: Platform_LogLevel  settings: [Platform_LogLevelSetting!]! }
+type Platform_LogLevelSetting { plugin: String  comp: String  level: Platform_LogLevel! }
+input Platform_FeedFilter {
+  plugins: [String!]  level: Platform_LogLevel  components: [String!]
+  eventTypes: [String!]  correlationId: String
+}
+```
+
+`Platform_EventLog` runs newest first; `first` defaults to 50 and stops at 1,000. A record's
+`log` and `position` are the tap line's, `meta` is the whole stored meta, `entityId` is an
+aggregate's id, and `tags` a DCB event's. `entityId` in the filter matches an aggregate's id or
+any tag value; `timeFrom` and `timeTo` compare with `recordedAt`.
+
+**The MCP resources** on the platform MCP server:
+
+- `platform/logs/recent?plugins=a,b&level=warn&components=c&correlationId=x&limit=200`: answers
+  `{"records":[…]}`, the log feed's records, oldest first, the most recent `limit` (default 200).
+- `platform/events?plugins=…&logs=…&eventTypes=…&entityId=…&tagKey=…&tagValue=…&msgId=…&correlationId=…&causationId=…&user=…&timeFrom=…&timeTo=…&first=…&after=…`:
+  answers one page, `{"edges":[{"node":…,"cursor":…}],"pageInfo":{"hasNextPage":…,"endCursor":…}}`,
+  the records as in `Platform_EventLog`. Lists are comma separated.

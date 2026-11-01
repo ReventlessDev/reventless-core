@@ -46,6 +46,10 @@ let isConflict = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.isConflict;
 
 let countAll = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.countAll;
 
+let readBackwards = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.readBackwards;
+
+let positionsOfAppend = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.positionsOfAppend;
+
 let makeOps = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.makeOps;
 
 export {
@@ -63,6 +67,8 @@ export {
   pageSize,
   isConflict,
   countAll,
+  readBackwards,
+  positionsOfAppend,
   makeOps,
   makeStorage,
 }

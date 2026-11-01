@@ -61,29 +61,56 @@ type queuedEvent = {
 let eventTapSeq = ref(0)
 // Continues the timeline's #N across restarts for a persistent store.
 let seedEventTapSeq = (n: int) => eventTapSeq := n
-let emitEventTap = (~topic: string, ~service: string, ~payload: JSON.t) => {
+let emitEventTap = (
+  ~topic: string,
+  ~service: string,
+  ~meta: ReventlessCore.Message.meta,
+  ~payload: JSON.t,
+) => {
   // Counted even when nothing is listening, so the sequence a reader that connects
   // later sees is the event's ordinal rather than the ordinal of its own arrival.
   eventTapSeq := eventTapSeq.contents + 1
+  // Taken whether or not anyone reads, so the note does not wait for a reader.
+  let stored = LocalEventLogRead.take(meta.msgId)
   let toStdout = LocalEventTap.stdoutEnabled()
 
   // The line is built only for somebody: serialising every event for no reader is
   // pure cost on the publish path.
   if toStdout || LocalEventTap.hasReaders() {
+    // Where the event is stored — its log and the log's own position — so a
+    // reader can join a live line to the read across every log by a key that
+    // survives a restart. Absent for an event published without a log.
+    let where = switch stored {
+    | Some((log, position)) => [
+        ("log", JSON.Encode.string(log)),
+        ("position", JSON.Encode.string(position->LocalEventLogRead.positionToString)),
+      ]
+    | None => []
+    }
     let line =
-      Dict.fromArray([
+      [
         ("event", JSON.Encode.string("domainEvent")),
         ("seq", JSON.Encode.int(eventTapSeq.contents)),
         ("topic", JSON.Encode.string(topic)),
         ("service", JSON.Encode.string(service)),
         ("payload", payload),
         ("ts", JSON.Encode.string(Date.make()->Date.toISOString)),
-      ])->JSON.Encode.object
+      ]
+      ->Array.concat(where)
+      ->Dict.fromArray
+      ->JSON.Encode.object
     let tapLine = "@@RVLESS_EVT@@ " ++ line->JSON.stringify
     if toStdout {
       Console.log(tapLine)
     }
-    LocalEventTap.broadcast(tapLine)
+    LocalEventTap.publish({
+      line: tapLine,
+      facets: {
+        plugin: ?(stored->Option.flatMap(((log, _)) => LocalEventLogRead.pluginOf(log))),
+        eventType: ReventlessCore.Message.eventNameOfEvent'Json(payload),
+        correlationId: meta.correlationId,
+      },
+    })
   }
 }
 
@@ -338,7 +365,7 @@ module Impl = (C: BusConfig): T => {
     if Reventless.Pii.needsPrepare([json]) {
       await Reventless.Pii.prepareOrThrow([json])
     }
-    emitEventTap(~topic=topicName, ~service, ~payload=json)
+    emitEventTap(~topic=topicName, ~service, ~meta, ~payload=json)
     switch eventHubs.contents->Dict.get(topicName) {
     | None => ()
     | Some(hub) =>

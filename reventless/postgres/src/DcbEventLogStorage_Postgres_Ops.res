@@ -175,6 +175,75 @@ let countAll = async (pool: PgDriver.pool): int =>
   | None => 0
   }
 
+/** Where a backwards read of one log starts: strictly below a position, or at
+    and below it. */
+type bound =
+  | Below(float)
+  | AtMost(float)
+
+/** One log's events newest first by `position`, narrowed to one correlation id
+    when given. Rows are `(position, event)`; the event's own `position` field is
+    the read cursor, as `read` returns it. */
+let readBackwards = async (
+  pool: PgDriver.pool,
+  ~name: string,
+  ~bound: option<bound>,
+  ~limit: int,
+  ~correlationId: option<string>,
+): array<(float, DcbEventLog_Adapter.rawSequencedEvent)> => {
+  let b = mkBuilder()
+  let parts = [`log_name = ${b->param(JSON.Encode.string(name))}`]
+  switch bound {
+  | Some(Below(p)) => parts->Array.push(`position < ${b->param(JSON.Encode.float(p))}::bigint`)
+  | Some(AtMost(p)) => parts->Array.push(`position <= ${b->param(JSON.Encode.float(p))}::bigint`)
+  | None => ()
+  }
+  switch correlationId {
+  | Some(id) => parts->Array.push(`(meta->>'correlationId') = ${b->param(JSON.Encode.string(id))}`)
+  | None => ()
+  }
+  let limitP = b->param(JSON.Encode.int(limit))
+
+  (
+    await pool->PgDriver.query(
+      `SELECT ${selectColumns}, position::text AS pos_raw FROM dcb_event WHERE ${parts->Array.join(
+          " AND ",
+        )} ORDER BY position DESC LIMIT ${limitP}::int`,
+      b.params,
+    )
+  )->Array.map(row => (
+    switch row->Dict.get("pos_raw") {
+    | Some(JSON.String(s)) => s->Float.fromString->Option.getOr(0.)
+    | _ => 0.
+    },
+    rowToEvent(row),
+  ))
+}
+
+/** The position of each event one append wrote, by message id. The cursor an
+    append returns names its transaction, and every event of the append shares
+    it. */
+let positionsOfAppend = async (pool: PgDriver.pool, ~name: string, ~cursor: string): array<(
+  string,
+  float,
+)> =>
+  switch decodeCursor(cursor) {
+  | None => []
+  | Some((tx, _)) =>
+    (
+      await pool->PgDriver.query(
+        "SELECT position::text AS pos, meta->>'msgId' AS msg_id FROM dcb_event WHERE log_name = $1 AND transaction_id = $2::xid8",
+        [JSON.Encode.string(name), JSON.Encode.string(tx)],
+      )
+    )->Array.filterMap(row =>
+      switch (row->Dict.get("msg_id"), row->Dict.get("pos")) {
+      | (Some(JSON.String(msgId)), Some(JSON.String(pos))) =>
+        pos->Float.fromString->Option.map(p => (msgId, p))
+      | _ => None
+      }
+    )
+  }
+
 // Builds the DCB runtime op set bound to `pool`. Returns `(name, ops)`; the
 // deploy-time `DcbEventLog_Adapter` wrapper lives in `DcbEventLogStorage_Postgres`.
 let makeOps = (

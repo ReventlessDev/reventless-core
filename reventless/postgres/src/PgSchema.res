@@ -44,6 +44,10 @@ let tableStatements = [
   // every future insert with no change to EventLogStorage_Postgres.append.
   "ALTER TABLE event_log ADD COLUMN IF NOT EXISTS transaction_id xid8 NOT NULL DEFAULT pg_current_xact_id()",
   "CREATE INDEX IF NOT EXISTS event_log_tx_gseq ON event_log (log_name, transaction_id, global_seq)",
+  // Reading one log newest first across its entities, and finding every event of
+  // one flow. The stored event is flat, so the correlation id is a top-level key.
+  "CREATE INDEX IF NOT EXISTS event_log_log_gseq ON event_log (log_name, global_seq)",
+  "CREATE INDEX IF NOT EXISTS event_log_correlation ON event_log (log_name, (payload->>'correlationId'), global_seq)",
   "CREATE TABLE IF NOT EXISTS event_log_subscription (
      subscriber      text   PRIMARY KEY,
      last_tx         xid8   NOT NULL DEFAULT '0'::xid8,
@@ -64,6 +68,7 @@ let tableStatements = [
   "CREATE INDEX IF NOT EXISTS dcb_event_tags_gin ON dcb_event USING gin (tags)",
   "CREATE INDEX IF NOT EXISTS dcb_event_type_pos ON dcb_event (log_name, event_type, position)",
   "CREATE INDEX IF NOT EXISTS dcb_event_tx_pos   ON dcb_event (log_name, transaction_id, position)",
+  "CREATE INDEX IF NOT EXISTS dcb_event_correlation ON dcb_event (log_name, (meta->>'correlationId'), position)",
   // --- Row-lock companion (B4) ---
   "CREATE TABLE IF NOT EXISTS dcb_scope (
      log_name    text   NOT NULL,

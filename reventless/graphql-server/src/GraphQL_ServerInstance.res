@@ -77,6 +77,30 @@ let extractFieldName = (sdlField: string): string => {
   ->String.trim
 }
 
+type fetchHeaders
+@new external makeHeaders: dict<string> => fetchHeaders = "Headers"
+
+/** The initial context a yoga context factory expects, built for a WebSocket
+    operation: the upgrade request's headers, with what the client sent as
+    `connectionParams` on top (a browser cannot set headers on a WebSocket, so
+    that is where its `Authorization` goes). */
+let wsInitialContext = (ctx: YG.wsContext): YG.initialContext => {
+  let headers = Dict.make()
+  ctx.extra.request.headers
+  ->Dict.toArray
+  ->Array.forEach(((k, v)) => headers->Dict.set(k->String.toLowerCase, v))
+  ctx.connectionParams
+  ->Option.getOr(Dict.make())
+  ->Dict.toArray
+  ->Array.forEach(((k, v)) =>
+    switch v {
+    | JSON.String(s) => headers->Dict.set(k->String.toLowerCase, s)
+    | _ => ()
+    }
+  )
+  Obj.magic({"request": {"headers": makeHeaders(headers)}, "req": ctx.extra.request})
+}
+
 let make = (~label: string="GraphQL"): t => {
   let mutationResolvers: ref<dict<resolverFn>> = ref(Dict.make())
   let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
@@ -232,7 +256,16 @@ ${mutations}
     )
     if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
       let wss = YG.newWebSocketServer({"server": server, "path": "/graphql"})
-      YG.wsUseServer({"schema": schema}, wss)
+      // A subscription is checked like a query: its context is built by the same
+      // factory, from the connection's headers and parameters.
+      switch contextFactory {
+      | Some(factory) =>
+        YG.wsUseServerWithContext(
+          {"schema": schema, "context": ctx => factory(wsInitialContext(ctx))},
+          wss,
+        )
+      | None => YG.wsUseServer({"schema": schema}, wss)
+      }
       log.info(
         ~comp=label,
         `graphql-ws subscriptions on ws://localhost:${port->Int.toString}/graphql`,

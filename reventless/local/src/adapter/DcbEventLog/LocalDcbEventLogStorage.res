@@ -37,7 +37,14 @@ module Make = (Bus: LocalBus.T) => {
         ~opts,
       )
       Bus.registerDcbEventLogRead(storageName, ops.read)
-      storage
+      LocalPgEventLogRead.registerDcb(~pool, ~name=storageName)
+      {
+        ReventlessCore.DcbEventLog_Adapter.resources: storage.resources,
+        operations: Pulumi.Output.make({
+          ...ops,
+          append: LocalPgEventLogRead.notingDcbAppend(~pool, ~name=storageName, ops.append),
+        }),
+      }
     | (None, None) =>
       let (storageName, read, storage) = DcbEventLogStorage_InMemory.makeStorage(
         ~name,

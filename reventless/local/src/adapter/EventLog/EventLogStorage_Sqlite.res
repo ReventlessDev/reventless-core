@@ -27,7 +27,77 @@ let ensureSchema = (db: SqliteDriver.t) => {
   db->SqliteDriver.exec(
     "CREATE TABLE IF NOT EXISTS snapshot (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, state TEXT NOT NULL, schema_hash TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id))",
   )
+  // Reading one log newest first across its entities walks this index by row id
+  // (an index on log_name holds the row id after it).
+  db->SqliteDriver.exec("CREATE INDEX IF NOT EXISTS event_log_by_log ON event_log(log_name)")
+  // Finding every event of one flow in one log. Created on open, so an existing
+  // store gains it; a query must use this exact expression for the index to
+  // apply. The stored event is flat, so the correlation id is a top-level key.
+  db->SqliteDriver.exec(
+    "CREATE INDEX IF NOT EXISTS event_log_by_correlation ON event_log(log_name, json_extract(payload, '$.correlationId'))",
+  )
 }
+
+/** The SQL of one backwards read, and its parameters. */
+let readBackSql = (
+  ~name: string,
+  ~bound: option<LocalEventLogRead.bound>,
+  ~limit: int,
+  ~correlationId: option<string>,
+): (string, array<JSON.t>) => {
+  let parts = ["log_name = ?"]
+  let params = [JSON.Encode.string(name)]
+  switch bound {
+  | Some(LocalEventLogRead.Below(p)) =>
+    parts->Array.push("rowid < ?")
+    params->Array.push(JSON.Encode.float(p))
+  | Some(AtMost(p)) =>
+    parts->Array.push("rowid <= ?")
+    params->Array.push(JSON.Encode.float(p))
+  | None => ()
+  }
+  switch correlationId {
+  | Some(id) =>
+    parts->Array.push("json_extract(payload, '$.correlationId') = ?")
+    params->Array.push(JSON.Encode.string(id))
+  | None => ()
+  }
+  params->Array.push(JSON.Encode.int(limit))
+  (
+    `SELECT rowid AS pos, aggregate_id, payload FROM event_log WHERE ${parts->Array.join(
+        " AND ",
+      )} ORDER BY rowid DESC LIMIT ?`,
+    params,
+  )
+}
+
+/** Reads one log newest first, across its entities, by row id. */
+let readBack = (~db: SqliteDriver.t, ~name: string): LocalEventLogRead.readBack =>
+  async (~bound, ~limit, ~correlationId) => {
+    let (sql, params) = readBackSql(~name, ~bound, ~limit, ~correlationId)
+    db
+    ->SqliteDriver.prepare(sql)
+    ->SqliteDriver.all(params)
+    ->Array.map(row => {
+      let payload = switch row->Dict.get("payload") {
+      | Some(JSON.String(s)) =>
+        switch JSON.parseOrThrow(s) {
+        | json => json
+        | exception _ => JSON.Encode.null
+        }
+      | _ => JSON.Encode.null
+      }
+      LocalEventLogRead.storedOfFlat(
+        ~log=name,
+        ~position=LocalEventLogRead.numberOf(row->Dict.get("pos")),
+        ~entityId=row
+        ->Dict.get("aggregate_id")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr(""),
+        payload,
+      )
+    })
+  }
 
 // Decodes the JSON column to a JSON.t. Returns JSON.Null on unparseable input
 // (should not happen for data we wrote ourselves).
@@ -57,6 +127,7 @@ let countAll = (db: SqliteDriver.t): int => {
 
 let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   ensureSchema(db)
+  LocalEventLogRead.register(~log=name, ~kind=Aggregate, readBack(~db, ~name))
 
   let insertStmt =
     db->SqliteDriver.prepare(
@@ -130,6 +201,20 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
       // inserts get contiguous rowids ending at lastRowid.
       if track && lastRowid > 0 {
         let count = jsons->Array.length
+        // Where each event sits, for the tap line that publishes it.
+        jsons->Array.forEachWithIndex((json, i) =>
+          json
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("msgId"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.forEach(msgId =>
+            LocalEventLogRead.note(
+              ~log=name,
+              ~msgId,
+              ~position=(lastRowid - count + 1 + i)->Int.toFloat,
+            )
+          )
+        )
         ProjectionPending.trackAppended(
           ~axis=ProjectionPending.Aggregate,
           jsons

@@ -47,6 +47,36 @@ function isUniqueViolation(exn) {
   }
 }
 
+async function readBackwards(pool, name, bound, limit, correlationId) {
+  let params = [name];
+  let param = v => {
+    params.push(v);
+    return "$" + params.length.toString();
+  };
+  let parts = ["log_name = $1"];
+  if (bound !== undefined) {
+    if (bound.TAG === "Below") {
+      parts.push(`global_seq < ` + param(bound._0) + `::bigint`);
+    } else {
+      parts.push(`global_seq <= ` + param(bound._0) + `::bigint`);
+    }
+  }
+  if (correlationId !== undefined) {
+    parts.push(`(payload->>'correlationId') = ` + param(correlationId));
+  }
+  let limitP = param(limit);
+  return (await PgDriver$ReventlessPostgres.query(pool, `SELECT global_seq::text AS pos, aggregate_id, payload FROM event_log WHERE ` + parts.join(" AND ") + ` ORDER BY global_seq DESC LIMIT ` + limitP + `::int`, params)).map(row => {
+    let match = row["aggregate_id"];
+    let tmp;
+    tmp = typeof match === "string" ? match : "";
+    return [
+      Stdlib_Option.mapOr(row["pos"], 0, coerceInt),
+      tmp,
+      decodePayload(row)
+    ];
+  });
+}
+
 function makeOps(pool, name, param, onAppendedOpt) {
   let onAppended = onAppendedOpt !== undefined ? onAppendedOpt : noTracking;
   let appendTracked = async (track, seqNr, id, jsons) => {
@@ -197,6 +227,7 @@ export {
   coerceInt,
   countAll,
   isUniqueViolation,
+  readBackwards,
   makeOps,
 }
 /* Stream Not a pure module */

@@ -64,8 +64,6 @@ type effectLogLevel
 external _withMinimumLogLevel: (Effect.t<'a, 'e, 'r>, effectLogLevel) => Effect.t<'a, 'e, 'r> =
   "withMinimumLogLevel"
 
-@val external _envLogLevel: option<string> = "process.env.LOG_LEVEL"
-
 // Minimum level used when LOG_LEVEL is unset. Framework default is Info; a platform
 // may lower it (e.g. the in-memory dev platform sets Debug) via setDefaultMinLevel.
 // The ref lives in Logger (single source of truth) so both the record logger
@@ -73,21 +71,15 @@ external _withMinimumLogLevel: (Effect.t<'a, 'e, 'r>, effectLogLevel) => Effect.
 // here so existing `EffectLogger.setDefaultMinLevel` callers keep working.
 let setDefaultMinLevel = Logger.setDefaultMinLevel
 
-// Resolve the active minimum: explicit LOG_LEVEL wins, else the platform default.
-let _effectMin = (): effectLogLevel =>
-  switch _envLogLevel {
-  | Some("silent") => _llNone
-  | Some("debug") => _llDebug
-  | Some("info") => _llInfo
-  | Some("warn") => _llWarning
-  | Some("error") => _llError
-  | _ =>
-    switch Logger.defaultMinLevel.contents {
-    | Logger.Debug => _llDebug
-    | Logger.Info => _llInfo
-    | Logger.Warn => _llWarning
-    | Logger.Error => _llError
-    }
+// Resolve the active minimum for one line of `comp`: a level set while running
+// for it (or its plugin) first, then LOG_LEVEL, then the platform default.
+let _effectMin = (~comp: option<string>=?, ()): effectLogLevel =>
+  switch Logger.minLevelFor(~comp?, ()) {
+  | None => _llNone
+  | Some(Logger.Debug) => _llDebug
+  | Some(Logger.Info) => _llInfo
+  | Some(Logger.Warn) => _llWarning
+  | Some(Logger.Error) => _llError
   }
 
 let ordinalToLevel = ordinal =>
@@ -137,14 +129,23 @@ let install = () =>
       }
     )
     let annotations = extra->Dict.toArray->Array.length == 0 ? None : Some(extra)
-    Logger.emit(
-      ~level,
-      ~comp=?comp.contents,
-      ~plugin=?plugin.contents,
-      ~detail=?detail.contents,
-      ~annotations?,
-      msg,
-    )
+    // Effect gated the line by the level it was given at the call. A level set
+    // while running for the line's plugin is only known here, where the plugin
+    // annotation is read, so it is applied again — only then, so a line logged
+    // without the helpers below keeps today's behaviour.
+    let passes =
+      !Logger.hasOverrides() ||
+      Logger.shouldLog(level, ~plugin=?plugin.contents, ~comp=?comp.contents, ())
+    if passes {
+      Logger.emit(
+        ~level,
+        ~comp=?comp.contents,
+        ~plugin=?plugin.contents,
+        ~detail=?detail.contents,
+        ~annotations?,
+        msg,
+      )
+    }
   }
 
 // Self-installing: runs at module initialization time.
@@ -171,10 +172,10 @@ let _annotate = (eff, ~comp=?, ~detail=?) => {
 }
 
 let logInfo = (~comp=?, ~detail=?, msg) =>
-  Effect.logInfo(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
+  Effect.logInfo(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
 let logWarn = (~comp=?, ~detail=?, msg) =>
-  Effect.logWarning(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
+  Effect.logWarning(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
 let logError = (~comp=?, ~detail=?, msg) =>
-  Effect.logError(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
+  Effect.logError(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
 let logDebug = (~comp=?, ~detail=?, msg) =>
-  Effect.logDebug(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
+  Effect.logDebug(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))

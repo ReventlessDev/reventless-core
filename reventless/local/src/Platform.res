@@ -106,6 +106,10 @@ module MakeWithConfig = (
   // local platform has no per-component process boundary.
   let _ = Config.commandHandlerConfig
 
+  // Keep the recent log records from here on, for the log feed and the MCP
+  // resource that read them.
+  LocalLogFeed.install()
+
   // What this platform provides for the roles its plugins need: every account it
   // can sign in as, built-in and loaded alike, or the file the store will load
   // when the servers start — after the plugins are built and checked.
@@ -327,8 +331,13 @@ module MakeWithConfig = (
     // Event-history queries — the historical read counterpart of the Source A
     // subscription bridged further down. Same `eventLogEntries`, so the two
     // always describe the same set of streams.
-    eventQueryResolverHook: params =>
-      EventHistoryResolvers.register(~server=resolveTargetGraphQL(), params),
+    eventQueryResolverHook: params => {
+      // The read across every log names each event's plugin.
+      params.eventLogEntries->Array.forEach(entry =>
+        LocalEventLogRead.notePlugin(~log=entry.busKey, ~plugin=params.pluginName)
+      )
+      EventHistoryResolvers.register(~server=resolveTargetGraphQL(), params)
+    },
     // MCP tools and resources — registered during plugin construction.
     // See the large lambda below; it references Bus for QueryDb lookups.
     mcpSchemaRegistrationHook: ({
@@ -1418,6 +1427,11 @@ module MakeWithConfig = (
       ~onBound=tapPort => LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort),
       (),
     )
+    // The log feed, the same way: its port is filled in once it is bound.
+    LocalLogFeed.start(
+      ~onBound=logPort => LocalPlatformRegistry.publishLogPort(~port=domainPort, ~logPort),
+      (),
+    )
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
@@ -2112,6 +2126,11 @@ module MakeWithConfig = (
     registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
 
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+
+    // What a tool watching this platform reads: every event of every log, and
+    // the log level while running.
+    LocalPlatformObserve.registerGraphQL(platformGraphQL)
+    LocalPlatformObserve.registerMcp(platformMCP)
 
     // Admin Plugin lifecycle mutations (Activate / Deactivate / Retire) now flow
     // through the LocalPluginAggregate, mirroring AWS. The resolver looks up the

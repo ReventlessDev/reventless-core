@@ -38,6 +38,7 @@ import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
 import * as AccountStore$ReventlessLocal from "./adapter/Auth/AccountStore.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
+import * as LocalLogFeed$ReventlessLocal from "./adapter/LocalLogFeed.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
@@ -63,6 +64,7 @@ import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-cor
 import * as Aggregate_Builder$ReventlessLocal from "./components/Aggregate_Builder.res.mjs";
 import * as LocalCapabilities$ReventlessLocal from "./adapter/LocalCapabilities.res.mjs";
 import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalClonerRunner.res.mjs";
+import * as LocalEventLogRead$ReventlessLocal from "./adapter/LocalEventLogRead.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
@@ -77,6 +79,7 @@ import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-
 import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
+import * as LocalPlatformObserve$ReventlessLocal from "./adapter/LocalPlatformObserve.res.mjs";
 import * as LocalUploadResolvers$ReventlessLocal from "./adapter/LocalUploadResolvers.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
@@ -146,6 +149,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 }
 
 function MakeWithConfig(Config) {
+  LocalLogFeed$ReventlessLocal.install(undefined);
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
@@ -444,7 +448,10 @@ function MakeWithConfig(Config) {
     });
     LocalGraphQL_SubscriptionResolvers$ReventlessLocal.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
-  let hooks_eventQueryResolverHook = params => EventHistoryResolvers.register(resolveTargetGraphQL(), params);
+  let hooks_eventQueryResolverHook = params => {
+    params.eventLogEntries.forEach(entry => LocalEventLogRead$ReventlessLocal.notePlugin(entry.busKey, params.pluginName));
+    EventHistoryResolvers.register(resolveTargetGraphQL(), params);
+  };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -1169,6 +1176,7 @@ function MakeWithConfig(Config) {
       path: match[1]
     }, undefined);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
+    LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -1545,6 +1553,8 @@ function MakeWithConfig(Config) {
     };
     registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
+    LocalPlatformObserve$ReventlessLocal.registerGraphQL(platformGraphQL);
+    LocalPlatformObserve$ReventlessLocal.registerMcp(platformMCP);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
     let currentVersionOf = pluginName => {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
@@ -1946,6 +1956,7 @@ function MakeWithConfig(Config) {
 
 function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
+  LocalLogFeed$ReventlessLocal.install(undefined);
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
@@ -2237,7 +2248,10 @@ function Make($star) {
     });
     LocalGraphQL_SubscriptionResolvers$ReventlessLocal.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
-  let hooks_eventQueryResolverHook = params => EventHistoryResolvers.register(resolveTargetGraphQL(), params);
+  let hooks_eventQueryResolverHook = params => {
+    params.eventLogEntries.forEach(entry => LocalEventLogRead$ReventlessLocal.notePlugin(entry.busKey, params.pluginName));
+    EventHistoryResolvers.register(resolveTargetGraphQL(), params);
+  };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -2958,6 +2972,7 @@ function Make($star) {
       path: match[1]
     }, undefined);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
+    LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -3333,6 +3348,8 @@ function Make($star) {
     };
     registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
+    LocalPlatformObserve$ReventlessLocal.registerGraphQL(platformGraphQL);
+    LocalPlatformObserve$ReventlessLocal.registerMcp(platformMCP);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
     let currentVersionOf = pluginName => {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);

@@ -14,6 +14,17 @@ function wrapAdmin(resolvers) {
   return wrapped;
 }
 
+function wrapAdminSubscriptions(resolvers) {
+  return Object.fromEntries(Object.entries(resolvers).map(param => {
+    let v = param[1];
+    let newrecord = {...v};
+    return [
+      param[0],
+      (newrecord.subscribe = Auth_GraphqlContext$ReventlessLocal.requireGroup(Role$Reventless.adminGroup(), v.subscribe), newrecord)
+    ];
+  }));
+}
+
 function registerMutations(sdlFields, resolvers) {
   instance.registerMutations(sdlFields, wrapAdmin(resolvers));
 }
@@ -22,7 +33,9 @@ function registerQueries(sdlFields, resolvers) {
   instance.registerQueries(sdlFields, wrapAdmin(resolvers));
 }
 
-let registerSubscriptions = instance.registerSubscriptions;
+function registerSubscriptions(sdlFields, resolvers) {
+  instance.registerSubscriptions(sdlFields, wrapAdminSubscriptions(resolvers));
+}
 
 let registerTypes = instance.registerTypes;
 
@@ -69,6 +82,7 @@ let asInterface = {
 export {
   instance,
   wrapAdmin,
+  wrapAdminSubscriptions,
   registerMutations,
   registerQueries,
   registerSubscriptions,

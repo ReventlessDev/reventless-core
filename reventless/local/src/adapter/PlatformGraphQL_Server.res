@@ -8,8 +8,8 @@
 // Does NOT include Relay-specific features (encodeGlobalId, node resolver)
 // since admin queries are not Relay-paginated.
 //
-// Authorization: every query AND mutation resolver registered here is
-// wrapped with `Auth_GraphqlContext.requireGroup(~group="Admin")` so
+// Authorization: every query, mutation AND subscription resolver registered
+// here is wrapped with `Auth_GraphqlContext.requireGroup(~group="Admin")` so
 // non-Admin identities are refused before the underlying resolver runs.
 // Mirrors AppSync's `@aws_cognito_user_pools(cognito_groups: ["Admin"])`
 // directive that gates Platform_* fields in the AWS adapter.
@@ -46,11 +46,44 @@ let wrapAdmin = (resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.
   wrapped
 }
 
+// A subscription field's resolver is an object: `subscribe` starts the stream,
+// `resolve` maps each payload. The group check goes on `subscribe`, so a caller
+// without the group is refused before anything is streamed to it.
+type subscriptionResolver = {
+  subscribe: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn,
+  resolve?: JSON.t => JSON.t,
+}
+external asSubscription: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn => subscriptionResolver =
+  "%identity"
+external ofSubscription: subscriptionResolver => ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn =
+  "%identity"
+
+let wrapAdminSubscriptions = (
+  resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn>,
+): dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn> =>
+  resolvers
+  ->Dict.toArray
+  ->Array.map(((k, v)) => {
+    let sub = asSubscription(v)
+    (
+      k,
+      ofSubscription({
+        ...sub,
+        subscribe: Auth_GraphqlContext.requireGroup(
+          ~group=Reventless.Role.adminGroup(),
+          sub.subscribe,
+        ),
+      }),
+    )
+  })
+  ->Dict.fromArray
+
 let registerMutations = (~sdlFields, ~resolvers) =>
   instance.registerMutations(~sdlFields, ~resolvers=wrapAdmin(resolvers))
 let registerQueries = (~sdlFields, ~resolvers) =>
   instance.registerQueries(~sdlFields, ~resolvers=wrapAdmin(resolvers))
-let registerSubscriptions = instance.registerSubscriptions
+let registerSubscriptions = (~sdlFields, ~resolvers) =>
+  instance.registerSubscriptions(~sdlFields, ~resolvers=wrapAdminSubscriptions(resolvers))
 let registerTypes = instance.registerTypes
 // Not admin-wrapped: a field resolver is only reached through a parent field
 // that already met the group check, so wrapping would re-refuse a caller the

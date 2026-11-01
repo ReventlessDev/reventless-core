@@ -6,7 +6,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as LocalEventLogRead$ReventlessLocal from "../LocalEventLogRead.res.mjs";
 
 function posToInt(pos) {
   return Stdlib_Option.getOr(Stdlib_Int.fromString(pos, undefined), 0);
@@ -130,6 +133,31 @@ function makeStorage(_name, param, param$1, param$2) {
       });
     }
   };
+  LocalEventLogRead$ReventlessLocal.register(_name, "Dcb", async (bound, limit, correlationId) => {
+    let out = [];
+    let i = events.contents.length - 1 | 0;
+    while (i >= 0 && out.length < limit) {
+      let ev = events.contents[i];
+      let position = posToInt(ev.position);
+      let inBound = bound !== undefined ? (
+          bound.TAG === "Below" ? position < bound._0 : position <= bound._0
+        ) : true;
+      let inFlow = Stdlib_Option.mapOr(correlationId, true, id => ev.meta.correlationId === id);
+      if (inBound && inFlow) {
+        out.push({
+          log: _name,
+          position: position,
+          eventType: ev.eventType,
+          tags: ev.tags,
+          payload: ev.data,
+          meta: Util_Sury$Reventless.toJson(ev.meta, Message$Reventless.metaSchema),
+          recordedAt: ev.recordedAt
+        });
+      }
+      i = i - 1 | 0;
+    };
+    return out;
+  });
   let read = async (query, after) => {
     let filtered = matchingEvents(query, after);
     let headPosition = Stdlib_Option.map(events.contents[events.contents.length - 1 | 0], e => e.position);
@@ -164,6 +192,7 @@ function makeStorage(_name, param, param$1, param$2) {
         recordedAt: stored_recordedAt
       };
       indexEvent(base + j | 0, stored);
+      LocalEventLogRead$ReventlessLocal.note(_name, event.meta.msgId, position.contents);
       return stored;
     });
     events.contents = events.contents.concat(storedEvents);

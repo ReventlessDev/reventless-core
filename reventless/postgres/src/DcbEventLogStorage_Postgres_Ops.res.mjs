@@ -3,6 +3,7 @@
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Float from "@rescript/runtime/lib/es6/Stdlib_Float.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -171,6 +172,56 @@ async function countAll(pool) {
       return match | 0;
     default:
       return 0;
+  }
+}
+
+async function readBackwards(pool, name, bound, limit, correlationId) {
+  let b = {
+    params: []
+  };
+  let parts = [`log_name = ` + param(b, name)];
+  if (bound !== undefined) {
+    if (bound.TAG === "Below") {
+      parts.push(`position < ` + param(b, bound._0) + `::bigint`);
+    } else {
+      parts.push(`position <= ` + param(b, bound._0) + `::bigint`);
+    }
+  }
+  if (correlationId !== undefined) {
+    parts.push(`(meta->>'correlationId') = ` + param(b, correlationId));
+  }
+  let limitP = param(b, limit);
+  return (await PgDriver$ReventlessPostgres.query(pool, `SELECT ` + selectColumns + `, position::text AS pos_raw FROM dcb_event WHERE ` + parts.join(" AND ") + ` ORDER BY position DESC LIMIT ` + limitP + `::int`, b.params)).map(row => {
+    let match = row["pos_raw"];
+    let tmp;
+    tmp = match !== undefined ? (
+        typeof match === "string" ? Stdlib_Option.getOr(Stdlib_Float.fromString(match), 0) : 0
+      ) : 0;
+    return [
+      tmp,
+      rowToEvent(row)
+    ];
+  });
+}
+
+async function positionsOfAppend(pool, name, cursor) {
+  let match = decodeCursor(cursor);
+  if (match !== undefined) {
+    return Stdlib_Array.filterMap(await PgDriver$ReventlessPostgres.query(pool, "SELECT position::text AS pos, meta->>'msgId' AS msg_id FROM dcb_event WHERE log_name = $1 AND transaction_id = $2::xid8", [
+      name,
+      match[0]
+    ]), row => {
+      let match = row["msg_id"];
+      let match$1 = row["pos"];
+      if (typeof match === "string" && typeof match$1 === "string") {
+        return Stdlib_Option.map(Stdlib_Float.fromString(match$1), p => [
+          match,
+          p
+        ]);
+      }
+    });
+  } else {
+    return [];
   }
 }
 
@@ -375,6 +426,8 @@ export {
   pageSize,
   isConflict,
   countAll,
+  readBackwards,
+  positionsOfAppend,
   makeOps,
 }
 /* Stream Not a pure module */

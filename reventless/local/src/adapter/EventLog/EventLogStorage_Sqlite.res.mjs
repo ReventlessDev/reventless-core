@@ -10,11 +10,57 @@ import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
+import * as LocalEventLogRead$ReventlessLocal from "../LocalEventLogRead.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "../ProjectionPending.res.mjs";
 
 function ensureSchema(db) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS snapshot (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, state TEXT NOT NULL, schema_hash TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id))");
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE INDEX IF NOT EXISTS event_log_by_log ON event_log(log_name)");
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE INDEX IF NOT EXISTS event_log_by_correlation ON event_log(log_name, json_extract(payload, '$.correlationId'))");
+}
+
+function readBackSql(name, bound, limit, correlationId) {
+  let parts = ["log_name = ?"];
+  let params = [name];
+  if (bound !== undefined) {
+    if (bound.TAG === "Below") {
+      parts.push("rowid < ?");
+      params.push(bound._0);
+    } else {
+      parts.push("rowid <= ?");
+      params.push(bound._0);
+    }
+  }
+  if (correlationId !== undefined) {
+    parts.push("json_extract(payload, '$.correlationId') = ?");
+    params.push(correlationId);
+  }
+  params.push(limit);
+  return [
+    `SELECT rowid AS pos, aggregate_id, payload FROM event_log WHERE ` + parts.join(" AND ") + ` ORDER BY rowid DESC LIMIT ?`,
+    params
+  ];
+}
+
+function readBack(db, name) {
+  return async (bound, limit, correlationId) => {
+    let match = readBackSql(name, bound, limit, correlationId);
+    return SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, match[0]), match[1]).map(row => {
+      let match = row["payload"];
+      let payload;
+      if (typeof match === "string") {
+        try {
+          payload = JSON.parse(match);
+        } catch (exn) {
+          payload = null;
+        }
+      } else {
+        payload = null;
+      }
+      return LocalEventLogRead$ReventlessLocal.storedOfFlat(name, LocalEventLogRead$ReventlessLocal.numberOf(row["pos"]), Stdlib_Option.getOr(Stdlib_Option.flatMap(row["aggregate_id"], Stdlib_JSON.Decode.string), ""), payload);
+    });
+  };
 }
 
 function decodePayload(row) {
@@ -48,6 +94,7 @@ function countAll(db) {
 
 function makeStorage(db, name, param) {
   ensureSchema(db);
+  LocalEventLogRead$ReventlessLocal.register(name, "Aggregate", readBack(db, name));
   let insertStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)");
   let nextSeqStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?");
   let selectByIdStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? AND seq_nr >= ? ORDER BY seq_nr ASC");
@@ -99,6 +146,7 @@ function makeStorage(db, name, param) {
       });
       if (track && lastRowid > 0) {
         let count = jsons.length;
+        jsons.forEach((json, i) => Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string), msgId => LocalEventLogRead$ReventlessLocal.note(name, msgId, ((lastRowid - count | 0) + 1 | 0) + i | 0)));
         ProjectionPending$ReventlessLocal.trackAppended("Aggregate", Stdlib_Array.filterMap(jsons.map((json, i) => Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string), msgId => [
           msgId,
           ((lastRowid - count | 0) + 1 | 0) + i | 0
@@ -257,6 +305,8 @@ function Make(Bus) {
 
 export {
   ensureSchema,
+  readBackSql,
+  readBack,
   decodePayload,
   countAll,
   makeStorage,

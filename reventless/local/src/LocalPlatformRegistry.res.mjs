@@ -22,7 +22,8 @@ let entrySchema = Sury.$schema(s => ({
   loginEndpoint: s.m(Sury.string),
   store: s.m(storeSchema),
   startedAt: s.m(Sury.string),
-  tapPort: s.m(Sury.$option(Sury.int32))
+  tapPort: s.m(Sury.$option(Sury.int32)),
+  logPort: s.m(Sury.$option(Sury.int32))
 }));
 
 function runningDir(cwdOpt, param) {
@@ -152,6 +153,22 @@ function publishTapPort(port, tapPort, cwdOpt) {
   }
 }
 
+function publishLogPort(port, logPort, cwdOpt) {
+  let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
+  let path = entryPath(port, cwd);
+  let entry = readEntry(path);
+  if (entry === undefined) {
+    return;
+  }
+  try {
+    let newrecord = {...entry};
+    Nodefs.writeFileSync(path, JSON.stringify(Util_Sury$Reventless.toJson((newrecord.logPort = logPort, newrecord), entrySchema), undefined, 2), "utf8");
+    return;
+  } catch (exn) {
+    return;
+  }
+}
+
 function register(port, endpoint, loginEndpoint, store, tapPort) {
   let path = write(port, endpoint, loginEndpoint, store, tapPort, undefined, undefined);
   process.on("exit", param => removeQuietly(path));
@@ -177,6 +194,7 @@ export {
   list,
   write,
   publishTapPort,
+  publishLogPort,
   register,
 }
 /* storeSchema Not a pure module */

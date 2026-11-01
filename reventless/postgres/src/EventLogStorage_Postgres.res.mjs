@@ -27,6 +27,8 @@ let countAll = EventLogStorage_Postgres_Ops$ReventlessPostgres.countAll;
 
 let isUniqueViolation = EventLogStorage_Postgres_Ops$ReventlessPostgres.isUniqueViolation;
 
+let readBackwards = EventLogStorage_Postgres_Ops$ReventlessPostgres.readBackwards;
+
 let makeOps = EventLogStorage_Postgres_Ops$ReventlessPostgres.makeOps;
 
 export {
@@ -35,6 +37,7 @@ export {
   coerceInt,
   countAll,
   isUniqueViolation,
+  readBackwards,
   makeOps,
   makeStorage,
 }

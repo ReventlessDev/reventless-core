@@ -27,6 +27,9 @@ type entry = {
   // DELETES an entry it cannot decode, so requiring it would silently hide every
   // platform from an older build. Absent ⇒ stdout only.
   tapPort?: int,
+  // Where the log feed is served, when it is: the platform's recent and live log
+  // records. Optional for the same reason as `tapPort`.
+  logPort?: int,
 }
 
 // Threaded rather than read at each use, so tests need not move the process.
@@ -153,6 +156,22 @@ let publishTapPort = (~port: int, ~tapPort: int, ~cwd=NodeProcess.cwd()): unit =
     try NodeFs.writeFileSync(
       path,
       {...entry, tapPort}->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
+    ) catch {
+    | _ => ()
+    }
+  }
+}
+
+/** Adds the log feed's port to an entry already written, once its socket is
+    bound; see {!publishTapPort}. */
+let publishLogPort = (~port: int, ~logPort: int, ~cwd=NodeProcess.cwd()): unit => {
+  let path = entryPath(~port, ~cwd)
+  switch readEntry(path) {
+  | None => ()
+  | Some(entry) =>
+    try NodeFs.writeFileSync(
+      path,
+      {...entry, logPort}->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
     ) catch {
     | _ => ()
     }

@@ -7,11 +7,14 @@ let tableStatements = [
   "CREATE TABLE IF NOT EXISTS snapshot (\n     log_name      text   NOT NULL,\n     aggregate_id  text   NOT NULL,\n     seq_nr        bigint NOT NULL,\n     state         jsonb  NOT NULL,\n     schema_hash   text   NOT NULL,\n     PRIMARY KEY (log_name, aggregate_id)\n   )",
   "ALTER TABLE event_log ADD COLUMN IF NOT EXISTS transaction_id xid8 NOT NULL DEFAULT pg_current_xact_id()",
   "CREATE INDEX IF NOT EXISTS event_log_tx_gseq ON event_log (log_name, transaction_id, global_seq)",
+  "CREATE INDEX IF NOT EXISTS event_log_log_gseq ON event_log (log_name, global_seq)",
+  "CREATE INDEX IF NOT EXISTS event_log_correlation ON event_log (log_name, (payload->>'correlationId'), global_seq)",
   "CREATE TABLE IF NOT EXISTS event_log_subscription (\n     subscriber      text   PRIMARY KEY,\n     last_tx         xid8   NOT NULL DEFAULT '0'::xid8,\n     last_global_seq bigint NOT NULL DEFAULT 0\n   )",
   "CREATE TABLE IF NOT EXISTS dcb_event (\n     log_name        text        NOT NULL,\n     position        bigint      GENERATED ALWAYS AS IDENTITY,\n     transaction_id  xid8        NOT NULL DEFAULT pg_current_xact_id(),\n     event_type      text        NOT NULL,\n     tags            text[]      NOT NULL DEFAULT '{}',\n     data            jsonb       NOT NULL,\n     meta            jsonb       NOT NULL,\n     recorded_at     timestamptz NOT NULL DEFAULT now(),\n     PRIMARY KEY (log_name, position)\n   )",
   "CREATE INDEX IF NOT EXISTS dcb_event_tags_gin ON dcb_event USING gin (tags)",
   "CREATE INDEX IF NOT EXISTS dcb_event_type_pos ON dcb_event (log_name, event_type, position)",
   "CREATE INDEX IF NOT EXISTS dcb_event_tx_pos   ON dcb_event (log_name, transaction_id, position)",
+  "CREATE INDEX IF NOT EXISTS dcb_event_correlation ON dcb_event (log_name, (meta->>'correlationId'), position)",
   "CREATE TABLE IF NOT EXISTS dcb_scope (\n     log_name    text   NOT NULL,\n     scope_hash  bigint NOT NULL,\n     PRIMARY KEY (log_name, scope_hash)\n   )",
   "CREATE TABLE IF NOT EXISTS dcb_subscription (\n     subscriber    text   PRIMARY KEY,\n     last_tx       xid8   NOT NULL DEFAULT '0'::xid8,\n     last_position bigint NOT NULL DEFAULT 0\n   )"
 ];

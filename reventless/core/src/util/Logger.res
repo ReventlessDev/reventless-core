@@ -106,6 +106,79 @@ let fmtComp = Reventless.LogPrefix.fmtComp
 let fmtPlainPrefix = Reventless.LogPrefix.fmtPlainPrefix
 let resolvePlugin = Reventless.LogPrefix.resolvePlugin
 
+// ─── The record every line is made from ──────────────────────────────────────
+
+/** One log line before it is formatted: what the JSON line prints, field for
+    field, and what a registered sink receives. `detail` is already redacted and
+    truncated, so a sink can keep it as it is. */
+type record = {
+  time: string,
+  level: level,
+  message: string,
+  service?: string,
+  plugin?: string,
+  comp?: string,
+  annotations: dict<string>,
+  detail?: JSON.t,
+}
+
+/** The JSON line's fields, in the order the line prints them. Annotations are
+    top-level keys beside the fixed ones. */
+let recordFields = (r: record): array<(string, JSON.t)> =>
+  [
+    ("time", r.time->JSON.Encode.string),
+    ("level", levelLabel(r.level)->JSON.Encode.string),
+    ("message", r.message->JSON.Encode.string),
+  ]
+  ->Array.concat(r.service->Option.mapOr([], s => [("service", JSON.Encode.string(s))]))
+  ->Array.concat(r.plugin->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]))
+  ->Array.concat(r.comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
+  ->Array.concat(r.annotations->Dict.toArray->Array.map(((k, v)) => (k, JSON.Encode.string(v))))
+  ->Array.concat(r.detail->Option.mapOr([], d => [("detail", d)]))
+
+let recordToJson = (r: record): JSON.t => r->recordFields->Dict.fromArray->JSON.Encode.object
+
+// ─── Sinks ───────────────────────────────────────────────────────────────────
+// Code that keeps or forwards log records (a platform's recent-records ring, a
+// feed to a watching tool) registers a sink and receives every record that
+// passed its level, before it is formatted.
+
+type sink = record => unit
+
+type registeredSink = {
+  id: int,
+  sink: sink,
+  // A sink that throws is noted once, not on every line it fails.
+  mutable noted: bool,
+}
+
+let sinks: ref<array<registeredSink>> = ref([])
+let nextSinkId = ref(0)
+
+/** Registers a sink and returns the function that removes it. */
+let addSink = (sink: sink): (unit => unit) => {
+  nextSinkId := nextSinkId.contents + 1
+  let id = nextSinkId.contents
+  sinks := sinks.contents->Array.concat([{id, sink, noted: false}])
+  () => sinks := sinks.contents->Array.filter(s => s.id != id)
+}
+
+let hasSinks = () => sinks.contents->Array.length > 0
+
+// Written straight to stderr, never through `emit`: a note about a failing sink
+// must not reach that sink again.
+let callSinks = (r: record) =>
+  sinks.contents->Array.forEach(s =>
+    try s.sink(r) catch {
+    | exn =>
+      if !s.noted {
+        s.noted = true
+        let why = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Console.error(`log sink ${s.id->Int.toString} failed and is skipped for that line: ${why}`)
+      }
+    }
+  )
+
 // Central emit — all log output flows through here.
 // ~detail: structured data shown only in CloudWatch (expandable on click).
 //   Terminal (in-memory): shows only the message line.
@@ -125,37 +198,35 @@ let emit = (
   // Sink decision lives in Reventless.AnsiStyle (single source of truth, shared
   // with fmtComp / AnsiStyle.bold). Non-TTY collectors (Lambda, Fargate, ECS,
   // Azure, GCP, Docker, CI, piped stdout) all get JSON; a TTY stays text.
-  if Reventless.AnsiStyle.isJsonSink() {
-    // Structured JSON for any log collector. Plugin/comp/annotations are promoted
-    // to top-level queryable keys instead of being baked into `message`; `message`
-    // stays clean human text. `detail` is the expandable structured payload.
+  let json = Reventless.AnsiStyle.isJsonSink()
+  // The record is built only when something reads it: the JSON line, or a sink.
+  let record = if json || hasSinks() {
     // Explicit ~plugin wins; otherwise fall back to the LogPrefix registry.
     let pluginField = switch plugin {
     | Some(_) as p => p
     | None => resolvePlugin(~comp?, ())
     }
-    let annotationFields =
-      annotations->Option.mapOr([], a =>
-        a->Dict.toArray->Array.map(((k, v)) => (k, JSON.Encode.string(v)))
-      )
-    let fields =
-      [
-        ("time", iso()->JSON.Encode.string),
-        ("level", levelLabel(level)->JSON.Encode.string),
-        ("message", msg->JSON.Encode.string),
-      ]
-      ->Array.concat(serviceName()->Option.mapOr([], s => [("service", JSON.Encode.string(s))]))
-      ->Array.concat(pluginField->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]))
-      ->Array.concat(comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
-      ->Array.concat(annotationFields)
+    Some({
+      time: iso(),
+      level,
+      message: msg,
+      service: ?serviceName(),
+      plugin: ?pluginField,
+      ?comp,
+      annotations: annotations->Option.getOr(Dict.make()),
       // Redacted before anything else: a personal value must not reach a log
       // group, which cannot be swept for one person (`LogRedaction`).
-      ->Array.concat(
-        detail->Option.mapOr([], d => [
-          ("detail", d->Reventless.LogRedaction.redactJson->truncateDetail),
-        ]),
-      )
-    Console.log(fields->Dict.fromArray->JSON.Encode.object->JSON.stringify)
+      detail: ?(detail->Option.map(d => d->Reventless.LogRedaction.redactJson->truncateDetail)),
+    })
+  } else {
+    None
+  }
+  record->Option.forEach(callSinks)
+  if json {
+    // Structured JSON for any log collector. Plugin/comp/annotations are promoted
+    // to top-level queryable keys instead of being baked into `message`; `message`
+    // stays clean human text. `detail` is the expandable structured payload.
+    record->Option.forEach(r => Console.log(r->recordToJson->JSON.stringify))
   } else {
     // Terminal — colored, human-readable, no detail
     let t = hms()
@@ -182,9 +253,10 @@ let setDefaultMinLevel = (l: level) => defaultMinLevel := l
 // Build a logger from a per-call predicate. `shouldLog` is evaluated on every
 // emit, so a logger created at module-init time still reflects a platform
 // default set later (and a live LOG_LEVEL) instead of baking the level in once.
-let makeLoggerWith = (shouldLog: level => bool): t => {
+// It is given the line's component, so a level set for one component applies.
+let makeLoggerWith = (shouldLog: (level, option<string>) => bool): t => {
   let log = (level, ~comp=?, ~data=?, msg) =>
-    if shouldLog(level) {
+    if shouldLog(level, comp) {
       let dataStr =
         data
         ->Option.map(d => ` ${d->Reventless.LogRedaction.redactJson->JSON.stringify}`)
@@ -197,7 +269,7 @@ let makeLoggerWith = (shouldLog: level => bool): t => {
     warn: (~comp=?, ~data=?, msg) => log(Warn, ~comp?, ~data?, msg),
     error: (~comp=?, ~data=?, msg) => log(Error, ~comp?, ~data?, msg),
     debugLazy: (~comp=?, makeMsg) =>
-      if shouldLog(Debug) {
+      if shouldLog(Debug, comp) {
         emit(~level=Debug, ~comp?, makeMsg())
       },
   }
@@ -205,7 +277,8 @@ let makeLoggerWith = (shouldLog: level => bool): t => {
 
 // Fixed-level logger — the level is baked at creation. Used by tests that assert
 // a specific minimum regardless of env/platform default.
-let makeLogger = (~minLevel=Info): t => makeLoggerWith(l => levelToInt(l) >= levelToInt(minLevel))
+let makeLogger = (~minLevel=Info): t =>
+  makeLoggerWith((l, _) => levelToInt(l) >= levelToInt(minLevel))
 
 let silent: t = {
   debug: (~comp as _=?, ~data as _=?, _) => (),
@@ -229,16 +302,139 @@ let effectiveMin = (): option<level> =>
   | None => Some(defaultMinLevel.contents)
   }
 
+// ─── Levels set while running ────────────────────────────────────────────────
+// A running process can be told a level for everything, for one plugin, for one
+// component, or for one component of one plugin. Consulted before LOG_LEVEL, and
+// the narrowest one that is set wins: component of a plugin, then component, then
+// plugin, then the default. Kept in memory only, so a level set this way lasts
+// until the process stops.
+
+type levelOverrides = {
+  plugins: dict<level>,
+  comps: dict<level>,
+  // Keyed `plugin + "\x00" + comp`.
+  pluginComps: dict<level>,
+}
+
+let overrides: levelOverrides = {plugins: Dict.make(), comps: Dict.make(), pluginComps: Dict.make()}
+// The level for every line not covered by a narrower one; `None` until set.
+let defaultOverride: ref<option<level>> = ref(None)
+
+let pluginCompKey = (~plugin, ~comp) => plugin ++ "\x00" ++ comp
+
+let hasOverrides = () =>
+  defaultOverride.contents->Option.isSome ||
+  overrides.plugins->Dict.keysToArray->Array.length > 0 ||
+  overrides.comps->Dict.keysToArray->Array.length > 0 ||
+  overrides.pluginComps->Dict.keysToArray->Array.length > 0
+
+/** Sets the level for the scope the arguments name — both: that component of
+    that plugin; only `~comp`: that component wherever it runs; only `~plugin`:
+    every line of that plugin; neither: the default. `None` removes it, so the
+    next wider scope applies again. */
+let setLevel = (~plugin: option<string>=?, ~comp: option<string>=?, level: option<level>) => {
+  let put = (d: dict<level>, key) =>
+    switch level {
+    | Some(l) => d->Dict.set(key, l)
+    | None => d->Dict.delete(key)
+    }
+  switch (plugin, comp) {
+  | (Some(p), Some(c)) => put(overrides.pluginComps, pluginCompKey(~plugin=p, ~comp=c))
+  | (None, Some(c)) => put(overrides.comps, c)
+  | (Some(p), None) => put(overrides.plugins, p)
+  | (None, None) => defaultOverride := level
+  }
+}
+
+/** Removes every level set while running. */
+let clearLevels = () => {
+  defaultOverride := None
+  [overrides.plugins, overrides.comps, overrides.pluginComps]->Array.forEach(d =>
+    d->Dict.keysToArray->Array.forEach(k => d->Dict.delete(k))
+  )
+}
+
+type levelSetting = {
+  plugin?: string,
+  comp?: string,
+  level: level,
+}
+
+/** Every level set while running, the default first. */
+let levelSettings = (): array<levelSetting> => {
+  let out = []
+  defaultOverride.contents->Option.forEach(level => out->Array.push({level: level}))
+  overrides.plugins
+  ->Dict.toArray
+  ->Array.forEach(((plugin, level)) => out->Array.push({plugin, level}))
+  overrides.comps->Dict.toArray->Array.forEach(((comp, level)) => out->Array.push({comp, level}))
+  overrides.pluginComps
+  ->Dict.toArray
+  ->Array.forEach(((key, level)) =>
+    switch key->String.split("\x00") {
+    | [plugin, comp] => out->Array.push({plugin, comp, level})
+    | _ => ()
+    }
+  )
+  out
+}
+
+/** The minimum level a line of this component (and plugin) is written at.
+    `None` ⇒ nothing is written. The plugin is resolved from the component when
+    not given, and only when a level was set for a plugin. */
+let minLevelFor = (~plugin: option<string>=?, ~comp: option<string>=?, ()): option<level> =>
+  if !hasOverrides() {
+    effectiveMin()
+  } else {
+    let pluginOf = () =>
+      switch plugin {
+      | Some(_) as p => p
+      | None => resolvePlugin(~comp?, ())
+      }
+    let fromPluginComp = switch comp {
+    | Some(c) if overrides.pluginComps->Dict.keysToArray->Array.length > 0 =>
+      pluginOf()->Option.flatMap(p =>
+        overrides.pluginComps->Dict.get(pluginCompKey(~plugin=p, ~comp=c))
+      )
+    | _ => None
+    }
+    let fromComp = () => comp->Option.flatMap(c => overrides.comps->Dict.get(c))
+    let fromPlugin = () =>
+      if overrides.plugins->Dict.keysToArray->Array.length > 0 {
+        pluginOf()->Option.flatMap(p => overrides.plugins->Dict.get(p))
+      } else {
+        None
+      }
+    switch fromPluginComp {
+    | Some(_) as l => l
+    | None =>
+      switch fromComp() {
+      | Some(_) as l => l
+      | None =>
+        switch fromPlugin() {
+        | Some(_) as l => l
+        | None =>
+          switch defaultOverride.contents {
+          | Some(_) as l => l
+          | None => effectiveMin()
+          }
+        }
+      }
+    }
+  }
+
+/** Whether a line at `level` of this component (and plugin) is written. */
+let shouldLog = (level: level, ~plugin: option<string>=?, ~comp: option<string>=?, ()): bool =>
+  switch minLevelFor(~plugin?, ~comp?, ()) {
+  | None => false
+  | Some(min) => levelToInt(level) >= levelToInt(min)
+  }
+
 // Reads LOG_LEVEL from process.env on every call and honors the platform default
 // when unset. Safe to call at module top-level: the returned logger evaluates the
 // level lazily, so a platform lowering the default afterwards (e.g.
 // reventless-local → Debug) takes effect for loggers already constructed.
 // LOG_LEVEL=silent disables all output (used by the reventless-gwt CLI so
 // framework diagnostics don't interleave with NDJSON / TAP / JUnit streams).
-let fromEnv = (): t =>
-  makeLoggerWith(l =>
-    switch effectiveMin() {
-    | None => false
-    | Some(min) => levelToInt(l) >= levelToInt(min)
-    }
-  )
+// A level set while running (`setLevel`) is consulted first.
+let fromEnv = (): t => makeLoggerWith((l, comp) => shouldLog(l, ~comp?, ()))

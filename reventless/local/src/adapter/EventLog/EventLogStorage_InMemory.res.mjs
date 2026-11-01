@@ -2,37 +2,72 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as STM from "effect/STM";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as TRef from "effect/TRef";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as LocalEventLogRead$ReventlessLocal from "../LocalEventLogRead.res.mjs";
 
 function makeMemoryStorage(_name, param) {
+  let ordered = [];
+  let keepOrdered = (track, id, jsons) => {
+    jsons.forEach(json => {
+      let position = ordered.length + 1 | 0;
+      ordered.push(LocalEventLogRead$ReventlessLocal.storedOfFlat(_name, position, id, json));
+      if (track) {
+        return Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string), msgId => LocalEventLogRead$ReventlessLocal.note(_name, msgId, position));
+      }
+    });
+  };
+  LocalEventLogRead$ReventlessLocal.register(_name, "Aggregate", async (bound, limit, correlationId) => {
+    let out = [];
+    let i = ordered.length - 1 | 0;
+    while (i >= 0 && out.length < limit) {
+      let r = ordered[i];
+      let inBound = bound !== undefined ? (
+          bound.TAG === "Below" ? r.position < bound._0 : r.position <= bound._0
+        ) : true;
+      let inFlow = Stdlib_Option.mapOr(correlationId, true, id => Primitive_object.equal(LocalEventLogRead$ReventlessLocal.metaString(r.meta, "correlationId"), id));
+      if (inBound && inFlow) {
+        out.push(r);
+      }
+      i = i - 1 | 0;
+    };
+    return out;
+  });
   let eventsRef = Effect.runSync(STM.commit(TRef.make({})));
   let snapshots = {};
-  let append = (seqNr, id, jsons) => Effect.runPromise(STM.commit(TRef.modify(eventsRef, events => {
-    let existing = Stdlib_Option.getOr(events[id], []);
-    let currentCount = existing.length;
-    if (seqNr !== currentCount) {
-      return [
-        {
-          TAG: "Error",
-          _0: "Conflict"
-        },
-        events
-      ];
-    } else {
-      events[id] = existing.concat(jsons);
-      return [
-        {
-          TAG: "Ok",
-          _0: undefined
-        },
-        events
-      ];
+  let append = async (seqNr, id, jsons) => {
+    let result = await Effect.runPromise(STM.commit(TRef.modify(eventsRef, events => {
+      let existing = Stdlib_Option.getOr(events[id], []);
+      let currentCount = existing.length;
+      if (seqNr !== currentCount) {
+        return [
+          {
+            TAG: "Error",
+            _0: "Conflict"
+          },
+          events
+        ];
+      } else {
+        events[id] = existing.concat(jsons);
+        return [
+          {
+            TAG: "Ok",
+            _0: undefined
+          },
+          events
+        ];
+      }
+    })));
+    if (result.TAG === "Ok") {
+      keepOrdered(true, id, jsons);
     }
-  })));
+    return result;
+  };
   let replayStream = (id, fromSeqOpt) => {
     let fromSeq = fromSeqOpt !== undefined ? fromSeqOpt : 0;
     return Stream$1.flatMap(Stream$1.fromEffect(Effect.map(STM.commit(TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []).filter((param, i) => i >= fromSeq))), arr => Stream$1.fromIterable(arr));
@@ -79,6 +114,7 @@ function makeMemoryStorage(_name, param) {
         return Effect.fail(result._0);
       }
       seqNrRef.contents = seqNrRef.contents + 1 | 0;
+      keepOrdered(false, id, [json]);
       return Effect.succeed();
     }));
   };

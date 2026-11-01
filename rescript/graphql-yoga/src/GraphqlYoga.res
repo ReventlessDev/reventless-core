@@ -260,3 +260,20 @@ external newWebSocketServer: {"server": httpServer, "path": string} => wsServer 
  */
 @module("graphql-ws/lib/use/ws")
 external wsUseServer: ({"schema": schema}, wsServer) => unit = "useServer"
+
+/** What `graphql-ws` hands a context function for each operation: the
+    connection's `connectionParams` (what the client sent on connect) and, under
+    `extra.request`, the HTTP upgrade request with its headers. */
+type wsUpgradeRequest = {headers: dict<string>}
+type wsExtra = {request: wsUpgradeRequest}
+type wsContext = {connectionParams?: dict<JSON.t>, extra: wsExtra}
+
+/**
+ * `useServer` with a context function, so subscriptions over the WebSocket see
+ * the same resolver `context` (an identity, say) that HTTP requests get.
+ */
+@module("graphql-ws/lib/use/ws")
+external wsUseServerWithContext: (
+  {"schema": schema, "context": wsContext => promise<JSON.t>},
+  wsServer,
+) => unit = "useServer"

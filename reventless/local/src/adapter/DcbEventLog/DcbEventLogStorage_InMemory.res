@@ -128,6 +128,39 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
     }
   }
 
+  // Newest first, for the read across every log.
+  LocalEventLogRead.register(~log=_name, ~kind=Dcb, async (~bound, ~limit, ~correlationId) => {
+    let out = []
+    let i = ref(events.contents->Array.length - 1)
+    while i.contents >= 0 && out->Array.length < limit {
+      let ev = events.contents->Array.getUnsafe(i.contents)
+      let position = ev.position->posToInt->Int.toFloat
+      let inBound = switch bound {
+      | Some(LocalEventLogRead.Below(p)) => position < p
+      | Some(AtMost(p)) => position <= p
+      | None => true
+      }
+      let inFlow = correlationId->Option.mapOr(true, id => ev.meta.correlationId == id)
+      if inBound && inFlow {
+        out->Array.push(
+          (
+            {
+              log: _name,
+              position,
+              eventType: ev.eventType,
+              tags: ev.tags,
+              payload: ev.data,
+              meta: ev.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema),
+              recordedAt: ev.recordedAt,
+            }: LocalEventLogRead.stored
+          ),
+        )
+      }
+      i := i.contents - 1
+    }
+    out
+  })
+
   let read = async (~query, ~after=?) => {
     let filtered = matchingEvents(~query, ~after)
     let headPosition =
@@ -165,6 +198,11 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
           recordedAt: Message.nowAsISOString(),
         }
         indexEvent(base + j, stored)
+        LocalEventLogRead.note(
+          ~log=_name,
+          ~msgId=event.meta.msgId,
+          ~position=position.contents->Int.toFloat,
+        )
         stored
       })
       events := events.contents->Array.concat(storedEvents)

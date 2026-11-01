@@ -42,6 +42,56 @@ let isUniqueViolation = (exn: exn): bool => {
   msg->String.includes("23505")
 }
 
+/** Where a backwards read of one log starts: strictly below a position, or at
+    and below it. */
+type bound =
+  | Below(float)
+  | AtMost(float)
+
+/** One log's stored events newest first, across its entities, by `global_seq`,
+    narrowed to one correlation id when given. Rows are `(global_seq, aggregate
+    id, stored event)`. */
+let readBackwards = async (
+  pool: PgDriver.pool,
+  ~name: string,
+  ~bound: option<bound>,
+  ~limit: int,
+  ~correlationId: option<string>,
+): array<(float, string, JSON.t)> => {
+  let params = [JSON.Encode.string(name)]
+  let param = v => {
+    params->Array.push(v)
+    "$" ++ params->Array.length->Int.toString
+  }
+  let parts = ["log_name = $1"]
+  switch bound {
+  | Some(Below(p)) => parts->Array.push(`global_seq < ${param(JSON.Encode.float(p))}::bigint`)
+  | Some(AtMost(p)) => parts->Array.push(`global_seq <= ${param(JSON.Encode.float(p))}::bigint`)
+  | None => ()
+  }
+  switch correlationId {
+  | Some(id) => parts->Array.push(`(payload->>'correlationId') = ${param(JSON.Encode.string(id))}`)
+  | None => ()
+  }
+  let limitP = param(JSON.Encode.int(limit))
+
+  (
+    await pool->PgDriver.query(
+      `SELECT global_seq::text AS pos, aggregate_id, payload FROM event_log WHERE ${parts->Array.join(
+          " AND ",
+        )} ORDER BY global_seq DESC LIMIT ${limitP}::int`,
+      params,
+    )
+  )->Array.map(row => (
+    row->Dict.get("pos")->Option.mapOr(0, coerceInt)->Int.toFloat,
+    switch row->Dict.get("aggregate_id") {
+    | Some(JSON.String(id)) => id
+    | _ => ""
+    },
+    decodePayload(row),
+  ))
+}
+
 // Builds the classic runtime op set bound to `pool`. Returns `(name, ops)`; the
 // deploy-time `EventLog_Adapter` wrapper lives in `EventLogStorage_Postgres`.
 let makeOps = (~pool: PgDriver.pool, ~name: string, ~opts as _, ~onAppended=noTracking): (

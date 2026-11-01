@@ -46,3 +46,12 @@ external createServer: (socket => unit) => server = "createServer"
 /** Connect to a listening server. The callback fires once the connection is up. */
 @module("node:net")
 external connect: (int, string, unit => unit) => socket = "createConnection"
+
+/** Fires once, when a socket whose `write` returned `false` has flushed its
+    buffer and can take more. A writer that honours backpressure waits for it. */
+@send external onceSocketDrain: (socket, @as("drain") _, unit => unit) => unit = "once"
+
+/** Stops reading from the socket until {!resume}: what a slow reader looks like
+    from the other end. */
+@send external pause: socket => unit = "pause"
+@send external resume: socket => unit = "resume"

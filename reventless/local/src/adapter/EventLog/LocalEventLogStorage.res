@@ -21,8 +21,11 @@ module Make = (Bus: LocalBus.T) => {
         ~pool,
         ~name,
         ~opts,
+        // Where each event sits, for the tap line that publishes it.
+        ~onAppended=LocalPgEventLogRead.noteAppended(~name),
       )
       Bus.registerEventLogReplay(storageName, ops.replay)
+      LocalPgEventLogRead.registerAggregate(~pool, ~name=storageName)
       storage
     | (None, None) =>
       let (storageName, replay, storage) = EventLogStorage_InMemory.makeMemoryStorage(~name, ~opts)

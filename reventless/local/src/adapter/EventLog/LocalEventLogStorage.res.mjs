@@ -2,6 +2,7 @@
 
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as BackendState$ReventlessLocal from "../BackendState.res.mjs";
+import * as LocalPgEventLogRead$ReventlessLocal from "../LocalPgEventLogRead.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./EventLogStorage_Sqlite.res.mjs";
 import * as EventLogStorage_InMemory$ReventlessLocal from "./EventLogStorage_InMemory.res.mjs";
 import * as EventLogStorage_Postgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/EventLogStorage_Postgres.res.mjs";
@@ -16,8 +17,11 @@ function Make(Bus) {
       return match$2[2];
     }
     if (match$1 !== undefined) {
-      let match$3 = EventLogStorage_Postgres$ReventlessPostgres.makeStorage(Primitive_option.valFromOption(match$1), name, opts, undefined);
-      Bus.registerEventLogReplay(match$3[0], match$3[1].replay);
+      let pool = Primitive_option.valFromOption(match$1);
+      let match$3 = EventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, name, opts, LocalPgEventLogRead$ReventlessLocal.noteAppended(name));
+      let storageName = match$3[0];
+      Bus.registerEventLogReplay(storageName, match$3[1].replay);
+      LocalPgEventLogRead$ReventlessLocal.registerAggregate(pool, storageName);
       return match$3[2];
     }
     let match$4 = EventLogStorage_InMemory$ReventlessLocal.makeMemoryStorage(name, opts);

@@ -38,6 +38,11 @@ let ensureSchema = (db: SqliteDriver.t) => {
   // IN (...)` batch). The `_by_kv` index leads with tag_key/tag_value, so it
   // cannot answer a position lookup — without this the batch scanned dcb_tag.
   db->SqliteDriver.exec("CREATE INDEX IF NOT EXISTS dcb_tag_by_pos ON dcb_tag(log_name, position)")
+  // Finding every event of one flow in one log. Created on open, so an existing store gains
+  // it; a query must use this exact expression for the index to apply.
+  db->SqliteDriver.exec(
+    "CREATE INDEX IF NOT EXISTS dcb_event_by_correlation ON dcb_event(log_name, json_extract(meta, '$.correlationId'), position)",
+  )
 }
 
 let posToInt = (pos: string) => pos->Int.fromString->Option.getOr(0)
@@ -157,6 +162,81 @@ let buildQuerySql = (~logName: string, ~query: DcbTag.query, ~after: option<int>
   )
 }
 
+/** The SQL of one backwards read, and its parameters. */
+let readBackSql = (
+  ~name: string,
+  ~bound: option<LocalEventLogRead.bound>,
+  ~limit: int,
+  ~correlationId: option<string>,
+): (string, array<JSON.t>) => {
+  let parts = ["log_name = ?"]
+  let params = [JSON.Encode.string(name)]
+  switch bound {
+  | Some(LocalEventLogRead.Below(p)) =>
+    parts->Array.push("position < ?")
+    params->Array.push(JSON.Encode.float(p))
+  | Some(AtMost(p)) =>
+    parts->Array.push("position <= ?")
+    params->Array.push(JSON.Encode.float(p))
+  | None => ()
+  }
+  switch correlationId {
+  | Some(id) =>
+    parts->Array.push("json_extract(meta, '$.correlationId') = ?")
+    params->Array.push(JSON.Encode.string(id))
+  | None => ()
+  }
+  params->Array.push(JSON.Encode.int(limit))
+  (
+    `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${parts->Array.join(
+        " AND ",
+      )} ORDER BY position DESC LIMIT ?`,
+    params,
+  )
+}
+
+/** Reads one log newest first by position, with each event's tags. */
+let readBack = (~db: SqliteDriver.t, ~name: string): LocalEventLogRead.readBack =>
+  async (~bound, ~limit, ~correlationId) => {
+    let (sql, params) = readBackSql(~name, ~bound, ~limit, ~correlationId)
+    let rows = db->SqliteDriver.prepare(sql)->SqliteDriver.all(params)
+    let positions =
+      rows->Array.map(row => row->Dict.get("position")->Option.mapOr(0, coercePosition))
+    let tagsByPos: Dict.t<array<DcbTag.tag>> = Dict.make()
+    if positions->Array.length > 0 {
+      let placeholders = positions->Array.map(_ => "?")->Array.join(",")
+      db
+      ->SqliteDriver.prepare(
+        `SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position IN (${placeholders}) ORDER BY position ASC, rowid ASC`,
+      )
+      ->SqliteDriver.all(
+        [JSON.Encode.string(name)]->Array.concat(positions->Array.map(JSON.Encode.int)),
+      )
+      ->Array.forEach(row => {
+        let k = row->Dict.get("position")->Option.mapOr(0, coercePosition)->Int.toString
+        let str = key => row->Dict.get(key)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        let tag: DcbTag.tag = {key: str("tag_key"), value: str("tag_value")}
+        switch tagsByPos->Dict.get(k) {
+        | Some(list) => list->Array.push(tag)
+        | None => tagsByPos->Dict.set(k, [tag])
+        }
+      })
+    }
+    rows->Array.map((row): LocalEventLogRead.stored => {
+      let position = row->Dict.get("position")->Option.mapOr(0, coercePosition)
+      let str = key => row->Dict.get(key)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+      {
+        log: name,
+        position: position->Int.toFloat,
+        eventType: str("event_type"),
+        tags: tagsByPos->Dict.get(position->Int.toString)->Option.getOr([]),
+        payload: parseDataPayload(str("data")),
+        meta: parseDataPayload(str("meta")),
+        recordedAt: str("recorded_at"),
+      }
+    })
+  }
+
 let makeStorage = (
   ~db: SqliteDriver.t,
   ~name: string,
@@ -165,6 +245,7 @@ let makeStorage = (
   ~opts as _,
 ) => {
   ensureSchema(db)
+  LocalEventLogRead.register(~log=name, ~kind=Dcb, readBack(~db, ~name))
 
   let insertEventStmt =
     db->SqliteDriver.prepare(
@@ -327,6 +408,8 @@ let makeStorage = (
     // each event insert — before the tag inserts move last_insert_rowid() to
     // the dcb_tag table. Registered only after the transaction commits.
     let appended: array<(string, int)> = []
+    // (msgId, position) per inserted event, for the tap line that publishes it.
+    let positionsOf: array<(string, int)> = []
     try {
       db->SqliteDriver.transaction(() => {
         switch condition {
@@ -371,12 +454,16 @@ let makeStorage = (
               ])
             },
           )
+          positionsOf->Array.push((event.meta.msgId, pos))
           lastPos := pos
         })
 
         result := Ok(Int.toString(lastPos.contents))
       })
       ProjectionPending.trackAppended(~axis=ProjectionPending.Dcb, appended)
+      positionsOf->Array.forEach(((msgId, pos)) =>
+        LocalEventLogRead.note(~log=name, ~msgId, ~position=pos->Int.toFloat)
+      )
       result.contents
     } catch {
     // The deliberate append-condition failure throws Failure("conflict: …").

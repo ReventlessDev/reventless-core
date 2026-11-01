@@ -11,7 +11,9 @@ import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/P
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./LocalEventTap.res.mjs";
+import * as LocalEventLogRead$ReventlessLocal from "./LocalEventLogRead.res.mjs";
 
 let eventTapSeq = {
   contents: 0
@@ -21,12 +23,23 @@ function seedEventTapSeq(n) {
   eventTapSeq.contents = n;
 }
 
-function emitEventTap(topic, service, payload) {
+function emitEventTap(topic, service, meta, payload) {
   eventTapSeq.contents = eventTapSeq.contents + 1 | 0;
+  let stored = LocalEventLogRead$ReventlessLocal.take(meta.msgId);
   let toStdout = LocalEventTap$ReventlessLocal.stdoutEnabled(undefined);
   if (!(toStdout || LocalEventTap$ReventlessLocal.hasReaders())) {
     return;
   }
+  let where = stored !== undefined ? [
+      [
+        "log",
+        stored[0]
+      ],
+      [
+        "position",
+        LocalEventLogRead$ReventlessLocal.positionToString(stored[1])
+      ]
+    ] : [];
   let line = Object.fromEntries([
     [
       "event",
@@ -52,12 +65,19 @@ function emitEventTap(topic, service, payload) {
       "ts",
       new Date().toISOString()
     ]
-  ]);
+  ].concat(where));
   let tapLine = "@@RVLESS_EVT@@ " + JSON.stringify(line);
   if (toStdout) {
     console.log(tapLine);
   }
-  LocalEventTap$ReventlessLocal.broadcast(tapLine);
+  LocalEventTap$ReventlessLocal.publish({
+    line: tapLine,
+    facets: {
+      plugin: Stdlib_Option.flatMap(stored, param => LocalEventLogRead$ReventlessLocal.pluginOf(param[0])),
+      eventType: Message$ReventlessCore.eventNameOfEvent$pJson(payload),
+      correlationId: meta.correlationId
+    }
+  });
 }
 
 function Impl(C) {
@@ -141,7 +161,7 @@ function Impl(C) {
     if (Pii$Reventless.needsPrepare([json])) {
       await Pii$Reventless.prepareOrThrow([json]);
     }
-    emitEventTap(topicName, service, json);
+    emitEventTap(topicName, service, meta, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -417,7 +437,7 @@ function Make($star) {
     if (Pii$Reventless.needsPrepare([json])) {
       await Pii$Reventless.prepareOrThrow([json]);
     }
-    emitEventTap(topicName, service, json);
+    emitEventTap(topicName, service, meta, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -693,7 +713,7 @@ function MakeSilent($star) {
     if (Pii$Reventless.needsPrepare([json])) {
       await Pii$Reventless.prepareOrThrow([json]);
     }
-    emitEventTap(topicName, service, json);
+    emitEventTap(topicName, service, meta, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -970,7 +990,7 @@ function MakeBounded(C) {
     if (Pii$Reventless.needsPrepare([json])) {
       await Pii$Reventless.prepareOrThrow([json]);
     }
-    emitEventTap(topicName, service, json);
+    emitEventTap(topicName, service, meta, json);
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;

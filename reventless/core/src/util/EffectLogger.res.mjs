@@ -26,24 +26,12 @@ function _messageToString(msg) {
   }
 }
 
-function _effectMin() {
-  let match = process.env.LOG_LEVEL;
-  if (match !== undefined) {
-    switch (match) {
-      case "debug" :
-        return LogLevel.Debug;
-      case "error" :
-        return LogLevel.Error;
-      case "info" :
-        return LogLevel.Info;
-      case "silent" :
-        return LogLevel.None;
-      case "warn" :
-        return LogLevel.Warning;
-    }
+function _effectMin(comp, param) {
+  let match = Logger$ReventlessCore.minLevelFor(undefined, comp, undefined);
+  if (match === undefined) {
+    return LogLevel.None;
   }
-  let match$1 = Logger$ReventlessCore.defaultMinLevel.contents;
-  switch (match$1) {
+  switch (match) {
     case "Debug" :
       return LogLevel.Debug;
     case "Info" :
@@ -116,7 +104,10 @@ function install() {
       }
     });
     let annotations = Object.entries(extra).length === 0 ? undefined : extra;
-    Logger$ReventlessCore.emit(level, comp.contents, plugin.contents, detail.contents, annotations, msg);
+    let passes = !Logger$ReventlessCore.hasOverrides() || Logger$ReventlessCore.shouldLog(level, plugin.contents, comp.contents, undefined);
+    if (passes) {
+      return Logger$ReventlessCore.emit(level, comp.contents, plugin.contents, detail.contents, annotations, msg);
+    }
   };
 }
 
@@ -132,19 +123,19 @@ function _annotate(eff, comp, detail) {
 }
 
 function logInfo(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logInfo(msg), comp, detail), _effectMin());
+  return Logger.withMinimumLogLevel(_annotate(Effect.logInfo(msg), comp, detail), _effectMin(comp, undefined));
 }
 
 function logWarn(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logWarning(msg), comp, detail), _effectMin());
+  return Logger.withMinimumLogLevel(_annotate(Effect.logWarning(msg), comp, detail), _effectMin(comp, undefined));
 }
 
 function logError(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logError(msg), comp, detail), _effectMin());
+  return Logger.withMinimumLogLevel(_annotate(Effect.logError(msg), comp, detail), _effectMin(comp, undefined));
 }
 
 function logDebug(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logDebug(msg), comp, detail), _effectMin());
+  return Logger.withMinimumLogLevel(_annotate(Effect.logDebug(msg), comp, detail), _effectMin(comp, undefined));
 }
 
 let setDefaultMinLevel = Logger$ReventlessCore.setDefaultMinLevel;

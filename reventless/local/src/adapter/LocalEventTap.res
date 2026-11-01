@@ -7,12 +7,13 @@
 // what let it stop being configured. The noisy half (a line per event on stdout)
 // stays opt-in. `REVENTLESS_EVENT_TAP=off` disables the socket too.
 // See docs/plans/done/one-local-platform-one-store.md.
-
-let log = ReventlessCore.Logger.fromEnv()
+//
+// The socket is a `LocalFeed`: each reader has a bounded queue and may send a
+// filter line on connect. See docs/plans/the-local-platform-serves-what-is-watched.md.
 
 let envVar = "REVENTLESS_EVENT_TAP"
 
-type setting =
+type setting = LocalFeed.setting =
   | Off
   | Ephemeral
   | Fixed(int)
@@ -25,16 +26,7 @@ let envValue = (~env: dict<string>): option<string> =>
     A port only when the value IS one in the unprivileged range: the runner has
     passed `ndjson` since the tap existed, and someone writing `=1` means "on", not
     port 1. Everything else — unset included — takes the ephemeral default. */
-let settingFromEnv = (~env=NodeProcess.env): setting =>
-  switch envValue(~env) {
-  | Some("off") | Some("false") | Some("none") => Off
-  | Some(v) =>
-    switch Int.fromString(v) {
-    | Some(p) if p >= 1024 && p <= 65535 => Fixed(p)
-    | _ => Ephemeral
-    }
-  | None => Ephemeral
-  }
+let settingFromEnv = (~env=NodeProcess.env): setting => LocalFeed.settingOf(envValue(~env))
 
 /** Whether to ALSO write each line to stdout. Opt-in and unchanged: this is the
     half with a visible cost, and it exists for the child whose stdout the runner
@@ -45,33 +37,26 @@ let stdoutEnabled = (~env=NodeProcess.env): bool =>
   | Some(_) => true
   }
 
-let connections: ref<array<NodeNet.socket>> = ref([])
-let server: ref<option<NodeNet.server>> = ref(None)
-let listeningPort: ref<option<int>> = ref(None)
+/** The feed the socket serves. A filter line narrows it by plugin, event type and
+    correlation id; the other filter fields are about log lines and are ignored
+    here. */
+let feed = LocalFeed.make(~name="EventTap", ~honours=[Plugins, EventTypes, CorrelationId], ())
 
 /** The port the socket is actually bound to, known only once `listen` calls back —
     which is why {!start} takes `~onBound` rather than the caller reading this
     straight after. `None` until then, and if the bind fails. */
-let port = () => listeningPort.contents
+let port = () => feed->LocalFeed.port
 
 /** Whether anyone is reading, so the hot path can skip building a line nobody
     wants. */
-let hasReaders = () => connections.contents->Array.length > 0
+let hasReaders = () => feed->LocalFeed.hasReaders
 
-let drop = (socket: NodeNet.socket) =>
-  connections := connections.contents->Array.filter(s => s !== socket)
+/** Sends a line with what a filter can ask about it. */
+let publish = (item: LocalFeed.item): unit => feed->LocalFeed.publish(item)
 
 /** Guarded per socket: a write to a closed peer throws, and one dead reader must
     not cost the others their events or the platform its run. */
-let broadcast = (line: string): unit =>
-  if hasReaders() {
-    connections.contents->Array.forEach(socket =>
-      switch socket->NodeNet.write(line ++ "\n") {
-      | _ => ()
-      | exception _ => drop(socket)
-      }
-    )
-  }
+let broadcast = (line: string): unit => feed->LocalFeed.broadcast(line)
 
 /** Binds the tap socket and reports the port it got.
 
@@ -80,60 +65,13 @@ let broadcast = (line: string): unit =>
     failure mode: a platform whose diagnostic socket cannot bind must still serve,
     and simply carries no tap port. */
 let start = (~env=NodeProcess.env, ~onBound: int => unit=_ => (), ()): unit =>
-  switch (settingFromEnv(~env), server.contents) {
-  | (Off, _) | (_, Some(_)) => ()
-  | (setting, None) =>
-    let requested = switch setting {
-    | Fixed(p) => p
-    // 0 lets the OS pick, so parallel platforms in one directory never collide and
-    // no unrelated service can be advertised as ours.
-    | Off | Ephemeral => 0
-    }
-    let s = NodeNet.createServer(socket => {
-      socket->NodeNet.setEncoding("utf8")
-      socket->NodeNet.onSocketError(_ => drop(socket))
-      socket->NodeNet.onSocketClose(() => drop(socket))
-      connections := connections.contents->Array.concat([socket])
-    })
-    s->NodeNet.onServerError(err => {
-      log.warn(
-        ~comp="EventTap",
-        `could not listen: ${err->JsExn.message->Option.getOr("unknown error")}`,
-      )
-      server := None
-      listeningPort := None
-    })
-    // A diagnostic listener must never be why the process stays alive.
-    s->NodeNet.unref
-    s->NodeNet.listen(requested, "127.0.0.1", () =>
-      switch s->NodeNet.address->Nullable.toOption {
-      | Some(addr) =>
-        let bound = addr["port"]
-        listeningPort := Some(bound)
-        log.info(~comp="EventTap", `listening on 127.0.0.1:${bound->Int.toString}`)
-        onBound(bound)
-      | None => ()
-      }
-    )
-    server := Some(s)
-  }
+  feed->LocalFeed.start(~setting=settingFromEnv(~env), ~onBound, ())
 
 /** Test seam: forgets connections and server without closing anything. */
-let resetForTests = () => {
-  connections := []
-  server := None
-  listeningPort := None
-}
+let resetForTests = () => feed->LocalFeed.resetForTests
 
 let addConnectionForTests = (socket: NodeNet.socket) =>
-  connections := connections.contents->Array.concat([socket])
+  feed->LocalFeed.addConnectionForTests(socket)
 
 /** Test seam: actually releases the port, so a suite can bind it again. */
-let stopForTests = (): promise<unit> =>
-  switch server.contents {
-  | None => Promise.resolve()
-  | Some(s) =>
-    connections.contents->Array.forEach(NodeNet.destroySocket)
-    resetForTests()
-    Promise.make((resolve, _reject) => s->NodeNet.closeServer(() => resolve()))
-  }
+let stopForTests = (): promise<unit> => feed->LocalFeed.stopForTests

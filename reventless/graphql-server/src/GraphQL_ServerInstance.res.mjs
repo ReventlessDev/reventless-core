@@ -19,6 +19,26 @@ function extractFieldName(sdlField) {
   return Stdlib_Option.getOr(Stdlib_Option.getOr(trimmed.split("(")[0], "").trim().split(":")[0], "").trim();
 }
 
+function wsInitialContext(ctx) {
+  let headers = {};
+  Object.entries(ctx.extra.request.headers).forEach(param => {
+    headers[param[0].toLowerCase()] = param[1];
+  });
+  Object.entries(Stdlib_Option.getOr(ctx.connectionParams, {})).forEach(param => {
+    let v = param[1];
+    if (typeof v !== "string") {
+      return;
+    }
+    headers[param[0].toLowerCase()] = v;
+  });
+  return {
+    request: {
+      headers: new Headers(headers)
+    },
+    req: ctx.extra.request
+  };
+}
+
 function make(labelOpt) {
   let label = labelOpt !== undefined ? labelOpt : "GraphQL";
   let mutationResolvers = {
@@ -176,9 +196,16 @@ type Mutation {
         server: server,
         path: "/graphql"
       });
-      Ws$1.useServer({
-        schema: schema
-      }, wss);
+      if (contextFactory !== undefined) {
+        Ws$1.useServer({
+          schema: schema,
+          context: ctx => contextFactory(wsInitialContext(ctx))
+        }, wss);
+      } else {
+        Ws$1.useServer({
+          schema: schema
+        }, wss);
+      }
       log.info(label, undefined, `graphql-ws subscriptions on ws://localhost:` + port.toString() + `/graphql`);
     }
     activeServer.contents = Primitive_option.some(server);
@@ -300,6 +327,7 @@ export {
   log,
   debug,
   extractFieldName,
+  wsInitialContext,
   make,
 }
 /* log Not a pure module */
