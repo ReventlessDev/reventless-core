@@ -1,3 +1,5 @@
+scalar AWSJSON
+
 type CommandAccepted {
   entityId: ID
   eventCount: Int!
@@ -28,6 +30,7 @@ type Mutation {
   Platform_Plugin_Activate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Deactivate(id: ID!, version: String!): CommandResult!
   Platform_Plugin_Retire(id: ID!, version: String!): CommandResult!
+  Platform_SetLogLevel(comp: String, level: Platform_LogLevel, plugin: String): Platform_LogLevels!
   Platform_UIFragmentDeregistered(pluginId: ID!): UIFragmentChangeEvent
   Platform_UIFragmentRegistered(manifest: String, pluginId: ID!): UIFragmentChangeEvent
   Platform_UIFragmentUpdated(manifest: String, pluginId: ID!): UIFragmentChangeEvent
@@ -109,6 +112,53 @@ type Platform_EventDef {
   schema: String!
 }
 
+type Platform_EventLogConnection {
+  edges: [Platform_EventLogEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
+}
+
+type Platform_EventLogEdge {
+  cursor: String!
+  node: Platform_EventLogRecord!
+}
+
+input Platform_EventLogFilter {
+  causationId: String
+  correlationId: String
+  entityId: String
+  eventTypes: [String!]
+  logs: [String!]
+  msgId: String
+  plugins: [String!]
+  tagKey: String
+  tagValue: String
+  timeFrom: String
+  timeTo: String
+  user: String
+}
+
+type Platform_EventLogPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type Platform_EventLogRecord {
+  entityId: String
+  eventType: String!
+  log: String!
+  meta: AWSJSON!
+  payload: AWSJSON!
+  plugin: String
+  position: String!
+  recordedAt: String!
+  tags: [Platform_EventLogTag!]!
+}
+
+type Platform_EventLogTag {
+  key: String!
+  value: String!
+}
+
 type Platform_ExtensionDef {
   commandTypes: [String!]!
   delegateNames: [String!]!
@@ -125,6 +175,14 @@ type Platform_ExtensionPointDef {
   name: String!
   publishedEvents: [Platform_PublishedEventDef!]
   sourceEventTypes: [String!]!
+}
+
+input Platform_FeedFilter {
+  components: [String!]
+  correlationId: String
+  eventTypes: [String!]
+  level: Platform_LogLevel
+  plugins: [String!]
 }
 
 type Platform_FieldReference {
@@ -149,6 +207,24 @@ type Platform_InboundTranslationSliceDef {
 type Platform_IssuedCommandDef {
   fromEventTypes: [String!]!
   name: String!
+}
+
+enum Platform_LogLevel {
+  DEBUG
+  ERROR
+  INFO
+  WARN
+}
+
+type Platform_LogLevelSetting {
+  comp: String
+  level: Platform_LogLevel!
+  plugin: String
+}
+
+type Platform_LogLevels {
+  base: Platform_LogLevel
+  settings: [Platform_LogLevelSetting!]!
 }
 
 type Platform_OutboundTranslationSliceDef {
@@ -359,6 +435,8 @@ type PluginStatusChangeEvent {
 
 type Query {
   Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
+  Platform_EventLog(after: String, filter: Platform_EventLogFilter, first: Int): Platform_EventLogConnection!
+  Platform_LogLevels: Platform_LogLevels!
   Platform_Plugin(id: ID!, includeRetired: Boolean): Platform_Plugin
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
   Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!
@@ -373,6 +451,8 @@ enum SortOrder {
 }
 
 type Subscription {
+  Platform_EventAppended(filter: Platform_FeedFilter): AWSJSON!
+  Platform_LogAppended(filter: Platform_FeedFilter): AWSJSON!
   onPluginStatusChange: PluginStatusChangeEvent
   onUIFragmentChange: UIFragmentChangeEvent
 }

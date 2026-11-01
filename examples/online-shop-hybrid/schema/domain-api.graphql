@@ -420,6 +420,7 @@ type Ordering_AnnounceRecipientContactTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_AnnounceRecipientContactTodoSource
   status: Ordering_AnnounceRecipientContactTodoStatus!
 }
 
@@ -452,6 +453,13 @@ type Ordering_AnnounceRecipientContactTodoRef {
   retiredState: String
 }
 
+type Ordering_AnnounceRecipientContactTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
+}
+
 enum Ordering_AnnounceRecipientContactTodoStatus {
   Abandoned
   Completed
@@ -468,6 +476,7 @@ type Ordering_AutoShipOrderTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_AutoShipOrderTodoSource
   status: Ordering_AutoShipOrderTodoStatus!
 }
 
@@ -497,6 +506,13 @@ type Ordering_AutoShipOrderTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_AutoShipOrderTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_AutoShipOrderTodoStatus {
@@ -556,6 +572,7 @@ type Ordering_CancelUnshippedOrderTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_CancelUnshippedOrderTodoSource
   status: Ordering_CancelUnshippedOrderTodoStatus!
 }
 
@@ -586,6 +603,13 @@ type Ordering_CancelUnshippedOrderTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_CancelUnshippedOrderTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_CancelUnshippedOrderTodoStatus {
@@ -685,6 +709,7 @@ type Ordering_GeocodeCustomerAddressTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_GeocodeCustomerAddressTodoSource
   status: Ordering_GeocodeCustomerAddressTodoStatus!
 }
 
@@ -715,6 +740,13 @@ type Ordering_GeocodeCustomerAddressTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_GeocodeCustomerAddressTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_GeocodeCustomerAddressTodoStatus {
@@ -765,6 +797,7 @@ type Ordering_MarketingDigestTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_MarketingDigestTodoSource
   status: Ordering_MarketingDigestTodoStatus!
 }
 
@@ -794,6 +827,13 @@ type Ordering_MarketingDigestTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_MarketingDigestTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_MarketingDigestTodoStatus {
@@ -875,6 +915,7 @@ type Ordering_NotificationIntakeTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_NotificationIntakeTodoSource
   status: Ordering_NotificationIntakeTodoStatus!
 }
 
@@ -906,6 +947,13 @@ type Ordering_NotificationIntakeTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_NotificationIntakeTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_NotificationIntakeTodoStatus {
@@ -1104,6 +1152,7 @@ type Ordering_SendNotificationTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_SendNotificationTodoSource
   status: Ordering_SendNotificationTodoStatus!
 }
 
@@ -1144,6 +1193,13 @@ type Ordering_SendNotificationTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_SendNotificationTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_SendNotificationTodoStatus {
@@ -1187,6 +1243,7 @@ type Ordering_VerifyCustomerEmailTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Ordering_VerifyCustomerEmailTodoSource
   status: Ordering_VerifyCustomerEmailTodoStatus!
 }
 
@@ -1217,6 +1274,13 @@ type Ordering_VerifyCustomerEmailTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Ordering_VerifyCustomerEmailTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Ordering_VerifyCustomerEmailTodoStatus {
@@ -1543,6 +1607,7 @@ type Registration_CreateRegisteredPrincipalTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Registration_CreateRegisteredPrincipalTodoSource
   status: Registration_CreateRegisteredPrincipalTodoStatus!
 }
 
@@ -1575,6 +1640,13 @@ type Registration_CreateRegisteredPrincipalTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Registration_CreateRegisteredPrincipalTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Registration_CreateRegisteredPrincipalTodoStatus {
@@ -1664,6 +1736,7 @@ type Registration_SendRegistrationChallengeTodo implements Node {
   maxRetries: Int
   processedAt: String
   retryCount: Int!
+  source: Registration_SendRegistrationChallengeTodoSource
   status: Registration_SendRegistrationChallengeTodoStatus!
 }
 
@@ -1697,6 +1770,13 @@ type Registration_SendRegistrationChallengeTodoRef {
   label: String!
   retired: Boolean!
   retiredState: String
+}
+
+type Registration_SendRegistrationChallengeTodoSource {
+  correlationId: ID!
+  msgId: ID!
+  traceparent: String
+  user: String
 }
 
 enum Registration_SendRegistrationChallengeTodoStatus {
