@@ -14,7 +14,7 @@ function putRecord(stream, data) {
     PartitionKey: ""
   }))), param => {}), Kinesis_Error$ReventlessAws.retrySchedule), err => {
     let msg = Kinesis_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_Kinesis_Runtime-ReventlessAws", undefined, `putRecord: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_Kinesis_Runtime-ReventlessAws", undefined, undefined, `putRecord: ` + msg), () => Effect$1.fail(msg));
   }));
 }
 

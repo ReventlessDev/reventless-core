@@ -44,7 +44,7 @@ function send(queue, queueService, commandJson) {
     }
   }), () => {}), SQS_Error$ReventlessAws.sendRetrySchedule), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, "send: " + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, undefined, "send: " + msg), () => Effect$1.fail(msg));
   });
 }
 
@@ -69,7 +69,7 @@ function sendMessages(queue, queueService, commandJsons) {
       return failedIds.some(failedId => failedId === msgId);
     });
     if (retry < 5) {
-      return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_SQS_Runtime-ReventlessAws", undefined, `sendMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, commandJsonsToRetry));
+      return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `sendMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, commandJsonsToRetry));
     }
     let ids = failedIds.join(", ");
     return Effect$1.fail({
@@ -79,7 +79,7 @@ function sendMessages(queue, queueService, commandJsons) {
   });
   return Effect$1.catchAll(attempt(0, commandJsons), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, `sendMessages: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `sendMessages: ` + msg), () => Effect$1.fail(msg));
   });
 }
 
@@ -104,7 +104,7 @@ function deleteMessages(entries, queue) {
       ReceiptHandle: entry.ReceiptHandle
     }));
     if (retry < 5) {
-      return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_SQS_Runtime-ReventlessAws", undefined, `deleteMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, entriesToRetry));
+      return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `deleteMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, entriesToRetry));
     }
     let ids = failedIds.join(", ");
     return Effect$1.fail({
@@ -114,7 +114,7 @@ function deleteMessages(entries, queue) {
   });
   return Effect$1.catchAll(attempt(0, entries), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, `deleteMessages: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `deleteMessages: ` + msg), () => Effect$1.fail(msg));
   });
 }
 

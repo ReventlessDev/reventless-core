@@ -73,7 +73,7 @@ function Make(Spec) {
       try {
         item = Util_Sury$Reventless.fromJson(row.item, Spec.outboundItemSchema);
       } catch (exn) {
-        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
       }
       let match = Translation.onExhausted(id, item, row.lastError);
       if (match === undefined) {
@@ -92,7 +92,7 @@ function Make(Spec) {
       } catch (raw_exn) {
         let exn$1 = Primitive_exceptions.internalToException(raw_exn);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be published: ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `retries exhausted for ` + id + `, and the abandonment command could not be published: ` + errMsg));
       }
     };
     let personalFields = Pii$Reventless.recordFields(Spec.outboundItemSchema);
@@ -110,12 +110,12 @@ function Make(Spec) {
       }
       let why = fingerprint._0._0;
       if (Pii$Reventless.Provider.isRequired()) {
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
         return;
       } else {
         if (!warnedUnkeyed.contents) {
           warnedUnkeyed.contents = true;
-          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
         }
         return key;
       }
@@ -150,7 +150,7 @@ function Make(Spec) {
               };
               todoItems[id] = row;
             } else {
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: ` + Pii$Reventless.errorMessage(stored._0)));
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(source, EffectLogger$ReventlessCore.idsOfSource), `a work item was not stored: ` + Pii$Reventless.errorMessage(stored._0)));
             }
           }
         }
@@ -222,13 +222,13 @@ function Make(Spec) {
           } catch (raw_exn) {
             let exn = Primitive_exceptions.internalToException(raw_exn);
             let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to decode outboundItem: ` + errMsg));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to decode outboundItem: ` + errMsg));
             item = undefined;
           }
         } else {
           let match = opened._0;
           if (match.NAME === "Gone") {
-            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, id + `: its ` + match.VAL + ` was erased; nothing to do`));
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its ` + match.VAL + ` was erased; nothing to do`));
             let newrecord = {...row};
             newrecord.completedAt = new Date().toISOString();
             newrecord.status = "Completed";
@@ -236,7 +236,7 @@ function Make(Spec) {
             item = undefined;
           } else {
             let why = match.VAL;
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, id + `: its work item does not open: ` + why));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its work item does not open: ` + why));
             let updated = afterFailedAttempt(row, why);
             todoItems[id] = updated;
             if (updated.status === "Abandoned") {
@@ -272,7 +272,7 @@ function Make(Spec) {
             } catch (raw_exn$2) {
               let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
               let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to encode inbound command: ` + errMsg$1));
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to encode inbound command: ` + errMsg$1));
               commandJson = undefined;
             }
             if (commandJson !== undefined) {
@@ -293,7 +293,7 @@ function Make(Spec) {
               } catch (raw_exn$3) {
                 let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
                 let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to publish command: ` + errMsg$2));
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to publish command: ` + errMsg$2));
                 let updated$1 = afterFailedAttempt(row, errMsg$2);
                 todoItems[id] = updated$1;
                 if (updated$1.status === "Abandoned") {

@@ -187,9 +187,9 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
       }
       todoItems[id] = row;
       return count + 1 | 0;
-    })), err => Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `restore: couldn't read pending TODO rows from ` + queryDbTableName + `: ` + DynamoDb_Error$ReventlessAws.message(err)), () => 0)));
+    })), err => Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, undefined, `restore: couldn't read pending TODO rows from ` + queryDbTableName + `: ` + DynamoDb_Error$ReventlessAws.message(err)), () => 0)));
     if (restored > 0) {
-      return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `restore: reloaded ` + restored.toString() + ` unfinished TODO row(s) from ` + queryDbTableName));
+      return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, undefined, `restore: reloaded ` + restored.toString() + ` unfinished TODO row(s) from ` + queryDbTableName));
     }
   };
 }
@@ -237,7 +237,7 @@ function makeScheduleStore(tableName, rows, comp) {
           return;
         }
       });
-    }), err => EffectLogger$ReventlessCore.logError(comp, undefined, `restore: couldn't read the schedules from ` + tableName + `: ` + DynamoDb_Error$ReventlessAws.message(err))));
+    }), err => EffectLogger$ReventlessCore.logError(comp, undefined, undefined, `restore: couldn't read the schedules from ` + tableName + `: ` + DynamoDb_Error$ReventlessAws.message(err))));
     stored.contents = Object.keys(rows);
   };
   let sync = async () => {
@@ -440,7 +440,7 @@ async function runSweeps(slices) {
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      Effect.runSync(EffectLogger$ReventlessCore.logError(slice.comp, undefined, `sweep failed: ` + msg));
+      Effect.runSync(EffectLogger$ReventlessCore.logError(slice.comp, undefined, undefined, `sweep failed: ` + msg));
     }
   }
 }
@@ -465,7 +465,7 @@ async function reconcileSchedules(slices) {
   for (let i = 0, i_finish = reconciles.length; i < i_finish; ++i) {
     await reconciles[i]();
   }
-  return Effect.runSync(EffectLogger$ReventlessCore.logInfo("AutomationSliceRuntime", undefined, `reconcile: the schedules of ` + reconciles.length.toString() + ` automation(s) are in line`));
+  return Effect.runSync(EffectLogger$ReventlessCore.logInfo("AutomationSliceRuntime", undefined, undefined, `reconcile: the schedules of ` + reconciles.length.toString() + ` automation(s) are in line`));
 }
 
 export {

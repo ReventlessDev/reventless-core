@@ -35,7 +35,7 @@ function Make(Spec) {
           };
         }), param => {
           let errorResult = param[0];
-          return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, param[1]), () => errorResult);
+          return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, undefined, param[1]), () => errorResult);
         });
       }
       let handler = action._1;
@@ -54,7 +54,7 @@ function Make(Spec) {
         _0: reference$1
       })), param => {
         let errorResult = param[0];
-        return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, param[1]), () => errorResult);
+        return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, undefined, param[1]), () => errorResult);
       });
     };
     let handleIncomingCommands = stream => Effect$1.flatMap(Stream.runCollect(stream), topicItems => {

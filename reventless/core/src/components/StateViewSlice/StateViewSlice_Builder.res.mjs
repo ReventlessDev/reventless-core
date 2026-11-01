@@ -122,14 +122,14 @@ function Make(RuntimeEnvironment) {
               } catch (raw_exn) {
                 let exn$1 = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `project failed for ` + eventType + `: ` + errMsg));
+                Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, meta), `project failed for ` + eventType + `: ` + errMsg));
                 actions = [];
               }
               let idxStr = (i + 1 | 0).toString();
               let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
               let f = Object.entries(dataDict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
               let fieldsStr = f === "" ? "" : `({` + f + `})`;
-              Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
+              Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, EffectLogger$ReventlessCore.idsOf(undefined, undefined, meta), `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
               let match$1 = ViewChange$ReventlessCore.entityOfEnvelope(envelopeDict);
               let sources = [ViewChange$ReventlessCore.sourceOf(meta, match$1[0], match$1[1], undefined)];
               return actions.map(action => [

@@ -73,11 +73,11 @@ function handleDynamoDbEvent(handleEvents) {
 }
 
 function enqueueEvent(queue, delay, _id, messageBody) {
-  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, "enqueueEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody))), () => {}));
+  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "enqueueEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody))), () => {}));
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
-  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, "enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, Util_SQS_Runtime$ReventlessAws.safeGroupId(id), messageBody))), () => {}));
+  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, Util_SQS_Runtime$ReventlessAws.safeGroupId(id), messageBody))), () => {}));
 }
 
 export {

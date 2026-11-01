@@ -248,7 +248,7 @@ function replayStream(table) {
 }
 
 function replay(table) {
-  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id, undefined)), msg => Effect$1.flatMap(EffectLogger$ReventlessCore.logError("EventLogStorage_DynamoDb_Runtime-ReventlessAws", undefined, `Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
+  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id, undefined)), msg => Effect$1.flatMap(EffectLogger$ReventlessCore.logError("EventLogStorage_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
 }
 
 function appendStream(table) {

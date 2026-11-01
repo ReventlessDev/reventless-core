@@ -20,10 +20,10 @@ function Make(Spec) {
         try {
           val = await Ops.publishJson(Spec.Id.toString(id), event$p.meta, eventJson$p);
         } catch (e) {
-          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, eventJson$p, `publish failed ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, eventJson$p, EffectLogger$ReventlessCore.idsOfJson(eventJson$p), `publish failed ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
           throw e;
         }
-        return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, eventJson$p, `published event ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
+        return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, eventJson$p, EffectLogger$ReventlessCore.idsOfJson(eventJson$p), `published event ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
       })));
     };
     return {

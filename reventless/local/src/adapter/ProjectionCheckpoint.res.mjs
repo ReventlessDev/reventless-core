@@ -273,7 +273,7 @@ async function runCatchup(db, upperBound, dcbUpperBound, handlers) {
       if (checkpoint < bound) {
         let rows = missedRows(db, axis, checkpoint, bound);
         if (rows.length !== 0) {
-          Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `catch-up: delivering ` + rows.length.toString() + ` missed ` + axisLabel(axis) + ` event(s) (positions ` + checkpoint.toString() + `..` + bound.toString() + `] to ` + name));
+          Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, undefined, `catch-up: delivering ` + rows.length.toString() + ` missed ` + axisLabel(axis) + ` event(s) (positions ` + checkpoint.toString() + `..` + bound.toString() + `] to ` + name));
         }
         for (let j = 0, j_finish = rows.length; j < j_finish; ++j) {
           let match$2 = rows[j];
@@ -283,10 +283,10 @@ async function runCatchup(db, upperBound, dcbUpperBound, handlers) {
             try {
               await handler(envelope, undefined);
             } catch (exn) {
-              Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: ` + name + ` failed on stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
+              Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, `catch-up: ` + name + ` failed on stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
             }
           } else {
-            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: unreadable stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
+            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, `catch-up: unreadable stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
           }
         }
       }

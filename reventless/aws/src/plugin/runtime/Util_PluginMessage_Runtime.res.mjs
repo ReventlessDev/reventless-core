@@ -9,7 +9,7 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 function sendMessage(channelId, messageBody) {
   return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS_Helpers$AwsSdk.sendMessage(channelId, messageBody, undefined, undefined, undefined)), () => {}), SQS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_PluginMessage_Runtime-ReventlessAws", undefined, "Failed to send message to channel: " + msg), () => Effect$1.fail(err));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_PluginMessage_Runtime-ReventlessAws", undefined, undefined, "Failed to send message to channel: " + msg), () => Effect$1.fail(err));
   }));
 }
 

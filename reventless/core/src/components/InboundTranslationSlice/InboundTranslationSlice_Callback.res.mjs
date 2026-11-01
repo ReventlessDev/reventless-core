@@ -183,7 +183,7 @@ function Make(Spec) {
         };
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + messageOf(exn, "unknown")));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `failed to encode command: ` + messageOf(exn, "unknown")));
         return {
           TAG: "Error",
           _0: "failed to encode command"

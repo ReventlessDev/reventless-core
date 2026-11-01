@@ -9,14 +9,14 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 function publish(topic, message) {
   return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS_Helpers$AwsSdk.publish(topic.arn, undefined, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SNS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SNS_Runtime-ReventlessAws", undefined, "publish: " + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SNS_Runtime-ReventlessAws", undefined, undefined, "publish: " + msg), () => Effect$1.fail(msg));
   }));
 }
 
 function publishFifo(topic, messageGroupId, message) {
   return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS_Helpers$AwsSdk.publish(topic.arn, messageGroupId, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SNS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SNS_Runtime-ReventlessAws", undefined, "publishFifo: " + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SNS_Runtime-ReventlessAws", undefined, undefined, "publishFifo: " + msg), () => Effect$1.fail(msg));
   }));
 }
 

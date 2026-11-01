@@ -40,7 +40,7 @@ async function sweepOnce() {
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
         let message = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError("LocalAutomationSweep", undefined, `sweep of ` + param[0] + ` failed: ` + message));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError("LocalAutomationSweep", undefined, undefined, `sweep of ` + param[0] + ` failed: ` + message));
       }
     });
     running.contents = false;

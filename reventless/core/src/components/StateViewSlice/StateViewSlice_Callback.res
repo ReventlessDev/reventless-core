@@ -59,8 +59,14 @@ module Make = (
             ),
           )
         let actionsStr = LogFormat.actionNames(actions)
+        let tag = raw.tags->Array.get(0)
         EffectLogger.logInfo(
           ~comp,
+          ~ids=EffectLogger.idsOf(
+            raw.meta,
+            ~entityId=?tag->Option.map(t => t.value),
+            ~entityType=?tag->Option.map(t => t.key),
+          ),
           ~detail=raw.data,
           `handling event ${idx.contents->Int.toString}/${count}: ${LogFormat.bold(
               raw.eventType,

@@ -56,13 +56,14 @@ function Make(Spec) {
       let state = acc.state;
       let meta = Message$ReventlessCore.deriveMeta(command$p.meta, undefined);
       let id = Spec.Id.toString(command$p.id);
+      let ids = EffectLogger$ReventlessCore.idsOf(id, Spec.name, command$p.meta);
       let cmdVariant = Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(command$p.command, Spec.commandSchema));
       let cmdName = LogFormat$ReventlessCore.bold(cmdVariant);
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + id + ` seq=` + seq.toString() + ` cmd=` + cmdName));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, ids, `deciding: id=` + id + ` seq=` + seq.toString() + ` cmd=` + cmdName));
       let repeated = Message$ReventlessCore.hasStableMsgId(command$p.meta) && causes.includes(command$p.meta.msgId);
       let refusal = repeated || !(actsOnOwned || ownedById) ? undefined : CommandTopic_Helpers$ReventlessCore.ownershipRefusal(OwnerScope$Reventless.decideActing(command$p.meta.callerClaim, Owner$Reventless.streamOwners(owners, ownedById, id)), Spec.name, cmdVariant);
       if (repeated) {
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `repeat dropped: ` + cmdName + `(` + id + `) msgId=` + command$p.meta.msgId + ` already caused events`));
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, `repeat dropped: ` + cmdName + `(` + id + `) msgId=` + command$p.meta.msgId + ` already caused events`));
         return {
           state: acc.state,
           owners: acc.owners,
@@ -77,7 +78,7 @@ function Make(Spec) {
       }
       if (refusal !== undefined) {
         let line = `refused: ` + refusal.rejected.errorDetail + ` id=` + id;
-        Effect.runSync(refusal.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, line));
+        Effect.runSync(refusal.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, undefined, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, line));
         return {
           state: acc.state,
           owners: acc.owners,
@@ -117,7 +118,7 @@ function Make(Spec) {
       let match = Message$ReventlessCore.splitMessage(errorJson);
       let payloadDict = match[1];
       let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-      Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail + ` id=` + id));
+      Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `decide rejected: ` + errorCode + ` ` + errorDetail + ` id=` + id));
       return {
         state: acc.state,
         owners: acc.owners,
@@ -138,7 +139,7 @@ function Make(Spec) {
     let resetCache = () => Lru$ReventlessCore.clear(replayCache);
     let snapshotConfig = actsOnOwned ? undefined : Decision.snapshot;
     if (actsOnOwned && Stdlib_Option.isSome(Decision.snapshot)) {
-      Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry"));
+      Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, "snapshots disabled: this aggregate records an @owner, which a snapshot does not carry"));
     }
     let stateSchemaHash = snapshotConfig !== undefined ? HashObject(Object.fromEntries([[
           "state",
@@ -170,6 +171,21 @@ function Make(Spec) {
       }
       return Primitive_option.some(state);
     };
+    let entityIds = idStr => ({
+      entityId: idStr,
+      entityType: Spec.name
+    });
+    let batchIds = (idStr, items) => {
+      let flows = items.map(i => i.command.meta.correlationId);
+      let f = flows[0];
+      let one = f !== undefined && flows.every(x => x === f) ? f : undefined;
+      return {
+        msgId: items.length === 1 ? Stdlib_Option.map(items[0], i => i.command.meta.msgId) : undefined,
+        correlationId: one,
+        entityId: idStr,
+        entityType: Spec.name
+      };
+    };
     let coldReadState = id => {
       let idStr = Spec.Id.toString(id);
       let seedEffect = snapshotConfig !== undefined ? Effect.map(Effect.promise(() => Ops.eventLog.latestSnapshot(id)), snapResult => {
@@ -189,20 +205,20 @@ function Make(Spec) {
                   snap.seqNr
                 ];
               } else {
-                Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot ignored (undecodable): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
+                Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot ignored (undecodable): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
                 return [
                   Decision.initialState,
                   0
                 ];
               }
             }
-            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot ignored (schema drift): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
+            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot ignored (schema drift): id=` + idStr + `, seq=` + snap.seqNr.toString() + ` — full replay`));
             return [
               Decision.initialState,
               0
             ];
           }
-          Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot read failed (ignored): id=` + idStr + `: ` + snapResult._0 + ` — full replay`));
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot read failed (ignored): id=` + idStr + `: ` + snapResult._0 + ` — full replay`));
           return [
             Decision.initialState,
             0
@@ -224,7 +240,7 @@ function Make(Spec) {
         ]), param => {
           let n = param[1];
           let detail = seedSeq > 0 ? `(snapshot@` + seedSeq.toString() + `, ` + (n - seedSeq | 0).toString() + ` delta event(s))` : n.toString() + ` event(s)`;
-          return EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay: id=` + idStr + `, ` + detail);
+          return EffectLogger$ReventlessCore.logInfo(comp, undefined, entityIds(idStr), `replay: id=` + idStr + `, ` + detail);
         });
       });
     };
@@ -244,7 +260,7 @@ function Make(Spec) {
           recordEventOwners(param[2], ev$p.event),
           c !== undefined && !causes.includes(c) ? causes.concat([c]) : causes
         ];
-      }), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay (with causes, for a stable-id command): id=` + idStr + `, ` + param[1].toString() + ` event(s)`));
+      }), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, entityIds(idStr), `replay (with causes, for a stable-id command): id=` + idStr + `, ` + param[1].toString() + ` event(s)`));
     };
     let maybeWriteSnapshot = (id, idStr, oldSeq, newSeq, state) => {
       if (snapshotConfig === undefined) {
@@ -263,19 +279,19 @@ function Make(Spec) {
         };
         Stdlib_Promise.$$catch(Ops.eventLog.writeSnapshot(id, snap).then(result => {
           if (result.TAG === "Ok") {
-            Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `snapshot written: id=` + idStr + `, seq=` + snap.seqNr.toString()));
+            Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, entityIds(idStr), `snapshot written: id=` + idStr + `, seq=` + snap.seqNr.toString()));
           } else {
-            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot write failed (ignored): id=` + idStr + `: ` + result._0));
+            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot write failed (ignored): id=` + idStr + `: ` + result._0));
           }
           return Promise.resolve();
         }), err => {
           let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot write threw (ignored): id=` + idStr + `: ` + msg));
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot write threw (ignored): id=` + idStr + `: ` + msg));
           return Promise.resolve();
         });
         return;
       } else {
-        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `snapshot skipped (state not serializable): id=` + idStr + `, seq=` + newSeq.toString()));
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, entityIds(idStr), `snapshot skipped (state not serializable): id=` + idStr + `, seq=` + newSeq.toString()));
       }
     };
     let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount, appendErrorDetailOpt) => {
@@ -346,7 +362,7 @@ function Make(Spec) {
           let owners = match[2];
           let seqNr = match[1];
           let state = match[0];
-          readState = Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay skipped (cached): id=` + idStr + `, seq=` + seqNr.toString()), () => [
+          readState = Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, batchIds(idStr, topicItemsForId), `replay skipped (cached): id=` + idStr + `, seq=` + seqNr.toString()), () => [
             state,
             seqNr,
             owners,
@@ -398,7 +414,7 @@ function Make(Spec) {
             return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
           }).join(", ");
           let eventJsons = eventsToAppend.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
-          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
+          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, batchIds(idStr, topicItemsForId), `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
             if (appendResult.TAG === "Ok") {
               let newSeq = sequenceNr + eventsToAppend.length | 0;
               Lru$ReventlessCore.put(replayCache, idStr, [
@@ -408,7 +424,7 @@ function Make(Spec) {
               ]);
               maybeWriteSnapshot(id, idStr, sequenceNr, newSeq, finalState);
               let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length, undefined);
-              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, batchIds(idStr, topicItemsForId), `append: id=` + idStr), () => ({
                 TAG: "Ok",
                 _0: perRef
               }));
@@ -416,7 +432,7 @@ function Make(Spec) {
             let msg = appendResult._0;
             if (typeof msg !== "object") {
               Lru$ReventlessCore.invalidate(replayCache, idStr);
-              return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, batchIds(idStr, topicItemsForId), `conflict: id=` + idStr + `, will retry`), () => ({
                 TAG: "Error",
                 _0: "conflict"
               }));
@@ -424,7 +440,7 @@ function Make(Spec) {
             let msg$1 = msg._0;
             Lru$ReventlessCore.invalidate(replayCache, idStr);
             let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0, msg$1);
-            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr + `: ` + msg$1), () => ({
+            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, batchIds(idStr, topicItemsForId), `append failed: id=` + idStr + `: ` + msg$1), () => ({
               TAG: "Ok",
               _0: perRef$1
             }));
@@ -436,7 +452,7 @@ function Make(Spec) {
           initialOwners
         ]);
         let perRef = reportFinalOutcomes(outcomes, idStr, true, 0, undefined);
-        return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
+        return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, batchIds(idStr, topicItemsForId), `no events produced: id=` + idStr), () => ({
           TAG: "Ok",
           _0: perRef
         }));
@@ -450,7 +466,7 @@ function Make(Spec) {
       let count = cmdJsons.length.toString();
       cmdJsons.forEach((cmdJson, idx) => {
         let idxStr = (idx + 1 | 0).toString();
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, EffectLogger$ReventlessCore.idsOf(idStr, Spec.name, cmdJson.meta), `handling command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
       });
       let references = topicItemsForId.map(item => item.reference);
       let attempt = retryCount => Effect.flatMap(replayProcessAppend(id, topicItemsForId), result => {
@@ -459,10 +475,10 @@ function Make(Spec) {
         }
         let msg = result._0;
         if (retryCount < 3) {
-          return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict retry id=` + idStr + ` ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
+          return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, batchIds(idStr, topicItemsForId), `conflict retry id=` + idStr + ` ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
         }
         let detail = `concurrent modification (` + (3).toString() + ` retries exhausted): ` + msg;
-        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `max conflict retries exhausted id=` + idStr + `: ` + msg), () => references.map(param => ({
+        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, batchIds(idStr, topicItemsForId), `max conflict retries exhausted id=` + idStr + `: ` + msg), () => references.map(param => ({
           TAG: "Error",
           _0: detail
         })));

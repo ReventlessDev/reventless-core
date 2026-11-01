@@ -6,9 +6,10 @@
 [PF11](#pf11-the-feeds-on-the-platform-api-and-its-subscriptions-checked). Of the chain,
 [PF7](#pf7-the-command-outcome-hook-takes-several-listeners),
 [PF8](#pf8-automations-and-outbound-translations-carry-the-flow) and
-[PF10](#pf10-the-view-change-line) built 2026-11-01; [PF9](#pf9-ids-on-every-log-line) waits on
-[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md), and
-[PF12](#pf12-the-cloudwatch-guide-follows-the-chain) on it.
+[PF10](#pf10-the-view-change-line) built 2026-11-01; [PF9](#pf9-ids-on-every-log-line) and
+[PF12](#pf12-the-cloudwatch-guide-follows-the-chain) built the same day with
+[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md), not yet
+released; [PF12](#pf12-the-cloudwatch-guide-follows-the-chain)'s queries are still to be run against a stack.
 [PF13](#pf13-the-registry-entry-names-the-platform-api) and
 [PF14](#pf14-a-commands-outcome-names-what-caused-it) built 2026-11-01, not yet released.<br/>
 **Repos:** `reventless-core` only.<br/>
@@ -306,25 +307,33 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
 
 ### PF9: ids on every log line
 
-- **Needs** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md)
-  built: until then, component lines run outside the invocation that carries the ids.
-- **[`Runtime.annotateInvocation`](../../reventless/core/src/adapter/Runtime/Runtime.res)**
-  annotates the message's own `msgId` beside `correlationId` and `causationId`, so a line can be
-  placed under the message it handled.
-- **The command's entry** ([`CommandGenerator_Callback`](../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res))
-  annotates the new command's `msgId` and `correlationId` on its `generated command` line.
-  Refusals before the handler (owner fields, the interceptor's deny, a decode failure) log one
-  warning with those ids and fire the outcome hook as rejected, with cause *access* or
-  *caller*.
-- **The entity a command is handled for** is annotated on its handling lines: `entityId` and
-  `entityType`, as the aggregate id and the aggregate's name, or a DCB slice's entity tag value
-  and the entity it decides on. Every line of one entity, or of every entity of one type, can
-  then be found by field, not by searching message text.
+- **Needs** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md),
+  revised 2026-11-01: its
+  [CL2 and CL3](component-logs-detached-from-invocation.md#phases) put the handled message's
+  `msgId`, `correlationId` and `causationId` on every component line, and a command's
+  `entityId` and `entityType` on the lines of its handling, from the message itself rather than
+  from the invocation. What is left here is the command's entry:
+- **The `generated command` line**
+  ([`CommandGenerator_Callback`](../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res))
+  carries the new command's `msgId` and `correlationId`.
+- **Refusals before the handler** each log one warning with those ids: the owner fields, the
+  interceptor's deny, a payload that cannot be decoded. The owner fields and the deny also fire
+  the outcome hook as rejected with cause `ACCESS`; a payload that cannot be decoded does not
+  ([PFQ6](#5-open-questions)).
 - **Exit:**
   - a log test in which every line of one command's handling, its events' projections and an
     automation's next command carries the same `correlationId` and its own `msgId`;
   - a test that an aggregate's and a DCB slice's handling lines carry `entityId` and
-    `entityType`.
+    `entityType`;
+  - a test that each refusal before the handler logs its warning with the command's ids, and
+    that an access refusal reaches the outcome hook.
+- **Built 2026-11-01.** The handling lines' ids and entities are the component-log plan's
+  [CL3](component-logs-detached-from-invocation.md#cl3-the-component-families). Here: the
+  `generated command` line carries the new command's ids, and `refused before its handler: …`
+  is one warning per refusal; an owner-field refusal and an interceptor's deny fire the outcome
+  hook as rejected with cause `ACCESS` and code `Forbidden`, a payload that cannot be decoded
+  does not ([PFQ6](#5-open-questions)). The original error goes on unchanged, so a transport
+  still reports a caller's fault as one. Tests: `ComponentLineIdsTest`, `OwnerStampingTest`.
 
 ### PF10: the view-change line
 
@@ -396,6 +405,9 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   - a query for the `view changed` lines of one flow;
   - a query for refusals by cause.
 - **Exit:** each query run once against a stack with the chain release.
+- **Built 2026-11-01** in the guide: `msgId`, `entityId` and `entityType` in the field list, the
+  timeline across automations, the rows one flow changed, one entity's history, and refusals
+  before the handler. Not yet run against a stack.
 
 ### PF13: the registry entry names the platform API
 
@@ -457,6 +469,12 @@ make it complete. They also multiply log volume, and would put row content in Cl
 **PFQ5. Should refusals before the handler fire the outcome hook?** They are not handled
 commands. **Recommendation:** yes, with their own cause, so the hook sees every command that
 was sent, as its callers expect.
+
+**PFQ6. With what cause does a payload that cannot be decoded reach the outcome hook?** The
+causes are `DOMAIN`, `ACCESS` and `INFRASTRUCTURE`; a malformed payload is none of them, and a new
+cause would add a value to the API's `CommandRejectionCause`. **Recommendation:** it does not
+reach the hook: it logs its warning with the command's ids and stays the GraphQL error it is
+today. The owner fields and the interceptor's deny are access refusals and do reach it.
 
 ## 6. Acceptance
 

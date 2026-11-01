@@ -111,6 +111,7 @@ module Make = (
       let {reference, command: command'} = topicItem
       let meta = command'->updateMeta
       let id = command'.id->Spec.Id.toString
+      let ids = EffectLogger.idsOf(command'.meta, ~entityId=id, ~entityType=Spec.name)
       // Identity, not content: the folded state grows with the entity's whole
       // history, so serialising it here makes the line's size a function of how
       // long the system has been in use. The state at decision time is a
@@ -120,6 +121,7 @@ module Make = (
       let cmdName = cmdVariant->LogFormat.bold
       EffectLogger.logDebug(
         ~comp,
+        ~ids,
         `deciding: id=${id} seq=${seq->Int.toString} cmd=${cmdName}`,
       )->Effect.runSync
       // Before `decide`, first: a command with a stable id that the stream already
@@ -140,6 +142,7 @@ module Make = (
       | _ if repeated =>
         EffectLogger.logInfo(
           ~comp,
+          ~ids,
           `repeat dropped: ${cmdName}(${id}) msgId=${command'.meta.msgId} already caused events`,
         )->Effect.runSync
         {
@@ -153,7 +156,9 @@ module Make = (
         let line = `refused: ${refused.rejected.errorDetail} id=${id}`
 
         (
-          refused.isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
+          refused.isDefect
+            ? EffectLogger.logError(~comp, line)
+            : EffectLogger.logWarn(~comp, ~ids, line)
         )->Effect.runSync
         {
           ...acc,
@@ -188,6 +193,7 @@ module Make = (
               : payloadDict->JSON.Encode.object->JSON.stringify
           EffectLogger.logError(
             ~comp,
+            ~ids,
             `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
           )->Effect.runSync
           {
@@ -290,6 +296,25 @@ module Make = (
   // latest persisted snapshot (hash-gated) and replay only the events after it;
   // otherwise replay full history from seq 0. Returns `(state, sequenceNr, owners)`
   // where sequenceNr is the total event count (the OCC condition for the next append).
+  // The entity a line is about, and its flow when every command of the batch shares one.
+  let entityIds = (idStr): EffectLogger.ids => {entityId: idStr, entityType: Spec.name}
+  let batchIds = (
+    idStr,
+    items: array<CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
+  ): EffectLogger.ids => {
+    let flows = items->Array.map(i => i.command.meta.correlationId)
+    let one = switch flows[0] {
+    | Some(f) => flows->Array.every(x => x == f) ? Some(f) : None
+    | None => None
+    }
+    {
+      entityId: idStr,
+      entityType: Spec.name,
+      correlationId: ?one,
+      msgId: ?(items->Array.length == 1 ? items[0]->Option.map(i => i.command.meta.msgId) : None),
+    }
+  }
+
   let coldReadState = id => {
     let idStr = id->Spec.Id.toString
     let seedEffect = switch snapshotConfig {
@@ -303,6 +328,7 @@ module Make = (
           | None =>
             EffectLogger.logWarn(
               ~comp,
+              ~ids=entityIds(idStr),
               `snapshot ignored (undecodable): id=${idStr}, seq=${snap.seqNr->Int.toString} — full replay`,
             )->Effect.runSync
             (Decision.initialState, 0)
@@ -310,6 +336,7 @@ module Make = (
         | Ok(Some(snap)) =>
           EffectLogger.logWarn(
             ~comp,
+            ~ids=entityIds(idStr),
             `snapshot ignored (schema drift): id=${idStr}, seq=${snap.EventLog.seqNr->Int.toString} — full replay`,
           )->Effect.runSync
           (Decision.initialState, 0)
@@ -317,6 +344,7 @@ module Make = (
         | Error(msg) =>
           EffectLogger.logWarn(
             ~comp,
+            ~ids=entityIds(idStr),
             `snapshot read failed (ignored): id=${idStr}: ${msg} — full replay`,
           )->Effect.runSync
           (Decision.initialState, 0)
@@ -335,7 +363,7 @@ module Make = (
           seedSeq > 0
             ? `(snapshot@${seedSeq->Int.toString}, ${(n - seedSeq)->Int.toString} delta event(s))`
             : `${n->Int.toString} event(s)`
-        EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${detail}`)
+        EffectLogger.logInfo(~comp, ~ids=entityIds(idStr), `replay: id=${idStr}, ${detail}`)
       })
     )
   }
@@ -360,6 +388,7 @@ module Make = (
     ->Effect.tap(((_, n, _, _)) =>
       EffectLogger.logInfo(
         ~comp,
+        ~ids=entityIds(idStr),
         `replay (with causes, for a stable-id command): id=${idStr}, ${n->Int.toString} event(s)`,
       )
     )
@@ -375,11 +404,13 @@ module Make = (
         | Ok() =>
           EffectLogger.logDebug(
             ~comp,
+            ~ids=entityIds(idStr),
             `snapshot written: id=${idStr}, seq=${snap.seqNr->Int.toString}`,
           )->Effect.runSync
         | Error(msg) =>
           EffectLogger.logWarn(
             ~comp,
+            ~ids=entityIds(idStr),
             `snapshot write failed (ignored): id=${idStr}: ${msg}`,
           )->Effect.runSync
         }
@@ -389,6 +420,7 @@ module Make = (
         let msg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
         EffectLogger.logWarn(
           ~comp,
+          ~ids=entityIds(idStr),
           `snapshot write threw (ignored): id=${idStr}: ${msg}`,
         )->Effect.runSync
         Promise.resolve()
@@ -412,6 +444,7 @@ module Make = (
       | None =>
         EffectLogger.logWarn(
           ~comp,
+          ~ids=entityIds(idStr),
           `snapshot skipped (state not serializable): id=${idStr}, seq=${newSeq->Int.toString}`,
         )->Effect.runSync
       }
@@ -508,6 +541,7 @@ module Make = (
       | Some((state, seqNr, owners)) =>
         EffectLogger.logInfo(
           ~comp,
+          ~ids=batchIds(idStr, topicItemsForId),
           `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
         )->Effect.map(_ => (state, seqNr, owners, []))
       | None =>
@@ -543,7 +577,11 @@ module Make = (
           ~appendSucceeded=true,
           ~appendedEventCount=0,
         )
-        EffectLogger.logInfo(~comp, `no events produced: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+        EffectLogger.logInfo(
+          ~comp,
+          ~ids=batchIds(idStr, topicItemsForId),
+          `no events produced: id=${idStr}`,
+        )->Effect.map(_ => Ok(perRef))
       | generatedEvents' =>
         let eventCount = generatedEvents'->Array.length->Int.toString
         let eventDetails =
@@ -551,6 +589,7 @@ module Make = (
         let eventJsons = generatedEvents'->Array.map(event' => event'->eventJson)->JSON.Encode.array
         EffectLogger.logInfo(
           ~comp,
+          ~ids=batchIds(idStr, topicItemsForId),
           ~detail=eventJsons,
           `produced ${eventCount} event(s): [${eventDetails}]`,
         )
@@ -573,7 +612,11 @@ module Make = (
               ~appendSucceeded=true,
               ~appendedEventCount=generatedEvents'->Array.length,
             )
-            EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+            EffectLogger.logInfo(
+              ~comp,
+              ~ids=batchIds(idStr, topicItemsForId),
+              `append: id=${idStr}`,
+            )->Effect.map(_ => Ok(perRef))
           | Error(EventLog.Conflict) =>
             // Another writer advanced the stream past our (possibly cached)
             // sequenceNr — drop the entry so the retry replays cold.
@@ -581,9 +624,11 @@ module Make = (
             // Signal the outer replay+re-decide retry loop (which matches
             // Error(_)); the string is an internal marker, no longer a
             // cross-component substring sentinel.
-            EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
-              _ => Error("conflict"),
-            )
+            EffectLogger.logWarn(
+              ~comp,
+              ~ids=batchIds(idStr, topicItemsForId),
+              `conflict: id=${idStr}, will retry`,
+            )->Effect.map(_ => Error("conflict"))
           | Error(EventLog.StorageFailure(msg)) =>
             // Appends are atomic, so the read snapshot is likely still valid —
             // but a storage error means we can't be sure what committed;
@@ -596,9 +641,11 @@ module Make = (
               ~appendedEventCount=0,
               ~appendErrorDetail=msg,
             )
-            EffectLogger.logError(~comp, `append failed: id=${idStr}: ${msg}`)->Effect.map(
-              _ => Ok(perRef),
-            )
+            EffectLogger.logError(
+              ~comp,
+              ~ids=batchIds(idStr, topicItemsForId),
+              `append failed: id=${idStr}: ${msg}`,
+            )->Effect.map(_ => Ok(perRef))
           }
         )
       }
@@ -637,6 +684,7 @@ module Make = (
               let idxStr = (idx + 1)->Int.toString
               EffectLogger.logInfo(
                 ~comp,
+                ~ids=EffectLogger.idsOf(cmdJson.meta, ~entityId=idStr, ~entityType=Spec.name),
                 ~detail=cmdJson.commandJson,
                 `handling command ${idxStr}/${count}: ${LogFormat.cmdDetail(cmdJson)}`,
               )->Effect.runSync
@@ -655,6 +703,7 @@ module Make = (
                 | Error(_) if retryCount < maxConflictRetries =>
                   EffectLogger.logWarn(
                     ~comp,
+                    ~ids=batchIds(idStr, topicItemsForId),
                     `conflict retry id=${idStr} ${(retryCount + 1)
                         ->Int.toString}/${maxConflictRetries->Int.toString}`,
                   )->Effect.flatMap(_ => attempt(retryCount + 1))
@@ -662,6 +711,7 @@ module Make = (
                   let detail = `concurrent modification (${maxConflictRetries->Int.toString} retries exhausted): ${msg}`
                   EffectLogger.logError(
                     ~comp,
+                    ~ids=batchIds(idStr, topicItemsForId),
                     `max conflict retries exhausted id=${idStr}: ${msg}`,
                   )->Effect.map(_ => references->Array.map(_ => Error(detail)))
                 },

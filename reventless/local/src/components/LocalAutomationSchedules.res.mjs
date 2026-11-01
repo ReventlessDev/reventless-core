@@ -18,7 +18,7 @@ function timerName(slice, key) {
 }
 
 function tickFailed(slice, key, message) {
-  Effect.runSync(EffectLogger$ReventlessCore.logError("LocalAutomationSchedules", undefined, `tick ` + key + ` of ` + slice + ` failed: ` + message));
+  Effect.runSync(EffectLogger$ReventlessCore.logError("LocalAutomationSchedules", undefined, undefined, `tick ` + key + ` of ` + slice + ` failed: ` + message));
 }
 
 function register(slice, tick) {

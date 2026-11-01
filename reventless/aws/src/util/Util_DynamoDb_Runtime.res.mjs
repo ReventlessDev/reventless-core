@@ -46,7 +46,7 @@ function putWithRetries(table, id, item) {
         break;
     }
     let msg = err._0;
-    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, `putWithRetries: id=` + id + `: ` + msg), () => ({
+    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `putWithRetries: id=` + id + `: ` + msg), () => ({
       TAG: "Error",
       _0: `put id=` + id + ` failed: ` + msg
     }));
@@ -70,7 +70,7 @@ function putIfNotExistsWithRetries(idKey, sortKey, table, id, item) {
         break;
     }
     let msg = err._0;
-    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, `putIfNotExistsWithRetries: id=` + id + `: ` + msg), () => ({
+    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `putIfNotExistsWithRetries: id=` + id + `: ` + msg), () => ({
       TAG: "Error",
       _0: `putIfNotExists id=` + id + ` failed: ` + msg
     }));
@@ -87,7 +87,7 @@ function deleteWithRetries(sort, table, id) {
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
-    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, `delete: id=` + id + `: ` + msg), () => ({
+    return Effect$1.map(EffectLogger$ReventlessCore.logError("Util_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `delete: id=` + id + `: ` + msg), () => ({
       TAG: "Error",
       _0: `delete id=` + id + ` failed: ` + msg
     }));
@@ -199,7 +199,7 @@ function batchWriteWithRetries(batchWriteRequests) {
     }
     let unprocessedRequests = Stdlib_Option.getOrThrow(writeOutput.UnprocessedItems, undefined);
     let count = Object.keys(unprocessedRequests).length.toString();
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_DynamoDb_Runtime-ReventlessAws", undefined, `batchWriteWithRetries: retry ` + retry.toString() + `: ` + count + ` unprocessed items`), () => attempt(retry + 1 | 0, unprocessedRequests));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("Util_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `batchWriteWithRetries: retry ` + retry.toString() + `: ` + count + ` unprocessed items`), () => attempt(retry + 1 | 0, unprocessedRequests));
   }), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
     return Effect$1.succeed({

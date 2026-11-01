@@ -21,7 +21,7 @@ function addUserToGroup(region, userName, groupName, userPoolId) {
     return client.send(addUserToGroupCommand);
   }), () => {}), Cognito_Error$ReventlessAws.retrySchedule), err => {
     let msg = Cognito_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_CognitoGroupUser_Runtime-ReventlessAws", undefined, `addUserToGroup: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_CognitoGroupUser_Runtime-ReventlessAws", undefined, undefined, `addUserToGroup: ` + msg), () => Effect$1.fail(msg));
   }));
 }
 
@@ -39,7 +39,7 @@ function removeUserFromGroup(region, userName, groupName, userPoolId) {
     return client.send(removeUserFromGroupCommand);
   }), () => {}), Cognito_Error$ReventlessAws.retrySchedule), err => {
     let msg = Cognito_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_CognitoGroupUser_Runtime-ReventlessAws", undefined, `removeUserFromGroup: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_CognitoGroupUser_Runtime-ReventlessAws", undefined, undefined, `removeUserFromGroup: ` + msg), () => Effect$1.fail(msg));
   }));
 }
 

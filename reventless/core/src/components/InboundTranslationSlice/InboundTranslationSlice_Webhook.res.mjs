@@ -260,7 +260,7 @@ async function serve(slice, secretOfOpt, nowSecondsOpt, request) {
       return respond(await slice.refuse(request.body, "InvalidBody", "body is not JSON"));
     }
   }
-  Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + slice.route.slice + `)`, undefined, `webhook secret ` + signed._0 + ` is not set; refusing every request`));
+  Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + slice.route.slice + `)`, undefined, undefined, `webhook secret ` + signed._0 + ` is not set; refusing every request`));
   return plain(500, "webhook is not configured");
 }
 

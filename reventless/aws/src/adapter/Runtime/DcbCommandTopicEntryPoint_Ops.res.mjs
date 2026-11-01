@@ -45,7 +45,7 @@ function deriveScope(specs) {
     let err = Primitive_exceptions.internalToException(raw_err);
     if (err.RE_EXN_ID === "JsExn") {
       let err$1 = err._1;
-      Effect.runSync(EffectLogger$ReventlessCore.logError("DcbCommandTopicRuntime", undefined, `refusing to start: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err$1), "unknown error")));
+      Effect.runSync(EffectLogger$ReventlessCore.logError("DcbCommandTopicRuntime", undefined, undefined, `refusing to start: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err$1), "unknown error")));
       throw err$1;
     }
     throw err;
@@ -135,12 +135,12 @@ async function persistAudit(callback, auditQueryDbOps, result) {
     if (err.TAG === "Ok") {
       return;
     } else {
-      return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + QueryDb$ReventlessCore.storageErrorToString(err._0)));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, undefined, `failed to persist audit row ` + id + `: ` + QueryDb$ReventlessCore.storageErrorToString(err._0)));
     }
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
-    return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + detail));
+    return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, undefined, `failed to persist audit row ` + id + `: ` + detail));
   }
 }
 

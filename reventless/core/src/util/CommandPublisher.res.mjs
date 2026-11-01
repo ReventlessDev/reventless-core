@@ -30,13 +30,13 @@ function Make(Spec) {
         let e = Primitive_exceptions.internalToException(raw_e);
         if (e.RE_EXN_ID === "JsExn") {
           let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown");
-          return Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, `Couldn't publish commands: ` + errMsg));
+          return Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, undefined, `Couldn't publish commands: ` + errMsg));
         }
         throw e;
       }
     };
     let toJsons = commandsToSend => {
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, `toJsons: commandsToSend: ` + commandsToSend.length.toString() + ` rest: ` + buffer.length.toString()));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, `toJsons: commandsToSend: ` + commandsToSend.length.toString() + ` rest: ` + buffer.length.toString()));
       return commandsToSend.map(param => {
         let commandJson = Message$ReventlessCore.encode(param[1], Spec.commandSchema);
         return {
@@ -67,13 +67,13 @@ function Make(Spec) {
           let e = Primitive_exceptions.internalToException(raw_e);
           if (e.RE_EXN_ID === "JsExn") {
             let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown");
-            Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, `send error: couldn't publish ` + size.toString() + ` commands: ` + errMsg));
+            Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, undefined, `send error: couldn't publish ` + size.toString() + ` commands: ` + errMsg));
           } else {
             throw e;
           }
         }
         if (exit === 1) {
-          Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, `send: finished SendAllInOneChunk: ` + size.toString()));
+          Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, `send: finished SendAllInOneChunk: ` + size.toString()));
         }
         running.contents = undefined;
         return;
@@ -88,7 +88,7 @@ function Make(Spec) {
       let sizeStr = size$1.toString();
       let bufferSizeStr = buffer.length.toString();
       let chunkCountStr = chunkCount.contents.toString();
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, `send: bufferSize: ` + bufferSizeStr + `, chunk: ` + chunkCountStr + `, size: ` + sizeStr));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, `send: bufferSize: ` + bufferSizeStr + `, chunk: ` + chunkCountStr + `, size: ` + sizeStr));
       let commandsToSend$1 = buffer.slice(0, size$1);
       buffer.splice(0, size$1);
       let promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
@@ -102,13 +102,13 @@ function Make(Spec) {
         let e$1 = Primitive_exceptions.internalToException(raw_e$1);
         if (e$1.RE_EXN_ID === "JsExn") {
           let errorMessage = Stdlib_Option.getOr(Stdlib_JsExn.message(e$1._1), "unknown Error");
-          Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, `send error: couldn't publish chunk ` + chunkCountStr + ` (` + sizeStr + ` commands): ` + errorMessage));
+          Effect.runSync(EffectLogger$ReventlessCore.logError("CommandPublisher", undefined, undefined, `send error: couldn't publish chunk ` + chunkCountStr + ` (` + sizeStr + ` commands): ` + errorMessage));
         } else {
           throw e$1;
         }
       }
       if (exit$1 === 1) {
-        Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, `send: finished chunk ` + chunkCountStr + `: ` + sizeStr));
+        Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, `send: finished chunk ` + chunkCountStr + `: ` + sizeStr));
       }
       return await send();
     };
@@ -128,12 +128,12 @@ function Make(Spec) {
       }
     };
     let clear = () => {
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, "clear"));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, "clear"));
       buffer.splice(0, buffer.length);
       flush.contents = false;
     };
     let flush$1 = async () => {
-      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, "flush"));
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, undefined, "flush"));
       flush.contents = true;
       return await send();
     };

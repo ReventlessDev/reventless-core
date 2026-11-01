@@ -18,14 +18,21 @@ directly instead of substring-matching the message:
 | `service` | when set | `REVENTLESS_SERVICE`, else the Lambda function name |
 | `plugin` | when resolved | Owning plugin (e.g. `Catalog`) |
 | `comp` | every line in a handler invocation | Component (e.g. `Aggregate(Product)`) — see note below |
-| `correlationId` | request scope | Threads one logical flow across Lambdas |
-| `causationId` | request scope, when present | The direct-parent `msgId` — reconstructs the parent → child chain within one `correlationId` |
+| `msgId` | lines about one message | The message the line is about: the command or event a component handles |
+| `correlationId` | request scope, and every line about a message | Threads one logical flow across Lambdas, through automations and outbound translations |
+| `causationId` | when present | The direct-parent `msgId` — reconstructs the parent → child chain within one `correlationId` |
+| `entityId`, `entityType` | the lines of a command's handling, and a `view changed` line's sources | The entity a command is handled for: an aggregate's id and name, or a DCB slice's partition tag value and key |
 | `requestId` | Lambda | `context.awsRequestId` |
 | `retryCount` | **only on a redelivery** | Delivery attempt (SQS `ApproximateReceiveCount`). Absent on a first delivery, so `| filter retryCount > 1` finds exactly the reprocessed messages |
 | `detail` | when provided | Structured payload; truncated to a `{truncated, bytes, preview}` stub above `REVENTLESS_LOG_MAX_DETAIL_BYTES` (default 32 KB) |
 
 > CloudWatch automatically discovers these JSON keys — type `fields @timestamp,
 > plugin, comp, level, message` and they autocomplete.
+
+**A line about a message names it.** A component logs with the ids of the message it is
+handling (`msgId`, `correlationId`, `causationId`), so its lines keep them also when one
+invocation carries messages of several flows, and a command's handling lines name the entity
+it is handled for. Where both name a field, the message's value wins over the invocation's.
 
 **`comp` is annotated on the whole invocation, not just framework lines.** The
 dispatch boundary annotates `comp` (and `correlationId` / `causationId`) onto the
@@ -101,12 +108,14 @@ fields @timestamp, level, comp, message
 
 ### 3. Correlation-id timeline — every step of one flow
 
-Paste a correlation id to see the full `CommandTopic → Aggregate → EventLog →
-ReadModel` trace in order. Run it across all the deployment's log groups (select
-them all in the Insights log-group picker) to follow the flow across Lambdas.
+Paste a correlation id to see the full `CommandGenerator → Aggregate → EventLog →
+ReadModel` trace in order, on through every automation and outbound translation the
+flow passes: their commands continue the event's flow. Run it across all the
+deployment's log groups (select them all in the Insights log-group picker) to follow
+the flow across Lambdas.
 
 ```
-fields @timestamp, service, plugin, comp, level, message
+fields @timestamp, service, plugin, comp, level, msgId, causationId, message
 | filter correlationId = "PASTE-CORRELATION-ID"
 | sort @timestamp asc
 ```
@@ -124,7 +133,41 @@ fields @timestamp, comp, causationId, message
 | sort @timestamp asc
 ```
 
-### 5. Command-handler activity by request id
+### 5. The rows one flow changed
+
+Every row a read model or a state-view slice creates, changes or removes writes a
+`view changed` line naming the view, the row and the fields that changed (never their
+values), with the ids of the events that changed it.
+
+```
+fields @timestamp, comp, detail.view, detail.key, detail.change, detail.fields.0
+| filter message = "view changed" and correlationId = "PASTE-CORRELATION-ID"
+| sort @timestamp asc
+```
+
+### 6. One entity's history
+
+Every handling line of one aggregate's or DCB entity's commands, by its id.
+
+```
+fields @timestamp, comp, msgId, correlationId, level, message
+| filter entityId = "PASTE-ENTITY-ID"
+| sort @timestamp asc
+```
+
+### 7. Refusals before the handler
+
+A command refused before its handler ran (its owner fields, an interceptor's deny, a
+payload that cannot be decoded) logs one warning with its ids.
+
+```
+fields @timestamp, comp, msgId, message
+| filter message like /refused before its handler/
+| stats count(*) as refusals by comp
+| sort refusals desc
+```
+
+### 8. Command-handler activity by request id
 
 Group a single Lambda invocation's log lines (handy for latency: compare the
 first and last `@timestamp` of a `requestId`).
@@ -135,7 +178,7 @@ fields @timestamp, comp, message
 | sort @timestamp asc
 ```
 
-### 6. Busiest components (where is the log volume?)
+### 9. Busiest components (where is the log volume?)
 
 ```
 fields plugin, comp
@@ -145,7 +188,7 @@ fields plugin, comp
 | limit 20
 ```
 
-### 7. Redelivered messages (what is being reprocessed?)
+### 10. Redelivered messages (what is being reprocessed?)
 
 `retryCount` is annotated only when a message is delivered more than once, so its
 presence alone is the signal. A component that shows up here repeatedly is either
@@ -159,7 +202,7 @@ fields @timestamp, plugin, comp, retryCount, message
 | limit 100
 ```
 
-### 8. Truncated detail payloads (find logs dropping data)
+### 11. Truncated detail payloads (find logs dropping data)
 
 ```
 fields @timestamp, comp, message, detail.bytes
@@ -171,7 +214,8 @@ fields @timestamp, comp, message, detail.bytes
 
 - **Cross-Lambda tracing** is the payoff of `correlationId`: it is set at the
   request boundary and rides every `EffectLogger` line inside that scope
-  automatically — along with `comp` and `causationId`.
+  automatically — along with `comp` and `causationId` — and every line a component
+  writes about a message carries that message's own.
 - **There are two dispatch boundaries, one per platform**, and they annotate the
   same fields: `ReventlessCore.Runtime.annotateInvocation` (in-process, used by
   `reventless-local`) and `runEffect` in

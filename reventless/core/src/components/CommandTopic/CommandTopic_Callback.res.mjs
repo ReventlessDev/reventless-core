@@ -22,7 +22,7 @@ function Make(Spec) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let commandStr = JSON.stringify(LogRedaction$Reventless.redactJson(json));
           let errMsg = Util_Sury$Reventless.exnMessage(err, undefined);
-          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decode failed: ` + commandStr + ` err=` + errMsg));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, undefined, `decode failed: ` + commandStr + ` err=` + errMsg));
           return;
         }
         return {

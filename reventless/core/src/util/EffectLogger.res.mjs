@@ -113,29 +113,77 @@ function install() {
 
 install();
 
-function _annotate(eff, comp, detail) {
-  let eff$1 = comp !== undefined ? Effect.annotateLogs(eff, "comp", comp) : eff;
-  if (detail !== undefined) {
-    return Effect.annotateLogs(eff$1, "detail", JSON.stringify(detail));
+function idsOf(entityId, entityType, meta) {
+  return {
+    msgId: meta.msgId,
+    correlationId: meta.correlationId,
+    causationId: meta.causationId,
+    entityId: entityId,
+    entityType: entityType
+  };
+}
+
+function idsOfSource(source) {
+  return {
+    msgId: source.msgId,
+    correlationId: source.correlationId
+  };
+}
+
+function idsOfJson(json) {
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    return;
+  }
+  let match = json["meta"];
+  if (match === undefined) {
+    return;
+  }
+  if (typeof match !== "object" || match === null || Array.isArray(match)) {
+    return;
+  }
+  let str = k => {
+    let match$1 = match[k];
+    if (typeof match$1 === "string" && match$1 !== "") {
+      return match$1;
+    }
+  };
+  return {
+    msgId: str("msgId"),
+    correlationId: str("correlationId"),
+    causationId: str("causationId")
+  };
+}
+
+function _annotate(eff, comp, detail, ids) {
+  let one = (eff, key, value) => {
+    if (value !== undefined) {
+      return Effect.annotateLogs(eff, key, value);
+    } else {
+      return eff;
+    }
+  };
+  let eff$1 = one(one(eff, "comp", comp), "detail", Stdlib_Option.map(detail, d => JSON.stringify(d)));
+  if (ids !== undefined) {
+    return one(one(one(one(one(eff$1, "msgId", ids.msgId), "correlationId", ids.correlationId), "causationId", ids.causationId), "entityId", ids.entityId), "entityType", ids.entityType);
   } else {
     return eff$1;
   }
 }
 
-function logInfo(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logInfo(msg), comp, detail), _effectMin(comp, undefined));
+function logInfo(comp, detail, ids, msg) {
+  return Logger.withMinimumLogLevel(_annotate(Effect.logInfo(msg), comp, detail, ids), _effectMin(comp, undefined));
 }
 
-function logWarn(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logWarning(msg), comp, detail), _effectMin(comp, undefined));
+function logWarn(comp, detail, ids, msg) {
+  return Logger.withMinimumLogLevel(_annotate(Effect.logWarning(msg), comp, detail, ids), _effectMin(comp, undefined));
 }
 
-function logError(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logError(msg), comp, detail), _effectMin(comp, undefined));
+function logError(comp, detail, ids, msg) {
+  return Logger.withMinimumLogLevel(_annotate(Effect.logError(msg), comp, detail, ids), _effectMin(comp, undefined));
 }
 
-function logDebug(comp, detail, msg) {
-  return Logger.withMinimumLogLevel(_annotate(Effect.logDebug(msg), comp, detail), _effectMin(comp, undefined));
+function logDebug(comp, detail, ids, msg) {
+  return Logger.withMinimumLogLevel(_annotate(Effect.logDebug(msg), comp, detail, ids), _effectMin(comp, undefined));
 }
 
 let setDefaultMinLevel = Logger$ReventlessCore.setDefaultMinLevel;
@@ -146,6 +194,9 @@ export {
   _effectMin,
   ordinalToLevel,
   install,
+  idsOf,
+  idsOfSource,
+  idsOfJson,
   _annotate,
   logInfo,
   logWarn,

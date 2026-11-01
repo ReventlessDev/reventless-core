@@ -59,7 +59,7 @@ function Make(Bus) {
         return await ops.tick(key, at);
       });
       Stdlib_Promise.$$catch(TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(component)).then(ops => ops.reconcileSchedules()), exn => {
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `the schedules could not be reconciled: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown")));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `the schedules could not be reconciled: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown")));
         return Promise.resolve();
       });
       return component;

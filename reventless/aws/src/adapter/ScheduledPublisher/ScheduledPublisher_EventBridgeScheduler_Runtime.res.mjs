@@ -60,7 +60,7 @@ function scheduleInput(roleArn, targetArn, setAt, schedule) {
 
 function failWithoutQueue(action) {
   let err = action + ` not possible: no Queue configured !`;
-  return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logError("ScheduledPublisher_EventBridgeScheduler_Runtime-ReventlessAws", undefined, err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
+  return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logError("ScheduledPublisher_EventBridgeScheduler_Runtime-ReventlessAws", undefined, undefined, err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
 }
 
 async function putSchedule(roleArn, targetArn, schedule) {

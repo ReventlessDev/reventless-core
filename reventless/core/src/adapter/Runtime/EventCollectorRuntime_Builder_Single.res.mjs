@@ -38,10 +38,10 @@ function Make(RuntimeEnvironment) {
         let urn = param[0];
         let handlers = eventCollectorHandlers[urn];
         if (handlers === undefined) {
-          return Effect.runSync(EffectLogger$ReventlessCore.logWarn(groupComp, undefined, `no handler found: ` + urn));
+          return Effect.runSync(EffectLogger$ReventlessCore.logWarn(groupComp, undefined, undefined, `no handler found: ` + urn));
         }
         let count = handlers.length.toString();
-        Effect.runSync(EffectLogger$ReventlessCore.logDebug(groupComp, undefined, `found ` + count + ` handler(s) for ` + urn));
+        Effect.runSync(EffectLogger$ReventlessCore.logDebug(groupComp, undefined, undefined, `found ` + count + ` handler(s) for ` + urn));
         await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, timestamp, retryCount, undefined, undefined, param.handler(event, context))));
       }));
     });

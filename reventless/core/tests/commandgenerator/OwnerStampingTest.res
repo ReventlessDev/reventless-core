@@ -346,3 +346,68 @@ describe("the caller claim on the envelope:", () => {
     expect(Message.deriveMeta(~parent).callerClaim)->toEqual(None)
   })
 })
+
+describe("the command's entry names the command on its lines", () => {
+  let capture = async (run: unit => promise<unit>) => {
+    let lines = []
+    let remove = Logger.addSink(r => lines->Array.push(r))
+    await run()
+    remove()
+    lines
+  }
+
+  testPromise("a generated command's line carries its own msgId and flow", async () => {
+    let lines = await capture(
+      async () => {
+        let _ = await generate(
+          placeOrder(~customerId="cust-A", ~identity=cognito(~userId="cust-A", ~groups=[])),
+        )->Effect.runPromise
+      },
+    )
+    let line =
+      lines->Array.find(r => r.message->String.startsWith("generated command"))->Option.getOrThrow
+    let msgId = line.annotations->Dict.get("msgId")
+    expect(msgId->Option.isSome)->toBe(true)
+    // A command sent from outside starts its own flow.
+    expect(line.annotations->Dict.get("correlationId"))->toEqual(msgId)
+    expect(Some(lastPublished().meta.msgId))->toEqual(msgId)
+  })
+
+  testPromise(
+    "a refusal before the handler is logged with the command's ids, and heard",
+    async () => {
+      let heard = []
+      let remove = CommandTopic_Helpers.registerCommandOutcome(r => heard->Array.push(r))
+      let lines = await capture(
+        async () =>
+          switch await generate(
+            placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
+          )->Effect.runPromise {
+          | _ => ()
+          | exception _ => ()
+          },
+      )
+      remove()
+      let line =
+        lines
+        ->Array.find(r => r.message->String.startsWith("refused before its handler"))
+        ->Option.getOrThrow
+      expect(line.level)->toEqual(Logger.Warn)
+      expect(line.annotations->Dict.get("msgId")->Option.isSome)->toBe(true)
+      expect(
+        heard->Array.map(
+          r => (r.component, r.reference == line.annotations->Dict.get("msgId")->Option.getOr("")),
+        ),
+      )->toEqual([("Ordering", true)])
+      expect(
+        heard->Array.map(
+          r =>
+            switch r.outcome {
+            | OutcomeRejected({cause: AccessRefusal}) => true
+            | _ => false
+            },
+        ),
+      )->toEqual([true])
+    },
+  )
+})

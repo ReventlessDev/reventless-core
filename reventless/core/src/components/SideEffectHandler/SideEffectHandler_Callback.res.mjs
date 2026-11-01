@@ -28,7 +28,7 @@ function Make(Spec) {
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-      Effect$1.runSync(EffectLogger$ReventlessCore.logError("SideEffects", undefined, `map: Couldn't decode meta: ` + errMsg));
+      Effect$1.runSync(EffectLogger$ReventlessCore.logError("SideEffects", undefined, undefined, `map: Couldn't decode meta: ` + errMsg));
       return;
     }
     if (eventMeta !== undefined) {
@@ -47,7 +47,7 @@ function Make(Spec) {
         return;
       }
     }
-    Effect$1.runSync(EffectLogger$ReventlessCore.logError("SideEffects", undefined, "map: Invalid JSON object"));
+    Effect$1.runSync(EffectLogger$ReventlessCore.logError("SideEffects", undefined, undefined, "map: Invalid JSON object"));
   });
   let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => {
     let match = findSideEffect(sideEffectsWithTags, eventJson$p);
@@ -58,7 +58,7 @@ function Make(Spec) {
     let eventMeta = match[1];
     let eventObj = match[0];
     let sourceName = sideEffect.Source.name;
-    return Effect$1.zipRight(EffectLogger$ReventlessCore.logInfo("SideEffectHandler", undefined, `eventsHandler: handling event from source ` + sourceName + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect$1.catchAll(Effect$1.flatMap(Effect.trySync(err => {
+    return Effect$1.zipRight(EffectLogger$ReventlessCore.logInfo("SideEffectHandler", undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, eventMeta), `eventsHandler: handling event from source ` + sourceName + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect$1.catchAll(Effect$1.flatMap(Effect.trySync(err => {
       let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
       return `SideEffectHandler.eventHandler: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg;
     }, () => {
@@ -78,11 +78,11 @@ function Make(Spec) {
           return Effect$1.catchAll(Effect.tryPromise(err => {
             let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
             return `SideEffect: Error while processing: ` + errMsg;
-          }, () => sideEffect.execute(eventId$1, eventMeta, event$1, Spec.queryEngine)), errMsg => EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, errMsg));
+          }, () => sideEffect.execute(eventId$1, eventMeta, event$1, Spec.queryEngine)), errMsg => EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, undefined, errMsg));
         }
       }
-      return EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, `eventHandler: Invalid event ` + JSON.stringify(eventJson$p));
-    }), errMsg => EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, errMsg)));
+      return EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, eventMeta), `eventHandler: Invalid event ` + JSON.stringify(eventJson$p));
+    }), errMsg => EffectLogger$ReventlessCore.logError("SideEffectHandler", undefined, undefined, errMsg)));
   }));
   return {
     handleJsonEvents: handleJsonEvents

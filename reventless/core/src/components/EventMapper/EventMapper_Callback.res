@@ -47,6 +47,7 @@ module MakeCounterHandler = (
         | None =>
           EffectLogger.logInfo(
             ~comp="EventMapper",
+            ~ids=EffectLogger.idsOf(eventMeta),
             `map: No mapping ${source} -> ${target} found`,
           )->Effect.runSync
           None
@@ -55,6 +56,7 @@ module MakeCounterHandler = (
           let source = Mapping.Source.name
           EffectLogger.logInfo(
             ~comp="EventMapper",
+            ~ids=EffectLogger.idsOf(eventMeta),
             `map: found mapping ${source} -> ${target}`,
           )->Effect.runSync
           Some((eventObj', eventMeta, mapping, acceptedTags))
@@ -167,6 +169,7 @@ module MakeCounterHandler = (
               | _ =>
                 EffectLogger.logError(
                   ~comp="EventMapper",
+                  ~ids=EffectLogger.idsOf(eventMeta),
                   `map: Invalid event: ${eventJson'->JSON.stringify}`,
                 )->Effect.runSync
                 None
@@ -177,6 +180,7 @@ module MakeCounterHandler = (
                 err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
               EffectLogger.logError(
                 ~comp="EventMapper",
+                ~ids=EffectLogger.idsOf(eventMeta),
                 `map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
               )->Effect.runSync
               None

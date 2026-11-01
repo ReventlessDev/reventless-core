@@ -114,6 +114,7 @@ module Make = (
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
       EffectLogger.logInfo(
         ~comp=`ExtensionPoint(${MappingSpec.name})`,
+        ~ids=EffectLogger.idsOf(meta),
         `applying event: ${LogFormat.eventSummary(eventJson)}`,
       )->Effect.runSync
       await publishWithHooks(id, meta, eventJson)
@@ -138,6 +139,7 @@ module Make = (
     }
     EffectLogger.logInfo(
       ~comp=`ExtensionPoint(${MappingSpec.name})`,
+      ~ids=?EffectLogger.idsOfJson(eventJson'),
       `outgoing event: ${LogFormat.eventSummary(eventJson')}`,
     )->Effect.runSync
     let eventActions = mapOutgoingEvent(

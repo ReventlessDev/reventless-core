@@ -203,6 +203,7 @@ module Make = (
             exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
           EffectLogger.logError(
             ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
             `retries exhausted for ${id}, and the abandonment command could not be published: ${errMsg}`,
           )->Effect.runSync
         }
@@ -210,6 +211,7 @@ module Make = (
     | exception _ =>
       EffectLogger.logError(
         ~comp=`OutboundTranslationSlice(${Spec.name})`,
+        ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
         `retries exhausted for ${id}, and its item could not be decoded to announce it`,
       )->Effect.runSync
     }
@@ -278,6 +280,7 @@ module Make = (
           | Error(e) =>
             EffectLogger.logError(
               ~comp=`OutboundTranslationSlice(${Spec.name})`,
+              ~ids=?source->Option.map(EffectLogger.idsOfSource),
               `a work item was not stored: ${e->Reventless.Pii.errorMessage}`,
             )->Effect.runSync
           | Ok(stored) =>
@@ -345,6 +348,7 @@ module Make = (
       | Error(#Gone(field)) =>
         EffectLogger.logInfo(
           ~comp=`OutboundTranslationSlice(${Spec.name})`,
+          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
           `${id}: its ${field} was erased; nothing to do`,
         )->Effect.runSync
         todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
@@ -352,6 +356,7 @@ module Make = (
       | Error(#Unopened(why)) =>
         EffectLogger.logError(
           ~comp=`OutboundTranslationSlice(${Spec.name})`,
+          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
           `${id}: its work item does not open: ${why}`,
         )->Effect.runSync
         let updated = row->afterFailedAttempt(~lastError=why)
@@ -367,6 +372,7 @@ module Make = (
             exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
           EffectLogger.logError(
             ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
             `failed to decode outboundItem: ${errMsg}`,
           )->Effect.runSync
           None
@@ -399,6 +405,7 @@ module Make = (
               exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
             EffectLogger.logError(
               ~comp=`OutboundTranslationSlice(${Spec.name})`,
+              ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
               `failed to encode inbound command: ${errMsg}`,
             )->Effect.runSync
             None
@@ -420,6 +427,7 @@ module Make = (
                 exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
               EffectLogger.logError(
                 ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
                 `failed to publish command: ${errMsg}`,
               )->Effect.runSync
               let updated = row->afterFailedAttempt(~lastError=errMsg)

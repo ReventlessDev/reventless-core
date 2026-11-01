@@ -19,6 +19,7 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
       | exception e =>
         EffectLogger.logError(
           ~comp,
+          ~ids=?EffectLogger.idsOfJson(eventJson'),
           ~detail=eventJson',
           `publish failed ${idxStr}: ${LogFormat.eventDetail(eventJson')}`,
         )->Effect.runSync
@@ -26,6 +27,7 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
       | _ =>
         EffectLogger.logInfo(
           ~comp,
+          ~ids=?EffectLogger.idsOfJson(eventJson'),
           ~detail=eventJson',
           `published event ${idxStr}: ${LogFormat.eventDetail(eventJson')}`,
         )->Effect.runSync

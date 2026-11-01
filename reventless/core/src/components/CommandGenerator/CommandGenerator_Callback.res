@@ -115,6 +115,28 @@ let makeGenerateCommand = (
   // The handling slice's partition; the envelope id is its value on the command.
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
 ): CommandGenerator.commandGenerator => {
+  // A command refused before its handler ran: one warning with its ids, and, when the caller
+  // may not act, the outcome a handler would have reported. A payload that cannot be decoded
+  // is the caller's mistake, not a refusal of access, and reaches no outcome listener.
+  let refusedBeforeHandler = (~meta: Message.meta, ~reason: string, ~access: bool) => {
+    EffectLogger.logWarn(
+      ~comp=`CommandGenerator(${serviceName})`,
+      ~ids=EffectLogger.idsOf(meta),
+      `refused before its handler: ${reason}`,
+    )->Effect.runSync
+    if access {
+      CommandTopic_Helpers.fireCommandOutcome(
+        ~component=serviceName,
+        ~reference=meta.msgId,
+        ~correlationId=meta.correlationId,
+        OutcomeRejected({
+          errorCode: Reventless.CommandOutcome.code(Forbidden),
+          errorDetail: reason,
+          cause: AccessRefusal,
+        }),
+      )
+    }
+  }
   (payload: CommandGenerator.payload) =>
     Effect.sync(() => {
       let msgId = Message.uuid()
@@ -141,16 +163,31 @@ let makeGenerateCommand = (
             obj->Dict.delete("id")
           }
           obj->dropNullArguments
-          obj->stampOwnerFields(~commandSchema, ~command=payload.command, ~scope, ~serviceName)
+          try obj->stampOwnerFields(
+            ~commandSchema,
+            ~command=payload.command,
+            ~scope,
+            ~serviceName,
+          ) catch {
+          | JsExn(e) =>
+            // The original error goes on, so a transport still sees it as the caller's.
+            refusedBeforeHandler(
+              ~meta,
+              ~reason=e->JsExn.message->Option.getOr("owner"),
+              ~access=true,
+            )
+            JsExn.throw(e)
+          }
           obj->Dict.toArray
         }
       | None =>
-        JsError.throwWithMessage(
+        let reason =
           "Couldn't decode:" ++
           payload.arguments
           ->JSON.stringifyAny
-          ->Option.getOr("<payload.arguments>"),
-        )
+          ->Option.getOr("<payload.arguments>")
+        refusedBeforeHandler(~meta, ~reason, ~access=false)
+        JsError.throwWithMessage(reason)
       }
       let commandStr = JSON.Encode.string(payload.command)
       let commandJson = switch params->Array.length {
@@ -181,12 +218,13 @@ let makeGenerateCommand = (
       }
       (meta, commandJson, id)
     })
-    ->Effect.tap(((_, commandJson, _id)) =>
+    ->Effect.tap(((meta, commandJson, _id)) =>
       // Render `Name({fields})` without the standalone id: it's the command's
       // partition-tag value, already shown among the fields, so a leading
       // `(id)` would just duplicate it.
       EffectLogger.logInfo(
         ~comp=`CommandGenerator(${serviceName})`,
+        ~ids=EffectLogger.idsOf(meta),
         ~detail=commandJson,
         `generated command: ${commandJson->LogFormat.cmdLabelOfJson}`,
       )
@@ -228,7 +266,9 @@ let makeGenerateCommand = (
                 _ => CommandTopic.Pending({msgId: meta.msgId}),
               )
             }
-          | Deny(msg) => JsError.throwWithMessage(msg)
+          | Deny(msg) =>
+            refusedBeforeHandler(~meta, ~reason=msg, ~access=true)
+            JsError.throwWithMessage(msg)
           }
         )
       | exception err =>
@@ -250,6 +290,7 @@ let makeGenerateCommand = (
         | Some(message) => message
         | None => err->JSON.stringifyAny->Option.getOr("unknown error")
         }
+        refusedBeforeHandler(~meta, ~reason, ~access=false)
         Plugin_ResolverError.throwCallerFault(
           `Error: Couldn't decode ${commandJson->JSON.stringify}: ${reason}`,
         )

@@ -12,7 +12,9 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as Plugin_ResolverError$ReventlessCore from "../../plugin/component/Plugin_ResolverError.res.mjs";
 
 let commandInterceptorHook = {
@@ -60,6 +62,17 @@ function dropNullArguments(obj) {
 
 function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParamsOpt, partitionTag) {
   let stripIdFromParams = stripIdFromParamsOpt !== undefined ? stripIdFromParamsOpt : true;
+  let refusedBeforeHandler = (meta, reason, access) => {
+    Effect.runSync(EffectLogger$ReventlessCore.logWarn(`CommandGenerator(` + serviceName + `)`, undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, meta), `refused before its handler: ` + reason));
+    if (access) {
+      return CommandTopic_Helpers$ReventlessCore.fireCommandOutcome(serviceName, meta.msgId, meta.correlationId, undefined, {
+        TAG: "OutcomeRejected",
+        errorCode: CommandOutcome$Reventless.code("Forbidden"),
+        errorDetail: reason,
+        cause: "AccessRefusal"
+      });
+    }
+  };
   return payload => Effect.flatMap(Effect.tap(Effect.sync(() => {
     let msgId = Message$ReventlessCore.uuid();
     let scope = OwnerScope$Reventless.resolve(payload.identity, undefined);
@@ -75,7 +88,29 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
       callerClaim: meta_callerClaim
     };
     let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-    let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, scope, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    let params;
+    if (obj !== undefined) {
+      if (stripIdFromParams) {
+        Stdlib_Dict.$$delete(obj, "id");
+      }
+      dropNullArguments(obj);
+      try {
+        stampOwnerFields(obj, commandSchema, payload.command, scope, serviceName);
+      } catch (raw_e) {
+        let e = Primitive_exceptions.internalToException(raw_e);
+        if (e.RE_EXN_ID === "JsExn") {
+          let e$1 = e._1;
+          refusedBeforeHandler(meta, Stdlib_Option.getOr(Stdlib_JsExn.message(e$1), "owner"), true);
+          throw e$1;
+        }
+        throw e;
+      }
+      params = Object.entries(obj);
+    } else {
+      let reason = "Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>");
+      refusedBeforeHandler(meta, reason, false);
+      params = Stdlib_JsError.throwWithMessage(reason);
+    }
     let commandStr = payload.command;
     let match = params.length;
     let commandJson = match !== 0 ? Object.fromEntries([[
@@ -92,7 +127,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
     ];
   }), param => {
     let commandJson = param[1];
-    return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson));
+    return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, EffectLogger$ReventlessCore.idsOf(undefined, undefined, param[0]), `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson));
   }), param => {
     let id = param[2];
     let commandJson = param[1];
@@ -113,6 +148,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
       }
       let message = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message);
       let reason = message !== undefined ? message : Stdlib_Option.getOr(JSON.stringify(err), "unknown error");
+      refusedBeforeHandler(meta, reason, false);
       return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + reason);
     }
     let interceptor = commandInterceptorHook.contents;
@@ -149,9 +185,10 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
             msgId: meta.msgId
           }));
         }
-      } else {
-        return Stdlib_JsError.throwWithMessage(interceptResult._0);
       }
+      let msg = interceptResult._0;
+      refusedBeforeHandler(meta, msg, true);
+      return Stdlib_JsError.throwWithMessage(msg);
     });
   });
 }

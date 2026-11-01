@@ -110,12 +110,12 @@ function Make(Spec) {
       }
       let why = fingerprint._0._0;
       if (Pii$Reventless.Provider.isRequired()) {
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `a work item was not stored: its row id cannot be fingerprinted (` + why + `)`));
         return;
       } else {
         if (!warnedUnkeyed.contents) {
           warnedUnkeyed.contents = true;
-          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`AutomationSlice(` + Spec.name + `)`, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
+          Effect.runSync(EffectLogger$ReventlessCore.logWarn(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `work items carrying personal data are keyed in the clear: no key to fingerprint them with (` + why + `)`));
         }
         return key;
       }
@@ -203,7 +203,7 @@ function Make(Spec) {
             try {
               commandJson = Util_Sury$Reventless.toJson(param[1], Spec.commandSchema);
             } catch (exn) {
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and the abandonment command could not be encoded`));
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `retries exhausted for ` + id + `, and the abandonment command could not be encoded`));
               return;
             }
             return {
@@ -215,7 +215,7 @@ function Make(Spec) {
         case "Gone" :
           return;
         case "Unopened" :
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `retries exhausted for ` + id + `, and its item could not be decoded to announce it`));
           return;
       }
     };
@@ -250,7 +250,7 @@ function Make(Spec) {
             };
             todoItems[id] = row;
           } else {
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `a work item was not stored: ` + why._0));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(source, EffectLogger$ReventlessCore.idsOfSource), `a work item was not stored: ` + why._0));
           }
         }
       }
@@ -265,14 +265,18 @@ function Make(Spec) {
       routed.forEach(r => {
         r.rescheduled.forEach(change => {
           if (!readsClock) {
-            return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `a mapping changed a schedule, but no mapping reads the Clock, so no tick would reach the slice; the change is skipped`));
+            return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, {
+              msgId: setBy
+            }, `a mapping changed a schedule, but no mapping reads the Clock, so no tick would reach the slice; the change is skipped`));
           }
           let platformChange = AutomationSlice_Schedules$ReventlessCore.apply(schedules, change, setBy, recordedAt);
           if (platformChange.TAG === "Ok") {
             scheduleChanges.contents = scheduleChanges.contents.concat([platformChange._0]);
             return;
           } else {
-            return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, platformChange._0 + `; the change is skipped`));
+            return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, {
+              msgId: setBy
+            }, platformChange._0 + `; the change is skipped`));
           }
         });
       });
@@ -387,7 +391,7 @@ function Make(Spec) {
               } catch (raw_exn) {
                 let exn = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to encode command: ` + errMsg));
                 let updated = afterFailedAttempt(row);
                 todoItems[id] = updated;
                 if (updated.status === "Abandoned") {
@@ -407,14 +411,14 @@ function Make(Spec) {
             }
             break;
           case "Gone" :
-            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`AutomationSlice(` + Spec.name + `)`, undefined, id + `: its ` + field._0 + ` was erased; nothing to do`));
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its ` + field._0 + ` was erased; nothing to do`));
             let newrecord$1 = {...row};
             newrecord$1.completedAt = new Date().toISOString();
             newrecord$1.status = "Completed";
             todoItems[id] = newrecord$1;
             break;
           case "Unopened" :
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to decode todoItem: ` + field._0));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to decode todoItem: ` + field._0));
             break;
         }
       }
@@ -424,7 +428,7 @@ function Make(Spec) {
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg$1));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `failed to publish commands: ` + errMsg$1));
           pending.forEach(param => {
             let id = param[0];
             let current = todoItems[id];
@@ -462,7 +466,7 @@ function Make(Spec) {
       } catch (raw_exn$2) {
         let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
         let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish abandonment commands: ` + errMsg$2));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `failed to publish abandonment commands: ` + errMsg$2));
       }
     };
     return {

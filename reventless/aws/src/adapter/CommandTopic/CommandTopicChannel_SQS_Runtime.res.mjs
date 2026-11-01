@@ -31,10 +31,10 @@ function handleQueueEvent(queue, handleJsonCommands) {
             ReceiptHandle: result._0
           };
         }
-        Effect.runSync(EffectLogger$ReventlessCore.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, "handleQueueEvent: Couldn't handle command with ReceiptHandle: " + result._0));
+        Effect.runSync(EffectLogger$ReventlessCore.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "handleQueueEvent: Couldn't handle command with ReceiptHandle: " + result._0));
       }), x => x);
       if (deleteEntries.length !== 0) {
-        return Effect.catchAll(Effect.tap(Util_SQS_Runtime$ReventlessAws.deleteMessages(deleteEntries, queue), () => EffectLogger$ReventlessCore.logInfo("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, "handleQueueEvent: Deleted all commands from queue")), errorMsg => EffectLogger$ReventlessCore.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, "handleQueueEvent: Couldn't deleteMessageBatch: " + errorMsg));
+        return Effect.catchAll(Effect.tap(Util_SQS_Runtime$ReventlessAws.deleteMessages(deleteEntries, queue), () => EffectLogger$ReventlessCore.logInfo("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "handleQueueEvent: Deleted all commands from queue")), errorMsg => EffectLogger$ReventlessCore.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "handleQueueEvent: Couldn't deleteMessageBatch: " + errorMsg));
       } else {
         return Effect.succeed();
       }
@@ -52,7 +52,7 @@ function publishJsons(queue, queueService) {
         return await Effect.runPromise(Util_SQS_Runtime$ReventlessAws.send(queue, queueService, jsons[0]));
       }
     } else {
-      Effect.runPromise(EffectLogger$ReventlessCore.logInfo("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, "publishJsons: No commands to send"));
+      Effect.runPromise(EffectLogger$ReventlessCore.logInfo("CommandTopicChannel_SQS_Runtime-ReventlessAws", undefined, undefined, "publishJsons: No commands to send"));
       return;
     }
   };

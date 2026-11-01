@@ -19,7 +19,7 @@ function findResource(resources, service) {
     return matching[0];
   }
   let err = `Util.Adapter.findResource: Couldn't find service ` + service + ` in resources: ` + resources.map(res => Stdlib_Option.getOrThrow(JSON.stringify(res), undefined)).join(", ");
-  Effect.runSync(EffectLogger$ReventlessCore.logError("Util_AdapterRuntime-ReventlessCore", undefined, err));
+  Effect.runSync(EffectLogger$ReventlessCore.logError("Util_AdapterRuntime-ReventlessCore", undefined, undefined, err));
   return Stdlib_JsError.throwWithMessage(err);
 }
 
@@ -29,7 +29,7 @@ function findResolvedResource(resources, service) {
     return resources$1[0];
   }
   let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + resources.map(res => Stdlib_Option.getOrThrow(JSON.stringify(res), undefined)).join(", ");
-  Effect.runSync(EffectLogger$ReventlessCore.logError("Util_AdapterRuntime-ReventlessCore", undefined, err));
+  Effect.runSync(EffectLogger$ReventlessCore.logError("Util_AdapterRuntime-ReventlessCore", undefined, undefined, err));
   return Stdlib_JsError.throwWithMessage(err);
 }
 

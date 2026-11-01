@@ -1,10 +1,33 @@
 # Plan: a component's log line belongs to the invocation that caused it
 
-**Date:** 2026-08-20
-**Status:** Proposed — not started. Found by running the on-AWS verification that
+**Date:** 2026-08-20, revised 2026-11-01<br/>
+**Status:** ✅ Built 2026-11-01, not yet released; the AWS measurement of
+[Verification](#verification) is still to be made after a deploy. Decided the same day (the open
+questions as recommended), after a revision against today's code: a fourth mechanism
+([Option D](#option-d--the-handled-messages-ids-on-the-log-call)) is recommended, and the steps
+are numbered [CL1 to CL5](#phases). Found by running the on-AWS verification that
 [entrypoint-dispatch-parity-and-latency-fields.md](done/entrypoint-dispatch-parity-and-latency-fields.md)
-had left open, against the deployed `online-shop-*-aws-alpha` stacks.
-**Repos:** `reventless-core` only.
+had left open, against the deployed `online-shop-*-aws-alpha` stacks.<br/>
+**Repos:** `reventless-core` only.<br/>
+**Unblocks:** [PF9 of the-local-platform-serves-what-is-watched.md](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line),
+which puts the handled message's own id and its entity on the same lines.
+
+> **Questions and short answers**
+>
+> - *What is wrong?* **A component's log line loses the ids of the flow it works for.** The
+>   dispatch boundary annotates the fiber; component code logs through `Effect.runSync`, a fresh
+>   fiber, so only the `~comp` it passes survives ([the finding](#the-finding)).
+> - *How is it fixed?* **The log call carries the ids of the message being handled**, the way it
+>   already carries `~comp`: annotations on the log effect itself survive `runSync`. Every
+>   component callback has that message at hand ([Option D](#option-d--the-handled-messages-ids-on-the-log-call),
+>   [CLQ1](#open-questions)).
+> - *Why not thread the effect, as first recommended?* **Threading is right per invocation, and
+>   an invocation is the wrong unit.** One aggregate batch can hold commands of several flows,
+>   and the boundary annotates one `correlationId` per batch; the handled message is the only
+>   exact source. It also leaves the 134 call sites' shape as it is.
+> - *What does it add beyond the ids the boundary had?* **The handled message's own `msgId`,
+>   and the entity a command is handled for** ([CL3](#cl3-the-component-families)), which [PF9](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)
+>   asks for.
 
 **Goal.** A framework component's log line carries the `correlationId`,
 `causationId` and `plugin` of the invocation it is running inside — the guarantee
@@ -141,11 +164,14 @@ the lines that describe the work.
 
 ## Scope
 
-109 detached call sites across 36 files (`EffectLogger.log*(…)->Effect.runSync`):
+134 detached call sites across 40 files on 2026-11-01 (`EffectLogger.log*(…)->Effect.runSync`;
+109 across 36 when this plan was written):
 
 | n | file |
 | --- | --- |
-| 10 | `components/Aggregate/Aggregate_Callback.res` |
+| 12 | `components/Aggregate/Aggregate_Callback.res` |
+| 12 | `components/AutomationSlice/AutomationSlice_Callback.res` |
+| 10 | `components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res` |
 | 9 | `util/CommandPublisher.res` |
 | 8 | `components/Extension/Extension_Operations.res` |
 | 7 | `components/EventMapper/EventMapper_Callback.res` |
@@ -153,10 +179,21 @@ the lines that describe the work.
 | 6 | `util/FTPHandler.res` |
 | 6 | `plugin/connect/PluginExtensionPoint_Plugin.res` |
 | 5 | `adapter/Runtime/AggregateRuntime_Builder_Common.res` |
-| 4 | `components/Counter/Counter_Operations.res` |
-| … | 27 further files at 1–3 each, incl. `reventless/aws` (5) and `reventless/local` (2) |
+| … | 30 further files at 1–4 each, incl. `reventless/aws` (7) and `reventless/local` (6) |
 
-Reproduce the census with the script in §Verification.
+Reproduce the census with the script in [Verification](#verification).
+
+**Since this plan was written:**
+
+- `ViewChange` writes its `view changed` line through `Logger.emit` with the source events' ids
+  as annotations: the same idea as [Option D](#option-d--the-handled-messages-ids-on-the-log-call),
+  already working on one line.
+- Commands an automation or an outbound translation sends now continue their event's flow
+  (`Message.deriveMetaFromSource`), so a command's own meta carries the flow's ids.
+- `StateViewSlice_Callback.eventsHandler` is a promise, not an effect: Option A cannot thread
+  it without converting it.
+- One aggregate batch can carry commands of different flows, and the boundary annotates the
+  batch with one `correlationId`. A line per command needs the command's own ids.
 
 ## Design
 
@@ -213,55 +250,110 @@ so the fresh fiber inherits the captured FiberRefs.
 - Adds an Effect API dependency at every component boundary for a gain the other
   two already give.
 
+### Option D — the handled message's ids on the log call
+
+`EffectLogger`'s helpers take the ids of the message being handled, as they take `~comp`, and
+attach them as annotations **on the log effect itself**. `_annotate` already does this for
+`comp` and `detail`, which is why `comp` survives `Effect.runSync` today.
+
+- **Exact per message.** A component callback always has the message it handles (a command's
+  meta, an event's envelope); its ids are the ones the line is about, also when one batch holds
+  several flows.
+- **No hazard.** No ambient state and no fiber to thread; a call site gains one argument.
+- **Adds what the boundary never had:** the message's own `msgId`, and the entity a command is
+  handled for ([PF9](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)).
+- **Cannot reach a line with no message at hand:** utility code (`FTPHandler`, `Validation`,
+  `Util_Promise`) and cold reads. Those keep the boundary's annotations only where they are in
+  its chain ([CL4](#cl4-the-remainder)).
+
 ### Recommendation
 
-**Option A for the component callbacks, measured first.** It is the only one
-without an ambient-state hazard, and the concurrency hazard in B is not
-hypothetical — the routed handler that hosts every read model is exactly the
-shape that breaks it. Option B remains attractive as a *backstop* for the
-utility-code sites (`FTPHandler`, `Validation`, `Util_Promise`) that have no
-enclosing effect to thread, provided the record is scoped per source group.
-
-Phase 1 exists to make that split on evidence rather than on this paragraph.
+**Option D for every site that handles a message** ([CLQ1](#open-questions)). The boundary
+annotation stays as it is, for the lines that run in its chain; where both name a field, the log
+call's value wins, since it names the message the line is about. Option A stays right for a site
+that is already in an effect chain and has no message of its own; Option B is not needed.
 
 ## Phases
 
-Each lands and is verifiable on its own.
+Numbered CL1 to CL5. Each lands and is verifiable on its own.
 
-### Phase 1 — a failing test, and the census
+### CL1: a failing test, and the census
 
-- A test that asserts what alpha disproves: dispatch a component handler through
-  `Runtime.runEffectHandler` with a known `correlationId`/`causationId`, capture
-  the emitted lines, and assert an **inner** component line carries both. It must
-  fail on today's tree — that is what makes it the regression guard.
-- Classify all 109 sites into *has an enclosing effect chain* (Option A) and
-  *does not* (needs B or a signature change). The counts decide the shape of
-  Phase 2 and belong in this file when known.
+- A test that asserts what alpha disproves: run a component handler through
+  `Runtime.runEffectHandler` with two commands of different flows in one batch, capture the
+  lines, and assert each **inner** line carries its own command's `correlationId`, `causationId`
+  and `msgId`. It fails on today's tree.
+- Classify the 134 sites into *has the handled message at hand* ([CL3](#cl3-the-component-families))
+  and *does not* ([CL4](#cl4-the-remainder)), and write the counts into this file.
 
-### Phase 2 — thread the component callbacks
+### CL2: the log call takes the message's ids
 
-Convert the Option A sites, component family by component family, starting with
-the two the alpha measurement covers (`ReadModel_Callback`, `Aggregate_Callback`)
-so the fix is observable on the same log groups. Each family is its own commit.
+- `EffectLogger.logInfo`, `logWarn`, `logError` and `logDebug` take an optional `~ids`: a record
+  of the optional `msgId`, `correlationId`, `causationId`, `entityId` and `entityType`,
+  annotated on the log effect like `~comp`. A helper builds it from a `Message.meta`.
+- `install()` already turns every other annotation into a top-level field, so the JSON line and
+  the log record gain the fields with no change there; a field the call names wins over the
+  fiber's.
+- **Exit:** a `LogFormatTest` case in which a detached line carries the ids it was given, and a
+  case in which the call's `correlationId` wins over the boundary's.
 
-### Phase 3 — the remainder
+### CL3: the component families
 
-Whatever Phase 1 classified as un-threadable: either a scoped ambient record per
-Option B, or a signature change carrying the invocation explicitly. Decide with
-Phase 1's numbers in hand.
+One family per commit, each passing its message's ids, in this order (the first two are the
+alpha log groups, so the fix is measurable there):
 
-### Phase 4 — close the seam
+1. `ReadModel_Callback` and `StateViewSlice_Callback`: the event's meta.
+2. `Aggregate_Callback`: each command's meta, and `entityId` and `entityType` (the aggregate id
+   and its name) on the lines of its handling.
+3. `StateChangeSlice_Callback`: the command's meta, and the entity it decides on
+   ([CLQ2](#open-questions)).
+4. `AutomationSlice_Callback`, both translation slices, `EventMapper_Callback`: the triggering
+   event's meta, and the command's on the lines about the command it sends.
+5. `CommandTopic`, `CommandPublisher`, `Extension*`, `ExtensionPoint*`, `Counter*`,
+   `SideEffectHandler_Callback`, `ScheduleOps`: the message each handles.
 
-- `EffectLogger.res:154`'s comment stops presenting `->Effect.runSync` as an
-  equivalent usage and says what it costs.
-- `docs/guides/cloudwatch-logs-insights.md` gains a "one correlationId, whole
-  chain" query, which is the query this plan makes answerable.
+- **Exit:** [CL1](#cl1-a-failing-test-and-the-census)'s test passes; each family's existing
+  tests pass unchanged.
+
+### CL4: the remainder
+
+The sites [CL1](#cl1-a-failing-test-and-the-census) finds with no message at hand stay as they
+are, unless one sits in an effect chain, where it is threaded (Option A). Their lines describe
+the platform, not a flow.
+
+### CL5: close the seam
+
+- `EffectLogger`'s comment on the detached form says what it costs, and points to `~ids`.
+- `docs/guides/cloudwatch-logs-insights.md` gains the "one correlationId, whole chain" query,
+  with `msgId` in its field list (together with
+  [PF12](the-local-platform-serves-what-is-watched.md#pf12-the-cloudwatch-guide-follows-the-chain)).
+
+## Decisions
+
+| # | Decision | Decided | Why |
+| --- | --- | --- | --- |
+| CLD1 | Where a line's ids come from | **the message being handled, on the log call; the boundary's fiber where the line is in its chain** | per message is exact even when a batch mixes flows ([CLQ1](#open-questions)) |
+| CLD2 | Field names | **the ones the platform's lines already use: `msgId`, `correlationId`, `causationId`, `entityId`, `entityType`** | the `view changed` line and the outcome records name them so; one query reads all |
+| CLD3 | Message text and `comp` | **unchanged** | this plan is about the fields around a line |
+
+## Open questions
+
+**CLQ1. Option D, or Option A as first recommended?** **Recommendation:** Option D. It is exact
+where A is approximate (a batch of several flows has one boundary annotation), it reaches the
+promise-based `StateViewSlice` callback without converting it, and it leaves the control flow of
+134 sites as it is. Option A stays for the few sites in a chain with no message of their own.
+
+**CLQ2. What is the `entityType` of a DCB slice's command?** The slice decides on an entity named
+by its partition tag; a composite or by-event-type partition names no single one.
+**Recommendation:** the partition tag's key, and the tag's value as `entityId`, for a simple
+partition; neither for the others. `ViewChange` names a DCB event's entity by its first tag's key
+and value, so a command's lines and the rows its events changed join on the same pair.
 
 ## Acceptance
 
-- A component log line emitted inside a dispatched invocation carries
-  `correlationId`, and carries `causationId` and `plugin` when the invocation has
-  them.
+- A component log line about a message carries that message's `msgId` and `correlationId`, and
+  its `causationId` and `plugin` when it has them; a command's handling lines carry its entity.
+- Two commands of different flows in one batch each keep their own ids on their lines.
 - A CloudWatch filter on one `correlationId` returns the component lines of that
   invocation, not just its boundary lines.
 - Two source groups concurrent in one `AllReadModels` invocation never borrow each
@@ -271,7 +363,8 @@ Phase 1's numbers in hand.
 
 ## Verification
 
-Census (expect 109 across 36 before Phase 2, and a shrinking count after):
+Census (134 across 40 on 2026-11-01; the count of sites without `~ids` shrinks with each
+[CL3](#cl3-the-component-families) family):
 
 ```bash
 python3 - <<'PY'
@@ -295,19 +388,45 @@ PY
 ```
 
 **On AWS** — re-run the measurement that produced the table above against
-`…-AllReadModels` after Phase 2 and require a non-zero `correlationId` count on
+`…-AllReadModels` after [CL3](#cl3-the-component-families) and require a non-zero `correlationId` count on
 component lines. This is the same check
 [entrypoint-dispatch-parity-and-latency-fields.md](done/entrypoint-dispatch-parity-and-latency-fields.md)
 left open, and closing it here is what lets that plan close too.
 
 ## Risks
 
-- **Ordering.** Threading a previously-eager log into a chain changes when it is
-  emitted. Sites that log immediately before raising need reading individually.
-- **Breadth.** 109 sites across three packages; a mechanical sweep that compiles
-  is not evidence it still logs. Phase 1's test is the thing that makes the sweep
-  checkable, which is why it comes first.
-- **Ambient state, if Phase 3 goes that way.** A per-invocation slot is wrong on
-  the routed handler; only a per-source-group scope is safe. Getting this wrong
-  produces *confidently mislabelled* lines, which is worse than the missing
-  fields this plan started from.
+- **Ordering**, only where [CL4](#cl4-the-remainder) threads a site: a previously eager log
+  becomes ordered with its chain. Sites that log immediately before raising are read one by one.
+- **Breadth.** 134 sites across three packages; a sweep that compiles is not evidence it
+  still logs. [CL1](#cl1-a-failing-test-and-the-census)'s test makes the sweep checkable,
+  which is why it comes first.
+- **The wrong message.** A site that passes the ids of a message other than the one its line is
+  about labels the line confidently and wrongly. Each family's commit is read site by site.
+
+## As built
+
+Built on 2026-11-01, as [CLQ1](#open-questions) and [CLQ2](#open-questions) recommend.
+
+| Step | Built | Where |
+| --- | --- | --- |
+| [CL1](#cl1-a-failing-test-and-the-census) | ✅ | `ComponentLineIdsTest`: two commands of different flows in one aggregate batch, each `handling command` line with its own `msgId`, `correlationId` and entity; it failed before [CL3](#cl3-the-component-families) |
+| [CL2](#cl2-the-log-call-takes-the-messages-ids) | ✅ | `EffectLogger.ids`, `idsOf` (a meta), `idsOfSource` (a work item's triggering event), `idsOfJson` (a message as JSON); `~ids` on the four helpers |
+| [CL3](#cl3-the-component-families) | ✅ | aggregate, DCB slice, read model, state-view slice and builder, automation slice, outbound translation, event mapper, side-effect handler, command topic, extensions and extension points, event topic and event log publishing |
+| [CL4](#cl4-the-remainder) | ✅ | left as they are; see the census below |
+| [CL5](#cl5-close-the-seam) | ✅ | `EffectLogger`'s comment; `docs/guides/cloudwatch-logs-insights.md` gains `msgId`, `entityId` and `entityType` in its field list, and queries for the rows one flow changed, one entity's history and refusals before the handler |
+
+**The census after [CL3](#cl3-the-component-families):** 135 detached sites, 49 of them with the
+ids of the message they are about. The other 86 describe a batch or the platform, not one
+message: the command publisher's chunks, the FTP handler, publish hooks' errors, the plugin
+extension point's forwarding, the runtime dispatcher's bookkeeping, schedule and restore lines.
+The DCB slice's lines in its effect chain carry the command's ids too.
+
+**Details the steps left open:**
+
+- **An aggregate's lines about one entity** (replay, snapshots, append, conflict) carry the
+  entity, and the flow and `msgId` only when the batch holds one command or one flow.
+- **A DCB slice's entity** is its simple partition tag's value and key; a composite or
+  by-event-type partition names none on the lines ([CLQ2](#open-questions)).
+- **A work item's lines** (automation, outbound translation) carry the triggering event's
+  `msgId` and `correlationId`, from the row's `source`; a row without one carries none.
+

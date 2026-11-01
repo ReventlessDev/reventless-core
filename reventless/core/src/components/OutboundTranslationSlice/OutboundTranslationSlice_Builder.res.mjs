@@ -116,7 +116,7 @@ function Make(RuntimeEnvironment) {
               await syncToQueryDb(queryDbOps);
               Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities()).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
               });
             }));

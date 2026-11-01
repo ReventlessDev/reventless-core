@@ -29,30 +29,30 @@ function Make(RuntimeEnvironment) {
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
-          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found CommandGenerator handler for ` + info));
+          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, undefined, `found CommandGenerator handler for ` + info));
           await runEffect(handler(event, context));
           return;
         }
         let available = Object.keys(commandGeneratorHandlers).join(",");
-        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + info + ` available=[` + available + `]`));
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, `no handler found: ` + info + ` available=[` + available + `]`));
       }
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
         let urn = param[0];
         let handler = commandTopicHandlers[urn];
         if (handler !== undefined) {
-          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found CommandTopic handler for ` + urn));
+          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, undefined, `found CommandTopic handler for ` + urn));
           return await runEffect(handler(event, context));
         }
         let handlers = eventCollectorHandlers[urn];
         if (handlers !== undefined) {
           let count = handlers.length.toString();
-          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` EventCollector handler(s) for ` + urn));
+          Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, undefined, `found ` + count + ` EventCollector handler(s) for ` + urn));
           await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, timestamp, retryCount, undefined, undefined, param.handler(event, context))));
           return;
         }
         let available = Object.keys(commandTopicHandlers).concat(Object.keys(eventCollectorHandlers)).join(",");
-        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + urn + ` available=[` + available + `]`));
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, `no handler found: ` + urn + ` available=[` + available + `]`));
       }));
     });
     let getRuntimeSpec = aggregate => Stdlib_Option.getOr(runtimeSpecs[Stdlib_Option.getOr(aggregate.__name, "Unnamed")], {

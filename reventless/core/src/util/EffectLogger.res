@@ -153,29 +153,97 @@ install()
 
 // ─── Structured log helpers ──────────────────────────────────────────────────
 // Returns Effect.t<unit> — usable in Effect pipelines or with ->Effect.runSync.
+// Run with ->Effect.runSync, a line is on a fiber of its own and loses what the
+// invocation annotated (its correlationId, causationId, plugin): pass ~ids, the ids
+// of the message the line is about, which ride on the log effect itself.
 //
-// ~comp / ~detail attach as Effect log annotations; install() reads them back.
+// ~comp / ~detail / ~ids attach as Effect log annotations; install() reads them back.
 //   ~detail: structured JSON shown only in a JSON sink (expandable on click);
 //   the in-memory terminal output shows only the message line.
 
-// Attach comp/detail as annotations on the log effect. detail is stringified so
-// it rides through Effect's string-keyed annotation map; install() re-parses it.
-let _annotate = (eff, ~comp=?, ~detail=?) => {
-  let eff = switch comp {
-  | Some(c) => eff->Effect.annotateLogs("comp", c)
-  | None => eff
+/** The ids of the message a line is about, and of the entity it is handled for. Given on the
+    log call, they are annotations of the log effect itself, so they reach the line also when it
+    runs on a fiber of its own (`->Effect.runSync`), and they win over the same fields the
+    invocation annotated: one invocation can carry messages of several flows. */
+type ids = {
+  msgId?: string,
+  correlationId?: string,
+  causationId?: string,
+  entityId?: string,
+  entityType?: string,
+}
+
+/** The ids of a message, from its meta; the entity when the caller knows it. */
+let idsOf = (~entityId=?, ~entityType=?, meta: Message.meta): ids => {
+  msgId: meta.msgId,
+  correlationId: meta.correlationId,
+  causationId: ?meta.causationId,
+  ?entityId,
+  ?entityType,
+}
+
+/** The ids of the event a work item came from: an automation's or a translation's row. */
+let idsOfSource = (source: Message.flowSource): ids => {
+  msgId: source.msgId,
+  correlationId: source.correlationId,
+}
+
+/** The ids of a message given as JSON, read from its `meta` without decoding the rest; none
+    when it has no meta. */
+let idsOfJson = (json: JSON.t): option<ids> =>
+  switch json {
+  | JSON.Object(d) =>
+    switch d->Dict.get("meta") {
+    | Some(JSON.Object(m)) =>
+      let str = k =>
+        switch m->Dict.get(k) {
+        | Some(JSON.String(s)) if s != "" => Some(s)
+        | _ => None
+        }
+      Some({
+        msgId: ?str("msgId"),
+        correlationId: ?str("correlationId"),
+        causationId: ?str("causationId"),
+      })
+    | _ => None
+    }
+  | _ => None
   }
-  switch detail {
-  | Some(d) => eff->Effect.annotateLogs("detail", d->JSON.stringify)
+
+// Attach comp/detail/ids as annotations on the log effect. detail is stringified
+// so it rides through Effect's string-keyed annotation map; install() re-parses it.
+let _annotate = (eff, ~comp=?, ~detail=?, ~ids: option<ids>=?) => {
+  let one = (eff, key, value) =>
+    switch value {
+    | Some(v) => eff->Effect.annotateLogs(key, v)
+    | None => eff
+    }
+  let eff = eff->one("comp", comp)->one("detail", detail->Option.map(d => d->JSON.stringify))
+  switch ids {
+  | Some(i) =>
+    eff
+    ->one("msgId", i.msgId)
+    ->one("correlationId", i.correlationId)
+    ->one("causationId", i.causationId)
+    ->one("entityId", i.entityId)
+    ->one("entityType", i.entityType)
   | None => eff
   }
 }
 
-let logInfo = (~comp=?, ~detail=?, msg) =>
-  Effect.logInfo(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
-let logWarn = (~comp=?, ~detail=?, msg) =>
-  Effect.logWarning(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
-let logError = (~comp=?, ~detail=?, msg) =>
-  Effect.logError(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
-let logDebug = (~comp=?, ~detail=?, msg) =>
-  Effect.logDebug(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin(~comp?, ()))
+let logInfo = (~comp=?, ~detail=?, ~ids=?, msg) =>
+  Effect.logInfo(msg)
+  ->_annotate(~comp?, ~detail?, ~ids?)
+  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+let logWarn = (~comp=?, ~detail=?, ~ids=?, msg) =>
+  Effect.logWarning(msg)
+  ->_annotate(~comp?, ~detail?, ~ids?)
+  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+let logError = (~comp=?, ~detail=?, ~ids=?, msg) =>
+  Effect.logError(msg)
+  ->_annotate(~comp?, ~detail?, ~ids?)
+  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+let logDebug = (~comp=?, ~detail=?, ~ids=?, msg) =>
+  Effect.logDebug(msg)
+  ->_annotate(~comp?, ~detail?, ~ids?)
+  ->_withMinimumLogLevel(_effectMin(~comp?, ()))

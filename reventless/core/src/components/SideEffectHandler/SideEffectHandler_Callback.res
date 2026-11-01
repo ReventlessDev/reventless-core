@@ -72,6 +72,7 @@ module Make = (Spec: Spec): T => {
         let sourceName = SideEffect.Source.name
         EffectLogger.logInfo(
           ~comp="SideEffectHandler",
+          ~ids=EffectLogger.idsOf(eventMeta),
           `eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
               eventJson',
             )}`,
@@ -106,6 +107,7 @@ module Make = (Spec: Spec): T => {
             | _ =>
               EffectLogger.logError(
                 ~comp="SideEffectHandler",
+                ~ids=EffectLogger.idsOf(eventMeta),
                 `eventHandler: Invalid event ${eventJson'->JSON.stringify}`,
               )
             }

@@ -8,7 +8,7 @@ function getRuntimeResource(allQueryDbs, queryDbName) {
   try {
     return Stdlib_Option.getOrThrow(allQueryDbs[queryDbName], undefined);
   } catch (exn) {
-    Effect.runSync(EffectLogger$ReventlessCore.logError("Util_QueryDbRuntime-ReventlessCore", undefined, `getRuntimeResource: Couldn't find QueryDb ` + queryDbName + ` in ` + Object.keys(allQueryDbs).join(", ")));
+    Effect.runSync(EffectLogger$ReventlessCore.logError("Util_QueryDbRuntime-ReventlessCore", undefined, undefined, `getRuntimeResource: Couldn't find QueryDb ` + queryDbName + ` in ` + Object.keys(allQueryDbs).join(", ")));
     throw exn;
   }
 }

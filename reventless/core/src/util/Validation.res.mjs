@@ -105,7 +105,7 @@ function merge(v1, v2) {
 }
 
 function defaultErrorHandler(err) {
-  Effect.runSync(EffectLogger$ReventlessCore.logError("Validation-ReventlessCore", undefined, Util_Sury$Reventless.exnMessage(err, undefined)));
+  Effect.runSync(EffectLogger$ReventlessCore.logError("Validation-ReventlessCore", undefined, undefined, Util_Sury$Reventless.exnMessage(err, undefined)));
   return {
     TAG: "Failure",
     _0: "Couldn't resolve promise."

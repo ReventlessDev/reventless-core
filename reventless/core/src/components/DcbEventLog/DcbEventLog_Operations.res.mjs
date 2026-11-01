@@ -35,7 +35,7 @@ function Make(Ops) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `beforePublishHook error: ` + errMsg));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, undefined, `beforePublishHook error: ` + errMsg));
         finalRawEventsJson = rawEventsJson;
       }
     } else {
@@ -52,7 +52,7 @@ function Make(Ops) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
           let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown");
-          return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `EventTopic.publish Error: ` + errMsg));
+          return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, undefined, `EventTopic.publish Error: ` + errMsg));
         }
         throw err;
       }
@@ -77,7 +77,7 @@ function Make(Ops) {
     } catch (raw_err$1) {
       let err$1 = Primitive_exceptions.internalToException(raw_err$1);
       let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-      return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `afterPublishHook error: ` + errMsg$1));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, undefined, `afterPublishHook error: ` + errMsg$1));
     }
   };
   let append = async (rawEvents, condition) => {

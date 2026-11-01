@@ -164,6 +164,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
         let _ = await Ops.eventTopic.publishJson(idStr, event'.meta, json)
         EffectLogger.logInfo(
           ~comp=`EventTopic(${Spec.name})`,
+          ~ids=?EffectLogger.idsOfJson(json),
           ~detail=json,
           `published event ${(i + 1)->Int.toString}/${count}: ${LogFormat.eventDetail(json)}`,
         )->Effect.runSync

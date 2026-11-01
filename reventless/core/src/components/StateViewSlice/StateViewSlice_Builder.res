@@ -154,6 +154,7 @@ module Make = (
                         ->Option.getOr("unknown")
                       EffectLogger.logError(
                         ~comp,
+                        ~ids=EffectLogger.idsOf(meta),
                         `project failed for ${eventType}: ${errMsg}`,
                       )->Effect.runSync
                       []
@@ -171,6 +172,7 @@ module Make = (
                     }
                     EffectLogger.logInfo(
                       ~comp,
+                      ~ids=EffectLogger.idsOf(meta),
                       ~detail=eventData,
                       `handling event ${idxStr}/${total}: ${LogFormat.bold(
                           eventType,

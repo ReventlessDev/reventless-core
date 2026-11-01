@@ -106,7 +106,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, `beforePublishHook error: ` + errMsg));
+        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, undefined, `beforePublishHook error: ` + errMsg));
       }
     };
     let runAfterPublishHook = async (idStr, eventsJson, meta) => {
@@ -120,7 +120,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, `afterPublishHook error: ` + errMsg));
+        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, undefined, `afterPublishHook error: ` + errMsg));
       }
     };
     let publishToEventTopic = async (id, events$p, sealed, eventsJson) => {
@@ -133,7 +133,7 @@ function Make(Spec) {
         await Promise.all(events$p.map(async (event$p, i) => {
           let json = publishedJsonOf(event$p.id, event$p.meta, sealed[i]);
           await Ops.eventTopic.publishJson(idStr, event$p.meta, json);
-          return Effect$1.runSync(EffectLogger$ReventlessCore.logInfo(`EventTopic(` + Spec.name + `)`, json, `published event ` + (i + 1 | 0).toString() + `/` + count + `: ` + LogFormat$ReventlessCore.eventDetail(json)));
+          return Effect$1.runSync(EffectLogger$ReventlessCore.logInfo(`EventTopic(` + Spec.name + `)`, json, EffectLogger$ReventlessCore.idsOfJson(json), `published event ` + (i + 1 | 0).toString() + `/` + count + `: ` + LogFormat$ReventlessCore.eventDetail(json)));
         }));
         await runAfterPublishHook(idStr, eventsJson, meta);
         return {

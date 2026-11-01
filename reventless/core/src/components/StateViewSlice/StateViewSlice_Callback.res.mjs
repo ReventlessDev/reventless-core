@@ -43,7 +43,8 @@ function Make(Spec) {
           recordedAt: raw.recordedAt
         }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Id.toString, Spec.Id.makeFromString));
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
+        let tag = raw.tags[0];
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, EffectLogger$ReventlessCore.idsOf(Stdlib_Option.map(tag, t => t.value), Stdlib_Option.map(tag, t => t.key), raw.meta), `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
         let sources = [ViewChange$ReventlessCore.sourceOf(raw.meta, Stdlib_Option.map(raw.tags[0], tag => tag.value), Stdlib_Option.map(raw.tags[0], tag => tag.key), undefined)];
         allActions.push(...actions.map(action => ({
           action: Projection$ReventlessCore.rewriteAction(action, raw.meta.time, Spec.stateSchema),
@@ -53,7 +54,7 @@ function Make(Spec) {
       });
       let skipped = rawEvents.length - events.length | 0;
       if (skipped > 0) {
-        Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
+        Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
       }
       return await Projection$ReventlessCore.handleSourcedActions(comp, onChange, allActions, queryDbOps, Spec.subIdConfig);
     };

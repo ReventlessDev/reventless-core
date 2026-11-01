@@ -7,7 +7,7 @@ import * as EffectLogger$ReventlessCore from "../util/EffectLogger.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "./Platform_Admin_Structure.res.mjs";
 
 function Make(Spec) {
-  let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => Effect.zipRight(EffectLogger$ReventlessCore.logInfo(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, `handleJsonEvents: outgoing event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect.map(Effect.all(Spec.outgoingExtensionPointJsonEventsHandlers.map(handleEvent => Effect.promise(() => handleEvent(eventJson$p, Spec.pluginDefinition))), {
+  let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => Effect.zipRight(EffectLogger$ReventlessCore.logInfo(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, undefined, `handleJsonEvents: outgoing event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect.map(Effect.all(Spec.outgoingExtensionPointJsonEventsHandlers.map(handleEvent => Effect.promise(() => handleEvent(eventJson$p, Spec.pluginDefinition))), {
     concurrency: "unbounded"
   }), param => {}))));
   return {

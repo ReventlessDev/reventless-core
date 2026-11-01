@@ -31,6 +31,7 @@ module Make = (
         let idxStr = (idx + 1)->Int.toString
         EffectLogger.logInfo(
           ~comp,
+          ~ids=EffectLogger.idsOf(context.meta, ~entityId=context.id, ~entityType=sourceName),
           ~detail=json,
           `handling event ${idxStr}/${total} from ${sourceName}: ${LogFormat.eventDetail(
               json,

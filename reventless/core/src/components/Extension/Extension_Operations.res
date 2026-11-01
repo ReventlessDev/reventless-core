@@ -65,6 +65,7 @@ module Make = (
   let publishAggregateCommand = async (aggregateName, cmdJson: Message.commandJson) => {
     EffectLogger.logInfo(
       ~comp,
+      ~ids=EffectLogger.idsOf(cmdJson.meta),
       `EP→${aggregateName}: ${cmdJson.commandJson
         ->Message.variantNameOfJson
         ->LogFormat.bold}(${cmdJson.id})`,
@@ -157,6 +158,7 @@ module Make = (
     }
     EffectLogger.logInfo(
       ~comp,
+      ~ids=?EffectLogger.idsOfJson(eventJson'),
       `incoming EP event: ${LogFormat.eventSummary(eventJson')}`,
     )->Effect.runSync
     switch eventJson'->Message.decodeEvent'(
@@ -176,6 +178,7 @@ module Make = (
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       EffectLogger.logError(
         ~comp,
+        ~ids=?EffectLogger.idsOfJson(eventJson'),
         `Could not decode event': ${eventJson'->JSON.stringify} ${errMsg}`,
       )->Effect.runSync
     }
@@ -187,6 +190,7 @@ module Make = (
     }
     EffectLogger.logInfo(
       ~comp,
+      ~ids=?EffectLogger.idsOfJson(eventJson'),
       `outgoing delegate event: ${LogFormat.eventSummary(eventJson')}`,
     )->Effect.runSync
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)

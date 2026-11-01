@@ -307,6 +307,7 @@ module Make = (
         | exception _ =>
           EffectLogger.logError(
             ~comp=`AutomationSlice(${Spec.name})`,
+            ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
             `retries exhausted for ${id}, and the abandonment command could not be encoded`,
           )->Effect.runSync
           None
@@ -316,6 +317,7 @@ module Make = (
     | Unopened(_) =>
       EffectLogger.logError(
         ~comp=`AutomationSlice(${Spec.name})`,
+        ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
         `retries exhausted for ${id}, and its item could not be decoded to announce it`,
       )->Effect.runSync
       None
@@ -345,6 +347,7 @@ module Make = (
         | Error(why) =>
           EffectLogger.logError(
             ~comp=`AutomationSlice(${Spec.name})`,
+            ~ids=?source->Option.map(EffectLogger.idsOfSource),
             `a work item was not stored: ${why}`,
           )->Effect.runSync
         | Ok(stored) =>
@@ -381,6 +384,7 @@ module Make = (
         if !readsClock {
           EffectLogger.logError(
             ~comp=`AutomationSlice(${Spec.name})`,
+            ~ids={msgId: setBy},
             `a mapping changed a schedule, but no mapping reads the Clock, so no tick would reach the slice; the change is skipped`,
           )->Effect.runSync
         } else {
@@ -390,6 +394,7 @@ module Make = (
           | Error(message) =>
             EffectLogger.logError(
               ~comp=`AutomationSlice(${Spec.name})`,
+              ~ids={msgId: setBy},
               `${message}; the change is skipped`,
             )->Effect.runSync
           }
@@ -503,12 +508,14 @@ module Make = (
       | Gone(field) =>
         EffectLogger.logInfo(
           ~comp=`AutomationSlice(${Spec.name})`,
+          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
           `${id}: its ${field} was erased; nothing to do`,
         )->Effect.runSync
         todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
       | Unopened(errMsg) =>
         EffectLogger.logError(
           ~comp=`AutomationSlice(${Spec.name})`,
+          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
           `failed to decode todoItem: ${errMsg}`,
         )->Effect.runSync
       | Open({key, item}) =>
@@ -523,6 +530,7 @@ module Make = (
               exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
             EffectLogger.logError(
               ~comp=`AutomationSlice(${Spec.name})`,
+              ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
               `failed to encode command: ${errMsg}`,
             )->Effect.runSync
             let updated = row->afterFailedAttempt

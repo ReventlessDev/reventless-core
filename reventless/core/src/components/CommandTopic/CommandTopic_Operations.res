@@ -11,6 +11,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops) => {
       let idxStr = (idx + 1)->Int.toString
       EffectLogger.logInfo(
         ~comp,
+        ~ids=EffectLogger.idsOf(cmdJson.meta),
         ~detail=cmdJson.Message.commandJson,
         `publishing command ${idxStr}/${count}: ${LogFormat.cmdDetailNoId(cmdJson)}`,
       )->Effect.runSync
@@ -21,6 +22,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops) => {
         let idxStr = (idx + 1)->Int.toString
         EffectLogger.logError(
           ~comp,
+          ~ids=EffectLogger.idsOf(cmdJson.meta),
           ~detail=cmdJson.Message.commandJson,
           `publish failed ${idxStr}/${count}: ${LogFormat.cmdDetailNoId(cmdJson)}`,
         )->Effect.runSync

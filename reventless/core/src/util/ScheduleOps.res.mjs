@@ -42,12 +42,12 @@ function create(scheduler, channelResources, resourceNaming) {
       payload: schedule_payload
     };
     let createSchedule = scheduler.createSchedule;
-    let exit = await Effect$1.runPromiseExit(Effect$1.tap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "schedule create"), () => createSchedule(channelResources, schedule$1)), () => EffectLogger$ReventlessCore.logInfo("ScheduleOps-ReventlessCore", undefined, `create: created ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), ""))));
+    let exit = await Effect$1.runPromiseExit(Effect$1.tap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "schedule create"), () => createSchedule(channelResources, schedule$1)), () => EffectLogger$ReventlessCore.logInfo("ScheduleOps-ReventlessCore", undefined, undefined, `create: created ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), ""))));
     if (Exit$1.isSuccess(exit)) {
       return;
     }
     let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
-    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, `create: couldn't create ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), "") + `: ` + errMsg));
+    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `create: couldn't create ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), "") + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotCreated,
       _1: schedule$1,
@@ -60,12 +60,12 @@ function $$delete(scheduler, channelResources, resourceNaming) {
   return async name => {
     let name$1 = resourceNaming.validateName(name);
     let deleteSchedule = scheduler.deleteSchedule;
-    let exit = await Effect$1.runPromiseExit(Effect$1.tap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "schedule delete"), () => deleteSchedule(channelResources, name$1)), () => EffectLogger$ReventlessCore.logInfo("ScheduleOps-ReventlessCore", undefined, `delete: deleted ` + name$1)));
+    let exit = await Effect$1.runPromiseExit(Effect$1.tap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "schedule delete"), () => deleteSchedule(channelResources, name$1)), () => EffectLogger$ReventlessCore.logInfo("ScheduleOps-ReventlessCore", undefined, undefined, `delete: deleted ` + name$1)));
     if (Exit$1.isSuccess(exit)) {
       return;
     }
     let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
-    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, `delete: couldn't delete ` + name$1 + `: ` + errMsg));
+    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `delete: couldn't delete ` + name$1 + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotDeleted,
       _1: name$1,

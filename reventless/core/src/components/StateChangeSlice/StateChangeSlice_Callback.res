@@ -267,6 +267,7 @@ module Make = (
     // the fields, so a leading `(id)` would just duplicate it.
     EffectLogger.logInfo(
       ~comp,
+      ~ids=EffectLogger.idsOf(cmdJson.meta),
       ~detail=cmdJson.commandJson,
       `handling command: ${cmdJson->LogFormat.cmdDetailNoId}`,
     )->Effect.runSync
@@ -300,7 +301,11 @@ module Make = (
         tags == "" ? types : `${types}{${tags}}`
       })
       ->Array.join(" OR ")
-    EffectLogger.logInfo(~comp, `query: ${queryDetail}`)->Effect.runSync
+    EffectLogger.logInfo(
+      ~comp,
+      ~ids=EffectLogger.idsOf(cmdJson.meta),
+      `query: ${queryDetail}`,
+    )->Effect.runSync
 
     // Extract the entity ID from the command for use in Accepted outcomes.
     let entityId = switch partitionTag {
@@ -309,6 +314,12 @@ module Make = (
       Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
     | Some(Simple(pt)) => Reventless.DcbTag.getPartitionTagValue(query, pt)
     | Some(ByEventType(_)) | None => None
+    }
+    // The lines of this command name it and, for a simple partition, the entity it decides on:
+    // the partition tag's key and value, as a row change names a DCB event's entity.
+    let ids = switch partitionTag {
+    | Some(Simple(pt)) => EffectLogger.idsOf(cmdJson.meta, ~entityId?, ~entityType=pt.key)
+    | _ => EffectLogger.idsOf(cmdJson.meta)
     }
 
     // The owner fields of a read event, when it lies in this command's own
@@ -451,6 +462,7 @@ module Make = (
         }
         EffectLogger.logInfo(
           ~comp,
+          ~ids,
           `read${cacheHit ? " (cached, delta)" : ""}: ${reads
             ->Array.length
             ->Int.toString} event(s)${reads->Array.length == 0
@@ -464,6 +476,7 @@ module Make = (
         // how long the entity has been in use.
         EffectLogger.logDebug(
           ~comp,
+          ~ids,
           `deciding: id=${entityId->Option.getOr("-")} head=${headPosition->Option.getOr(
               "-",
             )} cmd=${cmdJson->LogFormat.cmdName}`,
@@ -485,6 +498,7 @@ module Make = (
             )
             EffectLogger.logInfo(
               ~comp,
+              ~ids,
               `repeat dropped: ${cmdJson->LogFormat.cmdName} msgId=${cmdJson.meta.msgId} already caused events in id=${entityId->Option.getOr(
                   "-",
                 )}`,
@@ -503,7 +517,9 @@ module Make = (
             let line = `refused: ${rejected.errorDetail} id=${entityId->Option.getOr("-")}`
 
             (
-              isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
+              isDefect
+                ? EffectLogger.logError(~comp, ~ids, line)
+                : EffectLogger.logWarn(~comp, ~ids, line)
             )->Effect.map(_ => Ok("rejected"))
           | None =>
             switch Decision.decide(state, command'.command) {
@@ -520,7 +536,7 @@ module Make = (
                 | None => {eventCount: 0}
                 },
               )
-              EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
+              EffectLogger.logInfo(~comp, ~ids, "no events produced")->Effect.map(_ => Ok("ok"))
             | Ok(newEvents) =>
               let encoded =
                 newEvents->Array.map(
@@ -544,7 +560,7 @@ module Make = (
                         errorDetail: detail,
                       },
                     )
-                    EffectLogger.logError(~comp, `append refused: ${detail}`)->Effect.map(
+                    EffectLogger.logError(~comp, ~ids, `append refused: ${detail}`)->Effect.map(
                       _ => Error(detail),
                     )
                   | Ok(rawEvents) =>
@@ -568,6 +584,7 @@ module Make = (
                     }
                     EffectLogger.logInfo(
                       ~comp,
+                      ~ids,
                       ~detail=eventJsons,
                       `produced ${eventCount} event(s): [${eventDetails}]`,
                     )
@@ -592,9 +609,11 @@ module Make = (
                             | None => {eventCount: rawEvents->Array.length}
                             },
                           )
-                          EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
-                            _ => Ok("ok"),
-                          )
+                          EffectLogger.logInfo(
+                            ~comp,
+                            ~ids,
+                            `append: ${eventCount} event(s)`,
+                          )->Effect.map(_ => Ok("ok"))
                         | Error(err) =>
                           // Typed classification (was substring-matching the error string,
                           // which disagreed with the backends' casing).
@@ -618,6 +637,7 @@ module Make = (
                             Metrics.emitCount(~metric="AppendRetry", ~slice=Spec.name)
                             EffectLogger.logWarn(
                               ~comp,
+                              ~ids,
                               `append failed (retrying ${(maxRetries - retries + 1)
                                   ->Int.toString}/${maxRetries->Int.toString}): ${errDetail}`,
                             )->Effect.flatMap(_ => attempt(~retries=retries - 1))
@@ -645,6 +665,7 @@ module Make = (
                             )
                             EffectLogger.logError(
                               ~comp,
+                              ~ids,
                               `append failed, retries exhausted: ${errDetail}`,
                             )->Effect.map(_ => Error(errDetail))
                           }
@@ -672,6 +693,7 @@ module Make = (
               )
               EffectLogger.logError(
                 ~comp,
+                ~ids,
                 `decide rejected: ${errorCode} ${errorDetail}`,
               )->Effect.map(_ => Ok("rejected"))
             }

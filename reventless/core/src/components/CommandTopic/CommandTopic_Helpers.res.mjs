@@ -64,7 +64,7 @@ function fireCommandOutcome(component, reference, correlationId, causationId, ou
       return;
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
-      return Effect.runSync(EffectLogger$ReventlessCore.logError(`CommandTopic(` + component + `)`, undefined, `command-outcome hook threw (ignored): ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown")));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError(`CommandTopic(` + component + `)`, undefined, undefined, `command-outcome hook threw (ignored): ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown")));
     }
   });
 }

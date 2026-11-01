@@ -30,7 +30,7 @@ function Make(ReadModelSpec) {
         let actions = EventProjector.map(sourceName, json);
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         let idxStr = (idx + 1 | 0).toString();
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, json, `handling event ` + idxStr + `/` + total + ` from ` + sourceName + `: ` + LogFormat$ReventlessCore.eventDetail(json) + ` actions:` + actionsStr));
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, json, EffectLogger$ReventlessCore.idsOf(context.id, sourceName, context.meta), `handling event ` + idxStr + `/` + total + ` from ` + sourceName + `: ` + LogFormat$ReventlessCore.eventDetail(json) + ` actions:` + actionsStr));
         let sources = [ViewChange$ReventlessCore.sourceOf(context.meta, context.id, sourceName, undefined)];
         return actions.map(action => [
           Projection$ReventlessCore.rewriteAction(action, context.meta.time, ReadModelSpec.stateSchema),
