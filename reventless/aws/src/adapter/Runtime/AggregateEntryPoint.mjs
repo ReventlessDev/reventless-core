@@ -137,12 +137,22 @@ async function checkPluginStatus(event) {
 // Postgres EventLog runtime; absence keeps the DynamoDB path byte-identical.
 // `eventLogTableName` doubles as the Postgres `event_log.log_name` discriminator
 // (all aggregates share one Postgres table, unlike DynamoDB's table-per-aggregate).
-function buildAggregateParts(specModule, decisionModule, eventLogTableName, queueUrl, pgConnection) {
+// Exported for tests, which pass `makeStorage` to stand an in-memory storage in for
+// DynamoDB and drive the functor wiring below exactly as a deployed handler does
+// (tests/AggregateEntryPoint_WiringTest.res).
+export function buildAggregateParts(
+  specModule,
+  decisionModule,
+  eventLogTableName,
+  queueUrl,
+  pgConnection,
+  makeStorage = makeStorageOps,
+) {
   const patchedSpec = patchSpecId(specModule);
   // Typed core: backend-specific EventLog storage ops (Postgres when pgConnection
   // is present, else DynamoDB). Returns the full 6-field EventLog_Adapter.operations
   // — the shell previously dropped latestSnapshot/writeSnapshot.
-  const rawStorageOps = makeStorageOps(eventLogTableName, pgConnection);
+  const rawStorageOps = makeStorage(eventLogTableName, pgConnection);
   const eventLogOps = eventLogOperationsMake(patchedSpec)({
     Spec: patchedSpec,
     EventTopic: { Spec: patchedSpec },
