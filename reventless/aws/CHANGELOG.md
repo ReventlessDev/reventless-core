@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.419 (2026-11-01)
+
+### Features
+
+* **core:** a command's outcome, the flow through automations, and each view change are told ([dcaeed2](https://github.com/ReventlessDev/reventless-core/commit/dcaeed2fabe2047a21797b459f2931618474dec3))
+
+
 # 3.0.0-alpha.418 (2026-11-01)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

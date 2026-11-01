@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.30 (2026-11-01)
+
+### Features
+
+* **local:** the local platform serves its logs and events to whoever watches it ([0c29b0d](https://github.com/ReventlessDev/reventless-core/commit/0c29b0d08c668ad5b948a8017178dad8692647d0))
+
+
 # 1.0.0-alpha.29 (2026-09-21)
 
 ### Bug Fixes
