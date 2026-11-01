@@ -30,7 +30,8 @@ let todoRowSchema = Sury.$schema(s => ({
   completedAt: s.m(Sury.$option(Sury.string)),
   retryCount: s.m(Sury.int32),
   maxRetries: s.m(Sury.$option(Sury.int32)),
-  lastError: s.m(Sury.$option(Sury.string))
+  lastError: s.m(Sury.$option(Sury.string)),
+  source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
 }));
 
 function todoRowSchemaFor(itemSchema) {
@@ -42,14 +43,23 @@ function todoRowSchemaFor(itemSchema) {
     completedAt: s.m(Sury.$option(Sury.string)),
     retryCount: s.m(Sury.int32),
     maxRetries: s.m(Sury.$option(Sury.int32)),
-    lastError: s.m(Sury.$option(Sury.string))
+    lastError: s.m(Sury.$option(Sury.string)),
+    source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
   }));
 }
 
 function Make(Spec) {
   return Translation => {
     let todoItems = {};
-    let makeMeta = () => Message$ReventlessCore.generateMeta(Stdlib_Option.getOr(Spec.targetName, `OutboundTranslationSlice:` + Spec.name), undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = row => {
+      let service = Stdlib_Option.getOr(Spec.targetName, `OutboundTranslationSlice:` + Spec.name);
+      let source = row.source;
+      if (source !== undefined) {
+        return Message$ReventlessCore.deriveMetaFromSource(source, service);
+      } else {
+        return Message$ReventlessCore.generateMeta(service, undefined, undefined, undefined, undefined, undefined, undefined);
+      }
+    };
     let afterFailedAttempt = (row, lastError) => {
       let retryCount = row.retryCount + 1 | 0;
       let newrecord = {...row};
@@ -71,7 +81,7 @@ function Make(Spec) {
       }
       try {
         let msg_id = match[0];
-        let msg_meta = makeMeta();
+        let msg_meta = makeMeta(row);
         let msg_commandJson = Util_Sury$Reventless.toJson(match[1], Spec.inboundCommandSchema);
         let msg = {
           id: msg_id,
@@ -110,9 +120,11 @@ function Make(Spec) {
         return key;
       }
     };
-    let phase1 = async (events, capabilities) => {
+    let phase1 = async (events, metasOpt, capabilities) => {
+      let metas = metasOpt !== undefined ? metasOpt : [];
       for (let i = 0, i_finish = events.length; i < i_finish; ++i) {
         let match = events[i];
+        let source = Stdlib_Option.map(Stdlib_Option.flatMap(metas[i], meta => meta), Message$ReventlessCore.flowSourceOf);
         let collected = Translation.collect(match[1], match[0]);
         for (let j = 0, j_finish = collected.length; j < j_finish; ++j) {
           let match$1 = collected[j];
@@ -133,7 +145,8 @@ function Make(Spec) {
                 status: "Pending",
                 createdAt: row_createdAt,
                 retryCount: 0,
-                maxRetries: row_maxRetries
+                maxRetries: row_maxRetries,
+                source: source
               };
               todoItems[id] = row;
             } else {
@@ -265,7 +278,7 @@ function Make(Spec) {
             if (commandJson !== undefined) {
               try {
                 let msg_id = match$1[0];
-                let msg_meta = makeMeta();
+                let msg_meta = makeMeta(row);
                 let msg$1 = {
                   id: msg_id,
                   meta: msg_meta,

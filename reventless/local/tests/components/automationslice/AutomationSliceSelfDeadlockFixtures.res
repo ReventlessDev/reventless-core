@@ -191,7 +191,11 @@ let dcbEventLog = DcbLogMaker.make(
 // CommandTopic without the runtime wiring overhead.)
 // ─────────────────────────────────────────────────────────────
 
+// Every command sent, in order, so a test can read the metas they carried.
+let sentCommands: ref<array<Reventless.Message.commandJson>> = ref([])
+
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {
+  sentCommands := sentCommands.contents->Array.concat(cmdJsons)
   let _ = await cmdJsons
   ->Array.map(async cmdJson => {
     let typeName = switch cmdJson.commandJson {
@@ -292,3 +296,16 @@ let readEventTypes = async (orderId: string) => {
   )
   result.events->Array.map(e => e.eventType)
 }
+
+let readEvents = async (orderId: string) => {
+  let logOps = await dcbEventLog->DcbLogMaker.operations->TestRunner.resolve
+  let result = await logOps.read(
+    ~query=[{tags: [{Reventless.DcbTag.key: "orderId", value: orderId}]}],
+  )
+  result.events
+}
+
+let pause = (ms: int): promise<unit> =>
+  Promise.make((resolve, _) => {
+    let _ = setTimeout(() => resolve(), ms)
+  })

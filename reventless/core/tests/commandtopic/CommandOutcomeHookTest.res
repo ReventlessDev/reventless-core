@@ -81,7 +81,9 @@ let seen = () =>
   )
 
 let record = () =>
-  CommandTopic_Helpers.registerCommandOutcome(r => observed := observed.contents->Array.concat([r]))
+  CommandTopic_Helpers.registerCommandOutcome(r =>
+    observed := observed.contents->Array.concat([r])
+  )->ignore
 
 let _ = beforeEach(() => {
   AggregateFixtures.mock.reset()
@@ -291,12 +293,82 @@ describe("CommandTopic command-outcome hook:", () => {
     testPromise(
       "a throwing hook is swallowed and the command still succeeds",
       async () => {
-        CommandTopic_Helpers.registerCommandOutcome(_ => JsError.throwWithMessage("hook exploded"))
+        CommandTopic_Helpers.registerCommandOutcome(
+          _ => JsError.throwWithMessage("hook exploded"),
+        )->ignore
         let results = await runAgg("ref-1", AggregateFixtures.AggSpec.Create({name: "Widget"}))
 
         // The outcome the hook observes has already happened — an observer must not undo it.
         expect(results)->toEqual([Ok("ref-1")])
         expect(AggregateFixtures.mock.getAll()->Array.length)->toBe(1)
+      },
+    )
+
+    testPromise(
+      "two listeners both hear every outcome",
+      async () => {
+        let second: ref<array<string>> = ref([])
+        record()
+        CommandTopic_Helpers.registerCommandOutcome(
+          r => second := second.contents->Array.concat([r.reference]),
+        )->ignore
+        let _ = await runAgg("ref-1", AggregateFixtures.AggSpec.Create({name: "Widget"}))
+        let _ = await runAgg("ref-2", AggregateFixtures.AggSpec.Create({name: "Widget"}))
+
+        expect(seen())->toEqual([
+          ("TestAggregate", "ref-1", "accepted", "", 1),
+          ("TestAggregate", "ref-2", "rejected/domain", "AlreadyExists", 0),
+        ])
+        expect(second.contents)->toEqual(["ref-1", "ref-2"])
+      },
+    )
+
+    testPromise(
+      "a throwing listener does not stop the others",
+      async () => {
+        CommandTopic_Helpers.registerCommandOutcome(
+          _ => JsError.throwWithMessage("hook exploded"),
+        )->ignore
+        record()
+        let _ = await runAgg("ref-1", AggregateFixtures.AggSpec.Create({name: "Widget"}))
+
+        expect(seen())->toEqual([("TestAggregate", "ref-1", "accepted", "", 1)])
+      },
+    )
+
+    testPromise(
+      "the removal a registration returns removes only that listener",
+      async () => {
+        let removed: ref<int> = ref(0)
+        let remove = CommandTopic_Helpers.registerCommandOutcome(
+          _ => removed := removed.contents + 1,
+        )
+        record()
+        remove()
+        let _ = await runAgg("ref-1", AggregateFixtures.AggSpec.Create({name: "Widget"}))
+
+        expect(removed.contents)->toBe(0)
+        expect(seen())->toEqual([("TestAggregate", "ref-1", "accepted", "", 1)])
+      },
+    )
+
+    testPromise(
+      "an outcome carries the command's correlation id",
+      async () => {
+        record()
+        let _ = await runAgg("ref-1", AggregateFixtures.AggSpec.Create({name: "Widget"}))
+        let _ = await runSlice(
+          "ref-2",
+          DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"}),
+        )
+
+        expect(observed.contents->Array.map(r => r.correlationId->Option.isSome))->toEqual([
+          true,
+          true,
+        ])
+        expect((observed.contents->Array.getUnsafe(1)).correlationId)->toEqual(
+          Some(DcbFixtures.testMeta.correlationId),
+        )
       },
     )
   })

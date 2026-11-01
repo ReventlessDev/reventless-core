@@ -4,9 +4,11 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Effect from "effect/Effect";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
+import * as ViewChange$ReventlessCore from "../../ViewChange.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ProjectionMapper$ReventlessCore from "../../ProjectionMapper.res.mjs";
 
@@ -19,6 +21,7 @@ function Make(ReadModelSpec) {
       subIdConfig: ReadModelSpec.subIdConfig
     })(Mappings);
     let comp = `ReadModel(` + ReadModelSpec.name + `)`;
+    let onChange = ViewChange$ReventlessCore.reporter(comp, ReadModelSpec.name, state => Util_Sury$Reventless.toJson(state, ReadModelSpec.stateSchema));
     let handleJsonEvents = stream => Effect.flatMap(Stream.runCollect(stream), events => {
       let total = events.length.toString();
       return Stdlib_Array.reduce(events.map((json, idx) => {
@@ -28,12 +31,21 @@ function Make(ReadModelSpec) {
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         let idxStr = (idx + 1 | 0).toString();
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, json, `handling event ` + idxStr + `/` + total + ` from ` + sourceName + `: ` + LogFormat$ReventlessCore.eventDetail(json) + ` actions:` + actionsStr));
-        return actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, context.meta.time, ReadModelSpec.stateSchema));
-      }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action, Spec.operations, ReadModelSpec.subIdConfig)), param => {})));
+        let sources = [ViewChange$ReventlessCore.sourceOf(context.meta, context.id, sourceName, undefined)];
+        return actions.map(action => [
+          Projection$ReventlessCore.rewriteAction(action, context.meta.time, ReadModelSpec.stateSchema),
+          sources
+        ]);
+      }).flat(), Effect.succeed(), (acc, param) => {
+        let sources = param[1];
+        let action = param[0];
+        return Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, sources, onChange, action, Spec.operations, ReadModelSpec.subIdConfig)), param => {}));
+      });
     });
     return {
       EventProjector: EventProjector,
       comp: comp,
+      onChange: onChange,
       handleJsonEvents: handleJsonEvents
     };
   });

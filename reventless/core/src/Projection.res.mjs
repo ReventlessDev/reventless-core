@@ -3,6 +3,7 @@
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
@@ -11,6 +12,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
@@ -204,9 +206,14 @@ function rewriteJsonAction(action, at, stateSchema) {
   }
 }
 
-async function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
+function mergeSources(a, b) {
+  return a.concat(b.filter(s => !a.some(other => other.msgId === s.msgId)));
+}
+
+async function applyChanges(action, id, beforeStates, afterStates, param, param$1, $staropt$star) {
   let getSubId = param$1.getSubId;
   let subIdField = param$1.subIdField;
+  let onRow = $staropt$star !== undefined ? $staropt$star : (param, param$1, param$2, param$3) => {};
   let beforeCount = beforeStates.length;
   let beforeSubIds = Belt_SetString.fromArray(beforeStates.map(state => getSubId(state)));
   let afterCount = afterStates.length;
@@ -251,12 +258,27 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   let err = result.find(r => r.TAG !== "Ok");
   if (err !== undefined) {
     return err;
-  } else {
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
   }
+  let beforeBySubId = {};
+  beforeStates.forEach(before => {
+    beforeBySubId[getSubId(before)] = before;
+  });
+  afterStates.forEach(after => {
+    let subId = getSubId(after);
+    let before = beforeBySubId[subId];
+    if (before === undefined) {
+      return onRow(subId, undefined, Primitive_option.some(after), "Created");
+    }
+    let before$1 = Primitive_option.valFromOption(before);
+    if (Primitive_object.notequal(before$1, after)) {
+      return onRow(subId, Primitive_option.some(before$1), Primitive_option.some(after), "Changed");
+    }
+  });
+  deletedSubIds.forEach(subId => onRow(subId, beforeBySubId[subId], undefined, "Removed"));
+  return {
+    TAG: "Ok",
+    _0: undefined
+  };
 }
 
 function stateToString(state) {
@@ -267,11 +289,36 @@ function statesToString(states) {
   return states.map(stateToString).join(", ");
 }
 
-async function handleAction($staropt$star, action, operations, subIdConfig) {
+async function handleAction($staropt$star, $staropt$star$1, onChange, action, operations, subIdConfig) {
   let saveBatch = operations.saveBatch;
   let save = operations.save;
   let loadStream = operations.loadStream;
   let comp = $staropt$star !== undefined ? $staropt$star : "Projection";
+  let sources = $staropt$star$1 !== undefined ? $staropt$star$1 : [];
+  let report = (key, subId, before, after, kind) => Stdlib_Option.forEach(onChange, f => {
+    try {
+      return f({
+        key: key,
+        subId: subId,
+        kind: kind,
+        before: before,
+        after: after,
+        sources: sources
+      });
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      return log.warn(comp, undefined, `a view-change listener failed: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown"));
+    }
+  });
+  let subIdOf = state => Stdlib_Option.map(subIdConfig, param => param.getSubId(state));
+  let after = (result, reportAll) => {
+    if (result.TAG === "Ok") {
+      if (onChange !== undefined) {
+        reportAll();
+      }
+    }
+    return result;
+  };
   let logAction = makeStr => log.debugLazy(comp, () => `handling action: ` + makeStr());
   let loadAtMost = (n, id) => Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(Stream$1.take(loadStream(id), n)), states => ({
     TAG: "Ok",
@@ -299,7 +346,7 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
       let state = action._1;
       let id = action._0;
       logAction(() => `Create(` + id + `, ` + stateToString(state) + `)`);
-      return await save(id, state, "Init", undefined);
+      return after(await save(id, state, "Init", undefined), () => report(id, undefined, undefined, Primitive_option.some(state), "Created"));
     case "CreateMany" :
       let batch = action._0.map(param => [
         param[0],
@@ -307,7 +354,9 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
         undefined
       ]);
       logAction(() => `CreateMany(` + batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
-      return await saveBatch(batch);
+      return after(await saveBatch(batch), () => {
+        batch.forEach(param => report(param[0], undefined, undefined, Primitive_option.some(param[1]), "Created"));
+      });
     case "Update" :
       let id$1 = action._0;
       let states = await loadAtMost(2, id$1);
@@ -337,7 +386,11 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
       let oldState = states$1[0];
       let newState = action._1(oldState);
       logAction(() => `Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
-      return await save(id$1, newState, "Overwrite", undefined);
+      return after(await save(id$1, newState, "Overwrite", undefined), () => {
+        if (Primitive_object.notequal(newState, oldState)) {
+          return report(id$1, undefined, Primitive_option.some(oldState), Primitive_option.some(newState), "Changed");
+        }
+      });
     case "UpdateWithDefault" :
       let $$default = action._1;
       let id$2 = action._0;
@@ -354,13 +407,17 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
             };
           } else {
             logAction(() => `UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
-            return await save(id$2, $$default, "Init", undefined);
+            return after(await save(id$2, $$default, "Init", undefined), () => report(id$2, undefined, undefined, Primitive_option.some($$default), "Created"));
           }
         }
         let oldState$1 = states$3[0];
         let newState$1 = action._2(oldState$1);
         logAction(() => `UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
-        return await save(id$2, newState$1, "Overwrite", undefined);
+        return after(await save(id$2, newState$1, "Overwrite", undefined), () => {
+          if (Primitive_object.notequal(newState$1, oldState$1)) {
+            return report(id$2, undefined, Primitive_option.some(oldState$1), Primitive_option.some(newState$1), "Changed");
+          }
+        });
       }
       let err = states$2._0;
       logAction(() => `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
@@ -372,7 +429,7 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
       let state$1 = action._1;
       let id$3 = action._0;
       logAction(() => `Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
-      return await save(id$3, state$1, "Any", undefined);
+      return after(await save(id$3, state$1, "Any", undefined), () => report(id$3, undefined, undefined, Primitive_option.some(state$1), "Changed"));
     case "SetMany" :
       let set = action._1;
       let batch$1 = action._0.map(id => [
@@ -381,22 +438,29 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
         undefined
       ]);
       logAction(() => `SetMany(` + batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
-      return await saveBatch(batch$1);
+      return after(await saveBatch(batch$1), () => {
+        batch$1.forEach(param => report(param[0], undefined, undefined, Primitive_option.some(param[1]), "Changed"));
+      });
     case "Delete" :
       let id$4 = action._0;
       logAction(() => `Delete(` + id$4 + `)`);
-      return await operations.delete(id$4, undefined);
+      return after(await operations.delete(id$4, undefined), () => report(id$4, undefined, undefined, undefined, "Removed"));
     case "DeleteMany" :
       let ids = action._0;
       logAction(() => `DeleteMany(` + ids.join(", ") + `)`);
-      return await operations.deleteBatch(ids.map(id => [
+      return after(await operations.deleteBatch(ids.map(id => [
         id,
         undefined
-      ]));
+      ])), () => {
+        ids.forEach(id => report(id, undefined, undefined, undefined, "Removed"));
+      });
     case "CreateMultiState" :
       let states$4 = action._1;
       let id$5 = action._0;
       logAction(() => `CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
+      let reportAll = () => {
+        states$4.forEach(state => report(id$5, subIdOf(state), undefined, Primitive_option.some(state), "Created"));
+      };
       let len$2 = states$4.length;
       if (len$2 !== 1) {
         if (len$2 === 0) {
@@ -410,10 +474,10 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
           state,
           undefined
         ]);
-        return await saveBatch(batch$2);
+        return after(await saveBatch(batch$2), reportAll);
       }
       let state$2 = states$4[0];
-      return await save(id$5, state$2, "Init", undefined);
+      return after(await save(id$5, state$2, "Init", undefined), reportAll);
     case "UpdateMultiState" :
       let id$6 = action._0;
       let match = await loadAll(id$6);
@@ -421,7 +485,7 @@ async function handleAction($staropt$star, action, operations, subIdConfig) {
         if (subIdConfig !== undefined) {
           let states$5 = match._0;
           let afterStates = action._1(states$5);
-          return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig);
+          return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig, (subId, before, after, kind) => report(id$6, subId, before, after, kind));
         }
       } else if (subIdConfig !== undefined) {
         let err$1 = match._0;
@@ -508,8 +572,17 @@ function actionsWithId(action) {
   return [];
 }
 
-function groupActionsById(actions) {
-  let allActionsWithId = actions.map(actionsWithId).flat();
+function groupSourcedById(actions) {
+  let allActionsWithId = actions.map(param => {
+    let sources = param.sources;
+    return actionsWithId(param.action).map(param => [
+      param[0],
+      {
+        action: param[1],
+        sources: sources
+      }
+    ]);
+  }).flat();
   let groups = {};
   allActionsWithId.forEach(param => {
     let action = param[1];
@@ -527,235 +600,263 @@ function groupActionsById(actions) {
   ]);
 }
 
-function optimizeActions(actions) {
-  return Stdlib_Array.reduce(actions, [], (optimizedActions, action) => {
-    let optimizedActionsCount = optimizedActions.length;
-    if (optimizedActionsCount === 0) {
-      return [action];
-    }
-    let lastAction = optimizedActions[optimizedActionsCount - 1 | 0];
-    let previousActions = optimizedActions.slice(0, optimizedActionsCount - 1 | 0);
-    if (typeof lastAction === "object") {
-      switch (lastAction.TAG) {
-        case "Create" :
-          let state1 = lastAction._1;
-          let id1 = lastAction._0;
-          if (typeof action === "object") {
-            switch (action.TAG) {
-              case "Create" :
-                if (id1 === action._0) {
-                  log.warn("Projection", undefined, `optimizing 2 sequential Create for id=` + id1 + `, ignoring second: ` + Stdlib_Option.getOr(JSON.stringify(action._1), "?"));
-                  return previousActions.concat([{
-                      TAG: "Create",
-                      _0: id1,
-                      _1: state1
-                    }]);
-                }
-                break;
-              case "Update" :
-                if (id1 === action._0) {
-                  return previousActions.concat([{
-                      TAG: "Create",
-                      _0: id1,
-                      _1: action._1(state1)
-                    }]);
-                }
-                break;
-              case "UpdateWithDefault" :
-                if (id1 === action._0) {
-                  return previousActions.concat([{
-                      TAG: "Create",
-                      _0: id1,
-                      _1: action._2(state1)
-                    }]);
-                }
-                break;
-              case "Set" :
-                if (id1 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Set after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
-                  return previousActions.concat([{
-                      TAG: "Set",
-                      _0: id1,
-                      _1: action._1
-                    }]);
-                }
-                break;
-              case "Delete" :
-                if (id1 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Delete after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
-                  return previousActions.concat([{
-                      TAG: "Delete",
-                      _0: id1
-                    }]);
-                }
-                break;
-            }
-          }
-          break;
-        case "Update" :
-          let f = lastAction._1;
-          let id1$1 = lastAction._0;
-          if (typeof action === "object") {
-            switch (action.TAG) {
-              case "Update" :
-                if (id1$1 === action._0) {
-                  let g = action._1;
-                  return previousActions.concat([{
-                      TAG: "Update",
-                      _0: id1$1,
-                      _1: state => g(f(state))
-                    }]);
-                }
-                break;
-              case "UpdateWithDefault" :
-                if (id1$1 === action._0) {
-                  let g$1 = action._2;
-                  return previousActions.concat([{
-                      TAG: "UpdateWithDefault",
-                      _0: id1$1,
-                      _1: action._1,
-                      _2: state => g$1(f(state))
-                    }]);
-                }
-                break;
-              case "Set" :
-                if (id1$1 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Set after Update for id=` + id1$1 + `, ignoring the Update`);
-                  return previousActions.concat([{
-                      TAG: "Set",
-                      _0: id1$1,
-                      _1: action._1
-                    }]);
-                }
-                break;
-              case "Delete" :
-                if (id1$1 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Delete after Update for id=` + id1$1 + `, ignoring the Update`);
-                  return previousActions.concat([{
-                      TAG: "Delete",
-                      _0: id1$1
-                    }]);
-                }
-                break;
-            }
-          }
-          break;
-        case "UpdateWithDefault" :
-          let f$1 = lastAction._2;
-          let defaultState1 = lastAction._1;
-          let id1$2 = lastAction._0;
-          if (typeof action === "object") {
-            switch (action.TAG) {
-              case "Create" :
-                if (id1$2 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Create after UpdateWithDefault for id=` + id1$2 + `, ignoring the Create`);
-                  return previousActions.concat([{
-                      TAG: "UpdateWithDefault",
-                      _0: id1$2,
-                      _1: defaultState1,
-                      _2: f$1
-                    }]);
-                }
-                break;
-              case "Update" :
-                if (id1$2 === action._0) {
-                  let g$2 = action._1;
-                  return previousActions.concat([{
-                      TAG: "UpdateWithDefault",
-                      _0: id1$2,
-                      _1: g$2(defaultState1),
-                      _2: state => g$2(f$1(state))
-                    }]);
-                }
-                break;
-              case "UpdateWithDefault" :
-                if (id1$2 === action._0) {
-                  let g$3 = action._2;
-                  return previousActions.concat([{
-                      TAG: "UpdateWithDefault",
-                      _0: id1$2,
-                      _1: g$3(defaultState1),
-                      _2: state => g$3(f$1(state))
-                    }]);
-                }
-                break;
-              case "Set" :
-                if (id1$2 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Set after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
-                  return previousActions.concat([{
-                      TAG: "Set",
-                      _0: id1$2,
-                      _1: action._1
-                    }]);
-                }
-                break;
-              case "Delete" :
-                if (id1$2 === action._0) {
-                  log.warn("Projection", undefined, `optimizing Delete after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
-                  return previousActions.concat([{
-                      TAG: "Delete",
-                      _0: id1$2
-                    }]);
-                }
-                break;
-            }
-          }
-          break;
-        case "Delete" :
-          if (typeof action === "object" && action.TAG === "Create") {
-            let id1$3 = lastAction._0;
-            if (id1$3 === action._0) {
-              return previousActions.concat([{
+function groupActionsById(actions) {
+  return groupSourcedById(actions.map(action => ({
+    action: action,
+    sources: []
+  }))).map(param => [
+    param[0],
+    param[1].map(s => s.action)
+  ]);
+}
+
+function mergeActions(lastAction, action) {
+  if (typeof lastAction === "object") {
+    switch (lastAction.TAG) {
+      case "Create" :
+        let state1 = lastAction._1;
+        let id1 = lastAction._0;
+        if (typeof action === "object") {
+          switch (action.TAG) {
+            case "Create" :
+              if (id1 === action._0) {
+                log.warn("Projection", undefined, `optimizing 2 sequential Create for id=` + id1 + `, ignoring second: ` + Stdlib_Option.getOr(JSON.stringify(action._1), "?"));
+                return {
+                  TAG: "Create",
+                  _0: id1,
+                  _1: state1
+                };
+              }
+              break;
+            case "Update" :
+              if (id1 === action._0) {
+                return {
+                  TAG: "Create",
+                  _0: id1,
+                  _1: action._1(state1)
+                };
+              }
+              break;
+            case "UpdateWithDefault" :
+              if (id1 === action._0) {
+                return {
+                  TAG: "Create",
+                  _0: id1,
+                  _1: action._2(state1)
+                };
+              }
+              break;
+            case "Set" :
+              if (id1 === action._0) {
+                log.warn("Projection", undefined, `optimizing Set after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
+                return {
                   TAG: "Set",
-                  _0: id1$3,
+                  _0: id1,
                   _1: action._1
-                }]);
-            }
+                };
+              }
+              break;
+            case "Delete" :
+              if (id1 === action._0) {
+                log.warn("Projection", undefined, `optimizing Delete after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
+                return {
+                  TAG: "Delete",
+                  _0: id1
+                };
+              }
+              break;
           }
-          break;
-        case "UpdateMultiState" :
-          if (typeof action === "object" && action.TAG === "UpdateMultiState") {
-            let id1$4 = lastAction._0;
-            if (id1$4 === action._0) {
-              let g$4 = action._1;
-              let f$2 = lastAction._1;
-              return previousActions.concat([{
-                  TAG: "UpdateMultiState",
-                  _0: id1$4,
-                  _1: state => g$4(f$2(state))
-                }]);
-            }
+        }
+        break;
+      case "Update" :
+        let f = lastAction._1;
+        let id1$1 = lastAction._0;
+        if (typeof action === "object") {
+          switch (action.TAG) {
+            case "Update" :
+              if (id1$1 === action._0) {
+                let g = action._1;
+                return {
+                  TAG: "Update",
+                  _0: id1$1,
+                  _1: state => g(f(state))
+                };
+              }
+              break;
+            case "UpdateWithDefault" :
+              if (id1$1 === action._0) {
+                let g$1 = action._2;
+                return {
+                  TAG: "UpdateWithDefault",
+                  _0: id1$1,
+                  _1: action._1,
+                  _2: state => g$1(f(state))
+                };
+              }
+              break;
+            case "Set" :
+              if (id1$1 === action._0) {
+                log.warn("Projection", undefined, `optimizing Set after Update for id=` + id1$1 + `, ignoring the Update`);
+                return {
+                  TAG: "Set",
+                  _0: id1$1,
+                  _1: action._1
+                };
+              }
+              break;
+            case "Delete" :
+              if (id1$1 === action._0) {
+                log.warn("Projection", undefined, `optimizing Delete after Update for id=` + id1$1 + `, ignoring the Update`);
+                return {
+                  TAG: "Delete",
+                  _0: id1$1
+                };
+              }
+              break;
           }
-          break;
-      }
+        }
+        break;
+      case "UpdateWithDefault" :
+        let f$1 = lastAction._2;
+        let defaultState1 = lastAction._1;
+        let id1$2 = lastAction._0;
+        if (typeof action === "object") {
+          switch (action.TAG) {
+            case "Create" :
+              if (id1$2 === action._0) {
+                log.warn("Projection", undefined, `optimizing Create after UpdateWithDefault for id=` + id1$2 + `, ignoring the Create`);
+                return {
+                  TAG: "UpdateWithDefault",
+                  _0: id1$2,
+                  _1: defaultState1,
+                  _2: f$1
+                };
+              }
+              break;
+            case "Update" :
+              if (id1$2 === action._0) {
+                let g$2 = action._1;
+                return {
+                  TAG: "UpdateWithDefault",
+                  _0: id1$2,
+                  _1: g$2(defaultState1),
+                  _2: state => g$2(f$1(state))
+                };
+              }
+              break;
+            case "UpdateWithDefault" :
+              if (id1$2 === action._0) {
+                let g$3 = action._2;
+                return {
+                  TAG: "UpdateWithDefault",
+                  _0: id1$2,
+                  _1: g$3(defaultState1),
+                  _2: state => g$3(f$1(state))
+                };
+              }
+              break;
+            case "Set" :
+              if (id1$2 === action._0) {
+                log.warn("Projection", undefined, `optimizing Set after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
+                return {
+                  TAG: "Set",
+                  _0: id1$2,
+                  _1: action._1
+                };
+              }
+              break;
+            case "Delete" :
+              if (id1$2 === action._0) {
+                log.warn("Projection", undefined, `optimizing Delete after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
+                return {
+                  TAG: "Delete",
+                  _0: id1$2
+                };
+              }
+              break;
+          }
+        }
+        break;
+      case "Delete" :
+        if (typeof action === "object" && action.TAG === "Create") {
+          let id1$3 = lastAction._0;
+          if (id1$3 === action._0) {
+            return {
+              TAG: "Set",
+              _0: id1$3,
+              _1: action._1
+            };
+          }
+        }
+        break;
+      case "UpdateMultiState" :
+        if (typeof action === "object" && action.TAG === "UpdateMultiState") {
+          let id1$4 = lastAction._0;
+          if (id1$4 === action._0) {
+            let g$4 = action._1;
+            let f$2 = lastAction._1;
+            return {
+              TAG: "UpdateMultiState",
+              _0: id1$4,
+              _1: state => g$4(f$2(state))
+            };
+          }
+        }
+        break;
     }
-    log.warn("Projection", undefined, `actions not optimized: ` + Stdlib_Option.getOr(JSON.stringify(lastAction), "?") + ` + ` + Stdlib_Option.getOr(JSON.stringify(action), "?"));
-    return optimizedActions.concat([action]);
+  }
+  log.warn("Projection", undefined, `actions not optimized: ` + Stdlib_Option.getOr(JSON.stringify(lastAction), "?") + ` + ` + Stdlib_Option.getOr(JSON.stringify(action), "?"));
+}
+
+function optimizeSourced(actions) {
+  return Stdlib_Array.reduce(actions, [], (optimized, next) => {
+    let count = optimized.length;
+    if (count === 0) {
+      return [next];
+    }
+    let last = optimized[count - 1 | 0];
+    let previous = optimized.slice(0, count - 1 | 0);
+    let action = mergeActions(last.action, next.action);
+    if (action !== undefined) {
+      return previous.concat([{
+          action: action,
+          sources: mergeSources(last.sources, next.sources)
+        }]);
+    } else {
+      return optimized.concat([next]);
+    }
   });
 }
 
-async function handleActions(compOpt, actions, operations, subIdConfig) {
+function optimizeActions(actions) {
+  return optimizeSourced(actions.map(action => ({
+    action: action,
+    sources: []
+  }))).map(s => s.action);
+}
+
+async function handleSourcedActions(compOpt, onChange, actions, operations, subIdConfig) {
   let comp = compOpt !== undefined ? compOpt : "Projection";
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions.length;
     if (actionCount > 1) {
       log.debug(comp, undefined, `handleActions: optimizing ` + actionCount.toString() + ` actions for id=` + id);
     }
-    let optimizedActions = optimizeActions(actions);
+    let optimizedActions = optimizeSourced(actions);
     let optimizedActionCount = optimizedActions.length;
     log.debug(comp, undefined, `handleActions: id=` + id + ` actions=` + optimizedActionCount.toString());
     return await Stdlib_Array.reduce(optimizedActions, Promise.resolve({
       TAG: "Ok",
       _0: undefined
-    }), async (p, action) => {
+    }), async (p, param) => {
       let err = await p;
       if (err.TAG !== "Ok") {
         log.error(comp, undefined, `storage error: ` + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
       }
-      return await handleAction(comp, action, operations, subIdConfig);
+      return await handleAction(comp, param.sources, onChange, param.action, operations, subIdConfig);
     });
   };
-  let results = await Promise.all(groupActionsById(actions).map(param => handleActionsForId(param[1], param[0])));
+  let results = await Promise.all(groupSourcedById(actions).map(param => handleActionsForId(param[1], param[0])));
   let errors = Stdlib_Array.filterMap(results, x => {
     if (x.TAG === "Ok") {
       return;
@@ -768,6 +869,14 @@ async function handleActions(compOpt, actions, operations, subIdConfig) {
   }
   let count = errors.length;
   return Stdlib_JsError.throwWithMessage(`Projection.handleActions failed with ` + count.toString() + ` errors: ` + errors.map(QueryDb$ReventlessCore.storageErrorToString).join(","));
+}
+
+function handleActions(compOpt, onChange, actions, operations, subIdConfig) {
+  let comp = compOpt !== undefined ? compOpt : "Projection";
+  return handleSourcedActions(comp, onChange, actions.map(action => ({
+    action: action,
+    sources: []
+  })), operations, subIdConfig);
 }
 
 let $$Set;
@@ -783,13 +892,18 @@ export {
   trailOverlays,
   rewriteTrail,
   rewriteJsonAction,
+  mergeSources,
   applyChanges,
   stateToString,
   statesToString,
   handleAction,
   actionsWithId,
+  groupSourcedById,
   groupActionsById,
+  mergeActions,
+  optimizeSourced,
   optimizeActions,
+  handleSourcedActions,
   handleActions,
 }
 /* log Not a pure module */

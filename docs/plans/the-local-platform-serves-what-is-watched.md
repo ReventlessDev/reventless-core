@@ -3,10 +3,12 @@
 **Date:** 2026-10-31<br/>
 **Status:** 🚧 The feeds built 2026-11-01: [PF1](#pf1-log-sinks-and-the-recent-rings) to
 [PF6](#pf6-mcp-resources-for-recent-logs-and-all-events) and
-[PF11](#pf11-the-feeds-on-the-platform-api-and-its-subscriptions-checked). The chain
-([PF7](#pf7-the-command-outcome-hook-takes-several-listeners) to
-[PF10](#pf10-the-view-change-line)) and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain)
-not started.<br/>
+[PF11](#pf11-the-feeds-on-the-platform-api-and-its-subscriptions-checked). Of the chain,
+[PF7](#pf7-the-command-outcome-hook-takes-several-listeners),
+[PF8](#pf8-automations-and-outbound-translations-carry-the-flow) and
+[PF10](#pf10-the-view-change-line) built 2026-11-01; [PF9](#pf9-ids-on-every-log-line) waits on
+[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md), and
+[PF12](#pf12-the-cloudwatch-guide-follows-the-chain) on it.<br/>
 **Repos:** `reventless-core` only.<br/>
 **Builds on:** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md)
 (a component's log line keeps its invocation's ids; [PF9](#pf9-ids-on-every-log-line) needs it) ·
@@ -43,8 +45,13 @@ query, which stays as it is) · [done/mcp-event-history-resource.md](done/mcp-ev
 >   lines on the feeds. Nothing existing changes shape ([PFD4](#4-decisions)).
 > - *What is built, and where is its wire?* **The feeds, 2026-11-01:** the log feed, the bounded
 >   tap with its filter line, the read across every log, the correlation indexes, the log level
->   while running, the MCP resources and the two subscriptions. Every line, field and variable
->   as built is in [§7](#7-the-wire-as-built).
+>   while running, the MCP resources and the two subscriptions. **Most of the chain, the same
+>   day:** the outcome line and the view-change line on the tap, the `view changed` log line,
+>   and commands from automations and outbound translations that continue their event's flow
+>   ([PF7](#pf7-the-command-outcome-hook-takes-several-listeners),
+>   [PF8](#pf8-automations-and-outbound-translations-carry-the-flow),
+>   [PF10](#pf10-the-view-change-line)). Every line, field and variable as built is in
+>   [§7](#7-the-wire-as-built).
 
 ---
 
@@ -250,6 +257,24 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   rejection to the problem ring of [PF1](#pf1-log-sinks-and-the-recent-rings).
 - **Exit:** tests with two listeners; an accepted and a rejected command each appear once on the
   feed.
+- **Built 2026-11-01**, without the refusals before the handler, which are
+  [PF9](#pf9-ids-on-every-log-line)'s. With these details ([§7](#7-the-wire-as-built) has the
+  shapes):
+  - **`registerCommandOutcome` returns the listener's removal**, so a caller that registers as a
+    statement now writes `->ignore`; `clearCommandOutcome` removes every listener. A listener
+    that throws is logged once per outcome and the others still hear it.
+  - **The report gains an optional `correlationId`**, the command's, which both handlers pass.
+    Without it a tap listener that filters by flow would never see an outcome line.
+  - **The outcome line and the view-change line are sent without the tap's prefix**, as the
+    `skipped` line is: a reader that picks event lines by the prefix passes over them, and each
+    carries a `kind`.
+  - **A rejection is kept, not logged:** a record `command rejected` goes into the problem ring
+    and to the log feed's listeners, but not to stdout, where the handler's own line already is.
+    It is a warning, an error when the cause is the platform, and carries the redacted
+    `errorDetail`.
+  Tests: `CommandOutcomeHookTest` in core (two listeners, a throwing one, a removal, the
+  correlation id), `LocalTapLinesTest` in local (each outcome once on a real tap socket, the
+  rejection in the problem ring).
 
 ### PF8: automations and outbound translations carry the flow
 
@@ -264,6 +289,18 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
 - **Exit:** tests that an event, the automation's command and that command's events share one
   correlation id, and that the command's causation id is the event's message id; a stored row
   without `source` still runs.
+- **Built 2026-11-01**, keeping what [PFQ4](#5-open-questions) recommends: `Message.flowSource`
+  holds `msgId`, `correlationId`, `user` and `traceparent`, and `Message.deriveMetaFromSource`
+  turns it into the command's meta through `deriveMeta`. The row field is declared as the
+  neighbouring optional fields are, so a stored row without it decodes. Two details:
+  - **An outbound translation's phase 1 is given decoded events without their envelopes**, so it
+    gains `~metas`, the events' metas by the same index (`None` where an envelope had none); both
+    drivers pass them. A caller that passes none gets rows without a source, as before.
+  - **A row a tick creates keeps no source**: the tick's meta is made up as it fires.
+  Tests: `AutomationSliceSelfDeadlockTest` (a command, its event, the automation's command and
+  that command's event share one correlation id, each caused by the one before),
+  `AutomationSliceCallbackTest` and `OutboundTranslationSliceCallbackTest` (the derived meta, a
+  stored row without `source`, the row's round trip).
 
 ### PF9: ids on every log line
 
@@ -306,6 +343,26 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   ([PFQ3](#5-open-questions)).
 - **Exit:** tests that one event changing two rows in two views produces two changes with its
   message id; a merged update keeps both ids; redacted fields never appear.
+- **Built 2026-11-01**, as [PFQ3](#5-open-questions) recommends: the log line carries field names
+  only, the tap line the values, redacted. With these details:
+  - **`handleAction` takes `~sources` and `~onChange`; `handleActions` keeps its signature with
+    `~onChange` added**, and a new `handleSourcedActions` takes each action with its sources, so
+    the existing callers of `handleActions` stay as they are. A merge of two actions on one row
+    keeps the sources of both.
+  - **A change is reported once the store said yes.** `Set` and `Delete` write without loading
+    the row, so they report `changed` and `removed` without a row before; an update that wrote
+    the row as it was is not reported.
+  - **`ViewChange`** in core makes the `~onChange` a caller passes: it writes the `view changed`
+    line and hands the change, with the rows before and after as JSON, to registered listeners;
+    the local platform registers one that writes the tap line. Nothing is encoded when the line
+    is below its level and nobody listens.
+  - **Callers:** the read model's and the state-view slice's callbacks, and also the deployed
+    state-view slice's entry point, which projects JSON states. A read model's source entity is
+    the aggregate's id and its event's service; a DCB event's is its first tag's value and key.
+  - **The line carries a top-level `correlationId`** when the events share one, so the
+    correlation filter of the tap and a CloudWatch query by `correlationId` both find it.
+  Tests: `ViewChangeTest` in core (two views, a merged update, a removal, the log line without
+  values), `LocalTapLinesTest` in local (the tap line with its values redacted).
 
 ### PF11: the feeds on the platform API, and its subscriptions checked
 
@@ -488,3 +545,48 @@ any tag value; `timeFrom` and `timeTo` compare with `recordedAt`.
 - `platform/events?plugins=…&logs=…&eventTypes=…&entityId=…&tagKey=…&tagValue=…&msgId=…&correlationId=…&causationId=…&user=…&timeFrom=…&timeTo=…&first=…&after=…`:
   answers one page, `{"edges":[{"node":…,"cursor":…}],"pageInfo":{"hasNextPage":…,"endCursor":…}}`,
   the records as in `Platform_EventLog`. Lists are comma separated.
+
+**The outcome line**, on the tap, without a prefix, once for every command a handler reports:
+
+```json
+{"kind":"commandOutcome","component":"Order","plugin":"Ordering","msgId":"…","correlationId":"…","outcome":"accepted","entityId":"o-1","eventCount":1,"ts":"…"}
+{"kind":"commandOutcome","component":"Order","plugin":"Ordering","msgId":"…","correlationId":"…","outcome":"rejected","errorCode":"AlreadyExists","cause":"DOMAIN","ts":"…"}
+```
+
+`component` is the handling component's name and `msgId` the command's. `plugin`,
+`correlationId` and `entityId` appear when known. `cause` is `DOMAIN`, `ACCESS` or
+`INFRASTRUCTURE`, as the API's `CommandRejectionCause`. The line passes a filter by plugin or
+correlation id, never one by event type.
+
+**A rejection on the log feed** and in the problem ring, never on stdout: a `WARN` record, `ERROR`
+when the cause is `INFRASTRUCTURE`:
+
+```json
+{"time":"…","level":"WARN","message":"command rejected","plugin":"Ordering","comp":"CommandTopic(Order)","msgId":"…","correlationId":"…","detail":{"component":"Order","errorCode":"AlreadyExists","cause":"DOMAIN","errorDetail":{}}}
+```
+
+**The view-change line**, on the tap, without a prefix, once for every row a projection created,
+changed or removed:
+
+```json
+{"kind":"viewChange","view":"Orders","key":"o-1","change":"changed","fields":["status"],"sources":[{"msgId":"…","correlationId":"…","entityId":"o-1","entityType":"Order"}],"correlationId":"…","before":{},"after":{},"ts":"…"}
+```
+
+`subId` follows `key` for a row of a view with several rows per key. `change` is `created`,
+`changed` or `removed`. `fields` names the top-level fields whose values differ, or every field
+where only one side is known. `before` is absent where the row was not loaded (`Set`, `Delete`),
+`after` where it was removed; both are redacted as log details are. `correlationId` is there
+when every source shares one. A source's `entityId` and `entityType` are an aggregate's id and
+its service, or a DCB event's first tag value and key. The line passes a filter by plugin (the
+view's) or correlation id.
+
+**The `view changed` log line**, at info, everywhere a read model or a state-view slice runs,
+with the same summary and no values:
+
+```json
+{"time":"…","level":"INFO","message":"view changed","plugin":"Ordering","comp":"ReadModel(Orders)","correlationId":"…","detail":{"view":"Orders","key":"o-1","change":"changed","fields":["status"],"sources":[{"msgId":"…","correlationId":"…","entityId":"o-1","entityType":"Order"}]}}
+```
+
+`comp` is `ReadModel(<name>)` or `StateViewSlice(<name>)` locally, the slice's name on a
+deployed state-view slice.
+

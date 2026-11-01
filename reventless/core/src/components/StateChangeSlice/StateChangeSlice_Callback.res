@@ -475,6 +475,7 @@ module Make = (
             // was delivered again. Accepted, nothing new.
             CommandTopic_Helpers.reportAccepted(
               ~component=Spec.name,
+              ~correlationId=cmdJson.meta.correlationId,
               cmdJson.meta.msgId,
               switch entityId {
               | Some(eid) => {entityId: eid, eventCount: 0}
@@ -492,6 +493,7 @@ module Make = (
             cachePut((state, headPosition, owners))
             CommandTopic_Helpers.reportRejected(
               ~component=Spec.name,
+              ~correlationId=cmdJson.meta.correlationId,
               ~cause=AccessRefusal,
               cmdJson.meta.msgId,
               rejected,
@@ -508,6 +510,7 @@ module Make = (
               cachePut((state, headPosition, owners))
               CommandTopic_Helpers.reportAccepted(
                 ~component=Spec.name,
+                ~correlationId=cmdJson.meta.correlationId,
                 cmdJson.meta.msgId,
                 switch entityId {
                 | Some(eid) => {entityId: eid, eventCount: 0}
@@ -529,6 +532,7 @@ module Make = (
                     cachePut((state, headPosition, owners))
                     CommandTopic_Helpers.reportRejected(
                       ~component=Spec.name,
+                      ~correlationId=cmdJson.meta.correlationId,
                       ~cause=InfrastructureFailure,
                       cmdJson.meta.msgId,
                       {
@@ -576,6 +580,7 @@ module Make = (
                           cachePut((state, headPosition, owners))
                           CommandTopic_Helpers.reportAccepted(
                             ~component=Spec.name,
+                            ~correlationId=cmdJson.meta.correlationId,
                             cmdJson.meta.msgId,
                             switch entityId {
                             | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
@@ -627,6 +632,7 @@ module Make = (
                             // store failing. `decide` had already said Ok.
                             CommandTopic_Helpers.reportRejected(
                               ~component=Spec.name,
+                              ~correlationId=cmdJson.meta.correlationId,
                               ~cause=InfrastructureFailure,
                               cmdJson.meta.msgId,
                               {errorCode, errorDetail: errDetail},
@@ -652,6 +658,7 @@ module Make = (
                   : payloadDict->JSON.Encode.object->JSON.stringify
               CommandTopic_Helpers.reportRejected(
                 ~component=Spec.name,
+                ~correlationId=cmdJson.meta.correlationId,
                 ~cause=DomainRejection,
                 cmdJson.meta.msgId,
                 {errorCode, errorDetail},

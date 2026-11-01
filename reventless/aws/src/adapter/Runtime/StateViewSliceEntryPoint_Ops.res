@@ -126,6 +126,20 @@ let decodeEnvelope = (json: JSON.t): envelope<'event> => {
 
 let exnMessage = StreamRoutedEntryPoint_Ops.exnMessage
 
+// The event an envelope carries, as the source of the rows its actions change.
+// Read off the JSON, like `producerTime`: an envelope without a meta yields none.
+let sourcesOf = (json: JSON.t): array<ReventlessCore.Projection.changeSource> => {
+  let fields = json->JSON.Decode.object->Option.getOr(Dict.make())
+  let meta = fields->Dict.get("meta")->Option.flatMap(JSON.Decode.object)
+  let string = (d, k) => d->Option.flatMap(d => d->Dict.get(k))->Option.flatMap(JSON.Decode.string)
+  switch string(meta, "msgId") {
+  | Some(msgId) =>
+    let (entityId, entityType) = ReventlessCore.ViewChange.entityOfEnvelope(fields)
+    [{msgId, correlationId: ?string(meta, "correlationId"), ?entityId, ?entityType}]
+  | None => []
+  }
+}
+
 // The typed core of buildJsonEventsHandler: decode each envelope, parse the
 // event against the slice's consumed-event schema, project, and run every
 // resulting action against the view table. A decode failure logs and yields no
@@ -140,7 +154,13 @@ let makeJsonEventsHandler = (
   ~queryDbOps: ReventlessCore.QueryDb_Adapter.operations,
   ~subIdConfig: option<Reventless.ReadModel.subIdConfig<JSON.t>>,
   ~stateSchema: option<S.t<unknown>>,
-): ReventlessCore.EventCollector.jsonEventsHandler =>
+): ReventlessCore.EventCollector.jsonEventsHandler => {
+  // Each row the events change is logged; the states are already JSON.
+  let onChange = ReventlessCore.ViewChange.reporter(
+    ~comp=sliceName,
+    ~view=sliceName,
+    ~stateToJson=state => state,
+  )
   stream =>
     stream
     ->Stream.mapEffect(json =>
@@ -155,11 +175,14 @@ let makeJsonEventsHandler = (
           // The deployed slice assembles JSON-level operations rather than going
           // through the typed rewrite, so the trail is appended here — with this
           // envelope's own time, which the apply below no longer has.
-          producerTime === ""
-            ? actions
-            : actions->Array.map(
-                ReventlessCore.Projection.rewriteJsonAction(_, ~at=producerTime, ~stateSchema),
-              )
+          let sources = sourcesOf(json)
+          let actions =
+            producerTime === ""
+              ? actions
+              : actions->Array.map(
+                  ReventlessCore.Projection.rewriteJsonAction(_, ~at=producerTime, ~stateSchema),
+                )
+          actions->Array.map(action => (action, sources))
         } catch {
         | exn =>
           StreamRoutedEntryPoint_Ops.logError(
@@ -171,7 +194,7 @@ let makeJsonEventsHandler = (
       )
     )
     ->Stream.flatMap(actions => Stream.fromIterable(actions))
-    ->Stream.runForEach(action =>
+    ->Stream.runForEach(((action, sources)) =>
       // Thread the slice's `subIdConfig` (generated from `@subId`) so
       // sub-id-dependent actions like `UpdateMultiState` can resolve the sort
       // key. Dropping it here made every such action hit the
@@ -181,9 +204,17 @@ let makeJsonEventsHandler = (
       // actions. `~comp` is the slice's spec name — attribution for
       // Projection.handleAction's debug-lazy action log.
       Effect.promise(() =>
-        ReventlessCore.Projection.handleAction(~comp=sliceName, action, queryDbOps, subIdConfig)
+        ReventlessCore.Projection.handleAction(
+          ~comp=sliceName,
+          ~sources,
+          ~onChange,
+          action,
+          queryDbOps,
+          subIdConfig,
+        )
       )->Effect.map(_ => ())
     )
+}
 
 // ── Handler assembly (called by the shell per HANDLER_CONFIG entry) ─────────
 // `sliceModules` types the shell's reads off the two dynamically imported

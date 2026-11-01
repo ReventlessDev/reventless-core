@@ -7,15 +7,18 @@ import * as Effect from "effect/Effect";
 import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
+import * as ViewChange$ReventlessCore from "../../ViewChange.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   return Projection => {
     let comp = `StateViewSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
+    let onChange = ViewChange$ReventlessCore.reporter(comp, Spec.name, state => Util_Sury$Reventless.toJson(state, Spec.stateSchema));
     let eventsHandler = async (queryDbOps, rawEvents) => {
       let datas = rawEvents.map(raw => raw.data);
       if (Pii$Reventless.needsPrepare(datas)) {
@@ -41,14 +44,18 @@ function Make(Spec) {
         }).map(__x => Projection$Reventless.mapActionId(__x, Spec.Id.toString, Spec.Id.makeFromString));
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
-        allActions.push(...actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, raw.meta.time, Spec.stateSchema)));
+        let sources = [ViewChange$ReventlessCore.sourceOf(raw.meta, Stdlib_Option.map(raw.tags[0], tag => tag.value), Stdlib_Option.map(raw.tags[0], tag => tag.key), undefined)];
+        allActions.push(...actions.map(action => ({
+          action: Projection$ReventlessCore.rewriteAction(action, raw.meta.time, Spec.stateSchema),
+          sources: sources
+        })));
         return Primitive_option.some(event);
       });
       let skipped = rawEvents.length - events.length | 0;
       if (skipped > 0) {
         Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
       }
-      return await Projection$ReventlessCore.handleActions(comp, allActions, queryDbOps, Spec.subIdConfig);
+      return await Projection$ReventlessCore.handleSourcedActions(comp, onChange, allActions, queryDbOps, Spec.subIdConfig);
     };
     return {
       Spec: Spec,

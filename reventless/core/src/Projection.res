@@ -181,6 +181,44 @@ let rewriteJsonAction = (
     )
   }
 
+// ── What an applied action changed ─────────────────────────────────────────
+// A caller that wants to know which rows an action changed passes `~onChange`;
+// it is called once per row written or removed, after the store said yes.
+
+type changeKind =
+  | Created
+  | Changed
+  | Removed
+
+/** An event that led to a change: its message id, its flow, and the entity it
+    is about (an aggregate's id and name, or a DCB event's tag value and key). */
+type changeSource = {
+  msgId: string,
+  correlationId?: string,
+  entityId?: string,
+  entityType?: string,
+}
+
+/** One row a projection created, changed or removed. `before` is there where the
+    row was loaded first; `Set` and `Delete` write without loading, so theirs is
+    absent. `sources` are the events whose actions were applied to the row, all of
+    them when several actions on it were merged. */
+type rowChange<'state> = {
+  key: string,
+  subId?: string,
+  kind: changeKind,
+  before?: 'state,
+  after?: 'state,
+  sources: array<changeSource>,
+}
+
+/** An action with the events it came from. */
+type sourced<'id, 'state> = {action: action<'id, 'state>, sources: array<changeSource>}
+
+/** Both lists, each source once. */
+let mergeSources = (a: array<changeSource>, b: array<changeSource>): array<changeSource> =>
+  a->Array.concat(b->Array.filter(s => !(a->Array.some(other => other.msgId == s.msgId))))
+
 let applyChanges = async (
   action,
   id,
@@ -188,6 +226,12 @@ let applyChanges = async (
   afterStates,
   {QueryDb.saveBatch: saveBatch, deleteBatch},
   {subIdField, getSubId},
+  ~onRow: (~subId: string, ~before: option<'state>, ~after: option<'state>, changeKind) => unit=(
+    ~subId as _,
+    ~before as _,
+    ~after as _,
+    _,
+  ) => (),
 ) => {
   let beforeCount = beforeStates->Array.length
   let beforeSubIds = beforeStates->Array.map(state => state->getSubId)->Set.fromArray
@@ -230,7 +274,22 @@ let applyChanges = async (
     }
   ) {
   | Some(err) => err
-  | None => Ok()
+  | None =>
+    let beforeBySubId = Dict.make()
+    beforeStates->Array.forEach(before => beforeBySubId->Dict.set(before->getSubId, before))
+    afterStates->Array.forEach(after => {
+      let subId = after->getSubId
+      switch beforeBySubId->Dict.get(subId) {
+      | None => onRow(~subId, ~before=None, ~after=Some(after), Created)
+      | Some(before) if before != after =>
+        onRow(~subId, ~before=Some(before), ~after=Some(after), Changed)
+      | Some(_) => ()
+      }
+    })
+    deletedSubIds->Array.forEach(subId =>
+      onRow(~subId, ~before=beforeBySubId->Dict.get(subId), ~after=None, Removed)
+    )
+    Ok()
   }
 }
 
@@ -246,10 +305,35 @@ let statesToString: array<'a> => string = states =>
 
 let handleAction = async (
   ~comp="Projection",
+  ~sources: array<changeSource>=[],
+  ~onChange: option<rowChange<'state> => unit>=?,
   action,
   {QueryDb.loadStream: loadStream, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) => {
+  // A listener that throws is noted and skipped: the row is already written.
+  let report = (~key, ~subId=?, ~before=?, ~after=?, kind) =>
+    onChange->Option.forEach(f =>
+      try f({key, ?subId, kind, ?before, ?after, sources}) catch {
+      | exn =>
+        log.warn(
+          ~comp,
+          `a view-change listener failed: ${exn
+            ->JsExn.fromException
+            ->Option.flatMap(JsExn.message)
+            ->Option.getOr("unknown")}`,
+        )
+      }
+    )
+  let subIdOf = state => subIdConfig->Option.map(({getSubId}) => getSubId(state))
+  // Reports only what the store accepted.
+  let after = (result, reportAll) => {
+    switch (result, onChange) {
+    | (Ok(), Some(_)) => reportAll()
+    | _ => ()
+    }
+    result
+  }
   // Log each applied action at Debug with the full state it creates/changes,
   // attributed to the owning component. Debug-lazy so the state is only
   // serialized when debug logging is enabled; shadows the module-level
@@ -275,19 +359,21 @@ let handleAction = async (
 
   | Create(id, state) =>
     logAction(() => `Create(${id}, ${state->stateToString})`)
-    await save(id, state, Init, None)
+    (await save(id, state, Init, None))->after(() => report(~key=id, ~after=state, Created))
   | CreateMultiState(id, states) =>
     logAction(() =>
       `CreateMultiState(${id}, ${states
         ->Array.map(state => state->stateToString)
         ->Array.joinUnsafe(", ")})`
     )
+    let reportAll = () =>
+      states->Array.forEach(state => report(~key=id, ~subId=?subIdOf(state), ~after=state, Created))
     switch states {
     | [] => Ok()
-    | [state] => await save(id, state, Init, None)
+    | [state] => (await save(id, state, Init, None))->after(reportAll)
     | states =>
       let batch = states->Array.map(state => (id, state, None))
-      await saveBatch(batch)
+      (await saveBatch(batch))->after(reportAll)
     }
   | CreateMany(states) =>
     let batch = states->Array.map(((id, state)) => (id, state, None))
@@ -296,11 +382,14 @@ let handleAction = async (
         ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
         ->Array.joinUnsafe(", ")})`
     )
-    await saveBatch(batch) // TODO: think about using single saves with saveMode Init
+    // TODO: think about using single saves with saveMode Init
+    (await saveBatch(batch))->after(() =>
+      batch->Array.forEach(((id, state, _)) => report(~key=id, ~after=state, Created))
+    )
 
   | Set(id, state) =>
     logAction(() => `Set(${id}, ${state->stateToString})`)
-    await save(id, state, Any, None)
+    (await save(id, state, Any, None))->after(() => report(~key=id, ~after=state, Changed))
   | SetMany(ids, set) =>
     let batch = ids->Array.map(id => (id, set(id), None))
     logAction(() =>
@@ -308,7 +397,9 @@ let handleAction = async (
         ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
         ->Array.joinUnsafe(", ")})`
     )
-    await saveBatch(batch)
+    (await saveBatch(batch))->after(() =>
+      batch->Array.forEach(((id, state, _)) => report(~key=id, ~after=state, Changed))
+    )
 
   | Update(id, update) =>
     switch await loadAtMost(2, id) {
@@ -320,7 +411,11 @@ let handleAction = async (
       | [oldState] =>
         let newState = oldState->update
         logAction(() => `Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
-        await save(id, newState, Overwrite, None)
+        (await save(id, newState, Overwrite, None))->after(() =>
+          if newState != oldState {
+            report(~key=id, ~before=oldState, ~after=newState, Changed)
+          }
+        )
       | _ =>
         logAction(() => `Update Error: Multiple oldStates for ${id})`)
         Error(ReventlessInfra.QueryDb.StaleState)
@@ -333,13 +428,17 @@ let handleAction = async (
       switch states {
       | [] =>
         logAction(() => `UpdateWithDefault(${id}, default: ${default->stateToString})`)
-        await save(id, default, Init, None)
+        (await save(id, default, Init, None))->after(() => report(~key=id, ~after=default, Created))
       | [oldState] =>
         let newState = oldState->update
         logAction(() =>
           `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`
         )
-        await save(id, newState, Overwrite, None)
+        (await save(id, newState, Overwrite, None))->after(() =>
+          if newState != oldState {
+            report(~key=id, ~before=oldState, ~after=newState, Changed)
+          }
+        )
       | _ =>
         logAction(() => `UpdateWithDefault Error: Multiple oldStates for ${id})`)
         Error(ReventlessInfra.QueryDb.StaleState)
@@ -355,7 +454,15 @@ let handleAction = async (
     | (Ok(states), Some(subIdConfig)) =>
       let beforeStates = states
       let afterStates = beforeStates->update
-      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, operations, subIdConfig)
+      await applyChanges(
+        "UpdateMultiState",
+        id,
+        beforeStates,
+        afterStates,
+        operations,
+        subIdConfig,
+        ~onRow=(~subId, ~before, ~after, kind) => report(~key=id, ~subId, ~before?, ~after?, kind),
+      )
 
     | (Error(err), Some(_)) =>
       logAction(() =>
@@ -368,10 +475,12 @@ let handleAction = async (
     }
   | Delete(id) =>
     logAction(() => `Delete(${id})`)
-    await delete(id, None)
+    (await delete(id, None))->after(() => report(~key=id, Removed))
   | DeleteMany(ids) =>
     logAction(() => `DeleteMany(${ids->Array.joinUnsafe(", ")})`)
-    await deleteBatch(ids->Array.map(id => (id, None)))
+    (await deleteBatch(ids->Array.map(id => (id, None))))->after(() =>
+      ids->Array.forEach(id => report(~key=id, Removed))
+    )
 
   // An action reaching here is one this projection engine doesn't implement.
   // Returning Ok() reported the read-model write as done while silently losing
@@ -404,8 +513,13 @@ let actionsWithId = action =>
     []
   }
 
-let groupActionsById = actions => {
-  let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Array.flat
+let groupSourcedById = (actions: array<sourced<'id, 'state>>) => {
+  let allActionsWithId =
+    actions
+    ->Array.map(({action, sources}) =>
+      action->actionsWithId->Array.map(((id, action)) => (id, {action, sources}))
+    )
+    ->Array.flat
   // One pass into a dict keyed by id (was O(ids × actions): a filterMap over
   // every action per unique id). The id ordering is unchanged — still the sorted
   // Belt.Set order — and each group preserves the actions' original order.
@@ -423,112 +537,98 @@ let groupActionsById = actions => {
   ->Array.map(id => (id, groups->Dict.getUnsafe(id)))
 }
 
-let optimizeActions = actions => {
-  // [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
-  actions->Array.reduce([], (optimizedActions, action) => {
-    let optimizedActionsCount = optimizedActions->Array.length
-    if optimizedActionsCount == 0 {
-      [action]
-    } else {
-      let lastAction = optimizedActions->Array.getUnsafe(optimizedActionsCount - 1)
-      // Everything BEFORE the last action. `~end` is exclusive, so this must be
-      // `count - 1`; using `count` kept `lastAction` in the slice while the merged
-      // action was also appended, applying the last action twice.
-      let previousActions = optimizedActions->Array.slice(~start=0, ~end=optimizedActionsCount - 1)
+let groupActionsById = actions =>
+  actions
+  ->Array.map(action => {action, sources: []})
+  ->groupSourcedById
+  ->Array.map(((id, group)) => (id, group->Array.map(s => s.action)))
 
-      switch (lastAction, action) {
-      // SINGLE STATES
-      | (Create(id1, state1), Update(id2, f)) if id1 == id2 =>
-        previousActions->Array.concat([Create(id1, f(state1))])
-      | (Create(id1, state1), UpdateWithDefault(id2, _defaultState2, f)) if id1 == id2 =>
-        previousActions->Array.concat([Create(id1, f(state1))])
-      | (Update(id1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Array.concat([Update(id1, state => g(f(state)))])
-      | (UpdateWithDefault(id1, defaultState1, f), UpdateWithDefault(id2, _defaultState2, g))
-        if id1 == id2 =>
-        previousActions->Array.concat([
-          UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
-        ])
-      | (Update(id1, f), UpdateWithDefault(id2, defaultState2, g)) if id1 == id2 =>
-        previousActions->Array.concat([
-          UpdateWithDefault(
-            id1,
-            /* if no state exists before the first upate, it is ignored */
-            defaultState2,
-            state => g(f(state)),
-          ),
-        ])
-      | (UpdateWithDefault(id1, defaultState1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Array.concat([
-          UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
-        ])
-      | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Create after UpdateWithDefault for id=${id1}, ignoring the Create`,
-        )
-        previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
-      | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing 2 sequential Create for id=${id1}, ignoring second: ${state2
-            ->JSON.stringifyAny
-            ->Option.getOr("?")}`,
-        )
-        previousActions->Array.concat([Create(id1, state1)])
-      | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Delete after Create for id=${id1}, ignoring Create: ${state1
-            ->JSON.stringifyAny
-            ->Option.getOr("?")}`,
-        )
-        previousActions->Array.concat([Delete(id1)])
-      | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Delete after Update for id=${id1}, ignoring the Update`,
-        )
-        previousActions->Array.concat([Delete(id1)])
-      | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Delete after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
-        )
-        previousActions->Array.concat([Delete(id1)])
-      | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
-        previousActions->Array.concat([Set(id1, state2)])
-      | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Set after Create for id=${id1}, ignoring Create: ${state1
-            ->JSON.stringifyAny
-            ->Option.getOr("?")}`,
-        )
-        previousActions->Array.concat([Set(id1, state2)])
-      | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Set after Update for id=${id1}, ignoring the Update`,
-        )
-        previousActions->Array.concat([Set(id1, state2)])
-      | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
-        log.warn(
-          ~comp="Projection",
-          `optimizing Set after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
-        )
-        previousActions->Array.concat([Set(id1, state2)])
-      // MULTI STATES
-      /*
+// The one action two consecutive actions on one id amount to, or `None` when they
+// stay two.
+let mergeActions = (lastAction, action) =>
+  switch (lastAction, action) {
+  // SINGLE STATES
+  | (Create(id1, state1), Update(id2, f)) if id1 == id2 => Some(Create(id1, f(state1)))
+  | (Create(id1, state1), UpdateWithDefault(id2, _defaultState2, f)) if id1 == id2 =>
+    Some(Create(id1, f(state1)))
+  | (Update(id1, f), Update(id2, g)) if id1 == id2 => Some(Update(id1, state => g(f(state))))
+  | (UpdateWithDefault(id1, defaultState1, f), UpdateWithDefault(id2, _defaultState2, g))
+    if id1 == id2 =>
+    Some(UpdateWithDefault(id1, g(defaultState1), state => g(f(state))))
+  | (Update(id1, f), UpdateWithDefault(id2, defaultState2, g)) if id1 == id2 =>
+    Some(
+      UpdateWithDefault(
+        id1,
+        /* if no state exists before the first upate, it is ignored */
+        defaultState2,
+        state => g(f(state)),
+      ),
+    )
+  | (UpdateWithDefault(id1, defaultState1, f), Update(id2, g)) if id1 == id2 =>
+    Some(UpdateWithDefault(id1, g(defaultState1), state => g(f(state))))
+  | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Create after UpdateWithDefault for id=${id1}, ignoring the Create`,
+    )
+    Some(UpdateWithDefault(id1, defaultState1, f))
+  | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing 2 sequential Create for id=${id1}, ignoring second: ${state2
+        ->JSON.stringifyAny
+        ->Option.getOr("?")}`,
+    )
+    Some(Create(id1, state1))
+  | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Delete after Create for id=${id1}, ignoring Create: ${state1
+        ->JSON.stringifyAny
+        ->Option.getOr("?")}`,
+    )
+    Some(Delete(id1))
+  | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Delete after Update for id=${id1}, ignoring the Update`,
+    )
+    Some(Delete(id1))
+  | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Delete after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
+    )
+    Some(Delete(id1))
+  | (Delete(id1), Create(id2, state2)) if id1 == id2 => Some(Set(id1, state2))
+  | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Set after Create for id=${id1}, ignoring Create: ${state1
+        ->JSON.stringifyAny
+        ->Option.getOr("?")}`,
+    )
+    Some(Set(id1, state2))
+  | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
+    log.warn(~comp="Projection", `optimizing Set after Update for id=${id1}, ignoring the Update`)
+    Some(Set(id1, state2))
+  | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
+    log.warn(
+      ~comp="Projection",
+      `optimizing Set after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`,
+    )
+    Some(Set(id1, state2))
+  // MULTI STATES
+  /*
       | (CreateMultiState(id1, states1), UpdateMultiState(id2, f)) if id1 == id2 =>
         THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, f(states1))])
         suggestion: UpdateMultiState with following updateFunction:
             - apply f to states1 and states of UpdateMultiState separately
             - concat unique states of both results
  */
-      | (UpdateMultiState(id1, f), UpdateMultiState(id2, g)) if id1 == id2 =>
-        previousActions->Array.concat([UpdateMultiState(id1, state => g(f(state)))])
-      /*
+  | (UpdateMultiState(id1, f), UpdateMultiState(id2, g)) if id1 == id2 =>
+    Some(UpdateMultiState(id1, state => g(f(state))))
+  /*
       | (UpdateMultiState(id1, _f), CreateMultiState(id2, states2)) if id1 == id2 =>
         Console..warn(
           "optimizing CreateMultiState after UpdateMultiState, therefore ignoring the UpdateMultiState",
@@ -539,7 +639,7 @@ let optimizeActions = actions => {
             - concat unique states of update results and states2
             - if duplicates exist, prefer states2
  */
-      /*
+  /*
       | (CreateMultiState(id1, states1), CreateMultiState(id2, states2)) if id1 == id2 =>
         Console..warn2(
           "optimizing 2 sequential CreateMultiState actions, therefore ignoring the first one:",
@@ -550,21 +650,50 @@ let optimizeActions = actions => {
             - concatenate states1 & states2
             - if duplicates exist, prefer states2
  */
-      | (lastAction, action) =>
-        // any other action will be just appended
-        log.warn(
-          ~comp="Projection",
-          `actions not optimized: ${lastAction->JSON.stringifyAny->Option.getOr("?")} + ${action
-            ->JSON.stringifyAny
-            ->Option.getOr("?")}`,
-        )
-        optimizedActions->Array.concat([action])
+  | (lastAction, action) =>
+    // any other action will be just appended
+    log.warn(
+      ~comp="Projection",
+      `actions not optimized: ${lastAction->JSON.stringifyAny->Option.getOr("?")} + ${action
+        ->JSON.stringifyAny
+        ->Option.getOr("?")}`,
+    )
+    None
+  }
+
+// [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
+// A merged action keeps the sources of both.
+let optimizeSourced = (actions: array<sourced<'id, 'state>>): array<sourced<'id, 'state>> =>
+  actions->Array.reduce([], (optimized, next) => {
+    let count = optimized->Array.length
+    if count == 0 {
+      [next]
+    } else {
+      let last = optimized->Array.getUnsafe(count - 1)
+      // Everything BEFORE the last action. `~end` is exclusive, so this must be
+      // `count - 1`; using `count` kept the last action in the slice while the
+      // merged action was also appended, applying it twice.
+      let previous = optimized->Array.slice(~start=0, ~end=count - 1)
+      switch mergeActions(last.action, next.action) {
+      | Some(action) =>
+        previous->Array.concat([{action, sources: mergeSources(last.sources, next.sources)}])
+      | None => optimized->Array.concat([next])
       }
     }
   })
-}
 
-let handleActions = async (~comp="Projection", actions, operations, subIdConfig) => {
+let optimizeActions = actions =>
+  actions->Array.map(action => {action, sources: []})->optimizeSourced->Array.map(s => s.action)
+
+/** `handleActions` for actions that carry the events they came from, so each
+    row change can name them. */
+let handleSourcedActions = async (
+  ~comp="Projection",
+  ~onChange=?,
+  actions: array<sourced<string, 'state>>,
+  operations,
+  subIdConfig,
+) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Array.length
     if actionCount > 1 {
@@ -574,12 +703,12 @@ let handleActions = async (~comp="Projection", actions, operations, subIdConfig)
       )
     }
 
-    let optimizedActions = optimizeActions(actions)
+    let optimizedActions = optimizeSourced(actions)
     let optimizedActionCount = optimizedActions->Array.length
     log.debug(~comp, `handleActions: id=${id} actions=${optimizedActionCount->Int.toString}`)
 
     // FIXME: handle errors!
-    await optimizedActions->Array.reduce(Ok()->Promise.resolve, async (p, action) => {
+    await optimizedActions->Array.reduce(Ok()->Promise.resolve, async (p, {action, sources}) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>
@@ -590,12 +719,12 @@ let handleActions = async (~comp="Projection", actions, operations, subIdConfig)
             ->JSON.stringify}`,
         )
       }
-      await action->handleAction(~comp, operations, subIdConfig)
+      await action->handleAction(~comp, ~sources, ~onChange?, operations, subIdConfig)
     })
   }
 
   let results = await actions
-  ->groupActionsById
+  ->groupSourcedById
   ->Array.map(((id, actions)) => actions->handleActionsForId(id))
   ->Promise.all
   let errors = results->Array.filterMap(x =>
@@ -615,3 +744,12 @@ let handleActions = async (~comp="Projection", actions, operations, subIdConfig)
     )
   }
 }
+
+let handleActions = (~comp="Projection", ~onChange=?, actions, operations, subIdConfig) =>
+  handleSourcedActions(
+    ~comp,
+    ~onChange?,
+    actions->Array.map(action => {action, sources: []}),
+    operations,
+    subIdConfig,
+  )

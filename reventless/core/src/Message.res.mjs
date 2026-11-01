@@ -207,6 +207,47 @@ function deriveMeta(parent, service) {
   };
 }
 
+let flowSourceSchema = Sury.$schema(s => ({
+  msgId: s.m(Sury.string),
+  correlationId: s.m(Sury.string),
+  user: s.m(Sury.$option(Sury.string)),
+  traceparent: s.m(Sury.$option(Sury.string))
+}));
+
+function flowSourceOf(meta) {
+  return {
+    msgId: meta.msgId,
+    correlationId: meta.correlationId,
+    user: meta.user,
+    traceparent: meta.traceparent
+  };
+}
+
+function deriveMetaFromSource(source, service) {
+  return deriveMeta({
+    service: service,
+    time: new Date().toISOString(),
+    user: source.user,
+    msgId: source.msgId,
+    correlationId: source.correlationId,
+    traceparent: source.traceparent
+  }, service);
+}
+
+function metaOfEnvelope(envelope) {
+  let json = Stdlib_Option.flatMap(envelope, d => d["meta"]);
+  if (json === undefined) {
+    return;
+  }
+  let meta;
+  try {
+    meta = Util_Sury$Reventless.fromJson(json, Message$Reventless.metaSchema);
+  } catch (exn) {
+    return;
+  }
+  return meta;
+}
+
 function decomposeMeta(meta) {
   return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)), undefined));
 }
@@ -454,6 +495,10 @@ export {
   hrtimeToString,
   generateMeta,
   deriveMeta,
+  flowSourceSchema,
+  flowSourceOf,
+  deriveMetaFromSource,
+  metaOfEnvelope,
   deriveStableMeta,
   hasStableMsgId,
   decomposeMeta,

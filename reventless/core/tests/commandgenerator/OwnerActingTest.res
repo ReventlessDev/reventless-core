@@ -404,7 +404,9 @@ let paths = [
 let _ = beforeEach(() => {
   Reventless.OwnerScope.setElevatedGroups(["Admin"])
   observed := []
-  CommandTopic_Helpers.registerCommandOutcome(r => observed := observed.contents->Array.concat([r]))
+  CommandTopic_Helpers.registerCommandOutcome(r =>
+    observed := observed.contents->Array.concat([r])
+  )->ignore
 })
 
 let _ = afterEach(() => CommandTopic_Helpers.clearCommandOutcome())

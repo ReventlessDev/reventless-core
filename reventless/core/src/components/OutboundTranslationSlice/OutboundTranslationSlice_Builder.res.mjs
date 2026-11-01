@@ -102,13 +102,17 @@ function Make(RuntimeEnvironment) {
               if (event !== undefined) {
                 return [[
                     sourceId,
-                    Primitive_option.valFromOption(event)
+                    Primitive_option.valFromOption(event),
+                    Message$ReventlessCore.metaOfEnvelope(envelope)
                   ]];
               } else {
                 return [];
               }
             })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
-              await Callback.phase1(eventsArr, Capabilities.capabilities());
+              await Callback.phase1(eventsArr.map(param => [
+                param[0],
+                param[1]
+              ]), eventsArr.map(param => param[2]), Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
               Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities()).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");

@@ -38,6 +38,9 @@ type todoRow = {
       rehydrated through `S.parseOrThrow`, and a required field would fail that
       decode — silently, since the restore swallows it per row. */
   maxRetries?: int,
+  /** The event that created the row, so the commands sent for it continue its
+      flow. Absent on rows written before it existed, and on rows a tick created. */
+  source?: Message.flowSource,
 }
 
 /** The item schema seen through the `JSON.t` the row actually stores.
@@ -69,6 +72,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     completedAt: ?s.matches(S.option(S.string)),
     retryCount: s.matches(S.int),
     maxRetries: ?s.matches(S.option(S.int)),
+    source: ?s.matches(S.option(Message.flowSourceSchema)),
   })
 
 /**
@@ -170,17 +174,20 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  // Root meta for commands emitted by this AutomationSlice. The triggering
-  // event's meta is not currently threaded from phase1 → phase2 (todoItems
-  // only carries `item` data), so causation across the automation hop is
-  // lost — emitted commands are roots of a fresh correlation chain. If we
-  // later thread source meta through todoItems, switch to deriveMeta.
+  // Meta for a command emitted for a row: derived from the event that created
+  // the row, so the command continues its flow (its correlation id, the event's
+  // message id as causation, its user and trace parent). A row without a source
+  // (written before rows kept one, or created by a tick) starts a new flow.
   // `service` names the command's TARGET, matching the API path
   // (`CommandGenerator_Callback` passes `~serviceName=AggregateSpec.name`). An
   // aggregate derives its event meta from the command's, and ReadModel /
   // AutomationSlice callbacks dispatch mappings on `meta.service` — so naming
   // the slice here makes the target's own events unmatchable, silently.
-  let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
+  let makeMeta = (row: todoRow): Reventless.Message.meta =>
+    switch row.source {
+    | Some(source) => Message.deriveMetaFromSource(source, ~service=Spec.targetName)
+    | None => Message.generateMeta(~service=Spec.targetName)
+    }
 
   // A work item that carries personal data is stored the way an event is: its
   // marked fields sealed, its row keyed by a fingerprint of the key the mapping
@@ -296,7 +303,7 @@ module Make = (
     | Open({key, item}) =>
       Automation.onExhausted(key, item)->Option.flatMap(((targetId, command)) =>
         switch command->Reventless.Util_Sury.toJson(Spec.commandSchema) {
-        | commandJson => Some({Reventless.Message.id: targetId, meta: makeMeta(), commandJson})
+        | commandJson => Some({Reventless.Message.id: targetId, meta: makeMeta(row), commandJson})
         | exception _ =>
           EffectLogger.logError(
             ~comp=`AutomationSlice(${Spec.name})`,
@@ -326,6 +333,7 @@ module Make = (
   let apply = async (
     {collected, resolved}: AutomationSlice_Route.routed<Spec.todoItem>,
     ~capabilities,
+    ~source: option<Message.flowSource>,
   ) => {
     for i in 0 to collected->Array.length - 1 {
       let (key, item) = collected->Array.getUnsafe(i)
@@ -346,6 +354,7 @@ module Make = (
             createdAt: now(),
             retryCount: 0,
             maxRetries: Spec.maxRetries,
+            ?source,
           }
           todoItems->Dict.set(id, row)
         }
@@ -410,8 +419,11 @@ module Make = (
       }
       // Multiple mappings can share a sourceName; all matching dispatches run.
       let routed = Route.route(eventPayload, ~sourceName, ~sourceId=context.id, ctx)
+      // A tick's meta is made up as it fires, so a row it creates starts a flow.
+      let source =
+        sourceName == Reventless.Clock.name ? None : Some(Message.flowSourceOf(context.meta))
       for j in 0 to routed->Array.length - 1 {
-        await apply(routed->Array.getUnsafe(j), ~capabilities)
+        await apply(routed->Array.getUnsafe(j), ~capabilities, ~source)
       }
       reschedule(
         routed,
@@ -523,7 +535,7 @@ module Make = (
           commandJson->Option.forEach(commandJson => {
             let msg: Reventless.Message.commandJson = {
               id: targetId,
-              meta: makeMeta(),
+              meta: makeMeta(row),
               commandJson,
             }
             let _ = commands->Array.push(msg)

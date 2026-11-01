@@ -29,6 +29,9 @@ type todoRow = {
       decode — silently, since the restore swallows it per row. */
   maxRetries?: int,
   lastError?: string,
+  /** The event that created the row, so the command sent for it continues its
+      flow. Absent on rows written before it existed. */
+  source?: Message.flowSource,
 }
 
 /** The item schema seen through the `JSON.t` the row actually stores.
@@ -62,6 +65,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     retryCount: s.matches(S.int),
     maxRetries: ?s.matches(S.option(S.int)),
     lastError: ?s.matches(S.option(S.string)),
+    source: ?s.matches(S.option(Message.flowSourceSchema)),
   })
 
 /**
@@ -81,6 +85,7 @@ runtime, as `undefined` destructured from a tuple that was never a tuple.
 */
 type phase1<'event> = (
   array<(string, 'event)>,
+  ~metas: array<option<Reventless.Message.meta>>=?,
   ~capabilities: Reventless.Capabilities.t,
 ) => promise<unit>
 
@@ -112,8 +117,9 @@ module type T = {
 
   /** Phase 1: update TODO list from a batch of `(sourceId, event)` pairs
       (collect only, no resolve). `sourceId` is the envelope id of the entity the
-      event was published for. `~capabilities` supplies the key a personal item's
-      row id is fingerprinted with. */
+      event was published for. `~metas`, by the same index, are the events' metas
+      where their envelopes had one: a row keeps its event's flow from them. `~capabilities` supplies the key a
+      personal item's row id is fingerprinted with. */
   let phase1: phase1<Spec.consumedEvent>
 
   /** Phase 2: translate all pending items, optionally publishing commands via publishJsons. */
@@ -131,10 +137,10 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  // Root meta for messages emitted by this OutboundTranslationSlice. Source-event
-  // meta is not threaded from phase1 → phase2 today, so causation across the
-  // translation hop is not preserved. If sources later carry meta into todoItems,
-  // switch to Message.deriveMeta.
+  // Meta for a command emitted for a row: derived from the event that created
+  // the row, so the command continues its flow (its correlation id, the event's
+  // message id as causation, its user and trace parent). A row without a source
+  // (written before rows kept one, or given no meta) starts a new flow.
   //
   // `service` names the command's TARGET, matching what the API path does
   // (`CommandGenerator_Callback` passes `~serviceName=AggregateSpec.name`). It is
@@ -145,10 +151,13 @@ module Make = (
   // no error. Falls back to the slice's own name only when there is no target, in
   // which case the command goes to the plugin's DCB topic and nothing dispatches
   // on it.
-  let makeMeta = (): Reventless.Message.meta =>
-    Message.generateMeta(
-      ~service=Spec.targetName->Option.getOr(`OutboundTranslationSlice:${Spec.name}`),
-    )
+  let makeMeta = (row: todoRow): Reventless.Message.meta => {
+    let service = Spec.targetName->Option.getOr(`OutboundTranslationSlice:${Spec.name}`)
+    switch row.source {
+    | Some(source) => Message.deriveMetaFromSource(source, ~service)
+    | None => Message.generateMeta(~service)
+    }
+  }
 
   /** Record a failed attempt. The row is marked `Abandoned` at the moment the
       budget runs out rather than being left to fall out of the next pass's
@@ -184,7 +193,7 @@ module Make = (
         try {
           let msg: Reventless.Message.commandJson = {
             id: targetId,
-            meta: makeMeta(),
+            meta: makeMeta(row),
             commandJson: cmd->Reventless.Util_Sury.toJson(Spec.inboundCommandSchema),
           }
           await publishJsons([msg])
@@ -242,10 +251,13 @@ module Make = (
 
   let phase1 = async (
     events: array<(string, Spec.consumedEvent)>,
+    ~metas: array<option<Reventless.Message.meta>>=[],
     ~capabilities: Reventless.Capabilities.t,
   ) =>
     for i in 0 to events->Array.length - 1 {
       let (sourceId, event) = events->Array.getUnsafe(i)
+      let source =
+        metas->Array.get(i)->Option.flatMap(meta => meta)->Option.map(Message.flowSourceOf)
       // Collect new outbound items
       let collected = Translation.collect(event, ~sourceId)
       for j in 0 to collected->Array.length - 1 {
@@ -275,6 +287,7 @@ module Make = (
               createdAt: now(),
               retryCount: 0,
               maxRetries: Spec.maxRetries,
+              ?source,
             }
             todoItems->Dict.set(id, row)
           }
@@ -396,7 +409,7 @@ module Make = (
             try {
               let msg: Reventless.Message.commandJson = {
                 id: targetId,
-                meta: makeMeta(),
+                meta: makeMeta(row),
                 commandJson,
               }
               await publishJsons([msg])

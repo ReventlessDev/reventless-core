@@ -12,6 +12,11 @@ module Make = (
 
   let comp = `ReadModel(${ReadModelSpec.name})`
 
+  // Each row the events change is logged, and handed to whoever listens.
+  let onChange = ViewChange.reporter(~comp, ~view=ReadModelSpec.name, ~stateToJson=state =>
+    state->Reventless.Util_Sury.toJson(ReadModelSpec.stateSchema)
+  )
+
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
     ->Stream.runCollect
@@ -31,19 +36,34 @@ module Make = (
               json,
             )} actions:${actionsStr}`,
         )->Effect.runSync
+        // The event each action came from, kept for the change it makes: the
+        // entity is the aggregate the event was published for.
+        let sources = [
+          ViewChange.sourceOf(~meta=context.meta, ~entityId=context.id, ~entityType=sourceName, ()),
+        ]
         // Rewritten here rather than at the apply below: a trail entry is
         // stamped with this envelope's own time.
         actions->Array.map(
-          Projection.rewriteAction(_, ~at=context.meta.time, ReadModelSpec.stateSchema),
+          action => (
+            action->Projection.rewriteAction(~at=context.meta.time, ReadModelSpec.stateSchema),
+            sources,
+          ),
         )
       })
       ->Array.flat
-      ->Array.reduce(Effect.succeed(), (acc, action) =>
+      ->Array.reduce(Effect.succeed(), (acc, (action, sources)) =>
         acc->Effect.flatMap(
           _ => {
             Effect.promise(
               () =>
-                Projection.handleAction(~comp, action, Spec.operations, ReadModelSpec.subIdConfig),
+                Projection.handleAction(
+                  ~comp,
+                  ~sources,
+                  ~onChange,
+                  action,
+                  Spec.operations,
+                  ReadModelSpec.subIdConfig,
+                ),
             )->Effect.map(_ => ())
           },
         )

@@ -177,7 +177,7 @@ module Make = (
                     ->Option.getOr("")
                   let (eventType, dataDict) = rawEvent->Message.splitMessage
                   switch decoder.decode(~eventType, ~data=dataDict) {
-                  | Some(event) => [(sourceId, event)]
+                  | Some(event) => [(sourceId, event, Message.metaOfEnvelope(envelope))]
                   | None => []
                   }
                 },
@@ -189,7 +189,11 @@ module Make = (
               Effect.promise(
                 async () => {
                   // Phase 1: collect outbound items
-                  await Callback.phase1(eventsArr, ~capabilities=Capabilities.capabilities())
+                  await Callback.phase1(
+                    eventsArr->Array.map(((sourceId, event, _)) => (sourceId, event)),
+                    ~metas=eventsArr->Array.map(((_, _, meta)) => meta),
+                    ~capabilities=Capabilities.capabilities(),
+                  )
                   // Sync the post-phase-1 TODO state so consumers awaiting the
                   // originating publishEvent observe Pending rows immediately.
                   await syncToQueryDb(queryDbOps)

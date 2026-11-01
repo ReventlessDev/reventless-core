@@ -24,6 +24,11 @@ module Make = (
   let comp = `StateViewSlice(${Spec.name})`
   let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
 
+  // Each row the events change is logged, and handed to whoever listens.
+  let onChange = ViewChange.reporter(~comp, ~view=Spec.name, ~stateToJson=state =>
+    state->Reventless.Util_Sury.toJson(Spec.stateSchema)
+  )
+
   let eventsHandler = async (
     queryDbOps: queryDbOperations,
     rawEvents: array<ReventlessInfra.DcbEventLog.rawSequencedEvent>,
@@ -61,10 +66,24 @@ module Make = (
               raw.eventType,
             )}(${id}) ${actionsStr}`,
         )->Effect.runSync
-        allActions->Array.pushMany(
-          actions->Array.map(
-            FrameworkProjection.rewriteAction(_, ~at=raw.meta.time, Spec.stateSchema),
+        // The event each action came from, kept for the change it makes: the
+        // entity is the event's first tag.
+        let sources = [
+          ViewChange.sourceOf(
+            ~meta=raw.meta,
+            ~entityId=?raw.tags->Array.get(0)->Option.map(tag => tag.value),
+            ~entityType=?raw.tags->Array.get(0)->Option.map(tag => tag.key),
+            (),
           ),
+        ]
+        allActions->Array.pushMany(
+          actions->Array.map(action => {
+            FrameworkProjection.action: action->FrameworkProjection.rewriteAction(
+              ~at=raw.meta.time,
+              Spec.stateSchema,
+            ),
+            sources,
+          }),
         )
         Some(event)
       | None => None
@@ -77,6 +96,12 @@ module Make = (
         `skipped=${skipped->Int.toString} events (decode mismatch)`,
       )->Effect.runSync
     }
-    await FrameworkProjection.handleActions(~comp, allActions, queryDbOps, Spec.subIdConfig)
+    await FrameworkProjection.handleSourcedActions(
+      ~comp,
+      ~onChange,
+      allActions,
+      queryDbOps,
+      Spec.subIdConfig,
+    )
   }
 }

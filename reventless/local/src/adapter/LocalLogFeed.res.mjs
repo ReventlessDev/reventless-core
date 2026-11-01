@@ -204,6 +204,24 @@ function onRecord(record) {
   }
 }
 
+function keepProblem(record) {
+  if (!isProblem(record.level)) {
+    return;
+  }
+  seq.contents = seq.contents + 1 | 0;
+  let entry_seq = seq.contents;
+  let entry_item = itemOf(record);
+  let entry = {
+    seq: entry_seq,
+    record: record,
+    item: entry_item
+  };
+  push(problems, entry);
+  if (LocalFeed$ReventlessLocal.hasReaders(feed)) {
+    return LocalFeed$ReventlessLocal.publish(feed, entry_item);
+  }
+}
+
 function install(envOpt) {
   let env = envOpt !== undefined ? envOpt : process.env;
   let match = boundsOf(env[ringEnvVar], 5000, 8388608);
@@ -268,6 +286,7 @@ export {
   seq,
   removeSink,
   onRecord,
+  keepProblem,
   install,
   start,
   resetForTests,

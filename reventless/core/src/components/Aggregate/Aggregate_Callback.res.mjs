@@ -277,10 +277,11 @@ function Make(Spec) {
     let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount, appendErrorDetailOpt) => {
       let appendErrorDetail = appendErrorDetailOpt !== undefined ? appendErrorDetailOpt : "";
       return outcomes.map(param => {
+        let meta = param[2];
         let outcome = param[1];
         let reference = param[0];
         if (typeof outcome !== "object") {
-          CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, reference, {
+          CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, reference, {
             entityId: entityId,
             eventCount: 0
           });
@@ -292,7 +293,7 @@ function Make(Spec) {
         switch (outcome.TAG) {
           case "CmdOk" :
             if (appendSucceeded) {
-              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, reference, {
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, reference, {
                 entityId: entityId,
                 eventCount: appendedEventCount
               });
@@ -301,7 +302,7 @@ function Make(Spec) {
                 _0: reference
               };
             } else {
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", reference, {
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", meta.correlationId, reference, {
                 errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                 errorDetail: appendErrorDetail
               });
@@ -311,7 +312,7 @@ function Make(Spec) {
               };
             }
           case "CmdRejected" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", reference, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", meta.correlationId, reference, {
               errorCode: outcome.errorCode,
               errorDetail: outcome.errorDetail
             });
@@ -320,7 +321,7 @@ function Make(Spec) {
               _0: reference
             };
           case "CmdRefused" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", reference, outcome._0.rejected);
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", meta.correlationId, reference, outcome._0.rejected);
             return {
               TAG: "Ok",
               _0: reference

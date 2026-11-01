@@ -18,6 +18,7 @@ import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
+import * as ViewChange$ReventlessCore from "../../ViewChange.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
@@ -80,6 +81,7 @@ function Make(RuntimeEnvironment) {
             name: Spec.name
           }, opts);
           let comp = `StateViewSlice(` + Spec.name + `)`;
+          let onChange = ViewChange$ReventlessCore.reporter(comp, Spec.name, state => Util_Sury$Reventless.toJson(state, Spec.stateSchema));
           let jsonEventsHandler = stream => Effect.flatMap(Effect.tap(Stream.runCollect(stream), events => {
             if (Pii$Reventless.needsPrepare(events)) {
               return Effect.promise(() => Pii$Reventless.prepareOrThrow(events));
@@ -128,8 +130,17 @@ function Make(RuntimeEnvironment) {
               let f = Object.entries(dataDict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
               let fieldsStr = f === "" ? "" : `({` + f + `})`;
               Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
-              return actions.map(__x => Projection$ReventlessCore.rewriteAction(__x, meta.time, Spec.stateSchema));
-            }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action, projectionOps, Spec.subIdConfig)), param => {})));
+              let match$1 = ViewChange$ReventlessCore.entityOfEnvelope(envelopeDict);
+              let sources = [ViewChange$ReventlessCore.sourceOf(meta, match$1[0], match$1[1], undefined)];
+              return actions.map(action => [
+                Projection$ReventlessCore.rewriteAction(action, meta.time, Spec.stateSchema),
+                sources
+              ]);
+            }).flat(), Effect.succeed(), (acc, param) => {
+              let sources = param[1];
+              let action = param[0];
+              return Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, sources, onChange, action, projectionOps, Spec.subIdConfig)), param => {}));
+            });
           });
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;

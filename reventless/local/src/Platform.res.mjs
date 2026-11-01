@@ -44,6 +44,7 @@ import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
+import * as LocalTapLines$ReventlessLocal from "./adapter/LocalTapLines.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -150,6 +151,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 
 function MakeWithConfig(Config) {
   LocalLogFeed$ReventlessLocal.install(undefined);
+  LocalTapLines$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
@@ -1957,6 +1959,7 @@ function MakeWithConfig(Config) {
 function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
   LocalLogFeed$ReventlessLocal.install(undefined);
+  LocalTapLines$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {

@@ -173,6 +173,19 @@ let onRecord = (record: Logger.record) => {
   }
 }
 
+/** Keeps a warning or an error that was never logged — the platform's own note of a
+    rejected command, say — in the problem ring and sends it to the feed's
+    listeners, without printing it. A record below warn is ignored. */
+let keepProblem = (record: Logger.record) =>
+  if isProblem(record.level) {
+    seq := seq.contents + 1
+    let entry = {seq: seq.contents, record, item: itemOf(record)}
+    push(problems, entry)
+    if hasReaders() {
+      feed->LocalFeed.publish(entry.item)
+    }
+  }
+
 /** Starts keeping records, once per process: sizes the rings from the
     environment and registers the sink. */
 let install = (~env=NodeProcess.env) => {

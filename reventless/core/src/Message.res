@@ -265,6 +265,52 @@ let deriveMeta = (~parent: meta, ~service=?) => {
   headers: ?ReventlessInfra.Message.withoutStableIdHeader(parent.headers),
 }
 
+/**
+What a message sent later, from stored work, keeps of the event that caused it:
+enough for `deriveMeta`, and nothing else. `user` is an id.
+*/
+@schema
+type flowSource = {
+  msgId: string,
+  correlationId: string,
+  user?: string,
+  traceparent?: string,
+}
+
+let flowSourceOf = (meta: meta): flowSource => {
+  msgId: meta.msgId,
+  correlationId: meta.correlationId,
+  user: ?meta.user,
+  traceparent: ?meta.traceparent,
+}
+
+/** A meta derived from a kept source: the flow's correlation id, the source's
+    message id as causation, its user and trace parent. */
+let deriveMetaFromSource = (source: flowSource, ~service: string): meta =>
+  deriveMeta(
+    ~parent={
+      service,
+      time: nowAsISOString(),
+      msgId: source.msgId,
+      correlationId: source.correlationId,
+      user: ?source.user,
+      traceparent: ?source.traceparent,
+    },
+    ~service,
+  )
+
+/** The meta of an event envelope (`{id, meta, event}`), or `None` where it has
+    none that decodes. */
+let metaOfEnvelope = (envelope: option<dict<JSON.t>>): option<meta> =>
+  switch envelope->Option.flatMap(d => d->Dict.get("meta")) {
+  | Some(json) =>
+    switch json->Reventless.Util_Sury.fromJson(metaSchema) {
+    | meta => Some(meta)
+    | exception _ => None
+    }
+  | None => None
+  }
+
 // The same envelope with a `msgId` that is a function of its input, for a message
 // a mapping derives from another; defined beside the mappings in infra. A handler
 // asks `hasStableMsgId` whether a repeat of the command can be recognized.

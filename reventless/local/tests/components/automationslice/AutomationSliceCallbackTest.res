@@ -333,4 +333,84 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       },
     )
   })
+
+  // A row keeps the event that created it, so the command sent for it continues
+  // the event's flow; a row stored before rows kept one still runs.
+  describe("the flow", () => {
+    let withMeta = (json: JSON.t, ~msgId, ~correlationId) =>
+      switch json {
+      | Object(d) =>
+        let meta: Reventless.Message.meta = {
+          service: ShipOrderSource.name,
+          time: "2026-01-01T00:00:00Z",
+          user: "user-7",
+          msgId,
+          correlationId,
+          traceparent: "00-trace-span-01",
+        }
+        d->Dict.set("meta", meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema))
+        JSON.Object(d)
+      | other => other
+      }
+
+    testPromise(
+      "the command derives its meta from the event that created the row",
+      async () => {
+        let json =
+          encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))->withMeta(
+            ~msgId="evt-1",
+            ~correlationId="flow-1",
+          )
+        await Callback.phase1([json], testContext, ~capabilities=Reventless.Capabilities.none)
+        expect((Callback.todoItems->Dict.getUnsafe("ord-1")).source)->toEqual(
+          Some({
+            ReventlessCore.Message.msgId: "evt-1",
+            correlationId: "flow-1",
+            user: "user-7",
+            traceparent: "00-trace-span-01",
+          }),
+        )
+        let published = ref([])
+        await Callback.phase2(async cmds => published := cmds)
+        let meta = (published.contents->Array.getUnsafe(0)).meta
+        expect(meta.correlationId)->toBe("flow-1")
+        expect(meta.causationId)->toEqual(Some("evt-1"))
+        expect(meta.user)->toEqual(Some("user-7"))
+        expect(meta.traceparent)->toEqual(Some("00-trace-span-01"))
+        expect(meta.service)->toBe(ShipOrderSpec.targetName)
+        expect(meta.msgId != "evt-1")->toBe(true)
+      },
+    )
+
+    testPromise(
+      "a stored row without a source decodes and starts a new flow",
+      async () => {
+        let stored = JSON.parseOrThrow(`{"item":{"orderId":"ord-9","address":"x"},"status":"Pending","createdAt":"2026-01-01T00:00:00Z","retryCount":0}`)
+        let row = stored->Reventless.Util_Sury.fromJson(todoRowSchema)
+        expect(row.source)->toEqual(None)
+        Callback.todoItems->Dict.set("ord-9", row)
+        let published = ref([])
+        await Callback.phase2(async cmds => published := cmds)
+        let meta = (published.contents->Array.getUnsafe(0)).meta
+        expect(meta.causationId)->toEqual(None)
+        expect(meta.correlationId)->toBe(meta.msgId)
+      },
+    )
+
+    testSync(
+      "a row with a source round-trips through its schema",
+      () => {
+        let row: todoRow = {
+          item: JSON.Encode.object(Dict.make()),
+          status: Pending,
+          createdAt: "2026-01-01T00:00:00Z",
+          retryCount: 0,
+          source: {ReventlessCore.Message.msgId: "evt-1", correlationId: "flow-1"},
+        }
+        let json = row->Reventless.Util_Sury.toJson(todoRowSchema)
+        expect(json->JSON.stringify->String.includes(`"source":{"msgId":"evt-1"`))->toBe(true)
+        expect(json->Reventless.Util_Sury.fromJson(todoRowSchema))->toEqual(row)
+      },
+    )
+  })
 })

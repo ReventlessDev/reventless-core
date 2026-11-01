@@ -8,6 +8,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
+import * as ViewChange$ReventlessCore from "@reventlessdev/reventless-core/src/ViewChange.res.mjs";
 import * as ProjectionEntryPoint_Ops$ReventlessAws from "./ProjectionEntryPoint_Ops.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 
@@ -64,7 +65,25 @@ function decodeEnvelope(json) {
   };
 }
 
+function sourcesOf(json) {
+  let fields = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(json), {});
+  let meta = Stdlib_Option.flatMap(fields["meta"], Stdlib_JSON.Decode.object);
+  let string = (d, k) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(d, d => d[k]), Stdlib_JSON.Decode.string);
+  let msgId = string(meta, "msgId");
+  if (msgId === undefined) {
+    return [];
+  }
+  let match = ViewChange$ReventlessCore.entityOfEnvelope(fields);
+  return [{
+      msgId: msgId,
+      correlationId: string(meta, "correlationId"),
+      entityId: match[0],
+      entityType: match[1]
+    }];
+}
+
 function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subIdConfig, stateSchema) {
+  let onChange = ViewChange$ReventlessCore.reporter(sliceName, sliceName, state => state);
   return stream => Stream.runForEach(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
       let match = decodeEnvelope(json);
@@ -74,11 +93,12 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
         meta: match.meta,
         recordedAt: match.recordedAt
       });
-      if (producerTime === "") {
-        return actions;
-      } else {
-        return actions.map(__x => Projection$ReventlessCore.rewriteJsonAction(__x, producerTime, stateSchema));
-      }
+      let sources = sourcesOf(json);
+      let actions$1 = producerTime === "" ? actions : actions.map(__x => Projection$ReventlessCore.rewriteJsonAction(__x, producerTime, stateSchema));
+      return actions$1.map(action => [
+        action,
+        sources
+      ]);
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       StreamRoutedEntryPoint_Ops$ReventlessAws.logError("failed to decode event", {
@@ -87,7 +107,11 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
       });
       return [];
     }
-  })), actions => Stream.fromIterable(actions)), action => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(sliceName, action, queryDbOps, subIdConfig)), param => {}));
+  })), actions => Stream.fromIterable(actions)), param => {
+    let sources = param[1];
+    let action = param[0];
+    return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(sliceName, sources, onChange, action, queryDbOps, subIdConfig)), param => {});
+  });
 }
 
 function makeRegisteredHandler(entry, modules) {
@@ -106,6 +130,7 @@ export {
   parseHandlerConfig,
   decodeEnvelope,
   exnMessage,
+  sourcesOf,
   makeJsonEventsHandler,
   makeRegisteredHandler,
 }

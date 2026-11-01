@@ -472,4 +472,62 @@ describe("OutboundTranslationSlice Callback", () => {
       },
     )
   })
+
+  // A row keeps the event that created it, so the command sent back continues
+  // the event's flow; without a meta, or for a row stored before, it starts one.
+  describe("the flow", () => {
+    let eventMeta: Reventless.Message.meta = {
+      service: "Payments",
+      time: "2026-01-01T00:00:00Z",
+      user: "user-7",
+      msgId: "evt-1",
+      correlationId: "flow-1",
+    }
+    let publishInto = (published: ref<array<Reventless.Message.commandJson>>) =>
+      async cmds => published := published.contents->Array.concat(cmds)
+
+    testPromise(
+      "the command sent back derives its meta from the event",
+      async () => {
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~metas=[Some(eventMeta)],
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        let published = ref([])
+        await CommandBackCallback.phase2(
+          publishInto(published),
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        let meta = (published.contents->Array.getUnsafe(0)).meta
+        expect(meta.correlationId)->toBe("flow-1")
+        expect(meta.causationId)->toEqual(Some("evt-1"))
+        expect(meta.user)->toEqual(Some("user-7"))
+        expect(meta.service)->toBe("ConfirmPayment")
+      },
+    )
+
+    testPromise(
+      "without a meta, or from a stored row without a source, it starts a new flow",
+      async () => {
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        let stored =
+          JSON.parseOrThrow(`{"item":{"orderId":"ord-2","amount":5},"status":"Pending","createdAt":"2026-01-01T00:00:00Z","retryCount":0}`)->Reventless.Util_Sury.fromJson(
+            todoRowSchema,
+          )
+        expect(stored.source)->toEqual(None)
+        CommandBackCallback.todoItems->Dict.set("ord-2", stored)
+        let published = ref([])
+        await CommandBackCallback.phase2(
+          publishInto(published),
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        expect(published.contents->Array.length)->toBe(2)
+        published.contents->Array.forEach(c => expect(c.meta.causationId)->toEqual(None))
+      },
+    )
+  })
 })

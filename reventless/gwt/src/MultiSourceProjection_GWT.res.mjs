@@ -44,7 +44,7 @@ function Make(Projection) {
   let deleteSubState = (store, id, subId, getSubId) => {
     store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
   };
-  let handleActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Projection.subIdConfig);
+  let handleActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, undefined, actions, operations, Projection.subIdConfig);
   let update = async (store, events$p) => {
     await handleActions(events$p.map(event$p => Projection$ReventlessCore.rewriteTrail(Projection$Reventless.mapActionId(Projection.project(event$p), Projection.targetIdToString, Projection.targetIdFromString), event$p.meta.time, Projection.targetStateSchema)), {
       load: extra => Promise.resolve({

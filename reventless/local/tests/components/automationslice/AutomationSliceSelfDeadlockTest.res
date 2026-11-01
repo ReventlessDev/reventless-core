@@ -44,4 +44,34 @@ describe("AutomationSlice self-deadlock regression:", () => {
     expect(eventTypes->Array.includes("Placed"))->toBe(true)
     expect(eventTypes->Array.includes("Shipped"))->toBe(true)
   })
+
+  // The automation's command continues the flow of the event that created its
+  // row: one correlation id from the first command to the last event, and each
+  // message caused by the one before it.
+  testPromise("the automation's command and its events stay in the event's flow", async () => {
+    sentCommands := []
+    let _ = await withTimeout(publishJsons([placeCmdJson("order-2")]), ~ms=1500)
+    let shipped = async () =>
+      (await readEvents("order-2"))->Array.find(e => e.eventType == "Shipped")
+    let waited = ref(0)
+    while (await shipped())->Option.isNone && waited.contents < 100 {
+      await pause(10)
+      waited := waited.contents + 1
+    }
+
+    let events = await readEvents("order-2")
+    let placed = events->Array.find(e => e.eventType == "Placed")->Option.getOrThrow
+    let shipped = events->Array.find(e => e.eventType == "Shipped")->Option.getOrThrow
+    let ship =
+      sentCommands.contents
+      ->Array.find(c => c.id == "order-2" && c.meta.msgId != TestFixtures.testMeta.msgId)
+      ->Option.getOrThrow
+
+    expect(placed.meta.correlationId)->toBe(TestFixtures.testMeta.correlationId)
+    expect(ship.meta.correlationId)->toBe(TestFixtures.testMeta.correlationId)
+    expect(shipped.meta.correlationId)->toBe(TestFixtures.testMeta.correlationId)
+    expect(ship.meta.causationId)->toEqual(Some(placed.meta.msgId))
+    expect(shipped.meta.causationId)->toEqual(Some(ship.meta.msgId))
+    expect(ship.meta.user)->toEqual(TestFixtures.testMeta.user)
+  })
 })

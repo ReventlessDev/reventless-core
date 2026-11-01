@@ -58,7 +58,7 @@ function Make(Spec) {
     let deleteSubState = (store, id, subId, getSubId) => {
       store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
     };
-    let runActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Spec.subIdConfig);
+    let runActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, undefined, actions, operations, Spec.subIdConfig);
     let update = async (store, events) => {
       let actions = events.map(ev => Projection.project({
         event: ev,

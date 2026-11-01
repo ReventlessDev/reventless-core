@@ -8,7 +8,9 @@ let NotPublishedToChannel = CommandTopic$ReventlessCore.NotPublishedToChannel;
 
 let refusalCauseToGraphQL = CommandTopic$ReventlessCore.refusalCauseToGraphQL;
 
-let commandOutcomeHook = CommandTopic$ReventlessCore.commandOutcomeHook;
+let commandOutcomeHooks = CommandTopic$ReventlessCore.commandOutcomeHooks;
+
+let nextOutcomeHookId = CommandTopic$ReventlessCore.nextOutcomeHookId;
 
 let registerCommandOutcome = CommandTopic$ReventlessCore.registerCommandOutcome;
 
@@ -50,7 +52,8 @@ export {
   componentType,
   NotPublishedToChannel,
   refusalCauseToGraphQL,
-  commandOutcomeHook,
+  commandOutcomeHooks,
+  nextOutcomeHookId,
   registerCommandOutcome,
   clearCommandOutcome,
   fireCommandOutcome,

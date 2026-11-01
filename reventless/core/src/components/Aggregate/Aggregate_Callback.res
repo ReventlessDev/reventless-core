@@ -414,11 +414,12 @@ module Make = (
     ~appendedEventCount: int,
     ~appendErrorDetail: string="",
   ): array<result<string, string>> =>
-    outcomes->Array.map(((reference, outcome, _meta)) =>
+    outcomes->Array.map(((reference, outcome, meta: Message.meta)) =>
       switch outcome {
       | CmdRejected({errorCode, errorDetail}) =>
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
+          ~correlationId=meta.correlationId,
           ~cause=DomainRejection,
           reference,
           {errorCode, errorDetail},
@@ -427,6 +428,7 @@ module Make = (
       | CmdRefused({rejected}) =>
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
+          ~correlationId=meta.correlationId,
           ~cause=AccessRefusal,
           reference,
           rejected,
@@ -435,6 +437,7 @@ module Make = (
       | CmdOk(_) if appendSucceeded =>
         CommandTopic_Helpers.reportAccepted(
           ~component=Spec.name,
+          ~correlationId=meta.correlationId,
           reference,
           {entityId, eventCount: appendedEventCount},
         )
@@ -442,6 +445,7 @@ module Make = (
       | CmdRepeated =>
         CommandTopic_Helpers.reportAccepted(
           ~component=Spec.name,
+          ~correlationId=meta.correlationId,
           reference,
           {entityId, eventCount: 0},
         )
@@ -450,6 +454,7 @@ module Make = (
         // The decision succeeded and the append did not — infrastructure, not the model.
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
+          ~correlationId=meta.correlationId,
           ~cause=InfrastructureFailure,
           reference,
           {errorCode: Reventless.CommandOutcome.code(AppendFailed), errorDetail: appendErrorDetail},

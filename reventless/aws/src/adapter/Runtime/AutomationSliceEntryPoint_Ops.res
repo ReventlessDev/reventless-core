@@ -539,7 +539,7 @@ let makeOutboundJsonEventsHandler = (
           ->Option.getOr("")
         let (eventType, dataDict) = rawEvent->ReventlessCore.Message.splitMessage
         switch decoder.decode(~eventType, ~data=dataDict) {
-        | Some(event) => [(sourceId, event)]
+        | Some(event) => [(sourceId, event, ReventlessCore.Message.metaOfEnvelope(envelope))]
         | None => []
         }
       })
@@ -549,7 +549,11 @@ let makeOutboundJsonEventsHandler = (
     ->Effect.flatMap(events =>
       Effect.promise(async () => {
         await loadTodoItems()
-        await callback.phase1(events, ~capabilities=capabilities())
+        await callback.phase1(
+          events->Array.map(((sourceId, event, _)) => (sourceId, event)),
+          ~metas=events->Array.map(((_, _, meta)) => meta),
+          ~capabilities=capabilities(),
+        )
         await syncTodoItems()
         await callback.phase2(publishJsons, ~capabilities=capabilities())
         await syncTodoItems()

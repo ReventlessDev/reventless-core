@@ -48,51 +48,73 @@ type observedOutcome =
   | OutcomeAccepted({entityId: option<string>, eventCount: int})
   | OutcomeRejected({errorCode: string, errorDetail: string, cause: refusalCause})
 
-/** `reference` is the command's `meta.msgId` on every current transport. */
+/** `reference` is the command's `meta.msgId` on every current transport.
+    `correlationId` is the command's, where the reporting handler had its meta. */
 type commandOutcomeReport = {
   component: string,
   reference: string,
+  correlationId?: string,
   outcome: observedOutcome,
 }
 
 type commandOutcomeHook = commandOutcomeReport => unit
 
-/**
-Module-level outcome hook, in the shape the `RuntimeExtension` cold-start seam already reaches
-— so an extension registers it from `onColdStart` alongside the interception and publish hooks,
-and no new registration path is needed. None = no-op (default).
-*/
-let commandOutcomeHook: ref<option<commandOutcomeHook>> = ref(None)
+type registeredOutcomeHook = {id: int, hook: commandOutcomeHook}
 
-let registerCommandOutcome = (hook: commandOutcomeHook) => {
-  commandOutcomeHook.contents = Some(hook)
+/**
+Module-level outcome listeners, in the shape the `RuntimeExtension` cold-start seam already
+reaches — so an extension registers one from `onColdStart` alongside the interception and
+publish hooks, and no new registration path is needed. Several may listen at once: an
+extension and the platform that watches itself, say. None registered = no-op (default).
+*/
+let commandOutcomeHooks: ref<array<registeredOutcomeHook>> = ref([])
+let nextOutcomeHookId = ref(0)
+
+/** Adds a listener and returns the function that removes it. */
+let registerCommandOutcome = (hook: commandOutcomeHook): (unit => unit) => {
+  nextOutcomeHookId := nextOutcomeHookId.contents + 1
+  let id = nextOutcomeHookId.contents
+  commandOutcomeHooks := commandOutcomeHooks.contents->Array.concat([{id, hook}])
+  () => commandOutcomeHooks := commandOutcomeHooks.contents->Array.filter(h => h.id != id)
 }
 
+/** Removes every listener. */
 let clearCommandOutcome = () => {
-  commandOutcomeHook.contents = None
+  commandOutcomeHooks := []
 }
 
 // Fired from reportAccepted/reportRejected below, which both write-side kinds call
 // unconditionally — so this sees fire-and-forget dispatches too, not just the ones a
 // producer awaited on the side-channels.
 //
-// A throwing hook is logged and swallowed: the outcome it observes has already happened,
-// and letting an observer fail a completed command would make an extension an outage
-// (the same failure policy the cold-start seam settled on).
-let fireCommandOutcome = (~component: string, ~reference: string, outcome: observedOutcome) =>
-  commandOutcomeHook.contents->Option.forEach(hook =>
-    switch hook({component, reference, outcome}) {
-    | () => ()
-    | exception err =>
-      EffectLogger.logError(
-        ~comp=`CommandTopic(${component})`,
-        `command-outcome hook threw (ignored): ${err
-          ->JsExn.fromException
-          ->Option.flatMap(JsExn.message)
-          ->Option.getOr("unknown")}`,
-      )->Effect.runSync
-    }
-  )
+// A throwing listener is logged and swallowed, and the others still hear: the outcome
+// it observes has already happened, and letting an observer fail a completed command
+// would make an extension an outage (the same failure policy the cold-start seam
+// settled on).
+let fireCommandOutcome = (
+  ~component: string,
+  ~reference: string,
+  ~correlationId: option<string>=?,
+  outcome: observedOutcome,
+) =>
+  switch commandOutcomeHooks.contents {
+  | [] => ()
+  | hooks =>
+    let report = {component, reference, ?correlationId, outcome}
+    hooks->Array.forEach(({hook}) =>
+      switch hook(report) {
+      | () => ()
+      | exception err =>
+        EffectLogger.logError(
+          ~comp=`CommandTopic(${component})`,
+          `command-outcome hook threw (ignored): ${err
+            ->JsExn.fromException
+            ->Option.flatMap(JsExn.message)
+            ->Option.getOr("unknown")}`,
+        )->Effect.runSync
+      }
+    )
+  }
 
 // Side-channel for publishJsonsAndWait result propagation.
 // Set by runInlineAndCollect before invoking the handler; cleared after.
@@ -143,11 +165,17 @@ let ownershipRefusal = (
 // knowing which component produced it, and the side-channel (keyed per inline dispatch) never
 // had to say. `~cause` is required rather than defaulted so a new rejection site has to state
 // which kind it is instead of silently reporting infrastructure as a domain decision.
-let reportAccepted = (~component: string, reference: string, result: acceptedResult) => {
+let reportAccepted = (
+  ~component: string,
+  ~correlationId: option<string>=?,
+  reference: string,
+  result: acceptedResult,
+) => {
   acceptedResultChannel.contents->Option.forEach(cb => cb(reference, result))
   fireCommandOutcome(
     ~component,
     ~reference,
+    ~correlationId?,
     OutcomeAccepted({entityId: result.entityId, eventCount: result.eventCount}),
   )
 }
@@ -155,6 +183,7 @@ let reportAccepted = (~component: string, reference: string, result: acceptedRes
 let reportRejected = (
   ~component: string,
   ~cause: refusalCause,
+  ~correlationId: option<string>=?,
   reference: string,
   result: rejectedResult,
 ) => {
@@ -162,6 +191,7 @@ let reportRejected = (
   fireCommandOutcome(
     ~component,
     ~reference,
+    ~correlationId?,
     OutcomeRejected({errorCode: result.errorCode, errorDetail: result.errorDetail, cause}),
   )
 }

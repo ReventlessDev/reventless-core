@@ -109,6 +109,9 @@ module MakeWithConfig = (
   // Keep the recent log records from here on, for the log feed and the MCP
   // resource that read them.
   LocalLogFeed.install()
+  // What became of each command, and each row a projection changed, on the
+  // event tap; a rejected command also in the problem ring.
+  LocalTapLines.install()
 
   // What this platform provides for the roles its plugins need: every account it
   // can sign in as, built-in and loaded alike, or the file the store will load

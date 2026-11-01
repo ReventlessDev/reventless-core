@@ -323,14 +323,18 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
     if (event !== undefined) {
       return [[
           sourceId,
-          Primitive_option.valFromOption(event)
+          Primitive_option.valFromOption(event),
+          Message$ReventlessCore.metaOfEnvelope(envelope)
         ]];
     } else {
       return [];
     }
   })), events => Stream$1.fromIterable(events))), events => Effect.promise(async () => {
     await loadTodoItems();
-    await callback.phase1(events, capabilities());
+    await callback.phase1(events.map(param => [
+      param[0],
+      param[1]
+    ]), events.map(param => param[2]), capabilities());
     await syncTodoItems();
     await callback.phase2(publishJsons, capabilities());
     return await syncTodoItems();

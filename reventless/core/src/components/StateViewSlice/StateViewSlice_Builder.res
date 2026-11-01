@@ -94,6 +94,10 @@ module Make = (
           )
 
           let comp = `StateViewSlice(${Spec.name})`
+          // Each row the events change is logged, and handed to whoever listens.
+          let onChange = ViewChange.reporter(~comp, ~view=Spec.name, ~stateToJson=state =>
+            state->Reventless.Util_Sury.toJson(Spec.stateSchema)
+          )
 
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
@@ -176,8 +180,14 @@ module Make = (
                     // ppx injects for a read model's, and the same lifecycle trail.
                     // Rewritten here rather than at the apply below because the
                     // trail entry is stamped with this envelope's own time.
+                    // The event each action came from, kept for the change it makes.
+                    let (entityId, entityType) = ViewChange.entityOfEnvelope(envelopeDict)
+                    let sources = [ViewChange.sourceOf(~meta, ~entityId?, ~entityType?, ())]
                     actions->Array.map(
-                      FrameworkProjection.rewriteAction(_, ~at=meta.time, Spec.stateSchema),
+                      action => (
+                        action->FrameworkProjection.rewriteAction(~at=meta.time, Spec.stateSchema),
+                        sources,
+                      ),
                     )
                   | None => []
                   }
@@ -186,13 +196,15 @@ module Make = (
               ->Array.flat
               ->Array.reduce(
                 Effect.succeed(),
-                (acc, action) =>
+                (acc, (action, sources)) =>
                   acc->Effect.flatMap(
                     _ => {
                       Effect.promise(
                         () =>
                           FrameworkProjection.handleAction(
                             ~comp,
+                            ~sources,
+                            ~onChange,
                             action,
                             projectionOps,
                             Spec.subIdConfig,

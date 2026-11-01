@@ -34,7 +34,8 @@ let todoRowSchema = Sury.$schema(s => ({
   processedAt: s.m(Sury.$option(Sury.string)),
   completedAt: s.m(Sury.$option(Sury.string)),
   retryCount: s.m(Sury.int32),
-  maxRetries: s.m(Sury.$option(Sury.int32))
+  maxRetries: s.m(Sury.$option(Sury.int32)),
+  source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
 }));
 
 function todoRowSchemaFor(itemSchema) {
@@ -45,7 +46,8 @@ function todoRowSchemaFor(itemSchema) {
     processedAt: s.m(Sury.$option(Sury.string)),
     completedAt: s.m(Sury.$option(Sury.string)),
     retryCount: s.m(Sury.int32),
-    maxRetries: s.m(Sury.$option(Sury.int32))
+    maxRetries: s.m(Sury.$option(Sury.int32)),
+    source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
   }));
 }
 
@@ -84,7 +86,14 @@ function Make(Spec) {
       return changes;
     };
     let readsClock = Automation.mappings.some(M => M.sourceName === Clock$Reventless.name);
-    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = row => {
+      let source = row.source;
+      if (source !== undefined) {
+        return Message$ReventlessCore.deriveMetaFromSource(source, Spec.targetName);
+      } else {
+        return Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
+      }
+    };
     let personalFields = Pii$Reventless.recordFields(Spec.todoItemSchema);
     let keyField = "$key";
     let fingerprintPurpose = `automationWorkItem:` + Spec.name;
@@ -199,7 +208,7 @@ function Make(Spec) {
             }
             return {
               id: param[0],
-              meta: makeMeta(),
+              meta: makeMeta(row),
               commandJson: commandJson
             };
           });
@@ -219,7 +228,7 @@ function Make(Spec) {
         return millis;
       }
     };
-    let apply = async (param, capabilities) => {
+    let apply = async (param, capabilities, source) => {
       let collected = param.collected;
       for (let i = 0, i_finish = collected.length; i < i_finish; ++i) {
         let match = collected[i];
@@ -236,7 +245,8 @@ function Make(Spec) {
               status: "Pending",
               createdAt: row_createdAt,
               retryCount: 0,
-              maxRetries: row_maxRetries
+              maxRetries: row_maxRetries,
+              source: source
             };
             todoItems[id] = row;
           } else {
@@ -284,8 +294,9 @@ function Make(Spec) {
         let dict = Stdlib_JSON.Decode.object(json);
         let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
         let routed = Route.route(eventPayload, sourceName, context.id, ctx);
+        let source = sourceName === Clock$Reventless.name ? undefined : Message$ReventlessCore.flowSourceOf(context.meta);
         for (let j = 0, j_finish = routed.length; j < j_finish; ++j) {
-          await apply(routed[j], capabilities);
+          await apply(routed[j], capabilities, source);
         }
         reschedule(routed, context.meta.msgId, Stdlib_Option.getOr(ctx.recordedAt, Date.now()));
         if (sourceName === Clock$Reventless.name) {
@@ -385,7 +396,7 @@ function Make(Spec) {
                 commandJson = undefined;
               }
               Stdlib_Option.forEach(commandJson, commandJson => {
-                let msg_meta = makeMeta();
+                let msg_meta = makeMeta(row);
                 let msg = {
                   id: targetId,
                   meta: msg_meta,

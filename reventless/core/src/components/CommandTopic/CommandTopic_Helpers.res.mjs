@@ -22,26 +22,44 @@ function refusalCauseToGraphQL(cause) {
   }
 }
 
-let commandOutcomeHook = {
-  contents: undefined
+let commandOutcomeHooks = {
+  contents: []
+};
+
+let nextOutcomeHookId = {
+  contents: 0
 };
 
 function registerCommandOutcome(hook) {
-  commandOutcomeHook.contents = hook;
+  nextOutcomeHookId.contents = nextOutcomeHookId.contents + 1 | 0;
+  let id = nextOutcomeHookId.contents;
+  commandOutcomeHooks.contents = commandOutcomeHooks.contents.concat([{
+      id: id,
+      hook: hook
+    }]);
+  return () => {
+    commandOutcomeHooks.contents = commandOutcomeHooks.contents.filter(h => h.id !== id);
+  };
 }
 
 function clearCommandOutcome() {
-  commandOutcomeHook.contents = undefined;
+  commandOutcomeHooks.contents = [];
 }
 
-function fireCommandOutcome(component, reference, outcome) {
-  Stdlib_Option.forEach(commandOutcomeHook.contents, hook => {
+function fireCommandOutcome(component, reference, correlationId, outcome) {
+  let hooks = commandOutcomeHooks.contents;
+  if (hooks.length === 0) {
+    return;
+  }
+  let report = {
+    component: component,
+    reference: reference,
+    correlationId: correlationId,
+    outcome: outcome
+  };
+  hooks.forEach(param => {
     try {
-      hook({
-        component: component,
-        reference: reference,
-        outcome: outcome
-      });
+      param.hook(report);
       return;
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
@@ -86,18 +104,18 @@ function ownershipRefusal(verdict, component, command) {
   }
 }
 
-function reportAccepted(component, reference, result) {
+function reportAccepted(component, correlationId, reference, result) {
   Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
-  fireCommandOutcome(component, reference, {
+  fireCommandOutcome(component, reference, correlationId, {
     TAG: "OutcomeAccepted",
     entityId: result.entityId,
     eventCount: result.eventCount
   });
 }
 
-function reportRejected(component, cause, reference, result) {
+function reportRejected(component, cause, correlationId, reference, result) {
   Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result, cause));
-  fireCommandOutcome(component, reference, {
+  fireCommandOutcome(component, reference, correlationId, {
     TAG: "OutcomeRejected",
     errorCode: result.errorCode,
     errorDetail: result.errorDetail,
@@ -272,7 +290,8 @@ function getHandlers(typeName) {
 
 export {
   refusalCauseToGraphQL,
-  commandOutcomeHook,
+  commandOutcomeHooks,
+  nextOutcomeHookId,
   registerCommandOutcome,
   clearCommandOutcome,
   fireCommandOutcome,
