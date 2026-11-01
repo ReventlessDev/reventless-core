@@ -295,7 +295,7 @@ function Make(Spec) {
           return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
             let match = ownershipRefusal(owners);
             if (repeated) {
-              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.msgId, entityId !== undefined ? ({
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
                   entityId: entityId,
                   eventCount: 0
                 }) : ({
@@ -313,7 +313,7 @@ function Make(Spec) {
                 headPosition,
                 owners
               ]);
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.msgId, rejected);
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, rejected);
               let line = `refused: ` + rejected.errorDetail + ` id=` + Stdlib_Option.getOr(entityId, "-");
               return Effect.map(match.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, line), () => ({
                 TAG: "Ok",
@@ -329,7 +329,7 @@ function Make(Spec) {
                   headPosition,
                   owners
                 ]);
-                CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.msgId, entityId !== undefined ? ({
+                CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
                     entityId: entityId,
                     eventCount: 0
                   }) : ({
@@ -380,7 +380,7 @@ function Make(Spec) {
                         headPosition,
                         owners
                       ]);
-                      CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.msgId, entityId !== undefined ? ({
+                      CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
                           entityId: entityId,
                           eventCount: rawEvents.length
                         }) : ({
@@ -415,7 +415,7 @@ function Make(Spec) {
                       if (errorCode === CommandOutcome$Reventless.code("Conflict")) {
                         Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
                       }
-                      CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.msgId, {
+                      CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
                         errorCode: errorCode,
                         errorDetail: errDetail
                       });
@@ -432,7 +432,7 @@ function Make(Spec) {
                   headPosition,
                   owners
                 ]);
-                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.msgId, {
+                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
                   errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                   errorDetail: detail
                 });
@@ -452,7 +452,7 @@ function Make(Spec) {
             let match$1 = Message$ReventlessCore.splitMessage(errorJson);
             let payloadDict = match$1[1];
             let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.msgId, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
               errorCode: errorCode,
               errorDetail: errorDetail
             });

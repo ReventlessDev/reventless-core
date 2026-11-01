@@ -54,6 +54,9 @@ type commandOutcomeReport = {
   component: string,
   reference: string,
   correlationId?: string,
+  /** The message that caused the command: the event an automation or a translation acted on,
+      when it sent the command. */
+  causationId?: string,
   outcome: observedOutcome,
 }
 
@@ -95,12 +98,13 @@ let fireCommandOutcome = (
   ~component: string,
   ~reference: string,
   ~correlationId: option<string>=?,
+  ~causationId: option<string>=?,
   outcome: observedOutcome,
 ) =>
   switch commandOutcomeHooks.contents {
   | [] => ()
   | hooks =>
-    let report = {component, reference, ?correlationId, outcome}
+    let report = {component, reference, ?correlationId, ?causationId, outcome}
     hooks->Array.forEach(({hook}) =>
       switch hook(report) {
       | () => ()
@@ -168,6 +172,7 @@ let ownershipRefusal = (
 let reportAccepted = (
   ~component: string,
   ~correlationId: option<string>=?,
+  ~causationId: option<string>=?,
   reference: string,
   result: acceptedResult,
 ) => {
@@ -176,6 +181,7 @@ let reportAccepted = (
     ~component,
     ~reference,
     ~correlationId?,
+    ~causationId?,
     OutcomeAccepted({entityId: result.entityId, eventCount: result.eventCount}),
   )
 }
@@ -184,6 +190,7 @@ let reportRejected = (
   ~component: string,
   ~cause: refusalCause,
   ~correlationId: option<string>=?,
+  ~causationId: option<string>=?,
   reference: string,
   result: rejectedResult,
 ) => {
@@ -192,6 +199,7 @@ let reportRejected = (
     ~component,
     ~reference,
     ~correlationId?,
+    ~causationId?,
     OutcomeRejected({errorCode: result.errorCode, errorDetail: result.errorDetail, cause}),
   )
 }

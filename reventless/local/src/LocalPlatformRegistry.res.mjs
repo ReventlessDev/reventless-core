@@ -23,7 +23,8 @@ let entrySchema = Sury.$schema(s => ({
   store: s.m(storeSchema),
   startedAt: s.m(Sury.string),
   tapPort: s.m(Sury.$option(Sury.int32)),
-  logPort: s.m(Sury.$option(Sury.int32))
+  logPort: s.m(Sury.$option(Sury.int32)),
+  platformEndpoint: s.m(Sury.$option(Sury.string))
 }));
 
 function runningDir(cwdOpt, param) {
@@ -110,7 +111,7 @@ function list(cwdOpt, param) {
   }).toSorted((a, b) => Primitive_int.compare(a.port, b.port));
 }
 
-function write(port, endpoint, loginEndpoint, store, tapPort, pidOpt, cwdOpt) {
+function write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, pidOpt, cwdOpt) {
   let pid = pidOpt !== undefined ? pidOpt : process.pid;
   let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
   let path = entryPath(port, cwd);
@@ -124,7 +125,8 @@ function write(port, endpoint, loginEndpoint, store, tapPort, pidOpt, cwdOpt) {
     loginEndpoint: loginEndpoint,
     store: store,
     startedAt: entry_startedAt,
-    tapPort: tapPort
+    tapPort: tapPort,
+    platformEndpoint: platformEndpoint
   };
   try {
     Nodefs.mkdirSync(runningDir(cwd, undefined), {
@@ -169,8 +171,8 @@ function publishLogPort(port, logPort, cwdOpt) {
   }
 }
 
-function register(port, endpoint, loginEndpoint, store, tapPort) {
-  let path = write(port, endpoint, loginEndpoint, store, tapPort, undefined, undefined);
+function register(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint) {
+  let path = write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, undefined, undefined);
   process.on("exit", param => removeQuietly(path));
   process.on("SIGINT", () => {
     removeQuietly(path);

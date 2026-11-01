@@ -95,7 +95,7 @@ module Make = (
     state: Decision.state,
     owners: array<string>,
     causes: array<string>,
-    outcomes: array<(string, cmdOutcome, Message.meta)>,
+    outcomes: array<(string, cmdOutcome, Message.meta, option<string>)>,
   }
 
   // Folds a single command into the running accumulator. A domain rejection from
@@ -142,14 +142,26 @@ module Make = (
           ~comp,
           `repeat dropped: ${cmdName}(${id}) msgId=${command'.meta.msgId} already caused events`,
         )->Effect.runSync
-        {...acc, outcomes: Array.concat(outcomes, [(reference, CmdRepeated, meta)])}
+        {
+          ...acc,
+          outcomes: Array.concat(
+            outcomes,
+            [(reference, CmdRepeated, meta, command'.meta.causationId)],
+          ),
+        }
       | Some(refused) =>
         let line = `refused: ${refused.rejected.errorDetail} id=${id}`
 
         (
           refused.isDefect ? EffectLogger.logError(~comp, line) : EffectLogger.logWarn(~comp, line)
         )->Effect.runSync
-        {...acc, outcomes: Array.concat(outcomes, [(reference, CmdRefused(refused), meta)])}
+        {
+          ...acc,
+          outcomes: Array.concat(
+            outcomes,
+            [(reference, CmdRefused(refused), meta, command'.meta.causationId)],
+          ),
+        }
       | None =>
         switch Decision.decide(state, command'.command) {
         | Ok(generatedEvents) =>
@@ -160,7 +172,10 @@ module Make = (
             causes: generatedEvents->Array.length == 0
               ? causes
               : causes->Array.concat([command'.meta.msgId]),
-            outcomes: Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]),
+            outcomes: Array.concat(
+              outcomes,
+              [(reference, CmdOk(generatedEvents), meta, command'.meta.causationId)],
+            ),
           }
         | Error(error) =>
           let errorJson = error->Message.encode(Spec.errorSchema)
@@ -179,7 +194,7 @@ module Make = (
             ...acc,
             outcomes: Array.concat(
               outcomes,
-              [(reference, CmdRejected({errorCode, errorDetail}), meta)],
+              [(reference, CmdRejected({errorCode, errorDetail}), meta, command'.meta.causationId)],
             ),
           }
         }
@@ -408,18 +423,19 @@ module Make = (
   // are always Ok(reference) — SQS deletes the message because retry would not help —
   // and the rich error code/detail flows to producers via reportRejected.
   let reportFinalOutcomes = (
-    outcomes: array<(string, cmdOutcome, Message.meta)>,
+    outcomes: array<(string, cmdOutcome, Message.meta, option<string>)>,
     ~entityId: string,
     ~appendSucceeded: bool,
     ~appendedEventCount: int,
     ~appendErrorDetail: string="",
   ): array<result<string, string>> =>
-    outcomes->Array.map(((reference, outcome, meta: Message.meta)) =>
+    outcomes->Array.map(((reference, outcome, meta: Message.meta, causedBy)) =>
       switch outcome {
       | CmdRejected({errorCode, errorDetail}) =>
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~causationId=?causedBy,
           ~cause=DomainRejection,
           reference,
           {errorCode, errorDetail},
@@ -429,6 +445,7 @@ module Make = (
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~causationId=?causedBy,
           ~cause=AccessRefusal,
           reference,
           rejected,
@@ -438,6 +455,7 @@ module Make = (
         CommandTopic_Helpers.reportAccepted(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~causationId=?causedBy,
           reference,
           {entityId, eventCount: appendedEventCount},
         )
@@ -446,6 +464,7 @@ module Make = (
         CommandTopic_Helpers.reportAccepted(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~causationId=?causedBy,
           reference,
           {entityId, eventCount: 0},
         )
@@ -455,6 +474,7 @@ module Make = (
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~causationId=?causedBy,
           ~cause=InfrastructureFailure,
           reference,
           {errorCode: Reventless.CommandOutcome.code(AppendFailed), errorDetail: appendErrorDetail},
@@ -504,7 +524,7 @@ module Make = (
 
       let eventsToAppend =
         outcomes
-        ->Array.map(((_reference, outcome, meta)) =>
+        ->Array.map(((_reference, outcome, meta, _)) =>
           switch outcome {
           | CmdOk(events) => events->Array.map(event => {Message.id, meta, event})
           | CmdRejected(_) | CmdRefused(_) | CmdRepeated => []

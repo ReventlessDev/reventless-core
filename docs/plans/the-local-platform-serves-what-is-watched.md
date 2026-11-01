@@ -8,7 +8,9 @@
 [PF8](#pf8-automations-and-outbound-translations-carry-the-flow) and
 [PF10](#pf10-the-view-change-line) built 2026-11-01; [PF9](#pf9-ids-on-every-log-line) waits on
 [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md), and
-[PF12](#pf12-the-cloudwatch-guide-follows-the-chain) on it.<br/>
+[PF12](#pf12-the-cloudwatch-guide-follows-the-chain) on it.
+[PF13](#pf13-the-registry-entry-names-the-platform-api) and
+[PF14](#pf14-a-commands-outcome-names-what-caused-it) built 2026-11-01, not yet released.<br/>
 **Repos:** `reventless-core` only.<br/>
 **Builds on:** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md)
 (a component's log line keeps its invocation's ids; [PF9](#pf9-ids-on-every-log-line) needs it) ·
@@ -395,6 +397,29 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   - a query for refusals by cause.
 - **Exit:** each query run once against a stack with the chain release.
 
+### PF13: the registry entry names the platform API
+
+- **The registry entry gains `platformEndpoint`**, where the platform API answers: its own port
+  when the platform serves two APIs, else the same address as `endpoint`. A reader of
+  [PF4](#pf4-one-read-across-all-event-logs)'s read finds it without guessing a port, also when
+  `REVENTLESS_PLATFORM_PORT` moved it. Optional, like `tapPort`, so older entries still load.
+- **Exit:** a registry test that the field round-trips and survives publishing the tap port.
+- **Built 2026-11-01.** `LocalPlatformRegistry.write` and `register` take `~platformEndpoint`;
+  the local platform passes it at start. Test: `LocalPlatformRegistryTest`.
+
+### PF14: a command's outcome names what caused it
+
+- **The outcome report gains an optional `causationId`**, the command's own: for a command an
+  automation or an outbound translation sent, the event it acted on
+  ([PF8](#pf8-automations-and-outbound-translations-carry-the-flow)). With it, a reader places
+  every command of a flow under the event that led to it, without going by time.
+- **The outcome line and the `command rejected` record carry it** when the command has one.
+- **Exit:** a hook test that an outcome carries its command's cause and a command without one
+  reports none; the outcome line with and without it.
+- **Built 2026-11-01.** Both handlers pass it; the aggregate handler keeps the command's own
+  cause beside each outcome, since the meta it holds there is its events'. Tests:
+  `CommandOutcomeHookTest`, `LocalTapLinesTest`.
+
 ## 4. Decisions
 
 The decisions are numbered **PFD1 to PFD6**.
@@ -456,7 +481,8 @@ What a reader outside the platform can rely on, as built on 2026-11-01. Everythi
 ([PFD4](#4-decisions)).
 
 **The registry entry** (`.reventless/running/<port>.json`) gains `logPort` beside `tapPort`, both
-optional and filled in once the socket is bound.
+optional and filled in once the socket is bound, and `platformEndpoint`, where the platform API
+answers ([PF13](#pf13-the-registry-entry-names-the-platform-api)).
 
 **Environment:**
 
@@ -553,7 +579,9 @@ any tag value; `timeFrom` and `timeTo` compare with `recordedAt`.
 {"kind":"commandOutcome","component":"Order","plugin":"Ordering","msgId":"…","correlationId":"…","outcome":"rejected","errorCode":"AlreadyExists","cause":"DOMAIN","ts":"…"}
 ```
 
-`component` is the handling component's name and `msgId` the command's. `plugin`,
+`component` is the handling component's name and `msgId` the command's. `causationId` is the
+command's own cause, when it has one: the event an automation or a translation acted on
+([PF14](#pf14-a-commands-outcome-names-what-caused-it)). `plugin`,
 `correlationId` and `entityId` appear when known. `cause` is `DOMAIN`, `ACCESS` or
 `INFRASTRUCTURE`, as the API's `CommandRejectionCause`. The line passes a filter by plugin or
 correlation id, never one by event type.

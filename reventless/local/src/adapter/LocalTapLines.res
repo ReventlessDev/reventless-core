@@ -34,6 +34,7 @@ let outcomeLine = (r: Outcome.commandOutcomeReport): string => {
     ->Array.concat(optional("plugin", plugin))
     ->Array.concat([("msgId", str(r.reference))])
     ->Array.concat(optional("correlationId", r.correlationId))
+    ->Array.concat(optional("causationId", r.causationId))
   let body = switch r.outcome {
   | OutcomeAccepted({entityId, eventCount}) =>
     [("outcome", str("accepted"))]
@@ -69,6 +70,7 @@ let rejectionRecord = (r: Outcome.commandOutcomeReport): option<Logger.record> =
     }
     let annotations = Dict.fromArray([("msgId", r.reference)])
     r.correlationId->Option.forEach(id => annotations->Dict.set("correlationId", id))
+    r.causationId->Option.forEach(id => annotations->Dict.set("causationId", id))
     Some({
       time: now(),
       level,

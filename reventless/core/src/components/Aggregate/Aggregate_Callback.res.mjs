@@ -70,7 +70,8 @@ function Make(Spec) {
           outcomes: outcomes.concat([[
               reference,
               "CmdRepeated",
-              meta
+              meta,
+              command$p.meta.causationId
             ]])
         };
       }
@@ -87,7 +88,8 @@ function Make(Spec) {
                 TAG: "CmdRefused",
                 _0: refusal
               },
-              meta
+              meta,
+              command$p.meta.causationId
             ]])
         };
       }
@@ -105,7 +107,8 @@ function Make(Spec) {
                 TAG: "CmdOk",
                 _0: generatedEvents$1
               },
-              meta
+              meta,
+              command$p.meta.causationId
             ]])
         };
       }
@@ -126,7 +129,8 @@ function Make(Spec) {
               errorCode: errorCode,
               errorDetail: errorDetail
             },
-            meta
+            meta,
+            command$p.meta.causationId
           ]])
       };
     });
@@ -277,11 +281,12 @@ function Make(Spec) {
     let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount, appendErrorDetailOpt) => {
       let appendErrorDetail = appendErrorDetailOpt !== undefined ? appendErrorDetailOpt : "";
       return outcomes.map(param => {
+        let causedBy = param[3];
         let meta = param[2];
         let outcome = param[1];
         let reference = param[0];
         if (typeof outcome !== "object") {
-          CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, reference, {
+          CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, causedBy, reference, {
             entityId: entityId,
             eventCount: 0
           });
@@ -293,7 +298,7 @@ function Make(Spec) {
         switch (outcome.TAG) {
           case "CmdOk" :
             if (appendSucceeded) {
-              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, reference, {
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, meta.correlationId, causedBy, reference, {
                 entityId: entityId,
                 eventCount: appendedEventCount
               });
@@ -302,7 +307,7 @@ function Make(Spec) {
                 _0: reference
               };
             } else {
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", meta.correlationId, reference, {
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", meta.correlationId, causedBy, reference, {
                 errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                 errorDetail: appendErrorDetail
               });
@@ -312,7 +317,7 @@ function Make(Spec) {
               };
             }
           case "CmdRejected" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", meta.correlationId, reference, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", meta.correlationId, causedBy, reference, {
               errorCode: outcome.errorCode,
               errorDetail: outcome.errorDetail
             });
@@ -321,7 +326,7 @@ function Make(Spec) {
               _0: reference
             };
           case "CmdRefused" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", meta.correlationId, reference, outcome._0.rejected);
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", meta.correlationId, causedBy, reference, outcome._0.rejected);
             return {
               TAG: "Ok",
               _0: reference

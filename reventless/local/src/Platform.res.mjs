@@ -1176,7 +1176,7 @@ function MakeWithConfig(Config) {
     LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
       kind: match[0],
       path: match[1]
-    }, undefined);
+    }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
@@ -2973,7 +2973,7 @@ function Make($star) {
     LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
       kind: match[0],
       path: match[1]
-    }, undefined);
+    }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({

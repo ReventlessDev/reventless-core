@@ -371,5 +371,30 @@ describe("CommandTopic command-outcome hook:", () => {
         )
       },
     )
+
+    testPromise(
+      "an outcome carries the message that caused the command",
+      async () => {
+        record()
+        let item = AggregateFixtures.makeTopicItem(
+          "ref-1",
+          AggregateFixtures.AggSpec.Create({name: "Widget"}),
+        )
+        let caused = {
+          ...item,
+          command: {...item.command, meta: {...item.command.meta, causationId: "evt-7"}},
+        }
+        let _ = await Stream.fromIterable([caused])
+        ->AggregateFixtures.TestHandler.handleCommands
+        ->Effect.runPromise
+        let _ = await runAgg(
+          "ref-2",
+          AggregateFixtures.AggSpec.Create({name: "Gadget"}),
+          ~aggId="agg-2",
+        )
+
+        expect(observed.contents->Array.map(r => r.causationId))->toEqual([Some("evt-7"), None])
+      },
+    )
   })
 })

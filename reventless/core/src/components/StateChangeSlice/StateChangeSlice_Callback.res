@@ -476,6 +476,7 @@ module Make = (
             CommandTopic_Helpers.reportAccepted(
               ~component=Spec.name,
               ~correlationId=cmdJson.meta.correlationId,
+              ~causationId=?cmdJson.meta.causationId,
               cmdJson.meta.msgId,
               switch entityId {
               | Some(eid) => {entityId: eid, eventCount: 0}
@@ -494,6 +495,7 @@ module Make = (
             CommandTopic_Helpers.reportRejected(
               ~component=Spec.name,
               ~correlationId=cmdJson.meta.correlationId,
+              ~causationId=?cmdJson.meta.causationId,
               ~cause=AccessRefusal,
               cmdJson.meta.msgId,
               rejected,
@@ -511,6 +513,7 @@ module Make = (
               CommandTopic_Helpers.reportAccepted(
                 ~component=Spec.name,
                 ~correlationId=cmdJson.meta.correlationId,
+                ~causationId=?cmdJson.meta.causationId,
                 cmdJson.meta.msgId,
                 switch entityId {
                 | Some(eid) => {entityId: eid, eventCount: 0}
@@ -533,6 +536,7 @@ module Make = (
                     CommandTopic_Helpers.reportRejected(
                       ~component=Spec.name,
                       ~correlationId=cmdJson.meta.correlationId,
+                      ~causationId=?cmdJson.meta.causationId,
                       ~cause=InfrastructureFailure,
                       cmdJson.meta.msgId,
                       {
@@ -581,6 +585,7 @@ module Make = (
                           CommandTopic_Helpers.reportAccepted(
                             ~component=Spec.name,
                             ~correlationId=cmdJson.meta.correlationId,
+                            ~causationId=?cmdJson.meta.causationId,
                             cmdJson.meta.msgId,
                             switch entityId {
                             | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
@@ -633,6 +638,7 @@ module Make = (
                             CommandTopic_Helpers.reportRejected(
                               ~component=Spec.name,
                               ~correlationId=cmdJson.meta.correlationId,
+                              ~causationId=?cmdJson.meta.causationId,
                               ~cause=InfrastructureFailure,
                               cmdJson.meta.msgId,
                               {errorCode, errorDetail: errDetail},
@@ -659,6 +665,7 @@ module Make = (
               CommandTopic_Helpers.reportRejected(
                 ~component=Spec.name,
                 ~correlationId=cmdJson.meta.correlationId,
+                ~causationId=?cmdJson.meta.causationId,
                 ~cause=DomainRejection,
                 cmdJson.meta.msgId,
                 {errorCode, errorDetail},

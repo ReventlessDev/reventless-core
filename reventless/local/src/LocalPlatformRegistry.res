@@ -30,6 +30,9 @@ type entry = {
   // Where the log feed is served, when it is: the platform's recent and live log
   // records. Optional for the same reason as `tapPort`.
   logPort?: int,
+  // Where the platform API is served: its own port when the platform serves two
+  // APIs, else the same endpoint as `endpoint`. Optional for the same reason.
+  platformEndpoint?: string,
 }
 
 // Threaded rather than read at each use, so tests need not move the process.
@@ -115,6 +118,7 @@ let write = (
   ~loginEndpoint: string,
   ~store: store,
   ~tapPort: option<int>=?,
+  ~platformEndpoint: option<string>=?,
   ~pid: int=NodeProcess.pid,
   ~cwd: string=NodeProcess.cwd(),
 ): string => {
@@ -128,6 +132,7 @@ let write = (
     store,
     startedAt: Date.make()->Date.toISOString,
     ?tapPort,
+    ?platformEndpoint,
   }
   try {
     NodeFs.mkdirSync(runningDir(~cwd, ()), {recursive: true})
@@ -187,8 +192,9 @@ let register = (
   ~loginEndpoint: string,
   ~store: store,
   ~tapPort: option<int>=?,
+  ~platformEndpoint: option<string>=?,
 ): unit => {
-  let path = write(~port, ~endpoint, ~loginEndpoint, ~store, ~tapPort?)
+  let path = write(~port, ~endpoint, ~loginEndpoint, ~store, ~tapPort?, ~platformEndpoint?)
   NodeProcess.onExit(_ => removeQuietly(path))
   NodeProcess.onSignal(SIGINT, () => {
     removeQuietly(path)

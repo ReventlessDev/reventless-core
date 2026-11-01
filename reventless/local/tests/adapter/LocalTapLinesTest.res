@@ -180,3 +180,28 @@ describe("LocalTapLines", () => {
     await disconnect(tap)
   })
 })
+
+describe("the outcome line names its cause", () => {
+  testSync("a command an automation sent says which event it acted on", () => {
+    let line = LocalTapLines.outcomeLine({
+      component: "Notice",
+      reference: "cmd-2",
+      correlationId: "flow-1",
+      causationId: "evt-7",
+      outcome: OutcomeAccepted({entityId: Some("n-1"), eventCount: 1}),
+    })
+    let d = line->JSON.parseOrThrow->JSON.Decode.object->Option.getOrThrow
+    expect(d->Dict.get("causationId"))->toEqual(Some(JSON.String("evt-7")))
+    expect(d->Dict.get("msgId"))->toEqual(Some(JSON.String("cmd-2")))
+  })
+
+  testSync("a command sent from outside has none", () => {
+    let line = LocalTapLines.outcomeLine({
+      component: "Order",
+      reference: "cmd-1",
+      outcome: OutcomeAccepted({entityId: None, eventCount: 1}),
+    })
+    let d = line->JSON.parseOrThrow->JSON.Decode.object->Option.getOrThrow
+    expect(d->Dict.get("causationId"))->toEqual(None)
+  })
+})

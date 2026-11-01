@@ -46,7 +46,7 @@ function clearCommandOutcome() {
   commandOutcomeHooks.contents = [];
 }
 
-function fireCommandOutcome(component, reference, correlationId, outcome) {
+function fireCommandOutcome(component, reference, correlationId, causationId, outcome) {
   let hooks = commandOutcomeHooks.contents;
   if (hooks.length === 0) {
     return;
@@ -55,6 +55,7 @@ function fireCommandOutcome(component, reference, correlationId, outcome) {
     component: component,
     reference: reference,
     correlationId: correlationId,
+    causationId: causationId,
     outcome: outcome
   };
   hooks.forEach(param => {
@@ -104,18 +105,18 @@ function ownershipRefusal(verdict, component, command) {
   }
 }
 
-function reportAccepted(component, correlationId, reference, result) {
+function reportAccepted(component, correlationId, causationId, reference, result) {
   Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
-  fireCommandOutcome(component, reference, correlationId, {
+  fireCommandOutcome(component, reference, correlationId, causationId, {
     TAG: "OutcomeAccepted",
     entityId: result.entityId,
     eventCount: result.eventCount
   });
 }
 
-function reportRejected(component, cause, correlationId, reference, result) {
+function reportRejected(component, cause, correlationId, causationId, reference, result) {
   Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result, cause));
-  fireCommandOutcome(component, reference, correlationId, {
+  fireCommandOutcome(component, reference, correlationId, causationId, {
     TAG: "OutcomeRejected",
     errorCode: result.errorCode,
     errorDetail: result.errorDetail,

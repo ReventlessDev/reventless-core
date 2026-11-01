@@ -50,7 +50,7 @@ function outcomeLine(r) {
   ].concat(optional("plugin", plugin)).concat([[
       "msgId",
       r.reference
-    ]]).concat(optional("correlationId", r.correlationId));
+    ]]).concat(optional("correlationId", r.correlationId)).concat(optional("causationId", r.causationId));
   let match = r.outcome;
   let body;
   body = match.TAG === "OutcomeAccepted" ? [[
@@ -117,6 +117,9 @@ function rejectionRecord(r) {
     ]]);
   Stdlib_Option.forEach(r.correlationId, id => {
     annotations["correlationId"] = id;
+  });
+  Stdlib_Option.forEach(r.causationId, id => {
+    annotations["causationId"] = id;
   });
   return {
     time: new Date().toISOString(),

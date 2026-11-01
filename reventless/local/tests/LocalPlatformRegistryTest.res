@@ -199,4 +199,21 @@ describe("LocalPlatformRegistry.tapPort", () => {
 
     expect(LocalPlatformRegistry.list(~cwd, ())->Array.map(e => e.tapPort))->toEqual([Some(4100)])
   })
+
+  testSync("names where the platform API is served, and keeps it when a port is published", () => {
+    let cwd = tempRoot()
+    let _ = LocalPlatformRegistry.write(
+      ~port=4000,
+      ~endpoint="http://localhost:4000/graphql",
+      ~loginEndpoint="http://localhost:4000/__inmemory/login",
+      ~store=memoryStore,
+      ~platformEndpoint="http://localhost:4001/graphql",
+      ~cwd,
+    )
+    LocalPlatformRegistry.publishTapPort(~port=4000, ~tapPort=4100, ~cwd)
+
+    expect(
+      LocalPlatformRegistry.list(~cwd, ())->Array.map(e => (e.platformEndpoint, e.tapPort)),
+    )->toEqual([(Some("http://localhost:4001/graphql"), Some(4100))])
+  })
 })

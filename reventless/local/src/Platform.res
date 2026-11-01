@@ -1422,6 +1422,9 @@ module MakeWithConfig = (
       ~endpoint=`http://localhost:${domainPort->Int.toString}/graphql`,
       ~loginEndpoint=`http://localhost:${domainPort->Int.toString}/__inmemory/login`,
       ~store={kind, ?path},
+      ~platformEndpoint=Config.splitApi
+        ? `http://localhost:${platformPort->Int.toString}/graphql`
+        : `http://localhost:${domainPort->Int.toString}/graphql`,
     )
     // After the register, and it fills the tap port in once the socket is bound:
     // the port is ephemeral by default, so it is not known until `listen` calls
