@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.319 (2026-11-01)
+
+### Features
+
+* **core:** a component's log line carries the ids of the message it is about ([9c26267](https://github.com/ReventlessDev/reventless-core/commit/9c26267ca6d03ff66b8406caa32243e205e29b5a))
+* **local:** the registry entry names the platform API, and a command's outcome names its cause ([51717c4](https://github.com/ReventlessDev/reventless-core/commit/51717c441820c19dc59e595559b037b808ca716a))
+
+
 # 3.0.0-alpha.318 (2026-11-01)
 
 ### Features
