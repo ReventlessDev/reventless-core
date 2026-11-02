@@ -612,7 +612,7 @@ function start(portOpt, param, param$1) {
     logging: yogaLogging,
     maskedErrors: !debug,
     context: Auth_GraphqlContext$ReventlessLocal.buildAuthContext,
-    plugins: [LocalRequestLog$ReventlessLocal.plugin(log)]
+    plugins: [LocalRequestLog$ReventlessLocal.plugin()]
   });
   let getSdl = () => {
     let s = activeSchema.contents;

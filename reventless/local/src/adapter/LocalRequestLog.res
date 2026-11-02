@@ -50,15 +50,13 @@ let lineOf = (r: YG.requestReport): line => {
   {level, message, data}
 }
 
-/** The plugin that writes the line through `log`, under the API's component. */
-let plugin = (log: L.t): YG.plugin =>
+/** The plugin that writes the line under the API's component, its fields as the line's detail
+    rather than in its words. */
+let plugin = (): YG.plugin =>
   YG.requestLog(r => {
     let {level, message, data} = lineOf(r)
     let comp = "GraphQL:Domain"
-    switch level {
-    | Debug => log.debug(~comp, ~data, message)
-    | Info => log.info(~comp, ~data, message)
-    | Warn => log.warn(~comp, ~data, message)
-    | Error => log.error(~comp, ~data, message)
+    if L.shouldLog(level, ~comp, ()) {
+      L.emit(~level, ~comp, ~detail=data, message)
     }
   })

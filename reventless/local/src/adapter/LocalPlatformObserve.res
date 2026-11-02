@@ -2,8 +2,9 @@
 // this platform: every event of every log newest first (`Platform_EventLog`),
 // the log level while running (`Platform_LogLevels`, `Platform_SetLogLevel`),
 // the log feed and the event tap as subscriptions (`Platform_LogAppended`,
-// `Platform_EventAppended`), and the MCP resources `platform/logs/recent` and
-// `platform/events`.
+// `Platform_EventAppended`), the metrics counted since start (`Platform_Metrics`),
+// and the MCP resources `platform/logs/recent`, `platform/events` and
+// `platform/metrics`.
 //
 // Every field here is admin-checked, also when the platform serves one API for
 // both, where nothing else would check it.
@@ -76,6 +77,19 @@ let logLevelTypes = [
 }`,
 ]
 
+let metricTypes = [
+  `type Platform_MetricCount {
+  metric: String!
+  plugin: String!
+  slice: String!
+  unit: String!
+  count: Int!
+  sum: Float!
+  lastAt: String!
+  perMinute: [Int!]!
+}`,
+]
+
 let feedTypes = [
   `input Platform_FeedFilter {
   plugins: [String!]
@@ -89,10 +103,12 @@ let feedTypes = [
 let eventLogField = "Platform_EventLog"
 let logLevelsField = "Platform_LogLevels"
 let setLogLevelField = "Platform_SetLogLevel"
+let metricsField = "Platform_Metrics"
 
 let queryFields = [
   `  ${eventLogField}(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!`,
   `  ${logLevelsField}: Platform_LogLevels!`,
+  `  ${metricsField}(plugins: [String!]): [Platform_MetricCount!]!`,
 ]
 
 let logAppendedField = "Platform_LogAppended"
@@ -309,6 +325,15 @@ let feedField = (feed: LocalFeed.t): GQL.resolverFn =>
     resolve: payload => payload,
   })
 
+/** The metrics counted since the platform started, of the given plugins or of every one:
+    per metric and slice, how often, the sum of their values, and the last 60 minutes. */
+let metrics: GQL.resolverFn = async (_root, args, _ctx) =>
+  LocalMetrics.read(
+    ~plugins=?arg(args, "plugins")
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.map(a => a->Array.filterMap(JSON.Decode.string)),
+  )
+
 let adminOnly = (resolvers: array<(string, GQL.resolverFn)>): dict<GQL.resolverFn> =>
   resolvers
   ->Array.map(((name, resolver)) => (
@@ -320,11 +345,18 @@ let adminOnly = (resolvers: array<(string, GQL.resolverFn)>): dict<GQL.resolverF
 /** Registers the fields on the platform API. */
 let registerGraphQL = (server: GQL.t) => {
   server.registerTypes(
-    ~sdlTypes=eventLogTypes->Array.concat(logLevelTypes)->Array.concat(feedTypes),
+    ~sdlTypes=eventLogTypes
+    ->Array.concat(logLevelTypes)
+    ->Array.concat(metricTypes)
+    ->Array.concat(feedTypes),
   )
   server.registerQueries(
     ~sdlFields=queryFields,
-    ~resolvers=adminOnly([(eventLogField, eventLog), (logLevelsField, logLevels)]),
+    ~resolvers=adminOnly([
+      (eventLogField, eventLog),
+      (logLevelsField, logLevels),
+      (metricsField, metrics),
+    ]),
   )
   server.registerMutations(
     ~sdlFields=mutationFields,
@@ -343,6 +375,7 @@ let registerGraphQL = (server: GQL.t) => {
 
 let recentLogsUri = "platform/logs/recent"
 let eventsUri = "platform/events"
+let metricsUri = "platform/metrics"
 
 @val external decodeURIComponent: string => string = "decodeURIComponent"
 
@@ -431,6 +464,10 @@ let events: MCP_ServerInstance.resourceHandler = async uri => {
   resourceResult(~uri, pageJson(page))
 }
 
+/** `platform/metrics?plugins=a,b`: the metrics counted since the platform started. */
+let metricsResource: MCP_ServerInstance.resourceHandler = async uri =>
+  resourceResult(~uri, LocalMetrics.read(~plugins=?listOf(queryOf(uri), "plugins")))
+
 /** Registers the resources on the platform MCP server. */
 let registerMcp = (server: MCP_ServerInstance.t) => {
   server.registerResource(
@@ -452,5 +489,15 @@ let registerMcp = (server: MCP_ServerInstance.t) => {
       mimeType: "application/json",
     },
     ~handler=events,
+  )
+  server.registerResource(
+    ~name=metricsUri,
+    ~definition={
+      uriTemplate: metricsUri,
+      name: metricsUri,
+      description: "The metrics counted since the platform started, per metric, plugin and slice: count, sum of values, last time, and counts of the last 60 minutes. Query parameter: plugins (narrow).",
+      mimeType: "application/json",
+    },
+    ~handler=metricsResource,
   )
 }

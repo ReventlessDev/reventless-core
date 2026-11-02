@@ -133,19 +133,21 @@ function subscriptionLine(conn, verb, channel) {
 }
 
 function logSubscription(conn, verb, channel) {
-  log.debug("Events:Local", Object.fromEntries([
-    [
-      "channel",
-      channel
-    ],
-    [
-      "connection",
-      conn.id
-    ]
-  ].concat(Stdlib_Option.mapOr(conn.user, [], u => [[
-      "user",
-      u
-    ]]))), subscriptionLine(conn, verb, channel));
+  if (Logger$ReventlessCore.shouldLog("Debug", undefined, "Events:Local", undefined)) {
+    return Logger$ReventlessCore.emit("Debug", "Events:Local", undefined, Object.fromEntries([
+      [
+        "channel",
+        channel
+      ],
+      [
+        "connection",
+        conn.id
+      ]
+    ].concat(Stdlib_Option.mapOr(conn.user, [], u => [[
+        "user",
+        u
+      ]]))), undefined, subscriptionLine(conn, verb, channel));
+  }
 }
 
 function handleFrame(conn, text) {

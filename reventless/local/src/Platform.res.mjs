@@ -39,6 +39,7 @@ import * as AccountStore$ReventlessLocal from "./adapter/Auth/AccountStore.res.m
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as LocalLogFeed$ReventlessLocal from "./adapter/LocalLogFeed.res.mjs";
+import * as LocalMetrics$ReventlessLocal from "./adapter/LocalMetrics.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
@@ -118,6 +119,8 @@ import * as InboundTranslationResolvers_GraphQL$ReventlessLocal from "./adapter/
 EffectLogger$ReventlessCore.setDefaultMinLevel("Debug");
 
 AnsiStyle$Reventless.setDefaultFormat("text");
+
+LocalMetrics$ReventlessLocal.install();
 
 let log = Logger$ReventlessCore.fromEnv();
 

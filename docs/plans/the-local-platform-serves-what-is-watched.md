@@ -550,6 +550,7 @@ stored:
 Platform_EventLog(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!
 Platform_LogLevels: Platform_LogLevels!
 Platform_SetLogLevel(plugin: String, comp: String, level: Platform_LogLevel): Platform_LogLevels!   # mutation; level null removes
+Platform_Metrics(plugins: [String!]): [Platform_MetricCount!]!   # the metrics counted since start
 Platform_LogAppended(filter: Platform_FeedFilter): AWSJSON!     # subscription: one log feed line
 Platform_EventAppended(filter: Platform_FeedFilter): AWSJSON!   # subscription: one tap line, no prefix
 
@@ -571,11 +572,18 @@ type Platform_EventLogTag { key: String!  value: String! }
 enum Platform_LogLevel { DEBUG INFO WARN ERROR }
 type Platform_LogLevels { base: Platform_LogLevel  settings: [Platform_LogLevelSetting!]! }
 type Platform_LogLevelSetting { plugin: String  comp: String  level: Platform_LogLevel! }
+type Platform_MetricCount {
+  metric: String!  plugin: String!  slice: String!  unit: String!
+  count: Int!  sum: Float!  lastAt: String!  perMinute: [Int!]!   # the last 60 minutes, oldest first
+}
 input Platform_FeedFilter {
   plugins: [String!]  level: Platform_LogLevel  components: [String!]
   eventTypes: [String!]  correlationId: String
 }
 ```
+
+`Platform_Metrics` and the MCP resource `platform/metrics` came later, with
+[metrics-are-counted-not-logged.md](done/metrics-are-counted-not-logged.md).
 
 `Platform_EventLog` runs newest first; `first` defaults to 50 and stops at 1,000. A record's
 `log` and `position` are the tap line's, `meta` is the whole stored meta, `entityId` is an

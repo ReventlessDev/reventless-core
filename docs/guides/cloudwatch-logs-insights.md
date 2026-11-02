@@ -226,6 +226,11 @@ fields @timestamp, comp, message, detail.bytes
 - To force JSON locally (e.g. when piping to a file or `tee`), set
   `REVENTLESS_LOG_FORMAT=json`. To force colored text in a non-TTY, set
   `REVENTLESS_LOG_FORMAT=text`.
+- **A line with a `reventlessMetric` field is a metric, not a log line.** The DCB
+  slice handler writes one per cache hit or miss, append retry and append conflict;
+  CloudWatch metric filters turn them into the `Reventless/DCB` metrics, dimensioned
+  by slice. Read those metrics rather than query the lines. The local platform
+  writes no such lines: it counts its metrics and serves them as `Platform_Metrics`.
 - Raise verbosity with `LOG_LEVEL=debug`; silence framework logs entirely with
   `LOG_LEVEL=silent`.
 - Tag a deployment with a stable `service` name via `REVENTLESS_SERVICE` when the

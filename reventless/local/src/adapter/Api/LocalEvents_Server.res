@@ -183,18 +183,21 @@ let subscriptionLine = (conn: connection, ~verb: string, ~channel: string) =>
   `${verb} ${channel}${conn.user->Option.mapOr("", u => ` by ${u}`)}`
 
 let logSubscription = (conn: connection, ~verb: string, ~channel: string) =>
-  log.debug(
-    ~comp="Events:Local",
-    ~data=JSON.Encode.object(
-      Dict.fromArray(
-        [
-          ("channel", JSON.Encode.string(channel)),
-          ("connection", JSON.Encode.int(conn.id)),
-        ]->Array.concat(conn.user->Option.mapOr([], u => [("user", JSON.Encode.string(u))])),
+  if ReventlessCore.Logger.shouldLog(Debug, ~comp="Events:Local", ()) {
+    ReventlessCore.Logger.emit(
+      ~level=Debug,
+      ~comp="Events:Local",
+      ~detail=JSON.Encode.object(
+        Dict.fromArray(
+          [
+            ("channel", JSON.Encode.string(channel)),
+            ("connection", JSON.Encode.int(conn.id)),
+          ]->Array.concat(conn.user->Option.mapOr([], u => [("user", JSON.Encode.string(u))])),
+        ),
       ),
-    ),
-    subscriptionLine(conn, ~verb, ~channel),
-  )
+      subscriptionLine(conn, ~verb, ~channel),
+    )
+  }
 
 /** Handle one client→server text frame on an established connection. */
 let handleFrame = (conn: connection, text: string): unit => {

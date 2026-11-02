@@ -8,6 +8,7 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as LocalFeed$ReventlessLocal from "./LocalFeed.res.mjs";
 import * as LocalLogFeed$ReventlessLocal from "./LocalLogFeed.res.mjs";
+import * as LocalMetrics$ReventlessLocal from "./LocalMetrics.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./LocalEventTap.res.mjs";
 import * as LocalEventLogRead$ReventlessLocal from "./LocalEventLogRead.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
@@ -75,6 +76,17 @@ let logLevelTypes = [
 }`
 ];
 
+let metricTypes = [`type Platform_MetricCount {
+  metric: String!
+  plugin: String!
+  slice: String!
+  unit: String!
+  count: Int!
+  sum: Float!
+  lastAt: String!
+  perMinute: [Int!]!
+}`];
+
 let feedTypes = [`input Platform_FeedFilter {
   plugins: [String!]
   level: Platform_LogLevel
@@ -89,9 +101,12 @@ let logLevelsField = "Platform_LogLevels";
 
 let setLogLevelField = "Platform_SetLogLevel";
 
+let metricsField = "Platform_Metrics";
+
 let queryFields = [
   `  ` + eventLogField + `(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!`,
-  `  ` + logLevelsField + `: Platform_LogLevels!`
+  `  ` + logLevelsField + `: Platform_LogLevels!`,
+  `  ` + metricsField + `(plugins: [String!]): [Platform_MetricCount!]!`
 ];
 
 let logAppendedField = "Platform_LogAppended";
@@ -311,6 +326,10 @@ function feedField(feed) {
   };
 }
 
+async function metrics(_root, args, _ctx) {
+  return LocalMetrics$ReventlessLocal.read(Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "plugins"), Stdlib_JSON.Decode.array), a => Stdlib_Array.filterMap(a, Stdlib_JSON.Decode.string)));
+}
+
 function adminOnly(resolvers) {
   return Object.fromEntries(resolvers.map(param => [
     param[0],
@@ -319,7 +338,7 @@ function adminOnly(resolvers) {
 }
 
 function registerGraphQL(server) {
-  server.registerTypes(eventLogTypes.concat(logLevelTypes).concat(feedTypes));
+  server.registerTypes(eventLogTypes.concat(logLevelTypes).concat(metricTypes).concat(feedTypes));
   server.registerQueries(queryFields, adminOnly([
     [
       eventLogField,
@@ -328,6 +347,10 @@ function registerGraphQL(server) {
     [
       logLevelsField,
       logLevels
+    ],
+    [
+      metricsField,
+      metrics
     ]
   ]));
   server.registerMutations(mutationFields, adminOnly([[
@@ -349,6 +372,8 @@ function registerGraphQL(server) {
 let recentLogsUri = "platform/logs/recent";
 
 let eventsUri = "platform/events";
+
+let metricsUri = "platform/metrics";
 
 function queryOf(uri) {
   let params = {};
@@ -440,6 +465,10 @@ async function events(uri) {
   return resourceResult(uri, pageJson(page));
 }
 
+async function metricsResource(uri) {
+  return resourceResult(uri, LocalMetrics$ReventlessLocal.read(listOf(queryOf(uri), "plugins")));
+}
+
 function registerMcp(server) {
   server.registerResource(recentLogsUri, {
     uriTemplate: recentLogsUri,
@@ -453,6 +482,12 @@ function registerMcp(server) {
     description: "Every event of every log, newest first, one page at a time. Query parameters: plugins, logs, eventTypes, entityId, tagKey, tagValue, msgId, correlationId, causationId, user, timeFrom, timeTo, first, after (the page's endCursor).",
     mimeType: "application/json"
   }, events);
+  server.registerResource(metricsUri, {
+    uriTemplate: metricsUri,
+    name: metricsUri,
+    description: "The metrics counted since the platform started, per metric, plugin and slice: count, sum of values, last time, and counts of the last 60 minutes. Query parameter: plugins (narrow).",
+    mimeType: "application/json"
+  }, metricsResource);
 }
 
 let Logger;
@@ -466,10 +501,12 @@ export {
   GQL,
   eventLogTypes,
   logLevelTypes,
+  metricTypes,
   feedTypes,
   eventLogField,
   logLevelsField,
   setLogLevelField,
+  metricsField,
   queryFields,
   logAppendedField,
   eventAppendedField,
@@ -490,16 +527,19 @@ export {
   lineToJson,
   feedSubscription,
   feedField,
+  metrics,
   adminOnly,
   registerGraphQL,
   recentLogsUri,
   eventsUri,
+  metricsUri,
   queryOf,
   listOf,
   intOf,
   resourceResult,
   recentLogs,
   events,
+  metricsResource,
   registerMcp,
 }
 /* log Not a pure module */

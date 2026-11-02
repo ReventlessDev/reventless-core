@@ -745,7 +745,7 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
     "logging": yogaLogging,
     "maskedErrors": !debug,
     "context": buildAuthContext,
-    "plugins": [LocalRequestLog.plugin(log)],
+    "plugins": [LocalRequestLog.plugin()],
   })
   // Custom HTTP handler: serves /sdl + /__inmemory/{login,logout}, else yoga.
   let getSdl = () =>

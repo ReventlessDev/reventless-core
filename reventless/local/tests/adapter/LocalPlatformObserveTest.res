@@ -125,6 +125,7 @@ describe("the platform API's watching fields", () => {
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.eventLogField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.logLevelsField)))->toBe(true)
     expect(await refused(s.getMutationResolver(LocalPlatformObserve.setLogLevelField)))->toBe(true)
+    expect(await refused(s.getQueryResolver(LocalPlatformObserve.metricsField)))->toBe(true)
   })
 
   testPromise("set and list the log levels for an admin", async () => {
@@ -154,6 +155,35 @@ describe("the platform API's watching fields", () => {
     let answer = await read(JSON.Encode.null, JSON.parseOrThrow(`{"first":5}`), admin())
     expect(answer->field("edges"))->toEqual(JSON.Encode.array([]))
     expect(answer->field("pageInfo")->field("hasNextPage"))->toEqual(JSON.Encode.bool(false))
+  })
+
+  testPromise("the metrics answer an admin with the counts, narrowed by plugin", async () => {
+    let counts = LocalMetrics.counts
+    ReventlessCore.Metrics.Counts.clear(counts)
+    let sample = (~metric, ~plugin, ~value=1): ReventlessCore.Metrics.sample => {
+      metric,
+      slice: "PlaceOrder",
+      plugin,
+      value,
+      unit: "Count",
+      at: Date.now(),
+    }
+    counts->ReventlessCore.Metrics.Counts.add(sample(~metric="AppendRetry", ~plugin="Ordering"))
+    counts->ReventlessCore.Metrics.Counts.add(sample(~metric="AppendRetry", ~plugin="Ordering"))
+    counts->ReventlessCore.Metrics.Counts.add(sample(~metric="AppendRetry", ~plugin="Catalog"))
+    let s = server()
+    let read = s.getQueryResolver(LocalPlatformObserve.metricsField)->Option.getOrThrow
+    let answer = await read(
+      JSON.Encode.null,
+      JSON.parseOrThrow(`{"plugins":["Ordering"]}`),
+      admin(),
+    )
+    let rows = answer->JSON.Decode.array->Option.getOr([])
+    expect(rows->Array.length)->toBe(1)
+    let row = rows->Array.getUnsafe(0)
+    expect(row->field("plugin"))->toEqual(JSON.Encode.string("Ordering"))
+    expect(row->field("count"))->toEqual(JSON.Encode.int(2))
+    ReventlessCore.Metrics.Counts.clear(counts)
   })
 
   testSync("the SDL builds into a schema", () => {

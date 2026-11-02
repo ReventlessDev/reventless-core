@@ -3,6 +3,7 @@
 import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 
 function lineOf(r) {
   let match = r.operationName;
@@ -55,21 +56,13 @@ function lineOf(r) {
   };
 }
 
-function plugin(log) {
+function plugin() {
   return GraphqlYoga.requestLog(r => {
     let match = lineOf(r);
-    let data = match.data;
-    let message = match.message;
+    let level = match.level;
     let comp = "GraphQL:Domain";
-    switch (match.level) {
-      case "Debug" :
-        return log.debug(comp, data, message);
-      case "Info" :
-        return log.info(comp, data, message);
-      case "Warn" :
-        return log.warn(comp, data, message);
-      case "Error" :
-        return log.error(comp, data, message);
+    if (Logger$ReventlessCore.shouldLog(level, undefined, comp, undefined)) {
+      return Logger$ReventlessCore.emit(level, comp, undefined, match.data, undefined, match.message);
     }
   });
 }

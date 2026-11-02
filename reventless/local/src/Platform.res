@@ -23,6 +23,10 @@ ReventlessCore.EffectLogger.setDefaultMinLevel(ReventlessCore.Logger.Debug)
 // REVENTLESS_LOG_FORMAT still wins.
 Reventless.AnsiStyle.setDefaultFormat(#text)
 
+// Locally nothing collects metric lines, so metrics are counted and served on the
+// platform API instead of written among the log lines.
+LocalMetrics.install()
+
 let log = ReventlessCore.Logger.fromEnv()
 
 // Module-level ref to hold the platform GraphQL server instance in split mode.

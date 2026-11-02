@@ -227,6 +227,17 @@ type Platform_LogLevels {
   settings: [Platform_LogLevelSetting!]!
 }
 
+type Platform_MetricCount {
+  count: Int!
+  lastAt: String!
+  metric: String!
+  perMinute: [Int!]!
+  plugin: String!
+  slice: String!
+  sum: Float!
+  unit: String!
+}
+
 type Platform_OutboundTranslationSliceDef {
   chapter: String
   consumedEventTypes: [String!]!
@@ -437,6 +448,7 @@ type Query {
   Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
   Platform_EventLog(after: String, filter: Platform_EventLogFilter, first: Int): Platform_EventLogConnection!
   Platform_LogLevels: Platform_LogLevels!
+  Platform_Metrics(plugins: [String!]): [Platform_MetricCount!]!
   Platform_Plugin(id: ID!, includeRetired: Boolean): Platform_Plugin
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
   Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!

@@ -1,11 +1,12 @@
 # Plan: the local platform counts its metrics instead of logging them
 
 **Date:** 2026-11-02<br/>
-**Status:** 📝 Proposed 2026-11-02, not started.<br/>
+**Status:** ✅ Built 2026-11-02, as planned ([§7](#7-as-built)); the open questions decided as
+recommended.<br/>
 **Repos:** `reventless-core` only.<br/>
-**Builds on:** [the-local-platform-serves-what-is-watched.md](the-local-platform-serves-what-is-watched.md)
+**Builds on:** [the-local-platform-serves-what-is-watched.md](../the-local-platform-serves-what-is-watched.md)
 (the platform API's watching reads, which this adds one to) ·
-[dcb-high-contention-handling.md](../analysis/dcb-high-contention-handling.md) (why the append
+[dcb-high-contention-handling.md](../../analysis/dcb-high-contention-handling.md) (why the append
 metrics exist).
 
 > **Questions and short answers**
@@ -45,15 +46,15 @@ cache hits out of a hundred is fine; ninety misses means the cache does nothing.
 Today each such number is written to the platform's output as a line of JSON, beside the log
 lines. On AWS that is the point: CloudWatch reads the Lambda's output and turns every line with
 the `reventlessMetric` field into a data point of a real metric, through one metric filter per
-metric name ([Util_DcbMetrics.res](../../reventless/aws/src/util/Util_DcbMetrics.res)).
+metric name ([Util_DcbMetrics.res](../../../reventless/aws/src/util/Util_DcbMetrics.res)).
 
 Locally nothing collects them. They land in the output among the log lines, where a person
 watching the log sees a line per command that says nothing on its own (`{"reventlessMetric":
 "DcbDecisionModelCacheMiss","slice":"PlaceOrder","value":1}`), and nowhere can the totals be read.
 
 The five metrics, all emitted by
-[StateChangeSlice_Callback.res](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)
-through [Metrics.res](../../reventless/core/src/util/Metrics.res):
+[StateChangeSlice_Callback.res](../../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)
+through [Metrics.res](../../../reventless/core/src/util/Metrics.res):
 
 | Metric | Counts | Emitted |
 |---|---|---|
@@ -79,23 +80,23 @@ through [Metrics.res](../../reventless/core/src/util/Metrics.res):
 
 ### LMC1: a metric sink chosen at start
 
-[Metrics.res](../../reventless/core/src/util/Metrics.res) keeps `emitCount` as the one call that
+[Metrics.res](../../../reventless/core/src/util/Metrics.res) keeps `emitCount` as the one call that
 emits a metric. Where the count goes becomes a *sink*, installed at a process's start the way
 `Pii.Provider.install` installs the PII provider
-([Pii.res](../../reventless/spec/src/components/Pii.res)):
+([Pii.res](../../../reventless/spec/src/components/Pii.res)):
 
 - `Metrics.Sink.install(sink)`, where a sink is a function taking the metric's name, its slice,
   its value and its unit.
 - The default sink is today's behavior: the JSON line, written only to a JSON log sink. Nothing
   deployed installs another, so nothing deployed changes.
 - `emitCount` adds the plugin the slice belongs to, read from the registry that already names a
-  log line's plugin ([LogPrefix.res](../../reventless/spec/src/LogPrefix.res)), so a sink can count
+  log line's plugin ([LogPrefix.res](../../../reventless/spec/src/LogPrefix.res)), so a sink can count
   by plugin. The JSON line does not gain the field ([LMCD2](#4-decisions)).
 
 ### LMC2: the local platform counts in memory
 
 The local platform installs a counting sink at start, beside setting its log level
-([Platform.res](../../reventless/local/src/Platform.res)). For each metric, slice and plugin it
+([Platform.res](../../../reventless/local/src/Platform.res)). For each metric, slice and plugin it
 keeps:
 
 - the number of times it was emitted, and the sum of its values (for
@@ -110,7 +111,7 @@ The counts restart with the platform ([LMCQ1](#5-open-questions)).
 
 ### LMC3: the counts on the platform API
 
-[LocalPlatformObserve.res](../../reventless/local/src/adapter/LocalPlatformObserve.res) adds one
+[LocalPlatformObserve.res](../../../reventless/local/src/adapter/LocalPlatformObserve.res) adds one
 read beside `Platform_EventLog` and `Platform_LogLevels`:
 
 ```graphql
@@ -142,9 +143,9 @@ subscription, since a count that changes many times a second is better read than
 
 ### LMC5: the docs
 
-- [§7 of the plan that serves the watching reads](the-local-platform-serves-what-is-watched.md#7-the-wire-as-built),
+- [§7 of the plan that serves the watching reads](../the-local-platform-serves-what-is-watched.md#7-the-wire-as-built),
   the list of what the platform API serves, gains `Platform_Metrics`.
-- The [CloudWatch Logs Insights guide](../guides/cloudwatch-logs-insights.md) says that a line
+- The [CloudWatch Logs Insights guide](../../guides/cloudwatch-logs-insights.md) says that a line
   with `reventlessMetric` is a metric on its way to CloudWatch, not a log line, and that its
   numbers are read as metrics there rather than queried.
 
@@ -183,3 +184,25 @@ filter per metric starts to cost something.
 - A deployed platform's Lambda output carries the same metric lines as before, and its CloudWatch
   metrics keep receiving data.
 - The tests of [LMC4](#lmc4-tests) pass.
+
+## 7. As built
+
+- **The sink.** [Metrics.res](../../../reventless/core/src/util/Metrics.res): `Metrics.Sink.install`
+  and `Metrics.Sink.reset`; `Sink.line`, the default, writes the line it wrote before. `emitCount`
+  hands each sink a `sample` with the slice's plugin from the log registry.
+- **The counts.** `Metrics.Counts`, in core so any platform can use it: `make`, `add`, `sink`,
+  `read(~now, ~plugins?)` and `clear`. Entries are keyed by metric, plugin and slice; the 60
+  minute buckets roll on both write and read, so a slice quiet for an hour reads all zeros.
+- **The local platform.** [LocalMetrics.res](../../../reventless/local/src/adapter/LocalMetrics.res)
+  holds the counts and installs their sink when [Platform.res](../../../reventless/local/src/Platform.res)
+  loads. [LocalPlatformObserve.res](../../../reventless/local/src/adapter/LocalPlatformObserve.res)
+  serves `Platform_Metrics(plugins)`, admin-checked, and the MCP resource `platform/metrics`.
+  The platform API's golden,
+  [platform-api.graphql](../../../reventless/spec/schema/platform-api.graphql), follows.
+- **Tests.** [MetricsTest.res](../../../reventless/core/tests/util/MetricsTest.res) (the sink, the
+  counts, their minutes, the plugin filter) and
+  [LocalPlatformObserveTest.res](../../../reventless/local/tests/adapter/LocalPlatformObserveTest.res)
+  (refused to a non-admin, narrowed by plugin).
+- **Docs.** [§7 of the watching-reads plan](../the-local-platform-serves-what-is-watched.md#7-the-wire-as-built)
+  lists the read, and the [CloudWatch Logs Insights guide](../../guides/cloudwatch-logs-insights.md#tips)
+  says a `reventlessMetric` line is a metric.
