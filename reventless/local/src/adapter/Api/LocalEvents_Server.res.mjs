@@ -32,14 +32,15 @@ let nextConnectionId = {
   contents: 0
 };
 
-function addConnection(send) {
+function addConnection(send, user) {
   nextConnectionId.contents = nextConnectionId.contents + 1 | 0;
   let conn_id = nextConnectionId.contents;
   let conn_subscriptions = {};
   let conn = {
     id: conn_id,
     send: send,
-    subscriptions: conn_subscriptions
+    subscriptions: conn_subscriptions,
+    user: user
   };
   connections.contents.push(conn);
   return conn;
@@ -127,6 +128,26 @@ function decodeStringField(json, field) {
   return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), o => o[field]), Stdlib_JSON.Decode.string);
 }
 
+function subscriptionLine(conn, verb, channel) {
+  return verb + ` ` + channel + Stdlib_Option.mapOr(conn.user, "", u => ` by ` + u);
+}
+
+function logSubscription(conn, verb, channel) {
+  log.debug("Events:Local", Object.fromEntries([
+    [
+      "channel",
+      channel
+    ],
+    [
+      "connection",
+      conn.id
+    ]
+  ].concat(Stdlib_Option.mapOr(conn.user, [], u => [[
+      "user",
+      u
+    ]]))), subscriptionLine(conn, verb, channel));
+}
+
 function handleFrame(conn, text) {
   let parsed;
   try {
@@ -149,6 +170,7 @@ function handleFrame(conn, text) {
       let match$2 = decodeStringField(parsed, "channel");
       if (match$1 !== undefined && match$2 !== undefined) {
         conn.subscriptions[match$1] = match$2;
+        logSubscription(conn, "subscribe", match$2);
         return conn.send(frame([
           [
             "type",
@@ -165,6 +187,7 @@ function handleFrame(conn, text) {
     case "unsubscribe" :
       let id = decodeStringField(parsed, "id");
       if (id !== undefined) {
+        Stdlib_Option.forEach(conn.subscriptions[id], channel => logSubscription(conn, "unsubscribe", channel));
         Stdlib_Dict.$$delete(conn.subscriptions, id);
         return conn.send(frame([
           [
@@ -320,9 +343,10 @@ function attach(server, port) {
       ws.close(4401, "Invalid token");
       return;
     }
+    let user = Stdlib_Option.map(Stdlib_Option.flatMap(auth, t => LocalAuth$ReventlessLocal.Login.verifyAndDecode(stripBearer(t))), i => i.username);
     let conn = addConnection(f => {
       ws.send(f);
-    });
+    }, user);
     ws.on("message", data => handleFrame(conn, data.toString("utf8")));
     ws.on("close", () => removeConnection(conn));
   });
@@ -352,6 +376,8 @@ export {
   broadcastUiSlotsChanged,
   broadcastStateChange,
   decodeStringField,
+  subscriptionLine,
+  logSubscription,
   handleFrame,
   stripBearer,
   tokenIsInvalid,

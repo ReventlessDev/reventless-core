@@ -146,6 +146,37 @@ external createYogaWithContext: {
   "context": contextFactory,
 } => yoga = "createYoga"
 
+/** A Yoga (envelop) plugin. */
+type plugin
+
+/** One GraphQL operation, done: its kind (`query`, `mutation`, `subscription`), the root fields
+    it asked for, who asked, how long it took in milliseconds, and the errors it answered with.
+    A subscription is reported when it starts, with no time. */
+type requestReport = {
+  kind: string,
+  operationName?: string,
+  fields: array<string>,
+  user?: string,
+  ms: float,
+  errors: array<string>,
+}
+
+/** A plugin that hands each operation to `report` once it is done. Introspection, and a request
+    with the `X-Reventless-Watch` header (a tool watching the platform), are not reported. */
+@module("./GraphqlYogaRequestLog.mjs")
+external requestLog: (requestReport => unit) => plugin = "requestLog"
+
+/** `createYogaWithContext` with plugins. */
+@module("graphql-yoga")
+external createYogaWithPlugins: {
+  "schema": schema,
+  "graphiql": bool,
+  "logging": yogaLogger,
+  "maskedErrors": bool,
+  "context": contextFactory,
+  "plugins": array<plugin>,
+} => yoga = "createYoga"
+
 /**
  * Creates a Node.js HTTP server using the Yoga instance as the request handler.
  * Yoga v5 implements the Node.js `RequestListener` interface directly.

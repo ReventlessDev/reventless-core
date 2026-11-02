@@ -48,14 +48,16 @@ type connection = {
   send: string => unit,
   /** subscription id → channel (exact, or ending in a `*` wildcard). */
   subscriptions: dict<string>,
+  /** Who connected, when a token said. */
+  user?: string,
 }
 
 let connections: ref<array<connection>> = ref([])
 let nextConnectionId = ref(0)
 
-let addConnection = (~send: string => unit): connection => {
+let addConnection = (~send: string => unit, ~user: option<string>=?): connection => {
   nextConnectionId.contents = nextConnectionId.contents + 1
-  let conn = {id: nextConnectionId.contents, send, subscriptions: Dict.make()}
+  let conn = {id: nextConnectionId.contents, send, subscriptions: Dict.make(), ?user}
   connections.contents->Array.push(conn)
   conn
 }
@@ -176,6 +178,24 @@ let decodeStringField = (json: JSON.t, field: string): option<string> =>
   ->Option.flatMap(o => o->Dict.get(field))
   ->Option.flatMap(JSON.Decode.string)
 
+/** The line a client's subscribing or unsubscribing is told by. */
+let subscriptionLine = (conn: connection, ~verb: string, ~channel: string) =>
+  `${verb} ${channel}${conn.user->Option.mapOr("", u => ` by ${u}`)}`
+
+let logSubscription = (conn: connection, ~verb: string, ~channel: string) =>
+  log.debug(
+    ~comp="Events:Local",
+    ~data=JSON.Encode.object(
+      Dict.fromArray(
+        [
+          ("channel", JSON.Encode.string(channel)),
+          ("connection", JSON.Encode.int(conn.id)),
+        ]->Array.concat(conn.user->Option.mapOr([], u => [("user", JSON.Encode.string(u))])),
+      ),
+    ),
+    subscriptionLine(conn, ~verb, ~channel),
+  )
+
 /** Handle one client→server text frame on an established connection. */
 let handleFrame = (conn: connection, text: string): unit => {
   let parsed = try Some(text->JSON.parseOrThrow) catch {
@@ -190,6 +210,7 @@ let handleFrame = (conn: connection, text: string): unit => {
       switch (decodeStringField(json, "id"), decodeStringField(json, "channel")) {
       | (Some(id), Some(channel)) =>
         conn.subscriptions->Dict.set(id, channel)
+        logSubscription(conn, ~verb="subscribe", ~channel)
         conn.send(
           frame([
             ("type", JSON.Encode.string("subscribe_success")),
@@ -201,6 +222,9 @@ let handleFrame = (conn: connection, text: string): unit => {
     | Some("unsubscribe") =>
       switch decodeStringField(json, "id") {
       | Some(id) =>
+        conn.subscriptions
+        ->Dict.get(id)
+        ->Option.forEach(channel => logSubscription(conn, ~verb="unsubscribe", ~channel))
         conn.subscriptions->Dict.delete(id)
         conn.send(
           frame([
@@ -367,7 +391,11 @@ let attach = (~server: YG.httpServer, ~port: int): unit => {
     if tokenIsInvalid(auth) {
       ws->wsClose(4401, "Invalid token")
     } else {
-      let conn = addConnection(~send=f => ws->wsSend(f))
+      let user =
+        auth
+        ->Option.flatMap(t => LocalAuth.Login.verifyAndDecode(stripBearer(t)))
+        ->Option.map(i => i.username)
+      let conn = addConnection(~send=f => ws->wsSend(f), ~user?)
       ws->onMessage(data => handleFrame(conn, data->wsMessageToString("utf8")))
       ws->onSocketClose(() => removeConnection(conn))
     }

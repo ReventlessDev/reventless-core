@@ -14,6 +14,10 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
+  // What this dispatcher logs is an event routed to an extension point or an extension, so its
+  // lines go by a contract's component name rather than the plugin's.
+  let comp = (id: string) => `ExtensionRouting(${id})`
+
   let warnedServices = ref(Belt.Set.String.empty)
 
   let knownServiceNames = () =>
@@ -44,7 +48,7 @@ module Make = (Spec: Spec): T => {
       warnedServices := warnedServices.contents->Belt.Set.String.add(serviceName)
       let known = knownServiceNames()->Array.join(", ")
       EffectLogger.logWarn(
-        ~comp=`Plugin(${id})`,
+        ~comp=comp(id),
         `incoming event has service="${serviceName}" but no handler is registered for it — known services: [${known}]. Likely cause: an ExtensionPointMapping/Extension Delegate.name does not match the source's serviceName (DCB sources use "<plugin>DcbEventLog").`,
       )
     }
@@ -76,7 +80,7 @@ module Make = (Spec: Spec): T => {
           Spec.incomingExtensionEventHandlers->Dict.get(serviceName)->Option.isSome
         if isHandled {
           EffectLogger.logInfo(
-            ~comp=`Plugin(${id})`,
+            ~comp=comp(id),
             `incoming event: ${LogFormat.eventSummary(eventJson')}`,
           )->Effect.zipRight(
             handleEventEffect(

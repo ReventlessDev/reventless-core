@@ -711,8 +711,8 @@ let makeSqsHandlerBundle = (input: bundleInput): bundle => {
     ),
     // Backs both the admin and every per-plugin EventCollector Lambda, so the
     // comp names the plugin whose events it drains — matching the
-    // `Plugin(<id>)` shape Plugin_Callback logs under.
-    comp: `Plugin(${input.pluginDefinition.id})`,
+    // `ExtensionRouting(<id>)` shape Plugin_Callback logs under.
+    comp: `ExtensionRouting(${input.pluginDefinition.id})`,
   }
 }
 

@@ -9,6 +9,7 @@ import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
+  let comp = id => `ExtensionRouting(` + id + `)`;
   let warnedServices = {
     contents: undefined
   };
@@ -27,7 +28,7 @@ function Make(Spec) {
     return Stdlib_Option.mapOr(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), Effect.succeed(), serviceName => {
       let isHandled = Stdlib_Option.isSome(Spec.incomingConnectExtensionEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.outgoingExtensionPointEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.outgoingExtensionEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.incomingExtensionEventHandlers[serviceName]);
       if (isHandled) {
-        return Effect.zipRight(EffectLogger$ReventlessCore.logInfo(`Plugin(` + id + `)`, undefined, undefined, `incoming event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
+        return Effect.zipRight(EffectLogger$ReventlessCore.logInfo(comp(id), undefined, undefined, `incoming event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
           handleEventEffect(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
           handleEventEffect(eventJson$p, Spec.outgoingExtensionEventHandlers),
           handleEventEffect(eventJson$p, Spec.incomingExtensionEventHandlers)
@@ -40,7 +41,7 @@ function Make(Spec) {
         }
         warnedServices.contents = Belt_SetString.add(warnedServices.contents, serviceName);
         let known = knownServiceNames().join(", ");
-        return EffectLogger$ReventlessCore.logWarn(`Plugin(` + id + `)`, undefined, undefined, `incoming event has service="` + serviceName + `" but no handler is registered for it — known services: [` + known + `]. Likely cause: an ExtensionPointMapping/Extension Delegate.name does not match the source's serviceName (DCB sources use "<plugin>DcbEventLog").`);
+        return EffectLogger$ReventlessCore.logWarn(comp(id), undefined, undefined, `incoming event has service="` + serviceName + `" but no handler is registered for it — known services: [` + known + `]. Likely cause: an ExtensionPointMapping/Extension Delegate.name does not match the source's serviceName (DCB sources use "<plugin>DcbEventLog").`);
       }
     });
   }));

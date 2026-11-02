@@ -18,6 +18,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as LocalRequestLog$ReventlessLocal from "./LocalRequestLog.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./Api/LocalEvents_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
@@ -610,7 +611,8 @@ function start(portOpt, param, param$1) {
     graphiql: true,
     logging: yogaLogging,
     maskedErrors: !debug,
-    context: Auth_GraphqlContext$ReventlessLocal.buildAuthContext
+    context: Auth_GraphqlContext$ReventlessLocal.buildAuthContext,
+    plugins: [LocalRequestLog$ReventlessLocal.plugin(log)]
   });
   let getSdl = () => {
     let s = activeSchema.contents;

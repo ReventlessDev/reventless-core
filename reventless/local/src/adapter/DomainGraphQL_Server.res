@@ -739,12 +739,13 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
     warn: a => log.warn(~comp="GraphQL:Domain", YG.logArgToString(a)),
     error: a => log.error(~comp="GraphQL:Domain", YG.logArgToString(a)),
   }
-  let yoga = YG.createYogaWithContext({
+  let yoga = YG.createYogaWithPlugins({
     "schema": schema,
     "graphiql": true,
     "logging": yogaLogging,
     "maskedErrors": !debug,
     "context": buildAuthContext,
+    "plugins": [LocalRequestLog.plugin(log)],
   })
   // Custom HTTP handler: serves /sdl + /__inmemory/{login,logout}, else yoga.
   let getSdl = () =>

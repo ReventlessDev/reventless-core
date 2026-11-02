@@ -531,7 +531,7 @@ function makeSqsHandlerBundle(input) {
   };
   return {
     sqsHandler: EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(queue, Callback.handleJsonEvents),
-    comp: `Plugin(` + input.pluginDefinition.id + `)`
+    comp: `ExtensionRouting(` + input.pluginDefinition.id + `)`
   };
 }
 

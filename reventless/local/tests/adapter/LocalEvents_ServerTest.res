@@ -32,6 +32,17 @@ let descriptor = (~id: string): JSON.t =>
 describe("LocalEvents_Server", () => {
   beforeEach(() => LocalEvents_Server.resetConnections())
 
+  testSync("a subscription is told by its channel and who subscribed", () => {
+    let conn = LocalEvents_Server.addConnection(~send=_ => (), ~user="alice")
+    expect(
+      LocalEvents_Server.subscriptionLine(conn, ~verb="subscribe", ~channel="/default/orders/*"),
+    )->toBe("subscribe /default/orders/* by alice")
+    let anonymous = LocalEvents_Server.addConnection(~send=_ => ())
+    expect(
+      LocalEvents_Server.subscriptionLine(anonymous, ~verb="unsubscribe", ~channel="/default/x"),
+    )->toBe("unsubscribe /default/x")
+  })
+
   describe("channelMatches", () => {
     testSync(
       "exact match",
