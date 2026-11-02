@@ -9,6 +9,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as LocalIdleExit$ReventlessLocal from "./LocalIdleExit.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -290,8 +291,24 @@ function newListener(sink, phase) {
 function accept(feed, socket) {
   let l = newListener(socketSink(socket), "Waiting");
   socket.setEncoding("utf8");
-  socket.on("error", param => drop(feed, l));
-  socket.on("close", () => drop(feed, l));
+  LocalIdleExit$ReventlessLocal.connected();
+  let gone = {
+    contents: false
+  };
+  let leave = () => {
+    if (!gone.contents) {
+      gone.contents = true;
+      return LocalIdleExit$ReventlessLocal.disconnected();
+    }
+  };
+  socket.on("error", param => {
+    drop(feed, l);
+    leave();
+  });
+  socket.on("close", () => {
+    drop(feed, l);
+    leave();
+  });
   socket.on("data", chunk => {
     if (isLive(l)) {
       return;

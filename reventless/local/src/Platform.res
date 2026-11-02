@@ -1430,6 +1430,8 @@ module MakeWithConfig = (
         ? `http://localhost:${platformPort->Int.toString}/graphql`
         : `http://localhost:${domainPort->Int.toString}/graphql`,
     )
+    // A platform left running for an editor stops once nothing has watched it for a while.
+    LocalIdleExit.start(~env=NodeProcess.env)
     // After the register, and it fills the tap port in once the socket is bound:
     // the port is ephemeral by default, so it is not known until `listen` calls
     // back. The entry therefore never names a port that is not listening.

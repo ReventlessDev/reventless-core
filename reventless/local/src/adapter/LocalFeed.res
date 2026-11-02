@@ -335,8 +335,22 @@ let newListener = (sink: sink, phase: phase): listener => {
 let accept = (feed: t, socket: NodeNet.socket) => {
   let l = newListener(socketSink(socket), Waiting)
   socket->NodeNet.setEncoding("utf8")
-  socket->NodeNet.onSocketError(_ => drop(feed, l))
-  socket->NodeNet.onSocketClose(() => drop(feed, l))
+  // A connection is someone watching the platform, until its socket closes.
+  LocalIdleExit.connected()
+  let gone = ref(false)
+  let leave = () =>
+    if !gone.contents {
+      gone := true
+      LocalIdleExit.disconnected()
+    }
+  socket->NodeNet.onSocketError(_ => {
+    drop(feed, l)
+    leave()
+  })
+  socket->NodeNet.onSocketClose(() => {
+    drop(feed, l)
+    leave()
+  })
   socket->NodeNet.onSocketData(chunk =>
     if !isLive(l) {
       l.inbound = l.inbound ++ chunk

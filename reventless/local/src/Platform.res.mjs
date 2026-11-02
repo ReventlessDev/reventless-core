@@ -45,6 +45,7 @@ import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs
 import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
+import * as LocalIdleExit$ReventlessLocal from "./adapter/LocalIdleExit.res.mjs";
 import * as LocalTapLines$ReventlessLocal from "./adapter/LocalTapLines.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
@@ -1180,6 +1181,7 @@ function MakeWithConfig(Config) {
       kind: match[0],
       path: match[1]
     }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`);
+    LocalIdleExit$ReventlessLocal.start(process.env);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
@@ -2977,6 +2979,7 @@ function Make($star) {
       kind: match[0],
       path: match[1]
     }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`);
+    LocalIdleExit$ReventlessLocal.start(process.env);
     LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
     LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
