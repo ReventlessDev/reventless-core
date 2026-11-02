@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-02
+- feat(local): the local platform keeps every command outcome ([252ed2e](https://github.com/ReventlessDev/reventless-core/commit/252ed2ea46f2634b86851aea402e94af7c371f10))
+- feat: a view row knows its last change, and the local platform keeps every change ([1a1fd71](https://github.com/ReventlessDev/reventless-core/commit/1a1fd7117d9837696a7c0080dcd6f0983e57780c))
 ### 2026-10-30
 - feat(spec): an aggregate keyed by its owner's id refuses other callers ([e05f287](https://github.com/ReventlessDev/reventless-core/commit/e05f287eee959d26190af494691c4fa472797cad))
 ### 2026-10-29
