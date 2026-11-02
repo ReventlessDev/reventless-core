@@ -4,6 +4,7 @@ import * as Sury from "sury";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
+import * as AppLog$ReventlessInfra from "@reventlessdev/reventless-infra/src/AppLog.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
 let commandSchema = Sury.$unit;
@@ -69,7 +70,7 @@ function mapIncomingCommand(_id, _command, _meta) {
 }
 
 async function directiveHandler(_createSchedule, _deleteSchedule, _queryEngine, directive) {
-  console.log(`[Catalog.ProductsExtensionPoint] telemetry: pricing update product=` + ProductId$CatalogSpec.toString(directive.productId) + ` price=` + Money$Reventless.format(directive.price));
+  return AppLog$ReventlessInfra.info("ExtensionPoint(Catalog.Products)", `telemetry: pricing update product=` + ProductId$CatalogSpec.toString(directive.productId) + ` price=` + Money$Reventless.format(directive.price));
 }
 
 let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {

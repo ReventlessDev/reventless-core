@@ -42,8 +42,9 @@ let directiveHandler = async (
 ) =>
   switch directive {
   | EmitPricingUpdate({productId, price}) =>
-    Console.log(
-      `[Catalog.ProductsExtensionPoint] telemetry: pricing update product=${productId->CatalogSpec.ProductId.toString} price=${price->Reventless.Money.format}`,
+    ReventlessInfra.AppLog.info(
+      ~comp="ExtensionPoint(Catalog.Products)",
+      `telemetry: pricing update product=${productId->CatalogSpec.ProductId.toString} price=${price->Reventless.Money.format}`,
     )
   }
 
