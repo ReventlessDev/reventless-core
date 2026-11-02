@@ -124,6 +124,7 @@ describe("the platform API's watching fields", () => {
     }
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.eventLogField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.viewChangesField)))->toBe(true)
+    expect(await refused(s.getQueryResolver(LocalPlatformObserve.commandOutcomesField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.logLevelsField)))->toBe(true)
     expect(await refused(s.getMutationResolver(LocalPlatformObserve.setLogLevelField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.metricsField)))->toBe(true)
@@ -231,6 +232,80 @@ describe("the platform API's watching fields", () => {
     LocalViewChangeLog.resetForTests()
     expect(await readsBack())->toEqual(expected)
     LocalViewChangeLog.resetForTests()
+    BackendState.setMemory()
+    SqliteDriver.close(db)
+  })
+
+  // Three commands: two in one flow, one rejected.
+  let keepOutcomes = () => {
+    let report = (
+      ~flow,
+      ~outcome,
+      msgId,
+    ): ReventlessCore.CommandTopic_Helpers.commandOutcomeReport => {
+      component: "Order",
+      reference: msgId,
+      correlationId: flow,
+      outcome,
+    }
+    let accepted = ReventlessCore.CommandTopic_Helpers.OutcomeAccepted({
+      entityId: Some("o-1"),
+      eventCount: 1,
+    })
+    LocalCommandOutcomeLog.record(report(~flow="k-1", ~outcome=accepted, "c-1"))
+    LocalCommandOutcomeLog.record(report(~flow="k-2", ~outcome=accepted, "c-2"))
+    LocalCommandOutcomeLog.record(
+      report(
+        ~flow="k-1",
+        ~outcome=OutcomeRejected({
+          errorCode: "AlreadyShipped",
+          errorDetail: "",
+          cause: ReventlessCore.CommandTopic_Helpers.DomainRejection,
+        }),
+        "c-3",
+      ),
+    )
+  }
+
+  let outcomesRead = async () => {
+    keepOutcomes()
+    let s = server()
+    let read = s.getQueryResolver(LocalPlatformObserve.commandOutcomesField)->Option.getOrThrow
+    let ask = async args => {
+      let answer = await read(JSON.Encode.null, JSON.parseOrThrow(args), admin())
+      answer
+      ->field("edges")
+      ->JSON.Decode.array
+      ->Option.getOr([])
+      ->Array.map(e => {
+        let node = e->field("node")
+        (
+          node->field("msgId")->JSON.Decode.string->Option.getOr(""),
+          node->field("outcome")->JSON.Decode.string->Option.getOr(""),
+        )
+      })
+    }
+    (await ask(`{"filter":{"correlationId":"k-1"}}`), await ask(`{"filter":{"msgId":"c-2"}}`))
+  }
+
+  let outcomesExpected = ([("c-3", "rejected"), ("c-1", "accepted")], [("c-2", "accepted")])
+
+  testPromise(
+    "the command outcomes answer an admin by flow and by command, newest first",
+    async () => {
+      BackendState.setMemory()
+      LocalCommandOutcomeLog.resetForTests()
+      expect(await outcomesRead())->toEqual(outcomesExpected)
+      LocalCommandOutcomeLog.resetForTests()
+    },
+  )
+
+  testPromise("the command outcomes are kept in a SQLite store alike", async () => {
+    let db = SqliteDriver.openDb(~path=":memory:")
+    BackendState.setSqlite(~db, ~path=":memory:")
+    LocalCommandOutcomeLog.resetForTests()
+    expect(await outcomesRead())->toEqual(outcomesExpected)
+    LocalCommandOutcomeLog.resetForTests()
     BackendState.setMemory()
     SqliteDriver.close(db)
   })

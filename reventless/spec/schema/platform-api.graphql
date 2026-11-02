@@ -87,6 +87,21 @@ type Platform_CommandDef {
   targetState: String
 }
 
+type Platform_CommandOutcomeConnection {
+  edges: [Platform_CommandOutcomeEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
+}
+
+type Platform_CommandOutcomeEdge {
+  cursor: String!
+  node: AWSJSON!
+}
+
+input Platform_CommandOutcomeFilter {
+  correlationId: String
+  msgId: String
+}
+
 type Platform_ComponentDefinitionEntry {
   aggregates: [Platform_WriteSideDef!]!
   automationSlices: [Platform_AutomationSliceDef!]!
@@ -421,6 +436,23 @@ type Platform_UIPanel {
   title: String!
 }
 
+type Platform_ViewChangeConnection {
+  edges: [Platform_ViewChangeEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
+}
+
+type Platform_ViewChangeEdge {
+  cursor: String!
+  node: AWSJSON!
+}
+
+input Platform_ViewChangeFilter {
+  correlationId: String
+  key: String
+  msgId: String
+  view: String
+}
+
 type Platform_WriteSideDef {
   chapter: String
   commands: [Platform_CommandDef!]!
@@ -446,6 +478,7 @@ type PluginStatusChangeEvent {
 }
 
 type Query {
+  Platform_CommandOutcomes(after: String, filter: Platform_CommandOutcomeFilter, first: Int): Platform_CommandOutcomeConnection!
   Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
   Platform_EventLog(after: String, filter: Platform_EventLogFilter, first: Int): Platform_EventLogConnection!
   Platform_LogLevels: Platform_LogLevels!
@@ -456,6 +489,7 @@ type Query {
   Platform_PluginsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_Plugin!]!
   Platform_PluginsRefs(ids: [ID!]!): [Platform_PluginRef!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!
+  Platform_ViewChanges(after: String, filter: Platform_ViewChangeFilter, first: Int): Platform_ViewChangeConnection!
 }
 
 type RowChange {

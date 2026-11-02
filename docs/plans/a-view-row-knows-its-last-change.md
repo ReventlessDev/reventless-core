@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-02<br/>
 **Status:** 🚧 Built 2026-11-02 ([RC1](#rc1-the-store-stamps-the-change-on-the-row) to
-[RC7](#rc7-a-watching-tool-reads-both)), not yet released; the AWS half
+[RC8](#rc8-the-local-platform-keeps-every-command-outcome)), not yet released; the AWS half
 ([RC3](#rc3-only-an-elevated-caller-reads-it)) is still to be deployed and read on a stack.<br/>
 **Repos:** `reventless-core`; [RC7](#rc7-a-watching-tool-reads-both) is a watching tool's.<br/>
 **Builds on:**
@@ -66,7 +66,7 @@ moment in two places:
 
 ## 3. Steps
 
-Numbered RC1 to RC7.
+Numbered RC1 to RC8.
 
 ### RC1. The store stamps the change on the row
 
@@ -126,6 +126,18 @@ Numbered RC1 to RC7.
   the rows of a past flow show as a live one's do.
 - A view's rows are read with `_change`, so tracing a row's last change works for a change the
   tool never saw, local or deployed.
+
+### RC8. The local platform keeps every command outcome
+
+- What became of each command (its component, accepted with its entity and event count, or
+  rejected with its code and cause) is kept as the row changes are
+  ([LocalCommandOutcomeLog.res](../../reventless/local/src/adapter/CommandOutcomeLog/LocalCommandOutcomeLog.res)),
+  each as the tap's `commandOutcome` line, and served as
+  `Platform_CommandOutcomes(filter: {correlationId, msgId}, first, after)`.
+- A trace of a past flow then says which component handled each command and how, where it
+  could only say the command was sent. The command's name and payload need nothing new: the
+  platform's own `generated command`, `publishing command` and `handling command` lines carry
+  them with the command's message id.
 
 ## 4. Decisions
 

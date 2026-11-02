@@ -354,7 +354,9 @@ type Catalog_Category implements Node {
 - **No state field may be called `_change`**: the build refuses it, as it refuses `id`.
 - **The local platform also keeps every row change**, with the row before and after, and serves
   them by flow on its platform API as `Platform_ViewChanges(filter: {correlationId, msgId, view,
-  key})`, so a tool watching the platform can show the rows a past flow changed.
+  key})`, so a tool watching the platform can show the rows a past flow changed. It keeps what
+  became of every command the same way, as `Platform_CommandOutcomes(filter: {correlationId,
+  msgId})`.
 
 ### 6.2 Connection query (Relay)
 

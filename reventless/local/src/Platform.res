@@ -118,6 +118,8 @@ module MakeWithConfig = (
   LocalTapLines.install()
   // Every row change, kept so a tool that missed one live can read it back.
   LocalViewChangeLog.install()
+  // And what became of every command, for the same reason.
+  LocalCommandOutcomeLog.install()
 
   // What this platform provides for the roles its plugins need: every account it
   // can sign in as, built-in and loaded alike, or the file the store will load

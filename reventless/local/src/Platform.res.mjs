@@ -92,6 +92,7 @@ import * as LocalPlatformRegistry$ReventlessLocal from "./LocalPlatformRegistry.
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
+import * as LocalCommandOutcomeLog$ReventlessLocal from "./adapter/CommandOutcomeLog/LocalCommandOutcomeLog.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
 import * as StateViewSlice_Builder$ReventlessLocal from "./components/StateViewSlice_Builder.res.mjs";
@@ -158,6 +159,7 @@ function MakeWithConfig(Config) {
   LocalLogFeed$ReventlessLocal.install(undefined);
   LocalTapLines$ReventlessLocal.install();
   LocalViewChangeLog$ReventlessLocal.install();
+  LocalCommandOutcomeLog$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();
@@ -1969,6 +1971,7 @@ function Make($star) {
   LocalLogFeed$ReventlessLocal.install(undefined);
   LocalTapLines$ReventlessLocal.install();
   LocalViewChangeLog$ReventlessLocal.install();
+  LocalCommandOutcomeLog$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();

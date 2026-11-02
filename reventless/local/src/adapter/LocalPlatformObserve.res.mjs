@@ -14,6 +14,8 @@ import * as LocalEventLogRead$ReventlessLocal from "./LocalEventLogRead.res.mjs"
 import * as LocalViewChangeLog$ReventlessLocal from "./ViewChangeLog/LocalViewChangeLog.res.mjs";
 import * as ViewChangeLogEntry$ReventlessLocal from "./ViewChangeLog/ViewChangeLogEntry.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
+import * as CommandOutcomeLogEntry$ReventlessLocal from "./CommandOutcomeLog/CommandOutcomeLogEntry.res.mjs";
+import * as LocalCommandOutcomeLog$ReventlessLocal from "./CommandOutcomeLog/LocalCommandOutcomeLog.res.mjs";
 
 let eventLogTypes = [
   "scalar AWSJSON",
@@ -101,6 +103,8 @@ let eventLogField = "Platform_EventLog";
 
 let viewChangesField = "Platform_ViewChanges";
 
+let commandOutcomesField = "Platform_CommandOutcomes";
+
 let viewChangeTypes = [
   `input Platform_ViewChangeFilter {
   correlationId: String
@@ -115,6 +119,18 @@ let viewChangeTypes = [
   `type Platform_ViewChangeConnection {
   edges: [Platform_ViewChangeEdge!]!
   pageInfo: Platform_EventLogPageInfo!
+}`,
+  `input Platform_CommandOutcomeFilter {
+  correlationId: String
+  msgId: String
+}`,
+  `type Platform_CommandOutcomeEdge {
+  node: AWSJSON!
+  cursor: String!
+}`,
+  `type Platform_CommandOutcomeConnection {
+  edges: [Platform_CommandOutcomeEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
 }`
 ];
 
@@ -127,6 +143,7 @@ let metricsField = "Platform_Metrics";
 let queryFields = [
   `  ` + eventLogField + `(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!`,
   `  ` + viewChangesField + `(filter: Platform_ViewChangeFilter, first: Int, after: String): Platform_ViewChangeConnection!`,
+  `  ` + commandOutcomesField + `(filter: Platform_CommandOutcomeFilter, first: Int, after: String): Platform_CommandOutcomeConnection!`,
   `  ` + logLevelsField + `: Platform_LogLevels!`,
   `  ` + metricsField + `(plugins: [String!]): [Platform_MetricCount!]!`
 ];
@@ -181,8 +198,7 @@ async function eventLog(_root, args, _ctx) {
   return pageJson(await LocalEventLogRead$ReventlessLocal.read(LocalEventLogRead$ReventlessLocal.filterOfJson(arg(args, "filter")), Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "first"), Stdlib_JSON.Decode.float), prim => prim | 0), Stdlib_Option.flatMap(arg(args, "after"), Stdlib_JSON.Decode.string)));
 }
 
-async function viewChanges(_root, args, _ctx) {
-  let page = LocalViewChangeLog$ReventlessLocal.read(ViewChangeLogEntry$ReventlessLocal.filterOfJson(arg(args, "filter")), Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "first"), Stdlib_JSON.Decode.float), prim => prim | 0), Stdlib_Option.flatMap(arg(args, "after"), Stdlib_JSON.Decode.string));
+function keptPageJson(page) {
   return Object.fromEntries([
     [
       "edges",
@@ -211,6 +227,22 @@ async function viewChanges(_root, args, _ctx) {
       ])
     ]
   ]);
+}
+
+function firstOf(args) {
+  return Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "first"), Stdlib_JSON.Decode.float), prim => prim | 0);
+}
+
+function afterOf(args) {
+  return Stdlib_Option.flatMap(arg(args, "after"), Stdlib_JSON.Decode.string);
+}
+
+async function viewChanges(_root, args, _ctx) {
+  return keptPageJson(LocalViewChangeLog$ReventlessLocal.read(ViewChangeLogEntry$ReventlessLocal.filterOfJson(arg(args, "filter")), firstOf(args), afterOf(args)));
+}
+
+async function commandOutcomes(_root, args, _ctx) {
+  return keptPageJson(LocalCommandOutcomeLog$ReventlessLocal.read(CommandOutcomeLogEntry$ReventlessLocal.filterOfJson(arg(args, "filter")), firstOf(args), afterOf(args)));
 }
 
 function levelOfWire(s) {
@@ -403,6 +435,10 @@ function registerGraphQL(server) {
       viewChanges
     ],
     [
+      commandOutcomesField,
+      commandOutcomes
+    ],
+    [
       logLevelsField,
       logLevels
     ],
@@ -563,6 +599,7 @@ export {
   feedTypes,
   eventLogField,
   viewChangesField,
+  commandOutcomesField,
   viewChangeTypes,
   logLevelsField,
   setLogLevelField,
@@ -575,7 +612,11 @@ export {
   arg,
   pageJson,
   eventLog,
+  keptPageJson,
+  firstOf,
+  afterOf,
   viewChanges,
+  commandOutcomes,
   levelOfWire,
   levelsJson,
   logLevels,

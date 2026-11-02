@@ -1,6 +1,6 @@
 // What the platform API and the platform MCP server offer a tool that watches
 // this platform: every event of every log newest first (`Platform_EventLog`), every row
-// change kept (`Platform_ViewChanges`),
+// change and command outcome kept (`Platform_ViewChanges`, `Platform_CommandOutcomes`),
 // the log level while running (`Platform_LogLevels`, `Platform_SetLogLevel`),
 // the log feed and the event tap as subscriptions (`Platform_LogAppended`,
 // `Platform_EventAppended`), the metrics counted since start (`Platform_Metrics`),
@@ -103,6 +103,7 @@ let feedTypes = [
 
 let eventLogField = "Platform_EventLog"
 let viewChangesField = "Platform_ViewChanges"
+let commandOutcomesField = "Platform_CommandOutcomes"
 
 // Every row change kept since the store began, newest first; each node is the tap's
 // `viewChange` line as JSON.
@@ -121,6 +122,19 @@ let viewChangeTypes = [
   edges: [Platform_ViewChangeEdge!]!
   pageInfo: Platform_EventLogPageInfo!
 }`,
+  // Every command outcome kept, newest first; each node is the tap's `commandOutcome` line.
+  `input Platform_CommandOutcomeFilter {
+  correlationId: String
+  msgId: String
+}`,
+  `type Platform_CommandOutcomeEdge {
+  node: AWSJSON!
+  cursor: String!
+}`,
+  `type Platform_CommandOutcomeConnection {
+  edges: [Platform_CommandOutcomeEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
+}`,
 ]
 let logLevelsField = "Platform_LogLevels"
 let setLogLevelField = "Platform_SetLogLevel"
@@ -129,6 +143,7 @@ let metricsField = "Platform_Metrics"
 let queryFields = [
   `  ${eventLogField}(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!`,
   `  ${viewChangesField}(filter: Platform_ViewChangeFilter, first: Int, after: String): Platform_ViewChangeConnection!`,
+  `  ${commandOutcomesField}(filter: Platform_CommandOutcomeFilter, first: Int, after: String): Platform_CommandOutcomeConnection!`,
   `  ${logLevelsField}: Platform_LogLevels!`,
   `  ${metricsField}(plugins: [String!]): [Platform_MetricCount!]!`,
 ]
@@ -183,12 +198,8 @@ let eventLog: GQL.resolverFn = async (_root, args, _ctx) => {
   pageJson(page)
 }
 
-let viewChanges: GQL.resolverFn = async (_root, args, _ctx) => {
-  let page = LocalViewChangeLog.read(
-    ~filter=ViewChangeLogEntry.filterOfJson(arg(args, "filter")),
-    ~first=?arg(args, "first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt),
-    ~after=?arg(args, "after")->Option.flatMap(JSON.Decode.string),
-  )
+/** A page of kept lines as a connection: each node the tap's line, each cursor its place. */
+let keptPageJson = (page: LocalViewChangeLog.page): JSON.t =>
   Dict.fromArray([
     (
       "edges",
@@ -206,7 +217,23 @@ let viewChanges: GQL.resolverFn = async (_root, args, _ctx) => {
       ])->JSON.Encode.object,
     ),
   ])->JSON.Encode.object
-}
+
+let firstOf = args => arg(args, "first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+let afterOf = args => arg(args, "after")->Option.flatMap(JSON.Decode.string)
+
+let viewChanges: GQL.resolverFn = async (_root, args, _ctx) =>
+  LocalViewChangeLog.read(
+    ~filter=ViewChangeLogEntry.filterOfJson(arg(args, "filter")),
+    ~first=?firstOf(args),
+    ~after=?afterOf(args),
+  )->keptPageJson
+
+let commandOutcomes: GQL.resolverFn = async (_root, args, _ctx) =>
+  LocalCommandOutcomeLog.read(
+    ~filter=CommandOutcomeLogEntry.filterOfJson(arg(args, "filter")),
+    ~first=?firstOf(args),
+    ~after=?afterOf(args),
+  )->keptPageJson
 
 let levelOfWire = (s: string): option<Logger.level> =>
   switch s {
@@ -403,6 +430,7 @@ let registerGraphQL = (server: GQL.t) => {
     ~resolvers=adminOnly([
       (eventLogField, eventLog),
       (viewChangesField, viewChanges),
+      (commandOutcomesField, commandOutcomes),
       (logLevelsField, logLevels),
       (metricsField, metrics),
     ]),
