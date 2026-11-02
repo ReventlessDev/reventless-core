@@ -42,6 +42,7 @@ type Catalog_CatalogEventRecordEdge {
 }
 
 type Catalog_Category implements Node {
+  _change: RowChange
   categoryId: ID!
   categoryImage: CaptionedImage
   id: ID!
@@ -96,6 +97,7 @@ type Catalog_CategoryTrail {
 }
 
 type Catalog_ImportProductAudit implements Node {
+  _change: RowChange
   caller: String
   commandCount: Int
   door: Catalog_ImportProductAuditDoor
@@ -142,6 +144,7 @@ enum Catalog_ImportProductAuditStatus {
 }
 
 type Catalog_Product implements Node {
+  _change: RowChange
   categoryId: ID!
   description: String!
   id: ID!
@@ -159,6 +162,7 @@ type Catalog_ProductConnection {
 }
 
 type Catalog_ProductDemand implements Node {
+  _change: RowChange
   categoryId: ID!
   id: ID!
   name: String!
@@ -412,6 +416,7 @@ type OrderingEventLogEvent {
 }
 
 type Ordering_AnnounceRecipientContactTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -469,6 +474,7 @@ enum Ordering_AnnounceRecipientContactTodoStatus {
 }
 
 type Ordering_AutoShipOrderTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -524,6 +530,7 @@ enum Ordering_AutoShipOrderTodoStatus {
 }
 
 type Ordering_AvailableProduct implements Node {
+  _change: RowChange
   id: ID!
   name: String!
   price: Money!
@@ -565,6 +572,7 @@ type Ordering_AvailableProductRef {
 }
 
 type Ordering_CancelUnshippedOrderTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -621,6 +629,7 @@ enum Ordering_CancelUnshippedOrderTodoStatus {
 }
 
 type Ordering_Customer implements Node {
+  _change: RowChange
   accountStatus: Ordering_CustomerAccountStatus!
   address: String!
   customerId: ID!
@@ -701,6 +710,7 @@ type Ordering_CustomerRef {
 }
 
 type Ordering_GeocodeCustomerAddressTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -758,6 +768,7 @@ enum Ordering_GeocodeCustomerAddressTodoStatus {
 }
 
 type Ordering_MarketingDigestSchedule implements Node {
+  _change: RowChange
   id: ID!
   key: String!
   setAt: String!
@@ -790,6 +801,7 @@ type Ordering_MarketingDigestScheduleRef {
 }
 
 type Ordering_MarketingDigestTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -845,6 +857,7 @@ enum Ordering_MarketingDigestTodoStatus {
 }
 
 type Ordering_NotificationDelivery implements Node {
+  _change: RowChange
   category: Ordering_NotificationDeliveryCategory!
   channel: String!
   decidedAt: String!
@@ -908,6 +921,7 @@ type Ordering_NotificationDeliveryRef {
 }
 
 type Ordering_NotificationIntakeTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -965,6 +979,7 @@ enum Ordering_NotificationIntakeTodoStatus {
 }
 
 type Ordering_NotificationSubscription implements Node {
+  _change: RowChange
   displayName: String
   email: String!
   id: ID!
@@ -1026,6 +1041,7 @@ enum Ordering_NotificationSubscriptionSubscriptionsChannel {
 }
 
 type Ordering_Order implements Node {
+  _change: RowChange
   customerId: ID!
   deliveryWindow: DateRange
   displayName: String
@@ -1144,6 +1160,7 @@ enum Ordering_PlaceOrderShippingMethod {
 }
 
 type Ordering_SendNotificationTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1235,6 +1252,7 @@ enum Ordering_UnsubscribeChannel {
 }
 
 type Ordering_VerifyCustomerEmailTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1299,6 +1317,7 @@ type PageInfo {
 }
 
 type Platform_Plugin implements Node {
+  _change: RowChange
   apiSchemaFragment: String
   apiTarget: String
   dcbEventLog: Platform_PluginDcbEventLog
@@ -1375,6 +1394,7 @@ type Platform_PluginStatusChange {
 }
 
 type Platform_UiFragment implements Node {
+  _change: RowChange
   id: ID!
   pages: [Platform_UiFragmentPages!]!
   panels: [Platform_UiFragmentPanels!]!
@@ -1553,6 +1573,7 @@ type RegistrationEventLogEvent {
 }
 
 type Registration_CompleteRegistrationAudit implements Node {
+  _change: RowChange
   caller: String
   commandCount: Int
   door: Registration_CompleteRegistrationAuditDoor
@@ -1599,6 +1620,7 @@ enum Registration_CompleteRegistrationAuditStatus {
 }
 
 type Registration_CreateRegisteredPrincipalTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1687,6 +1709,7 @@ type Registration_RegistrationEventRecordEdge {
 }
 
 type Registration_RegistrationWindow implements Node {
+  _change: RowChange
   id: ID!
   isOpen: Boolean!
   role: String!
@@ -1728,6 +1751,7 @@ type Registration_RegistrationWindowRef {
 }
 
 type Registration_SendRegistrationChallengeTodo implements Node {
+  _change: RowChange
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1788,6 +1812,7 @@ enum Registration_SendRegistrationChallengeTodoStatus {
 }
 
 type Registration_SignUpAudit implements Node {
+  _change: RowChange
   caller: String
   commandCount: Int
   door: Registration_SignUpAuditDoor
@@ -1831,6 +1856,12 @@ type Registration_SignUpAuditRef {
 enum Registration_SignUpAuditStatus {
   Failure
   Success
+}
+
+type RowChange {
+  at: String!
+  flow: String
+  msgId: String!
 }
 
 enum SortOrder {

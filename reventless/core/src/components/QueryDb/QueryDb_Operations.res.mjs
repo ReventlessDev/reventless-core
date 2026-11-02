@@ -10,6 +10,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
+import * as RowChange$ReventlessCore from "../../RowChange.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -104,6 +105,7 @@ function Make(ReadModelSpec) {
         injectSubId(dict, state);
         injectCompositeIndexAttrs(dict);
         stampUnionMembers(dict);
+        RowChange$ReventlessCore.stampInto(dict);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
         return {
@@ -130,6 +132,7 @@ function Make(ReadModelSpec) {
             injectSubId(dict, state);
             injectCompositeIndexAttrs(dict);
             stampUnionMembers(dict);
+            RowChange$ReventlessCore.stampInto(dict);
             return {
               TAG: "Ok",
               _0: batch.concat([[

@@ -62,6 +62,21 @@ let exemptPreamble = (~elevatedGroups: array<string>) => {
 }
 
 /**
+A view row's `_change` field: the stored value for an exempt caller, null for anyone else.
+Answered from the request step, so the view's data source is never called.
+*/
+let rowChangeField = (~field: string, ~elevatedGroups: array<string>): Pulumi.Input.t<string> =>
+  `import { util, runtime } from '@aws-appsync/utils';
+export function request(ctx) {${exemptPreamble(~elevatedGroups)}
+  const _row = ctx.source;
+  return runtime.earlyReturn(_exempt && _row != null && _row['${field}'] != null ? _row['${field}'] : null);
+}
+export function response(ctx) {
+  return ctx.result;
+}
+`->Pulumi.Input.make
+
+/**
 A by-key read's retirement guard: `_live(row)`, true when the caller may see it.
 The post-read half of what `listAllItemsConnection` pushes into a
 FilterExpression — `GetItem` has none to push into.

@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as StateTopicPublishMjs from "./StateTopicPublish.mjs";
+import * as RowChange$ReventlessCore from "@reventlessdev/reventless-core/src/RowChange.res.mjs";
 import * as QueryDbEntryPoint_Ops$ReventlessAws from "./QueryDbEntryPoint_Ops.res.mjs";
 import * as QueryDbStorage_Postgres_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
 
@@ -70,17 +71,29 @@ function withDisplayName(base, stateSchema) {
   };
 }
 
+function withRowChange(base) {
+  return {
+    load: base.load,
+    loadStream: base.loadStream,
+    save: (id, state, saveMode, ttl) => base.save(id, RowChange$ReventlessCore.stamp(state), saveMode, ttl),
+    saveBatch: items => base.saveBatch(items.map(param => [
+      param[0],
+      RowChange$ReventlessCore.stamp(param[1]),
+      param[2]
+    ])),
+    count: base.count,
+    delete: base.delete,
+    deleteBatch: base.deleteBatch
+  };
+}
+
 function makeQueryDbOps(queryDbTableName, pgConnection, stateTopicName, indexes, subIdField) {
-  if (pgConnection !== undefined) {
-    return StateTopicPublishMjs.withLiveUpdates(QueryDbStorage_Postgres_Runtime$ReventlessAws.opsFor(pgConnection, queryDbTableName, indexes, subIdField), {
+  return withRowChange(pgConnection !== undefined ? StateTopicPublishMjs.withLiveUpdates(QueryDbStorage_Postgres_Runtime$ReventlessAws.opsFor(pgConnection, queryDbTableName, indexes, subIdField), {
       endpoint: process.env["APPSYNC_ENDPOINT"],
       region: process.env["AWS_REGION"],
       topicName: stateTopicName,
       subIdField: subIdField
-    });
-  } else {
-    return QueryDbEntryPoint_Ops$ReventlessAws.makeDynamoQueryDbOps(queryDbTableName);
-  }
+    }) : QueryDbEntryPoint_Ops$ReventlessAws.makeDynamoQueryDbOps(queryDbTableName));
 }
 
 export {
@@ -89,6 +102,7 @@ export {
   withLiveUpdates,
   withUnionMemberTypes,
   withDisplayName,
+  withRowChange,
   makeQueryDbOps,
 }
 /* DisplayName-Reventless Not a pure module */

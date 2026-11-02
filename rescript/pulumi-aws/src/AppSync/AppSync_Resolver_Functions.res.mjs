@@ -43,6 +43,18 @@ function exemptPreamble(elevatedGroups) {
   const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
 }
 
+function rowChangeField(field, elevatedGroups) {
+  return `import { util, runtime } from '@aws-appsync/utils';
+export function request(ctx) {` + exemptPreamble(elevatedGroups) + `
+  const _row = ctx.source;
+  return runtime.earlyReturn(_exempt && _row != null && _row['` + field + `'] != null ? _row['` + field + `'] : null);
+}
+export function response(ctx) {
+  return ctx.result;
+}
+`;
+}
+
 function retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, ownerScoped) {
   if (retiredField === undefined) {
     return "";
@@ -1301,6 +1313,7 @@ export {
   importUtil,
   ownerGuardPreamble,
   exemptPreamble,
+  rowChangeField,
   retiredGuardPreamble,
   ownerFilterClause,
   retiredFilterClause,

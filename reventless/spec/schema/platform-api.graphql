@@ -249,6 +249,7 @@ type Platform_OutboundTranslationSliceDef {
 }
 
 type Platform_Plugin implements Node {
+  _change: RowChange
   apiSchemaFragment: String
   apiTarget: String
   dcbEventLog: Platform_PluginDcbEventLog
@@ -455,6 +456,12 @@ type Query {
   Platform_PluginsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_Plugin!]!
   Platform_PluginsRefs(ids: [ID!]!): [Platform_PluginRef!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!
+}
+
+type RowChange {
+  at: String!
+  flow: String
+  msgId: String!
 }
 
 enum SortOrder {

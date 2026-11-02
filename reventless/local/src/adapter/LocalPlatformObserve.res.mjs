@@ -11,6 +11,8 @@ import * as LocalLogFeed$ReventlessLocal from "./LocalLogFeed.res.mjs";
 import * as LocalMetrics$ReventlessLocal from "./LocalMetrics.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./LocalEventTap.res.mjs";
 import * as LocalEventLogRead$ReventlessLocal from "./LocalEventLogRead.res.mjs";
+import * as LocalViewChangeLog$ReventlessLocal from "./ViewChangeLog/LocalViewChangeLog.res.mjs";
+import * as ViewChangeLogEntry$ReventlessLocal from "./ViewChangeLog/ViewChangeLogEntry.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
 
 let eventLogTypes = [
@@ -97,6 +99,25 @@ let feedTypes = [`input Platform_FeedFilter {
 
 let eventLogField = "Platform_EventLog";
 
+let viewChangesField = "Platform_ViewChanges";
+
+let viewChangeTypes = [
+  `input Platform_ViewChangeFilter {
+  correlationId: String
+  msgId: String
+  view: String
+  key: String
+}`,
+  `type Platform_ViewChangeEdge {
+  node: AWSJSON!
+  cursor: String!
+}`,
+  `type Platform_ViewChangeConnection {
+  edges: [Platform_ViewChangeEdge!]!
+  pageInfo: Platform_EventLogPageInfo!
+}`
+];
+
 let logLevelsField = "Platform_LogLevels";
 
 let setLogLevelField = "Platform_SetLogLevel";
@@ -105,6 +126,7 @@ let metricsField = "Platform_Metrics";
 
 let queryFields = [
   `  ` + eventLogField + `(filter: Platform_EventLogFilter, first: Int, after: String): Platform_EventLogConnection!`,
+  `  ` + viewChangesField + `(filter: Platform_ViewChangeFilter, first: Int, after: String): Platform_ViewChangeConnection!`,
   `  ` + logLevelsField + `: Platform_LogLevels!`,
   `  ` + metricsField + `(plugins: [String!]): [Platform_MetricCount!]!`
 ];
@@ -157,6 +179,38 @@ function pageJson(page) {
 
 async function eventLog(_root, args, _ctx) {
   return pageJson(await LocalEventLogRead$ReventlessLocal.read(LocalEventLogRead$ReventlessLocal.filterOfJson(arg(args, "filter")), Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "first"), Stdlib_JSON.Decode.float), prim => prim | 0), Stdlib_Option.flatMap(arg(args, "after"), Stdlib_JSON.Decode.string)));
+}
+
+async function viewChanges(_root, args, _ctx) {
+  let page = LocalViewChangeLog$ReventlessLocal.read(ViewChangeLogEntry$ReventlessLocal.filterOfJson(arg(args, "filter")), Stdlib_Option.map(Stdlib_Option.flatMap(arg(args, "first"), Stdlib_JSON.Decode.float), prim => prim | 0), Stdlib_Option.flatMap(arg(args, "after"), Stdlib_JSON.Decode.string));
+  return Object.fromEntries([
+    [
+      "edges",
+      page.records.map(param => Object.fromEntries([
+        [
+          "node",
+          param.item
+        ],
+        [
+          "cursor",
+          param.cursor
+        ]
+      ]))
+    ],
+    [
+      "pageInfo",
+      Object.fromEntries([
+        [
+          "hasNextPage",
+          page.hasNextPage
+        ],
+        [
+          "endCursor",
+          Stdlib_Option.mapOr(page.endCursor, null, prim => prim)
+        ]
+      ])
+    ]
+  ]);
 }
 
 function levelOfWire(s) {
@@ -338,11 +392,15 @@ function adminOnly(resolvers) {
 }
 
 function registerGraphQL(server) {
-  server.registerTypes(eventLogTypes.concat(logLevelTypes).concat(metricTypes).concat(feedTypes));
+  server.registerTypes(eventLogTypes.concat(viewChangeTypes).concat(logLevelTypes).concat(metricTypes).concat(feedTypes));
   server.registerQueries(queryFields, adminOnly([
     [
       eventLogField,
       eventLog
+    ],
+    [
+      viewChangesField,
+      viewChanges
     ],
     [
       logLevelsField,
@@ -504,6 +562,8 @@ export {
   metricTypes,
   feedTypes,
   eventLogField,
+  viewChangesField,
+  viewChangeTypes,
   logLevelsField,
   setLogLevelField,
   metricsField,
@@ -515,6 +575,7 @@ export {
   arg,
   pageJson,
   eventLog,
+  viewChanges,
   levelOfWire,
   levelsJson,
   logLevels,

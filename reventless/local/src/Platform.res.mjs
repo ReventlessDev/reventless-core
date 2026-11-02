@@ -74,6 +74,7 @@ import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Build
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "./LocalPlatformStart.res.mjs";
+import * as LocalViewChangeLog$ReventlessLocal from "./adapter/ViewChangeLog/LocalViewChangeLog.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
@@ -156,7 +157,9 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 function MakeWithConfig(Config) {
   LocalLogFeed$ReventlessLocal.install(undefined);
   LocalTapLines$ReventlessLocal.install();
+  LocalViewChangeLog$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
+  OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
   if (typeof match !== "object") {
@@ -1965,7 +1968,9 @@ function Make($star) {
   let backend = Backend$ReventlessLocal.fromEnv();
   LocalLogFeed$ReventlessLocal.install(undefined);
   LocalTapLines$ReventlessLocal.install();
+  LocalViewChangeLog$ReventlessLocal.install();
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
+  OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();

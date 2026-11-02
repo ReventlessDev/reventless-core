@@ -16,6 +16,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as RowChange$ReventlessCore from "@reventlessdev/reventless-core/src/RowChange.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
@@ -749,9 +750,15 @@ function Make(Bus) {
       };
       fieldResolvers[match.resolvedField] = resolver;
     });
-    if (Object.keys(fieldResolvers).length !== 0) {
-      server.registerFieldResolvers(returnTypeName, fieldResolvers);
-    }
+    let changeResolver = async (root, _args, ctx) => {
+      if (OwnerScope$Reventless.isExempt(OwnerScope$Reventless.resolve(extractIdentity(ctx), undefined))) {
+        return Stdlib_Option.getOr(sourceField(root, RowChange$ReventlessCore.key), null);
+      } else {
+        return null;
+      }
+    };
+    fieldResolvers[RowChange$ReventlessCore.key] = changeResolver;
+    server.registerFieldResolvers(returnTypeName, fieldResolvers);
     let allSdl = [byIdSdl].concat(byIdsSdl).concat(refsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;

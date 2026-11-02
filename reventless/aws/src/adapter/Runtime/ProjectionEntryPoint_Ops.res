@@ -124,6 +124,23 @@ let withDisplayName = (
     }
   }
 
+/**
+Stamps every saved row with the change being written (`_change`: flow, event, time), as
+`QueryDb_Operations.Make` does on the typed path. Outermost, so the live update publishes
+the stamped row.
+*/
+let withRowChange = (
+  base: ReventlessCore.QueryDb_Adapter.operations,
+): ReventlessCore.QueryDb_Adapter.operations => {
+  ...base,
+  save: (id, state, saveMode, ttl) =>
+    base.save(id, ReventlessCore.RowChange.stamp(state), saveMode, ttl),
+  saveBatch: items =>
+    base.saveBatch(
+      items->Array.map(((id, state, ttl)) => (id, ReventlessCore.RowChange.stamp(state), ttl)),
+    ),
+}
+
 let makeQueryDbOps = (
   ~queryDbTableName: string,
   ~pgConnection: option<PgConnection.connectionConfig>,
@@ -145,4 +162,4 @@ let makeQueryDbOps = (
       ?subIdField,
     })
   | None => QueryDbEntryPoint_Ops.makeDynamoQueryDbOps(~tableName=queryDbTableName)
-  }
+  }->withRowChange

@@ -610,8 +610,9 @@ describe("GraphQL_SchemaInspector", () => {
         // TestState, TestStateEdge, TestStateConnection, TestStateFilter (connection filter)
         // + TestStateRef (the reference door's projection)
         // + CommandResult union + CommandAccepted + CommandRejectionCause + CommandRejected
-        // + CommandPending (auto-injected whenever the fragment emits any mutation field).
-        expect(inspection.types->Array.length)->toBe(10)
+        // + CommandPending (auto-injected whenever the fragment emits any mutation field)
+        // + RowChange (every view row's last change).
+        expect(inspection.types->Array.length)->toBe(11)
         expect(inspection.mutations->Array.length)->toBe(1)
         // single Test_State(id), list Test_States(...), Test_StatesByIds(ids: [String!]!)
         // and Test_StatesRefs(ids: [ID!]!) — the by-ids read projected to a reference.

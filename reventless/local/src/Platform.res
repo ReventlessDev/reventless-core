@@ -116,11 +116,16 @@ module MakeWithConfig = (
   // What became of each command, and each row a projection changed, on the
   // event tap; a rejected command also in the problem ring.
   LocalTapLines.install()
+  // Every row change, kept so a tool that missed one live can read it back.
+  LocalViewChangeLog.install()
 
   // What this platform provides for the roles its plugins need: every account it
   // can sign in as, built-in and loaded alike, or the file the store will load
   // when the servers start — after the plugins are built and checked.
   Reventless.Role.provideGroupsFrom(AccountStore.providedGroups)
+  // The administrator reads across every owner, as a deployment's does: the same default the
+  // AWS platform sets, and like it never a forcing over an explicit `setElevatedGroups`.
+  Reventless.OwnerScope.defaultElevatedRoles([Reventless.Role.admin])
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
   let _ = TestRunner.setup()

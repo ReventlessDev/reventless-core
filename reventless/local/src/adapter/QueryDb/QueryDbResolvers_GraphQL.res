@@ -1221,9 +1221,17 @@ module Make = (Bus: LocalBus.T) => {
       fieldResolvers->Dict.set(resolvedField, resolver)
     })
 
-    if fieldResolvers->Dict.keysToArray->Array.length > 0 {
-      server.registerFieldResolvers(~typeName=returnTypeName, ~resolvers=fieldResolvers)
-    }
+    // A row's last change is read by an elevated caller only; anyone else reads null.
+    let changeResolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (
+      root,
+      _args,
+      ctx,
+    ) =>
+      extractIdentity(ctx)->Reventless.OwnerScope.resolve->Reventless.OwnerScope.isExempt
+        ? root->sourceField(ReventlessCore.RowChange.key)->Option.getOr(JSON.Encode.null)
+        : JSON.Encode.null
+    fieldResolvers->Dict.set(ReventlessCore.RowChange.key, changeResolver)
+    server.registerFieldResolvers(~typeName=returnTypeName, ~resolvers=fieldResolvers)
 
     // -- Register all fields --------------------------------------------------
     let allSdl =

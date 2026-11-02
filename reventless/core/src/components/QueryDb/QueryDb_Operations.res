@@ -129,6 +129,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       injectSubId(dict, state)
       injectCompositeIndexAttrs(dict)
       stampUnionMembers(dict)
+      RowChange.stampInto(dict)
       let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
@@ -144,6 +145,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
           injectSubId(dict, state)
           injectCompositeIndexAttrs(dict)
           stampUnionMembers(dict)
+          RowChange.stampInto(dict)
           let json = JSON.Encode.object(dict)
           Ok(batch->Array.concat([(id->ReadModelSpec.Id.toString, json, ttl)]))
         | None =>

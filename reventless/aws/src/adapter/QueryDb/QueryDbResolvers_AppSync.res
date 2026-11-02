@@ -709,12 +709,24 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // is independent of whether this view has a sub-id door, and adding a third
     // dimension to that match would spell eight cases to say one thing.
     let refsResolvers = resolverRefs->Option.mapOr([], r => [r])
+    // The row's last change, for an elevated caller only. A field resolver, so it also covers
+    // a row reached through another view's cross-table field.
+    let changeResolver = Resolver.makeUnitJsResolver(
+      ~name=name ++ "RowChange",
+      ~api,
+      ~dataSourceName,
+      ~type_=parentTypeName->Pulumi.Input.make,
+      ~field=ReventlessCore.RowChange.key->Pulumi.Input.make,
+      ~code=Resolver.Functions.rowChangeField(~field=ReventlessCore.RowChange.key, ~elevatedGroups),
+      ~opts,
+    )
     Array.flat([
       mainResolvers,
       refsResolvers,
       resolversByIndex,
       idResolvers,
       idsResolvers,
+      [changeResolver],
     ])->Array.map(Util.AppSync.toResourceNative)
   }
 

@@ -8,6 +8,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as RowChange$ReventlessCore from "../../RowChange.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalker.res.mjs";
@@ -38,6 +39,12 @@ let commandResultSdlTypes = [
   msgId: ID!
 }`
 ];
+
+let rowChangeSdlType = `type RowChange {
+  flow: String
+  msgId: String!
+  at: String!
+}`;
 
 function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) {
   while (true) {
@@ -156,10 +163,11 @@ function resolvedFieldSdl(param) {
   }
 }
 
-function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, resolvedFieldsOpt, schema) {
+function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, resolvedFieldsOpt, rowChangeOpt, schema) {
   let excludeFields = excludeFieldsOpt !== undefined ? excludeFieldsOpt : [];
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
   let resolvedFields = resolvedFieldsOpt !== undefined ? resolvedFieldsOpt : [];
+  let rowChange = rowChangeOpt !== undefined ? rowChangeOpt : false;
   reportUnclassifiedUnions(typeName, schema);
   let fields = SchemaType$ReventlessCore.fromSuryObject(typeName, schema);
   if (fields === undefined) {
@@ -186,6 +194,10 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   seenTypes.add(typeName);
   let mainType = objectRefToGraphQL(undefined, typeName, filteredFields, collectedTypes, seenTypes);
   let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` implements Node {\n  id: ID!\n`) : mainType;
+  if (rowChange && Stdlib_Option.isSome(filteredFields[RowChange$ReventlessCore.key])) {
+    Stdlib_JsError.throwWithMessage(typeName + `.` + RowChange$ReventlessCore.key + ` is a field of the state record, and every view row carries its last change under that name. Name the field something else.`);
+  }
+  let mainTypeWithId$1 = rowChange ? mainTypeWithId.replace("{\n", `{\n  ` + RowChange$ReventlessCore.key + `: RowChange\n`) : mainTypeWithId;
   resolvedFields.forEach(param => {
     let fieldName = param.fieldName;
     if (Stdlib_Option.isSome(filteredFields[fieldName]) || includeIdParam && fieldName === "id") {
@@ -194,9 +206,9 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   });
   let mainTypeComplete;
   if (resolvedFields.length === 0) {
-    mainTypeComplete = mainTypeWithId;
+    mainTypeComplete = mainTypeWithId$1;
   } else {
-    let body = mainTypeWithId.slice(0, mainTypeWithId.length - 1 | 0);
+    let body = mainTypeWithId$1.slice(0, mainTypeWithId$1.length - 1 | 0);
     mainTypeComplete = body + resolvedFields.map(resolvedFieldSdl).join("\n") + "\n}";
   }
   return collectedTypes.concat([mainTypeComplete]);
@@ -624,7 +636,7 @@ function generate(mutationEntries, queryEntries) {
       seenTypes.add(entry.returnTypeName);
       let fields = entry.excludeFields;
       let excludeFields = fields !== undefined ? fields : [];
-      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, includeIdParam, Stdlib_Option.getOr(entry.resolvedFields, []), entry.stateSchema);
+      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, includeIdParam, Stdlib_Option.getOr(entry.resolvedFields, []), true, entry.stateSchema);
       nestedTypes.forEach(t => {
         types.push(t);
       });
@@ -703,6 +715,9 @@ function generate(mutationEntries, queryEntries) {
       types.push(t);
     });
   }
+  if (queryEntries.length !== 0) {
+    types.push(rowChangeSdlType);
+  }
   return GraphQL_Stitcher$ReventlessCore.encode({
     types: types,
     mutations: mutations,
@@ -715,6 +730,7 @@ function generate(mutationEntries, queryEntries) {
 export {
   log,
   commandResultSdlTypes,
+  rowChangeSdlType,
   fromSchemaType,
   objectRefToGraphQL,
   deriveFieldType,

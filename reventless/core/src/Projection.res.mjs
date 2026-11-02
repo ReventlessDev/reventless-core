@@ -20,6 +20,7 @@ import * as Message$ReventlessCore from "./Message.res.mjs";
 import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/QueryDb.res.mjs";
 import * as LogFormat$ReventlessCore from "./util/LogFormat.res.mjs";
+import * as RowChange$ReventlessCore from "./RowChange.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -289,7 +290,7 @@ function statesToString(states) {
   return states.map(stateToString).join(", ");
 }
 
-async function handleAction($staropt$star, $staropt$star$1, onChange, action, operations, subIdConfig) {
+async function applyAction($staropt$star, $staropt$star$1, onChange, action, operations, subIdConfig) {
   let saveBatch = operations.saveBatch;
   let save = operations.save;
   let loadStream = operations.loadStream;
@@ -509,6 +510,22 @@ async function handleAction($staropt$star, $staropt$star$1, onChange, action, op
           _0: "unsupported projection action"
         }
       };
+  }
+}
+
+function handleAction(compOpt, sourcesOpt, onChange, action, operations, subIdConfig) {
+  let comp = compOpt !== undefined ? compOpt : "Projection";
+  let sources = sourcesOpt !== undefined ? sourcesOpt : [];
+  let apply = () => applyAction(comp, sources, onChange, action, operations, subIdConfig);
+  let s = sources.at(-1);
+  if (s !== undefined) {
+    return RowChange$ReventlessCore.during({
+      flow: s.correlationId,
+      msgId: s.msgId,
+      at: new Date().toISOString()
+    }, apply);
+  } else {
+    return apply();
   }
 }
 
@@ -896,6 +913,7 @@ export {
   applyChanges,
   stateToString,
   statesToString,
+  applyAction,
   handleAction,
   actionsWithId,
   groupSourcedById,

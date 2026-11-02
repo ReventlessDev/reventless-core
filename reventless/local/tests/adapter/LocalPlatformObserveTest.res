@@ -123,6 +123,7 @@ describe("the platform API's watching fields", () => {
       }
     }
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.eventLogField)))->toBe(true)
+    expect(await refused(s.getQueryResolver(LocalPlatformObserve.viewChangesField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.logLevelsField)))->toBe(true)
     expect(await refused(s.getMutationResolver(LocalPlatformObserve.setLogLevelField)))->toBe(true)
     expect(await refused(s.getQueryResolver(LocalPlatformObserve.metricsField)))->toBe(true)
@@ -155,6 +156,83 @@ describe("the platform API's watching fields", () => {
     let answer = await read(JSON.Encode.null, JSON.parseOrThrow(`{"first":5}`), admin())
     expect(answer->field("edges"))->toEqual(JSON.Encode.array([]))
     expect(answer->field("pageInfo")->field("hasNextPage"))->toEqual(JSON.Encode.bool(false))
+  })
+
+  // Two flows: two changes in one, one in the other.
+  let keepChanges = () => {
+    let change = (~view, ~key, ~flow, msgId): ReventlessCore.ViewChange.t => {
+      view,
+      key,
+      kind: Changed,
+      fields: ["status"],
+      after: JSON.parseOrThrow(`{"status":"shipped"}`),
+      sources: [{msgId, correlationId: flow}],
+      correlationId: flow,
+    }
+    LocalViewChangeLog.record(change(~view="Orders", ~key="o-1", ~flow="k-1", "m-1"))
+    LocalViewChangeLog.record(change(~view="Customers", ~key="c-1", ~flow="k-2", "m-2"))
+    LocalViewChangeLog.record(change(~view="Customers", ~key="c-1", ~flow="k-1", "m-3"))
+  }
+
+  let readChanges = async (args: string) => {
+    let s = server()
+    let read = s.getQueryResolver(LocalPlatformObserve.viewChangesField)->Option.getOrThrow
+    await read(JSON.Encode.null, JSON.parseOrThrow(args), admin())
+  }
+
+  let views = (answer: JSON.t) =>
+    answer
+    ->field("edges")
+    ->JSON.Decode.array
+    ->Option.getOr([])
+    ->Array.map(e => e->field("node")->field("view")->JSON.Decode.string->Option.getOr(""))
+
+  let readsBack = async () => {
+    keepChanges()
+    let flow = await readChanges(`{"filter":{"correlationId":"k-1"}}`)
+    let byEvent = await readChanges(`{"filter":{"msgId":"m-2"}}`)
+    let firstPage = await readChanges(`{"filter":{"correlationId":"k-1"},"first":1}`)
+    let cursor = firstPage->field("pageInfo")->field("endCursor")->JSON.Decode.string
+    let secondPage = await readChanges(
+      `{"filter":{"correlationId":"k-1"},"first":1,"after":"${cursor->Option.getOr("")}"}`,
+    )
+    (
+      views(flow),
+      views(byEvent),
+      views(firstPage),
+      firstPage->field("pageInfo")->field("hasNextPage"),
+      views(secondPage),
+      secondPage->field("pageInfo")->field("hasNextPage"),
+    )
+  }
+
+  let expected = (
+    ["Customers", "Orders"],
+    ["Customers"],
+    ["Customers"],
+    JSON.Encode.bool(true),
+    ["Orders"],
+    JSON.Encode.bool(false),
+  )
+
+  testPromise(
+    "the view changes answer an admin by flow and event, newest first, in pages",
+    async () => {
+      BackendState.setMemory()
+      LocalViewChangeLog.resetForTests()
+      expect(await readsBack())->toEqual(expected)
+      LocalViewChangeLog.resetForTests()
+    },
+  )
+
+  testPromise("the view changes are kept in a SQLite store alike", async () => {
+    let db = SqliteDriver.openDb(~path=":memory:")
+    BackendState.setSqlite(~db, ~path=":memory:")
+    LocalViewChangeLog.resetForTests()
+    expect(await readsBack())->toEqual(expected)
+    LocalViewChangeLog.resetForTests()
+    BackendState.setMemory()
+    SqliteDriver.close(db)
   })
 
   testPromise("the metrics answer an admin with the counts, narrowed by plugin", async () => {

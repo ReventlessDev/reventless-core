@@ -328,6 +328,34 @@ extend type Query {
 }
 ```
 
+### 6.1.1 A row's last change — `_change`
+
+Every view type also carries `_change`, the change that last wrote the row: the flow it belongs
+to (the command's correlation id), the event behind it, and when it was written. The
+projection stamps it on every save, on every backend, so it costs no annotation.
+
+```graphql
+type RowChange {
+  flow: String
+  msgId: String!
+  at: String!
+}
+
+type Catalog_Category implements Node {
+  _change: RowChange
+  # … the state's fields
+}
+```
+
+- **Only an elevated caller reads it** (the deployment's `REVENTLESS_ELEVATED_GROUPS`, the same
+  rule as `@owner` and `@retired`); anyone else reads `null`, so selecting it never fails.
+- **It tells the latest change only.** A row written before the field existed reads `null` until
+  it next changes.
+- **No state field may be called `_change`**: the build refuses it, as it refuses `id`.
+- **The local platform also keeps every row change**, with the row before and after, and serves
+  them by flow on its platform API as `Platform_ViewChanges(filter: {correlationId, msgId, view,
+  key})`, so a tool watching the platform can show the rows a past flow changed.
+
 ### 6.2 Connection query (Relay)
 
 For every queryable type the framework also emits a Relay-style connection. Using `Catalog_Category` as a worked example:

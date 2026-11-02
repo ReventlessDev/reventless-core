@@ -303,7 +303,7 @@ let stateToString: 'a => string = state =>
 let statesToString: array<'a> => string = states =>
   states->Array.map(stateToString)->Array.joinUnsafe(", ")
 
-let handleAction = async (
+let applyAction = async (
   ~comp="Projection",
   ~sources: array<changeSource>=[],
   ~onChange: option<rowChange<'state> => unit>=?,
@@ -488,6 +488,31 @@ let handleAction = async (
   | _ =>
     logAction(() => "Error: projection action not supported")
     Error(ReventlessInfra.QueryDb.NotSavedToStorage("unsupported projection action"))
+  }
+}
+
+/** Applies one action to the store, its rows stamped with the last of its sources as their
+    `_change` ([RowChange]). Without a source the rows are written unstamped. */
+let handleAction = (
+  ~comp="Projection",
+  ~sources: array<changeSource>=[],
+  ~onChange: option<rowChange<'state> => unit>=?,
+  action,
+  operations,
+  subIdConfig,
+) => {
+  let apply = () => applyAction(~comp, ~sources, ~onChange?, action, operations, subIdConfig)
+  switch sources->Array.at(-1) {
+  | Some(s) =>
+    RowChange.during(
+      {
+        flow: ?s.correlationId,
+        msgId: s.msgId,
+        at: Date.make()->Date.toISOString,
+      },
+      apply,
+    )
+  | None => apply()
   }
 }
 

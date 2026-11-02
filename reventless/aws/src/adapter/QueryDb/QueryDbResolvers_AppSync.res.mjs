@@ -9,6 +9,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as RowChange$ReventlessCore from "@reventlessdev/reventless-core/src/RowChange.res.mjs";
 import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -303,12 +304,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
           ]
       );
     let refsResolvers = Stdlib_Option.mapOr(resolverRefs, [], r => [r]);
+    let changeResolver = AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + "RowChange", api, dataSourceName, parentTypeName, RowChange$ReventlessCore.key, AppSync_Resolver_Functions$PulumiAws.rowChangeField(RowChange$ReventlessCore.key, elevatedGroups), opts);
     return [
       mainResolvers,
       refsResolvers,
       resolversByIndex,
       idResolvers,
-      idsResolvers
+      idsResolvers,
+      [changeResolver]
     ].flat().map(Util_AppSync$ReventlessAws.toResourceNative);
   };
   return {

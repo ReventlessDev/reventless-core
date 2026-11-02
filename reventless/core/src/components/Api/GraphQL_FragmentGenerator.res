@@ -38,6 +38,15 @@ let commandResultSdlTypes: array<string> = [
 }`,
 ]
 
+// The last change a view row was written by: its flow, the event behind it and the time
+// (`RowChange`). Every view type carries it as `_change`, answered to elevated callers only;
+// emitted once per fragment that has a view, deduped by name like the command results.
+let rowChangeSdlType = `type RowChange {
+  flow: String
+  msgId: String!
+  at: String!
+}`
+
 // ── SchemaType → GraphQL type reference ──────────────────────────────────────
 
 let rec fromSchemaType = (
@@ -196,6 +205,7 @@ let deriveObjectTypeWithNested = (
   ~excludeFields: array<string>=[],
   ~includeIdParam: bool=true,
   ~resolvedFields: array<resolvedFieldEntry>=[],
+  ~rowChange: bool=false,
   schema: S.t<unknown>,
 ): array<string> => {
   reportUnclassifiedUnions(~typeName, schema)
@@ -241,6 +251,14 @@ let deriveObjectTypeWithNested = (
     } else {
       mainType
     }
+    if rowChange && filteredFields->Dict.get(RowChange.key)->Option.isSome {
+      JsError.throwWithMessage(
+        `${typeName}.${RowChange.key} is a field of the state record, and every view row carries its last change under that name. Name the field something else.`,
+      )
+    }
+    let mainTypeWithId = rowChange
+      ? mainTypeWithId->String.replace("{\n", `{\n  ${RowChange.key}: RowChange\n`)
+      : mainTypeWithId
     // A cross-table field shares the type with the state record's own fields, so
     // a name already taken would emit the field twice and fail the whole document
     // — for every plugin in the merge, not just this one. Refuse at build time,
@@ -935,6 +953,7 @@ let generate = (
         ~excludeFields,
         ~includeIdParam,
         ~resolvedFields=entry.resolvedFields->Option.getOr([]),
+        ~rowChange=true,
         entry.stateSchema,
       )
       nestedTypes->Array.forEach(t => {
@@ -1079,6 +1098,9 @@ let generate = (
   // self-contained. Stitcher dedupes by type name across fragments.
   if mutations->Array.length > 0 {
     commandResultSdlTypes->Array.forEach(t => types->Array.push(t))
+  }
+  if queryEntries->Array.length > 0 {
+    types->Array.push(rowChangeSdlType)
   }
 
   GraphQL_Stitcher.encode({
