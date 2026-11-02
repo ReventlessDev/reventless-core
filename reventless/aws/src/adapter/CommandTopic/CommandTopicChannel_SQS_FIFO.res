@@ -26,7 +26,10 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
       visibilityTimeoutSeconds: (6 * 30)->Pulumi.Input.make,
       redrivePolicy: Util_DeadLetterQueue.fifoQueue.arn
       ->Pulumi.Output.apply(dlqArn => {
-        PulumiAws.SQS.Queue.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
+        PulumiAws.SQS.Queue.RedrivePolicy.make(
+          ~deadLetterTargetArn=dlqArn,
+          ~maxReceiveCount=Util_DeadLetterQueue.maxReceiveCount,
+        )
       })
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,

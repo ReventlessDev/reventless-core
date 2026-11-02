@@ -21,7 +21,7 @@ function channelNameOf(topicName) {
 
 function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let queue = new (Aws.sqs.Queue)(name + "EventLogSubQueue", {
-    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, Util_DeadLetterQueue$ReventlessAws.maxReceiveCount)),
     tags: AWS_Tags$ReventlessAws.make(name + "EventLogSubQueue", EventTopic$ReventlessCore.componentType, "EventLogSubscription", undefined, name, undefined, undefined, undefined),
     visibilityTimeoutSeconds: 60,
     sqsManagedSseEnabled: false

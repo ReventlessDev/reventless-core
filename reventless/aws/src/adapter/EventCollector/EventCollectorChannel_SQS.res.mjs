@@ -29,7 +29,7 @@ function make(name, eventTopics, owner, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let tags = AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType, "EventCollector", undefined, undefined, owner, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {
-    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, Util_DeadLetterQueue$ReventlessAws.maxReceiveCount)),
     tags: tags,
     visibilityTimeoutSeconds: 120,
     sqsManagedSseEnabled: false

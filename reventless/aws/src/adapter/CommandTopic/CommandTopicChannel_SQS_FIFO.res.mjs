@@ -24,7 +24,7 @@ function make(name, owner, opts) {
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,
-    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, Util_DeadLetterQueue$ReventlessAws.maxReceiveCount)),
     tags: tags,
     visibilityTimeoutSeconds: 180,
     deduplicationScope: "messageGroup",

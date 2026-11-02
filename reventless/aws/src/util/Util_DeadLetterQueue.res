@@ -17,6 +17,10 @@ let queueTags = queueName =>
 // 4-day default can expire it over a long weekend before anyone reads it.
 let retentionSeconds = 14 * 24 * 60 * 60
 
+// How many times a consuming queue delivers a message before it moves it here; every redrive
+// policy in the framework takes it from here. Defined beside the handler, which needs it.
+let maxReceiveCount = Util_DeadLetterHandler.maxReceiveCount
+
 // A dead letter has no latency requirement, and the handler below fails on
 // purpose — so a message returns to the queue and is redelivered until retention
 // expires. At 180 s that is ~480 redeliveries per message per day, which outlives
@@ -67,59 +71,12 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
   ~opts,
 )
 
-// Logs what arrived, then FAILS the invocation on purpose.
-//
-// Returning success here would let SQS delete the message, which is what this
-// handler used to do — and it made a dead letter unobservable twice over: the
-// queue's depth returned to 0, so a depth alarm could never fire, and the
-// function's `Errors` metric stayed at 0, so neither could an error alarm. A
-// plugin whose commands failed every 5 minutes for two days produced 217 dead
-// letters and no signal at all; it was found by a person noticing a stale UI.
-//
-// Failing instead keeps the message on the queue and keeps `Errors` non-zero
-// while the condition lasts. Both are conventional alarm subjects, and a
-// monitoring backend attached through the `DeadLetterSink` seam below now has
-// something to attach to.
-//
-// What that reasoning did not account for is that the transport retries by
-// design too: a failed batch returns to the queue and is redelivered until
-// retention expires. A handler that fails forever, on a transport that retries
-// forever, is a loop — and it outlives its cause, because nothing about a fixed
-// bug removes the message that was stranded by it. Seven of them were still
-// cycling twelve hours after the fix that made them impossible.
-//
-// What the loop costs is now a function of the line, not the count: the first
-// delivery writes the record's ids, kind, size and attribute names — never its
-// body, which is a command or event and may be about a person — and every
-// redelivery after it costs a single identity line. A stranded
-// message is ~150 KB over a fortnight rather than ~17 MB, which is small enough
-// that ending the loop early is an operator's job rather than the topology's.
-let entryPointCode = `export const handler = async (event) => {
-  const records = event?.Records ?? [];
-  for (const record of records) {
-    const attrs = record?.attributes ?? {};
-    const receiveCount = Number(attrs.ApproximateReceiveCount ?? 1);
-    const identity =
-      "messageId=" + (record?.messageId ?? "unknown") +
-      " source=" + (attrs.DeadLetterQueueSourceArn ?? record?.eventSourceARN ?? "unknown") +
-      " receiveCount=" + receiveCount +
-      " bodyBytes=" + (record?.body?.length ?? 0);
-    if (receiveCount <= 1) {
-      // Ids, type and size, never the body: a dead letter is a command or event,
-      // and its payload may be about a person.
-      const body = (() => { try { return JSON.parse(record?.body ?? "null") } catch { return null } })();
-      const kind = body?.command?.TAG ?? body?.event?.TAG ?? (body?.Message ? "sns" : "unknown");
-      console.error("DEAD LETTER ITEM: " + identity + " kind=" + kind +
-        " attributes=" + JSON.stringify(Object.keys(record?.messageAttributes ?? {})));
-    } else {
-      console.error("DEAD LETTER REDELIVERY: " + identity);
-    }
-  }
-  throw new Error(
-    "Dead-lettered " + records.length +
-    " message(s); see DEAD LETTER ITEM above. Failing so the messages are retained and Errors is non-zero."
-  );
-};`
+// The function's whole code is `Util_DeadLetterHandler`'s compiled file, which imports
+// nothing (see there), shipped as `index.mjs`. It sits beside `Util_Bundle`'s compiled file,
+// so it resolves from there.
+let entryPointCode = NodeFs.readFileSync(
+  Util_Bundle.localRequire->NodeModule.requireResolve("./Util_DeadLetterHandler.res.mjs"),
+)
 
 let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
 archiveContents->Dict.set(

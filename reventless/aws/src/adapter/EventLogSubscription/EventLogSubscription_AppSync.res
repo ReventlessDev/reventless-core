@@ -39,7 +39,10 @@ let make = (
       SQS.Queue.visibilityTimeoutSeconds: 60->Pulumi.Input.make,
       redrivePolicy: Util_DeadLetterQueue.queue.arn
       ->Pulumi.Output.apply(dlqArn =>
-        SQS.Queue.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
+        SQS.Queue.RedrivePolicy.make(
+          ~deadLetterTargetArn=dlqArn,
+          ~maxReceiveCount=Util_DeadLetterQueue.maxReceiveCount,
+        )
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,

@@ -15,7 +15,7 @@ function getFeedQueues() {
 
 function makeQueue(name, scope, includeClassic, includeDcb, opts) {
   let queue = new (Aws.sqs.Queue)(name, {
-    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, Util_DeadLetterQueue$ReventlessAws.maxReceiveCount)),
     tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "EventCollector", "Plugin", undefined, undefined, undefined, undefined),
     visibilityTimeoutSeconds: 120,
     sqsManagedSseEnabled: false
