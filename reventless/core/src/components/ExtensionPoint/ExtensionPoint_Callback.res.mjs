@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
@@ -27,7 +28,7 @@ function Make(Spec) {
             `ExtensionPoint: Error on publish command: ` + errMsg
           ];
         }, () => {
-          let result = Stdlib_Option.mapOr(Stdlib_Option.map(Spec.publishToAggregates[aggregateName], publishJsons => publishJsons([cmdJson])), () => Stdlib_JsError.throwWithMessage(`ExtensionPoint.applyCommandAction: Aggregate ` + aggregateName + ` doesn't exist`), x => (() => x));
+          let result = Stdlib_Option.mapOr(Stdlib_Option.map(Spec.publishToAggregates[aggregateName], publishJsons => CommandSent$ReventlessCore.announcing(`ExtensionPoint(` + MappingSpec.name + `)`, publishJsons)([cmdJson])), () => Stdlib_JsError.throwWithMessage(`ExtensionPoint.applyCommandAction: Aggregate ` + aggregateName + ` doesn't exist`), x => (() => x));
           result();
           return {
             TAG: "Ok",

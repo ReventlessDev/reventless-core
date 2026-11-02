@@ -12,6 +12,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 let todoStatusSchema = Sury.union([
@@ -157,6 +158,7 @@ function Make(Spec) {
       }
     };
     let phase2 = async (publishJsons, capabilities) => {
+      let publishJsons$1 = CommandSent$ReventlessCore.announcing(`OutboundTranslationSlice(` + Spec.name + `)`, publishJsons);
       let newlyAbandoned = [];
       Object.entries(todoItems).forEach(param => {
         let row = param[1];
@@ -284,7 +286,7 @@ function Make(Spec) {
                   meta: msg_meta,
                   commandJson: commandJson
                 };
-                await publishJsons([msg$1]);
+                await publishJsons$1([msg$1]);
                 let newrecord$2 = {...row};
                 newrecord$2.completedAt = new Date().toISOString();
                 newrecord$2.status = "Completed";
@@ -335,7 +337,7 @@ function Make(Spec) {
         await prev;
         let row = todoItems[id];
         if (row !== undefined) {
-          return await announceAbandonment(id, row, publishJsons);
+          return await announceAbandonment(id, row, publishJsons$1);
         }
       });
     };

@@ -140,9 +140,11 @@ module Make = (
       )
     )
 
-    let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) => {
-      (publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow)(cmdJsons)
-    }
+    let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) =>
+      CommandSent.announcing(
+        ~comp=`Task(${Spec.name})`,
+        publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow,
+      )(cmdJsons)
 
     let config = Spec.setup(queryEngine, queryBucketName, opts)
 

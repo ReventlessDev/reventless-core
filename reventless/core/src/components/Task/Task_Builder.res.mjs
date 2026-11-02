@@ -11,6 +11,7 @@ import * as Task$ReventlessCore from "./Task.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
@@ -63,7 +64,7 @@ function Make(Spec) {
           return Pulumi.output("");
         }
       }));
-      let publishCommands = (aggregateName, cmdJsons) => Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined)(cmdJsons);
+      let publishCommands = (aggregateName, cmdJsons) => CommandSent$ReventlessCore.announcing(`Task(` + Spec.name + `)`, Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined))(cmdJsons);
       let config = Spec.setup(queryEngine, queryBucketName, opts);
       let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$ReventlessCore.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, undefined, opts));
       Stdlib_Option.forEach(sideEffectHandler, handler => Builder_Helpers$ReventlessCore.registerTaskSideEffectHandler(Component$ReventlessCore.operations(handler).apply(param => {}), SpecificSideEffectHandler.finish));

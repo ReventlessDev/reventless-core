@@ -15,6 +15,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as AutomationSlice_Route$ReventlessCore from "./AutomationSlice_Route.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "./AutomationSlice_Schedules.res.mjs";
@@ -326,6 +327,7 @@ function Make(Spec) {
       scheduleChanges.contents = [];
     };
     let phase2 = async publishJsons => {
+      let publishJsons$1 = CommandSent$ReventlessCore.announcing(`AutomationSlice(` + Spec.name + `)`, publishJsons);
       let currentTime = await Effect.runPromise(Clock.currentTimeMillis);
       let newlyAbandoned = [];
       Object.entries(todoItems).forEach(param => {
@@ -424,7 +426,7 @@ function Make(Spec) {
       }
       if (commands.length !== 0) {
         try {
-          await publishJsons(commands);
+          await publishJsons$1(commands);
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
@@ -462,7 +464,7 @@ function Make(Spec) {
         return;
       }
       try {
-        return await publishJsons(abandonmentCommands);
+        return await publishJsons$1(abandonmentCommands);
       } catch (raw_exn$2) {
         let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
         let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");

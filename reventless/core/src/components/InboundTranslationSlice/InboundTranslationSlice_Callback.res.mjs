@@ -19,6 +19,7 @@ import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as InboundTranslationSlice$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/InboundTranslationSlice.res.mjs";
@@ -192,6 +193,7 @@ function Make(Spec) {
     };
     let receive = async (publishJsons, inputJson, capabilities, caller, doorOpt) => {
       let door = doorOpt !== undefined ? doorOpt : "Mutation";
+      let publishJsons$1 = CommandSent$ReventlessCore.announcing(`InboundTranslationSlice(` + Spec.name + `)`, publishJsons);
       let requestId = Uuid.v4();
       let callerId = Stdlib_Option.map(caller, identity => identity.userId);
       let fail = (errorCode, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, callerId, errorCode, error);
@@ -277,7 +279,7 @@ function Make(Spec) {
         return succeed([]);
       }
       try {
-        await publishJsons(msgs);
+        await publishJsons$1(msgs);
         return succeed(pairs.map(param => param[0]));
       } catch (raw_exn$2) {
         let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);

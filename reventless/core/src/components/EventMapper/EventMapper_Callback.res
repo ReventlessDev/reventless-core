@@ -236,7 +236,10 @@ module MakeCounterHandler = (
       )
       ->Effect.flatMap(((publisherEntries, _)) =>
         Effect.promise(() => publisherEntries)->Effect.flatMap(
-          entries => Effect.promise(() => Ops.publishJsons(entries)),
+          entries =>
+            Effect.promise(
+              () => CommandSent.announcing(~comp="EventMapper", Ops.publishJsons)(entries),
+            ),
         )
       )
     )
@@ -334,7 +337,10 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
         ->Effect.flatMap(
           _ =>
             Effect.promise(() => publisherEntries)->Effect.flatMap(
-              entries => Effect.promise(() => Ops.publishJsons(entries)),
+              entries =>
+                Effect.promise(
+                  () => CommandSent.announcing(~comp="EventMapper", Ops.publishJsons)(entries),
+                ),
             ),
         )
       })

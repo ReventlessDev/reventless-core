@@ -462,6 +462,7 @@ module Make = (
   }
 
   let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
+    let publishJsons = CommandSent.announcing(~comp=`AutomationSlice(${Spec.name})`, publishJsons)
     let currentTime = await Clock.currentTimeMillis->Effect.runPromise
     // A `Failed` row at or past the ceiling is one an older build left stranded,
     // or one whose Spec lowered `maxRetries` under it. Either way it is abandoned

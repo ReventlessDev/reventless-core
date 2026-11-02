@@ -16,6 +16,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
+import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function MakeCounterHandler(Target) {
@@ -183,7 +184,7 @@ function MakeCounterHandler(Target) {
       }
     }), param => {
       let publisherEntries = param[0];
-      return Effect$1.flatMap(Effect$1.promise(() => publisherEntries), entries => Effect$1.promise(() => Ops.publishJsons(entries)));
+      return Effect$1.flatMap(Effect$1.promise(() => publisherEntries), entries => Effect$1.promise(() => CommandSent$ReventlessCore.announcing("EventMapper", Ops.publishJsons)(entries)));
     }));
     return {
       commonEventsHandler: commonEventsHandler,
@@ -218,7 +219,7 @@ function MakeEventCollectorHandler(Ops) {
       return Primitive_option.some(Effect$1.promise(() => Ops.addToCounterTarget(counterTarget)));
     }), {
       concurrency: "unbounded"
-    }), param => {})), () => Effect$1.flatMap(Effect$1.promise(() => publisherEntries), entries => Effect$1.promise(() => Ops.publishJsons(entries))));
+    }), param => {})), () => Effect$1.flatMap(Effect$1.promise(() => publisherEntries), entries => Effect$1.promise(() => CommandSent$ReventlessCore.announcing("EventMapper", Ops.publishJsons)(entries))));
   }));
   return {
     handleJsonEvents: handleJsonEvents

@@ -241,6 +241,10 @@ module Make = (
     ~caller: option<Reventless.Identity.t>=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=Mutation,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
+    let publishJsons = CommandSent.announcing(
+      ~comp=`InboundTranslationSlice(${Spec.name})`,
+      publishJsons,
+    )
     let requestId = Uuid.v4()
     let callerId = caller->Option.map(identity => identity.userId)
     let fail = (~errorCode=?, error) =>

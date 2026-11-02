@@ -59,7 +59,11 @@ module Make = (
           let result =
             Spec.publishToAggregates
             ->Dict.get(aggregateName)
-            ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
+            ->Option.map((publishJsons: CommandTopic.publishJsons) =>
+              CommandSent.announcing(~comp=`ExtensionPoint(${MappingSpec.name})`, publishJsons)([
+                cmdJson,
+              ])
+            )
             ->Option.mapOr(
               () =>
                 JsError.throwWithMessage(

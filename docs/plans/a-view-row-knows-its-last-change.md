@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-02<br/>
 **Status:** 🚧 Built 2026-11-02 ([RC1](#rc1-the-store-stamps-the-change-on-the-row) to
-[RC8](#rc8-the-local-platform-keeps-every-command-outcome)), not yet released; the AWS half
+[RC9](#rc9-every-sender-names-the-command-it-sends)), not yet released; the AWS half
 ([RC3](#rc3-only-an-elevated-caller-reads-it)) is still to be deployed and read on a stack.<br/>
 **Repos:** `reventless-core`; [RC7](#rc7-a-watching-tool-reads-both) is a watching tool's.<br/>
 **Builds on:**
@@ -66,7 +66,7 @@ moment in two places:
 
 ## 3. Steps
 
-Numbered RC1 to RC8.
+Numbered RC1 to RC9.
 
 ### RC1. The store stamps the change on the row
 
@@ -138,6 +138,16 @@ Numbered RC1 to RC8.
   could only say the command was sent. The command's name and payload need nothing new: the
   platform's own `generated command`, `publishing command` and `handling command` lines carry
   them with the command's message id.
+
+### RC9. Every sender names the command it sends
+
+- The API and a contract already wrote a line of their own with the new command's id
+  (`generated command`, `EP→`). Every other sender handed its command to the plugin's command
+  topic, whose `publishing command` line cannot say whose it is.
+- Automations, inbound and outbound translations, event mappings, extension points and tasks
+  now write `sending command: Name({…})` under their own component, with the command's ids
+  ([CommandSent.res](../../reventless/core/src/CommandSent.res)), wrapped around the publish
+  they are given. An MCP tool goes through the API's command generator and already says so.
 
 ## 4. Decisions
 

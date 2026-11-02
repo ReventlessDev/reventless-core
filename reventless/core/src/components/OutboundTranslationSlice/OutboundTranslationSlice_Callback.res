@@ -302,6 +302,10 @@ module Make = (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     ~capabilities: Reventless.Capabilities.t,
   ) => {
+    let publishJsons = CommandSent.announcing(
+      ~comp=`OutboundTranslationSlice(${Spec.name})`,
+      publishJsons,
+    )
     // Ids that ran out of budget during this pass, announced once at the end so
     // one item's abandonment cannot interleave with another's attempt.
     let newlyAbandoned: array<string> = []
