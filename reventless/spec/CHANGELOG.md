@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.193 (2026-11-02)
+
+### Features
+
+* a view row knows its last change, and the local platform keeps every change ([1a1fd71](https://github.com/ReventlessDev/reventless-core/commit/1a1fd7117d9837696a7c0080dcd6f0983e57780c))
+* **local:** the local platform counts its metrics instead of logging them ([76c6094](https://github.com/ReventlessDev/reventless-core/commit/76c60946fa74520519dccb4ae39fae5880817832))
+* **local:** the local platform keeps every command outcome ([252ed2e](https://github.com/ReventlessDev/reventless-core/commit/252ed2ea46f2634b86851aea402e94af7c371f10))
+
+
 # 3.0.0-alpha.192 (2026-11-01)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.222 (2026-11-02)
+
+### Features
+
+* **infra:** app code logs under its component ([852eb51](https://github.com/ReventlessDev/reventless-core/commit/852eb51640b28c433c64b139d849bbb02da5ac3c))
+
+
 # 3.0.0-alpha.221 (2026-11-01)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.421 (2026-11-02)
+
+### Bug Fixes
+
+* **aws:** a dead letter's first delivery writes its full line ([3436633](https://github.com/ReventlessDev/reventless-core/commit/3436633809b671fc750fc5f717523f080c084b64))
+### Features
+
+* a view row knows its last change, and the local platform keeps every change ([1a1fd71](https://github.com/ReventlessDev/reventless-core/commit/1a1fd7117d9837696a7c0080dcd6f0983e57780c))
+* **local:** the app's API logs each request and subscription it answers ([31a163c](https://github.com/ReventlessDev/reventless-core/commit/31a163c945d8929e9a604cc0dc8a74939320f85e))
+
+
 # 3.0.0-alpha.420 (2026-11-01)
 
 ### Features

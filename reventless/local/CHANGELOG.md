@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.320 (2026-11-02)
+
+### Features
+
+* a view row knows its last change, and the local platform keeps every change ([1a1fd71](https://github.com/ReventlessDev/reventless-core/commit/1a1fd7117d9837696a7c0080dcd6f0983e57780c))
+* **local:** a platform left running for an editor stops once nothing watches it ([1ccff67](https://github.com/ReventlessDev/reventless-core/commit/1ccff678126053dbce88ee002c6800af1333cac6))
+* **local:** the app's API logs each request and subscription it answers ([31a163c](https://github.com/ReventlessDev/reventless-core/commit/31a163c945d8929e9a604cc0dc8a74939320f85e))
+* **local:** the local platform counts its metrics instead of logging them ([76c6094](https://github.com/ReventlessDev/reventless-core/commit/76c60946fa74520519dccb4ae39fae5880817832))
+* **local:** the local platform keeps every command outcome ([252ed2e](https://github.com/ReventlessDev/reventless-core/commit/252ed2ea46f2634b86851aea402e94af7c371f10))
+
+
 # 3.0.0-alpha.319 (2026-11-01)
 
 ### Features

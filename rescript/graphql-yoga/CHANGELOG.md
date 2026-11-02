@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.31 (2026-11-02)
+
+### Features
+
+* **local:** the app's API logs each request and subscription it answers ([31a163c](https://github.com/ReventlessDev/reventless-core/commit/31a163c945d8929e9a604cc0dc8a74939320f85e))
+
+
 # 1.0.0-alpha.30 (2026-11-01)
 
 ### Features

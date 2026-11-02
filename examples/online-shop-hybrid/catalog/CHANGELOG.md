@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.309 (2026-11-02)
+
+### Features
+
+* **infra:** app code logs under its component ([852eb51](https://github.com/ReventlessDev/reventless-core/commit/852eb51640b28c433c64b139d849bbb02da5ac3c))
+
+
 # 1.0.0-alpha.308 (2026-11-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog
