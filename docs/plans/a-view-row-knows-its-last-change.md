@@ -133,7 +133,9 @@ Numbered RC1 to RC9.
   rejected with its code and cause) is kept as the row changes are
   ([LocalCommandOutcomeLog.res](../../reventless/local/src/adapter/CommandOutcomeLog/LocalCommandOutcomeLog.res)),
   each as the tap's `commandOutcome` line, and served as
-  `Platform_CommandOutcomes(filter: {correlationId, msgId}, first, after)`.
+  `Platform_CommandOutcomes(filter: {correlationId, msgId, startsFlow}, first, after)`.
+  `startsFlow: true` keeps only the commands that started a flow, those whose flow id is their
+  own message id, so a tool can list every flow without reading every outcome.
 - A trace of a past flow then says which component handled each command and how, where it
   could only say the command was sent. The command's name and payload need nothing new: the
   platform's own `generated command`, `publishing command` and `handling command` lines carry

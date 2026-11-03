@@ -4,9 +4,17 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
+function startsFlow(e) {
+  return Primitive_object.equal(e.flow, e.msgId);
+}
+
 function matches(f, e) {
-  if (Stdlib_Option.mapOr(f.correlationId, true, c => Primitive_object.equal(e.flow, c))) {
-    return Stdlib_Option.mapOr(f.msgId, true, m => e.msgId === m);
+  if (Stdlib_Option.mapOr(f.correlationId, true, c => Primitive_object.equal(e.flow, c)) && Stdlib_Option.mapOr(f.msgId, true, m => e.msgId === m)) {
+    if (Primitive_object.notequal(f.startsFlow, true)) {
+      return true;
+    } else {
+      return startsFlow(e);
+    }
   } else {
     return false;
   }
@@ -17,11 +25,13 @@ function filterOfJson(j) {
   let s = k => Stdlib_Option.flatMap(d[k], Stdlib_JSON.Decode.string);
   return {
     correlationId: s("correlationId"),
-    msgId: s("msgId")
+    msgId: s("msgId"),
+    startsFlow: Stdlib_Option.flatMap(d["startsFlow"], Stdlib_JSON.Decode.bool)
   };
 }
 
 export {
+  startsFlow,
   matches,
   filterOfJson,
 }

@@ -356,7 +356,8 @@ type Catalog_Category implements Node {
   them by flow on its platform API as `Platform_ViewChanges(filter: {correlationId, msgId, view,
   key})`, so a tool watching the platform can show the rows a past flow changed. It keeps what
   became of every command the same way, as `Platform_CommandOutcomes(filter: {correlationId,
-  msgId})`.
+  msgId, startsFlow})`; `startsFlow: true` keeps the commands that started a flow (a request, an
+  inbound translation, a timer's work item), whose flow id is their own message id.
 
 ### 6.2 Connection query (Relay)
 

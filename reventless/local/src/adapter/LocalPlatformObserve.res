@@ -126,6 +126,7 @@ let viewChangeTypes = [
   `input Platform_CommandOutcomeFilter {
   correlationId: String
   msgId: String
+  startsFlow: Boolean
 }`,
   `type Platform_CommandOutcomeEdge {
   node: AWSJSON!

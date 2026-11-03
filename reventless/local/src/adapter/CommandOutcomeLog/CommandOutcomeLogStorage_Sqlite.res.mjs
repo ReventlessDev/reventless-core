@@ -56,6 +56,9 @@ function read(db, filter, before, first) {
   };
   Stdlib_Option.forEach(filter.correlationId, c => add("flow = ?", c));
   Stdlib_Option.forEach(filter.msgId, m => add("msg_id = ?", m));
+  if (Primitive_object.equal(filter.startsFlow, true)) {
+    where.push("flow = msg_id");
+  }
   Stdlib_Option.forEach(before, b => add("seq < ?", b));
   let sql = `SELECT seq, flow, msg_id, item FROM ` + table + (
     Primitive_object.equal(where, []) ? "" : " WHERE " + where.join(" AND ")

@@ -236,7 +236,7 @@ describe("the platform API's watching fields", () => {
     SqliteDriver.close(db)
   })
 
-  // Three commands: two in one flow, one rejected.
+  // Three commands: two in one flow, which the first started, one rejected.
   let keepOutcomes = () => {
     let report = (
       ~flow,
@@ -252,11 +252,11 @@ describe("the platform API's watching fields", () => {
       entityId: Some("o-1"),
       eventCount: 1,
     })
-    LocalCommandOutcomeLog.record(report(~flow="k-1", ~outcome=accepted, "c-1"))
+    LocalCommandOutcomeLog.record(report(~flow="c-1", ~outcome=accepted, "c-1"))
     LocalCommandOutcomeLog.record(report(~flow="k-2", ~outcome=accepted, "c-2"))
     LocalCommandOutcomeLog.record(
       report(
-        ~flow="k-1",
+        ~flow="c-1",
         ~outcome=OutcomeRejected({
           errorCode: "AlreadyShipped",
           errorDetail: "",
@@ -285,13 +285,21 @@ describe("the platform API's watching fields", () => {
         )
       })
     }
-    (await ask(`{"filter":{"correlationId":"k-1"}}`), await ask(`{"filter":{"msgId":"c-2"}}`))
+    (
+      await ask(`{"filter":{"correlationId":"c-1"}}`),
+      await ask(`{"filter":{"msgId":"c-2"}}`),
+      await ask(`{"filter":{"startsFlow":true}}`),
+    )
   }
 
-  let outcomesExpected = ([("c-3", "rejected"), ("c-1", "accepted")], [("c-2", "accepted")])
+  let outcomesExpected = (
+    [("c-3", "rejected"), ("c-1", "accepted")],
+    [("c-2", "accepted")],
+    [("c-1", "accepted")],
+  )
 
   testPromise(
-    "the command outcomes answer an admin by flow and by command, newest first",
+    "the command outcomes answer an admin by flow, by command and by flow start, newest first",
     async () => {
       BackendState.setMemory()
       LocalCommandOutcomeLog.resetForTests()

@@ -52,6 +52,9 @@ let read = (db, ~filter: CommandOutcomeLogEntry.filter, ~before: option<int>, ~f
   }
   filter.correlationId->Option.forEach(c => add("flow = ?", str(c)))
   filter.msgId->Option.forEach(m => add("msg_id = ?", str(m)))
+  if filter.startsFlow == Some(true) {
+    where->Array.push("flow = msg_id")
+  }
   before->Option.forEach(b => add("seq < ?", JSON.Encode.int(b)))
   let sql = `SELECT seq, flow, msg_id, item FROM ${table}${where == []
       ? ""
