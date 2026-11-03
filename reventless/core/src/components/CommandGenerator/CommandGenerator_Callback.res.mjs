@@ -127,7 +127,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
     ];
   }), param => {
     let commandJson = param[1];
-    return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, EffectLogger$ReventlessCore.idsOf(undefined, undefined, param[0]), `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson));
+    return Effect.annotateLogs(EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, EffectLogger$ReventlessCore.idsOf(undefined, undefined, param[0]), `generated command: ` + LogFormat$ReventlessCore.cmdLabelOfJson(commandJson)), "via", payload.meta.info);
   }), param => {
     let id = param[2];
     let commandJson = param[1];

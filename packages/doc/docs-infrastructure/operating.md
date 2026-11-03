@@ -48,7 +48,9 @@ component is a deploy, not a migration.
 Two kinds of info line let a tool follow each command through the logs, so
 leave the level at `info` or below where you want to trace flows:
 
-- **Where a command came from.** The API writes `generated command: Name({…})`;
+- **Where a command came from.** The API writes `generated command: Name({…})`,
+  its `via` field naming the door the request came through (`Mutation.<field>`
+  or `mcp/tools/<tool>`);
   an automation, a translation, an event mapping, an extension point or a task
   writes `sending command: Name({…})` under its own component. A command whose
   `msgId` equals its `correlationId` started its flow.

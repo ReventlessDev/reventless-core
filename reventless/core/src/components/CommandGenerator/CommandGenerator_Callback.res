@@ -222,12 +222,13 @@ let makeGenerateCommand = (
       // Render `Name({fields})` without the standalone id: it's the command's
       // partition-tag value, already shown among the fields, so a leading
       // `(id)` would just duplicate it.
+      // `via` names the door the request came through: `Mutation.<field>`, `mcp/tools/<tool>`.
       EffectLogger.logInfo(
         ~comp=`CommandGenerator(${serviceName})`,
         ~ids=EffectLogger.idsOf(meta),
         ~detail=commandJson,
         `generated command: ${commandJson->LogFormat.cmdLabelOfJson}`,
-      )
+      )->Effect.annotateLogs("via", payload.meta.info)
     )
     ->Effect.flatMap(((meta, commandJson, id)) => {
       switch commandJson->Message.decode(commandSchema) {

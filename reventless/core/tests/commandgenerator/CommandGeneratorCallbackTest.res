@@ -286,3 +286,36 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
     )
   })
 })
+
+type consoleObj = {mutable log: string => unit}
+@val external _console: consoleObj = "console"
+
+testPromise("the line of a generated command names the door it came through", async () => {
+  let captured = []
+  let original = _console.log
+  _console.log = s => captured->Array.push(s)
+  let payload: CommandGenerator.payload = {
+    ...makeZeroParamPayload(~id="agg-1", ~command="Create"),
+    meta: {user: "test-user", info: "Mutation.Shop_Create"},
+  }
+  let result = try {
+    Ok(await TestGenerator.generateCommand(payload)->Effect.runPromise)
+  } catch {
+  | e => Error(e)
+  }
+  _console.log = original
+  result->Result.getOrThrow->ignore
+  let via = captured->Array.findMap(s =>
+    switch JSON.parseOrThrow(s) {
+    | JSON.Object(d)
+      if d
+      ->Dict.get("message")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.mapOr(false, m => m->String.startsWith("generated command")) =>
+      d->Dict.get("via")->Option.flatMap(JSON.Decode.string)
+    | _ => None
+    | exception _ => None
+    }
+  )
+  expect(via)->toEqual(Some("Mutation.Shop_Create"))
+})
