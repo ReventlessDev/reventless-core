@@ -33,6 +33,10 @@ let registerCommandOutcome = CommandTopic_Helpers$ReventlessCore.registerCommand
 
 let clearCommandOutcome = CommandTopic_Helpers$ReventlessCore.clearCommandOutcome;
 
+let outcomeLines = CommandTopic_Helpers$ReventlessCore.outcomeLines;
+
+let logOutcome = CommandTopic_Helpers$ReventlessCore.logOutcome;
+
 let fireCommandOutcome = CommandTopic_Helpers$ReventlessCore.fireCommandOutcome;
 
 let acceptedResultChannel = CommandTopic_Helpers$ReventlessCore.acceptedResultChannel;
@@ -69,6 +73,8 @@ export {
   nextOutcomeHookId,
   registerCommandOutcome,
   clearCommandOutcome,
+  outcomeLines,
+  logOutcome,
   fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,

@@ -78,6 +78,7 @@ import * as LocalViewChangeLog$ReventlessLocal from "./adapter/ViewChangeLog/Loc
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
@@ -160,6 +161,7 @@ function MakeWithConfig(Config) {
   LocalTapLines$ReventlessLocal.install();
   LocalViewChangeLog$ReventlessLocal.install();
   LocalCommandOutcomeLog$ReventlessLocal.install();
+  CommandTopic_Helpers$ReventlessCore.outcomeLines.contents = false;
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();
@@ -1972,6 +1974,7 @@ function Make($star) {
   LocalTapLines$ReventlessLocal.install();
   LocalViewChangeLog$ReventlessLocal.install();
   LocalCommandOutcomeLog$ReventlessLocal.install();
+  CommandTopic_Helpers$ReventlessCore.outcomeLines.contents = false;
   Role$Reventless.provideGroupsFrom(AccountStore$ReventlessLocal.providedGroups);
   OwnerScope$Reventless.defaultElevatedRoles([Role$Reventless.admin]);
   TestRunner$ReventlessLocal.setup();

@@ -46,11 +46,56 @@ function clearCommandOutcome() {
   commandOutcomeHooks.contents = [];
 }
 
+let outcomeLines = {
+  contents: true
+};
+
+function logOutcome(r) {
+  let match = r.outcome;
+  let match$1;
+  match$1 = match.TAG === "OutcomeAccepted" ? [
+      "command accepted",
+      [
+        [
+          "outcome",
+          "accepted"
+        ],
+        [
+          "eventCount",
+          match.eventCount
+        ]
+      ].concat(Stdlib_Option.mapOr(match.entityId, [], e => [[
+          "entityId",
+          e
+        ]]))
+    ] : [
+      "command rejected",
+      [
+        [
+          "outcome",
+          "rejected"
+        ],
+        [
+          "errorCode",
+          match.errorCode
+        ],
+        [
+          "cause",
+          refusalCauseToGraphQL(match.cause)
+        ]
+      ]
+    ];
+  Effect.runSync(EffectLogger$ReventlessCore.logInfo(`CommandTopic(` + r.component + `)`, Object.fromEntries([[
+      "component",
+      r.component
+    ]].concat(match$1[1])), {
+    msgId: r.reference,
+    correlationId: r.correlationId,
+    causationId: r.causationId
+  }, match$1[0]));
+}
+
 function fireCommandOutcome(component, reference, correlationId, causationId, outcome) {
-  let hooks = commandOutcomeHooks.contents;
-  if (hooks.length === 0) {
-    return;
-  }
   let report = {
     component: component,
     reference: reference,
@@ -58,15 +103,26 @@ function fireCommandOutcome(component, reference, correlationId, causationId, ou
     causationId: causationId,
     outcome: outcome
   };
-  hooks.forEach(param => {
+  if (outcomeLines.contents) {
     try {
-      param.hook(report);
-      return;
-    } catch (raw_err) {
-      let err = Primitive_exceptions.internalToException(raw_err);
-      return Effect.runSync(EffectLogger$ReventlessCore.logError(`CommandTopic(` + component + `)`, undefined, undefined, `command-outcome hook threw (ignored): ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown")));
+      logOutcome(report);
+    } catch (exn) {
+      
     }
-  });
+  }
+  let hooks = commandOutcomeHooks.contents;
+  if (hooks.length !== 0) {
+    hooks.forEach(param => {
+      try {
+        param.hook(report);
+        return;
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`CommandTopic(` + component + `)`, undefined, undefined, `command-outcome hook threw (ignored): ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown")));
+      }
+    });
+    return;
+  }
 }
 
 let acceptedResultChannel = {
@@ -295,6 +351,8 @@ export {
   nextOutcomeHookId,
   registerCommandOutcome,
   clearCommandOutcome,
+  outcomeLines,
+  logOutcome,
   fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,

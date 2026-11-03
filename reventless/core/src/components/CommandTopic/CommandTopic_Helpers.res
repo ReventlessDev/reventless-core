@@ -86,6 +86,42 @@ let clearCommandOutcome = () => {
   commandOutcomeHooks := []
 }
 
+/** Whether each outcome is also written as an info line, `command accepted` or `command
+    rejected`, under `CommandTopic(<component>)` with the command's ids: where a deployed
+    platform's tools read what became of a command. The local platform turns it off, since its
+    tap carries every outcome already. */
+let outcomeLines = ref(true)
+
+let logOutcome = (r: commandOutcomeReport) => {
+  let str = JSON.Encode.string
+  let (message, fields) = switch r.outcome {
+  | OutcomeAccepted({entityId, eventCount}) => (
+      "command accepted",
+      [("outcome", str("accepted")), ("eventCount", JSON.Encode.int(eventCount))]->Array.concat(
+        entityId->Option.mapOr([], e => [("entityId", str(e))]),
+      ),
+    )
+  | OutcomeRejected({errorCode, cause}) => (
+      "command rejected",
+      [
+        ("outcome", str("rejected")),
+        ("errorCode", str(errorCode)),
+        ("cause", str(refusalCauseToGraphQL(cause))),
+      ],
+    )
+  }
+  EffectLogger.logInfo(
+    ~comp=`CommandTopic(${r.component})`,
+    ~ids={
+      msgId: r.reference,
+      correlationId: ?r.correlationId,
+      causationId: ?r.causationId,
+    },
+    ~detail=JSON.Object(Dict.fromArray([("component", str(r.component))]->Array.concat(fields))),
+    message,
+  )->Effect.runSync
+}
+
 // Fired from reportAccepted/reportRejected below, which both write-side kinds call
 // unconditionally — so this sees fire-and-forget dispatches too, not just the ones a
 // producer awaited on the side-channels.
@@ -100,11 +136,16 @@ let fireCommandOutcome = (
   ~correlationId: option<string>=?,
   ~causationId: option<string>=?,
   outcome: observedOutcome,
-) =>
+) => {
+  let report = {component, reference, ?correlationId, ?causationId, outcome}
+  if outcomeLines.contents {
+    try logOutcome(report) catch {
+    | _ => ()
+    }
+  }
   switch commandOutcomeHooks.contents {
   | [] => ()
   | hooks =>
-    let report = {component, reference, ?correlationId, ?causationId, outcome}
     hooks->Array.forEach(({hook}) =>
       switch hook(report) {
       | () => ()
@@ -119,6 +160,7 @@ let fireCommandOutcome = (
       }
     )
   }
+}
 
 // Side-channel for publishJsonsAndWait result propagation.
 // Set by runInlineAndCollect before invoking the handler; cleared after.

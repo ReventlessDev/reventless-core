@@ -45,6 +45,18 @@ group is named.
 `LOG_LEVEL` is only an environment variable, so raising it on a misbehaving
 component is a deploy, not a migration.
 
+Two kinds of info line let a tool follow each command through the logs, so
+leave the level at `info` or below where you want to trace flows:
+
+- **Where a command came from.** The API writes `generated command: Name({…})`;
+  an automation, a translation, an event mapping, an extension point or a task
+  writes `sending command: Name({…})` under its own component. A command whose
+  `msgId` equals its `correlationId` started its flow.
+- **What became of it.** Its handler writes `command accepted` (with the entity
+  and the event count) or `command rejected` (with the error code and the cause:
+  `DOMAIN`, `ACCESS` or `INFRASTRUCTURE`) under `CommandTopic(<component>)`. A
+  rejection's error detail is left out of the line.
+
 ## When a message cannot be processed
 
 Every queue redrives to a dead-letter queue after its retries are exhausted —
