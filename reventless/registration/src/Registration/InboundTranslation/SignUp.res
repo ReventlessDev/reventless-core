@@ -18,7 +18,7 @@
 /** `role` may be left out where exactly one role is open to visitors; with
     several, a sign-up has to say which. */
 @schema
-type externalInput = {email: string, role?: string}
+type externalInput = {@sensitive email: string, role?: string}
 
 @schema
 type command =

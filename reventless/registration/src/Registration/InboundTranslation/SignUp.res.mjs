@@ -6,10 +6,11 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
+import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let externalInputSchema = Sury.$schema(s => ({
-  email: s.m(Sury.string),
+  email: s.m(Sensitive$Reventless.string),
   role: s.m(Sury.$option(Sury.string))
 }));
 

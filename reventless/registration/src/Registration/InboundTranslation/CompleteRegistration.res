@@ -15,7 +15,7 @@
 
 @schema
 type externalInput = {
-  email: string,
+  @sensitive email: string,
   @sensitive proof: string,
   @sensitive password: string,
 }

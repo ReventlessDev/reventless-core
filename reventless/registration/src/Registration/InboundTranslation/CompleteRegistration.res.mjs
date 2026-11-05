@@ -7,7 +7,7 @@ import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
 let externalInputSchema = Sury.$schema(s => ({
-  email: s.m(Sury.string),
+  email: s.m(Sensitive$Reventless.string),
   proof: s.m(Sensitive$Reventless.string),
   password: s.m(Sensitive$Reventless.string)
 }));
