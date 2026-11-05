@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.25 (2026-11-05)
+
+* refactor(registration)!: the ledger names the fingerprint emailId and the sealed address email ([6fa0f11](https://github.com/ReventlessDev/reventless-core/commit/6fa0f1148abee3301a5cb86484dce524975b8a40))
+
+### BREAKING CHANGES
+
+* the ledger's stored events change field names. Ledger
+events written before this do not decode; a local platform's ledger needs
+a fresh database or a wipe of its registration events. Code that builds or
+matches the ledger's commands and events renames email to emailId and
+address to email.
+
+
+
 # 1.0.0-alpha.24 (2026-11-05)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-registration

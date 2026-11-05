@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.21 (2026-11-05)
+
+### Bug Fixes
+
+* **registration:** the sign-up and completion doors keep the address out of their audit rows ([814e436](https://github.com/ReventlessDev/reventless-core/commit/814e436320d47c03e76cdb0abc7e4105e5112600))
+* refactor(registration)!: the ledger names the fingerprint emailId and the sealed address email ([6fa0f11](https://github.com/ReventlessDev/reventless-core/commit/6fa0f1148abee3301a5cb86484dce524975b8a40))
+
+### BREAKING CHANGES
+
+* the ledger's stored events change field names. Ledger
+events written before this do not decode; a local platform's ledger needs
+a fresh database or a wipe of its registration events. Code that builds or
+matches the ledger's commands and events renames email to emailId and
+address to email.
+
+
+
 # 1.0.0-alpha.20 (2026-11-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-registration
