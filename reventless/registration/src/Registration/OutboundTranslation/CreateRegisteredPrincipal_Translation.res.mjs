@@ -9,10 +9,10 @@ function groupsOf(roles) {
 }
 
 function collect(event, param) {
-  let address = event.address;
   let email = event.email;
-  if (typeof address !== "object") {
-    if (address === "Erased") {
+  let emailId = event.emailId;
+  if (typeof email !== "object") {
+    if (email === "Erased") {
       return [];
     } else {
       return [];
@@ -20,24 +20,24 @@ function collect(event, param) {
   }
   let proofHash = event.proofHash;
   return [[
-      email + `:` + proofHash,
+      emailId + `:` + proofHash,
       {
-        email: email,
-        address: address._0,
+        emailId: emailId,
+        email: email._0,
         roles: event.roles,
         proofHash: proofHash
       }
     ]];
 }
 
-function completed(email) {
+function completed(emailId) {
   return {
     TAG: "Ok",
     _0: [
-      email,
+      emailId,
       {
         TAG: "RecordRegistrationCompleted",
-        email: ContactAddressId$ReventlessRegistration.makeFromString(email)
+        emailId: ContactAddressId$ReventlessRegistration.makeFromString(emailId)
       }
     ]
   };
@@ -60,17 +60,17 @@ async function translate(_id, item, capabilities) {
   }
   let match = await capabilities.identityProvider.createPrincipal({
     TAG: "ToEmail",
-    _0: item.address
+    _0: item.email
   }, {
     TAG: "Password",
     _0: password
   }, item.roles.map(Role$Reventless.groupOf));
   if (match.TAG === "Ok") {
-    return completed(item.email);
+    return completed(item.emailId);
   }
   let why = match._0;
   if (typeof why !== "object") {
-    return completed(item.email);
+    return completed(item.emailId);
   }
   if (why.TAG !== "Unavailable") {
     return {

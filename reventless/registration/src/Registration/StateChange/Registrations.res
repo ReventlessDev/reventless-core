@@ -15,9 +15,9 @@
 // translations in this chapter: they stamp the time a request arrived, and they
 // hash a presented proof so its plaintext never reaches this slice or the log.
 //
-// **The address is not the key.** `email` is the address's keyed fingerprint
+// **The address is not the key.** `emailId` is the address's keyed fingerprint
 // (`ContactAddressId`), which is what tags and partitions the ledger; an index key
-// cannot be erased. The address itself rides in `address`, on the events that must
+// cannot be erased. The address itself rides in `email`, on the events that must
 // reach the person and on the commands that start a claim, so it lives only where
 // a payload field can be encrypted or erased.
 //
@@ -40,45 +40,45 @@ type consumedEvent =
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
     })
   | RegistrationRequested({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
-  | RegistrationExpired({email: ContactAddressId.t})
+  | RegistrationExpired({emailId: ContactAddressId.t})
   | RegistrationInvited({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
-  | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
+  | RegistrationWithdrawn({emailId: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
   | RegistrationProofAccepted({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       proofHash: string,
     })
-  | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
-  | RegistrationCompleted({email: ContactAddressId.t})
-  | RegistrationReleased({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
+  | RegistrationProofRefused({emailId: ContactAddressId.t, reason: string})
+  | RegistrationCompleted({emailId: ContactAddressId.t})
+  | RegistrationReleased({emailId: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
 
 // `Register` names the role asked for, and the policy is read by it. The
 // registration records the roles it grants as
@@ -93,31 +93,31 @@ type consumedEvent =
 type command =
   | @noApi
   Register({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })
   | @noApi
   IssueRegistrationChallenge({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
   | @noApi
   SubmitRegistrationProof({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       presentedAt: Reventless.DateTime.t,
     })
-  | @noApi RecordRegistrationCompleted({email: ContactAddressId.t})
+  | @noApi RecordRegistrationCompleted({emailId: ContactAddressId.t})
   // A signed-in inviter claims the address for someone else, as the roles the
   // app declares by invitation. No door here reaches it: a plugin that provides
   // invitations marks its door `Invite` and checks the inviter before relaying.
   | @noApi
   Invite({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       invitedBy: string,
       requestedAt: Reventless.DateTime.t,
@@ -126,14 +126,14 @@ type command =
   // lost, or its attempts spent. Held to one per resend cooldown.
   | @noApi
   ReissueRegistrationChallenge({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       requestedAt: Reventless.DateTime.t,
     })
   // Releases an address a registration holds and nobody has proved yet.
-  | @noApi WithdrawRegistration({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
+  | @noApi WithdrawRegistration({emailId: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   // Releases the address of an account that was erased, so its person may
   // register again. Only the erasure workflow sends it, after the account is gone.
-  | @noApi ReleaseRegistration({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
+  | @noApi ReleaseRegistration({emailId: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
 
 // Every outcome of a command relayed for an anonymous caller is a recorded fact
 // or a quiet no-op, never an error: an error is the one answer a caller could
@@ -147,42 +147,42 @@ type error =
 @schema
 type event =
   | RegistrationRequested({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
     })
-  | RegistrationExpired({email: ContactAddressId.t})
+  | RegistrationExpired({emailId: ContactAddressId.t})
   | RegistrationInvited({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
-  | RegistrationWithdrawn({email: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
+  | RegistrationWithdrawn({emailId: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeIssued({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })
   | RegistrationProofAccepted({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       proofHash: string,
     })
-  | RegistrationProofRefused({email: ContactAddressId.t, reason: string})
-  | RegistrationCompleted({email: ContactAddressId.t})
-  | RegistrationReleased({email: ContactAddressId.t, releasedAt: Reventless.DateTime.t})
+  | RegistrationProofRefused({emailId: ContactAddressId.t, reason: string})
+  | RegistrationCompleted({emailId: ContactAddressId.t})
+  | RegistrationReleased({emailId: ContactAddressId.t, releasedAt: Reventless.DateTime.t})

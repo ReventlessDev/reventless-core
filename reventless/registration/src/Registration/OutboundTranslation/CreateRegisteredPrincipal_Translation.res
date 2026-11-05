@@ -9,16 +9,16 @@ let retryTtl = 600
 
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationProofAccepted({email, address: Value(address), roles, proofHash}) => [
-      (`${email}:${proofHash}`, {email, address, roles, proofHash}),
+  | RegistrationProofAccepted({emailId, email: Value(email), roles, proofHash}) => [
+      (`${emailId}:${proofHash}`, {emailId, email, roles, proofHash}),
     ]
   // An address that was erased or forgotten has nobody left to write to.
   | _ => []
   }
 
-// `email` is already the ledger's id for the address: no key is needed to say so.
-let completed = (email: string) => Ok(
-  Some((email, RecordRegistrationCompleted({email: ContactAddressId.makeFromString(email)}))),
+// `emailId` is already the ledger's id for the address: no key is needed to say so.
+let completed = (emailId: string) => Ok(
+  Some((emailId, RecordRegistrationCompleted({emailId: ContactAddressId.makeFromString(emailId)}))),
 )
 
 let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabilities.t) =>
@@ -29,14 +29,14 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
   | Ok(None) => Error("the password expired before the account was made")
   | Ok(Some(password)) =>
     switch await capabilities.identityProvider.createPrincipal(
-      ~contact=ToEmail(item.address),
+      ~contact=ToEmail(item.email),
       ~credential=Password(password),
       ~groups=groupsOf(item.roles),
     ) {
-    | Ok(_) => completed(item.email)
+    | Ok(_) => completed(item.emailId)
     // The provider already holds this address — an account declared before
     // registration existed, say. It is as registered as one made here.
-    | Error(Conflict) => completed(item.email)
+    | Error(Conflict) => completed(item.emailId)
     | Error(Unavailable(why)) =>
       // Put back so the retry finds it. Failing that, the retry reports the
       // password gone, which is true.

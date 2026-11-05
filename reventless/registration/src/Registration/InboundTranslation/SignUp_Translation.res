@@ -20,7 +20,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
   ) =>
     switch (Reventless.Email.fromString(input.email->String.trim), input.role) {
     | (Error(_), _) => Error("not an email address")
-    | (Ok(email), role) =>
+    | (Ok(typed), role) =>
       switch role
       ->Option.map(String.trim)
       ->Option.filter(r => r != "")
@@ -28,8 +28,8 @@ module Make = (App: Reventless.Admission.Declaration) => {
       ->Option.orElse(defaultRole(App.table)) {
       | None => Error("say which role to sign up for")
       | Some(role) =>
-        let address = email->ContactAddressId.normalize
-        switch ContactAddressId.fingerprint(capabilities.secrets, address) {
+        let email = typed->ContactAddressId.normalize
+        switch ContactAddressId.fingerprint(capabilities.secrets, email) {
         | Error(why) => Error(why)
         | Ok(id) =>
           // The envelope id is the fingerprint too: an id is stored beside the
@@ -38,8 +38,8 @@ module Make = (App: Reventless.Admission.Declaration) => {
             (
               id->ContactAddressId.toString,
               Register({
-                email: id,
-                address,
+                emailId: id,
+                email,
                 role,
                 requestedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
               }),

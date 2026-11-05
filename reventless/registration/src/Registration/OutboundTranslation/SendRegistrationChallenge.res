@@ -19,38 +19,38 @@
 @schema
 type consumedEvent =
   | RegistrationRequested({
-      email: string,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: string,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       requestedAt: Reventless.DateTime.t,
     })
   | RegistrationAttemptedOnTakenAddress({
-      email: string,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: string,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       attemptedAt: Reventless.DateTime.t,
     })
   | RegistrationInvited({
-      email: string,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: string,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
     })
   | RegistrationChallengeReissued({
-      email: string,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: string,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
     })
 
-// `email` is the ledger's id for the address, `address` the address the mail goes to.
+// `emailId` is the ledger's id for the address, `email` the address the mail goes to.
 
 /** `invited` words the secret as an invitation; it is left out for a sign-up
     and for the notice. `roles` names what the invitation grants, where the
     event said: a reissued code does not. */
 @schema
 type outboundItem = {
-  email: string,
-  @pii({subject: "email"}) address: Reventless.Email.t,
+  emailId: string,
+  @pii({subject: "emailId"}) email: Reventless.Email.t,
   alreadyRegistered: bool,
   invited?: bool,
   roles?: array<string>,
@@ -59,7 +59,7 @@ type outboundItem = {
 @schema
 type inboundCommand =
   | IssueRegistrationChallenge({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
     })

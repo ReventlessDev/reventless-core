@@ -14,7 +14,7 @@ let externalInputSchema = Sury.$schema(s => ({
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "SubmitRegistrationProof",
-  email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+  emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
   proofHash: s.m(Sury.string),
   presentedAt: s.m(DateTime$Reventless.schema)
 }));

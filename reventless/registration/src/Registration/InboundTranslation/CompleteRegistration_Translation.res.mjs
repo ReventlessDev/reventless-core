@@ -42,7 +42,7 @@ async function translate(input, capabilities, param) {
           ContactAddressId$ReventlessRegistration.toString(id),
           {
             TAG: "SubmitRegistrationProof",
-            email: id,
+            emailId: id,
             proofHash: proofHash,
             presentedAt: new Date().toISOString()
           }

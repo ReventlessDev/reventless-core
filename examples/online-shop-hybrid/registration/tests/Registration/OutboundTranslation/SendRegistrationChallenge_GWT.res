@@ -8,11 +8,11 @@ module Outcome = ReventlessGwt.Outcome
 // address gets a notice and nothing else — the difference the caller who
 // started it never sees.
 
-let fresh: outboundItem = {email: aliceId, address: aliceMail, alreadyRegistered: false}
-let taken: outboundItem = {email: aliceId, address: aliceMail, alreadyRegistered: true}
+let fresh: outboundItem = {emailId: aliceId, email: aliceMail, alreadyRegistered: false}
+let taken: outboundItem = {emailId: aliceId, email: aliceMail, alreadyRegistered: true}
 let invitation: outboundItem = {
-  email: aliceId,
-  address: aliceMail,
+  emailId: aliceId,
+  email: aliceMail,
   alreadyRegistered: false,
   invited: true,
   roles: [merchandiserName],
@@ -20,8 +20,8 @@ let invitation: outboundItem = {
 /** A reissued invitation's code: worded as an invitation, but the event does
     not say as what. */
 let reissuedInvitation: outboundItem = {
-  email: aliceId,
-  address: aliceMail,
+  emailId: aliceId,
+  email: aliceMail,
   alreadyRegistered: false,
   invited: true,
 }
@@ -33,8 +33,8 @@ let withSecrets = () =>
 
 let thenLedgerTold = async (pending, expected) =>
   switch (await pending).result {
-  | Ok(Some((_, IssueRegistrationChallenge({email, proofHash, _})))) =>
-    let actual = `${email->ContactAddressId.toString}|${proofHash}`
+  | Ok(Some((_, IssueRegistrationChallenge({emailId, proofHash, _})))) =>
+    let actual = `${emailId->ContactAddressId.toString}|${proofHash}`
     actual == expected
       ? Outcome.pass
       : Outcome.fail(TranslateError({expected, actual: Some(actual)}))
@@ -51,8 +51,8 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("a request is collected once per address and time", () =>
     givenEvent(
       RegistrationRequested({
-        email: aliceId,
-        address: Reventless.Pii.Value(aliceMail),
+        emailId: aliceId,
+        email: Reventless.Pii.Value(aliceMail),
         requestedAt: "2026-10-24T09:00:00.000Z",
       }),
     )
@@ -63,8 +63,8 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("an erased address is not written to", () =>
     givenEvent(
       RegistrationRequested({
-        email: aliceId,
-        address: Reventless.Pii.Erased,
+        emailId: aliceId,
+        email: Reventless.Pii.Erased,
         requestedAt: "2026-10-24T09:00:00.000Z",
       }),
     )
@@ -76,8 +76,8 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("an invitation is collected as one, apart from a sign-up at the same time", () =>
     givenEvent(
       RegistrationInvited({
-        email: aliceId,
-        address: Reventless.Pii.Value(aliceMail),
+        emailId: aliceId,
+        email: Reventless.Pii.Value(aliceMail),
         roles: [merchandiserName],
         invitedBy: "u_inviter",
         invitedAt: "2026-10-24T09:00:00.000Z",
@@ -94,8 +94,8 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("a reissued invitation's code is collected as an invitation", () =>
     givenEvent(
       RegistrationChallengeReissued({
-        email: aliceId,
-        address: Reventless.Pii.Value(aliceMail),
+        emailId: aliceId,
+        email: Reventless.Pii.Value(aliceMail),
         reissuedAt: "2026-10-25T09:00:00.000Z",
         invitedBy: "u_inviter",
       }),
@@ -110,8 +110,8 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
   testSync("a reissued sign-up's code is collected as a sign-up", () =>
     givenEvent(
       RegistrationChallengeReissued({
-        email: aliceId,
-        address: Reventless.Pii.Value(aliceMail),
+        emailId: aliceId,
+        email: Reventless.Pii.Value(aliceMail),
         reissuedAt: "2026-10-25T09:00:00.000Z",
       }),
     )
@@ -119,7 +119,7 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     ->thenTodos([
       (
         "fp:contactAddress:alice@example.com:reissued:2026-10-25T09:00:00.000Z",
-        {email: aliceId, address: aliceMail, alreadyRegistered: false, invited: false},
+        {emailId: aliceId, email: aliceMail, alreadyRegistered: false, invited: false},
       ),
     ])
   )

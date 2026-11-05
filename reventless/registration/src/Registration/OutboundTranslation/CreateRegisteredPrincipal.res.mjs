@@ -9,22 +9,22 @@ import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.re
 
 let consumedEventSchema = Sury.$schema(s => ({
   TAG: "RegistrationProofAccepted",
-  email: s.m(Sury.string),
-  address: s.m(Pii$Reventless.marked("email", undefined, Email$Reventless.schema)),
+  emailId: s.m(DcbTag$Reventless.string),
+  email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
   roles: s.m(Sury.array(Role$Reventless.nameSchema)),
   proofHash: s.m(Sury.string)
 }));
 
 let outboundItemSchema = Sury.$schema(s => ({
-  email: s.m(Sury.string),
-  address: s.m(Pii$Reventless.mark("email", undefined, Email$Reventless.schema)),
+  emailId: s.m(Sury.string),
+  email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
   roles: s.m(Sury.array(Role$Reventless.nameSchema)),
   proofHash: s.m(Sury.string)
 }));
 
 let inboundCommandSchema = Sury.$schema(s => ({
   TAG: "RecordRegistrationCompleted",
-  email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
+  emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema))
 }));
 
 let sourceNames = [];

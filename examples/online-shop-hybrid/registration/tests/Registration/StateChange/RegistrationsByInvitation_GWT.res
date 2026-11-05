@@ -17,8 +17,8 @@ module InvitingLedger = Registrations_Decision.Make({
   ])
 })
 
-let email = alice
-let address = aliceMail
+let emailId = alice
+let email = aliceMail
 /** The address as an event carries it: personal data, still there. */
 let personal = Reventless.Pii.Value(aliceMail)
 let fulfilment = Reventless.Role.make("Fulfilment")
@@ -31,18 +31,18 @@ let threeDaysOn = "2026-10-27T09:00:00.000Z"
 let eightDaysOn = "2026-11-01T09:00:00.000Z"
 
 let invite = (~roles=staff, ~at=invitedAt) => Invite({
+  emailId,
   email,
-  address,
   roles,
   invitedBy,
   requestedAt: at,
 })
 let invited: array<consumedEvent> = [
-  RegistrationInvited({email, address: personal, roles: staffNames, invitedBy, invitedAt}),
+  RegistrationInvited({emailId, email: personal, roles: staffNames, invitedBy, invitedAt}),
 ]
 let challenged: array<consumedEvent> =
-  invited->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
-let submit = (~at) => SubmitRegistrationProof({email, proofHash: secretHash, presentedAt: at})
+  invited->Array.concat([RegistrationChallengeIssued({emailId, proofHash: secretHash, issuedAt})])
+let submit = (~at) => SubmitRegistrationProof({emailId, proofHash: secretHash, presentedAt: at})
 
 describe("Registrations StateChangeSlice, by invitation", () => {
   // scenario-id: b076201a-bbe1-436f-9c4e-fbc637e1f0ce
@@ -50,7 +50,7 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     givenEvents([])
     ->whenCmd(invite())
     ->thenEvent(
-      RegistrationInvited({email, address: personal, roles: staffNames, invitedBy, invitedAt}),
+      RegistrationInvited({emailId, email: personal, roles: staffNames, invitedBy, invitedAt}),
     )
   )
 
@@ -74,8 +74,8 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     ->whenCmd(submit(~at=threeDaysOn))
     ->thenEvent(
       RegistrationProofAccepted({
-        email,
-        address: personal,
+        emailId,
+        email: personal,
         roles: staffNames,
         proofHash: secretHash,
       }),
@@ -87,14 +87,14 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   test("an invitation's code holds past a week only", () =>
     givenEvents(challenged)
     ->whenCmd(submit(~at=eightDaysOn))
-    ->thenEvent(RegistrationProofRefused({email, reason: "ChallengeExpired"}))
+    ->thenEvent(RegistrationProofRefused({emailId, reason: "ChallengeExpired"}))
   )
 
   // 🚨 A visitor cannot take over an address someone was invited at.
   // scenario-id: 63dcf831-9b27-4ca7-9561-01825ec7cebc
   test("a sign-up for an invited address records nothing while the invitation holds", () =>
     givenEvents(challenged)
-    ->whenCmd(Register({email, address, role: shopper, requestedAt: threeDaysOn}))
+    ->whenCmd(Register({emailId, email, role: shopper, requestedAt: threeDaysOn}))
     ->thenNoEvent
   )
 
@@ -103,12 +103,12 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     givenEvents(
       challenged->Array.concat([
         RegistrationProofAccepted({
-          email,
-          address: personal,
+          emailId,
+          email: personal,
           roles: staffNames,
           proofHash: secretHash,
         }),
-        RegistrationCompleted({email: email}),
+        RegistrationCompleted({emailId: emailId}),
       ]),
     )
     ->whenCmd(invite(~at=threeDaysOn))
@@ -120,10 +120,10 @@ describe("Registrations StateChangeSlice, by invitation", () => {
     givenEvents(challenged)
     ->whenCmd(invite(~at=eightDaysOn))
     ->thenEvents([
-      RegistrationExpired({email: email}),
+      RegistrationExpired({emailId: emailId}),
       RegistrationInvited({
-        email,
-        address: personal,
+        emailId,
+        email: personal,
         roles: staffNames,
         invitedBy,
         invitedAt: eightDaysOn,
@@ -135,9 +135,9 @@ describe("Registrations StateChangeSlice, by invitation", () => {
   // scenario-id: d5ea232a-05e3-49b0-ae8f-c4bcdcf8dc9d
   test("a reissued invitation's code says who invited", () =>
     givenEvents(challenged)
-    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: threeDaysOn}))
+    ->whenCmd(ReissueRegistrationChallenge({emailId, requestedAt: threeDaysOn}))
     ->thenEvent(
-      RegistrationChallengeReissued({email, address: personal, reissuedAt: threeDaysOn, invitedBy}),
+      RegistrationChallengeReissued({emailId, email: personal, reissuedAt: threeDaysOn, invitedBy}),
     )
   )
 })

@@ -32,8 +32,8 @@ function Make(App) {
         _0: "say which role to sign up for"
       };
     }
-    let address = ContactAddressId$ReventlessRegistration.normalize(match._0);
-    let why = ContactAddressId$ReventlessRegistration.fingerprint(capabilities.secrets, address);
+    let email = ContactAddressId$ReventlessRegistration.normalize(match._0);
+    let why = ContactAddressId$ReventlessRegistration.fingerprint(capabilities.secrets, email);
     if (why.TAG !== "Ok") {
       return {
         TAG: "Error",
@@ -47,8 +47,8 @@ function Make(App) {
           ContactAddressId$ReventlessRegistration.toString(id),
           {
             TAG: "Register",
-            email: id,
-            address: address,
+            emailId: id,
+            email: email,
             role: role,
             requestedAt: new Date().toISOString()
           }

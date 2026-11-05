@@ -16,8 +16,8 @@ let externalInputSchema = Sury.$schema(s => ({
 
 let commandSchema = Sury.$schema(s => ({
   TAG: "Register",
-  email: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
-  address: s.m(Pii$Reventless.mark("email", undefined, Email$Reventless.schema)),
+  emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
+  email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
   role: s.m(Role$Reventless.nameSchema),
   requestedAt: s.m(DateTime$Reventless.schema)
 }));

@@ -32,7 +32,7 @@ let translate = async (
           (
             id->ContactAddressId.toString,
             SubmitRegistrationProof({
-              email: id,
+              emailId: id,
               proofHash,
               presentedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
             }),

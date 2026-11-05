@@ -11,8 +11,8 @@ open Registration_Examples
 // here is an event or nothing, never an error — and what it must never record
 // is a secret: only its hash.
 
-let email = alice
-let address = aliceMail
+let emailId = alice
+let email = aliceMail
 /** The address as an event carries it: personal data, still there. */
 let personal = Reventless.Pii.Value(aliceMail)
 let role = shopper
@@ -29,28 +29,28 @@ let windowEnd = "2026-10-24T08:00:00.000Z"
 // starts at the request; `opened` is the explicit form, for the window tests.
 let opened: array<consumedEvent> = [RegistrationOpened({role: role})]
 let requested: array<consumedEvent> = [
-  RegistrationRequested({email, address: personal, roles, requestedAt}),
+  RegistrationRequested({emailId, email: personal, roles, requestedAt}),
 ]
 let challenged: array<consumedEvent> =
-  requested->Array.concat([RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt})])
+  requested->Array.concat([RegistrationChallengeIssued({emailId, proofHash: secretHash, issuedAt})])
 let verified: array<consumedEvent> =
   challenged->Array.concat([
-    RegistrationProofAccepted({email, address: personal, roles, proofHash: secretHash}),
+    RegistrationProofAccepted({emailId, email: personal, roles, proofHash: secretHash}),
   ])
 let completed: array<consumedEvent> =
-  verified->Array.concat([RegistrationCompleted({email: email})])
+  verified->Array.concat([RegistrationCompleted({emailId: emailId})])
 
-let register = (~role=role, ~at=requestedAt) => Register({email, address, role, requestedAt: at})
+let register = (~role=role, ~at=requestedAt) => Register({emailId, email, role, requestedAt: at})
 let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
-  email,
+  emailId,
   proofHash: hash,
   presentedAt: at,
 })
-let wrong: consumedEvent = RegistrationProofRefused({email, reason: "ProofMismatch"})
+let wrong: consumedEvent = RegistrationProofRefused({emailId, reason: "ProofMismatch"})
 let halfAMinuteOn = "2026-10-24T09:00:35.000Z"
 let reissued: array<consumedEvent> =
   challenged->Array.concat([
-    RegistrationChallengeReissued({email, address: personal, reissuedAt: soonAfter}),
+    RegistrationChallengeReissued({emailId, email: personal, reissuedAt: soonAfter}),
   ])
 
 describe("Registrations StateChangeSlice", () => {
@@ -81,7 +81,7 @@ describe("Registrations StateChangeSlice", () => {
           "RegistrationCompleted",
           "RegistrationReleased",
         ],
-        tags: [{key: "contactAddress", value: email->ContactAddressId.toString}],
+        tags: [{key: "contactAddress", value: emailId->ContactAddressId.toString}],
       },
       {
         eventTypes: ["RegistrationOpened", "RegistrationClosed"],
@@ -106,7 +106,7 @@ describe("Registrations StateChangeSlice", () => {
   test("a self-service role claims the address before anything is recorded", () =>
     givenEvents([])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, address: personal, roles, requestedAt}))
+    ->thenEvent(RegistrationRequested({emailId, email: personal, roles, requestedAt}))
   )
 
   // scenario-id: 6c1e8a2b-9d3f-4a5e-8b7c-0d1e2f3a4b5c
@@ -126,7 +126,7 @@ describe("Registrations StateChangeSlice", () => {
   test("within an open window's end, it claims the address", () =>
     givenEvents([RegistrationOpened({role, until: nextDay})])
     ->whenCmd(register())
-    ->thenEvent(RegistrationRequested({email, address: personal, roles, requestedAt}))
+    ->thenEvent(RegistrationRequested({emailId, email: personal, roles, requestedAt}))
   )
 
   // scenario-id: dd3c4e5d-f19a-48b9-8011-b9cd63849b75
@@ -148,7 +148,7 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents(completed)
     ->whenCmd(register(~at=nextDay))
     ->thenEvent(
-      RegistrationAttemptedOnTakenAddress({email, address: personal, attemptedAt: nextDay}),
+      RegistrationAttemptedOnTakenAddress({emailId, email: personal, attemptedAt: nextDay}),
     )
   )
 
@@ -158,7 +158,7 @@ describe("Registrations StateChangeSlice", () => {
   test("a second attempt on a registered address within the hour sends no second notice", () =>
     givenEvents(
       completed->Array.concat([
-        RegistrationAttemptedOnTakenAddress({email, address: personal, attemptedAt: nextDay}),
+        RegistrationAttemptedOnTakenAddress({emailId, email: personal, attemptedAt: nextDay}),
       ]),
     )
     ->whenCmd(register(~at=nextDayLater))
@@ -169,12 +169,12 @@ describe("Registrations StateChangeSlice", () => {
   test("after the hour, a registered address is told again", () =>
     givenEvents(
       completed->Array.concat([
-        RegistrationAttemptedOnTakenAddress({email, address: personal, attemptedAt: nextDay}),
+        RegistrationAttemptedOnTakenAddress({emailId, email: personal, attemptedAt: nextDay}),
       ]),
     )
     ->whenCmd(register(~at=twoHoursOn))
     ->thenEvent(
-      RegistrationAttemptedOnTakenAddress({email, address: personal, attemptedAt: twoHoursOn}),
+      RegistrationAttemptedOnTakenAddress({emailId, email: personal, attemptedAt: twoHoursOn}),
     )
   )
 
@@ -183,22 +183,22 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents(challenged)
     ->whenCmd(register(~at=nextDay))
     ->thenEvents([
-      RegistrationExpired({email: email}),
-      RegistrationRequested({email, address: personal, roles, requestedAt: nextDay}),
+      RegistrationExpired({emailId: emailId}),
+      RegistrationRequested({emailId, email: personal, roles, requestedAt: nextDay}),
     ])
   )
 
   // scenario-id: 77738b1e-b5a2-41ab-888f-7cc6b0d44cdd
   test("a pending registration opens a challenge against a hash", () =>
     givenEvents(requested)
-    ->whenCmd(IssueRegistrationChallenge({email, proofHash: secretHash, issuedAt}))
-    ->thenEvent(RegistrationChallengeIssued({email, proofHash: secretHash, issuedAt}))
+    ->whenCmd(IssueRegistrationChallenge({emailId, proofHash: secretHash, issuedAt}))
+    ->thenEvent(RegistrationChallengeIssued({emailId, proofHash: secretHash, issuedAt}))
   )
 
   // scenario-id: 85ae672c-cfa3-4b26-817f-adc83b7437bd
   test("a redelivered challenge request opens nothing", () =>
     givenEvents(challenged)
-    ->whenCmd(IssueRegistrationChallenge({email, proofHash: "another", issuedAt: soonAfter}))
+    ->whenCmd(IssueRegistrationChallenge({emailId, proofHash: "another", issuedAt: soonAfter}))
     ->thenNoEvent
   )
 
@@ -206,28 +206,28 @@ describe("Registrations StateChangeSlice", () => {
   test("the right proof settles the registration", () =>
     givenEvents(challenged)
     ->whenCmd(submit())
-    ->thenEvent(RegistrationProofAccepted({email, address: personal, roles, proofHash: secretHash}))
+    ->thenEvent(RegistrationProofAccepted({emailId, email: personal, roles, proofHash: secretHash}))
   )
 
   // scenario-id: 055e3684-db0f-40f0-9e4a-fdba6cddb70c
   test("a wrong proof is counted, not settled", () =>
     givenEvents(challenged)
     ->whenCmd(submit(~hash="hash-of-a-guess"))
-    ->thenEvent(RegistrationProofRefused({email, reason: "ProofMismatch"}))
+    ->thenEvent(RegistrationProofRefused({emailId, reason: "ProofMismatch"}))
   )
 
   // scenario-id: 01c83ed2-4ac7-4561-b3a6-33007e75b4f3
   test("a proof after the challenge lapsed is refused", () =>
     givenEvents(challenged)
     ->whenCmd(submit(~at=nextDay))
-    ->thenEvent(RegistrationProofRefused({email, reason: "ChallengeExpired"}))
+    ->thenEvent(RegistrationProofRefused({emailId, reason: "ChallengeExpired"}))
   )
 
   // scenario-id: fb9e68aa-2b1f-4e26-914a-6e691214b863
   test("the right proof after the attempts are spent is refused", () =>
     givenEvents(challenged->Array.concat([wrong, wrong, wrong, wrong, wrong]))
     ->whenCmd(submit())
-    ->thenEvent(RegistrationProofRefused({email, reason: "AttemptsExhausted"}))
+    ->thenEvent(RegistrationProofRefused({emailId, reason: "AttemptsExhausted"}))
   )
 
   // scenario-id: b551a64a-847e-4ec1-aac5-6c4db2c4c904
@@ -246,14 +246,14 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 0ace1364-f882-406d-adce-e0be15803354
   test("an account made for a settled proof completes the registration", () =>
     givenEvents(verified)
-    ->whenCmd(RecordRegistrationCompleted({email: email}))
-    ->thenEvent(RegistrationCompleted({email: email}))
+    ->whenCmd(RecordRegistrationCompleted({emailId: emailId}))
+    ->thenEvent(RegistrationCompleted({emailId: emailId}))
   )
 
   // scenario-id: 5e8b1e7b-98e0-4e85-b7bb-c7e76a12f3b6
   test("completion without a settled proof records nothing", () =>
     givenEvents(challenged)
-    ->whenCmd(RecordRegistrationCompleted({email: email}))
+    ->whenCmd(RecordRegistrationCompleted({emailId: emailId}))
     ->thenNoEvent
   )
 
@@ -262,14 +262,14 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 91ec32ef-5065-4dec-8854-7aa7a3a7948e
   test("a code that went out is reissued", () =>
     givenEvents(challenged)
-    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: soonAfter}))
-    ->thenEvent(RegistrationChallengeReissued({email, address: personal, reissuedAt: soonAfter}))
+    ->whenCmd(ReissueRegistrationChallenge({emailId, requestedAt: soonAfter}))
+    ->thenEvent(RegistrationChallengeReissued({emailId, email: personal, reissuedAt: soonAfter}))
   )
 
   // scenario-id: 4cd5e9f7-0e91-484b-8aff-69327eb7bf24
   test("a code is not reissued within the resend cooldown", () =>
     givenEvents(challenged)
-    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: halfAMinuteOn}))
+    ->whenCmd(ReissueRegistrationChallenge({emailId, requestedAt: halfAMinuteOn}))
     ->thenNoEvent
   )
 
@@ -278,7 +278,7 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 4ba66cf6-d624-4edf-b2f1-9541d41daca6
   test("a code still on its way is not reissued", () =>
     givenEvents(requested)
-    ->whenCmd(ReissueRegistrationChallenge({email, requestedAt: soonAfter}))
+    ->whenCmd(ReissueRegistrationChallenge({emailId, requestedAt: soonAfter}))
     ->thenNoEvent
   )
 
@@ -288,9 +288,9 @@ describe("Registrations StateChangeSlice", () => {
       challenged
       ->Array.concat([wrong, wrong, wrong, wrong, wrong])
       ->Array.concat([
-        RegistrationChallengeReissued({email, address: personal, reissuedAt: soonAfter}),
+        RegistrationChallengeReissued({emailId, email: personal, reissuedAt: soonAfter}),
         RegistrationChallengeIssued({
-          email,
+          emailId,
           proofHash: "hash-of-the-new-secret",
           issuedAt: soonAfter,
         }),
@@ -299,8 +299,8 @@ describe("Registrations StateChangeSlice", () => {
     ->whenCmd(submit(~hash="hash-of-the-new-secret"))
     ->thenEvent(
       RegistrationProofAccepted({
-        email,
-        address: personal,
+        emailId,
+        email: personal,
         roles,
         proofHash: "hash-of-the-new-secret",
       }),
@@ -315,15 +315,15 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: be2adab7-c940-46e8-b957-02f55bcb7916
   test("withdrawing a pending registration releases the address", () =>
     givenEvents(challenged)
-    ->whenCmd(WithdrawRegistration({email, withdrawnAt: soonAfter}))
-    ->thenEvent(RegistrationWithdrawn({email, withdrawnAt: soonAfter}))
+    ->whenCmd(WithdrawRegistration({emailId, withdrawnAt: soonAfter}))
+    ->thenEvent(RegistrationWithdrawn({emailId, withdrawnAt: soonAfter}))
   )
 
   // Once a proof settled, an account is on its way; withdrawing would not stop it.
   // scenario-id: a06fb615-ee9a-493c-afde-adab251a847e
   test("a settled registration is not withdrawn", () =>
     givenEvents(verified)
-    ->whenCmd(WithdrawRegistration({email, withdrawnAt: soonAfter}))
+    ->whenCmd(WithdrawRegistration({emailId, withdrawnAt: soonAfter}))
     ->thenNoEvent
   )
 
@@ -332,22 +332,22 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: de1ea12d-dcc4-4539-a6c8-ce90ff8adaa2
   test("releasing an erased account frees the address", () =>
     givenEvents(completed)
-    ->whenCmd(ReleaseRegistration({email, releasedAt: nextDay}))
-    ->thenEvent(RegistrationReleased({email, releasedAt: nextDay}))
+    ->whenCmd(ReleaseRegistration({emailId, releasedAt: nextDay}))
+    ->thenEvent(RegistrationReleased({emailId, releasedAt: nextDay}))
   )
 
   // scenario-id: f74642f6-039b-4f1a-95e3-fa207a2ff5a6
   test("a released address registers again", () =>
-    givenEvents(completed->Array.concat([RegistrationReleased({email, releasedAt: nextDay})]))
+    givenEvents(completed->Array.concat([RegistrationReleased({emailId, releasedAt: nextDay})]))
     ->whenCmd(register(~at=nextDayLater))
-    ->thenEvent(RegistrationRequested({email, address: personal, roles, requestedAt: nextDayLater}))
+    ->thenEvent(RegistrationRequested({emailId, email: personal, roles, requestedAt: nextDayLater}))
   )
 
   // A claim nobody proved is withdrawn, not released.
   // scenario-id: f1b6c0a2-d964-4da3-8255-6a767198530e
   test("a pending registration is not released", () =>
     givenEvents(challenged)
-    ->whenCmd(ReleaseRegistration({email, releasedAt: soonAfter}))
+    ->whenCmd(ReleaseRegistration({emailId, releasedAt: soonAfter}))
     ->thenNoEvent
   )
 
@@ -355,7 +355,7 @@ describe("Registrations StateChangeSlice", () => {
   // scenario-id: 56e1d5a8-23a2-446f-b3bc-29da9af6ac77
   test("a role the app does not declare by invitation is refused to an inviter", () =>
     givenEvents([])
-    ->whenCmd(Invite({email, address, roles: [merchandiser], invitedBy: "u_admin", requestedAt}))
+    ->whenCmd(Invite({emailId, email, roles: [merchandiser], invitedBy: "u_admin", requestedAt}))
     ->thenError(NotByInvitation({role: merchandiserName}))
   )
 })

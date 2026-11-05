@@ -23,7 +23,7 @@ type externalInput = {
 @schema
 type command =
   | SubmitRegistrationProof({
-      email: ContactAddressId.t,
+      emailId: ContactAddressId.t,
       proofHash: string,
       presentedAt: Reventless.DateTime.t,
     })

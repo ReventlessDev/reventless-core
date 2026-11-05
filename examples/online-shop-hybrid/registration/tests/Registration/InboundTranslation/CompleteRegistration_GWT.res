@@ -12,8 +12,8 @@ let password = goodPassword
 
 let thenSubmits = async (pending, expected) =>
   switch (await pending).outcome {
-  | Translated([(id, SubmitRegistrationProof({email, proofHash, _}))]) =>
-    let actual = `${id}|${email->ContactAddressId.toString}|${proofHash}`
+  | Translated([(id, SubmitRegistrationProof({emailId, proofHash, _}))]) =>
+    let actual = `${id}|${emailId->ContactAddressId.toString}|${proofHash}`
     actual == expected
       ? Outcome.pass
       : Outcome.fail(TranslateError({expected, actual: Some(actual)}))

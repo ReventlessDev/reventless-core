@@ -9,58 +9,58 @@ import * as RegistrationChallenge$ReventlessRegistration from "../../Registratio
 function collect(event, param) {
   switch (event.TAG) {
     case "RegistrationRequested" :
-      let address = event.address;
       let email = event.email;
-      if (typeof address !== "object") {
-        if (address === "Erased") {
+      let emailId = event.emailId;
+      if (typeof email !== "object") {
+        if (email === "Erased") {
           return [];
         } else {
           return [];
         }
       } else {
         return [[
-            email + `:` + event.requestedAt,
+            emailId + `:` + event.requestedAt,
             {
-              email: email,
-              address: address._0,
+              emailId: emailId,
+              email: email._0,
               alreadyRegistered: false
             }
           ]];
       }
     case "RegistrationAttemptedOnTakenAddress" :
-      let address$1 = event.address;
       let email$1 = event.email;
-      if (typeof address$1 !== "object") {
-        if (address$1 === "Erased") {
+      let emailId$1 = event.emailId;
+      if (typeof email$1 !== "object") {
+        if (email$1 === "Erased") {
           return [];
         } else {
           return [];
         }
       } else {
         return [[
-            email$1 + `:taken:` + event.attemptedAt,
+            emailId$1 + `:taken:` + event.attemptedAt,
             {
-              email: email$1,
-              address: address$1._0,
+              emailId: emailId$1,
+              email: email$1._0,
               alreadyRegistered: true
             }
           ]];
       }
     case "RegistrationInvited" :
-      let address$2 = event.address;
       let email$2 = event.email;
-      if (typeof address$2 !== "object") {
-        if (address$2 === "Erased") {
+      let emailId$2 = event.emailId;
+      if (typeof email$2 !== "object") {
+        if (email$2 === "Erased") {
           return [];
         } else {
           return [];
         }
       } else {
         return [[
-            email$2 + `:invited:` + event.invitedAt,
+            emailId$2 + `:invited:` + event.invitedAt,
             {
-              email: email$2,
-              address: address$2._0,
+              emailId: emailId$2,
+              email: email$2._0,
               alreadyRegistered: false,
               invited: true,
               roles: event.roles
@@ -68,20 +68,20 @@ function collect(event, param) {
           ]];
       }
     case "RegistrationChallengeReissued" :
-      let address$3 = event.address;
       let email$3 = event.email;
-      if (typeof address$3 !== "object") {
-        if (address$3 === "Erased") {
+      let emailId$3 = event.emailId;
+      if (typeof email$3 !== "object") {
+        if (email$3 === "Erased") {
           return [];
         } else {
           return [];
         }
       } else {
         return [[
-            email$3 + `:reissued:` + event.reissuedAt,
+            emailId$3 + `:reissued:` + event.reissuedAt,
             {
-              email: email$3,
-              address: address$3._0,
+              emailId: emailId$3,
+              email: email$3._0,
               alreadyRegistered: false,
               invited: Stdlib_Option.isSome(event.invitedBy)
             }
@@ -112,10 +112,10 @@ function invitationBody(token, roles) {
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.";
 
-function send(capabilities, address, subject, body) {
+function send(capabilities, email, subject, body) {
   return capabilities.messaging.send({
     TAG: "ToEmail",
-    _0: address
+    _0: email
   }, {
     subject: subject,
     body: body
@@ -124,7 +124,7 @@ function send(capabilities, address, subject, body) {
 
 async function translate(_id, item, capabilities) {
   if (item.alreadyRegistered) {
-    let failure = await send(capabilities, item.address, "Someone tried to register with your address", noticeBody);
+    let failure = await send(capabilities, item.email, "Someone tried to register with your address", noticeBody);
     if (failure.TAG === "Ok") {
       return {
         TAG: "Ok",
@@ -154,15 +154,15 @@ async function translate(_id, item, capabilities) {
       _0: `cannot hash a secret: ` + proofHash._0._0
     };
   }
-  let failure$1 = await send(capabilities, item.address, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1, item.roles) : challengeBody(token$1));
+  let failure$1 = await send(capabilities, item.email, invited ? "You are invited to create an account" : "Finish your registration", invited ? invitationBody(token$1, item.roles) : challengeBody(token$1));
   if (failure$1.TAG === "Ok") {
     return {
       TAG: "Ok",
       _0: [
-        item.email,
+        item.emailId,
         {
           TAG: "IssueRegistrationChallenge",
-          email: ContactAddressId$ReventlessRegistration.makeFromString(item.email),
+          emailId: ContactAddressId$ReventlessRegistration.makeFromString(item.emailId),
           proofHash: proofHash._0,
           issuedAt: new Date().toISOString()
         }

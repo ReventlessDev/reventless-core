@@ -14,10 +14,10 @@ let initialState = {
   lastNoticeAt: undefined
 };
 
-function contactOf(email) {
+function contactOf(emailId) {
   return {
     TAG: "ByEmail",
-    _0: ContactAddressId$ReventlessRegistration.toString(email)
+    _0: ContactAddressId$ReventlessRegistration.toString(emailId)
   };
 }
 
@@ -52,7 +52,7 @@ function evolve(state, event) {
         stage: {
           TAG: "Pending",
           _0: {
-            address: event.address,
+            email: event.email,
             requestedAt: event.requestedAt,
             roles: event.roles,
             challenge: undefined,
@@ -67,7 +67,7 @@ function evolve(state, event) {
         stage: {
           TAG: "Pending",
           _0: {
-            address: event.address,
+            email: event.email,
             requestedAt: event.invitedAt,
             roles: event.roles,
             invitedBy: event.invitedBy,
@@ -118,7 +118,7 @@ function evolve(state, event) {
           _0: (newrecord$1.proofHash = event.proofHash, newrecord$1.challenge = {
             contact: {
               TAG: "ByEmail",
-              _0: ContactAddressId$ReventlessRegistration.toString(event.email)
+              _0: ContactAddressId$ReventlessRegistration.toString(event.emailId)
             },
             purpose: RegistrationChallenge$ReventlessRegistration.purposeOf(p$2.invitedBy),
             issuedAt: event.issuedAt,
@@ -225,8 +225,8 @@ function Make(App) {
       case "Register" :
         let requestedAt = command.requestedAt;
         let role = command.role;
-        let address = command.address;
         let email = command.email;
+        let emailId = command.emailId;
         if (!admits(state.admission, App.table, role, requestedAt)) {
           return {
             TAG: "Ok",
@@ -242,14 +242,14 @@ function Make(App) {
               _0: [
                 {
                   TAG: "RegistrationExpired",
-                  email: email
+                  emailId: emailId
                 },
                 {
                   TAG: "RegistrationRequested",
-                  email: email,
-                  address: {
+                  emailId: emailId,
+                  email: {
                     TAG: "Value",
-                    _0: address
+                    _0: email
                   },
                   roles: roles,
                   requestedAt: requestedAt
@@ -269,10 +269,10 @@ function Make(App) {
               TAG: "Ok",
               _0: [{
                   TAG: "RegistrationRequested",
-                  email: email,
-                  address: {
+                  emailId: emailId,
+                  email: {
                     TAG: "Value",
-                    _0: address
+                    _0: email
                   },
                   roles: roles,
                   requestedAt: requestedAt
@@ -295,10 +295,10 @@ function Make(App) {
               TAG: "Ok",
               _0: [{
                   TAG: "RegistrationAttemptedOnTakenAddress",
-                  email: email,
-                  address: {
+                  emailId: emailId,
+                  email: {
                     TAG: "Value",
-                    _0: address
+                    _0: email
                   },
                   attemptedAt: requestedAt
                 }]
@@ -307,7 +307,7 @@ function Make(App) {
         break;
       case "IssueRegistrationChallenge" :
         let issuedAt = command.issuedAt;
-        let email$1 = command.email;
+        let emailId$1 = command.emailId;
         let p$1 = state.stage;
         if (typeof p$1 !== "object") {
           return {
@@ -318,14 +318,14 @@ function Make(App) {
         let p$2 = p$1._0;
         let match = ContactVerification_Guards$ReventlessRegistration.onIssueRequested({
           TAG: "ByEmail",
-          _0: ContactAddressId$ReventlessRegistration.toString(email$1)
+          _0: ContactAddressId$ReventlessRegistration.toString(emailId$1)
         }, p$2.challenge, issuedAt, RegistrationChallenge$ReventlessRegistration.policyFor(RegistrationChallenge$ReventlessRegistration.purposeOf(p$2.invitedBy)));
         if (match === "Issue") {
           return {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationChallengeIssued",
-                email: email$1,
+                emailId: emailId$1,
                 proofHash: command.proofHash,
                 issuedAt: issuedAt
               }]
@@ -338,7 +338,7 @@ function Make(App) {
         }
       case "SubmitRegistrationProof" :
         let proofHash = command.proofHash;
-        let email$2 = command.email;
+        let emailId$2 = command.emailId;
         let p$3 = state.stage;
         if (typeof p$3 !== "object") {
           return {
@@ -367,8 +367,8 @@ function Make(App) {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationProofAccepted",
-                email: email$2,
-                address: p$4.address,
+                emailId: emailId$2,
+                email: p$4.email,
                 roles: p$4.roles,
                 proofHash: proofHash
               }]
@@ -378,7 +378,7 @@ function Make(App) {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationProofRefused",
-                email: email$2,
+                emailId: emailId$2,
                 reason: refusalReason(reason._0)
               }]
           };
@@ -391,7 +391,7 @@ function Make(App) {
               TAG: "Ok",
               _0: [{
                   TAG: "RegistrationCompleted",
-                  email: command.email
+                  emailId: command.emailId
                 }]
             };
           } else {
@@ -409,7 +409,7 @@ function Make(App) {
       case "Invite" :
         let requestedAt$1 = command.requestedAt;
         let roles$1 = command.roles;
-        let email$3 = command.email;
+        let emailId$3 = command.emailId;
         let role$1 = roles$1.find(r => !isByInvitation(App.table, r));
         if (role$1 !== undefined) {
           return {
@@ -428,14 +428,14 @@ function Make(App) {
         }
         let invited_1 = {
           TAG: "Value",
-          _0: command.address
+          _0: command.email
         };
         let invited_2 = roles$1.map(r => r);
         let invited_3 = command.invitedBy;
         let invited = {
           TAG: "RegistrationInvited",
-          email: email$3,
-          address: invited_1,
+          emailId: emailId$3,
+          email: invited_1,
           roles: invited_2,
           invitedBy: invited_3,
           invitedAt: requestedAt$1
@@ -448,7 +448,7 @@ function Make(App) {
               _0: [
                 {
                   TAG: "RegistrationExpired",
-                  email: email$3
+                  emailId: emailId$3
                 },
                 invited
               ]
@@ -490,8 +490,8 @@ function Make(App) {
               TAG: "Ok",
               _0: [{
                   TAG: "RegistrationChallengeReissued",
-                  email: command.email,
-                  address: p$7.address,
+                  emailId: command.emailId,
+                  email: p$7.email,
                   reissuedAt: requestedAt$2,
                   invitedBy: p$7.invitedBy
                 }]
@@ -520,7 +520,7 @@ function Make(App) {
             TAG: "Ok",
             _0: [{
                 TAG: "RegistrationWithdrawn",
-                email: command.email,
+                emailId: command.emailId,
                 withdrawnAt: command.withdrawnAt
               }]
           };
@@ -533,7 +533,7 @@ function Make(App) {
               TAG: "Ok",
               _0: [{
                   TAG: "RegistrationReleased",
-                  email: command.email,
+                  emailId: command.emailId,
                   releasedAt: command.releasedAt
                 }]
             };

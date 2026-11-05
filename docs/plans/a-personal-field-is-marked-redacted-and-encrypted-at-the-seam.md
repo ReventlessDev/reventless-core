@@ -255,7 +255,8 @@ adds `Reventless.Pii.mark`. Both imply `@sensitive`, and `SuryToJsonSchema` writ
 It refuses a `state`, a tag or partition key, the `@owner` field, a missing or unknown subject, a type
 it cannot name, and a field of any other type; each has a failing fixture in the PPX suite.
 [`PiiPpxTest`](../../reventless/core/tests/pii/PiiPpxTest.res) is the relationship test. The ledger's
-`address` is marked, with the registration as its subject (`@pii({subject: "email"})`), and a
+`email` is marked, with the registration as its subject (`@pii({subject: "emailId"})`; until
+2026-11-05 the fields were `address` and `email`), and a
 translation writes to nobody when it reads `Erased`. **Not built:** the warning on a command field that
 looks like a `@pii` event field and has no marker. It needs a warning that does not fail the
 zero-warning build, and is left for the tools' personal-data card, which sees the whole app.

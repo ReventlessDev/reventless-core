@@ -12,8 +12,8 @@ module Outcome = ReventlessGwt.Outcome
 
 let thenRegisters = async (pending, expected) =>
   switch (await pending).outcome {
-  | Translated([(id, Register({email, role, _}))]) =>
-    let actual = `${id}|${email->ContactAddressId.toString}|${(role :> string)}`
+  | Translated([(id, Register({emailId, role, _}))]) =>
+    let actual = `${id}|${emailId->ContactAddressId.toString}|${(role :> string)}`
     actual == expected
       ? Outcome.pass
       : Outcome.fail(TranslateError({expected, actual: Some(actual)}))

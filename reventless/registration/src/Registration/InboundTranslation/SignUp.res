@@ -23,8 +23,8 @@ type externalInput = {@sensitive email: string, role?: string}
 @schema
 type command =
   | Register({
-      email: ContactAddressId.t,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: ContactAddressId.t,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       role: Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
     })

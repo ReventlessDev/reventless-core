@@ -4,28 +4,28 @@
 // or a code reissued, is new work rather than work already done.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationRequested({email, address: Value(address), requestedAt}) => [
+  | RegistrationRequested({emailId, email: Value(email), requestedAt}) => [
       (
-        `${email}:${requestedAt->Reventless.DateTime.toString}`,
-        {email, address, alreadyRegistered: false},
+        `${emailId}:${requestedAt->Reventless.DateTime.toString}`,
+        {emailId, email, alreadyRegistered: false},
       ),
     ]
-  | RegistrationInvited({email, address: Value(address), roles, invitedAt}) => [
+  | RegistrationInvited({emailId, email: Value(email), roles, invitedAt}) => [
       (
-        `${email}:invited:${invitedAt->Reventless.DateTime.toString}`,
-        {email, address, alreadyRegistered: false, invited: true, roles},
+        `${emailId}:invited:${invitedAt->Reventless.DateTime.toString}`,
+        {emailId, email, alreadyRegistered: false, invited: true, roles},
       ),
     ]
-  | RegistrationChallengeReissued({email, address: Value(address), reissuedAt, ?invitedBy}) => [
+  | RegistrationChallengeReissued({emailId, email: Value(email), reissuedAt, ?invitedBy}) => [
       (
-        `${email}:reissued:${reissuedAt->Reventless.DateTime.toString}`,
-        {email, address, alreadyRegistered: false, invited: invitedBy->Option.isSome},
+        `${emailId}:reissued:${reissuedAt->Reventless.DateTime.toString}`,
+        {emailId, email, alreadyRegistered: false, invited: invitedBy->Option.isSome},
       ),
     ]
-  | RegistrationAttemptedOnTakenAddress({email, address: Value(address), attemptedAt}) => [
+  | RegistrationAttemptedOnTakenAddress({emailId, email: Value(email), attemptedAt}) => [
       (
-        `${email}:taken:${attemptedAt->Reventless.DateTime.toString}`,
-        {email, address, alreadyRegistered: true},
+        `${emailId}:taken:${attemptedAt->Reventless.DateTime.toString}`,
+        {emailId, email, alreadyRegistered: true},
       ),
     ]
   // An address that was erased or forgotten has nobody left to write to.
@@ -59,8 +59,8 @@ let invitationBody = (~token, ~roles=?) =>
 
 let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed."
 
-let send = (capabilities: Reventless.Capabilities.t, ~address, ~subject, ~body) =>
-  capabilities.messaging.send(~recipient=ToEmail(address), ~message={subject, body})
+let send = (capabilities: Reventless.Capabilities.t, ~email, ~subject, ~body) =>
+  capabilities.messaging.send(~recipient=ToEmail(email), ~message={subject, body})
 
 /**
 Draw a secret, send it, and open a challenge against its hash — sending first,
@@ -70,7 +70,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
   if item.alreadyRegistered {
     switch await send(
       capabilities,
-      ~address=item.address,
+      ~email=item.email,
       ~subject="Someone tried to register with your address",
       ~body=noticeBody,
     ) {
@@ -91,16 +91,16 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
       | Ok(proofHash) =>
         switch await send(
           capabilities,
-          ~address=item.address,
+          ~email=item.email,
           ~subject=invited ? "You are invited to create an account" : "Finish your registration",
           ~body=invited ? invitationBody(~token, ~roles=?item.roles) : challengeBody(~token),
         ) {
         | Ok(_) =>
           Ok(
             Some((
-              item.email,
+              item.emailId,
               IssueRegistrationChallenge({
-                email: ContactAddressId.makeFromString(item.email),
+                emailId: ContactAddressId.makeFromString(item.emailId),
                 proofHash,
                 issuedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
               }),

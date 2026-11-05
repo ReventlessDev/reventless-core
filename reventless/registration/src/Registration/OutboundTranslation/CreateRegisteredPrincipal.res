@@ -15,22 +15,22 @@
 @schema
 type consumedEvent =
   | RegistrationProofAccepted({
-      email: string,
-      @pii({subject: "email"}) address: Reventless.Email.t,
+      emailId: string,
+      @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<Reventless.Role.name>,
       proofHash: string,
     })
 
 @schema
 type outboundItem = {
-  email: string,
-  @pii({subject: "email"}) address: Reventless.Email.t,
+  emailId: string,
+  @pii({subject: "emailId"}) email: Reventless.Email.t,
   roles: array<Reventless.Role.name>,
   proofHash: string,
 }
 
 @schema
-type inboundCommand = RecordRegistrationCompleted({email: ContactAddressId.t})
+type inboundCommand = RecordRegistrationCompleted({emailId: ContactAddressId.t})
 
 // For a provider that is down. The password is put back before each retry, so a
 // retry finds it; once the budget is spent, it expires.
