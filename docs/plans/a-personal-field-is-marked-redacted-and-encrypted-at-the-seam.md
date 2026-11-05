@@ -8,7 +8,8 @@
 [Design](#design) on one point, below. Steps [PD1](#steps) to [PD10](#steps) in two halves: the
 first six decide formats and stop the plaintext copies, and come before any deployment holds a real
 person's data; the last four close the seam so that an installed codec provider encrypts every
-personal field on every transport. Code claims refer to `94466bb9c` unless a step says otherwise.<br/>
+personal field on every transport. [PD11](#pd11-the-example-shop-can-erase-a-customer), added
+2026-11-06, gives the example shop the tombstone erasure needs, and marks the geocoded point. Code claims refer to `94466bb9c` unless a step says otherwise.<br/>
 **Repos:** `reventless-core` only. `packages/reventless-ppx` (the attribute and its checks),
 `reventless/spec` (the wrapper type, the provider seam, the schema marker), `reventless/core`
 (the envelope, the loggers, encode-once, the caches, the append), `reventless/aws` (the presign
@@ -208,8 +209,9 @@ opaque id.
 
 ## Steps
 
-Numbered PD1 to PD10. **PD** stands for *personal data*. The first six freeze formats and stop the
-plaintext copies, and come first; the last four close the seam for an installed provider.
+Numbered PD1 to PD11. **PD** stands for *personal data*. The first six freeze formats and stop the
+plaintext copies, and come first; the next four close the seam for an installed provider; the last
+gives the example shop the tombstone that erasure needs.
 
 ### PD1: the formats, written down
 
@@ -456,6 +458,30 @@ handlers prepare in core, on both platforms. The counter Lambda decodes no perso
 **Open:** the scenario in the conformance kit, and the runs against DynamoDB and Postgres
 deployments, which need AWS credentials and a provider that encrypts.
 
+### PD11: the example shop can erase a customer
+
+Added 2026-11-06. The online-shop example marks a customer's email and address `@pii`, and every
+reader already writes an erased value down as empty (`Pii.getOr("")`). Its views' comments say an
+erased customer's row "is cleared by the app's erasure", and nothing clears it: the `Customer`
+aggregate has no tombstone, so the `Customers` view and the notification subscriptions keep the
+plaintext after the key is gone. The [Design](#design)'s rule, that read models are removed by a
+tombstone the app appends, has no example that follows it.
+
+- **The tombstone.** `Customer` gains `Erase`, for Admin only, and `Erased`, which carries no
+  personal field. It moves an active or deactivated customer to a final state; every later command
+  is refused with `CustomerNotFound`.
+- **The views obey it.** `Customers` and `NotificationSubscriptions` delete the customer's row on
+  `Erased`. A view keyed by the customer that copies no personal value keeps its row.
+- **The geocoded point is marked.** The address-geocoding trait marks the address but not the point
+  resolved from it. `SetLocation`'s and `SetAddressLocation`'s `location`, and the event that records
+  it, are marked like the address: the coordinates of a home are as personal as its address.
+- **Without a provider** the tombstone still removes the customer from every view; the event log
+  keeps the plaintext, which only an installed provider prevents. The example's README says both.
+
+**Exit:** a GWT that erases a customer and finds no row of theirs in either view; the trait's
+conformance suite checks that `location` is marked; with a test provider installed, a destroyed key
+reads every marked field of the customer, the point included, as `Erased`.
+
 ## Decisions
 
 | Decision | Taken |
@@ -497,3 +523,6 @@ deployments, which need AWS credentials and a provider that encrypts.
    ciphertext in the stored row on the local platform, DynamoDB and Postgres; the aggregate encodes
    once; the caches expire; an event handed the wrong schema is refused; the conformance scenario is
    green against real deployments.
+3. After [PD11](#steps): an erased customer of the example shop leaves no row in its views, and with
+   a test provider installed every marked field of theirs, the geocoded point included, reads
+   `Erased`.
