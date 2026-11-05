@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-03
+- feat: the API's line names the door a command came through ([e1f707f](https://github.com/ReventlessDev/reventless-core/commit/e1f707f2bff6e6fe29c43557e294b86a07c075fc))
+- feat: each command's outcome is written as a line of its own ([84e5e3f](https://github.com/ReventlessDev/reventless-core/commit/84e5e3fa4d77e629c6f72d9079a8f82f6b26a5ac))
+- feat(local): the command outcomes can be read by the flows they started ([e43819d](https://github.com/ReventlessDev/reventless-core/commit/e43819da448ab09ea39a39636a0ef065e3f0c34b))
 ### 2026-11-02
 - feat(local): the local platform keeps every command outcome ([252ed2e](https://github.com/ReventlessDev/reventless-core/commit/252ed2ea46f2634b86851aea402e94af7c371f10))
 - feat: a view row knows its last change, and the local platform keeps every change ([1a1fd71](https://github.com/ReventlessDev/reventless-core/commit/1a1fd7117d9837696a7c0080dcd6f0983e57780c))
