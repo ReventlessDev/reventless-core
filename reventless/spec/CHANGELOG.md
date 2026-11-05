@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.194 (2026-11-05)
+
+### Features
+
+* **local:** the command outcomes can be read by the flows they started ([e43819d](https://github.com/ReventlessDev/reventless-core/commit/e43819da448ab09ea39a39636a0ef065e3f0c34b))
+
+
 # 3.0.0-alpha.193 (2026-11-02)
 
 ### Features

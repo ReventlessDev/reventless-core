@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.329 (2026-11-05)
+
+### Features
+
+* each command's outcome is written as a line of its own ([84e5e3f](https://github.com/ReventlessDev/reventless-core/commit/84e5e3fa4d77e629c6f72d9079a8f82f6b26a5ac))
+* the API's line names the door a command came through ([e1f707f](https://github.com/ReventlessDev/reventless-core/commit/e1f707f2bff6e6fe29c43557e294b86a07c075fc))
+
+
 # 3.0.0-alpha.328 (2026-11-02)
 
 ### Features
