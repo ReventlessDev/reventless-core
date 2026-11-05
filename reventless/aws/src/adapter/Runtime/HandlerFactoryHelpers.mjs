@@ -6,6 +6,7 @@ import {
   tag as requestContextTag,
   fromOptions as makeRequestContext,
 } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import { currentPluginName } from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
@@ -120,6 +121,19 @@ export function runEffect(effect, opts = {}) {
   // Only annotate a redelivery. A constant "1" on every line is noise, and its
   // absence is what makes `filter retryCount > 1` a usable query.
   if (retryCount > 1) e = e.pipe(Effect.annotateLogs("retryCount", String(retryCount)));
+  // A line run on a fiber of its own (`->Effect.runSync`) misses these annotations, and the
+  // component→plugin registry is empty in a Lambda: it names its plugin from the ambient one,
+  // set for the invocation and restored after it.
+  if (resolvedPlugin) {
+    const inner = e;
+    e = Effect.suspend(() => {
+      const before = currentPluginName.contents;
+      currentPluginName.contents = resolvedPlugin;
+      return inner.pipe(
+        Effect.ensuring(Effect.sync(() => { currentPluginName.contents = before; })),
+      );
+    });
+  }
   return e
     .pipe(
       Effect.provideService(

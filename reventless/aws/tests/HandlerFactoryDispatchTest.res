@@ -200,6 +200,23 @@ describe("entry-point dispatch boundary", () => {
       },
     )
 
+    // A line run on a fiber of its own (`->Effect.runSync`) misses the invocation's annotations,
+    // and a Lambda's component→plugin registry is empty: the ambient plugin names it.
+    test(
+      "a line logged on a fiber of its own names the invocation's plugin",
+      async () => {
+        let before = Reventless.LogPrefix.currentPluginName.contents
+        let seen = await runEffect(
+          Effect.sync(
+            () => Reventless.LogPrefix.resolvePlugin(~comp="StateChangeSlice(PlaceOrder)", ()),
+          ),
+          {correlationId: "c", comp: "StateChangeSlice(PlaceOrder)", plugin: "Ordering"},
+        )
+        expect(seen)->Expect.toEqual(Some("Ordering"))
+        expect(Reventless.LogPrefix.currentPluginName.contents)->Expect.toEqual(before)
+      },
+    )
+
     // A constant "1" on every line is noise; its absence is what makes
     // `filter retryCount > 1` a usable CloudWatch query.
     test(

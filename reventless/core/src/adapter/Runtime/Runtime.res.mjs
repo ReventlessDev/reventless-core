@@ -22,7 +22,20 @@ function annotateInvocation(effect, correlationId, causationId, comp, pluginName
       return eff;
     }
   };
-  return Effect.provideService(annotateRetry(annotateOpt(annotateOpt(Effect.annotateLogs(effect, "correlationId", cid), "comp", comp), "causationId", causationId)), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, resolvedPlugin, timestamp, retryCount, identity, claims));
+  let withAmbientPlugin = eff => {
+    if (resolvedPlugin !== undefined) {
+      return Effect.flatMap(Effect.sync(() => {
+        let before = LogPrefix$Reventless.currentPluginName.contents;
+        LogPrefix$Reventless.currentPluginName.contents = resolvedPlugin;
+        return before;
+      }), before => Effect.ensuring(eff, Effect.sync(() => {
+        LogPrefix$Reventless.currentPluginName.contents = before;
+      })));
+    } else {
+      return eff;
+    }
+  };
+  return Effect.provideService(annotateRetry(annotateOpt(annotateOpt(Effect.annotateLogs(withAmbientPlugin(effect), "correlationId", cid), "comp", comp), "causationId", causationId)), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, resolvedPlugin, timestamp, retryCount, identity, claims));
 }
 
 function runEffect(correlationId, causationId, comp, pluginName, timestamp, retryCount, identity, claims, effect) {

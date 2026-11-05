@@ -46,7 +46,23 @@ let annotateInvocation = (
     | Some(count) if count > 1 => eff->Effect.annotateLogs("retryCount", count->Int.toString)
     | _ => eff
     }
+  // A line run on a fiber of its own (`->Effect.runSync`) misses these annotations, and inside a
+  // Lambda the component→plugin registry is empty: it names its plugin from the ambient one,
+  // set for the invocation and restored after it.
+  let withAmbientPlugin = eff =>
+    switch resolvedPlugin {
+    | None => eff
+    | Some(p) =>
+      Effect.sync(() => {
+        let before = Reventless.LogPrefix.currentPluginName.contents
+        Reventless.LogPrefix.currentPluginName := Some(p)
+        before
+      })->Effect.flatMap(before =>
+        eff->Effect.ensuring(Effect.sync(() => Reventless.LogPrefix.currentPluginName := before))
+      )
+    }
   effect
+  ->withAmbientPlugin
   ->Effect.annotateLogs("correlationId", cid)
   ->annotateOpt("comp", comp)
   ->annotateOpt("causationId", causationId)
