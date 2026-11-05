@@ -218,7 +218,7 @@ async function buildHandler() {
     };
     const transformedMapping = extensionMappingMake(fullMapping);
     const mappingsModule = {
-      name: ext.name,
+      name: Ops.mappingsName(ext),
       moduleUrl: ext.mappingsModule,
       mappings: [transformedMapping],
     };

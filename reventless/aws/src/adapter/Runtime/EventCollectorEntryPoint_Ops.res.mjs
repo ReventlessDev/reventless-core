@@ -445,6 +445,15 @@ function extensionPublishDicts(names, ext) {
   };
 }
 
+function mappingsName(ext) {
+  let prefix = ext.extensionPointName + ".";
+  if (ext.name.startsWith(prefix)) {
+    return ext.name.slice(prefix.length, ext.name.length);
+  } else {
+    return ext.name;
+  }
+}
+
 function warnSkippedExtension(ext) {
   HandlerFactoryHelpersMjs.log.warn(`extension '` + ext.name + `' missing module specifier(s); skipping. specModule=` + ext.specModule + `, mappingsModule=` + ext.mappingsModule + `, delegateModule=` + ext.delegateModule, {
     comp: "EventCollectorEntryPoint"
@@ -592,6 +601,7 @@ export {
   makePublishJsons,
   buildPublishToAggregates,
   extensionPublishDicts,
+  mappingsName,
   warnSkippedExtension,
   assetPath,
   loadPluginDefinition,

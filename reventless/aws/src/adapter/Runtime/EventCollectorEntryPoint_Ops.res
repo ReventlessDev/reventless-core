@@ -561,6 +561,16 @@ let extensionPublishDicts = (names: queueUrlNames, ext: extensionConfig): extens
   {publishToAggregates: resolve(ext.aggregateNames, names.publishToAggregates)}
 }
 
+/** The name an extension's mappings carry, as at deploy: its plugin's. The config names the
+    extension component, `<extension point>.<plugin>`, and `Extension_Operations` prefixes the
+    extension point itself. */
+let mappingsName = (ext: extensionConfig): string => {
+  let prefix = ext.extensionPointName ++ "."
+  ext.name->String.startsWith(prefix)
+    ? ext.name->String.slice(~start=prefix->String.length, ~end=ext.name->String.length)
+    : ext.name
+}
+
 let warnSkippedExtension = (ext: extensionConfig) =>
   logWarn(
     `extension '${ext.name}' missing module specifier(s); skipping. specModule=${ext.specModule}, mappingsModule=${ext.mappingsModule}, delegateModule=${ext.delegateModule}`,

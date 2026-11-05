@@ -226,3 +226,23 @@ describe("EventCollectorEntryPoint_Ops.parseHandlerConfig", () => {
     expect((c.extensions->Array.getUnsafe(0)).extensionPointName)->toBe("Ordering.Orders")
   })
 })
+
+describe("EventCollectorEntryPoint_Ops.mappingsName", () => {
+  let ext = (~name): EventCollectorEntryPoint_Ops.extensionConfig => {
+    name,
+    specModule: "",
+    mappingsModule: "",
+    delegateModule: "",
+    extensionPointName: "Ordering.Orders",
+    aggregateNames: [],
+  }
+  // The component is `Extension(<point>.<name>)`: the point is not named twice.
+  testSync("is the plugin's name, as at deploy", () =>
+    expect(EventCollectorEntryPoint_Ops.mappingsName(ext(~name="Ordering.Orders.Catalog")))->toBe(
+      "Catalog",
+    )
+  )
+  testSync("keeps a name that does not start with its extension point", () =>
+    expect(EventCollectorEntryPoint_Ops.mappingsName(ext(~name="Catalog")))->toBe("Catalog")
+  )
+})
