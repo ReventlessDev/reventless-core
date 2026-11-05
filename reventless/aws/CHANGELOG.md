@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.423 (2026-11-05)
+
+### Bug Fixes
+
+* **aws:** a line logged outside its invocation's fiber still names the plugin ([8e6f553](https://github.com/ReventlessDev/reventless-core/commit/8e6f553cc8ac2e439862bf1f3636ac86a4a22137))
+* **aws:** an extension's lines name its extension point once ([b448c59](https://github.com/ReventlessDev/reventless-core/commit/b448c5976feafd7d49ae8c04a67dcfbb72e973b5))
+
+
 # 3.0.0-alpha.422 (2026-11-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
