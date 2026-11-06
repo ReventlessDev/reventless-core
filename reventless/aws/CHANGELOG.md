@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.425 (2026-11-06)
+
+### Features
+
+* **aws:** deployed functions run on Node 24 ([4ac104e](https://github.com/ReventlessDev/reventless-core/commit/4ac104e9506851265a8a33419514bc53ecb97450))
+
+
 # 3.0.0-alpha.424 (2026-11-06)
 
 ### Bug Fixes

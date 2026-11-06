@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.332 (2026-11-06)
+
+### Features
+
+* **core:** a plugin lifecycle command picks its version from the other connected versions ([0d1403b](https://github.com/ReventlessDev/reventless-core/commit/0d1403b13292a22e8e469ead92cc67710de616fe))
+
+
 # 3.0.0-alpha.331 (2026-11-06)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.318 (2026-11-06)
+
+### Bug Fixes
+
+* **deps:** pin the host shell at 3.0.0-alpha.128 in the examples ([53699cc](https://github.com/ReventlessDev/reventless-core/commit/53699ccae0d5f2a7943950213a09804f88725828))
+
+
 # 1.0.0-alpha.317 (2026-11-06)
 
 ### Bug Fixes
