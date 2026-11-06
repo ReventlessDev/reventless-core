@@ -715,6 +715,9 @@ let test =
 
 ## 8. Effect v4: What Changes
 
+> Written against the v4 beta. For the state since the GA (4.1.2, LTS), the measured gains and
+> the opportunities, see [the Effect 4 analysis](effect-v4-migration.md).
+
 ### 8.1 Overview
 
 Effect v4 is currently in **beta** (as of March 2026). It is planned as a **long-term stable

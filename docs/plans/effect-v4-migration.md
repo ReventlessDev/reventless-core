@@ -2,7 +2,11 @@
 
 **Status.** Planned 2026-10-12. Effect 4.0.0 went GA on 2026-10-01, and 4.0.3 was
 the latest release when this was written. We are on `effect@3.22.2`, the newest
-3.x release, which is still being patched.
+3.x release, which is still being patched. **Rechecked 2026-11-06** against
+`4.1.2`, which the package calls a long-term support release.
+[The Effect 4 analysis](../analysis/effect-v4-migration.md) has the recount, the
+two hazards added to [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors),
+and what v4 opens up afterwards.
 
 **In plain words.** Effect is the library behind every queue, stream, retry
 schedule and background fiber in the framework. Version 4 rewrites its runtime
@@ -47,6 +51,8 @@ framework calls are below. "Uses" counts call sites outside `rescript/effect/`.
 | `Context.GenericTag` | 1 (`RequestContext`) | `Context.Service` |
 | `Effect.fork` | 1 (`DcbEventLogStorage_DynamoDb_Runtime`) | `Effect.forkChild` |
 | `Effect.logAnnotations` | 1 (a test) | no direct equivalent. Read the annotations another way or drop the assertion. |
+| `Cron.unsafeParse` | `ScheduleTime` (automations on a time) | `Cron.parseUnsafe` |
+| `DateTime.unsafeMakeZoned` | `DateTime.makeZonedFromMillis` | `DateTime.makeZonedUnsafe` |
 
 Unused bindings with no v4 export, to delete rather than port: `Cause.parallel`,
 `sequential`, `isEmpty`, `isFailType`, `isDie`, `isInterrupted`, `failures`,
@@ -84,6 +90,14 @@ test that fails on the old behavior before we trust the port.
 - **`catch` vs `catchAll`.** Check whether the v4 `catch` also catches defects or
   only typed failures. If it differs, the 82 call sites need sorting rather than a
   rename.
+- **`Queue.shutdown` drops what is buffered.** In v4 it discards the queued
+  items; `Queue.end` is "no more, let the reader drain". `CsvStream` ends its
+  input with `shutdown`, so a reader that is behind loses the last rows without
+  an error. Port it to `Queue.endUnsafe`
+  ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
+- **Node 22.19 or newer.** The repo pins 22.17.1. Move the pin and read the
+  Lambda `nodejs22.x` version before step 7
+  ([EVQ2](../analysis/effect-v4-migration.md#6-open-questions)).
 - **The new runtime.** Scheduling order between fibers can shift. The tests most
   likely to notice are the ones that depend on ordering: `LocalBus` drain,
   `HeartbeatTest`, and the channel tests in `reventless/local/tests/adapter/`.
@@ -102,8 +116,10 @@ test that fails on the old behavior before we trust the port.
 3. **Port `EventLogStorage_InMemory`** from `Stm`/`TRef` to `TxRef` + `Effect.tx`.
    It is the only STM user.
 4. **Handle the process-lifetime change** in the local platform. Give the drain
-   fibers a scope or an explicit interrupt on shutdown. Then run the suite with
-   `--detectOpenHandles`.
+   fibers a scope or an explicit interrupt on shutdown: a `FiberSet` per platform
+   instance, cleared by `reset`
+   ([EVO3](../analysis/effect-v4-migration.md#43-evo3-background-fibers-that-have-an-owner)).
+   Then run the suite with `--detectOpenHandles`.
 5. **Full build with zero warnings, then `pnpm test`** across all projects.
 6. **Cause and error behavior.** Write a test per error path from
    [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors): a rejected
