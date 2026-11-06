@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-06
+- feat(deps)!: upgrade effect to v4 ([800430a](https://github.com/ReventlessDev/reventless-core/commit/800430a82897d747626528c24d50cda33e2a6aa0))
 ### 2026-11-03
 - feat: the API's line names the door a command came through ([e1f707f](https://github.com/ReventlessDev/reventless-core/commit/e1f707f2bff6e6fe29c43557e294b86a07c075fc))
 - feat: each command's outcome is written as a line of its own ([84e5e3f](https://github.com/ReventlessDev/reventless-core/commit/84e5e3fa4d77e629c6f72d9079a8f82f6b26a5ac))
