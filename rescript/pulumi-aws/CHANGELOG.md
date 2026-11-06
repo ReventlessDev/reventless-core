@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.40 (2026-11-06)
+
+### Bug Fixes
+
+* **deps:** update sury to 11.1.0 ([512bc78](https://github.com/ReventlessDev/reventless-core/commit/512bc78da92c03664fa52fb3ab32df65f5e49b19))
+
+
 # 3.0.0-alpha.39 (2026-11-02)
 
 ### Features
