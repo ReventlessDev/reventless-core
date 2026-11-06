@@ -159,3 +159,9 @@ if (checked === 0) {
 console.log(
   `ok ${checked} tagged-union parsers examined, ${grouped} with a grouped block, every constructor reachable`,
 )
+
+// Done. Some of the modules imported above create Pulumi resources when they
+// load, and Pulumi's mock monitor can reject one of those registrations after
+// the check has finished (on Node 24 it does). That is not this check's
+// business, so the verdict above is the exit code.
+process.exit(0)
