@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
 
       - name: Setup D2 (remark-d2 shells out to the d2 CLI)

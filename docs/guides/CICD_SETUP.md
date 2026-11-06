@@ -31,7 +31,7 @@ Triggered on:
 - ReScript compilation
 - TypeScript type checking
 - Build artifact validation
-- Multi-Node.js version testing (20.x, 22.17.1)
+- Node.js 24.22.2 (from `.node-version`)
 
 ##### Test Suite
 - Unit tests per package

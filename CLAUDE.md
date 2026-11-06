@@ -26,7 +26,7 @@ All five folders are Lerna workspaces (`lerna.json` packages) and pnpm workspace
 
 ## Build Commands
 
-Use Node v22.17.1 (specified in `.node-version`) and pnpm 10 (enforced via `packageManager` + `corepack`). See [docs/guides/pnpm-guide.md](docs/guides/pnpm-guide.md) for an npm→pnpm reference.
+Use Node v24.22.2 (specified in `.node-version`) and pnpm 10 (enforced via `packageManager` + `corepack`). See [docs/guides/pnpm-guide.md](docs/guides/pnpm-guide.md) for an npm→pnpm reference.
 
 ### Monorepo-level commands
 ```bash

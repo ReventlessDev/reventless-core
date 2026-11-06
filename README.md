@@ -77,7 +77,7 @@ Bindings for JS/npm libraries used across the framework:
 
 ### Prerequisites
 
-- **Node.js** v22.17.1 — see [`.node-version`](.node-version). [`fnm`](https://github.com/Schniz/fnm) / `nvm` will pick it up automatically.
+- **Node.js** v24.22.2 — see [`.node-version`](.node-version). [`fnm`](https://github.com/Schniz/fnm) / `nvm` will pick it up automatically.
 - **pnpm** 10 — this repo enforces pnpm via `packageManager` + corepack. Enable with `corepack enable`. **Do not use `npm`.**
 - **Git**.
 - **OCaml toolchain (opam + dune)** — *only* if there is no prebuilt ReScript PPX binary for your platform (see [PPX binary](#ppx-binary) below). Prebuilt binaries cover Linux x64 and macOS arm64; other platforms build the PPX from source during setup.

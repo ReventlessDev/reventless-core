@@ -144,7 +144,7 @@ jobs:
         if: steps.affected.outputs.select != 'none'
         uses: actions/setup-node@v6
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 

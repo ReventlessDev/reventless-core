@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
 
       - name: Setup workspace (pnpm-workspace.yaml)
@@ -92,7 +92,7 @@ jobs:
   #     - name: Setup Node.js
   #       uses: actions/setup-node@v6
   #       with:
-  #         node-version: "22.17.1"
+  #         node-version: "24.22.2"
   #         cache: "npm"
   #
   #     - name: Install dependencies
@@ -136,7 +136,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
 
       - name: Setup workspace (pnpm-workspace.yaml)
@@ -174,7 +174,7 @@ jobs:
   #     - name: Setup Node.js
   #       uses: actions/setup-node@v6
   #       with:
-  #         node-version: "22.17.1"
+  #         node-version: "24.22.2"
   #         cache: "npm"
   #
   #     - name: Install audit-ci

@@ -41,7 +41,7 @@ jobs:
       # takes the ordinary path. `inputs` is empty on a workflow_run event, so
       # the comparison is false there rather than null.
       publish-only: ${{ github.event_name == 'workflow_dispatch' && inputs.publish-only == true }}
-      node-version: "22.17.1"
+      node-version: "24.22.2"
       workspace-setup: node scripts/workspace-setup.mjs
       build-command: pnpm run clean && pnpm run build
       # Directory names, not package names — each becomes a `**/<name>/**` glob.

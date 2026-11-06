@@ -51,7 +51,7 @@ on:
         description: "Node.js version"
         required: false
         type: string
-        default: "22.17.1"
+        default: "24.22.2"
       workspace-setup:
         description: "Command run after checkout and before install (e.g. a script that generates pnpm-workspace.yaml). Skipped when empty."
         required: false

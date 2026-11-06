@@ -44,7 +44,7 @@ on:
         description: "Node.js version"
         required: false
         type: string
-        default: "22"
+        default: "24.22.2"
       layer-arn:
         description: "Lambda Layer ARN (overrides the SSM /reventless/layer-arn/{stack} lookup)"
         required: false

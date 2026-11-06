@@ -176,7 +176,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 
@@ -266,7 +266,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 
@@ -320,7 +320,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.17.1"
+          node-version: "24.22.2"
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish main (thin) package
