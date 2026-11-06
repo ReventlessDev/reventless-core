@@ -296,9 +296,10 @@ describe("AccountStore.reload", () => {
 `)
     let _ = AccountStore.load(~accountsFile=path, ())
     AccountStore.watch(path)
-    NodeFs.writeFileSync(
-      path,
-      `
+    let save = () =>
+      NodeFs.writeFileSync(
+        path,
+        `
 - username: alice
   password: a1
   groups: [Editor]
@@ -306,13 +307,19 @@ describe("AccountStore.reload", () => {
   password: driver
   groups: [Driver]
 `,
-    )
+      )
+    save()
+    // macOS can drop a change made just as the watch starts, so save again
+    // every half second until the reload is seen.
     let rec waitFor = async (tries: int) =>
       if await signsIn(~username="driver", ~password="driver") {
         true
       } else if tries == 0 {
         false
       } else {
+        if mod(tries, 10) == 0 {
+          save()
+        }
         await Promise.make((resolve, _) => setTimeout(() => resolve(), 50)->ignore)
         await waitFor(tries - 1)
       }
