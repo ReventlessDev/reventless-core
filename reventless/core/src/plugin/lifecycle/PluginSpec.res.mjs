@@ -3,6 +3,9 @@
 import * as Sury from "sury";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as MemberRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/MemberRef.res.mjs";
+
+let otherVersion = MemberRef$Reventless.of_(undefined, "Plugins", undefined, "otherConnectedVersions");
 
 let commandSchema = Sury.union([
   Sury.$schema(s => ({
@@ -27,15 +30,15 @@ let commandSchema = Sury.union([
   })),
   Sury.$schema(s => ({
     TAG: "Activate",
-    version: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(otherVersion)
   })),
   Sury.$schema(s => ({
     TAG: "Deactivate",
-    version: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(otherVersion)
   })),
   Sury.$schema(s => ({
     TAG: "Retire",
-    version: s.m(Plugin$Reventless.versionSchema)
+    version: s.m(otherVersion)
   }))
 ]);
 
@@ -164,6 +167,7 @@ export {
   name,
   Id,
   Plugins,
+  otherVersion,
   versionSupersededDataSchema,
   eventSchema,
   errorSchema,
@@ -173,4 +177,4 @@ export {
   authorizationOf,
   traits,
 }
-/* commandSchema Not a pure module */
+/* otherVersion Not a pure module */

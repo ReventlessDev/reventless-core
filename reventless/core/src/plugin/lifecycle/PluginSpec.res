@@ -12,6 +12,11 @@ module Plugins = PluginsReadModelSpec
 // supersession synchronously. Version-scoped commands carry the `version`
 // the transition targets; the ExtensionPoint→Plugin mapping supplies it
 // (translated from the transport-level `name@version` id — Approach 1).
+
+// The version an admin command acts on is picked from the row's other connected
+// versions; a form opened on the row adds the row's own version to that list.
+let otherVersion = Reventless.MemberRef.of_(~view="Plugins", ~field="otherConnectedVersions")
+
 // Order is load-bearing: sury strands constructors declared after a run of two or
 // more same-shaped ones, so the `pluginDefinition` pair must lead (DZakh/sury#392).
 @schema
@@ -33,11 +38,11 @@ type command =
   // a caller cannot match it against a field it holds, and a coercion failure says
   // `Variable '_0'` rather than what was missing. These three are the ones a person
   // calls, so their argument carries its own name.
-  | Activate({version: version})
-  | Deactivate({version: version})
+  | Activate({version: @s.matches(otherVersion) version})
+  | Deactivate({version: @s.matches(otherVersion) version})
   // Manual admin retirement of a specific version (archive). Distinct from the
   // automatic `Superseded` transition (which is decided, not commanded).
-  | Retire({version: version})
+  | Retire({version: @s.matches(otherVersion) version})
 
 // Carries both the superseded and the superseding version's full definition —
 // a deterministic trigger for version-to-version schema/data migrations
