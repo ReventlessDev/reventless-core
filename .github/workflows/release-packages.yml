@@ -584,8 +584,12 @@ jobs:
           fi
           # A prerelease that becomes `latest` is what makes a bare `npm install`
           # resolve a prerelease; a dist-tag keeps `latest` for graduated releases.
+          # Without it the tag is named anyway: npm 11 (Node 24) refuses a
+          # prerelease with no `--tag` rather than letting it become `latest`.
           if [ "$DIST_TAG_PRERELEASES" = "true" ] && [ -n "$PREID" ]; then
             PUBLISH_ARGS+=(--tag "$PREID")
+          else
+            PUBLISH_ARGS+=(--tag latest)
           fi
           echo "publish args: ${PUBLISH_ARGS[*]}"
           # Publish one package at a time in dependency (topological) order with
