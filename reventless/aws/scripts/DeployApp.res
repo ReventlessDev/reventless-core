@@ -495,22 +495,30 @@ let outputString = (outputs: dict<Automation.outputValue>, name: string): option
 /** The stack's own accounts file beside the platform, started from the app's
     template, or `None` when the app has no template — then there is nothing to
     create. Per stack because the file records the ids one pool minted: sharing
-    `accounts.yaml` would overwrite another deployment's record of its accounts. A stack deployed
-    before the file was renamed keeps its `users.<stack>.yaml` until it is renamed. */
+    `accounts.yaml` would overwrite another deployment's record of its accounts. */
 let accountsFileName = stack => `accounts.${stack}.yaml`
-let oldAccountsFileName = stack => `users.${stack}.yaml`
+
+let _accountsPath = (~platformDir, ~stack) =>
+  NodePath.join([platformDir, ".reventless", accountsFileName(stack)])
+
+/** The refusal when the stack's record or the template is still under its old name. Checked
+    before deploying: copying the template over a record left as `users.<stack>.yaml` would
+    lose the ids its pool minted. */
+let oldAccountsNameLeft = (~platformDir: string, ~stack: string): option<string> =>
+  switch Manifest.oldNameLeft(
+    ~current=_accountsPath(~platformDir, ~stack),
+    ~old=NodePath.join([platformDir, ".reventless", `users.${stack}.yaml`]),
+  ) {
+  | Some(_) as refusal => refusal
+  | None =>
+    Manifest.oldNameLeft(
+      ~current=NodePath.join([platformDir, Manifest.templateName]),
+      ~old=NodePath.join([platformDir, Manifest.oldTemplateName]),
+    )
+  }
 
 let accountsFile = (~platformDir: string, ~stack: string): option<string> => {
-  let file = {
-    let current = NodePath.join([platformDir, ".reventless", accountsFileName(stack)])
-    let old = NodePath.join([platformDir, ".reventless", oldAccountsFileName(stack)])
-    if !NodeFs.existsSync(current) && NodeFs.existsSync(old) {
-      Manifest.noticeOldName(old)
-      old
-    } else {
-      current
-    }
-  }
+  let file = _accountsPath(~platformDir, ~stack)
   let template = Manifest.templateIn(platformDir)
   switch (NodeFs.existsSync(file), NodeFs.existsSync(template)) {
   | (false, false) => None
@@ -533,7 +541,12 @@ let signInLines = (entries: array<Manifest.entry>): array<string> => {
 // ── up / down ────────────────────────────────────────────────────────────────
 
 let up = async (~manifest: DeployManifest.resolved, ~stack: string): result<unit, string> =>
-  switch projectsOf(manifest) {
+  switch projectsOf(manifest)->Result.flatMap(((platform, _) as projects) =>
+    switch oldAccountsNameLeft(~platformDir=platform.dir, ~stack) {
+    | Some(refusal) => Error(refusal)
+    | None => Ok(projects)
+    }
+  ) {
   | Error(_) as e => e
   | Ok((platform, plugins)) =>
     switch await check(~projects=[platform]->Array.concat(plugins)) {

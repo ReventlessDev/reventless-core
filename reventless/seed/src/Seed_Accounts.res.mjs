@@ -53,14 +53,7 @@ function parseString(yamlText) {
 }
 
 function defaultPath() {
-  let dir = Nodepath.join(process.cwd(), ".reventless");
-  let current = Nodepath.join(dir, "accounts.yaml");
-  let old = Nodepath.join(dir, "users.yaml");
-  if (!Nodefs.existsSync(current) && Nodefs.existsSync(old)) {
-    return old;
-  } else {
-    return current;
-  }
+  return Nodepath.join(process.cwd(), ".reventless", "accounts.yaml");
 }
 
 function load(path) {

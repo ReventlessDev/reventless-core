@@ -15,45 +15,55 @@ let template = `- username: admin
 `
 
 describe("AccountsManifest.locate", () => {
-  // An app made before the file was renamed keeps its old names: both are read until they are
-  // renamed, and a new file is made under the new name.
+  // A file left under its old name is no longer read, but refused naming both names, so the
+  // app learns why rather than starting with no accounts. Beside a new one it is ignored.
   testSync(
-    "an app's files under their old names are read, and a new one takes the new name",
+    "a file left under its old name is refused, naming both; beside a new one it is ignored",
     () => {
       let old = scratch()
       NodeFs.writeFileSync(NodePath.join([old, AccountsManifest.oldTemplateName]), template)
       NodeFs.mkdirSync(NodePath.join([old, ".reventless"]), {recursive: true})
       NodeFs.writeFileSync(
         NodePath.join([old, ".reventless", AccountsManifest.oldFileName]),
-        "- username: mine\n  password: kept\n  groups: []\n",
+        template,
       )
-      let seeded = scratch()
-      NodeFs.writeFileSync(NodePath.join([seeded, AccountsManifest.oldTemplateName]), template)
       let both = scratch()
       NodeFs.mkdirSync(NodePath.join([both, ".reventless"]), {recursive: true})
-      NodeFs.writeFileSync(NodePath.join([both, ".reventless", "accounts.yaml"]), template)
-      NodeFs.writeFileSync(NodePath.join([both, ".reventless", "users.yaml"]), template)
+      NodeFs.writeFileSync(
+        NodePath.join([both, ".reventless", AccountsManifest.fileName]),
+        template,
+      )
+      NodeFs.writeFileSync(
+        NodePath.join([both, ".reventless", AccountsManifest.oldFileName]),
+        template,
+      )
       let cwd = NodeProcess.cwd()
       let at = (dir, f) => {
         NodeProcess.chdir(dir)
-        let r = f()
+        let r = try {Ok(f())} catch {
+        | JsExn(err) => Error(JsExn.message(err)->Option.getOr(""))
+        }
         NodeProcess.chdir(cwd)
         r
       }
-      let read = at(old, () => AccountsManifest.defaultPath())
-      let template_ = AccountsManifest.templateIn(old)
-      let made = at(seeded, () => AccountsManifest.locate())
-      let preferred = at(both, () => AccountsManifest.defaultPath())
+      let names = (r, ~old, ~current) =>
+        switch r {
+        | Error(message) => message->String.includes(old) && message->String.includes(current)
+        | Ok(_) => false
+        }
       expect((
-        read->String.endsWith(NodePath.join([".reventless", "users.yaml"])),
-        template_->String.endsWith("users.example.yaml"),
-        switch made {
-        | Ok(SeededFrom(file, from)) =>
-          file->String.endsWith("accounts.yaml") && from->String.endsWith("users.example.yaml")
-        | _ => false
-        },
-        preferred->String.endsWith("accounts.yaml"),
-      ))->toEqual((true, true, true, true))
+        at(old, () => AccountsManifest.defaultPath())->names(
+          ~old=AccountsManifest.oldFileName,
+          ~current=AccountsManifest.fileName,
+        ),
+        at(old, () => AccountsManifest.templateIn(old))->names(
+          ~old=AccountsManifest.oldTemplateName,
+          ~current=AccountsManifest.templateName,
+        ),
+        at(both, () => AccountsManifest.defaultPath())->Result.map(
+          p => p->String.endsWith(AccountsManifest.fileName),
+        ),
+      ))->toEqual((true, true, Ok(true)))
     },
   )
 

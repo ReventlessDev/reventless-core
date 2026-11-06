@@ -76,15 +76,8 @@ let parseString = (yamlText: string): array<user> => {
 }
 
 /** Where the file lives for the platform being seeded — the seed runs from that
-    package's directory, which is the same cwd the local auth adapter reads. Its new name,
-    else its old one while an app keeps it, as `AccountsManifest.defaultPath` finds it (the seed
-    does not depend on the spec package that holds it). */
-let defaultPath = (): string => {
-  let dir = NodePath.join([NodeProcess.cwd(), ".reventless"])
-  let current = NodePath.join([dir, "accounts.yaml"])
-  let old = NodePath.join([dir, "users.yaml"])
-  !NodeFs.existsSync(current) && NodeFs.existsSync(old) ? old : current
-}
+    package's directory, which is the same cwd the local auth adapter reads. */
+let defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless", "accounts.yaml"])
 
 /**
  * The accounts on disk, with the path they came from. `None` when there is no

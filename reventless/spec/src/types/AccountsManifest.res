@@ -73,41 +73,36 @@ let fileName = "accounts.yaml"
   setup script, so it is a convention rather than a setting. */
 let templateName = "accounts.example.yaml"
 
-/** The names the file and its template had before. An app made then keeps them until it renames
-  them, so both are read, with a notice. */
+/** The names the file and its template had before. They are no longer read, but a file left
+  under one is refused, so an app that kept it is told why rather than finding no accounts. */
 let oldFileName = "users.yaml"
 let oldTemplateName = "users.example.yaml"
 
-let _noticed = ref(false)
+/** The refusal when `old` is there and `current` is not, naming both. */
+let oldNameLeft = (~current: string, ~old: string): option<string> =>
+  !NodeFs.existsSync(current) && NodeFs.existsSync(old)
+    ? Some(
+        `[accounts] ${old} is no longer read: the accounts file is called ${NodePath.basename(
+            current,
+          )} now. Rename it to ${current}.`,
+      )
+    : None
 
-/** Says once per process that a file is read under its old name, and how to rename it. */
-let noticeOldName = (path: string) =>
-  if !_noticed.contents {
-    _noticed := true
-    Console.warn(
-      `[accounts] reading ${path}: the accounts file is called ${fileName} now. Rename .reventless/${oldFileName} to .reventless/${fileName}, and ${oldTemplateName} to ${templateName}.`,
-    )
-  }
-
-/** The new name's path in `dir` when it is there; else the old name's when that is there, with
-  the notice; else the new name's, for a file about to be made. */
-let _either = (dir: string, ~name: string, ~old: string): string => {
+/** `name` in `dir`, throwing the refusal when only `old` is there. */
+let _current = (dir: string, ~name: string, ~old: string): string => {
   let current = NodePath.join([dir, name])
-  let previous = NodePath.join([dir, old])
-  if !NodeFs.existsSync(current) && NodeFs.existsSync(previous) {
-    noticeOldName(previous)
-    previous
-  } else {
-    current
+  switch oldNameLeft(~current, ~old=NodePath.join([dir, old])) {
+  | Some(message) => JsError.throwWithMessage(message)
+  | None => current
   }
 }
 
 /** Where both platforms keep it: beside the package the process runs from. */
 let defaultPath = (): string =>
-  _either(NodePath.join([NodeProcess.cwd(), ".reventless"]), ~name=fileName, ~old=oldFileName)
+  _current(NodePath.join([NodeProcess.cwd(), ".reventless"]), ~name=fileName, ~old=oldFileName)
 
-/** The template a platform package in `dir` keeps, under its new name or its old one. */
-let templateIn = (dir: string): string => _either(dir, ~name=templateName, ~old=oldTemplateName)
+/** The template a platform package in `dir` keeps. */
+let templateIn = (dir: string): string => _current(dir, ~name=templateName, ~old=oldTemplateName)
 
 // ── Writing back ─────────────────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
@@ -72,35 +73,28 @@ let oldFileName = "users.yaml";
 
 let oldTemplateName = "users.example.yaml";
 
-let _noticed = {
-  contents: false
-};
-
-function noticeOldName(path) {
-  if (!_noticed.contents) {
-    _noticed.contents = true;
-    console.warn(`[accounts] reading ` + path + `: the accounts file is called ` + fileName + ` now. Rename .reventless/` + oldFileName + ` to .reventless/` + fileName + `, and ` + oldTemplateName + ` to ` + templateName + `.`);
-    return;
+function oldNameLeft(current, old) {
+  if (!Nodefs.existsSync(current) && Nodefs.existsSync(old)) {
+    return `[accounts] ` + old + ` is no longer read: the accounts file is called ` + Nodepath.basename(current) + ` now. Rename it to ` + current + `.`;
   }
 }
 
-function _either(dir, name, old) {
+function _current(dir, name, old) {
   let current = Nodepath.join(dir, name);
-  let previous = Nodepath.join(dir, old);
-  if (!Nodefs.existsSync(current) && Nodefs.existsSync(previous)) {
-    noticeOldName(previous);
-    return previous;
+  let message = oldNameLeft(current, Nodepath.join(dir, old));
+  if (message !== undefined) {
+    return Stdlib_JsError.throwWithMessage(message);
   } else {
     return current;
   }
 }
 
 function defaultPath() {
-  return _either(Nodepath.join(process.cwd(), ".reventless"), fileName, oldFileName);
+  return _current(Nodepath.join(process.cwd(), ".reventless"), fileName, oldFileName);
 }
 
 function templateIn(dir) {
-  return _either(dir, templateName, oldTemplateName);
+  return _current(dir, templateName, oldTemplateName);
 }
 
 function path(index, field) {
@@ -383,7 +377,7 @@ function locate(given, param) {
       }
     };
   }
-  let template = _either(process.cwd(), templateName, oldTemplateName);
+  let template = _current(process.cwd(), templateName, oldTemplateName);
   if (!Nodefs.existsSync(template)) {
     return {
       TAG: "Error",
@@ -420,7 +414,7 @@ function locate(given, param) {
 }
 
 function declaredGroups() {
-  let template = _either(process.cwd(), templateName, oldTemplateName);
+  let template = _current(process.cwd(), templateName, oldTemplateName);
   let file = Nodefs.existsSync(defaultPath()) ? defaultPath() : (
       Nodefs.existsSync(template) ? template : undefined
     );
@@ -491,9 +485,8 @@ export {
   templateName,
   oldFileName,
   oldTemplateName,
-  _noticed,
-  noticeOldName,
-  _either,
+  oldNameLeft,
+  _current,
   defaultPath,
   templateIn,
   path,

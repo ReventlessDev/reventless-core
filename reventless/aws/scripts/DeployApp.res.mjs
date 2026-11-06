@@ -614,14 +614,21 @@ function accountsFileName(stack) {
   return `accounts.` + stack + `.yaml`;
 }
 
-function oldAccountsFileName(stack) {
-  return `users.` + stack + `.yaml`;
+function _accountsPath(platformDir, stack) {
+  return Nodepath.join(platformDir, ".reventless", accountsFileName(stack));
+}
+
+function oldAccountsNameLeft(platformDir, stack) {
+  let refusal = AccountsManifest$Reventless.oldNameLeft(_accountsPath(platformDir, stack), Nodepath.join(platformDir, ".reventless", `users.` + stack + `.yaml`));
+  if (refusal !== undefined) {
+    return refusal;
+  } else {
+    return AccountsManifest$Reventless.oldNameLeft(Nodepath.join(platformDir, AccountsManifest$Reventless.templateName), Nodepath.join(platformDir, AccountsManifest$Reventless.oldTemplateName));
+  }
 }
 
 function accountsFile(platformDir, stack) {
-  let current = Nodepath.join(platformDir, ".reventless", accountsFileName(stack));
-  let old = Nodepath.join(platformDir, ".reventless", oldAccountsFileName(stack));
-  let file = !Nodefs.existsSync(current) && Nodefs.existsSync(old) ? (AccountsManifest$Reventless.noticeOldName(old), old) : current;
+  let file = _accountsPath(platformDir, stack);
   let template = AccountsManifest$Reventless.templateIn(platformDir);
   let match = Nodefs.existsSync(file);
   let match$1 = Nodefs.existsSync(template);
@@ -645,7 +652,20 @@ function signInLines(entries) {
 }
 
 async function up(manifest, stack) {
-  let e = projectsOf(manifest);
+  let e = Stdlib_Result.flatMap(projectsOf(manifest), projects => {
+    let refusal = oldAccountsNameLeft(projects[0].dir, stack);
+    if (refusal !== undefined) {
+      return {
+        TAG: "Error",
+        _0: refusal
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: projects
+      };
+    }
+  });
   if (e.TAG !== "Ok") {
     return e;
   }
@@ -952,7 +972,8 @@ export {
   deploy,
   outputString,
   accountsFileName,
-  oldAccountsFileName,
+  _accountsPath,
+  oldAccountsNameLeft,
   accountsFile,
   signInLines,
   up,

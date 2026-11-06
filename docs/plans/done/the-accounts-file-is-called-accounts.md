@@ -2,7 +2,8 @@
 
 **Date:** 2026-10-25<br/>
 **Status:** ✅ [AF1](#af1-the-file-is-found-by-its-new-name-and-its-old-one) to
-[AF4](#af4-the-code-names-follow) built 2026-10-25.
+[AF4](#af4-the-code-names-follow) built 2026-10-25. The old names stopped being read 2026-11-06
+([open question 1](#open-questions)).
 
 **Id prefixes.** The steps are numbered AF1 to AF4; AF stands for *accounts file*.
 
@@ -88,8 +89,12 @@ as no app outside this repository names the store yet.
 
 ## Open questions
 
-1. **When does the old name stop being read?** **Recommendation: after two releases that print the
-   notice**, removed in a commit of its own, so an app that missed the notice gets an error naming
-   both files rather than an empty login.
+1. *Settled 2026-11-06.* **When does the old name stop being read?** After two releases that print
+   the notice, so an app that missed the notice gets an error naming both files rather than an
+   empty login. **Done** after 29: `AccountsManifest.oldNameLeft` refuses a directory holding only
+   `users.yaml` or `users.example.yaml`, `defaultPath` and `templateIn` throw that refusal, and the
+   AWS deploy returns it before deploying anything, for a stack's `users.<stack>.yaml` too, since
+   copying the template over that record would lose the ids its pool minted. The seed's own copy
+   of the lookup reads `accounts.yaml` only. Tested in `PrepareAccountsTest`.
 2. *Settled 2026-10-25: yes.* **Does AF4 go in the same release as AF1?** No app outside this
    repository names the store yet, so the code names follow the file in one release.
