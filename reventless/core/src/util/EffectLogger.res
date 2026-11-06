@@ -8,27 +8,18 @@
 //
 // ~comp / ~detail and any ambient annotations (e.g. correlationId, requestId set
 // via Effect.annotateLogs at the request boundary) travel as Effect log
-// annotations — NOT baked into the message string. install() reads them off
-// `loggerOptions.annotations` and forwards them to Logger.emit, which promotes
-// them to top-level JSON fields. The message stays clean human text.
+// annotations — NOT baked into the message string. install() reads them off the
+// logging fiber and forwards them to Logger.emit, which promotes them to
+// top-level JSON fields. The message stays clean human text.
 //
 // Usage: import at platform startup (module init calls install()).
 //   EffectLogger.logInfo(~comp=`Aggregate(${Spec.name})`, ~detail=eventJson, "replay done")
 
 type loggerOptions
-type logLevel
-type annotationsMap
 
 @get external _message: loggerOptions => JSON.t = "message"
-@get external _logLevel: loggerOptions => logLevel = "logLevel"
-@get external _ordinal: logLevel => int = "ordinal"
-@get external _annotations: loggerOptions => annotationsMap = "annotations"
-
-// Effect stores log annotations as a HashMap<string, unknown>; toEntries gives a
-// plain [key, value] array. Values arrive as raw JS — string annotations decode
-// directly via JSON.Decode.string.
-@module("effect/HashMap")
-external _annotationEntries: annotationsMap => array<(string, JSON.t)> = "toEntries"
+@get external _logLevel: loggerOptions => Effect.logLevel = "logLevel"
+@get external _fiber: loggerOptions => Fiber.t<unknown, unknown> = "fiber"
 
 let _messageToString = (msg: JSON.t): string =>
   switch msg {
@@ -53,16 +44,6 @@ external _defaultLogger: effectLogger = "defaultLogger"
 // Effect's runtime gates log effects by a minimum LogLevel BEFORE they reach the
 // installed logger above — so `Effect.logDebug` is dropped unless the threshold is
 // lowered. We set that threshold per log effect from a configurable minimum.
-type effectLogLevel
-@module("effect/LogLevel") external _llDebug: effectLogLevel = "Debug"
-@module("effect/LogLevel") external _llInfo: effectLogLevel = "Info"
-@module("effect/LogLevel") external _llWarning: effectLogLevel = "Warning"
-@module("effect/LogLevel") external _llError: effectLogLevel = "Error"
-@module("effect/LogLevel") external _llNone: effectLogLevel = "None"
-
-@module("effect/Logger")
-external _withMinimumLogLevel: (Effect.t<'a, 'e, 'r>, effectLogLevel) => Effect.t<'a, 'e, 'r> =
-  "withMinimumLogLevel"
 
 // Minimum level used when LOG_LEVEL is unset. Framework default is Info; a platform
 // may lower it (e.g. the in-memory dev platform sets Debug) via setDefaultMinLevel.
@@ -73,30 +54,27 @@ let setDefaultMinLevel = Logger.setDefaultMinLevel
 
 // Resolve the active minimum for one line of `comp`: a level set while running
 // for it (or its plugin) first, then LOG_LEVEL, then the platform default.
-let _effectMin = (~comp: option<string>=?, ()): effectLogLevel =>
+let _effectMin = (~comp: option<string>=?, ()): Effect.logLevel =>
   switch Logger.minLevelFor(~comp?, ()) {
-  | None => _llNone
-  | Some(Logger.Debug) => _llDebug
-  | Some(Logger.Info) => _llInfo
-  | Some(Logger.Warn) => _llWarning
-  | Some(Logger.Error) => _llError
+  | None => #None
+  | Some(Logger.Debug) => #Debug
+  | Some(Logger.Info) => #Info
+  | Some(Logger.Warn) => #Warn
+  | Some(Logger.Error) => #Error
   }
 
-let ordinalToLevel = ordinal =>
-  if ordinal >= 40000 {
-    Logger.Error
-  } else if ordinal >= 30000 {
-    Logger.Warn
-  } else if ordinal >= 20000 {
-    Logger.Info
-  } else {
-    Logger.Debug
+let levelOf = (level: Effect.logLevel) =>
+  switch level {
+  | #Fatal | #Error => Logger.Error
+  | #Warn => Logger.Warn
+  | #Info => Logger.Info
+  | #All | #Debug | #Trace | #None => Logger.Debug
   }
 
 let install = () =>
   _defaultLogger.log = opts => {
     let msg = opts->_message->_messageToString
-    let level = opts->_logLevel->_ordinal->ordinalToLevel
+    let level = opts->_logLevel->levelOf
     // Decode log annotations: `comp`, `plugin`, and `detail` get dedicated
     // Logger.emit handling (prefix/plugin resolution, expandable payload);
     // everything else (correlationId, requestId, …) flows through as
@@ -106,8 +84,10 @@ let install = () =>
     let detail = ref(None)
     let extra = Dict.make()
     opts
-    ->_annotations
-    ->_annotationEntries
+    ->_fiber
+    ->Fiber.getRef(Effect.currentLogAnnotations)
+    ->Dict.toArray
+    ->Array.map(((k, v)) => (k, JSON.Encode.string(v)))
     ->Array.forEach(((k, v)) =>
       switch k {
       | "comp" => comp := v->JSON.Decode.string
@@ -234,16 +214,16 @@ let _annotate = (eff, ~comp=?, ~detail=?, ~ids: option<ids>=?) => {
 let logInfo = (~comp=?, ~detail=?, ~ids=?, msg) =>
   Effect.logInfo(msg)
   ->_annotate(~comp?, ~detail?, ~ids?)
-  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+  ->Effect.withMinimumLogLevel(_effectMin(~comp?, ()))
 let logWarn = (~comp=?, ~detail=?, ~ids=?, msg) =>
   Effect.logWarning(msg)
   ->_annotate(~comp?, ~detail?, ~ids?)
-  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+  ->Effect.withMinimumLogLevel(_effectMin(~comp?, ()))
 let logError = (~comp=?, ~detail=?, ~ids=?, msg) =>
   Effect.logError(msg)
   ->_annotate(~comp?, ~detail?, ~ids?)
-  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+  ->Effect.withMinimumLogLevel(_effectMin(~comp?, ()))
 let logDebug = (~comp=?, ~detail=?, ~ids=?, msg) =>
   Effect.logDebug(msg)
   ->_annotate(~comp?, ~detail?, ~ids?)
-  ->_withMinimumLogLevel(_effectMin(~comp?, ()))
+  ->Effect.withMinimumLogLevel(_effectMin(~comp?, ()))

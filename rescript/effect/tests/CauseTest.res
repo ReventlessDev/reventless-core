@@ -1,96 +1,78 @@
 open JestGlobals
-open ChunkHelpers
+
+let failures = cause =>
+  cause
+  ->Cause.reasons
+  ->Array.filterMap(reason =>
+    switch reason {
+    | Cause.Fail({error}) => Some(error)
+    | Die(_) | Interrupt(_) => None
+    }
+  )
 
 describe("Cause", () => {
   describe("constructors + predicates", () => {
     testSync(
-      "fail isFail = true, isDie = false",
+      "fail has a typed failure and no defect",
       () => {
         let c = Cause.fail("err")
-        expect(c->Cause.isFail)->toBe(true)
-        expect(c->Cause.isDie)->toBe(false)
+        expect(c->Cause.hasFails)->toBe(true)
+        expect(c->Cause.hasDies)->toBe(false)
       },
     )
 
     testSync(
-      "die isDie = true, isFail = false",
+      "die has a defect and no typed failure",
       () => {
         let c = Cause.die(JsError.make("defect"))
-        expect(c->Cause.isDie)->toBe(true)
-        expect(c->Cause.isFail)->toBe(false)
+        expect(c->Cause.hasDies)->toBe(true)
+        expect(c->Cause.hasFails)->toBe(false)
       },
     )
 
     testSync(
-      "isInterrupted is false for fail cause",
+      "a typed failure is not an interruption",
       () => {
         let c = Cause.fail("err")
-        expect(c->Cause.isInterrupted)->toBe(false)
-      },
-    )
-
-    testSync(
-      "isEmpty is false for non-empty cause",
-      () => {
-        let c = Cause.fail("err")
-        expect(c->Cause.isEmpty)->toBe(false)
+        expect(c->Cause.hasInterrupts)->toBe(false)
       },
     )
   })
 
-  describe("extraction", () => {
+  describe("reasons", () => {
     testSync(
-      "failures extracts typed errors from fail cause",
+      "a fail cause holds its typed error",
       () => {
-        let c = Cause.fail("my-error")
-        // Cause.failures returns an Effect Chunk — convert to array for toEqual
-        let errs = c->Cause.failures->arrayFrom
-        expect(errs)->toEqual(["my-error"])
+        expect(Cause.fail("my-error")->failures)->toEqual(["my-error"])
       },
     )
 
     testSync(
-      "failures extracts from parallel cause — both preserved",
+      "a die cause holds one defect and nothing else",
       () => {
-        let c = Cause.parallel(Cause.fail("left"), Cause.fail("right"))
-        let errs = c->Cause.failures
-        expect(errs)->toHaveLength(2)
+        let isDie = reason =>
+          switch reason {
+          | Cause.Die(_) => true
+          | Fail(_) | Interrupt(_) => false
+          }
+        let reasons = Cause.die("surprise")->Cause.reasons
+        expect((reasons->Array.length, reasons->Array.every(isDie)))->toEqual((1, true))
       },
     )
 
     testSync(
-      "defects extracts exceptions from die cause",
+      "combine keeps the reasons of both, in order",
       () => {
-        let c = Cause.die("surprise")
-        let defs = c->Cause.defects
-        expect(defs)->toHaveLength(1)
+        let c = Cause.combine(Cause.fail("a"), Cause.fail("b"))
+        expect(c->failures)->toEqual(["a", "b"])
       },
     )
 
     testSync(
       "pretty returns a non-empty string",
       () => {
-        let c = Cause.fail("err")
-        let s = c->Cause.pretty
+        let s = Cause.fail("err")->Cause.pretty
         expect(s->String.length)->toBeGreaterThan(0)
-      },
-    )
-  })
-
-  describe("composition", () => {
-    testSync(
-      "parallel preserves both causes",
-      () => {
-        let c = Cause.parallel(Cause.fail("a"), Cause.fail("b"))
-        expect(c->Cause.failures)->toHaveLength(2)
-      },
-    )
-
-    testSync(
-      "sequential preserves both causes",
-      () => {
-        let c = Cause.sequential(Cause.fail("first"), Cause.fail("second"))
-        expect(c->Cause.failures)->toHaveLength(2)
       },
     )
   })

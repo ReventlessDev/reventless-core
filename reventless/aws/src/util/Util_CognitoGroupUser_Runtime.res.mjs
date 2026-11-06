@@ -8,7 +8,7 @@ import * as Util_Cognito_Runtime$ReventlessAws from "./Util_Cognito_Runtime.res.
 import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
 
 function addUserToGroup(region, userName, groupName, userPoolId) {
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => {
+  return Effect.runPromise(Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => {
     let client = new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
       endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
       region: region
@@ -26,7 +26,7 @@ function addUserToGroup(region, userName, groupName, userPoolId) {
 }
 
 function removeUserFromGroup(region, userName, groupName, userPoolId) {
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => {
+  return Effect.runPromise(Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => {
     let client = new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
       endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
       region: region

@@ -7,11 +7,12 @@ describe("Fiber", () => {
     expect(v)->toBe(123)
   })
 
-  testPromise("interrupt terminates fiber and returns Exit", async () => {
+  testPromise("interrupt terminates the fiber, whose exit is then a failure", async () => {
     // Fork a never-completing effect and interrupt it
     let fiber = Effect.never->Effect.runFork
-    let exit = await Fiber.interrupt(fiber)->Effect.runPromise
-    expect(exit->Exit.isFailure)->toBe(true) // interrupted = failure
+    await Fiber.interrupt(fiber)->Effect.runPromise
+    let exits = await Fiber.collectAll([fiber])->Effect.runPromise
+    expect(exits->Array.getUnsafe(0)->Exit.isFailure)->toBe(true) // interrupted = failure
   })
 
   testPromise("joinAll collects results from multiple fibers", async () => {

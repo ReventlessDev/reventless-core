@@ -112,9 +112,11 @@ let placeOrder = async (orderId, ~within) => {
     ]),
   )
   await Bus.publishEvent(OrderSource.name, "test", meta, eventJson)
-  // The event's own phase 2 runs detached; let it finish.
-  let _ = await Promise.resolve()
-  let _ = await Promise.resolve()
+  // The event's own phase 2 runs detached; let it finish. Effect resumes a fiber
+  // on `setImmediate`, so this waits for a macrotask, not a microtask.
+  await Promise.make((resolve, _) => {
+    let _ = setTimeout(() => resolve(), 0)
+  })
 }
 
 /** The stored to-do row of `id`, as the query store holds it. */

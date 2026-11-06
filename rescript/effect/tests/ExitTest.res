@@ -30,23 +30,6 @@ describe("Exit", () => {
   })
 
   describe("extraction", () => {
-    // Note: Exit.toOption does not exist in Effect v3. Use getOrElse instead.
-    testSync(
-      "getOrElse on success returns the value",
-      () => {
-        let e = Exit.succeed(42)
-        expect(e->Exit.getOrElse(_ => -1))->toBe(42)
-      },
-    )
-
-    testSync(
-      "getOrElse on failure returns the default",
-      () => {
-        let e = Exit.fail("err")
-        expect(e->Exit.getOrElse(_ => -1))->toBe(-1)
-      },
-    )
-
     testSync(
       "causeOption on failure returns Some(cause)",
       () => {
@@ -91,7 +74,7 @@ describe("Exit", () => {
       "map on success transforms value",
       () => {
         let e = Exit.succeed(3)->Exit.map(n => n * 2)
-        expect(e->Exit.getOrElse(_ => -1))->toBe(6)
+        expect(e->Exit.match(~onFailure=_ => -1, ~onSuccess=n => n))->toBe(6)
       },
     )
 
@@ -100,14 +83,6 @@ describe("Exit", () => {
       () => {
         let e = Exit.fail("err")->Exit.map(n => n * 2)
         expect(e->Exit.isFailure)->toBe(true)
-      },
-    )
-
-    testSync(
-      "flatMap on success chains exits",
-      () => {
-        let e = Exit.succeed(5)->Exit.flatMap(n => Exit.succeed(n + 1))
-        expect(e->Exit.getOrElse(_ => -1))->toBe(6)
       },
     )
   })

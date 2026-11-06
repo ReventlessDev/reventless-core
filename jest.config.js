@@ -29,6 +29,13 @@ module.exports = {
       },
     },
     {
+      displayName: "rescript-effect",
+      rootDir: "./rescript/effect",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "rescript-jest",
       rootDir: "./rescript/jest",
       testMatch: ["<rootDir>/tests/*Test.mjs"],

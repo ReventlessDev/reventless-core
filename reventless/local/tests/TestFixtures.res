@@ -52,3 +52,7 @@ type jestObj
 @send external useFakeTimers: jestObj => unit = "useFakeTimers"
 @send external useRealTimers: jestObj => unit = "useRealTimers"
 @send external advanceTimersByTime: (jestObj, int) => unit = "advanceTimersByTime"
+// Runs the microtasks between timers too, so work an Effect fiber schedules
+// after a timer fires (it resumes on `setImmediate`) runs within the advance.
+@send
+external advanceTimersByTimeAsync: (jestObj, int) => promise<unit> = "advanceTimersByTimeAsync"

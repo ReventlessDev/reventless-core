@@ -41,4 +41,4 @@ external next: (t, Date.t) => Date.t = "next"
 
 /** Parses a five-field expression (`minute hour day month weekday`), read in `zone`; throws when malformed. */
 @module("effect/Cron")
-external parseOrThrow: (string, DateTime.zone) => t = "unsafeParse"
+external parseOrThrow: (string, DateTime.zone) => t = "parseUnsafe"

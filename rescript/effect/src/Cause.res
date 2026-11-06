@@ -1,17 +1,23 @@
 /**
-ReScript bindings for `Cause<E>` — the algebraic data type that captures
-the full failure structure of an `Effect`.
+ReScript bindings for `Cause<E>` — everything that made an `Effect` fail.
 
-Unlike a plain error value, a `Cause` preserves:
+A `Cause` is a flat list of reasons, each one of:
 - *Typed failures* (`Fail`) — expected errors in the `'e` channel
 - *Defects* (`Die`) — unexpected thrown exceptions
-- *Parallel failures* (`Parallel`) — both sides of a concurrent failure
-- *Sequential failures* (`Sequential`) — a chain of failures
-- *Interruptions* — fiber cancellation
+- *Interruptions* (`Interrupt`) — fiber cancellation
+
+Two fibers failing at once leave two reasons; neither is discarded.
 
 You encounter `Cause` when inspecting `Exit.t` or using `Effect.runPromiseExit`.
 */
 type t<'e>
+
+/** One reason in a `Cause`. */
+@tag("_tag")
+type reason<'e> =
+  | Fail({error: 'e})
+  | Die({defect: unknown})
+  | Interrupt({fiberId?: int})
 
 // ─── Constructors ──────────────────────────────────────────────────────────
 
@@ -23,55 +29,42 @@ external fail: 'e => t<'e> = "fail"
 @module("effect/Cause")
 external die: 'defect => t<'e> = "die"
 
-/**
-Creates a `Cause` representing two concurrent failures — **both** causes are preserved.
-
-This is what distinguishes Effect's `Cause` from a plain exception: neither failure
-is silently discarded when two fibers fail simultaneously.
-*/
+/** Combines two causes into one holding the reasons of both. */
 @module("effect/Cause")
-external parallel: (t<'e>, t<'e>) => t<'e> = "parallel"
+external combine: (t<'e>, t<'e>) => t<'e> = "combine"
 
-/** Creates a `Cause` representing two sequential failures — a failure followed by a finalizer failure. */
+// ─── Reading ───────────────────────────────────────────────────────────────
+
+/** The reasons, in the order they occurred. */
+@get
+external reasons: t<'e> => array<reason<'e>> = "reasons"
+
+/** Returns `true` if the cause holds at least one typed failure. */
 @module("effect/Cause")
-external sequential: (t<'e>, t<'e>) => t<'e> = "sequential"
+external hasFails: t<'e> => bool = "hasFails"
 
-// ─── Predicates ────────────────────────────────────────────────────────────
-
-/** Returns `true` if the cause is empty (no failure, no defect, no interruption). */
+/** Returns `true` if the cause holds at least one defect. */
 @module("effect/Cause")
-external isEmpty: t<'e> => bool = "isEmpty"
+external hasDies: t<'e> => bool = "hasDies"
 
-/**
-Returns `true` if the cause is exactly a typed `Fail` node.
-
-> **Note** Effect v3 exports this as `isFailType` — not `isFail`. This binding maps to the correct JS name.
-*/
+/** Returns `true` if the cause holds at least one interruption. */
 @module("effect/Cause")
-external isFail: t<'e> => bool = "isFailType"
+external hasInterrupts: t<'e> => bool = "hasInterrupts"
 
-/** Returns `true` if the cause contains a `Die` (unexpected exception / defect). */
-@module("effect/Cause")
-external isDie: t<'e> => bool = "isDie"
-
-/** Returns `true` if the cause contains an interruption. */
-@module("effect/Cause")
-external isInterrupted: t<'e> => bool = "isInterrupted"
-
-// ─── Extraction ────────────────────────────────────────────────────────────
-
-/**
-Extracts all typed failure values from the cause tree, including those in parallel branches.
-
-Returns an empty array if the cause contains no typed failures.
-*/
-@module("effect/Cause")
-external failures: t<'e> => array<'e> = "failures"
-
-/** Extracts all defects (unexpected exceptions) from the cause tree. */
-@module("effect/Cause")
-external defects: t<'e> => array<unknown> = "defects"
-
-/** Returns a human-readable string representation of the full cause tree, useful for logging. */
+/** Returns a human-readable rendering of every reason, useful for logging. */
 @module("effect/Cause")
 external pretty: t<'e> => string = "pretty"
+
+/** One `Error` per reason, each with the reason's message and an error's own `name`. */
+@module("effect/Cause")
+external prettyErrors: t<'e> => array<JsError.t> = "prettyErrors"
+
+/**
+The cause as one `Error` to throw: a typed failure becomes an `Error` whose message
+renders it, and a thrown error keeps its message and `name`.
+*/
+let toError = (cause: t<'e>): JsError.t =>
+  switch cause->prettyErrors->Array.get(0) {
+  | Some(first) => first
+  | None => JsError.make(cause->pretty)
+  }

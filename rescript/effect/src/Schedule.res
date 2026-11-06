@@ -62,22 +62,18 @@ external recurs: int => t<int, 'in_, 'r> = "recurs"
 
 /** A schedule that recurs exactly once (two total attempts when used with `retry`). */
 @module("effect/Schedule")
-external once: t<int, 'in_, 'r> = "once"
+external once: t<unit, 'in_, 'r> = "once"
 
 /** A schedule that repeats indefinitely, producing a monotonically increasing count. */
 @module("effect/Schedule")
 external forever: t<int, 'in_, 'r> = "forever"
-
-/** A schedule that tracks the total elapsed time as its output value. */
-@module("effect/Schedule")
-external elapsed: t<Duration.t, 'in_, 'r> = "elapsed"
 
 // ─── Composition ─────────────────────────────────────────────────────────
 
 /**
 Adds random jitter to the interval durations of the given `Schedule`.
 
-Each interval is multiplied by a random factor in `[0.0, 1.0)`, distributing
+Each interval is multiplied by a random factor between `0.8` and `1.2`, distributing
 retries over time and preventing thundering-herd problems after shared failures.
 
 **Example**
@@ -87,6 +83,12 @@ Schedule.exponential(Duration.seconds(1))->Schedule.jittered
 */
 @module("effect/Schedule")
 external jittered: t<'out, 'in_, 'r> => t<'out, 'in_, 'r> = "jittered"
+
+// What a schedule knows at each step; `while_` decides on it.
+type metadata<'out, 'in_> = {input: 'in_, output: 'out, attempt: int}
+
+@module("effect/Schedule")
+external while_: (t<'out, 'in_, 'r>, metadata<'out, 'in_> => bool) => t<'out, 'in_, 'r> = "while"
 
 /**
 Continues the schedule only while the input predicate returns `true`.
@@ -100,45 +102,18 @@ Schedule.exponential(Duration.millis(500))
 ->Schedule.whileInput(err => err != StaleState)
 ```
 */
+let whileInput = (schedule: t<'out, 'in_, 'r>, f: 'in_ => bool): t<'out, 'in_, 'r> =>
+  schedule->while_(m => f(m.input))
+
+// A ReScript pair compiles to a two-element JS array, which is what `max` takes.
 @module("effect/Schedule")
-external whileInput: (t<'out, 'in_, 'r>, 'in_ => bool) => t<'out, 'in_, 'r> = "whileInput"
+external maxOfPair: ((t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>)) => t<Duration.t, 'in_, 'r> = "max"
 
 /**
-Continues the schedule only while the output predicate returns `true`.
+Runs both schedules together: it continues only while *both* continue, and
+waits the *longer* of the two delays.
 
-Useful for capping by total elapsed time rather than a fixed count:
-
-**Example**
-```rescript
-// Retry for up to 30 seconds of total elapsed time
-Schedule.exponential(Duration.millis(100))
-->Schedule.whileOutput(elapsed => elapsed < Duration.seconds(30))
-```
+> **Note** Effect 4 calls this `max`, over an array of schedules.
 */
-@module("effect/Schedule")
-external whileOutput: (t<'out, 'in_, 'r>, 'out => bool) => t<'out, 'in_, 'r> = "whileOutput"
-
-/**
-Feeds the output of `first` as input to `second` — pipelines two schedules.
-
-Useful for building multi-stage recurrence strategies.
-*/
-@module("effect/Schedule")
-external compose: (t<'out, 'in_, 'r>, t<'out2, 'out, 'r>) => t<'out2, 'in_, 'r> = "compose"
-
-/**
-Runs both schedules in parallel, using the *longer* delay of the two.
-
-The combined schedule continues as long as *both* constituent schedules continue.
-*/
-@module("effect/Schedule")
-external union: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> = "union"
-
-/**
-Runs both schedules in parallel, using the *shorter* delay of the two.
-
-The combined schedule stops as soon as *either* constituent schedule stops.
-*/
-@module("effect/Schedule")
-external intersect: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> =
-  "intersect"
+let intersect = (first: t<'out, 'in_, 'r>, second: t<'out2, 'in_, 'r>): t<Duration.t, 'in_, 'r> =>
+  maxOfPair((first, second))

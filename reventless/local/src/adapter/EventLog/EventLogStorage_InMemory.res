@@ -1,6 +1,6 @@
 // In-memory event log storage.
-// Uses Stm.TRef for transactional state management, preparing for future
-// atomic append+publish spanning storage and the event bus.
+// Keeps its state in a TxRef, so a future append+publish spanning storage and
+// the event bus can run as one Effect.tx.
 //
 // When BackendState is set to Sqlite, the `Make(Bus)` functor delegates to
 // EventLogStorage_Sqlite at `make` time so the same builder wiring serves
@@ -47,17 +47,14 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
     }
     out
   })
-  let eventsRef =
-    Stm.TRef.make(Dict.make())
-    ->Stm.commit
-    ->Effect.runSync
+  let eventsRef = TxRef.makeUnsafe(Dict.make())
 
   // Keep-one snapshot per aggregate id. Node.js is single-threaded and snapshot
-  // writes are fire-and-forget upserts, so a plain dict suffices (no Stm).
+  // writes are fire-and-forget upserts, so a plain dict suffices (no TxRef).
   let snapshots: dict<ReventlessCore.EventLog.snapshot> = Dict.make()
 
   let append: ReventlessCore.EventLog.append<string, JSON.t> = async (seqNr, id, jsons) => {
-    let result = await Stm.TRef.modify(eventsRef, events => {
+    let result = await TxRef.modify(eventsRef, events => {
       let existing = events->Dict.get(id)->Option.getOr([])
       let currentCount = existing->Array.length
       if seqNr != currentCount {
@@ -66,9 +63,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
         events->Dict.set(id, existing->Array.concat(jsons))
         (Ok(), events)
       }
-    })
-    ->Stm.commit
-    ->Effect.runPromise
+    })->Effect.runPromise
     switch result {
     | Ok() => keepOrdered(~track=true, id, jsons)
     | Error(_) => ()
@@ -81,8 +76,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
   // Events are stored contiguously from seq 0, so the array index equals the
   // sequence number and `fromSeq` is a plain slice offset.
   let replayStream = (id, ~fromSeq=0) =>
-    Stm.TRef.get(eventsRef)
-    ->Stm.commit
+    TxRef.get(eventsRef)
     ->Effect.map(events =>
       events
       ->Dict.get(id)
@@ -114,7 +108,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
   ) => {
     let seqNrRef = ref(startingSeqNr)
     stream->Stream.runForEach(json =>
-      Stm.TRef.modify(eventsRef, events => {
+      TxRef.modify(eventsRef, events => {
         let existing = events->Dict.get(id)->Option.getOr([])
         let currentCount = existing->Array.length
         if seqNrRef.contents != currentCount {
@@ -123,9 +117,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
           events->Dict.set(id, existing->Array.concat([json]))
           (Ok(), events)
         }
-      })
-      ->Stm.commit
-      ->Effect.flatMap(result =>
+      })->Effect.flatMap(result =>
         switch result {
         | Ok() =>
           seqNrRef := seqNrRef.contents + 1

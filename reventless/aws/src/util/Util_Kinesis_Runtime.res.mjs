@@ -8,7 +8,7 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as Kinesis_Error$ReventlessAws from "../errors/Kinesis_Error.res.mjs";
 
 function putRecord(stream, data) {
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(Kinesis_Error$ReventlessAws.classify, () => Kinesis$AwsSdk.PutRecordCommand.send(new ClientKinesis.PutRecordCommand({
+  return Effect.runPromise(Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(Kinesis_Error$ReventlessAws.classify, () => Kinesis$AwsSdk.PutRecordCommand.send(new ClientKinesis.PutRecordCommand({
     Data: data,
     StreamName: stream.name.get(),
     PartitionKey: ""

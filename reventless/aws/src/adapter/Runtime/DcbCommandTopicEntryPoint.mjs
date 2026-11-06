@@ -5,7 +5,6 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import {
@@ -159,7 +158,7 @@ export async function buildHandlersForConfig(config, opts = {}) {
         return Effect.succeed([]);
       })
     ),
-    chunk => Chunk.toReadonlyArray(chunk).flat()
+    results => results.flat()
   );
 
   const resolvedQueue = makeQueueRef(config.queueUrl);

@@ -2,8 +2,8 @@
 
 import * as Sury from "sury";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
+import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Stream from "effect/Stream";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "./EventCollector.res.mjs";

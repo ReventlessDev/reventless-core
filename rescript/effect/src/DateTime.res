@@ -27,20 +27,21 @@ let zoneMakeNamed = name => name->zoneMakeNamedRaw->EffectOption.toOption
 type zonedOptions = {timeZone: zone, adjustForTimeZone?: bool}
 
 @module("effect/DateTime")
-external unsafeMakeZoned: (float, zonedOptions) => t = "unsafeMakeZoned"
+external makeZonedUnsafe: (float, zonedOptions) => t = "makeZonedUnsafe"
 
 /** The instant `millis` (since 1970, UTC), read in `zone`. */
-let makeZonedFromMillis = (millis, ~zone) => unsafeMakeZoned(millis, {timeZone: zone})
+let makeZonedFromMillis = (millis, ~zone) => makeZonedUnsafe(millis, {timeZone: zone})
 
+// Effect names the clock fields in the singular (`hour`); the ReScript names stay plural.
 /** Wall-clock parts; `month` counts from 1. */
 type parts = {
   year: int,
   month: int,
   day: int,
-  hours: int,
-  minutes: int,
-  seconds?: int,
-  millis?: int,
+  @as("hour") hours: int,
+  @as("minute") minutes: int,
+  @as("second") seconds?: int,
+  @as("millisecond") millis?: int,
 }
 
 @module("effect/DateTime")
@@ -80,10 +81,10 @@ type wallClock = {
   year: int,
   month: int,
   day: int,
-  hours: int,
-  minutes: int,
-  seconds: int,
-  millis: int,
+  @as("hour") hours: int,
+  @as("minute") minutes: int,
+  @as("second") seconds: int,
+  @as("millisecond") millis: int,
   weekDay: int,
 }
 

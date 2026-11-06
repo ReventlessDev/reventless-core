@@ -8,6 +8,11 @@ the latest release when this was written. We are on `effect@3.22.2`, the newest
 two hazards added to [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors),
 and what v4 opens up afterwards.
 
+**Progress (2026-11-06).** Steps 1 to 3 and 5 are done on `effect@4.1.2`; see
+[§5](#5-what-the-port-found). The build has zero warnings and all 539 suites pass
+in 22 projects. Step 4 turned out not to be needed (see there). Steps 6 and 7
+are open.
+
 **In plain words.** Effect is the library behind every queue, stream, retry
 schedule and background fiber in the framework. Version 4 rewrites its runtime
 and renames part of its API. Our ReScript bindings
@@ -83,7 +88,10 @@ test that fails on the old behavior before we trust the port.
   with `Effect.runFork`. Expect Jest to report open handles or hang on exit, and
   the local platform to need an explicit shutdown. In Lambda the process is
   frozen rather than exited, but check that a handler still returns while a fiber
-  is pending.
+  is pending. *Checked: only half true.* A fiber waiting on a subscription or on
+  `Effect.never` does not keep Node alive; one in `Effect.sleep` does, through its
+  timer, as in v3. Jest's `--detectOpenHandles` does list each suspended fiber
+  (`effect/Fiber`), because v4 records its async context, but the process exits.
 - **Layer caching across `Effect.provide` changed.** 5 files call
   `Effect.provide`. Check that services built once per cold start are still built
   once.
@@ -101,6 +109,7 @@ test that fails on the old behavior before we trust the port.
 - **The new runtime.** Scheduling order between fibers can shift. The tests most
   likely to notice are the ones that depend on ordering: `LocalBus` drain,
   `HeartbeatTest`, and the channel tests in `reventless/local/tests/adapter/`.
+  It did shift; [§5](#5-what-the-port-found) says how.
 
 ## 3. Steps
 
@@ -119,7 +128,10 @@ test that fails on the old behavior before we trust the port.
    fibers a scope or an explicit interrupt on shutdown: a `FiberSet` per platform
    instance, cleared by `reset`
    ([EVO3](../analysis/effect-v4-migration.md#43-evo3-background-fibers-that-have-an-owner)).
-   Then run the suite with `--detectOpenHandles`.
+   Then run the suite with `--detectOpenHandles`. *Not needed.* The suite (924
+   local-platform tests) exits by itself; the 22 `effect/Fiber` entries
+   `--detectOpenHandles` lists are drain fibers waiting on a subscription, which
+   hold no timer, and `reset` already ends them by shutting their hubs down.
 5. **Full build with zero warnings, then `pnpm test`** across all projects.
 6. **Cause and error behavior.** Write a test per error path from
    [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors): a rejected
@@ -140,3 +152,47 @@ test that fails on the old behavior before we trust the port.
 - Does anything outside this repo bind `effect` directly at a v3 version? A
   consumer that pins `effect@3` alongside our v4 bindings gets two copies of the
   runtime, and their fibers and services do not mix.
+
+## 5. What the port found
+
+Done so far: the bump, the bindings, the `TxRef` port and a full run. The
+binding tests in `rescript/effect/tests/` now run with the rest: they were in no
+Jest project before, so CI had never run them. The package is a step of the root
+`build` (before `rescript/jest`, whose tests it would otherwise orphan) and a
+project in `jest.config.js`.
+
+The renames went as [§1](#1-what-we-bind-and-what-is-gone) said; the ReScript
+names are kept. What a renamed-names check does not catch, and the full run did:
+
+- **`runPromise` rejects with the failure as it is.** A failure of a string
+  reaches a `catch` as that string, with no `message`. The binding now runs the
+  effect to an `Exit` and throws `Cause.toError`, an `Error` that renders the
+  failure, keeps a thrown error's `name` (the caller-fault mark rides on it) and
+  matches v3's rejection. `runSync` the same.
+- **The logger is a different shape.** `Logger.withMinimumLogLevel` is gone (a
+  `MinimumLogLevel` reference now), levels are strings (`Warning` is `Warn`), and
+  a line's annotations are read off its fiber, not its options. `EffectLogger`
+  is ported; 208 of the first run's 294 failures were this one call.
+- **`DateTime` parts are singular.** `hour`, `minute`, `second`, `millisecond`,
+  in and out. `makeZoned` ignored our `hours` and answered midnight. The record
+  fields keep their ReScript names and map with `@as`.
+- **`Stream.map` passes `(element, index)`** and `runFold` takes its seed as a
+  function. The wrappers pass the element alone and wrap the seed. `runCollect`
+  and `grouped` give plain arrays, so the `Chunk` helpers are gone, also from
+  the hand-written `DcbCommandTopicEntryPoint.mjs`.
+- **`PubSub.subscribe` gives a `Subscription`**, not a queue: `LocalBus` reads it
+  with `Stream.fromSubscription` and leaves closing it to the scope.
+- **A woken fiber can run inside the call that woke it.** A `LocalBus`
+  subscriber ran inside `publishEvent`. Its drain loop now starts the handler a
+  microtask later, which keeps the bus's "never delivered synchronously" rule.
+- **Scheduled fiber work runs on `setImmediate`.** Two tests that waited a
+  fixed number of microtasks, or advanced fully faked timers synchronously, now
+  wait a macrotask or use `advanceTimersByTimeAsync`.
+- Smaller: `yieldNow` is a value, `Fiber.interrupt` yields nothing,
+  `Latch.open_`/`close` yield whether they changed it, `Queue.offerAll` returns
+  what it did not add, `Schedule.intersect` is `max([a, b])` with a `Duration`
+  output (seven retry schedules' type annotations), `TestContext` is
+  `TestClock.layer()`.
+- `CsvStream` ends its queue with `Queue.endUnsafe`
+  ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
+

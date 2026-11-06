@@ -5,6 +5,9 @@ Bounded queues provide *backpressure* — `offer` suspends the calling fiber whe
 the queue is full, and `take` suspends when it is empty. No threads are blocked;
 suspended fibers resume when capacity or items become available.
 
+A queue is finished one of two ways: `end` lets readers drain what is buffered
+and then stop, `shutdown` stops at once and discards it.
+
 **Quick start**
 ```rescript
 let q = Queue.bounded(10)->Effect.runSync
@@ -37,36 +40,28 @@ external dropping: int => Effect.t<t<'a>, 'e, 'r> = "dropping"
 /**
 Enqueues a single item. For bounded queues, suspends the fiber until space is available.
 
-Returns `true` when the item is successfully enqueued.
+Returns `false` when the queue is already done.
 */
 @module("effect/Queue")
 external offer: (t<'a>, 'a) => Effect.t<bool, 'e, 'r> = "offer"
 
-/** Enqueues all items atomically. Suspends if the queue is bounded and does not have enough space. */
+/** Enqueues all items. Returns the items that were not added (the queue was done, or a strategy dropped them). */
 @module("effect/Queue")
-external offerAll: (t<'a>, array<'a>) => Effect.t<bool, 'e, 'r> = "offerAll"
+external offerAll: (t<'a>, array<'a>) => Effect.t<array<'a>, 'e, 'r> = "offerAll"
 
 /** Dequeues and returns the next item. Suspends the fiber until an item is available. */
 @module("effect/Queue")
 external take: t<'a> => Effect.t<'a, 'e, 'r> = "take"
 
-/** Dequeues all currently available items without suspending. Returns an empty array if the queue is empty. */
+/** Dequeues every item currently buffered. Suspends until there is at least one. */
 @module("effect/Queue")
 external takeAll: t<'a> => Effect.t<array<'a>, 'e, 'r> = "takeAll"
-
-/** Dequeues up to `n` items without suspending. */
-@module("effect/Queue")
-external takeUpTo: (t<'a>, int) => Effect.t<array<'a>, 'e, 'r> = "takeUpTo"
 
 // ─── Inspection ──────────────────────────────────────────────────────────
 
 /** Returns the current number of items in the queue (non-suspending). */
 @module("effect/Queue")
 external size: t<'a> => Effect.t<int, 'e, 'r> = "size"
-
-/** Returns `true` if the queue currently has no items (non-suspending). */
-@module("effect/Queue")
-external isEmpty: t<'a> => Effect.t<bool, 'e, 'r> = "isEmpty"
 
 /** Returns `true` if the queue is at capacity (non-suspending). Always `false` for unbounded queues. */
 @module("effect/Queue")
@@ -75,15 +70,29 @@ external isFull: t<'a> => Effect.t<bool, 'e, 'r> = "isFull"
 // ─── Lifecycle ───────────────────────────────────────────────────────────
 
 /**
-Shuts down the queue.
+Ends the queue: no more items are accepted, and readers drain what is buffered
+before they stop. A `Stream.fromQueue` over it ends cleanly.
 
-All pending `offer` and `take` operations fail immediately.
-Future `offer` and `take` calls also fail immediately.
-This propagates interruption through any `Stream.fromQueue` or `Effect.forever` drain loop.
+Yields `false` when the queue was already done.
+
+> **Note** `end` is a reserved word in ReScript — use `end_` here.
 */
 @module("effect/Queue")
-external shutdown: t<'a> => Effect.t<unit, 'e, 'r> = "shutdown"
+external end_: t<'a> => Effect.t<bool, 'e, 'r> = "end"
 
-/** Returns `true` if the queue has been shut down. */
+/** `end_` as a plain synchronous call, for callbacks that run outside an `Effect`. */
 @module("effect/Queue")
-external isShutdown: t<'a> => Effect.t<bool, 'e, 'r> = "isShutdown"
+external endUnsafe: t<'a> => bool = "endUnsafe"
+
+/** Ends the queue with a failure, which readers see once they have drained what is buffered. */
+@module("effect/Queue")
+external fail: (t<'a>, 'e) => Effect.t<bool, 'e2, 'r> = "fail"
+
+/**
+Shuts the queue down at once, **discarding** buffered items and resuming pending
+operations. To let readers finish what is buffered, use `end_`.
+
+Yields `false` when the queue was already done.
+*/
+@module("effect/Queue")
+external shutdown: t<'a> => Effect.t<bool, 'e, 'r> = "shutdown"

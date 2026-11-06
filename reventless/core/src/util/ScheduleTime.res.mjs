@@ -159,8 +159,8 @@ function localTimeOf(millis, zone) {
     year: parts.year,
     month: parts.month,
     day: parts.day,
-    hour: parts.hours,
-    minute: parts.minutes
+    hour: parts.hour,
+    minute: parts.minute
   };
 }
 
@@ -221,8 +221,8 @@ function instantOf(param, zone) {
     year: year,
     month: month,
     day: day,
-    hours: param.hour,
-    minutes: param.minute
+    hour: param.hour,
+    minute: param.minute
   }, zone);
   if (dateTime !== undefined) {
     return DateTime$1.toEpochMillis(Primitive_option.valFromOption(dateTime));
@@ -300,7 +300,7 @@ function nextOnWallClock(cron, after, hour, minute, zone) {
     let from = _from;
     let next = Cron.next(cron, new Date(from)).getTime();
     let parts = DateTime$1.toParts(DateTime.makeZonedFromMillis(next, zone));
-    if (parts.hours === hour && parts.minutes === minute || tries >= 8) {
+    if (parts.hour === hour && parts.minute === minute || tries >= 8) {
       return next;
     }
     _tries = tries + 1 | 0;

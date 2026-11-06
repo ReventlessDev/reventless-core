@@ -37,37 +37,17 @@ external isFailure: t<'a, 'e> => bool = "isFailure"
 // ─── Extraction ────────────────────────────────────────────────────────────
 
 /**
-Extracts the success value, or computes a fallback from the `Cause` if the `Exit` failed.
-
-> **Note** `Exit.toOption` does not exist in Effect v3. Use `getOrElse` instead.
-
-**Example**
-```rescript
-exit->Exit.getOrElse(cause => {
-  Console.error(cause->Cause.pretty)
-  defaultValue
-})
-```
-*/
-@module("effect/Exit")
-external getOrElse: (t<'a, 'e>, Cause.t<'e> => 'a) => 'a = "getOrElse"
-
-/**
 Returns `Some(cause)` if the `Exit` is a failure, or `None` if it succeeded.
 */
 @module("effect/Exit")
-external _causeOption: t<'a, 'e> => EffectOption.t<Cause.t<'e>> = "causeOption"
-let causeOption = exit => exit->_causeOption->EffectOption.toOption
+external _getCause: t<'a, 'e> => EffectOption.t<Cause.t<'e>> = "getCause"
+let causeOption = exit => exit->_getCause->EffectOption.toOption
 
 // ─── Transformation ────────────────────────────────────────────────────────
 
 /** Transforms the success value with a pure function, leaving failures unchanged. */
 @module("effect/Exit")
 external map: (t<'a, 'e>, 'a => 'b) => t<'b, 'e> = "map"
-
-/** Chains `Exit`s — applies `f` to the success value, which returns the next `Exit`. */
-@module("effect/Exit")
-external flatMap: (t<'a, 'e>, 'a => t<'b, 'e>) => t<'b, 'e> = "flatMap"
 
 // ─── Pattern matching ───────────────────────────────────────────────────────
 

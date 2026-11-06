@@ -47,7 +47,7 @@ function create(scheduler, channelResources, resourceNaming) {
       return;
     }
     let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
-    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `create: couldn't create ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), "") + `: ` + errMsg));
+    Effect.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `create: couldn't create ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), "") + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotCreated,
       _1: schedule$1,
@@ -65,7 +65,7 @@ function $$delete(scheduler, channelResources, resourceNaming) {
       return;
     }
     let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
-    Effect$1.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `delete: couldn't delete ` + name$1 + `: ` + errMsg));
+    Effect.runSync(EffectLogger$ReventlessCore.logError("ScheduleOps-ReventlessCore", undefined, undefined, `delete: couldn't delete ` + name$1 + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotDeleted,
       _1: name$1,

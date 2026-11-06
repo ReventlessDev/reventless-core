@@ -1,13 +1,14 @@
 open JestGlobals
-open ChunkHelpers
 
 describe("PubSub", () => {
-  testPromise("unbounded pubsub: publish + subscribe + Queue.take delivers message", async () => {
+  testPromise("unbounded pubsub: publish + subscribe + take delivers message", async () => {
     let ps = PubSub.unbounded()->Effect.runSync
     // PubSub.subscribe is scoped — the whole subscribe+publish+take pipeline must be
     // inside Effect.scoped so the subscription stays alive when we publish and take.
     let v = await PubSub.subscribe(ps)
-    ->Effect.flatMap(queue => PubSub.publish(ps, "hello")->Effect.zipRight(Queue.take(queue)))
+    ->Effect.flatMap(
+      subscription => PubSub.publish(ps, "hello")->Effect.zipRight(PubSub.take(subscription)),
+    )
     ->Effect.scoped
     ->Effect.runPromise
     expect(v)->toBe("hello")
@@ -28,12 +29,12 @@ describe("PubSub", () => {
     let ps = PubSub.unbounded()->Effect.runSync
     let items = await PubSub.subscribe(ps)
     ->Effect.flatMap(
-      queue => PubSub.publishAll(ps, [1, 2, 3])->Effect.zipRight(Queue.takeAll(queue)),
+      subscription =>
+        PubSub.publishAll(ps, [1, 2, 3])->Effect.zipRight(PubSub.takeAll(subscription)),
     )
     ->Effect.scoped
     ->Effect.runPromise
-    // Queue.takeAll returns a Chunk — convert to array for toEqual
-    expect(items->arrayFrom)->toEqual([1, 2, 3])
+    expect(items)->toEqual([1, 2, 3])
   })
 
   testPromise("bounded constructor creates a PubSub.t without error", async () => {

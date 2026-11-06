@@ -181,8 +181,7 @@ describe("entry-point dispatch boundary", () => {
   })
 
   describe("log annotations", () => {
-    // Effect keeps annotations in a HashMap; read it as a dict.
-    let annotations = (): Effect.t<Effect.logAnnotationMap, string, _> => Effect.logAnnotations
+    let annotations = (): Effect.t<dict<string>, string, _> => Effect.logAnnotations()
 
     test(
       "promotes comp, causationId and the request id onto every line",
@@ -192,7 +191,6 @@ describe("entry-point dispatch boundary", () => {
           annotations(),
           {correlationId: "corr-1", causationId: "cause-1", comp: "EventCollector(Customers)"},
         )
-        let annotated = annotated->Effect.annotationsToDict
         expect(annotated->Dict.get("comp"))->Expect.toEqual(Some("EventCollector(Customers)"))
         expect(annotated->Dict.get("causationId"))->Expect.toEqual(Some("cause-1"))
         expect(annotated->Dict.get("correlationId"))->Expect.toEqual(Some("corr-1"))
@@ -223,11 +221,9 @@ describe("entry-point dispatch boundary", () => {
       "annotates retryCount only on a redelivery",
       async () => {
         let first = await runEffect(annotations(), {correlationId: "c", retryCount: 1})
-        expect(first->Effect.annotationsToDict->Dict.get("retryCount"))->Expect.toEqual(None)
+        expect(first->Dict.get("retryCount"))->Expect.toEqual(None)
         let redelivered = await runEffect(annotations(), {correlationId: "c", retryCount: 2})
-        expect(redelivered->Effect.annotationsToDict->Dict.get("retryCount"))->Expect.toEqual(
-          Some("2"),
-        )
+        expect(redelivered->Dict.get("retryCount"))->Expect.toEqual(Some("2"))
       },
     )
   })

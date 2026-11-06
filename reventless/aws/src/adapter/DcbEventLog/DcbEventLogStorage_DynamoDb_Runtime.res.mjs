@@ -212,7 +212,7 @@ async function queryByCompositeTags(table, tags, after) {
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
-  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
+  return await Effect.runPromise(Stream$1.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 function buildScanFilter(eventTypes) {
@@ -250,7 +250,7 @@ async function scanWithFilter(table, eventTypes, after) {
     ExpressionAttributeValues: scanParams_ExpressionAttributeValues,
     FilterExpression: scanParams_FilterExpression
   };
-  let rawItems = await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
+  let rawItems = await Effect.runPromise(Stream$1.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
   if (after !== undefined) {
     return rawItems.filter(item => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), obj => obj["position"]), Stdlib_JSON.Decode.string), false, pos => Primitive_string.compare(pos, after) > 0));
   } else {
@@ -286,7 +286,7 @@ function buildQueryByPartitionKeyInput(table, partitionKey, after, strongConsist
 
 async function queryByPartitionKey(table, partitionKey, after) {
   let queryParams = buildQueryByPartitionKeyInput(table, partitionKey, after, undefined);
-  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
+  return await Effect.runPromise(Stream$1.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 function resolveBaseItem(table, keyItem) {
@@ -312,7 +312,7 @@ function resolveBaseItem(table, keyItem) {
       match$1
     ]
   ]);
-  return Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+  return Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
     TableName: table.name,
     Key: key
   }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item);
@@ -341,7 +341,7 @@ function queryBySingleTagCrossPartitionStreamIndexed(table, tag, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream$1.flatMap(Stream$1.mapEffect(Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream$1.flatMap(Stream.mapEffect(Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -383,7 +383,7 @@ async function executeQueryItem(table, queryItem, after, crossPartitionTagKeysOp
     } else {
       let tag = tags[0];
       if (crossPartitionTagKeys.includes(tag.key)) {
-        return await Effect$1.runPromise(Stream.runCollect(queryBySingleTagCrossPartitionStream(table, tag, after)));
+        return await Effect.runPromise(Stream$1.runCollect(queryBySingleTagCrossPartitionStream(table, tag, after)));
       } else {
         return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
       }
@@ -411,8 +411,8 @@ function deduplicateByPosition(events) {
 
 function initSlot(stream) {
   return Effect$1.flatMap(Queue.bounded(1), queue => {
-    let producer = Effect$1.catchAll(Effect$1.ensuring(Stream$1.runForEach(stream, event => Effect$1.map(Queue.offer(queue, event), param => {})), Effect$1.map(Queue.offer(queue, undefined), param => {})), param => Effect$1.succeed());
-    return Effect$1.flatMap(Effect$1.fork(producer), param => Effect$1.map(Queue.take(queue), head => ({
+    let producer = Effect$1.catch(Effect$1.ensuring(Stream$1.runForEach(stream, event => Effect$1.map(Queue.offer(queue, event), param => {})), Effect$1.map(Queue.offer(queue, undefined), param => {})), param => Effect$1.succeed());
+    return Effect$1.flatMap(Effect$1.forkChild(producer), param => Effect$1.map(Queue.take(queue), head => ({
       queue: queue,
       head: head
     })));
@@ -692,7 +692,7 @@ function buildEventPuts(table, events, basePosition, partitionTag) {
 }
 
 async function runTransactWrite(input, basePosition, errorPrefix) {
-  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(new LibDynamodb.TransactWriteCommand(input))), param => ({
+  return await Effect.runPromise(Effect$1.catch(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(new LibDynamodb.TransactWriteCommand(input))), param => ({
     TAG: "Ok",
     _0: basePosition
   })), err => {
@@ -1036,7 +1036,7 @@ function append(table, partitionTag, crossPartitionTagKeysOpt) {
 function queryByPartitionKeyStream(table, partitionKey, after, strongConsistencyOpt) {
   let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
   let baseParams = buildQueryByPartitionKeyInput(table, partitionKey, after, strongConsistency);
-  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -1080,7 +1080,7 @@ function queryByCompositeTagsStream(table, tags, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -1108,7 +1108,7 @@ function scanWithFilterStream(table, eventTypes, after) {
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
     FilterExpression: baseParams_FilterExpression
   };
-  let baseStream = Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  let baseStream = Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -1166,11 +1166,11 @@ function readStream(table, crossPartitionTagKeysOpt) {
       return Stream$1.empty;
     }
     if (match === 1) {
-      return Stream$1.map(streams[0], fromItem);
+      return Stream.map(streams[0], fromItem);
     }
     let hasScan = query.some(qi => qi.tags === undefined);
     if (hasScan) {
-      return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.map(Effect$1.all(streams.map(Stream.runCollect), {
+      return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.map(Effect$1.all(streams.map(s => Stream$1.runCollect(s)), {
         concurrency: 3
       }), results => {
         let allItems = results.flat().map(fromItem);
@@ -1178,7 +1178,7 @@ function readStream(table, crossPartitionTagKeysOpt) {
         return deduped.toSorted((a, b) => Primitive_string.compare(a.position, b.position));
       })), events => Stream$1.fromIterable(events));
     } else {
-      return dedupByPosition(mergeSortedEvents(streams.map(s => Stream$1.map(s, fromItem))));
+      return dedupByPosition(mergeSortedEvents(streams.map(s => Stream.map(s, fromItem))));
     }
   };
 }

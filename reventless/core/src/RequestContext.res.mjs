@@ -4,7 +4,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Context from "effect/Context";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 
-let tag = Context.GenericTag("reventless/RequestContext");
+let tag = Context.Service("reventless/RequestContext");
 
 function make(correlationId, causationId, component, pluginName, timestamp, retryCount, identityOpt, claimsOpt) {
   let identity = identityOpt !== undefined ? identityOpt : Identity$Reventless.anonymous;

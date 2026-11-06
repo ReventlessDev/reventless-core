@@ -1,5 +1,4 @@
 open JestGlobals
-open ChunkHelpers
 
 describe("Queue", () => {
   describe("constructors", () => {
@@ -63,19 +62,8 @@ describe("Queue", () => {
       async () => {
         let q = Queue.unbounded()->Effect.runSync
         let _ = await Queue.offerAll(q, [10, 20, 30])->Effect.runPromise
-        // Queue.takeAll returns an Effect Chunk — convert to array for toEqual
-        let items = (await Queue.takeAll(q)->Effect.runPromise)->arrayFrom
+        let items = await Queue.takeAll(q)->Effect.runPromise
         expect(items)->toEqual([10, 20, 30])
-      },
-    )
-
-    testPromise(
-      "takeUpTo returns at most N items",
-      async () => {
-        let q = Queue.unbounded()->Effect.runSync
-        let _ = await Queue.offerAll(q, [1, 2, 3, 4, 5])->Effect.runPromise
-        let items = await Queue.takeUpTo(q, 3)->Effect.runPromise
-        expect(items)->toHaveLength(3)
       },
     )
   })
@@ -91,35 +79,39 @@ describe("Queue", () => {
         expect(n)->toBe(2)
       },
     )
-
-    testPromise(
-      "isEmpty is true for empty queue",
-      async () => {
-        let q = Queue.unbounded()->Effect.runSync
-        let empty = await Queue.isEmpty(q)->Effect.runPromise
-        expect(empty)->toBe(true)
-      },
-    )
-
-    testPromise(
-      "isEmpty is false after offer",
-      async () => {
-        let q = Queue.unbounded()->Effect.runSync
-        let _ = await Queue.offer(q, 1)->Effect.runPromise
-        let empty = await Queue.isEmpty(q)->Effect.runPromise
-        expect(empty)->toBe(false)
-      },
-    )
   })
 
   describe("lifecycle", () => {
     testPromise(
-      "shutdown + isShutdown",
+      "end lets the reader drain what is buffered, then the stream stops",
       async () => {
         let q = Queue.unbounded()->Effect.runSync
-        let _ = await Queue.shutdown(q)->Effect.runPromise
-        let shut = await Queue.isShutdown(q)->Effect.runPromise
-        expect(shut)->toBe(true)
+        let _ = await Queue.offerAll(q, [1, 2, 3])->Effect.runPromise
+        let _ = Queue.endUnsafe(q)
+        let items = await Stream.fromQueue(q)->Stream.runCollect->Effect.runPromise
+        expect(items)->toEqual([1, 2, 3])
+      },
+    )
+
+    testPromise(
+      "shutdown discards what is buffered",
+      async () => {
+        let q = Queue.unbounded()->Effect.runSync
+        let _ = await Queue.offerAll(q, [1, 2, 3])->Effect.runPromise
+        let first = await Queue.shutdown(q)->Effect.runPromise
+        let again = await Queue.shutdown(q)->Effect.runPromise
+        let n = await Queue.size(q)->Effect.runPromise
+        expect((first, again, n))->toEqual((true, false, 0))
+      },
+    )
+
+    testPromise(
+      "offer after end is refused",
+      async () => {
+        let q = Queue.unbounded()->Effect.runSync
+        let _ = await Queue.end_(q)->Effect.runPromise
+        let accepted = await Queue.offer(q, 1)->Effect.runPromise
+        expect(accepted)->toBe(false)
       },
     )
   })

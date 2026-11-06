@@ -37,7 +37,7 @@ aggregate name.
 
 ### Data Structure
 
-Events are stored in a `Dict<string, array<JSON.t>>` managed by an STM `TRef`. The key
+Events are stored in a `Dict<string, array<JSON.t>>` held in a `TxRef` (Effect's transactional reference). The key
 is the aggregate ID; the value is an ordered array of event JSON objects.
 
 ### Concurrency
@@ -89,7 +89,7 @@ DynamoDB EventLog's conditional write on `sequenceNr`.
 
 | Aspect | Local (in-memory) | Local (SQLite) | AWS (DynamoDB) |
 |---|---|---|---|
-| Storage | `Dict` via STM `TRef` | Shared `event_log` table, partitioned by `log_name` | One table per log, `id` + `sequenceNr` keys |
+| Storage | `Dict` in a `TxRef` | Shared `event_log` table, partitioned by `log_name` | One table per log, `id` + `sequenceNr` keys |
 | Concurrency | STM transaction | `seqNr` check + PK conflict → `conflict` | Conditional write on `sequenceNr` |
 | Persistence | None (ephemeral) | Durable (across restarts) | Durable |
 | Streaming | Array wrapped as `Stream` | `all()` wrapped as `Stream` | Paginated query |

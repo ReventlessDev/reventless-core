@@ -31,7 +31,7 @@ function injectId(item, key, id) {
 
 function putWithRetries(table, id, item) {
   let item$1 = injectId(item, table.hashKey, id);
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => put(table, item$1)), param => ({
+  return Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => put(table, item$1)), param => ({
     TAG: "Ok",
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
@@ -55,7 +55,7 @@ function putWithRetries(table, id, item) {
 
 function putIfNotExistsWithRetries(idKey, sortKey, table, id, item) {
   let item$1 = injectId(item, idKey, id);
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item$1)), param => ({
+  return Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item$1)), param => ({
     TAG: "Ok",
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
@@ -82,7 +82,7 @@ function $$delete(table, sort, id) {
 }
 
 function deleteWithRetries(sort, table, id) {
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => $$delete(table, sort, id)), param => ({
+  return Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => $$delete(table, sort, id)), param => ({
     TAG: "Ok",
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
@@ -190,7 +190,7 @@ function hasUnprocessedItems(writeOutput) {
 
 function batchWriteWithRetries(batchWriteRequests) {
   let all = Object.values(batchWriteRequests).flat().length.toString();
-  let attempt = (retry, requests) => Effect$1.catchAll(Effect$1.flatMap(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => batchWrite(requests)), DynamoDb_Error$ReventlessAws.retrySchedule), writeOutput => {
+  let attempt = (retry, requests) => Effect$1.catch(Effect$1.flatMap(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => batchWrite(requests)), DynamoDb_Error$ReventlessAws.retrySchedule), writeOutput => {
     if (!hasUnprocessedItems(writeOutput)) {
       return Effect$1.succeed({
         TAG: "Ok",

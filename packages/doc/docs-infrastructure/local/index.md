@@ -35,14 +35,14 @@ The bus acts as the glue: aggregates publish events to the bus, and read models 
 
 | Component | Local Implementation | Data Structure |
 |-----------|------------------------|----------------|
-| **EventLog** | `EventLogStorage_InMemory` | `Dict<string, array<JSON.t>>` via STM TRef |
+| **EventLog** | `EventLogStorage_InMemory` | `Dict<string, array<JSON.t>>` in a `TxRef` |
 | **CommandTopic** | `LocalCommandTopicChannel` | Bus command dispatch (direct handler call) |
 | **EventTopic** | `LocalEventTopicPublisher` | Bus PubSub fan-out |
 | **EventCollector** | `LocalEventCollectorChannel` | Bus event subscription |
-| **QueryDb** | `QueryDbStorage_InMemory` | `Dict<string, JSON.t>` via STM TRef |
-| **Task** | `LocalTaskBucket` | `Dict<string, string>` via STM TRef |
+| **QueryDb** | `QueryDbStorage_InMemory` | `Dict<string, JSON.t>` |
+| **Task** | `LocalTaskBucket` | `Dict<string, string>` |
 | **CommandGenerator** | `LocalCommandGeneratorResolvers` | Direct function binding |
-| **Counter** | `LocalCounterHandler` | `Dict<string, int>` via STM TRef |
+| **Counter** | `LocalCounterHandler` | `Dict<string, int>` |
 | **Heartbeat** | `LocalHeartbeatRunner` | `setInterval` timer |
 | **QueryEngine** | `LocalQueryEngine` | In-memory scan + filter over QueryDb |
 | **ScheduledPublisher** | `LocalScheduledPublisher` | a timer to each `ScheduleTime.nextFiring` + Bus dispatch |

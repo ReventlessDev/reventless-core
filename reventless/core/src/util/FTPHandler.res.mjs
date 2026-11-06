@@ -2,10 +2,10 @@
 
 import * as SSH2 from "@reventlessdev/rescript-ssh2/src/SSH2.res.mjs";
 import * as Ssh2 from "ssh2";
+import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Nodestream from "node:stream";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Effect from "effect/Effect";
 import * as FTP$ReventlessCore from "./FTP.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../Message.res.mjs";

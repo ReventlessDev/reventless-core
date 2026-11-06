@@ -6,7 +6,7 @@
 //
 //  subscribeToEvents — creates (or reuses) a PubSub hub per topic (unbounded or bounded based
 //    on capacity) and starts a drain fiber (via Effect.runFork). The fiber runs
-//    Effect.scoped(PubSub.subscribe(hub)→…) synchronously up to the first Queue.take
+//    Effect.scoped(PubSub.subscribe(hub)→…) synchronously up to its first
 //    suspension, registering the subscription before runFork returns. The subscriber count
 //    for the topic is incremented synchronously.
 //
@@ -18,7 +18,7 @@
 //      Bounded (capacity=Some(n)): PubSub.publish + Deferred.await_ in one runPromise.
 //        May suspend when any subscriber queue is full; resolves in 3 microtask ticks.
 //
-//  reset — shuts down all hubs (which terminates Stream.fromQueue consumers via PubSub.shutdown),
+//  reset — shuts down all hubs (which terminates Stream.fromSubscription consumers via PubSub.shutdown),
 //    then clears all registries.
 //
 // Timing analysis:
@@ -37,7 +37,7 @@
 // NOTE: PubSub.size in Effect measures buffered message count (not subscriber count).
 // Subscriber count is tracked via a separate subscriberCounts dict.
 
-// Message fanned out by PubSub to every subscriber's Queue.
+// Message fanned out by PubSub to every subscriber.
 // done_ is run by each subscriber after the callback returns; when the last subscriber
 // finishes, done_ resolves allDone and publishEvent can return.
 type queuedEvent = {
@@ -308,13 +308,13 @@ module Impl = (C: BusConfig): T => {
     // this count and must see it even if called immediately after subscribeToEvents.
     let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
     subscriberCounts.contents->Dict.set(topicName, n + 1)
-    // Drain loop: subscribe to hub, consume messages via Stream.fromQueue → Stream.runForEach.
+    // Drain loop: subscribe to hub, consume messages via Stream.fromSubscription → Stream.runForEach.
     // Effect.scoped manages the subscription lifecycle; PubSub.shutdown in reset() closes it.
-    // The fiber runs synchronously up to the first Queue.take suspension, so PubSub.subscribe
+    // The fiber runs synchronously up to its first suspension, so PubSub.subscribe
     // registers before Effect.runFork returns.
     let drainLoop = Effect.scoped(
-      PubSub.subscribe(hub)->Effect.flatMap(queue =>
-        Stream.fromQueue(queue)->Stream.runForEach(msg =>
+      PubSub.subscribe(hub)->Effect.flatMap(subscription =>
+        Stream.fromSubscription(subscription)->Stream.runForEach(msg =>
           // A throwing/rejecting handler must not (a) leave `done_` uncalled —
           // the publisher's countdown would never reach zero and every publish
           // on this topic would hang — nor (b) kill this drain fiber, which
@@ -322,8 +322,13 @@ module Impl = (C: BusConfig): T => {
           // future publishes too. So: convert a rejection into a typed error
           // (`tryPromise`), log-and-recover (`catchAll`) so the stream keeps
           // draining, and run `done_` via `ensuring` so the countdown always
-          // advances regardless of outcome.
-          Effect.tryPromise(~catch=e => e, () => handler(msg.service, msg.meta, msg.json))
+          // advances regardless of outcome. The handler starts a microtask later:
+          // Effect may resume this fiber inside `PubSub.publish`, and a publisher
+          // must not run subscriber code in its own call.
+          Effect.tryPromise(
+            ~catch=e => e,
+            () => Promise.resolve()->Promise.then(() => handler(msg.service, msg.meta, msg.json)),
+          )
           ->Effect.catchAll(
             err => Effect.sync(() => Console.error2("[LocalBus] subscriber handler failed:", err)),
           )
@@ -343,20 +348,19 @@ module Impl = (C: BusConfig): T => {
       h
     }
     // Acquire: increment subscriber count + subscribe to hub.
-    // Release: decrement subscriber count + shut down the per-subscriber queue.
-    // PubSub.subscribe's own scope management also removes the subscriber from the hub
-    // when the outer Effect.scoped closes.
+    // Release: decrement subscriber count. PubSub.subscribe's own scope management
+    // removes the subscription from the hub when the outer Effect.scoped closes.
     Effect.acquireRelease(
       Effect.sync(() => {
         let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
         subscriberCounts.contents->Dict.set(topicName, n + 1)
       })->Effect.flatMap(_ => PubSub.subscribe(hub)),
-      (queue, _exit) =>
+      (_subscription, _exit) =>
         Effect.sync(() => {
           let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(1)
           subscriberCounts.contents->Dict.set(topicName, n - 1)
-        })->Effect.zipRight(Queue.shutdown(queue)),
-    )->Effect.map(queue => Stream.fromQueue(queue))
+        }),
+    )->Effect.map(subscription => Stream.fromSubscription(subscription))
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
@@ -532,7 +536,7 @@ module Impl = (C: BusConfig): T => {
   let projectionCatchupHandlers = () => projectionCatchupRegistry.contents->Dict.toArray
 
   let reset = () => {
-    // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
+    // Shut down all hubs — PubSub.shutdown interrupts Stream.fromSubscription consumers,
     // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
     let shutdownAll =
       eventHubs.contents

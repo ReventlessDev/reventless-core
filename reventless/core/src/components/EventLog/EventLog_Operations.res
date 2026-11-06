@@ -33,7 +33,7 @@ let isTransient = (e: EventLog.appendError) =>
     msg->String.includes("InternalServerError")
   }
 
-let storageRetrySchedule: Schedule.t<(Duration.t, int), EventLog.appendError, unit> =
+let storageRetrySchedule: Schedule.t<Duration.t, EventLog.appendError, unit> =
   Schedule.exponential(Duration.millis(100))
   ->Schedule.jittered
   ->Schedule.intersect(Schedule.recurs(5))

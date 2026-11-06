@@ -1,10 +1,8 @@
 /**
 ReScript bindings for `TestContext` — a `Layer` that provides test versions of core services.
 
-Providing `TestContext.testContext` replaces the following real services with test doubles:
-- `TestClock` — virtual clock for deterministic time control
-- `TestRandom` — deterministic random number generation
-- `TestConsole` — captures console output
+Providing `TestContext.testContext` replaces the clock with `TestClock`, a virtual
+clock for deterministic time control.
 
 **Example**
 ```rescript
@@ -18,11 +16,13 @@ After providing, use `TestClock.adjust` to advance virtual time.
 /** Opaque type for Effect `Layer`s — use via `Effect.provide`. */
 type layer
 
+@module("effect/testing/TestClock")
+external makeLayer: unit => layer = "layer"
+
 /**
-The `TestContext` layer — provides `TestClock` and other test services.
+The test layer — provides `TestClock`.
 
 Provide this to an `Effect` before running it in tests to enable
 `TestClock.adjust`, `TestClock.currentTimeMillis`, etc.
 */
-@module("effect/TestContext")
-external testContext: layer = "TestContext"
+let testContext = makeLayer()

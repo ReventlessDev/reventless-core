@@ -18,7 +18,7 @@
 >    replaced its steps. This rewrite keeps the analysis role: what changed, what the plan
 >    misses, what v4 gives us ([§2](#2-where-things-stand-in-november-2026),
 >    [§3](#3-what-the-plan-does-not-list-yet)).
-> 3. *What opportunities does the new version open?* **Six worth taking, four of them inside the
+> 3. *What opportunities does the new version open?* **Six worth taking, three of them inside the
 >    migration itself.** A runtime about half the size that loads in under half the time
 >    ([EVO1](#41-evo1-a-smaller-runtime-that-loads-faster)), queues that end instead of being
 >    shut down ([EVO2](#42-evo2-queues-that-end-instead-of-being-shut-down)), background fibers
@@ -147,19 +147,21 @@ The bindings get `Queue.end`, `endUnsafe` and `fail`. The
 
 ### 4.3 EVO3 background fibers that have an owner
 
-**With the migration · `FiberSet`, `FiberHandle` stable.** The local platform starts long-lived
+**After the migration, optional · `FiberSet`, `FiberHandle` stable.** The local platform starts long-lived
 drain fibers and drops the handle: `let _ = Effect.runFork(drainLoop)` in
 [LocalBus.res](../../reventless/local/src/adapter/LocalBus.res#L334) and in
 [LocalEventCollectorChannel.res](../../reventless/local/src/adapter/EventCollector/LocalEventCollectorChannel.res#L86).
-Today they end only because `reset` shuts the hubs down. The plan already expects trouble here:
-v4 keeps Node alive while a fiber runs, so Jest may hang on exit
+Today they end only because `reset` shuts the hubs down. The plan expected trouble here, with
+v4 keeping Node alive while a fiber runs
 ([plan §2](../plans/effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors)).
+The port showed it does not, for these fibers: one waiting on a subscription holds no timer, and
+the process exits.
 
-A `FiberSet` per platform instance gives those fibers an owner. Each drain fiber is started with
-`FiberSet.run`, and `reset` or a platform shutdown clears the set, which interrupts every fiber
-in it. That fixes the keep-alive problem, and it makes "which background work does this platform
-own" something the code can answer. [Plan step 4](../plans/effect-v4-migration.md#3-steps) says
-"give the drain fibers a scope or an explicit interrupt"; `FiberSet` is that scope, ready made.
+A `FiberSet` per platform instance would still give those fibers an owner: each drain fiber
+started with `FiberSet.run`, and `reset` or a platform shutdown clearing the set, interrupting
+every fiber in it. What it buys is clarity, "which background work does this platform own" as
+something the code can answer, not a fix. It needs an open `Scope` for the set's lifetime, which
+the bus does not hold today, so it is a refactor of its own and no longer part of the migration.
 `FiberHandle` is the one-fiber form, for a single loop such as a heartbeat.
 
 ### 4.4 EVO4 a flat failure model
@@ -237,8 +239,8 @@ shipped, and the README declares 4.x LTS.
 **Recommendation:** start now with plan steps 1 to 3 (bindings, signatures, the STM port). They
 are confined to [rescript/effect/](../../rescript/effect/) and one storage file, and they can be
 thrown away if 4.1 moves under them. Fold [EVO2](#42-evo2-queues-that-end-instead-of-being-shut-down)
-and [EVO3](#43-evo3-background-fibers-that-have-an-owner) into step 4, because they are how the
-two behavior hazards get fixed. Revisit if a 4.1.x release changes `Queue`, `Stream` or `Cause`
+into the port, because it is how the queue hazard gets fixed.
+[EVO3](#43-evo3-background-fibers-that-have-an-owner) turned out not to be needed for it. Revisit if a 4.1.x release changes `Queue`, `Stream` or `Cause`
 while the bindings are being ported.
 
 **EVQ2. Is the Node 22.19 floor met everywhere?** The repo pins 22.17.1. Lambda `nodejs22.x`

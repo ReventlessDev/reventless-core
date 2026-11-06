@@ -32,12 +32,13 @@ external await_: t => Effect.t<unit, 'e, 'r> = "await"
 
 /**
 Opens the latch, releasing all currently waiting fibers immediately.
+Yields `false` when it was already open.
 
 > **Note** `open` is a reserved word in ReScript — use `open_` here.
 */
 @get
-external open_: t => Effect.t<unit, 'e, 'r> = "open"
+external open_: t => Effect.t<bool, 'e, 'r> = "open"
 
-/** Closes the latch — future `await_` calls will block again. */
+/** Closes the latch — future `await_` calls will block again. Yields `false` when it was already closed. */
 @get
-external close: t => Effect.t<unit, 'e, 'r> = "close"
+external close: t => Effect.t<bool, 'e, 'r> = "close"

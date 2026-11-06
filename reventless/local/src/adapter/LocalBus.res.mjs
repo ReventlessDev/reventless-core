@@ -2,7 +2,6 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
-import * as Queue from "effect/Queue";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as PubSub from "effect/PubSub";
@@ -117,9 +116,9 @@ function Impl(C) {
   };
   let makeHub = () => {
     if (capacity !== undefined) {
-      return Effect$1.runSync(PubSub.bounded(capacity));
+      return Effect.runSync(PubSub.bounded(capacity));
     } else {
-      return Effect$1.runSync(PubSub.unbounded());
+      return Effect.runSync(PubSub.unbounded());
     }
   };
   let subscribeToEvents = (topicName, handler) => {
@@ -134,7 +133,7 @@ function Impl(C) {
     }
     let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
     subscriberCounts.contents[topicName] = n + 1 | 0;
-    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), queue => Stream.runForEach(Stream.fromQueue(queue), msg => Effect$1.ensuring(Effect$1.catchAll(Effect.tryPromise(e => e, () => handler(msg.service, msg.meta, msg.json)), err => Effect$1.sync(() => {
+    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), subscription => Stream.runForEach(Stream.fromSubscription(subscription), msg => Effect$1.ensuring(Effect$1.catch(Effect.tryPromise(e => e, () => Promise.resolve().then(() => handler(msg.service, msg.meta, msg.json))), err => Effect$1.sync(() => {
       console.error("[LocalBus] subscriber handler failed:", err);
     })), msg.done_))));
     Effect$1.runFork(drainLoop);
@@ -152,10 +151,10 @@ function Impl(C) {
     return Effect$1.map(Effect$1.acquireRelease(Effect$1.flatMap(Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
       subscriberCounts.contents[topicName] = n + 1 | 0;
-    }), () => PubSub.subscribe(hub)), (queue, _exit) => Effect$1.zipRight(Effect$1.sync(() => {
+    }), () => PubSub.subscribe(hub)), (_subscription, _exit) => Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
       subscriberCounts.contents[topicName] = n - 1 | 0;
-    }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
+    })), subscription => Stream.fromSubscription(subscription));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     if (Pii$Reventless.needsPrepare([json])) {
@@ -171,7 +170,7 @@ function Impl(C) {
     if (n === 0) {
       return;
     }
-    let allDone = Effect$1.runSync(Deferred.make());
+    let allDone = Effect.runSync(Deferred.make());
     let remaining = {
       contents: n
     };
@@ -190,10 +189,10 @@ function Impl(C) {
       json: json,
       done_: done_
     };
-    let publishAndWait = capacity !== undefined ? Effect$1.flatMap(PubSub.publish(hub$1, msg), param => Deferred.await(allDone)) : Effect$1.zipRight(Effect$1.sync(() => {
-        Effect$1.runSync(PubSub.publish(hub$1, msg));
+    let publishAndWait = capacity !== undefined ? Effect$1.flatMap(PubSub.publish(hub$1, msg), param => Deferred.await(allDone)) : Effect$1.andThen(Effect$1.sync(() => {
+        Effect.runSync(PubSub.publish(hub$1, msg));
       }), Deferred.await(allDone));
-    await Effect$1.runPromise(publishAndWait);
+    await Effect.runPromise(publishAndWait);
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -314,7 +313,7 @@ function Impl(C) {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
     }), param => {});
-    Effect$1.runSync(shutdownAll);
+    Effect.runSync(shutdownAll);
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
@@ -397,7 +396,7 @@ function Make($star) {
   let dcbEventLogReadRegistry = {
     contents: {}
   };
-  let makeHub = () => Effect$1.runSync(PubSub.unbounded());
+  let makeHub = () => Effect.runSync(PubSub.unbounded());
   let subscribeToEvents = (topicName, handler) => {
     let h = eventHubs.contents[topicName];
     let hub;
@@ -410,7 +409,7 @@ function Make($star) {
     }
     let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
     subscriberCounts.contents[topicName] = n + 1 | 0;
-    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), queue => Stream.runForEach(Stream.fromQueue(queue), msg => Effect$1.ensuring(Effect$1.catchAll(Effect.tryPromise(e => e, () => handler(msg.service, msg.meta, msg.json)), err => Effect$1.sync(() => {
+    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), subscription => Stream.runForEach(Stream.fromSubscription(subscription), msg => Effect$1.ensuring(Effect$1.catch(Effect.tryPromise(e => e, () => Promise.resolve().then(() => handler(msg.service, msg.meta, msg.json))), err => Effect$1.sync(() => {
       console.error("[LocalBus] subscriber handler failed:", err);
     })), msg.done_))));
     Effect$1.runFork(drainLoop);
@@ -428,10 +427,10 @@ function Make($star) {
     return Effect$1.map(Effect$1.acquireRelease(Effect$1.flatMap(Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
       subscriberCounts.contents[topicName] = n + 1 | 0;
-    }), () => PubSub.subscribe(hub)), (queue, _exit) => Effect$1.zipRight(Effect$1.sync(() => {
+    }), () => PubSub.subscribe(hub)), (_subscription, _exit) => Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
       subscriberCounts.contents[topicName] = n - 1 | 0;
-    }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
+    })), subscription => Stream.fromSubscription(subscription));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     if (Pii$Reventless.needsPrepare([json])) {
@@ -447,7 +446,7 @@ function Make($star) {
     if (n === 0) {
       return;
     }
-    let allDone = Effect$1.runSync(Deferred.make());
+    let allDone = Effect.runSync(Deferred.make());
     let remaining = {
       contents: n
     };
@@ -466,10 +465,10 @@ function Make($star) {
       json: json,
       done_: done_
     };
-    let publishAndWait = Effect$1.zipRight(Effect$1.sync(() => {
-      Effect$1.runSync(PubSub.publish(hub$1, msg));
+    let publishAndWait = Effect$1.andThen(Effect$1.sync(() => {
+      Effect.runSync(PubSub.publish(hub$1, msg));
     }), Deferred.await(allDone));
-    await Effect$1.runPromise(publishAndWait);
+    await Effect.runPromise(publishAndWait);
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -590,7 +589,7 @@ function Make($star) {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
     }), param => {});
-    Effect$1.runSync(shutdownAll);
+    Effect.runSync(shutdownAll);
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
@@ -673,7 +672,7 @@ function MakeSilent($star) {
   let dcbEventLogReadRegistry = {
     contents: {}
   };
-  let makeHub = () => Effect$1.runSync(PubSub.unbounded());
+  let makeHub = () => Effect.runSync(PubSub.unbounded());
   let subscribeToEvents = (topicName, handler) => {
     let h = eventHubs.contents[topicName];
     let hub;
@@ -686,7 +685,7 @@ function MakeSilent($star) {
     }
     let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
     subscriberCounts.contents[topicName] = n + 1 | 0;
-    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), queue => Stream.runForEach(Stream.fromQueue(queue), msg => Effect$1.ensuring(Effect$1.catchAll(Effect.tryPromise(e => e, () => handler(msg.service, msg.meta, msg.json)), err => Effect$1.sync(() => {
+    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), subscription => Stream.runForEach(Stream.fromSubscription(subscription), msg => Effect$1.ensuring(Effect$1.catch(Effect.tryPromise(e => e, () => Promise.resolve().then(() => handler(msg.service, msg.meta, msg.json))), err => Effect$1.sync(() => {
       console.error("[LocalBus] subscriber handler failed:", err);
     })), msg.done_))));
     Effect$1.runFork(drainLoop);
@@ -704,10 +703,10 @@ function MakeSilent($star) {
     return Effect$1.map(Effect$1.acquireRelease(Effect$1.flatMap(Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
       subscriberCounts.contents[topicName] = n + 1 | 0;
-    }), () => PubSub.subscribe(hub)), (queue, _exit) => Effect$1.zipRight(Effect$1.sync(() => {
+    }), () => PubSub.subscribe(hub)), (_subscription, _exit) => Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
       subscriberCounts.contents[topicName] = n - 1 | 0;
-    }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
+    })), subscription => Stream.fromSubscription(subscription));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     if (Pii$Reventless.needsPrepare([json])) {
@@ -723,7 +722,7 @@ function MakeSilent($star) {
     if (n === 0) {
       return;
     }
-    let allDone = Effect$1.runSync(Deferred.make());
+    let allDone = Effect.runSync(Deferred.make());
     let remaining = {
       contents: n
     };
@@ -742,10 +741,10 @@ function MakeSilent($star) {
       json: json,
       done_: done_
     };
-    let publishAndWait = Effect$1.zipRight(Effect$1.sync(() => {
-      Effect$1.runSync(PubSub.publish(hub$1, msg));
+    let publishAndWait = Effect$1.andThen(Effect$1.sync(() => {
+      Effect.runSync(PubSub.publish(hub$1, msg));
     }), Deferred.await(allDone));
-    await Effect$1.runPromise(publishAndWait);
+    await Effect.runPromise(publishAndWait);
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -866,7 +865,7 @@ function MakeSilent($star) {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
     }), param => {});
-    Effect$1.runSync(shutdownAll);
+    Effect.runSync(shutdownAll);
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
@@ -950,7 +949,7 @@ function MakeBounded(C) {
   let dcbEventLogReadRegistry = {
     contents: {}
   };
-  let makeHub = () => Effect$1.runSync(PubSub.bounded(capacity));
+  let makeHub = () => Effect.runSync(PubSub.bounded(capacity));
   let subscribeToEvents = (topicName, handler) => {
     let h = eventHubs.contents[topicName];
     let hub;
@@ -963,7 +962,7 @@ function MakeBounded(C) {
     }
     let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
     subscriberCounts.contents[topicName] = n + 1 | 0;
-    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), queue => Stream.runForEach(Stream.fromQueue(queue), msg => Effect$1.ensuring(Effect$1.catchAll(Effect.tryPromise(e => e, () => handler(msg.service, msg.meta, msg.json)), err => Effect$1.sync(() => {
+    let drainLoop = Effect$1.scoped(Effect$1.flatMap(PubSub.subscribe(hub), subscription => Stream.runForEach(Stream.fromSubscription(subscription), msg => Effect$1.ensuring(Effect$1.catch(Effect.tryPromise(e => e, () => Promise.resolve().then(() => handler(msg.service, msg.meta, msg.json))), err => Effect$1.sync(() => {
       console.error("[LocalBus] subscriber handler failed:", err);
     })), msg.done_))));
     Effect$1.runFork(drainLoop);
@@ -981,10 +980,10 @@ function MakeBounded(C) {
     return Effect$1.map(Effect$1.acquireRelease(Effect$1.flatMap(Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
       subscriberCounts.contents[topicName] = n + 1 | 0;
-    }), () => PubSub.subscribe(hub)), (queue, _exit) => Effect$1.zipRight(Effect$1.sync(() => {
+    }), () => PubSub.subscribe(hub)), (_subscription, _exit) => Effect$1.sync(() => {
       let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
       subscriberCounts.contents[topicName] = n - 1 | 0;
-    }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
+    })), subscription => Stream.fromSubscription(subscription));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     if (Pii$Reventless.needsPrepare([json])) {
@@ -999,7 +998,7 @@ function MakeBounded(C) {
     if (n === 0) {
       return;
     }
-    let allDone = Effect$1.runSync(Deferred.make());
+    let allDone = Effect.runSync(Deferred.make());
     let remaining = {
       contents: n
     };
@@ -1019,7 +1018,7 @@ function MakeBounded(C) {
       done_: done_
     };
     let publishAndWait = Effect$1.flatMap(PubSub.publish(Primitive_option.valFromOption(hub), msg), param => Deferred.await(allDone));
-    await Effect$1.runPromise(publishAndWait);
+    await Effect.runPromise(publishAndWait);
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -1140,7 +1139,7 @@ function MakeBounded(C) {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
     }), param => {});
-    Effect$1.runSync(shutdownAll);
+    Effect.runSync(shutdownAll);
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};

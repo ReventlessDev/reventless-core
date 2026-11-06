@@ -36,7 +36,7 @@ function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
 
 function send(queue, queueService, commandJson) {
   let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => {
+  return Effect$1.catch(Effect$1.retry(Effect$1.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => {
     if (queueService === "SQS_FIFO") {
       return sendFifoMessage(queue, commandJson.delay, safeGroupId(commandJson.id), messageBody);
     } else {
@@ -77,7 +77,7 @@ function sendMessages(queue, queueService, commandJsons) {
       _0: `sendMessages failed for ids: ` + ids
     });
   });
-  return Effect$1.catchAll(attempt(0, commandJsons), err => {
+  return Effect$1.catch(attempt(0, commandJsons), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
     return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `sendMessages: ` + msg), () => Effect$1.fail(msg));
   });
@@ -112,7 +112,7 @@ function deleteMessages(entries, queue) {
       _0: `deleteMessages failed for ids: ` + ids
     });
   });
-  return Effect$1.catchAll(attempt(0, entries), err => {
+  return Effect$1.catch(attempt(0, entries), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
     return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_SQS_Runtime-ReventlessAws", undefined, undefined, `deleteMessages: ` + msg), () => Effect$1.fail(msg));
   });

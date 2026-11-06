@@ -2,6 +2,5 @@
 type t<'a>
 
 /** Convert Effect's Option to a ReScript option. */
-let toOption: t<'a> => option<'a> = %raw(`
-  function(opt) { return opt._tag === "Some" ? opt.value : undefined; }
-`)
+@module("effect/Option")
+external toOption: t<'a> => option<'a> = "getOrUndefined"

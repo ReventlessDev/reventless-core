@@ -99,11 +99,6 @@ describe("Effect — transformation", () => {
     let v = Effect.succeed("a")->Effect.zipRight(Effect.succeed("b"))->Effect.runSync
     expect(v)->toBe("b")
   })
-
-  testSync("zipLeft returns the first value", () => {
-    let v = Effect.succeed("a")->Effect.zipLeft(Effect.succeed("b"))->Effect.runSync
-    expect(v)->toBe("a")
-  })
 })
 
 describe("Effect — error handling", () => {
@@ -253,5 +248,47 @@ describe("Effect — concurrency", () => {
   testPromise("yieldNow resolves without error", async () => {
     let _ = await Effect.yieldNow()->Effect.runPromise
     expect(true)->toBe(true)
+  })
+})
+
+@set external setErrorName: (JsError.t, string) => unit = "name"
+
+describe("Effect — what a failure throws", () => {
+  let messageOf = exn => exn->JsExn.fromException->Option.flatMap(JsExn.message)
+
+  testPromise("runPromise rejects a typed failure as an Error that names it", async () => {
+    let message = try {
+      let _: int = await Effect.fail("boom")->Effect.runPromise
+      None
+    } catch {
+    | exn => exn->messageOf
+    }
+    expect(message)->toEqual(Some("boom"))
+  })
+
+  testSync("runSync throws a typed failure as an Error that names it", () => {
+    let message = try {
+      let _: int = Effect.fail("boom")->Effect.runSync
+      None
+    } catch {
+    | exn => exn->messageOf
+    }
+    expect(message)->toEqual(Some("boom"))
+  })
+
+  testPromise("a thrown error keeps its name across runPromise", async () => {
+    let name = try {
+      let _: int = await Effect.sync(
+        () => {
+          let error = JsError.make("bad request")
+          error->setErrorName("CallerFault")
+          error->JsError.throw
+        },
+      )->Effect.runPromise
+      None
+    } catch {
+    | exn => exn->JsExn.fromException->Option.flatMap(JsExn.name)
+    }
+    expect(name)->toEqual(Some("CallerFault"))
   })
 })

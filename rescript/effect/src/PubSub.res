@@ -1,6 +1,6 @@
 /**
 ReScript bindings for `PubSub<A>` — a broadcast hub where each subscriber
-receives a private `Queue` with a view of every published message.
+receives a private `subscription` with a view of every published message.
 
 When no subscribers are present, published messages are dropped.
 When all subscriber queues are full (bounded), `publish` suspends the publisher.
@@ -11,7 +11,7 @@ let hub = PubSub.bounded(100)->Effect.runSync
 
 // Subscriber
 PubSub.subscribe(hub)
-->Effect.flatMap(q => Queue.take(q)->Effect.forever)
+->Effect.flatMap(s => PubSub.take(s)->Effect.forever)
 ->Effect.scoped
 ->Effect.fork
 ->Effect.runPromise
@@ -21,6 +21,9 @@ PubSub.publish(hub, event)->Effect.runPromise
 ```
 */
 type t<'a>
+
+/** One subscriber's view of a `PubSub`; read it with `take` or `Stream.fromSubscription`. */
+type subscription<'a>
 
 // ─── Constructors ────────────────────────────────────────────────────────
 
@@ -58,7 +61,7 @@ external publishAll: (t<'a>, array<'a>) => Effect.t<bool, 'e, 'r> = "publishAll"
 // ─── Subscribing ─────────────────────────────────────────────────────────
 
 /**
-Subscribes to the `PubSub`, returning a scoped `Queue`.
+Subscribes to the `PubSub`, returning a scoped `subscription`.
 
 The subscription is automatically removed when the enclosing `Scope` closes.
 Use `Effect.scoped` to manage the scope:
@@ -66,13 +69,21 @@ Use `Effect.scoped` to manage the scope:
 **Example**
 ```rescript
 PubSub.subscribe(hub)
-->Effect.flatMap(q => Queue.take(q))
+->Effect.flatMap(s => PubSub.take(s))
 ->Effect.scoped
 ->Effect.runPromise
 ```
 */
 @module("effect/PubSub")
-external subscribe: t<'a> => Effect.t<Queue.t<'a>, 'e, 'r> = "subscribe"
+external subscribe: t<'a> => Effect.t<subscription<'a>, 'e, 'r> = "subscribe"
+
+/** Takes the next message from a subscription, suspending until one is published. */
+@module("effect/PubSub")
+external take: subscription<'a> => Effect.t<'a, 'e, 'r> = "take"
+
+/** Takes every message the subscription has buffered, suspending until there is at least one. */
+@module("effect/PubSub")
+external takeAll: subscription<'a> => Effect.t<array<'a>, 'e, 'r> = "takeAll"
 
 // ─── Inspection ──────────────────────────────────────────────────────────
 
@@ -82,7 +93,7 @@ external size: t<'a> => Effect.t<int, 'e, 'r> = "size"
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────
 
-/** Shuts down the `PubSub`. All subscriber queues are shut down and pending publishes fail. */
+/** Shuts down the `PubSub`, interrupting suspended publishers and subscribers and finalizing every subscription. */
 @module("effect/PubSub")
 external shutdown: t<'a> => Effect.t<unit, 'e, 'r> = "shutdown"
 

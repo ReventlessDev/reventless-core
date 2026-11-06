@@ -6,6 +6,7 @@ import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
@@ -29,7 +30,7 @@ function loadStream(table) {
       ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
       KeyConditionExpression: baseParams_KeyConditionExpression
     };
-    return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+    return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
       let params;
       if (cursor !== undefined) {
         let newrecord = {...baseParams};
@@ -50,7 +51,7 @@ function loadStream(table) {
 }
 
 function load(table) {
-  return id => Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Stream.runCollect(loadStream(table)(id)), arr => ({
+  return id => Effect.runPromise(Effect$1.catch(Effect$1.map(Stream$1.runCollect(loadStream(table)(id)), arr => ({
     TAG: "Ok",
     _0: arr
   })), err => {
@@ -111,7 +112,7 @@ function save(table) {
         }));
       });
     }
-    return Effect$1.runPromise(tmp);
+    return Effect.runPromise(tmp);
   };
 }
 
@@ -138,7 +139,7 @@ function writeMultiple(writeRequests, op, ids, table) {
       return `Batch ` + batchNr.toString() + `: ` + batchCount + ` ids:` + batchIdsStr + `: ` + result._0;
     }
   }));
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.flatMap(Effect$1.map(Effect$1.flatMap(logSplitEffect, () => Effect$1.all(batchEffects, {
+  return Effect.runPromise(Effect$1.catch(Effect$1.flatMap(Effect$1.map(Effect$1.flatMap(logSplitEffect, () => Effect$1.all(batchEffects, {
     concurrency: "unbounded"
   })), results => Stdlib_Array.filterMap(results, x => x)), errors => {
     if (errors.length === 0) {
@@ -190,7 +191,7 @@ function saveBatch(table) {
 function count(table) {
   return (id, fieldName, inc) => {
     let tableName = table.name;
-    return Effect$1.runPromise(Effect$1.catchAll(Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `count: ` + tableName + `, ` + id + `, ` + fieldName + `, ` + inc.toString()), () => Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "count"), () => DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
+    return Effect.runPromise(Effect$1.catch(Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `count: ` + tableName + `, ` + id + `, ` + fieldName + `, ` + inc.toString()), () => Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "count"), () => DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
       Key: Object.fromEntries([[
           "id",
           id
@@ -235,7 +236,7 @@ function count(table) {
 function $$delete(table) {
   return (id, sort) => {
     let tableName = table.name;
-    return Effect$1.runPromise(Effect$1.flatMap(Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(sort, table, id), result => {
+    return Effect.runPromise(Effect$1.flatMap(Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(sort, table, id), result => {
       if (result.TAG === "Ok") {
         return Effect$1.map(EffectLogger$ReventlessCore.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws", undefined, undefined, `delete: deleted state from ` + tableName + `: id=` + id + `, sort=` + Stdlib_Option.getOr(JSON.stringify(sort), "None")), () => ({
           TAG: "Ok",

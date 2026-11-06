@@ -8,8 +8,10 @@
 //
 // Note: Stream.take(n) short-circuits queue consumption, but the underlying
 // CSV parser runs at full speed and continues reading in the background.
-// Effect.runSyncExit is used inside the onData/onEnd/onError callbacks so that
-// a shut-down queue (e.g. after stream interruption) never throws.
+// Effect.runSyncExit is used inside the onData/onError callbacks so that a
+// queue that is already done (e.g. after stream interruption) never throws.
+// The input is finished with Queue.endUnsafe, not shutdown: shutdown would
+// discard rows the reader has not taken yet.
 
 // Parse a CSV file, emitting one row per stream item.
 // The first row is treated as column headers (not emitted as data).
@@ -20,11 +22,13 @@ let parseRows = (~path: string): Stream.t<CSV.row, string, unit> =>
     let _ =
       CSV.parseFile(~path, ~options={headers: CSV.Options.Bool(true)})
       ->CSV.onData(row => Queue.offer(queue, Ok(row))->Effect.runSyncExit->ignore)
-      ->CSV.onEnd(_ => Queue.shutdown(queue)->Effect.runSyncExit->ignore)
+      ->CSV.onEnd(_ => {
+        let _ = Queue.endUnsafe(queue)
+      })
       ->CSV.onError(err => {
         let msg = err->JsExn.message->Option.getOr("CSV parse error")
         Queue.offer(queue, Error(msg))->Effect.runSyncExit->ignore
-        Queue.shutdown(queue)->Effect.runSyncExit->ignore
+        let _ = Queue.endUnsafe(queue)
       })
     Effect.succeed(queue)
   })

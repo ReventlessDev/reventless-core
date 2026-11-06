@@ -24,7 +24,7 @@ function signUp(region, userPoolId, userPoolClientId, userName, password) {
 }
 
 function signUpIfMissing(region, userPoolId, userPoolClientId, userName, password) {
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.flatMap(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => signUp(region, userPoolId, userPoolClientId, userName, password)), result => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, undefined, `Created User ` + userName + ` ` + Stdlib_Option.getOr(result.UserSub, ""))), err => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, undefined, Cognito_Error$ReventlessAws.message(err))));
+  return Effect.runPromise(Effect$1.catch(Effect$1.flatMap(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => signUp(region, userPoolId, userPoolClientId, userName, password)), result => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, undefined, `Created User ` + userName + ` ` + Stdlib_Option.getOr(result.UserSub, ""))), err => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, undefined, Cognito_Error$ReventlessAws.message(err))));
 }
 
 export {

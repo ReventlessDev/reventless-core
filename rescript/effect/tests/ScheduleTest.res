@@ -65,7 +65,7 @@ describe("Schedule", () => {
     )
   })
 
-  describe("intersect — stop when either stops", () => {
+  describe("intersect — continue only while both continue", () => {
     testPromise(
       "intersect(recurs(2), recurs(4)) stops after 2 repeats",
       async () => {
@@ -73,20 +73,7 @@ describe("Schedule", () => {
         let _ = await Effect.sync(() => {count := count.contents + 1})
         ->Effect.repeat(Schedule.intersect(Schedule.recurs(2), Schedule.recurs(4)))
         ->Effect.runPromise
-        expect(count.contents)->toBe(3) // initial + 2 repeats (shorter schedule wins)
-      },
-    )
-  })
-
-  describe("union — stop when both stop", () => {
-    testPromise(
-      "union(recurs(2), recurs(4)) stops after 4 repeats",
-      async () => {
-        let count = ref(0)
-        let _ = await Effect.sync(() => {count := count.contents + 1})
-        ->Effect.repeat(Schedule.union(Schedule.recurs(2), Schedule.recurs(4)))
-        ->Effect.runPromise
-        expect(count.contents)->toBe(5) // initial + 4 repeats (longer schedule wins)
+        expect(count.contents)->toBe(3) // initial + 2 repeats: stops when the first stops
       },
     )
   })
