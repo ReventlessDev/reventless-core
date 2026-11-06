@@ -55,6 +55,10 @@ describe("TaggedUnion.armsOf", () => {
     expect(tags(S.option(geolocationSchema)))->toEqual(Some(["Pending", "Located", "Unresolvable"]))
   })
 
+  testSync("sees through the option wrapper around a named union", () => {
+    expect(tags(S.option(namedSchema)))->toEqual(Some(["Pending", "Located", "Unresolvable"]))
+  })
+
   // An enum is a different type with a different emission — not a union of
   // object types, and not this module's business.
   testSync("declines an enum", () => {

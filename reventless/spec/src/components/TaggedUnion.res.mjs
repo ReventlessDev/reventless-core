@@ -13,7 +13,12 @@ function named(name, schema) {
 }
 
 function getName(schema) {
-  return Sury.$Metadata_get(schema, unionNameId);
+  let name = Sury.$Metadata_get(schema, unionNameId);
+  if (name !== undefined) {
+    return name;
+  } else {
+    return Stdlib_Option.flatMap(Semantic$Reventless.unwrapOptional(schema), inner => Sury.$Metadata_get(inner, unionNameId));
+  }
 }
 
 function memberTypeName(union, arm) {
@@ -36,55 +41,64 @@ function isPositionalName(name) {
   }
 }
 
-function armsOf(schema) {
-  if (schema.type !== "anyOf") {
-    return;
-  }
-  let members = schema.anyOf.filter(v => {
-    switch (v.type) {
-      case "null" :
-      case "undefined" :
-        return false;
-      default:
-        return true;
-    }
-  });
-  if (members.length < 2) {
-    return;
-  }
-  let arms = Stdlib_Array.filterMap(members, member => {
-    if (member.type !== "object") {
+function armsOf(_schema) {
+  while (true) {
+    let schema = _schema;
+    if (schema.type !== "anyOf") {
       return;
     }
-    let properties = member.properties;
-    let match = properties["TAG"];
-    if (match === undefined) {
-      return;
+    let members = schema.anyOf.filter(v => {
+      switch (v.type) {
+        case "null" :
+        case "undefined" :
+          return false;
+        default:
+          return true;
+      }
+    });
+    if (members.length < 2) {
+      if (members.length !== 1) {
+        return;
+      }
+      _schema = members[0];
+      continue;
     }
-    if (match.type !== "string") {
-      return;
-    }
-    let tag = match.const;
-    if (tag === undefined) {
-      return;
-    }
-    let fields = Object.entries(properties).filter(param => param[0] !== "TAG");
-    if (fields.length === 0 || fields.some(param => isPositionalName(param[0]))) {
-      return;
+    let arms = Stdlib_Array.filterMap(members, member => {
+      if (member.type !== "object") {
+        return;
+      }
+      let properties = member.properties;
+      let match = properties["TAG"];
+      if (match === undefined) {
+        return;
+      }
+      if (match.type !== "string") {
+        return;
+      }
+      let tag = match.const;
+      if (tag === undefined) {
+        return;
+      }
+      let fields = Object.entries(properties).filter(param => param[0] !== "TAG");
+      if (fields.length === 0 || fields.some(param => isPositionalName(param[0]))) {
+        return;
+      } else {
+        return {
+          tag: tag,
+          schema: member
+        };
+      }
+    });
+    if (arms.length === members.length) {
+      return arms;
     } else {
-      return {
-        tag: tag,
-        schema: member
-      };
+      return;
     }
-  });
-  if (arms.length === members.length) {
-    return arms;
-  }
+  };
 }
 
 function classify(schema) {
-  let match = Sury.$Metadata_get(schema, unionNameId);
+  let match = getName(schema);
   let match$1 = armsOf(schema);
   if (match !== undefined && match$1 !== undefined) {
     return [
@@ -95,7 +109,7 @@ function classify(schema) {
 }
 
 function isUnnamedUnion(schema) {
-  if (Stdlib_Option.isNone(Sury.$Metadata_get(schema, unionNameId))) {
+  if (Stdlib_Option.isNone(getName(schema))) {
     return Stdlib_Option.isSome(armsOf(schema));
   } else {
     return false;
@@ -167,7 +181,7 @@ function fieldsOf(schema) {
       if (Stdlib_Option.isSome(armsOf(propSchema))) {
         return [
           param[0],
-          Sury.$Metadata_get(propSchema, unionNameId)
+          getName(propSchema)
         ];
       }
     });

@@ -41,14 +41,17 @@ let named = (~name: string, schema: S.t<'a>): S.t<'a> =>
 /**
 The name a union field's schema carries.
 
-Read straight off the field's schema, wrapper included: sury's `option` keeps the
-metadata of what it wraps, which matters because it does *not* keep the union as
-a nested schema — `option<t>` flattens the arms and the `undefined` into one
-`anyOf`, leaving nothing inside to consult. `TaggedUnionTest` pins that, since a
-sury release that stopped preserving it would turn every optional union field
-into a `String` with no compile error anywhere.
+Read off the field's schema, or off the union an optional wrapper holds: sury's
+`option` nests a named union as one member beside `undefined`, and the name stays
+on that member. `TaggedUnionTest` pins it, since losing it would turn every
+optional union field into a `String` with no compile error anywhere.
 */
-let getName = (schema: S.t<unknown>): option<string> => S.Metadata.get(schema, ~id=unionNameId)
+let getName = (schema: S.t<unknown>): option<string> =>
+  switch S.Metadata.get(schema, ~id=unionNameId) {
+  | Some(name) => Some(name)
+  | None =>
+    Semantic.unwrapOptional(schema)->Option.flatMap(inner => S.Metadata.get(inner, ~id=unionNameId))
+  }
 
 /**
 The GraphQL type emitted for one arm: the union's name with the arm's own
@@ -94,7 +97,7 @@ all of which encode and decode perfectly well:
 
 Declining leaves the field an `Unknown`, which is reported where it is emitted.
 */
-let armsOf = (schema: S.t<unknown>): option<array<arm>> =>
+let rec armsOf = (schema: S.t<unknown>): option<array<arm>> =>
   switch schema {
   | AnyOf({anyOf}) =>
     let members = anyOf->Array.filter(v =>
@@ -104,7 +107,11 @@ let armsOf = (schema: S.t<unknown>): option<array<arm>> =>
       }
     )
     if members->Array.length < 2 {
-      None
+      // An optional wrapper around a named union holds it whole, as one member.
+      switch members {
+      | [inner] => armsOf(inner)
+      | _ => None
+      }
     } else {
       let arms = members->Array.filterMap(member =>
         switch member {
