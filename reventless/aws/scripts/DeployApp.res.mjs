@@ -26,6 +26,7 @@ import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src
 import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs";
 import * as DeployManifest$ReventlessAws from "./DeployManifest.res.mjs";
 import * as ProvisionAccounts$ReventlessAws from "./ProvisionAccounts.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../src/util/Util_LambdaRuntime.res.mjs";
 import * as IndexJs from "@pulumi/pulumi/automation/index.js";
 
 let defaultStack = "dev";
@@ -401,10 +402,7 @@ async function ensureLayer(stack, region, version) {
         Content: {
           ZipFile: zip
         },
-        CompatibleRuntimes: [
-          "nodejs20.x",
-          "nodejs22.x"
-        ]
+        CompatibleRuntimes: Util_LambdaRuntime$ReventlessAws.layerCompatible
       }));
       let arn$1 = published.LayerVersionArn;
       if (arn$1 !== undefined) {

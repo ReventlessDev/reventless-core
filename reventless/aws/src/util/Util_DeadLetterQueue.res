@@ -110,7 +110,7 @@ let handler = Lambda.Function.make(
   ~name,
   ~args={
     handler: "index.handler"->Pulumi.Input.make,
-    runtime: "nodejs22.x"->Pulumi.Input.make,
+    runtime: Util_LambdaRuntime.node->Pulumi.Input.make,
     code: code->Pulumi.Input.make,
     sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
     role: lambdaRole.arn->Pulumi.Output.asInput,

@@ -325,7 +325,7 @@ let ensureLayer = async (~stack: string, ~region: string, ~version: string): res
             layerName: layerName(stack),
             description: layerDescription(version),
             content: {zipFile: zip},
-            compatibleRuntimes: ["nodejs20.x", "nodejs22.x"],
+            compatibleRuntimes: Util_LambdaRuntime.layerCompatible,
           }),
         )
         switch published.layerVersionArn {

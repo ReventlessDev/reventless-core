@@ -11,6 +11,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "../Api/AppSync_Resolver_Native.res.mjs";
 
 let invokeCode = `import { util } from '@aws-appsync/utils';
@@ -60,7 +61,7 @@ function make(api, placeIndexName, nameOpt, opts) {
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
-    runtime: "nodejs22.x",
+    runtime: Util_LambdaRuntime$ReventlessAws.node,
     code: match.code,
     role: lambdaRole.arn,
     memorySize: 256,

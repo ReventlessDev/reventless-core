@@ -12,6 +12,7 @@ import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/a
 import * as Util_Bundle$ReventlessAws from "./Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "./Util_Lambda.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "./Util_LambdaLogging.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "./Util_LambdaRuntime.res.mjs";
 import * as Util_DeadLetterHandler$ReventlessAws from "./Util_DeadLetterHandler.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "./Util_EventSourceMapping.res.mjs";
 
@@ -63,7 +64,7 @@ let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefi
 
 let handler = new (Aws.lambda.Function)(name, {
   handler: "index.handler",
-  runtime: "nodejs22.x",
+  runtime: Util_LambdaRuntime$ReventlessAws.node,
   code: code,
   role: lambdaRole.arn,
   memorySize: 128,

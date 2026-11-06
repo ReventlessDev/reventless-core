@@ -45,12 +45,31 @@ does not move.
 
 Deployed functions move to `nodejs24.x`.
 
-- The 25 `"nodejs22.x"` strings in 13 files under [reventless/aws/](../../reventless/aws/) go
-  behind one constant, so the next move is a one-line change.
+- The 12 functions that set `"nodejs22.x"` go behind one constant,
+  [Util_LambdaRuntime.res](../../reventless/aws/src/util/Util_LambdaRuntime.res), so the next
+  move is a one-line change. The module has no imports, so the deploy script can read it
+  without loading Pulumi.
 - The layer's compatible runtimes, in
   [build-lambda-layer.yml](../../.github/workflows/build-lambda-layer.yml) and
   [DeployApp.res](../../reventless/aws/scripts/DeployApp.res), drop `nodejs20.x` (end of life
-  since 2026-04-30) and add `nodejs24.x`.
+  since 2026-04-30) and become `nodejs22.x` + `nodejs24.x`. 22 stays listed so functions still on
+  it keep a matching layer during the switch.
+- The `CallbackFunction` runtime type in
+  [the Pulumi Lambda binding](../../rescript/pulumi-aws/src/Lambda/Lambda.res) gains `NodeJs24`.
+
+**Checked before the deploy:**
+
+- *Callback handlers.* Lambda's `nodejs24.x` refuses callback-style handlers
+  (`Runtime.CallbackHandlerDeprecated`); only async and plain synchronous ones run. Every handler
+  behind the 12 functions is `async`.
+- *Pulumi.* `@pulumi/aws` 7.19 lists `nodejs24.x` in its runtime enum.
+- *Left as it is:* the legacy `CallbackFunction` path in
+  [RuntimeEnvironment_Lambda.res](../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res)
+  passes no runtime, so Pulumi gives it `nodejs20.x` and ignores later runtime changes. It is
+  reachable only through a side-effect-bearing Task and is already broken in other ways. Its
+  conversion to a compiled entry point is
+  [its own plan](task-sideeffect-callbackfunction-conversion.md). The conversion moves it onto
+  `makeFromCodeAsset`, and so onto the constant.
 
 **Done when:** the hybrid example deploys. A deployed function reports `process.version` 24.x.
 A command runs through both the sync and async handlers, and its projection updates. The custom

@@ -12,6 +12,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as EventTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
@@ -93,7 +94,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let lambda = new (Aws.lambda.Function)(name + "EventLogSubscriber", {
     handler: "index.handler",
-    runtime: "nodejs22.x",
+    runtime: Util_LambdaRuntime$ReventlessAws.node,
     code: match.code,
     role: lambdaRole.arn,
     memorySize: 128,

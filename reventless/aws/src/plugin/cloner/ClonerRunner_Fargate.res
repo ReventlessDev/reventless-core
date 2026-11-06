@@ -135,7 +135,7 @@ export const handler = async (event) => {
     Pulumi.Asset.stringAsset(entryPointCode)->Pulumi.Archive.assetToAssetOrArchive,
   )
   // ESM self-containment: the handler imports @aws-sdk/client-ecs, provided by the
-  // nodejs22.x runtime only under /var/runtime — unreachable from /var/task ESM
+  // Node runtime only under /var/runtime — unreachable from /var/task ESM
   // without the resolver hook. Ship the loader + set its env vars on the Lambda.
   let loaderHash = Util_Bundle.addEsmLoaderAssets(clonerArchiveContents)
   let code = Pulumi.Archive.assetArchive(clonerArchiveContents)
@@ -226,7 +226,7 @@ export const handler = async (event) => {
         ~name,
         ~args={
           handler: "index.handler"->Pulumi.Input.make,
-          runtime: "nodejs22.x"->Pulumi.Input.make,
+          runtime: Util_LambdaRuntime.node->Pulumi.Input.make,
           code: code->Pulumi.Input.make,
           sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
           role: lambdaRole.arn->Pulumi.Output.asInput,

@@ -16,6 +16,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../../adapter/Api/AppSync_Resolver_Retrying.res.mjs";
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
@@ -137,7 +138,7 @@ export const handler = async (event) => {
     let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType, "Identity", undefined, undefined, undefined, undefined, undefined), opts);
     let lambda = new (Aws.lambda.Function)(name, {
       handler: "index.handler",
-      runtime: "nodejs22.x",
+      runtime: Util_LambdaRuntime$ReventlessAws.node,
       code: code,
       role: lambdaRole.arn,
       memorySize: 1024,

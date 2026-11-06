@@ -10,6 +10,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 
 function make(activeRoleTableName, activeRoleTableArn, identityTableName, identityTableArn, nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "ActiveRoleTrigger";
@@ -57,7 +58,7 @@ function make(activeRoleTableName, activeRoleTableArn, identityTableName, identi
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
-    runtime: "nodejs22.x",
+    runtime: Util_LambdaRuntime$ReventlessAws.node,
     code: match.code,
     role: lambdaRole.arn,
     memorySize: 256,

@@ -195,11 +195,12 @@ module CallbackFunction = {
     type functionEnvironment = {variables?: dict<string>}
 
     /**
-      Default node runtime: 22
+      Left out, Pulumi picks `nodejs20.x`.
      */
     type runtime =
       | @as("nodejs20.x") NodeJs20
       | @as("nodejs22.x") NodeJs22
+      | @as("nodejs24.x") NodeJs24
 
     type t<'event, 'result> = {
       callback: eventHandler<'event, 'result>,

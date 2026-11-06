@@ -15,6 +15,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_ReadModel.res.mjs";
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as StateTopic_AppSync_Helpers$ReventlessAws from "./StateTopic_AppSync_Helpers.res.mjs";
 
@@ -125,7 +126,7 @@ function finish(eventsApi, opts) {
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "StateTopicPublisher", undefined, AWS_Tags$ReventlessAws.make(name + "StateTopicPublisherLogGroup", QueryDb$ReventlessCore.componentType, "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {
     handler: "index.handler",
-    runtime: "nodejs22.x",
+    runtime: Util_LambdaRuntime$ReventlessAws.node,
     code: match.code,
     role: lambdaRole.arn,
     memorySize: 256,

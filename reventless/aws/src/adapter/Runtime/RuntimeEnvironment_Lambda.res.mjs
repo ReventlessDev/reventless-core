@@ -24,6 +24,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as Util_DcbMetrics$ReventlessAws from "../../util/Util_DcbMetrics.res.mjs";
 import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
+import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime.res.mjs";
 import * as Util_OwnerScopeEnv$ReventlessAws from "../../util/Util_OwnerScopeEnv.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 
@@ -138,7 +139,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   let tags = tagsFor(name, "Runtime");
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
-    runtime: "nodejs22.x",
+    runtime: Util_LambdaRuntime$ReventlessAws.node,
     code: code,
     role: lambdaRole.arn,
     memorySize: memorySize,

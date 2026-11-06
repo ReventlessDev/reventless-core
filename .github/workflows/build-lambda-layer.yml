@@ -120,7 +120,7 @@ jobs:
             --layer-name ${{ steps.layer.outputs.name }} \
             --description "${{ steps.layer.outputs.name }} v${{ steps.version.outputs.version }}" \
             --zip-file fileb://reventless/layer-builder/builder/reventless-layer.zip \
-            --compatible-runtimes nodejs20.x nodejs22.x \
+            --compatible-runtimes nodejs22.x nodejs24.x \
             --query 'LayerVersionArn' \
             --output text)
           echo "layer_arn=$LAYER_VERSION" >> $GITHUB_OUTPUT

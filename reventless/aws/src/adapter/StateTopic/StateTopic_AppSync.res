@@ -354,7 +354,7 @@ let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptio
       ~name=name ++ "StateTopicPublisher",
       ~args={
         handler: "index.handler"->Pulumi.Input.make,
-        runtime: "nodejs22.x"->Pulumi.Input.make,
+        runtime: Util_LambdaRuntime.node->Pulumi.Input.make,
         code: code->Pulumi.Input.make,
         sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
         role: lambdaRole.arn->Pulumi.Output.asInput,
