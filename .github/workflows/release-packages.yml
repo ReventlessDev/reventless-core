@@ -640,16 +640,31 @@ jobs:
                     exit 1
                   fi
                 fi
+                # Read by "Collect released tags" in publish-only, which minted nothing.
+                echo "$name@$version" >> "$RUNNER_TEMP/versions-published.txt"
                 echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
                 sleep "$PUBLISH_DELAY_SECONDS"
               done
 
       - name: Collect released tags
-        if: steps.changes.outputs.version == 'true'
+        if: steps.changes.outputs.version == 'true' || inputs.publish-only
         id: tags
         env:
           VERSION_SHA: ${{ steps.version.outputs.sha }}
+          PUBLISH_ONLY: ${{ inputs.publish-only }}
         run: |
+          # A recovery publish mints no version, but what it published still needs
+          # its side effects: with no tags here, a recovered reventless-aws got no
+          # Lambda layer, and the deploy that followed ran new code on the old one.
+          # These are the names lerna gave the tags it pushed.
+          if [ "$PUBLISH_ONLY" = "true" ]; then
+            PUBLISHED="$RUNNER_TEMP/versions-published.txt"
+            LIST="$( [ -s "$PUBLISHED" ] && tr '\n' ' ' < "$PUBLISHED" || true )"
+            echo "Published tags: ${LIST:-<none>}"
+            echo "list=$LIST" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           # Read the tags from the commit `lerna version` made, NOT from HEAD.
           #
           # 🚨 This said `--points-at HEAD` and was wrong whenever the optional
