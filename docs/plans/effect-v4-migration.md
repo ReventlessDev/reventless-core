@@ -8,10 +8,10 @@ the latest release when this was written. We are on `effect@3.22.2`, the newest
 two hazards added to [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors),
 and what v4 opens up afterwards.
 
-**Progress (2026-11-06).** Steps 1 to 3 and 5 are done on `effect@4.1.2`; see
+**Progress (2026-11-07).** Steps 1 to 3, 5 and 7 are done on `effect@4.1.2`; see
 [§5](#5-what-the-port-found). The build has zero warnings and all 539 suites pass
-in 22 projects. Step 4 turned out not to be needed (see there). Steps 6 and 7
-are open.
+in 22 projects. Step 4 turned out not to be needed, and the deployed check of
+step 7 passed after two fixes (see [§3](#3-steps)). Step 6 is open.
 
 **In plain words.** Effect is the library behind every queue, stream, retry
 schedule and background fiber in the framework. Version 4 rewrites its runtime
@@ -103,9 +103,6 @@ test that fails on the old behavior before we trust the port.
   input with `shutdown`, so a reader that is behind loses the last rows without
   an error. Port it to `Queue.endUnsafe`
   ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
-- **Node 22.19 or newer.** The repo pins 22.17.1. Move the pin and read the
-  Lambda `nodejs22.x` version before step 7
-  ([EVQ2](../analysis/effect-v4-migration.md#6-open-questions)).
 - **The new runtime.** Scheduling order between fibers can shift. The tests most
   likely to notice are the ones that depend on ordering: `LocalBus` drain,
   `HeartbeatTest`, and the channel tests in `reventless/local/tests/adapter/`.
@@ -139,7 +136,14 @@ test that fails on the old behavior before we trust the port.
    `reventless/aws/src/errors/`.
 7. **Deployed check.** Deploy the hybrid example. Run a command through each
    handler, both sync and async, and confirm projections update. Compare cold-start
-   time and Lambda bundle size with the v3 build.
+   time and Lambda bundle size with the v3 build. *Done 2026-11-07,* after the two
+   fixes [§5](#5-what-the-port-found) ends with. The seed's `next` set ran through
+   both plugins' command handlers and the queue-fed ones (the Plugin aggregate, the
+   extension points), and its view read-back saw the new rows. The example has no
+   `@@reventless.async` component, so no async command handler is deployed to
+   check. Cold start fell by about 40% (Ordering's DCB handler 3.0 s → 1.7 s, the
+   platform's aggregates 2.2 s → 1.3 s; one to three samples each, so a
+   direction). The Lambda layer grew 17.8 MB → 20.6 MB zipped.
 8. **Commit** as `feat(deps)!: upgrade effect to v4`. It changes the public
    bindings of a published package. Close this plan in the same commit.
 

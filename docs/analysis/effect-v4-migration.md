@@ -63,7 +63,7 @@ also brings a few tools that fix things we work around today.
 | We run | `effect@3.22.2` ([package.json](../../rescript/effect/package.json)); 3.x is still patched (3.22.4 on 2026-10-22) |
 | Latest | `4.1.2` (2026-11-02). 4.0.0 went GA on 2026-10-01 |
 | Support | The package README calls 4.x "a long-term support (LTS) release, with at least three years of bug and security fixes" |
-| Runtime | Node 22.19 or newer. We pin 22.17.1 ([.node-version](../../.node-version)) and deploy on Lambda `nodejs22.x` ([EVQ2](#6-open-questions)) |
+| Runtime | Node 22.19 or newer. Met: the repo and CI run 24.22.2 ([.node-version](../../.node-version)) and Lambda runs `nodejs24.x`, since [the Node 24 plan](../plans/done/node-24.md) ([EVQ2](#6-open-questions)) |
 | Packaging | One package. What used to be `@effect/platform`, `@effect/sql`, `@effect/workflow` and the others is now subpaths of `effect` (`effect/sql`, `effect/workflow`, …). Each module carries a `@stability` tag: `stable`, `unstable` or `experimental` |
 
 **Bindings.** Each `@module("effect/…")` external in
@@ -100,7 +100,7 @@ the behavior changes that do not show up as compile errors:
 - **Node 22.19.** The repo pin, CI and the Lambda runtime all have to be at or above it
   ([EVQ2](#6-open-questions)). A quick check loaded the 4.1.2 bundle on 22.17.1 without error,
   so this is a support statement rather than a known crash. Running below a library's stated
-  floor still means a bug report it will not take.
+  floor still means a bug report it will not take. Met since the move to Node 24.
 
 ## 4. Opportunities
 
@@ -250,6 +250,10 @@ follows AWS's patch cadence, and we have not read its version.
 latest 22.x, and read `process.version` from a deployed function before step 7. Revisit if
 Lambda reports a version below 22.19; then the deploy waits for the runtime, not the other way
 round.
+
+**Answered 2026-11-07.** We moved past the floor rather than to it: [the Node 24
+plan](../plans/done/node-24.md) put the repo and CI on 24.22.2 and the Lambdas on `nodejs24.x`,
+whose functions report `nodejs:24.mainline.v115` at start.
 
 **EVQ3. Adopt the OTLP exporters while they are unstable?**
 
