@@ -409,14 +409,18 @@ function deduplicateByPosition(events) {
   });
 }
 
-function initSlot(stream) {
+function startProducer(stream) {
   return Effect$1.flatMap(Queue.bounded(1), queue => {
-    let producer = Effect$1.catch(Effect$1.ensuring(Stream$1.runForEach(stream, event => Effect$1.map(Queue.offer(queue, event), param => {})), Effect$1.map(Queue.offer(queue, undefined), param => {})), param => Effect$1.succeed());
-    return Effect$1.flatMap(Effect$1.forkChild(producer), param => Effect$1.map(Queue.take(queue), head => ({
-      queue: queue,
-      head: head
-    })));
+    let producer = Effect$1.andThen(Effect$1.catch(Stream$1.runForEach(stream, event => Effect$1.map(Queue.offer(queue, event), param => {})), param => Effect$1.succeed()), Effect$1.map(Queue.offer(queue, undefined), param => {}));
+    return Effect$1.map(Effect$1.forkChild(producer), param => queue);
   });
+}
+
+function takeHead(queue) {
+  return Effect$1.map(Queue.take(queue), head => ({
+    queue: queue,
+    head: head
+  }));
 }
 
 function findMinSlotIdx(slots) {
@@ -454,9 +458,11 @@ function dedupByPosition(stream) {
 }
 
 function mergeSortedEvents(streams) {
-  return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.all(streams.map(initSlot), {
+  return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.flatMap(Effect$1.all(streams.map(startProducer), {
+    concurrency: 1
+  }), queues => Effect$1.all(queues.map(takeHead), {
     concurrency: "unbounded"
-  })), initialSlots => Stream.paginateEffect(initialSlots, slots => {
+  }))), initialSlots => Stream.paginateEffect(initialSlots, slots => {
     let idx = findMinSlotIdx(slots);
     if (idx === undefined) {
       return Effect$1.succeed([
@@ -1208,7 +1214,8 @@ export {
   queryBySingleTagCrossPartitionStream,
   executeQueryItem,
   deduplicateByPosition,
-  initSlot,
+  startProducer,
+  takeHead,
   findMinSlotIdx,
   dedupByPosition,
   mergeSortedEvents,

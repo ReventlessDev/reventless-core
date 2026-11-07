@@ -526,23 +526,24 @@ type mergeSlot = {
   head?: ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent,
 }
 
-// Wraps a sub-stream in a Queue(1) producer fiber and pulls the first element.
-let initSlot = (
+// Forks a fiber pumping a sub-stream into a Queue(1). It is a child of the fiber
+// that forks it, so the merge must call this on the fiber that consumes the stream.
+let startProducer = (
   stream: Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit>,
-): Effect.t<mergeSlot, string, unit> =>
+): Effect.t<Queue.t<option<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>>, string, unit> =>
   Queue.bounded(1)->Effect.flatMap(queue => {
     let producer =
       stream
       ->Stream.runForEach(event => Queue.offer(queue, Some(event))->Effect.map(_ => ()))
-      // Always push the None sentinel so the merge loop can detect exhaustion,
-      // even if the stream fails (stream error is suppressed to prevent an
-      // unhandled-fiber-failure warning).
-      ->Effect.ensuring(Queue.offer(queue, None)->Effect.map(_ => ()))
+      // The stream error is dropped, so a failed sub-stream reads as exhausted.
       ->Effect.catchAll(_ => Effect.succeed())
-    Effect.fork(producer)->Effect.flatMap(_ =>
-      Queue.take(queue)->Effect.map(head => {queue, ?head})
-    )
+      // The None sentinel marks exhaustion. Not in a finalizer: an interrupted
+      // producer would block on a full queue, and the consumer waits for it.
+      ->Effect.zipRight(Queue.offer(queue, None)->Effect.map(_ => ()))
+    Effect.fork(producer)->Effect.map(_ => queue)
   })
+
+let takeHead = queue => Queue.take(queue)->Effect.map(head => {queue, ?head})
 
 // Returns the index of the slot with the smallest position, or None if all exhausted.
 let findMinSlotIdx = (slots: array<mergeSlot>) =>
@@ -581,8 +582,11 @@ let mergeSortedEvents = (
   streams: array<Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit>>,
 ): Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit> =>
   streams
-  ->Array.map(initSlot)
-  ->Effect.all({"concurrency": "unbounded"})
+  ->Array.map(startProducer)
+  // One at a time: a concurrent `Effect.all` runs each on a fiber of its own,
+  // which would interrupt its producer the moment it returned.
+  ->Effect.all({"concurrency": 1})
+  ->Effect.flatMap(queues => queues->Array.map(takeHead)->Effect.all({"concurrency": "unbounded"}))
   ->Stream.fromEffect
   ->Stream.flatMap(initialSlots =>
     Stream.paginateEffect(initialSlots, slots =>

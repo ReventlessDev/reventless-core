@@ -1011,3 +1011,34 @@ describe("Runtime.generatePosition — monotonic HLC positions", () => {
     expect(sorted->Array.getUnsafe(1))->toBe(newer)
   })
 })
+
+// Each sub-stream waits before every event, as a DynamoDB page does, so its
+// producer fiber has to stay alive while the merge reads from the others.
+describe("Runtime.mergeSortedEvents", () => {
+  let event = (position): ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent => {
+    position,
+    eventType: "E",
+    data: JSON.Encode.null,
+    tags: [],
+    meta: testMeta(),
+    recordedAt: "2026-11-06T00:00:00.000Z",
+  }
+  let paged = positions =>
+    Stream.fromIterable(positions)->Stream.mapEffect(p =>
+      Effect.sleep(Duration.millis(2))->Effect.map(_ => event(p))
+    )
+  let merged = () =>
+    Runtime.mergeSortedEvents([paged(["1", "4", "7"]), paged(["2", "5"]), paged(["3", "6", "8"])])
+  let positions = events =>
+    events->Array.map((e: ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent) => e.position)
+
+  test("reads every sub-stream to the end, in position order", async () => {
+    let events = await merged()->Stream.runCollect->Effect.runPromise
+    expect(events->positions)->toEqual(["1", "2", "3", "4", "5", "6", "7", "8"])
+  })
+
+  test("a reader that stops early is not held up by the producers", async () => {
+    let events = await merged()->Stream.take(2)->Stream.runCollect->Effect.runPromise
+    expect(events->positions)->toEqual(["1", "2"])
+  })
+})

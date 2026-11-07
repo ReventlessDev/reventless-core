@@ -196,3 +196,22 @@ names are kept. What a renamed-names check does not catch, and the full run did:
 - `CsvStream` ends its queue with `Queue.endUnsafe`
   ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
 
+The first deploy ([step 7](#3-steps)) found two more, neither of which any test
+reached:
+
+- **A fork inside a concurrent `Effect.all` dies with its worker.** v4 runs each
+  element on a fiber of its own, and a child fiber is interrupted when that fiber
+  ends; v3 grafted it onto the caller. The DynamoDB DCB reader's k-way merge
+  forked one producer per sub-query that way, so every multi-query decision read
+  on AWS waited on queues nobody filled. Nothing else kept Node alive, and Lambda
+  ended the process (`Runtime.ExitError`). The producers are now forked one at a
+  time, on the consuming fiber.
+- **That merge's end marker sat in a finalizer.** An interrupted producer blocked
+  offering it to a full queue, so a reader that stopped early never finished.
+  The marker now follows the stream instead. Both are pinned by
+  `Runtime.mergeSortedEvents` tests in `DcbEventLogStorage_DynamoDb_RuntimeTest`.
+
+The deploy also ran new function code on the previous Lambda layer, which still
+held Effect 3: a recovery publish (`publish-only`) collected no tags, so no layer
+was built. Its tag list now comes from what it published.
+
