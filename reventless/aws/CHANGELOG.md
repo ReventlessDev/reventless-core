@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.426 (2026-11-07)
+
+### Bug Fixes
+
+* **aws:** the DCB reader's merge keeps its producers alive under Effect 4 ([5082130](https://github.com/ReventlessDev/reventless-core/commit/5082130d7329c4012d49af6515d007a044ea273a))
+
+
 # 3.0.0-alpha.425 (2026-11-06)
 
 ### Features
