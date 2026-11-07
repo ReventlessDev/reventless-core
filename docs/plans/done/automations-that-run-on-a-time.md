@@ -41,7 +41,7 @@ with the same firing times, and read back from the plugin's structure.
 Making the scheduler a declared platform capability (the scheduler analysis's later stages).
 Replaying ticks missed while an application was down
 ([T5](../../analysis/automations-that-run-on-a-time.md#9-open-questions)). The move to Effect 4
-([its plan](../effect-v4-migration.md)), with which this plan only has to stay compatible
+([its plan](effect-v4-migration.md)), with which this plan only has to stay compatible
 ([Risks](#risks)).
 
 **Phases** are numbered S0 to S7 (S for *schedule*). The plan's own open questions are numbered
@@ -791,7 +791,7 @@ Checked 2026-10-16. Every alpha push publishes, so there was no release of its o
 
 ## Risks
 
-- **Effect 4.** [Its migration](../effect-v4-migration.md) is planned for when 4.0 has settled. The
+- **Effect 4.** [Its migration](effect-v4-migration.md) is planned for when 4.0 has settled. The
   new `DateTime` and `Cron` bindings are kept inside `rescript/effect`
   ([Rules](#rules-every-phase-keeps) 5), and [S0](#s0-check-what-the-analysis-assumes) item 5
   notes their Effect 4 names, so whichever lands second has one package to follow.

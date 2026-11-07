@@ -3,13 +3,13 @@
 > **Status:** Analysis · no implementation. First written 2026-02-28 against `4.0.0-beta.19`.
 > **Rewritten 2026-11-06** against `effect@4.1.2` (the npm `latest`), read against the code on
 > `alpha` the same day. The steps of the move are
-> [the Effect 4 migration plan](../plans/effect-v4-migration.md) (2026-10-12); this analysis is
+> [the Effect 4 migration plan](../plans/done/effect-v4-migration.md) (2026-10-12); this analysis is
 > the *why* and the *what next* beside it.
 >
 > **Questions and short answers:**
 >
 > 1. *Should we update the effect library to version 4?* **Yes, through
->    [the plan](../plans/effect-v4-migration.md#3-steps), and it can start now.** The reason to
+>    [the plan](../plans/done/effect-v4-migration.md#3-steps), and it can start now.** The reason to
 >    wait was API churn. 4.x is now a long-term support release with a second minor out. What is
 >    left is behavior risk in our own code, and waiting does not shrink it
 >    ([§2](#2-where-things-stand-in-november-2026), [EVQ1](#6-open-questions)).
@@ -29,7 +29,7 @@
 >    ([EVO6](#46-evo6-tracing-and-metrics-without-the-opentelemetry-sdk)). Most of the large new
 >    modules (SQL, workflows, event log, GraphQL) are not for us yet ([§5](#5-what-to-leave-alone)).
 >
-> **Relates to:** [the Effect 4 migration plan](../plans/effect-v4-migration.md) (the steps);
+> **Relates to:** [the Effect 4 migration plan](../plans/done/effect-v4-migration.md) (the steps);
 > [the Effect usage analysis](effect-usage-in-reventless.md) (what we use Effect for; its
 > [§8](effect-usage-in-reventless.md#8-effect-v4-what-changes) is the March view of v4 that
 > this one updates).
@@ -71,7 +71,7 @@ also brings a few tools that fix things we work around today.
 declarations, counting names that are exported through an alias (`catch_ as catch`).
 **133 of 184 still resolve, and 51 do not.** The plan counted 50 of 174 against 4.0.3. The
 difference is bindings added since then. Two of them are in use and missing from
-[the plan's table](../plans/effect-v4-migration.md#1-what-we-bind-and-what-is-gone):
+[the plan's table](../plans/done/effect-v4-migration.md#1-what-we-bind-and-what-is-gone):
 
 | v3 binding | Used by | v4 name |
 |---|---|---|
@@ -85,7 +85,7 @@ Its open question about STM is now settled: STM is gone, and `TxRef` + `Effect.t
 
 ## 3. What the plan does not list yet
 
-Two findings belong in [the plan's §2](../plans/effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors),
+Two findings belong in [the plan's §2](../plans/done/effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors),
 the behavior changes that do not show up as compile errors:
 
 - **`Queue.shutdown` now throws away what is still buffered.** The 4.1.2 docs say: "Shuts down
@@ -123,7 +123,7 @@ That is about half the size and under half the load time, paid on every cold sta
 Lambda that touches Effect, which is nearly all of them. A few milliseconds is small next to a
 whole cold start, but it costs nothing beyond the migration. These are bundles of the bindings
 alone, not of a real handler, so the deployed difference will be diluted by everything else the
-handler loads. [Plan step 7](../plans/effect-v4-migration.md#3-steps) already compares cold-start time
+handler loads. [Plan step 7](../plans/done/effect-v4-migration.md#3-steps) already compares cold-start time
 and bundle size on a deployed stack. These numbers are what to expect.
 
 ### 4.2 EVO2 queues that end instead of being shut down
@@ -153,7 +153,7 @@ drain fibers and drops the handle: `let _ = Effect.runFork(drainLoop)` in
 [LocalEventCollectorChannel.res](../../reventless/local/src/adapter/EventCollector/LocalEventCollectorChannel.res#L86).
 Today they end only because `reset` shuts the hubs down. The plan expected trouble here, with
 v4 keeping Node alive while a fiber runs
-([plan §2](../plans/effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors)).
+([plan §2](../plans/done/effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors)).
 The port showed it does not, for these fibers: one waiting on a subscription holds no timer, and
 the process exits.
 

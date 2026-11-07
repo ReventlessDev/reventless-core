@@ -69,10 +69,12 @@ describe("Cause", () => {
     )
 
     testSync(
-      "pretty returns a non-empty string",
+      "pretty renders a failure as an error line",
       () => {
-        let s = Cause.fail("err")->Cause.pretty
-        expect(s->String.length)->toBeGreaterThan(0)
+        // `ScheduleOps` puts this into its log line, as v3 rendered it.
+        expect(Cause.fail("schedule create failed")->Cause.pretty)->toBe(
+          "Error: schedule create failed",
+        )
       },
     )
   })

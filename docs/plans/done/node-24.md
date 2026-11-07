@@ -90,13 +90,13 @@ change. What broke was the release, not the runtime:
   its result; it now exits on its verdict.
 - The recovery publish after the failed release built no Lambda layer, so the first deploy ran
   new code on the old layer. Fixed in the same workflow; see
-  [the Effect 4 plan's §5](../effect-v4-migration.md#5-what-the-port-found).
+  [the Effect 4 plan's §5](effect-v4-migration.md#5-what-the-port-found).
 
 ## NU3 Close the loose ends
 
 - Mark [EVQ2](../../analysis/effect-v4-migration.md#6-open-questions) in the Effect 4 analysis
   answered, and drop the Node bullet from
-  [the Effect 4 plan's §2](../effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors).
+  [the Effect 4 plan's §2](effect-v4-migration.md#2-behavior-changes-that-do-not-show-up-as-compile-errors).
 
 **Result:** done.
 

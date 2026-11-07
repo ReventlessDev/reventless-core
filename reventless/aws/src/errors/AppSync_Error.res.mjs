@@ -4,6 +4,7 @@ import * as Schedule from "@reventlessdev/rescript-effect/src/Schedule.res.mjs";
 import * as Duration from "effect/Duration";
 import * as Schedule$1 from "effect/Schedule";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Util_AwsError$ReventlessAws from "../util/Util_AwsError.res.mjs";
 
 function isTransient(err) {
   return err.TAG === "Transient";
@@ -11,7 +12,14 @@ function isTransient(err) {
 
 function classify(err) {
   let msg = Util_Error$ReventlessCore.messageFromUnknown(err, "AppSync error");
-  if (msg.includes("ConcurrentModificationException") || msg.includes("Schema is currently being altered") || msg.includes("ThrottlingException") || msg.includes("TooManyRequestsException") || msg.includes("ServiceUnavailable") || msg.includes("InternalFailureException")) {
+  if (Util_AwsError$ReventlessAws.hasAnyCode(err, [
+      "ConcurrentModificationException",
+      "Schema is currently being altered",
+      "ThrottlingException",
+      "TooManyRequestsException",
+      "ServiceUnavailable",
+      "InternalFailureException"
+    ])) {
     return {
       TAG: "Transient",
       _0: msg

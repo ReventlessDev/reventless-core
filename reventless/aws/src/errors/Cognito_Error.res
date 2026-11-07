@@ -11,12 +11,14 @@ let isTransient = err =>
 let classify = (err: unknown): t => {
   let msg = ReventlessCore.Util.Error.messageFromUnknown(err, "Cognito error")
   if (
-    msg->String.includes("ThrottlingException") ||
-    msg->String.includes("TooManyRequestsException") ||
-    msg->String.includes("ServiceUnavailable") ||
-    msg->String.includes("InternalErrorException") ||
-    msg->String.includes("InternalServerError") ||
-    msg->String.includes("RequestLimitExceeded")
+    err->Util_AwsError.hasAnyCode([
+      "ThrottlingException",
+      "TooManyRequestsException",
+      "ServiceUnavailable",
+      "InternalErrorException",
+      "InternalServerError",
+      "RequestLimitExceeded",
+    ])
   ) {
     Transient(msg)
   } else {

@@ -4,19 +4,18 @@
 the latest release when this was written. We are on `effect@3.22.2`, the newest
 3.x release, which is still being patched. **Rechecked 2026-11-06** against
 `4.1.2`, which the package calls a long-term support release.
-[The Effect 4 analysis](../analysis/effect-v4-migration.md) has the recount, the
+[The Effect 4 analysis](../../analysis/effect-v4-migration.md) has the recount, the
 two hazards added to [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors),
 and what v4 opens up afterwards.
 
-**Progress (2026-11-07).** Steps 1 to 3, 5 and 7 are done on `effect@4.1.2`; see
-[§5](#5-what-the-port-found). The build has zero warnings and all 539 suites pass
-in 22 projects. Step 4 turned out not to be needed, and the deployed check of
-step 7 passed after two fixes (see [§3](#3-steps)). Step 6 is open.
+**Done 2026-11-07** on `effect@4.1.2`; see [§3](#3-steps) for each step and
+[§5](#5-what-the-port-found) for what the port found. Step 4 turned out not to
+be needed, and the deployed check of step 7 passed after two fixes.
 
 **In plain words.** Effect is the library behind every queue, stream, retry
 schedule and background fiber in the framework. Version 4 rewrites its runtime
 and renames part of its API. Our ReScript bindings
-([rescript/effect/](../../rescript/effect/)) are the only code that talks to it
+([rescript/effect/](../../../rescript/effect/)) are the only code that talks to it
 directly, so most of the renames stay inside that package. The risky part is
 **behavior**, not names: the runtime is new, and errors, layers and background
 fibers now act differently.
@@ -102,7 +101,7 @@ test that fails on the old behavior before we trust the port.
   items; `Queue.end` is "no more, let the reader drain". `CsvStream` ends its
   input with `shutdown`, so a reader that is behind loses the last rows without
   an error. Port it to `Queue.endUnsafe`
-  ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
+  ([EVO2](../../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
 - **The new runtime.** Scheduling order between fibers can shift. The tests most
   likely to notice are the ones that depend on ordering: `LocalBus` drain,
   `HeartbeatTest`, and the channel tests in `reventless/local/tests/adapter/`.
@@ -111,7 +110,7 @@ test that fails on the old behavior before we trust the port.
 ## 3. Steps
 
 1. **Bindings branch.** Bump `effect` in
-   [rescript/effect/package.json](../../rescript/effect/package.json). Delete the
+   [rescript/effect/package.json](../../../rescript/effect/package.json). Delete the
    unused bindings from [§1](#1-what-we-bind-and-what-is-gone). Port the used ones,
    keeping the ReScript names where the meaning is unchanged, so `catchAll` can
    stay `catchAll` in ReScript while binding v4 `catch`. That keeps the 35 calling
@@ -124,7 +123,7 @@ test that fails on the old behavior before we trust the port.
 4. **Handle the process-lifetime change** in the local platform. Give the drain
    fibers a scope or an explicit interrupt on shutdown: a `FiberSet` per platform
    instance, cleared by `reset`
-   ([EVO3](../analysis/effect-v4-migration.md#43-evo3-background-fibers-that-have-an-owner)).
+   ([EVO3](../../analysis/effect-v4-migration.md#43-evo3-background-fibers-that-have-an-owner)).
    Then run the suite with `--detectOpenHandles`. *Not needed.* The suite (924
    local-platform tests) exits by itself; the 22 `effect/Fiber` entries
    `--detectOpenHandles` lists are drain fibers waiting on a subscription, which
@@ -133,7 +132,29 @@ test that fails on the old behavior before we trust the port.
 6. **Cause and error behavior.** Write a test per error path from
    [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors): a rejected
    command, a forbidden command, an AWS SDK failure mapped through
-   `reventless/aws/src/errors/`.
+   `reventless/aws/src/errors/`. *Done 2026-11-07.*
+   - *Rejected and forbidden commands* were already pinned end to end and pass
+     on v4: `DcbRejectionCauseTest` (the model, an ownership refusal, exhausted
+     retries and a failing store, on the in-memory and SQLite stores) and
+     `CommandAuthorizationTest` (a role refusal arrives as `Forbidden`, `ACCESS`).
+     Outside the bindings only `ScheduleOps` reads a `Cause`, for a log line;
+     `CauseTest` pins that `pretty` still renders `Error: <failure>`.
+   - *AWS SDK failures:* no test had loaded the six error modules, which is how
+     `SQS_Error`'s schedule could fail at import on AWS only.
+     `AwsErrorRetryTest` runs each through its own `classify` and retry
+     schedule on the test clock: a throttle is retried until it succeeds, gives
+     up after the schedule's limit, and a permanent failure is not retried. It
+     found an older bug: every module matched codes in the error's `message`,
+     but an SDK v3 error carries its code in `name` ("Rate exceeded" for a
+     `ThrottlingException`), so throttles were treated as permanent. They now
+     match through `Util_AwsError.hasAnyCode`.
+   - *`catch` and defects:* v4's `catch` handles typed failures only, as v3's
+     `catchAll` did, so the call sites keep their meaning; `EffectTest` pins it.
+   - *Layers:* no production code builds one; services are provided per
+     invocation with `provideService`, which `HandlerFactoryDispatchTest`
+     covers. The cold-start concern of
+     [§2](#2-behavior-changes-that-do-not-show-up-as-compile-errors) has nothing
+     to apply to.
 7. **Deployed check.** Deploy the hybrid example. Run a command through each
    handler, both sync and async, and confirm projections update. Compare cold-start
    time and Lambda bundle size with the v3 build. *Done 2026-11-07,* after the two
@@ -145,7 +166,9 @@ test that fails on the old behavior before we trust the port.
    platform's aggregates 2.2 s → 1.3 s; one to three samples each, so a
    direction). The Lambda layer grew 17.8 MB → 20.6 MB zipped.
 8. **Commit** as `feat(deps)!: upgrade effect to v4`. It changes the public
-   bindings of a published package. Close this plan in the same commit.
+   bindings of a published package. Close this plan in the same commit. *Done:*
+   the upgrade landed as that commit, before the deployed check; the fixes the
+   check needed followed, and the plan closes with step 6.
 
 ## 4. Open questions
 
@@ -198,7 +221,7 @@ names are kept. What a renamed-names check does not catch, and the full run did:
   output (seven retry schedules' type annotations), `TestContext` is
   `TestClock.layer()`.
 - `CsvStream` ends its queue with `Queue.endUnsafe`
-  ([EVO2](../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
+  ([EVO2](../../analysis/effect-v4-migration.md#42-evo2-queues-that-end-instead-of-being-shut-down)).
 
 The first deploy ([step 7](#3-steps)) found two more, neither of which any test
 reached:

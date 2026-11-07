@@ -51,9 +51,11 @@ let classify = (err: unknown): t => {
     | _ =>
       let msg = ReventlessCore.Util.Error.messageFromUnknown(err, "DynamoDB error")
       if (
-        msg->String.includes("ThrottlingException") ||
-        msg->String.includes("ServiceUnavailable") ||
-        msg->String.includes("InternalServerError")
+        err->Util_AwsError.hasAnyCode([
+          "ThrottlingException",
+          "ServiceUnavailable",
+          "InternalServerError",
+        ])
       ) {
         Transient(msg)
       } else {

@@ -11,12 +11,14 @@ let isTransient = err =>
 let classify = (err: unknown): t => {
   let msg = ReventlessCore.Util.Error.messageFromUnknown(err, "AppSync error")
   if (
-    msg->String.includes("ConcurrentModificationException") ||
-    msg->String.includes("Schema is currently being altered") ||
-    msg->String.includes("ThrottlingException") ||
-    msg->String.includes("TooManyRequestsException") ||
-    msg->String.includes("ServiceUnavailable") ||
-    msg->String.includes("InternalFailureException")
+    err->Util_AwsError.hasAnyCode([
+      "ConcurrentModificationException",
+      "Schema is currently being altered",
+      "ThrottlingException",
+      "TooManyRequestsException",
+      "ServiceUnavailable",
+      "InternalFailureException",
+    ])
   ) {
     Transient(msg)
   } else {

@@ -31,6 +31,32 @@ let hasCode = (exn: exn, ~code: string): bool =>
   | None => false
   }
 
+@get external nameField: unknown => unknown = "name"
+@get external messageField: unknown => unknown = "message"
+
+// Reads a field only off an object, so a rejection of `undefined` or a string
+// cannot throw here.
+let stringField = (err: unknown, get: unknown => unknown): string =>
+  switch Type.Classify.classify(err) {
+  | Object(_) | Function(_) =>
+    switch get(err)->Type.Classify.classify {
+    | String(s) => s
+    | _ => ""
+    }
+  | _ => ""
+  }
+
+/** A rejected value's `name` and `message`, as one string to search for a code. */
+let codeText = (err: unknown): string =>
+  `${err->stringField(nameField)} ${err->stringField(messageField)}`
+
+/** Whether a rejected value carries one of these codes, in its `name` or its
+  message. For an `Effect.tryPromise` catch, which receives the value unwrapped. */
+let hasAnyCode = (err: unknown, codes: array<string>): bool => {
+  let text = codeText(err)
+  codes->Array.some(code => text->String.includes(code))
+}
+
 /** The resource named by the call does not exist — the shape both DynamoDB and
   Cognito use, and normally an absence to handle rather than a failure to report. */
 let isNotFound = (exn: exn): bool => exn->hasCode(~code="ResourceNotFoundException")

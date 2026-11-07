@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Duration from "effect/Duration";
 import * as Schedule$1 from "effect/Schedule";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Util_AwsError$ReventlessAws from "../util/Util_AwsError.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 
 function isTransient(err) {
@@ -58,7 +59,11 @@ function classify(err) {
       };
     default:
       let msg$1 = Util_Error$ReventlessCore.messageFromUnknown(err, "DynamoDB error");
-      if (msg$1.includes("ThrottlingException") || msg$1.includes("ServiceUnavailable") || msg$1.includes("InternalServerError")) {
+      if (Util_AwsError$ReventlessAws.hasAnyCode(err, [
+          "ThrottlingException",
+          "ServiceUnavailable",
+          "InternalServerError"
+        ])) {
         return {
           TAG: "Transient",
           _0: msg$1

@@ -14,3 +14,14 @@ export const throwAwsError = (name, message) => {
   error.name = name
   throw error
 }
+
+// The same shape as a rejected promise, which is how an SDK call fails inside
+// `Effect.tryPromise`: its `catch` receives this value, not a ReScript `exn`.
+export const rejectAwsError = (name, message) => {
+  const error = new Error(message)
+  error.name = name
+  return Promise.reject(error)
+}
+
+// A rejection with no error object at all, which a classifier must not read from.
+export const rejectWith = (value) => Promise.reject(value)

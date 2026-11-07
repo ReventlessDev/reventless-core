@@ -110,6 +110,17 @@ describe("Effect — error handling", () => {
     expect(v)->toBe("recovered")
   })
 
+  // v4's `catch` (bound as `catchAll`) handles typed failures only, as v3's did,
+  // so a throw inside `sync` stays a defect and passes every `catchAll`.
+  testSync("catchAll does not catch a throw inside sync", () => {
+    let exit =
+      Effect.sync(() => JsError.throwWithMessage("thrown"))
+      ->Effect.catchAll(_e => Effect.succeed("recovered"))
+      ->Effect.runSyncExit
+    expect(exit->Exit.isSuccess)->toBe(false)
+    expect(exit->Exit.causeOption->Option.map(Cause.hasDies))->toEqual(Some(true))
+  })
+
   testSync("option converts success to Some", () => {
     let v = Effect.succeed(7)->Effect.option->Effect.runSync
     expect(v->Option.isSome)->toBe(true)

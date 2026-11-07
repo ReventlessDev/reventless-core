@@ -11,12 +11,14 @@ let isTransient = err =>
 let classify = (err: unknown): t => {
   let msg = ReventlessCore.Util.Error.messageFromUnknown(err, "Kinesis error")
   if (
-    msg->String.includes("ThrottlingException") ||
-    msg->String.includes("ProvisionedThroughputExceededException") ||
-    msg->String.includes("ServiceUnavailable") ||
-    msg->String.includes("InternalFailureException") ||
-    msg->String.includes("InternalServerError") ||
-    msg->String.includes("RequestLimitExceeded")
+    err->Util_AwsError.hasAnyCode([
+      "ThrottlingException",
+      "ProvisionedThroughputExceededException",
+      "ServiceUnavailable",
+      "InternalFailureException",
+      "InternalServerError",
+      "RequestLimitExceeded",
+    ])
   ) {
     Transient(msg)
   } else {
