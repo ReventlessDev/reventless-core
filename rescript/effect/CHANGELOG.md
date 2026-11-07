@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.3 (2026-11-07)
+
+### Bug Fixes
+
+* **aws:** AWS errors are classified by their code, and retried when transient ([8353b74](https://github.com/ReventlessDev/reventless-core/commit/8353b74e27d23ed45c0336dcd75c4a5a5005bb56))
+
+
 # 1.0.0-alpha.2 (2026-11-06)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect
