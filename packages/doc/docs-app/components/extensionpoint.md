@@ -336,6 +336,11 @@ EPMapping -> AggCommandTopic: "publishCommand(mappedCommand)"
 AggCommandTopic -> Aggregate: command
 ```
 
+The extension that sent the command is not waiting for the answer. If the target
+refuses it, the refusal is logged as a warning and counted as `UnheardRefusal`, and
+nobody is told; see [When the target refuses](./extension.md#when-the-target-refuses)
+for how to write a target so that matters less.
+
 ## Directives (side effects)
 
 Besides publishing events and commands — which stay inside the event-sourced

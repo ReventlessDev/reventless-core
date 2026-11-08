@@ -257,6 +257,7 @@ type inboundCallback = {
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
     ~capabilities: Reventless.Capabilities.t,
+    ~publishJsonsAndWait: ReventlessInfra.CommandTopic.publishJsonsAndWait=?,
     ~caller: Reventless.Identity.t=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
@@ -321,6 +322,8 @@ let buildInboundReceiver = (
   translation: translationModule,
   ~publishJsons: ReventlessInfra.CommandTopic.publishJsons,
   ~auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
+  // Absent in async mode, where the target answers nothing inline.
+  ~publishJsonsAndWait: option<ReventlessInfra.CommandTopic.publishJsonsAndWait>,
 ) => {
   let callback = makeInboundCallback(spec)(translation)
   async (args: JSON.t, identity: Nullable.t<Reventless.Identity.t>): JSON.t => {
@@ -330,6 +333,7 @@ let buildInboundReceiver = (
       publishJsons,
       args,
       ~capabilities=Reventless.Capabilities.none,
+      ~publishJsonsAndWait?,
       ~caller=ReventlessCore.InboundTranslationSlice_Callback.doorCaller(identity),
     )
     await persistAudit(callback, auditQueryDbOps, result)
@@ -347,6 +351,7 @@ let buildWebhookSlice = (
   translation: translationModule,
   ~publishJsons: ReventlessInfra.CommandTopic.publishJsons,
   ~auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
+  ~publishJsonsAndWait: option<ReventlessInfra.CommandTopic.publishJsonsAndWait>,
 ): Nullable.t<ReventlessCore.InboundTranslationSlice_Webhook.slice> => {
   let callback = makeInboundCallback(spec)(translation)
   let persisted = async result => {
@@ -362,6 +367,7 @@ let buildWebhookSlice = (
           publishJsons,
           input,
           ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait?,
           ~caller,
           ~door=Webhook,
         ),

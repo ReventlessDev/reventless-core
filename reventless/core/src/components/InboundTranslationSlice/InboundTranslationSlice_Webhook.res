@@ -151,6 +151,9 @@ let statusOf = (result: ReventlessInfra.InboundTranslationSlice.receiveResult): 
   | Error({errorCode: "InvalidBody"}) => 400
   | Error({errorCode: "Forbidden"}) => 403
   | Error({errorCode: "PublishFailed"}) => 503
+  // The target's own refusal: its platform failing is worth sending again.
+  | Error({cause: InfrastructureFailure}) => 503
+  | Error({cause: AccessRefusal}) => 403
   | Error(_) => 422
   }
 

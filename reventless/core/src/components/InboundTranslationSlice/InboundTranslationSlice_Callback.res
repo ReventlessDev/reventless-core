@@ -45,13 +45,13 @@ let receiveResultToOutcome = (
     | Some(entityId) => Accepted({msgId: requestId, entityId, eventCount: commandCount})
     | None => Accepted({msgId: requestId, eventCount: commandCount})
     }
-  | Error({requestId, error, ?errorCode}) =>
+  | Error({requestId, error, ?errorCode, ?cause}) =>
     let errorCode = errorCode->Option.getOr(Reventless.CommandOutcome.code(TranslationFailed))
     Rejected({
       msgId: requestId,
       errorCode,
       errorDetail: Some(error),
-      cause: rejectionCauseOf(errorCode),
+      cause: cause->Option.getOr(rejectionCauseOf(errorCode)),
     })
   }
 
@@ -153,11 +153,14 @@ module type T = {
   /** The audit log -- maps request ID to audit row. */
   let auditLog: Dict.t<auditRow>
 
-  /** Receive external input, translate it, and publish commands. */
+  /** Receive external input, translate it, and publish commands. With
+      `~publishJsonsAndWait`, the caller hears the first command the target
+      refused instead of an acceptance. */
   let receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
     ~capabilities: Reventless.Capabilities.t,
+    ~publishJsonsAndWait: CommandTopic_Helpers.publishJsonsAndWait=?,
     ~caller: Reventless.Identity.t=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=?,
   ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
@@ -194,9 +197,9 @@ module Make = (
     exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr(fallback)
 
   // One audit row per request, whatever the outcome.
-  let failWith = (~requestId, ~input, ~door, ~caller=?, ~errorCode=?, error) => {
+  let failWith = (~requestId, ~input, ~door, ~caller=?, ~errorCode=?, ~cause=?, error) => {
     auditLog->Dict.set(requestId, {input, status: Failure, error, receivedAt: now(), door, ?caller})
-    Error({ReventlessInfra.InboundTranslationSlice.requestId, error, ?errorCode})
+    Error({ReventlessInfra.InboundTranslationSlice.requestId, error, ?errorCode, ?cause})
   }
 
   let succeed = (~requestId, ~inputJson, ~door, ~caller=?, targetIds) => {
@@ -238,6 +241,7 @@ module Make = (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     inputJson: JSON.t,
     ~capabilities: Reventless.Capabilities.t,
+    ~publishJsonsAndWait: option<CommandTopic_Helpers.publishJsonsAndWait>=?,
     ~caller: option<Reventless.Identity.t>=?,
     ~door: ReventlessInfra.InboundTranslationSlice.door=Mutation,
   ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
@@ -245,15 +249,20 @@ module Make = (
       ~comp=`InboundTranslationSlice(${Spec.name})`,
       publishJsons,
     )
+    let publishJsonsAndWait =
+      publishJsonsAndWait->Option.map(wait =>
+        CommandSent.announcingAndWaiting(~comp=`InboundTranslationSlice(${Spec.name})`, wait)
+      )
     let requestId = Uuid.v4()
     let callerId = caller->Option.map(identity => identity.userId)
-    let fail = (~errorCode=?, error) =>
+    let fail = (~errorCode=?, ~cause=?, error) =>
       failWith(
         ~requestId,
         ~input=inputJson->redactInput(~sensitive)->JSON.stringify,
         ~door,
         ~caller=?callerId,
         ~errorCode?,
+        ~cause?,
         error,
       )
     let succeed = succeed(~requestId, ~inputJson, ~door, ~caller=?callerId, ...)
@@ -298,8 +307,28 @@ module Make = (
         | Ok([]) => succeed([])
         | Ok(msgs) =>
           try {
-            await publishJsons(msgs)
-            succeed(pairs->Array.map(((targetId, _)) => targetId))
+            let refusal = switch publishJsonsAndWait {
+            | Some(wait) =>
+              (await wait(msgs))->Array.findMap(outcome =>
+                switch outcome {
+                | Rejected({errorCode, errorDetail, cause}) =>
+                  Some((
+                    errorCode,
+                    cause,
+                    CommandTopic_Helpers.describeRefusal(~errorCode, ~errorDetail),
+                  ))
+                | Accepted(_) | Pending(_) => None
+                }
+              )
+            | None =>
+              await publishJsons(msgs)
+              None
+            }
+            switch refusal {
+            // The first refusal answers; any other is in its own log line.
+            | Some((errorCode, cause, error)) => fail(~errorCode, ~cause, error)
+            | None => succeed(pairs->Array.map(((targetId, _)) => targetId))
+            }
           } catch {
           | exn =>
             fail(

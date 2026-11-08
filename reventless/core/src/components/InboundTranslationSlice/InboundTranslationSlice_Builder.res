@@ -67,7 +67,12 @@ module Make = (
       | None => ()
       }
 
-    let construct = (~publishJsons, self, _name) => {
+    let construct = (
+      ~publishJsons,
+      ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>,
+      self,
+      _name,
+    ) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
       let queryDb = SpecificQueryDb.make(
@@ -84,15 +89,16 @@ module Make = (
       })
 
       self->Component.setOperations(
-        (queryDb->Component.operations, publishJsons)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
+        (queryDb->Component.operations, publishJsons, publishJsonsAndWait)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, publishJsonsAndWait)) => {
           let ops: InboundTranslationSlice.operations = {
             receive: async (inputJson, ~caller=?, ~door=?) => {
               let result = await Callback.receive(
                 publishJsonsFn,
                 inputJson,
                 ~capabilities=Capabilities.capabilities(),
+                ~publishJsonsAndWait?,
                 ~caller?,
                 ~door?,
               )
@@ -119,11 +125,16 @@ module Make = (
     // InboundTranslationSlice publishes commands + syncs its QueryDb inline; it
     // provisions no per-slice runtime environment, so the runtime hint is accepted
     // (for composition-surface parity) and discarded.
-    let make = (~publishJsons, ~runtime as _=?, ~opts=?): InboundTranslationSlice.component =>
+    let make = (
+      ~publishJsons,
+      ~publishJsonsAndWait=Pulumi.Output.make(None),
+      ~runtime as _=?,
+      ~opts=?,
+    ): InboundTranslationSlice.component =>
       Component.make(
         ~componentType=InboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~publishJsons, ...),
+        ~construct=construct(~publishJsons, ~publishJsonsAndWait, ...),
         ~opts,
       )
   }

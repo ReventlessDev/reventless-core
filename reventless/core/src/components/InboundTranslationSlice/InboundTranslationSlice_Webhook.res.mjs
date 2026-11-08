@@ -169,7 +169,8 @@ function statusOf(result) {
   if (result.TAG === "Ok") {
     return 200;
   }
-  switch (result._0.errorCode) {
+  let match = result._0;
+  switch (match.errorCode) {
     case "Forbidden" :
       return 403;
     case "InvalidBody" :
@@ -179,7 +180,18 @@ function statusOf(result) {
     case "Unsigned" :
       return 401;
     default:
-      return 422;
+      let match$1 = match.cause;
+      if (match$1 === undefined) {
+        return 422;
+      }
+      switch (match$1) {
+        case "DomainRejection" :
+          return 422;
+        case "InfrastructureFailure" :
+          return 503;
+        case "AccessRefusal" :
+          return 403;
+      }
   }
 }
 

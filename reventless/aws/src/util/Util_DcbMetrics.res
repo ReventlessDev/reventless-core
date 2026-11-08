@@ -18,6 +18,8 @@ let metricNames = [
   "DcbDecisionModelCacheHit",
   "DcbDecisionModelCacheMiss",
   "DcbDecisionModelDeltaEventCount",
+  // A refusal of a command the platform sent itself, which nobody waited on.
+  "UnheardRefusal",
 ]
 
 let namespace = "Reventless/DCB"

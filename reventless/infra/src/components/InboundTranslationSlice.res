@@ -30,12 +30,15 @@ authorization check, by command encoding or by the publish itself.
 - `requestId` -- the key the audit row is stored under
 - `error` -- the rejection message
 - `errorCode` -- `"Forbidden"` for a refused caller, `"PublishFailed"` when the
-  commands could not be published (worth retrying); absent for a failed translation
+  commands could not be published (worth retrying), the target's own code when it
+  refused a command; absent for a failed translation
+- `cause` -- why the target refused, when it was the target that did
 */
 type rejectedResult = {
   requestId: string,
   error: string,
   errorCode?: string,
+  cause?: CommandTopic.refusalCause,
 }
 
 /**
@@ -83,6 +86,9 @@ module type T = {
   let queryDbName: string
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    /** The target's publish that waits for each command's outcome, where its topic
+        offers one; the caller then hears the target's refusal. */
+    ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>=?,
     ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

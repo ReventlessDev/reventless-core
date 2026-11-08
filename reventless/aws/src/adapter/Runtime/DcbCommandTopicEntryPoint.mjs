@@ -165,6 +165,15 @@ export async function buildHandlersForConfig(config, opts = {}) {
   const sqsHandler = handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler);
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
 
+  // Sync (default): inline-dispatch the command via the same composite handler
+  // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
+  // outcome. Async: undefined → makeCommandGenerator falls back to publishJsons
+  // and returns Pending. Inbound translations wait on it too, so their caller
+  // hears a target's refusal.
+  const publishJsonsAndWait = DISPATCH_MODE === "async"
+    ? undefined
+    : (jsons) => runInlineAndCollect(jsons, compositeJsonCommandsHandler);
+
   // Route 0 registry: InboundTranslationSlice receive handlers keyed by their
   // AppSync mutation field name. The resolver invokes this Lambda with
   // {__inboundTranslation, fieldName, arguments, identity}; the field name is
@@ -203,18 +212,17 @@ export async function buildHandlersForConfig(config, opts = {}) {
       translationModule,
       publishJsons,
       auditOps,
+      publishJsonsAndWait,
     );
-    const webhook = buildWebhookSlice(specModule, translationModule, publishJsons, auditOps);
+    const webhook = buildWebhookSlice(
+      specModule,
+      translationModule,
+      publishJsons,
+      auditOps,
+      publishJsonsAndWait,
+    );
     if (webhook != null) webhookSlices.push(webhook);
   }));
-
-  // Sync (default): inline-dispatch the command via the same composite handler
-  // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
-  // outcome. Async: undefined → makeCommandGenerator falls back to publishJsons
-  // and returns Pending.
-  const publishJsonsAndWait = DISPATCH_MODE === "async"
-    ? undefined
-    : (jsons) => runInlineAndCollect(jsons, compositeJsonCommandsHandler);
 
   // Typed core (CommandGeneratorEntryPoint_Ops.res) pins the arg order against
   // the framework signature. stripIdFromParams=false: DCB slices may declare a

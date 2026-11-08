@@ -468,6 +468,7 @@ module Make = (
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~claimed=meta.callerClaim->Option.isSome,
           ~causationId=?causedBy,
           ~cause=DomainRejection,
           reference,
@@ -478,6 +479,7 @@ module Make = (
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~claimed=meta.callerClaim->Option.isSome,
           ~causationId=?causedBy,
           ~cause=AccessRefusal,
           reference,
@@ -507,6 +509,7 @@ module Make = (
         CommandTopic_Helpers.reportRejected(
           ~component=Spec.name,
           ~correlationId=meta.correlationId,
+          ~claimed=meta.callerClaim->Option.isSome,
           ~causationId=?causedBy,
           ~cause=InfrastructureFailure,
           reference,

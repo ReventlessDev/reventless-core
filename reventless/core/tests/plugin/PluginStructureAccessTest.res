@@ -173,7 +173,12 @@ module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
     ReventlessInfra.InboundTranslationSlice.operations,
   >
   let queryDbName = "PsTwoRuleFeedAudit"
-  let make = (~publishJsons as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+  let make = (
+    ~publishJsons as _,
+    ~publishJsonsAndWait as _=?,
+    ~runtime as _=?,
+    ~opts as _=?,
+  ): component => Obj.magic(0)
 }
 
 describe("an inbound slice's roles", () => {

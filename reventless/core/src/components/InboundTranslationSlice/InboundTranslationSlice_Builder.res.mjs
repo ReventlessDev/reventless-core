@@ -35,48 +35,53 @@ function Make(QueryDbStorage) {
           return;
         }
       };
-      let make = (publishJsons, param, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(InboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
-        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
-        let opts = {
-          parent: opts_parent
-        };
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
-          kind: "InboundTranslationSlice",
-          name: Spec.name
-        }, opts);
-        let publishJsonsRef = {
-          contents: undefined
-        };
-        publishJsons.apply(pj => {
-          publishJsonsRef.contents = pj;
-        });
-        Component$ReventlessCore.setOperations(extra, Pulumi.all([
-          Component$ReventlessCore.operations(queryDb),
-          publishJsons
-        ]).apply(param => {
-          let publishJsonsFn = param[1];
-          let queryDbOps = param[0];
-          return {
-            receive: async (inputJson, caller, door) => {
-              let result = await Callback.receive(publishJsonsFn, inputJson, Capabilities.capabilities(), caller, door);
-              await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
-              return result;
-            },
-            refuse: async (body, errorCode, error) => {
-              let result = Callback.refuse(body, errorCode, error);
-              await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
-              return result;
-            }
+      let make = (publishJsons, publishJsonsAndWaitOpt, param, opts) => {
+        let publishJsonsAndWait = publishJsonsAndWaitOpt !== undefined ? publishJsonsAndWaitOpt : Pulumi.output(undefined);
+        return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(InboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+          let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
+          let opts = {
+            parent: opts_parent
           };
-        }));
-        let outputs_resources = [];
-        let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
-        let outputs = {
-          resources: outputs_resources,
-          queryDb: outputs_queryDb
-        };
-        return Component$ReventlessCore.setOutputs(extra, outputs);
-      }, opts);
+          let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
+            kind: "InboundTranslationSlice",
+            name: Spec.name
+          }, opts);
+          let publishJsonsRef = {
+            contents: undefined
+          };
+          publishJsons.apply(pj => {
+            publishJsonsRef.contents = pj;
+          });
+          Component$ReventlessCore.setOperations(extra, Pulumi.all([
+            Component$ReventlessCore.operations(queryDb),
+            publishJsons,
+            publishJsonsAndWait
+          ]).apply(param => {
+            let publishJsonsAndWait = param[2];
+            let publishJsonsFn = param[1];
+            let queryDbOps = param[0];
+            return {
+              receive: async (inputJson, caller, door) => {
+                let result = await Callback.receive(publishJsonsFn, inputJson, Capabilities.capabilities(), publishJsonsAndWait, caller, door);
+                await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
+                return result;
+              },
+              refuse: async (body, errorCode, error) => {
+                let result = Callback.refuse(body, errorCode, error);
+                await syncToQueryDb(queryDbOps, InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result));
+                return result;
+              }
+            };
+          }));
+          let outputs_resources = [];
+          let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
+          let outputs = {
+            resources: outputs_resources,
+            queryDb: outputs_queryDb
+          };
+          return Component$ReventlessCore.setOutputs(extra, outputs);
+        }, opts);
+      };
       return {
         Spec: Spec,
         Translation: Translation,

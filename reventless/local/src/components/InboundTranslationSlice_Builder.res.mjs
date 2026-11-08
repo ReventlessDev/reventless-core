@@ -27,8 +27,8 @@ function Make(Bus) {
   });
   let Make$1 = Spec => (Translation => {
     let Inner = CoreMaker.Make(Spec)(Translation);
-    let make = (publishJsons, runtime, opts) => {
-      let component = Inner.make(publishJsons, runtime, opts);
+    let make = (publishJsons, publishJsonsAndWait, runtime, opts) => {
+      let component = Inner.make(publishJsons, publishJsonsAndWait, runtime, opts);
       Stdlib_Option.forEach(Spec.endpoint, endpoint => LocalWebhookRegistry$ReventlessLocal.register(InboundTranslationSlice_Webhook$ReventlessCore.routeOf(Spec.name, endpoint), Component$ReventlessCore.operations(component)));
       return component;
     };

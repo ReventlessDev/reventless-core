@@ -324,7 +324,7 @@ function Make(Spec) {
                 _0: reference
               };
             } else {
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", meta.correlationId, causedBy, reference, {
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", meta.correlationId, causedBy, Stdlib_Option.isSome(meta.callerClaim), reference, {
                 errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                 errorDetail: appendErrorDetail
               });
@@ -334,7 +334,7 @@ function Make(Spec) {
               };
             }
           case "CmdRejected" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", meta.correlationId, causedBy, reference, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", meta.correlationId, causedBy, Stdlib_Option.isSome(meta.callerClaim), reference, {
               errorCode: outcome.errorCode,
               errorDetail: outcome.errorDetail
             });
@@ -343,7 +343,7 @@ function Make(Spec) {
               _0: reference
             };
           case "CmdRefused" :
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", meta.correlationId, causedBy, reference, outcome._0.rejected);
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", meta.correlationId, causedBy, Stdlib_Option.isSome(meta.callerClaim), reference, outcome._0.rejected);
             return {
               TAG: "Ok",
               _0: reference

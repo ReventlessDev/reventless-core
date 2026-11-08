@@ -467,11 +467,11 @@ other `4xx` do not.
 | `200` | Translated and published, `{requestId, commandCount}` |
 | `400` | The body is not JSON |
 | `401` | The signature is missing, wrong, or outside the time window |
-| `403` | The endpoint's role may not send a command the input translates into |
+| `403` | The endpoint's role may not send a command the input translates into, or the target refused one for lack of permission |
 | `404` / `405` | No slice at that path / the wrong method |
-| `422` | The input was refused: by its schema or by `translate` |
+| `422` | The input was refused: by its schema, by `translate`, or by the target's decision |
 | `500` | The secret is not configured |
-| `503` | The commands could not be published |
+| `503` | The commands could not be published, or the target's platform failed |
 
 Every answer from `400` to `422`, and `503`, writes an audit row first; `404`, `405`
 and `500` do not, because no slice was reached or no secret was there to check with.
@@ -515,6 +515,17 @@ before it could be read keeps its raw body as `input`.
 - Command encoding failures return `Error` to the caller
 - `publishJsons` failures return `Error` to the caller
 - Audit log records the failure
+
+**The target's refusal:**
+- Where the target is a sync slice of the same plugin, `receive` waits for its
+  answer. The first command it refuses answers the caller instead of an acceptance:
+  the target's error code, its detail, and the cause (business, permission, or
+  platform). The audit row records it as a failure.
+- An async target answers nothing inline, so the caller hears an acceptance, as
+  before.
+- **A door open to anyone hears the target's reasons too.** Write the target so a
+  refusal tells a stranger nothing it should not know: a sign-up for an address
+  that already has an account answers `Ok([])`, never "already registered".
 
 **All errors** are returned to the caller as `Error(msg)`, allowing the external system to retry or handle the failure.
 

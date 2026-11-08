@@ -767,6 +767,7 @@ module Make = (
         inboundTranslationSlices->Array.map((module(ITS: InboundTranslationSlice.T)) => {
           let its = ITS.make(
             ~publishJsons,
+            ~publishJsonsAndWait,
             ~runtime=?componentRuntime->Dict.get(ITS.Spec.name),
             ~opts,
           )

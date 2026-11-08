@@ -9,6 +9,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as Metrics$ReventlessCore from "../../util/Metrics.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
@@ -86,23 +87,35 @@ function logOutcome(r) {
         ]
       ]
     ];
-  Effect.runSync(EffectLogger$ReventlessCore.logInfo(`CommandTopic(` + r.component + `)`, Object.fromEntries([[
+  let message = match$1[0];
+  let unheard = Stdlib_Option.getOr(r.unheard, false);
+  let ids_msgId = r.reference;
+  let ids_correlationId = r.correlationId;
+  let ids_causationId = r.causationId;
+  let ids = {
+    msgId: ids_msgId,
+    correlationId: ids_correlationId,
+    causationId: ids_causationId
+  };
+  let detail = Object.fromEntries([[
       "component",
       r.component
-    ]].concat(match$1[1])), {
-    msgId: r.reference,
-    correlationId: r.correlationId,
-    causationId: r.causationId
-  }, match$1[0]));
+    ]].concat(match$1[1]).concat(unheard ? [[
+        "unheard",
+        true
+      ]] : []));
+  let comp = `CommandTopic(` + r.component + `)`;
+  Effect.runSync(unheard ? EffectLogger$ReventlessCore.logWarn(comp, detail, ids, message + `, and nobody is told`) : EffectLogger$ReventlessCore.logInfo(comp, detail, ids, message));
 }
 
-function fireCommandOutcome(component, reference, correlationId, causationId, outcome) {
+function fireCommandOutcome(component, reference, correlationId, causationId, unheard, outcome) {
   let report = {
     component: component,
     reference: reference,
     correlationId: correlationId,
     causationId: causationId,
-    outcome: outcome
+    outcome: outcome,
+    unheard: unheard
   };
   if (outcomeLines.contents) {
     try {
@@ -167,17 +180,23 @@ function ownershipRefusal(verdict, component, command) {
 function reportAccepted(component, correlationId, causationId, reference, result) {
   Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
   Stdlib_Option.forEach(inlineWaiters[reference], w => w.onAccepted(result));
-  fireCommandOutcome(component, reference, correlationId, causationId, {
+  fireCommandOutcome(component, reference, correlationId, causationId, undefined, {
     TAG: "OutcomeAccepted",
     entityId: result.entityId,
     eventCount: result.eventCount
   });
 }
 
-function reportRejected(component, cause, correlationId, causationId, reference, result) {
+function reportRejected(component, cause, correlationId, causationId, claimedOpt, reference, result) {
+  let claimed = claimedOpt !== undefined ? claimedOpt : true;
   Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result, cause));
-  Stdlib_Option.forEach(inlineWaiters[reference], w => w.onRejected(result, cause));
-  fireCommandOutcome(component, reference, correlationId, causationId, {
+  let waiter = inlineWaiters[reference];
+  Stdlib_Option.forEach(waiter, w => w.onRejected(result, cause));
+  let unheard = !claimed && Stdlib_Option.isNone(waiter) && cause !== "InfrastructureFailure";
+  if (unheard) {
+    Metrics$ReventlessCore.emitCount("UnheardRefusal", component, undefined);
+  }
+  fireCommandOutcome(component, reference, correlationId, causationId, unheard, {
     TAG: "OutcomeRejected",
     errorCode: result.errorCode,
     errorDetail: result.errorDetail,

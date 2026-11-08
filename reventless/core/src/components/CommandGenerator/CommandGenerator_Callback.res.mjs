@@ -66,7 +66,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
   let refusedBeforeHandler = (meta, reason, access) => {
     Effect.runSync(EffectLogger$ReventlessCore.logWarn(`CommandGenerator(` + serviceName + `)`, undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, meta), `refused before its handler: ` + reason));
     if (access) {
-      return CommandTopic_Helpers$ReventlessCore.fireCommandOutcome(serviceName, meta.msgId, meta.correlationId, undefined, {
+      return CommandTopic_Helpers$ReventlessCore.fireCommandOutcome(serviceName, meta.msgId, meta.correlationId, undefined, undefined, {
         TAG: "OutcomeRejected",
         errorCode: CommandOutcome$Reventless.code("Forbidden"),
         errorDetail: reason,

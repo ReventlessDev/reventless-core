@@ -35,8 +35,8 @@ function Make(Api) {
       }
     }
     let InnerMake = Inner.Make(Spec)(Translation);
-    let make = (publishJsons, runtime, opts) => {
-      let component = InnerMake.make(publishJsons, runtime, opts);
+    let make = (publishJsons, publishJsonsAndWait, runtime, opts) => {
+      let component = InnerMake.make(publishJsons, publishJsonsAndWait, runtime, opts);
       let outputs = Component$ReventlessCore.outputs(component);
       let tableResource = outputs.queryDb.resources[0];
       if (tableResource !== undefined) {

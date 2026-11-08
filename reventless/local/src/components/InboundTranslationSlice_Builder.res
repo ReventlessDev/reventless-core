@@ -27,8 +27,8 @@ module Make = (Bus: LocalBus.T) => {
     module Translation = Translation
     type component = Inner.component
     let queryDbName = Inner.queryDbName
-    let make = (~publishJsons, ~runtime=?, ~opts=?) => {
-      let component = Inner.make(~publishJsons, ~runtime?, ~opts?)
+    let make = (~publishJsons, ~publishJsonsAndWait=?, ~runtime=?, ~opts=?) => {
+      let component = Inner.make(~publishJsons, ~publishJsonsAndWait?, ~runtime?, ~opts?)
       Spec.endpoint->Option.forEach(endpoint =>
         LocalWebhookRegistry.register(
           ~route=ReventlessCore.InboundTranslationSlice_Webhook.routeOf(~slice=Spec.name, endpoint),

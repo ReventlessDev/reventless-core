@@ -516,6 +516,7 @@ module Make = (
             CommandTopic_Helpers.reportRejected(
               ~component=Spec.name,
               ~correlationId=cmdJson.meta.correlationId,
+              ~claimed=cmdJson.meta.callerClaim->Option.isSome,
               ~causationId=?cmdJson.meta.causationId,
               ~cause=AccessRefusal,
               cmdJson.meta.msgId,
@@ -559,6 +560,7 @@ module Make = (
                     CommandTopic_Helpers.reportRejected(
                       ~component=Spec.name,
                       ~correlationId=cmdJson.meta.correlationId,
+                      ~claimed=cmdJson.meta.callerClaim->Option.isSome,
                       ~causationId=?cmdJson.meta.causationId,
                       ~cause=InfrastructureFailure,
                       cmdJson.meta.msgId,
@@ -672,6 +674,7 @@ module Make = (
                             CommandTopic_Helpers.reportRejected(
                               ~component=Spec.name,
                               ~correlationId=cmdJson.meta.correlationId,
+                              ~claimed=cmdJson.meta.callerClaim->Option.isSome,
                               ~causationId=?cmdJson.meta.causationId,
                               ~cause=InfrastructureFailure,
                               cmdJson.meta.msgId,
@@ -700,6 +703,7 @@ module Make = (
               CommandTopic_Helpers.reportRejected(
                 ~component=Spec.name,
                 ~correlationId=cmdJson.meta.correlationId,
+                ~claimed=cmdJson.meta.callerClaim->Option.isSome,
                 ~causationId=?cmdJson.meta.causationId,
                 ~cause=DomainRejection,
                 cmdJson.meta.msgId,

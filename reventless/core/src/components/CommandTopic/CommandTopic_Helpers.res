@@ -51,6 +51,9 @@ type commandOutcomeReport = {
       when it sent the command. */
   causationId?: string,
   outcome: observedOutcome,
+  /** A refusal of a command the platform sent itself, which nobody waited on: no
+      person and no work item hears it. */
+  unheard?: bool,
 }
 
 type commandOutcomeHook = commandOutcomeReport => unit
@@ -103,15 +106,25 @@ let logOutcome = (r: commandOutcomeReport) => {
       ],
     )
   }
-  EffectLogger.logInfo(
-    ~comp=`CommandTopic(${r.component})`,
-    ~ids={
-      msgId: r.reference,
-      correlationId: ?r.correlationId,
-      causationId: ?r.causationId,
-    },
-    ~detail=JSON.Object(Dict.fromArray([("component", str(r.component))]->Array.concat(fields))),
-    message,
+  let unheard = r.unheard->Option.getOr(false)
+  let ids: EffectLogger.ids = {
+    msgId: r.reference,
+    correlationId: ?r.correlationId,
+    causationId: ?r.causationId,
+  }
+  let detail = JSON.Object(
+    Dict.fromArray(
+      [("component", str(r.component))]
+      ->Array.concat(fields)
+      ->Array.concat(unheard ? [("unheard", JSON.Encode.bool(true))] : []),
+    ),
+  )
+  let comp = `CommandTopic(${r.component})`
+
+  (
+    unheard
+      ? EffectLogger.logWarn(~comp, ~ids, ~detail, `${message}, and nobody is told`)
+      : EffectLogger.logInfo(~comp, ~ids, ~detail, message)
   )->Effect.runSync
 }
 
@@ -128,9 +141,10 @@ let fireCommandOutcome = (
   ~reference: string,
   ~correlationId: option<string>=?,
   ~causationId: option<string>=?,
+  ~unheard: option<bool>=?,
   outcome: observedOutcome,
 ) => {
-  let report = {component, reference, ?correlationId, ?causationId, outcome}
+  let report = {component, reference, ?correlationId, ?causationId, outcome, ?unheard}
   if outcomeLines.contents {
     try logOutcome(report) catch {
     | _ => ()
@@ -231,21 +245,33 @@ let reportAccepted = (
   )
 }
 
+/** `~claimed` is whether the command carries a caller claim, as every command the
+    API generates does. A business or permission refusal of one without a claim that
+    nobody waits on inline is a refusal nobody hears: it is logged as a warning and
+    counted as `UnheardRefusal`. */
 let reportRejected = (
   ~component: string,
   ~cause: refusalCause,
   ~correlationId: option<string>=?,
   ~causationId: option<string>=?,
+  ~claimed: bool=true,
   reference: string,
   result: rejectedResult,
 ) => {
   rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result, cause))
-  inlineWaiters->Dict.get(reference)->Option.forEach(w => w.onRejected(result, cause))
+  let waiter = inlineWaiters->Dict.get(reference)
+  waiter->Option.forEach(w => w.onRejected(result, cause))
+  // An infrastructure failure is not final: the queue delivers the command again.
+  let unheard = !claimed && waiter->Option.isNone && cause != InfrastructureFailure
+  if unheard {
+    Metrics.emitCount(~metric="UnheardRefusal", ~slice=component)
+  }
   fireCommandOutcome(
     ~component,
     ~reference,
     ~correlationId?,
     ~causationId?,
+    ~unheard,
     OutcomeRejected({errorCode: result.errorCode, errorDetail: result.errorDetail, cause}),
   )
 }

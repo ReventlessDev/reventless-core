@@ -1,8 +1,8 @@
 # Plan: a refusal nobody hears
 
-> **Status:** In progress. [RNS1](#5-steps) to [RNS3](#5-steps) built 2026-11-08, and the automation
-> and outbound pages of [RNS7](#5-steps); one decision taken differently, recorded at
-> [RNQ2](#4-decisions).
+> **Status:** In progress. [RNS1](#5-steps) to [RNS5](#5-steps) and [RNS7](#5-steps) built
+> 2026-11-08, except the alarm in [RNS5](#5-steps); [RNS6](#5-steps) open. Two decisions taken
+> differently, recorded at [RNQ2](#4-decisions) and [RNQ6](#4-decisions).
 >
 > **Questions and short answers:**
 >
@@ -215,6 +215,21 @@ Revisit if the warning turns out noisy for an app that relies on refusals as nor
 should be writing refusal events instead ([§3](#3-what-an-app-should-do-whatever-the-framework-does)
 point 3), and the noise is the prompt.
 
+*Built differently.* "No caller claim" alone would have warned about every refusal an inbound
+translation's caller now hears, since its commands carry no claim either. The rule built is: no
+caller claim, **nobody waiting inline** for the answer, and a business or permission refusal (an
+infrastructure failure is delivered again by the queue, so it is not final). Such a refusal is
+logged as a warning with `unheard: true` and counted as the `UnheardRefusal` metric, through the
+same neutral metric line the DCB counts use; on AWS a log metric filter on DCB command handlers
+turns it into a CloudWatch metric.
+
+**Not built: the alarm itself.** The metric is dimensioned by slice, and a CloudWatch alarm needs a
+concrete dimension, so alarming means one alarm per slice (billed per alarm) or a metric-math alarm
+over a known list. Aggregate command handlers also write the line but have no metric filter yet.
+**Recommendation:** leave the alarm until a deployed stack shows a non-zero `UnheardRefusal`; until
+then the warning line and the metric answer "does this happen", which is the first question.
+Revisit when it does, and then add one alarm per slice that has ever counted one.
+
 ## 5. Steps
 
 | Step | What | Done when |
@@ -242,6 +257,17 @@ point 3), and the noise is the prompt.
   goldens and nothing else.
 - Mutation-checked: dropping the "still `Processing`" guard fails the race-with-`resolve` test;
   not delivering refusals to waiters fails four.
+
+**Built (2026-11-08):** [RNS4](#5-steps), [RNS5](#5-steps) without its alarm, and [RNS7](#5-steps).
+
+- [RNS4](#5-steps): unlike an automation, an inbound translation on AWS runs in the DCB command
+  Lambda beside the slices it targets, so its wait yields a verdict on a deployed stack too, in sync
+  dispatch mode. The refusal's cause rides on the result, so the webhook answers `422` for a business
+  refusal, `403` for a permission one, and `503` for a platform failure.
+- An open door now passes the target's reasons to whoever calls it. The registration package was
+  checked: `Register` answers `Ok([])` in every case, and `Registrations`' only refusals belong to
+  `Invite`, whose caller is a signed-in inviter meant to hear them. The inbound page says so for
+  door authors.
 
 [RNS1](#5-steps) to [RNS3](#5-steps) belong together and are complete locally; [RNS6](#5-steps) is what
 makes them work on a deployed stack, and needs [RNS1](#5-steps) first. [RNS4](#5-steps) and

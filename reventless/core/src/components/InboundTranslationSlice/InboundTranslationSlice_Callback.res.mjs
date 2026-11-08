@@ -22,6 +22,7 @@ import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/c
 import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/InboundTranslationSlice.res.mjs";
 import * as InboundTranslationSlice_Webhook$ReventlessCore from "./InboundTranslationSlice_Webhook.res.mjs";
 
@@ -79,7 +80,7 @@ function receiveResultToOutcome(result) {
     msgId: match$1.requestId,
     errorCode: errorCode,
     errorDetail: match$1.error,
-    cause: rejectionCauseOf(errorCode)
+    cause: Stdlib_Option.getOr(match$1.cause, rejectionCauseOf(errorCode))
   };
 }
 
@@ -154,7 +155,7 @@ function Make(Spec) {
     let sensitive = Sensitive$Reventless.fieldNames(Spec.externalInputSchema);
     let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined);
     let messageOf = (exn, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
-    let failWith = (requestId, input, door, caller, errorCode, error) => {
+    let failWith = (requestId, input, door, caller, errorCode, cause, error) => {
       auditLog[requestId] = {
         input: input,
         status: "Failure",
@@ -168,7 +169,8 @@ function Make(Spec) {
         _0: {
           requestId: requestId,
           error: error,
-          errorCode: errorCode
+          errorCode: errorCode,
+          cause: cause
         }
       };
     };
@@ -191,12 +193,13 @@ function Make(Spec) {
         };
       }
     };
-    let receive = async (publishJsons, inputJson, capabilities, caller, doorOpt) => {
+    let receive = async (publishJsons, inputJson, capabilities, publishJsonsAndWait, caller, doorOpt) => {
       let door = doorOpt !== undefined ? doorOpt : "Mutation";
       let publishJsons$1 = CommandSent$ReventlessCore.announcing(`InboundTranslationSlice(` + Spec.name + `)`, publishJsons);
+      let publishJsonsAndWait$1 = Stdlib_Option.map(publishJsonsAndWait, wait => CommandSent$ReventlessCore.announcingAndWaiting(`InboundTranslationSlice(` + Spec.name + `)`, wait));
       let requestId = Uuid.v4();
       let callerId = Stdlib_Option.map(caller, identity => identity.userId);
-      let fail = (errorCode, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, callerId, errorCode, error);
+      let fail = (errorCode, cause, error) => failWith(requestId, JSON.stringify(redactInput(inputJson, sensitive)), door, callerId, errorCode, cause, error);
       let succeed = extra => {
         let commandCount = extra.length;
         auditLog[requestId] = {
@@ -231,7 +234,7 @@ function Make(Spec) {
         };
       }
       if (parsed.TAG !== "Ok") {
-        return fail(undefined, parsed._0);
+        return fail(undefined, undefined, parsed._0);
       }
       let msg;
       try {
@@ -244,7 +247,7 @@ function Make(Spec) {
         };
       }
       if (msg.TAG !== "Ok") {
-        return fail(undefined, msg._0);
+        return fail(undefined, undefined, msg._0);
       }
       let pairs = msg._0;
       let msg$1 = Stdlib_Array.reduce(pairs, {
@@ -269,24 +272,41 @@ function Make(Spec) {
         }
       });
       if (msg$1.TAG !== "Ok") {
-        return fail(undefined, msg$1._0);
+        return fail(undefined, undefined, msg$1._0);
       }
       let msgs = msg$1._0;
       if (msgs.some(param => !callerAdmits(Authorization$Reventless.named(Spec.authorizationOf(Message$Reventless.variantNameOfJson(param.commandJson))), caller))) {
-        return fail(CommandOutcome$Reventless.code("Forbidden"), Spec.name + `: the caller is not authorized for every command this input translates into`);
+        return fail(CommandOutcome$Reventless.code("Forbidden"), undefined, Spec.name + `: the caller is not authorized for every command this input translates into`);
       }
       if (msgs.length === 0) {
         return succeed([]);
       }
       try {
-        await publishJsons$1(msgs);
-        return succeed(pairs.map(param => param[0]));
+        let refusal = publishJsonsAndWait$1 !== undefined ? Stdlib_Array.findMap(await publishJsonsAndWait$1(msgs), outcome => {
+            switch (outcome.TAG) {
+              case "Rejected" :
+                let errorCode = outcome.errorCode;
+                return [
+                  errorCode,
+                  outcome.cause,
+                  CommandTopic_Helpers$ReventlessCore.describeRefusal(errorCode, outcome.errorDetail)
+                ];
+              case "Accepted" :
+              case "Pending" :
+                return;
+            }
+          }) : (await publishJsons$1(msgs), undefined);
+        if (refusal !== undefined) {
+          return fail(refusal[0], refusal[1], refusal[2]);
+        } else {
+          return succeed(pairs.map(param => param[0]));
+        }
       } catch (raw_exn$2) {
         let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
-        return fail(CommandOutcome$Reventless.code("PublishFailed"), messageOf(exn$2, "publish failed"));
+        return fail(CommandOutcome$Reventless.code("PublishFailed"), undefined, messageOf(exn$2, "publish failed"));
       }
     };
-    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), redactBody(body, sensitive), "Webhook", undefined, errorCode, error);
+    let refuse = (body, errorCode, error) => failWith(Uuid.v4(), redactBody(body, sensitive), "Webhook", undefined, errorCode, undefined, error);
     let webhook = Stdlib_Option.map(Spec.endpoint, endpoint => InboundTranslationSlice_Webhook$ReventlessCore.routeOf(Spec.name, endpoint));
     return {
       Spec: Spec,

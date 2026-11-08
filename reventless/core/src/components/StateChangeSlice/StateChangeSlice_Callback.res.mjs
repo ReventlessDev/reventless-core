@@ -332,7 +332,7 @@ function Make(Spec) {
                 headPosition,
                 owners
               ]);
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, rejected);
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, rejected);
               let line = `refused: ` + rejected.errorDetail + ` id=` + Stdlib_Option.getOr(entityId, "-");
               return Effect$1.map(match.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, ids, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, line), () => ({
                 TAG: "Ok",
@@ -440,7 +440,7 @@ function Make(Spec) {
                       if (errorCode === CommandOutcome$Reventless.code("Conflict")) {
                         Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
                       }
-                      CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
+                      CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
                         errorCode: errorCode,
                         errorDetail: errDetail
                       });
@@ -457,7 +457,7 @@ function Make(Spec) {
                   headPosition,
                   owners
                 ]);
-                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
+                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
                   errorCode: CommandOutcome$Reventless.code("AppendFailed"),
                   errorDetail: detail
                 });
@@ -477,7 +477,7 @@ function Make(Spec) {
             let match$1 = Message$ReventlessCore.splitMessage(errorJson);
             let payloadDict = match$1[1];
             let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
               errorCode: errorCode,
               errorDetail: errorDetail
             });

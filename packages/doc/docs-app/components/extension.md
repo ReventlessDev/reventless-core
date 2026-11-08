@@ -421,6 +421,19 @@ ExtOps -> Admin: "command (PublishExtensionPointCommand)"
 Admin -> EP: command
 ```
 
+### When the target refuses
+
+A command an extension sends has no caller waiting for the answer, and no work
+item to record it: the event that caused it has already happened in the other
+plugin. If the target refuses, the refusal is logged as a warning (`command
+rejected, and nobody is told`, with `unheard: true`) and counted as the
+`UnheardRefusal` metric, and nothing else happens.
+
+So write the target to accept anything that is already done (`Ok([])` for a
+command sent twice), and turn a refusal the domain must react to into an event:
+`decide` emits `ReservationDeclined` instead of returning `Error`, and the rest of
+the process reacts to that event. Keep `Error` for commands a person sends.
+
 ## Component Outputs
 
 An Extension produces the following outputs:

@@ -6,7 +6,8 @@ let metricNames = [
   "AppendConflict",
   "DcbDecisionModelCacheHit",
   "DcbDecisionModelCacheMiss",
-  "DcbDecisionModelDeltaEventCount"
+  "DcbDecisionModelDeltaEventCount",
+  "UnheardRefusal"
 ];
 
 let namespace = "Reventless/DCB";

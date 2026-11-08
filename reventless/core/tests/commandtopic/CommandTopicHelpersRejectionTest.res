@@ -191,3 +191,70 @@ describe("CommandTopic_Helpers.runInlineAndCollect, two runs:", () => {
     }
   })
 })
+
+// A refusal of a command the platform sent itself, which nobody waited on, is the one
+// a person would otherwise never see: a warning, and an `UnheardRefusal` count.
+describe("CommandTopic_Helpers.reportRejected, a refusal nobody hears:", () => {
+  let observe = async (~claimed, ~cause, ~inline) => {
+    let reports = ref([])
+    let remove = CommandTopic_Helpers.registerCommandOutcome(r =>
+      reports := reports.contents->Array.concat([r])
+    )
+    let counts = Metrics.Counts.make()
+    Metrics.Sink.install(Metrics.Counts.sink(counts))
+    let refuse = reference =>
+      CommandTopic_Helpers.reportRejected(
+        ~component="TestService",
+        ~cause,
+        ~claimed,
+        reference,
+        {errorCode: "Refused", errorDetail: ""},
+      )
+    if inline {
+      let handler: CommandTopic_Helpers.jsonCommandsHandler = stream =>
+        stream
+        ->Stream.runCollect
+        ->Effect.map(items => {
+          items->Array.forEach(item => refuse(item.reference))
+          items->Array.map(item => Ok(item.reference))
+        })
+      let _ = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("m-1")], handler)
+    } else {
+      refuse("m-1")
+    }
+    remove()
+    Metrics.Sink.reset()
+    let unheardCount =
+      counts
+      ->Metrics.Counts.read(~now=Date.now())
+      ->Array.filter(s => s.metric == "UnheardRefusal")
+      ->Array.reduce(0, (n, s) => n + s.count)
+    (reports.contents->Array.map(r => r.unheard->Option.getOr(false)), unheardCount)
+  }
+
+  testPromise("an unclaimed command refused with nobody waiting is unheard", async () => {
+    expect(await observe(~claimed=false, ~cause=DomainRejection, ~inline=false))->toEqual((
+      [true],
+      1,
+    ))
+    expect(await observe(~claimed=false, ~cause=AccessRefusal, ~inline=false))->toEqual(([true], 1))
+  })
+
+  testPromise("a caller's command, or one a slice waited on, is heard", async () => {
+    expect(await observe(~claimed=true, ~cause=DomainRejection, ~inline=false))->toEqual((
+      [false],
+      0,
+    ))
+    expect(await observe(~claimed=false, ~cause=DomainRejection, ~inline=true))->toEqual((
+      [false],
+      0,
+    ))
+  })
+
+  testPromise("an infrastructure failure is not final, so not unheard", async () => {
+    expect(await observe(~claimed=false, ~cause=InfrastructureFailure, ~inline=false))->toEqual((
+      [false],
+      0,
+    ))
+  })
+})

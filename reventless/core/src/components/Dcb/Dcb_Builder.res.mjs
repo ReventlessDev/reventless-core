@@ -405,7 +405,7 @@ function Make(DcbEventLogStorage) {
         ];
       }));
       let inboundTranslationSliceData = inboundTranslationSlices.map(ITS => {
-        let its = ITS.make(publishJsons, componentRuntime[ITS.Spec.name], opts);
+        let its = ITS.make(publishJsons, publishJsonsAndWait, componentRuntime[ITS.Spec.name], opts);
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let exposed = InboundTranslationSlice_Callback$ReventlessCore.exposesMutation(ITS.Spec.externalInputSchema);
         InboundTranslationSlice_Callback$ReventlessCore.checkReachable(name, ITS.Spec.name, exposed, Stdlib_Option.isSome(ITS.Spec.endpoint));

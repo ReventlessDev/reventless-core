@@ -571,3 +571,68 @@ describe("receive hands the door its caller", () => {
     expect(row.caller)->toEqual(Some("u_admin"))
   })
 })
+
+// Where the target answers inline, the door's caller hears its refusal instead of
+// an acceptance, and the webhook's status follows the refusal's cause.
+describe("InboundTranslationSlice Callback: the target's answer", () => {
+  let input = {"paymentId": "pay-123", "orderId": "ord-1", "status": "completed"}->Obj.magic
+  let neverFireAndForget: ReventlessInfra.CommandTopic.publishJsons = async _ =>
+    JsError.throwWithMessage("the waiting publish should have been used")
+  let answering = (
+    answer: string => ReventlessCore.CommandTopic_Helpers.commandOutcome,
+  ): ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait =>
+    async cmds => cmds->Array.map((cmd: Reventless.Message.commandJson) => answer(cmd.meta.msgId))
+  let receiveAnswered = async answer =>
+    await Callback.receive(
+      neverFireAndForget,
+      input,
+      ~capabilities=Reventless.Capabilities.none,
+      ~publishJsonsAndWait=answering(answer),
+    )
+  let refusedBecause = (cause: ReventlessCore.CommandTopic_Helpers.refusalCause) =>
+    msgId => ReventlessCore.CommandTopic_Helpers.Rejected({
+      msgId,
+      errorCode: "AlreadyPaid",
+      errorDetail: Some("ord-1"),
+      cause,
+    })
+
+  testPromise("a refused command answers the caller with the target's reason", async () => {
+    let result = await receiveAnswered(refusedBecause(DomainRejection))
+    switch result {
+    | Error({requestId, error, ?errorCode, ?cause}) =>
+      expect(errorCode)->toEqual(Some("AlreadyPaid"))
+      expect(error)->toBe("AlreadyPaid: ord-1")
+      expect(cause)->toEqual(Some(ReventlessCore.CommandTopic_Helpers.DomainRejection))
+      let row = Callback.auditLog->Dict.get(requestId)->Option.getOrThrow
+      expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+    | Ok(_) => expect("a refusal")->toBe("an acceptance")
+    }
+    switch result->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome {
+    | Rejected({cause}) =>
+      expect(cause)->toEqual(ReventlessCore.CommandTopic_Helpers.DomainRejection)
+    | _ => expect("Rejected")->toBe("other")
+    }
+  })
+
+  testPromise("an accepted command, or one not answered inline, is an acceptance", async () => {
+    let accepted = await receiveAnswered(msgId => Accepted({msgId, eventCount: 1}))
+    expect(accepted->Result.isOk)->toBe(true)
+    let pending = await receiveAnswered(
+      msgId => ReventlessCore.CommandTopic_Helpers.Pending({
+        msgId: msgId,
+      }),
+    )
+    expect(pending->Result.isOk)->toBe(true)
+  })
+
+  testPromise("the webhook status follows the refusal's cause", async () => {
+    let statusOf = async cause =>
+      (
+        await receiveAnswered(refusedBecause(cause))
+      )->ReventlessCore.InboundTranslationSlice_Webhook.statusOf
+    expect(await statusOf(DomainRejection))->toBe(422)
+    expect(await statusOf(AccessRefusal))->toBe(403)
+    expect(await statusOf(InfrastructureFailure))->toBe(503)
+  })
+})

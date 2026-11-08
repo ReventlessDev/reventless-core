@@ -146,16 +146,16 @@ async function persistAudit(callback, auditQueryDbOps, result) {
   }
 }
 
-function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) {
+function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps, publishJsonsAndWait) {
   let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
   return async (args, identity) => {
-    let result = await callback.receive(publishJsons, args, Capabilities$Reventless.none, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity), undefined);
+    let result = await callback.receive(publishJsons, args, Capabilities$Reventless.none, publishJsonsAndWait, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity), undefined);
     await persistAudit(callback, auditQueryDbOps, result);
     return CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
   };
 }
 
-function buildWebhookSlice(spec, translation, publishJsons, auditQueryDbOps) {
+function buildWebhookSlice(spec, translation, publishJsons, auditQueryDbOps, publishJsonsAndWait) {
   let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
   let persisted = async result => {
     await persistAudit(callback, auditQueryDbOps, result);
@@ -163,7 +163,7 @@ function buildWebhookSlice(spec, translation, publishJsons, auditQueryDbOps) {
   };
   return Stdlib_Nullable.fromOption(Stdlib_Option.map(callback.webhook, route => ({
     route: route,
-    receive: async (input, caller) => await persisted(await callback.receive(publishJsons, input, Capabilities$Reventless.none, caller, "Webhook")),
+    receive: async (input, caller) => await persisted(await callback.receive(publishJsons, input, Capabilities$Reventless.none, publishJsonsAndWait, caller, "Webhook")),
     refuse: async (body, errorCode, error) => await persisted(callback.refuse(body, errorCode, error))
   })));
 }

@@ -56,8 +56,8 @@ module Make = (
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 
-    let make = (~publishJsons, ~runtime=?, ~opts=?) => {
-      let component = InnerMake.make(~publishJsons, ~runtime?, ~opts?)
+    let make = (~publishJsons, ~publishJsonsAndWait=?, ~runtime=?, ~opts=?) => {
+      let component = InnerMake.make(~publishJsons, ~publishJsonsAndWait?, ~runtime?, ~opts?)
       // The audit QueryDb's physical table name is Pulumi-generated, so it can only
       // be read off the constructed component's outputs (resolved synchronously here,
       // before forDcbCommandTopic builds HANDLER_CONFIG). Thread it so the entry
