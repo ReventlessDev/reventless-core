@@ -473,6 +473,8 @@ let executeQueryItem = async (
   ~crossPartitionTagKeys: array<string>=[],
 ) => {
   switch queryItem.tags {
+  // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
+  | _ if Reventless.DcbTag.clauseMatchesNothing(queryItem) => []
   // Single tag: a `@crossPartition` key reads across partitions via the per-tag
   // GSI (KEYS_ONLY → per-key GetItem, collected); otherwise a base-table
   // partition lookup.
@@ -1316,9 +1318,19 @@ let appendConditional = async (
   ~partitionTag=?,
   ~crossPartitionTagKeys: array<string>=[],
 ) => {
+  // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`), so it guards
+  // nothing: it is left out, and a condition of only such clauses is no condition. Kept, its tags
+  // would still fence, and at after=None fold in the create guard against the written types.
+  let guardsNothing = Reventless.DcbTag.readsNothing(cond.query)
+  let cond = {
+    ...cond,
+    query: cond.query->Array.filter(qi => !Reventless.DcbTag.clauseMatchesNothing(qi)),
+  }
   let queryTags = collectQueryTags(cond.query)
 
-  if queryTags->Array.length == 0 {
+  if guardsNothing {
+    await appendUnconditional(table, events, ~partitionTag?)
+  } else if queryTags->Array.length == 0 {
     Error(
       ReventlessInfra.DcbEventLog.StorageFailure(
         "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag",
@@ -1474,6 +1486,8 @@ let executeQueryItemStream = (
   ~crossPartitionTagKeys: array<string>=[],
 ) => {
   switch queryItem.tags {
+  // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
+  | _ if Reventless.DcbTag.clauseMatchesNothing(queryItem) => Stream.empty
   // Single tag: a `@crossPartition` key reads every partition via the per-tag
   // GSI (eventually consistent — fence catches staleness); otherwise a direct
   // base-table partition lookup. Base-table reads can opt into strong

@@ -118,10 +118,12 @@ let buildReadWhere = (
     let clauseSqls = query->Array.map(clause => {
       let clauseParts = []
       switch clause.eventTypes {
-      | Some(types) if types->Array.length > 0 =>
+      // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
+      | Some([]) => clauseParts->Array.push("FALSE")
+      | Some(types) =>
         let ph = types->Array.map(t => b->param(JSON.Encode.string(t)))->Array.join(",")
         clauseParts->Array.push(`event_type IN (${ph})`)
-      | _ => ()
+      | None => ()
       }
       switch clause.tags {
       | Some(tags) if tags->Array.length > 0 =>

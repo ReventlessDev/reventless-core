@@ -580,3 +580,23 @@ describe("DCB DynamoDb integration — an empty tag value does not break the app
     expect(crossPartition.events->Array.length)->toBe(0)
   })
 })
+
+describe("DCB DynamoDb integration — a clause with no event type matches nothing", () => {
+  let charger = tag("chargerId", "C-nothing")
+
+  testAsync("reads nothing, and as a condition never conflicts", async () => {
+    let table = await H.freshTable()
+    let _ = await seed(table, event("FaultNoted", [charger]), ~partitionTag=simple("chargerId"))
+    let nothing: Reventless.DcbTag.query = [{tags: [charger], eventTypes: []}]
+    let read = (await Runtime.read(table)(~query=nothing)).events->Array.length
+    let all = (await Runtime.read(table)(~query=[{tags: [charger]}])).events->Array.length
+    // From before the event: a clause that matched it would conflict.
+    let appended = await Runtime.appendConditional(
+      table,
+      [event("FaultNoted", [charger])],
+      {query: nothing, after: ?None},
+      ~partitionTag=simple("chargerId"),
+    )
+    expect((read, all, isOk(appended)))->toEqual((0, 1, true))
+  })
+})

@@ -923,6 +923,25 @@ let mergeTagKeysByEventType = (maps: array<dict<array<string>>>): dict<array<str
 }
 
 /**
+Whether a query clause matches nothing: its type list is empty. A slice whose
+`consumedEvent` is `unit` builds such clauses, and so does narrowing when no
+consumed type carries a clause's tags. Every store matches no event for it, in
+its read and in its append condition.
+*/
+let clauseMatchesNothing = (qi: queryItem) =>
+  switch qi.eventTypes {
+  | Some([]) => true
+  | _ => false
+  }
+
+/**
+Whether a query reads nothing: it has clauses, and every one matches nothing. An
+empty query (no clauses) keeps its meaning, every event.
+*/
+let readsNothing = (query: query) =>
+  query->Array.length > 0 && query->Array.every(clauseMatchesNothing)
+
+/**
 Narrows a clause's event-type list to those types whose produced tag set can
 carry *all* of the clause's tags. A type absent from `tagKeysByEventType` is
 kept (we can't prove it vacuous). Removing a vacuous (type, tag) pairing cannot

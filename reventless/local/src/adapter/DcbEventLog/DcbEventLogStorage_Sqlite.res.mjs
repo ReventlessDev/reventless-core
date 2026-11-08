@@ -78,12 +78,16 @@ function buildClauseSql(logName, clause, after) {
     params.contents = params.contents.concat([after]);
   }
   let types = clause.eventTypes;
-  if (types !== undefined && types.length !== 0) {
-    let placeholders = types.map(param => "?").join(",");
-    parts.contents = parts.contents.concat([`event_type IN (` + placeholders + `)`]);
-    types.forEach(t => {
-      params.contents = params.contents.concat([t]);
-    });
+  if (types !== undefined) {
+    if (types.length !== 0) {
+      let placeholders = types.map(param => "?").join(",");
+      parts.contents = parts.contents.concat([`event_type IN (` + placeholders + `)`]);
+      types.forEach(t => {
+        params.contents = params.contents.concat([t]);
+      });
+    } else {
+      parts.contents = parts.contents.concat(["0"]);
+    }
   }
   let tags = clause.tags;
   if (tags !== undefined && tags.length !== 0) {

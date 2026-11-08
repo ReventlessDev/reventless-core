@@ -413,7 +413,14 @@ module Make = (
       | AlwaysEventual => false
       }
 
-      dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
+      // A slice that consumes nothing (`consumedEvent = unit`) reads nothing: the store is
+      // not asked at all.
+
+      (
+        Reventless.DcbTag.readsNothing(query)
+          ? Stream.empty
+          : dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
+      )
       ->Stream.mapEffect(openRaw)
       // The head accumulator starts at `afterPos` (the seeded head), not `None`,
       // so an empty delta read keeps the cached head — the append must condition
@@ -589,7 +596,14 @@ module Make = (
                       `produced ${eventCount} event(s): [${eventDetails}]`,
                     )
                     ->Effect.flatMap(
-                      _ => Effect.promise(() => dcbEventLog.append(rawEvents, ~condition)),
+                      _ =>
+                        Effect.promise(
+                          () =>
+                            // What it did not read cannot have changed under it: no condition.
+                            Reventless.DcbTag.readsNothing(query)
+                              ? dcbEventLog.append(rawEvents)
+                              : dcbEventLog.append(rawEvents, ~condition),
+                        ),
                     )
                     ->Effect.flatMap(
                       appendResult =>

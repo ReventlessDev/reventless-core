@@ -99,11 +99,13 @@ let buildClauseSql = (~logName: string, ~clause: DcbTag.queryItem, ~after: optio
   }
 
   switch clause.eventTypes {
-  | Some(types) if types->Array.length > 0 =>
+  // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
+  | Some([]) => parts := parts.contents->Array.concat(["0"])
+  | Some(types) =>
     let placeholders = types->Array.map(_ => "?")->Array.join(",")
     parts := parts.contents->Array.concat([`event_type IN (${placeholders})`])
     types->Array.forEach(t => params := params.contents->Array.concat([JSON.Encode.string(t)]))
-  | _ => ()
+  | None => ()
   }
 
   switch clause.tags {

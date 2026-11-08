@@ -623,6 +623,23 @@ function mergeTagKeysByEventType(maps) {
   return merged;
 }
 
+function clauseMatchesNothing(qi) {
+  let match = qi.eventTypes;
+  if (match !== undefined) {
+    return match.length === 0;
+  } else {
+    return false;
+  }
+}
+
+function readsNothing(query) {
+  if (query.length !== 0) {
+    return query.every(clauseMatchesNothing);
+  } else {
+    return false;
+  }
+}
+
 function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
   return eventTypes.filter(eventType => {
     let producedKeys = tagKeysByEventType[eventType];
@@ -1191,6 +1208,8 @@ export {
   tagKeysOfProperties,
   extractTagKeysByEventType,
   mergeTagKeysByEventType,
+  clauseMatchesNothing,
+  readsNothing,
   narrowEventTypesForTags,
   buildQueryFromCommand,
   extractTaggedFields,

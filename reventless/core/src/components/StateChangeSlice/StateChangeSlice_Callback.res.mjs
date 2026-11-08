@@ -266,7 +266,7 @@ function Make(Spec) {
             strongConsistency = false;
             break;
         }
-        return Effect$1.flatMap(Effect$1.tap(Stream.runFold(Stream.mapEffect(dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
+        return Effect$1.flatMap(Effect$1.tap(Stream.runFold(Stream.mapEffect(DcbTag$Reventless.readsNothing(query) ? Stream$1.empty : dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
           match$1[0],
           afterPos,
           [],
@@ -392,7 +392,13 @@ function Make(Spec) {
                     query: query,
                     after: headPosition
                   };
-                  return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, ids, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
+                  return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, ids, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => {
+                    if (DcbTag$Reventless.readsNothing(query)) {
+                      return dcbEventLog.append(rawEvents, undefined);
+                    } else {
+                      return dcbEventLog.append(rawEvents, condition);
+                    }
+                  })), appendResult => {
                     if (appendResult.TAG === "Ok") {
                       cachePut([
                         state,

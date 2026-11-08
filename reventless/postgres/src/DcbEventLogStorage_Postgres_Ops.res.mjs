@@ -105,9 +105,13 @@ function buildReadWhere(b, name, query, after, applyFence) {
     let clauseSqls = query.map(clause => {
       let clauseParts = [];
       let types = clause.eventTypes;
-      if (types !== undefined && types.length !== 0) {
-        let ph = types.map(t => param(b, t)).join(",");
-        clauseParts.push(`event_type IN (` + ph + `)`);
+      if (types !== undefined) {
+        if (types.length !== 0) {
+          let ph = types.map(t => param(b, t)).join(",");
+          clauseParts.push(`event_type IN (` + ph + `)`);
+        } else {
+          clauseParts.push("FALSE");
+        }
       }
       let tags = clause.tags;
       if (tags !== undefined && tags.length !== 0) {

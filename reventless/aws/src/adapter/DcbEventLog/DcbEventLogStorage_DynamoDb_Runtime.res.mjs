@@ -374,6 +374,9 @@ function queryBySingleTagCrossPartitionStream(table, tag, after) {
 async function executeQueryItem(table, queryItem, after, crossPartitionTagKeysOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let tags = queryItem.tags;
+  if (DcbTag$Reventless.clauseMatchesNothing(queryItem)) {
+    return [];
+  }
   if (tags !== undefined) {
     if (tags.length !== 1) {
       if (tags.length > 1) {
@@ -1000,7 +1003,13 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
 
 async function appendConditional(table, events, cond, partitionTag, crossPartitionTagKeysOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
-  let queryTags = collectQueryTags(cond.query);
+  let guardsNothing = DcbTag$Reventless.readsNothing(cond.query);
+  let newrecord = {...cond};
+  newrecord.query = cond.query.filter(qi => !DcbTag$Reventless.clauseMatchesNothing(qi));
+  let queryTags = collectQueryTags(newrecord.query);
+  if (guardsNothing) {
+    return await appendUnconditional(table, events, partitionTag);
+  }
   if (queryTags.length === 0) {
     return {
       TAG: "Error",
@@ -1011,7 +1020,7 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
     };
   }
   let basePosition = generatePosition();
-  let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeys);
+  let transactItems = buildConditionalTransactItems(table, events, newrecord, basePosition, partitionTag, crossPartitionTagKeys);
   let totalItems = transactItems.length;
   if (totalItems > 100) {
     return {
@@ -1139,6 +1148,9 @@ function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt, c
   let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let tags = queryItem.tags;
+  if (DcbTag$Reventless.clauseMatchesNothing(queryItem)) {
+    return Stream$1.empty;
+  }
   if (tags !== undefined) {
     if (tags.length !== 1) {
       if (tags.length > 1) {

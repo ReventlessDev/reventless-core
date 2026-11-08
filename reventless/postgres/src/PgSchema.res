@@ -137,6 +137,9 @@ BEGIN
         INTO v_types
         FROM jsonb_array_elements_text(qi->'eventTypes') t;
       v_parts := array_append(v_parts, 'event_type IN (' || v_types || ')');
+    ELSIF jsonb_typeof(qi->'eventTypes') = 'array' THEN
+      -- A clause with no event type matches nothing.
+      v_parts := array_append(v_parts, 'FALSE');
     END IF;
 
     IF jsonb_typeof(qi->'tags') = 'array'
