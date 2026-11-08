@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.318 (2026-11-08)
+
+* feat(core)!: an automation or outbound translation hears that its command was refused ([8c9b4b6](https://github.com/ReventlessDev/reventless-core/commit/8c9b4b6c643a5a9e95c85f823fbc333638224346))
+
+### BREAKING CHANGES
+
+* an AutomationSlice Automation module written outside an
+@@reventless.automation file must declare onExhausted with ~lastError. External
+consumers need the republished reventless-ppx for the injection.
+
+
+
 # 1.0.0-alpha.317 (2026-11-08)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering

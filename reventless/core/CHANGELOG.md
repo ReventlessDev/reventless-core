@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.335 (2026-11-08)
+
+* feat(core)!: an automation or outbound translation hears that its command was refused ([8c9b4b6](https://github.com/ReventlessDev/reventless-core/commit/8c9b4b6c643a5a9e95c85f823fbc333638224346))
+### Features
+
+* **aws:** an automation on AWS hears its command's outcome from the DCB command Lambda ([c9e7edf](https://github.com/ReventlessDev/reventless-core/commit/c9e7edf1c4906238d3a499403335b56f34f6cfd4))
+* **core:** an inbound caller hears the target's refusal, and an unheard refusal is a warning ([3ed23f9](https://github.com/ReventlessDev/reventless-core/commit/3ed23f963fd3abf79d573aa6b0722cfd3e028a74))
+
+### BREAKING CHANGES
+
+* an AutomationSlice Automation module written outside an
+@@reventless.automation file must declare onExhausted with ~lastError. External
+consumers need the republished reventless-ppx for the injection.
+
+
+
 # 3.0.0-alpha.334 (2026-11-08)
 
 ### Bug Fixes
