@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.428 (2026-11-08)
+
+### Bug Fixes
+
+* **dcb:** a query clause with no event type matches nothing in every store, and a slice that consumes nothing records without a read ([962fd6a](https://github.com/ReventlessDev/reventless-core/commit/962fd6afd68e22142ae8f47d2603b25d4191fe02))
+
+
 # 3.0.0-alpha.427 (2026-11-07)
 
 ### Bug Fixes
