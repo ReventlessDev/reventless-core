@@ -48,12 +48,19 @@ let forDcbCommandTopic = (
   ~onWebhookUrl: Pulumi.Output.t<string> => unit=_ => (),
   ~connect,
   dcbCommandTopic,
-) =>
+) => {
+  // Extract SQS queue from the DCB CommandTopic
+  let channel = dcbCommandTopic->ReventlessCore.CommandTopic_Adapter.channel
+  let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
+  let queue = channelParts.queue
+
   if slicePaths->Array.length == 0 && inboundSlices->Array.length == 0 {
     log.warn(
       ~comp="StateChangeSliceRuntime_Builder_Single",
       "forDcbCommandTopic skipped (no slice specs)",
     )
+    // Nothing to invoke, said so for an automation Lambda waiting on this queue.
+    DcbCommandFunctions.noFunction(~queueUrl=queue.id)
   } else {
     let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
     // The CommandTopic resource is named `<Plugin>Dcb` (sync) or `<Plugin>DcbAsync`
@@ -62,11 +69,6 @@ let forDcbCommandTopic = (
     // greppable alongside the aggregate lineage.
     let baseName = commandTopicResource.name->Option.getOr("UnnamedDcb")
     let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
-
-    // Extract SQS queue from the DCB CommandTopic
-    let channel = dcbCommandTopic->ReventlessCore.CommandTopic_Adapter.channel
-    let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
-    let queue = channelParts.queue
 
     // B2.3c: on a Postgres-backed platform there is no DynamoDB table — DCB events
     // live in `dcb_event` under the canonical log_name `<plugin>DcbEventLog`
@@ -277,6 +279,14 @@ let forDcbCommandTopic = (
       ~opts,
     )
 
+    // Automations and outbound translations invoke the sync Lambda to hear each
+    // command's outcome; an async one decides nothing inline, so it is not offered.
+    if isAsync {
+      DcbCommandFunctions.noFunction(~queueUrl=queue.id)
+    } else {
+      DcbCommandFunctions.register(~queueUrl=queue.id, ~name, ~lambda=runtime.parts.lambda)
+    }
+
     // B2.3c: grant the Postgres command Lambda read access to the RDS-managed
     // master secret so PgRuntime can resolve the DB password at cold start.
     switch pgSelection {
@@ -368,3 +378,4 @@ let forDcbCommandTopic = (
     connect(~runtime)
     CommandTopicChannel.SQS.clearBatchSize()
   }
+}

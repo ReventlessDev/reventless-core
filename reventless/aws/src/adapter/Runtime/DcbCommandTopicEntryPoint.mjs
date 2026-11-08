@@ -284,12 +284,24 @@ export async function buildHandlersForConfig(config, opts = {}) {
     return generateCommand({ ...event, meta, identity });
   };
 
+  // Route P: commands the platform sent itself (an automation, an outbound
+  // translation), already encoded, answered with each one's outcome. In async
+  // mode nothing decides inline, so they go to the queue and answer Pending.
+  const platformCommandsHandler = async (commands) => {
+    if (publishJsonsAndWait === undefined) {
+      await publishJsons(commands);
+      return commands.map(c => commandOutcomeToJson({ TAG: "Pending", msgId: c.meta.msgId }));
+    }
+    const outcomes = await publishJsonsAndWait(commands);
+    return outcomes.map(commandOutcomeToJson);
+  };
+
   // Elements past the first two are additive — existing callers (the integration
   // tests) keep destructuring the first two. No deploy-time `plugin` fragment
   // needed here: this Lambda serves exactly one plugin and HANDLER_CONFIG already
   // names it. The 5th element is the Route 0 inbound-translation registry, the
-  // 6th the Route W webhook slices.
-  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName, inboundReceiversByField, webhookSlices];
+  // 6th the Route W webhook slices, the 7th the Route P handler.
+  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName, inboundReceiversByField, webhookSlices, platformCommandsHandler];
 }
 
 async function buildHandler() {
@@ -325,7 +337,7 @@ initPromise.catch(() => {});
 
 export async function handler(event, context) {
   setRequestId(context?.awsRequestId);
-  const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers, webhookSlices] = await initPromise;
+  const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers, webhookSlices, platformCommands] = await initPromise;
 
   // Route W: a request on the Lambda's Function URL, for an inbound slice's
   // webhook. The body stays raw until its signature is checked.
@@ -355,6 +367,21 @@ export async function handler(event, context) {
     }
     log.debug("InboundTranslation invocation (" + fieldName + ")", { comp: "DcbCommandTopicRuntime" });
     return await receiver(event.arguments, event.identity ?? null);
+  }
+
+  // Route P: a platform Lambda (automations, outbound translations) invokes this
+  // one with `{__platformCommands: true, commands: [commandJson…]}` and waits for
+  // the outcomes, so a refusal reaches the work item that sent the command.
+  // Reachable only with lambda:InvokeFunction on this function, which the deploy
+  // grants to those Lambdas alone; the commands carry no caller claim, as on SQS.
+  if (event.__platformCommands === true && Array.isArray(event.commands)) {
+    log.debug("platform invocation (" + event.commands.length + " command(s))", { comp: "DcbCommandTopicRuntime" });
+    return await runEffect(Effect.promise(() => platformCommands(event.commands)), {
+      correlationId: event.commands[0]?.meta?.correlationId,
+      causationId: event.commands[0]?.meta?.causationId,
+      comp,
+      plugin,
+    });
   }
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload

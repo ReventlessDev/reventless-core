@@ -13,6 +13,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -24,8 +25,12 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   let sliceMemoryFloor = sliceMemoryFloorOpt !== undefined ? sliceMemoryFloorOpt : 0;
   let sliceTimeoutFloor = sliceTimeoutFloorOpt !== undefined ? sliceTimeoutFloorOpt : 0;
   let onWebhookUrl = onWebhookUrlOpt !== undefined ? onWebhookUrlOpt : param => {};
+  let channel = dcbCommandTopic.channel;
+  let channelParts = channel.parts;
+  let queue = channelParts.queue;
   if (slicePaths.length === 0 && inboundSlices.length === 0) {
-    return log.warn("StateChangeSliceRuntime_Builder_Single", undefined, "forDcbCommandTopic skipped (no slice specs)");
+    log.warn("StateChangeSliceRuntime_Builder_Single", undefined, "forDcbCommandTopic skipped (no slice specs)");
+    return DcbCommandFunctions$ReventlessAws.noFunction(queue.id);
   }
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
   let baseName = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedDcb");
@@ -33,9 +38,6 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   let opts = {
     parent: opts_parent
   };
-  let channel = dcbCommandTopic.channel;
-  let channelParts = channel.parts;
-  let queue = channelParts.queue;
   let pgSelection = DcbBackend$ReventlessAws.get();
   let dcbTableName$1 = pgSelection !== undefined ? Pulumi.output(pluginName + "DcbEventLog") : (
       dcbTableName !== undefined ? dcbTableName : Pulumi.output("NOT_AVAILABLE")
@@ -116,6 +118,11 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       securityGroupIds: [sgId]
     })) : undefined;
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "StateChangeSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
+  if (isAsync) {
+    DcbCommandFunctions$ReventlessAws.noFunction(queue.id);
+  } else {
+    DcbCommandFunctions$ReventlessAws.register(queue.id, name, runtime.parts.lambda);
+  }
   if (pgSelection !== undefined) {
     pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + `-pgSecret`, {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-pgSecretPolicy`, [{

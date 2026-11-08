@@ -318,6 +318,42 @@ let commandOutcomeToJson = (outcome: commandOutcome): JSON.t =>
     )
   }
 
+/** `commandOutcomeToJson` read back, for a caller that got the outcome over the wire.
+    `None` for a shape it does not write. */
+let commandOutcomeOfJson = (json: JSON.t): option<commandOutcome> => {
+  let fields = json->JSON.Decode.object->Option.getOr(Dict.make())
+  let str = key => fields->Dict.get(key)->Option.flatMap(JSON.Decode.string)
+  switch (str("__typename"), str("msgId")) {
+  | (Some("CommandAccepted"), Some(msgId)) =>
+    Some(
+      Accepted({
+        msgId,
+        entityId: ?str("entityId"),
+        eventCount: fields
+        ->Dict.get("eventCount")
+        ->Option.flatMap(JSON.Decode.float)
+        ->Option.mapOr(0, Float.toInt),
+      }),
+    )
+  | (Some("CommandRejected"), Some(msgId)) =>
+    let cause = switch str("cause") {
+    | Some("DOMAIN") => DomainRejection
+    | Some("ACCESS") => AccessRefusal
+    | _ => InfrastructureFailure
+    }
+    Some(
+      Rejected({
+        msgId,
+        errorCode: str("errorCode")->Option.getOr(""),
+        errorDetail: str("errorDetail"),
+        cause,
+      }),
+    )
+  | (Some("CommandPending"), Some(msgId)) => Some(Pending({msgId: msgId}))
+  | _ => None
+  }
+}
+
 type publishJsonsAndWait = ReventlessInfra.CommandTopic.publishJsonsAndWait
 
 /** A refusal as one line for a work item's `lastError`: the code, then the detail. */

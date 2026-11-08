@@ -289,8 +289,9 @@ error code, then the detail) or the failure to send.
 
 ### When the target says no
 
-Where the target answers right away (a sync slice in the same plugin, run in the
-same process), the slice hears its answer:
+Where the target answers right away (a sync slice in the same plugin), the slice
+hears its answer. Locally it runs the target in the same process; on AWS it invokes
+the plugin's DCB command Lambda and waits for it:
 
 | Answer | What the row does |
 |--------|-------------------|
@@ -303,9 +304,6 @@ same process), the slice hears its answer:
 A business refusal is retried because it may only mean the target has not yet seen
 an event the command depends on. One that lasts ends `Abandoned` after `maxRetries`,
 and `onExhausted` hears why.
-
-On AWS the answer is heard only where the target runs in the same Lambda;
-elsewhere no command is answered and the timeout applies.
 
 A refusal the domain has to react to belongs in the target's events, not in an
 error nobody reads: let `decide` emit `ReservationDeclined` instead of returning

@@ -24,6 +24,7 @@ import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
+import * as DcbPlatformCommands_Runtime$ReventlessAws from "./DcbPlatformCommands_Runtime.res.mjs";
 import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocoder_AwsLocation_Backend.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
@@ -54,11 +55,12 @@ function decodeEntry(json) {
     commandQueueIsFifo: Stdlib_Option.flatMap(h["commandQueueIsFifo"], Stdlib_JSON.Decode.bool),
     sourceUrn: Stdlib_Option.getOr(strOf(h, "sourceUrn"), ""),
     context: Stdlib_Option.flatMap(h["context"], decodeContext),
-    schedulesTableName: strOf(h, "schedulesTableName")
+    schedulesTableName: strOf(h, "schedulesTableName"),
+    commandFunction: strOf(h, "commandFunction")
   }));
 }
 
-function decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h, name) {
+function decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, sharedCommandFunction, h, name) {
   let m = Stdlib_Option.getOr(Stdlib_Option.flatMap(modules[name], Stdlib_JSON.Decode.object), {});
   let urns = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(h["u"], Stdlib_JSON.Decode.array), a => Stdlib_Array.filterMap(a, Stdlib_JSON.Decode.string)), sharedUrns);
   let f = Stdlib_Option.flatMap(h["f"], Stdlib_JSON.Decode.bool);
@@ -71,7 +73,8 @@ function decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h
     commandQueueIsFifo: f !== undefined ? f : sharedIsFifo,
     sourceUrn: Stdlib_Option.getOr(urns[0], ""),
     context: Stdlib_Option.flatMap(m["context"], decodeContext),
-    schedulesTableName: strOf(h, "s")
+    schedulesTableName: strOf(h, "s"),
+    commandFunction: "k" in h ? undefined : sharedCommandFunction
   };
 }
 
@@ -84,6 +87,7 @@ function parseHandlerConfigWithModules(modulesJson, rawJson) {
   let sharedQueueUrl = Stdlib_Option.getOr(strOf(obj, "queueUrl"), "");
   let sharedIsFifo = Stdlib_Option.flatMap(obj["commandQueueIsFifo"], Stdlib_JSON.Decode.bool);
   let sharedUrns = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(obj["urns"], Stdlib_JSON.Decode.array), a => Stdlib_Array.filterMap(a, Stdlib_JSON.Decode.string)), []);
+  let sharedCommandFunction = Stdlib_Option.filter(strOf(obj, "commandFunction"), f => f !== "");
   return Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["handlers"], Stdlib_JSON.Decode.array), []), item => {
     let h = Stdlib_JSON.Decode.object(item);
     if (h === undefined) {
@@ -91,7 +95,7 @@ function parseHandlerConfigWithModules(modulesJson, rawJson) {
     }
     let name = strOf(h, "n");
     if (name !== undefined) {
-      return decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, h, name);
+      return decodeCompactEntry(modules, sharedQueueUrl, sharedIsFifo, sharedUrns, sharedCommandFunction, h, name);
     } else {
       return decodeEntry(item);
     }
@@ -300,7 +304,7 @@ async function followSchedules(step, callback) {
   }
 }
 
-function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems, schedulesOpt) {
+function makeAutomationJsonEventsHandler(context, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, schedulesOpt) {
   let schedules = schedulesOpt !== undefined ? schedulesOpt : () => {};
   return stream => Effect$1.flatMap(Stream$1.runCollect(stream), jsons => Effect$1.promise(async () => {
     await loadTodoItems();
@@ -308,12 +312,12 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTo
     await callback.phase1(jsons, context, capabilities());
     await syncTodoItems();
     await followSchedules(schedules(), callback);
-    await callback.phase2(publishJsons, undefined);
+    await callback.phase2(publishJsons, publishJsonsAndWait);
     return await syncTodoItems();
   }));
 }
 
-function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems, loadTodoItems) {
+function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems) {
   let decoder = DcbDecode$Reventless.makeDecoder(consumedEventSchema);
   return stream => Effect$1.flatMap(Stream$1.runCollect(Stream$1.flatMap(Stream.mapEffect(stream, json => Effect$1.sync(() => {
     let envelope = Stdlib_JSON.Decode.object(json);
@@ -337,7 +341,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
       param[1]
     ]), events.map(param => param[2]), capabilities());
     await syncTodoItems();
-    await callback.phase2(publishJsons, capabilities(), undefined);
+    await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait);
     return await syncTodoItems();
   }));
 }
@@ -345,6 +349,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
 function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
   let comp = `AutomationSlice(` + sliceName + `)`;
   let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
+  let publishJsonsAndWait = Stdlib_Option.map(entry.commandFunction, DcbPlatformCommands_Runtime$ReventlessAws.publishJsonsAndWait);
   let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema);
   let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp);
   let context = Stdlib_Option.getOr(entry.context, defaultContext(sliceName));
@@ -374,12 +379,12 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
   };
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems, schedules)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(context, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, schedules)),
       comp: comp
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, undefined);
+      await callback.phase2(publishJsons, publishJsonsAndWait);
       return await syncTodoItems();
     },
     comp: comp,
@@ -393,7 +398,7 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
       if (match !== undefined) {
         await match.sync();
       }
-      await callback.phase2(publishJsons, undefined);
+      await callback.phase2(publishJsons, publishJsonsAndWait);
       return await syncTodoItems();
     },
     reconcile: async () => {
@@ -415,16 +420,17 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
 function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, callback) {
   let comp = `OutboundTranslationSlice(` + sliceName + `)`;
   let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
+  let publishJsonsAndWait = Stdlib_Option.map(entry.commandFunction, DcbPlatformCommands_Runtime$ReventlessAws.publishJsonsAndWait);
   let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema);
   let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, comp);
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems, loadTodoItems)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems)),
       comp: comp
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, capabilities(), undefined);
+      await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait);
       return await syncTodoItems();
     },
     comp: comp,

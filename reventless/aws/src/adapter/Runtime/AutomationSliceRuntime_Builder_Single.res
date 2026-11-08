@@ -840,14 +840,19 @@ let finishWithDcbEventLog = (
           dcbQueueResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
         }
 
-        // The defaults every non-overriding slice inherits, carried once.
-        let sharedOutput = Pulumi.Output.all2((dcbQueueUrl, dcbSourceUrn))->Pulumi.Output.apply(((
-          queueUrl,
-          urn,
-        )) => {
+        // The defaults every non-overriding slice inherits, carried once. The DCB
+        // queue's command Lambda is built after this one, and is read off the
+        // registry only once the outputs resolve.
+        let sharedOutput = Pulumi.Output.all3((
+          dcbQueueUrl,
+          dcbSourceUrn,
+          DcbCommandFunctions.functionFor(dcbQueueUrl),
+        ))->Pulumi.Output.apply(((queueUrl, urn, commandFunction)) => {
           let fifoJson = dcbQueueIsFifo.contents ? "true" : "false"
           let urnJson = urn->JSON.stringifyAny->Option.getOr(`""`)
-          `"queueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"urns":[${urnJson}]`
+          let functionFragment =
+            commandFunction == "" ? "" : `,"commandFunction":"${commandFunction}"`
+          `"queueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"urns":[${urnJson}]${functionFragment}`
         })
 
         let handlerConfigOutput = Pulumi.Output.all2((
@@ -913,6 +918,12 @@ let finishWithDcbEventLog = (
         makeGeocoderGrant(~runtime, ~opts)
         makeMessagingGrant(~runtime, ~opts)
         makeIdentityProviderGrant(~runtime, ~opts)
+        if anyDcbFallback.contents {
+          DcbCommandFunctions.addInvoker(
+            ~name="AllAutomationSlices",
+            ~roleId=runtime.parts.lambdaRole.id,
+          )
+        }
       | None =>
         log.warn(
           ~comp="AutomationSliceRuntime_Builder_Single",

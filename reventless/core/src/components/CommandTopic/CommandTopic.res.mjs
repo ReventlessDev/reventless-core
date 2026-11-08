@@ -53,6 +53,8 @@ let reportRejected = CommandTopic_Helpers$ReventlessCore.reportRejected;
 
 let commandOutcomeToJson = CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson;
 
+let commandOutcomeOfJson = CommandTopic_Helpers$ReventlessCore.commandOutcomeOfJson;
+
 let describeRefusal = CommandTopic_Helpers$ReventlessCore.describeRefusal;
 
 let encodeCommandJson = CommandTopic_Helpers$ReventlessCore.encodeCommandJson;
@@ -87,6 +89,7 @@ export {
   reportAccepted,
   reportRejected,
   commandOutcomeToJson,
+  commandOutcomeOfJson,
   describeRefusal,
   encodeCommandJson,
   runInlineAndCollect,

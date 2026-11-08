@@ -2,6 +2,7 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
@@ -262,6 +263,67 @@ function commandOutcomeToJson(outcome) {
   }
 }
 
+function commandOutcomeOfJson(json) {
+  let fields = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(json), {});
+  let str = key => Stdlib_Option.flatMap(fields[key], Stdlib_JSON.Decode.string);
+  let match = str("__typename");
+  let match$1 = str("msgId");
+  if (match === undefined) {
+    return;
+  }
+  switch (match) {
+    case "CommandAccepted" :
+      if (match$1 !== undefined) {
+        return {
+          TAG: "Accepted",
+          msgId: match$1,
+          entityId: str("entityId"),
+          eventCount: Stdlib_Option.mapOr(Stdlib_Option.flatMap(fields["eventCount"], Stdlib_JSON.Decode.float), 0, prim => prim | 0)
+        };
+      } else {
+        return;
+      }
+    case "CommandPending" :
+      if (match$1 !== undefined) {
+        return {
+          TAG: "Pending",
+          msgId: match$1
+        };
+      } else {
+        return;
+      }
+    case "CommandRejected" :
+      if (match$1 === undefined) {
+        return;
+      }
+      let match$2 = str("cause");
+      let cause;
+      if (match$2 !== undefined) {
+        switch (match$2) {
+          case "ACCESS" :
+            cause = "AccessRefusal";
+            break;
+          case "DOMAIN" :
+            cause = "DomainRejection";
+            break;
+          default:
+            cause = "InfrastructureFailure";
+        }
+      } else {
+        cause = "InfrastructureFailure";
+      }
+      return {
+        TAG: "Rejected",
+        msgId: match$1,
+        errorCode: Stdlib_Option.getOr(str("errorCode"), ""),
+        errorDetail: str("errorDetail"),
+        cause: cause
+      };
+    default:
+      return;
+  }
+}
+
 function describeRefusal(errorCode, errorDetail) {
   if (errorDetail !== undefined && errorDetail !== "") {
     return errorCode + `: ` + errorDetail;
@@ -411,6 +473,7 @@ export {
   reportAccepted,
   reportRejected,
   commandOutcomeToJson,
+  commandOutcomeOfJson,
   describeRefusal,
   encodeCommandJson,
   runInlineAndCollect,

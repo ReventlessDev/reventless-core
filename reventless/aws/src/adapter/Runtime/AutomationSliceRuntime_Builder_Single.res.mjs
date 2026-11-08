@@ -20,6 +20,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
 import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.mjs";
+import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
 import * as CommandTopicRegistry$ReventlessAws from "../CommandTopic/CommandTopicRegistry.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
@@ -465,11 +466,14 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       }
       let sharedOutput = Pulumi.all([
         dcbQueueUrl,
-        dcbSourceUrn
+        dcbSourceUrn,
+        DcbCommandFunctions$ReventlessAws.functionFor(dcbQueueUrl)
       ]).apply(param => {
+        let commandFunction = param[2];
         let fifoJson = dcbQueueIsFifo.contents ? "true" : "false";
         let urnJson = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);
-        return `"queueUrl":"` + param[0] + `","commandQueueIsFifo":` + fifoJson + `,"urns":[` + urnJson + `]`;
+        let functionFragment = commandFunction === "" ? "" : `,"commandFunction":"` + commandFunction + `"`;
+        return `"queueUrl":"` + param[0] + `","commandQueueIsFifo":` + fifoJson + `,"urns":[` + urnJson + `]` + functionFragment;
       });
       let handlerConfigOutput = Pulumi.all([
         sharedOutput,
@@ -500,6 +504,9 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       makeGeocoderGrant(runtime, opts);
       makeMessagingGrant(runtime, opts);
       makeIdentityProviderGrant(runtime, opts);
+      if (anyDcbFallback.contents) {
+        DcbCommandFunctions$ReventlessAws.addInvoker("AllAutomationSlices", runtime.parts.lambdaRole.id);
+      }
     } else {
       log.warn("AutomationSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }

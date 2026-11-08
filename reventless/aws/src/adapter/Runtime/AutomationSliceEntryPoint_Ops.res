@@ -34,6 +34,9 @@ type handlerEntry = {
   context?: Reventless.AutomationSlice.context,
   /** The slice's schedules store; absent for a slice that maps no `Clock`. */
   schedulesTableName?: string,
+  /** The plugin's DCB command Lambda, invoked to hear each command's outcome. Only
+      for a slice sending to the DCB topic, and only where the deploy found it. */
+  commandFunction?: string,
 }
 
 let strOf = (obj: dict<JSON.t>, key: string): option<string> =>
@@ -62,6 +65,7 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
     context: ?(h->Dict.get("context")->Option.flatMap(decodeContext)),
     schedulesTableName: ?(h->strOf("schedulesTableName")),
+    commandFunction: ?(h->strOf("commandFunction")),
   })
 
 // A compact entry names its slice and carries only what the deploy resolved;
@@ -75,6 +79,7 @@ let decodeCompactEntry = (
   ~sharedQueueUrl: string,
   ~sharedIsFifo: option<bool>,
   ~sharedUrns: array<string>,
+  ~sharedCommandFunction: option<string>,
   h: dict<JSON.t>,
   name: string,
 ): handlerEntry => {
@@ -100,6 +105,8 @@ let decodeCompactEntry = (
     sourceUrn: urns->Array.get(0)->Option.getOr(""),
     context: ?(m->Dict.get("context")->Option.flatMap(decodeContext)),
     schedulesTableName: ?(h->strOf("s")),
+    // A slice with its own queue (an Aggregate target) is not sent through it.
+    commandFunction: ?(h->Dict.has("k") ? None : sharedCommandFunction),
   }
 }
 
@@ -122,6 +129,7 @@ let parseHandlerConfigWithModules = (modulesJson: string, rawJson: string): arra
           ->Option.flatMap(JSON.Decode.array)
           ->Option.map(a => a->Array.filterMap(JSON.Decode.string))
           ->Option.getOr([])
+        let sharedCommandFunction = obj->strOf("commandFunction")->Option.filter(f => f != "")
         obj
         ->Dict.get("handlers")
         ->Option.flatMap(JSON.Decode.array)
@@ -133,7 +141,15 @@ let parseHandlerConfigWithModules = (modulesJson: string, rawJson: string): arra
             switch h->strOf("n") {
             | Some(name) =>
               Some(
-                decodeCompactEntry(~modules, ~sharedQueueUrl, ~sharedIsFifo, ~sharedUrns, h, name),
+                decodeCompactEntry(
+                  ~modules,
+                  ~sharedQueueUrl,
+                  ~sharedIsFifo,
+                  ~sharedUrns,
+                  ~sharedCommandFunction,
+                  h,
+                  name,
+                ),
               )
             | None => decodeEntry(item)
             }
@@ -491,6 +507,7 @@ let makeAutomationJsonEventsHandler = (
   ~context: Reventless.AutomationSlice.context,
   ~callback: automationCallback,
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
+  ~publishJsonsAndWait: option<ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait>=?,
   ~syncTodoItems: unit => promise<unit>,
   ~loadTodoItems: unit => promise<unit>,
   ~schedules: unit => option<schedulesStep>=() => None,
@@ -505,7 +522,7 @@ let makeAutomationJsonEventsHandler = (
         await callback.phase1(jsons, context, ~capabilities=capabilities())
         await syncTodoItems()
         await followSchedules(schedules(), callback)
-        await callback.phase2(publishJsons)
+        await callback.phase2(publishJsons, ~publishJsonsAndWait?)
         await syncTodoItems()
       })
     )
@@ -518,6 +535,7 @@ let makeOutboundJsonEventsHandler = (
   ~consumedEventSchema: S.t<'event>,
   ~callback: outboundCallback<'event>,
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
+  ~publishJsonsAndWait: option<ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait>=?,
   ~syncTodoItems: unit => promise<unit>,
   ~loadTodoItems: unit => promise<unit>,
 ): ReventlessCore.EventCollector.jsonEventsHandler => {
@@ -555,7 +573,7 @@ let makeOutboundJsonEventsHandler = (
           ~capabilities=capabilities(),
         )
         await syncTodoItems()
-        await callback.phase2(publishJsons, ~capabilities=capabilities())
+        await callback.phase2(publishJsons, ~capabilities=capabilities(), ~publishJsonsAndWait?)
         await syncTodoItems()
       })
     )
@@ -597,6 +615,10 @@ let makeAutomationRegisteredHandler = (
     entry.dcbQueueUrl,
     ~isFifo=entry.commandQueueIsFifo->Option.getOr(false),
   )
+  let publishJsonsAndWait =
+    entry.commandFunction->Option.map(functionName =>
+      DcbPlatformCommands_Runtime.publishJsonsAndWait(~functionName)
+    )
   let syncTodoItems = makeSyncTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
@@ -628,6 +650,7 @@ let makeAutomationRegisteredHandler = (
           ~context,
           ~callback,
           ~publishJsons,
+          ~publishJsonsAndWait?,
           ~syncTodoItems,
           ~loadTodoItems,
           ~schedules,
@@ -637,7 +660,7 @@ let makeAutomationRegisteredHandler = (
     },
     sweep: async () => {
       await loadTodoItems()
-      await callback.phase2(publishJsons)
+      await callback.phase2(publishJsons, ~publishJsonsAndWait?)
       await syncTodoItems()
     },
     comp,
@@ -658,7 +681,7 @@ let makeAutomationRegisteredHandler = (
         | Some({sync}) => await sync()
         | None => ()
         }
-        await callback.phase2(publishJsons)
+        await callback.phase2(publishJsons, ~publishJsonsAndWait?)
         await syncTodoItems()
       },
     ),
@@ -695,6 +718,10 @@ let makeOutboundRegisteredHandler = (
     entry.dcbQueueUrl,
     ~isFifo=entry.commandQueueIsFifo->Option.getOr(false),
   )
+  let publishJsonsAndWait =
+    entry.commandFunction->Option.map(functionName =>
+      DcbPlatformCommands_Runtime.publishJsonsAndWait(~functionName)
+    )
   let syncTodoItems = makeSyncTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
@@ -713,6 +740,7 @@ let makeOutboundRegisteredHandler = (
           ~consumedEventSchema,
           ~callback,
           ~publishJsons,
+          ~publishJsonsAndWait?,
           ~syncTodoItems,
           ~loadTodoItems,
         ),
@@ -721,7 +749,7 @@ let makeOutboundRegisteredHandler = (
     },
     sweep: async () => {
       await loadTodoItems()
-      await callback.phase2(publishJsons, ~capabilities=capabilities())
+      await callback.phase2(publishJsons, ~capabilities=capabilities(), ~publishJsonsAndWait?)
       await syncTodoItems()
     },
     comp,

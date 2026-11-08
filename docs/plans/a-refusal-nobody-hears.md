@@ -1,8 +1,8 @@
 # Plan: a refusal nobody hears
 
-> **Status:** In progress. [RNS1](#5-steps) to [RNS5](#5-steps) and [RNS7](#5-steps) built
-> 2026-11-08, except the alarm in [RNS5](#5-steps); [RNS6](#5-steps) open. Two decisions taken
-> differently, recorded at [RNQ2](#4-decisions) and [RNQ6](#4-decisions).
+> **Status:** In progress. Every step built 2026-11-08 except the alarm in [RNS5](#5-steps).
+> [RNS6](#5-steps) is checked by a preview of the alpha stack, not yet deployed and measured. Two
+> decisions taken differently, recorded at [RNQ2](#4-decisions) and [RNQ6](#4-decisions).
 >
 > **Questions and short answers:**
 >
@@ -268,6 +268,26 @@ Revisit when it does, and then add one alarm per slice that has ever counted one
   checked: `Register` answers `Ok([])` in every case, and `Registrations`' only refusals belong to
   `Invite`, whose caller is a signed-in inviter meant to hear them. The inbound page says so for
   door authors.
+
+**Built (2026-11-08):** [RNS6](#5-steps), not yet deployed.
+
+- The DCB command Lambda gained **Route P**: `{__platformCommands: true, commands: [...]}`, the
+  commands already encoded, answered with one outcome each (`Pending` in async mode). Reachable only
+  with `lambda:InvokeFunction`, granted to the automations' Lambda alone; the commands carry no
+  caller claim, exactly as on the queue.
+- The automations' Lambda invokes it (`DcbPlatformCommands_Runtime`) for every slice that sends to
+  its plugin's DCB topic; a slice sending to an Aggregate's own queue keeps the queue.
+- **The ordering was the hard part.** The automations' Lambda is finished before the DCB command
+  Lambda is built, and the plugin program builds parts of itself inside output callbacks, so reading
+  a registry lazily was not enough: the first preview showed it read empty. `DcbCommandFunctions`
+  makes the config wait for the function instead, matched by the queue's `id` output, and resolved
+  with the name's output so a preview of a new stack stays unknown rather than waiting forever. Every
+  sync and async DCB command topic settles the wait, built or skipped.
+- Preview of `online-shop-hybrid-ordering-aws` on alpha: `AllAutomationSlices` gains
+  `commandFunction: "OrderingDcbCmdHandler-…"` in `HANDLER_CONFIG`, and the grant
+  `AllAutomationSlices-invoke-OrderingDcbCmdHandler` is created.
+- **Owed, after a deploy:** an automation whose command is refused records the reason within one
+  sweep, and the sweep's duration before and after. Both need the change released and deployed.
 
 [RNS1](#5-steps) to [RNS3](#5-steps) belong together and are complete locally; [RNS6](#5-steps) is what
 makes them work on a deployed stack, and needs [RNS1](#5-steps) first. [RNS4](#5-steps) and

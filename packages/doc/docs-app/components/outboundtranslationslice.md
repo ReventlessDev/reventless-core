@@ -452,8 +452,9 @@ Each TODO item moves through these statuses:
 
 ### When the target refuses the command
 
-Where the target answers right away (a sync slice in the same plugin, run in the
-same process), the slice hears its answer before marking the row:
+Where the target answers right away (a sync slice in the same plugin), the slice
+hears its answer before marking the row. Locally it runs the target in the same
+process; on AWS it invokes the plugin's DCB command Lambda and waits for it.
 
 | Answer | What the row does |
 |--------|-------------------|
@@ -464,10 +465,8 @@ same process), the slice hears its answer before marking the row:
 A refusal is not retried, unlike in an automation: a retry runs `translate` again,
 and the outside service has already acted once (a payment taken twice). If the
 command can arrive before the target is ready for it, let the target accept it and
-record it, or emit a refusal event the domain can act on. On AWS the answer is
-heard only where the target runs in the same Lambda; elsewhere the row is
-`Completed` as soon as the command is sent. A command sent to an Aggregate target
-is not waited on.
+record it, or emit a refusal event the domain can act on. A command sent to an
+Aggregate target is not waited on: the row is `Completed` as soon as it is sent.
 
 ### The sweep
 
