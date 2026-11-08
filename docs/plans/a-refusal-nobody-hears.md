@@ -1,7 +1,8 @@
 # Plan: a refusal nobody hears
 
-> **Status:** In progress. Every step built 2026-11-08 except the alarm in [RNS5](#5-steps).
-> [RNS6](#5-steps) is checked by a preview of the alpha stack, not yet deployed and measured. Two
+> **Status:** Built 2026-11-08, every step but the alarm in [RNS5](#5-steps), which waits for a
+> deployed stack to count an unheard refusal ([RNQ6](#4-decisions)). [RNS6](#5-steps) is deployed
+> to alpha and exercised there: a refused command recorded its reason within one sweep. Two
 > decisions taken differently, recorded at [RNQ2](#4-decisions) and [RNQ6](#4-decisions).
 >
 > **Questions and short answers:**
@@ -224,11 +225,31 @@ same neutral metric line the DCB counts use; on AWS a log metric filter on DCB c
 turns it into a CloudWatch metric.
 
 **Not built: the alarm itself.** The metric is dimensioned by slice, and a CloudWatch alarm needs a
-concrete dimension, so alarming means one alarm per slice (billed per alarm) or a metric-math alarm
-over a known list. Aggregate command handlers also write the line but have no metric filter yet.
-**Recommendation:** leave the alarm until a deployed stack shows a non-zero `UnheardRefusal`; until
-then the warning line and the metric answer "does this happen", which is the first question.
-Revisit when it does, and then add one alarm per slice that has ever counted one.
+concrete dimension. Checked on alpha 2026-11-08: the filters are on the three DCB command handlers'
+log groups, and `UnheardRefusal` has never been written, so CloudWatch does not list the metric at
+all. When a stack first counts one, the alarm takes four pieces:
+
+1. **One alarm for every slice.** Three ways:
+   - *One alarm per slice*, billed per alarm, over a list that must grow whenever a slice starts
+     refusing.
+   - *A second metric filter with the same pattern and no dimension*, so each command handler also
+     writes a plugin-wide total, and one plain alarm per handler watches that. The per-slice
+     metric stays, to find which slice refused.
+   - *A Metrics Insights query alarm* (`SUM(UnheardRefusal)` grouped by slice), one alarm across
+     the slices; not yet checked that CloudWatch alarms on such a query in this setup.
+2. **A metric filter on the Aggregate command handlers.** They write the warning line, but
+   nothing counts it there.
+3. **The alarm in the alarms stack**, to the same target as the others, with missing data treated
+   as fine, since a quiet stack writes no data point at all.
+4. **[alarms.md](../guides/alarms.md)**, beside the rule that every unit has one `Errors` alarm.
+
+**Recommendation:** still leave the alarm until a deployed stack shows a non-zero
+`UnheardRefusal`; until then the warning line and the metric answer "does this happen", which is
+the first question. When it does, build the plugin-wide total (the second way): one alarm per
+handler, no slice list to keep, and the per-slice metric to look into. Meanwhile, lowering the
+ERROR-level `decide rejected` line ([RNS6](#5-steps)'s notes) is what makes the warning stand out
+in the logs. Revisit the choice if a plugin turns out to need one slice's refusals alarmed and
+another's not.
 
 ## 5. Steps
 
@@ -269,7 +290,7 @@ Revisit when it does, and then add one alarm per slice that has ever counted one
   `Invite`, whose caller is a signed-in inviter meant to hear them. The inbound page says so for
   door authors.
 
-**Built (2026-11-08):** [RNS6](#5-steps), not yet deployed.
+**Built (2026-11-08):** [RNS6](#5-steps), deployed to alpha and exercised there.
 
 - The DCB command Lambda gained **Route P**: `{__platformCommands: true, commands: [...]}`, the
   commands already encoded, answered with one outcome each (`Pending` in async mode). Reachable only
@@ -286,8 +307,33 @@ Revisit when it does, and then add one alarm per slice that has ever counted one
 - Preview of `online-shop-hybrid-ordering-aws` on alpha: `AllAutomationSlices` gains
   `commandFunction: "OrderingDcbCmdHandler-…"` in `HANDLER_CONFIG`, and the grant
   `AllAutomationSlices-invoke-OrderingDcbCmdHandler` is created.
-- **Owed, after a deploy:** an automation whose command is refused records the reason within one
-  sweep, and the sweep's duration before and after. Both need the change released and deployed.
+- **Deployed to alpha 2026-11-08 13:44 UTC** (release `16944376f`; the platform and both plugin
+  stacks deployed, the manifest bake afterwards failed on the open handshake race, which leaves the
+  Lambdas as deployed). The live `AllAutomationSlices` config names `OrderingDcbCmdHandler-2007759`.
+  In the 45 minutes after: ten sweeps, no warnings or errors in either Lambda, no `AccessDenied`.
+  Sweeps took 36 to 53 ms once warm, as before the deploy; the first four were 158 to 352 ms while
+  the new code warmed up.
+- **Exercised on alpha 2026-11-08 14:40 UTC.** One invoke of `OrderingDcbCmdHandler-2007759` sent
+  `PlaceOrder` (Express) and `CancelOrder` for `ord-20261108-rns6-001`; both were accepted, and
+  their two events reached the automations' Lambda before `AutoShipOrder` sent its `ShipOrder`. The
+  target refused it with `OrderAlreadyCancelled` (`DomainRejection`) on all three attempts, each a
+  Route P invoke, and the row ended `Abandoned` with `lastError: "OrderAlreadyCancelled"` and
+  `retryCount: 3`, 2.5 s after it was created. No `unheard` warning, as expected: the automation
+  was waiting for the answer.
+- **Sweep time with a command in it:** 55 ms with a warm target, against 36 to 53 ms without one.
+  A sweep whose invoke meets a cold instance of the command Lambda took 1.8 s, the target's 1.7 s
+  start-up included.
+- **Seen on the way, not changed:** the three attempts ran on the next three passes, which the
+  order's own follow-up events (the cancellation, the confirmation notification) set off within
+  2.5 s. The retry that [RNQ2](#4-decisions) keeps to heal an ordering race is spent as quickly as
+  events arrive, so under busy traffic it heals only a race shorter than that. Revisit if a
+  refusal that a few seconds would have healed turns up `Abandoned`; a minimum spacing between
+  attempts of one row is the remedy, which is the backoff [§6](#6-out-of-scope) leaves out.
+- **Also seen:** every business refusal writes, beside the info-level `command rejected`, an
+  ERROR-level `decide rejected` line from the slice's own callback (and the Aggregate's). It
+  predates this plan and triggers no alarm, since the alarms watch the Lambda `Errors` metric, but
+  it puts a refusal a person sees at ERROR, above the `unheard` warning meant to stand out.
+  Recommendation: drop it to info, or remove it, since `command rejected` says the same.
 
 [RNS1](#5-steps) to [RNS3](#5-steps) belong together and are complete locally; [RNS6](#5-steps) is what
 makes them work on a deployed stack, and needs [RNS1](#5-steps) first. [RNS4](#5-steps) and
