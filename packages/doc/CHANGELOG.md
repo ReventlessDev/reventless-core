@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-08
+- feat(aws): an automation on AWS hears its command's outcome from the DCB command Lambda ([c9e7edf](https://github.com/ReventlessDev/reventless-core/commit/c9e7edf1c4906238d3a499403335b56f34f6cfd4))
+- feat(core): an inbound caller hears the target's refusal, and an unheard refusal is a warning ([3ed23f9](https://github.com/ReventlessDev/reventless-core/commit/3ed23f963fd3abf79d573aa6b0722cfd3e028a74))
+- feat(core)!: an automation or outbound translation hears that its command was refused ([8c9b4b6](https://github.com/ReventlessDev/reventless-core/commit/8c9b4b6c643a5a9e95c85f823fbc333638224346))
 ### 2026-11-06
 - feat(deps)!: upgrade effect to v4 ([800430a](https://github.com/ReventlessDev/reventless-core/commit/800430a82897d747626528c24d50cda33e2a6aa0))
 ### 2026-11-03
