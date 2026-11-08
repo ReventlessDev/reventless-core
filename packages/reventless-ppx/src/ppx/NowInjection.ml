@@ -1,12 +1,16 @@
-(* An automation's [process] is given the current time as [~now]. A [process]
-   that does not take it gets a last parameter [~now as _], so every automation
-   written before it existed compiles unchanged.
+(* An automation's functions gain labeled arguments over time. One written before an
+   argument existed gets it as a last parameter [~label as _], so it compiles unchanged:
+   [process] is given [~now], the current time, and [onExhausted] [~lastError], why the
+   last attempt failed.
 
-   Only a function literal is rewritten: [let process = (id, item) => ...]. A
-   [process] bound to another function ([let process = Helper.f]) cannot be seen
-   into and is left alone; the compiler then names the missing [~now]. *)
+   Only a function literal is rewritten: [let process = (id, item) => ...]. A function
+   bound to another one ([let process = Helper.f]) cannot be seen into and is left alone;
+   the compiler then names the missing argument. *)
 
 open Ppxlib
+
+(* Each function an automation declares, and the label it is given when missing. *)
+let injected = [ ("process", "now"); ("onExhausted", "lastError") ]
 
 let arity_attr = "res.arity"
 
@@ -25,35 +29,35 @@ let with_arity ~loc n attrs =
     ~payload:(PStr [ Ast_builder.Default.pstr_eval ~loc (Ast_builder.Default.eint ~loc n) [] ])
   :: List.filter (fun a -> a.attr_name.txt <> arity_attr) attrs
 
-let is_now = function
-  | Labelled "now" | Optional "now" -> true
-  | _ -> false
+let is_label name = function
+  | Labelled l | Optional l -> l = name
+  | Nolabel -> false
 
-let rec takes_now (e : expression) =
+let rec takes name (e : expression) =
   match e.pexp_desc with
-  | Pexp_fun (label, _, _, body) -> is_now label || takes_now body
+  | Pexp_fun (label, _, _, body) -> is_label name label || takes name body
   | _ -> false
 
-(* Appends [~now as _] after the last parameter of a [Pexp_fun] chain. *)
-let rec append_now ~loc (e : expression) =
+(* Appends [~label as _] after the last parameter of a [Pexp_fun] chain. *)
+let rec append ~loc name (e : expression) =
   match e.pexp_desc with
   | Pexp_fun (label, default, pat, body) -> (
     match body.pexp_desc with
-    | Pexp_fun _ -> { e with pexp_desc = Pexp_fun (label, default, pat, append_now ~loc body) }
+    | Pexp_fun _ -> { e with pexp_desc = Pexp_fun (label, default, pat, append ~loc name body) }
     | _ ->
-      let now = Ast_builder.Default.pexp_fun ~loc (Labelled "now") None (Ast_builder.Default.ppat_any ~loc) body in
-      { e with pexp_desc = Pexp_fun (label, default, pat, now) })
+      let added = Ast_builder.Default.pexp_fun ~loc (Labelled name) None (Ast_builder.Default.ppat_any ~loc) body in
+      { e with pexp_desc = Pexp_fun (label, default, pat, added) })
   | _ -> e
 
-let rewrite_process (e : expression) =
+let rewrite name (e : expression) =
   match e.pexp_desc with
   | Pexp_construct (({ txt = Lident "Function$"; _ } as lid), Some ({ pexp_desc = Pexp_fun _; _ } as fn))
-    when not (takes_now fn) -> (
+    when not (takes name fn) -> (
     match arity_of e.pexp_attributes with
     | Some n ->
       let loc = e.pexp_loc in
       { e with
-        pexp_desc = Pexp_construct (lid, Some (append_now ~loc fn));
+        pexp_desc = Pexp_construct (lid, Some (append ~loc name fn));
         pexp_attributes = with_arity ~loc (n + 1) e.pexp_attributes;
       }
     | None -> e)
@@ -61,7 +65,10 @@ let rewrite_process (e : expression) =
 
 let rewrite_binding (vb : value_binding) =
   match vb.pvb_pat.ppat_desc with
-  | Ppat_var { txt = "process"; _ } -> { vb with pvb_expr = rewrite_process vb.pvb_expr }
+  | Ppat_var { txt; _ } -> (
+    match List.assoc_opt txt injected with
+    | Some label -> { vb with pvb_expr = rewrite label vb.pvb_expr }
+    | None -> vb)
   | _ -> vb
 
 let inject (str : structure) : structure =

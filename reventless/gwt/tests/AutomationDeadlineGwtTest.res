@@ -59,7 +59,7 @@ module CancelUnshipped_Automation = {
 
   let process = (id, item: CancelUnshipped.todoItem, ~now) =>
     now >= item.dueAt ? Some((id, CancelUnshipped.CancelOrder({orderId: item.orderId}))) : None
-  let onExhausted = (_id, _item: CancelUnshipped.todoItem) => None
+  let onExhausted = (_id, _item: CancelUnshipped.todoItem, ~lastError as _) => None
 }
 
 open CancelUnshipped

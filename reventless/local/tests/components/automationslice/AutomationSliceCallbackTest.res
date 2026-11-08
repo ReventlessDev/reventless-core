@@ -298,6 +298,155 @@ describe("AutomationSlice Callback (mixed-source)", () => {
     )
   })
 
+  // Where the target answers inline, its answer reaches the row: a refusal is
+  // recorded with its reason instead of waiting out the processing timeout.
+  describe("the target's answer", () => {
+    let collectOne = async () =>
+      await Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+        ~capabilities=Reventless.Capabilities.none,
+      )
+    let rowOf = id => Callback.todoItems->Dict.get(id)->Option.getOrThrow
+    let neverFireAndForget: ReventlessInfra.CommandTopic.publishJsons = async _ =>
+      JsError.throwWithMessage("the waiting publish should have been used")
+    let answering = (
+      answer: string => ReventlessCore.CommandTopic_Helpers.commandOutcome,
+    ): ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait =>
+      async cmds => cmds->Array.map((cmd: Reventless.Message.commandJson) => answer(cmd.meta.msgId))
+    let refused = (cause): ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait =>
+      answering(
+        msgId => Rejected({
+          msgId,
+          errorCode: "OutOfStock",
+          errorDetail: Some("sku-9"),
+          cause,
+        }),
+      )
+
+    let _ = beforeEach(() => shipOrderExhaustedWith := [])
+
+    testPromise(
+      "a business refusal is a failed attempt with its reason, retried on the next pass",
+      async () => {
+        await collectOne()
+        await Callback.phase2(neverFireAndForget, ~publishJsonsAndWait=refused(DomainRejection))
+        expect(rowOf("ord-1").status)->toBe(Failed)
+        expect(rowOf("ord-1").retryCount)->toBe(1)
+        expect(rowOf("ord-1").lastError)->toEqual(Some("OutOfStock: sku-9"))
+
+        let sent = ref(0)
+        await Callback.phase2(
+          neverFireAndForget,
+          ~publishJsonsAndWait=answering(
+            msgId => {
+              sent := sent.contents + 1
+              Accepted({msgId, eventCount: 1})
+            },
+          ),
+        )
+        expect(sent.contents)->toBe(1)
+        expect(rowOf("ord-1").status)->toBe(Processing)
+      },
+    )
+
+    testPromise(
+      "a business refusal that lasts ends the row Abandoned, and onExhausted hears why",
+      async () => {
+        await collectOne()
+        await Callback.phase2(neverFireAndForget, ~publishJsonsAndWait=refused(DomainRejection))
+        await Callback.phase2(neverFireAndForget, ~publishJsonsAndWait=refused(DomainRejection))
+        expect(shipOrderExhaustedWith.contents)->toEqual([])
+        await Callback.phase2(neverFireAndForget, ~publishJsonsAndWait=refused(DomainRejection))
+        expect(rowOf("ord-1").status)->toBe(Abandoned)
+        expect(shipOrderExhaustedWith.contents)->toEqual([Some("OutOfStock: sku-9")])
+      },
+    )
+
+    testPromise(
+      "a permission refusal ends the row at once",
+      async () => {
+        await collectOne()
+        await Callback.phase2(neverFireAndForget, ~publishJsonsAndWait=refused(AccessRefusal))
+        expect(rowOf("ord-1").status)->toBe(Abandoned)
+        expect(rowOf("ord-1").lastError)->toEqual(Some("OutOfStock: sku-9"))
+        expect(shipOrderExhaustedWith.contents)->toEqual([Some("OutOfStock: sku-9")])
+      },
+    )
+
+    testPromise(
+      "an infrastructure failure is a failed attempt with its reason",
+      async () => {
+        await collectOne()
+        await Callback.phase2(
+          neverFireAndForget,
+          ~publishJsonsAndWait=refused(InfrastructureFailure),
+        )
+        expect(rowOf("ord-1").status)->toBe(Failed)
+        expect(rowOf("ord-1").lastError)->toEqual(Some("OutOfStock: sku-9"))
+      },
+    )
+
+    testPromise(
+      "an accepted command leaves the row for resolve to complete",
+      async () => {
+        await collectOne()
+        await Callback.phase2(
+          neverFireAndForget,
+          ~publishJsonsAndWait=answering(msgId => Accepted({msgId, eventCount: 1})),
+        )
+        expect(rowOf("ord-1").status)->toBe(Processing)
+        expect(rowOf("ord-1").retryCount)->toBe(0)
+      },
+    )
+
+    testPromise(
+      "a target that does not answer inline leaves the row to the processing timeout",
+      async () => {
+        await collectOne()
+        await Callback.phase2(
+          neverFireAndForget,
+          ~publishJsonsAndWait=answering(
+            msgId => ReventlessCore.CommandTopic_Helpers.Pending({
+              msgId: msgId,
+            }),
+          ),
+        )
+        expect(rowOf("ord-1").status)->toBe(Processing)
+        expect(rowOf("ord-1").lastError)->toEqual(None)
+      },
+    )
+
+    testPromise(
+      "a row resolve completed while the target ran is not overwritten",
+      async () => {
+        await collectOne()
+        await Callback.phase2(
+          neverFireAndForget,
+          ~publishJsonsAndWait=async cmds => {
+            await Callback.phase1(
+              [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+              testContext,
+              ~capabilities=Reventless.Capabilities.none,
+            )
+            cmds->Array.map(
+              (
+                cmd: Reventless.Message.commandJson,
+              ) => ReventlessCore.CommandTopic_Helpers.Rejected({
+                msgId: cmd.meta.msgId,
+                errorCode: "AlreadyShipped",
+                errorDetail: None,
+                cause: DomainRejection,
+              }),
+            )
+          },
+        )
+        expect(rowOf("ord-1").status)->toBe(Completed)
+        expect(rowOf("ord-1").lastError)->toEqual(None)
+      },
+    )
+  })
+
   describe("full lifecycle", () => {
     testPromise(
       "collect → process → resolve completes the TODO item",

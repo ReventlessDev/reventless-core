@@ -35,7 +35,7 @@ module ShipOrderSlice = {
     item.orderId,
     CreateShipment({orderId: item.orderId, address: item.shippingAddress}),
   ))
-  let onExhausted = (_id, _item) => None
+  let onExhausted = (_id, _item, ~lastError as _) => None
 }
 
 describe("ShipOrder AutomationSlice", () => {

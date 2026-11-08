@@ -91,7 +91,7 @@ function process(id, item, param) {
   ];
 }
 
-function onExhausted(_id, _item) {
+function onExhausted(_id, _item, param) {
   
 }
 

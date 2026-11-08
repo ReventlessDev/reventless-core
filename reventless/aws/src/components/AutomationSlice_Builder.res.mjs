@@ -56,8 +56,8 @@ function Make(Api) {
   let Make$1 = Spec => (Automation => {
     let InnerMake = Inner.Make(Spec)(Automation);
     let sourceNames = InnerMake.sourceNames;
-    let make = (allEventTopics, publishJsons, context, runtime, opts) => {
-      let as_ = InnerMake.make(allEventTopics, publishJsons, context, runtime, opts);
+    let make = (allEventTopics, publishJsons, publishJsonsAndWait, context, runtime, opts) => {
+      let as_ = InnerMake.make(allEventTopics, publishJsons, publishJsonsAndWait, context, runtime, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(as_).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;

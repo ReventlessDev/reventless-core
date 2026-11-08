@@ -74,7 +74,7 @@ module AutoShipSlice = {
     }
 
   let process = (id, _todo, ~now as _) => Some((id, ShipOrder({orderId: id})))
-  let onExhausted = (_id, _todo) => None
+  let onExhausted = (_id, _todo, ~lastError as _) => None
 }
 
 module ShipOrderSlice = {

@@ -156,3 +156,38 @@ describe("CommandTopic_Helpers.commandOutcomeToJson:", () => {
     expect(json->JSON.Decode.object->Option.flatMap(o => o->Dict.get("cause")))->toEqual(None)
   })
 })
+
+describe("CommandTopic_Helpers.runInlineAndCollect, two runs:", () => {
+  // An automation's inline run can start while another is still deciding, in the
+  // same process. Ending the inner run must not stop the outer one hearing its own.
+  testPromise("a nested inline run leaves the outer run's outcomes to it", async () => {
+    let refuse = reference =>
+      CommandTopic_Helpers.reportRejected(
+        ~component="TestService",
+        ~cause=DomainRejection,
+        reference,
+        {errorCode: "OuterRefused", errorDetail: ""},
+      )
+    let inner: CommandTopic_Helpers.jsonCommandsHandler = stream =>
+      stream->Stream.runCollect->Effect.map(items => items->Array.map(item => Ok(item.reference)))
+    let outer: CommandTopic_Helpers.jsonCommandsHandler = stream =>
+      stream
+      ->Stream.runCollect
+      ->Effect.flatMap(
+        items =>
+          Effect.promise(
+            async () => {
+              let _ = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("inner-1")], inner)
+              items->Array.forEach(item => refuse(item.reference))
+              items->Array.map(item => Ok(item.reference))
+            },
+          ),
+      )
+
+    let outcomes = await CommandTopic_Helpers.runInlineAndCollect([cmdJson("outer-1")], outer)
+    switch outcomes->Array.getUnsafe(0) {
+    | Rejected({errorCode}) => expect(errorCode)->toEqual("OuterRefused")
+    | Accepted(_) | Pending(_) => expect("expected Rejected")->toEqual("got other")
+    }
+  })
+})

@@ -15,8 +15,16 @@ function announcing(comp, publishJsons) {
   };
 }
 
+function announcingAndWaiting(comp, publishJsonsAndWait) {
+  return cmdJsons => {
+    cmdJsons.forEach(cmdJson => log(comp, cmdJson));
+    return publishJsonsAndWait(cmdJsons);
+  };
+}
+
 export {
   log,
   announcing,
+  announcingAndWaiting,
 }
 /* Effect Not a pure module */

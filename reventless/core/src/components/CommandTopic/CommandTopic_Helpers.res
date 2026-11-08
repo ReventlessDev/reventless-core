@@ -18,18 +18,11 @@ is the JSON-stringified error payload (or empty string for payload-less variants
 */
 type rejectedResult = {errorCode: string, errorDetail: string}
 
-/**
-Why a command was refused.
-
-`DomainRejection` is `Decision.decide` returning `Error` — the model declining the command,
-which is the model working. `InfrastructureFailure` is the decision never landing: an event-log
-append that failed outright or exhausted its conflict retries. Both arrive on `reportRejected`,
-so without this a consumer would read a broken event log as a business rejection.
-
-`AccessRefusal` is the handler refusing before `decide` runs, because the caller does not
-own what the command acts on (`OwnerScope.decideActing`).
-*/
-type refusalCause = DomainRejection | InfrastructureFailure | AccessRefusal
+/** Why a command was refused; see `ReventlessInfra.CommandTopic.refusalCause`. */
+type refusalCause = ReventlessInfra.CommandTopic.refusalCause =
+  | DomainRejection
+  | InfrastructureFailure
+  | AccessRefusal
 
 /** The `CommandRejectionCause` enum value a client sees for a cause. */
 let refusalCauseToGraphQL = (cause: refusalCause): string =>
@@ -171,6 +164,15 @@ let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(N
 // to build `Rejected` outcomes that carry the real error code, detail and cause.
 let rejectedResultChannel: ref<option<(string, rejectedResult, refusalCause) => unit>> = ref(None)
 
+/** Who is waiting inline for one command's outcome, keyed by its message id. Keyed
+    rather than one slot so two inline runs in one process, overlapping or nested,
+    each hear only their own commands. */
+type inlineWaiter = {
+  onAccepted: acceptedResult => unit,
+  onRejected: (rejectedResult, refusalCause) => unit,
+}
+let inlineWaiters: dict<inlineWaiter> = Dict.make()
+
 /**
 Turn an `acting` verdict into the refusal a command handler reports, or `None` to let
 `decide` run.
@@ -219,6 +221,7 @@ let reportAccepted = (
   result: acceptedResult,
 ) => {
   acceptedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+  inlineWaiters->Dict.get(reference)->Option.forEach(w => w.onAccepted(result))
   fireCommandOutcome(
     ~component,
     ~reference,
@@ -237,6 +240,7 @@ let reportRejected = (
   result: rejectedResult,
 ) => {
   rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result, cause))
+  inlineWaiters->Dict.get(reference)->Option.forEach(w => w.onRejected(result, cause))
   fireCommandOutcome(
     ~component,
     ~reference,
@@ -248,7 +252,7 @@ let reportRejected = (
 
 // Placed here (rather than CommandTopic.res) so runInlineAndCollect can use commandOutcome
 // without importing Adapter.res → @pulumi/pulumi. Re-exported by CommandTopic via include.
-type commandOutcome =
+type commandOutcome = ReventlessInfra.CommandTopic.commandOutcome =
   | Accepted({msgId: string, entityId?: string, eventCount: int})
   | Rejected({msgId: string, errorCode: string, errorDetail: option<string>, cause: refusalCause})
   | Pending({msgId: string})
@@ -288,7 +292,14 @@ let commandOutcomeToJson = (outcome: commandOutcome): JSON.t =>
     )
   }
 
-type publishJsonsAndWait = array<Reventless.Message.commandJson> => promise<array<commandOutcome>>
+type publishJsonsAndWait = ReventlessInfra.CommandTopic.publishJsonsAndWait
+
+/** A refusal as one line for a work item's `lastError`: the code, then the detail. */
+let describeRefusal = (~errorCode: string, ~errorDetail: option<string>) =>
+  switch errorDetail {
+  | Some(detail) if detail != "" => `${errorCode}: ${detail}`
+  | _ => errorCode
+  }
 
 // Encode the full message body expected by CommandTopic_Callback: {id, meta, command}.
 // Shared by LocalCommandTopicChannel and CommandTopicChannel_SQS_Sync.
@@ -301,7 +312,7 @@ let encodeCommandJson = (cmdJson: Reventless.Message.commandJson): JSON.t =>
     ]),
   )
 
-// Runs handleCmds inline, manages the acceptedResultChannel side-channel, and maps
+// Runs handleCmds inline, waits on each command's outcome by its message id, and maps
 // results to commandOutcome. Shared by LocalCommandTopicChannel and CommandTopicChannel_SQS_Sync.
 let runInlineAndCollect = async (
   jsons: array<Reventless.Message.commandJson>,
@@ -314,15 +325,27 @@ let runInlineAndCollect = async (
   })
   let acceptedResults: dict<acceptedResult> = Dict.make()
   let rejectedResults: dict<(rejectedResult, refusalCause)> = Dict.make()
-  acceptedResultChannel.contents = Some(
-    (reference, result) => acceptedResults->Dict.set(reference, result),
+  let references = items->Array.map(item => item.reference)
+  references->Array.forEach(reference =>
+    inlineWaiters->Dict.set(
+      reference,
+      {
+        onAccepted: result => acceptedResults->Dict.set(reference, result),
+        onRejected: (result, cause) => rejectedResults->Dict.set(reference, (result, cause)),
+      },
+    )
   )
-  rejectedResultChannel.contents = Some(
-    (reference, result, cause) => rejectedResults->Dict.set(reference, (result, cause)),
-  )
-  let results = await handleCmds(Stream.fromIterable(items))->Effect.runPromise
-  acceptedResultChannel.contents = None
-  rejectedResultChannel.contents = None
+  let stopWaiting = () =>
+    references->Array.forEach(reference => inlineWaiters->Dict.delete(reference))
+  let results = try await handleCmds(Stream.fromIterable(items))->Effect.runPromise catch {
+  | JsExn(e) =>
+    stopWaiting()
+    JsExn.throw(e)
+  | exn =>
+    stopWaiting()
+    throw(exn)
+  }
+  stopWaiting()
   jsons->Array.mapWithIndex((cmdJson, i) => {
     let msgId = cmdJson.meta.msgId
     // A reported rejection takes precedence over both Accepted and the

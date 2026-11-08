@@ -81,6 +81,7 @@ module Make = (
       ~dcbEventLog: DcbEventLog.component,
       ~allEventTopics: EventTopic.allOutputs,
       ~publishJsons,
+      ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>,
       ~runtime,
       self,
       _name,
@@ -143,9 +144,9 @@ module Make = (
       // side-effect-only `publishJsons.apply` against the first event arrival
       // (which silently dropped Phase 2 in the AutomationSlice's previous shape).
       let eventCollector =
-        (queryDb->Component.operations, publishJsons)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
+        (queryDb->Component.operations, publishJsons, publishJsonsAndWait)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, publishJsonsAndWait)) => {
           let ec = SpecificEventCollector.make(
             ~name=Spec.name,
             ~eventTopics,
@@ -202,7 +203,11 @@ module Make = (
                   // same topic, awaiting would self-deadlock the bus — same
                   // shape as AutomationSlice. Detach it; errors are logged.
                   let _ =
-                    Callback.phase2(publishJsonsFn, ~capabilities=Capabilities.capabilities())
+                    Callback.phase2(
+                      publishJsonsFn,
+                      ~capabilities=Capabilities.capabilities(),
+                      ~publishJsonsAndWait?,
+                    )
                     ->Promise.then(() => syncToQueryDb(queryDbOps))
                     ->Promise.catch(
                       exn => {
@@ -235,13 +240,21 @@ module Make = (
         })
 
       self->Component.setOperations(
-        (eventCollector->Pulumi.Output.flatMap(ec => ec->Component.operations), publishJsons)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((ecOps, publishJsonsFn)) => {
+        (
+          eventCollector->Pulumi.Output.flatMap(ec => ec->Component.operations),
+          publishJsons,
+          publishJsonsAndWait,
+        )
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((ecOps, publishJsonsFn, publishJsonsAndWait)) => {
           let ops: OutboundTranslationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
             translatePending: async () =>
-              await Callback.phase2(publishJsonsFn, ~capabilities=Capabilities.capabilities()),
+              await Callback.phase2(
+                publishJsonsFn,
+                ~capabilities=Capabilities.capabilities(),
+                ~publishJsonsAndWait?,
+              ),
           }
           ops
         }),
@@ -265,13 +278,21 @@ module Make = (
       // DCB log, which `construct` adds regardless.
       ~allEventTopics=Dict.make(),
       ~publishJsons,
+      ~publishJsonsAndWait=Pulumi.Output.make(None),
       ~runtime=?,
       ~opts=?,
     ): OutboundTranslationSlice.component =>
       Component.make(
         ~componentType=OutboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~dcbEventLog, ~allEventTopics, ~publishJsons, ~runtime, ...),
+        ~construct=construct(
+          ~dcbEventLog,
+          ~allEventTopics,
+          ~publishJsons,
+          ~publishJsonsAndWait,
+          ~runtime,
+          ...
+        ),
         ~opts,
       )
   }

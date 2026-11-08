@@ -85,7 +85,10 @@ module ShipPaid_Automation = {
     id,
     ShipPaid.Ship({orderId: id}),
   ))
-  let onExhausted = (id, _item: ShipPaid.todoItem) => Some((id, ShipPaid.GiveUp({orderId: id})))
+  let onExhausted = (id, _item: ShipPaid.todoItem, ~lastError as _) => Some((
+    id,
+    ShipPaid.GiveUp({orderId: id}),
+  ))
 }
 
 open ShipPaid

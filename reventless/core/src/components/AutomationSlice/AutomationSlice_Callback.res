@@ -38,6 +38,8 @@ type todoRow = {
       rehydrated through `S.parseOrThrow`, and a required field would fail that
       decode — silently, since the restore swallows it per row. */
   maxRetries?: int,
+  /** Why the last attempt failed: the target's refusal, or the failure to send. */
+  lastError?: string,
   /** The event that created the row, so the commands sent for it continue its
       flow. Absent on rows written before it existed, and on rows a tick created. */
   source?: Message.flowSource,
@@ -72,6 +74,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     completedAt: ?s.matches(S.option(S.string)),
     retryCount: s.matches(S.int),
     maxRetries: ?s.matches(S.option(S.int)),
+    lastError: ?s.matches(S.option(S.string)),
     source: ?s.matches(S.option(Message.flowSourceSchema)),
   })
 
@@ -92,8 +95,15 @@ type phase1 = (
   ~capabilities: Reventless.Capabilities.t,
 ) => promise<unit>
 
-/** Phase 2: process all pending items, publishing commands. */
-type phase2 = ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+/** Phase 2: process all pending items, publishing commands.
+
+    With `~publishJsonsAndWait`, each command's outcome is read where the target
+    answers inline: a refusal is recorded on the row instead of waiting out the
+    processing timeout. An outcome of `Pending` leaves the row to that timeout. */
+type phase2 = (
+  ReventlessInfra.CommandTopic.publishJsons,
+  ~publishJsonsAndWait: CommandTopic_Helpers.publishJsonsAndWait=?,
+) => promise<unit>
 
 /** The whole protocol as a value, for a driver that holds a built callback and
     knows nothing of the Spec behind it. */
@@ -289,10 +299,32 @@ module Make = (
       budget runs out rather than being left to fall out of the next pass's
       filter, so a reader never has to compare `retryCount` against a constant
       that lives only in this Spec. */
-  let afterFailedAttempt = (row: todoRow): todoRow => {
+  let afterFailedAttempt = (row: todoRow, ~lastError: option<string>=?): todoRow => {
     let retryCount = row.retryCount + 1
-    {...row, status: retryCount >= Spec.maxRetries ? Abandoned : Failed, retryCount}
+    {
+      ...row,
+      status: retryCount >= Spec.maxRetries ? Abandoned : Failed,
+      retryCount,
+      lastError: ?switch lastError {
+      | Some(_) as given => given
+      | None => row.lastError
+      },
+    }
   }
+
+  /** The row after the target refused its command. A business refusal or an
+      infrastructure failure is a failed attempt, retried on the next pass: the
+      target may not yet have seen an event the command depends on. A permission
+      refusal ends the row, since waiting cannot change it. */
+  let afterRefusal = (
+    row: todoRow,
+    ~cause: CommandTopic_Helpers.refusalCause,
+    ~lastError: string,
+  ): todoRow =>
+    switch cause {
+    | AccessRefusal => {...row->afterFailedAttempt(~lastError), status: Abandoned}
+    | DomainRejection | InfrastructureFailure => row->afterFailedAttempt(~lastError)
+    }
 
   /** The command a slice wants published now that this item will never be
       processed again, if it wants one. The row is `Abandoned` either way. */
@@ -301,7 +333,10 @@ module Make = (
   > =>
     switch await openRow(~id, row) {
     | Open({key, item}) =>
-      Automation.onExhausted(key, item)->Option.flatMap(((targetId, command)) =>
+      Automation.onExhausted(key, item, ~lastError=row.lastError)->Option.flatMap(((
+        targetId,
+        command,
+      )) =>
         switch command->Reventless.Util_Sury.toJson(Spec.commandSchema) {
         | commandJson => Some({Reventless.Message.id: targetId, meta: makeMeta(row), commandJson})
         | exception _ =>
@@ -461,8 +496,17 @@ module Make = (
     scheduleChanges := []
   }
 
-  let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
+  let phase2 = async (
+    publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+    ~publishJsonsAndWait: option<CommandTopic_Helpers.publishJsonsAndWait>=?,
+  ) => {
     let publishJsons = CommandSent.announcing(~comp=`AutomationSlice(${Spec.name})`, publishJsons)
+    let publishJsonsAndWait =
+      publishJsonsAndWait->Option.map(wait =>
+        CommandSent.announcingAndWaiting(~comp=`AutomationSlice(${Spec.name})`, wait)
+      )
+    // The row each sent command belongs to, by the command's message id.
+    let rowOfMsgId: dict<string> = Dict.make()
     let currentTime = await Clock.currentTimeMillis->Effect.runPromise
     // A `Failed` row at or past the ceiling is one an older build left stranded,
     // or one whose Spec lowered `maxRetries` under it. Either way it is abandoned
@@ -547,15 +591,38 @@ module Make = (
               meta: makeMeta(row),
               commandJson,
             }
-            let _ = commands->Array.push(msg)
+            rowOfMsgId->Dict.set(msg.meta.msgId, id)
+            commands->Array.push(msg)
           })
         | None => () // Skip — process returned None
         }
       }
     }
 
+    // A row `resolve` already completed while the target ran is left as it is.
+    let recordOutcome = (outcome: CommandTopic_Helpers.commandOutcome) =>
+      switch outcome {
+      | Rejected({msgId, errorCode, errorDetail, cause}) =>
+        switch rowOfMsgId
+        ->Dict.get(msgId)
+        ->Option.flatMap(id => todoItems->Dict.get(id)->Option.map(row => (id, row))) {
+        | Some((id, row)) if row.status == Processing =>
+          let lastError = CommandTopic_Helpers.describeRefusal(~errorCode, ~errorDetail)
+          let updated = row->afterRefusal(~cause, ~lastError)
+          todoItems->Dict.set(id, updated)
+          if updated.status == Abandoned {
+            newlyAbandoned->Array.push(id)
+          }
+        | _ => ()
+        }
+      | Accepted(_) | Pending(_) => ()
+      }
+
     if commands->Array.length > 0 {
-      try await publishJsons(commands) catch {
+      try switch publishJsonsAndWait {
+      | Some(wait) => (await wait(commands))->Array.forEach(recordOutcome)
+      | None => await publishJsons(commands)
+      } catch {
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")

@@ -26,6 +26,8 @@ let acceptedResultChannel = CommandTopic$ReventlessCore.acceptedResultChannel;
 
 let rejectedResultChannel = CommandTopic$ReventlessCore.rejectedResultChannel;
 
+let inlineWaiters = CommandTopic$ReventlessCore.inlineWaiters;
+
 let ownershipRefusal = CommandTopic$ReventlessCore.ownershipRefusal;
 
 let reportAccepted = CommandTopic$ReventlessCore.reportAccepted;
@@ -33,6 +35,8 @@ let reportAccepted = CommandTopic$ReventlessCore.reportAccepted;
 let reportRejected = CommandTopic$ReventlessCore.reportRejected;
 
 let commandOutcomeToJson = CommandTopic$ReventlessCore.commandOutcomeToJson;
+
+let describeRefusal = CommandTopic$ReventlessCore.describeRefusal;
 
 let encodeCommandJson = CommandTopic$ReventlessCore.encodeCommandJson;
 
@@ -65,10 +69,12 @@ export {
   fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,
+  inlineWaiters,
   ownershipRefusal,
   reportAccepted,
   reportRejected,
   commandOutcomeToJson,
+  describeRefusal,
   encodeCommandJson,
   runInlineAndCollect,
   callHandlerWithArray,

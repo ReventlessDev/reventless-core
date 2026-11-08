@@ -43,6 +43,9 @@ module type T = {
     // subscribes to the DCB log alone, which is what every DCB-only slice wants.
     ~allEventTopics: EventTopic.allOutputs=?,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    /** The target's publish that waits for each command's outcome, where its topic
+        offers one; a refusal is then recorded on the row instead of `Completed`. */
+    ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>=?,
     ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

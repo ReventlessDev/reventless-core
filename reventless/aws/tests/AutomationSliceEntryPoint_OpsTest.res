@@ -223,7 +223,7 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
         receivedCtx := Some(ctx)
         steps->Array.push("phase1")
       },
-      phase2: async _publish => steps->Array.push("phase2"),
+      phase2: async (_publish, ~publishJsonsAndWait as _=?) => steps->Array.push("phase2"),
       schedules: Dict.make(),
       takeScheduleChanges: () => [],
       rebuildSchedules: _ => (),
@@ -262,7 +262,7 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
     let callback: AutomationSliceEntryPoint_Ops.automationCallback = {
       todoItems: Dict.make(),
       phase1: async (_jsons, _ctx, ~capabilities as _) => steps->Array.push("phase1"),
-      phase2: async _publish => steps->Array.push("phase2"),
+      phase2: async (_publish, ~publishJsonsAndWait as _=?) => steps->Array.push("phase2"),
       schedules: Dict.make(),
       takeScheduleChanges: () => [Put({key: "r1", time: daily})],
       rebuildSchedules: _ => (),
@@ -392,7 +392,8 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
         received := events
         steps->Array.push("phase1")
       },
-      phase2: async (_publish, ~capabilities as _) => steps->Array.push("phase2"),
+      phase2: async (_publish, ~capabilities as _, ~publishJsonsAndWait as _=?) =>
+        steps->Array.push("phase2"),
     }
     let handler = AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler(
       ~consumedEventSchema=outboundEventSchema,

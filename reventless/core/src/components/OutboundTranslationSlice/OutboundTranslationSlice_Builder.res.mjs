@@ -57,8 +57,9 @@ function Make(RuntimeEnvironment) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (dcbEventLog, allEventTopicsOpt, publishJsons, runtime, opts) => {
+      let make = (dcbEventLog, allEventTopicsOpt, publishJsons, publishJsonsAndWaitOpt, runtime, opts) => {
         let allEventTopics = allEventTopicsOpt !== undefined ? allEventTopicsOpt : ({});
+        let publishJsonsAndWait = publishJsonsAndWaitOpt !== undefined ? publishJsonsAndWaitOpt : Pulumi.output(undefined);
         return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(OutboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
           let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
           let opts = {
@@ -86,8 +87,10 @@ function Make(RuntimeEnvironment) {
           let eventTopics = EventTopic$ReventlessCore.filter(availableTopics, Belt_SetString.fromArray(sourceNames));
           let eventCollector = Pulumi.all([
             Component$ReventlessCore.operations(queryDb),
-            publishJsons
+            publishJsons,
+            publishJsonsAndWait
           ]).apply(param => {
+            let publishJsonsAndWait = param[2];
             let publishJsonsFn = param[1];
             let queryDbOps = param[0];
             let ec = SpecificEventCollector.make(Spec.name, eventTopics, {
@@ -115,7 +118,7 @@ function Make(RuntimeEnvironment) {
                 param[1]
               ]), eventsArr.map(param => param[2]), Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
-              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities()).then(() => syncToQueryDb(queryDbOps)), exn => {
+              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
@@ -128,12 +131,14 @@ function Make(RuntimeEnvironment) {
           });
           Component$ReventlessCore.setOperations(extra, Pulumi.all([
             Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
-            publishJsons
+            publishJsons,
+            publishJsonsAndWait
           ]).apply(param => {
+            let publishJsonsAndWait = param[2];
             let publishJsonsFn = param[1];
             return {
               enqueueEvent: param[0].enqueueEvent,
-              translatePending: async () => await Callback.phase2(publishJsonsFn, Capabilities.capabilities())
+              translatePending: async () => await Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait)
             };
           }));
           let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);

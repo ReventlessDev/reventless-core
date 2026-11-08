@@ -59,10 +59,18 @@ module Make = (
       ~dcbEventLog,
       ~allEventTopics=Dict.make(),
       ~publishJsons,
+      ~publishJsonsAndWait=?,
       ~runtime=?,
       ~opts=?,
     ): component => {
-      let ots = InnerMake.make(~dcbEventLog, ~allEventTopics, ~publishJsons, ~runtime?, ~opts?)
+      let ots = InnerMake.make(
+        ~dcbEventLog,
+        ~allEventTopics,
+        ~publishJsons,
+        ~publishJsonsAndWait?,
+        ~runtime?,
+        ~opts?,
+      )
 
       let queryDbOutputs = (ots->ReventlessCore.Component.outputs).queryDb
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)

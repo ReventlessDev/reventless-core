@@ -40,8 +40,22 @@ module Make = (Bus: LocalBus.T) => {
     let queryDbName = Inner.queryDbName
     let schedulesDbName = Inner.schedulesDbName
     let sourceNames = Inner.sourceNames
-    let make = (~allEventTopics, ~publishJsons, ~context, ~runtime=?, ~opts=?) => {
-      let component = Inner.make(~allEventTopics, ~publishJsons, ~context, ~runtime?, ~opts?)
+    let make = (
+      ~allEventTopics,
+      ~publishJsons,
+      ~publishJsonsAndWait=?,
+      ~context,
+      ~runtime=?,
+      ~opts=?,
+    ) => {
+      let component = Inner.make(
+        ~allEventTopics,
+        ~publishJsons,
+        ~publishJsonsAndWait?,
+        ~context,
+        ~runtime?,
+        ~opts?,
+      )
       let operations = () => component->ReventlessCore.Component.operations->TestRunner.resolve
       LocalAutomationSweep.register(~name=Spec.name, async () => {
         let ops = await operations()

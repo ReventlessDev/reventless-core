@@ -48,8 +48,8 @@ function Make(Bus) {
   });
   let Make$1 = Spec => (Automation => {
     let Inner = CoreMaker.Make(Spec)(Automation);
-    let make = (allEventTopics, publishJsons, context, runtime, opts) => {
-      let component = Inner.make(allEventTopics, publishJsons, context, runtime, opts);
+    let make = (allEventTopics, publishJsons, publishJsonsAndWait, context, runtime, opts) => {
+      let component = Inner.make(allEventTopics, publishJsons, publishJsonsAndWait, context, runtime, opts);
       LocalAutomationSweep$ReventlessLocal.register(Spec.name, async () => {
         let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(component));
         return await ops.processPending();

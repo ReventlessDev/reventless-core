@@ -144,6 +144,7 @@ module Make = (
     let construct = (
       ~allEventTopics: EventTopic.allOutputs,
       ~publishJsons,
+      ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>,
       ~context: Reventless.AutomationSlice.context,
       ~runtime,
       self,
@@ -216,9 +217,9 @@ module Make = (
       // first event arrival (which silently dropped Phase 2 in the previous
       // shape).
       let eventCollector =
-        (queryDb->Component.operations, publishJsons, schedulesOps)
-        ->Pulumi.Output.all3
-        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, schedulesOps)) => {
+        (queryDb->Component.operations, publishJsons, schedulesOps, publishJsonsAndWait)
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, schedulesOps, publishJsonsAndWait)) => {
           let ec = SpecificEventCollector.make(
             ~name=Spec.name,
             ~eventTopics,
@@ -253,7 +254,7 @@ module Make = (
                   // fire-and-forget shape LocalBus already uses for
                   // cross-plugin EP→Extension routing.
                   let _ =
-                    Callback.phase2(publishJsonsFn)
+                    Callback.phase2(publishJsonsFn, ~publishJsonsAndWait?)
                     ->Promise.then(() => syncToQueryDb(queryDbOps))
                     ->Promise.catch(
                       exn => {
@@ -291,11 +292,18 @@ module Make = (
           publishJsons,
           queryDb->Component.operations,
           schedulesOps,
+          publishJsonsAndWait,
         )
-        ->Pulumi.Output.all4
-        ->Pulumi.Output.apply(((ecOps, publishJsonsFn, queryDbOps, schedulesOps)) => {
+        ->Pulumi.Output.all5
+        ->Pulumi.Output.apply(((
+          ecOps,
+          publishJsonsFn,
+          queryDbOps,
+          schedulesOps,
+          publishJsonsAndWait,
+        )) => {
           let processPending = async () => {
-            await Callback.phase2(publishJsonsFn)
+            await Callback.phase2(publishJsonsFn, ~publishJsonsAndWait?)
             await syncToQueryDb(queryDbOps)
           }
           let reconcileSchedules = async () =>
@@ -351,6 +359,7 @@ module Make = (
     let make = (
       ~allEventTopics,
       ~publishJsons,
+      ~publishJsonsAndWait=Pulumi.Output.make(None),
       ~context,
       ~runtime=?,
       ~opts=?,
@@ -358,7 +367,14 @@ module Make = (
       Component.make(
         ~componentType=AutomationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~allEventTopics, ~publishJsons, ~context, ~runtime, ...),
+        ~construct=construct(
+          ~allEventTopics,
+          ~publishJsons,
+          ~publishJsonsAndWait,
+          ~context,
+          ~runtime,
+          ...
+        ),
         ~opts,
       )
   }

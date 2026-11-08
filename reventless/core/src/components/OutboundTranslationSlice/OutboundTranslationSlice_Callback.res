@@ -98,6 +98,7 @@ type phase1<'event> = (
 type phase2 = (
   ReventlessInfra.CommandTopic.publishJsons,
   ~capabilities: Reventless.Capabilities.t,
+  ~publishJsonsAndWait: CommandTopic_Helpers.publishJsonsAndWait=?,
 ) => promise<unit>
 
 /** The whole protocol as a value — what a driver holding a built callback needs,
@@ -175,6 +176,20 @@ module Make = (
       },
     }
   }
+
+  /** The row after the target refused the command `translate` produced. Only an
+      infrastructure failure is retried: a retry runs `translate` again, and the
+      outside service has already acted once. A business or permission refusal
+      ends the row, with the target's reason. */
+  let afterRefusal = (
+    row: todoRow,
+    ~cause: CommandTopic_Helpers.refusalCause,
+    ~lastError: string,
+  ): todoRow =>
+    switch cause {
+    | InfrastructureFailure => row->afterFailedAttempt(~lastError)
+    | DomainRejection | AccessRefusal => {...row->afterFailedAttempt(~lastError), status: Abandoned}
+    }
 
   /** Ask the slice whether abandonment is worth telling the domain about, and
       publish what it says. Failing to publish here cannot mark the row for retry
@@ -301,11 +316,16 @@ module Make = (
   let phase2 = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     ~capabilities: Reventless.Capabilities.t,
+    ~publishJsonsAndWait: option<CommandTopic_Helpers.publishJsonsAndWait>=?,
   ) => {
     let publishJsons = CommandSent.announcing(
       ~comp=`OutboundTranslationSlice(${Spec.name})`,
       publishJsons,
     )
+    let publishJsonsAndWait =
+      publishJsonsAndWait->Option.map(wait =>
+        CommandSent.announcingAndWaiting(~comp=`OutboundTranslationSlice(${Spec.name})`, wait)
+      )
     // Ids that ran out of budget during this pass, announced once at the end so
     // one item's abandonment cannot interleave with another's attempt.
     let newlyAbandoned: array<string> = []
@@ -423,8 +443,26 @@ module Make = (
                 meta: makeMeta(row),
                 commandJson,
               }
-              await publishJsons([msg])
-              todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+              let refusal = switch publishJsonsAndWait {
+              | Some(wait) =>
+                switch (await wait([msg]))->Array.get(0) {
+                | Some(Rejected({errorCode, errorDetail, cause})) =>
+                  Some((cause, CommandTopic_Helpers.describeRefusal(~errorCode, ~errorDetail)))
+                | Some(Accepted(_) | Pending(_)) | None => None
+                }
+              | None =>
+                await publishJsons([msg])
+                None
+              }
+              switch refusal {
+              | Some((cause, lastError)) =>
+                let updated = row->afterRefusal(~cause, ~lastError)
+                todoItems->Dict.set(id, updated)
+                if updated.status == Abandoned {
+                  newlyAbandoned->Array.push(id)
+                }
+              | None => todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+              }
             } catch {
             | exn =>
               let errMsg =

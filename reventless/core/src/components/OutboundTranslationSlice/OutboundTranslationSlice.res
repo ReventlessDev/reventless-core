@@ -31,6 +31,9 @@ module type T = {
     ~dcbEventLog: DcbEventLog.component,
     ~allEventTopics: EventTopic.allOutputs=?,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    /** The target's publish that waits for each command's outcome, where its topic
+        offers one; a refusal is then recorded on the row instead of `Completed`. */
+    ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>=?,
     ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

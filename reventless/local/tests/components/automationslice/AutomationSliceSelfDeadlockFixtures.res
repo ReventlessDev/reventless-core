@@ -161,7 +161,7 @@ module AutoShipAutomation: AutomationSlice.Automation with module Spec := AutoSh
     id,
     AutoShipSpec.Ship({orderId: id}),
   ))
-  let onExhausted = (_id, _item: AutoShipSpec.todoItem) => None
+  let onExhausted = (_id, _item: AutoShipSpec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoShipSpec)
   module type Mapping = M.Mapping

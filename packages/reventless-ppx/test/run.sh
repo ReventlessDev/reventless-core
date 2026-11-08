@@ -1777,6 +1777,8 @@ let mappings: array<module(Mapping)> = [module(FromDcb)]
 
 let process = (id, item: MergedAutomation.todoItem) =>
   Some((id, MergedDo({mergedId: item.mergedId})))
+
+let onExhausted = (_id, _item) => None
 EOF
 
 # A process that already takes ~now keeps its own, and is not given a second.
@@ -1818,6 +1820,8 @@ let mappings: array<module(Mapping)> = [module(FromDcb)]
 
 let process = (id, item: NowAware.todoItem, ~now) =>
   now >= item.dueAt ? Some((id, NowDo({nowId: item.nowId}))) : None
+
+let onExhausted = (id, _item, ~lastError) => lastError->Option.map(_ => (id, NowDo({nowId: id})))
 EOF
 
 # ─── Fixture: @@reventless.extension — Extension/<Name>_Extension.res ─
@@ -2726,9 +2730,11 @@ echo "=== Test: @@reventless.automation (merged form — Mappings.Make wrapper a
 JS="$PLUGIN/src/Automation/MergedAutomation_Automation.res.mjs"
 assert_js_contains "$JS" 'Automation/MergedAutomation_Automation.res.mjs' "merged automation: moduleUrl injected"
 assert_js_contains "$JS" 'function process(id, item, param)' "merged automation: process given a ~now it does not take"
+assert_js_contains "$JS" 'function onExhausted(_id, _item, param)' "merged automation: onExhausted given a ~lastError it does not take"
 JS="$PLUGIN/src/Automation/NowAware_Automation.res.mjs"
 assert_js_contains "$JS" 'function process(id, item, now)' "automation: a process taking ~now keeps its own"
 assert_js_contains "$JS" 'now >= item.dueAt' "automation: a process taking ~now reads it"
+assert_js_contains "$JS" 'function onExhausted(id, _item, lastError)' "automation: an onExhausted taking ~lastError keeps its own"
 JS="$PLUGIN/src/Automation/NowAware.res.mjs"
 assert_js_contains "$JS" '^let schedule;' "automation spec: schedule = None injected when it declares none"
 assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"

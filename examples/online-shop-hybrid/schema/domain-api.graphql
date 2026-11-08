@@ -479,6 +479,7 @@ type Ordering_AutoShipOrderTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_AutoShipOrderTodoItem!
+  lastError: String
   maxRetries: Int
   processedAt: String
   retryCount: Int!
@@ -577,6 +578,7 @@ type Ordering_CancelUnshippedOrderTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_CancelUnshippedOrderTodoItem!
+  lastError: String
   maxRetries: Int
   processedAt: String
   retryCount: Int!
@@ -806,6 +808,7 @@ type Ordering_MarketingDigestTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_MarketingDigestTodoItem!
+  lastError: String
   maxRetries: Int
   processedAt: String
   retryCount: Int!
@@ -926,6 +929,7 @@ type Ordering_NotificationIntakeTodo implements Node {
   createdAt: String!
   id: ID!
   item: Ordering_NotificationIntakeTodoItem!
+  lastError: String
   maxRetries: Int
   processedAt: String
   retryCount: Int!

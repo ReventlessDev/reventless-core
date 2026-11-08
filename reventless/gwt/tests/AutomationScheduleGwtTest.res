@@ -74,7 +74,7 @@ module DemandReport_Automation = {
     id,
     DemandReport.RequestDemandReport({day: item.day}),
   ))
-  let onExhausted = (_id, _item: DemandReport.todoItem) => None
+  let onExhausted = (_id, _item: DemandReport.todoItem, ~lastError as _) => None
 }
 
 open DemandReport

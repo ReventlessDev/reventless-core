@@ -1,6 +1,8 @@
 # Plan: a refusal nobody hears
 
-> **Status:** Proposed 2026-11-08. Nothing built yet.
+> **Status:** In progress. [RNS1](#5-steps) to [RNS3](#5-steps) built 2026-11-08, and the automation
+> and outbound pages of [RNS7](#5-steps); one decision taken differently, recorded at
+> [RNQ2](#4-decisions).
 >
 > **Questions and short answers:**
 >
@@ -140,9 +142,16 @@ async target with business refusals turns up in an app.
 | --- | --- | --- |
 | Accepted | stays `Processing`; `resolve` completes it, as today | `Completed`, as today |
 | Pending (async target) | stays `Processing`; the timeout applies, as today | `Completed`, as today |
-| Refused, business reason | failed attempt, `lastError` = the code and detail, retried on the **next pass** rather than after 15 minutes | same |
+| Refused, business reason | failed attempt, `lastError` = the code and detail, retried on the **next pass** rather than after 15 minutes | `Abandoned` at once, `lastError` set *(built differently, see below)* |
 | Refused, no permission | `Abandoned` at once, `lastError` set | same |
-| Infrastructure failure | failed attempt, `lastError` set, retried on the next pass | same |
+| Infrastructure failure | failed attempt, `lastError` set, retried on the next pass | same as automation |
+
+*Built differently for outbound translations.* The table first said "same" for both columns. A
+retried outbound row runs `translate` again, and so calls the outside service a second time: for
+the payment example in the docs, a second charge. The ordering race that justifies retrying a
+business refusal in an automation does not outweigh that, so an outbound business refusal ends the
+row at once, with the reason, and `onExhausted` hears it. An infrastructure failure is still retried,
+as a failed publish always was.
 
 **Recommendation:** as in the table. The one choice that needs arguing is **retrying a business
 refusal at all**. A refusal can be a matter of order rather than a verdict: an automation reacts to
@@ -217,6 +226,22 @@ point 3), and the noise is the prompt.
 | RNS5 | Warning-level line for a refusal with no caller claim, and the alarm's metric filter ([RNQ6](#4-decisions)). | the line on both backends; the filter in the alarms stack and guide |
 | RNS6 | On AWS, a sender in another Lambda invokes the target's command Lambda directly and reads the outcome ([RNQ1](#4-decisions) (a2)): the invoke grant per sender and target, parallel sends within a sweep. | on the alpha stack, an automation whose command is refused records the reason within one sweep; sweep time measured before and after |
 | RNS7 | Docs: [§3](#3-what-an-app-should-do-whatever-the-framework-does) in the automation and outbound pages ([automationslice.md](../../packages/doc/docs-app/components/automationslice.md#when-an-item-runs-out-of-retries), [outboundtranslationslice.md](../../packages/doc/docs-app/components/outboundtranslationslice.md#error-handling)), the work-list status table, and the inbound and extension pages. | docs site builds |
+
+**Built (2026-11-08):** [RNS1](#5-steps) to [RNS3](#5-steps). Notes from building them:
+
+- The waiting publish collected outcomes through one global slot, set and cleared around each inline
+  run. Two runs in one process, overlapping or nested, would clear each other's and report a refusal
+  as accepted; an automation waiting while a GraphQL mutation runs is exactly that. The slot became a
+  waiter per message id (`inlineWaiters` in `CommandTopic_Helpers`), pinned by a nested-run test.
+- The outcome types (`refusalCause`, `commandOutcome`, `publishJsonsAndWait`) moved down to
+  `reventless-infra`'s `CommandTopic`, since the slices' module types live there; core re-exports
+  them with the same constructors.
+- An outbound slice whose target is an Aggregate is not waited on: the aggregates' topics are handed
+  over as plain `publishJsons`.
+- Automation rows gained `lastError`, which moved the four automation todo types in the GraphQL
+  goldens and nothing else.
+- Mutation-checked: dropping the "still `Processing`" guard fails the race-with-`resolve` test;
+  not delivering refusals to waiters fails four.
 
 [RNS1](#5-steps) to [RNS3](#5-steps) belong together and are complete locally; [RNS6](#5-steps) is what
 makes them work on a deployed stack, and needs [RNS1](#5-steps) first. [RNS4](#5-steps) and

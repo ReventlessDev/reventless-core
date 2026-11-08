@@ -39,6 +39,31 @@ await ops.publishJsons([{id: "cat-1", meta, commandJson: json}])
 type publishJsons = array<Reventless.Message.commandJson> => promise<unit>
 
 /**
+Why a command was refused.
+
+`DomainRejection` is `Decision.decide` returning `Error` — the model declining the command,
+which is the model working. `InfrastructureFailure` is the decision never landing: an event-log
+append that failed outright or exhausted its conflict retries. Both arrive on `reportRejected`,
+so without this a consumer would read a broken event log as a business rejection.
+
+`AccessRefusal` is the handler refusing before `decide` runs, because the caller does not
+own what the command acts on (`OwnerScope.decideActing`).
+*/
+type refusalCause = DomainRejection | InfrastructureFailure | AccessRefusal
+
+/** What became of one command, as the producer that waited for it hears it. */
+type commandOutcome =
+  | Accepted({msgId: string, entityId?: string, eventCount: int})
+  | Rejected({msgId: string, errorCode: string, errorDetail: option<string>, cause: refusalCause})
+  | Pending({msgId: string})
+
+/**
+Publishes commands and waits for each one's outcome, in order. A target that answers
+inline gives `Accepted` or `Rejected`; one that does not gives `Pending`.
+*/
+type publishJsonsAndWait = array<Reventless.Message.commandJson> => promise<array<commandOutcome>>
+
+/**
 Publishes a stream of serialized command envelopes as an `Effect.t`.
 Use this for high-throughput or streaming command pipelines.
 */

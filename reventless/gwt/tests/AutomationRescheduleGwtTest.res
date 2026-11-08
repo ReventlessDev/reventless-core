@@ -80,7 +80,7 @@ module MarketingDigest_Automation = {
     item.recipientId,
     MarketingDigest.RequestNotification({recipientId: item.recipientId, reference: id}),
   ))
-  let onExhausted = (_id, _item: MarketingDigest.todoItem) => None
+  let onExhausted = (_id, _item: MarketingDigest.todoItem, ~lastError as _) => None
 }
 
 module Digest = {
@@ -216,7 +216,7 @@ module Reminder_Automation = {
     item.orderId,
     Reminder.RemindOrder({orderId: item.orderId}),
   ))
-  let onExhausted = (_id, _item: Reminder.todoItem) => None
+  let onExhausted = (_id, _item: Reminder.todoItem, ~lastError as _) => None
 }
 
 module ReminderGwt = {

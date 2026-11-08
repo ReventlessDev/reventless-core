@@ -530,4 +530,131 @@ describe("OutboundTranslationSlice Callback", () => {
       },
     )
   })
+
+  // The outside service has acted by the time the target answers, so a refusal is
+  // not retried: a retry would run `translate`, and call the service, again.
+  describe("the target's answer", () => {
+    let collectOne = async () =>
+      await CommandBackCallback.phase1(
+        [("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))],
+        ~capabilities=Reventless.Capabilities.none,
+      )
+    let rowOf = id => CommandBackCallback.todoItems->Dict.get(id)->Option.getOrThrow
+    let neverFireAndForget: ReventlessInfra.CommandTopic.publishJsons = async _ =>
+      JsError.throwWithMessage("the waiting publish should have been used")
+    let answering = (
+      answer: string => ReventlessCore.CommandTopic_Helpers.commandOutcome,
+    ): ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait =>
+      async cmds => cmds->Array.map((cmd: Reventless.Message.commandJson) => answer(cmd.meta.msgId))
+    let refused = (cause): ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait =>
+      answering(
+        msgId => Rejected({
+          msgId,
+          errorCode: "UnknownOrder",
+          errorDetail: Some("ord-1"),
+          cause,
+        }),
+      )
+    let translations = ref(0)
+    let _ = beforeEach(
+      () => {
+        translations := 0
+        ProcessPaymentSpec.translateFn :=
+          (
+            async (id, _item) => {
+              translations := translations.contents + 1
+              Ok(Some((id, ProcessPaymentSpec.ConfirmPayment({orderId: id}))))
+            }
+          )
+      },
+    )
+
+    testPromise(
+      "a business refusal ends the row with its reason, and translate is not run again",
+      async () => {
+        let seen = ref(None)
+        ProcessPaymentSpec.onExhaustedFn :=
+          (
+            (_id, _item, lastError) => {
+              seen := lastError
+              None
+            }
+          )
+
+        await collectOne()
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=refused(DomainRejection),
+        )
+        expect(rowOf("ord-1").status)->toBe(Abandoned)
+        expect(rowOf("ord-1").lastError)->toEqual(Some("UnknownOrder: ord-1"))
+        expect(seen.contents)->toEqual(Some("UnknownOrder: ord-1"))
+
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=refused(DomainRejection),
+        )
+        expect(translations.contents)->toBe(1)
+      },
+    )
+
+    testPromise(
+      "a permission refusal ends the row too",
+      async () => {
+        await collectOne()
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=refused(AccessRefusal),
+        )
+        expect(rowOf("ord-1").status)->toBe(Abandoned)
+      },
+    )
+
+    testPromise(
+      "an infrastructure failure is retried, as a failed publish is",
+      async () => {
+        await collectOne()
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=refused(InfrastructureFailure),
+        )
+        expect(rowOf("ord-1").status)->toBe(Failed)
+        expect(rowOf("ord-1").lastError)->toEqual(Some("UnknownOrder: ord-1"))
+      },
+    )
+
+    testPromise(
+      "an accepted command completes the row",
+      async () => {
+        await collectOne()
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=answering(msgId => Accepted({msgId, eventCount: 1})),
+        )
+        expect(rowOf("ord-1").status)->toBe(Completed)
+      },
+    )
+
+    testPromise(
+      "a target that does not answer inline completes the row, as before",
+      async () => {
+        await collectOne()
+        await CommandBackCallback.phase2(
+          neverFireAndForget,
+          ~capabilities=Reventless.Capabilities.none,
+          ~publishJsonsAndWait=answering(
+            msgId => ReventlessCore.CommandTopic_Helpers.Pending({
+              msgId: msgId,
+            }),
+          ),
+        )
+        expect(rowOf("ord-1").status)->toBe(Completed)
+      },
+    )
+  })
 })

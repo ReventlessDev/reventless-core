@@ -467,6 +467,11 @@ module Make = (
         dcbCommandTopic
         ->Component.operations
         ->Pulumi.Output.apply(ops => ops.publishJsons)
+      // Lets an automation or a translation hear a sync slice's refusal.
+      let publishJsonsAndWait =
+        dcbCommandTopic
+        ->Component.operations
+        ->Pulumi.Output.apply(ops => ops.publishJsonsAndWait)
 
       // Create FIFO CommandTopic for async StateChangeSlices (only if any are configured)
       module DcbCommandTopicSpecAsync = {
@@ -713,6 +718,7 @@ module Make = (
           let as_ = AutoSlice.make(
             ~allEventTopics,
             ~publishJsons,
+            ~publishJsonsAndWait,
             ~context,
             ~runtime=?componentRuntime->Dict.get(AutoSlice.Spec.name),
             ~opts,
@@ -733,6 +739,14 @@ module Make = (
             OTS.Spec.targetName
             ->Option.flatMap(target => publishToAggregates->Dict.get(target))
             ->Option.getOr(publishJsons)
+          // An aggregate's topic offers no waiting publish here, so only the DCB
+          // topic's outcomes are heard.
+          let targetPublishJsonsAndWait = switch OTS.Spec.targetName->Option.flatMap(target =>
+            publishToAggregates->Dict.get(target)
+          ) {
+          | Some(_) => Pulumi.Output.make(None)
+          | None => publishJsonsAndWait
+          }
 
           let ots = OTS.make(
             ~dcbEventLog,
@@ -740,6 +754,7 @@ module Make = (
             // name an Aggregate source by its Spec.name.
             ~allEventTopics,
             ~publishJsons=targetPublishJsons,
+            ~publishJsonsAndWait=targetPublishJsonsAndWait,
             ~runtime=?componentRuntime->Dict.get(OTS.Spec.name),
             ~opts,
           )

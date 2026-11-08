@@ -258,6 +258,7 @@ function Make(DcbEventLogStorage) {
       }, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(dcbCommandTopic));
       let publishJsons = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
+      let publishJsonsAndWait = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsonsAndWait);
       let name$1 = childName + "Async";
       let commandSchema$1 = Sury.json;
       let DcbAsyncCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
@@ -387,7 +388,7 @@ function Make(DcbEventLogStorage) {
           pluginName: name,
           sliceName: context_sliceName
         };
-        let as_ = AutoSlice.make(allEventTopics, publishJsons, context, componentRuntime[AutoSlice.Spec.name], opts);
+        let as_ = AutoSlice.make(allEventTopics, publishJsons, publishJsonsAndWait, context, componentRuntime[AutoSlice.Spec.name], opts);
         return [
           AutoSlice.Spec.name,
           Component$ReventlessCore.outputs(as_)
@@ -395,7 +396,9 @@ function Make(DcbEventLogStorage) {
       }));
       let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
         let targetPublishJsons = Stdlib_Option.getOr(Stdlib_Option.flatMap(OTS.Spec.targetName, target => publishToAggregates[target]), publishJsons);
-        let ots = OTS.make(dcbEventLog, allEventTopics, targetPublishJsons, componentRuntime[OTS.Spec.name], opts);
+        let match = Stdlib_Option.flatMap(OTS.Spec.targetName, target => publishToAggregates[target]);
+        let targetPublishJsonsAndWait = match !== undefined ? Pulumi.output(undefined) : publishJsonsAndWait;
+        let ots = OTS.make(dcbEventLog, allEventTopics, targetPublishJsons, targetPublishJsonsAndWait, componentRuntime[OTS.Spec.name], opts);
         return [
           OTS.Spec.name,
           Component$ReventlessCore.outputs(ots)

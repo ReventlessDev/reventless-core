@@ -38,7 +38,7 @@ module DemandReportAutomation: AutomationSlice.Automation with module Spec := De
     id,
     DemandReportSpec.RequestDemandReport({day: item.day}),
   ))
-  let onExhausted = (_id, _item: DemandReportSpec.todoItem) => None
+  let onExhausted = (_id, _item: DemandReportSpec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(DemandReportSpec)
   module type Mapping = M.Mapping
@@ -64,7 +64,7 @@ module FromClockUnscheduled = AutomationSlice.Mapping.Make(
 
 module UnscheduledAutomation: AutomationSlice.Automation with module Spec := UnscheduledSpec = {
   let process = (_id, _item: UnscheduledSpec.todoItem, ~now as _) => None
-  let onExhausted = (_id, _item: UnscheduledSpec.todoItem) => None
+  let onExhausted = (_id, _item: UnscheduledSpec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(UnscheduledSpec)
   module type Mapping = M.Mapping

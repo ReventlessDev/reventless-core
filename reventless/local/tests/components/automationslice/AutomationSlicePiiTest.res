@@ -60,7 +60,7 @@ module Automation: Reventless.AutomationSlice.Automation with module Spec := Spe
     processed := processed.contents->Array.concat([(key, item.email)])
     Some((item.memberId, Spec.SendGreeting({memberId: item.memberId, key})))
   }
-  let onExhausted = (_id, _item: Spec.todoItem) => None
+  let onExhausted = (_id, _item: Spec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = Reventless.AutomationSlice.Mappings.Make(Spec)
   module type Mapping = M.Mapping

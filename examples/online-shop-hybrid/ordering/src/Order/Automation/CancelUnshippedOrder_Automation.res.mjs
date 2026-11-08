@@ -124,7 +124,7 @@ function process(id, item, now) {
   }
 }
 
-function onExhausted(_id, _item) {
+function onExhausted(_id, _item, param) {
   
 }
 

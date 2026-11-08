@@ -253,7 +253,7 @@ function FromSlice(Spec) {
       item
     ];
     let whenProcess = (param, now) => Automation.process(param[0], param[1], nowOr(now));
-    let whenExhausted = param => Automation.onExhausted(param[0], param[1]);
+    let whenExhausted = (param, lastError) => Automation.onExhausted(param[0], param[1], lastError);
     let thenCommand = (actual, expectedId, expectedCmd) => {
       if (actual !== undefined && actual[0] === expectedId && Primitive_object.equal(actual[1], expectedCmd)) {
         return Outcome$ReventlessGwt.pass;

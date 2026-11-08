@@ -87,115 +87,122 @@ function Make(RuntimeEnvironment) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (allEventTopics, publishJsons, context, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(AutomationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
-        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
-        let opts = {
-          parent: opts_parent
-        };
-        let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
-        let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
-          kind: "AutomationSlice",
-          name: Spec.name
-        }, opts);
-        sourceNames.forEach(sourceName => {
-          if (sourceName in allEventTopics) {
-            return;
-          }
-          let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
-          Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
-        });
-        if (readsClock && Stdlib_Option.isNone(Spec.schedule) && sourceNames.length === 0) {
-          Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" maps the Clock source but declares no schedule and reads no event that could set one, so no tick will ever reach it. Declare \`let schedule\` on its spec.`);
-        }
-        let schedulesDb = readsClock ? Primitive_option.some(SchedulesQueryDb.make(Api.api(), Api.apiRole(), undefined, {
-            kind: "AutomationSlice",
-            name: Spec.name
-          }, opts)) : undefined;
-        let schedulesOps = schedulesDb !== undefined ? Component$ReventlessCore.operations(Primitive_option.valFromOption(schedulesDb)).apply(ops => ops) : Pulumi.output(undefined);
-        let platform = Schedules.platformFor(Spec.name);
-        let storedSchedules = {
-          contents: []
-        };
-        let sourceSet = Belt_SetString.fromArray(sourceNames);
-        let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceSet);
-        let eventCollector = Pulumi.all([
-          Component$ReventlessCore.operations(queryDb),
-          publishJsons,
-          schedulesOps
-        ]).apply(param => {
-          let schedulesOps = param[2];
-          let publishJsonsFn = param[1];
-          let queryDbOps = param[0];
-          let ec = SpecificEventCollector.make(Spec.name, eventTopics, {
+      let make = (allEventTopics, publishJsons, publishJsonsAndWaitOpt, context, runtime, opts) => {
+        let publishJsonsAndWait = publishJsonsAndWaitOpt !== undefined ? publishJsonsAndWaitOpt : Pulumi.output(undefined);
+        return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(AutomationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+          let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
+          let opts = {
+            parent: opts_parent
+          };
+          let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
+          let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
+          let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
             kind: "AutomationSlice",
             name: Spec.name
           }, opts);
-          let jsonEventsHandler = stream => Effect$1.flatMap(Stream.runCollect(stream), jsons => Effect$1.promise(async () => {
-            await Callback.phase1(jsons, context, Capabilities.capabilities());
-            await syncToQueryDb(queryDbOps);
-            let changes = Callback.takeScheduleChanges();
-            if (changes.length !== 0) {
-              await syncSchedules(schedulesOps, storedSchedules);
-              await AutomationSlice_Schedules$ReventlessCore.tell(platform, changes);
+          sourceNames.forEach(sourceName => {
+            if (sourceName in allEventTopics) {
+              return;
             }
-            Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
-              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `detached phase 2 error: ` + errMsg));
-              return Promise.resolve();
-            });
-          }));
-          let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
-          let resources = Component$ReventlessCore.outputs(queryDb).resources;
-          EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, ec);
-          return ec;
-        });
-        Component$ReventlessCore.setOperations(extra, Pulumi.all([
-          Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
-          publishJsons,
-          Component$ReventlessCore.operations(queryDb),
-          schedulesOps
-        ]).apply(param => {
-          let schedulesOps = param[3];
-          let queryDbOps = param[2];
-          let publishJsonsFn = param[1];
-          let processPending = async () => {
-            await Callback.phase2(publishJsonsFn);
-            return await syncToQueryDb(queryDbOps);
+            let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
+            Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
+          });
+          if (readsClock && Stdlib_Option.isNone(Spec.schedule) && sourceNames.length === 0) {
+            Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" maps the Clock source but declares no schedule and reads no event that could set one, so no tick will ever reach it. Declare \`let schedule\` on its spec.`);
+          }
+          let schedulesDb = readsClock ? Primitive_option.some(SchedulesQueryDb.make(Api.api(), Api.apiRole(), undefined, {
+              kind: "AutomationSlice",
+              name: Spec.name
+            }, opts)) : undefined;
+          let schedulesOps = schedulesDb !== undefined ? Component$ReventlessCore.operations(Primitive_option.valFromOption(schedulesDb)).apply(ops => ops) : Pulumi.output(undefined);
+          let platform = Schedules.platformFor(Spec.name);
+          let storedSchedules = {
+            contents: []
           };
-          let reconcileSchedules = async () => {
-            if (readsClock) {
-              await AutomationSlice_Schedules$ReventlessCore.reconcile(Callback.schedules, platform, Spec.schedule, Date.now());
-              return await syncSchedules(schedulesOps, storedSchedules);
-            }
-          };
-          return {
-            enqueueEvent: param[0].enqueueEvent,
-            processPending: processPending,
-            tick: async (key, at) => {
-              await Callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context, Capabilities.capabilities());
+          let sourceSet = Belt_SetString.fromArray(sourceNames);
+          let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceSet);
+          let eventCollector = Pulumi.all([
+            Component$ReventlessCore.operations(queryDb),
+            publishJsons,
+            schedulesOps,
+            publishJsonsAndWait
+          ]).apply(param => {
+            let publishJsonsAndWait = param[3];
+            let schedulesOps = param[2];
+            let publishJsonsFn = param[1];
+            let queryDbOps = param[0];
+            let ec = SpecificEventCollector.make(Spec.name, eventTopics, {
+              kind: "AutomationSlice",
+              name: Spec.name
+            }, opts);
+            let jsonEventsHandler = stream => Effect$1.flatMap(Stream.runCollect(stream), jsons => Effect$1.promise(async () => {
+              await Callback.phase1(jsons, context, Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
-              await syncSchedules(schedulesOps, storedSchedules);
-              await AutomationSlice_Schedules$ReventlessCore.tell(platform, Callback.takeScheduleChanges());
-              return await processPending();
-            },
-            reconcileSchedules: reconcileSchedules,
-            rebuildSchedules: async events => {
-              Callback.rebuildSchedules(events);
-              return await reconcileSchedules();
-            }
+              let changes = Callback.takeScheduleChanges();
+              if (changes.length !== 0) {
+                await syncSchedules(schedulesOps, storedSchedules);
+                await AutomationSlice_Schedules$ReventlessCore.tell(platform, changes);
+              }
+              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, publishJsonsAndWait).then(() => syncToQueryDb(queryDbOps)), exn => {
+                let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, undefined, `detached phase 2 error: ` + errMsg));
+                return Promise.resolve();
+              });
+            }));
+            let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
+            let resources = Component$ReventlessCore.outputs(queryDb).resources;
+            EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, ec);
+            return ec;
+          });
+          Component$ReventlessCore.setOperations(extra, Pulumi.all([
+            Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
+            publishJsons,
+            Component$ReventlessCore.operations(queryDb),
+            schedulesOps,
+            publishJsonsAndWait
+          ]).apply(param => {
+            let publishJsonsAndWait = param[4];
+            let schedulesOps = param[3];
+            let queryDbOps = param[2];
+            let publishJsonsFn = param[1];
+            let processPending = async () => {
+              await Callback.phase2(publishJsonsFn, publishJsonsAndWait);
+              return await syncToQueryDb(queryDbOps);
+            };
+            let reconcileSchedules = async () => {
+              if (readsClock) {
+                await AutomationSlice_Schedules$ReventlessCore.reconcile(Callback.schedules, platform, Spec.schedule, Date.now());
+                return await syncSchedules(schedulesOps, storedSchedules);
+              }
+            };
+            return {
+              enqueueEvent: param[0].enqueueEvent,
+              processPending: processPending,
+              tick: async (key, at) => {
+                await Callback.phase1([AutomationSlice_Callback$ReventlessCore.tickEvent(key, at)], context, Capabilities.capabilities());
+                await syncToQueryDb(queryDbOps);
+                await syncSchedules(schedulesOps, storedSchedules);
+                await AutomationSlice_Schedules$ReventlessCore.tell(platform, Callback.takeScheduleChanges());
+                return await processPending();
+              },
+              reconcileSchedules: reconcileSchedules,
+              rebuildSchedules: async events => {
+                Callback.rebuildSchedules(events);
+                return await reconcileSchedules();
+              }
+            };
+          }));
+          let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
+          let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
+          let outputs_schedulesDb = Stdlib_Option.map(schedulesDb, Component$ReventlessCore.outputs);
+          let outputs = {
+            resources: aggregatedResources,
+            queryDb: outputs_queryDb,
+            schedulesDb: outputs_schedulesDb
           };
-        }));
-        let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
-        let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
-        let outputs_schedulesDb = Stdlib_Option.map(schedulesDb, Component$ReventlessCore.outputs);
-        let outputs = {
-          resources: aggregatedResources,
-          queryDb: outputs_queryDb,
-          schedulesDb: outputs_schedulesDb
-        };
-        return Component$ReventlessCore.setOutputs(extra, outputs);
-      }, opts);
+          return Component$ReventlessCore.setOutputs(extra, outputs);
+        }, opts);
+      };
       return {
         Spec: Spec,
         Automation: Automation,

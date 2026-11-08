@@ -179,8 +179,9 @@ The `translate` function is the anti-corruption layer -- where user code calls e
 
 ### `onExhausted`: what to say when the retries run out
 
-`Error(msg)` on the last permitted attempt ends the item: no later sweep will pick
-it up. `onExhausted` decides whether the domain hears about that.
+`Error(msg)` on the last permitted attempt, or the target refusing the command
+`translate` produced, ends the item: no later sweep will pick it up. `onExhausted`
+decides whether the domain hears about that; `~lastError` says which it was.
 
 ```rescript
 let onExhausted = (_id, item, ~lastError) =>
@@ -436,6 +437,7 @@ processing -> completed: "Ok(Some/None)"
 processing -> failed: "Error(msg)"
 failed -> processing: "retry (count < max)"
 processing -> abandoned: "Error(msg), budget spent"
+processing -> abandoned: "target refused the command"
 ```
 
 Each TODO item moves through these statuses:
@@ -446,7 +448,26 @@ Each TODO item moves through these statuses:
 | `Processing` | `translate` is being called |
 | `Completed` | External call succeeded |
 | `Failed` | External call failed -- eligible for retry |
-| `Abandoned` | External call failed for the last time -- `onExhausted` was consulted, and no sweep will pick this row up again |
+| `Abandoned` | External call failed for the last time, or the target refused the command it produced -- `onExhausted` was consulted, and no sweep will pick this row up again |
+
+### When the target refuses the command
+
+Where the target answers right away (a sync slice in the same plugin, run in the
+same process), the slice hears its answer before marking the row:
+
+| Answer | What the row does |
+|--------|-------------------|
+| Accepted, or no answer yet (an async target) | `Completed` |
+| Refused for a business reason or lack of permission | `Abandoned`, `lastError` the target's reason, `onExhausted` consulted |
+| The platform failed | Failed attempt, retried like a failed publish |
+
+A refusal is not retried, unlike in an automation: a retry runs `translate` again,
+and the outside service has already acted once (a payment taken twice). If the
+command can arrive before the target is ready for it, let the target accept it and
+record it, or emit a refusal event the domain can act on. On AWS the answer is
+heard only where the target runs in the same Lambda; elsewhere the row is
+`Completed` as soon as the command is sent. A command sent to an Aggregate target
+is not waited on.
 
 ### The sweep
 
@@ -497,6 +518,7 @@ This QueryDb is automatically created by the builder and can be queried via the 
 - `translate` exceptions are caught and treated as `Error(msg)`
 - Command encoding failures mark item as `Failed` with incremented `retryCount`
 - Publishing failures mark item as `Failed` for retry
+- A refusal by the target marks the item `Abandoned` (see "When the target refuses the command")
 - Individual item failure does **not** affect other items
 
 **Recovery:**

@@ -17,6 +17,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as CommandSent$ReventlessCore from "../../CommandSent.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as AutomationSlice_Route$ReventlessCore from "./AutomationSlice_Route.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "./AutomationSlice_Schedules.res.mjs";
 
@@ -36,6 +37,7 @@ let todoRowSchema = Sury.$schema(s => ({
   completedAt: s.m(Sury.$option(Sury.string)),
   retryCount: s.m(Sury.int32),
   maxRetries: s.m(Sury.$option(Sury.int32)),
+  lastError: s.m(Sury.$option(Sury.string)),
   source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
 }));
 
@@ -48,6 +50,7 @@ function todoRowSchemaFor(itemSchema) {
     completedAt: s.m(Sury.$option(Sury.string)),
     retryCount: s.m(Sury.int32),
     maxRetries: s.m(Sury.$option(Sury.int32)),
+    lastError: s.m(Sury.$option(Sury.string)),
     source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
   }));
 }
@@ -188,18 +191,30 @@ function Make(Spec) {
       return decode(data$1, key);
     };
     let processingTimeoutMs = 15 * 60 * 1000;
-    let afterFailedAttempt = row => {
+    let afterFailedAttempt = (row, lastError) => {
       let retryCount = row.retryCount + 1 | 0;
       let newrecord = {...row};
+      newrecord.lastError = lastError !== undefined ? lastError : row.lastError;
       newrecord.retryCount = retryCount;
       newrecord.status = retryCount >= Spec.maxRetries ? "Abandoned" : "Failed";
       return newrecord;
+    };
+    let afterRefusal = (row, cause, lastError) => {
+      switch (cause) {
+        case "DomainRejection" :
+        case "InfrastructureFailure" :
+          return afterFailedAttempt(row, lastError);
+        case "AccessRefusal" :
+          let newrecord = {...afterFailedAttempt(row, lastError)};
+          newrecord.status = "Abandoned";
+          return newrecord;
+      }
     };
     let abandonmentCommand = async (id, row) => {
       let match = await openRow(id, row);
       switch (match.TAG) {
         case "Open" :
-          return Stdlib_Option.flatMap(Automation.onExhausted(match.key, match.item), param => {
+          return Stdlib_Option.flatMap(Automation.onExhausted(match.key, match.item, row.lastError), param => {
             let commandJson;
             try {
               commandJson = Util_Sury$Reventless.toJson(param[1], Spec.commandSchema);
@@ -326,8 +341,10 @@ function Make(Spec) {
       });
       scheduleChanges.contents = [];
     };
-    let phase2 = async publishJsons => {
+    let phase2 = async (publishJsons, publishJsonsAndWait) => {
       let publishJsons$1 = CommandSent$ReventlessCore.announcing(`AutomationSlice(` + Spec.name + `)`, publishJsons);
+      let publishJsonsAndWait$1 = Stdlib_Option.map(publishJsonsAndWait, wait => CommandSent$ReventlessCore.announcingAndWaiting(`AutomationSlice(` + Spec.name + `)`, wait));
+      let rowOfMsgId = {};
       let currentTime = await Effect.runPromise(Clock.currentTimeMillis);
       let newlyAbandoned = [];
       Object.entries(todoItems).forEach(param => {
@@ -344,7 +361,7 @@ function Make(Spec) {
         if (currentTime - match$1 < processingTimeoutMs) {
           return;
         }
-        let updated = afterFailedAttempt(row);
+        let updated = afterFailedAttempt(row, undefined);
         todoItems[id] = updated;
         if (updated.status === "Abandoned") {
           newlyAbandoned.push(id);
@@ -394,7 +411,7 @@ function Make(Spec) {
                 let exn = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to encode command: ` + errMsg));
-                let updated = afterFailedAttempt(row);
+                let updated = afterFailedAttempt(row, undefined);
                 todoItems[id] = updated;
                 if (updated.status === "Abandoned") {
                   newlyAbandoned.push(id);
@@ -408,6 +425,7 @@ function Make(Spec) {
                   meta: msg_meta,
                   commandJson: commandJson
                 };
+                rowOfMsgId[msg_meta.msgId] = id;
                 commands.push(msg);
               });
             }
@@ -424,9 +442,42 @@ function Make(Spec) {
             break;
         }
       }
+      let recordOutcome = outcome => {
+        switch (outcome.TAG) {
+          case "Rejected" :
+            let match = Stdlib_Option.flatMap(rowOfMsgId[outcome.msgId], id => Stdlib_Option.map(todoItems[id], row => [
+              id,
+              row
+            ]));
+            if (match === undefined) {
+              return;
+            }
+            let row = match[1];
+            if (row.status !== "Processing") {
+              return;
+            }
+            let id = match[0];
+            let lastError = CommandTopic_Helpers$ReventlessCore.describeRefusal(outcome.errorCode, outcome.errorDetail);
+            let updated = afterRefusal(row, outcome.cause, lastError);
+            todoItems[id] = updated;
+            if (updated.status === "Abandoned") {
+              newlyAbandoned.push(id);
+              return;
+            } else {
+              return;
+            }
+          case "Accepted" :
+          case "Pending" :
+            return;
+        }
+      };
       if (commands.length !== 0) {
         try {
-          await publishJsons$1(commands);
+          if (publishJsonsAndWait$1 !== undefined) {
+            (await publishJsonsAndWait$1(commands)).forEach(recordOutcome);
+          } else {
+            await publishJsons$1(commands);
+          }
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
@@ -440,7 +491,7 @@ function Make(Spec) {
             if (current.status !== "Processing") {
               return;
             }
-            let updated = afterFailedAttempt(param[1]);
+            let updated = afterFailedAttempt(param[1], undefined);
             todoItems[id] = updated;
             if (updated.status === "Abandoned") {
               newlyAbandoned.push(id);

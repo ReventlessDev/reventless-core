@@ -72,6 +72,9 @@ module type T = {
   let make: (
     ~allEventTopics: EventTopic.allOutputs,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    /** The target's publish that waits for each command's outcome, where its topic
+        offers one; a refusal is then recorded on the row at once. */
+    ~publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>=?,
     ~context: Reventless.AutomationSlice.context,
     ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,

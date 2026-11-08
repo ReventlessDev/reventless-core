@@ -269,7 +269,7 @@ failed: Failed { class: status-retry }
 
 pending -> processing: "process() returns Some"
 processing -> completed: "resolve() matches"
-processing -> failed: publish error
+processing -> failed: "publish error or refused"
 failed -> processing: "retry (count < max)"
 pending -> completed: "resolve() before process"
 ```
@@ -281,8 +281,37 @@ Each TODO item moves through these statuses:
 | `Pending` | Created by `collect`, waiting to be processed |
 | `Processing` | `process` returned a command, waiting for resolution event |
 | `Completed` | `resolve` matched -- work is done |
-| `Failed` | Command publishing failed, or no resolving event came within 15 minutes -- eligible for retry |
-| `Abandoned` | The retry budget is spent -- no sweep picks it up again |
+| `Failed` | Command publishing failed, the target refused the command, or no resolving event came within 15 minutes -- eligible for retry |
+| `Abandoned` | The retry budget is spent, or the target refused for lack of permission -- no sweep picks it up again |
+
+A row's `lastError` says why its last attempt failed: the target's refusal (its
+error code, then the detail) or the failure to send.
+
+### When the target says no
+
+Where the target answers right away (a sync slice in the same plugin, run in the
+same process), the slice hears its answer:
+
+| Answer | What the row does |
+|--------|-------------------|
+| Accepted | Stays `Processing`; `resolve` completes it |
+| Refused for a business reason | Failed attempt with the reason, retried on the next sweep |
+| Refused for lack of permission | `Abandoned` at once, with the reason |
+| The platform failed | Failed attempt with the reason |
+| No answer yet (an async target) | Stays `Processing` until the 15-minute timeout |
+
+A business refusal is retried because it may only mean the target has not yet seen
+an event the command depends on. One that lasts ends `Abandoned` after `maxRetries`,
+and `onExhausted` hears why.
+
+On AWS the answer is heard only where the target runs in the same Lambda;
+elsewhere no command is answered and the timeout applies.
+
+A refusal the domain has to react to belongs in the target's events, not in an
+error nobody reads: let `decide` emit `ReservationDeclined` instead of returning
+`Error`, and have `resolve` complete the row on that event as well as on the
+success event. Keep `Error` for commands a person sends, who sees it. A command
+sent twice should be accepted the second time with `Ok([])`, not refused.
 
 ### Heartbeat Handler
 
@@ -298,13 +327,16 @@ so it ends `Abandoned` like any other once `maxRetries` is spent.
 
 ## When an item runs out of retries
 
-`process` producing a command that cannot be published moves the item towards its
-retry ceiling. On the attempt that spends the budget the row becomes `Abandoned`
-and `onExhausted` is consulted:
+`process` producing a command that cannot be published, or that the target
+refuses, moves the item towards its retry ceiling. On the attempt that spends the
+budget the row becomes `Abandoned` and `onExhausted` is consulted:
 
 ```rescript
-let onExhausted = (_id, _item) => None
+let onExhausted = (_id, _item, ~lastError) => None
 ```
+
+`~lastError` is why the last attempt failed, or `None` where the target never
+answered. An `onExhausted` written without it is given `~lastError as _`.
 
 Return `Some((targetId, command))` to tell the domain, `None` to stay silent. It
 is declared either way, because abandonment is an outcome and the framework cannot

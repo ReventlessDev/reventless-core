@@ -278,7 +278,7 @@ module FromSlice = (
   // Unit: process and abandonment
   let givenTodo = (id: string, item: Spec.todoItem) => (id, item)
   let whenProcess = ((id, item), ~now=?) => Automation.process(id, item, ~now=nowOr(now))
-  let whenExhausted = ((id, item)) => Automation.onExhausted(id, item)
+  let whenExhausted = ((id, item), ~lastError=?) => Automation.onExhausted(id, item, ~lastError)
   let thenCommand = (actual, expectedId, expectedCmd) =>
     switch actual {
     | Some((id, cmd)) if id == expectedId && cmd == expectedCmd => Outcome.pass

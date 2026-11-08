@@ -48,7 +48,7 @@ module CancelUnshippedAutomation: AutomationSlice.Automation
   with module Spec := CancelUnshippedSpec = {
   let process = (id, item: CancelUnshippedSpec.todoItem, ~now) =>
     now >= item.dueAt ? Some((id, CancelUnshippedSpec.CancelOrder({orderId: item.orderId}))) : None
-  let onExhausted = (_id, _item: CancelUnshippedSpec.todoItem) => None
+  let onExhausted = (_id, _item: CancelUnshippedSpec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(CancelUnshippedSpec)
   module type Mapping = M.Mapping

@@ -63,7 +63,7 @@ module DigestAutomation: AutomationSlice.Automation with module Spec := DigestSp
     item.recipientId,
     DigestSpec.SendDigest({recipientId: item.recipientId}),
   ))
-  let onExhausted = (_id, _item: DigestSpec.todoItem) => None
+  let onExhausted = (_id, _item: DigestSpec.todoItem, ~lastError as _) => None
   let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(DigestSpec)
   module type Mapping = M.Mapping

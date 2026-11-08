@@ -308,7 +308,7 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTo
     await callback.phase1(jsons, context, capabilities());
     await syncTodoItems();
     await followSchedules(schedules(), callback);
-    await callback.phase2(publishJsons);
+    await callback.phase2(publishJsons, undefined);
     return await syncTodoItems();
   }));
 }
@@ -337,7 +337,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
       param[1]
     ]), events.map(param => param[2]), capabilities());
     await syncTodoItems();
-    await callback.phase2(publishJsons, capabilities());
+    await callback.phase2(publishJsons, capabilities(), undefined);
     return await syncTodoItems();
   }));
 }
@@ -379,7 +379,7 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons);
+      await callback.phase2(publishJsons, undefined);
       return await syncTodoItems();
     },
     comp: comp,
@@ -393,7 +393,7 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
       if (match !== undefined) {
         await match.sync();
       }
-      await callback.phase2(publishJsons);
+      await callback.phase2(publishJsons, undefined);
       return await syncTodoItems();
     },
     reconcile: async () => {
@@ -424,7 +424,7 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, capabilities());
+      await callback.phase2(publishJsons, capabilities(), undefined);
       return await syncTodoItems();
     },
     comp: comp,

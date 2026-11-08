@@ -210,8 +210,17 @@ module type Automation = {
 
   The row is marked `Abandoned` either way; this decides only whether anything
   downstream hears about it.
+
+  `~lastError` says why the last attempt failed: the target's refusal (its error
+  code, then the detail) where the target answered, or `None` where it never did.
+  The `@@reventless.automation` PPX adds `~lastError as _` to an `onExhausted`
+  written without it.
   */
-  let onExhausted: (string, Spec.todoItem) => option<(string, Spec.command)>
+  let onExhausted: (
+    string,
+    Spec.todoItem,
+    ~lastError: option<string>,
+  ) => option<(string, Spec.command)>
 
   /** File URL of this Automation module (`import.meta.url`). */
   let moduleUrl: string

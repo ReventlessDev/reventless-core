@@ -20,3 +20,13 @@ let announcing = (
     cmdJsons->Array.forEach(cmdJson => log(~comp, cmdJson))
     publishJsons(cmdJsons)
   }
+
+/** `announcing` for the publish that waits for each command's outcome. */
+let announcingAndWaiting = (
+  ~comp: string,
+  publishJsonsAndWait: CommandTopic_Helpers.publishJsonsAndWait,
+): CommandTopic_Helpers.publishJsonsAndWait =>
+  cmdJsons => {
+    cmdJsons->Array.forEach(cmdJson => log(~comp, cmdJson))
+    publishJsonsAndWait(cmdJsons)
+  }

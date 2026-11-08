@@ -52,8 +52,22 @@ module Make = (
     let schedulesDbName = InnerMake.schedulesDbName
     let sourceNames = InnerMake.sourceNames
 
-    let make = (~allEventTopics, ~publishJsons, ~context, ~runtime=?, ~opts=?): component => {
-      let as_ = InnerMake.make(~allEventTopics, ~publishJsons, ~context, ~runtime?, ~opts?)
+    let make = (
+      ~allEventTopics,
+      ~publishJsons,
+      ~publishJsonsAndWait=?,
+      ~context,
+      ~runtime=?,
+      ~opts=?,
+    ): component => {
+      let as_ = InnerMake.make(
+        ~allEventTopics,
+        ~publishJsons,
+        ~publishJsonsAndWait?,
+        ~context,
+        ~runtime?,
+        ~opts?,
+      )
 
       let queryDbOutputs = (as_->ReventlessCore.Component.outputs).queryDb
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
