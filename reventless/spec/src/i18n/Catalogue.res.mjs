@@ -285,6 +285,15 @@ function entries(plugin, structure) {
     });
     writeSide.errors.forEach(error => add(writeSide.name, `error.` + error.name, sentence(error.name)));
   });
+  out.push({
+    key: plugin + `.plugin.name`,
+    text: humanizeKey(plugin),
+    element: {
+      plugin: plugin,
+      identifier: plugin,
+      kind: "plugin"
+    }
+  });
   let roles = Stdlib_Option.getOr(structure.admission, []).map(a => a.role).concat(structure.stateChangeSlices.concat(structure.aggregates).flatMap(w => w.commands).flatMap(c => Stdlib_Option.getOr(c.requiredRoles, [])));
   roles.forEach(role => {
     if (!out.some(e => e.key === plugin + `.role.` + role)) {

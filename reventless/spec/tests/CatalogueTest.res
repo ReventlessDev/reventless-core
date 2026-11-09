@@ -69,6 +69,7 @@ describe("Catalogue.entries", () => {
         "Ordering.CancelOrder.error.OrderAlreadyShipped": "Order already shipped",
         "Ordering.role.Shopper": "Shopper",
         "Ordering.role.Fulfilment": "Fulfilment",
+        "Ordering.plugin.name": "Ordering",
       },
     )
   )

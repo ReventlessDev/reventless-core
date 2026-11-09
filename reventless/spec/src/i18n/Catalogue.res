@@ -16,6 +16,7 @@ identifier, so every reader (the screens, a translator, a glossary) addresses th
 | `Ordering.PlaceOrder.field.orderId` | Order ID | a field of the command |
 | `Ordering.CancelOrder.error.OrderAlreadyShipped` | Order already shipped | a write side's refusal |
 | `Ordering.role.Merchandiser` | Merchandiser | a role |
+| `Ordering.plugin.name` | Ordering | the plugin, as a menu groups its pages |
 
 The English is what the screens draw today from the identifier, so a fresh catalogue changes
 nothing on screen; a translation is the first thing that does.
@@ -242,6 +243,13 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
     writeSide.errors->Array.forEach(error =>
       add(~identifier=writeSide.name, ~kind=`error.${error.name}`, sentence(error.name))
     )
+  })
+
+  // The plugin itself, as a menu groups its pages under it.
+  out->Array.push({
+    key: `${plugin}.plugin.name`,
+    text: humanizeKey(plugin),
+    element: {plugin, identifier: plugin, kind: "plugin"},
   })
 
   let roles = Array.concat(
