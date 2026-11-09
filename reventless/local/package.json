@@ -4,7 +4,8 @@
   "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
   "license": "Apache-2.0",
   "bin": {
-    "emit-capabilities": "./emit-capabilities.mjs"
+    "emit-capabilities": "./emit-capabilities.mjs",
+    "generate-catalogue": "./generate-catalogue.mjs"
   },
   "scripts": {
     "build": "rescript build",
