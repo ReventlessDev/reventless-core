@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.198 (2026-11-09)
+
+### Features
+
+* **local:** generate a plugin's catalogue of its own words ([1043fec](https://github.com/ReventlessDev/reventless-core/commit/1043fec025868be4ee04e6ab5420dfc1ed2edb58))
+
+
 # 3.0.0-alpha.197 (2026-11-08)
 
 * feat(core)!: an automation or outbound translation hears that its command was refused ([8c9b4b6](https://github.com/ReventlessDev/reventless-core/commit/8c9b4b6c643a5a9e95c85f823fbc333638224346))

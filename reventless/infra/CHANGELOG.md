@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.229 (2026-11-09)
+
+### Features
+
+* **core:** a deployment serves its catalogues beside config.json ([299f6eb](https://github.com/ReventlessDev/reventless-core/commit/299f6eb50fdcb8ae2fdd76a32cfc264004088075))
+
+
 # 3.0.0-alpha.228 (2026-11-08)
 
 * feat(core)!: an automation or outbound translation hears that its command was refused ([8c9b4b6](https://github.com/ReventlessDev/reventless-core/commit/8c9b4b6c643a5a9e95c85f823fbc333638224346))
