@@ -1,19 +1,13 @@
-# Plan: the app's catalogue is generated from the plugin structure, served per platform and language, and read by the server's messages (core, waves AW2 and AW3)
+# Plan: the app's catalogue is generated from the plugin structure, served per platform and language, and read by the server's messages
 
-**Date:** 2026-11-08
-**Status:** 📝 Drafted; nothing built.
-**Part of:** the business repo's
-[the-app-speaks-the-viewers-language-orchestrator.md](https://github.com/ReventlessLab/reventless-business/blob/HEAD/docs/plans/the-app-speaks-the-viewers-language-orchestrator.md)
-(AL8, AL9, AL10, AL13, AL14, AL15, AL16; decisions AD2, AD4, AD5, AD8). The UI kit's half of
-the same waves (AL7, AL11) is in the ui repo's plan; wave AW1 (the kit's own words) precedes
-this one and nothing here is needed for it.
-**Facts from:** this repo at `8636d33`, surveyed 2026-11-08
-([the multi-language analysis §13.1](https://github.com/ReventlessLab/reventless-business/blob/HEAD/docs/analysis/multi-language-tooling-and-source.md#131-what-moved-since-october)).
+**Date:** 2026-11-08<br/>
+**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) built 2026-11-09; the rest not started.<br/>
+**Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
 
-A generated app's human-facing words are humanized identifiers in the UI kit and hard-coded
-English on the server. `pluginStructure` already publishes everything a catalogue's keys need
+A generated app's human-facing words are humanized identifiers on screen and hard-coded English
+on the server. `pluginStructure` already publishes everything a catalogue's keys need
 (`readSideDef.queryField`, `singleQueryField`, `labelField`; `commandDef.mutationField`; the
 error variants of every command's schema; `requiredStoreDeclarations`), but nothing derives
 message keys from it, nothing serves a text per language beside `config.json`, and
@@ -25,15 +19,15 @@ are the first server-rendered end-user text, and they are English.
 
 The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
 
-| Step | Orchestrator | What | Size |
-|---|---|---|---|
-| CA1 | AL8 | `@plural("…")` on a view and on an uploadable field, read by the PPX and `Api_Naming`, published on `readSideDef` and the store declaration | S–M |
-| CA2 | AL9 | `generate-catalogue`: message keys from `pluginStructure` into `i18n/en.json`, with the lock file; orphans reported | M |
-| CA3 | AL10 | the catalogue served: the local platform emits `i18n/<lang>.json` beside `config.json` the way it emits `ui-hints.json`; the deploy writes `languages` into `config.json` and uploads the merged files | S–M |
-| CA4 | AL13 | `i18n status` and `i18n check`: coverage per language and layer, `languages.json` with *draft* and *released*, the release gate | S–M |
-| CA5 | AL14 | `Messaging.message` gains `language?`; the recipient's language resolved; the registration mails and `Template` read the compiled catalogue | M |
-| CA6 | AL15 | the user pool's `locale` attribute readable and writable for the app client; the claim in the id token | S |
-| CA7 | AL16 | the seam for the glossary: the key records its element, the lock file has room for term hashes | S |
+| Step | What | Size |
+|---|---|---|
+| CA1 | `@plural("…")` on a view and on an uploadable field, read by the PPX and `Api_Naming`, published on `readSideDef` and the store declaration | S–M |
+| CA2 | `generate-catalogue`: message keys from `pluginStructure` into `i18n/en.json`, with the lock file; orphans reported | M |
+| CA3 | the catalogue served: the local platform emits `i18n/<lang>.json` beside `config.json` the way it emits `ui-hints.json`; the deploy writes `languages` into `config.json` and uploads the merged files | S–M |
+| CA4 | `i18n status` and `i18n check`: coverage per language and layer, `languages.json` with *draft* and *released*, the release gate | S–M |
+| CA5 | `Messaging.message` gains `language?`; the recipient's language resolved; the registration mails and `Template` read the compiled catalogue | M |
+| CA6 | the user pool's `locale` attribute readable and writable for the app client; the claim in the id token | S |
+| CA7 | the seam for a glossary: the key records its element, the lock file has room for term hashes | S |
 
 ## Step CA1 — `@plural("…")`
 
@@ -46,51 +40,64 @@ The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
   Derived`, next to `labelField` and `labelFieldSource`, which already carry the same shape;
   `requiredStoreDeclarations` gains `annotation` already and names `@plural` there.
 - **The two copies stay identical** because both read one declared value first; the derived rule
-  keeps its *"if either side changes, change both"* comment. Deleting the copies is the ui plan's
-  AL7 on the kit's side and not this repo's.
+  keeps its *"if either side changes, change both"* comment. A consumer that reads the published
+  value no longer needs a copy of its own.
 - **Checks.** A `@plural` that equals the derived plural fails `check:fresh-outputs`'s neighbour
   the way a redundant `@noDcbTag` does: reported, since it says nothing.
 
 ## Step CA2 — `generate-catalogue`
 
-- **A bin per app** in `reventless-spec` (`run-generate-catalogue.mjs`, `Reventless.CliArgs` like
-  every other bin; usage, `-h`, exit 2 on a usage mistake), run from the platform package, so the
-  merge across plugins and the orphan report are per app (orchestrator AQ1).
-- **Keys**, one scheme for every reader: `<plugin>.<Element>.<kind>`, with `Element` the
-  identifier and `kind` one of `name`, `plural`, `new`, `empty`, `count`, `confirm`, `done`,
-  `activity`, `field.<name>`, `state.<Value>`, `error.<Variant>`, `role.<Role>`. The source text
-  is the humanized identifier (AD8), the sentences the kit's English patterns filled in, so a
-  fresh `en.json` reads exactly as the kit reads today.
+- **Keys**, one scheme for every reader: `<Plugin>.<Element>.<kind>`, with `Element` the
+  identifier. The source text is the humanized identifier, so a fresh `en.json` reads exactly as
+  the screens read today.
 - **Idempotent.** A rerun adds new keys, updates a source text only if it is still the text it
   generated last time (the lock file's hash), and reports an orphan rather than deleting it,
   because a rename needs the old key's translations.
 - **The lock file** `i18n/<lang>.lock.json`: per key the hash of the source text it was
-  translated from; `i18n/<lang>.proposed.json` for text not yet confirmed. Confirming moves a
-  proposal into `<lang>.json`; the generator never writes a translation.
-- **What it reads.** `pluginStructure` as the baked manifest reads it
-  (`reventless/core/src/admin/Platform_BakedManifest.res`), so a plugin that compiles has a
-  catalogue, and the GraphQL error enums come from `Spec.errorSchema`'s variants as
-  `CommandTopic_Helpers.rejectedResult` names them.
+  translated from. The generator never writes a translation.
+
+**Built (2026-11-09).** `Reventless.Catalogue` (`reventless/spec/src/i18n/`) turns a
+`pluginStructure` into keys and English text and merges a rerun with what is on disk;
+`generate-catalogue` (`reventless/local`, beside `emit-capabilities`) applies a composition root
+to the local platform, as `emit-capabilities` does, and writes `<plugin>/i18n/en.json` and
+`en.lock.json`. On the online shop's ordering plugin: 182 keys, and a rerun reports *current*.
+
+- **Per plugin, in `reventless/local`.** Reading a structure means applying the composition root
+  to a platform, which only the local package has. Keys carry the plugin, so merging plugins
+  belongs to [CA3](#step-ca3--the-catalogue-served), and orphans are a plugin's own. `--check`
+  writes nothing and exits 1 when the files would change.
+- **The kinds:** a view's `name` (its singular, from `singleQueryField`, so no second inflection
+  rule), `plural`, `count` (an ICU plural), `field.<name>`, `state.<Value>` (the lifecycle
+  field's enum); a command's `name` and `field.<name>`; `error.<Variant>` under the write side
+  that declares it; and `<Plugin>.role.<Role>` from the admission table and the commands'
+  required roles.
+- **Not yet:** per-element sentences (*new*, *empty*, *confirm*, *done*, *activity*). German
+  needs them where a noun's gender changes the sentence (*Neue Bestellung*, *Neuer Kunde*);
+  they are generated once a reader asks for them, not before.
+- **The humanizing rule** splits camelCase and separators, keeps a run of capitals together and
+  writes known acronyms in capitals (`customerId` → *Customer ID*).
+- **The lock file carries [CA7](#step-ca7--the-seam-for-a-glossary)'s seam:** `element` per key
+  and an empty `terms`.
+- The plugin's name is read off its GraphQL fields (`Ordering_Customers` → `Ordering`); `--plugin`
+  names it where none says it.
 
 ## Step CA3 — the catalogue served
 
 - **Local.** `reventless/local/src/UiHints.res` writes `ui-hints.json` into the directory the
   platform serves and points `config.json` at it. An `I18n.res` beside it does the same for
-  `i18n/<lang>.json`: merged from the kit's catalogue (shipped in the host-shell package), each
-  plugin's `i18n/` and the app's overrides, in that precedence, and `config.json` gains
-  `languages: {default, offered, register?}` from the platform's declaration (the local
-  `Platform` options; on AWS the stack's inputs).
+  `i18n/<lang>.json`, merged from each plugin's `i18n/` and the app's overrides, in that
+  precedence, and `config.json` gains `languages: {default, offered, register?}` from the
+  platform's declaration (the local `Platform` options; on AWS the stack's inputs).
 - **AWS.** `Util_ShellConfig.res` writes `languages` the way it writes `manifestUrl` and
-  `mapStyle`; the stage step (`reventless-ui-stage`, in the ui repo) merges the files into the
-  served directory, and the deploy uploads them with the shell. Nothing here is a Lambda's
-  concern; the Lambdas get the compiled catalogue in CA5.
+  `mapStyle`, and the deploy uploads the merged files with the shell. Nothing here is a Lambda's
+  concern; the Lambdas get the compiled catalogue in [CA5](#step-ca5--the-servers-messages).
 - **Watch.** The local platform's `UiHints.watch` re-emits on a change; `I18n` watches the
   app's `i18n/` the same way, so a confirmed German key shows without a restart.
 
 ## Step CA4 — `i18n status` and `i18n check`
 
 - Two subcommands of the same bin (`generate-catalogue status`, `… check`), per language and
-  per layer (kit, each plugin, app): total, confirmed, proposed, missing, stale, ready.
+  per layer (each plugin, the app): total, confirmed, proposed, missing, stale, ready.
 - `i18n/languages.json` names each offered language *draft* or *released*. `check` fails only
   for a released language with a missing or stale key, for an ICU syntax error
   (`@formatjs/icu-messageformat-parser`) or for placeholders that differ from the source's.
@@ -103,15 +110,15 @@ The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
   (`reventless/spec/src/semantic/Messaging.res`); a channel that carries a language header
   (e-mail) sets it, the others ignore it, as `subject` is today.
 - **The recipient's language** is resolved once, in `reventless/core`: the identity's `locale`
-  (CA6), else the platform's default from the same `languages` declaration. A slice that sends
-  gets it through its capabilities (`capabilities.messaging.languageFor(recipient)`), so no
-  slice reads Cognito.
+  ([CA6](#step-ca6--the-identitys-locale)), else the platform's default from the same `languages`
+  declaration. A slice that sends gets it through its capabilities
+  (`capabilities.messaging.languageFor(recipient)`), so no slice reads Cognito.
 - **The catalogue in the Lambda.** The compiled `i18n/<lang>.json` of the platform is bundled
   with every Lambda that sends (the registration package's outbound translation, the
-  notification trait's sender), and one `Text` module in core formats ICU with the same
-  FormatJS runtime the kit uses, so a subject and a body are keys: `registration.challenge.subject`,
-  `registration.invited.body`, with the duration and the link as placeholders. `Reventless.Duration.format`
-  gains a locale, read from the message's language.
+  notification trait's sender), and one `Text` module in core formats ICU with FormatJS, so a
+  subject and a body are keys: `registration.challenge.subject`, `registration.invited.body`,
+  with the duration and the link as placeholders. `Reventless.Duration.format` gains a locale,
+  read from the message's language.
 - **`Template.res`** (`reventless/spec/src/semantic/Template.res`) formatters take a locale for
   `money`, `percent`, `bytes`, `duration`, `dateRange`; `raw` stays raw. Its formatter list is
   the semantic vocabulary and does not grow.
@@ -123,17 +130,16 @@ The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
 - `Platform_Stack.res` (`PulumiAws.Cognito.UserPool.make`, line 277 today) declares the standard
   `locale` attribute as mutable and readable and writable for the app client. Standard
   attributes exist on every pool; this changes the client's read and write lists, which is an
-  in-place update, not a pool replacement. To be measured first, the way the identity plan
-  measured the login identifier, because a replaced pool is emptied.
-- The id token then carries `locale`, and the shell reads it (the ui plan's UK4). The local
-  platform's accounts carry a `locale` in the same place they carry an e-mail.
+  in-place update, not a pool replacement. To be measured first, because a replaced pool is
+  emptied.
+- The id token then carries `locale`, and the shell reads it. The local platform's accounts
+  carry a `locale` in the same place they carry an e-mail.
 
-## Step CA7 — the seam for the glossary
+## Step CA7 — the seam for a glossary
 
 - A key's entry in the lock file records `element` (plugin, identifier, kind) and leaves a
-  `terms: {<term>: hash}` map empty. When the tools' GL1 writes terms into ESDM and the ontology
-  plan's ON3 attaches them to the compiled model, a proposal can record which terms it used and
-  `status` can count *stale by term*. Nothing else is built here.
+  `terms: {<term>: hash}` map empty. Once a model carries terms, a proposal can record which
+  terms it used and `status` can count *stale by term*. Nothing else is built here.
 
 ## Verification
 
@@ -157,7 +163,6 @@ The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
 
 ## Out of scope
 
-The kit's words and switch (wave AW1), the kit's consumption of `singleQueryField` and the
-deletion of `Inflect` (AL7), the hint labels through the catalogue (AL11), the tools' glossary
-(GL1 to GL8), and any translation written by this repo: every German text is a proposal in the
-app's repository, confirmed by a person.
+The screens' own words and their language switch, translations of any kind (every German text
+is a proposal in the app's repository, confirmed by a person), and where a glossary's terms come
+from.
