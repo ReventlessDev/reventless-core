@@ -16,6 +16,7 @@ import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as I18n$ReventlessLocal from "./I18n.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -1387,15 +1388,17 @@ function MakeWithConfig(Config) {
     });
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, hostUiDir);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     whenStructuresLanded(plugins$1, structures => {
       AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
-      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, hostUiDir));
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir));
     });
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
     UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+    I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg, hostUiDir);
@@ -3188,15 +3191,17 @@ function Make($star) {
     });
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, hostUiDir);
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     whenStructuresLanded(plugins$1, structures => {
       AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
-      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, hostUiDir));
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir));
     });
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
     UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
     UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+    I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg, hostUiDir);

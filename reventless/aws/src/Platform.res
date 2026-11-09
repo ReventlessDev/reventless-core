@@ -1270,6 +1270,9 @@ module MakeWithConfig = (
     // including one served from a baked manifest, who issues no admin query and
     // for whom federation overrides therefore never apply.
     uiSlotsFile?: string,
+    // Merged per language into `i18n/<lang>.json` beside `config.json`, which
+    // names the languages.
+    i18n?: ReventlessInfra.Platform.i18n,
     // Optional baked component manifest. Declared here so a deployment can state
     // it once; the emission that writes the file is not wired on this platform
     // yet, and a declaration without it writes nothing.
@@ -2422,6 +2425,7 @@ module MakeWithConfig = (
             ~bakedManifest=?cfg.bakedManifest,
             ~uiSlotsFile=?cfg.uiSlotsFile,
             ~shellConfig=?cfg.shellConfig,
+            ~i18n=?cfg.i18n,
           )
           ->JSON.Encode.object
           ->JSON.stringify
@@ -2465,6 +2469,35 @@ module MakeWithConfig = (
             cacheControl: bootFileCacheControl,
           },
         )
+      }
+
+      // Optional catalogues of the app's own words: one merged object per offered
+      // language beside `config.json`, merged exactly as the local platform merges
+      // them. A source that does not parse fails the deploy rather than shipping a
+      // catalogue the shell would read as no translation at all.
+      switch cfg.i18n {
+      | None => ()
+      | Some(i18n) =>
+        let read: ReventlessCore.Platform_I18n.read = (~dir, ~language) => {
+          let path = NodePath.join([dir, language ++ ".json"])
+          NodeFs.existsSync(path) ? Some(NodeFs.readFileSync(path)) : None
+        }
+        switch ReventlessCore.Platform_I18n.files(i18n, ~read) {
+        | Error(message) => failwith("host UI " ++ message)
+        | Ok(files) =>
+          files->Array.forEach(((key, text)) => {
+            let _ = PulumiAws.S3.BucketObject.make(
+              ~name="host-ui-" ++ key->String.replaceAll("/", "-")->String.replaceAll(".", "-"),
+              ~args={
+                bucket: bucketName->Pulumi.Output.asInput,
+                key: Pulumi.Input.make(key),
+                content: Pulumi.Input.make(text),
+                contentType: Pulumi.Input.make("application/json"),
+                cacheControl: bootFileCacheControl,
+              },
+            )
+          })
+        }
       }
 
       // Optional AutoUI slot renderers. Read verbatim and written beside the

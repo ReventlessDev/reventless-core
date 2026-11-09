@@ -67,6 +67,8 @@ let overlay = (
   // Read off the plugin structures once they have landed, so the first write
   // (from the declaration alone) omits it and the second carries it.
   ~selfRegistration: option<ReventlessCore.Platform_SelfRegistration.config>=?,
+  // The languages the served catalogues are in (`I18n` writes the files).
+  ~i18n: option<ReventlessInfra.Platform.i18n>=?,
 ): dict<JSON.t> => {
   let out =
     Reventless.ShellEnvironment.local
@@ -91,6 +93,26 @@ let overlay = (
     let (k, v) = ReventlessCore.Platform_SelfRegistration.configEntry(c)
     out->Dict.set(k, v)
   })
+
+  // Computed only where catalogues are declared: without them a deployment may still name its
+  // languages through `shellConfig`, for the shell's own words.
+  i18n->Option.forEach(declared =>
+    switch ReventlessCore.Platform_I18n.validate(declared) {
+    | Ok(valid) =>
+      if (
+        shellConfig
+        ->Option.flatMap(c => c->Dict.get(ReventlessCore.Platform_I18n.configKey))
+        ->Option.isSome
+      ) {
+        JsError.throwWithMessage(
+          "host UI config.json: shellConfig sets `languages` while i18n is declared — " ++ "the platform writes it from i18n; remove it from shellConfig.",
+        )
+      }
+      let (k, v) = ReventlessCore.Platform_I18n.configEntry(valid)
+      out->Dict.set(k, v)
+    | Error(message) => JsError.throwWithMessage("host UI " ++ message)
+    }
+  )
 
   bakedManifest->Option.forEach(config => {
     out->Dict.set("manifestUrl", JSON.Encode.string(manifestUrlOf(config)))
@@ -148,10 +170,11 @@ let emit = (
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
   ~selfRegistration: option<ReventlessCore.Platform_SelfRegistration.config>=?,
+  ~i18n: option<ReventlessInfra.Platform.i18n>=?,
   // The platform's chosen `assetsDir`; unset, the host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
-  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig, ~selfRegistration?)
+  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig, ~selfRegistration?, ~i18n?)
   let declared = overlay->Dict.keysToArray->Array.filter(k => !(environmentKeys->Array.includes(k)))
 
   switch switch dir {

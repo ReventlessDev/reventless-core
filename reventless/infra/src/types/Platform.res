@@ -157,6 +157,20 @@ type bakedManifestSelection = {
     authorization to make the extra entries merely useless. `group` is the
     caller group this journey serves; the shell picks by the role the caller is
     acting as. */
+/** The languages a deployment offers its viewers and where its catalogues come from.
+
+    `sources` are directories holding one `<lang>.json` per language: each plugin's `i18n/`,
+    then the app's own overrides, a later source winning a key over an earlier one. A language
+    a source has no file for is skipped in that source. */
+type i18n = {
+  /** The language a viewer reads when nothing of theirs matches; joins `offered` if missing. */
+  default: string,
+  offered: array<string>,
+  /** How German addresses the reader: `"Sie"` (the default) or `"du"`. */
+  register?: string,
+  sources: array<string>,
+}
+
 type bakedJourney = {
   group: string,
   /** What a switcher calls this journey. Defaults to the group's own name. */
@@ -460,6 +474,11 @@ module type T = {
     // a build step over it would make the local watch a lie and put a bundler
     // between an author and their own file.
     uiSlotsFile?: string,
+    // Optional catalogues of the app's own words. When set, one merged
+    // `i18n/<lang>.json` per offered language is written beside `config.json`,
+    // and `config.json` names the languages. Unset ⇒ no file written and the
+    // shell reads only its own words.
+    i18n?: i18n,
     // Optional baked component manifest. When set, the curated manifest is
     // written beside `config.json` at deploy time; the shell reads it through
     // its `manifestUrl` config key and never calls the platform's admin API.

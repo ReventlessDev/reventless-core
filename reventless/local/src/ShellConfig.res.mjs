@@ -9,6 +9,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
+import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
@@ -43,7 +44,7 @@ let computedKeys = Belt_Array.concatMany([
   ]
 ]);
 
-function overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration) {
+function overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n) {
   let out = Object.fromEntries(ShellEnvironment$Reventless.configFields(ShellEnvironment$Reventless.local));
   Stdlib_Option.forEach(uiSlotsFile, param => {
     out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
@@ -53,6 +54,17 @@ function overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration) {
   });
   Stdlib_Option.forEach(selfRegistration, c => {
     let match = Platform_SelfRegistration$ReventlessCore.configEntry(c);
+    out[match[0]] = match[1];
+  });
+  Stdlib_Option.forEach(i18n, declared => {
+    let valid = Platform_I18n$ReventlessCore.validate(declared);
+    if (valid.TAG !== "Ok") {
+      return Stdlib_JsError.throwWithMessage("host UI " + valid._0);
+    }
+    if (Stdlib_Option.isSome(Stdlib_Option.flatMap(shellConfig, c => c[Platform_I18n$ReventlessCore.configKey]))) {
+      Stdlib_JsError.throwWithMessage("host UI config.json: shellConfig sets `languages` while i18n is declared — the platform writes it from i18n; remove it from shellConfig.");
+    }
+    let match = Platform_I18n$ReventlessCore.configEntry(valid._0);
     out[match[0]] = match[1];
   });
   Stdlib_Option.forEach(bakedManifest, config => {
@@ -92,8 +104,8 @@ function readObject(path, label) {
   }
 }
 
-function emit(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, dir) {
-  let overlay$1 = overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration);
+function emit(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n, dir) {
+  let overlay$1 = overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n);
   let declared = Object.keys(overlay$1).filter(k => !environmentKeys.includes(k));
   let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
   if (dir$1 === undefined) {

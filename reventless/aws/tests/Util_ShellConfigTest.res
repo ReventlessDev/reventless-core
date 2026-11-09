@@ -360,3 +360,27 @@ describe("Util_ShellConfig.fields — adminGroup", () => {
     expect(out->get("adminGroup"))->toEqual(JSON.Encode.string("shop-admins"))
   })
 })
+
+describe("Util_ShellConfig.fields — i18n", () => {
+  let i18n: ReventlessInfra.Platform.i18n = {default: "de", offered: ["en"], sources: []}
+
+  testSync("names the languages, the default among them", () =>
+    expect(Util_ShellConfig.fields(~computed, ~i18n)->get("languages"))->toEqual(
+      JSON.parseOrThrow(`{"default": "de", "offered": ["de", "en"]}`),
+    )
+  )
+
+  testSync("refuses a shellConfig that names them too", () => {
+    let threw = try {
+      Util_ShellConfig.fields(
+        ~computed,
+        ~i18n,
+        ~shellConfig=dict{"languages": JSON.Encode.null},
+      )->ignore
+      false
+    } catch {
+    | _ => true
+    }
+    expect(threw)->toBe(true)
+  })
+})

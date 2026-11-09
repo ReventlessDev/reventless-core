@@ -86,6 +86,7 @@ let fields = (
   ~bakedManifest: option<Platform.bakedManifest>=?,
   ~uiSlotsFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>=?,
+  ~i18n: option<Platform.i18n>=?,
 ): dict<JSON.t> => {
   let out = computed->Dict.fromArray
 
@@ -138,6 +139,17 @@ let fields = (
       )
     }
   })
+
+  // Computed where catalogues are declared, so the languages the shell offers are the ones the
+  // deploy wrote a catalogue for; a passthrough naming them as well is refused below.
+  i18n->Option.forEach(declared =>
+    switch ReventlessCore.Platform_I18n.validate(declared) {
+    | Ok(valid) =>
+      let (k, v) = ReventlessCore.Platform_I18n.configEntry(valid)
+      out->Dict.set(k, v)
+    | Error(message) => failwith("host UI " ++ message)
+    }
+  )
 
   switch viewModes {
   | Some(modes) =>

@@ -5,6 +5,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
 import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
+import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
@@ -51,7 +52,7 @@ function subscriptionEndpoint(httpsEndpoint) {
   return httpsEndpoint.replace("https://", "wss://").replace(".appsync-api.", ".appsync-realtime-api.");
 }
 
-function fields(computed, environment, viewModes, bakedManifest, uiSlotsFile, shellConfig) {
+function fields(computed, environment, viewModes, bakedManifest, uiSlotsFile, shellConfig, i18n) {
   let out = Object.fromEntries(computed);
   Stdlib_Option.forEach(environment, env => {
     ShellEnvironment$Reventless.configFields(env).forEach(param => {
@@ -74,6 +75,14 @@ function fields(computed, environment, viewModes, bakedManifest, uiSlotsFile, sh
       ]));
       return;
     }
+  });
+  Stdlib_Option.forEach(i18n, declared => {
+    let valid = Platform_I18n$ReventlessCore.validate(declared);
+    if (valid.TAG !== "Ok") {
+      return Pervasives.failwith("host UI " + valid._0);
+    }
+    let match = Platform_I18n$ReventlessCore.configEntry(valid._0);
+    out[match[0]] = match[1];
   });
   if (viewModes !== undefined) {
     out["viewModes"] = viewModes.map(Platform$ReventlessInfra.viewModeToString);

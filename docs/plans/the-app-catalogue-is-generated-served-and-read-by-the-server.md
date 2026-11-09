@@ -1,7 +1,7 @@
 # Plan: the app's catalogue is generated from the plugin structure, served per platform and language, and read by the server's messages
 
 **Date:** 2026-11-08<br/>
-**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) built 2026-11-09; the rest not started.<br/>
+**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09; the rest not started.<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -93,6 +93,24 @@ to the local platform, as `emit-capabilities` does, and writes `<plugin>/i18n/en
   concern; the Lambdas get the compiled catalogue in [CA5](#step-ca5--the-servers-messages).
 - **Watch.** The local platform's `UiHints.watch` re-emits on a change; `I18n` watches the
   app's `i18n/` the same way, so a confirmed German key shows without a restart.
+
+**Built (2026-11-09).** `hostUiBundleConfig` gains `i18n?: {default, offered, register?,
+sources}` (`ReventlessInfra.Platform.i18n`). `ReventlessCore.Platform_I18n` holds the rules
+both platforms follow: the default joins the offered languages, a tag that is not one or a
+register other than *Sie* or *du* is refused, each offered language's catalogue is the sources'
+`<lang>.json` merged in order (a later source winning a key, a missing file skipped), and
+`config.json`'s `languages` is `{default, offered, register?}`.
+
+- **Local:** `I18n.emit` writes `i18n/<lang>.json` where the shell is served and removes the
+  directory when nothing is declared; `I18n.watch` re-merges when a source file changes;
+  `ShellConfig` writes `languages`.
+- **AWS:** one `BucketObject` per language beside `config.json`, and `Util_ShellConfig.fields`
+  writes `languages`.
+- On both, a `shellConfig` that names `languages` while `i18n` is declared is refused, and a
+  source that is not JSON stops the boot or the deploy. Without `i18n`, `shellConfig` may still
+  name the languages for the shell's own words.
+- **Not yet:** an example declaring `i18n`; the examples have no translations, and writing one
+  is not this repository's to do.
 
 ## Step CA4 — `i18n status` and `i18n check`
 

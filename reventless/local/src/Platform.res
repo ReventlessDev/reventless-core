@@ -1605,6 +1605,10 @@ module MakeWithConfig = (
     // fallback to keep here: the host-shell package ships no slots module, so an
     // undeclared platform serves none.
     uiSlotsFile?: string,
+    // `makePlatform` merges each source's `<lang>.json` into `i18n/<lang>.json`
+    // where the shell is served, names the languages in `config.json`, and
+    // re-merges when a source file changes.
+    i18n?: ReventlessInfra.Platform.i18n,
     // `makePlatform` writes the curated manifest where the local host-shell
     // serves its static assets from, and points `config.json` at it.
     bakedManifest?: ReventlessInfra.Platform.bakedManifest,
@@ -1831,6 +1835,7 @@ module MakeWithConfig = (
       // the key is a module nothing imports.
       ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
       ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+      ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
     )
     // What the plugins declare about admission is read once their structures
     // have landed. First the refusal: a role declared self-service or by
@@ -1856,6 +1861,7 @@ module MakeWithConfig = (
           ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
           ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
           ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+          ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
           ~selfRegistration,
         )
       )
@@ -1888,6 +1894,11 @@ module MakeWithConfig = (
       ~dir=?hostUiDir,
       ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
     )
+    // The app's own words, one merged catalogue per offered language, and the dev loop that
+    // re-merges them when a translation is confirmed. Unconditional: it is also what removes the
+    // catalogues of a platform that stopped declaring them.
+    I18n.emit(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+    let _ = I18n.watch(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
     | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg, ~dir=hostUiDir)
