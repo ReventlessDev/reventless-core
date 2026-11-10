@@ -394,8 +394,9 @@ switch await capabilities.text->Reventless.Text.compose(
 - **The text** is ICU MessageFormat, parsed by the same parser `generate-catalogue
   check` reads a catalogue with. A `Duration` and a `List` value are written as the
   language writes them (`7 days`, `7 Tage`; `A and B`, `A und B`).
-- **The language** is the recipient's where it is known, else the deployment's
-  `i18n.default`. The recipient's is the `locale` of the account their address signs
+- **The language** is the recipient's where it is known, else the one the request
+  was made in (`Text.compose(~requested)`, for a person with no account yet, such as
+  a visitor signing up), else the deployment's `i18n.default`. The recipient's is the `locale` of the account their address signs
   in as: Cognito's standard attribute on AWS (read with `AdminGetUser`, granted to a
   Lambda that sends), a local account's `locale` on the local platform. A locale the
   deployment does not offer is matched without its region (`de-AT` → `de`), else the

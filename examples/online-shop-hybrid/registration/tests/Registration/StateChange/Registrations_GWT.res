@@ -195,6 +195,54 @@ describe("Registrations StateChangeSlice", () => {
     ->thenEvent(RegistrationChallengeIssued({emailId, proofHash: secretHash, issuedAt}))
   )
 
+  // The language a visitor asked in is kept with the claim, so every code it is sent is
+  // written in it; and what is recorded of the code's mail is its key and language.
+  test("a registration keeps the language it was asked in", () =>
+    givenEvents([])
+    ->whenCmd(Register({emailId, email, role, requestedAt, language: "de"}))
+    ->thenEvent(
+      RegistrationRequested({emailId, email: personal, roles, requestedAt, language: "de"}),
+    )
+  )
+
+  test("a challenge records the language and key of the mail that carried it", () =>
+    givenEvents(requested)
+    ->whenCmd(
+      IssueRegistrationChallenge({
+        emailId,
+        proofHash: secretHash,
+        issuedAt,
+        language: "de",
+        messageKey: "registration.challenge.body",
+      }),
+    )
+    ->thenEvent(
+      RegistrationChallengeIssued({
+        emailId,
+        proofHash: secretHash,
+        issuedAt,
+        language: "de",
+        messageKey: "registration.challenge.body",
+      }),
+    )
+  )
+
+  test("a reissued code is asked for in the claim's language", () =>
+    givenEvents([
+      RegistrationRequested({emailId, email: personal, roles, requestedAt, language: "de"}),
+      RegistrationChallengeIssued({emailId, proofHash: secretHash, issuedAt}),
+    ])
+    ->whenCmd(ReissueRegistrationChallenge({emailId, requestedAt: soonAfter}))
+    ->thenEvent(
+      RegistrationChallengeReissued({
+        emailId,
+        email: personal,
+        reissuedAt: soonAfter,
+        language: "de",
+      }),
+    )
+  )
+
   // scenario-id: 85ae672c-cfa3-4b26-817f-adc83b7437bd
   test("a redelivered challenge request opens nothing", () =>
     givenEvents(challenged)

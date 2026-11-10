@@ -44,6 +44,7 @@ type consumedEvent =
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationExpired({emailId: ContactAddressId.t})
   | RegistrationInvited({
@@ -52,12 +53,14 @@ type consumedEvent =
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationChallengeReissued({
       emailId: ContactAddressId.t,
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
+      language?: string,
     })
   | RegistrationWithdrawn({emailId: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
@@ -69,6 +72,10 @@ type consumedEvent =
       emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
+      /** The language the code went out in, and the key of the mail that carried it: what is
+          recorded of a sent mail, never its text. */
+      language?: string,
+      messageKey?: string,
     })
   | RegistrationProofAccepted({
       emailId: ContactAddressId.t,
@@ -97,12 +104,15 @@ type command =
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | @noApi
   IssueRegistrationChallenge({
       emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
+      language?: string,
+      messageKey?: string,
     })
   | @noApi
   SubmitRegistrationProof({
@@ -121,6 +131,7 @@ type command =
       roles: array<Reventless.Role.name>,
       invitedBy: string,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
   // Voids the code a pending registration holds, so a new one is sent: a code
   // lost, or its attempts spent. Held to one per resend cooldown.
@@ -151,6 +162,7 @@ type event =
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       roles: array<string>,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationExpired({emailId: ContactAddressId.t})
   | RegistrationInvited({
@@ -159,12 +171,14 @@ type event =
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationChallengeReissued({
       emailId: ContactAddressId.t,
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
+      language?: string,
     })
   | RegistrationWithdrawn({emailId: ContactAddressId.t, withdrawnAt: Reventless.DateTime.t})
   | RegistrationAttemptedOnTakenAddress({
@@ -176,6 +190,10 @@ type event =
       emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
+      /** The language the code went out in, and the key of the mail that carried it: what is
+          recorded of a sent mail, never its text. */
+      language?: string,
+      messageKey?: string,
     })
   | RegistrationProofAccepted({
       emailId: ContactAddressId.t,

@@ -27,6 +27,9 @@ type pending = {
   roles: array<string>,
   /** Who invited, for a claim an inviter made. */
   invitedBy?: string,
+  /** The language the claim was made in: what its codes are written in for a person with no
+      account to say. */
+  language?: string,
   challenge: option<Guards.challenge>,
   proofHash: option<string>,
 }
@@ -69,17 +72,18 @@ let evolve = (state, event) =>
   switch event {
   | RegistrationOpened({?until}) => {...state, admission: Open(until)}
   | RegistrationClosed(_) => {...state, admission: Closed}
-  | RegistrationRequested({email, roles, requestedAt}) => {
+  | RegistrationRequested({email, roles, requestedAt, ?language}) => {
       ...state,
-      stage: Pending({email, requestedAt, roles, challenge: None, proofHash: None}),
+      stage: Pending({email, requestedAt, roles, ?language, challenge: None, proofHash: None}),
     }
-  | RegistrationInvited({email, roles, invitedBy, invitedAt}) => {
+  | RegistrationInvited({email, roles, invitedBy, invitedAt, ?language}) => {
       ...state,
       stage: Pending({
         email,
         requestedAt: invitedAt,
         roles,
         invitedBy,
+        ?language,
         challenge: None,
         proofHash: None,
       }),
@@ -185,7 +189,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
     // decision: the policy is consulted before the address, so a closed
     // deployment sends nothing — not even the notice to an address that is
     // already registered.
-    | Register({emailId, email, role, requestedAt}) =>
+    | Register({emailId, email, role, requestedAt, ?language}) =>
       if !admits(state.admission, ~table=App.table, ~role, ~at=requestedAt) {
         Ok([])
       } else {
@@ -211,17 +215,17 @@ module Make = (App: Reventless.Admission.Declaration) => {
         | Pending(_) =>
           Ok([
             RegistrationExpired({emailId: emailId}),
-            RegistrationRequested({emailId, email: Value(email), roles, requestedAt}),
+            RegistrationRequested({emailId, email: Value(email), roles, requestedAt, ?language}),
           ])
         | Unclaimed =>
-          Ok([RegistrationRequested({emailId, email: Value(email), roles, requestedAt})])
+          Ok([RegistrationRequested({emailId, email: Value(email), roles, requestedAt, ?language})])
         }
       }
 
     // The policy is not consulted: it says whether visitors may sign themselves
     // up, and an invitation is not that. The table is, because it is the hard
     // cap on how each role is admitted.
-    | Invite({emailId, email, roles, invitedBy, requestedAt}) =>
+    | Invite({emailId, email, roles, invitedBy, requestedAt, ?language}) =>
       switch roles->Array.find(r => !isByInvitation(App.table, r)) {
       | Some(role) => Error(NotByInvitation({role: (role :> string)}))
       | None if roles == [] => Error(NoRoleToGrant)
@@ -232,6 +236,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
           roles: roles->Array.map(r => (r :> string)),
           invitedBy,
           invitedAt: requestedAt,
+          ?language,
         })
         switch state.stage {
         // An address that holds an account, or is about to, is not registered
@@ -243,7 +248,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
         }
       }
 
-    | IssueRegistrationChallenge({emailId, proofHash, issuedAt}) =>
+    | IssueRegistrationChallenge({emailId, proofHash, issuedAt, ?language, ?messageKey}) =>
       switch state.stage {
       | Pending(p) =>
         switch Guards.onIssueRequested(
@@ -252,7 +257,8 @@ module Make = (App: Reventless.Admission.Declaration) => {
           ~now=issuedAt,
           ~policy=policyOf(p),
         ) {
-        | Issue => Ok([RegistrationChallengeIssued({emailId, proofHash, issuedAt})])
+        | Issue =>
+          Ok([RegistrationChallengeIssued({emailId, proofHash, issuedAt, ?language, ?messageKey})])
         // A redelivered request mints nothing, and because nothing is emitted,
         // sends nothing either.
         | AlreadyOpen => Ok([])
@@ -275,6 +281,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
             email: p.email,
             reissuedAt: requestedAt,
             invitedBy: ?p.invitedBy,
+            language: ?p.language,
           }),
         ])
       | _ => Ok([])

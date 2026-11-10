@@ -21,9 +21,10 @@ let sourceLanguage = CatalogueStatus.sourceLanguage
 type t = {
   /** The language a deployment writes in where nothing says otherwise. */
   default: string,
-  /** The language to write to this recipient in: their own where it is known, else
-      `default`. */
-  languageFor: Messaging.recipient => promise<string>,
+  /** The language to write to this recipient in: the one their account says where they have
+      one, else `requested` (the language a request was made in, for a person with no account
+      yet), else `default` — each only where the deployment offers it. */
+  languageFor: (Messaging.recipient, ~requested: string=?) => promise<string>,
   /** A language's catalogue: `Ok(None)` where the deployment has none for it, `Error` where
       it could not be read, so the send is tried again rather than made in another language. */
   catalogue: string => promise<result<option<dict<string>>, string>>,
@@ -32,19 +33,45 @@ type t = {
 /** A deployment with no catalogue: every message in the English it is written in. */
 let sourceOnly: t = {
   default: sourceLanguage,
-  languageFor: async _ => sourceLanguage,
+  languageFor: async (_, ~requested as _=?) => sourceLanguage,
   catalogue: async _ => Ok(None),
 }
 
-/** A deployment whose catalogues are at hand, by language. Every recipient is written to in
-    `default` unless `languageFor` knows better. */
+/**
+ The language to write in for a tag a person or a request gave: the tag itself where it is
+ offered, else its language without the region (`de-AT` → `de`) where that is, else none. A
+ register variant is offered as its own tag (`de-x-du`), so it matches as itself.
+ */
+let offeredFor = (~offered: array<string>, tag: string): option<string> => {
+  let primary = tag->String.split("-")->Array.getUnsafe(0)->String.toLowerCase
+  offered
+  ->Array.find(o => o->String.toLowerCase == tag->String.toLowerCase)
+  ->Option.orElse(offered->Array.find(o => o->String.toLowerCase == primary))
+}
+
+/** The language for a recipient whose own `locale` is `own`, asked for in `requested`: the first
+    of the two the deployment offers, else `default`. */
+let choose = (~offered, ~default, ~own: option<string>, ~requested: option<string>): string =>
+  own
+  ->Option.flatMap(tag => offeredFor(~offered, tag))
+  ->Option.orElse(requested->Option.flatMap(tag => offeredFor(~offered, tag)))
+  ->Option.getOr(default)
+
+/** A deployment whose catalogues are at hand, by language: the languages it has catalogues
+    for are the ones it offers. `localeOf` is a recipient's own language, where they have one. */
 let fromCatalogues = (
   ~default: string,
-  ~languageFor: option<Messaging.recipient => promise<string>>=?,
+  ~localeOf: Messaging.recipient => promise<option<string>>=async _ => None,
   catalogues: dict<dict<string>>,
 ): t => {
   default,
-  languageFor: languageFor->Option.getOr(async _ => default),
+  languageFor: async (recipient, ~requested=?) =>
+    choose(
+      ~offered=Array.concat([default], catalogues->Dict.keysToArray),
+      ~default,
+      ~own=await localeOf(recipient),
+      ~requested,
+    ),
   catalogue: async language => Ok(catalogues->Dict.get(language)),
 }
 
@@ -108,17 +135,19 @@ let format = async (
 }
 
 /**
- A subject and a body for a recipient, in their language. The message carries the body's
- language, which is the one a mail is labeled with.
+ A subject and a body for a recipient, in their language; `requested` is the language the
+ request that occasioned it was made in, for a recipient with no account to say. The message
+ carries the body's language, which is the one a mail is labeled with.
  */
 let compose = async (
   t: t,
   ~recipient: Messaging.recipient,
+  ~requested: option<string>=?,
   ~subject: message,
   ~body: message,
   ~values: dict<MessageFormat.value>=Dict.make(),
 ): result<Messaging.message, string> => {
-  let language = await t.languageFor(recipient)
+  let language = await t.languageFor(recipient, ~requested?)
   switch await format(t, subject, ~language, ~values) {
   | Error(reason) => Error(reason)
   | Ok(subject) =>

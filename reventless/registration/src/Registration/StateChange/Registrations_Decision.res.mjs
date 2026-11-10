@@ -55,6 +55,7 @@ function evolve(state, event) {
             email: event.email,
             requestedAt: event.requestedAt,
             roles: event.roles,
+            language: event.language,
             challenge: undefined,
             proofHash: undefined
           }
@@ -71,6 +72,7 @@ function evolve(state, event) {
             requestedAt: event.invitedAt,
             roles: event.roles,
             invitedBy: event.invitedBy,
+            language: event.language,
             challenge: undefined,
             proofHash: undefined
           }
@@ -223,6 +225,7 @@ function Make(App) {
   let decide = (state, command) => {
     switch (command.TAG) {
       case "Register" :
+        let language = command.language;
         let requestedAt = command.requestedAt;
         let role = command.role;
         let email = command.email;
@@ -252,7 +255,8 @@ function Make(App) {
                     _0: email
                   },
                   roles: roles,
-                  requestedAt: requestedAt
+                  requestedAt: requestedAt,
+                  language: language
                 }
               ]
             };
@@ -275,7 +279,8 @@ function Make(App) {
                     _0: email
                   },
                   roles: roles,
-                  requestedAt: requestedAt
+                  requestedAt: requestedAt,
+                  language: language
                 }]
             };
           case "Verified" :
@@ -327,7 +332,9 @@ function Make(App) {
                 TAG: "RegistrationChallengeIssued",
                 emailId: emailId$1,
                 proofHash: command.proofHash,
-                issuedAt: issuedAt
+                issuedAt: issuedAt,
+                language: command.language,
+                messageKey: command.messageKey
               }]
           };
         } else {
@@ -432,13 +439,15 @@ function Make(App) {
         };
         let invited_2 = roles$1.map(r => r);
         let invited_3 = command.invitedBy;
+        let invited_5 = command.language;
         let invited = {
           TAG: "RegistrationInvited",
           emailId: emailId$3,
           email: invited_1,
           roles: invited_2,
           invitedBy: invited_3,
-          invitedAt: requestedAt$1
+          invitedAt: requestedAt$1,
+          language: invited_5
         };
         let p$5 = state.stage;
         if (typeof p$5 === "object") {
@@ -493,7 +502,8 @@ function Make(App) {
                   emailId: command.emailId,
                   email: p$7.email,
                   reissuedAt: requestedAt$2,
-                  invitedBy: p$7.invitedBy
+                  invitedBy: p$7.invitedBy,
+                  language: p$7.language
                 }]
             };
           } else {

@@ -15,6 +15,16 @@ function defaultRole(table) {
   }
 }
 
+function languageOf(raw) {
+  return Stdlib_Option.filter(Stdlib_Option.map(raw, prim => prim.trim()), tag => {
+    if (tag.length <= 35) {
+      return /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(tag);
+    } else {
+      return false;
+    }
+  });
+}
+
 function Make(App) {
   let translate = async (input, capabilities, param) => {
     let match = Email$Reventless.fromString(input.email.trim());
@@ -50,7 +60,8 @@ function Make(App) {
             emailId: id,
             email: email,
             role: role,
-            requestedAt: new Date().toISOString()
+            requestedAt: new Date().toISOString(),
+            language: languageOf(input.language)
           }
         ]]
     };
@@ -69,6 +80,7 @@ let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/Inbound
 export {
   Spec,
   defaultRole,
+  languageOf,
   Make,
   moduleUrl,
 }

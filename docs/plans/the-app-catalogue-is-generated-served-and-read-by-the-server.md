@@ -219,12 +219,15 @@ otherwise sends ASCII) and the log transport prints. The registration mails are 
   its units, which read the same in every language.
 - **Locally** `capabilities.text` merges the declared sources on each call, so a confirmed key is
   used by the next mail without a restart.
-- **Not yet:**
-  - The recipient's own language: `languageFor` answers the default until
-    [CA6](#step-ca6--the-identitys-locale) gives an identity a `locale`. A visitor who registers
-    has no identity yet, so their mail would need the language their request was made in.
-  - Recording the key and language of a sent mail: no event of the registration records a mail
-    today, and the first one that does should carry them.
+- **The recipient's own language** came with [CA6](#step-ca6--the-identitys-locale).
+- **A visitor who registers** has no account to say what they read, so the sign-up input takes
+  `language?`, and `Register`, `RegistrationRequested`, an invitation and a reissued code carry
+  it. `languageFor` takes it as `~requested`: an account's own `locale` still wins, so the
+  notice to a taken address goes out in its owner's language, not the visitor's.
+- **What is recorded of a sent mail:** `RegistrationChallengeIssued` carries the `language` the
+  code went out in and the `messageKey` of the mail that carried it, never its text.
+- **The outbound GWT** compares todo items and commands by their encoded form, as events
+  already were, so an optional field left out and one set to nothing read alike.
 
 ## Step CA6 — the identity's `locale`
 
@@ -253,9 +256,8 @@ there is no update to measure and no replacement to risk, and an id token alread
 - **Locally** an account in `accounts.yaml` takes `locale?`, carried as the token's `locale`
   claim (`Identity.localeClaim`), the way a Cognito id token carries the attribute; a mail to
   the account's address is written in it.
-- **Not yet:** the shell reading the claim and letting a person set it, which is the shell's
-  repository's; and a visitor who registers, who has no account and so no `locale` (see
-  [CA5](#step-ca5--the-servers-messages)'s *Not yet*).
+- **Not yet:** the shell reading the claim, letting a person set it, and sending the language
+  it shows in with a sign-up, which are the shell's repository's.
 
 ## Step CA7 — the seam for a glossary
 

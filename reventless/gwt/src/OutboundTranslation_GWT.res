@@ -103,8 +103,10 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   // aggregate-source test passes the entity id it is exercising.
   let givenEvent = e => e
   let whenCollect = (e, ~sourceId="") => e->Spec.collect(~sourceId)
+  // Compared as they are written, so an optional field left out and one set to nothing
+  // read alike, as they do on the wire.
   let thenTodos = (actual, expected) =>
-    if actual == expected {
+    if JSON.stringifyAny(encItems(actual)) == JSON.stringifyAny(encItems(expected)) {
       Outcome.pass
     } else {
       Outcome.fail(
@@ -147,7 +149,10 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   let thenCommand = async (pending, expectedId, expectedCmd) => {
     let {result, _} = await pending
     switch result {
-    | Ok(Some((id, cmd))) if id == expectedId && cmd == expectedCmd => Outcome.pass
+    | Ok(Some((id, cmd)))
+      if id == expectedId &&
+        JSON.stringifyAny(commandPairJson(id, cmd)) ==
+          JSON.stringifyAny(commandPairJson(expectedId, expectedCmd)) => Outcome.pass
     | Ok(Some((id, cmd))) =>
       Outcome.fail(
         EventsMismatch({
@@ -273,8 +278,10 @@ module FromSlice = (
   // Unit: collect
   let givenEvent = (e: Spec.consumedEvent) => e
   let whenCollect = (e, ~sourceId="") => Translation.collect(e, ~sourceId)
+  // Compared as they are written, so an optional field left out and one set to nothing
+  // read alike, as they do on the wire.
   let thenTodos = (actual, expected) =>
-    actual == expected
+    JSON.stringifyAny(encItems(actual)) == JSON.stringifyAny(encItems(expected))
       ? Outcome.pass
       : Outcome.fail(TodoMismatch({expected: encItems(expected), actual: encItems(actual)}))
 
@@ -350,7 +357,10 @@ module FromSlice = (
   let thenCommand = async (pending, expectedId, expectedCmd) => {
     let {result, _} = await pending
     switch result {
-    | Ok(Some((id, cmd))) if id == expectedId && cmd == expectedCmd => Outcome.pass
+    | Ok(Some((id, cmd)))
+      if id == expectedId &&
+        JSON.stringifyAny(commandPairJson(id, cmd)) ==
+          JSON.stringifyAny(commandPairJson(expectedId, expectedCmd)) => Outcome.pass
     | Ok(actual) =>
       Outcome.fail(
         EventsMismatch({

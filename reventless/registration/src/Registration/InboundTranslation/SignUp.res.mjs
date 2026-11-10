@@ -11,7 +11,8 @@ import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.re
 
 let externalInputSchema = Sury.$schema(s => ({
   email: s.m(Sensitive$Reventless.string),
-  role: s.m(Sury.$option(Sury.string))
+  role: s.m(Sury.$option(Sury.string)),
+  language: s.m(Sury.$option(Sury.string))
 }));
 
 let commandSchema = Sury.$schema(s => ({
@@ -19,7 +20,8 @@ let commandSchema = Sury.$schema(s => ({
   emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
   email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
   role: s.m(Role$Reventless.nameSchema),
-  requestedAt: s.m(DateTime$Reventless.schema)
+  requestedAt: s.m(DateTime$Reventless.schema),
+  language: s.m(Sury.$option(Sury.string))
 }));
 
 let capabilityNeeds = [];

@@ -14,4 +14,11 @@ let model: array<Reventless.Plugin.derivedEdge> = [
     allowedStates: [],
     targets: [],
   },
+  {
+    component: "Registrations",
+    command: "Register",
+    level: Reventless.Plugin.Collection,
+    allowedStates: [],
+    targets: [],
+  },
 ]

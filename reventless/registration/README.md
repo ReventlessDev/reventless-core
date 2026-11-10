@@ -48,7 +48,11 @@ The mails are written in the recipient's language where the deployment has the w
 their keys are `registration.*`, and `i18n/en.json` holds their English. A deployment
 lists `node_modules/@reventlessdev/reventless-registration/i18n` among its catalogue
 sources, before its own, and translates the keys there. Without a translation the
-mails go out in that English.
+mails go out in that English. A sign-up may say which language the visitor reads
+(`language`, a tag such as `de`); the codes for that registration are written in it
+where the deployment offers it, unless the address already holds an account, whose
+own language wins. The ledger records the language and the key of the mail each code
+went out in.
 
 The scenarios that pin these slices run in the plugins that list them, against that
 plugin's own table: in this repository, `examples/online-shop-hybrid/registration`.

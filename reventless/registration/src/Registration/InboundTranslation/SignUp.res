@@ -16,9 +16,10 @@
 @@reventless.authorize(AllowAnonymous)
 
 /** `role` may be left out where exactly one role is open to visitors; with
-    several, a sign-up has to say which. */
+    several, a sign-up has to say which. `language` is the one the visitor reads the
+    shell in, which their mails are written in where the deployment offers it. */
 @schema
-type externalInput = {@sensitive email: string, role?: string}
+type externalInput = {@sensitive email: string, role?: string, language?: string}
 
 @schema
 type command =
@@ -27,6 +28,7 @@ type command =
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       role: Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
 
 let targetName = "Registrations"

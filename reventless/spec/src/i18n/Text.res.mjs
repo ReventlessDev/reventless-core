@@ -6,7 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as MessageFormat$Reventless from "./MessageFormat.res.mjs";
 import * as CatalogueStatus$Reventless from "./CatalogueStatus.res.mjs";
 
-async function sourceOnly_languageFor(param) {
+async function sourceOnly_languageFor(param, param$1) {
   return CatalogueStatus$Reventless.sourceLanguage;
 }
 
@@ -23,10 +23,20 @@ let sourceOnly = {
   catalogue: sourceOnly_catalogue
 };
 
-function fromCatalogues($$default, languageFor, catalogues) {
+function offeredFor(offered, tag) {
+  let primary = tag.split("-")[0].toLowerCase();
+  return Stdlib_Option.orElse(offered.find(o => o.toLowerCase() === tag.toLowerCase()), offered.find(o => o.toLowerCase() === primary));
+}
+
+function choose(offered, $$default, own, requested) {
+  return Stdlib_Option.getOr(Stdlib_Option.orElse(Stdlib_Option.flatMap(own, tag => offeredFor(offered, tag)), Stdlib_Option.flatMap(requested, tag => offeredFor(offered, tag))), $$default);
+}
+
+function fromCatalogues($$default, localeOfOpt, catalogues) {
+  let localeOf = localeOfOpt !== undefined ? localeOfOpt : async param => {};
   return {
     default: $$default,
-    languageFor: Stdlib_Option.getOr(languageFor, async param => $$default),
+    languageFor: async (recipient, requested) => choose([$$default].concat(Object.keys(catalogues)), $$default, await localeOf(recipient), requested),
     catalogue: async language => ({
       TAG: "Ok",
       _0: catalogues[language]
@@ -109,9 +119,9 @@ async function format(t, message, language, valuesOpt) {
   return await along(Stdlib_List.fromArray(chainOf(t, language)));
 }
 
-async function compose(t, recipient, subject, body, valuesOpt) {
+async function compose(t, recipient, requested, subject, body, valuesOpt) {
   let values = valuesOpt !== undefined ? valuesOpt : ({});
-  let language = await t.languageFor(recipient);
+  let language = await t.languageFor(recipient, requested);
   let reason = await format(t, subject, language, values);
   if (reason.TAG !== "Ok") {
     return {
@@ -149,6 +159,8 @@ let sourceLanguage = CatalogueStatus$Reventless.sourceLanguage;
 export {
   sourceLanguage,
   sourceOnly,
+  offeredFor,
+  choose,
   fromCatalogues,
   inSource,
   chainOf,

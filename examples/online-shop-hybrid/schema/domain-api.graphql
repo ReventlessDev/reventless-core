@@ -400,7 +400,7 @@ type Mutation {
   Registration_CloseRegistration(role: ID!): CommandResult!
   Registration_CompleteRegistration(email: String!, password: String!, proof: String!): CommandResult!
   Registration_OpenRegistration(role: ID!, until: String): CommandResult!
-  Registration_SignUp(email: String!, role: String): CommandResult!
+  Registration_SignUp(email: String!, language: String, role: String): CommandResult!
   Upload_Presign(contentType: String, fileName: String!, store: ID!): Upload_Ticket
   Upload_Release(storageRef: String!, store: ID!): Upload_ReleaseResult
 }
@@ -1789,6 +1789,7 @@ type Registration_SendRegistrationChallengeTodoItem {
   email: String!
   emailId: ID!
   invited: Boolean
+  language: String
   roles: [String!]
 }
 

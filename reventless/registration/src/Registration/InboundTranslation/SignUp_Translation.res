@@ -8,6 +8,15 @@ let defaultRole = (table: Reventless.Admission.t): option<Reventless.Role.name> 
   | _ => None
   }
 
+/** A language tag as a request gave it, or none where it does not look like one: it only
+    picks the words of a mail, so a malformed one is dropped rather than refused. */
+let languageOf = (raw: option<string>): option<string> =>
+  raw
+  ->Option.map(String.trim)
+  ->Option.filter(tag =>
+    String.length(tag) <= 35 && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/->RegExp.test(tag)
+  )
+
 /** The door over the app's table, which picks the role a sign-up may leave out. */
 module Make = (App: Reventless.Admission.Declaration) => {
   module Spec = Spec
@@ -42,6 +51,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
                 email,
                 role,
                 requestedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
+                language: ?languageOf(input.language),
               }),
             ),
           ])

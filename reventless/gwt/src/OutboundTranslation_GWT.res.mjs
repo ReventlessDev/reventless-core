@@ -24,7 +24,7 @@ function Make(Spec) {
     return Spec.collect(e, sourceId);
   };
   let thenTodos = (actual, expected) => {
-    if (Primitive_object.equal(actual, expected)) {
+    if (Primitive_object.equal(JSON.stringify(encItems(actual)), JSON.stringify(encItems(expected)))) {
       return Outcome$ReventlessGwt.pass;
     } else {
       return Outcome$ReventlessGwt.fail({
@@ -97,7 +97,7 @@ function Make(Spec) {
     }
     let cmd = match$1[1];
     let id = match$1[0];
-    if (id === expectedId && Primitive_object.equal(cmd, expectedCmd)) {
+    if (id === expectedId && Primitive_object.equal(JSON.stringify(commandPairJson(id, cmd)), JSON.stringify(commandPairJson(expectedId, expectedCmd)))) {
       return Outcome$ReventlessGwt.pass;
     } else {
       return Outcome$ReventlessGwt.fail({
@@ -216,7 +216,7 @@ function FromSlice(Spec) {
       return Translation.collect(e, sourceId);
     };
     let thenTodos = (actual, expected) => {
-      if (Primitive_object.equal(actual, expected)) {
+      if (Primitive_object.equal(JSON.stringify(encItems(actual)), JSON.stringify(encItems(expected)))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
@@ -316,8 +316,11 @@ function FromSlice(Spec) {
         });
       }
       let actual = result._0;
-      if (actual !== undefined && actual[0] === expectedId && Primitive_object.equal(actual[1], expectedCmd)) {
-        return Outcome$ReventlessGwt.pass;
+      if (actual !== undefined) {
+        let id = actual[0];
+        if (id === expectedId && Primitive_object.equal(JSON.stringify(commandPairJson(id, actual[1])), JSON.stringify(commandPairJson(expectedId, expectedCmd)))) {
+          return Outcome$ReventlessGwt.pass;
+        }
       }
       return Outcome$ReventlessGwt.fail({
         TAG: "EventsMismatch",

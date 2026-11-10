@@ -41,6 +41,17 @@ let thenLedgerTold = async (pending, expected) =>
   | _ => Outcome.fail(TranslateError({expected, actual: None}))
   }
 
+/** What the ledger is told of the mail that carried the code: its language and key. */
+let thenMailRecorded = async (pending, expected) =>
+  switch (await pending).result {
+  | Ok(Some((_, IssueRegistrationChallenge({?language, ?messageKey})))) =>
+    let actual = `${language->Option.getOr("")}|${messageKey->Option.getOr("")}`
+    actual == expected
+      ? Outcome.pass
+      : Outcome.fail(TranslateError({expected, actual: Some(actual)}))
+  | _ => Outcome.fail(TranslateError({expected, actual: None}))
+  }
+
 let mail = (~subject, ~body, ~language="en"): ReventlessGwt.Capabilities_Fake.call => Sent({
   recipient: ToEmail(Reventless.Email.unsafe(aliceAddress)),
   message: {subject, body, language},
@@ -228,6 +239,44 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
         },
       }),
     ])
+  )
+
+  // A deployment writing English that also offers German: a visitor who asked in German
+  // gets German, and the ledger is told which mail in which language carried the code.
+  let offersGerman = Reventless.Text.fromCatalogues(
+    ~default="en",
+    dict{
+      "de": dict{
+        "registration.challenge.subject": "Registrierung abschließen",
+        "registration.challenge.body": "Ihr Code lautet {token}. Er läuft in {expiresIn} ab.",
+      },
+    },
+  )
+
+  test("a visitor's language writes the code, and the ledger is told so", () =>
+    givenTodo("t1", {...fresh, language: "de-AT"})
+    ->givenCapabilities(fakes(~token="known-secret", ~channels=[Email], ~text=offersGerman, ()))
+    ->whenTranslated
+    ->thenMailRecorded("de|registration.challenge.body")
+  )
+
+  // The owner of a taken address has an account, and it says what they read; the visitor's
+  // request does not get to choose the language of a mail to someone else.
+  test("an account's own language wins over the request's", () =>
+    givenTodo("t2", {...taken, language: "de"})
+    ->givenCapabilities(
+      fakes(
+        ~channels=[Email],
+        ~text=Reventless.Text.fromCatalogues(
+          ~default="en",
+          ~localeOf=async _ => Some("en"),
+          dict{"de": dict{"registration.taken.subject": "Jemand wollte sich registrieren"}},
+        ),
+        (),
+      ),
+    )
+    ->whenTranslated
+    ->thenSent([mail(~subject="Someone tried to register with your address", ~body=noticeBody)])
   )
 
   test("a catalogue that cannot be read sends nothing, so the mail is tried again", () =>

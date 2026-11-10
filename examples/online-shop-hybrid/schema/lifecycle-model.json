@@ -360,6 +360,22 @@
     "scenarios": 1
   },
   {
+    "component": "Registrations",
+    "command": "Register",
+    "level": "Collection",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
+    "component": "Registrations",
+    "command": "ReissueRegistrationChallenge",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 1
+  },
+  {
     "component": "RenameCategory",
     "command": "RenameCategory",
     "level": "Instance",

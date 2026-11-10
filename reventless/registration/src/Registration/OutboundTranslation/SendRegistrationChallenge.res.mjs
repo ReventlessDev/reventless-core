@@ -12,7 +12,8 @@ let consumedEventSchema = Sury.union([
     TAG: "RegistrationRequested",
     emailId: s.m(DcbTag$Reventless.string),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
-    requestedAt: s.m(DateTime$Reventless.schema)
+    requestedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationAttemptedOnTakenAddress",
@@ -26,14 +27,16 @@ let consumedEventSchema = Sury.union([
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Sury.string)),
     invitedBy: s.m(Sury.string),
-    invitedAt: s.m(DateTime$Reventless.schema)
+    invitedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeReissued",
     emailId: s.m(DcbTag$Reventless.string),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     reissuedAt: s.m(DateTime$Reventless.schema),
-    invitedBy: s.m(Sury.$option(Sury.string))
+    invitedBy: s.m(Sury.$option(Sury.string)),
+    language: s.m(Sury.$option(Sury.string))
   }))
 ]);
 
@@ -42,14 +45,17 @@ let outboundItemSchema = Sury.$schema(s => ({
   email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
   alreadyRegistered: s.m(Sury.boolean),
   invited: s.m(Sury.$option(Sury.boolean)),
-  roles: s.m(Sury.$option(Sury.array(Sury.string)))
+  roles: s.m(Sury.$option(Sury.array(Sury.string))),
+  language: s.m(Sury.$option(Sury.string))
 }));
 
 let inboundCommandSchema = Sury.$schema(s => ({
   TAG: "IssueRegistrationChallenge",
   emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
   proofHash: s.m(Sury.string),
-  issuedAt: s.m(DateTime$Reventless.schema)
+  issuedAt: s.m(DateTime$Reventless.schema),
+  language: s.m(Sury.$option(Sury.string)),
+  messageKey: s.m(Sury.$option(Sury.string))
 }));
 
 let sourceNames = [];

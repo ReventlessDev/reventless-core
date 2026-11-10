@@ -24,7 +24,8 @@ let consumedEventSchema = Sury.union([
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Sury.string)),
-    requestedAt: s.m(DateTime$Reventless.schema)
+    requestedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationExpired",
@@ -36,14 +37,16 @@ let consumedEventSchema = Sury.union([
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Sury.string)),
     invitedBy: s.m(Sury.string),
-    invitedAt: s.m(DateTime$Reventless.schema)
+    invitedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeReissued",
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     reissuedAt: s.m(DateTime$Reventless.schema),
-    invitedBy: s.m(Sury.$option(Sury.string))
+    invitedBy: s.m(Sury.$option(Sury.string)),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationWithdrawn",
@@ -60,7 +63,9 @@ let consumedEventSchema = Sury.union([
     TAG: "RegistrationChallengeIssued",
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
-    issuedAt: s.m(DateTime$Reventless.schema)
+    issuedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string)),
+    messageKey: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",
@@ -91,13 +96,16 @@ let commandSchema = Sury.union([
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
     role: s.m(DcbTag$Reventless.mark(Role$Reventless.nameSchema)),
-    requestedAt: s.m(DateTime$Reventless.schema)
+    requestedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "IssueRegistrationChallenge",
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
-    issuedAt: s.m(DateTime$Reventless.schema)
+    issuedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string)),
+    messageKey: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "SubmitRegistrationProof",
@@ -115,7 +123,8 @@ let commandSchema = Sury.union([
     email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Role$Reventless.nameSchema)),
     invitedBy: s.m(Sury.string),
-    requestedAt: s.m(DateTime$Reventless.schema)
+    requestedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "ReissueRegistrationChallenge",
@@ -148,7 +157,8 @@ let eventSchema = Sury.union([
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Sury.string)),
-    requestedAt: s.m(DateTime$Reventless.schema)
+    requestedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationExpired",
@@ -160,14 +170,16 @@ let eventSchema = Sury.union([
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     roles: s.m(Sury.array(Sury.string)),
     invitedBy: s.m(Sury.string),
-    invitedAt: s.m(DateTime$Reventless.schema)
+    invitedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationChallengeReissued",
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     email: s.m(Pii$Reventless.marked("emailId", undefined, Email$Reventless.schema)),
     reissuedAt: s.m(DateTime$Reventless.schema),
-    invitedBy: s.m(Sury.$option(Sury.string))
+    invitedBy: s.m(Sury.$option(Sury.string)),
+    language: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationWithdrawn",
@@ -184,7 +196,9 @@ let eventSchema = Sury.union([
     TAG: "RegistrationChallengeIssued",
     emailId: s.m(DcbTag$Reventless.mark(ContactAddressId$ReventlessRegistration.schema)),
     proofHash: s.m(Sury.string),
-    issuedAt: s.m(DateTime$Reventless.schema)
+    issuedAt: s.m(DateTime$Reventless.schema),
+    language: s.m(Sury.$option(Sury.string)),
+    messageKey: s.m(Sury.$option(Sury.string))
   })),
   Sury.$schema(s => ({
     TAG: "RegistrationProofAccepted",

@@ -4,22 +4,28 @@
 // or a code reissued, is new work rather than work already done.
 let collect = (event, ~sourceId as _) =>
   switch event {
-  | RegistrationRequested({emailId, email: Value(email), requestedAt}) => [
+  | RegistrationRequested({emailId, email: Value(email), requestedAt, ?language}) => [
       (
         `${emailId}:${requestedAt->Reventless.DateTime.toString}`,
-        {emailId, email, alreadyRegistered: false},
+        {emailId, email, alreadyRegistered: false, ?language},
       ),
     ]
-  | RegistrationInvited({emailId, email: Value(email), roles, invitedAt}) => [
+  | RegistrationInvited({emailId, email: Value(email), roles, invitedAt, ?language}) => [
       (
         `${emailId}:invited:${invitedAt->Reventless.DateTime.toString}`,
-        {emailId, email, alreadyRegistered: false, invited: true, roles},
+        {emailId, email, alreadyRegistered: false, invited: true, roles, ?language},
       ),
     ]
-  | RegistrationChallengeReissued({emailId, email: Value(email), reissuedAt, ?invitedBy}) => [
+  | RegistrationChallengeReissued({
+      emailId,
+      email: Value(email),
+      reissuedAt,
+      ?invitedBy,
+      ?language,
+    }) => [
       (
         `${emailId}:reissued:${reissuedAt->Reventless.DateTime.toString}`,
-        {emailId, email, alreadyRegistered: false, invited: invitedBy->Option.isSome},
+        {emailId, email, alreadyRegistered: false, invited: invitedBy->Option.isSome, ?language},
       ),
     ]
   | RegistrationAttemptedOnTakenAddress({emailId, email: Value(email), attemptedAt}) => [
@@ -93,13 +99,27 @@ let invitationBody = (~token, ~roles=?) =>
 
 let noticeBody = Messages.takenBody->Reventless.Text.inSource
 
-let send = async (capabilities: Reventless.Capabilities.t, ~email, ~subject, ~body, ~values) => {
+/** Write and send one mail; what it answers is the language it went out in. */
+let send = async (
+  capabilities: Reventless.Capabilities.t,
+  ~email,
+  ~requested=?,
+  ~subject,
+  ~body,
+  ~values,
+) => {
   let recipient: Reventless.Messaging.recipient = ToEmail(email)
-  switch await capabilities.text->Reventless.Text.compose(~recipient, ~subject, ~body, ~values) {
+  switch await capabilities.text->Reventless.Text.compose(
+    ~recipient,
+    ~requested?,
+    ~subject,
+    ~body,
+    ~values,
+  ) {
   | Error(reason) => Error(reason)
   | Ok(message) =>
     switch await capabilities.messaging.send(~recipient, ~message) {
-    | Ok(receipt) => Ok(receipt)
+    | Ok(_) => Ok(message.language)
     | Error(failure) => Error(Reventless.Messaging.failureReason(failure))
     }
   }
@@ -133,14 +153,16 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
       switch capabilities.secrets.hash(token) {
       | Error(Unavailable(why)) => Error(`cannot hash a secret: ${why}`)
       | Ok(proofHash) =>
+        let body = invited ? Messages.invitedBody : Messages.challengeBody
         switch await send(
           capabilities,
           ~email=item.email,
+          ~requested=?item.language,
           ~subject=invited ? Messages.invitedSubject : Messages.challengeSubject,
-          ~body=invited ? Messages.invitedBody : Messages.challengeBody,
+          ~body,
           ~values=invited ? invitationValues(~token, ~roles=?item.roles) : challengeValues(~token),
         ) {
-        | Ok(_) =>
+        | Ok(language) =>
           Ok(
             Some((
               item.emailId,
@@ -148,6 +170,8 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
                 emailId: ContactAddressId.makeFromString(item.emailId),
                 proofHash,
                 issuedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
+                ?language,
+                messageKey: body.key,
               }),
             )),
           )

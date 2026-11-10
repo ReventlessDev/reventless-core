@@ -22,6 +22,7 @@ type consumedEvent =
       emailId: string,
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       requestedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationAttemptedOnTakenAddress({
       emailId: string,
@@ -34,19 +35,23 @@ type consumedEvent =
       roles: array<string>,
       invitedBy: string,
       invitedAt: Reventless.DateTime.t,
+      language?: string,
     })
   | RegistrationChallengeReissued({
       emailId: string,
       @pii({subject: "emailId"}) email: Reventless.Email.t,
       reissuedAt: Reventless.DateTime.t,
       invitedBy?: string,
+      language?: string,
     })
 
 // `emailId` is the ledger's id for the address, `email` the address the mail goes to.
 
 /** `invited` words the secret as an invitation; it is left out for a sign-up
     and for the notice. `roles` names what the invitation grants, where the
-    event said: a reissued code does not. */
+    event said: a reissued code does not. `language` is the one the claim was made
+    in, for a person with no account to say; the notice to a taken address has none,
+    since its owner's account does. */
 @schema
 type outboundItem = {
   emailId: string,
@@ -54,6 +59,7 @@ type outboundItem = {
   alreadyRegistered: bool,
   invited?: bool,
   roles?: array<string>,
+  language?: string,
 }
 
 @schema
@@ -62,6 +68,8 @@ type inboundCommand =
       emailId: ContactAddressId.t,
       proofHash: string,
       issuedAt: Reventless.DateTime.t,
+      language?: string,
+      messageKey?: string,
     })
 
 // For a mail transport that is down. Exhausting them opens no challenge, which

@@ -7,6 +7,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as CatalogueStatus$Reventless from "@reventlessdev/reventless-spec/src/i18n/CatalogueStatus.res.mjs";
 
@@ -193,16 +194,14 @@ function parseCatalogue(text) {
 }
 
 function offeredFor(i18n, locale) {
-  let offered = [i18n.default].concat(i18n.offered);
-  let primary = locale.split("-")[0].toLowerCase();
-  return Stdlib_Option.orElse(offered.find(tag => tag.toLowerCase() === locale.toLowerCase()), offered.find(tag => tag.toLowerCase() === primary));
+  return Text$Reventless.offeredFor([i18n.default].concat(i18n.offered), locale);
 }
 
 function text(i18n, catalogue, localeOfOpt) {
   let localeOf = localeOfOpt !== undefined ? localeOfOpt : async param => {};
   return {
     default: i18n.default,
-    languageFor: async recipient => Stdlib_Option.getOr(Stdlib_Option.flatMap(await localeOf(recipient), locale => offeredFor(i18n, locale)), i18n.default),
+    languageFor: async (recipient, requested) => Text$Reventless.choose([i18n.default].concat(i18n.offered), i18n.default, await localeOf(recipient), requested),
     catalogue: async language => {
       if ([i18n.default].concat(i18n.offered).includes(language)) {
         return await catalogue(language);

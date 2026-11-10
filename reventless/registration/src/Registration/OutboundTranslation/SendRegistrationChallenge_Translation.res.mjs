@@ -24,7 +24,8 @@ function collect(event, param) {
             {
               emailId: emailId,
               email: email._0,
-              alreadyRegistered: false
+              alreadyRegistered: false,
+              language: event.language
             }
           ]];
       }
@@ -64,7 +65,8 @@ function collect(event, param) {
               email: email$2._0,
               alreadyRegistered: false,
               invited: true,
-              roles: event.roles
+              roles: event.roles,
+              language: event.language
             }
           ]];
       }
@@ -84,7 +86,8 @@ function collect(event, param) {
               emailId: emailId$3,
               email: email$3._0,
               alreadyRegistered: false,
-              invited: Stdlib_Option.isSome(event.invitedBy)
+              invited: Stdlib_Option.isSome(event.invitedBy),
+              language: event.language
             }
           ]];
       }
@@ -189,35 +192,36 @@ function invitationBody(token, roles) {
 
 let noticeBody = Text$Reventless.inSource(takenBody, undefined);
 
-async function send(capabilities, email, subject, body, values) {
+async function send(capabilities, email, requested, subject, body, values) {
   let recipient = {
     TAG: "ToEmail",
     _0: email
   };
-  let reason = await Text$Reventless.compose(capabilities.text, recipient, subject, body, values);
+  let reason = await Text$Reventless.compose(capabilities.text, recipient, requested, subject, body, values);
   if (reason.TAG !== "Ok") {
     return {
       TAG: "Error",
       _0: reason._0
     };
   }
-  let receipt = await capabilities.messaging.send(recipient, reason._0);
-  if (receipt.TAG === "Ok") {
+  let message = reason._0;
+  let failure = await capabilities.messaging.send(recipient, message);
+  if (failure.TAG === "Ok") {
     return {
       TAG: "Ok",
-      _0: receipt._0
+      _0: message.language
     };
   } else {
     return {
       TAG: "Error",
-      _0: Messaging$Reventless.failureReason(receipt._0)
+      _0: Messaging$Reventless.failureReason(failure._0)
     };
   }
 }
 
 async function translate(_id, item, capabilities) {
   if (item.alreadyRegistered) {
-    let reason = await send(capabilities, item.email, takenSubject, takenBody, {});
+    let reason = await send(capabilities, item.email, undefined, takenSubject, takenBody, {});
     if (reason.TAG === "Ok") {
       return {
         TAG: "Ok",
@@ -247,8 +251,9 @@ async function translate(_id, item, capabilities) {
       _0: `cannot hash a secret: ` + proofHash._0._0
     };
   }
-  let reason$1 = await send(capabilities, item.email, invited ? invitedSubject : challengeSubject, invited ? invitedBody : challengeBody, invited ? invitationValues(token$1, item.roles) : challengeValues(token$1));
-  if (reason$1.TAG === "Ok") {
+  let body = invited ? invitedBody : challengeBody;
+  let language = await send(capabilities, item.email, item.language, invited ? invitedSubject : challengeSubject, body, invited ? invitationValues(token$1, item.roles) : challengeValues(token$1));
+  if (language.TAG === "Ok") {
     return {
       TAG: "Ok",
       _0: [
@@ -257,14 +262,16 @@ async function translate(_id, item, capabilities) {
           TAG: "IssueRegistrationChallenge",
           emailId: ContactAddressId$ReventlessRegistration.makeFromString(item.emailId),
           proofHash: proofHash._0,
-          issuedAt: new Date().toISOString()
+          issuedAt: new Date().toISOString(),
+          language: language._0,
+          messageKey: body.key
         }
       ]
     };
   } else {
     return {
       TAG: "Error",
-      _0: reason$1._0
+      _0: language._0
     };
   }
 }

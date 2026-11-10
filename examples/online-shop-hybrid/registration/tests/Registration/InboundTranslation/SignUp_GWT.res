@@ -45,6 +45,29 @@ describe("SignUp InboundTranslationSlice", () => {
     )
   )
 
+  // The visitor has no account to say what they read, so the request says it, and the
+  // ledger carries it to the mail. A value that is no language tag picks no words.
+  let thenLanguage = async (pending, expected) =>
+    switch (await pending).outcome {
+    | Translated([(_, Register({?language}))]) if language == expected => Outcome.pass
+    | Translated([(_, Register({?language}))]) =>
+      Outcome.fail(
+        TranslateError({
+          expected: expected->Option.getOr("(none)"),
+          actual: Some(language->Option.getOr("(none)")),
+        }),
+      )
+    | _ => Outcome.fail(TranslateError({expected: "a Register", actual: None}))
+    }
+
+  test("the language the visitor reads in travels with the registration", () =>
+    whenInput({email: aliceAddress, language: " de-AT "})->thenLanguage(Some("de-AT"))
+  )
+
+  test("a language that is not a tag is dropped, and the registration goes on", () =>
+    whenInput({email: aliceAddress, language: "<script>"})->thenLanguage(None)
+  )
+
   // scenario-id: 2547a470-7044-45b6-b7a0-530595f08567
   test("something that is not an address is not understood", () =>
     whenInput({email: "alice"})->thenNotUnderstood("not an email address")
