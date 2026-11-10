@@ -3,8 +3,11 @@
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
+import * as CognitoIdentityServiceProvider$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/CognitoIdentityServiceProvider.res.mjs";
+import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
 
 let held = {};
 
@@ -79,12 +82,35 @@ async function catalogue(baseUrl, language) {
   }
 }
 
+async function localeOf(poolId, recipient) {
+  switch (recipient.TAG) {
+    case "ToEmail" :
+      if (poolId === "") {
+        return;
+      }
+      let found;
+      try {
+        found = await CognitoIdentityServiceProvider$AwsSdk.AdminGetUserCommand.send(new ClientCognitoIdentityProvider.AdminGetUserCommand({
+          UserPoolId: poolId,
+          Username: recipient._0
+        }));
+      } catch (exn) {
+        return;
+      }
+      return Stdlib_Option.map(Stdlib_Option.getOr(found.UserAttributes, []).find(a => a.Name === Identity$Reventless.localeClaim), a => a.Value);
+      break;
+    case "ToSms" :
+    case "ToPush" :
+      return;
+  }
+}
+
 function text() {
   let env = name => Stdlib_Option.getOr(process.env[name], "");
   let match = Platform_I18n$ReventlessCore.languagesOfJson(env("I18N_LANGUAGES"));
   let match$1 = env("I18N_BASE_URL");
   if (match !== undefined && match$1 !== "") {
-    return Platform_I18n$ReventlessCore.text(match, language => catalogue(match$1, language));
+    return Platform_I18n$ReventlessCore.text(match, language => catalogue(match$1, language), extra => localeOf(env("IDENTITY_PROVIDER_ID"), extra));
   } else {
     return Text$Reventless.sourceOnly;
   }
@@ -96,6 +122,7 @@ export {
   heldForMs,
   held,
   catalogue,
+  localeOf,
   text,
 }
 /* Stdlib_JsExn Not a pure module */

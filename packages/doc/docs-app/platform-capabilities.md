@@ -395,7 +395,11 @@ switch await capabilities.text->Reventless.Text.compose(
   check` reads a catalogue with. A `Duration` and a `List` value are written as the
   language writes them (`7 days`, `7 Tage`; `A and B`, `A und B`).
 - **The language** is the recipient's where it is known, else the deployment's
-  `i18n.default`. The text comes from the first of that language, its base
+  `i18n.default`. The recipient's is the `locale` of the account their address signs
+  in as: Cognito's standard attribute on AWS (read with `AdminGetUser`, granted to a
+  Lambda that sends), a local account's `locale` on the local platform. A locale the
+  deployment does not offer is matched without its region (`de-AT` → `de`), else the
+  default applies. The text comes from the first of that language, its base
   (`de-x-du` → `de`) and the default whose catalogue has the key and whose text
   parses, else from the English in code. The message is labeled with the language
   its body is in, which an email carries as `Content-Language`.

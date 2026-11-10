@@ -44,6 +44,26 @@ let catalogue = async (~baseUrl: string, language: string): result<
   }
 }
 
+/** A recipient's own language: the `locale` attribute of the account their address signs in as,
+    in the platform's pool. None where there is no such account, or it cannot be read: the mail
+    then goes out in the default language rather than not at all. */
+let localeOf = async (~poolId: string, recipient: Reventless.Messaging.recipient): option<string> =>
+  switch recipient {
+  | ToEmail(email) if poolId != "" =>
+    module Get = AwsSdk.CognitoIdentityServiceProvider.AdminGetUserCommand
+    switch await Get.send(
+      Get.make({userPoolId: poolId, username: Reventless.Email.toString(email)}),
+    ) {
+    | found =>
+      found.userAttributes
+      ->Option.getOr([])
+      ->Array.find(a => a.name == Reventless.Identity.localeClaim)
+      ->Option.map(a => a.value)
+    | exception _ => None
+    }
+  | _ => None
+  }
+
 /** The text capability from the Lambda's environment: English where no languages are declared
     or no shell is deployed to read them from. */
 let text = (): Reventless.Text.t => {
@@ -53,7 +73,11 @@ let text = (): Reventless.Text.t => {
     env("I18N_BASE_URL"),
   ) {
   | (Some(i18n), baseUrl) if baseUrl != "" =>
-    ReventlessCore.Platform_I18n.text(i18n, ~catalogue=language => catalogue(~baseUrl, language))
+    ReventlessCore.Platform_I18n.text(
+      i18n,
+      ~catalogue=language => catalogue(~baseUrl, language),
+      ~localeOf=localeOf(~poolId=env("IDENTITY_PROVIDER_ID"), ...),
+    )
   | _ => Reventless.Text.sourceOnly
   }
 }

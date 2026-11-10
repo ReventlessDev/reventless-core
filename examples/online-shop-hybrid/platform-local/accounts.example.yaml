@@ -9,7 +9,8 @@
 # The in-memory auth adapter loads `.reventless/accounts.yaml` (relative to the
 # process cwd) at startup. Each entry: username, password, groups[] (required;
 # [] = unprivileged), userId? (defaults to username), demoOwner? (which demo
-# person the account plays). Restart the server after editing.
+# person the account plays), locale? (the language a mail to the account is
+# written in, where the platform offers it). Restart the server after editing.
 #
 # `pnpm run seed` reads the same file: it offers these accounts as the login to
 # seed as, first as the default, and takes the password from here.

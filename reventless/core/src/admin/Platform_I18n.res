@@ -187,16 +187,34 @@ let parseCatalogue = (text: string): result<dict<string>, string> =>
   }
 
 /**
- What a slice formats a message with on a deployment that declared its languages: every
- recipient in the declared default until an identity says otherwise, and a language's
- catalogue as `catalogue` fetches it. A language that is not offered has none.
+ The language to write in for a person's own `locale`: the tag itself where it is offered, else
+ its language without the region (`de-DE` → `de`) where that is, else none, and the default
+ applies. A register variant is offered as its own tag (`de-x-du`), so it matches as itself.
+ */
+let offeredFor = (i18n: ReventlessInfra.Platform.i18n, locale: string): option<string> => {
+  let offered = Array.concat([i18n.default], i18n.offered)
+  let primary = locale->String.split("-")->Array.getUnsafe(0)->String.toLowerCase
+  offered
+  ->Array.find(tag => tag->String.toLowerCase == locale->String.toLowerCase)
+  ->Option.orElse(offered->Array.find(tag => tag->String.toLowerCase == primary))
+}
+
+/**
+ What a slice formats a message with on a deployment that declared its languages: a recipient
+ in their own `locale` where `localeOf` knows it and the deployment offers it, else the declared
+ default; and a language's catalogue as `catalogue` fetches it. A language that is not offered
+ has none.
  */
 let text = (
   i18n: ReventlessInfra.Platform.i18n,
   ~catalogue: string => promise<result<option<dict<string>>, string>>,
+  ~localeOf: Reventless.Messaging.recipient => promise<option<string>>=async _ => None,
 ): Reventless.Text.t => {
   default: i18n.default,
-  languageFor: async _ => i18n.default,
+  languageFor: async recipient =>
+    (await localeOf(recipient))
+    ->Option.flatMap(locale => offeredFor(i18n, locale))
+    ->Option.getOr(i18n.default),
   catalogue: async language =>
     Array.concat([i18n.default], i18n.offered)->Array.includes(language)
       ? await catalogue(language)

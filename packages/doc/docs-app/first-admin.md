@@ -151,7 +151,9 @@ The usernames are addresses because a pool the deploy creates signs people in by
 email address and refuses a plain `shopper`; the command checks this for every
 entry before it creates or writes anything. `demoOwner` is optional: it names the
 demo person an account plays, so a seed can find `shopper` behind
-`shopper@example.com`.
+`shopper@example.com`. So is `locale` (`de`), read by the local platform only: the
+language a mail to the account is written in, as Cognito's standard `locale`
+attribute is on AWS.
 
 Then, from that package:
 

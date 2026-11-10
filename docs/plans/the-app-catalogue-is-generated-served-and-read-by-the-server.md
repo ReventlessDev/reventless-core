@@ -4,8 +4,8 @@
 **Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09;
 [CA1](#step-ca1--plural), [CA4](#step-ca4--i18n-status-and-i18n-check) and
 [CA7](#step-ca7--the-seam-for-a-glossary) built 2026-11-10; [CA5](#step-ca5--the-servers-messages)
-built 2026-11-10 without the identity's language; [CA6](#step-ca6--the-identitys-locale) not
-started.<br/>
+and [CA6](#step-ca6--the-identitys-locale) built 2026-11-10. Open: the follow-ups each step's
+*Not yet* names.<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -236,6 +236,27 @@ otherwise sends ASCII) and the log transport prints. The registration mails are 
 - The id token then carries `locale`, and the shell reads it. The local platform's accounts
   carry a `locale` in the same place they carry an e-mail.
 
+**Built (2026-11-10).** The pool needed no change. The app client declares no
+`readAttributes` or `writeAttributes`, and a client that declares none may read and write
+every standard attribute, `locale` among them; a standard attribute exists on every pool. So
+there is no update to measure and no replacement to risk, and an id token already carries
+`locale` once an account has one.
+
+- **The recipient's language** is read where [CA5](#step-ca5--the-servers-messages) left the
+  default: `Platform_I18n.text` takes `~localeOf`, and a locale the deployment offers wins,
+  matched as a tag and then without its region (`de-AT` → `de`).
+- **On AWS** the sending Lambda reads the account's `locale` with `AdminGetUser` on the
+  recipient's address, which a pool signing in by email accepts as the username.
+  `AllAutomationSlicesRecipientLanguage` grants that one call on the pool to a plugin whose
+  platform provisions messaging. An account it cannot find or read is written to in the
+  default.
+- **Locally** an account in `accounts.yaml` takes `locale?`, carried as the token's `locale`
+  claim (`Identity.localeClaim`), the way a Cognito id token carries the attribute; a mail to
+  the account's address is written in it.
+- **Not yet:** the shell reading the claim and letting a person set it, which is the shell's
+  repository's; and a visitor who registers, who has no account and so no `locale` (see
+  [CA5](#step-ca5--the-servers-messages)'s *Not yet*).
+
 ## Step CA7 — the seam for a glossary
 
 - A key's entry in the lock file records `element` (plugin, identifier, kind) and leaves a
@@ -264,8 +285,8 @@ glossary that writes them.
   subject and body, labeled `de`; a key the catalogue lacks arrives in the code's English; a
   catalogue that cannot be read sends nothing and is retried. (By `locale`, and the audit row,
   wait for [CA6](#step-ca6--the-identitys-locale).)
-- The user pool update that exposes `locale` is a Pulumi `update`, not a `replace`, on the
-  alpha stack.
+- The user pool needs no update to expose `locale`: the app client declares no attribute
+  lists, so it reads and writes every standard attribute already.
 - `pnpm run check:fresh-outputs`, `check:lifecycle`, `check:dcb-scope` and the GWT suites stay
   green.
 

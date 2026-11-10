@@ -28,6 +28,10 @@ provisioned" on both platforms.
 defaults to the username; on AWS it is the `sub` the pool minted, so it can only
 be filled in after the account exists.
 
+`locale` is the language the person reads in (`de`), carried as the token's `locale`
+claim the way a Cognito id token carries the standard attribute, and what a mail to
+them is written in where the deployment offers it.
+
 `demoOwner` names the person this account plays in a demo's data, for a seed to
 find it by. It exists because the name a pool accepts is not always the demo's:
 a pool that signs in on an email address takes `shopper@example.com`, not
@@ -40,6 +44,7 @@ type entry = {
   groups: array<string>,
   userId?: string,
   demoOwner?: string,
+  locale?: string,
 }
 
 let entriesSchema = S.array(entrySchema)

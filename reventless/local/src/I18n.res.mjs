@@ -9,8 +9,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as LocalAuth$ReventlessLocal from "./adapter/Auth/LocalAuth.res.mjs";
 import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 
@@ -25,8 +27,22 @@ function read(dir, language) {
   }
 }
 
+async function localeOf(recipient) {
+  let tmp;
+  switch (recipient.TAG) {
+    case "ToEmail" :
+    case "ToSms" :
+      tmp = recipient._0;
+      break;
+    case "ToPush" :
+      tmp = undefined;
+      break;
+  }
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(tmp, username => LocalAuth$ReventlessLocal.Login.credentialsOf(username)), c => Identity$Reventless.getClaim(c.identity, Identity$Reventless.localeClaim));
+}
+
 function text(i18n) {
-  return Platform_I18n$ReventlessCore.text(i18n, async language => Stdlib_Result.map(Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.merged(i18n, language, read), Platform_I18n$ReventlessCore.parseCatalogue), c => c));
+  return Platform_I18n$ReventlessCore.text(i18n, async language => Stdlib_Result.map(Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.merged(i18n, language, read), Platform_I18n$ReventlessCore.parseCatalogue), c => c), localeOf);
 }
 
 function emit(i18n, dir) {
@@ -116,6 +132,7 @@ export {
   log,
   dirName,
   read,
+  localeOf,
   text,
   emit,
   watch,

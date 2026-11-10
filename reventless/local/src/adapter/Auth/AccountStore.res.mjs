@@ -8,6 +8,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as RoleCoverage$Reventless from "@reventlessdev/reventless-spec/src/types/RoleCoverage.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./LocalAuth.res.mjs";
 import * as AccountsManifest$Reventless from "@reventlessdev/reventless-spec/src/types/AccountsManifest.res.mjs";
@@ -21,10 +22,15 @@ function _registerEntries(entries) {
     let username = param.username;
     let id_userId = Stdlib_Option.getOr(param.userId, username);
     let id_groups = param.groups;
+    let id_claims = Stdlib_Option.map(param.locale, l => Object.fromEntries([[
+        Identity$Reventless.localeClaim,
+        l
+      ]]));
     let id = {
       userId: id_userId,
       username: username,
       groups: id_groups,
+      claims: id_claims,
       provider: "InMemory"
     };
     LocalAuth$ReventlessLocal.Login.setCredentials(username, param.password, id);

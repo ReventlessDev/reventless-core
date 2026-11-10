@@ -14,13 +14,26 @@ let read: ReventlessCore.Platform_I18n.read = (~dir, ~language) => {
   NodeFs.existsSync(path) ? Some(NodeFs.readFileSync(path)) : None
 }
 
+/** A recipient's own language: the `locale` of the account their address signs in as. */
+let localeOf = async (recipient: Reventless.Messaging.recipient): option<string> =>
+  switch recipient {
+  | ToEmail(email) => Some(Reventless.Email.toString(email))
+  | ToSms(phone) => Some(Reventless.Phone.toString(phone))
+  | ToPush(_) => None
+  }
+  ->Option.flatMap(username => LocalAuth.Login.credentialsOf(~username))
+  ->Option.flatMap(c => c.identity->Reventless.Identity.getClaim(Reventless.Identity.localeClaim))
+
 /** The server's words for a declaration: each language's catalogue merged from the sources on
     every call, so a translation confirmed while the platform runs is used by the next mail. */
 let text = (i18n: ReventlessInfra.Platform.i18n): Reventless.Text.t =>
-  ReventlessCore.Platform_I18n.text(i18n, ~catalogue=async language =>
-    ReventlessCore.Platform_I18n.merged(i18n, ~language, ~read)
-    ->Result.flatMap(ReventlessCore.Platform_I18n.parseCatalogue)
-    ->Result.map(c => Some(c))
+  ReventlessCore.Platform_I18n.text(
+    i18n,
+    ~catalogue=async language =>
+      ReventlessCore.Platform_I18n.merged(i18n, ~language, ~read)
+      ->Result.flatMap(ReventlessCore.Platform_I18n.parseCatalogue)
+      ->Result.map(c => Some(c)),
+    ~localeOf,
   )
 
 /**

@@ -24,6 +24,10 @@ let anonymous: t = {
   provider: InMemory,
 }
 
+/** The claim naming the language a person reads in (`de`, `de-DE`): the standard attribute
+    Cognito's id token carries, and what a local account's `locale` becomes. */
+let localeClaim = "locale"
+
 let hasGroup = (identity: t, group: string): bool => identity.groups->Array.includes(group)
 
 let getClaim = (identity: t, key: string): option<string> =>

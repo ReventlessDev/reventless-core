@@ -39,10 +39,13 @@ function getClaim(identity, key) {
   }
 }
 
+let localeClaim = "locale";
+
 export {
   providerSchema,
   schema,
   anonymous,
+  localeClaim,
   hasGroup,
   getClaim,
 }

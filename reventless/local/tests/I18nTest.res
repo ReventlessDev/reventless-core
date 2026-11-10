@@ -188,3 +188,62 @@ describe("Platform_I18n.gate", () => {
     expect(served(dist, "de"))->toEqual(JSON.parseOrThrow(`{}`))
   })
 })
+
+describe("the server's words", () => {
+  let hello: Reventless.Text.message = {key: "Ordering.Orders.name", source: "Order"}
+  let to = address => Reventless.Messaging.ToEmail(Reventless.Email.unsafe(address))
+  let account = (~username, ~locale=?) =>
+    LocalAuth.Login.setCredentials(
+      ~username,
+      ~password="pw",
+      ~identity={
+        userId: username,
+        username,
+        groups: [],
+        claims: ?(locale->Option.map(l => Dict.fromArray([(Reventless.Identity.localeClaim, l)]))),
+        provider: InMemory,
+      },
+    )
+
+  testSync("a locale is matched as offered, then without its region, else not", () =>
+    expect(
+      ["en", "EN-gb", "de-AT", "fr"]->Array.map(
+        ReventlessCore.Platform_I18n.offeredFor(declared, ...),
+      ),
+    )->toEqual([Some("en"), Some("en"), Some("de"), None])
+  )
+
+  test("a recipient is written to in their account's locale, else the default", async () => {
+    account(~username="en@example.com", ~locale="en-GB")
+    account(~username="fr@example.com", ~locale="fr")
+    account(~username="none@example.com")
+    let text = I18n.text(declared)
+    let languages = await Promise.all(
+      ["en@example.com", "fr@example.com", "none@example.com", "nobody@example.com"]->Array.map(
+        address => text.languageFor(to(address)),
+      ),
+    )
+    expect(languages)->toEqual(["en", "de", "de", "de"])
+  })
+
+  test("the merged catalogue supplies the text, the app's words winning", async () => {
+    let text = I18n.text(declared)
+    let inLanguage = async language =>
+      (await text->Reventless.Text.format(hello, ~language))->Result.map(t => (t.language, t.text))
+    expect((await inLanguage("de"), await inLanguage("en")))->toEqual((
+      Ok(("de", "Auftrag")),
+      Ok(("en", "Order")),
+    ))
+  })
+
+  testSync("an account's locale travels as a claim, as a Cognito id token's does", () => {
+    let _ = AccountStore._registerEntries([
+      {username: "de@example.com", password: "pw", groups: [], locale: "de"},
+    ])
+    expect(
+      LocalAuth.Login.credentialsOf(~username="de@example.com")->Option.flatMap(
+        c => c.identity->Reventless.Identity.getClaim(Reventless.Identity.localeClaim),
+      ),
+    )->toEqual(Some("de"))
+  })
+})

@@ -19,7 +19,8 @@ let entrySchema = Sury.$schema(s => ({
   password: s.m(Sury.string),
   groups: s.m(Sury.array(Sury.string)),
   userId: s.m(Sury.$option(Sury.string)),
-  demoOwner: s.m(Sury.$option(Sury.string))
+  demoOwner: s.m(Sury.$option(Sury.string)),
+  locale: s.m(Sury.$option(Sury.string))
 }));
 
 let entriesSchema = Sury.array(entrySchema);

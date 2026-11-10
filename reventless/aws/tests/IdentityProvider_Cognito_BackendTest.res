@@ -308,4 +308,14 @@ describe("AutomationSliceRuntime_Builder_Single.declaresIdentityProvider", () =>
       ]),
     )->toBe(true)
   })
+  // Reading a recipient's locale is granted to a Lambda that sends, and to no other: the
+  // platform flags are set for every plugin stack.
+  testSync("only a slice declaring messaging earns the recipient-language grant", () => {
+    expect(
+      AutomationSliceRuntime_Builder_Single.declaresMessaging([info([IdentityProvider]), info([])]),
+    )->toBe(false)
+    expect(
+      AutomationSliceRuntime_Builder_Single.declaresMessaging([info([]), info([Messaging])]),
+    )->toBe(true)
+  })
 })

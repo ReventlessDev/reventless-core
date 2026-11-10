@@ -31,11 +31,12 @@ let parseFile = AccountsManifest.parseFile
 let fromFile: ref<array<string>> = ref([])
 
 let _registerEntries = (entries: array<entry>): unit =>
-  entries->Array.forEach(({username, password, groups, ?userId}) => {
+  entries->Array.forEach(({username, password, groups, ?userId, ?locale}) => {
     let id: Identity.t = {
       userId: userId->Option.getOr(username),
       username,
       groups,
+      claims: ?(locale->Option.map(l => Dict.fromArray([(Identity.localeClaim, l)]))),
       provider: InMemory,
     }
     LocalAuth.Login.setCredentials(~username, ~password, ~identity=id)

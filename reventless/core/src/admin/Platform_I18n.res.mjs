@@ -192,10 +192,17 @@ function parseCatalogue(text) {
   }
 }
 
-function text(i18n, catalogue) {
+function offeredFor(i18n, locale) {
+  let offered = [i18n.default].concat(i18n.offered);
+  let primary = locale.split("-")[0].toLowerCase();
+  return Stdlib_Option.orElse(offered.find(tag => tag.toLowerCase() === locale.toLowerCase()), offered.find(tag => tag.toLowerCase() === primary));
+}
+
+function text(i18n, catalogue, localeOfOpt) {
+  let localeOf = localeOfOpt !== undefined ? localeOfOpt : async param => {};
   return {
     default: i18n.default,
-    languageFor: async param => i18n.default,
+    languageFor: async recipient => Stdlib_Option.getOr(Stdlib_Option.flatMap(await localeOf(recipient), locale => offeredFor(i18n, locale)), i18n.default),
     catalogue: async language => {
       if ([i18n.default].concat(i18n.offered).includes(language)) {
         return await catalogue(language);
@@ -249,6 +256,7 @@ export {
   gate,
   files,
   parseCatalogue,
+  offeredFor,
   text,
   languagesJson,
   languagesOfJson,

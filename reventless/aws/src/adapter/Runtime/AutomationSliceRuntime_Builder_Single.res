@@ -339,6 +339,52 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
     )
   }
 
+/** Whether any slice on the shared Lambda declares messaging: the slices that write to a person. */
+let declaresMessaging = (infos: array<sliceInfo>): bool =>
+  infos->Array.some(info => info.capabilityNeeds->Array.includes(Messaging))
+
+// Reading a recipient's `locale` off their account, so a mail is written in their language: the
+// one read-only call, on the one pool. Only for a Lambda with a slice that declares messaging —
+// both platform flags are set for every plugin stack, so they alone would grant it to all.
+let makeRecipientLanguageGrant = (
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
+  ~opts,
+) =>
+  if (
+    PluginRuntime_Builder.messagingProvisioned() &&
+    PluginRuntime_Builder.identityProviderProvisioned() &&
+    declaresMessaging(bundledInfos->Dict.valuesToArray)
+  ) {
+    let customOpts =
+      opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+    let {
+      poolArn,
+      _,
+    }: PluginRuntime_Builder.identityProviderResources = PluginRuntime_Builder.identityProvider()
+    let policyJson = poolArn->Pulumi.Output.apply(pool => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.PolicyDocument.make(
+        ~id="AllAutomationSlicesRecipientLanguage",
+        ~statements=[
+          {
+            sid: "AllowReadingRecipientLocale",
+            effect: Allow,
+            actions: Action("cognito-idp:AdminGetUser"),
+            resources: Resource(pool),
+          },
+        ],
+      )->PulumiAws.PolicyDocument.toJsonString
+    })
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name="AllAutomationSlicesRecipientLanguage",
+      ~args={
+        policy: policyJson->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
 /** Whether any slice on the shared Lambda declares the identity provider. The
     grant below is the one that can create and delete accounts, so it follows a
     declaration rather than the pool merely existing — which on AWS it always
@@ -917,6 +963,7 @@ let finishWithDcbEventLog = (
         makeAutomationSchedules(~runtime, ~schedulerRoleArn, ~sourceCodeHash, ~opts)
         makeGeocoderGrant(~runtime, ~opts)
         makeMessagingGrant(~runtime, ~opts)
+        makeRecipientLanguageGrant(~runtime, ~opts)
         makeIdentityProviderGrant(~runtime, ~opts)
         if anyDcbFallback.contents {
           DcbCommandFunctions.addInvoker(

@@ -178,6 +178,28 @@ function makeMessagingGrant(runtime, opts) {
   }, customOpts);
 }
 
+function declaresMessaging(infos) {
+  return infos.some(info => info.capabilityNeeds.includes("Messaging"));
+}
+
+function makeRecipientLanguageGrant(runtime, opts) {
+  if (!(PluginRuntime_Builder$ReventlessAws.messagingProvisioned() && PluginRuntime_Builder$ReventlessAws.identityProviderProvisioned() && declaresMessaging(Object.values(bundledInfos)))) {
+    return;
+  }
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let match = PluginRuntime_Builder$ReventlessAws.identityProvider();
+  let policyJson = match.poolArn.apply(pool => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAutomationSlicesRecipientLanguage", [{
+      Sid: "AllowReadingRecipientLocale",
+      Effect: "Allow",
+      Action: "cognito-idp:AdminGetUser",
+      Resource: pool
+    }])));
+  new (Aws.iam.RolePolicy)("AllAutomationSlicesRecipientLanguage", {
+    policy: policyJson,
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
+}
+
 function declaresIdentityProvider(infos) {
   return infos.some(info => info.capabilityNeeds.includes("IdentityProvider"));
 }
@@ -503,6 +525,7 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       makeAutomationSchedules(runtime, schedulerRoleArn, sourceCodeHash, opts);
       makeGeocoderGrant(runtime, opts);
       makeMessagingGrant(runtime, opts);
+      makeRecipientLanguageGrant(runtime, opts);
       makeIdentityProviderGrant(runtime, opts);
       if (anyDcbFallback.contents) {
         DcbCommandFunctions$ReventlessAws.addInvoker("AllAutomationSlices", runtime.parts.lambdaRole.id);
@@ -538,6 +561,8 @@ export {
   makeSweepSchedule,
   makeGeocoderGrant,
   makeMessagingGrant,
+  declaresMessaging,
+  makeRecipientLanguageGrant,
   declaresIdentityProvider,
   identityProviderPoolActions,
   makeIdentityProviderGrant,
