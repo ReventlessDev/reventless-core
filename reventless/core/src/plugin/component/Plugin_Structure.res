@@ -1157,6 +1157,7 @@ let readSideDefFromSpec = (
     ~plugin,
     ~name,
     ~plural=?Api_Naming.declaredPlural(stateSchema),
+    ~singular=?Api_Naming.declaredSingular(stateSchema),
   )
   let label = labelFieldsFromStateSchema(~entityName=name, stateSchema)
   // The published key is always filterable; not every filterable field is the key.
@@ -1615,6 +1616,7 @@ let make = (
       ~plugin=name,
       ~name=R.Spec.name,
       ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+      ~singular=?Api_Naming.declaredSingular(R.Spec.stateSchema->S.castToUnknown),
     )
     let stateSchema = R.Spec.stateSchema->S.castToUnknown
     let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
@@ -1669,6 +1671,7 @@ let make = (
         ~plugin=name,
         ~viewName=SVS.Spec.name,
         ~plural=?Api_Naming.declaredPlural(SVS.Spec.stateSchema->S.castToUnknown),
+        ~singular=?Api_Naming.declaredSingular(SVS.Spec.stateSchema->S.castToUnknown),
       )
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
       let stateSchema = SVS.Spec.stateSchema->S.castToUnknown

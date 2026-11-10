@@ -969,10 +969,10 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_retired_ctor_attrs
                       |> StateAnnotations.strip_live_attrs
                       |> StateAnnotations.strip_named_when_retired_attrs
-                      |> StateAnnotations.strip_plural_attrs
+                      |> StateAnnotations.strip_form_attrs
                  else (StateAnnotations.check_live_placement body;
                        StateAnnotations.check_named_when_retired_placement body;
-                       StateAnnotations.check_plural_placement body;
+                       StateAnnotations.check_form_placement body;
                        body) in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then

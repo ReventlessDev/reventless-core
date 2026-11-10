@@ -390,7 +390,10 @@ let classifyKeyField = (
       ->Option.getOr(Dict.make())
       ->Dict.keysToArray
       ->Array.filter(field => isKeyFieldName(field) || keyOf(field)->Option.isSome)
-    let singular = entityName->Api_Naming.stripViewSuffix->Api_Naming.singularize
+    let singular =
+      Api_Naming.declaredSingular(schema)->Option.getOr(
+        entityName->Api_Naming.stripViewSuffix->Api_Naming.singularize,
+      )
     let conventional =
       singular->String.slice(~start=0, ~end=1)->String.toLowerCase ++
       singular->String.slice(~start=1, ~end=singular->String.length) ++ "Id"

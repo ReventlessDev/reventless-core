@@ -644,6 +644,7 @@ module Make = (
           ~plugin=name,
           ~viewName=V.Spec.name,
           ~plural=?Api_Naming.declaredPlural(V.Spec.stateSchema->S.castToUnknown),
+          ~singular=?Api_Naming.declaredSingular(V.Spec.stateSchema->S.castToUnknown),
         )
         let label = Plugin_Structure.labelFieldsFromStateSchema(
           ~entityName=V.Spec.name,
@@ -1149,6 +1150,7 @@ module Make = (
           ~plugin=name,
           ~viewName=V.Spec.name,
           ~plural=?Api_Naming.declaredPlural(V.Spec.stateSchema->S.castToUnknown),
+          ~singular=?Api_Naming.declaredSingular(V.Spec.stateSchema->S.castToUnknown),
         )
         let subIdField = V.Spec.subIdConfig->Option.map(c => c.subIdField)
         let indexes = V.Spec.config.indexes

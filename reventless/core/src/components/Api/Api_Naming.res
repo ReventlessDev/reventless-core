@@ -137,13 +137,28 @@ let canonicalPlural = (n: string) => pluralize(singularize(n))
 let declaredPlural = (stateSchema: S.t<unknown>): option<string> =>
   Reventless.StateAnnotations.getSpec(stateSchema)->Option.flatMap(s => s.plural)
 
+// The singular a view's `@singular("…")` declares, read off its state schema.
+let declaredSingular = (stateSchema: S.t<unknown>): option<string> =>
+  Reventless.StateAnnotations.getSpec(stateSchema)->Option.flatMap(s => s.singular)
+
+// The declared singulars of a plugin's views, by `<plugin>.<spec name>`: a `@resolves` field
+// names its target by spec name only, and has to land on the type that view is exposed as.
+// Recorded by the plugin builder before it builds any query entry.
+let declaredSingulars: dict<string> = Dict.make()
+
+let registerSingular = (~plugin: string, ~name: string, stateSchema: S.t<unknown>) =>
+  declaredSingular(stateSchema)->Option.forEach(singular =>
+    declaredSingulars->Dict.set(`${plugin}.${name}`, singular)
+  )
+
 let queryFieldNamesForReadModel = (
   ~plugin: string,
   ~name: string,
   ~plural as declared: option<string>=?,
+  ~singular as declaredOne: option<string>=?,
   ~connectionSpec: bool=true,
 ): queryNames => {
-  let singular = singularize(name)
+  let singular = declaredOne->Option.getOr(singularize(name))
   let plural = declared->Option.getOr(canonicalPlural(name))
   {
     singleFieldName: `${plugin}_${singular}`,
@@ -161,7 +176,9 @@ let queryFieldNamesForReadModel = (
 // `queryFieldNamesFor*` above name it this way, so a `@resolves` target reached
 // by spec name lands on the same type whichever kind declares it.
 let returnTypeNameFor = (~plugin: string, ~name: string) =>
-  `${plugin}_${singularize(stripViewSuffix(name))}`
+  `${plugin}_${declaredSingulars
+    ->Dict.get(`${plugin}.${name}`)
+    ->Option.getOr(singularize(stripViewSuffix(name)))}`
 
 /**
 The cross-table fields `@resolves` / `@resolvesMany` add to a queryable's object
@@ -217,10 +234,11 @@ let queryFieldNamesForStateView = (
   ~plugin: string,
   ~viewName: string,
   ~plural as declared: option<string>=?,
+  ~singular as declaredOne: option<string>=?,
   ~connectionSpec: bool=true,
 ): queryNames => {
   let entity = stripViewSuffix(viewName)
-  let singular = singularize(entity)
+  let singular = declaredOne->Option.getOr(singularize(entity))
   let plural = declared->Option.getOr(canonicalPlural(entity))
   {
     singleFieldName: `${plugin}_${singular}`,

@@ -137,14 +137,17 @@ let singularize n =
    The array case needs this — a field holding many images is named plurally. *)
 let canonical_plural n = pluralize (singularize n)
 
-(* The plural a [@plural("…")] names, where the rule above is wrong: one
-   identifier, starting with a capital when it names a view and with a
-   lower-case letter when it names a store. *)
-let get_plural_value ~capital (attr : attribute) : string =
+(* The form a [@plural("…")] or [@singular("…")] names, where the rule above is
+   wrong: one identifier, starting with a capital when it names a view and with
+   a lower-case letter when it names a store. *)
+let get_name_value ~attr_name ~capital (attr : attribute) : string =
   let fail () =
     Location.raise_errorf ~loc:attr.attr_loc
-      "@plural expects one name, e.g. @plural(\"%s\")"
-      (if capital then "People" else "addresses")
+      "@%s expects one name, e.g. @%s(\"%s\")" attr_name attr_name
+      (match attr_name, capital with
+       | "singular", _ -> "Status"
+       | _, true -> "People"
+       | _, false -> "addresses")
   in
   let ident_char = function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> true | _ -> false in
   match get_string_payload attr with
@@ -159,6 +162,8 @@ let get_plural_value ~capital (attr : attribute) : string =
     in
     if not (first_ok && String.for_all ident_char s) then fail ();
     s
+
+let get_plural_value ~capital attr = get_name_value ~attr_name:"plural" ~capital attr
 
 (* [Ok store], or [Error reason] for a name whose plural this rule cannot state
    with confidence. Erroring is the point: a silently wrong derivation

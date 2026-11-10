@@ -128,6 +128,8 @@ function Make(Spec) {
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let _prevPluginName = Logger$ReventlessCore.currentPluginName.contents;
         Logger$ReventlessCore.currentPluginName.contents = extra$1;
+        readModels.forEach(R => Api_Naming$ReventlessCore.registerSingular(extra$1, R.Spec.name, R.Spec.stateSchema));
+        stateViewSlices.forEach(V => Api_Naming$ReventlessCore.registerSingular(extra$1, V.Spec.name, V.Spec.stateSchema));
         let _prevAttribution = ResourceAttribution$ReventlessCore.enter(Spec.platformName, extra$1);
         Logger$ReventlessCore.registerComponentPlugin(extra$1, extra$1);
         aggregates.forEach(M => Logger$ReventlessCore.registerComponentPlugin(M.Spec.name, extra$1));
@@ -189,7 +191,7 @@ function Make(Spec) {
         });
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(R.Spec.stateSchema), undefined);
           let subIdField = Stdlib_Option.map(R.Spec.subIdConfig, c => c.subIdField);
           let indexes = R.Spec.config.indexes;
           let resolvedFields = Api_Naming$ReventlessCore.resolvedFieldsOfConfig(extra$1, R.Spec.config);
@@ -214,7 +216,7 @@ function Make(Spec) {
         }));
         let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
         readModels.forEach(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(R.Spec.stateSchema), undefined);
           let label = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(R.Spec.name, R.Spec.stateSchema);
           let newrecord = {...qn};
           newrecord.labelField = label.field;
@@ -331,7 +333,7 @@ function Make(Spec) {
           };
         });
         let readModelComponents = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(R.Spec.stateSchema), undefined);
           let schema_queryFields = [
             qn.singleFieldName,
             qn.listFieldName

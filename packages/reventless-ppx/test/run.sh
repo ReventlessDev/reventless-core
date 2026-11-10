@@ -1244,6 +1244,14 @@ cat > "$PLUGIN/src/ReadModel/Person.res" <<'EOF'
 type state = { @id id: string, name: string }
 EOF
 
+cat > "$PLUGIN/src/ReadModel/Status.res" <<'EOF'
+@@reventless.spec
+
+@singular("Status")
+@schema
+type state = { @id id: string, label: string }
+EOF
+
 # ─── Fixture: @scan + @scanSort (server-query opt-in) ─────────────
 
 cat > "$PLUGIN/src/ReadModel/ScanReadModel.res" <<'EOF'
@@ -3493,6 +3501,10 @@ assert_js_contains "$JS" 'plural: "People"' "@plural recorded in stateAnnotation
 assert_js_not_contains "$JS" '@plural' "@plural: attribute stripped from output"
 JS="$PLUGIN/src/ReadModel/LiveOffReadModel.res.mjs"
 assert_js_not_contains "$JS" 'plural:' "no @plural → metadata omits plural"
+assert_js_not_contains "$JS" 'singular:' "no @singular → metadata omits singular"
+JS="$PLUGIN/src/ReadModel/Status.res.mjs"
+assert_js_contains "$JS" 'singular: "Status"' "@singular recorded in stateAnnotations metadata"
+assert_js_not_contains "$JS" '@singular' "@singular: attribute stripped from output"
 
 echo ""
 echo "=== Test: unannotated state → metadata omits live ==="
@@ -4154,6 +4166,37 @@ type state = { @id id: string, name: string }
 EOF
 plural_refusal_case "@plural equal to the derived plural" \
   "$ERROR/src/ReadModel/Customers.res" 'derives already; remove it'
+
+echo ""
+echo "=== Test: PPX error — @singular that says what the rule says ==="
+cat > "$ERROR/src/ReadModel/Orders.res" <<'EOF'
+@@reventless.spec
+
+@singular("Order")
+@schema
+type state = { @id id: string, name: string }
+EOF
+plural_refusal_case "@singular equal to the derived singular" \
+  "$ERROR/src/ReadModel/Orders.res" 'the singular "Orders" derives already'
+
+echo ""
+echo "=== Test: PPX error — @singular on an Aggregate state declaration ==="
+cat > "$ERROR/src/Aggregate/SingularOnAggregate.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create
+@schema
+type event = Created
+@schema
+type error = unit
+
+@singular("Status")
+@schema
+type state = { id: string }
+EOF
+plural_refusal_case "@singular on Aggregate state" \
+  "$ERROR/src/Aggregate/SingularOnAggregate.res" '@singular is only supported on the @schema type state declaration'
 
 echo ""
 echo "=== Test: PPX error — @plural that is not a name ==="

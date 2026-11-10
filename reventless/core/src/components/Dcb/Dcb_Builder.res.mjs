@@ -338,7 +338,7 @@ function Make(DcbEventLogStorage) {
         }
       }
       stateViewSlices.forEach(V => {
-        let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, Api_Naming$ReventlessCore.declaredPlural(V.Spec.stateSchema), undefined);
+        let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, Api_Naming$ReventlessCore.declaredPlural(V.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(V.Spec.stateSchema), undefined);
         let label = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(V.Spec.name, V.Spec.stateSchema);
         let newrecord = {...qn};
         newrecord.labelField = label.field;
@@ -596,7 +596,7 @@ function Make(DcbEventLogStorage) {
         };
       });
       let stateViewEntries = stateViewSlices.map(V => {
-        let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, Api_Naming$ReventlessCore.declaredPlural(V.Spec.stateSchema), undefined);
+        let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, Api_Naming$ReventlessCore.declaredPlural(V.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(V.Spec.stateSchema), undefined);
         let subIdField = Stdlib_Option.map(V.Spec.subIdConfig, c => c.subIdField);
         let indexes = V.Spec.config.indexes;
         let indexQueries = indexes.length !== 0 ? indexes : undefined;

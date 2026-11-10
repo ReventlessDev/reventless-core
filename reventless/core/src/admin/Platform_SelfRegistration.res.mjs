@@ -30,7 +30,7 @@ function openRolesField(structures) {
       if (param[0] === plugin) {
         return param[1];
       }
-    }), s => s.stateViewSlices.find(v => v.name === d.component)), Api_Naming$ReventlessCore.queryFieldNamesForStateView(plugin, d.component, undefined, undefined).listFieldName, v => v.queryField);
+    }), s => s.stateViewSlices.find(v => v.name === d.component)), Api_Naming$ReventlessCore.queryFieldNamesForStateView(plugin, d.component, undefined, undefined, undefined).listFieldName, v => v.queryField);
   });
 }
 

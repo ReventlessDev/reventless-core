@@ -65,9 +65,12 @@ name the rule cannot pluralise (`address`) now points at it.
   one keeps the view's name, which is what the screens draw today.
 - **The self-registration door** reads the open-roles view's published `queryField` rather than
   deriving it again.
-- **Not yet:** the singular. The rule still makes `Statu` of `Status`; `@plural` does not touch
-  `singleQueryField` or the row type, which `@resolves` targets and the fragment generator
-  derive by the same rule. A `@singular` would have to reach all three.
+- **The singular** is `@singular("…")`, on the same declaration, for where the rule is wrong
+  (`Status` → `Statu`). It reaches the three places the singular is derived: the single field
+  and row type (`Api_Naming`), a `@resolves` target's type (the plugin builder records each
+  view's declared singular before building any query entry, since a `@resolves` names its
+  target by spec name only), and the `<singular>Id` key-field convention. `singleQueryField`
+  publishes it, so the catalogue's `name` follows.
 
 ## Step CA2 — `generate-catalogue`
 

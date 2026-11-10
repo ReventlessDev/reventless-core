@@ -93,9 +93,21 @@ function declaredPlural(stateSchema) {
   return Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(stateSchema), s => s.plural);
 }
 
-function queryFieldNamesForReadModel(plugin, name, declared, connectionSpecOpt) {
+function declaredSingular(stateSchema) {
+  return Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(stateSchema), s => s.singular);
+}
+
+let declaredSingulars = {};
+
+function registerSingular(plugin, name, stateSchema) {
+  Stdlib_Option.forEach(declaredSingular(stateSchema), singular => {
+    declaredSingulars[plugin + `.` + name] = singular;
+  });
+}
+
+function queryFieldNamesForReadModel(plugin, name, declared, declaredOne, connectionSpecOpt) {
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
-  let singular = singularize(name);
+  let singular = Stdlib_Option.getOr(declaredOne, singularize(name));
   let plural = Stdlib_Option.getOr(declared, pluralize(singularize(name)));
   return {
     singleFieldName: plugin + `_` + singular,
@@ -110,7 +122,7 @@ function queryFieldNamesForReadModel(plugin, name, declared, connectionSpecOpt) 
 }
 
 function returnTypeNameFor(plugin, name) {
-  return plugin + `_` + singularize(stripViewSuffix(name));
+  return plugin + `_` + Stdlib_Option.getOr(declaredSingulars[plugin + `.` + name], singularize(stripViewSuffix(name)));
 }
 
 function resolvedFieldsOfConfig(plugin, config) {
@@ -151,10 +163,10 @@ function resolvedFieldsOfConfig(plugin, config) {
   return single.concat(many);
 }
 
-function queryFieldNamesForStateView(plugin, viewName, declared, connectionSpecOpt) {
+function queryFieldNamesForStateView(plugin, viewName, declared, declaredOne, connectionSpecOpt) {
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let entity = stripViewSuffix(viewName);
-  let singular = singularize(entity);
+  let singular = Stdlib_Option.getOr(declaredOne, singularize(entity));
   let plural = Stdlib_Option.getOr(declared, pluralize(singularize(entity)));
   return {
     singleFieldName: plugin + `_` + singular,
@@ -202,6 +214,9 @@ export {
   sliceMutationFieldFor,
   canonicalPlural,
   declaredPlural,
+  declaredSingular,
+  declaredSingulars,
+  registerSingular,
   queryFieldNamesForReadModel,
   returnTypeNameFor,
   resolvedFieldsOfConfig,

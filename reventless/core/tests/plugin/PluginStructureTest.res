@@ -112,6 +112,15 @@ module PsPeopleViewSlice: ReventlessInfra.StateViewSlice.T = {
   type component = svsComponent
   let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
+module PsStatusViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsStatusView
+  module Projection = {
+    let project = PsStatusView.project
+    let moduleUrl = PsStatusView.moduleUrl
+  }
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
 
 module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsAttachInvoice
@@ -1320,6 +1329,44 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       q.singleQueryField,
       q.plural,
       q.pluralSource,
+    )
+
+    testSync(
+      "@singular names the single field and the row type; the key follows it",
+      () => {
+        let status =
+          Plugin_Structure.make(
+            ~name="TestPlugin",
+            ~stateChangeSlices=[],
+            ~stateViewSlices=[module(PsStatusViewSlice)],
+          ).stateViewSlices->Array.getUnsafe(0)
+        expect((
+          status.queryField,
+          status.singleQueryField,
+          status.idField,
+          status.idFieldSource,
+        ))->toEqual((
+          "TestPlugin_Statuses",
+          Some("TestPlugin_Status"),
+          Some("statusId"),
+          Some("convention"),
+        ))
+      },
+    )
+
+    testSync(
+      "a @resolves target's row type is the singular its view declares",
+      () => {
+        Api_Naming.registerSingular(
+          ~plugin="TestPlugin",
+          ~name="Status",
+          PsStatusView.stateSchema->S.castToUnknown,
+        )
+        expect((
+          Api_Naming.returnTypeNameFor(~plugin="TestPlugin", ~name="Status"),
+          Api_Naming.returnTypeNameFor(~plugin="TestPlugin", ~name="Categories"),
+        ))->toEqual(("TestPlugin_Status", "TestPlugin_Category"))
+      },
     )
 
     testSync(

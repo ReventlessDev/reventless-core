@@ -116,6 +116,9 @@ let all : entry list =
     e ~args:Required ~ex:{|"People"|} "plural" (Type State :: any_field)
       "The plural a view's list field, or an uploadable field's store, is named by, where the English rule is wrong."
       [ "StateAnnotations"; "UploadableInference" ];
+    e ~args:Required ~ex:{|"Status"|} "singular" [ Type State ]
+      "The singular a view's single field and row type are named by, where the English rule is wrong."
+      [ "StateAnnotations" ];
     e "namedWhenRetired" [ Type State ]
       "A retired row still answers the reference door with its name."
       [ "StateAnnotations" ];

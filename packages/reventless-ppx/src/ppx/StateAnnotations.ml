@@ -1847,41 +1847,46 @@ let check_named_when_retired_placement (str : structure) : unit =
     | _ -> ()
   ) str
 
-(* ── @plural: the plural a view's list field and plural type are built from ──
-       The English rule (`Api_Naming.pluralize`) is right for most names and
-       wrong for some (`Status` → `Statuss`); this names the plural where it is
-       wrong. Absent, the rule applies, so no existing field moves. ── *)
+(* ── @plural / @singular: the names a view's fields and types are built from ──
+       The English rule (`Api_Naming.pluralize` / `singularize`) is right for most
+       names and wrong for some (`Person` → `Persons`, `Status` → `Statu`); these
+       name the form where it is wrong. Absent, the rule applies, so no existing
+       field moves. ── *)
 
-let find_plural_attr (attrs : attributes) = Util.find_attr "plural" attrs
-
-let state_decl_plural_attr (str : structure) : attribute option =
+let state_decl_attr name (str : structure) : attribute option =
   List.find_map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_type (_, decls) ->
       List.find_map (fun (td : type_declaration) ->
         if String.equal td.ptype_name.txt "state"
            && Util.has_attr "schema" td.ptype_attributes
-        then find_plural_attr td.ptype_attributes
+        then Util.find_attr name td.ptype_attributes
         else None
       ) decls
     | _ -> None
   ) str
 
-(** The declared plural of a view, checked against what its name derives: a
-    `@plural` that says what the rule already says is refused, since it says
-    nothing. [~entity] is the name the list field is built from — the spec name,
-    less a state view's `View` suffix. *)
-let extract_state_plural ~entity (str : structure) : string option =
-  match state_decl_plural_attr str with
+(** A declared form of a view's name, checked against what the name derives: one
+    that says what the rule already says is refused, since it says nothing.
+    [~entity] is the name the fields are built from — the spec name, less a state
+    view's `View` suffix. *)
+let extract_state_form ~name ~derive ~entity (str : structure) : string option =
+  match state_decl_attr name str with
   | None -> None
   | Some attr ->
-    let plural = Util.get_plural_value ~capital:true attr in
-    if String.equal plural (Util.canonical_plural entity) then
+    let form = Util.get_name_value ~attr_name:name ~capital:true attr in
+    if String.equal form (derive entity) then
       Location.raise_errorf ~loc:attr.attr_loc
-        "@plural(%S) is the plural %S derives already; remove it." plural entity;
-    Some plural
+        "@%s(%S) is the %s %S derives already; remove it." name form name entity;
+    Some form
 
-let strip_plural_attrs (str : structure) : structure =
+let extract_state_plural ~entity str =
+  extract_state_form ~name:"plural" ~derive:Util.canonical_plural ~entity str
+
+let extract_state_singular ~entity str =
+  extract_state_form ~name:"singular" ~derive:Util.singularize ~entity str
+
+let strip_form_attrs (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_type (rf, decls) ->
@@ -1891,20 +1896,27 @@ let strip_plural_attrs (str : structure) : structure =
         else
           { td with ptype_attributes =
               List.filter (fun (a : attribute) ->
-                not (String.equal a.attr_name.txt "plural")
+                not (String.equal a.attr_name.txt "plural"
+                     || String.equal a.attr_name.txt "singular")
               ) td.ptype_attributes }
       ) decls in
       { item with pstr_desc = Pstr_type (rf, new_decls) }
     | _ -> item
   ) str
 
-(** Reject `@plural` on the state of a spec that has no list field to name. *)
-let check_plural_placement (str : structure) : unit =
-  match state_decl_plural_attr str with
+(** Reject `@plural` / `@singular` on the state of a spec that has no query field
+    to name. *)
+let check_form_placement (str : structure) : unit =
+  match state_decl_attr "plural" str with
   | Some attr ->
     Location.raise_errorf ~loc:attr.attr_loc
       "@plural is only supported on the @schema type state declaration of ReadModel and StateViewSlice spec files, and on an uploadable field"
-  | None -> ()
+  | None ->
+    (match state_decl_attr "singular" str with
+     | Some attr ->
+       Location.raise_errorf ~loc:attr.attr_loc
+         "@singular is only supported on the @schema type state declaration of ReadModel and StateViewSlice spec files"
+     | None -> ())
 
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
@@ -1951,7 +1963,7 @@ let metric_tuple_array ~loc pairs =
     normalised to `None` upstream so the metadata stays compact. The `~live` arg
     is the bool from `@live(...)` on the state type declaration, or `None` when
     the annotation is absent. *)
-let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?plural ~variants fields : structure_item option =
+let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?plural ?singular ~variants fields : structure_item option =
   let ids = List.filter_map (fun (ld : label_declaration) ->
     if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
@@ -2118,7 +2130,7 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?p
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
      && lifecycle = None && group_by = None && retired = None
-     && visibility = None && live = None && plural = None then None
+     && visibility = None && live = None && plural = None && singular = None then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -2248,7 +2260,10 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?p
              written only when declared. *)
           @ (match plural with
              | None -> []
-             | Some p -> [ ({ txt = Lident "plural"; loc }, Ast_builder.Default.estring ~loc p) ]),
+             | Some p -> [ ({ txt = Lident "plural"; loc }, Ast_builder.Default.estring ~loc p) ])
+          @ (match singular with
+             | None -> []
+             | Some n -> [ ({ txt = Lident "singular"; loc }, Ast_builder.Default.estring ~loc n) ]),
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
@@ -2296,10 +2311,11 @@ let generate_state_annotations ~loc ~entity (str : structure) : structure_item l
     let live = extract_state_live str in
     let named_when_retired = extract_state_named_when_retired str in
     let plural = extract_state_plural ~entity str in
+    let singular = extract_state_singular ~entity str in
     (* The file's `@schema` variant types, so the retirement can be read off the
        constructors that declare it and the field form can be checked against
        the enum it names. *)
     let variants = collect_schema_variants str in
-    (match make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?plural ~variants fields with
+    (match make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?plural ?singular ~variants fields with
      | None -> []
      | Some s -> [s])

@@ -214,6 +214,12 @@ type stateAnnotationSpec = {
   (`Api_Naming.pluralize`) is wrong. Absent, the rule applies.
   */
   plural?: string,
+  /**
+  The singular `@singular("…")` names on the `@schema type state` declaration: what the
+  view's single field and row type are built from where the English rule
+  (`Api_Naming.singularize`) is wrong (`Status` → `Statu`). Absent, the rule applies.
+  */
+  singular?: string,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

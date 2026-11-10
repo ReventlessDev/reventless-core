@@ -295,7 +295,7 @@ function classifyKeyField(rowKeying, entityName, schema) {
       return Stdlib_Option.isSome(keyOf(field));
     }
   });
-  let singular = Api_Naming$ReventlessCore.singularize(Api_Naming$ReventlessCore.stripViewSuffix(entityName));
+  let singular = Stdlib_Option.getOr(Api_Naming$ReventlessCore.declaredSingular(schema), Api_Naming$ReventlessCore.singularize(Api_Naming$ReventlessCore.stripViewSuffix(entityName)));
   let conventional = singular.slice(0, 1).toLowerCase() + singular.slice(1, singular.length) + "Id";
   let field = candidates.find(field => Stdlib_Option.getOr(keyOf(field), field) === conventional);
   if (field !== undefined) {

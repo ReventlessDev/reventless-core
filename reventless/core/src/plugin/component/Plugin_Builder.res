@@ -67,6 +67,24 @@ module Make = (
     let _prevPluginName = Logger.currentPluginName.contents
     Logger.currentPluginName := Some(name)
 
+    // Before any query entry: a `@resolves` field reaches its target's row type by spec name.
+    readModels->Array.forEach((
+      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    ) =>
+      Api_Naming.registerSingular(
+        ~plugin=name,
+        ~name=R.Spec.name,
+        R.Spec.stateSchema->S.castToUnknown,
+      )
+    )
+    stateViewSlices->Array.forEach((module(V: ReventlessInfra.StateViewSlice.T)) =>
+      Api_Naming.registerSingular(
+        ~plugin=name,
+        ~name=V.Spec.name,
+        V.Spec.stateSchema->S.castToUnknown,
+      )
+    )
+
     // Publish the owning plugin/platform for resource attribution, so adapters
     // creating infrastructure below this point can tag it without every adapter
     // signature having to carry the two names. Restored at the end of construct.
@@ -253,6 +271,7 @@ module Make = (
           ~plugin=name,
           ~name=R.Spec.name,
           ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+          ~singular=?Api_Naming.declaredSingular(R.Spec.stateSchema->S.castToUnknown),
         )
         let subIdField = R.Spec.subIdConfig->Option.map(c => c.subIdField)
         // An ordinary read model's `@index` reached the resolver layer
@@ -298,6 +317,7 @@ module Make = (
         ~plugin=name,
         ~name=R.Spec.name,
         ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+        ~singular=?Api_Naming.declaredSingular(R.Spec.stateSchema->S.castToUnknown),
       )
       let label = Plugin_Structure.labelFieldsFromStateSchema(
         ~entityName=R.Spec.name,
@@ -463,6 +483,7 @@ module Make = (
           ~plugin=name,
           ~name=R.Spec.name,
           ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+          ~singular=?Api_Naming.declaredSingular(R.Spec.stateSchema->S.castToUnknown),
         )
         let schema: Plugin_Helpers.pluginDeployedSchema = {
           queryFields: [qn.singleFieldName, qn.listFieldName],

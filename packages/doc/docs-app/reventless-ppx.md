@@ -602,6 +602,8 @@ On an uploadable field (`UploadableImage.t`, `UploadableFile.t`, `CaptionedImage
 
 **Constraint:** one name, starting with a capital on a view and a lower-case letter on a field. A `@plural` that equals what the rule derives is a compile error, since it says nothing; so is one on another spec's state, on a field that is not uploadable, or beside `@storageRef`.
 
+`@singular("Status")` does the same for the singular, where the rule gets it wrong (`Status` → `Statu`): the single-entity field (`Shop_Status`), the row type a `@resolves` field on another view returns, and the `<singular>Id` a key field is found by are built from it. Same constraints, on views only.
+
 ---
 
 ### `commandTransition`: the states a command applies in

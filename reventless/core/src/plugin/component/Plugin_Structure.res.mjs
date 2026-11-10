@@ -850,7 +850,7 @@ function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilit
   let visibility = visibilityOpt !== undefined ? visibilityOpt : "Public";
   let consumedEventTypes = consumedEventTypesOpt !== undefined ? consumedEventTypesOpt : [];
   let linkedWriteSide = linkedWriteSideOpt !== undefined ? linkedWriteSideOpt : [];
-  let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(plugin, name, Api_Naming$ReventlessCore.declaredPlural(stateSchema), undefined);
+  let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(plugin, name, Api_Naming$ReventlessCore.declaredPlural(stateSchema), Api_Naming$ReventlessCore.declaredSingular(stateSchema), undefined);
   let label = labelFieldsFromStateSchema(name, stateSchema);
   let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField("RowKeyedByEnvelope", name, stateSchema);
   return {
@@ -1167,7 +1167,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
   let recordKeyField = (rowKeying, entityName, stateSchema) => Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.keyFieldGapMessage(GraphQL_FragmentGenerator$ReventlessCore.classifyKeyField(rowKeying, entityName, stateSchema)), why => log.warn("Plugin_Structure", undefined, name + `/` + entityName + ` ` + why));
   let readModelDefs = readModels.map(R => {
-    let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
+    let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(R.Spec.stateSchema), undefined);
     let stateSchema = R.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
     let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField("RowKeyedByEnvelope", R.Spec.name, stateSchema);
@@ -1207,7 +1207,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
-    let qf = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, SVS.Spec.name, Api_Naming$ReventlessCore.declaredPlural(SVS.Spec.stateSchema), undefined);
+    let qf = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, SVS.Spec.name, Api_Naming$ReventlessCore.declaredPlural(SVS.Spec.stateSchema), Api_Naming$ReventlessCore.declaredSingular(SVS.Spec.stateSchema), undefined);
     let match = svsConsumed[i];
     let consumed = match[1];
     let stateSchema = SVS.Spec.stateSchema;
