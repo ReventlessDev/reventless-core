@@ -202,11 +202,14 @@ type t = {
   identityProvider: IdentityProvider.t,
   secrets: Secrets.t,
   stash: Stash.t,
+  text: Text.t,
 }
 ```
 
 `secrets` is not on the roster above: every runtime has a cryptographic source, so
-it is always provided and never declared.
+it is always provided and never declared. Neither is `text`: a deployment that
+declares no languages writes in English, which is a complete answer rather than a
+gap (see [The server's words](#the-servers-words)).
 
 Injected rather than looked up, and required rather than optional, because the
 alternative is a slot filled at cold start that nothing enforces: ES modules
@@ -364,6 +367,47 @@ neither the issuing service nor a Web Push subscription's keys. So the generated
 `recipientFor` refuses `Push` and records a delivery failure saying why, rather than
 guessing a service. A push transport arrives with the stored shape it needs, in the
 commit that justifies the columns.
+
+## The server's words
+
+A message a slice sends to a person is written in their language where the
+deployment has the words for it. The message is a key and the English it falls back
+to, kept in code beside the code that sends it:
+
+```rescript
+let challengeSubject: Reventless.Text.message = {
+  key: "registration.challenge.subject",
+  source: "Finish your registration",
+}
+
+switch await capabilities.text->Reventless.Text.compose(
+  ~recipient,
+  ~subject=challengeSubject,
+  ~body=challengeBody,
+  ~values=dict{"token": Text(token), "expiresIn": Duration(ttl)},
+) {
+| Ok(message) => await capabilities.messaging.send(~recipient, ~message)
+| Error(reason) => ...
+}
+```
+
+- **The text** is ICU MessageFormat, parsed by the same parser `generate-catalogue
+  check` reads a catalogue with. A `Duration` and a `List` value are written as the
+  language writes them (`7 days`, `7 Tage`; `A and B`, `A und B`).
+- **The language** is the recipient's where it is known, else the deployment's
+  `i18n.default`. The text comes from the first of that language, its base
+  (`de-x-du` → `de`) and the default whose catalogue has the key and whose text
+  parses, else from the English in code. The message is labeled with the language
+  its body is in, which an email carries as `Content-Language`.
+- **The catalogues** are the ones the deployment serves beside `config.json`. The
+  local platform merges them from the declared sources on every call, so a confirmed
+  translation is used by the next mail. On AWS a sending Lambda reads
+  `i18n/<lang>.json` from the host shell's address and keeps it for five minutes; a
+  catalogue it cannot read fails the send, which is retried, rather than sending in
+  another language.
+- **A package that sends** ships its English as `i18n/en.json`, for a deployment to
+  list among its catalogue sources and a translator to work from;
+  `pnpm run check:server-catalogues` keeps it the same as the code.
 
 ## Configuration
 

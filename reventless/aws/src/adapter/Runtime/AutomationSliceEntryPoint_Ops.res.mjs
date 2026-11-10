@@ -17,6 +17,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as Text_Http_Backend$ReventlessAws from "../Text/Text_Http_Backend.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
@@ -283,7 +284,8 @@ function capabilities() {
     messaging: messagingEmailProvider(),
     identityProvider: IdentityProvider_Cognito_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["IDENTITY_PROVIDER_ID"], ""), Stdlib_Option.getOr(process.env["IDENTITY_STORE_TABLE"], "")),
     secrets: Secrets_Node_Backend$ReventlessCore.provider,
-    stash: Capabilities$Reventless.none.stash
+    stash: Capabilities$Reventless.none.stash,
+    text: Text_Http_Backend$ReventlessAws.text()
   };
 }
 

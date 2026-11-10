@@ -59,6 +59,7 @@ let render = (
     `  From:    ${sender}`,
     `  To:      ${to_}`,
     `  Subject: ${message.subject->Option.getOr("(none)")}`,
+    ...message.language->Option.mapOr([], language => [`  Content-Language: ${language}`]),
     "",
     message.body,
   ]->Array.join("\n")

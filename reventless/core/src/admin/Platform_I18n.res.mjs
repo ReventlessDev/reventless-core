@@ -163,6 +163,80 @@ function files(i18n, read) {
     ]])))));
 }
 
+function parseCatalogue(text) {
+  let entries;
+  try {
+    entries = Stdlib_JSON.Decode.object(JSON.parse(text));
+  } catch (exn) {
+    return {
+      TAG: "Error",
+      _0: "a catalogue is not JSON"
+    };
+  }
+  if (entries !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: Object.fromEntries(Stdlib_Array.filterMap(Object.entries(entries), param => {
+        let k = param[0];
+        return Stdlib_Option.map(Stdlib_JSON.Decode.string(param[1]), s => [
+          k,
+          s
+        ]);
+      }))
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: "a catalogue is not a JSON object"
+    };
+  }
+}
+
+function text(i18n, catalogue) {
+  return {
+    default: i18n.default,
+    languageFor: async param => i18n.default,
+    catalogue: async language => {
+      if ([i18n.default].concat(i18n.offered).includes(language)) {
+        return await catalogue(language);
+      } else {
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
+      }
+    }
+  };
+}
+
+function languagesJson(i18n) {
+  return JSON.stringify({
+    default: i18n.default,
+    offered: i18n.offered.map(prim => prim)
+  });
+}
+
+function languagesOfJson(text) {
+  let o;
+  try {
+    o = Stdlib_JSON.Decode.object(JSON.parse(text));
+  } catch (exn) {
+    return;
+  }
+  if (o === undefined) {
+    return;
+  }
+  let match = Stdlib_Option.flatMap(o["default"], Stdlib_JSON.Decode.string);
+  let match$1 = Stdlib_Option.flatMap(o["offered"], Stdlib_JSON.Decode.array);
+  if (match !== undefined && match$1 !== undefined) {
+    return {
+      default: match,
+      offered: Stdlib_Array.filterMap(match$1, Stdlib_JSON.Decode.string),
+      sources: []
+    };
+  }
+}
+
 export {
   configKey,
   fileName,
@@ -174,5 +248,9 @@ export {
   sourceName,
   gate,
   files,
+  parseCatalogue,
+  text,
+  languagesJson,
+  languagesOfJson,
 }
 /* node:fs Not a pure module */

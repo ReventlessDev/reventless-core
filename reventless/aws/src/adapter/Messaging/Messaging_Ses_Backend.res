@@ -50,10 +50,17 @@ let send = async (
           Send.make({
             fromEmailAddress: sender,
             destination: {toAddresses: [address->Reventless.Email.toString]},
+            // UTF-8 named, since SES otherwise sends 7-bit ASCII and a translated
+            // mail is not ASCII; the language labeled for a reader's mail client.
             content: {
               simple: {
-                subject: {data: subject},
-                body: {text: {data: message.body}},
+                subject: {data: subject, charset: "UTF-8"},
+                body: {text: {data: message.body, charset: "UTF-8"}},
+                headers: ?(
+                  message.language->Option.map(language => [
+                    {Send.name: "Content-Language", value: language},
+                  ])
+                ),
               },
             },
           }),

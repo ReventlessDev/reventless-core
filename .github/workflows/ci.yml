@@ -224,6 +224,12 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run check:dcb-scope
 
+      # A package's server messages are written in English in code, and a translator works
+      # from the `i18n/en.json` it ships; the two must say the same.
+      - name: Check server message catalogues match their code
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:server-catalogues
+
       # A sury codegen change can leave a union parser unable to reach some of
       # its constructors: values encode fine and then cannot be read back. This
       # reads every compiled union parser for that shape, before anyone writes a

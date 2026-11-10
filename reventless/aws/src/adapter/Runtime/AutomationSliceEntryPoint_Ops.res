@@ -447,6 +447,7 @@ let capabilities = (): Reventless.Capabilities.t => {
   // None deployed yet: a slice declaring the need is refused by the deploy gate,
   // and this answers `Unavailable` should one run regardless.
   stash: Reventless.Capabilities.none.stash,
+  text: Text_Http_Backend.text(),
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

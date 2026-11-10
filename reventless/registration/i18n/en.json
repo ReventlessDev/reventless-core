@@ -1,0 +1,8 @@
+{
+  "registration.challenge.body": "Your registration code is {token}. Enter it with a password of your choice to finish. It expires in {expiresIn}.",
+  "registration.challenge.subject": "Finish your registration",
+  "registration.invited.body": "You have been invited to create an account{hasRoles, select, yes { as {roles}} other {}}. Your code is {token}. Enter it with this address and a password of your choice to accept. It expires in {expiresIn}.",
+  "registration.invited.subject": "You are invited to create an account",
+  "registration.taken.body": "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.",
+  "registration.taken.subject": "Someone tried to register with your address"
+}

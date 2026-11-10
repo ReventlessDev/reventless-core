@@ -159,6 +159,14 @@ let messagingEmailProviderRef = {
   contents: Pulumi.output("")
 };
 
+let hostShellUrlRef = {
+  contents: Pulumi.output("")
+};
+
+let i18nLanguagesRef = {
+  contents: Pulumi.output("")
+};
+
 let platformStackRefCache = {
   contents: undefined
 };
@@ -1192,6 +1200,7 @@ function MakeWithConfig(Config) {
         Platform_UiSlots$ReventlessCore.fileName
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
+      let distributionUrl = match$4.distributionUrl;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -1323,6 +1332,9 @@ function MakeWithConfig(Config) {
         };
         let message = Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.gate(i18n, Platform_I18n$ReventlessCore.filesIn, NodeCrypto.sha256Hex), () => Platform_I18n$ReventlessCore.files(i18n, read));
         if (message.TAG === "Ok") {
+          let languages = Stdlib_Result.getOr(Stdlib_Result.map(Platform_I18n$ReventlessCore.validate(i18n), Platform_I18n$ReventlessCore.languagesJson), "");
+          Pulumi$Pulumi.$$export("i18nLanguages", Pulumi.output(languages));
+          i18nLanguagesRef.contents = Pulumi.output(languages);
           message._0.forEach(param => {
             let key = param[0];
             new (Aws.s3.BucketObject)("host-ui-" + key.replaceAll("/", "-").replaceAll(".", "-"), {
@@ -1379,7 +1391,8 @@ function MakeWithConfig(Config) {
         Pulumi$Pulumi.$$export("bakedManifestBucket", bucketName);
         Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
-      Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", distributionUrl);
+      hostShellUrlRef.contents = distributionUrl;
     }
     if (Config.splitApi) {
       let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
@@ -1449,6 +1462,8 @@ function MakeWithConfig(Config) {
     let identityProviderId = platformOutput("identityProviderId", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolId);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_PROVIDER_ID", identityProviderId);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_STORE_TABLE", platformOutput("identityStore", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.name));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("I18N_LANGUAGES", platformOutput("i18nLanguages", () => i18nLanguagesRef.contents));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("I18N_BASE_URL", platformOutput("hostShellUrl", () => hostShellUrlRef.contents));
     PluginRuntime_Builder$ReventlessAws.registerIdentityProvider({
       poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
       storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
@@ -2628,6 +2643,7 @@ function Make($star) {
         Platform_UiSlots$ReventlessCore.fileName
       ], customDomain, servedBuckets);
       let bucketName = match$4.bucketName;
+      let distributionUrl = match$4.distributionUrl;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -2759,6 +2775,9 @@ function Make($star) {
         };
         let message = Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.gate(i18n, Platform_I18n$ReventlessCore.filesIn, NodeCrypto.sha256Hex), () => Platform_I18n$ReventlessCore.files(i18n, read));
         if (message.TAG === "Ok") {
+          let languages = Stdlib_Result.getOr(Stdlib_Result.map(Platform_I18n$ReventlessCore.validate(i18n), Platform_I18n$ReventlessCore.languagesJson), "");
+          Pulumi$Pulumi.$$export("i18nLanguages", Pulumi.output(languages));
+          i18nLanguagesRef.contents = Pulumi.output(languages);
           message._0.forEach(param => {
             let key = param[0];
             new (Aws.s3.BucketObject)("host-ui-" + key.replaceAll("/", "-").replaceAll(".", "-"), {
@@ -2815,7 +2834,8 @@ function Make($star) {
         Pulumi$Pulumi.$$export("bakedManifestBucket", bucketName);
         Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
-      Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", distributionUrl);
+      hostShellUrlRef.contents = distributionUrl;
     }
     let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
     Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, pool.activeRoleTable, pool.poolId, pool.poolArn, undefined, {});
@@ -2883,6 +2903,8 @@ function Make($star) {
     let identityProviderId = platformOutput("identityProviderId", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolId);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_PROVIDER_ID", identityProviderId);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("IDENTITY_STORE_TABLE", platformOutput("identityStore", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.name));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("I18N_LANGUAGES", platformOutput("i18nLanguages", () => i18nLanguagesRef.contents));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("I18N_BASE_URL", platformOutput("hostShellUrl", () => hostShellUrlRef.contents));
     PluginRuntime_Builder$ReventlessAws.registerIdentityProvider({
       poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
       storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
@@ -3097,6 +3119,8 @@ export {
   geocoderPlaceIndexRef,
   messagingEmailSenderRef,
   messagingEmailProviderRef,
+  hostShellUrlRef,
+  i18nLanguagesRef,
   roleGroups,
   providedGroups,
   platformStackRefCache,

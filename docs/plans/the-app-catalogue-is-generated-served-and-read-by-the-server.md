@@ -4,7 +4,8 @@
 **Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09;
 [CA1](#step-ca1--plural), [CA4](#step-ca4--i18n-status-and-i18n-check) and
 [CA7](#step-ca7--the-seam-for-a-glossary) built 2026-11-10; [CA5](#step-ca5--the-servers-messages)
-and [CA6](#step-ca6--the-identitys-locale) not started.<br/>
+built 2026-11-10 without the identity's language; [CA6](#step-ca6--the-identitys-locale) not
+started.<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -190,6 +191,41 @@ the order the platform merges them.
 - **No display text in events** holds: the catalogue is read at send time; an event records the
   message's key and language, never its text.
 
+**Built (2026-11-10).** `Reventless.Text` (`reventless/spec/src/i18n/`) is the capability a slice
+writes through: `capabilities.text` holds the deployment's default language, `languageFor` and a
+language's catalogue, and `Text.compose` makes a subject and a body for a recipient. A message is
+a key and the English it falls back to, in code; the text comes from the first of the language,
+its base and the default whose catalogue has the key, else that English. `Messaging.message`
+carries `language?`, which SES sends as `Content-Language` (with the text as UTF-8, since SES
+otherwise sends ASCII) and the log transport prints. The registration mails are six
+`registration.*` keys, shipped as the package's `i18n/en.json`, which
+`pnpm run check:server-catalogues` (in CI) keeps the same as the code.
+
+- **Where it differs from the plan:**
+  - `languageFor` is on `capabilities.text`, not on `capabilities.messaging`: a transport knows
+    nothing of languages, and the catalogue it would sit beside is not the transport's either.
+  - **No FormatJS.** `MessageFormat` turns the parser [CA4](#step-ca4--i18n-status-and-i18n-check)
+    wrote into one that produces the message's parts and formats them with the runtime's `Intl`.
+    One parser, so a text the release gate passes is a text the server can format, and no
+    package reaches the Lambdas.
+  - **Not bundled on AWS.** The catalogues are the platform stack's and the sending Lambda is the
+    plugin stack's, whose code archive is built before a stack output resolves. The platform
+    exports `i18nLanguages`; the plugin stack passes it and `hostShellUrl` as `I18N_LANGUAGES`
+    and `I18N_BASE_URL`; the Lambda reads `i18n/<lang>.json` from the shell's address and keeps
+    it five minutes. A catalogue it cannot read fails the send, which is retried.
+- **Values** a message formats beside text and numbers: `Duration` (`7 days`, `7 Tage`, through
+  `Duration.format(~locale)`) and `List` (`A and B`, `A und B`).
+- **`Template`** takes `~locale` for `money`, `percent`, `duration` and `dateRange`; `bytes` keeps
+  its units, which read the same in every language.
+- **Locally** `capabilities.text` merges the declared sources on each call, so a confirmed key is
+  used by the next mail without a restart.
+- **Not yet:**
+  - The recipient's own language: `languageFor` answers the default until
+    [CA6](#step-ca6--the-identitys-locale) gives an identity a `locale`. A visitor who registers
+    has no identity yet, so their mail would need the language their request was made in.
+  - Recording the key and language of a sent mail: no event of the registration records a mail
+    today, and the first one that does should carry them.
+
 ## Step CA6 — the identity's `locale`
 
 - `Platform_Stack.res` (`PulumiAws.Cognito.UserPool.make`, line 277 today) declares the standard
@@ -224,9 +260,10 @@ glossary that writes them.
   carries `languages`, and a confirmed German key appears without a restart.
 - `generate-catalogue check` fails on a released language with one missing key and passes on a
   draft one; it fails on `{count, plural, one {#} }` with a syntax error.
-- A registration challenge sent to an account whose `locale` is `de` arrives with a German
-  subject and body; one with no `locale` arrives in the platform's default language; the audit
-  row records the key and the language, not the text.
+- A registration challenge sent on a deployment whose default is `de` arrives with a German
+  subject and body, labeled `de`; a key the catalogue lacks arrives in the code's English; a
+  catalogue that cannot be read sends nothing and is retried. (By `locale`, and the audit row,
+  wait for [CA6](#step-ca6--the-identitys-locale).)
 - The user pool update that exposes `locale` is a Pulumi `update`, not a `replace`, on the
   alpha stack.
 - `pnpm run check:fresh-outputs`, `check:lifecycle`, `check:dcb-scope` and the GWT suites stay

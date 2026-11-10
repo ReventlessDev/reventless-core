@@ -69,6 +69,8 @@
     "check:lifecycle:update": "node ./reventless/spec/run-check-lifecycle.mjs --update",
     "check:dcb-scope": "node ./scripts/check-dcb-scope.mjs",
     "check:dcb-scope:update": "node ./scripts/check-dcb-scope.mjs --update",
+    "check:server-catalogues": "node ./scripts/check-server-catalogues.mjs",
+    "check:server-catalogues:update": "node ./scripts/check-server-catalogues.mjs --update",
     "check:pulumi-option": "node ./scripts/check-pulumi-option.mjs",
     "check:spelling": "node ./scripts/check-spelling.mjs",
     "inventory:option-fields": "node ./scripts/inventory-option-fields.mjs",

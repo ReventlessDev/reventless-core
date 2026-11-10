@@ -41,9 +41,9 @@ let thenLedgerTold = async (pending, expected) =>
   | _ => Outcome.fail(TranslateError({expected, actual: None}))
   }
 
-let mail = (~subject, ~body): ReventlessGwt.Capabilities_Fake.call => Sent({
+let mail = (~subject, ~body, ~language="en"): ReventlessGwt.Capabilities_Fake.call => Sent({
   recipient: ToEmail(Reventless.Email.unsafe(aliceAddress)),
-  message: {subject, body},
+  message: {subject, body, language},
 })
 
 describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
@@ -182,6 +182,69 @@ describe("SendRegistrationChallenge OutboundTranslationSlice", () => {
     ->givenCapabilities(withSecrets())
     ->whenTranslated
     ->thenSent([mail(~subject="Someone tried to register with your address", ~body=noticeBody)])
+  )
+
+  // A deployment that writes German sends the mail in German where its catalogue has the
+  // words, labeled as such, and the code's English where it has not.
+  let german = Reventless.Text.fromCatalogues(
+    ~default="de",
+    dict{
+      "de": dict{
+        "registration.challenge.subject": "Registrierung abschließen",
+        "registration.challenge.body": "Ihr Code lautet {token}. Er läuft in {expiresIn} ab.",
+        "registration.invited.body": "Sie sind eingeladen{hasRoles, select, yes {, als {roles}} other {}}. Ihr Code lautet {token}.",
+      },
+    },
+  )
+
+  test("a deployment writing German sends the challenge in German", () =>
+    givenTodo("t1", fresh)
+    ->givenCapabilities(fakes(~token="known-secret", ~channels=[Email], ~text=german, ()))
+    ->whenTranslated
+    ->thenSent([
+      TokenDrawn({length: policy.proofLength, alphabet: policy.proofAlphabet}),
+      Hashed({input: "known-secret"}),
+      mail(
+        ~subject="Registrierung abschließen",
+        ~body="Ihr Code lautet known-secret. Er läuft in 1 Tag ab.",
+        ~language="de",
+      ),
+    ])
+  )
+
+  test("a key the catalogue lacks is sent in the code's English, labeled so", () =>
+    givenTodo("t3", invitation)
+    ->givenCapabilities(fakes(~token="known-secret", ~channels=[Email], ~text=german, ()))
+    ->whenTranslated
+    ->thenSent([
+      TokenDrawn({length: policy.proofLength, alphabet: policy.proofAlphabet}),
+      Hashed({input: "known-secret"}),
+      Sent({
+        recipient: ToEmail(Reventless.Email.unsafe(aliceAddress)),
+        message: {
+          subject: "You are invited to create an account",
+          body: "Sie sind eingeladen, als Merchandiser. Ihr Code lautet known-secret.",
+          language: "de",
+        },
+      }),
+    ])
+  )
+
+  test("a catalogue that cannot be read sends nothing, so the mail is tried again", () =>
+    givenTodo("t1", fresh)
+    ->givenCapabilities(
+      fakes(
+        ~token="known-secret",
+        ~channels=[Email],
+        ~text={...german, catalogue: async _ => Error("the catalogue did not load")},
+        (),
+      ),
+    )
+    ->whenTranslated
+    ->thenSent([
+      TokenDrawn({length: policy.proofLength, alphabet: policy.proofAlphabet}),
+      Hashed({input: "known-secret"}),
+    ])
   )
 
   // scenario-id: 72e8341c-1289-48bd-b8f0-c09202bccba5

@@ -8,6 +8,7 @@ import * as Bytes$Reventless from "./Bytes.res.mjs";
 import * as Money$Reventless from "./Money.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Percent$Reventless from "./Percent.res.mjs";
+import * as Currency$Reventless from "./Currency.res.mjs";
 import * as Duration$Reventless from "./Duration.res.mjs";
 import * as GeoPoint$Reventless from "./GeoPoint.res.mjs";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
@@ -353,8 +354,41 @@ function parseSafely(json, schema) {
   }
 }
 
-function formatBySemantic(json, id) {
+function localized(json, id, locale) {
   if (id === Semantic$Reventless.Id.money) {
+    return Stdlib_Option.map(parseSafely(json, Money$Reventless.schema), m => {
+      let exponent = Currency$Reventless.exponent(m.currency);
+      return new Intl.NumberFormat([locale], {
+        currency: Currency$Reventless.toString(m.currency),
+        style: "currency"
+      }).format(m.amount / Math.pow(10.0, exponent));
+    });
+  } else if (id === Semantic$Reventless.Id.dateRange) {
+    return Stdlib_Option.map(parseSafely(json, DateRange$Reventless.schema), range => new Intl.DateTimeFormat([locale], {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }).formatRange(new Date(range.start), new Date(range.end)));
+  } else if (typeof json === "number") {
+    if (id === Semantic$Reventless.Id.percent) {
+      return new Intl.NumberFormat([locale], {
+        style: "percent",
+        maximumFractionDigits: 2
+      }).format(json / 100.0);
+    } else if (id === Semantic$Reventless.Id.duration) {
+      return Duration$Reventless.format(locale, json | 0);
+    } else {
+      return;
+    }
+  } else {
+    return;
+  }
+}
+
+function formatBySemantic(json, id, locale) {
+  let text = Stdlib_Option.flatMap(locale, locale => localized(json, id, locale));
+  if (text !== undefined) {
+    return text;
+  } else if (id === Semantic$Reventless.Id.money) {
     return Stdlib_Option.map(parseSafely(json, Money$Reventless.schema), Money$Reventless.format);
   } else if (id === Semantic$Reventless.Id.dateRange) {
     return Stdlib_Option.map(parseSafely(json, DateRange$Reventless.schema), DateRange$Reventless.format);
@@ -366,7 +400,7 @@ function formatBySemantic(json, id) {
     } else if (id === Semantic$Reventless.Id.bytes) {
       return Bytes$Reventless.format(json);
     } else if (id === Semantic$Reventless.Id.duration) {
-      return Duration$Reventless.format(json | 0);
+      return Duration$Reventless.format(undefined, json | 0);
     } else {
       return;
     }
@@ -420,7 +454,7 @@ function truthy(value) {
   }
 }
 
-function renderField(path, formatter, root, item) {
+function renderField(path, formatter, locale, root, item) {
   let scope = resolve(path, root, item);
   if (isWithheld(scope.schema)) {
     return withheld(path);
@@ -436,29 +470,29 @@ function renderField(path, formatter, root, item) {
     if (formatter === rawFormatter) {
       return scalar(value);
     } else {
-      return Stdlib_Option.getOr(formatBySemantic(value, formatter), scalar(value));
+      return Stdlib_Option.getOr(formatBySemantic(value, formatter, locale), scalar(value));
     }
   }
   let match = Stdlib_Option.flatMap(scope.schema, Semantic$Reventless.getFrom);
   if (match !== undefined) {
-    return Stdlib_Option.getOr(formatBySemantic(value, match.id), scalar(value));
+    return Stdlib_Option.getOr(formatBySemantic(value, match.id, locale), scalar(value));
   } else {
     return scalar(value);
   }
 }
 
-function renderNodes(nodes, root, item, out) {
+function renderNodes(nodes, locale, root, item, out) {
   nodes.forEach(node => {
     switch (node.TAG) {
       case "Text" :
         out.push(node._0);
         return;
       case "Field" :
-        out.push(renderField(node.path, node.formatter, root, item));
+        out.push(renderField(node.path, node.formatter, locale, root, item));
         return;
       case "If" :
         if (truthy(resolve(node.path, root, item).value)) {
-          return renderNodes(node.body, root, item, out);
+          return renderNodes(node.body, locale, root, item, out);
         } else {
           return;
         }
@@ -476,7 +510,7 @@ function renderNodes(nodes, root, item, out) {
           let total = match.length;
           let shown = total > 100 ? 100 : total;
           for (let index = 0; index < shown; ++index) {
-            renderNodes(body, root, {
+            renderNodes(body, locale, root, {
               value: match[index],
               schema: element
             }, out);
@@ -495,17 +529,17 @@ function renderNodes(nodes, root, item, out) {
   });
 }
 
-function render(template, payload, schema) {
+function render(template, payload, schema, locale) {
   let out = [];
-  renderNodes(template, {
+  renderNodes(template, locale, {
     value: payload,
     schema: schema
   }, undefined, out);
   return out.join("");
 }
 
-function renderSource(source, payload, schema) {
-  return Stdlib_Result.map(parse(source), template => render(template, payload, schema));
+function renderSource(source, payload, schema, locale) {
+  return Stdlib_Result.map(parse(source), template => render(template, payload, schema, locale));
 }
 
 let variantSchema = Semantic$Reventless.unionVariant;
@@ -533,6 +567,7 @@ export {
   lookup,
   isWithheld,
   parseSafely,
+  localized,
   formatBySemantic,
   scalar,
   truthy,

@@ -6,6 +6,7 @@ import * as NodeCrypto from "@reventlessdev/rescript-node/src/NodeCrypto.res.mjs
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -22,6 +23,10 @@ function read(dir, language) {
   if (Nodefs.existsSync(path)) {
     return Nodefs.readFileSync(path, "utf8");
   }
+}
+
+function text(i18n) {
+  return Platform_I18n$ReventlessCore.text(i18n, async language => Stdlib_Result.map(Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.merged(i18n, language, read), Platform_I18n$ReventlessCore.parseCatalogue), c => c));
 }
 
 function emit(i18n, dir) {
@@ -111,6 +116,7 @@ export {
   log,
   dirName,
   read,
+  text,
   emit,
   watch,
 }

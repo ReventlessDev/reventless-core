@@ -23,23 +23,27 @@ let schema = Semantic$Reventless.refined(Sury.int32, Semantic$Reventless.Id.dura
 let scales = [
   [
     86400,
-    "d"
+    "d",
+    "day"
   ],
   [
     3600,
-    "h"
+    "h",
+    "hour"
   ],
   [
     60,
-    "m"
+    "m",
+    "minute"
   ],
   [
     1,
-    "s"
+    "s",
+    "second"
   ]
 ];
 
-function format(d) {
+function format(locale, d) {
   let remaining = {
     contents: d < 0 ? 0 : d
   };
@@ -48,15 +52,34 @@ function format(d) {
     let size = param[0];
     let count = Primitive_int.div(remaining.contents, size);
     if (count > 0) {
-      parts.push(count.toString() + param[1]);
+      parts.push([
+        count,
+        param[1],
+        param[2]
+      ]);
       remaining.contents = remaining.contents - (count * size | 0) | 0;
       return;
     }
   });
+  if (locale === undefined) {
+    if (parts.length === 0) {
+      return "0s";
+    } else {
+      return parts.map(param => param[0].toString() + param[1]).join(" ");
+    }
+  }
+  let inWords = (count, unit) => new Intl.NumberFormat([locale], {
+    style: "unit",
+    unit: unit,
+    unitDisplay: "long"
+  }).format(count);
   if (parts.length === 0) {
-    return "0s";
+    return inWords(0, "second");
   } else {
-    return parts.join(" ");
+    return new Intl.ListFormat([locale], {
+      type: "conjunction",
+      style: "long"
+    }).format(parts.map(param => inWords(param[0], param[2])));
   }
 }
 

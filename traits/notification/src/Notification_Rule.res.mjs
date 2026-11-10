@@ -250,7 +250,7 @@ function contentFor(rule, locale) {
 }
 
 function render(source, payload, schema) {
-  return Stdlib_Result.getOr(Template$Reventless.renderSource(source, payload, schema), source);
+  return Stdlib_Result.getOr(Template$Reventless.renderSource(source, payload, schema, undefined), source);
 }
 
 function compose(rule, payload, schema, locale) {

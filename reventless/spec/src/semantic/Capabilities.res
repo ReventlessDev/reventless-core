@@ -40,6 +40,9 @@ type t = {
       between a door that receives a secret and the slice that may act on it only
       after a `decide`. See `Stash.t`. */
   stash: Stash.t,
+  /** The language to write to a recipient in, and the deployment's catalogue to write
+      it with. See `Text.t`. */
+  text: Text.t,
 }
 
 /**
@@ -76,4 +79,7 @@ let none: t = {
   // everywhere while looking exactly like a real one.
   secrets: Secrets.unavailable(~reason="no secret source is configured for this platform"),
   stash: Stash.unavailable(~reason="no stash is configured for this platform"),
+  // Not unavailable: a deployment with no catalogue writes in English, which is a
+  // complete answer rather than a gap.
+  text: Text.sourceOnly,
 }

@@ -44,6 +44,12 @@ Reventless.Admission.Invite`, checks the inviter's roles, and relays `Invite` to
 ledger. The ledger refuses any role the app's table does not declare by invitation.
 An invitation's code holds a week; a sign-up's holds a day.
 
+The mails are written in the recipient's language where the deployment has the words:
+their keys are `registration.*`, and `i18n/en.json` holds their English. A deployment
+lists `node_modules/@reventlessdev/reventless-registration/i18n` among its catalogue
+sources, before its own, and translates the keys there. Without a translation the
+mails go out in that English.
+
 The scenarios that pin these slices run in the plugins that list them, against that
 plugin's own table: in this repository, `examples/online-shop-hybrid/registration`.
 

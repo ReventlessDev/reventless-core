@@ -43,7 +43,7 @@ function collect(event, sourceId) {
 }
 
 function body(token) {
-  return `Confirm this address by entering ` + token + `. It expires in ` + Duration$Reventless.format(ContactVerification$OrderingPlugin.emailPolicy.tokenTtl) + `.`;
+  return `Confirm this address by entering ` + token + `. It expires in ` + Duration$Reventless.format(undefined, ContactVerification$OrderingPlugin.emailPolicy.tokenTtl) + `.`;
 }
 
 async function translate(_id, item, capabilities) {

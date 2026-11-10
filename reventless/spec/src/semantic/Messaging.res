@@ -137,8 +137,12 @@ What to say.
 notification's title — and ignored by those that do not. Optional rather than an
 empty string, so "this message has no subject" and "its subject is blank" stay
 distinguishable.
+
+`language` is the language the text is written in (`de`, `de-x-du`), for a channel
+that labels it — an email's `Content-Language` — and ignored by the others, as
+`subject` is. `Text.compose` sets it.
 */
-type message = {subject?: string, body: string}
+type message = {subject?: string, body: string, language?: string}
 
 /** The provider accepted the message. `ref` is its own id for it — what a
     support conversation about a missing message is conducted with, and the only

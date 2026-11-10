@@ -300,6 +300,56 @@ let formatBySemantic = (json: JSON.t, ~id: string): option<string> =>
     }
   }
 
+// For a person reading in a language: the value as that language writes it. `None` where the
+// semantic has no such form, and the locale-independent one is used.
+let localized = (json: JSON.t, ~id: string, ~locale: string): option<string> =>
+  if id == Semantic.Id.money {
+    json
+    ->parseSafely(Money.schema)
+    ->Option.map(m => {
+      let exponent = Currency.exponent(m.currency)
+      Intl.NumberFormat.make(
+        ~locales=[locale],
+        ~options={style: #currency, currency: Currency.toString(m.currency)},
+      )->Intl.NumberFormat.format(m.amount /. Math.pow(10.0, ~exp=Int.toFloat(exponent)))
+    })
+  } else if id == Semantic.Id.dateRange {
+    json
+    ->parseSafely(DateRange.schema)
+    ->Option.map(range =>
+      Intl.DateTimeFormat.make(
+        ~locales=[locale],
+        ~options={dateStyle: #medium, timeStyle: #short},
+      )->Intl.DateTimeFormat.formatRange(
+        ~startDate=range.start->DateTime.toString->Date.fromString,
+        ~endDate=range.end_->DateTime.toString->Date.fromString,
+      )
+    )
+  } else {
+    switch json {
+    | Number(number) =>
+      if id == Semantic.Id.percent {
+        Some(
+          Intl.NumberFormat.make(
+            ~locales=[locale],
+            ~options={style: #percent, maximumFractionDigits: #2},
+          )->Intl.NumberFormat.format(number /. 100.0),
+        )
+      } else if id == Semantic.Id.duration {
+        Some(Duration.format(~locale, Float.toInt(number)))
+      } else {
+        None
+      }
+    | _ => None
+    }
+  }
+
+let formatBySemantic = (json: JSON.t, ~id: string, ~locale: option<string>=?): option<string> =>
+  switch locale->Option.flatMap(locale => localized(json, ~id, ~locale)) {
+  | Some(text) => Some(text)
+  | None => formatBySemantic(json, ~id)
+  }
+
 let scalar = (value: JSON.t): string =>
   switch value {
   | String(text) => text
@@ -320,7 +370,7 @@ let truthy = (value: option<JSON.t>): bool =>
   | Some(_) => true
   }
 
-let renderField = (path, ~formatter, ~root, ~item) => {
+let renderField = (path, ~formatter, ~locale, ~root, ~item) => {
   let scope = resolve(path, ~root, ~item)
   if isWithheld(scope.schema) {
     withheld(path)
@@ -332,10 +382,10 @@ let renderField = (path, ~formatter, ~root, ~item) => {
       // than to a placeholder: the value is there, only the shaping failed.
       switch formatter {
       | Some(name) if name == rawFormatter => scalar(value)
-      | Some(name) => formatBySemantic(value, ~id=name)->Option.getOr(scalar(value))
+      | Some(name) => formatBySemantic(value, ~id=name, ~locale?)->Option.getOr(scalar(value))
       | None =>
         switch scope.schema->Option.flatMap(Semantic.getFrom) {
-        | Some({id}) => formatBySemantic(value, ~id)->Option.getOr(scalar(value))
+        | Some({id}) => formatBySemantic(value, ~id, ~locale?)->Option.getOr(scalar(value))
         | None => scalar(value)
         }
       }
@@ -347,6 +397,7 @@ let renderField = (path, ~formatter, ~root, ~item) => {
 // would silently drop the body of `{{# if customer.email }}`.
 let rec renderNodes = (
   nodes: array<node>,
+  ~locale: option<string>,
   ~root: scope,
   ~item: option<scope>,
   ~out: array<string>,
@@ -354,10 +405,11 @@ let rec renderNodes = (
   nodes->Array.forEach(node =>
     switch node {
     | Text(text) => out->Array.push(text)
-    | Field({path, formatter}) => out->Array.push(renderField(path, ~formatter, ~root, ~item))
+    | Field({path, formatter}) =>
+      out->Array.push(renderField(path, ~formatter, ~locale, ~root, ~item))
     | If({path, body}) =>
       if truthy(resolve(path, ~root, ~item).value) {
-        renderNodes(body, ~root, ~item, ~out)
+        renderNodes(body, ~locale, ~root, ~item, ~out)
       }
     | Each({path, body}) =>
       let scope = resolve(path, ~root, ~item)
@@ -372,6 +424,7 @@ let rec renderNodes = (
           for index in 0 to shown - 1 {
             renderNodes(
               body,
+              ~locale,
               ~root,
               ~item=Some({value: items->Array.get(index), schema: element}),
               ~out,
@@ -387,11 +440,14 @@ let rec renderNodes = (
   )
 
 /** Render a parsed template. `schema` describes `payload` — for an event union,
-    take the arm with `variantSchema`. */
-let render = (template: t, ~payload: JSON.t, ~schema: S.t<'a>): string => {
+    take the arm with `variantSchema`. With a `locale`, money, percentages, durations and
+    date ranges are written the way that language writes them; without one, the same in
+    every language. */
+let render = (template: t, ~payload: JSON.t, ~schema: S.t<'a>, ~locale=?): string => {
   let out = []
   renderNodes(
     template,
+    ~locale,
     ~root={value: Some(payload), schema: Some(schema->S.castToUnknown)},
     ~item=None,
     ~out,
@@ -401,8 +457,10 @@ let render = (template: t, ~payload: JSON.t, ~schema: S.t<'a>): string => {
 
 /** Parse and render in one call, for a template held as text rather than
     compiled once. */
-let renderSource = (source: string, ~payload: JSON.t, ~schema: S.t<'a>): result<string, string> =>
-  parse(source)->Result.map(template => render(template, ~payload, ~schema))
+let renderSource = (source: string, ~payload: JSON.t, ~schema: S.t<'a>, ~locale=?): result<
+  string,
+  string,
+> => parse(source)->Result.map(template => render(template, ~payload, ~schema, ~locale?))
 
 /** The object schema of one arm of a command or event union — what `render`
     wants, since a message is about one occurrence. */

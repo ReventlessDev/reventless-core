@@ -14,6 +14,15 @@ let read: ReventlessCore.Platform_I18n.read = (~dir, ~language) => {
   NodeFs.existsSync(path) ? Some(NodeFs.readFileSync(path)) : None
 }
 
+/** The server's words for a declaration: each language's catalogue merged from the sources on
+    every call, so a translation confirmed while the platform runs is used by the next mail. */
+let text = (i18n: ReventlessInfra.Platform.i18n): Reventless.Text.t =>
+  ReventlessCore.Platform_I18n.text(i18n, ~catalogue=async language =>
+    ReventlessCore.Platform_I18n.merged(i18n, ~language, ~read)
+    ->Result.flatMap(ReventlessCore.Platform_I18n.parseCatalogue)
+    ->Result.map(c => Some(c))
+  )
+
 /**
  Write every offered language's merged catalogue into the served directory, or remove the
  directory when nothing is declared.

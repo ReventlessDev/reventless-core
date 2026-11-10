@@ -107,6 +107,14 @@ let messagingEmailSenderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.ma
     `""` means the platform named none, which the runtime reads as its default. */
 let messagingEmailProviderRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
+/** Where the host shell is served, carried the same way: a Lambda that sends reads the
+    deployment's catalogues from beside its `config.json`. `""` when no shell is deployed. */
+let hostShellUrlRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
+/** The declared languages as `{"default", "offered"}` JSON, carried the same way. `""` when
+    none are declared, which a Lambda reads as "write in English". */
+let i18nLanguagesRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 /** Which group stands for which role, only where the two differ; every other
     role maps to the group of its own name. Call before `Make()`: the platform
     resolves roles while it is built, and a mapping stated later is refused. */
@@ -2491,6 +2499,14 @@ module MakeWithConfig = (
         )->Result.flatMap(() => ReventlessCore.Platform_I18n.files(i18n, ~read)) {
         | Error(message) => failwith("host UI " ++ message)
         | Ok(files) =>
+          // What a sending Lambda needs to find its words: the languages, small enough for
+          // an environment variable; the catalogues it reads from where they are served.
+          let languages =
+            ReventlessCore.Platform_I18n.validate(i18n)
+            ->Result.map(ReventlessCore.Platform_I18n.languagesJson)
+            ->Result.getOr("")
+          Pulumi.Pulumi.export("i18nLanguages", Pulumi.Output.make(languages))
+          i18nLanguagesRef := Pulumi.Output.make(languages)
           files->Array.forEach(((key, text)) => {
             let _ = PulumiAws.S3.BucketObject.make(
               ~name="host-ui-" ++ key->String.replaceAll("/", "-")->String.replaceAll(".", "-"),
@@ -2602,6 +2618,7 @@ module MakeWithConfig = (
       }
 
       Pulumi.Pulumi.export("hostShellUrl", distributionUrl)
+      hostShellUrlRef := distributionUrl
     }
 
     // Where a caller records the role they want to act as
@@ -2820,6 +2837,15 @@ module MakeWithConfig = (
       platformOutput("identityStore", ~local=() =>
         Platform_Stack.resolveCognitoUserPool().identityTable.name
       ),
+    )
+    // The server's words: the declared languages and where their catalogues are served.
+    PluginRuntime_Builder.registerCapabilityEnv(
+      "I18N_LANGUAGES",
+      platformOutput("i18nLanguages", ~local=() => i18nLanguagesRef.contents),
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      "I18N_BASE_URL",
+      platformOutput("hostShellUrl", ~local=() => hostShellUrlRef.contents),
     )
     PluginRuntime_Builder.registerIdentityProvider({
       poolArn: platformOutput("identityProviderArn", ~local=() =>

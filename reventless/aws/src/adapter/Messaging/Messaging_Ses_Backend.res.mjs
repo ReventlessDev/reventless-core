@@ -53,12 +53,18 @@ async function send(sender, recipient, message) {
             Simple: {
               Body: {
                 Text: {
-                  Data: message.body
+                  Data: message.body,
+                  Charset: "UTF-8"
                 }
               },
               Subject: {
-                Data: subject
-              }
+                Data: subject,
+                Charset: "UTF-8"
+              },
+              Headers: Stdlib_Option.map(message.language, language => [{
+                  Name: "Content-Language",
+                  Value: language
+                }])
             }
           },
           Destination: {

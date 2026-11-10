@@ -169,3 +169,61 @@ let files = (i18n: ReventlessInfra.Platform.i18n, ~read: read): result<
       )
     )
   )
+
+// ── The server's words ────────────────────────────────────────────────────────
+
+/** A served catalogue's text as its keys and texts; a value that is not a string is skipped. */
+let parseCatalogue = (text: string): result<dict<string>, string> =>
+  switch text->JSON.parseOrThrow->JSON.Decode.object {
+  | Some(entries) =>
+    Ok(
+      entries
+      ->Dict.toArray
+      ->Array.filterMap(((k, v)) => v->JSON.Decode.string->Option.map(s => (k, s)))
+      ->Dict.fromArray,
+    )
+  | None => Error("a catalogue is not a JSON object")
+  | exception _ => Error("a catalogue is not JSON")
+  }
+
+/**
+ What a slice formats a message with on a deployment that declared its languages: every
+ recipient in the declared default until an identity says otherwise, and a language's
+ catalogue as `catalogue` fetches it. A language that is not offered has none.
+ */
+let text = (
+  i18n: ReventlessInfra.Platform.i18n,
+  ~catalogue: string => promise<result<option<dict<string>>, string>>,
+): Reventless.Text.t => {
+  default: i18n.default,
+  languageFor: async _ => i18n.default,
+  catalogue: async language =>
+    Array.concat([i18n.default], i18n.offered)->Array.includes(language)
+      ? await catalogue(language)
+      : Ok(None),
+}
+
+/** The languages as a sending Lambda reads them, `{"default", "offered"}`. */
+let languagesJson = (i18n: ReventlessInfra.Platform.i18n): string =>
+  JSON.stringify(
+    dict{
+      "default": JSON.Encode.string(i18n.default),
+      "offered": i18n.offered->Array.map(JSON.Encode.string)->JSON.Encode.array,
+    }->JSON.Encode.object,
+  )
+
+/** The languages `languagesJson` wrote, as a declaration with no sources: what a Lambda knows. */
+let languagesOfJson = (text: string): option<ReventlessInfra.Platform.i18n> =>
+  switch text->JSON.parseOrThrow->JSON.Decode.object {
+  | Some(o) =>
+    switch (
+      o->Dict.get("default")->Option.flatMap(JSON.Decode.string),
+      o->Dict.get("offered")->Option.flatMap(JSON.Decode.array),
+    ) {
+    | (Some(default), Some(offered)) =>
+      Some({default, offered: offered->Array.filterMap(JSON.Decode.string), sources: []})
+    | _ => None
+    }
+  | None => None
+  | exception _ => None
+  }

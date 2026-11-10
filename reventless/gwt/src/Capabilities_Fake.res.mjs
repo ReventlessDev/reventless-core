@@ -3,17 +3,19 @@
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Secrets$Reventless from "@reventlessdev/reventless-spec/src/semantic/Secrets.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
-function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, param) {
+function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, param) {
   let channels = channelsOpt !== undefined ? channelsOpt : [
       "Email",
       "Sms"
     ];
   let pushServices = pushServicesOpt !== undefined ? pushServicesOpt : [];
   let stashed = stashedOpt !== undefined ? stashedOpt : [];
+  let text = textOpt !== undefined ? textOpt : Text$Reventless.sourceOnly;
   let log = [];
   let geocode$1 = async text => {
     log.push({
@@ -181,7 +183,8 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
     messaging: capabilities_messaging,
     identityProvider: capabilities_identityProvider,
     secrets: capabilities_secrets,
-    stash: capabilities_stash
+    stash: capabilities_stash,
+    text: text
   };
   return {
     capabilities: capabilities,
@@ -228,6 +231,10 @@ function toJson(c) {
         [
           "body",
           message.body
+        ],
+        [
+          "language",
+          Stdlib_Option.mapOr(message.language, null, str)
         ]
       ]);
     case "PrincipalCreated" :
@@ -309,6 +316,8 @@ let Secrets;
 
 let Stash;
 
+let Text;
+
 export {
   Capabilities,
   Geocoding,
@@ -316,7 +325,8 @@ export {
   IdentityProvider,
   Secrets,
   Stash,
+  Text,
   make,
   toJson,
 }
-/* No side effect */
+/* Text-Reventless Not a pure module */

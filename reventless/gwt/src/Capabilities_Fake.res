@@ -8,6 +8,7 @@ module Messaging = Reventless.Messaging
 module IdentityProvider = Reventless.IdentityProvider
 module Secrets = Reventless.Secrets
 module Stash = Reventless.Stash
+module Text = Reventless.Text
 
 /** One call a slice made through its capabilities. */
 type call =
@@ -41,7 +42,8 @@ principal with a numbered id, `token` (or `t` repeated to length), and a hash
 that prefixes `"hash:"`. `~secrets` replaces the secret source whole, e.g. with
 `Secrets.unavailable`; its calls are still recorded. The stash holds what is put
 in it and hands each value over once, starting from `~stashed`; `~stash`
-replaces it whole, e.g. with `Stash.unavailable`.
+replaces it whole, e.g. with `Stash.unavailable`. `~text` is the deployment's
+languages and catalogue; without it every message is in its English.
 */
 let make = (
   ~geocode: option<Geocoding.search>=?,
@@ -60,6 +62,7 @@ let make = (
   ~secrets: option<Secrets.t>=?,
   ~stashed: array<(string, string)>=[],
   ~stash: option<Stash.t>=?,
+  ~text: Text.t=Text.sourceOnly,
   (),
 ): t => {
   let log: array<call> = []
@@ -147,6 +150,7 @@ let make = (
         }
       },
     },
+    text,
   }
   {capabilities, calls: () => log->Array.copy}
 }
@@ -171,6 +175,7 @@ let toJson = (c: call): JSON.t => {
         ("recipient", str(recipientText(recipient))),
         ("subject", message.subject->Option.mapOr(JSON.Encode.null, str)),
         ("body", str(message.body)),
+        ("language", message.language->Option.mapOr(JSON.Encode.null, str)),
       ],
     )
   | PrincipalCreated({contact, groups, _}) =>

@@ -14,6 +14,7 @@ import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as I18n$ReventlessLocal from "./I18n.res.mjs";
@@ -1398,6 +1399,7 @@ function MakeWithConfig(Config) {
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
     UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
     I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    LocalCapabilities$ReventlessLocal.registerText(Stdlib_Option.mapOr(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), Text$Reventless.sourceOnly, I18n$ReventlessLocal.text));
     I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
@@ -3201,6 +3203,7 @@ function Make($star) {
     UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
     UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
     I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    LocalCapabilities$ReventlessLocal.registerText(Stdlib_Option.mapOr(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), Text$Reventless.sourceOnly, I18n$ReventlessLocal.text));
     I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {

@@ -32,35 +32,78 @@ let collect = (event, ~sourceId as _) =>
   | _ => []
   }
 
+// The mails' words, by key, in the English a deployment with no catalogue sends. A translation
+// is a catalogue's `registration.*` keys; `pnpm run check:server-catalogues` keeps
+// `i18n/en.json` the same as these.
+module Messages = {
+  let challengeSubject: Reventless.Text.message = {
+    key: "registration.challenge.subject",
+    source: "Finish your registration",
+  }
+  let challengeBody: Reventless.Text.message = {
+    key: "registration.challenge.body",
+    source: "Your registration code is {token}. Enter it with a password of your choice to finish. It expires in {expiresIn}.",
+  }
+  let invitedSubject: Reventless.Text.message = {
+    key: "registration.invited.subject",
+    source: "You are invited to create an account",
+  }
+  let invitedBody: Reventless.Text.message = {
+    key: "registration.invited.body",
+    source: "You have been invited to create an account{hasRoles, select, yes { as {roles}} other {}}. Your code is {token}. Enter it with this address and a password of your choice to accept. It expires in {expiresIn}.",
+  }
+  let takenSubject: Reventless.Text.message = {
+    key: "registration.taken.subject",
+    source: "Someone tried to register with your address",
+  }
+  let takenBody: Reventless.Text.message = {
+    key: "registration.taken.body",
+    source: "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed.",
+  }
+  let all = [challengeSubject, challengeBody, invitedSubject, invitedBody, takenSubject, takenBody]
+}
+
 let expiresIn = (~invited) =>
-  RegistrationChallenge.policyFor(
-    RegistrationChallenge.purposeFor(~invited),
-  ).tokenTtl->Reventless.Duration.format
+  RegistrationChallenge.policyFor(RegistrationChallenge.purposeFor(~invited)).tokenTtl
 
-let challengeBody = (~token) =>
-  `Your registration code is ${token}. Enter it with a password of your choice to finish. It expires in ${expiresIn(
-      ~invited=false,
-    )}.`
-
-/** What the invitation grants, as the mail says it: "as Merchandiser", or
-    nothing where the event did not say. */
-let asRoles = (roles: option<array<string>>) =>
-  switch roles {
-  | Some([]) | None => ""
-  | Some(roles) => ` as ${roles->Array.join(" and ")}`
+let challengeValues = (~token) =>
+  dict{
+    "token": Reventless.MessageFormat.Text(token),
+    "expiresIn": Duration(expiresIn(~invited=false)),
   }
 
+/** What the invitation grants, as the mail says it: "as Merchandiser", or nothing where the
+    event did not say. */
+let invitationValues = (~token, ~roles: option<array<string>>=?) => {
+  let roles = roles->Option.getOr([])
+  dict{
+    "token": Reventless.MessageFormat.Text(token),
+    "expiresIn": Duration(expiresIn(~invited=true)),
+    "hasRoles": Text(roles == [] ? "no" : "yes"),
+    "roles": List(roles),
+  }
+}
+
+/** The mails in English, as a deployment with no catalogue sends them. */
+let challengeBody = (~token) =>
+  Messages.challengeBody->Reventless.Text.inSource(~values=challengeValues(~token))
+
 let invitationBody = (~token, ~roles=?) =>
-  `You have been invited to create an account${asRoles(
-      roles,
-    )}. Your code is ${token}. Enter it with this address and a password of your choice to accept. It expires in ${expiresIn(
-      ~invited=true,
-    )}.`
+  Messages.invitedBody->Reventless.Text.inSource(~values=invitationValues(~token, ~roles?))
 
-let noticeBody = "Someone asked to register an account with this address, which already has one. If it was you, sign in instead. If it was not, there is nothing to do: no account was changed."
+let noticeBody = Messages.takenBody->Reventless.Text.inSource
 
-let send = (capabilities: Reventless.Capabilities.t, ~email, ~subject, ~body) =>
-  capabilities.messaging.send(~recipient=ToEmail(email), ~message={subject, body})
+let send = async (capabilities: Reventless.Capabilities.t, ~email, ~subject, ~body, ~values) => {
+  let recipient: Reventless.Messaging.recipient = ToEmail(email)
+  switch await capabilities.text->Reventless.Text.compose(~recipient, ~subject, ~body, ~values) {
+  | Error(reason) => Error(reason)
+  | Ok(message) =>
+    switch await capabilities.messaging.send(~recipient, ~message) {
+    | Ok(receipt) => Ok(receipt)
+    | Error(failure) => Error(Reventless.Messaging.failureReason(failure))
+    }
+  }
+}
 
 /**
 Draw a secret, send it, and open a challenge against its hash — sending first,
@@ -71,11 +114,12 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
     switch await send(
       capabilities,
       ~email=item.email,
-      ~subject="Someone tried to register with your address",
-      ~body=noticeBody,
+      ~subject=Messages.takenSubject,
+      ~body=Messages.takenBody,
+      ~values=Dict.make(),
     ) {
     | Ok(_) => Ok(None)
-    | Error(failure) => Error(Reventless.Messaging.failureReason(failure))
+    | Error(reason) => Error(reason)
     }
   } else {
     let invited = item.invited->Option.getOr(false)
@@ -92,8 +136,9 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
         switch await send(
           capabilities,
           ~email=item.email,
-          ~subject=invited ? "You are invited to create an account" : "Finish your registration",
-          ~body=invited ? invitationBody(~token, ~roles=?item.roles) : challengeBody(~token),
+          ~subject=invited ? Messages.invitedSubject : Messages.challengeSubject,
+          ~body=invited ? Messages.invitedBody : Messages.challengeBody,
+          ~values=invited ? invitationValues(~token, ~roles=?item.roles) : challengeValues(~token),
         ) {
         | Ok(_) =>
           Ok(
@@ -106,7 +151,7 @@ let translate = async (_id, item: outboundItem, ~capabilities: Reventless.Capabi
               }),
             )),
           )
-        | Error(failure) => Error(Reventless.Messaging.failureReason(failure))
+        | Error(reason) => Error(reason)
         }
       }
     }

@@ -1898,6 +1898,12 @@ module MakeWithConfig = (
     // re-merges them when a translation is confirmed. Unconditional: it is also what removes the
     // catalogues of a platform that stopped declaring them.
     I18n.emit(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+    // The same catalogues are what the server's own messages are written from.
+    LocalCapabilities.registerText(
+      hostUiBundle
+      ->Option.flatMap(cfg => cfg.i18n)
+      ->Option.mapOr(Reventless.Text.sourceOnly, I18n.text),
+    )
     let _ = I18n.watch(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()

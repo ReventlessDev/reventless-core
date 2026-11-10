@@ -35,6 +35,13 @@ let identityProviderRef = ref(Reventless.Capabilities.none.identityProvider)
 let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
   identityProviderRef := provider
 
+// English until a root declares its languages: a complete answer, not a gap.
+let textRef = ref(Reventless.Text.sourceOnly)
+
+/** Write to recipients in the declared languages. Called by `makePlatform` from the root's
+    `i18n` declaration. */
+let registerText = (text: Reventless.Text.t) => textRef := text
+
 /** What this platform provisions, in the terms a plugin declares its needs:
     read off the same refs `capabilities()` reads, so it cannot disagree with
     what a slice is handed. Geocoding is never here — no local geocoder exists. */
@@ -94,4 +101,5 @@ let capabilities = (): Reventless.Capabilities.t => {
   identityProvider: identityProviderRef.contents,
   secrets: ReventlessCore.Secrets_Node_Backend.make(~fingerprintKey=LocalFingerprintKey.get),
   stash: stash.contents,
+  text: textRef.contents,
 }
