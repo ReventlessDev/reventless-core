@@ -132,3 +132,59 @@ describe("ShellConfig.overlay with catalogues", () => {
     )->toEqual(Some(JSON.Encode.string("as given")))
   )
 })
+
+describe("Platform_I18n.gate", () => {
+  let write = (dir, name, text) => NodeFs.writeFileSync(NodePath.join([dir, name]), text)
+  let hash = NodeCrypto.sha256Hex
+  let gateOf = (sources): result<unit, string> =>
+    ReventlessCore.Platform_I18n.gate(
+      {default: "en", offered: ["de"], sources},
+      ~files=ReventlessCore.Platform_I18n.filesIn,
+      ~hash,
+    )
+
+  testSync("a draft language may be incomplete; released, a missing key stops it", () => {
+    let plugin = source([
+      ("en", `{"Ordering.Orders.name": "Order", "Ordering.Orders.plural": "Orders"}`),
+      ("de", `{"Ordering.Orders.name": "Bestellung"}`),
+    ])
+    let app = source([])
+    write(app, "languages.json", `{"de": "draft"}`)
+    let draft = gateOf([plugin, app])
+    write(app, "languages.json", `{"de": "released"}`)
+    let released = gateOf([plugin, app])
+    expect((
+      draft,
+      released->Result.mapError(e => e->String.includes("Ordering.Orders.plural: missing")),
+    ))->toEqual((Ok(), Error(true)))
+  })
+
+  testSync(
+    "released and complete, it passes; a text that does not parse stops even a draft",
+    () => {
+      let plugin = source([
+        ("en", `{"Ordering.Orders.count": "{count, plural, one {# order} other {# orders}}"}`),
+        (
+          "de",
+          `{"Ordering.Orders.count": "{count, plural, one {# Bestellung} other {# Bestellungen}}"}`,
+        ),
+      ])
+      let app = source([])
+      write(app, "languages.json", `{"de": "released"}`)
+      let complete = gateOf([plugin, app])
+      let broken = source([("en", `{"Ordering.Orders.count": "{count, plural, one {# order}}"}`)])
+      let draftApp = source([])
+      write(draftApp, "languages.json", `{"de": "draft"}`)
+      expect((complete, gateOf([broken, draftApp])->Result.isError))->toEqual((Ok(), true))
+    },
+  )
+
+  testSync("the local platform only warns, and still serves", () => {
+    let plugin = source([("en", `{"Ordering.Orders.name": "Order"}`), ("de", `{}`)])
+    let app = source([])
+    write(app, "languages.json", `{"de": "released"}`)
+    let dist = tmpdir("reventless-i18n-dist-")
+    I18n.emit(~i18n=Some({default: "en", offered: ["de"], sources: [plugin, app]}), ~dir=dist)
+    expect(served(dist, "de"))->toEqual(JSON.parseOrThrow(`{}`))
+  })
+})

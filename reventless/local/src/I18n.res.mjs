@@ -2,6 +2,7 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as NodeCrypto from "@reventlessdev/rescript-node/src/NodeCrypto.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -24,6 +25,14 @@ function read(dir, language) {
 }
 
 function emit(i18n, dir) {
+  Stdlib_Option.forEach(i18n, i18n => {
+    let message = Platform_I18n$ReventlessCore.gate(i18n, Platform_I18n$ReventlessCore.filesIn, NodeCrypto.sha256Hex);
+    if (message.TAG === "Ok") {
+      return;
+    } else {
+      return log.warn("I18n", undefined, message._0 + "\n  A deploy to AWS stops on these.");
+    }
+  });
   let files = Stdlib_Option.map(i18n, i18n => {
     let files = Platform_I18n$ReventlessCore.files(i18n, read);
     if (files.TAG === "Ok") {

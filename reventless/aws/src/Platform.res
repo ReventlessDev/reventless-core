@@ -2482,7 +2482,13 @@ module MakeWithConfig = (
           let path = NodePath.join([dir, language ++ ".json"])
           NodeFs.existsSync(path) ? Some(NodeFs.readFileSync(path)) : None
         }
-        switch ReventlessCore.Platform_I18n.files(i18n, ~read) {
+        // A released language with a key missing or stale, or a text that does not render,
+        // stops the deploy before anything is uploaded.
+        switch ReventlessCore.Platform_I18n.gate(
+          i18n,
+          ~files=ReventlessCore.Platform_I18n.filesIn,
+          ~hash=NodeCrypto.sha256Hex,
+        )->Result.flatMap(() => ReventlessCore.Platform_I18n.files(i18n, ~read)) {
         | Error(message) => failwith("host UI " ++ message)
         | Ok(files) =>
           files->Array.forEach(((key, text)) => {

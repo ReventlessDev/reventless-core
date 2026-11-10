@@ -12,6 +12,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
@@ -1320,7 +1321,7 @@ function MakeWithConfig(Config) {
             return Nodefs.readFileSync(path, "utf8");
           }
         };
-        let message = Platform_I18n$ReventlessCore.files(i18n, read);
+        let message = Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.gate(i18n, Platform_I18n$ReventlessCore.filesIn, NodeCrypto.sha256Hex), () => Platform_I18n$ReventlessCore.files(i18n, read));
         if (message.TAG === "Ok") {
           message._0.forEach(param => {
             let key = param[0];
@@ -2756,7 +2757,7 @@ function Make($star) {
             return Nodefs.readFileSync(path, "utf8");
           }
         };
-        let message = Platform_I18n$ReventlessCore.files(i18n, read);
+        let message = Stdlib_Result.flatMap(Platform_I18n$ReventlessCore.gate(i18n, Platform_I18n$ReventlessCore.filesIn, NodeCrypto.sha256Hex), () => Platform_I18n$ReventlessCore.files(i18n, read));
         if (message.TAG === "Ok") {
           message._0.forEach(param => {
             let key = param[0];

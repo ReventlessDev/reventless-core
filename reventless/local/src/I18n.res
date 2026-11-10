@@ -23,6 +23,18 @@ let read: ReventlessCore.Platform_I18n.read = (~dir, ~language) => {
  would otherwise read as a translation that quietly does nothing.
  */
 let emit = (~i18n: option<ReventlessInfra.Platform.i18n>, ~dir: option<string>=?) => {
+  // The gate the AWS deploy stops on, only reported here: a language that falls behind while
+  // the app is worked on should not stop the local platform from starting.
+  i18n->Option.forEach(i18n =>
+    switch ReventlessCore.Platform_I18n.gate(
+      i18n,
+      ~files=ReventlessCore.Platform_I18n.filesIn,
+      ~hash=NodeCrypto.sha256Hex,
+    ) {
+    | Ok() => ()
+    | Error(message) => log.warn(~comp="I18n", message ++ "\n  A deploy to AWS stops on these.")
+    }
+  )
   let files = i18n->Option.map(i18n =>
     switch ReventlessCore.Platform_I18n.files(i18n, ~read) {
     | Ok(files) => files

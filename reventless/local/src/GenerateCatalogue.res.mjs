@@ -5,14 +5,23 @@ import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as NodeCrypto from "@reventlessdev/rescript-node/src/NodeCrypto.res.mjs";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as Catalogue$Reventless from "@reventlessdev/reventless-spec/src/i18n/Catalogue.res.mjs";
+import * as CatalogueStatus$Reventless from "@reventlessdev/reventless-spec/src/i18n/CatalogueStatus.res.mjs";
+import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
 import * as EmitCapabilities$ReventlessLocal from "./EmitCapabilities.res.mjs";
 
 let usage = `Usage: generate-catalogue <srcDir> [<compositionModule>] [--plugin <Name>] [--check]
+       generate-catalogue status <i18nDir>... [--languages <file>]
+       generate-catalogue check <i18nDir>... [--languages <file>]
+       generate-catalogue mark <lang> <i18nDir>... [--key <key>]... [--confirmed]
 
+  Generating a plugin's English catalogue:
   <srcDir>             the plugin's sources; the catalogue goes to <srcDir>/../i18n/
   <compositionModule>  the composition root, when it is not the generated
                        Plugin.res: a module name inside <srcDir>, or a path
@@ -22,27 +31,106 @@ let usage = `Usage: generate-catalogue <srcDir> [<compositionModule>] [--plugin 
   Run from the plugin package, after rescript build. Writes i18n/en.json, the
   English source catalogue, and i18n/en.lock.json, the hash of each text it
   generated: a text a person changed is kept on the next run, a key the
-  structure no longer has is reported, never deleted.`;
+  structure no longer has is reported, never deleted.
+
+  An app's catalogues, the <i18nDir>s in the order the platform merges them
+  (each plugin's i18n/, then the app's):
+  status               per language and layer: confirmed, proposed, missing,
+                       stale, and the share ready to show
+  check                exit 1 when a released language has a missing or stale
+                       key, or any language a text that does not parse or
+                       whose placeholders are not the English's
+  mark <lang>          record in <lang>.lock.json the English each translated
+                       key now answers to, so a later change shows it stale;
+                       without --key only unmarked and stale keys
+  --key <key>          a key, or a prefix ending in * (repeatable)
+  --confirmed          mark the keys as reviewed (all of them without --key)
+  --languages <file>   which languages are draft and which released; default
+                       languages.json in the last <i18nDir>`;
 
 function parseArgs(argv) {
-  return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse(["plugin"], ["check"], undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 2)), a => {
+  return Stdlib_Result.flatMap(CliArgs$Reventless.parse([
+    "plugin",
+    "languages"
+  ], [
+    "check",
+    "confirmed"
+  ], ["key"], undefined, argv), a => {
     let positionals = CliArgs$Reventless.positionals(a);
+    let rest = from => positionals.slice(from, positionals.length);
+    let languages = CliArgs$Reventless.string(a, "languages");
+    let dirsFrom = from => {
+      let dirs = rest(from);
+      if (dirs.length !== 0) {
+        return {
+          TAG: "Ok",
+          _0: dirs
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "at least one <i18nDir> is required."
+        };
+      }
+    };
     let srcDir = positionals[0];
-    if (srcDir !== undefined && srcDir !== "") {
-      return {
-        TAG: "Ok",
-        _0: {
-          srcDir: srcDir,
-          compositionModule: positionals[1],
-          plugin: CliArgs$Reventless.string(a, "plugin"),
-          check: CliArgs$Reventless.bool(a, "check")
-        }
-      };
-    } else {
+    if (srcDir === undefined) {
       return {
         TAG: "Error",
         _0: "<srcDir> is required."
       };
+    }
+    switch (srcDir) {
+      case "" :
+        return {
+          TAG: "Error",
+          _0: "<srcDir> is required."
+        };
+      case "check" :
+        return Stdlib_Result.map(dirsFrom(1), dirs => ({
+          TAG: "Check",
+          dirs: dirs,
+          languages: languages
+        }));
+      case "mark" :
+        let language = positionals[1];
+        if (language !== undefined) {
+          if (language === CatalogueStatus$Reventless.sourceLanguage) {
+            return {
+              TAG: "Error",
+              _0: language + ` is the source language; mark a translation.`
+            };
+          } else {
+            return Stdlib_Result.map(dirsFrom(2), dirs => ({
+              TAG: "Mark",
+              language: language,
+              dirs: dirs,
+              keys: CliArgs$Reventless.strings(a, "key"),
+              confirmed: CliArgs$Reventless.bool(a, "confirmed")
+            }));
+          }
+        } else {
+          return {
+            TAG: "Error",
+            _0: "mark needs a <lang>."
+          };
+        }
+      case "status" :
+        return Stdlib_Result.map(dirsFrom(1), dirs => ({
+          TAG: "Status",
+          dirs: dirs,
+          languages: languages
+        }));
+      default:
+        return Stdlib_Result.map(CliArgs$Reventless.atMost(a, 2), param => ({
+          TAG: "Generate",
+          _0: {
+            srcDir: srcDir,
+            compositionModule: positionals[1],
+            plugin: CliArgs$Reventless.string(a, "plugin"),
+            check: CliArgs$Reventless.bool(a, "check")
+          }
+        }));
     }
   });
 }
@@ -85,65 +173,236 @@ function report(merged) {
   ].flat();
 }
 
-function main() {
-  return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
-    let match = process.env["LOG_LEVEL"];
-    if (match !== undefined) {
-      
+function layerName(dir) {
+  let base = Nodepath.basename(dir);
+  if (base === "i18n") {
+    return Nodepath.basename(Nodepath.dirname(dir));
+  } else {
+    return base;
+  }
+}
+
+function readLayer(dir) {
+  if (!Nodefs.existsSync(dir)) {
+    fail(dir + ` does not exist.`);
+  }
+  let layer = CatalogueStatus$Reventless.layerOf(layerName(dir), Platform_I18n$ReventlessCore.filesIn(dir));
+  if (layer.TAG === "Ok") {
+    return layer._0;
+  }
+  fail(layer._0 + `.`);
+  return {
+    name: layerName(dir),
+    catalogues: {},
+    marks: {}
+  };
+}
+
+function readReleases(dirs, languages) {
+  let path = Stdlib_Option.getOr(languages, Nodepath.join(Stdlib_Option.getOr(dirs.at(-1), "."), "languages.json"));
+  let match = Nodefs.existsSync(path);
+  if (!match) {
+    if (languages !== undefined) {
+      fail(path + ` does not exist.`);
+      return {};
     } else {
-      process.env["LOG_LEVEL"] = "warn";
+      return {};
     }
-    let srcDir = Nodepath.resolve(param.srcDir);
-    let modulePath = EmitCapabilities$ReventlessLocal.compositionModulePath(srcDir, param.compositionModule);
-    if (!Nodefs.existsSync(modulePath)) {
-      fail(modulePath + ` not found — run \`rescript build\` first.`);
+  }
+  let releases = CatalogueStatus$Reventless.readReleases(Nodefs.readFileSync(path, "utf8"));
+  if (releases.TAG === "Ok") {
+    return releases._0;
+  }
+  fail(path + `: ` + releases._0);
+  return {};
+}
+
+function pad(text, width) {
+  return text + " ".repeat(Math.max(0, width - text.length | 0));
+}
+
+function padStart(text, width) {
+  return " ".repeat(Math.max(0, width - text.length | 0)) + text;
+}
+
+function releaseWord(release) {
+  if (release === "Draft") {
+    return "draft";
+  } else {
+    return "released";
+  }
+}
+
+function statusLines(statuses) {
+  let width = Stdlib_Array.reduce(statuses.flatMap(s => s.layers.map(param => param[0].length)), 6, (prim0, prim1) => Math.max(prim0, prim1));
+  let row = (label, c) => `  ` + pad(label, width) + `  ` + padStart(c.total.toString(), 5) + `  ` + [
+    c.confirmed,
+    c.proposed,
+    c.missing,
+    c.stale
+  ].map(n => padStart(n.toString(), 9)).join("  ") + (`  ` + padStart(CatalogueStatus$Reventless.percent(c).toString() + "%", 5));
+  let header = `  ` + pad("layer", width) + `  ` + padStart("keys", 5) + `  ` + [
+    "confirmed",
+    "proposed",
+    "missing",
+    "stale"
+  ].map(h => padStart(h, 9)).join("  ") + (`  ` + padStart("ready", 5));
+  return statuses.flatMap(s => {
+    if (s.source) {
+      return [
+        s.language + `  ` + releaseWord(s.release) + `  source, ` + s.all.total.toString() + ` keys`,
+        ""
+      ];
     }
-    let platformModule = await import("./Platform.res.mjs");
-    let composition = await import(Nodeurl.pathToFileURL(modulePath).href);
-    let structure = composition.Make(platformModule.Make()).pluginStructure;
-    let generated;
-    if (structure == null) {
-      generated = [];
-    } else {
-      let plugin = Stdlib_Option.orElse(param.plugin, Catalogue$Reventless.pluginNameOf(structure));
-      if (plugin !== undefined) {
-        generated = Catalogue$Reventless.entries(plugin, structure);
-      } else {
-        fail("the plugin's name is not on any view or command; pass --plugin <Name>.");
-        generated = [];
-      }
-    }
-    let i18nDir = Nodepath.join(srcDir, "..", "i18n");
-    let cataloguePath = Nodepath.join(i18nDir, "en.json");
-    let lockPath = Nodepath.join(i18nDir, "en.lock.json");
-    let catalogueBefore = readOr(cataloguePath, "{}");
-    let lockBefore = readOr(lockPath, "{}");
-    let merged = Catalogue$Reventless.merge(generated, Catalogue$Reventless.readCatalogue(catalogueBefore), Catalogue$Reventless.readLocks(lockBefore), NodeCrypto.sha256Hex);
-    let catalogueAfter = Catalogue$Reventless.catalogueText(merged.catalogue);
-    let lockAfter = Catalogue$Reventless.lockText(merged.locks);
-    let changed = catalogueAfter !== catalogueBefore || lockAfter !== lockBefore;
-    report(merged).forEach(line => {
-      console.log(line);
-    });
-    if (param.check) {
-      if (changed) {
-        console.error(cataloguePath + ` is not current — run generate-catalogue.`);
-        process.exit(1);
-      }
-      console.log(cataloguePath + ` is current.`);
-    } else if (changed) {
-      Nodefs.mkdirSync(i18nDir, {
-        recursive: true
-      });
-      Nodefs.writeFileSync(cataloguePath, catalogueAfter, "utf8");
-      Nodefs.writeFileSync(lockPath, lockAfter, "utf8");
-      console.log(`Generated: ` + cataloguePath + ` (` + Object.keys(merged.catalogue).length.toString() + ` keys)`);
-    } else {
-      console.log(cataloguePath + ` is current.`);
-    }
-    process.exit(0);
+    let keys = s.unknown;
+    return [
+      [
+        s.language + `  ` + releaseWord(s.release) + `  ` + CatalogueStatus$Reventless.percent(s.all).toString() + `%`,
+        header
+      ],
+      s.layers.map(param => row(param[0], param[1])),
+      s.layers.length > 1 ? [row("all", s.all)] : [],
+      s.all.unmarked > 0 ? [`  ` + s.all.unmarked.toString() + ` proposed key(s) carry no mark: run \`generate-catalogue mark ` + s.language + `\` so a change of the English shows them stale.`] : [],
+      keys.length !== 0 ? Belt_Array.concatMany([
+          [`  not in the English (` + keys.length.toString() + `), usually a renamed key's old one:`],
+          keys.map(k => "    " + k)
+        ]) : [],
+      [""]
+    ].flat();
   });
 }
+
+function runStatus(dirs, languages) {
+  let layers = dirs.map(readLayer);
+  let releases = readReleases(dirs, languages);
+  statusLines(CatalogueStatus$Reventless.status(layers, releases, NodeCrypto.sha256Hex)).forEach(line => {
+    console.log(line);
+  });
+  process.exit(0);
+}
+
+function runCheck(dirs, languages) {
+  let layers = dirs.map(readLayer);
+  let releases = readReleases(dirs, languages);
+  let problems = CatalogueStatus$Reventless.problems(layers, releases, NodeCrypto.sha256Hex);
+  if (problems.length !== 0) {
+    problems.forEach(p => {
+      console.error(p.language + `  ` + p.layer + `  ` + p.key + `: ` + p.reason);
+    });
+    console.error(problems.length.toString() + ` problem(s).`);
+    process.exit(1);
+    return;
+  }
+  let released = Stdlib_Array.filterMap(Object.entries(releases), param => {
+    if (param[1] === "Released") {
+      return param[0];
+    }
+  }).toSorted(Primitive_string.compare);
+  console.log(released.length !== 0 ? `Every catalogue parses; released and complete: ` + released.join(", ") + `.` : "Every catalogue parses; no language is released.");
+  process.exit(0);
+}
+
+function runMark(language, dirs, keys, confirmed) {
+  let layers = dirs.map(readLayer);
+  let next = CatalogueStatus$Reventless.mark(layers, language, keys, confirmed, NodeCrypto.sha256Hex);
+  let changed = {
+    contents: 0
+  };
+  dirs.forEach((dir, i) => {
+    let layer = layers[i];
+    let before = Stdlib_Option.getOr(layer.marks[language], {});
+    Stdlib_Option.forEach(next[i], param => {
+      let marks = param[1];
+      let count = Object.entries(marks).filter(param => Primitive_object.notequal(before[param[0]], param[1])).length;
+      if (count <= 0) {
+        return;
+      }
+      let path = Nodepath.join(dir, language + ".lock.json");
+      Nodefs.writeFileSync(path, CatalogueStatus$Reventless.marksText(marks), "utf8");
+      console.log(path + `: ` + count.toString() + ` key(s) marked`);
+      changed.contents = changed.contents + count | 0;
+    });
+  });
+  if (changed.contents === 0) {
+    console.log(`Nothing to mark in ` + language + `.`);
+  }
+  process.exit(0);
+}
+
+async function runGenerate(param) {
+  let match = process.env["LOG_LEVEL"];
+  if (match !== undefined) {
+    
+  } else {
+    process.env["LOG_LEVEL"] = "warn";
+  }
+  let srcDir = Nodepath.resolve(param.srcDir);
+  let modulePath = EmitCapabilities$ReventlessLocal.compositionModulePath(srcDir, param.compositionModule);
+  if (!Nodefs.existsSync(modulePath)) {
+    fail(modulePath + ` not found — run \`rescript build\` first.`);
+  }
+  let platformModule = await import("./Platform.res.mjs");
+  let composition = await import(Nodeurl.pathToFileURL(modulePath).href);
+  let structure = composition.Make(platformModule.Make()).pluginStructure;
+  let generated;
+  if (structure == null) {
+    generated = [];
+  } else {
+    let plugin = Stdlib_Option.orElse(param.plugin, Catalogue$Reventless.pluginNameOf(structure));
+    if (plugin !== undefined) {
+      generated = Catalogue$Reventless.entries(plugin, structure);
+    } else {
+      fail("the plugin's name is not on any view or command; pass --plugin <Name>.");
+      generated = [];
+    }
+  }
+  let i18nDir = Nodepath.join(srcDir, "..", "i18n");
+  let cataloguePath = Nodepath.join(i18nDir, "en.json");
+  let lockPath = Nodepath.join(i18nDir, "en.lock.json");
+  let catalogueBefore = readOr(cataloguePath, "{}");
+  let lockBefore = readOr(lockPath, "{}");
+  let merged = Catalogue$Reventless.merge(generated, Catalogue$Reventless.readCatalogue(catalogueBefore), Catalogue$Reventless.readLocks(lockBefore), NodeCrypto.sha256Hex);
+  let catalogueAfter = Catalogue$Reventless.catalogueText(merged.catalogue);
+  let lockAfter = Catalogue$Reventless.lockText(merged.locks);
+  let changed = catalogueAfter !== catalogueBefore || lockAfter !== lockBefore;
+  report(merged).forEach(line => {
+    console.log(line);
+  });
+  if (param.check) {
+    if (changed) {
+      console.error(cataloguePath + ` is not current — run generate-catalogue.`);
+      process.exit(1);
+    }
+    console.log(cataloguePath + ` is current.`);
+  } else if (changed) {
+    Nodefs.mkdirSync(i18nDir, {
+      recursive: true
+    });
+    Nodefs.writeFileSync(cataloguePath, catalogueAfter, "utf8");
+    Nodefs.writeFileSync(lockPath, lockAfter, "utf8");
+    console.log(`Generated: ` + cataloguePath + ` (` + Object.keys(merged.catalogue).length.toString() + ` keys)`);
+  } else {
+    console.log(cataloguePath + ` is current.`);
+  }
+  process.exit(0);
+}
+
+function main() {
+  return CliArgs$Reventless.run(cli, undefined, undefined, async args => {
+    switch (args.TAG) {
+      case "Generate" :
+        return await runGenerate(args._0);
+      case "Status" :
+        return runStatus(args.dirs, args.languages);
+      case "Check" :
+        return runCheck(args.dirs, args.languages);
+      case "Mark" :
+        return runMark(args.language, args.dirs, args.keys, args.confirmed);
+    }
+  });
+}
+
+let Status;
 
 export {
   usage,
@@ -152,6 +411,18 @@ export {
   fail,
   readOr,
   report,
+  Status,
+  layerName,
+  readLayer,
+  readReleases,
+  pad,
+  padStart,
+  releaseWord,
+  statusLines,
+  runStatus,
+  runCheck,
+  runMark,
+  runGenerate,
   main,
 }
 /* node:fs Not a pure module */

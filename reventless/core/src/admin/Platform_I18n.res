@@ -95,6 +95,65 @@ let merged = (i18n: ReventlessInfra.Platform.i18n, ~language: string, ~read: rea
   }
 }
 
+// ── The release gate ──────────────────────────────────────────────────────────
+
+/** A source directory's JSON files as `(file name, text)`; none for a directory that is not. */
+let filesIn = (dir: string): array<(string, string)> =>
+  switch NodeFs.readdirSyncNames(dir, {}) {
+  | names =>
+    names
+    ->Array.filter(f => f->String.endsWith(".json"))
+    ->Array.toSorted(String.compare)
+    ->Array.map(f => (f, NodeFs.readFileSync(NodePath.join([dir, f]))))
+  | exception _ => []
+  }
+
+/** A source's name in a message: the package its `i18n/` sits in. */
+let sourceName = (dir: string): string => {
+  let base = NodePath.basename(dir)
+  base == "i18n" ? NodePath.basename(NodePath.dirname(dir)) : base
+}
+
+/**
+ What `generate-catalogue check` checks, before a deployment serves its catalogues: in any
+ language a text that does not parse or names other placeholders than the English, and in a
+ language the last source's `languages.json` releases also a key missing or stale.
+ */
+let gate = (
+  i18n: ReventlessInfra.Platform.i18n,
+  ~files: string => array<(string, string)>,
+  ~hash: string => string,
+): result<unit, string> => {
+  module Status = Reventless.CatalogueStatus
+  let layers =
+    i18n.sources->Array.reduce(Ok([]), (acc, dir) =>
+      acc->Result.flatMap(done =>
+        Status.layerOf(~name=sourceName(dir), files(dir))->Result.map(l => Array.concat(done, [l]))
+      )
+    )
+  let releases =
+    i18n.sources
+    ->Array.at(-1)
+    ->Option.flatMap(dir =>
+      files(dir)->Array.find(((f, _)) => f == "languages.json")->Option.map(Pair.second)
+    )
+    ->Option.mapOr(Ok(Dict.make()), Status.readReleases)
+  switch (layers, releases) {
+  | (Error(e), _) | (_, Error(e)) => Error("i18n: " ++ e)
+  | (Ok(layers), Ok(releases)) =>
+    switch Status.problems(layers, ~releases, ~hash) {
+    | [] => Ok()
+    | found =>
+      Error(
+        `i18n: ${found->Array.length->Int.toString} problem(s) in the catalogues:\n` ++
+        found
+        ->Array.map(p => `  ${p.language}  ${p.layer}  ${p.key}: ${p.reason}`)
+        ->Array.join("\n"),
+      )
+    }
+  }
+}
+
 /** Every offered language's merged catalogue, as `(file name, text)`, or the first mistake. */
 let files = (i18n: ReventlessInfra.Platform.i18n, ~read: read): result<
   array<(string, string)>,

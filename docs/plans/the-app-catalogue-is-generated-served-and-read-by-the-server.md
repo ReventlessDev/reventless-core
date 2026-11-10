@@ -1,7 +1,10 @@
 # Plan: the app's catalogue is generated from the plugin structure, served per platform and language, and read by the server's messages
 
 **Date:** 2026-11-08<br/>
-**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09; the rest not started.<br/>
+**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09;
+[CA4](#step-ca4--i18n-status-and-i18n-check) and [CA7](#step-ca7--the-seam-for-a-glossary) built
+2026-11-10; [CA1](#step-ca1--plural), [CA5](#step-ca5--the-servers-messages) and
+[CA6](#step-ca6--the-identitys-locale) not started.<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -122,6 +125,30 @@ register other than *Sie* or *du* is refused, each offered language's catalogue 
 - The platform's deploy runs `check` before it uploads; CI runs it on the examples once the
   online shop has a German catalogue.
 
+**Built (2026-11-10).** `Reventless.CatalogueStatus` (`reventless/spec/src/i18n/`) holds the
+rules; `generate-catalogue status`, `check` and `mark` apply them to the `<i18nDir>`s given, in
+the order the platform merges them.
+
+- **A key's state** in a language: *confirmed* once a reviewer marked it against the English a
+  reader sees now, *proposed* while it is translated but not reviewed, *stale* once the English
+  changed after the mark, *missing* when no layer has it. A key belongs to the first layer whose
+  English has it; its text is the last layer's that has one, as on screen.
+- **The marks** are `<lang>.lock.json` beside a translation: per key the hash of the English it
+  answers to and whether it was reviewed. `mark <lang>` writes them, `--key` (a key or a prefix
+  ending in `*`) and `--confirmed` say which and how. A text with no mark counts as proposed,
+  and `status` says how many carry none, since a change of the English cannot show on them.
+- **A register variant** (`de-x-du`) holds only the texts that address the reader and falls
+  back to its base, so a key the base has is not missing in the variant.
+- **`languages.json`** in the last `<i18nDir>` (or `--languages <file>`) names each language
+  *draft* or *released*; one it does not name is a draft. A file whose name has a second dot
+  (`de.lock.json`, `de.proposed.json`) is not a catalogue.
+- **ICU** is checked by a parser of its own for MessageFormat 1, so no package is added: every
+  text must parse, and a translation must name the English's placeholders.
+- **The gate.** `Platform_I18n.gate` runs the same check over a deployment's declared sources:
+  the AWS deploy fails on it before uploading, the local platform logs it and serves anyway, so
+  a language that falls behind while the app is worked on does not stop a start.
+- **Not yet:** CI on the examples, which have no translations.
+
 ## Step CA5 — the server's messages
 
 - `Messaging.message` becomes `{subject?: string, body: string, language?: string}`
@@ -158,6 +185,12 @@ register other than *Sie* or *du* is refused, each offered language's catalogue 
 - A key's entry in the lock file records `element` (plugin, identifier, kind) and leaves a
   `terms: {<term>: hash}` map empty. Once a model carries terms, a proposal can record which
   terms it used and `status` can count *stale by term*. Nothing else is built here.
+
+**Built (2026-11-10).** The generator's `en.lock.json` has carried `element` and an empty
+`terms` since [CA2](#step-ca2--generate-catalogue), and a rerun keeps both. A translation's
+`<lang>.lock.json` ([CA4](#step-ca4--i18n-status-and-i18n-check)) may carry `terms` per key as
+well, and `mark` keeps them when it marks the key again. Counting *stale by term* waits for a
+glossary that writes them.
 
 ## Verification
 
