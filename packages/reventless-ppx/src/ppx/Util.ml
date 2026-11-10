@@ -137,6 +137,29 @@ let singularize n =
    The array case needs this — a field holding many images is named plurally. *)
 let canonical_plural n = pluralize (singularize n)
 
+(* The plural a [@plural("…")] names, where the rule above is wrong: one
+   identifier, starting with a capital when it names a view and with a
+   lower-case letter when it names a store. *)
+let get_plural_value ~capital (attr : attribute) : string =
+  let fail () =
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@plural expects one name, e.g. @plural(\"%s\")"
+      (if capital then "People" else "addresses")
+  in
+  let ident_char = function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> true | _ -> false in
+  match get_string_payload attr with
+  | None -> fail ()
+  | Some s ->
+    let first_ok =
+      String.length s > 0
+      && (match s.[0] with
+          | 'A' .. 'Z' -> capital
+          | 'a' .. 'z' -> not capital
+          | _ -> false)
+    in
+    if not (first_ok && String.for_all ident_char s) then fail ();
+    s
+
 (* [Ok store], or [Error reason] for a name whose plural this rule cannot state
    with confidence. Erroring is the point: a silently wrong derivation
    provisions a store nobody meant, and the field can always name its store

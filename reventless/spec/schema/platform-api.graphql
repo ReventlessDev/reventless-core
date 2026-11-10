@@ -377,6 +377,8 @@ type Platform_ReadSideDef {
   name: String!
   namedWhenRetired: Boolean!
   ownerField: String
+  plural: String
+  pluralSource: String
   queryField: String!
   requiredAccess: [String!]
   retiredField: String

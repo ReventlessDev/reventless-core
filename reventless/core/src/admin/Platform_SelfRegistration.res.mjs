@@ -23,7 +23,15 @@ function doorField(structures, part) {
 }
 
 function openRolesField(structures) {
-  return Stdlib_Option.map(marked(structures, "OpenRoles"), param => Api_Naming$ReventlessCore.queryFieldNamesForStateView(param[0], param[1].component, undefined).listFieldName);
+  return Stdlib_Option.map(marked(structures, "OpenRoles"), param => {
+    let d = param[1];
+    let plugin = param[0];
+    return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Array.findMap(structures, param => {
+      if (param[0] === plugin) {
+        return param[1];
+      }
+    }), s => s.stateViewSlices.find(v => v.name === d.component)), Api_Naming$ReventlessCore.queryFieldNamesForStateView(plugin, d.component, undefined, undefined).listFieldName, v => v.queryField);
+  });
 }
 
 function selfServiceGroups(structures) {

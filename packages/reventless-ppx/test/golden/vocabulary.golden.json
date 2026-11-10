@@ -173,6 +173,17 @@
       "readBy": [ "StateAnnotations" ]
     },
     {
+      "name": "plural",
+      "positions": [
+        "type.state", "field.command", "field.event", "field.consumedEvent",
+        "field.state", "field.other"
+      ],
+      "args": "required",
+      "argsExample": "\"People\"",
+      "summary": "The plural a view's list field, or an uploadable field's store, is named by, where the English rule is wrong.",
+      "readBy": [ "StateAnnotations", "UploadableInference" ]
+    },
+    {
       "name": "namedWhenRetired",
       "positions": [ "type.state" ],
       "args": "none",

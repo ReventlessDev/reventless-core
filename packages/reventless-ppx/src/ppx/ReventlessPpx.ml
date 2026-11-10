@@ -927,8 +927,20 @@ let transform (str : structure) : structure =
       let sub_id_items = gen_sub_id_config ~loc body in
       let make_id_items = gen_make_id ~loc body in
       let state_annotations_items =
-        if is_readmodel || is_stateview
-        then StateAnnotations.generate_state_annotations ~loc body
+        if is_readmodel || is_stateview then
+          (* The name the list field is built from, as `Api_Naming` takes it. *)
+          let entity =
+            match List.rev (String.split_on_char '.' name) with
+            | last :: _ -> last
+            | [] -> name
+          in
+          let entity =
+            if is_stateview && String.length entity > 4
+               && String.ends_with ~suffix:"View" entity
+            then String.sub entity 0 (String.length entity - 4)
+            else entity
+          in
+          StateAnnotations.generate_state_annotations ~loc ~entity body
         else []
       in
       let readmodel_suffix =
@@ -957,8 +969,10 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_retired_ctor_attrs
                       |> StateAnnotations.strip_live_attrs
                       |> StateAnnotations.strip_named_when_retired_attrs
+                      |> StateAnnotations.strip_plural_attrs
                  else (StateAnnotations.check_live_placement body;
                        StateAnnotations.check_named_when_retired_placement body;
+                       StateAnnotations.check_plural_placement body;
                        body) in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then

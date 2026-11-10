@@ -584,6 +584,26 @@ The PPX emits the bool into `stateAnnotationSpec.live` (sury metadata attached t
 
 ---
 
+### `@plural` — name a plural the English rule gets wrong
+
+A view's list field and plural type are built from its name by an English rule (`Order` → `Orders`, `Category` → `Categories`). Where the rule is wrong, name the plural on the `@schema type state` declaration of the ReadModel or StateViewSlice spec:
+
+```rescript
+@@reventless.spec("Person")
+
+@plural("People")
+@schema
+type state = {personId: string, name: string}
+```
+
+The list field is then `Shop_People` instead of `Shop_Persons`; the singular (`Shop_Person`) is still the name's. `readSideDef` publishes the plural as `plural`, with `pluralSource: "declared"`, or `"derived"` where the rule produced it, so a consumer needs no inflection rule of its own.
+
+On an uploadable field (`UploadableImage.t`, `UploadableFile.t`, `CaptionedImage.t`) it names the store the same way, where the field's name cannot be pluralised: `@plural("addresses") address: UploadableFile.t`.
+
+**Constraint:** one name, starting with a capital on a view and a lower-case letter on a field. A `@plural` that equals what the rule derives is a compile error, since it says nothing; so is one on another spec's state, on a field that is not uploadable, or beside `@storageRef`.
+
+---
+
 ### `commandTransition`: the states a command applies in
 
 Which lifecycle states a command is legal in, and which state it moves the row to, is declared as a **value**, not as an annotation. The spec names its lifecycle enum once, then writes a switch over its commands:

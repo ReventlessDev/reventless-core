@@ -263,9 +263,12 @@ function entries(plugin, structure) {
   };
   structure.readModels.concat(structure.stateViewSlices).forEach(view => {
     let singular = Stdlib_Option.mapOr(view.singleQueryField, view.name, unprefixed);
+    let match = view.pluralSource;
+    let match$1 = view.plural;
+    let plural = match === "declared" && match$1 !== undefined ? match$1 : view.name;
     add(view.name, "name", humanizeKey(singular));
-    add(view.name, "plural", humanizeKey(view.name));
-    add(view.name, "count", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(view.name) + `}}`);
+    add(view.name, "plural", humanizeKey(plural));
+    add(view.name, "count", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(plural) + `}}`);
     let properties = propertiesOf(view.schema);
     properties.forEach(param => {
       let field = param[0];

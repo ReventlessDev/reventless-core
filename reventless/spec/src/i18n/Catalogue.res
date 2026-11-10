@@ -8,7 +8,7 @@ identifier, so every reader (the screens, a translator, a glossary) addresses th
 | key | text | from |
 |---|---|---|
 | `Ordering.Customers.name` | Customer | a view, singular (its `singleQueryField`) |
-| `Ordering.Customers.plural` | Customers | the view's own name |
+| `Ordering.Customers.plural` | Customers | the view's own name, or its `@plural` |
 | `Ordering.Customers.count` | `{count, plural, one {# customer} other {# customers}}` | the two |
 | `Ordering.Customers.field.email` | Email | a top-level field of the view |
 | `Ordering.Customers.state.Deactivated` | Deactivated | a value of its lifecycle field |
@@ -213,12 +213,17 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
 
   Array.concat(structure.readModels, structure.stateViewSlices)->Array.forEach(view => {
     let singular = view.singleQueryField->Option.mapOr(view.name, unprefixed)
+    // A declared `@plural` is where the view's name does not read as its plural.
+    let plural = switch (view.pluralSource, view.plural) {
+    | (Some("declared"), Some(p)) => p
+    | _ => view.name
+    }
     add(~identifier=view.name, ~kind="name", humanizeKey(singular))
-    add(~identifier=view.name, ~kind="plural", humanizeKey(view.name))
+    add(~identifier=view.name, ~kind="plural", humanizeKey(plural))
     add(
       ~identifier=view.name,
       ~kind="count",
-      `{count, plural, one {# ${inSentence(singular)}} other {# ${inSentence(view.name)}}}`,
+      `{count, plural, one {# ${inSentence(singular)}} other {# ${inSentence(plural)}}}`,
     )
     let properties = propertiesOf(view.schema)
     properties->Array.forEach(((field, _)) =>

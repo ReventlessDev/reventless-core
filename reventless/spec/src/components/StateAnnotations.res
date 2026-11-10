@@ -208,6 +208,12 @@ type stateAnnotationSpec = {
   rule `label` already follows.
   */
   retired: option<retiredSpec>,
+  /**
+  The plural `@plural("…")` names on the `@schema type state` declaration: what the
+  view's list field and plural type are built from where the English rule
+  (`Api_Naming.pluralize`) is wrong. Absent, the rule applies.
+  */
+  plural?: string,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

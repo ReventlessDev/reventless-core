@@ -39,7 +39,14 @@ let openRolesField = (structures: array<(string, Reventless.Plugin.pluginStructu
   string,
 > =>
   marked(structures, OpenRoles)->Option.map(((plugin, d)) =>
-    Api_Naming.queryFieldNamesForStateView(~plugin, ~viewName=d.component).listFieldName
+    // The view's own published field, so a `@plural` on it is honored.
+    structures
+    ->Array.findMap(((p, s)) => p == plugin ? Some(s) : None)
+    ->Option.flatMap(s => s.stateViewSlices->Array.find(v => v.name == d.component))
+    ->Option.mapOr(
+      Api_Naming.queryFieldNamesForStateView(~plugin, ~viewName=d.component).listFieldName,
+      v => v.queryField,
+    )
   )
 
 let selfServiceGroups = (structures: array<(string, Reventless.Plugin.pluginStructure)>) =>

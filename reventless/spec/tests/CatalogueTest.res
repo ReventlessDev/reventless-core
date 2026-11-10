@@ -90,6 +90,35 @@ describe("Catalogue.entries", () => {
     )
   )
 
+  testSync("a declared plural is the view's plural; a derived one is not read", () => {
+    let status = {
+      ...customers,
+      name: "Status",
+      queryField: "Ordering_Statuses",
+      singleQueryField: "Ordering_Status",
+      schema: `{"type": "object", "properties": {}}`,
+      lifecycleField: ?None,
+    }
+    let textsOf = (view: Plugin.readSideDef) =>
+      Catalogue.entries(~plugin="Ordering", {...structure, readModels: [view]})
+      ->Array.filter(e => e.key->String.startsWith("Ordering.Status."))
+      ->Array.map(e => (e.key, e.text))
+      ->Dict.fromArray
+    expect((
+      textsOf({...status, plural: "Statuses", pluralSource: "declared"}),
+      textsOf({...status, plural: "Statuss", pluralSource: "derived"})->Dict.get(
+        "Ordering.Status.plural",
+      ),
+    ))->toEqual((
+      dict{
+        "Ordering.Status.name": "Status",
+        "Ordering.Status.plural": "Statuses",
+        "Ordering.Status.count": "{count, plural, one {# status} other {# statuses}}",
+      },
+      Some("Status"),
+    ))
+  })
+
   testSync("reads the plugin's name off its GraphQL fields", () =>
     expect(Catalogue.pluginNameOf(structure))->toEqual(Some("Ordering"))
   )

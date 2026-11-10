@@ -73,20 +73,50 @@ let make_matches_attr ~loc ~module_name ~store ~plugin_opt =
   let payload = PStr [ { pstr_desc = Pstr_eval (call_expr, []); pstr_loc = loc } ] in
   { attr_name = { txt = "s.matches"; loc }; attr_payload = payload; attr_loc = loc }
 
-(** The store this field declares: its explicit override, or its name pluralised.
-    A name the rule cannot pluralise is a compile error naming the override, not
-    a guess — a wrong store provisions infrastructure nobody meant. *)
+let plural_attr = "plural"
+
+let strip_override_attrs (attrs : attributes) =
+  List.filter
+    (fun (attr : attribute) -> not (String.equal attr.attr_name.txt plural_attr))
+    (strip_storage_ref_attr attrs)
+
+(** The store this field declares: its explicit override, its declared plural,
+    or its name pluralised. A name the rule cannot pluralise is a compile error
+    naming [@plural], not a guess — a wrong store provisions infrastructure
+    nobody meant. *)
 let store_for ~loc ~field ~attrs =
-  match get_override attrs with
-  | Some target -> target
-  | None -> (
+  match get_override attrs, Util.find_attr plural_attr attrs with
+  | Some _, Some attr ->
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@plural and @storageRef both name this field's store; keep one."
+  | Some target, None -> target
+  | None, Some attr ->
+    let plural = Util.get_plural_value ~capital:false attr in
+    (match Util.derive_store_name field with
+     | Ok derived when String.equal derived plural ->
+       Location.raise_errorf ~loc:attr.attr_loc
+         "@plural(%S) is the store %S derives already; remove it." plural field
+     | _ -> (plural, None))
+  | None, None -> (
     match Util.derive_store_name field with
     | Ok store -> (store, None)
     | Error reason ->
       Location.raise_errorf ~loc
-        "cannot derive an object store from the field name %S: %s. Name the \
-         store explicitly with @storageRef(\"<store>\") on this field."
+        "cannot derive an object store from the field name %S: %s. Name its \
+         plural with @plural(\"<plural>\"), or the store with \
+         @storageRef(\"<store>\"), on this field."
         field reason)
+
+(** [@plural] on a field names an uploadable field's store; on any other field
+    nothing reads it. *)
+let refuse_stray_plural (ld : label_declaration) =
+  match Util.find_attr plural_attr ld.pld_attributes with
+  | Some attr ->
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@plural on a field names the store of an uploadable field \
+       (UploadableImage, UploadableFile, CaptionedImage); %S is not one."
+      ld.pld_name.txt
+  | None -> ()
 
 let transform_label_decl (ld : label_declaration) : label_declaration =
   let loc = ld.pld_loc in
@@ -101,7 +131,7 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
         { ld.pld_type with ptyp_attributes = attr :: ld.pld_type.ptyp_attributes }
       in
       { ld with
-        pld_attributes = strip_storage_ref_attr ld.pld_attributes
+        pld_attributes = strip_override_attrs ld.pld_attributes
       ; pld_type = new_type }
   | None -> (
     (* The array case. The marker goes on the *element* type, because
@@ -112,7 +142,7 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
     match Util.array_element ld.pld_type with
     | Some elem -> (
       match Util.uploadable_module_of_type elem with
-      | None -> ld
+      | None -> refuse_stray_plural ld; ld
       | Some module_name ->
         if has_s_matches_attr elem.ptyp_attributes then ld
         else
@@ -130,9 +160,9 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
             { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [ new_elem ]) }
           in
           { ld with
-            pld_attributes = strip_storage_ref_attr ld.pld_attributes
+            pld_attributes = strip_override_attrs ld.pld_attributes
           ; pld_type = new_type })
-    | None -> ld)
+    | None -> refuse_stray_plural ld; ld)
 
 let transform_constructor (cd : constructor_declaration) : constructor_declaration =
   match cd.pcd_args with

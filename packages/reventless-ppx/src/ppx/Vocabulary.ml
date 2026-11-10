@@ -113,6 +113,9 @@ let all : entry list =
       [ "AuthorizationInjection" ];
     e ~args:Required ~ex:"false" "live" [ Type State ] "Whether the view offers live updates by default."
       [ "StateAnnotations" ];
+    e ~args:Required ~ex:{|"People"|} "plural" (Type State :: any_field)
+      "The plural a view's list field, or an uploadable field's store, is named by, where the English rule is wrong."
+      [ "StateAnnotations"; "UploadableInference" ];
     e "namedWhenRetired" [ Type State ]
       "A retired row still answers the reference door with its name."
       [ "StateAnnotations" ];

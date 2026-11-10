@@ -241,6 +241,12 @@ type readSideDef = {
   /** The singular counterpart of `queryField` (`Plugin_Order`), also the prefix of
       the generated input types. Not derivable without `Api_Naming.singularize`. */
   singleQueryField?: string,
+  /** The plural `queryField` is built from (`Orders`), so a consumer needs no
+      inflection rule of its own. */
+  plural?: string,
+  /** Where `plural` came from: `"declared"` (`@plural`) | `"derived"` (the English
+      rule). */
+  pluralSource?: string,
   /** The state field identifying a row, as opposed to a reference to another entity.
       `None` means unresolved — no key-derived filter or sort until `@id` is declared. */
   idField?: string,

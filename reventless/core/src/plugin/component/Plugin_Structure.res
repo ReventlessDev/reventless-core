@@ -1153,7 +1153,11 @@ let readSideDefFromSpec = (
   ~linkedWriteSide: array<string>=[],
   ~chapter: option<string>=?,
 ): Reventless.Plugin.readSideDef => {
-  let qf = Api_Naming.queryFieldNamesForReadModel(~plugin, ~name)
+  let qf = Api_Naming.queryFieldNamesForReadModel(
+    ~plugin,
+    ~name,
+    ~plural=?Api_Naming.declaredPlural(stateSchema),
+  )
   let label = labelFieldsFromStateSchema(~entityName=name, stateSchema)
   // The published key is always filterable; not every filterable field is the key.
   let keyField = GraphQL_FragmentGenerator.resolveKeyField(
@@ -1178,6 +1182,8 @@ let readSideDefFromSpec = (
     visibility: ?visibilityTag(visibility),
     ?chapter,
     singleQueryField: qf.singleFieldName,
+    plural: ?qf.plural,
+    pluralSource: ?(qf.pluralDeclared->Option.map(d => d ? "declared" : "derived")),
     idField: ?(keyField->Option.map(((f, _)) => f)),
     idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
     requiredAccess: ?accessKeysFor(authorization),
@@ -1605,7 +1611,11 @@ let make = (
   let readModelDefs = readModels->Array.map((
     module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
   ) => {
-    let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+    let qf = Api_Naming.queryFieldNamesForReadModel(
+      ~plugin=name,
+      ~name=R.Spec.name,
+      ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+    )
     let stateSchema = R.Spec.stateSchema->S.castToUnknown
     let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
     // The published key is always filterable; not every filterable field is the key.
@@ -1643,6 +1653,8 @@ let make = (
         // place that decides how `Products`/`Categories` singularise, and the
         // point of publishing the name is that a consumer stops guessing it.
         singleQueryField: qf.singleFieldName,
+        plural: ?qf.plural,
+        pluralSource: ?(qf.pluralDeclared->Option.map(d => d ? "declared" : "derived")),
         idField: ?(keyField->Option.map(((f, _)) => f)),
         idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
         requiredAccess: ?accessKeysFor(R.Spec.authorization->Reventless.Authorization.named),
@@ -1653,7 +1665,11 @@ let make = (
 
   let stateViewDefs =
     stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
-      let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
+      let qf = Api_Naming.queryFieldNamesForStateView(
+        ~plugin=name,
+        ~viewName=SVS.Spec.name,
+        ~plural=?Api_Naming.declaredPlural(SVS.Spec.stateSchema->S.castToUnknown),
+      )
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
       let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
       let label = labelFieldsFromStateSchema(~entityName=SVS.Spec.name, stateSchema)
@@ -1684,6 +1700,8 @@ let make = (
           visibility: ?visibilityTag(SVS.Spec.visibility),
           chapter: ?chapterOf(SVS.Spec.name),
           singleQueryField: qf.singleFieldName,
+          plural: ?qf.plural,
+          pluralSource: ?(qf.pluralDeclared->Option.map(d => d ? "declared" : "derived")),
           idField: ?(keyField->Option.map(((f, _)) => f)),
           idFieldSource: ?(keyField->Option.map(((_, rung)) => rung)),
           requiredAccess: ?accessKeysFor(SVS.Spec.authorization->Reventless.Authorization.named),

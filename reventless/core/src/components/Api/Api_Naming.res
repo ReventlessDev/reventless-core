@@ -9,6 +9,11 @@ type queryNames = {
   labelField?: string,
   includeIdParam: bool,
   connectionSpec: bool,
+  /** The plural `listFieldName` and `pluralTypeName` are built from; absent on a
+      record built by hand. */
+  plural?: string,
+  /** Whether `plural` is a `@plural` declaration rather than the English rule's. */
+  pluralDeclared?: bool,
 }
 
 let pluralize = (n: string) =>
@@ -128,13 +133,18 @@ let sliceMutationFieldFor = (
 // "ProductDemand" the singularize is a no-op and pluralize behaves as usual.
 let canonicalPlural = (n: string) => pluralize(singularize(n))
 
+// The plural a view's `@plural("…")` declares, read off its state schema.
+let declaredPlural = (stateSchema: S.t<unknown>): option<string> =>
+  Reventless.StateAnnotations.getSpec(stateSchema)->Option.flatMap(s => s.plural)
+
 let queryFieldNamesForReadModel = (
   ~plugin: string,
   ~name: string,
+  ~plural as declared: option<string>=?,
   ~connectionSpec: bool=true,
 ): queryNames => {
   let singular = singularize(name)
-  let plural = canonicalPlural(name)
+  let plural = declared->Option.getOr(canonicalPlural(name))
   {
     singleFieldName: `${plugin}_${singular}`,
     listFieldName: `${plugin}_${plural}`,
@@ -142,6 +152,8 @@ let queryFieldNamesForReadModel = (
     pluralTypeName: `${plugin}_${plural}`,
     includeIdParam: true,
     connectionSpec,
+    plural,
+    pluralDeclared: declared->Option.isSome,
   }
 }
 
@@ -204,11 +216,12 @@ let resolvedFieldsOfConfig = (~plugin: string, config: Reventless.ReadModel.conf
 let queryFieldNamesForStateView = (
   ~plugin: string,
   ~viewName: string,
+  ~plural as declared: option<string>=?,
   ~connectionSpec: bool=true,
 ): queryNames => {
   let entity = stripViewSuffix(viewName)
   let singular = singularize(entity)
-  let plural = canonicalPlural(entity)
+  let plural = declared->Option.getOr(canonicalPlural(entity))
   {
     singleFieldName: `${plugin}_${singular}`,
     listFieldName: `${plugin}_${plural}`,
@@ -216,6 +229,8 @@ let queryFieldNamesForStateView = (
     pluralTypeName: `${plugin}_${plural}`,
     includeIdParam: true,
     connectionSpec,
+    plural,
+    pluralDeclared: declared->Option.isSome,
   }
 }
 
@@ -230,13 +245,16 @@ let queryFieldNamesForSliceQueryDb = (
   ~queryDbName: string,
   ~connectionSpec: bool=true,
 ): queryNames => {
+  let plural = canonicalPlural(queryDbName)
   {
     singleFieldName: `${plugin}_${queryDbName}`,
-    listFieldName: `${plugin}_${canonicalPlural(queryDbName)}`,
+    listFieldName: `${plugin}_${plural}`,
     returnTypeName: `${plugin}_${queryDbName}`,
-    pluralTypeName: `${plugin}_${canonicalPlural(queryDbName)}`,
+    pluralTypeName: `${plugin}_${plural}`,
     includeIdParam: true,
     connectionSpec,
+    plural,
+    pluralDeclared: false,
   }
 }
 

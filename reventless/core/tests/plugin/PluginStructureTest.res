@@ -103,6 +103,15 @@ module PsCategoriesViewSlice: ReventlessInfra.StateViewSlice.T = {
   type component = svsComponent
   let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
+module PsPeopleViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsPeopleView
+  module Projection = {
+    let project = PsPeopleView.project
+    let moduleUrl = PsPeopleView.moduleUrl
+  }
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
 
 module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsAttachInvoice
@@ -1297,6 +1306,34 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           )
         expect(stated)->toEqual(true)
       },
+    )
+  })
+
+  describe("plural / pluralSource — the plural the list field is built from", () => {
+    let views = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[module(PsCategoriesViewSlice), module(PsPeopleViewSlice)],
+    ).stateViewSlices
+    let summary = (q: Reventless.Plugin.readSideDef) => (
+      q.queryField,
+      q.singleQueryField,
+      q.plural,
+      q.pluralSource,
+    )
+
+    testSync(
+      "@plural names the list field and the singular stays the name",
+      () =>
+        expect(views->Array.map(summary))->toEqual([
+          (
+            "TestPlugin_Categories",
+            Some("TestPlugin_Category"),
+            Some("Categories"),
+            Some("derived"),
+          ),
+          ("TestPlugin_People", Some("TestPlugin_Person"), Some("People"), Some("declared")),
+        ]),
     )
   })
 

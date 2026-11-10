@@ -293,6 +293,7 @@ type command =
       categoryImage?: Reventless.UploadableImage.t,
       datasheets: array<Reventless.UploadableFile.t>,
       @storageRef("branding.logos") logo: Reventless.UploadableImage.t,
+      @plural("addresses") address: Reventless.UploadableFile.t,
       plain: string,
     })
 
@@ -1233,6 +1234,16 @@ let project = event => switch event {
 }
 EOF
 
+# ─── Fixture: @plural on the state declaration ────────────────────
+
+cat > "$PLUGIN/src/ReadModel/Person.res" <<'EOF'
+@@reventless.spec
+
+@plural("People")
+@schema
+type state = { @id id: string, name: string }
+EOF
+
 # ─── Fixture: @scan + @scanSort (server-query opt-in) ─────────────
 
 cat > "$PLUGIN/src/ReadModel/ScanReadModel.res" <<'EOF'
@@ -2041,6 +2052,8 @@ assert_js_not_contains "$JS" 'StorageRef$Reventless' \
   "uploadable: an overridden field keeps its own semantic"
 assert_js_contains "$JS" 'plain: s.m(Sury.string)' \
   "uploadable: an untyped sibling field is left untouched"
+assert_js_contains "$JS" 'address: s.m(UploadableFile$Reventless.forField(undefined, "addresses"))' \
+  "uploadable: @plural names the store a name ending in ss cannot derive"
 assert_js_contains "$JS" 'productImage: s.m(UploadableImage$Reventless.forField(undefined, "productImages"))' \
   "uploadable: the event field derives the same store as the command field"
 
@@ -3474,6 +3487,14 @@ assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding emitted 
 assert_js_contains "$JS" 'live: true' "live: true recorded in stateAnnotations metadata"
 
 echo ""
+echo "=== Test: @plural on ReadModel state → metadata carries the plural ==="
+JS="$PLUGIN/src/ReadModel/Person.res.mjs"
+assert_js_contains "$JS" 'plural: "People"' "@plural recorded in stateAnnotations metadata"
+assert_js_not_contains "$JS" '@plural' "@plural: attribute stripped from output"
+JS="$PLUGIN/src/ReadModel/LiveOffReadModel.res.mjs"
+assert_js_not_contains "$JS" 'plural:' "no @plural → metadata omits plural"
+
+echo ""
 echo "=== Test: unannotated state → metadata omits live ==="
 JS="$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res.mjs"
 assert_js_not_contains "$JS" 'live: true' "live: true absent without @live"
@@ -4109,6 +4130,108 @@ else
   fi
 fi
 rm -f "$ERROR/src/Aggregate/LiveOnAggregate.res"
+
+plural_refusal_case() {
+  local label="$1" file="$2" expected="$3"
+  if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+    fail "$label" "expected compilation to fail but it succeeded"
+  elif echo "$OUTPUT" | grep -q "$expected"; then
+    pass "$label → correct compile error"
+  else
+    fail "$label" "unexpected error output: $OUTPUT"
+  fi
+  rm -f "$file"
+}
+
+echo ""
+echo "=== Test: PPX error — @plural that says what the rule says ==="
+cat > "$ERROR/src/ReadModel/Customers.res" <<'EOF'
+@@reventless.spec
+
+@plural("Customers")
+@schema
+type state = { @id id: string, name: string }
+EOF
+plural_refusal_case "@plural equal to the derived plural" \
+  "$ERROR/src/ReadModel/Customers.res" 'derives already; remove it'
+
+echo ""
+echo "=== Test: PPX error — @plural that is not a name ==="
+cat > "$ERROR/src/ReadModel/Person.res" <<'EOF'
+@@reventless.spec
+
+@plural("people")
+@schema
+type state = { @id id: string, name: string }
+EOF
+plural_refusal_case "@plural in lower case on a view" \
+  "$ERROR/src/ReadModel/Person.res" '@plural expects one name'
+
+echo ""
+echo "=== Test: PPX error — @plural on an Aggregate state declaration ==="
+cat > "$ERROR/src/Aggregate/PluralOnAggregate.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create
+@schema
+type event = Created
+@schema
+type error = unit
+
+@plural("People")
+@schema
+type state = { id: string }
+EOF
+plural_refusal_case "@plural on Aggregate state" \
+  "$ERROR/src/Aggregate/PluralOnAggregate.res" '@plural is only supported on the @schema type state declaration'
+
+echo ""
+echo "=== Test: PPX error — @plural on a field that is not uploadable ==="
+cat > "$ERROR/src/Aggregate/PluralOnPlainField.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create({@plural("addresses") address: string})
+@schema
+type event = Created
+@schema
+type error = unit
+EOF
+plural_refusal_case "@plural on a plain field" \
+  "$ERROR/src/Aggregate/PluralOnPlainField.res" 'is not one'
+
+echo ""
+echo "=== Test: PPX error — @plural beside @storageRef ==="
+cat > "$ERROR/src/Aggregate/PluralAndStorageRef.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create({
+  @plural("addresses") @storageRef("files") address: Reventless.UploadableFile.t,
+})
+@schema
+type event = Created
+@schema
+type error = unit
+EOF
+plural_refusal_case "@plural with @storageRef" \
+  "$ERROR/src/Aggregate/PluralAndStorageRef.res" 'both name this field'
+
+echo ""
+echo "=== Test: PPX error — an underivable store points at @plural ==="
+cat > "$ERROR/src/Aggregate/UnderivableStore.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create({address: Reventless.UploadableFile.t})
+@schema
+type event = Created
+@schema
+type error = unit
+EOF
+plural_refusal_case "an underivable store" \
+  "$ERROR/src/Aggregate/UnderivableStore.res" 'Name its plural with @plural'
 
 echo ""
 echo "=== Test: PPX error — @@reventless.visibility on an Aggregate ==="

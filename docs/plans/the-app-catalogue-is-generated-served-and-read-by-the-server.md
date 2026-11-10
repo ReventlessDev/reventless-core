@@ -2,9 +2,9 @@
 
 **Date:** 2026-11-08<br/>
 **Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09;
-[CA4](#step-ca4--i18n-status-and-i18n-check) and [CA7](#step-ca7--the-seam-for-a-glossary) built
-2026-11-10; [CA1](#step-ca1--plural), [CA5](#step-ca5--the-servers-messages) and
-[CA6](#step-ca6--the-identitys-locale) not started.<br/>
+[CA1](#step-ca1--plural), [CA4](#step-ca4--i18n-status-and-i18n-check) and
+[CA7](#step-ca7--the-seam-for-a-glossary) built 2026-11-10; [CA5](#step-ca5--the-servers-messages)
+and [CA6](#step-ca6--the-identitys-locale) not started.<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -47,6 +47,26 @@ The steps are **CA1 to CA7**. **CA** stands for *core, app catalogue*.
   value no longer needs a copy of its own.
 - **Checks.** A `@plural` that equals the derived plural fails `check:fresh-outputs`'s neighbour
   the way a redundant `@noDcbTag` does: reported, since it says nothing.
+
+**Built (2026-11-10).** The PPX reads `@plural("…")` on a ReadModel's or StateViewSlice's
+`@schema type state` declaration into `stateAnnotationSpec.plural`; `Api_Naming` builds the list
+field and plural type from it where it is present (`Api_Naming.declaredPlural` reads it off the
+state schema at every call site), and `readSideDef` publishes `plural` and `pluralSource`
+(`"declared"` | `"derived"`). On an uploadable field it names the store, and the error for a
+name the rule cannot pluralise (`address`) now points at it.
+
+- **The redundant `@plural` is a compile error**, not a report: the PPX knows the name the
+  list field is built from, so the check needs no second pass.
+- **Also refused at compile time:** a plural that is not one identifier (capital on a view,
+  lower case on a field), `@plural` on another spec's state, on a field that is not
+  uploadable, and beside `@storageRef`.
+- **The catalogue** reads a declared plural for the view's `plural` and `count` texts; a derived
+  one keeps the view's name, which is what the screens draw today.
+- **The self-registration door** reads the open-roles view's published `queryField` rather than
+  deriving it again.
+- **Not yet:** the singular. The rule still makes `Statu` of `Status`; `@plural` does not touch
+  `singleQueryField` or the row type, which `@resolves` targets and the fragment generator
+  derive by the same rule. A `@singular` would have to reach all three.
 
 ## Step CA2 — `generate-catalogue`
 
@@ -194,8 +214,8 @@ glossary that writes them.
 
 ## Verification
 
-- `@plural("Statuses")` on a view publishes `plural: "Statuses"`, `pluralSource: Declared`, and
-  the list field reads `shop_Statuses`; without it the derived `shop_Statuss` stays, so no
+- `@plural("People")` on a view `Person` publishes `plural: "People"`, `pluralSource: "declared"`,
+  and the list field reads `shop_People`; without it the derived `shop_Persons` stays, so no
   existing field moves.
 - `generate-catalogue` on the online shop writes `i18n/en.json` with one key per view, command,
   field, state, role and error variant, reruns byte-identical, and reports an orphan after a

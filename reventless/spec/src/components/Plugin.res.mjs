@@ -123,6 +123,8 @@ let readSideDefSchema = Sury.$schema(s => ({
   visibility: s.m(Sury.$option(Sury.string)),
   chapter: s.m(Sury.$option(Sury.string)),
   singleQueryField: s.m(Sury.$option(Sury.string)),
+  plural: s.m(Sury.$option(Sury.string)),
+  pluralSource: s.m(Sury.$option(Sury.string)),
   idField: s.m(Sury.$option(Sury.string)),
   idFieldSource: s.m(Sury.$option(Sury.string)),
   requiredAccess: s.m(Sury.$option(Sury.array(Sury.string))),

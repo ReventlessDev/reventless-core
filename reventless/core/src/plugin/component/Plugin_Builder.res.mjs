@@ -189,7 +189,7 @@ function Make(Spec) {
         });
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
           let subIdField = Stdlib_Option.map(R.Spec.subIdConfig, c => c.subIdField);
           let indexes = R.Spec.config.indexes;
           let resolvedFields = Api_Naming$ReventlessCore.resolvedFieldsOfConfig(extra$1, R.Spec.config);
@@ -214,7 +214,7 @@ function Make(Spec) {
         }));
         let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
         readModels.forEach(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
           let label = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(R.Spec.name, R.Spec.stateSchema);
           let newrecord = {...qn};
           newrecord.labelField = label.field;
@@ -331,7 +331,7 @@ function Make(Spec) {
           };
         });
         let readModelComponents = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, Api_Naming$ReventlessCore.declaredPlural(R.Spec.stateSchema), undefined);
           let schema_queryFields = [
             qn.singleFieldName,
             qn.listFieldName

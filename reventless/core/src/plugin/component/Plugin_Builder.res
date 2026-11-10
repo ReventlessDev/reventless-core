@@ -249,7 +249,11 @@ module Make = (
       readModels->Array.map((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) => {
-        let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+        let qn = Api_Naming.queryFieldNamesForReadModel(
+          ~plugin=name,
+          ~name=R.Spec.name,
+          ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+        )
         let subIdField = R.Spec.subIdConfig->Option.map(c => c.subIdField)
         // An ordinary read model's `@index` reached the resolver layer
         // (`QueryDbResolvers_{AppSync,Lambda}` build one per `config.indexes`)
@@ -290,7 +294,11 @@ module Make = (
     readModels->Array.forEach((
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
-      let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      let qn = Api_Naming.queryFieldNamesForReadModel(
+        ~plugin=name,
+        ~name=R.Spec.name,
+        ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+      )
       let label = Plugin_Structure.labelFieldsFromStateSchema(
         ~entityName=R.Spec.name,
         R.Spec.stateSchema->S.castToUnknown,
@@ -451,7 +459,11 @@ module Make = (
       let readModelComponents = readModels->Array.map((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) => {
-        let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+        let qn = Api_Naming.queryFieldNamesForReadModel(
+          ~plugin=name,
+          ~name=R.Spec.name,
+          ~plural=?Api_Naming.declaredPlural(R.Spec.stateSchema->S.castToUnknown),
+        )
         let schema: Plugin_Helpers.pluginDeployedSchema = {
           queryFields: [qn.singleFieldName, qn.listFieldName],
           chapter: ?chapterFor(R.Spec.name),
