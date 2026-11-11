@@ -124,7 +124,7 @@ jobs:
           # 2.38 and excludes most non-bleeding-edge distros.
           - os: ubuntu-22.04 # linux x64
             target: linux-x64
-          - os: macos-14 # arm64 (Apple Silicon)
+          - os: macos-15 # arm64 (Apple Silicon); GitHub retired macos-14
             target: darwin-arm64
           # darwin-x64 (Intel macOS) is deliberately OUT of this matrix — Intel is
           # a sunsetting target and the macos-13 runner queue starved out our
