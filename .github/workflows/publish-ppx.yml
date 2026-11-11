@@ -240,8 +240,10 @@ jobs:
           # LEFT THE EXISTING BINARY IN PLACE and let the run publish a main
           # pointing at it, which is how a stale ppx ships under a fresh version.
           # Fail, and let the next run resolve forward.
+          # npm 11 refuses a prerelease without an explicit tag; the PPX has always
+          # shipped under `latest`.
           set +e
-          out=$(npm publish "$TGZ" --access public 2>&1)
+          out=$(npm publish "$TGZ" --access public --tag latest 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ]; then
@@ -351,7 +353,7 @@ jobs:
           '
           grep -A4 '"optionalDependencies"' package.json
           set +e
-          out=$(npm publish --access public 2>&1)
+          out=$(npm publish --access public --tag latest 2>&1)
           code=$?
           echo "$out"
           if [ $code -ne 0 ]; then
