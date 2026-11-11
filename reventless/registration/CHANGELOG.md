@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.28 (2026-11-11)
+
+### Features
+
+* **registration:** a visitor's mails are written in the language they asked in ([b677e08](https://github.com/ReventlessDev/reventless-core/commit/b677e08cafe11af28cf917270f9ae8fafb2425da))
+* **spec:** a server's messages are written in the recipient's language ([31bbf5f](https://github.com/ReventlessDev/reventless-core/commit/31bbf5f0a613131113d6f3e8a569578d29c439af))
+
+
 # 1.0.0-alpha.27 (2026-11-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-registration

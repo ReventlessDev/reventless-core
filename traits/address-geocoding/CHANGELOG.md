@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.88 (2026-11-11)
+
+### Features
+
+* **spec:** a server's messages are written in the recipient's language ([31bbf5f](https://github.com/ReventlessDev/reventless-core/commit/31bbf5f0a613131113d6f3e8a569578d29c439af))
+
+
 # 1.0.0-alpha.87 (2026-11-09)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding

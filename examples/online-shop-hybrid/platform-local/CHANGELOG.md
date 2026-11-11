@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.342 (2026-11-11)
+
+### Features
+
+* **local:** a mail is written in the language of the account it goes to ([71cfabc](https://github.com/ReventlessDev/reventless-core/commit/71cfabc26bcb2ad94e53d9d99c949e7755e0753a))
+
+
 # 1.0.0-alpha.341 (2026-11-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

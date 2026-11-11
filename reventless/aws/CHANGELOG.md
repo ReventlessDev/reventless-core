@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.431 (2026-11-11)
+
+### Features
+
+* **local:** a mail is written in the language of the account it goes to ([71cfabc](https://github.com/ReventlessDev/reventless-core/commit/71cfabc26bcb2ad94e53d9d99c949e7755e0753a))
+* **local:** how far each language is translated, and the release gate ([889cf94](https://github.com/ReventlessDev/reventless-core/commit/889cf9470fcef1a9470557a959a368887b6c6165))
+* **spec:** a server's messages are written in the recipient's language ([31bbf5f](https://github.com/ReventlessDev/reventless-core/commit/31bbf5f0a613131113d6f3e8a569578d29c439af))
+
+
 # 3.0.0-alpha.430 (2026-11-09)
 
 ### Features
