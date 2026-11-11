@@ -17,6 +17,8 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
+import * as AccountStore$ReventlessLocal from "./Auth/AccountStore.res.mjs";
+import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalRequestLog$ReventlessLocal from "./LocalRequestLog.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
@@ -137,6 +139,60 @@ function handleSwitchRole(req, res) {
   });
 }
 
+function handleSetLocale(req, res) {
+  readBody(req, body => {
+    let locale;
+    let exit = 0;
+    let json;
+    try {
+      json = JSON.parse(body);
+      exit = 1;
+    } catch (exn) {
+      locale = undefined;
+    }
+    if (exit === 1) {
+      locale = Stdlib_Option.map(json.locale, prim => prim.trim());
+    }
+    let presented = Stdlib_Option.flatMap(req.headers["authorization"], h => {
+      if (h.startsWith("Bearer ")) {
+        return h.slice(7, h.length).trim();
+      }
+    });
+    if (presented === undefined) {
+      return _loginRejected(res, "Missing bearer token");
+    }
+    if (locale === undefined) {
+      return _writeJson(res, 400, {
+        error: "Missing locale"
+      });
+    }
+    if (!Platform_I18n$ReventlessCore.isTag(locale)) {
+      return _writeJson(res, 400, {
+        error: `Not a language tag: ` + locale
+      });
+    }
+    let presentedIdentity = LocalAuth$ReventlessLocal.Login.verifyAndDecode(presented);
+    if (presentedIdentity === undefined) {
+      return _loginRejected(res, "Invalid token");
+    }
+    let msg = AccountStore$ReventlessLocal.setLocale(presentedIdentity.username, locale);
+    if (msg.TAG !== "Ok") {
+      return _loginRejected(res, msg._0);
+    }
+    let activeRole = Identity$Reventless.getClaim(presentedIdentity, LocalAuth$ReventlessLocal.Login.activeRoleClaim);
+    let msg$1 = LocalAuth$ReventlessLocal.Login.reissue(presented, activeRole);
+    if (msg$1.TAG !== "Ok") {
+      return _loginRejected(res, msg$1._0);
+    }
+    let newToken = msg$1._0;
+    let identity = Stdlib_Option.getOr(LocalAuth$ReventlessLocal.Login.verifyAndDecode(newToken), Identity$Reventless.anonymous);
+    _writeJson(res, 200, {
+      token: newToken,
+      identity: Util_Sury$Reventless.toJson(identity, Identity$Reventless.schema)
+    });
+  });
+}
+
 function handleLogout(_req, res) {
   res.writeHead(204, {
     "Access-Control-Allow-Origin": "*"
@@ -209,6 +265,9 @@ function _dispatch(req, res, yoga, getSdl) {
   }
   if (path === "/__inmemory/switch-role" && req.method === "POST") {
     return handleSwitchRole(req, res);
+  }
+  if (path === "/__inmemory/locale" && req.method === "POST") {
+    return handleSetLocale(req, res);
   }
   if (path === "/__inmemory/logout" && req.method === "POST") {
     return handleLogout(req, res);
@@ -815,6 +874,7 @@ export {
   _loginRejected,
   handleLogin,
   handleSwitchRole,
+  handleSetLocale,
   handleLogout,
   _corsWriteHeaders,
   handleObjectPut,

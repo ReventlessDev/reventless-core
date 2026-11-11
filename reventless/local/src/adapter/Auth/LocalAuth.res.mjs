@@ -261,6 +261,22 @@ function verifyAndDecode(token) {
   }
 }
 
+function setLocale(username, locale) {
+  let match = store.contents[username];
+  if (match === undefined) {
+    return false;
+  }
+  let identity = match.identity;
+  let claims = Stdlib_Option.mapOr(identity.claims, {}, c => Object.fromEntries(Object.entries(c)));
+  claims[Identity$Reventless.localeClaim] = locale;
+  let newrecord = {...identity};
+  store.contents[username] = {
+    password: match.password,
+    identity: (newrecord.claims = claims, newrecord)
+  };
+  return true;
+}
+
 function reissue(token, activeRole) {
   let presented = verifyAndDecode(token);
   if (presented === undefined) {
@@ -316,6 +332,7 @@ let Login = {
   issue: issue,
   mintedIdentity: mintedIdentity,
   verifyAndDecode: verifyAndDecode,
+  setLocale: setLocale,
   reissue: reissue
 };
 

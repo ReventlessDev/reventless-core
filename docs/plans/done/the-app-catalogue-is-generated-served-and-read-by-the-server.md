@@ -1,11 +1,14 @@
 # Plan: the app's catalogue is generated from the plugin structure, served per platform and language, and read by the server's messages
 
 **Date:** 2026-11-08<br/>
-**Status:** 🚧 [CA2](#step-ca2--generate-catalogue) and [CA3](#step-ca3--the-catalogue-served) built 2026-11-09;
-[CA1](#step-ca1--plural), [CA4](#step-ca4--i18n-status-and-i18n-check) and
-[CA7](#step-ca7--the-seam-for-a-glossary) built 2026-11-10; [CA5](#step-ca5--the-servers-messages)
-and [CA6](#step-ca6--the-identitys-locale) built 2026-11-10. Open: the follow-ups each step's
-*Not yet* names.<br/>
+**Status:** ✅ Done 2026-11-11. [CA2](#step-ca2--generate-catalogue) and
+[CA3](#step-ca3--the-catalogue-served) built 2026-11-09; [CA1](#step-ca1--plural) to
+[CA7](#step-ca7--the-seam-for-a-glossary) built 2026-11-10, with `@singular`, a visitor's
+language and the local locale route on 2026-11-11. Left outside this plan: the per-element
+sentences ([CA2](#step-ca2--generate-catalogue)), `check` in CI once an example has a
+translation ([CA4](#step-ca4--i18n-status-and-i18n-check)), the notification trait's templates
+reading the catalogue ([CA5](#step-ca5--the-servers-messages)), and the shell writing a person's
+language and sending it with a sign-up ([CA6](#step-ca6--the-identitys-locale)).<br/>
 **Facts from:** this repo at `8636d33`, surveyed 2026-11-08.
 
 ## The gap
@@ -231,6 +234,8 @@ otherwise sends ASCII) and the log transport prints. The registration mails are 
   code went out in and the `messageKey` of the mail that carried it, never its text.
 - **The outbound GWT** compares todo items and commands by their encoded form, as events
   already were, so an optional field left out and one set to nothing read alike.
+- **Not yet:** the notification trait's templates. `Template.render` takes `~locale`, but the
+  trait renders without one and does not look its templates up by key.
 
 ## Step CA6 — the identity's `locale`
 
@@ -259,8 +264,12 @@ there is no update to measure and no replacement to risk, and an id token alread
 - **Locally** an account in `accounts.yaml` takes `locale?`, carried as the token's `locale`
   claim (`Identity.localeClaim`), the way a Cognito id token carries the attribute; a mail to
   the account's address is written in it.
-- **Not yet:** the shell reading the claim, letting a person set it, and sending the language
-  it shows in with a sign-up, which are the shell's repository's.
+- **Writing it locally:** `POST /__inmemory/locale` with a bearer and `{"locale"}` sets the
+  caller's own account's claim, writes it to `accounts.yaml` where the account is declared, and
+  answers with a re-minted token that keeps the active role, as login and the role switch do.
+  On AWS the app client writes the attribute itself.
+- **Not yet:** the shell writing the person's choice to the account and sending the language it
+  shows in with a sign-up, which are the shell's repository's.
 
 ## Step CA7 — the seam for a glossary
 

@@ -63,6 +63,16 @@ describe("AccountsManifest.applyEdits", () => {
     )->toEqual(Error("admin is already declared in the manifest"))
   )
 
+  testSync("writes an account's language beside its other fields", () =>
+    expect(
+      AccountsManifest.applyEdits(manifest, [SetLocale({username: "shopper", locale: "de"})])
+      ->Result.map(parsed)
+      ->Result.map(
+        entries => entries->Array.find(e => e.username == "shopper")->Option.flatMap(e => e.locale),
+      ),
+    )->toEqual(Ok(Some("de")))
+  )
+
   testSync("refuses to change or remove a name the file does not declare", () => {
     expect(
       AccountsManifest.applyEdits(manifest, [SetGroups({username: "nobody", groups: []})]),

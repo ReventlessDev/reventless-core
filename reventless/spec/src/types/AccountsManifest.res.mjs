@@ -255,15 +255,24 @@ function applyEdits(yamlText, edits) {
           } else {
             return username + ` is not declared in the manifest`;
           }
-        case "Remove" :
-          let username$1 = edit._0;
+        case "SetLocale" :
+          let username$1 = edit.username;
           let index$1 = usernames.indexOf(username$1);
           if (index$1 !== -1) {
-            doc.deleteIn([index$1]);
-            usernames.splice(index$1, 1);
+            doc.setIn(path(index$1, "locale"), doc.createNode(edit.locale));
             return;
           } else {
             return username$1 + ` is not declared in the manifest`;
+          }
+        case "Remove" :
+          let username$2 = edit._0;
+          let index$2 = usernames.indexOf(username$2);
+          if (index$2 !== -1) {
+            doc.deleteIn([index$2]);
+            usernames.splice(index$2, 1);
+            return;
+          } else {
+            return username$2 + ` is not declared in the manifest`;
           }
       }
     });

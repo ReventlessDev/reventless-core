@@ -65,11 +65,31 @@ let resolved: ref<bool> = ref(false)
     needs has a group among these accounts. */
 let pluginChecked: ref<bool> = ref(false)
 
+/** The file the accounts were loaded from, where an account's own settings are written back. */
+let loadedFrom: ref<option<string>> = ref(None)
+
 let resetResolution = (): unit => {
   resolved := false
   pluginChecked := false
   fromFile := []
+  loadedFrom := None
 }
+
+/**
+ Set the language an account reads in: on the live account at once, and in the accounts file
+ when it declares the account, so the next start keeps it. An account registered some other
+ way keeps it until the process ends.
+ */
+let setLocale = (~username: string, ~locale: string): result<unit, string> =>
+  if !LocalAuth.Login.setLocale(~username, ~locale) {
+    Error("Unknown user")
+  } else {
+    switch loadedFrom.contents {
+    | Some(path) if fromFile.contents->Array.includes(username) =>
+      AccountsManifest.editFile(~path, ~edits=[SetLocale({username, locale})])
+    | _ => Ok()
+    }
+  }
 
 /**
 The groups the store's accounts will belong to, for the role check, which runs
@@ -102,6 +122,7 @@ let load = (~accounts: option<array<entry>>=?, ~accountsFile: option<string>=?, 
       parseFile(path)->Result.map(entries => {
         _registerEntries(entries)
         fromFile := entries->Array.map(e => e.username)
+        loadedFrom := Some(path)
         AccountsFile(path)
       })
     | None =>
@@ -110,6 +131,7 @@ let load = (~accounts: option<array<entry>>=?, ~accountsFile: option<string>=?, 
         parseFile(defaultPath)->Result.map(entries => {
           _registerEntries(entries)
           fromFile := entries->Array.map(e => e.username)
+          loadedFrom := Some(defaultPath)
           DefaultFile(defaultPath)
         })
       } else {

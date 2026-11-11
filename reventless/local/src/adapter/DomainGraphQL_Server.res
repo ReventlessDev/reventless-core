@@ -169,6 +169,70 @@ let handleSwitchRole = (req: nodeRequest, res: nodeResponse): unit =>
     }
   })
 
+type _localeBody = {locale?: string}
+
+// Writes the language the caller reads in to their own account, and re-mints their session
+// with it, as a Cognito id token carries the `locale` attribute after an update. The local
+// counterpart of the app client writing the standard attribute on AWS. The bearer is verified
+// by the dispatch rule above; the active role the caller holds is kept.
+let handleSetLocale = (req: nodeRequest, res: nodeResponse): unit =>
+  readBody(req, body => {
+    let locale = switch body->JSON.parseOrThrow {
+    | json => (json->Obj.magic: _localeBody).locale->Option.map(String.trim)
+    | exception _ => None
+    }
+    let presented =
+      req.headers
+      ->Dict.get("authorization")
+      ->Option.flatMap(h =>
+        String.startsWith(h, "Bearer ")
+          ? Some(String.slice(h, ~start=7, ~end=String.length(h))->String.trim)
+          : None
+      )
+    switch (presented, locale) {
+    | (None, _) => _loginRejected(res, ~error="Missing bearer token")
+    | (_, None) =>
+      _writeJson(
+        res,
+        ~status=400,
+        JSON.Encode.object(dict{"error": JSON.Encode.string("Missing locale")}),
+      )
+    | (_, Some(tag)) if !ReventlessCore.Platform_I18n.isTag(tag) =>
+      _writeJson(
+        res,
+        ~status=400,
+        JSON.Encode.object(dict{"error": JSON.Encode.string(`Not a language tag: ${tag}`)}),
+      )
+    | (Some(token), Some(tag)) =>
+      switch LocalAuth.Login.verifyAndDecode(token) {
+      | None => _loginRejected(res, ~error="Invalid token")
+      | Some(presentedIdentity) =>
+        switch AccountStore.setLocale(~username=presentedIdentity.username, ~locale=tag) {
+        | Error(msg) => _loginRejected(res, ~error=msg)
+        | Ok() =>
+          let activeRole =
+            presentedIdentity->Reventless.Identity.getClaim(LocalAuth.Login.activeRoleClaim)
+          switch LocalAuth.Login.reissue(~token, ~activeRole) {
+          | Error(msg) => _loginRejected(res, ~error=msg)
+          | Ok(newToken) =>
+            let identity =
+              LocalAuth.Login.verifyAndDecode(newToken)->Option.getOr(Reventless.Identity.anonymous)
+            _writeJson(
+              res,
+              ~status=200,
+              JSON.Encode.object(
+                dict{
+                  "token": JSON.Encode.string(newToken),
+                  "identity": identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema),
+                },
+              ),
+            )
+          }
+        }
+      }
+    }
+  })
+
 let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
   res->writeHead(204, {"Access-Control-Allow-Origin": "*"})
   res->endEmpty
@@ -259,6 +323,8 @@ let _dispatch = (
     handleLogin(req, res)
   } else if path == "/__inmemory/switch-role" && req.method == "POST" {
     handleSwitchRole(req, res)
+  } else if path == "/__inmemory/locale" && req.method == "POST" {
+    handleSetLocale(req, res)
   } else if path == "/__inmemory/logout" && req.method == "POST" {
     handleLogout(req, res)
   } else if path == "/events" && req.method == "POST" {

@@ -343,6 +343,18 @@ module Login = {
    escalation, because the subset being widened *to* is the one the store says
    the caller has.
    */
+  /** Set the language an account reads in, as its token's `locale` claim. `false` for an
+      account the store does not hold. */
+  let setLocale = (~username: string, ~locale: string): bool =>
+    switch store.contents->Dict.get(username) {
+    | None => false
+    | Some({password, identity}) =>
+      let claims = identity.claims->Option.mapOr(Dict.make(), c => Dict.fromArray(c->Dict.toArray))
+      claims->Dict.set(Identity.localeClaim, locale)
+      store.contents->Dict.set(username, {password, identity: {...identity, claims}})
+      true
+    }
+
   let reissue = (~token: string, ~activeRole: option<string>): result<string, string> =>
     switch verifyAndDecode(token) {
     | None => Error("Invalid token")

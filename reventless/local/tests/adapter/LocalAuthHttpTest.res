@@ -37,7 +37,10 @@ type httpRes
 @send external _resSetEncoding: (httpRes, string) => unit = "setEncoding"
 @get external _resStatusCode: httpRes => int = "statusCode"
 
-let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
+let postJson = (~token: option<string>=?, path: string, body: dict<JSON.t>): promise<(
+  int,
+  JSON.t,
+)> =>
   Promise.make((resolve, reject) => {
     let bodyStr = body->JSON.Encode.object->JSON.stringify
     let req = _request(
@@ -46,10 +49,15 @@ let postJson = (path: string, body: dict<JSON.t>): promise<(int, JSON.t)> =>
         port,
         path,
         method: "POST",
-        headers: Dict.fromArray([
-          ("content-type", "application/json"),
-          ("content-length", bodyStr->String.length->Int.toString),
-        ]),
+        headers: Dict.fromArray(
+          Array.concat(
+            [
+              ("content-type", "application/json"),
+              ("content-length", bodyStr->String.length->Int.toString),
+            ],
+            token->Option.mapOr([], t => [("authorization", `Bearer ${t}`)]),
+          ),
+        ),
       },
       res => {
         let status = _resStatusCode(res)
@@ -220,3 +228,70 @@ testPromise("Bearer token issued via HTTP round-trips through authenticate", asy
   | _ => JsError.throwWithMessage("expected Authenticated(alice) from issued token")
   }
 })
+
+// ── The language an account reads in ───────────────────────────────────────
+
+let loginAlice = async () => {
+  let (_, body) = await postJson(
+    "/__inmemory/login",
+    Dict.fromArray([
+      ("username", JSON.Encode.string("alice")),
+      ("password", JSON.Encode.string("alice-pw")),
+    ]),
+  )
+  getString(body, "token")
+}
+
+let localeOf = body =>
+  getJsonField(body, "identity")
+  ->Option.map(j => j->Reventless.Util_Sury.fromJson(Reventless.Identity.schema))
+  ->Option.flatMap(id => id->Reventless.Identity.getClaim(Reventless.Identity.localeClaim))
+
+testPromise(
+  "POST /__inmemory/locale writes the account's language and re-mints the session with it",
+  async () => {
+    let token = await loginAlice()
+    let (status, body) = await postJson(
+      ~token,
+      "/__inmemory/locale",
+      Dict.fromArray([("locale", JSON.Encode.string("de"))]),
+    )
+    let reissued = getString(body, "token")
+    expect((
+      status,
+      localeOf(body),
+      LocalAuth.Login.verifyAndDecode(reissued)->Option.flatMap(id =>
+        id->Reventless.Identity.getClaim(Reventless.Identity.localeClaim)
+      ),
+      // The next login carries it too: it is the account's, not the session's.
+      localeOf(
+        (
+          await postJson(
+            "/__inmemory/login",
+            Dict.fromArray([
+              ("username", JSON.Encode.string("alice")),
+              ("password", JSON.Encode.string("alice-pw")),
+            ]),
+          )
+        )->Pair.second,
+      ),
+    ))->toEqual((200, Some("de"), Some("de"), Some("de")))
+  },
+)
+
+testPromise(
+  "POST /__inmemory/locale refuses what is not a language tag, and a caller with no session",
+  async () => {
+    let token = await loginAlice()
+    let (badTag, _) = await postJson(
+      ~token,
+      "/__inmemory/locale",
+      Dict.fromArray([("locale", JSON.Encode.string("<script>"))]),
+    )
+    let (noSession, _) = await postJson(
+      "/__inmemory/locale",
+      Dict.fromArray([("locale", JSON.Encode.string("de"))]),
+    )
+    expect((badTag, noSession))->toEqual((400, 401))
+  },
+)

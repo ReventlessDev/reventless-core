@@ -18,6 +18,8 @@ let handleLogin = DomainGraphQL_Server$ReventlessLocal.handleLogin;
 
 let handleSwitchRole = DomainGraphQL_Server$ReventlessLocal.handleSwitchRole;
 
+let handleSetLocale = DomainGraphQL_Server$ReventlessLocal.handleSetLocale;
+
 let handleLogout = DomainGraphQL_Server$ReventlessLocal.handleLogout;
 
 let _corsWriteHeaders = DomainGraphQL_Server$ReventlessLocal._corsWriteHeaders;
@@ -139,6 +141,7 @@ export {
   _loginRejected,
   handleLogin,
   handleSwitchRole,
+  handleSetLocale,
   handleLogout,
   _corsWriteHeaders,
   handleObjectPut,

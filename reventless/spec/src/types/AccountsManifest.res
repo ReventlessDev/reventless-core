@@ -224,6 +224,7 @@ provider writes; on AWS the same edits would follow a pool operation.
 type edit =
   | Append(entry)
   | SetGroups({username: string, groups: array<string>})
+  | SetLocale({username: string, locale: string})
   | Remove(string)
 
 type yamlNode
@@ -276,6 +277,13 @@ let applyEdits = (yamlText: string, edits: array<edit>): result<string, string> 
               path(index, "groups"),
               doc->createNode(groups->Array.map(JSON.Encode.string)->JSON.Encode.array),
             )
+            None
+          }
+        | SetLocale({username, locale}) =>
+          switch indexOf(username) {
+          | -1 => Some(`${username} is not declared in the manifest`)
+          | index =>
+            doc->setInNode(path(index, "locale"), doc->createNode(JSON.Encode.string(locale)))
             None
           }
         | Remove(username) =>

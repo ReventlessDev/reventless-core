@@ -158,6 +158,19 @@ A token already issued stays valid until it expires. Choosing a role narrows the
 So this is a mechanism for stopping an operator from acting with elevated rights **by accident**, which is a real and common failure. It is **not** a mechanism for containing one who is trying to. Containing that needs short token lifetimes and a revocation path, which this does not provide.
 :::
 
+## The Language a Person Reads In
+
+`Identity.localeClaim` (`"locale"`) names the language an account reads in (`de`,
+`de-AT`). A server mail to the account is written in it where the deployment offers it
+(see [Platform Capabilities](../platform-capabilities.md#the-servers-words)).
+
+| Platform | Where it lives | How it is written |
+|----------|----------------|-------------------|
+| Local | `locale` on the account in `accounts.yaml`, carried as the token's `locale` claim | `POST /__inmemory/locale` with a bearer token and `{"locale": "de"}`: a new token, minted at once, keeping the active role; written back to `accounts.yaml` when the account is declared there |
+| AWS | Cognito's standard `locale` attribute, carried in the id token | The app client may write it (`UpdateUserAttributes` with the caller's access token); the next token carries it |
+
+Only the caller's own account is written: there is no argument naming a user.
+
 ## What Is Persisted
 
 Only `identity.userId` is persisted, as the existing `meta.user` string field on every event. The full `Identity.t` (groups, claims, provider) is **not** stored in events.

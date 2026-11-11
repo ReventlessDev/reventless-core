@@ -45,10 +45,37 @@ let pluginChecked = {
   contents: false
 };
 
+let loadedFrom = {
+  contents: undefined
+};
+
 function resetResolution() {
   resolved.contents = false;
   pluginChecked.contents = false;
   fromFile.contents = [];
+  loadedFrom.contents = undefined;
+}
+
+function setLocale(username, locale) {
+  if (!LocalAuth$ReventlessLocal.Login.setLocale(username, locale)) {
+    return {
+      TAG: "Error",
+      _0: "Unknown user"
+    };
+  }
+  let path = loadedFrom.contents;
+  if (path !== undefined && fromFile.contents.includes(username)) {
+    return AccountsManifest$Reventless.editFile(path, [{
+        TAG: "SetLocale",
+        username: username,
+        locale: locale
+      }]);
+  } else {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
 }
 
 function providedGroups() {
@@ -71,6 +98,7 @@ function load(accounts, accountsFile, param) {
     return Stdlib_Result.map(AccountsManifest$Reventless.parseFile(accountsFile), entries => {
       _registerEntries(entries);
       fromFile.contents = entries.map(e => e.username);
+      loadedFrom.contents = accountsFile;
       return {
         TAG: "AccountsFile",
         _0: accountsFile
@@ -82,6 +110,7 @@ function load(accounts, accountsFile, param) {
     return Stdlib_Result.map(AccountsManifest$Reventless.parseFile(defaultPath), entries => {
       _registerEntries(entries);
       fromFile.contents = entries.map(e => e.username);
+      loadedFrom.contents = defaultPath;
       return {
         TAG: "DefaultFile",
         _0: defaultPath
@@ -224,7 +253,9 @@ export {
   _defaultPath,
   resolved,
   pluginChecked,
+  loadedFrom,
   resetResolution,
+  setLocale,
   providedGroups,
   load,
   reload,
