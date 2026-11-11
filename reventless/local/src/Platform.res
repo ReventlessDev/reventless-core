@@ -1401,59 +1401,66 @@ module MakeWithConfig = (
   // caller after all makePlatform/deployPlugin calls are complete. In unified mode
   // this is a no-op (start() is called inline inside makePlatform/deployPlugin).
   let startServers = () => {
+    // `check-start` reads what a start reads and serves nothing: no server, no registry entry,
+    // no tap, no feed, no idle timer.
+    let checking = LocalCheckStart.active()
     if Config.splitApi {
       // Hydrate Login store from .reventless/accounts.yaml (or ~accounts/~accountsFile
       // if provided programmatically) before the Domain server accepts
       // requests. Unified mode does this in makePlatform; split mode defers
       // server startup to here so it must do the same.
       AccountStore.autoLoadOnce()
-      DomainGraphQL_Server.start(~port=domainPort, ())
-      DomainMCP_Server.start(~port=domainMcpPort, ())
-      PlatformGraphQL_Server.start(
-        ~port=platformPort,
-        ~contextFactory=Auth_GraphqlContext.buildAuthContext,
-        (),
-      )
-      PlatformMCP_Server.start(~port=platformMcpPort, ())
-    }
-    if graphqlDebug {
-      DomainGraphQL_Server.printDiagnostics()
-      DomainMCP_Server.printDiagnostics()
-      if Config.splitApi {
-        PlatformGraphQL_Server.printDiagnostics()
-        PlatformMCP_Server.printDiagnostics()
+      if !checking {
+        DomainGraphQL_Server.start(~port=domainPort, ())
+        DomainMCP_Server.start(~port=domainMcpPort, ())
+        PlatformGraphQL_Server.start(
+          ~port=platformPort,
+          ~contextFactory=Auth_GraphqlContext.buildAuthContext,
+          (),
+        )
+        PlatformMCP_Server.start(~port=platformMcpPort, ())
       }
     }
-    // Announce this platform — endpoint AND the store it opened — so `seed` and
-    // `seed:reset` can address it instead of inferring a store from their own
-    // environment. Here rather than in makePlatform because this is the one
-    // point both API modes pass through once the servers are actually up: in
-    // split mode they start just above, in unified mode makePlatform started
-    // them and this still runs before the process serves its first request.
-    let (kind, path) = BackendState.describeStore()
-    LocalPlatformRegistry.register(
-      ~port=domainPort,
-      ~endpoint=`http://localhost:${domainPort->Int.toString}/graphql`,
-      ~loginEndpoint=`http://localhost:${domainPort->Int.toString}/__inmemory/login`,
-      ~store={kind, ?path},
-      ~platformEndpoint=Config.splitApi
-        ? `http://localhost:${platformPort->Int.toString}/graphql`
-        : `http://localhost:${domainPort->Int.toString}/graphql`,
-    )
-    // A platform left running for an editor stops once nothing has watched it for a while.
-    LocalIdleExit.start(~env=NodeProcess.env)
-    // After the register, and it fills the tap port in once the socket is bound:
-    // the port is ephemeral by default, so it is not known until `listen` calls
-    // back. The entry therefore never names a port that is not listening.
-    LocalEventTap.start(
-      ~onBound=tapPort => LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort),
-      (),
-    )
-    // The log feed, the same way: its port is filled in once it is bound.
-    LocalLogFeed.start(
-      ~onBound=logPort => LocalPlatformRegistry.publishLogPort(~port=domainPort, ~logPort),
-      (),
-    )
+    if !checking {
+      if graphqlDebug {
+        DomainGraphQL_Server.printDiagnostics()
+        DomainMCP_Server.printDiagnostics()
+        if Config.splitApi {
+          PlatformGraphQL_Server.printDiagnostics()
+          PlatformMCP_Server.printDiagnostics()
+        }
+      }
+      // Announce this platform — endpoint AND the store it opened — so `seed` and
+      // `seed:reset` can address it instead of inferring a store from their own
+      // environment. Here rather than in makePlatform because this is the one
+      // point both API modes pass through once the servers are actually up: in
+      // split mode they start just above, in unified mode makePlatform started
+      // them and this still runs before the process serves its first request.
+      let (kind, path) = BackendState.describeStore()
+      LocalPlatformRegistry.register(
+        ~port=domainPort,
+        ~endpoint=`http://localhost:${domainPort->Int.toString}/graphql`,
+        ~loginEndpoint=`http://localhost:${domainPort->Int.toString}/__inmemory/login`,
+        ~store={kind, ?path},
+        ~platformEndpoint=Config.splitApi
+          ? `http://localhost:${platformPort->Int.toString}/graphql`
+          : `http://localhost:${domainPort->Int.toString}/graphql`,
+      )
+      // A platform left running for an editor stops once nothing has watched it for a while.
+      LocalIdleExit.start(~env=NodeProcess.env)
+      // After the register, and it fills the tap port in once the socket is bound:
+      // the port is ephemeral by default, so it is not known until `listen` calls
+      // back. The entry therefore never names a port that is not listening.
+      LocalEventTap.start(
+        ~onBound=tapPort => LocalPlatformRegistry.publishTapPort(~port=domainPort, ~tapPort),
+        (),
+      )
+      // The log feed, the same way: its port is filled in once it is bound.
+      LocalLogFeed.start(
+        ~onBound=logPort => LocalPlatformRegistry.publishLogPort(~port=domainPort, ~logPort),
+        (),
+      )
+    }
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
@@ -2408,8 +2415,10 @@ module MakeWithConfig = (
     // In unified mode, start immediately (backwards-compatible).
     if !Config.splitApi {
       AccountStore.autoLoadOnce()
-      DomainGraphQL_Server.start()
-      DomainMCP_Server.start()
+      if !LocalCheckStart.active() {
+        DomainGraphQL_Server.start()
+        DomainMCP_Server.start()
+      }
     }
   }
 
@@ -2540,26 +2549,28 @@ module MakeWithConfig = (
     // `@aws_cognito_user_pools(cognito_groups: ["Admin"])` in production. The Domain
     // server's `asInterface.start` accepts but ignores `~contextFactory`
     // because it always wires its own internal auth context.
-    adminGraphQL.start(
-      ~port=if Config.splitApi {
-        4001
-      } else {
-        4000
-      },
-      ~contextFactory=Auth_GraphqlContext.buildAuthContext,
-      (),
-    )
-    adminMCP.start(
-      ~port=if Config.splitApi {
-        3002
-      } else {
-        3001
-      },
-      (),
-    )
-    if Config.splitApi {
-      DomainGraphQL_Server.start()
-      DomainMCP_Server.start()
+    if !LocalCheckStart.active() {
+      adminGraphQL.start(
+        ~port=if Config.splitApi {
+          4001
+        } else {
+          4000
+        },
+        ~contextFactory=Auth_GraphqlContext.buildAuthContext,
+        (),
+      )
+      adminMCP.start(
+        ~port=if Config.splitApi {
+          3002
+        } else {
+          3001
+        },
+        (),
+      )
+      if Config.splitApi {
+        DomainGraphQL_Server.start()
+        DomainMCP_Server.start()
+      }
     }
 
     // Fire onPlatformDeployed hook with local platform metadata.
@@ -2787,7 +2798,7 @@ module MakeWithConfig = (
 
     // In unified mode, start servers immediately (backwards-compatible).
     // In split mode, start() is deferred to startServers().
-    if !Config.splitApi {
+    if !Config.splitApi && !LocalCheckStart.active() {
       switch apiTarget {
       | Domain =>
         DomainGraphQL_Server.start()

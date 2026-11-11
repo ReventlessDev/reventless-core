@@ -69,17 +69,20 @@ let guardReset = (~path: string, ~cwd=NodeProcess.cwd(), ()): unit =>
 
 /** Start, or address the one already running. An app's `Main.res` calls this as
     its first line, before `Platform.Make()`. */
-let orAddressRunning = (~cwd=NodeProcess.cwd(), ()): unit => {
-  // The reset is checked first and throws: exit 0 is for a start that was merely
-  // redundant, never for a destructive one that did not happen.
-  switch Backend.fromEnv() {
-  | Backend.Sqlite({path, resetOnStart: true}) => guardReset(~path, ~cwd, ())
-  | Backend.Sqlite(_) | Backend.Memory | Backend.Postgres(_) => ()
+let orAddressRunning = (~cwd=NodeProcess.cwd(), ()): unit =>
+  // A check builds in memory and serves nothing, so a running platform is no reason to stop it;
+  // stopping with exit 0 would report a start nobody checked.
+  if !LocalCheckStart.active() {
+    // The reset is checked first and throws: exit 0 is for a start that was merely
+    // redundant, never for a destructive one that did not happen.
+    switch Backend.fromEnv() {
+    | Backend.Sqlite({path, resetOnStart: true}) => guardReset(~path, ~cwd, ())
+    | Backend.Sqlite(_) | Backend.Memory | Backend.Postgres(_) => ()
+    }
+    switch decide(~cwd, ()) {
+    | Start => ()
+    | AlreadyRunning(entries) =>
+      report(entries)->Array.forEach(Console.log)
+      NodeProcess.exit(0)
+    }
   }
-  switch decide(~cwd, ()) {
-  | Start => ()
-  | AlreadyRunning(entries) =>
-    report(entries)->Array.forEach(Console.log)
-    NodeProcess.exit(0)
-  }
-}

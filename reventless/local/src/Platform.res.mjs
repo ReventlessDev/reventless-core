@@ -57,6 +57,7 @@ import * as Plugin_Builder$ReventlessLocal from "./components/Plugin_Builder.res
 import * as Counter_Builder$ReventlessLocal from "./components/Counter_Builder.res.mjs";
 import * as DeploymentProvenance$Reventless from "@reventlessdev/reventless-spec/src/types/DeploymentProvenance.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as LocalCheckStart$ReventlessLocal from "./LocalCheckStart.res.mjs";
 import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
@@ -1171,29 +1172,34 @@ function MakeWithConfig(Config) {
     });
   };
   let startServers = () => {
+    let checking = LocalCheckStart$ReventlessLocal.active(undefined, undefined);
     if (Config.splitApi) {
       AccountStore$ReventlessLocal.autoLoadOnce();
-      DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
-      DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
-      PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-      PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
-    }
-    if (graphqlDebug) {
-      DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
-      DomainMCP_Server$ReventlessLocal.printDiagnostics();
-      if (Config.splitApi) {
-        PlatformGraphQL_Server$ReventlessLocal.printDiagnostics();
-        PlatformMCP_Server$ReventlessLocal.printDiagnostics();
+      if (!checking) {
+        DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
+        DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
+        PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+        PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
       }
     }
-    let match = BackendState$ReventlessLocal.describeStore();
-    LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
-      kind: match[0],
-      path: match[1]
-    }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`);
-    LocalIdleExit$ReventlessLocal.start(process.env);
-    LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
-    LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+    if (!checking) {
+      if (graphqlDebug) {
+        DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
+        DomainMCP_Server$ReventlessLocal.printDiagnostics();
+        if (Config.splitApi) {
+          PlatformGraphQL_Server$ReventlessLocal.printDiagnostics();
+          PlatformMCP_Server$ReventlessLocal.printDiagnostics();
+        }
+      }
+      let match = BackendState$ReventlessLocal.describeStore();
+      LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
+        kind: match[0],
+        path: match[1]
+      }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`);
+      LocalIdleExit$ReventlessLocal.start(process.env);
+      LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
+      LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+    }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -1723,8 +1729,12 @@ function MakeWithConfig(Config) {
     currentDeployTarget.contents = "Domain";
     if (!Config.splitApi) {
       AccountStore$ReventlessLocal.autoLoadOnce();
-      DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
-      return DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+      if (!LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
+        DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
+        return DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+      } else {
+        return;
+      }
     }
   };
   let deployPlatform = (version, param, $staropt$star) => {
@@ -1800,11 +1810,13 @@ function MakeWithConfig(Config) {
       ]
     ]));
     currentDeployTarget.contents = "Domain";
-    adminGraphQL.start(Config.splitApi ? 4001 : 4000, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-    adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
-    if (Config.splitApi) {
-      DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
-      DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+    if (!LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
+      adminGraphQL.start(Config.splitApi ? 4001 : 4000, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+      adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
+      if (Config.splitApi) {
+        DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
+        DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+      }
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
@@ -1934,7 +1946,7 @@ function MakeWithConfig(Config) {
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
     firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
     Plugin_Helpers$ReventlessCore.replayPlatformDeployedHook();
-    if (!Config.splitApi) {
+    if (!Config.splitApi && !LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
       if (apiTarget === "Domain") {
         DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
         DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
@@ -2980,25 +2992,30 @@ function Make($star) {
     });
   };
   let startServers = () => {
+    let checking = LocalCheckStart$ReventlessLocal.active(undefined, undefined);
     AccountStore$ReventlessLocal.autoLoadOnce();
-    DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
-    DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
-    PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-    PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
-    if (graphqlDebug) {
-      DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
-      DomainMCP_Server$ReventlessLocal.printDiagnostics();
-      PlatformGraphQL_Server$ReventlessLocal.printDiagnostics();
-      PlatformMCP_Server$ReventlessLocal.printDiagnostics();
+    if (!checking) {
+      DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
+      DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
+      PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+      PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
     }
-    let match = BackendState$ReventlessLocal.describeStore();
-    LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
-      kind: match[0],
-      path: match[1]
-    }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`);
-    LocalIdleExit$ReventlessLocal.start(process.env);
-    LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
-    LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+    if (!checking) {
+      if (graphqlDebug) {
+        DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
+        DomainMCP_Server$ReventlessLocal.printDiagnostics();
+        PlatformGraphQL_Server$ReventlessLocal.printDiagnostics();
+        PlatformMCP_Server$ReventlessLocal.printDiagnostics();
+      }
+      let match = BackendState$ReventlessLocal.describeStore();
+      LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
+        kind: match[0],
+        path: match[1]
+      }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`);
+      LocalIdleExit$ReventlessLocal.start(process.env);
+      LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
+      LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+    }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -3597,10 +3614,12 @@ function Make($star) {
       ]
     ]));
     currentDeployTarget.contents = "Domain";
-    adminGraphQL.start(4001, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-    adminMCP.start(3002, undefined);
-    DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
-    DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+    if (!LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
+      adminGraphQL.start(4001, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+      adminMCP.start(3002, undefined);
+      DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
+      DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+    }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: "local",
@@ -3729,6 +3748,15 @@ function Make($star) {
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
     firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
     Plugin_Helpers$ReventlessCore.replayPlatformDeployedHook();
+    if (false && !LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
+      if (apiTarget === "Domain") {
+        DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
+        DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
+      } else {
+        PlatformGraphQL_Server$ReventlessLocal.start(4001, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+        PlatformMCP_Server$ReventlessLocal.start(3002, undefined);
+      }
+    }
     return {};
   };
   let Counter_make = Counter.make;

@@ -4,6 +4,7 @@ import * as Nodepath from "node:path";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Backend$ReventlessLocal from "./adapter/Backend.res.mjs";
+import * as LocalCheckStart$ReventlessLocal from "./LocalCheckStart.res.mjs";
 import * as LocalSeedTarget$ReventlessLocal from "./LocalSeedTarget.res.mjs";
 import * as LocalPlatformRegistry$ReventlessLocal from "./LocalPlatformRegistry.res.mjs";
 
@@ -69,6 +70,9 @@ function guardReset(path, cwdOpt, param) {
 
 function orAddressRunning(cwdOpt, param) {
   let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
+  if (LocalCheckStart$ReventlessLocal.active(undefined, undefined)) {
+    return;
+  }
   let match = Backend$ReventlessLocal.fromEnv();
   if (typeof match === "object" && match.TAG === "Sqlite") {
     if (match.resetOnStart) {

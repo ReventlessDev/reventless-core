@@ -30,6 +30,9 @@ ReScript modules, consumed by adding the package to your `rescript.json` `depend
   core adapter: `EventLog`, `DcbEventLog`, `QueryDb`, `CommandTopic`, `EventTopic`,
   `EventCollector`, `Counter`, `Scheduler`, `Task`, plus a local bus, query
   engine, GraphQL/MCP server adapters, and auth/user store.
+- **`check-start`** — a command that runs the app's start in check mode: every
+  plugin is built as a start builds it, in memory, and nothing is served. Exits 1
+  with the builder's message when the app would not start.
 - **`TestRunner`** — helpers for running a local platform inside a test suite
   (start/stop the GraphQL server), with Given-When-Then integration via
   [`reventless-gwt`](https://www.npmjs.com/package/@reventlessdev/reventless-gwt).

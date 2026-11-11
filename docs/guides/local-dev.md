@@ -110,6 +110,29 @@ pointing at *another* app's file is not caught.
 statement that this platform is meant to coexist, which is how the e2e suites and
 the VS Code runner start several in one directory.
 
+### Checking that the app starts (`check-start`)
+
+Some refusals only the platform's builder can give, because they depend on every
+plugin together: a decision's partition, for one, is right or wrong only in view of
+every other decision. A slice's own tests pass, and the app is refused when it boots.
+`check-start` gives that verdict without starting anything:
+
+```
+$ npx check-start
+check-start: the app would not start: DCB partition contradiction (Forum): …
+$ echo $?
+1
+```
+
+Run it from the app's local platform package, after `rescript build`. It runs the
+app's own start module (`src/Main.res.mjs`, or the one named as its argument) with
+`REVENTLESS_CHECK_START=1`: every plugin is built the way a start builds it, in
+memory, and nothing else happens. The platform skips the address check above, the
+servers, the registry entry, the event tap, the log feed and the idle timer. It exits
+0 when the app would start and 1 with the builder's message when it would not, so it
+fits a CI step or a tool that wants to know before it reports an app as working. A
+platform already running in the directory is left alone.
+
 ### Reading the event stream from outside
 
 Every local platform serves its domain events as NDJSON — one `@@RVLESS_EVT@@`
@@ -430,7 +453,7 @@ rather than data:
   default. The host-shell package ships no slots module, deliberately: a fallback
   here would be a fallback for appearance, and inheriting one you did not write
   is hard to notice. See
-  [UI configuration §4.1](/app/ui-configuration).
+  [UI configuration §4.1](../../packages/doc/docs-app/ui-configuration.md#41-when-a-hint-cannot-say-it--uislotsfile).
 
 ## Editing accounts without restarting
 
@@ -527,6 +550,7 @@ Both domain and admin queries are served at `http://localhost:4000/graphql`.
 | `REVENTLESS_GRAPHQL_ENDPOINT` | Seeds against this endpoint verbatim, skipping platform discovery. `REVENTLESS_LOGIN_ENDPOINT` overrides the login route, which otherwise follows the same host and port. |
 | `GRAPHQL_DEBUG=1` | Logs every incoming GraphQL request and response |
 | `MCP_DEBUG=1` | Logs MCP tool calls |
+| `REVENTLESS_CHECK_START=1` | Builds every plugin as a start does and serves nothing; set by `check-start` (see [Checking that the app starts](#checking-that-the-app-starts-check-start)). |
 | `REVENTLESS_DOMAIN_PORT=NNNN` | Override domain server port (default 4000). Also the port a platform registers itself under. |
 | `REVENTLESS_PLATFORM_PORT=NNNN` | Override admin/platform server port (default 4001) |
 | `REVENTLESS_DOMAIN_MCP_PORT` / `REVENTLESS_PLATFORM_MCP_PORT` | Override the MCP ports (defaults 3001 / 3002) |

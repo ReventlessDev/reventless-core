@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
