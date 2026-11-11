@@ -106,6 +106,16 @@ on:
         required: false
         type: boolean
         default: false
+      plugin-build-command:
+        description: >
+          How a plugin job builds, run from the repository root, with "{path}" replaced
+          by the plugin's stack path from the manifest, e.g. "pnpm --dir {path} run build".
+          Empty runs "pnpm run build", the whole repository, in every plugin job. Set it
+          when a stack builds with what it depends on alone: the platform job still
+          builds everything, and each plugin job then builds a fraction.
+        required: false
+        type: string
+        default: ""
       elevated-groups:
         description: >
           Comma-separated groups exempt from owner scoping, e.g. "Admin". Read by
@@ -837,18 +847,7 @@ jobs:
         if: inputs.build-ppx-from-source
         uses: ./.github/actions/setup-ppx
 
-      - name: Build
-        run: pnpm run build
-
-      - name: Install Pulumi CLI
-        uses: pulumi/setup-pulumi@v2
-        with:
-          # Pinned to the last version that deployed cleanly (Jun 2026). The CLI
-          # version is NOT the root cause of the nodejs-provider load failures
-          # (3.247.0 reproduces them); pinning is just hygiene to stop
-          # setup-pulumi silently floating to newer releases.
-          pulumi-version: 3.247.0
-
+      # Before the build, which may build only this plugin's stack.
       - name: Resolve plugin path
         id: plugin
         run: |
@@ -866,6 +865,28 @@ jobs:
           echo "region=${PLUGIN_REGION:-${{ needs.detect-changes.outputs.region }}}" >> "$GITHUB_OUTPUT"
           # `review: false` keeps the stack out of a pull request's review environment.
           echo "review=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .review != false' "$MANIFEST")" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          BUILD_COMMAND: ${{ inputs.plugin-build-command }}
+          STACK_PATH: ${{ steps.plugin.outputs.path }}
+        run: |
+          if [[ -z "$BUILD_COMMAND" ]]; then
+            pnpm run build
+          else
+            CMD="${BUILD_COMMAND//\{path\}/$STACK_PATH}"
+            echo "Building this stack only: $CMD"
+            bash -c "$CMD"
+          fi
+
+      - name: Install Pulumi CLI
+        uses: pulumi/setup-pulumi@v2
+        with:
+          # Pinned to the last version that deployed cleanly (Jun 2026). The CLI
+          # version is NOT the root cause of the nodejs-provider load failures
+          # (3.247.0 reproduces them); pinning is just hygiene to stop
+          # setup-pulumi silently floating to newer releases.
+          pulumi-version: 3.247.0
 
       - name: Resolve Lambda Layer ARN
         env:
