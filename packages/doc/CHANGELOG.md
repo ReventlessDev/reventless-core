@@ -718,6 +718,15 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-11
+- feat(local): a person can set the language their account reads in ([b6a37f4](https://github.com/ReventlessDev/reventless-core/commit/b6a37f47f0d602911b56a3265e7b0c2ff94974bb))
+- feat(ppx): @singular names a view's singular where the English rule is wrong ([1f114a4](https://github.com/ReventlessDev/reventless-core/commit/1f114a4a5d8857596f61e009e24718fb59c9c23d))
+- feat(registration): a visitor's mails are written in the language they asked in ([b677e08](https://github.com/ReventlessDev/reventless-core/commit/b677e08cafe11af28cf917270f9ae8fafb2425da))
+
+### 2026-11-10
+- feat(local): a mail is written in the language of the account it goes to ([71cfabc](https://github.com/ReventlessDev/reventless-core/commit/71cfabc26bcb2ad94e53d9d99c949e7755e0753a))
+- feat(spec): a server's messages are written in the recipient's language ([31bbf5f](https://github.com/ReventlessDev/reventless-core/commit/31bbf5f0a613131113d6f3e8a569578d29c439af))
+- feat(ppx): @plural names a view's plural and an uploadable field's store ([a6a0fb0](https://github.com/ReventlessDev/reventless-core/commit/a6a0fb085ca528afafafd78b23fbb84c6823fcd1))
 ### 2026-11-08
 - feat(aws): an automation on AWS hears its command's outcome from the DCB command Lambda ([c9e7edf](https://github.com/ReventlessDev/reventless-core/commit/c9e7edf1c4906238d3a499403335b56f34f6cfd4))
 - feat(core): an inbound caller hears the target's refusal, and an unheard refusal is a warning ([3ed23f9](https://github.com/ReventlessDev/reventless-core/commit/3ed23f963fd3abf79d573aa6b0722cfd3e028a74))
