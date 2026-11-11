@@ -1,9 +1,9 @@
 # Plan: each deploy job builds only its stack
 
 **Date:** 2026-11-11<br/>
-**Status:** 🚧 [B1](#b1-resolve-the-stacks-path-before-the-build) to
-[B3](#b3-an-input-that-says-how-a-plugin-job-builds) built 2026-11-11.
-[B4](#b4-measure-on-a-real-caller) waits for a caller's first deploy with the input set.<br/>
+**Status:** ✅ Done 2026-11-11. [B1](#b1-resolve-the-stacks-path-before-the-build) to
+[B3](#b3-an-input-that-says-how-a-plugin-job-builds) built, and
+[B4](#b4-measure-on-a-real-caller) measured on a caller's first deploy with the input set.<br/>
 **Touches:** `.github/workflows/deploy-reventless-aws.yml` (the reusable deploy workflow): the
 plugin matrix's `Build` step, and a new input.
 
@@ -63,6 +63,22 @@ replaced by the plugin's stack path, for example `pnpm --dir {path} run build`. 
 
 Deploy a change that touches every stack, before and after, and compare billed minutes and the
 time to the last stack. Keep the input set only if the deploys are just as green.
+
+> **Measured 2026-11-11** on the caller of [Why](#why), two deploys that each touched all eight
+> stacks, the second with `plugin-build-command: "pnpm --dir {path} run build"`. Both were green,
+> and the bake after the second found every stack registered.
+>
+> | | Full build in every job | Plugin jobs build their stack |
+> |---|---|---|
+> | Time to the last stack | 35 min | 20 min |
+> | Billed minutes, all jobs | about 66 | about 37 |
+> | Build in a plugin job | 3.5 to 5.2 min | 42 to 78 s |
+> | Build in the platform job | 3.8 min | 3.9 min |
+>
+> The platform job still builds everything, so it now sets the pace for the plugins that wait
+> on it. A smaller platform build is the next saving, and needs the same care as
+> [B2](#b2-what-a-stack-only-build-has-to-cover): the platform stack is the one that serves the
+> web bundle.
 
 ## Considered and not chosen
 
