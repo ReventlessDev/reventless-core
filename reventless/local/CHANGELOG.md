@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.330 (2026-11-11)
+
+### Features
+
+* **local:** check-start says whether an app would start, without starting it ([74d7ec9](https://github.com/ReventlessDev/reventless-core/commit/74d7ec9dc8a1e0d3a2747fbf4bc766e482f784f8))
+
+
 # 3.0.0-alpha.329 (2026-11-11)
 
 ### Features
