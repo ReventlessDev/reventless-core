@@ -299,3 +299,69 @@ describe("DcbScopeInference.infer — a consumed arm naming the slice's own id",
     expect(d.ambiguities)->toEqual([])
   })
 })
+
+// A contact is kept by its own id and names the customer it belongs to. Moving it to
+// another customer reads its own history, which another slice wrote: the customer on
+// that history is what the contact says, not a key the move reads by.
+let addCustomer = slice(
+  ~name="AddCustomer",
+  ~command=[id("customerId")],
+  ~consumed=[ev("CustomerAdded", [id("customerId")])],
+  ~produced=[ev("CustomerAdded", [id("customerId")])],
+)
+let addContact = slice(
+  ~name="AddContact",
+  ~command=[id("contactId"), id("customerId")],
+  ~consumed=[ev("ContactAdded", [id("contactId"), id("customerId")])],
+  ~produced=[ev("ContactAdded", [id("contactId"), id("customerId")])],
+  ~hint=Some("contactId"),
+)
+let moveContact = slice(
+  ~name="MoveContact",
+  ~command=[id("contactId"), id("customerId")],
+  ~consumed=[
+    ev("ContactAdded", [id("contactId"), id("customerId")]),
+    ev("ContactMoved", [id("contactId"), id("customerId")]),
+  ],
+  ~produced=[ev("ContactMoved", [id("contactId"), id("customerId")])],
+  ~hint=Some("contactId"),
+)
+
+describe("DcbScopeInference — an arm of the slice's own entity, written elsewhere", () => {
+  testSync("the other keys on it are payload: the move reads by the contact alone", () =>
+    expect(I.commandPayloadKeys(moveContact, ~partition="contactId", ~crossPartition=[]))->toEqual([
+      "customerId",
+    ])
+  )
+
+  testSync("nothing on it is read across partitions, alone or in the boundary", () => {
+    let d = I.infer([addCustomer, addContact, moveContact])
+    expect((
+      I.crossPartitionForSlice(moveContact),
+      d.crossPartitionTagKeys,
+      d.partitionBySlice->Dict.get("MoveContact"),
+    ))->toEqual(([], [], Some("contactId")))
+  })
+
+  testSync("reading the customer's own events still reads by the customer", () => {
+    let checksCustomer = {
+      ...moveContact,
+      consumed: Array.concat(moveContact.consumed, [ev("CustomerAdded", [id("customerId")])]),
+    }
+    let d = I.infer([addCustomer, addContact, checksCustomer])
+    expect((
+      I.commandPayloadKeys(checksCustomer, ~partition="contactId", ~crossPartition=[]),
+      d.crossPartitionTagKeys,
+    ))->toEqual(([], ["customerId"]))
+  })
+
+  testSync("a key declared on it is read by all the same", () => {
+    let declared = {
+      ...moveContact,
+      consumed: [
+        ev("ContactAdded", [id("contactId"), {name: "customerId", isList: false, declared: true}]),
+      ],
+    }
+    expect(I.commandPayloadKeys(declared, ~partition="contactId", ~crossPartition=[]))->toEqual([])
+  })
+})

@@ -53,6 +53,25 @@ function foreignConsumedKeys(s) {
   }));
 }
 
+function readByKeys(arms, partition) {
+  let declared = f => Stdlib_Option.getOr(f.declared, false);
+  return dedupSorted(arms.flatMap(e => {
+    if (partition !== undefined && e.idFields.map(tagKeyOf).includes(partition)) {
+      return e.idFields.filter(declared).map(tagKeyOf);
+    } else {
+      return e.idFields.map(tagKeyOf);
+    }
+  }));
+}
+
+function foreignArms(s) {
+  let own = new Set();
+  s.produced.forEach(e => {
+    own.add(e.eventType);
+  });
+  return s.consumed.filter(e => !own.has(e.eventType));
+}
+
 function sameAssignment(a, b) {
   let entries = d => Object.entries(d).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
   return Primitive_object.equal(entries(a), entries(b));
@@ -96,13 +115,6 @@ function resolvePartitions(slices) {
     } else {
       return [match[0]];
     }
-  };
-  let foreignArms = s => {
-    let own = new Set();
-    s.produced.forEach(e => {
-      own.add(e.eventType);
-    });
-    return s.consumed.filter(e => !own.has(e.eventType));
   };
   let armIsIdentity = (e, k, known) => {
     let producers = producersByEventType[e.eventType];
@@ -251,9 +263,9 @@ function partitionBlockers(s) {
 }
 
 function crossPartitionForSlice(s) {
-  let foreign = foreignConsumedKeys(s);
   let scalar = commandScalarKeys(s);
   let partition = resolvePartitions([s]).partitionBySlice[s.sliceName];
+  let foreign = readByKeys(foreignArms(s), partition);
   return foreign.filter(k => {
     if (Primitive_object.notequal(k, partition)) {
       return scalar.includes(k);
@@ -264,7 +276,7 @@ function crossPartitionForSlice(s) {
 }
 
 function commandPayloadKeys(s, partition, crossPartition) {
-  let foreign = foreignConsumedKeys(s);
+  let foreign = readByKeys(foreignArms(s), partition);
   let declared = f => Stdlib_Option.getOr(f.declared, false);
   let pinned = s.command.filter(f => {
     if (f.isList) {
@@ -305,7 +317,7 @@ function infer(slices) {
   slices.forEach(s => {
     let own = partitionBySlice[s.sliceName];
     let scalar = commandScalarKeys(s);
-    consumedKeys(s).forEach(k => {
+    readByKeys(s.consumed, own).forEach(k => {
       if (ownedPartitionKeys.has(k) && Primitive_object.notequal(k, own) && scalar.includes(k)) {
         crossKeys.add(k);
         return;
@@ -352,6 +364,8 @@ export {
   consumedKeys,
   commandScalarKeys,
   foreignConsumedKeys,
+  readByKeys,
+  foreignArms,
   sameAssignment,
   chapterKeys,
   resolvePartitions,

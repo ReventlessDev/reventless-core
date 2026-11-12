@@ -28,6 +28,10 @@ The four rules (over the representation):
    *foreign* consumed event while partitioned by something else *and* the key is
    another entity's partition. `AddProduct` reads `categoryId` (Category's
    partition) while partitioned by `productId` ⇒ `categoryId` is cross-partition.
+   An arm that carries the slice's own partition is its own entity's history, so the
+   other keys on it are not read by (`readByKeys`): `MoveContact`, partitioned by
+   `contactId`, reads `ContactAdded({contactId, customerId})` and moves the contact
+   to another customer without reading anything by `customerId`.
 
 3. **Index vs payload.** A `*Id` on an *emitted* event is indexed iff it is the
    producing slice's own partition key. Foreign reference keys (e.g. `categoryId`
@@ -168,6 +172,34 @@ let foreignConsumedKeys = (s: sliceShape): array<string> => {
   )
 }
 
+/**
+The keys a slice reads by on `arms`, once its partition is known. An arm that carries the
+partition is the slice's own entity's history, whoever wrote it: its other keys are what that
+entity says (the customer a contact belongs to), not keys the slice reads by. A key the author
+declared on such an arm is read by all the same. Without a partition every key counts.
+
+Rule 1 says the same of a key read back off the slice's own entity; rules 2 and 4 use this.
+*/
+let readByKeys = (arms: array<eventShape>, ~partition: option<string>): array<string> => {
+  let declared = (f: idField) => f.declared->Option.getOr(false)
+  dedupSorted(
+    arms->Array.flatMap(e =>
+      switch partition {
+      | Some(p) if e->keysOfEvent->Array.includes(p) =>
+        e.idFields->Array.filter(declared)->Array.map(tagKeyOf)
+      | _ => e->keysOfEvent
+      }
+    ),
+  )
+}
+
+/** The arms a slice reads that it does not itself produce. */
+let foreignArms = (s: sliceShape): array<eventShape> => {
+  let own = Set.make()
+  s.produced->Array.forEach(e => own->Set.add(e.eventType))
+  s.consumed->Array.filter(e => !(own->Set.has(e.eventType)))
+}
+
 /** Rule 1's outcome for a boundary, before the scope rules build on it. */
 type partitionResolution = {
   /** sliceName -> its partition key (absent when unresolved). */
@@ -258,11 +290,6 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
       }
     | None => candidates
     }
-  let foreignArms = (s: sliceShape) => {
-    let own = Set.make()
-    s.produced->Array.forEach(e => own->Set.add(e.eventType))
-    s.consumed->Array.filter(e => !(own->Set.has(e.eventType)))
-  }
   // An arm is identity evidence for `k` iff every producer of its event type is
   // (or, while unresolved, could be) partitioned by `k`.
   let armIsIdentity = (e: eventShape, k, known: dict<string>) =>
@@ -408,9 +435,9 @@ entity" case; the harness unions this with any explicit `@crossPartition`
 annotation so capacity/escape-hatch reads remain covered.
 */
 let crossPartitionForSlice = (s: sliceShape): array<string> => {
-  let foreign = foreignConsumedKeys(s)
   let scalar = commandScalarKeys(s)
   let partition = resolvePartitions([s]).partitionBySlice->Dict.get(s.sliceName)
+  let foreign = s->foreignArms->readByKeys(~partition)
   // A foreign read is cross-partition only when the command carries the key as a
   // scalar (must be fanned); an array-only foreign key auto-fans partition-scoped.
   foreign->Array.filter(k => Some(k) != partition && scalar->Array.includes(k))
@@ -428,7 +455,7 @@ list. Anything else only names another thing, and the fence is the partition.
 let commandPayloadKeys = (s: sliceShape, ~partition: string, ~crossPartition: array<string>): array<
   string,
 > => {
-  let foreign = foreignConsumedKeys(s)
+  let foreign = s->foreignArms->readByKeys(~partition=Some(partition))
   let declared = (f: idField) => f.declared->Option.getOr(false)
   let pinned =
     s.command
@@ -472,8 +499,8 @@ let infer = (slices: array<sliceShape>): derived => {
   slices->Array.forEach(s => {
     let own = partitionBySlice->Dict.get(s.sliceName)
     let scalar = commandScalarKeys(s)
-    s
-    ->consumedKeys
+    s.consumed
+    ->readByKeys(~partition=own)
     ->Array.forEach(k =>
       if ownedPartitionKeys->Set.has(k) && Some(k) != own && scalar->Array.includes(k) {
         crossKeys->Set.add(k)
