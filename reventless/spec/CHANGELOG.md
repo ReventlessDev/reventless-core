@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.200 (2026-11-12)
+
+### Bug Fixes
+
+* **dcb:** a decision reads its own history by its own key, whoever wrote it ([30ee872](https://github.com/ReventlessDev/reventless-core/commit/30ee872e038049445cb2395ab204bc0c73cddf2f))
+
+
 # 3.0.0-alpha.199 (2026-11-11)
 
 ### Features
