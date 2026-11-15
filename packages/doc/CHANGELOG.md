@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-15
+- refactor: a closed set is held as a variant, its words derived from one list ([03fb588](https://github.com/ReventlessDev/reventless-core/commit/03fb588701ca27a569e58d5b51b86bcee759b937))
 ### 2026-11-11
 - feat(local): a person can set the language their account reads in ([b6a37f4](https://github.com/ReventlessDev/reventless-core/commit/b6a37f47f0d602911b56a3265e7b0c2ff94974bb))
 - feat(ppx): @singular names a view's singular where the English rule is wrong ([1f114a4](https://github.com/ReventlessDev/reventless-core/commit/1f114a4a5d8857596f61e009e24718fb59c9c23d))
