@@ -145,7 +145,7 @@ function Make(Spec) {
     let match = await pending;
     let id = match.id;
     let actualStatus;
-    actualStatus = match.result.TAG === "Ok" ? "#Completed" : "#Pending";
+    actualStatus = match.result.TAG === "Ok" ? "Completed" : "Pending";
     if (id === expectedId && actualStatus === expectedStatus) {
       return Outcome$ReventlessGwt.pass;
     }
@@ -269,8 +269,8 @@ function FromSlice(Spec) {
       };
       let match = result;
       let tmp;
-      tmp = match.TAG === "Ok" ? "#Completed" : (
-          failures >= maxRetries ? "#Abandoned" : "#Failed"
+      tmp = match.TAG === "Ok" ? "Completed" : (
+          failures >= maxRetries ? "Abandoned" : "Failed"
         );
       return {
         id: todo.id,
@@ -295,7 +295,7 @@ function FromSlice(Spec) {
         _0: Translation.onExhausted(todo.id, todo.item, lastError)
       },
       retries: Spec.maxRetries,
-      status: "#Abandoned",
+      status: "Abandoned",
       sent: []
     });
     let thenCommand = async (pending, expectedId, expectedCmd) => {
@@ -370,8 +370,8 @@ function FromSlice(Spec) {
       }
     };
     let current = s => {
-      if (s === "#Pending") {
-        return "#Failed";
+      if (s === "Pending") {
+        return "Failed";
       } else {
         return s;
       }

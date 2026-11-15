@@ -155,56 +155,6 @@ describe("AnsiStyle.formatOfWord", () => {
   )
 })
 
-describe("SidecarStepKind", () => {
-  let words = [
-    "event",
-    "command",
-    "input",
-    "error",
-    "sideEffect",
-    "state",
-    "noEvent",
-    "noState",
-    "forbidden",
-    "noCommand",
-    "todo",
-    "noTodo",
-    "capabilities",
-    "sweep",
-    "process",
-    "exhausted",
-    "resolved",
-    "notUnderstood",
-    "inputRefused",
-    "sent",
-    "nothingSent",
-    "todoStatus",
-    "retries",
-    "publicEvent",
-    "opaque",
-  ]
-
-  testSync("every word the sidecar writes reads as a known kind and prints back", () => {
-    let kinds = words->Array.map(SidecarStepKind.ofString)
-    expect(
-      kinds->Array.filter(
-        k =>
-          switch k {
-          | OtherSidecarStep(_) => true
-          | _ => false
-          },
-      ),
-    )->toEqual([])
-    expect(kinds->Array.map(SidecarStepKind.toString))->toEqual(words)
-  })
-
-  testSync("a word this build does not know is kept and prints back", () => {
-    let kind = SidecarStepKind.ofString("thenSomethingNew")
-    expect(kind)->toEqual(SidecarStepKind.OtherSidecarStep("thenSomethingNew"))
-    expect(SidecarStepKind.toString(kind))->toBe("thenSomethingNew")
-  })
-})
-
 describe("Catalogue element kinds", () => {
   testSync("each text reads as its kind and prints back unchanged", () => {
     let texts = [
@@ -243,20 +193,20 @@ describe("Catalogue element kinds", () => {
 describe("CheckLifecycleModel's report words", () => {
   testSync("severities print in the order a run prints them", () =>
     expect(CheckLifecycleModel.severities->Array.map(s => (s :> string)))->toEqual([
-      "contradicted",
-      "unverified",
-      "undeclared",
-      "level",
-      "ambiguous",
+      "Contradicted",
+      "Unverified",
+      "Undeclared",
+      "LevelMismatch",
+      "Ambiguous",
     ])
   )
 
-  testSync("an outcome kind prints as the sidecar's word", () =>
+  testSync("an outcome kind prints as its case's name", () =>
     expect(
       [CheckLifecycleModel.EventOutcome, ErrorOutcome, NoEventOutcome]->Array.map(
         k => (k :> string),
       ),
-    )->toEqual(["event", "error", "noEvent"])
+    )->toEqual(["EventOutcome", "ErrorOutcome", "NoEventOutcome"])
   )
 
   testSync("a derived level prints as its name, and an absent one as empty", () =>

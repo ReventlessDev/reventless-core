@@ -185,8 +185,9 @@ let sortedUnique = (xs: array<string>): array<string> => {
     slice's setup routinely names other entities, and folding those into this
     row's state is how a scenario about a second order gets read as a scenario
     about the first one's. */
-/** `opaque` is a step the sidecar could not read (`givenEvents([added])`): it is
-    there, but its name is source text, not an element. */
+/** `opaque` marks a step the sidecar could not read, an `Opaque` step
+    (`givenEvents([added])`): it is there, but its name is source text, not an
+    element. */
 type element = {name: string, values: array<(string, JSON.t)>, opaque?: bool}
 
 /** One scenario, reduced to what the harvest reads. `then` carries at most one
@@ -208,6 +209,8 @@ type corpus = {
   component: string,
   path: string,
   scenarios: array<scenario>,
+  /** The step kinds this build does not know, each once: absent when there are none. */
+  unknownKinds?: array<string>,
 }
 
 /** `[[name, exampleValue], …]` — the shape the sidecar writes a record literal
@@ -241,8 +244,8 @@ let elementsOf = (steps: array<dict<JSON.t>>): array<element> =>
 
 let isOpaque = (e: element) => e.opaque == Some(true)
 
-/** A step of a kind the sidecar knows. A `when` of `process`, `sweep` or
-    `exhausted` names no element, and is readable all the same. */
+/** A step of a kind the sidecar knows. A `when` of `Process`, `Sweep` or
+    `Exhausted` names no element, and is readable all the same. */
 let readableStep = (e: element) => !isOpaque(e)
 
 let kindOf = (steps: array<dict<JSON.t>>): option<SidecarStepKind.t> =>
@@ -250,7 +253,7 @@ let kindOf = (steps: array<dict<JSON.t>>): option<SidecarStepKind.t> =>
 
 /** A `then` the sidecar could not read still says which kind it asserts:
     `thenEvent(added)` emitted, though nothing says what. A `when` keeps
-    `opaque`, so no command is named after a variable. */
+    `Opaque`, so no command is named after a variable. */
 let thenKindOf = (steps: array<dict<JSON.t>>): option<SidecarStepKind.t> =>
   switch steps->Array.get(0) {
   | Some(s) =>
@@ -282,15 +285,36 @@ let scenarioOf = (j: JSON.t): option<scenario> =>
 /** No `when` step of a known kind: the walk has nothing to exercise. */
 let isUnreadable = (s: scenario) => !(s.whenElements->Array.some(readableStep))
 
+/** The words of every step, and of what an unread step stands for, that name no
+    kind this build knows. */
+let unknownKindsOf = (scenarios: array<JSON.t>): array<string> =>
+  scenarios
+  ->Array.filterMap(asObj)
+  ->Array.flatMap(d => Array.flat([getObjs(d, "given"), getObjs(d, "when"), getObjs(d, "then")]))
+  ->Array.flatMap(step => [
+    stepKindOf(step),
+    step->getStr("of")->Option.map(SidecarStepKind.ofString),
+  ])
+  ->Array.filterMap(kind =>
+    switch kind {
+    | Some(OtherSidecarStep(word)) => Some(word)
+    | _ => None
+    }
+  )
+  ->sortedUnique
+
 let readCorpus = (path: string): option<corpus> =>
   switch path->NodeFs.readFileSync->JSON.parseOrThrow->asObj {
   | None => None
   | Some(d) =>
     let stem = d->getStr("stem")->Option.getOr("")
+    let scenarios = getArr(d, "scenarios")
+    let unknownKinds = unknownKindsOf(scenarios)
     Some({
       component: stem->String.replace("_GWT", ""),
       path,
-      scenarios: getArr(d, "scenarios")->Array.filterMap(scenarioOf),
+      scenarios: scenarios->Array.filterMap(scenarioOf),
+      unknownKinds: ?(Array.length(unknownKinds) > 0 ? Some(unknownKinds) : None),
     })
   | exception _ => None
   }
@@ -611,7 +635,7 @@ let lifecycleMapFor = (
 
 // ── Rule 2 and 3: the relation a command's own scenarios describe ───────────
 
-// `Rejected`: the decision rejected the command, the sidecar's `"error"`.
+// `Rejected`: the decision rejected the command, the sidecar's `Error`.
 type outcome = Emitted | NoChange | Rejected
 
 type observation = {
@@ -784,13 +808,13 @@ let deriveCommands = (
     plugin has is read, though only its command scenarios count.
 
     An empty `then` is skipped rather than read as "accepted, nothing happened":
-    `thenNoEvent` is written as `noEvent`, so an empty `then` is one the sidecar
-    could not read (or an older sidecar's `noEvent`), and an outcome shown here
+    `thenNoEvent` is written as `NoEvent`, so an empty `then` is one the sidecar
+    could not read (or an older sidecar's `NoEvent`), and an outcome shown here
     has to be one a scenario actually states. */
 type outcomeKind =
-  | @as("event") EventOutcome
-  | @as("error") ErrorOutcome
-  | @as("noEvent") NoEventOutcome
+  | EventOutcome
+  | ErrorOutcome
+  | NoEventOutcome
 
 type shownOutcome = {
   kind: outcomeKind,
@@ -871,11 +895,11 @@ let commandOutcomes = (~plugin: string, ~corpora: array<corpus>): array<commandO
 
 /** A finding's verdict, in the order a run prints them. */
 type severity =
-  | @as("contradicted") Contradicted
-  | @as("unverified") Unverified
-  | @as("undeclared") Undeclared
-  | @as("level") LevelMismatch
-  | @as("ambiguous") Ambiguous
+  | Contradicted
+  | Unverified
+  | Undeclared
+  | LevelMismatch
+  | Ambiguous
 
 let severities = [Contradicted, Unverified, Undeclared, LevelMismatch, Ambiguous]
 
@@ -899,7 +923,7 @@ type finding = {
 /** A corpus the walk can only partly read.
 
     A readable verb handed a let-bound value rather than a literal records it as
-    `opaque`, since the sidecar records the constructor application it can see,
+    `Opaque`, since the sidecar records the constructor application it can see,
     and a verb the sidecar has no reading for records nothing. Either way the
     scenario reaches here with no `when` step of a known kind, and the walk has
     nothing to exercise.
@@ -1138,21 +1162,38 @@ let isWritablePath = (path: string) =>
   | _ => false
   }
 
+/** The first sidecar holding a step kind this build does not know, as the reason
+    to give. Such a sidecar and this reader come from different releases: reading
+    on would drop those steps in silence and derive a model from what is left. */
+let releaseMismatch = (corpora: array<corpus>): option<string> => {
+  let unknown = corpora->Array.filterMap(c =>
+    c.unknownKinds
+    ->Option.flatMap(words => words->Array.get(0))
+    ->Option.map(word => (c.path, word))
+  )
+  unknown
+  ->Array.get(0)
+  ->Option.map(((path, word)) => {
+    let others = Array.length(unknown) - 1
+    let more = others > 0 ? ` and ${others->Int.toString} other sidecar(s)` : ""
+    `${NodePath.basename(path)}${more}: ${SidecarStepKind.unknownWordReason(word)}`
+  })
+}
+
 let runPlugin = async (
   ~plugin: string,
   ~pluginDir: string,
   ~findings: array<finding>,
   ~opaque: array<opaque>,
   ~outcomes: array<commandOutcomes>,
-): result<array<derivedCommand>, string> =>
-  switch await readDeclared(~pluginDir) {
-  | Error(msg) => Error(msg)
-  | Ok(declared) =>
-    let corpora =
-      filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
-        readCorpus,
-      )
-
+): result<array<derivedCommand>, string> => {
+  let corpora =
+    filesUnder(NodePath.join([pluginDir, "tests"]), ~suffix=".gwt.json")->Array.filterMap(
+      readCorpus,
+    )
+  switch (releaseMismatch(corpora), await readDeclared(~pluginDir)) {
+  | (Some(msg), _) | (None, Error(msg)) => Error(msg)
+  | (None, Ok(declared)) =>
     outcomes->Array.pushMany(commandOutcomes(~plugin, ~corpora))
 
     // Every corpus, not only the ones the walk goes on to use: the kinds that
@@ -1273,6 +1314,7 @@ let runPlugin = async (
     )
     Ok(derived)
   }
+}
 
 // ── The golden ──────────────────────────────────────────────────────────────
 
@@ -1335,7 +1377,8 @@ let goldenPath = (~root: appRoot) => NodePath.join([root.dir, "schema", "lifecyc
       that show it, sorted by plugin, component and command.
 
     `version` is the schema's own version, bumped when a consumer would have to
-    change. An added section is not such a change. */
+    change. An added section is not such a change. Version 2 writes a verdict and
+    an outcome kind by its case's name (`Contradicted`, `EventOutcome`). */
 let reportJson = (
   ~findings: array<finding>,
   ~opaque: array<opaque>,
@@ -1394,7 +1437,7 @@ let reportJson = (
 
   JSON.stringify(
     obj([
-      ("version", JSON.Encode.int(1)),
+      ("version", JSON.Encode.int(2)),
       ("findings", JSON.Encode.array(findings->Array.map(findingJson))),
       ("commands", JSON.Encode.array(derived->Array.map(commandJson))),
       (

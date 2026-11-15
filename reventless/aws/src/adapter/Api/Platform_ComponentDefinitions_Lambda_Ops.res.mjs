@@ -394,20 +394,20 @@ function classify(expected, found, writtenAt, since) {
     if (found === expected) {
       if (fresh !== undefined) {
         if (fresh) {
-          return "registered";
+          return "Registered";
         } else {
-          return "unchanged";
+          return "Unchanged";
         }
       } else {
-        return "matched";
+        return "Matched";
       }
     } else if (Primitive_object.equal(fresh, true)) {
-      return "diverged";
+      return "Diverged";
     } else {
-      return "behind";
+      return "Behind";
     }
   } else {
-    return "missing";
+    return "Missing";
   }
 }
 
@@ -438,9 +438,9 @@ function registrations(items, expect, since) {
 function isPending(r) {
   let match = r.state;
   switch (match) {
-    case "missing" :
-    case "behind" :
-    case "diverged" :
+    case "Missing" :
+    case "Behind" :
+    case "Diverged" :
       return true;
     default:
       return false;
@@ -484,15 +484,15 @@ function encodeSummary(rs) {
     ],
     [
       "registered",
-      rs.filter(r => r.state === "registered").length
+      rs.filter(r => r.state === "Registered").length
     ],
     [
       "unchanged",
-      rs.filter(r => r.state === "unchanged").length
+      rs.filter(r => r.state === "Unchanged").length
     ],
     [
       "matched",
-      rs.filter(r => r.state === "matched").length
+      rs.filter(r => r.state === "Matched").length
     ],
     [
       "registrations",

@@ -81,7 +81,7 @@ describe("Plugin_BuiltHook.schemaKind", () => {
   testSync("prints each kind as a published schema carries it", () =>
     expect(
       [Plugin_BuiltHook.RecordSchema, VariantSchema, UnknownSchema]->Array.map(k => (k :> string)),
-    )->toEqual(["record", "variant", "unknown"])
+    )->toEqual(["RecordSchema", "VariantSchema", "UnknownSchema"])
   )
 })
 

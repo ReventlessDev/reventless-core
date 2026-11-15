@@ -244,35 +244,35 @@ function push(pick, entries) {
 
 function given(names) {
   push(s => s.given, names.map(element => ({
-    kind: "event",
+    kind: "Event",
     element: element
   })));
 }
 
 function whenCommand(name) {
   push(s => s.when_, [{
-      kind: "command",
+      kind: "Command",
       element: name
     }]);
 }
 
 function thenEvents(names) {
   push(s => s.then_, names.map(element => ({
-    kind: "event",
+    kind: "Event",
     element: element
   })));
 }
 
 function thenError(name) {
   push(s => s.then_, [{
-      kind: "error",
+      kind: "Error",
       element: name
     }]);
 }
 
 function thenNoEvent() {
   push(s => s.then_, [{
-      kind: "noEvent",
+      kind: "NoEvent",
       element: ""
     }]);
 }

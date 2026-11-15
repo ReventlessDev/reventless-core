@@ -2,12 +2,12 @@
 
 
 let all = [
-  "registered",
-  "unchanged",
-  "matched",
-  "missing",
-  "behind",
-  "diverged"
+  "Registered",
+  "Unchanged",
+  "Matched",
+  "Missing",
+  "Behind",
+  "Diverged"
 ];
 
 function name(state) {

@@ -181,7 +181,7 @@ let pending = state =>
 let baked = json(`[
   {"baked": true, "bucket": "b", "key": "manifest.json", "plugins": 2, "bytes": 512},
   {"summary": true, "plugins": 1, "registered": 1, "unchanged": 0, "matched": 0, "registrations": [
-    {"plugin": "Catalog", "state": "registered", "expected": "sha256/new", "found": "sha256/new", "writtenAt": "2026-09-16T10:01:00Z"}
+    {"plugin": "Catalog", "state": "Registered", "expected": "sha256/new", "found": "sha256/new", "writtenAt": "2026-09-16T10:01:00Z"}
   ]}
 ]`)
 
@@ -198,7 +198,7 @@ describe("BakeManifest.readAnswer", () => {
   )
 
   testSync("a pending answer names the plugins not yet arrived", () =>
-    switch Bake.readAnswer(pending("behind")) {
+    switch Bake.readAnswer(pending("Behind")) {
     | Ok(Pending({pending})) => expect(pending)->toEqual(["Catalog"])
     | _ => expect("not pending")->toBe("pending")
     }
@@ -211,7 +211,7 @@ describe("BakeManifest.readAnswer", () => {
         state: Reported(Missing),
         expected: "sha256/new",
       }),
-    )->toBe("  Catalog: missing — expected sha256/new, row holds no row (written never)")
+    )->toBe("  Catalog: Missing — expected sha256/new, row holds no row (written never)")
   )
 })
 
@@ -228,7 +228,7 @@ describe("BakeManifest.converge", () => {
   }
 
   test("asks again while a plugin is behind, then succeeds", async () =>
-    expect(await run([pending("behind"), pending("behind"), baked], ~attempts=5))->toEqual((
+    expect(await run([pending("Behind"), pending("Behind"), baked], ~attempts=5))->toEqual((
       true,
       3,
     ))
@@ -236,14 +236,14 @@ describe("BakeManifest.converge", () => {
 
   // A first deploy has no row for any plugin until its registration lands.
   test("waits for a missing registration", async () =>
-    expect(await run([pending("missing"), baked], ~attempts=5))->toEqual((true, 2))
+    expect(await run([pending("Missing"), baked], ~attempts=5))->toEqual((true, 2))
   )
 
   test("stops at once on a registration that diverged", async () =>
-    expect(await run([pending("diverged"), baked], ~attempts=5))->toEqual((false, 1))
+    expect(await run([pending("Diverged"), baked], ~attempts=5))->toEqual((false, 1))
   )
 
   test("gives up when the attempts run out", async () =>
-    expect(await run([pending("behind")], ~attempts=3))->toEqual((false, 3))
+    expect(await run([pending("Behind")], ~attempts=3))->toEqual((false, 3))
   )
 })

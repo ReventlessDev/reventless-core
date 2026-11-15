@@ -51,11 +51,11 @@ type constructorSchema = {
   fields: array<fieldSchema>,
 }
 
-/** What shape a named type has; its text is what a published schema carries. */
+/** What shape a named type has; a published schema carries the case's name. */
 type schemaKind =
-  | @as("record") RecordSchema
-  | @as("variant") VariantSchema
-  | @as("unknown") UnknownSchema
+  | RecordSchema
+  | VariantSchema
+  | UnknownSchema
 
 /** Schema for one named type (a command, event, or state type). */
 type typeSchema = {

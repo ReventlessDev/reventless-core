@@ -129,7 +129,7 @@ function walkSchema(typeName, schema) {
       let fields = extractFields(schema.properties);
       return {
         typeName: typeName,
-        kind: "record",
+        kind: "RecordSchema",
         fields: fields,
         structuralHash: hashFields(fields)
       };
@@ -147,7 +147,7 @@ function walkSchema(typeName, schema) {
       if (hasNullLike) {
         return {
           typeName: typeName,
-          kind: "unknown",
+          kind: "UnknownSchema",
           fields: [],
           structuralHash: ""
         };
@@ -164,7 +164,7 @@ function walkSchema(typeName, schema) {
       });
       return {
         typeName: typeName,
-        kind: "variant",
+        kind: "VariantSchema",
         fields: [],
         constructors: constructors,
         structuralHash: hashConstructors(constructors)
@@ -172,7 +172,7 @@ function walkSchema(typeName, schema) {
     default:
       return {
         typeName: typeName,
-        kind: "unknown",
+        kind: "UnknownSchema",
         fields: [],
         structuralHash: ""
       };

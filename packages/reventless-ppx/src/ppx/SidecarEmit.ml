@@ -860,20 +860,20 @@ let rec ordered_steps ?(deep = false) (e : expression)
 
 let last = function [] -> None | xs -> Some (List.nth xs (List.length xs - 1))
 
-(* One asserted thing: `{kind, element, values}`, or `opaque` `of` the kind a
+(* One asserted thing: `{kind, element, values}`, or `Opaque` `of` the kind a
    step this walk cannot read stands in for, named by its source text. Dropped,
    `given: []` read as a history with nothing in it. *)
-type entry = { kind : string; of_ : string option; element : string; values : Yojson.Safe.t list }
+type entry = { kind : StepKind.t; of_ : StepKind.t option; element : string; values : Yojson.Safe.t list }
 
 let entry ~kind ?(element = "") ?(values = []) () = { kind; of_ = None; element; values }
 
-let opaque ?src ~(kind : string) (e : expression) : entry =
-  { kind = "opaque"; of_ = Some kind;
+let opaque ?src ~(kind : StepKind.t) (e : expression) : entry =
+  { kind = StepKind.Opaque; of_ = Some kind;
     element = Option.value (source_text ?src e) ~default:""; values = [] }
 
 let entry_fields (en : entry) : (string * Yojson.Safe.t) list =
-  [ ("kind", `String en.kind) ]
-  @ (match en.of_ with Some k -> [ ("of", `String k) ] | None -> [])
+  [ ("kind", `String (StepKind.word en.kind)) ]
+  @ (match en.of_ with Some k -> [ ("of", `String (StepKind.word k)) ] | None -> [])
   @ [ ("element", `String en.element); ("values", `List en.values) ]
 
 let step_json ~kind ~element ~values : Yojson.Safe.t =
@@ -977,7 +977,7 @@ let each ?none (f : expression -> entry) (payload : expression) : entry list =
   | _ -> [ f payload ]
 
 let state_entry ?src (e : expression) : entry =
-  entry ~kind:"state" ~element:"state" ~values:(record_entries ?src e) ()
+  entry ~kind:StepKind.State ~element:"state" ~values:(record_entries ?src e) ()
 
 (* One step call as written. [grouped] is false for a step that has no place in
    the three groups: a second act (`andThenEvents`) or the capabilities a
@@ -1000,67 +1000,67 @@ let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : ca
   in
   let input p =
     match element_of_constructor ?src p with
-    | Some (element, values) -> [ entry ~kind:"input" ~element ~values () ]
+    | Some (element, values) -> [ entry ~kind:StepKind.Input ~element ~values () ]
     | None ->
       let values = if is_record_like p then entries_of ?src p else json_literal_entries p in
-      [ entry ~kind:"input" ~element:"externalInput" ~values () ]
+      [ entry ~kind:StepKind.Input ~element:"externalInput" ~values () ]
   in
   match verb with
   (* given *)
-  | "givenEvents" | "givenEvent" -> mk "given" (on_last (each (ctor_entry ?src ~kind:"event")))
+  | "givenEvents" | "givenEvent" -> mk "given" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
   | "givenTodo" -> (
     match List.rev pos with
     | item :: id :: _ ->
-      mk "given" (one "todo" ~element:(text_value ?src id) ~values:(entries_of ?src item) ())
-    | _ -> mk "given" (on_last (fun p -> [ row_entry ?src ~kind:"todo" p ])))
-  | "givenCapabilities" -> mk ~grouped:false "given" (one "capabilities" ())
+      mk "given" (one StepKind.Todo ~element:(text_value ?src id) ~values:(entries_of ?src item) ())
+    | _ -> mk "given" (on_last (fun p -> [ row_entry ?src ~kind:StepKind.Todo p ])))
+  | "givenCapabilities" -> mk ~grouped:false "given" (one StepKind.Capabilities ())
   (* when *)
-  | "whenCmd" | "whenCommand" -> mk "when" (on_last (each (ctor_entry ?src ~kind:"command")))
+  | "whenCmd" | "whenCommand" -> mk "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Command)))
   | "whenInput" -> (
     match last pos with
     | Some p when is_record_like p -> mk "when" (input p)
-    | Some p -> mk "when" [ ctor_entry ?src ~kind:"input" p ]
+    | Some p -> mk "when" [ ctor_entry ?src ~kind:StepKind.Input p ]
     | None -> mk "when" [])
   | "whenReceived" -> mk "when" (on_last input)
-  | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:"event")))
+  | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
   (* The event a collect or resolve reacts to is the given one, moved here. *)
-  | "whenCollect" | "whenResolve" -> mk "when" (one "event" ())
+  | "whenCollect" | "whenResolve" -> mk "when" (one StepKind.Event ())
   | "whenSweep" | "whenReacts" | "whenPublishedThrough" | "whenExtensionReacts" ->
-    mk "when" (one "sweep" ())
+    mk "when" (one StepKind.Sweep ())
   | "whenProcess" | "whenTranslated" | "whenTranslateMocked" | "whenTranslateRetrying" ->
-    mk "when" (one "process" ())
+    mk "when" (one StepKind.Process ())
   | "whenExhausted" ->
     let element = match labelled "lastError" with Some e -> text_value ?src e | None -> "" in
-    mk "when" (one "exhausted" ~element ())
-  | "andThenEvents" -> mk ~grouped:false "when" (on_last (each (ctor_entry ?src ~kind:"event")))
+    mk "when" (one StepKind.Exhausted ~element ())
+  | "andThenEvents" -> mk ~grouped:false "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
   (* then *)
-  | "thenEvent" | "thenEvents" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"event")))
-  | "thenError" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"error")))
-  | "thenSideEffect" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"sideEffect")))
+  | "thenEvent" | "thenEvents" -> mk "then" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
+  | "thenError" -> mk "then" (on_last (each (ctor_entry ?src ~kind:StepKind.Error)))
+  | "thenSideEffect" -> mk "then" (on_last (each (ctor_entry ?src ~kind:StepKind.SideEffect)))
   (* `thenStateWithId(id, record)` names the row; the id routes the fold and is
      not part of the row's value. *)
   | "thenState" | "thenStates" | "thenStateWithId" | "thenStatesWithId" | "thenViewState"
   | "thenViewStates" ->
     mk "then" (on_last (each (state_entry ?src)))
   (* No element and no payload: the absence is the assertion. *)
-  | "thenNoEvent" -> mk "then" (one "noEvent" ())
-  | "thenNoState" -> mk "then" (one "noState" ())
-  (* Not `error`: who may act is not something the lifecycle decides. *)
-  | "thenForbidden" -> mk "then" (one "forbidden" ())
-  | "thenCommand" | "thenIssuesCommand" -> mk "then" (on_last (each (ctor_entry ?src ~kind:"command")))
+  | "thenNoEvent" -> mk "then" (one StepKind.NoEvent ())
+  | "thenNoState" -> mk "then" (one StepKind.NoState ())
+  (* Not `Error`: who may act is not something the lifecycle decides. *)
+  | "thenForbidden" -> mk "then" (one StepKind.Forbidden ())
+  | "thenCommand" | "thenIssuesCommand" -> mk "then" (on_last (each (ctor_entry ?src ~kind:StepKind.Command)))
   | "thenCommands" | "thenIssuesCommands" ->
-    mk "then" (on_last (each ~none:"noCommand" (ctor_entry ?src ~kind:"command")))
-  | "thenNoCommand" | "thenIssuesNoCommand" -> mk "then" (one "noCommand" ())
+    mk "then" (on_last (each ~none:StepKind.NoCommand (ctor_entry ?src ~kind:StepKind.Command)))
+  | "thenNoCommand" | "thenIssuesNoCommand" -> mk "then" (one StepKind.NoCommand ())
   | "thenTodos" | "thenScenarioTodos" ->
-    mk "then" (on_last (each ~none:"noTodo" (row_entry ?src ~kind:"todo")))
-  | "thenResolved" -> mk "then" (on_last (fun p -> one "resolved" ~element:(text_value ?src p) ()))
+    mk "then" (on_last (each ~none:StepKind.NoTodo (row_entry ?src ~kind:StepKind.Todo)))
+  | "thenResolved" -> mk "then" (on_last (fun p -> one StepKind.Resolved ~element:(text_value ?src p) ()))
   | "thenTranslateError" | "thenNotUnderstood" ->
-    mk "then" (on_last (fun p -> one "notUnderstood" ~element:(text_value ?src p) ()))
+    mk "then" (on_last (fun p -> one StepKind.NotUnderstood ~element:(text_value ?src p) ()))
   | "thenRefusedInput" ->
-    mk "then" (on_last (fun p -> one "inputRefused" ~element:(text_value ?src p) ()))
-  | "thenSent" -> mk "then" (on_last (each ~none:"nothingSent" (ctor_entry ?src ~kind:"sent")))
-  | "thenOutbound" -> mk "then" (on_last (each ~none:"nothingSent" (row_entry ?src ~kind:"sent")))
-  | "thenNothingSent" | "thenOutboundNothing" -> mk "then" (one "nothingSent" ())
+    mk "then" (on_last (fun p -> one StepKind.InputRefused ~element:(text_value ?src p) ()))
+  | "thenSent" -> mk "then" (on_last (each ~none:StepKind.NothingSent (ctor_entry ?src ~kind:StepKind.Sent)))
+  | "thenOutbound" -> mk "then" (on_last (each ~none:StepKind.NothingSent (row_entry ?src ~kind:StepKind.Sent)))
+  | "thenNothingSent" | "thenOutboundNothing" -> mk "then" (one StepKind.NothingSent ())
   | "thenTodoStatus" -> (
     match List.rev pos with
     | status :: id :: _ ->
@@ -1068,11 +1068,11 @@ let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : ca
         Option.to_list
           (Option.map (fun v -> `List [ `String "id"; v ]) (example_of_expr ?src id))
       in
-      mk "then" (one "todoStatus" ~element:(text_value ?src status) ~values ())
-    | _ -> mk "then" (on_last (fun p -> one "todoStatus" ~element:(text_value ?src p) ())))
-  | "thenRetryRecorded" -> mk "then" (on_last (fun p -> one "retries" ~element:(text_value ?src p) ()))
+      mk "then" (one StepKind.TodoStatus ~element:(text_value ?src status) ~values ())
+    | _ -> mk "then" (on_last (fun p -> one StepKind.TodoStatus ~element:(text_value ?src p) ())))
+  | "thenRetryRecorded" -> mk "then" (on_last (fun p -> one StepKind.Retries ~element:(text_value ?src p) ()))
   | "thenPublicEvent" | "thenPublicEvents" ->
-    mk "then" (on_last (each (ctor_entry ?src ~kind:"publicEvent")))
+    mk "then" (on_last (each (ctor_entry ?src ~kind:StepKind.PublicEvent)))
   | _ -> None
 
 (* `givenEvent(e)->whenCollect`: the event the slice reacts to is the when, as

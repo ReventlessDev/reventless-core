@@ -462,7 +462,7 @@ describe("registrations", () => {
             [("Ordering", "sha256/a")],
             ~since,
           ),
-        )->toEqual(Some("registered")),
+        )->toEqual(Some("Registered")),
     )
 
     // Correct, and vacuous — an unchanged structure converges against a
@@ -476,7 +476,7 @@ describe("registrations", () => {
             [("Ordering", "sha256/a")],
             ~since,
           ),
-        )->toEqual(Some("unchanged")),
+        )->toEqual(Some("Unchanged")),
     )
 
     testSync(
@@ -487,7 +487,7 @@ describe("registrations", () => {
             [row(~name="Ordering", ~key="sha256/a", ~at=after, ())],
             [("Ordering", "sha256/a")],
           ),
-        )->toEqual(Some("matched")),
+        )->toEqual(Some("Matched")),
     )
 
     // Retrying is for this one.
@@ -500,7 +500,7 @@ describe("registrations", () => {
             [("Ordering", "sha256/new")],
             ~since,
           ),
-        )->toEqual(Some("behind")),
+        )->toEqual(Some("Behind")),
     )
 
     // And never for this one: the plugin answered during this deploy and produced
@@ -515,7 +515,7 @@ describe("registrations", () => {
             [("Ordering", "sha256/new")],
             ~since,
           ),
-        )->toEqual(Some("diverged")),
+        )->toEqual(Some("Diverged")),
     )
 
     // The scan filters on Connected, so a version that dropped out mid-deploy
@@ -524,7 +524,7 @@ describe("registrations", () => {
     // retry budget either way.
     testSync(
       "no Connected row at all is missing, not behind",
-      () => expect(stateOf([], [("Ordering", "sha256/new")], ~since))->toEqual(Some("missing")),
+      () => expect(stateOf([], [("Ordering", "sha256/new")], ~since))->toEqual(Some("Missing")),
     )
 
     // An unparseable stamp must not read as fresh: reporting `registered` off a
@@ -538,7 +538,7 @@ describe("registrations", () => {
             [("Ordering", "sha256/a")],
             ~since,
           ),
-        )->toEqual(Some("unchanged")),
+        )->toEqual(Some("Unchanged")),
     )
   })
 })

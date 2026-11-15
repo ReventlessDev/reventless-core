@@ -138,7 +138,7 @@ describe("the bake converges when a plugin's structure changes", () => {
         ~expect=[("Ordering", keyB)],
         ~since=deployedAt,
       ),
-    )->toEqual(Some("behind"))
+    )->toEqual(Some("Behind"))
   )
 
   // The link the bake is actually waiting on: a Connect carrying a changed
@@ -164,7 +164,7 @@ describe("the bake converges when a plugin's structure changes", () => {
     }
     expect(
       stateOf([row(def, ~at=afterDeploy)], ~expect=[("Ordering", keyB)], ~since=deployedAt),
-    )->toEqual(Some("registered"))
+    )->toEqual(Some("Registered"))
   })
 
   // Defect 1, as a test: a plugin whose structure did not change never
@@ -183,7 +183,7 @@ describe("the bake converges when a plugin's structure changes", () => {
         ~expect=[("Ordering", keyA)],
         ~since=deployedAt,
       ),
-    )->toEqual(Some("unchanged"))
+    )->toEqual(Some("Unchanged"))
   })
 
   // Deploy-time re-detect is what starts the chain for an already-connected

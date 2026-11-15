@@ -16,6 +16,7 @@ import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Nodechild_process from "node:child_process";
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
 import * as LoadPluginStructureMjs from "./loadPluginStructure.mjs";
+import * as SidecarStepKind$Reventless from "./SidecarStepKind.res.mjs";
 
 process.env["REVENTLESS_DECLARED_TRANSITIONS_ONLY"] = "1";
 
@@ -129,7 +130,7 @@ function elementsOf(steps) {
   return Stdlib_Array.filterMap(steps, s => Stdlib_Option.map(getStr(s, "element"), name => {
     let match = stepKindOf(s);
     let tmp;
-    tmp = match !== undefined ? match === "opaque" || (match === "state" || match === "sent" || match === "noEvent" || match === "inputRefused" || match === "noState" || match === "notUnderstood" || match === "forbidden" || match === "resolved" || match === "noCommand" || match === "exhausted" || match === "todo" || match === "process" || match === "noTodo" || match === "sweep" || match === "capabilities") && match === "opaque" : false;
+    tmp = match !== undefined ? match === "Opaque" || (match === "State" || match === "Sent" || match === "NoEvent" || match === "InputRefused" || match === "NoState" || match === "NotUnderstood" || match === "Forbidden" || match === "Resolved" || match === "NoCommand" || match === "Exhausted" || match === "Todo" || match === "Process" || match === "NoTodo" || match === "Sweep" || match === "Capabilities") && match === "Opaque" : false;
     return {
       name: lastSegment(name),
       values: valuesOf(s),
@@ -156,7 +157,7 @@ function thenKindOf(steps) {
     return;
   }
   let kind = stepKindOf(s);
-  if (kind !== undefined && (kind === "opaque" || (kind === "state" || kind === "sent" || kind === "noEvent" || kind === "inputRefused" || kind === "noState" || kind === "notUnderstood" || kind === "forbidden" || kind === "resolved" || kind === "noCommand" || kind === "exhausted" || kind === "todo" || kind === "process" || kind === "noTodo" || kind === "sweep" || kind === "capabilities") && kind === "opaque")) {
+  if (kind !== undefined && (kind === "Opaque" || (kind === "State" || kind === "Sent" || kind === "NoEvent" || kind === "InputRefused" || kind === "NoState" || kind === "NotUnderstood" || kind === "Forbidden" || kind === "Resolved" || kind === "NoCommand" || kind === "Exhausted" || kind === "Todo" || kind === "Process" || kind === "NoTodo" || kind === "Sweep" || kind === "Capabilities") && kind === "Opaque")) {
     return Stdlib_Option.map(getStr(s, "of"), prim => prim);
   } else {
     return kind;
@@ -184,6 +185,21 @@ function isUnreadable(s) {
   return !s.whenElements.some(readableStep);
 }
 
+function unknownKindsOf(scenarios) {
+  return sortedUnique(Stdlib_Array.filterMap(Stdlib_Array.filterMap(scenarios, asObj).flatMap(d => [
+    getObjs(d, "given"),
+    getObjs(d, "when"),
+    getObjs(d, "then")
+  ].flat()).flatMap(step => [
+    stepKindOf(step),
+    Stdlib_Option.map(getStr(step, "of"), prim => prim)
+  ]), kind => {
+    if (kind !== undefined && kind !== "Event" && kind !== "Opaque" && kind !== "Command" && kind !== "PublicEvent" && kind !== "Input" && kind !== "Retries" && kind !== "Error" && kind !== "TodoStatus" && kind !== "SideEffect" && kind !== "NothingSent" && kind !== "State" && kind !== "Sent" && kind !== "NoEvent" && kind !== "InputRefused" && kind !== "NoState" && kind !== "NotUnderstood" && kind !== "Forbidden" && kind !== "Resolved" && kind !== "NoCommand" && kind !== "Exhausted" && kind !== "Todo" && kind !== "Process" && kind !== "NoTodo" && kind !== "Sweep" && kind !== "Capabilities") {
+      return kind;
+    }
+  }));
+}
+
 function readCorpus(path) {
   let d;
   try {
@@ -195,10 +211,13 @@ function readCorpus(path) {
     return;
   }
   let stem = Stdlib_Option.getOr(getStr(d, "stem"), "");
+  let scenarios = getArr(d, "scenarios");
+  let unknownKinds = unknownKindsOf(scenarios);
   return {
     component: stem.replace("_GWT", ""),
     path: path,
-    scenarios: Stdlib_Array.filterMap(getArr(d, "scenarios"), scenarioOf)
+    scenarios: Stdlib_Array.filterMap(scenarios, scenarioOf),
+    unknownKinds: unknownKinds.length !== 0 ? unknownKinds : undefined
   };
 }
 
@@ -453,19 +472,19 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
       if (match === undefined) {
         return;
       }
-      if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
         return;
       }
-      if (match !== "event") {
+      if (match !== "Event") {
         return;
       }
       if (match$1 === undefined) {
         return;
       }
-      if (match$1 !== "event" && match$1 !== "opaque" && match$1 !== "command" && match$1 !== "publicEvent" && match$1 !== "input" && match$1 !== "retries" && match$1 !== "error" && match$1 !== "todoStatus" && match$1 !== "sideEffect" && match$1 !== "nothingSent" && match$1 !== "state" && match$1 !== "sent" && match$1 !== "noEvent" && match$1 !== "inputRefused" && match$1 !== "noState" && match$1 !== "notUnderstood" && match$1 !== "forbidden" && match$1 !== "resolved" && match$1 !== "noCommand" && match$1 !== "exhausted" && match$1 !== "todo" && match$1 !== "process" && match$1 !== "noTodo" && match$1 !== "sweep" && match$1 !== "capabilities") {
+      if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "PublicEvent" && match$1 !== "Input" && match$1 !== "Retries" && match$1 !== "Error" && match$1 !== "TodoStatus" && match$1 !== "SideEffect" && match$1 !== "NothingSent" && match$1 !== "State" && match$1 !== "Sent" && match$1 !== "NoEvent" && match$1 !== "InputRefused" && match$1 !== "NoState" && match$1 !== "NotUnderstood" && match$1 !== "Forbidden" && match$1 !== "Resolved" && match$1 !== "NoCommand" && match$1 !== "Exhausted" && match$1 !== "Todo" && match$1 !== "Process" && match$1 !== "NoTodo" && match$1 !== "Sweep" && match$1 !== "Capabilities") {
         return;
       }
-      if (match$1 !== "state") {
+      if (match$1 !== "State") {
         return;
       }
       let match$2 = last(s.whenElements);
@@ -502,13 +521,13 @@ function outcomeOf(s) {
   if (match === undefined) {
     return "NoChange";
   }
-  if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
     return "NoChange";
   }
   switch (match) {
-    case "event" :
+    case "Event" :
       return "Emitted";
-    case "error" :
+    case "Error" :
       return "Rejected";
     default:
       return "NoChange";
@@ -550,16 +569,16 @@ function observe(scenarios, map, idFieldFor) {
     if (match === undefined) {
       return;
     }
-    if (match$2 === "forbidden" && (match$2 === "forbidden" || (match$2 === "noCommand" || match$2 === "exhausted" || match$2 === "todo" || match$2 === "process" || match$2 === "noTodo" || match$2 === "sweep" || match$2 === "capabilities") && match$2 === "forbidden")) {
+    if (match$2 === "Forbidden" && (match$2 === "Forbidden" || (match$2 === "NoCommand" || match$2 === "Exhausted" || match$2 === "Todo" || match$2 === "Process" || match$2 === "NoTodo" || match$2 === "Sweep" || match$2 === "Capabilities") && match$2 === "Forbidden")) {
       return;
     }
     if (match$1 === undefined) {
       return;
     }
-    if (match$1 !== "event" && match$1 !== "opaque" && match$1 !== "command" && match$1 !== "publicEvent" && match$1 !== "input" && match$1 !== "retries" && match$1 !== "error" && match$1 !== "todoStatus" && match$1 !== "sideEffect" && match$1 !== "nothingSent" && match$1 !== "state" && match$1 !== "sent" && match$1 !== "noEvent" && match$1 !== "inputRefused" && match$1 !== "noState" && match$1 !== "notUnderstood" && match$1 !== "forbidden" && match$1 !== "resolved" && match$1 !== "noCommand" && match$1 !== "exhausted" && match$1 !== "todo" && match$1 !== "process" && match$1 !== "noTodo" && match$1 !== "sweep" && match$1 !== "capabilities") {
+    if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "PublicEvent" && match$1 !== "Input" && match$1 !== "Retries" && match$1 !== "Error" && match$1 !== "TodoStatus" && match$1 !== "SideEffect" && match$1 !== "NothingSent" && match$1 !== "State" && match$1 !== "Sent" && match$1 !== "NoEvent" && match$1 !== "InputRefused" && match$1 !== "NoState" && match$1 !== "NotUnderstood" && match$1 !== "Forbidden" && match$1 !== "Resolved" && match$1 !== "NoCommand" && match$1 !== "Exhausted" && match$1 !== "Todo" && match$1 !== "Process" && match$1 !== "NoTodo" && match$1 !== "Sweep" && match$1 !== "Capabilities") {
       return;
     }
-    if (match$1 !== "command") {
+    if (match$1 !== "Command") {
       return;
     }
     let idField = idFieldFor(match.name);
@@ -634,16 +653,16 @@ function shownOutcomeOf(s) {
   if (match === undefined) {
     return;
   }
-  if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
     return;
   }
   switch (match) {
-    case "event" :
-    case "error" :
+    case "Event" :
+    case "Error" :
       break;
-    case "noEvent" :
+    case "NoEvent" :
       return [
-        "noEvent",
+        "NoEventOutcome",
         []
       ];
     default:
@@ -652,15 +671,15 @@ function shownOutcomeOf(s) {
   if (s.thenElements.some(isOpaque)) {
     return;
   }
-  if (match === "event" || match === "opaque" || match === "command" || match === "publicEvent" || match === "input" || match === "retries" || match === "error" || match === "todoStatus" || match === "sideEffect" || match === "nothingSent" || match === "state" || match === "sent" || match === "noEvent" || match === "inputRefused" || match === "noState" || match === "notUnderstood" || match === "forbidden" || match === "resolved" || match === "noCommand" || match === "exhausted" || match === "todo" || match === "process" || match === "noTodo" || match === "sweep" || match === "capabilities") {
-    if (match === "event") {
+  if (match === "Event" || match === "Opaque" || match === "Command" || match === "PublicEvent" || match === "Input" || match === "Retries" || match === "Error" || match === "TodoStatus" || match === "SideEffect" || match === "NothingSent" || match === "State" || match === "Sent" || match === "NoEvent" || match === "InputRefused" || match === "NoState" || match === "NotUnderstood" || match === "Forbidden" || match === "Resolved" || match === "NoCommand" || match === "Exhausted" || match === "Todo" || match === "Process" || match === "NoTodo" || match === "Sweep" || match === "Capabilities") {
+    if (match === "Event") {
       return [
-        "event",
+        "EventOutcome",
         s.thenElements.map(e => e.name)
       ];
     } else {
       return [
-        "error",
+        "ErrorOutcome",
         s.thenElements.map(e => e.name)
       ];
     }
@@ -692,10 +711,10 @@ function commandOutcomes(plugin, corpora) {
       if (match === undefined) {
         return;
       }
-      if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
         return;
       }
-      if (match !== "command") {
+      if (match !== "Command") {
         return;
       }
       if (match$1 === undefined) {
@@ -757,21 +776,21 @@ function commandOutcomes(plugin, corpora) {
 }
 
 let severities = [
-  "contradicted",
-  "unverified",
-  "undeclared",
-  "level",
-  "ambiguous"
+  "Contradicted",
+  "Unverified",
+  "Undeclared",
+  "LevelMismatch",
+  "Ambiguous"
 ];
 
 function allUnverified(cmd, add, why) {
   let states = cmd.allowedStates;
   if (states !== undefined && states.length !== 0) {
-    add("unverified", states, `the switch names ` + states.join(", ") + `, and ` + why);
+    add("Unverified", states, `the switch names ` + states.join(", ") + `, and ` + why);
   }
   let target = cmd.targetState;
   if (target !== undefined) {
-    return add("unverified", [target], `the switch targets "` + target + `", and ` + why);
+    return add("Unverified", [target], `the switch targets "` + target + `", and ` + why);
   }
 }
 
@@ -797,47 +816,47 @@ function compare(plugin, writable, derived, findings) {
       if (derived.allowedStates.includes(state)) {
         return;
       } else if (derived.inertStates.includes(state)) {
-        return add("contradicted", [state], `the switch names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
+        return add("Contradicted", [state], `the switch names "` + state + `", and a scenario from "` + state + `" shows it refused or producing nothing`);
       } else {
-        return add("unverified", [state], `the switch names "` + state + `", and no scenario starts there`);
+        return add("Unverified", [state], `the switch names "` + state + `", and no scenario starts there`);
       }
     });
     derived.allowedStates.forEach(state => {
       if (!states.includes(state)) {
-        return add("contradicted", [state], `a scenario shows it taking effect from "` + state + `", which its declared ` + (`from-set (` + states.join(", ") + `) excludes`));
+        return add("Contradicted", [state], `a scenario shows it taking effect from "` + state + `", which its declared ` + (`from-set (` + states.join(", ") + `) excludes`));
       }
     });
     if (states.length !== 0 && derived.allowedStates.length === 0) {
-      add("unverified", states, `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
+      add("Unverified", states, `the switch declares ` + states.length.toString() + ` state(s) and no scenario shows the command taking effect anywhere`);
     }
   } else if (Primitive_object.equal(declared.allowedStatesSource, "unrestricted")) {
-    derived.refusedStates.forEach(state => add("contradicted", [state], `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused`));
+    derived.refusedStates.forEach(state => add("Contradicted", [state], `the switch declares it legal in every state, and a scenario from "` + state + `" shows it refused`));
   } else if (derived.allowedStates.length !== 0) {
-    add("undeclared", derived.allowedStates, `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
+    add("Undeclared", derived.allowedStates, `scenarios show it taking effect from ` + derived.allowedStates.join(", ") + `, and it declares no edge`);
   }
   let match = declared.targetState;
   let match$1 = derived.targets;
   if (match !== undefined) {
     if (match$1.length !== 0) {
       if (!match$1.includes(match)) {
-        add("contradicted", [match], `the switch targets "` + match + `", and scenarios land in ` + match$1.join(", "));
+        add("Contradicted", [match], `the switch targets "` + match + `", and scenarios land in ` + match$1.join(", "));
       }
       match$1.forEach(state => {
         if (state !== match) {
-          return add("contradicted", [
+          return add("Contradicted", [
             match,
             state
           ], `the switch targets "` + match + `", and a scenario lands in "` + state + `" — the published targetState carries one state, so this edge cannot be expressed`);
         }
       });
     } else {
-      add("unverified", [match], `the switch targets "` + match + `", and no scenario shows an edge`);
+      add("Unverified", [match], `the switch targets "` + match + `", and no scenario shows an edge`);
     }
   }
   let match$2 = derived.level;
   let match$3 = declared.level;
   if (match$2 !== undefined && match$3 !== undefined && match$2 !== match$3) {
-    return add("level", [], `scenarios make it ` + match$2 + `-level; the published metadata says ` + match$3);
+    return add("LevelMismatch", [], `scenarios make it ` + match$2 + `-level; the published metadata says ` + match$3);
   }
 }
 
@@ -924,16 +943,35 @@ function isWritablePath(path) {
   }
 }
 
+function releaseMismatch(corpora) {
+  let unknown = Stdlib_Array.filterMap(corpora, c => Stdlib_Option.map(Stdlib_Option.flatMap(c.unknownKinds, words => words[0]), word => [
+    c.path,
+    word
+  ]));
+  return Stdlib_Option.map(unknown[0], param => {
+    let others = unknown.length - 1 | 0;
+    let more = others > 0 ? ` and ` + others.toString() + ` other sidecar(s)` : "";
+    return Nodepath.basename(param[0]) + more + `: ` + SidecarStepKind$Reventless.unknownWordReason(param[1]);
+  });
+}
+
 async function runPlugin(plugin, pluginDir, findings, opaque, outcomes) {
-  let msg = await readDeclared(pluginDir);
-  if (msg.TAG !== "Ok") {
+  let corpora = Stdlib_Array.filterMap(filesUnder(Nodepath.join(pluginDir, "tests"), ".gwt.json"), readCorpus);
+  let match = releaseMismatch(corpora);
+  let match$1 = await readDeclared(pluginDir);
+  if (match !== undefined) {
     return {
       TAG: "Error",
-      _0: msg._0
+      _0: match
     };
   }
-  let declared = msg._0;
-  let corpora = Stdlib_Array.filterMap(filesUnder(Nodepath.join(pluginDir, "tests"), ".gwt.json"), readCorpus);
+  if (match$1.TAG !== "Ok") {
+    return {
+      TAG: "Error",
+      _0: match$1._0
+    };
+  }
+  let declared = match$1._0;
   outcomes.push(...commandOutcomes(plugin, corpora));
   corpora.forEach(c => {
     let unreadable = c.scenarios.filter(isUnreadable);
@@ -966,7 +1004,7 @@ async function runPlugin(plugin, pluginDir, findings, opaque, outcomes) {
   });
   ambiguities.forEach(param => {
     findings.push({
-      severity: "ambiguous",
+      severity: "Ambiguous",
       plugin: plugin,
       component: param[0],
       command: "",
@@ -1204,7 +1242,7 @@ function reportJson(findings, opaque, derived, outcomes, failures) {
   return JSON.stringify(Object.fromEntries([
     [
       "version",
-      1
+      2
     ],
     [
       "findings",
@@ -1368,7 +1406,7 @@ function main() {
       }
     }
     let of_ = severity => findings.filter(f => f.severity === severity);
-    let contradicted = of_("contradicted");
+    let contradicted = of_("Contradicted");
     if (json) {
       console.log(reportJson(findings, opaque, allDerived, outcomes, failures));
     } else {
@@ -1424,6 +1462,7 @@ export {
   thenKindOf,
   scenarioOf,
   isUnreadable,
+  unknownKindsOf,
   readCorpus,
   filesUnder,
   gwtSources,
@@ -1457,6 +1496,7 @@ export {
   kindOfPath,
   isViewPath,
   isWritablePath,
+  releaseMismatch,
   runPlugin,
   byComponentThenCommand,
   levelText,

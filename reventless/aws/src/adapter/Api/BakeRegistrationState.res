@@ -4,21 +4,21 @@
     "pending" left every one of these to be told apart by reading the read model
     out of band, with credentials the deploy pipeline does not surface.
 
-    The bake function answers with the word; the deploy script reads it back. */
+    The bake function answers with the case's name; the deploy script reads it back. */
 type t =
   /** Key agrees, row written by this deploy: the chain ran, and this is the evidence. */
-  | @as("registered") Registered
+  | Registered
   /** Key agrees, nothing re-registered — a correct pass that proves nothing. */
-  | @as("unchanged") Unchanged
+  | Unchanged
   /** Key agrees, and no deploy instant to tell the two above apart. */
-  | @as("matched") Matched
+  | Matched
   /** No Connected row carries a structure. The scan filters on Connected, so a
       version that dropped out mid-deploy leaves nothing to converge against. */
-  | @as("missing") Missing
+  | Missing
   /** Row holds another key and predates this deploy — the case retrying is for. */
-  | @as("behind") Behind
+  | Behind
   /** Row written by this deploy and still holding another key. Retrying cannot fix it. */
-  | @as("diverged") Diverged
+  | Diverged
 
 let all = [Registered, Unchanged, Matched, Missing, Behind, Diverged]
 

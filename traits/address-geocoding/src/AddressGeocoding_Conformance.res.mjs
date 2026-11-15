@@ -124,7 +124,7 @@ function Make(B) {
         TAG: "Unavailable",
         _0: "502"
       }
-    }))), todoKey(B.subjectA), "#Pending"));
+    }))), todoKey(B.subjectA), "Pending"));
   });
   return {
     A: A,

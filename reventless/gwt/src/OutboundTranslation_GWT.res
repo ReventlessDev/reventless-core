@@ -22,10 +22,10 @@ module type SliceSpec = {
     it `Failed`, or `Abandoned` once `maxRetries` attempts have failed. `Pending`
     is the older name for `Failed`, kept for one release. */
 type todoStatus =
-  | @as("#Completed") Completed
-  | @as("#Failed") Failed
-  | @as("#Abandoned") Abandoned
-  | @as("#Pending") Pending
+  | Completed
+  | Failed
+  | Abandoned
+  | Pending
 
 module type T = {
   module Spec: SliceSpec

@@ -37,6 +37,6 @@ describe("OutboundTranslation_GWT.todoStatus", () => {
       [OutboundTranslation_GWT.Completed, Failed, Abandoned, Pending]->Array.map(
         s => (s :> string),
       ),
-    )->toEqual(["#Completed", "#Failed", "#Abandoned", "#Pending"])
+    )->toEqual(["Completed", "Failed", "Abandoned", "Pending"])
   )
 })

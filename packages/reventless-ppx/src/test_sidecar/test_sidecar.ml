@@ -142,19 +142,19 @@ let () =
   in
   gmust "gwt specName" "\"specName\":\"AddProduct\"";
   gmust "scenario title" "\"title\":\"Adding a new product succeeds\"";
-  gmust "when command element" "\"kind\":\"command\",\"element\":\"AddProduct\"";
-  gmust "then event element" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
-  gmust "then error element" "\"kind\":\"error\",\"element\":\"ProductAlreadyExists\"";
-  gmust "then no-event step" "\"kind\":\"noEvent\",\"element\":\"\"";
-  gmust "then refused step" "\"kind\":\"forbidden\",\"element\":\"\"";
+  gmust "when command element" "\"kind\":\"Command\",\"element\":\"AddProduct\"";
+  gmust "then event element" "\"kind\":\"Event\",\"element\":\"ProductAdded\"";
+  gmust "then error element" "\"kind\":\"Error\",\"element\":\"ProductAlreadyExists\"";
+  gmust "then no-event step" "\"kind\":\"NoEvent\",\"element\":\"\"";
+  gmust "then refused step" "\"kind\":\"Forbidden\",\"element\":\"\"";
   gmust "a piped payload-less step is read"
-    "\"element\":\"ArchiveProduct\",\"values\":[[\"productId\",{\"kind\":\"string\",\"value\":\"prod-1\"}]]}],\"then\":[{\"kind\":\"forbidden\"";
+    "\"element\":\"ArchiveProduct\",\"values\":[[\"productId\",{\"kind\":\"string\",\"value\":\"prod-1\"}]]}],\"then\":[{\"kind\":\"Forbidden\"";
   (* Both of them, in order: a plural assertion that recorded only its first
      event would still under-report what the scenario says. *)
-  gmust "then events — first" "\"kind\":\"event\",\"element\":\"ProductImageAttached\"";
+  gmust "then events — first" "\"kind\":\"Event\",\"element\":\"ProductImageAttached\"";
   gmust "then events — second"
-    "\"kind\":\"event\",\"element\":\"ProductEffectiveImageChanged\"";
-  gmust "given event (duplicate scenario)" "\"kind\":\"event\",\"element\":\"ProductAdded\"";
+    "\"kind\":\"Event\",\"element\":\"ProductEffectiveImageChanged\"";
+  gmust "given event (duplicate scenario)" "\"kind\":\"Event\",\"element\":\"ProductAdded\"";
   gmust "float example value" "\"kind\":\"float\",\"value\":9.99";
   gmust "string example value" "\"kind\":\"string\",\"value\":\"prod-1\"";
   print_string (Yojson.Safe.pretty_to_string gj);
@@ -852,32 +852,32 @@ let () =
    | _ -> print_endline "  FAIL(steps): componentKind for an underivable file"; exit 1);
   sequal aj "collect" "given" "the collected event leaves given" "[]";
   sequal aj "collect" "when" "…and is the when"
-    "[{\"kind\":\"event\",\"element\":\"OrderPlaced\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+    "[{\"kind\":\"Event\",\"element\":\"OrderPlaced\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
   sequal aj "collect" "then" "thenTodos: one todo per item, keyed by its id"
-    "[{\"kind\":\"todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+    "[{\"kind\":\"Todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
   smust aj "collect" "steps" "a qualified step names its module"
-    "{\"group\":\"when\",\"verb\":\"whenCollect\",\"kind\":\"event\",\"element\":\"OrderPlaced\"";
+    "{\"group\":\"when\",\"verb\":\"whenCollect\",\"kind\":\"Event\",\"element\":\"OrderPlaced\"";
   smust aj "collect" "steps" "via" "\"via\":\"Dcb\"";
   sequal aj "collect nothing" "then" "thenTodos([]) is noTodo"
-    "[{\"kind\":\"noTodo\",\"element\":\"\",\"values\":[]}]";
+    "[{\"kind\":\"NoTodo\",\"element\":\"\",\"values\":[]}]";
   sequal aj "resolve" "when" "testSync is harvested; whenResolve takes the event"
-    "[{\"kind\":\"event\",\"element\":\"OrderShipped\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
-  sequal aj "resolve" "then" "thenResolved" "[{\"kind\":\"resolved\",\"element\":\"o1\",\"values\":[]}]";
+    "[{\"kind\":\"Event\",\"element\":\"OrderShipped\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  sequal aj "resolve" "then" "thenResolved" "[{\"kind\":\"Resolved\",\"element\":\"o1\",\"values\":[]}]";
   sequal aj "process" "given" "givenTodo"
-    "[{\"kind\":\"todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
-  sequal aj "process" "when" "whenProcess" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
-  smust aj "process" "then" "thenCommand(id, cmd) is the command" "\"kind\":\"command\",\"element\":\"ShipOrder\"";
-  sequal aj "exhausted" "when" "whenExhausted with no error" "[{\"kind\":\"exhausted\",\"element\":\"\",\"values\":[]}]";
-  sequal aj "exhausted" "then" "thenNoCommand" "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
-  smust aj "sweep" "given" "event(e) is unwrapped" "{\"kind\":\"event\",\"element\":\"OrderPlaced\"";
-  smust aj "sweep" "given" "…qualified or not" "{\"kind\":\"event\",\"element\":\"OrderShipped\"";
-  sequal aj "sweep" "when" "whenSweep" "[{\"kind\":\"sweep\",\"element\":\"\",\"values\":[]}]";
-  smust aj "sweep" "then" "thenCommands: the pair's command" "{\"kind\":\"command\",\"element\":\"ShipOrder\"";
-  smust aj "sweep" "then" "thenScenarioTodos([]) is noTodo" "{\"kind\":\"noTodo\"";
+    "[{\"kind\":\"Todo\",\"element\":\"o1\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]]}]";
+  sequal aj "process" "when" "whenProcess" "[{\"kind\":\"Process\",\"element\":\"\",\"values\":[]}]";
+  smust aj "process" "then" "thenCommand(id, cmd) is the command" "\"kind\":\"Command\",\"element\":\"ShipOrder\"";
+  sequal aj "exhausted" "when" "whenExhausted with no error" "[{\"kind\":\"Exhausted\",\"element\":\"\",\"values\":[]}]";
+  sequal aj "exhausted" "then" "thenNoCommand" "[{\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[]}]";
+  smust aj "sweep" "given" "event(e) is unwrapped" "{\"kind\":\"Event\",\"element\":\"OrderPlaced\"";
+  smust aj "sweep" "given" "…qualified or not" "{\"kind\":\"Event\",\"element\":\"OrderShipped\"";
+  sequal aj "sweep" "when" "whenSweep" "[{\"kind\":\"Sweep\",\"element\":\"\",\"values\":[]}]";
+  smust aj "sweep" "then" "thenCommands: the pair's command" "{\"kind\":\"Command\",\"element\":\"ShipOrder\"";
+  smust aj "sweep" "then" "thenScenarioTodos([]) is noTodo" "{\"kind\":\"NoTodo\"";
   smust aj "sweep" "steps" "…and is a step of its own"
-    "{\"group\":\"when\",\"verb\":\"andThenEvents\",\"kind\":\"event\",\"element\":\"OrderShipped\"";
+    "{\"group\":\"when\",\"verb\":\"andThenEvents\",\"kind\":\"Event\",\"element\":\"OrderShipped\"";
   sequal aj "sweep issues nothing" "then" "thenCommands([]) is noCommand"
-    "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+    "[{\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[]}]";
 
   let outbound_body : structure =
     [%str
@@ -897,19 +897,19 @@ let () =
   in
   let oj = scenarios_of "tests/Customer/OutboundTranslation/Geocode_GWT.res" outbound_body in
   sequal oj "translated" "given" "givenCapabilities stays out of given"
-    "[{\"kind\":\"todo\",\"element\":\"c1\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]}]";
+    "[{\"kind\":\"Todo\",\"element\":\"c1\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]}]";
   smust oj "translated" "steps" "…and is a step"
-    "{\"group\":\"given\",\"verb\":\"givenCapabilities\",\"kind\":\"capabilities\",\"element\":\"\",\"values\":[]}";
-  sequal oj "translated" "when" "whenTranslated" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+    "{\"group\":\"given\",\"verb\":\"givenCapabilities\",\"kind\":\"Capabilities\",\"element\":\"\",\"values\":[]}";
+  sequal oj "translated" "when" "whenTranslated" "[{\"kind\":\"Process\",\"element\":\"\",\"values\":[]}]";
   smust oj "translated" "then" "thenSent: one per call, by constructor"
-    "{\"kind\":\"sent\",\"element\":\"Geocoded\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]},{\"kind\":\"sent\",\"element\":\"Sent\"";
-  sequal oj "nothing sent" "when" "whenTranslateMocked" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
-  sequal oj "nothing sent" "then" "thenNothingSent" "[{\"kind\":\"nothingSent\",\"element\":\"\",\"values\":[]}]";
-  sequal oj "retried" "when" "whenTranslateRetrying" "[{\"kind\":\"process\",\"element\":\"\",\"values\":[]}]";
+    "{\"kind\":\"Sent\",\"element\":\"Geocoded\",\"values\":[[\"address\",{\"kind\":\"string\",\"value\":\"Main St\"}]]},{\"kind\":\"Sent\",\"element\":\"Sent\"";
+  sequal oj "nothing sent" "when" "whenTranslateMocked" "[{\"kind\":\"Process\",\"element\":\"\",\"values\":[]}]";
+  sequal oj "nothing sent" "then" "thenNothingSent" "[{\"kind\":\"NothingSent\",\"element\":\"\",\"values\":[]}]";
+  sequal oj "retried" "when" "whenTranslateRetrying" "[{\"kind\":\"Process\",\"element\":\"\",\"values\":[]}]";
   smust oj "retried" "then" "thenTodoStatus: the status name"
-    "{\"kind\":\"todoStatus\",\"element\":\"Failed\",\"values\":[[\"id\",{\"kind\":\"string\",\"value\":\"c1\"}]]}";
-  smust oj "retried" "then" "thenRetryRecorded" "{\"kind\":\"retries\",\"element\":\"2\",\"values\":[]}";
-  sequal oj "exhausted" "when" "whenExhausted(~lastError)" "[{\"kind\":\"exhausted\",\"element\":\"timeout\",\"values\":[]}]";
+    "{\"kind\":\"TodoStatus\",\"element\":\"Failed\",\"values\":[[\"id\",{\"kind\":\"string\",\"value\":\"c1\"}]]}";
+  smust oj "retried" "then" "thenRetryRecorded" "{\"kind\":\"Retries\",\"element\":\"2\",\"values\":[]}";
+  sequal oj "exhausted" "when" "whenExhausted(~lastError)" "[{\"kind\":\"Exhausted\",\"element\":\"timeout\",\"values\":[]}]";
 
   let inbound_body : structure =
     [%str
@@ -924,16 +924,16 @@ let () =
   in
   let ij = scenarios_of "tests/Product/InboundTranslation/ImportProduct_GWT.res" inbound_body in
   sequal ij "input" "when" "whenInput(record) records its entries"
-    "[{\"kind\":\"input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"unitPrice\",{\"kind\":\"int\",\"value\":1999}]]}]";
-  smust ij "input" "then" "inbound thenCommands" "{\"kind\":\"command\",\"element\":\"AddProduct\"";
+    "[{\"kind\":\"Input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"unitPrice\",{\"kind\":\"int\",\"value\":1999}]]}]";
+  smust ij "input" "then" "inbound thenCommands" "{\"kind\":\"Command\",\"element\":\"AddProduct\"";
   sequal ij "received" "when" "whenReceived(JSON literal) records its entries"
-    "[{\"kind\":\"input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"n\",{\"kind\":\"int\",\"value\":2}]]}]";
-  sequal ij "received" "then" "thenRefusedInput" "[{\"kind\":\"inputRefused\",\"element\":\"title\",\"values\":[]}]";
+    "[{\"kind\":\"Input\",\"element\":\"externalInput\",\"values\":[[\"sku\",{\"kind\":\"string\",\"value\":\"SKU-1\"}],[\"n\",{\"kind\":\"int\",\"value\":2}]]}]";
+  sequal ij "received" "then" "thenRefusedInput" "[{\"kind\":\"InputRefused\",\"element\":\"title\",\"values\":[]}]";
   sequal ij "not understood" "then" "thenNotUnderstood"
-    "[{\"kind\":\"notUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
+    "[{\"kind\":\"NotUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
   sequal ij "translate error" "then" "thenTranslateError"
-    "[{\"kind\":\"notUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
-  sequal ij "no command" "then" "inbound thenNoCommand" "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+    "[{\"kind\":\"NotUnderstood\",\"element\":\"SKU is required\",\"values\":[]}]";
+  sequal ij "no command" "then" "inbound thenNoCommand" "[{\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[]}]";
 
   (* A flow: two whenCommands, a reaction, a view, an outbound and a port. The
      groups keep the last act; steps keep them all, in order. *)
@@ -983,19 +983,19 @@ let () =
     else (Printf.printf "  FAIL(steps): %s\n    got      %s\n    expected %s\n" label got expected; exit 1)
   in
   vequal "place and ship" "both whenCommands, in written order, each with its module"
-    "Sync.givenEvents:event:Synced Place.whenCommand:command:PlaceOrder Place.thenEvent:event:OrderPlaced \
-     Auto.whenReacts:sweep: Auto.thenIssuesCommand:command:ShipOrder Ship.whenCommand:command:ShipOrder \
-     Ship.thenEvent:event:OrderShipped View.thenViewState:state:state Out.thenOutbound:sent:o1 \
-     Notify.whenReacts:sweep: Notify.thenIssuesNoCommand:noCommand:";
+    "Sync.givenEvents:Event:Synced Place.whenCommand:Command:PlaceOrder Place.thenEvent:Event:OrderPlaced \
+     Auto.whenReacts:Sweep: Auto.thenIssuesCommand:Command:ShipOrder Ship.whenCommand:Command:ShipOrder \
+     Ship.thenEvent:Event:OrderShipped View.thenViewState:State:state Out.thenOutbound:Sent:o1 \
+     Notify.whenReacts:Sweep: Notify.thenIssuesNoCommand:NoCommand:";
   sequal fj "place and ship" "when" "the groups keep the last act's when"
-    "[{\"kind\":\"sweep\",\"element\":\"\",\"values\":[]}]";
+    "[{\"kind\":\"Sweep\",\"element\":\"\",\"values\":[]}]";
   sequal fj "place and ship" "then" "…and the thens written after it"
-    "[{\"kind\":\"noCommand\",\"element\":\"\",\"values\":[]}]";
+    "[{\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[]}]";
   vequal "publish" "the port steps"
-    "Pub.whenPublishedThrough:sweep: Pub.thenPublicEvent:publicEvent:ProductListed \
-     Ext.whenExtensionReacts:sweep: Ext.thenIssuesCommands:command:SyncProduct";
+    "Pub.whenPublishedThrough:Sweep: Pub.thenPublicEvent:PublicEvent:ProductListed \
+     Ext.whenExtensionReacts:Sweep: Ext.thenIssuesCommands:Command:SyncProduct";
   vequal "nothing out" "thenIssuesCommands([]) and thenOutboundNothing"
-    "Auto.whenReacts:sweep: Auto.thenIssuesCommands:noCommand: Out.thenOutboundNothing:nothingSent:";
+    "Auto.whenReacts:Sweep: Auto.thenIssuesCommands:NoCommand: Out.thenOutboundNothing:NothingSent:";
 
   (* ── The automation wiring sidecar ─────────────────────────────────────── *)
   let wiring_body : structure =

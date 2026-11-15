@@ -212,7 +212,7 @@ function unreachable(registrations) {
   return registrations.filter(r => {
     let match = r.state;
     if (match.TAG === "Reported") {
-      return match._0 === "diverged";
+      return match._0 === "Diverged";
     } else {
       return false;
     }

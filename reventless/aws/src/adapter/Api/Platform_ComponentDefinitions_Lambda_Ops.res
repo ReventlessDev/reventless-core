@@ -480,12 +480,12 @@ let notBefore = (~at: string, ~since: string): bool => {
 }
 
 type registrationState = BakeRegistrationState.t =
-  | @as("registered") Registered
-  | @as("unchanged") Unchanged
-  | @as("matched") Matched
-  | @as("missing") Missing
-  | @as("behind") Behind
-  | @as("diverged") Diverged
+  | Registered
+  | Unchanged
+  | Matched
+  | Missing
+  | Behind
+  | Diverged
 
 type registration = {
   plugin: string,

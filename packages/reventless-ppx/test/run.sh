@@ -4583,8 +4583,8 @@ GJ="$SIDECARS/src/Lines_GWT.gwt.json"
 assert_js_contains "$GJ" '"kind": "ref", "name": "OrderingExamples.dockLine"' "a qualified name is a ref"
 assert_js_contains "$GJ" '"value": "Money.make(~amount=1000.0, ~currency=Money.EUR)"' \
   "a call is code, cut from the ReScript source"
-assert_js_contains "$GJ" '"kind": "opaque"' "a step it cannot read is kept, as opaque"
-assert_js_contains "$GJ" '"of": "event"' "an opaque step says which kind it stands in for"
+assert_js_contains "$GJ" '"kind": "Opaque"' "a step it cannot read is kept, as Opaque"
+assert_js_contains "$GJ" '"of": "Event"' "an opaque step says which kind it stands in for"
 assert_js_contains "$GJ" '"element": "seeded"' "an opaque step is named by its source text"
 
 echo ""
@@ -5079,56 +5079,56 @@ else
 
   echo ""
   echo "=== Test: the scenario sidecar reads the automation verbs ==="
-  expect_steps "$AJ" "collect" "Dcb.whenCollect:event:OrderPlaced Dcb.thenTodos:todo:o1" \
+  expect_steps "$AJ" "collect" "Dcb.whenCollect:Event:OrderPlaced Dcb.thenTodos:Todo:o1" \
     "givenEvent → whenCollect: the event moves to when; a to-do per item"
   expect_group "$AJ" "collect" "given" "" "…and leaves given"
-  expect_steps "$AJ" "resolve" "Dcb.whenResolve:event:OrderShipped Dcb.thenResolved:resolved:o1" \
+  expect_steps "$AJ" "resolve" "Dcb.whenResolve:Event:OrderShipped Dcb.thenResolved:Resolved:o1" \
     "testSync is harvested; whenResolve → thenResolved"
-  expect_steps "$AJ" "process" "givenTodo:todo:o1 whenProcess:process: thenCommand:command:ShipOrder" \
+  expect_steps "$AJ" "process" "givenTodo:Todo:o1 whenProcess:Process: thenCommand:Command:ShipOrder" \
     "givenTodo → whenProcess → thenCommand"
-  expect_steps "$AJ" "exhausted" "givenTodo:todo:o1 whenExhausted:exhausted: thenNoCommand:noCommand:" \
+  expect_steps "$AJ" "exhausted" "givenTodo:Todo:o1 whenExhausted:Exhausted: thenNoCommand:NoCommand:" \
     "whenExhausted → thenNoCommand"
   expect_steps "$AJ" "sweep" \
-    "givenEvents:event:OrderPlaced givenEvents:event:OrderShipped whenSweep:sweep: thenCommands:command:ShipOrder andThenEvents:event:OrderShipped thenScenarioTodos:noTodo:" \
+    "givenEvents:Event:OrderPlaced givenEvents:Event:OrderShipped whenSweep:Sweep: thenCommands:Command:ShipOrder andThenEvents:Event:OrderShipped thenScenarioTodos:NoTodo:" \
     "a sweep: event(e) unwrapped, a second act in steps only"
-  expect_group "$AJ" "sweep" "when" "sweep:" "…and the when group is the sweep"
+  expect_group "$AJ" "sweep" "when" "Sweep:" "…and the when group is the sweep"
 
   echo ""
   echo "=== Test: the scenario sidecar reads the outbound verbs ==="
   expect_steps "$OJ" "translated" \
-    "givenTodo:todo:c1 givenCapabilities:capabilities: whenTranslated:process: thenSent:sent:Geocoded thenTodoStatus:todoStatus:Completed" \
+    "givenTodo:Todo:c1 givenCapabilities:Capabilities: whenTranslated:Process: thenSent:Sent:Geocoded thenTodoStatus:TodoStatus:Completed" \
     "givenCapabilities → whenTranslated → thenSent, thenTodoStatus"
-  expect_group "$OJ" "translated" "given" "todo:c1" "capabilities stay out of the given group"
+  expect_group "$OJ" "translated" "given" "Todo:c1" "capabilities stay out of the given group"
   expect_steps "$OJ" "retried" \
-    "givenTodo:todo:c1 whenTranslateRetrying:process: thenTodoStatus:todoStatus:Failed thenRetryRecorded:retries:2" \
+    "givenTodo:Todo:c1 whenTranslateRetrying:Process: thenTodoStatus:TodoStatus:Failed thenRetryRecorded:Retries:2" \
     "whenTranslateRetrying → thenRetryRecorded"
-  expect_steps "$OJ" "mocked" "givenTodo:todo:c1 whenTranslateMocked:process: thenNothingSent:nothingSent:" \
+  expect_steps "$OJ" "mocked" "givenTodo:Todo:c1 whenTranslateMocked:Process: thenNothingSent:NothingSent:" \
     "whenTranslateMocked → thenNothingSent"
   expect_steps "$OJ" "exhausted" \
-    "givenTodo:todo:c1 whenExhausted:exhausted:timeout thenCommand:command:MarkUnresolvable" \
+    "givenTodo:Todo:c1 whenExhausted:Exhausted:timeout thenCommand:Command:MarkUnresolvable" \
     "whenExhausted(~lastError) names the error"
 
   echo ""
   echo "=== Test: the scenario sidecar reads the inbound verbs ==="
-  expect_steps "$IJ" "input" "whenInput:input:externalInput thenCommands:command:AddProduct" \
+  expect_steps "$IJ" "input" "whenInput:Input:externalInput thenCommands:Command:AddProduct" \
     "whenInput(record) → thenCommands"
   assert_js_contains "$IJ" '\[ "unitPrice", { "kind": "int", "value": 1999 } \]' \
     "whenInput records the record's entries, not opaque"
-  assert_js_not_contains "$IJ" '"opaque"' "nothing in an inbound test is opaque"
-  expect_steps "$IJ" "received" "whenReceived:input:externalInput thenRefusedInput:inputRefused:title" \
+  assert_js_not_contains "$IJ" '"Opaque"' "nothing in an inbound test is opaque"
+  expect_steps "$IJ" "received" "whenReceived:Input:externalInput thenRefusedInput:InputRefused:title" \
     "whenReceived(json) → thenRefusedInput"
   assert_js_contains "$IJ" '\[ "sku", { "kind": "string", "value": "SKU-1" } \]' \
     "a JSON literal's entries are read"
-  expect_steps "$IJ" "not understood" "whenInput:input:externalInput thenNotUnderstood:notUnderstood:SKU is required" \
+  expect_steps "$IJ" "not understood" "whenInput:Input:externalInput thenNotUnderstood:NotUnderstood:SKU is required" \
     "thenNotUnderstood"
-  expect_steps "$IJ" "no command" "whenInput:input:externalInput thenNoCommand:noCommand:" "thenNoCommand"
+  expect_steps "$IJ" "no command" "whenInput:Input:externalInput thenNoCommand:NoCommand:" "thenNoCommand"
 
   echo ""
   echo "=== Test: a flow with two whenCommands keeps both, in order ==="
   expect_steps "$FJ" "place and ship" \
-    "Place.whenCommand:command:PlaceOrder Place.thenEvent:event:OrderPlaced Auto.whenReacts:sweep: Auto.thenIssuesCommand:command:ShipOrder Ship.whenCommand:command:ShipOrder Ship.thenEvent:event:OrderShipped" \
+    "Place.whenCommand:Command:PlaceOrder Place.thenEvent:Event:OrderPlaced Auto.whenReacts:Sweep: Auto.thenIssuesCommand:Command:ShipOrder Ship.whenCommand:Command:ShipOrder Ship.thenEvent:Event:OrderShipped" \
     "every act of the flow, each with the module it runs through"
-  expect_group "$FJ" "place and ship" "when" "command:ShipOrder" "the when group keeps the last act"
+  expect_group "$FJ" "place and ship" "when" "Command:ShipOrder" "the when group keeps the last act"
 fi
 
 # ─── The source reader (reventless-ppx-read) ─────────────────────────

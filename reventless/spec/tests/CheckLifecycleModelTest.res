@@ -433,22 +433,22 @@ describe("a view with no lifecycle field still places a creating command", () =>
   )
 })
 
-// A step the sidecar could not read arrives as `opaque`, `of` the kind it stands
+// A step the sidecar could not read arrives as `Opaque`, `of` the kind it stands
 // in for. The shape a `let added = Added(...)` binding leaves behind.
 describe("a step the sidecar could not read", () => {
-  let step = (kind, element) =>
+  let step = (kind: StepKind.t, element) =>
     JSON.Encode.object(
       Dict.fromArray([
-        ("kind", JSON.Encode.string(kind)),
+        ("kind", JSON.Encode.string(StepKind.toString(kind))),
         ("element", JSON.Encode.string(element)),
         ("values", JSON.Encode.array([])),
       ]),
     )
-  let opaque = (~of_, element) =>
+  let opaque = (~of_: StepKind.t, element) =>
     JSON.Encode.object(
       Dict.fromArray([
-        ("kind", JSON.Encode.string("opaque")),
-        ("of", JSON.Encode.string(of_)),
+        ("kind", JSON.Encode.string(StepKind.toString(Opaque))),
+        ("of", JSON.Encode.string(StepKind.toString(of_))),
         ("element", JSON.Encode.string(element)),
         ("values", JSON.Encode.array([])),
       ]),
@@ -477,9 +477,9 @@ describe("a step the sidecar could not read", () => {
       Check.observe(
         ~scenarios=[
           scenario(
-            ~given=[step("event", "OrderPlaced")],
-            ~when_=[step("command", "CancelOrder")],
-            ~then_=[step("forbidden", "")],
+            ~given=[step(StepKind.Event, "OrderPlaced")],
+            ~when_=[step(StepKind.Command, "CancelOrder")],
+            ~then_=[step(StepKind.Forbidden, "")],
           ),
         ],
         ~map=Dict.make(),
@@ -492,9 +492,9 @@ describe("a step the sidecar could not read", () => {
     expect(
       levels([
         scenario(
-          ~given=[opaque(~of_="event", "added")],
-          ~when_=[step("command", "UpdateName")],
-          ~then_=[step("event", "NameUpdated")],
+          ~given=[opaque(~of_=StepKind.Event, "added")],
+          ~when_=[step(StepKind.Command, "UpdateName")],
+          ~then_=[step(StepKind.Event, "NameUpdated")],
         ),
       ]),
     )->toEqual([])
@@ -503,8 +503,8 @@ describe("a step the sidecar could not read", () => {
   testSync("an unread then still says what kind it asserts", () => {
     let s = scenario(
       ~given=[],
-      ~when_=[step("command", "Add")],
-      ~then_=[opaque(~of_="event", "added")],
+      ~when_=[step(StepKind.Command, "Add")],
+      ~then_=[opaque(~of_=StepKind.Event, "added")],
     )
     expect(s.thenKind)->toEqual(Some(StepKind.Event))
     expect(levels([s]))->toEqual([("Add", Some(Reventless.Plugin.Collection))])
@@ -513,7 +513,11 @@ describe("a step the sidecar could not read", () => {
   // An automation or translation scenario: its `when` names no element and is
   // still a step the walk knows; it is no command outcome either.
   testSync("a process when is readable, and no command outcome", () => {
-    let s = scenario(~given=[], ~when_=[step("process", "")], ~then_=[step("command", "ShipOrder")])
+    let s = scenario(
+      ~given=[],
+      ~when_=[step(StepKind.Process, "")],
+      ~then_=[step(StepKind.Command, "ShipOrder")],
+    )
     expect((
       Check.isUnreadable(s),
       Check.commandOutcomes(
@@ -527,7 +531,7 @@ describe("a step the sidecar could not read", () => {
     expect([
       scenario(
         ~given=[],
-        ~when_=[opaque(~of_="command", "renamed")],
+        ~when_=[opaque(~of_=StepKind.Command, "renamed")],
         ~then_=[],
       )->Check.isUnreadable,
       scenario(~given=[], ~when_=[], ~then_=[])->Check.isUnreadable,
@@ -539,8 +543,8 @@ describe("a step the sidecar could not read", () => {
       levels([
         scenario(
           ~given=[],
-          ~when_=[opaque(~of_="command", "renamed")],
-          ~then_=[step("event", "X")],
+          ~when_=[opaque(~of_=StepKind.Command, "renamed")],
+          ~then_=[step(StepKind.Event, "X")],
         ),
       ]),
     )->toEqual([])
@@ -555,7 +559,7 @@ describe("a recorded scenario sidecar", () => {
     let path = NodePath.join([dir, "NotificationConformance_GWT.gwt.json"])
     NodeFs.writeFileSync(
       path,
-      `{"stem":"NotificationPreferences","recorded":true,"scenarios":[{"title":"undeliverable","given":[],"when":[{"kind":"command","element":"RequestNotification","values":[]}],"then":[{"kind":"event","element":"NotificationUndeliverable","values":[]}]}]}`,
+      `{"stem":"NotificationPreferences","recorded":true,"scenarios":[{"title":"undeliverable","given":[],"when":[{"kind":"Command","element":"RequestNotification","values":[]}],"then":[{"kind":"Event","element":"NotificationUndeliverable","values":[]}]}]}`,
     )
     let corpus = Check.readCorpus(path)
     expect(
@@ -577,5 +581,25 @@ describe("a recorded scenario sidecar", () => {
         [(["RequestNotification"], Some(StepKind.Event), ["NotificationUndeliverable"])],
       )),
     )
+  })
+
+  // A project on an older PPX writes the lower-case words. They are kept as words
+  // this build does not know, and the plugin is reported unread with the reason.
+  testSync("an older PPX's words are named, and say which package to update", () => {
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "older-sidecar-"]))
+    let path = NodePath.join([dir, "PlaceOrder_GWT.gwt.json"])
+    NodeFs.writeFileSync(
+      path,
+      `{"stem":"PlaceOrder_GWT","scenarios":[{"title":"placing","given":[],"when":[{"kind":"command","element":"PlaceOrder","values":[]}],"then":[{"kind":"event","element":"OrderPlaced","values":[]}]}]}`,
+    )
+    let corpus = Check.readCorpus(path)->Option.getOrThrow
+    expect(corpus.unknownKinds)->toEqual(Some(["command", "event"]))
+    expect(
+      Check.releaseMismatch([corpus])->Option.map(
+        msg =>
+          msg->String.startsWith("PlaceOrder_GWT.gwt.json: ") &&
+            msg->String.includes("older reventless-ppx"),
+      ),
+    )->toEqual(Some(true))
   })
 })

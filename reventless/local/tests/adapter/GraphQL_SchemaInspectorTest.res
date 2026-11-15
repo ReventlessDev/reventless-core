@@ -31,9 +31,9 @@ type svState = {
 // the nullability the sury→GraphQL deriver must preserve for the optional case.
 @schema
 type sourceKind =
-  | @as("tagged") Tagged
-  | @as("ancestry") Ancestry
-  | @as("substrate") Substrate
+  | Tagged
+  | Ancestry
+  | Substrate
 
 @schema
 type enumState = {

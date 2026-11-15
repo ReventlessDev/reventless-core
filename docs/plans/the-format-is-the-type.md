@@ -1,9 +1,9 @@
 # Plan: the format is the type
 
 **Date:** 2026-11-15<br/>
-**Status:** 🚧 [TF1](#tf1-closed-sets-held-as-variants-no-format-change) and
-[TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants) built, 2026-11-15.
-[TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) is next.<br/>
+**Status:** ✅ [TF1](#tf1-closed-sets-held-as-variants-no-format-change) to [TF5](#tf5-the-few-as-left-on-owned-formats) built, 2026-11-15. [TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) and [TF4](#tf4-the-repositorys-own-reports-and-structures-derived) change words
+other readers see; they reach those readers with the release that carries them, the PPX and
+`reventless/spec` together.<br/>
 **Nature:** types and readers, no new behaviour. [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
 and [TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants) leave every file and every
 wire word as it is. [TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) and
@@ -161,6 +161,30 @@ Snapshots and goldens that hold sidecar text are written again. The PPX and `rev
 released together, and readers of the sidecar outside this repository change in that same release
 ([TFQ1](#open-questions)).
 
+**Built.** The PPX holds the step kinds as a variant of its own, `StepKind` (in
+`packages/reventless-ppx/src/ppx`), and writes every `kind` and every `of` through its `word`,
+which spells each case by its name: `Event`, `Command`, `Input`, `Error`, `SideEffect`, `State`,
+`NoEvent`, `NoState`, `Forbidden`, `NoCommand`, `Todo`, `NoTodo`, `Capabilities`, `Sweep`,
+`Process`, `Exhausted`, `Resolved`, `NotUnderstood`, `InputRefused`, `Sent`, `NothingSent`,
+`TodoStatus`, `Retries`, `PublicEvent` and `Opaque`. `SidecarStepKind` dropped its `@as`s: it is
+still `@unboxed` with `OtherSidecarStep(string)`, so a word reads as its case by identity, and it
+gained `known`, the list of its cases. `ScenarioRecorder` writes through the same variant, so a
+recorded sidecar carries the same words.
+
+- One list: `SidecarStepKindTest` reads the arms of `StepKind.word` from the OCaml source and fails
+  when an arm writes a word other than its constructor's name, when a word the PPX writes is not a
+  case of `SidecarStepKind`, or when `known` and the PPX's list differ. It runs with the rest of the
+  tests and needs no PPX binary.
+- A word this build does not know now stops the lifecycle check for that plugin: it is reported
+  under "could not read", naming the sidecar. A lower-case word says the sidecar was written by an
+  older reventless-ppx and names the package to update; any other unknown word says the PPX is
+  newer than `reventless/spec`. Before, such steps were dropped without a word and the model was
+  derived from what was left.
+- Changed with it: the PPX's unit tests and fixture suite, the lifecycle check's tests, the step
+  kinds in [the reverse codegen pipeline guide](../guides/reverse-codegen-pipeline.md), and the
+  comments that named the old words. No tracked file holds sidecar text: the sidecars are build
+  outputs, and the lifecycle goldens and `LifecycleModel.res` files did not move.
+
 ### TF4 The repository's own reports and structures, derived
 
 The formats this repository owns and writes for others to read take their type's names:
@@ -178,10 +202,51 @@ format a deployed app has stored (a baked manifest, a plugin structure inside a 
 named and handled. Either it is written again on the next deploy, or it keeps its words with
 `@as`.
 
+**Built.** Each candidate's writers and readers were listed first. Three formats are written again
+by every run and read only by code released with their writer, so their words are now their cases'
+names, with no `@as`:
+
+- The lifecycle check's `--json` report. A finding's `verdict` is `Contradicted`, `Unverified`,
+  `Undeclared`, `LevelMismatch` or `Ambiguous`, and an outcome's `kind` is `EventOutcome`,
+  `ErrorOutcome` or `NoEventOutcome`. The report's `version` is 2. The printed headings use the same
+  words.
+- `typeSchema.kind` (`RecordSchema`, `VariantSchema`, `UnknownSchema`), which travels only through
+  the in-process plugin hooks.
+- The bake function's registration `state` (`Registered`, `Unchanged`, `Matched`, `Missing`,
+  `Behind`, `Diverged`). It is an answer the deploy script reads in the same run, never stored, and
+  the script still keeps a word it does not know.
+
+One more owned word went the same way: the to-do status a GWT mismatch prints (`Completed`, not
+`#Completed`).
+
+Kept, each with its `@as` or its words as they are:
+
+- `ComponentType`: Pulumi type tokens, the `reventless:kind` tag and `runtimeKind`, all stored by a
+  deployment. `QueryDb` keeps `@as("QueryDB")`.
+- `ResourceAttribution`'s scope: AWS tags on deployed resources.
+- The plugin structure's `visibility` and `labelFieldSource`, and `Admission`'s doors: the structure
+  is stored in the Plugin read model and read back by a deployed platform.
+- The local registry's `store.kind`: a file under `.reventless/running` that local tools of
+  different versions read.
+- `CapabilityNeed`, `Admission`'s strategies and `ReadConsistency`: already their cases' names,
+  and stored in the structure or in a committed `capabilities.json`.
+- `ComponentKind`'s folder names, `Logger`'s level words and the log format words: people write them,
+  as folder names, `LOG_LEVEL` values and command-line flags.
+- `Outcome.mismatchKind`: its words are the mismatch constructors' names, and the formatter's JSON
+  carries them to an editor extension released on its own. The cases carry `Kind` only to stay
+  distinct from those constructors.
+- `MessageFormat`'s argument types: ICU's words.
+
+The `Other` cases [TF1](#tf1-closed-sets-held-as-variants-no-format-change) added stay.
+
 ### TF5 The few `@as` left on owned formats
 
 The test's `sourceKind` drops its `@as`. The deploy manifest's keys follow
 [TFQ3](#open-questions), and the webhook method follows [TFQ4](#open-questions).
+
+**Built.** `GraphQL_SchemaInspectorTest`'s `sourceKind` has no `@as`; none of its expectations read
+the words. The deploy manifest's `stack-defaults` and `depends-on` and the webhook's `POST` and `PUT`
+keep their `@as`, as [TFQ3](#open-questions) and [TFQ4](#open-questions) decided.
 
 ## Open questions
 
@@ -194,6 +259,11 @@ everywhere. The cost is one coordinated release of the PPX and `reventless/spec`
 project still on the old PPX writes words the new reader doesn't know, so the reader's `Other`
 case has to name the PPX version to update to.
 
+**Decided (2026-11-15):** changed, as recommended, in
+[TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names). The `Other` case's reason names
+the package to update rather than a version: the matching version is the one released with the
+reader.
+
 **TFQ2.** *Does a structure field keep `string` so an older reader decodes a newer structure?*
 `Admission.def.strategy` does so on purpose. **Recommendation:** an `@unboxed` variant with an
 `OtherStrategy(string)` case. It decodes any word, keeps the one it doesn't know, and every reader
@@ -204,8 +274,12 @@ camelCase so the type can name them?* **Recommendation:** keep them with `@as`. 
 file by hand, and kebab-case is the convention of the YAML it sits beside. The type is still the
 format; only these two keys are spelled for the file.
 
+**Decided (2026-11-15):** kept with `@as`, as recommended.
+
 **TFQ4.** *Does `webhookMethod` write `Post`/`Put`?* **Recommendation:** no. The word is an HTTP
 method, which HTTP fixes in upper case, so `@as("POST")` stays.
+
+**Decided (2026-11-15):** `@as("POST")` and `@as("PUT")` stay, as recommended.
 
 **TFQ5.** *Which spelling does `ComponentType`'s `QueryDb` keep?* One `toString` writes `QueryDB`
 and another `QueryDb`. **Recommendation:** find where each spelling is read at the start of

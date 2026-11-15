@@ -4,7 +4,7 @@ open JestGlobals
 // held as variants: each reads back as its case and prints as the same word.
 
 describe("BakeRegistrationState", () => {
-  let words = ["registered", "unchanged", "matched", "missing", "behind", "diverged"]
+  let words = ["Registered", "Unchanged", "Matched", "Missing", "Behind", "Diverged"]
 
   testSync("prints each state as the bake function answers it", () =>
     expect(BakeRegistrationState.all->Array.map(BakeRegistrationState.name))->toEqual(words)
