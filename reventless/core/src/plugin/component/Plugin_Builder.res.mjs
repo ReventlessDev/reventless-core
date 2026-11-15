@@ -49,8 +49,8 @@ function Make(Spec) {
       let aggregatePositions = aggregatePositionsOpt !== undefined ? aggregatePositionsOpt : [];
       let isVisibleReadSide = q => {
         let match = q.visibility;
-        if (match !== undefined) {
-          return match !== "Internal";
+        if (match !== undefined && (match === "Public" || match === "Internal")) {
+          return match === "Public";
         } else {
           return true;
         }

@@ -29,16 +29,16 @@ describe("SendTrackingEmail OutboundTranslationSlice", () => {
     ->thenTodos([("o1", {orderId: "o1", email: "x@y"})])
   )
 
-  test("translate success is fire-and-forget → #Completed", () =>
+  test("translate success is fire-and-forget → Completed", () =>
     givenTodo("o1", {orderId: "o1", email: "x@y"})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Ok(None)))
-    ->thenTodoStatus("o1", #Completed)
+    ->thenTodoStatus("o1", Completed)
   )
 
-  test("translate failure records a retry → #Pending", () =>
+  test("translate failure records a retry → Pending", () =>
     givenTodo("o1", {orderId: "o1", email: "x@y"})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
-    ->thenTodoStatus("o1", #Pending)
+    ->thenTodoStatus("o1", Pending)
   )
 
   test("retrying translate succeeds on the third attempt → 2 retries recorded", () => {

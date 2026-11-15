@@ -10,8 +10,8 @@ let tempRoot = (): string =>
 
 let deadPid = 2147483646
 
-let sqliteStore = (path): LocalPlatformRegistry.store => {kind: "sqlite", path}
-let memoryStore: LocalPlatformRegistry.store = {kind: "memory"}
+let sqliteStore = (path): LocalPlatformRegistry.store => {kind: SqliteStore, path}
+let memoryStore: LocalPlatformRegistry.store = {kind: MemoryStore}
 
 let writeAt = (~cwd, ~port, ~store, ~pid=NodeProcess.pid) =>
   LocalPlatformRegistry.write(

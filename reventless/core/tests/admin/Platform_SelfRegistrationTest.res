@@ -17,8 +17,8 @@ let empty: Reventless.Plugin.pluginStructure = {
 let registration: Reventless.Plugin.pluginStructure = {
   ...empty,
   admission: [
-    {Reventless.Admission.role: "Shopper", strategy: "SelfService"},
-    {Reventless.Admission.role: "Admin", strategy: "Provisioned"},
+    {Reventless.Admission.role: "Shopper", strategy: SelfServiceWord},
+    {Reventless.Admission.role: "Admin", strategy: ProvisionedWord},
   ],
   admissionDoors: [
     {Reventless.Admission.component: "SignUp", part: "start"},

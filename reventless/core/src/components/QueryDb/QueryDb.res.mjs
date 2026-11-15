@@ -27,7 +27,7 @@ function storageErrorToString(err) {
   }
 }
 
-let componentType = "QueryDb";
+let componentType = "QueryDB";
 
 export {
   componentType,

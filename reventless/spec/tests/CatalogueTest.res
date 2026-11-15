@@ -46,7 +46,7 @@ let structure: Plugin.pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
-  admission: [{role: "Shopper", strategy: "SelfService"}],
+  admission: [{role: "Shopper", strategy: SelfServiceWord}],
 }
 
 let generated = Catalogue.entries(~plugin="Ordering", structure)
@@ -86,7 +86,7 @@ describe("Catalogue.entries", () => {
       ->Array.find(e => e.key == "Ordering.Customers.state.Deactivated")
       ->Option.map(e => e.element),
     )->toEqual(
-      Some({Catalogue.plugin: "Ordering", identifier: "Customers", kind: "state.Deactivated"}),
+      Some({Catalogue.plugin: "Ordering", identifier: "Customers", kind: StateText("Deactivated")}),
     )
   )
 

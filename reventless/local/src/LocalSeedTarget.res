@@ -54,8 +54,8 @@ let relativeIfInside = (path: string): string => {
 
 let storeLabel = (store: LocalPlatformRegistry.store): string =>
   switch (store.kind, store.path) {
-  | ("sqlite", Some(path)) => `sqlite ${relativeIfInside(path)}`
-  | (kind, _) => kind
+  | (SqliteStore, Some(path)) => `sqlite ${relativeIfInside(path)}`
+  | (kind, _) => (kind :> string)
   }
 
 // The scope is dropped from the app name for the menu only — `@scope/app-local`
@@ -147,15 +147,15 @@ let announce = (t: t): unit =>
     collapsed them would tell an in-memory platform to check its disk. */
 let storePath = (t: t): result<string, string> =>
   switch t.origin {
-  | Running({store: {kind: "sqlite", path: ?Some(path)}}) => Ok(path)
-  | Running({store: {kind: "memory"}, endpoint}) =>
+  | Running({store: {kind: SqliteStore, path: ?Some(path)}}) => Ok(path)
+  | Running({store: {kind: MemoryStore}, endpoint}) =>
     Error(`the platform at ${endpoint} keeps its store in memory; restart it to empty it.`)
-  | Running({store: {kind: "postgres"}, endpoint}) =>
+  | Running({store: {kind: PostgresStore}, endpoint}) =>
     Error(
       `the platform at ${endpoint} is backed by Postgres, which keeps its event logs off this machine. Reset it against the database.`,
     )
   | Running({store: {kind}, endpoint}) =>
-    Error(`the platform at ${endpoint} reports an unknown store kind "${kind}".`)
+    Error(`the platform at ${endpoint} reports an unknown store kind "${(kind :> string)}".`)
   | EnvOverride =>
     Error(
       `REVENTLESS_GRAPHQL_ENDPOINT names ${t.endpoint}, which does not say which store that platform opened. Set REVENTLESS_LOCAL_BACKEND to the store file, or unset REVENTLESS_GRAPHQL_ENDPOINT to pick a running platform.`,

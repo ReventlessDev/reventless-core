@@ -12,6 +12,10 @@ module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 // small intervals and ≥ +50% for large ones (5→7, 10→15, 60→90).
 let disconnectGrace = interval => interval + max(2, interval / 2)
 
+/** What the admin does with a plugin's cross-plugin subscriptions: wires them
+    when the plugin connects, removes them when it disconnects. */
+type subscriptionChange = ConnectSubscriptions | DisconnectSubscriptions
+
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
@@ -23,7 +27,7 @@ module type Spec = {
   // Lambda (which only handles incoming commands like Heartbeat). Some only
   // on the admin EventCollector entry point.
   let manageSubscriptions: option<
-    (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+    (Reventless.Plugin.pluginDefinition, subscriptionChange) => promise<unit>,
   >
 }
 
@@ -125,7 +129,7 @@ module Make = (Spec: Spec) => {
       await forwardCommand(id, command, extensionPointName, queryEngine)
     | DoConnectPlugin(pluginDef) =>
       switch Spec.manageSubscriptions {
-      | Some(fn) => await fn(pluginDef, #connect)
+      | Some(fn) => await fn(pluginDef, ConnectSubscriptions)
       | None => ()
       }
       switch Spec.updateApiSchema {
@@ -134,7 +138,7 @@ module Make = (Spec: Spec) => {
       }
     | DoDisconnectPlugin(pluginDef) =>
       switch Spec.manageSubscriptions {
-      | Some(fn) => await fn(pluginDef, #disconnect)
+      | Some(fn) => await fn(pluginDef, DisconnectSubscriptions)
       | None => ()
       }
       switch Spec.updateApiSchema {

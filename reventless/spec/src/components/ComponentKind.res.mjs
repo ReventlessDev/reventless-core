@@ -3,12 +3,12 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 let all = [
-  "StateChangeSlice",
-  "StateViewSlice",
-  "StateViewSliceStream",
-  "AutomationSlice",
-  "InboundTranslationSlice",
-  "OutboundTranslationSlice",
+  "StateChange",
+  "StateView",
+  "StateViewStream",
+  "Automation",
+  "InboundTranslation",
+  "OutboundTranslation",
   "Aggregate",
   "ReadModel",
   "ReadModelStream",
@@ -18,32 +18,7 @@ let all = [
 ];
 
 function folderName(t) {
-  switch (t) {
-    case "StateChangeSlice" :
-      return "StateChange";
-    case "StateViewSlice" :
-      return "StateView";
-    case "StateViewSliceStream" :
-      return "StateViewStream";
-    case "AutomationSlice" :
-      return "Automation";
-    case "InboundTranslationSlice" :
-      return "InboundTranslation";
-    case "OutboundTranslationSlice" :
-      return "OutboundTranslation";
-    case "Aggregate" :
-      return "Aggregate";
-    case "ReadModel" :
-      return "ReadModel";
-    case "ReadModelStream" :
-      return "ReadModelStream";
-    case "Task" :
-      return "Task";
-    case "ExtensionPoint" :
-      return "ExtensionPoint";
-    case "Extension" :
-      return "Extension";
-  }
+  return t;
 }
 
 function folderToKind(folder) {
@@ -55,7 +30,7 @@ function folderToKind(folder) {
     case "AutomationSlice" :
     case "AutomationSlices" :
     case "Automations" :
-      return "AutomationSlice";
+      return "Automation";
     case "ExtensionPoint" :
     case "ExtensionPoints" :
       return "ExtensionPoint";
@@ -66,12 +41,12 @@ function folderToKind(folder) {
     case "InboundTranslationSlice" :
     case "InboundTranslationSlices" :
     case "InboundTranslations" :
-      return "InboundTranslationSlice";
+      return "InboundTranslation";
     case "OutboundTranslation" :
     case "OutboundTranslationSlice" :
     case "OutboundTranslationSlices" :
     case "OutboundTranslations" :
-      return "OutboundTranslationSlice";
+      return "OutboundTranslation";
     case "ReadModelStream" :
     case "ReadModelStreams" :
       return "ReadModelStream";
@@ -82,17 +57,17 @@ function folderToKind(folder) {
     case "StateChangeSlice" :
     case "StateChangeSlices" :
     case "StateChanges" :
-      return "StateChangeSlice";
+      return "StateChange";
     case "StateViewSliceStream" :
     case "StateViewSliceStreams" :
     case "StateViewStream" :
     case "StateViewStreams" :
-      return "StateViewSliceStream";
+      return "StateViewStream";
     case "StateView" :
     case "StateViewSlice" :
     case "StateViewSlices" :
     case "StateViews" :
-      return "StateViewSlice";
+      return "StateView";
     case "Task" :
     case "Tasks" :
       return "Task";

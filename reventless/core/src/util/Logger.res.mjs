@@ -22,29 +22,40 @@ let s = process.env.REVENTLESS_LOG_MAX_DETAIL_BYTES;
 
 let maxDetailBytes = s !== undefined ? Stdlib_Option.getOr(Stdlib_Int.fromString(s, undefined), 32768) : 32768;
 
+let levels = [
+  "DEBUG",
+  "INFO",
+  "WARN",
+  "ERROR"
+];
+
 function levelToInt(l) {
   switch (l) {
-    case "Debug" :
+    case "DEBUG" :
       return 0;
-    case "Info" :
+    case "INFO" :
       return 1;
-    case "Warn" :
+    case "WARN" :
       return 2;
-    case "Error" :
+    case "ERROR" :
       return 3;
   }
 }
 
 function levelLabel(l) {
-  switch (l) {
-    case "Debug" :
-      return "DEBUG";
-    case "Info" :
-      return "INFO";
-    case "Warn" :
-      return "WARN";
-    case "Error" :
-      return "ERROR";
+  return l;
+}
+
+function levelOfLabel(label) {
+  return levels.find(l => l === label);
+}
+
+function levelOfWord(word) {
+  let lower = word.toLowerCase();
+  if (lower === "warning") {
+    return "WARN";
+  } else {
+    return levels.find(l => l.toLowerCase() === lower);
   }
 }
 
@@ -100,7 +111,7 @@ function recordFields(r) {
     ],
     [
       "level",
-      levelLabel(r.level)
+      r.level
     ],
     [
       "message",
@@ -197,23 +208,23 @@ function emit(level, comp, plugin, detail, annotations, msg) {
   let t = hms();
   let c = LogPrefix$Reventless.fmtComp(comp, undefined);
   switch (level) {
-    case "Debug" :
+    case "DEBUG" :
       console.log(t + ` ` + dim + `D` + reset + ` ` + c + msg);
       return;
-    case "Info" :
+    case "INFO" :
       console.log(t + ` ` + cyan + `I` + reset + ` ` + c + msg);
       return;
-    case "Warn" :
+    case "WARN" :
       console.warn(t + ` ` + yellow + `W` + reset + ` ` + c + msg);
       return;
-    case "Error" :
+    case "ERROR" :
       console.error(t + ` ` + red + `E` + reset + ` ` + c + msg);
       return;
   }
 }
 
 let defaultMinLevel = {
-  contents: "Info"
+  contents: "INFO"
 };
 
 function setDefaultMinLevel(l) {
@@ -229,20 +240,20 @@ function makeLoggerWith(shouldLog) {
     emit(level, comp, undefined, undefined, undefined, msg + dataStr);
   };
   return {
-    debug: (comp, data, msg) => log("Debug", comp, data, msg),
-    info: (comp, data, msg) => log("Info", comp, data, msg),
-    warn: (comp, data, msg) => log("Warn", comp, data, msg),
-    error: (comp, data, msg) => log("Error", comp, data, msg),
+    debug: (comp, data, msg) => log("DEBUG", comp, data, msg),
+    info: (comp, data, msg) => log("INFO", comp, data, msg),
+    warn: (comp, data, msg) => log("WARN", comp, data, msg),
+    error: (comp, data, msg) => log("ERROR", comp, data, msg),
     debugLazy: (comp, makeMsg) => {
-      if (shouldLog("Debug", comp)) {
-        return emit("Debug", comp, undefined, undefined, undefined, makeMsg());
+      if (shouldLog("DEBUG", comp)) {
+        return emit("DEBUG", comp, undefined, undefined, undefined, makeMsg());
       }
     }
   };
 }
 
 function makeLogger(minLevelOpt) {
-  let minLevel = minLevelOpt !== undefined ? minLevelOpt : "Info";
+  let minLevel = minLevelOpt !== undefined ? minLevelOpt : "INFO";
   return makeLoggerWith((l, param) => levelToInt(l) >= levelToInt(minLevel));
 }
 
@@ -281,15 +292,15 @@ function effectiveMin() {
   }
   switch (match) {
     case "debug" :
-      return "Debug";
+      return "DEBUG";
     case "error" :
-      return "Error";
+      return "ERROR";
     case "silent" :
       return;
     case "warn" :
-      return "Warn";
+      return "WARN";
     default:
-      return "Info";
+      return "INFO";
   }
 }
 
@@ -453,8 +464,11 @@ let resolvePlugin = LogPrefix$Reventless.resolvePlugin;
 export {
   serviceName,
   maxDetailBytes,
+  levels,
   levelToInt,
   levelLabel,
+  levelOfLabel,
+  levelOfWord,
   red,
   yellow,
   cyan,

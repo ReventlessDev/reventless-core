@@ -40,28 +40,18 @@ type t =
         has none yet. */
   | Stash
 
-/** The spelling carried in `pluginStructure` and in `capabilities.json`.
-    Persisted structures hold strings, not enum members, so a plugin built
-    against a newer framework still decodes in an older reader. */
-let toString = (need: t): string =>
-  switch need {
-  | Geocoding => "Geocoding"
-  | Messaging => "Messaging"
-  | IdentityProvider => "IdentityProvider"
-  | Stash => "Stash"
-  }
+/** Every need, in declaration order: what `fromString` reads against. */
+let all = [Geocoding, Messaging, IdentityProvider, Stash]
+
+/** The spelling carried in `pluginStructure` and in `capabilities.json`: the
+    case's own name. Persisted structures hold strings, not enum members, so a
+    plugin built against a newer framework still decodes in an older reader. */
+let toString = (need: t): string => (need :> string)
 
 /** The inverse, for readers of a persisted structure or a committed manifest.
     `None` for a capability this build does not know — a newer plugin's need is
     reported as unrecognized, never silently dropped into a known arm. */
-let fromString = (name: string): option<t> =>
-  switch name {
-  | "Geocoding" => Some(Geocoding)
-  | "Messaging" => Some(Messaging)
-  | "IdentityProvider" => Some(IdentityProvider)
-  | "Stash" => Some(Stash)
-  | _ => None
-  }
+let fromString = (name: string): option<t> => all->Array.find(need => toString(need) == name)
 
 /** One declared need the deployment does not provision, with the component that
     declared it — a deploy refusal has to name what to go and look at. */

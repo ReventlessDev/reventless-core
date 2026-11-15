@@ -56,7 +56,7 @@ type constructed
 /**
 Create a new Reventless component backed by a Pulumi `ComponentResource`.
 
-- `componentType` — Pulumi type token (e.g. `"reventless:index:Aggregate"`)
+- `componentType` — the component's kind (`ComponentType.toString`); the Pulumi type token is it with a `reventless:` prefix (`"reventless:Aggregate"`)
 - `name` — unique Pulumi resource name
 - `construct` — a callback that builds child resources; called by the Pulumi runtime
 - `opts` — optional Pulumi resource options (parent, provider, etc.)

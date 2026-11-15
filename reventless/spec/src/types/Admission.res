@@ -43,36 +43,39 @@ and the deploy check reads them: a role declared by invitation needs a door that
 invites.
 */
 type door =
-  | Start
-  | Complete
-  | Invite
-  | OpenRoles
+  | @as("start") Start
+  | @as("complete") Complete
+  | @as("invite") Invite
+  | @as("openRoles") OpenRoles
 
-let doorName = (door: door) =>
-  switch door {
-  | Start => "start"
-  | Complete => "complete"
-  | Invite => "invite"
-  | OpenRoles => "openRoles"
-  }
+/** Every door, in declaration order: what `doorOfName` reads against. */
+let doors = [Start, Complete, Invite, OpenRoles]
 
-let doorOfName = (name: string): option<door> =>
-  switch name {
-  | "start" => Some(Start)
-  | "complete" => Some(Complete)
-  | "invite" => Some(Invite)
-  | "openRoles" => Some(OpenRoles)
-  | _ => None
-  }
+/** The door's word, as a marked door's `part` carries it. */
+let doorName = (door: door): string => (door :> string)
+
+let doorOfName = (name: string): option<door> => doors->Array.find(door => doorName(door) == name)
 
 /** A marked door as the plugin structure carries it: the component and its part. */
 @schema
 type doorDef = {component: string, part: string}
 
-/** One row of the table as the plugin structure carries it. Strings, so a
-    structure written by a newer plugin still decodes in an older reader. */
+/** A strategy's word as the plugin structure carries it. A word this build does
+    not know decodes as `OtherStrategy`, keeping the word, so a structure written
+    by a newer plugin still decodes in an older reader and is written back as it
+    came. */
+@unboxed @schema
+type strategyWord =
+  | @as("SelfService") SelfServiceWord
+  | @as("Invitation") InvitationWord
+  | @as("Provisioned") ProvisionedWord
+  | OtherStrategy(string)
+
+/** One row of the table as the plugin structure carries it. Strings for the
+    roles, so a structure written by a newer plugin still decodes in an older
+    reader. */
 @schema
-type def = {role: string, strategy: string, invitedBy?: array<string>}
+type def = {role: string, strategy: strategyWord, invitedBy?: array<string>}
 
 // A payload-less case is its name at run time, so the pairs are the same values
 // once every role in them has been checked to be one.
@@ -124,12 +127,16 @@ let selfService = (table: t): array<Role.name> =>
     }
   )
 
-let strategyName = (s: strategy<_>) =>
+let strategyWordOf = (s: strategy<_>): strategyWord =>
   switch s {
-  | SelfService => "SelfService"
-  | Invitation(_) => "Invitation"
-  | Provisioned => "Provisioned"
+  | SelfService => SelfServiceWord
+  | Invitation(_) => InvitationWord
+  | Provisioned => ProvisionedWord
   }
+
+/** A word read from text: every word is one, a word this build does not know
+    being `OtherStrategy`. */
+external strategyWordOfString: string => strategyWord = "%identity"
 
 /**
 Refuse a table that cannot mean what it says: a role named twice, a role or an
@@ -165,10 +172,10 @@ let toDefs = (table: t): array<def> =>
     switch strategy {
     | Invitation({by}) => {
         role: (role :> string),
-        strategy: strategyName(strategy),
+        strategy: strategyWordOf(strategy),
         invitedBy: by->Array.map(r => (r :> string)),
       }
-    | SelfService | Provisioned => {role: (role :> string), strategy: strategyName(strategy)}
+    | SelfService | Provisioned => {role: (role :> string), strategy: strategyWordOf(strategy)}
     }
   )
 
@@ -177,12 +184,12 @@ let toDefs = (table: t): array<def> =>
 let fromDefs = (defs: array<def>): result<t, string> => {
   let read = defs->Array.map((d): result<entry, string> =>
     switch (d.strategy, d.invitedBy) {
-    | ("SelfService", _) => Ok({role: Role.make(d.role), strategy: SelfService})
-    | ("Provisioned", _) => Ok({role: Role.make(d.role), strategy: Provisioned})
-    | ("Invitation", Some(by)) =>
+    | (SelfServiceWord, _) => Ok({role: Role.make(d.role), strategy: SelfService})
+    | (ProvisionedWord, _) => Ok({role: Role.make(d.role), strategy: Provisioned})
+    | (InvitationWord, Some(by)) =>
       Ok({role: Role.make(d.role), strategy: Invitation({by: by->Array.map(Role.make)})})
-    | ("Invitation", None) => Error(`${d.role}: an invitation names who may send it`)
-    | (other, _) => Error(`${d.role}: ${other} is not a strategy`)
+    | (InvitationWord, None) => Error(`${d.role}: an invitation names who may send it`)
+    | (OtherStrategy(other), _) => Error(`${d.role}: ${other} is not a strategy`)
     }
   )
   switch read->Array.filterMap(r =>
@@ -211,13 +218,12 @@ let toJson = (table: t): JSON.t =>
   ->Array.map(({role, strategy}) => (
     (role :> string),
     switch strategy {
-    | SelfService => JSON.String("SelfService")
-    | Provisioned => JSON.String("Provisioned")
+    | SelfService | Provisioned => JSON.String((strategyWordOf(strategy) :> string))
     | Invitation({by}) =>
       JSON.Object(
         Dict.fromArray([
           (
-            "Invitation",
+            (InvitationWord :> string),
             JSON.Object(
               Dict.fromArray([("by", JSON.Array(by->Array.map(r => JSON.String((r :> string)))))]),
             ),
@@ -231,11 +237,18 @@ let toJson = (table: t): JSON.t =>
 
 let _strategyFromJson = (role: string, json: JSON.t): result<strategy<Role.name>, string> =>
   switch json {
-  | String("SelfService") => Ok(SelfService)
-  | String("Provisioned") => Ok(Provisioned)
+  | String(word) =>
+    switch strategyWordOfString(word) {
+    | SelfServiceWord => Ok(SelfService)
+    | ProvisionedWord => Ok(Provisioned)
+    | _ => Error(`${role}: ${JSON.stringify(json)} is not a strategy`)
+    }
   | Object(o) =>
-    switch (o->Dict.keysToArray, o->Dict.get("Invitation")) {
-    | (["Invitation"], Some(Object(inv))) =>
+    switch (
+      o->Dict.keysToArray->Array.map(strategyWordOfString),
+      o->Dict.get((InvitationWord :> string)),
+    ) {
+    | ([InvitationWord], Some(Object(inv))) =>
       switch inv->Dict.get("by") {
       | Some(Array(by)) =>
         let names = by->Array.filterMap(r =>

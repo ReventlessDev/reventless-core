@@ -197,6 +197,81 @@ function inSentence(identifier) {
   }).join(" ");
 }
 
+function elementKindText(kind) {
+  if (typeof kind !== "object") {
+    switch (kind) {
+      case "NameText" :
+        return "name";
+      case "PluralText" :
+        return "plural";
+      case "CountText" :
+        return "count";
+      case "PluginText" :
+        return "plugin";
+      case "RoleText" :
+        return "role";
+    }
+  } else {
+    switch (kind.TAG) {
+      case "FieldText" :
+        return `field.` + kind._0;
+      case "StateText" :
+        return `state.` + kind._0;
+      case "ErrorText" :
+        return `error.` + kind._0;
+      case "OtherElementText" :
+        return kind._0;
+    }
+  }
+}
+
+function elementKindOfText(text) {
+  switch (text) {
+    case "count" :
+      return "CountText";
+    case "name" :
+      return "NameText";
+    case "plugin" :
+      return "PluginText";
+    case "plural" :
+      return "PluralText";
+    case "role" :
+      return "RoleText";
+    default:
+      let dot = text.indexOf(".");
+      if (dot === -1) {
+        return {
+          TAG: "OtherElementText",
+          _0: text
+        };
+      }
+      let rest = text.slice(dot + 1 | 0);
+      let match = text.slice(0, dot);
+      switch (match) {
+        case "error" :
+          return {
+            TAG: "ErrorText",
+            _0: rest
+          };
+        case "field" :
+          return {
+            TAG: "FieldText",
+            _0: rest
+          };
+        case "state" :
+          return {
+            TAG: "StateText",
+            _0: rest
+          };
+        default:
+          return {
+            TAG: "OtherElementText",
+            _0: text
+          };
+      }
+  }
+}
+
 function schemaOf(schema) {
   try {
     return Stdlib_JSON.Decode.object(JSON.parse(schema));
@@ -252,7 +327,7 @@ function entries(plugin, structure) {
   let out = [];
   let add = (identifier, kind, text) => {
     out.push({
-      key: plugin + `.` + identifier + `.` + kind,
+      key: plugin + `.` + identifier + `.` + elementKindText(kind),
       text: text,
       element: {
         plugin: plugin,
@@ -266,27 +341,39 @@ function entries(plugin, structure) {
     let match = view.pluralSource;
     let match$1 = view.plural;
     let plural = match === "declared" && match$1 !== undefined ? match$1 : view.name;
-    add(view.name, "name", humanizeKey(singular));
-    add(view.name, "plural", humanizeKey(plural));
-    add(view.name, "count", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(plural) + `}}`);
+    add(view.name, "NameText", humanizeKey(singular));
+    add(view.name, "PluralText", humanizeKey(plural));
+    add(view.name, "CountText", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(plural) + `}}`);
     let properties = propertiesOf(view.schema);
     properties.forEach(param => {
       let field = param[0];
-      add(view.name, `field.` + field, humanizeKey(field));
+      add(view.name, {
+        TAG: "FieldText",
+        _0: field
+      }, humanizeKey(field));
     });
     Stdlib_Option.forEach(Stdlib_Option.flatMap(view.lifecycleField, field => properties.find(param => param[0] === field)), param => {
-      enumValues(param[1]).forEach(value => add(view.name, `state.` + value, humanizeKey(value)));
+      enumValues(param[1]).forEach(value => add(view.name, {
+        TAG: "StateText",
+        _0: value
+      }, humanizeKey(value)));
     });
   });
   structure.stateChangeSlices.concat(structure.aggregates).forEach(writeSide => {
     writeSide.commands.forEach(command => {
-      add(command.name, "name", humanizeKey(command.name));
+      add(command.name, "NameText", humanizeKey(command.name));
       propertiesOf(command.schema).forEach(param => {
         let field = param[0];
-        add(command.name, `field.` + field, humanizeKey(field));
+        add(command.name, {
+          TAG: "FieldText",
+          _0: field
+        }, humanizeKey(field));
       });
     });
-    writeSide.errors.forEach(error => add(writeSide.name, `error.` + error.name, sentence(error.name)));
+    writeSide.errors.forEach(error => add(writeSide.name, {
+      TAG: "ErrorText",
+      _0: error.name
+    }, sentence(error.name)));
   });
   out.push({
     key: plugin + `.plugin.name`,
@@ -294,7 +381,7 @@ function entries(plugin, structure) {
     element: {
       plugin: plugin,
       identifier: plugin,
-      kind: "plugin"
+      kind: "PluginText"
     }
   });
   let roles = Stdlib_Option.getOr(structure.admission, []).map(a => a.role).concat(structure.stateChangeSlices.concat(structure.aggregates).flatMap(w => w.commands).flatMap(c => Stdlib_Option.getOr(c.requiredRoles, [])));
@@ -306,7 +393,7 @@ function entries(plugin, structure) {
         element: {
           plugin: plugin,
           identifier: role,
-          kind: "role"
+          kind: "RoleText"
         }
       });
       return;
@@ -403,7 +490,7 @@ function lockText(locks) {
     element: {
       plugin: l.element.plugin,
       identifier: l.element.identifier,
-      kind: l.element.kind
+      kind: elementKindText(l.element.kind)
     },
     terms: sortedObject(Stdlib_Dict.mapValues(l.terms, prim => prim))
   }))), undefined, 2) + "\n";
@@ -439,7 +526,7 @@ function readLocks(text) {
               element: {
                 plugin: Stdlib_Option.getOr(str(element, "plugin"), ""),
                 identifier: Stdlib_Option.getOr(str(element, "identifier"), ""),
-                kind: Stdlib_Option.getOr(str(element, "kind"), "")
+                kind: elementKindOfText(Stdlib_Option.getOr(str(element, "kind"), ""))
               },
               terms: Stdlib_Option.mapOr(Stdlib_Option.flatMap(o["terms"], Stdlib_JSON.Decode.object), {}, t => Object.fromEntries(Stdlib_Array.filterMap(Object.entries(t), param => {
                 let k = param[0];
@@ -468,6 +555,8 @@ export {
   humanizeKey,
   sentence,
   inSentence,
+  elementKindText,
+  elementKindOfText,
   schemaOf,
   propertiesOf,
   enumValues,

@@ -53,9 +53,7 @@ let connectionConfigToJson = (
     ("secretArn", cc.secretArn->JSON.Encode.string),
   ]
   switch lockStrategy {
-  | Some(#AdvisoryLocks) =>
-    fields->Array.push(("lockStrategy", "AdvisoryLocks"->JSON.Encode.string))
-  | Some(#RowLocks) => fields->Array.push(("lockStrategy", "RowLocks"->JSON.Encode.string))
+  | Some(strategy) => fields->Array.push(("lockStrategy", (strategy :> string)->JSON.Encode.string))
   | None => ()
   }
   fields->Dict.fromArray->JSON.Encode.object
@@ -72,11 +70,11 @@ type t = {
   /** The DB's private subnets, echoed back for the Lambda `vpcConfig` so
     handlers land in the same subnets as the database. */
   subnetIds: array<Pulumi.Input.t<string>>,
-  /** DCB append lock strategy (C2). `#AdvisoryLocks` (default) is
+  /** DCB append lock strategy (C2). `AdvisoryLocks` (default) is
     transaction-scoped and lowest-overhead when Lambdas hold a few long-lived
     pools **directly** against RDS, but it **pins connections on RDS Proxy**
     (advisory locks are session state Proxy cannot multiplex). Choose
-    `#RowLocks` when fronting the DB with RDS Proxy so the Proxy can share
+    `RowLocks` when fronting the DB with RDS Proxy so the Proxy can share
     connections across invocations. Threaded to the DCB command Lambda via
     `DcbBackend`; classic EventLog and QueryDb appends take no such lock. */
   lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy,
@@ -99,7 +97,7 @@ let make = (
   ~backupRetentionPeriod=7,
   ~deletionProtection=true,
   ~skipFinalSnapshot=false,
-  ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy=#AdvisoryLocks,
+  ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy=AdvisoryLocks,
   ~opts: option<Pulumi.ComponentResource.options>=?,
 ): t => {
   // Keep the caller's ComponentResource.options for sub-builders that take it

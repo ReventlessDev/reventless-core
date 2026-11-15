@@ -8,13 +8,41 @@ style, `plural`, `selectordinal` and `select` (each needing an `other` case), `o
 and apostrophe quoting. Formatting goes through the runtime's `Intl`, so no package is added.
 */
 
+/** An argument's type, by ICU's word for it. The last three take cases rather than a style. */
+type argType =
+  | @as("number") NumberType
+  | @as("date") DateType
+  | @as("time") TimeType
+  | @as("spellout") SpelloutType
+  | @as("ordinal") OrdinalType
+  | @as("duration") DurationType
+  | @as("plural") PluralType
+  | @as("selectordinal") SelectOrdinalType
+  | @as("select") SelectType
+
+let argTypes = [
+  NumberType,
+  DateType,
+  TimeType,
+  SpelloutType,
+  OrdinalType,
+  DurationType,
+  PluralType,
+  SelectOrdinalType,
+  SelectType,
+]
+
+/** The type ICU's word names; `None` for a word that names none. */
+let argTypeOfWord = (word: string): option<argType> =>
+  argTypes->Array.find(t => (t :> string) == word)
+
 type rec part =
   | Literal(string)
   /** `#` inside a plural: the number, less the offset. */
   | Pound
   | Arg(string)
   /** `{name, number}`, `{name, date, short}`: the type and its style or skeleton, if any. */
-  | Typed({name: string, kind: string, style?: string})
+  | Typed({name: string, kind: argType, style?: string})
   | Plural({name: string, ordinal: bool, offset: float, cases: array<(string, t)>})
   | Select({name: string, cases: array<(string, t)>})
 and t = array<part>
@@ -132,13 +160,21 @@ let parse = (text: string): result<t, string> => {
     | Some(",") =>
       i := i.contents + 1
       skipSpace()
-      let kind = word()
+      let kindWord = word()
       skipSpace()
-      switch kind {
-      | "plural" | "selectordinal" | "select" =>
-        expect(",", `the ${kind} "${name}" has no cases`)
-        cases(~kind, ~name, ~inPlural=inPlural || kind != "select")
-      | "number" | "date" | "time" | "spellout" | "ordinal" | "duration" =>
+      switch argTypeOfWord(kindWord) {
+      | Some((PluralType | SelectOrdinalType | SelectType) as kind) =>
+        expect(",", `the ${kindWord} "${name}" has no cases`)
+        cases(
+          ~kind,
+          ~name,
+          ~inPlural=inPlural ||
+          switch kind {
+          | SelectType => false
+          | _ => true
+          },
+        )
+      | Some(kind) =>
         switch at(i.contents) {
         | Some("}") =>
           i := i.contents + 1
@@ -154,8 +190,11 @@ let parse = (text: string): result<t, string> => {
           })
         | _ => fail(`the argument "${name}" is not closed`)
         }
-      | "" => fail(`the argument "${name}" has no type after its comma`)
-      | other => fail(`the argument "${name}" has an unknown type "${other}"`)
+      | None =>
+        switch kindWord {
+        | "" => fail(`the argument "${name}" has no type after its comma`)
+        | other => fail(`the argument "${name}" has an unknown type "${other}"`)
+        }
       }
     | _ => fail(`the argument "${name}" is not closed`)
     }
@@ -176,15 +215,19 @@ let parse = (text: string): result<t, string> => {
       i := i.contents + 1
       style(depth)
     }
-  and cases = (~kind, ~name, ~inPlural): part => {
+  and cases = (~kind: argType, ~name, ~inPlural): part => {
     skipSpace()
     let offset = ref(0.0)
-    if kind != "select" && String.slice(text, ~start=i.contents, ~end=i.contents + 7) == "offset:" {
+    let takesOffset = switch kind {
+    | SelectType => false
+    | _ => true
+    }
+    if takesOffset && String.slice(text, ~start=i.contents, ~end=i.contents + 7) == "offset:" {
       i := i.contents + 7
       skipSpace()
       switch word()->Float.fromString {
       | Some(value) => offset := value
-      | None => fail(`the ${kind} "${name}" has an offset without a number`)
+      | None => fail(`the ${(kind :> string)} "${name}" has an offset without a number`)
       }
     }
     let found = []
@@ -196,7 +239,7 @@ let parse = (text: string): result<t, string> => {
       | Some(_) =>
         let selector = word()
         if selector == "" {
-          fail(`the ${kind} "${name}" has a case without a selector`)
+          fail(`the ${(kind :> string)} "${name}" has a case without a selector`)
         }
         skipSpace()
         expect("{", `the case "${selector}" of "${name}" has no message`)
@@ -208,11 +251,13 @@ let parse = (text: string): result<t, string> => {
     }
     next()
     if !(found->Array.some(((selector, _)) => selector == "other")) {
-      fail(`the ${kind} "${name}" has no "other" case`)
+      fail(`the ${(kind :> string)} "${name}" has no "other" case`)
     }
-    kind == "select"
-      ? Select({name, cases: found})
-      : Plural({name, ordinal: kind == "selectordinal", offset: offset.contents, cases: found})
+    switch kind {
+    | SelectType => Select({name, cases: found})
+    | SelectOrdinalType => Plural({name, ordinal: true, offset: offset.contents, cases: found})
+    | _ => Plural({name, ordinal: false, offset: offset.contents, cases: found})
+    }
   }
   try {
     Ok(message(~inPlural=false, ~nested=false))
@@ -269,8 +314,10 @@ let dateFormat = (~locale, ~kind, ~style=?) => {
   | Some("full") => #full
   | _ => #medium
   }
-  let options: Intl.DateTimeFormat.options =
-    kind == "time" ? {timeStyle: length} : {dateStyle: length}
+  let options: Intl.DateTimeFormat.options = switch kind {
+  | TimeType => {timeStyle: length}
+  | _ => {dateStyle: length}
+  }
   Intl.DateTimeFormat.make(~locales=[locale], ~options)
 }
 
@@ -308,9 +355,9 @@ let format = (message: t, ~locale: string, ~values: dict<value>): string => {
         out->Array.push(
           switch (values->Dict.get(name), kind) {
           | (None, _) => `{${name}}`
-          | (Some(Number(x)), "number") =>
+          | (Some(Number(x)), NumberType) =>
             numberFormat(~locale, ~style?)->Intl.NumberFormat.format(x)
-          | (Some(Instant(d)), "date" | "time") =>
+          | (Some(Instant(d)), DateType | TimeType) =>
             dateFormat(~locale, ~kind, ~style?)->Intl.DateTimeFormat.format(d)
           | (Some(value), _) => plainOf(~locale, value)
           },

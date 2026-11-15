@@ -134,10 +134,12 @@ let makePostgresStorageOps = (
   ~pgConnection: pgConnectionJson,
   ~logName: string,
 ): ReventlessCore.DcbEventLog_Adapter.operations => {
-  let lockStrategy = switch pgConnection->pgLockStrategy->Nullable.toOption {
-  | Some("RowLocks") => #RowLocks
-  | _ => #AdvisoryLocks
-  }
+  let lockStrategy =
+    pgConnection
+    ->pgLockStrategy
+    ->Nullable.toOption
+    ->Option.flatMap(ReventlessPostgres.DcbEventLogStorage_Postgres_Ops.lockStrategyOfName)
+    ->Option.getOr(AdvisoryLocks)
   DcbEventLogStorage_Postgres_Runtime.opsFor(
     pgConnection->asConnectionConfig,
     ~logName,

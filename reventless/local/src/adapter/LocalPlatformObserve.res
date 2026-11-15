@@ -236,14 +236,8 @@ let commandOutcomes: GQL.resolverFn = async (_root, args, _ctx) =>
     ~after=?afterOf(args),
   )->keptPageJson
 
-let levelOfWire = (s: string): option<Logger.level> =>
-  switch s {
-  | "DEBUG" => Some(Debug)
-  | "INFO" => Some(Info)
-  | "WARN" => Some(Warn)
-  | "ERROR" => Some(Error)
-  | _ => None
-  }
+/** The API's `Platform_LogLevel` enum: the level's upper-case word, exactly. */
+let levelOfWire = Logger.levelOfLabel
 
 let levelsJson = (): JSON.t =>
   Dict.fromArray([

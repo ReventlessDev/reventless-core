@@ -21,7 +21,7 @@ ReventlessCore.EffectLogger.setDefaultMinLevel(ReventlessCore.Logger.Debug)
 // `dev:full`'s concurrently, `serve:watch`'s tsx or an IDE pipes them — which is
 // where the TTY probe alone concludes "log collector" and emits JSON. An explicit
 // REVENTLESS_LOG_FORMAT still wins.
-Reventless.AnsiStyle.setDefaultFormat(#text)
+Reventless.AnsiStyle.setDefaultFormat(TextFormat)
 
 // Locally nothing collects metric lines, so metrics are counted and served on the
 // platform API instead of written among the log lines.

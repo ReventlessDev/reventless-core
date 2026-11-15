@@ -15,7 +15,7 @@ function hasDoor(doors, part) {
 }
 
 function problems(structures, provisioned, elevatedGroups, adminGroup, anonymousDoors) {
-  let anyInvites = structures.some(param => hasDoor(Stdlib_Option.getOr(param[1].admissionDoors, []), "Invite"));
+  let anyInvites = structures.some(param => hasDoor(Stdlib_Option.getOr(param[1].admissionDoors, []), "invite"));
   let missingCapabilities = [
     "Messaging",
     "IdentityProvider"
@@ -73,7 +73,7 @@ function problems(structures, provisioned, elevatedGroups, adminGroup, anonymous
                 role: role,
                 why: "is self-service, but this platform has no door for callers who are not signed in"
               }],
-          hasDoor(doors, "Start") && hasDoor(doors, "Complete") ? [] : [{
+          hasDoor(doors, "start") && hasDoor(doors, "complete") ? [] : [{
                 plugin: plugin,
                 role: role,
                 why: `is self-service, but no door in ` + plugin + ` starts and completes a registration`

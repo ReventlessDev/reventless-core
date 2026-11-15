@@ -537,7 +537,7 @@ let sliceDecision = (c: config): string => {
       single
         ? `    switch state.attachments->Attachments.decide(~cardinality=Single, op) {`
         : `    switch state.attachments->Attachments.decide(op) {`,
-      `    | Error(#NotAttached) => Error(${n.notAttached})`,
+      `    | Error(Attachments.NotAttached) => Error(${n.notAttached})`,
       single
         ? `    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(${c.entityId}, _)))`
         : `    | Ok(facts) => Ok(facts->Array.map(toEvent(${c.entityId}, _)))`,

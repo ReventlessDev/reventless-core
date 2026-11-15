@@ -27,10 +27,10 @@ function make(name, keyPrefixOpt, plugin, protectOpt, forceDestroyOpt, expirePen
   let corsRules = corsRulesOpt !== undefined ? corsRulesOpt : defaultCorsRules;
   let match = plugin !== undefined ? [
       "Plugin",
-      "Plugin"
+      "plugin"
     ] : [
       "Platform",
-      "Platform"
+      "platform"
     ];
   let newrecord = {...Stdlib_Option.getOr(opts, {})};
   newrecord.protect = protect;
@@ -53,10 +53,7 @@ function make(name, keyPrefixOpt, plugin, protectOpt, forceDestroyOpt, expirePen
     corsRules: corsRules,
     forceDestroy: forceDestroy,
     lifecycleRules: lifecycleRules,
-    tags: AWS_Tags$ReventlessAws.make(name, match[0], {
-      TAG: "Other",
-      _0: "ObjectStore"
-    }, match[1], undefined, undefined, plugin, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name, match[0], "ObjectStore", match[1], undefined, undefined, plugin, undefined)
   }, newrecord);
   new (Aws.s3.BucketPublicAccessBlock)(name + "-pab", {
     bucket: bucket.id,

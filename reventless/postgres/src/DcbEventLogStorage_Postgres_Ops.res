@@ -14,11 +14,19 @@ open Reventless
 // Lock strategy for concurrent appends (B4). Advisory (default) is safe under
 // PgBouncer transaction mode; RowLocks avoids advisory-lock connection pinning
 // on RDS Proxy at the cost of a companion `dcb_scope` table.
-type lockStrategy = [#AdvisoryLocks | #RowLocks]
+// A connection config names it by the case's own name (`"RowLocks"`).
+type lockStrategy = AdvisoryLocks | RowLocks
+
+let lockStrategies = [AdvisoryLocks, RowLocks]
+
+/** The strategy a connection config names; `None` for a name that names none. */
+let lockStrategyOfName = (name: string): option<lockStrategy> =>
+  lockStrategies->Array.find(s => (s :> string) == name)
+
 let strategyParam = s =>
   switch s {
-  | #AdvisoryLocks => "advisory"
-  | #RowLocks => "rows"
+  | AdvisoryLocks => "advisory"
+  | RowLocks => "rows"
   }
 
 // Injected by reventless-local to feed the projection-checkpoint low-watermark
@@ -255,7 +263,7 @@ let makeOps = (
   ~partitionTag as _,
   ~crossPartitionTagKeys as _=?,
   ~opts as _,
-  ~lockStrategy: lockStrategy=#AdvisoryLocks,
+  ~lockStrategy: lockStrategy=AdvisoryLocks,
   ~onAppended=noTracking,
 ): (string, DcbEventLog_Adapter.operations) => {
   // Fenced head cursor: the highest (transaction_id, position) visible under the

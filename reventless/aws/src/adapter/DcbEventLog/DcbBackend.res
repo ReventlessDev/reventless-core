@@ -21,7 +21,7 @@ type selection = {
   subnetIds: array<Pulumi.Input.t<string>>,
   /** DCB append lock strategy (C2), carried from `PgConnection.lockStrategy` and
     serialized into the DCB command Lambda's HANDLER_CONFIG. Default
-    `#AdvisoryLocks`; `#RowLocks` for RDS-Proxy-fronted deployments. */
+    `AdvisoryLocks`; `RowLocks` for RDS-Proxy-fronted deployments. */
   lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy,
 }
 

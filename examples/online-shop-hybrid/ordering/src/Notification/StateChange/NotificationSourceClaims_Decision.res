@@ -33,7 +33,7 @@ let named = (fact: Rules.fact) =>
 let through = (state, op) =>
   switch state->Rules.decide(op, ~posture) {
   | Ok(facts) => Ok(facts->Array.filterMap(named))
-  | Error(#RecipientUnknown) => Error(ClaimRefused)
+  | Error(Rules.RecipientUnknown) => Error(ClaimRefused)
   }
 
 let decide = (state, command) =>

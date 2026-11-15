@@ -14,6 +14,7 @@ import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Offload$Reventless from "@reventlessdev/reventless-spec/src/semantic/Offload.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as BakeRegistrationState$ReventlessAws from "./BakeRegistrationState.res.mjs";
 import * as Platform_AdminScan_Ops$ReventlessAws from "./Platform_AdminScan_Ops.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
@@ -393,20 +394,20 @@ function classify(expected, found, writtenAt, since) {
     if (found === expected) {
       if (fresh !== undefined) {
         if (fresh) {
-          return "Registered";
+          return "registered";
         } else {
-          return "Unchanged";
+          return "unchanged";
         }
       } else {
-        return "Matched";
+        return "matched";
       }
     } else if (Primitive_object.equal(fresh, true)) {
-      return "Diverged";
+      return "diverged";
     } else {
-      return "Behind";
+      return "behind";
     }
   } else {
-    return "Missing";
+    return "missing";
   }
 }
 
@@ -437,29 +438,12 @@ function registrations(items, expect, since) {
 function isPending(r) {
   let match = r.state;
   switch (match) {
-    case "Missing" :
-    case "Behind" :
-    case "Diverged" :
+    case "missing" :
+    case "behind" :
+    case "diverged" :
       return true;
     default:
       return false;
-  }
-}
-
-function stateName(s) {
-  switch (s) {
-    case "Registered" :
-      return "registered";
-    case "Unchanged" :
-      return "unchanged";
-    case "Matched" :
-      return "matched";
-    case "Missing" :
-      return "missing";
-    case "Behind" :
-      return "behind";
-    case "Diverged" :
-      return "diverged";
   }
 }
 
@@ -471,7 +455,7 @@ function encodeRegistration(r) {
     ],
     [
       "state",
-      stateName(r.state)
+      BakeRegistrationState$ReventlessAws.name(r.state)
     ],
     [
       "expected",
@@ -500,15 +484,15 @@ function encodeSummary(rs) {
     ],
     [
       "registered",
-      rs.filter(r => r.state === "Registered").length
+      rs.filter(r => r.state === "registered").length
     ],
     [
       "unchanged",
-      rs.filter(r => r.state === "Unchanged").length
+      rs.filter(r => r.state === "unchanged").length
     ],
     [
       "matched",
-      rs.filter(r => r.state === "Matched").length
+      rs.filter(r => r.state === "matched").length
     ],
     [
       "registrations",
@@ -632,6 +616,8 @@ async function handler(event) {
     return admin;
   }
 }
+
+let stateName = BakeRegistrationState$ReventlessAws.name;
 
 export {
   str,

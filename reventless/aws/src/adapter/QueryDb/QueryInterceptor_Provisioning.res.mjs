@@ -49,7 +49,7 @@ function buildInterceptor(api, opts) {
     role: runtime.parts.lambdaRole.id
   }, opts);
   let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, lambda => lambda.arn);
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Plugin", "Identity", "plugin", undefined, undefined, undefined, undefined), opts);
   Pulumi.all([
     lambdaArn,
     dataSourceRole.id

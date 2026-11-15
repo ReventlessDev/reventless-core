@@ -21,6 +21,7 @@ import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_Postgres_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_Postgres_Runtime.res.mjs";
+import * as DcbEventLogStorage_Postgres_Ops$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/DcbEventLogStorage_Postgres_Ops.res.mjs";
 import * as StateChangeSlice_CallbackResMjs from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs";
 import * as InboundTranslationSlice_CallbackResMjs from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 
@@ -83,8 +84,7 @@ function makeDynamoStorageOps(tableName, scope) {
 }
 
 function makePostgresStorageOps(pgConnection, logName) {
-  let match = pgConnection.lockStrategy;
-  let lockStrategy = (match == null) || match !== "RowLocks" ? "AdvisoryLocks" : "RowLocks";
+  let lockStrategy = Stdlib_Option.getOr(Stdlib_Option.flatMap(Primitive_option.fromNullable(pgConnection.lockStrategy), DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.lockStrategyOfName), "AdvisoryLocks");
   return DcbEventLogStorage_Postgres_Runtime$ReventlessAws.opsFor(pgConnection, logName, lockStrategy);
 }
 

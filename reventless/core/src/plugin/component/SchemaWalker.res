@@ -144,7 +144,7 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
     let fields = extractFields(properties)
     {
       typeName,
-      kind: "record",
+      kind: RecordSchema,
       fields,
       structuralHash: hashFields(fields),
     }
@@ -158,7 +158,7 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
     )
     if hasNullLike {
       // It's an optional/nullable scalar at the top level, treat as unknown.
-      {typeName, kind: "unknown", fields: [], structuralHash: ""}
+      {typeName, kind: UnknownSchema, fields: [], structuralHash: ""}
     } else {
       let constructors = anyOf->Array.filterMap(variantSchema =>
         switch variantSchema {
@@ -172,13 +172,13 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
       )
       {
         typeName,
-        kind: "variant",
+        kind: VariantSchema,
         fields: [],
         constructors,
         structuralHash: hashConstructors(constructors),
       }
     }
-  | _ => {typeName, kind: "unknown", fields: [], structuralHash: ""}
+  | _ => {typeName, kind: UnknownSchema, fields: [], structuralHash: ""}
   }
 
 // ---------------------------------------------------------------------------

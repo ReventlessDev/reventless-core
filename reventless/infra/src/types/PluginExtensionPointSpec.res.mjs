@@ -123,6 +123,10 @@ let uiFragmentManifestOptionSchema = Plugin$Reventless.uiFragmentManifestOptionS
 
 let commandLevelSchema = Plugin$Reventless.commandLevelSchema;
 
+let commandLevels = Plugin$Reventless.commandLevels;
+
+let commandLevelOfWord = Plugin$Reventless.commandLevelOfWord;
+
 let fieldReferenceSchema = Plugin$Reventless.fieldReferenceSchema;
 
 let commandDefSchema = Plugin$Reventless.commandDefSchema;
@@ -183,6 +187,8 @@ export {
   uiFragmentManifestSchema,
   uiFragmentManifestOptionSchema,
   commandLevelSchema,
+  commandLevels,
+  commandLevelOfWord,
   fieldReferenceSchema,
   commandDefSchema,
   readSideDefSchema,

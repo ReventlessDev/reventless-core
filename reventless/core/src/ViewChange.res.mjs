@@ -122,7 +122,7 @@ function summaryFields(c) {
 }
 
 function logLine(comp, c) {
-  Logger$ReventlessCore.emit("Info", comp, undefined, Object.fromEntries(summaryFields(c)), Stdlib_Option.mapOr(c.correlationId, {}, id => Object.fromEntries([[
+  Logger$ReventlessCore.emit("INFO", comp, undefined, Object.fromEntries(summaryFields(c)), Stdlib_Option.mapOr(c.correlationId, {}, id => Object.fromEntries([[
       "correlationId",
       id
     ]])), "view changed");
@@ -130,7 +130,7 @@ function logLine(comp, c) {
 
 function reporter(comp, view, stateToJson) {
   return change => {
-    let logs = Logger$ReventlessCore.shouldLog("Info", undefined, comp, undefined);
+    let logs = Logger$ReventlessCore.shouldLog("INFO", undefined, comp, undefined);
     let listening = Primitive_object.notequal(listeners.contents, []);
     if (!(logs || listening)) {
       return;

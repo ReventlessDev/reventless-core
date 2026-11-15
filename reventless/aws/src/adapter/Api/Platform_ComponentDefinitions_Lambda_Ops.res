@@ -479,25 +479,13 @@ let notBefore = (~at: string, ~since: string): bool => {
   !Float.isNaN(a) && !Float.isNaN(s) && a >= s
 }
 
-/** What the Plugin read model says about one plugin the bake is waiting on.
-
-    Distinct outcomes rather than a boolean because a bake that reported only
-    "pending" left every one of these to be told apart by reading the read model
-    out of band, with credentials the deploy pipeline does not surface. */
-type registrationState =
-  /** Key agrees, row written by this deploy: the chain ran, and this is the evidence. */
-  | Registered
-  /** Key agrees, nothing re-registered — a correct pass that proves nothing. */
-  | Unchanged
-  /** Key agrees, and no deploy instant to tell the two above apart. */
-  | Matched
-  /** No Connected row carries a structure. The scan filters on Connected, so a
-      version that dropped out mid-deploy leaves nothing to converge against. */
-  | Missing
-  /** Row holds another key and predates this deploy — the case retrying is for. */
-  | Behind
-  /** Row written by this deploy and still holding another key. Retrying cannot fix it. */
-  | Diverged
+type registrationState = BakeRegistrationState.t =
+  | @as("registered") Registered
+  | @as("unchanged") Unchanged
+  | @as("matched") Matched
+  | @as("missing") Missing
+  | @as("behind") Behind
+  | @as("diverged") Diverged
 
 type registration = {
   plugin: string,
@@ -560,15 +548,7 @@ let isPending = (r: registration): bool =>
   | Registered | Unchanged | Matched => false
   }
 
-let stateName = (s: registrationState): string =>
-  switch s {
-  | Registered => "registered"
-  | Unchanged => "unchanged"
-  | Matched => "matched"
-  | Missing => "missing"
-  | Behind => "behind"
-  | Diverged => "diverged"
-  }
+let stateName = BakeRegistrationState.name
 
 // Both halves of the comparison and the date on the row, which is what separates
 // the causes on sight. `found` and `writtenAt` travel as null rather than being

@@ -1,3 +1,6 @@
+// A component's kind. Its text is the case's own name, but for `QueryDb`, deployed as
+// `QueryDB`: a component's Pulumi type token, the `reventless:kind` tag and a
+// runtime's `runtimeKind` carry it, so a word here is stored by every deployment.
 type t =
   | Aggregate
   | Counter
@@ -11,7 +14,7 @@ type t =
   | EventTopic
   | ExtensionPoint
   | Extension
-  | QueryDb
+  | @as("QueryDB") QueryDb
   | ReadModel
   | Scheduler
   | Service
@@ -27,69 +30,42 @@ type t =
   | OutboundTranslationSlice
   | InboundTranslationSlice
 
-let toString = componentType =>
-  switch componentType {
-  | Aggregate => "Aggregate"
-  | Counter => "Counter"
-  | Plugin => "Plugin"
-  | Platform => "Platform"
-  | CommandGenerator => "CommandGenerator"
-  | CommandTopic => "CommandTopic"
-  | EventCollector => "EventCollector"
-  | EventLog => "EventLog"
-  | EventMapper => "EventMapper"
-  | EventTopic => "EventTopic"
-  | ExtensionPoint => "ExtensionPoint"
-  | Extension => "Extension"
-  | QueryDb => "QueryDB"
-  | ReadModel => "ReadModel"
-  | Scheduler => "Scheduler"
-  | Service => "Service"
-  | SideEffectHandler => "SideEffectHandler"
-  | Task => "Task"
-  | Vpc => "Vpc"
-  | Heartbeat => "Heartbeat"
-  | Cloner => "Cloner"
-  | DcbEventLog => "DcbEventLog"
-  | StateChangeSlice => "StateChangeSlice"
-  | StateViewSlice => "StateViewSlice"
-  | AutomationSlice => "AutomationSlice"
-  | OutboundTranslationSlice => "OutboundTranslationSlice"
-  | InboundTranslationSlice => "InboundTranslationSlice"
-  }
+let all = [
+  Aggregate,
+  Counter,
+  Plugin,
+  Platform,
+  CommandGenerator,
+  CommandTopic,
+  EventCollector,
+  EventLog,
+  EventMapper,
+  EventTopic,
+  ExtensionPoint,
+  Extension,
+  QueryDb,
+  ReadModel,
+  Scheduler,
+  Service,
+  SideEffectHandler,
+  Task,
+  Vpc,
+  Heartbeat,
+  Cloner,
+  DcbEventLog,
+  StateChangeSlice,
+  StateViewSlice,
+  AutomationSlice,
+  OutboundTranslationSlice,
+  InboundTranslationSlice,
+]
 
-let ofString = str =>
-  switch str {
-  | "Aggregate" => Aggregate->Some
-  | "Counter" => Counter->Some
-  | "Plugin" => Plugin->Some
-  | "Platform" => Platform->Some
-  | "CommandGenerator" => CommandGenerator->Some
-  | "CommandTopic" => CommandTopic->Some
-  | "EventCollector" => EventCollector->Some
-  | "EventLog" => EventLog->Some
-  | "EventMapper" => EventMapper->Some
-  | "EventTopic" => EventTopic->Some
-  | "ExtensionPoint" => ExtensionPoint->Some
-  | "Extension" => Extension->Some
-  | "QueryDB" => QueryDb->Some
-  | "ReadModel" => ReadModel->Some
-  | "Scheduler" => Scheduler->Some
-  | "Service" => Service->Some
-  | "SideEffectHandler" => SideEffectHandler->Some
-  | "Task" => Task->Some
-  | "Vpc" => Vpc->Some
-  | "Heartbeat" => Heartbeat->Some
-  | "Cloner" => Cloner->Some
-  | "DcbEventLog" => DcbEventLog->Some
-  | "StateChangeSlice" => StateChangeSlice->Some
-  | "StateViewSlice" => StateViewSlice->Some
-  | "AutomationSlice" => AutomationSlice->Some
-  | "OutboundTranslationSlice" => OutboundTranslationSlice->Some
-  | "InboundTranslationSlice" => InboundTranslationSlice->Some
-  | _ => None
-  }
+let toString = (componentType: t): string => (componentType :> string)
 
+let ofString = (str: string): option<t> => all->Array.find(t => toString(t) == str)
+
+// The short name a component's resources are named with. A second spelling on
+// purpose: it is part of every physical resource name already deployed.
 let toName = componentType =>
   switch componentType {
   | Aggregate => "Aggr"

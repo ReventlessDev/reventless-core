@@ -10,7 +10,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws from "./ScheduledPublisher_EventBridgeScheduler_Runtime.res.mjs";
 
 function make(name, opts) {
-  let tags = name => AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined);
+  let tags = name => AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "platform", undefined, undefined, undefined, undefined);
   let role = IAM$PulumiAws.Role.makeWithDefaultPolicy(ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.roleName, Pulumi.output(AWS$ReventlessAws.EventBridgeScheduler.principal), tags(ScheduledPublisher_EventBridgeScheduler_Runtime$ReventlessAws.roleName), opts);
   new (Aws.iam.RolePolicy)(name + "SchedulerSendPolicy", {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "SchedulerSendPolicy", [{
@@ -23,7 +23,7 @@ function make(name, opts) {
   }, opts);
   new (Aws.scheduler.ScheduleGroup)(name + "ScheduleGroup", {
     name: role.name,
-    tags: AWS_Tags$ReventlessAws.withoutEmpty(AWS_Tags$ReventlessAws.makeDict(name + "ScheduleGroup", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined))
+    tags: AWS_Tags$ReventlessAws.withoutEmpty(AWS_Tags$ReventlessAws.makeDict(name + "ScheduleGroup", "Platform", "Identity", "platform", undefined, undefined, undefined, undefined))
   }, opts);
   return {
     resource: Adapter$ReventlessInfra.make(role.name, role.id, role.arn, Pulumi.output("EventBridgeScheduler"), undefined, undefined, undefined, Pulumi.output("aws:scheduler:ScheduleGroup"), undefined, undefined),

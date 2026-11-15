@@ -20,7 +20,7 @@ let makeStorage = (
   ~partitionTag,
   ~crossPartitionTagKeys=?,
   ~opts,
-  ~lockStrategy: lockStrategy=#AdvisoryLocks,
+  ~lockStrategy: lockStrategy=AdvisoryLocks,
   ~onAppended=noTracking,
 ) => {
   let (name, ops) = makeOps(

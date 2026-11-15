@@ -616,7 +616,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
     givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
     ->givenCapabilities(geocoder(Error(Unavailable("timeout"))))
     ->whenTranslated
-    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Failed))
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", Failed))
 })
 ```
 
@@ -630,7 +630,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
 | `whenExhausted(~lastError=?)` | what `onExhausted` publishes once the budget is spent |
 | `thenCommand(id, cmd)`, `thenNoCommand` | the command published back, if any |
 | `thenSent(calls)`, `thenNothingSent` | every capability call, in order (`Sent`, `Geocoded`, `TokenDrawn`, …; see `Capabilities_Fake.call`) |
-| `thenTodoStatus(id, s)` | `#Completed`, `#Failed` (to be retried) or `#Abandoned`, counted as the runtime counts: `maxRetries` failed attempts abandon the row. `#Pending` is the older name for `#Failed` |
+| `thenTodoStatus(id, s)` | `Completed`, `Failed` (to be retried) or `Abandoned`, counted as the runtime counts: `maxRetries` failed attempts abandon the row. `Pending` is the older name for `Failed` |
 | `thenRetryRecorded(n)` | the row's `retryCount`: attempts that failed |
 
 Runnable copy:

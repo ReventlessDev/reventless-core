@@ -392,16 +392,7 @@ function checkLifecycleTopology(pluginName, writeSides, lifecycleStatesByView) {
 }
 
 function labelFieldSourceToString(s) {
-  switch (s) {
-    case "Annotation" :
-      return "annotation";
-    case "Convention" :
-      return "convention";
-    case "Position" :
-      return "position";
-    case "Fallback" :
-      return "fallback";
-  }
+  return s;
 }
 
 function labelFieldsFromStateSchema(entityName, stateSchema) {
@@ -410,7 +401,7 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
     return {
       field: "displayName",
       searchableFields: spec.fields,
-      source: "Annotation"
+      source: "annotation"
     };
   }
   let candidates;
@@ -428,10 +419,10 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   });
   let picked = conventional !== undefined ? [
       conventional[0],
-      "Convention"
+      "convention"
     ] : Stdlib_Option.map(candidates[0], param => [
       param[0],
-      "Position"
+      "position"
     ]);
   if (picked !== undefined) {
     let name = picked[0];
@@ -445,7 +436,7 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   return {
     field: "id",
     searchableFields: [],
-    source: "Fallback"
+    source: "fallback"
   };
 }
 
@@ -842,7 +833,7 @@ function visibilityTag(v) {
   if (v === "Public") {
     return;
   } else {
-    return "Internal";
+    return v;
   }
 }
 
@@ -861,7 +852,7 @@ function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilit
     linkedWriteSide: linkedWriteSide,
     labelField: label.field,
     searchableFields: label.searchableFields,
-    labelFieldSource: labelFieldSourceToString(label.source),
+    labelFieldSource: label.source,
     lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
     ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
     retiredField: retiredFieldFromStateSchema(stateSchema),
@@ -1183,7 +1174,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,
       searchableFields: label.searchableFields,
-      labelFieldSource: labelFieldSourceToString(label.source),
+      labelFieldSource: label.source,
       lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
@@ -1224,7 +1215,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,
       searchableFields: label.searchableFields,
-      labelFieldSource: labelFieldSourceToString(label.source),
+      labelFieldSource: label.source,
       lifecycleField: Lifecycle$Reventless.fieldName(stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),

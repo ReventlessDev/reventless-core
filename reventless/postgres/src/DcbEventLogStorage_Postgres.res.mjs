@@ -18,6 +18,10 @@ function makeStorage(pool, name, indexes, partitionTag, crossPartitionTagKeys, o
   ];
 }
 
+let lockStrategies = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.lockStrategies;
+
+let lockStrategyOfName = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.lockStrategyOfName;
+
 let strategyParam = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.strategyParam;
 
 let noTracking = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.noTracking;
@@ -53,6 +57,8 @@ let positionsOfAppend = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.posit
 let makeOps = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.makeOps;
 
 export {
+  lockStrategies,
+  lockStrategyOfName,
   strategyParam,
   noTracking,
   selectColumns,

@@ -82,7 +82,7 @@ function Make(Spec) {
       case "DoConnectPlugin" :
         let fn = Spec.manageSubscriptions;
         if (fn !== undefined) {
-          await fn(directive._0, "connect");
+          await fn(directive._0, "ConnectSubscriptions");
         }
         let fn$1 = Spec.updateApiSchema;
         if (fn$1 !== undefined) {
@@ -93,7 +93,7 @@ function Make(Spec) {
       case "DoDisconnectPlugin" :
         let fn$2 = Spec.manageSubscriptions;
         if (fn$2 !== undefined) {
-          await fn$2(directive._0, "disconnect");
+          await fn$2(directive._0, "DisconnectSubscriptions");
         }
         let fn$3 = Spec.updateApiSchema;
         if (fn$3 !== undefined) {

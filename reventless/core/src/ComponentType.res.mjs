@@ -2,124 +2,42 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
+let all = [
+  "Aggregate",
+  "Counter",
+  "Plugin",
+  "Platform",
+  "CommandGenerator",
+  "CommandTopic",
+  "EventCollector",
+  "EventLog",
+  "EventMapper",
+  "EventTopic",
+  "ExtensionPoint",
+  "Extension",
+  "QueryDB",
+  "ReadModel",
+  "Scheduler",
+  "Service",
+  "SideEffectHandler",
+  "Task",
+  "Vpc",
+  "Heartbeat",
+  "Cloner",
+  "DcbEventLog",
+  "StateChangeSlice",
+  "StateViewSlice",
+  "AutomationSlice",
+  "OutboundTranslationSlice",
+  "InboundTranslationSlice"
+];
+
 function toString(componentType) {
-  switch (componentType) {
-    case "Aggregate" :
-      return "Aggregate";
-    case "Counter" :
-      return "Counter";
-    case "Plugin" :
-      return "Plugin";
-    case "Platform" :
-      return "Platform";
-    case "CommandGenerator" :
-      return "CommandGenerator";
-    case "CommandTopic" :
-      return "CommandTopic";
-    case "EventCollector" :
-      return "EventCollector";
-    case "EventLog" :
-      return "EventLog";
-    case "EventMapper" :
-      return "EventMapper";
-    case "EventTopic" :
-      return "EventTopic";
-    case "ExtensionPoint" :
-      return "ExtensionPoint";
-    case "Extension" :
-      return "Extension";
-    case "QueryDb" :
-      return "QueryDB";
-    case "ReadModel" :
-      return "ReadModel";
-    case "Scheduler" :
-      return "Scheduler";
-    case "Service" :
-      return "Service";
-    case "SideEffectHandler" :
-      return "SideEffectHandler";
-    case "Task" :
-      return "Task";
-    case "Vpc" :
-      return "Vpc";
-    case "Heartbeat" :
-      return "Heartbeat";
-    case "Cloner" :
-      return "Cloner";
-    case "DcbEventLog" :
-      return "DcbEventLog";
-    case "StateChangeSlice" :
-      return "StateChangeSlice";
-    case "StateViewSlice" :
-      return "StateViewSlice";
-    case "AutomationSlice" :
-      return "AutomationSlice";
-    case "OutboundTranslationSlice" :
-      return "OutboundTranslationSlice";
-    case "InboundTranslationSlice" :
-      return "InboundTranslationSlice";
-  }
+  return componentType;
 }
 
 function ofString(str) {
-  switch (str) {
-    case "Aggregate" :
-      return "Aggregate";
-    case "AutomationSlice" :
-      return "AutomationSlice";
-    case "Cloner" :
-      return "Cloner";
-    case "CommandGenerator" :
-      return "CommandGenerator";
-    case "CommandTopic" :
-      return "CommandTopic";
-    case "Counter" :
-      return "Counter";
-    case "DcbEventLog" :
-      return "DcbEventLog";
-    case "EventCollector" :
-      return "EventCollector";
-    case "EventLog" :
-      return "EventLog";
-    case "EventMapper" :
-      return "EventMapper";
-    case "EventTopic" :
-      return "EventTopic";
-    case "Extension" :
-      return "Extension";
-    case "ExtensionPoint" :
-      return "ExtensionPoint";
-    case "Heartbeat" :
-      return "Heartbeat";
-    case "InboundTranslationSlice" :
-      return "InboundTranslationSlice";
-    case "OutboundTranslationSlice" :
-      return "OutboundTranslationSlice";
-    case "Platform" :
-      return "Platform";
-    case "Plugin" :
-      return "Plugin";
-    case "QueryDB" :
-      return "QueryDb";
-    case "ReadModel" :
-      return "ReadModel";
-    case "Scheduler" :
-      return "Scheduler";
-    case "Service" :
-      return "Service";
-    case "SideEffectHandler" :
-      return "SideEffectHandler";
-    case "StateChangeSlice" :
-      return "StateChangeSlice";
-    case "StateViewSlice" :
-      return "StateViewSlice";
-    case "Task" :
-      return "Task";
-    case "Vpc" :
-      return "Vpc";
-    default:
-      return;
-  }
+  return all.find(t => t === str);
 }
 
 function toName(componentType) {
@@ -148,7 +66,7 @@ function toName(componentType) {
       return "ExtPoint";
     case "Extension" :
       return "Extension";
-    case "QueryDb" :
+    case "QueryDB" :
       return "QueryDb";
     case "ReadModel" :
       return "ReadModel";
@@ -190,6 +108,7 @@ function nameOpt(name, t) {
 }
 
 export {
+  all,
   toString,
   ofString,
   toName,

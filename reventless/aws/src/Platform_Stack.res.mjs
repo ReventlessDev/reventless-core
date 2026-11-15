@@ -133,7 +133,7 @@ function _resolveUncached() {
       usernameAttributes: Auth_LoginIdentifier$ReventlessAws.usernameAttributes(loginIdentifier).map(prim => prim),
       passwordPolicy: pwdPolicy,
       mfaConfiguration: "OFF",
-      tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "platform", undefined, undefined, undefined, undefined)
     });
     Util_CognitoGroupUser$ReventlessAws.addUserGroup(Role$Reventless.adminGroup(), pool.id);
     let tokenUnits2_accessToken = "minutes";

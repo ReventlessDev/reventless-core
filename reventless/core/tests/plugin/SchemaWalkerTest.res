@@ -17,7 +17,7 @@ describe("SchemaWalker:", () => {
   describe("record schema", () => {
     let result = SchemaWalker.walk("SimpleRecord", simpleRecordSchema)
 
-    testSync("kind is record", () => expect(result.kind)->toBe("record"))
+    testSync("kind is record", () => expect((result.kind :> string))->toBe("record"))
     testSync("constructors is absent", () => expect(result.constructors)->toEqual(None))
 
     testSync(
@@ -61,7 +61,7 @@ describe("SchemaWalker:", () => {
   describe("variant schema", () => {
     let result = SchemaWalker.walk("SimpleVariant", simpleVariantSchema)
 
-    testSync("kind is variant", () => expect(result.kind)->toBe("variant"))
+    testSync("kind is variant", () => expect((result.kind :> string))->toBe("variant"))
     testSync("fields array is empty", () => expect(result.fields)->toEqual([]))
 
     testSync(
@@ -137,7 +137,7 @@ describe("SchemaWalker:", () => {
       "plain string schema → kind unknown",
       () => {
         let result = SchemaWalker.walk("Scalar", S.string)
-        expect(result.kind)->toBe("unknown")
+        expect((result.kind :> string))->toBe("unknown")
       },
     )
 

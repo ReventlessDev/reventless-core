@@ -124,7 +124,7 @@ import * as CommandGeneratorResolvers_GraphQL$ReventlessLocal from "./adapter/Co
 import * as LocalGraphQL_SubscriptionResolvers$ReventlessLocal from "./adapter/Api/LocalGraphQL_SubscriptionResolvers.res.mjs";
 import * as InboundTranslationResolvers_GraphQL$ReventlessLocal from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
 
-EffectLogger$ReventlessCore.setDefaultMinLevel("Debug");
+EffectLogger$ReventlessCore.setDefaultMinLevel("DEBUG");
 
 AnsiStyle$Reventless.setDefaultFormat("text");
 

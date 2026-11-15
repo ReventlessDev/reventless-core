@@ -307,7 +307,7 @@ let projectionOfDefinition = (d: Reventless.Plugin.pluginDefinition): pluginProj
 // best-effort. Failures are logged but do not throw — admin's RM projection
 // still proceeds and cold-start reconciliation re-attempts missed work.
 
-type action = [#connect | #disconnect]
+type action = ReventlessCore.PluginExtensionPoint_Plugin.subscriptionChange
 
 let pluginNameOfId = (id: string): string => id->String.split("@")->Array.get(0)->Option.getOr("")
 
@@ -355,14 +355,17 @@ let makeManageSubscriptions = (tableName: string): option<
     ? None
     : Some(
         async (pluginDef, action) => {
-          let isConnect = action == #connect
+          let isConnect = switch action {
+          | ReventlessCore.PluginExtensionPoint_Plugin.ConnectSubscriptions => true
+          | DisconnectSubscriptions => false
+          }
           let op = isConnect ? trySubscribe : tryUnsubscribe
           let peers = await scanConnectedPeers(tableName, pluginDef.id)
           // Subscriptions are wired between SNS topics and SQS queues owned per
           // PLUGIN NAME, not per version (EC queue, EP event topics, and DCB
           // topic ARNs live in the plugin's stack, stable across upgrades).
           // When a superseded version is Retired and its row transitions to
-          // Disconnected, this hook fires with #disconnect — but if a newer
+          // Disconnected, this hook fires with DisconnectSubscriptions — but if a newer
           // version of the same plugin is still Connected, the subscriptions
           // are still in use; tearing them down would silently break
           // cross-plugin event flow for the live version. Skip in that case.
@@ -420,7 +423,7 @@ let manageForDefinition = (manage: option<(pluginProjection, action) => promise<
 > => manage->Option.map(m => (d, a) => m(projectionOfDefinition(d), a))
 
 // Cold-start reconciliation — scan the Plugin RM for every Connected plugin and
-// rerun manageSubscriptions(p, #connect) for each. Idempotent at the SNS level;
+// rerun manageSubscriptions(p, ConnectSubscriptions) for each. Idempotent at the SNS level;
 // catches subscriptions lost out-of-band. Awaited by the shell inside the same
 // invocation that initialised the Lambda (a floating promise would freeze with
 // the runtime between invocations).
@@ -435,7 +438,7 @@ let reconcileSubscriptionsOnce = async (
       for i in 0 to rows->Array.length - 1 {
         switch projectPluginRow(rows->Array.getUnsafe(i)) {
         | Some(state) =>
-          try await manage(state, #connect) catch {
+          try await manage(state, ConnectSubscriptions) catch {
           | exn =>
             logWarn(
               "manageSubscriptions failed",

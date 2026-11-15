@@ -10,12 +10,12 @@ import * as Discovery$Reventless from "./Discovery.res.mjs";
 
 function isSliceKind(kind) {
   switch (kind) {
-    case "StateChangeSlice" :
-    case "StateViewSlice" :
-    case "StateViewSliceStream" :
-    case "AutomationSlice" :
-    case "InboundTranslationSlice" :
-    case "OutboundTranslationSlice" :
+    case "StateChange" :
+    case "StateView" :
+    case "StateViewStream" :
+    case "Automation" :
+    case "InboundTranslation" :
+    case "OutboundTranslation" :
       return true;
     default:
       return false;

@@ -79,7 +79,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle", {
     forceDestroy: Util_StoreLayout$ReventlessAws.protectionOfDeployedStack() === "Unprotected",
-    tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "plugin", undefined, undefined, pluginId, undefined)
   });
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
     bucket: bucket.id,
@@ -148,7 +148,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     let cert = new (Aws.acm.Certificate)(pluginId + "-domain-cert", {
       domainName: customDomain.fqdn,
       validationMethod: "DNS",
-      tags: AWS_Tags$ReventlessAws.make(pluginId + "-domain-cert", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
+      tags: AWS_Tags$ReventlessAws.make(pluginId + "-domain-cert", "Plugin", "Hosting", "plugin", undefined, undefined, pluginId, undefined)
     }, {
       provider: Primitive_option.some(usEast1)
     });
@@ -218,7 +218,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     comment: pluginId + " UI bundle CDN",
     customErrorResponses: customErrorResponses,
     defaultRootObject: indexDocument,
-    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Plugin", "Hosting", "plugin", undefined, undefined, pluginId, undefined)
   });
   if (customDomain !== undefined) {
     new (Aws.route53.Record)(pluginId + "-domain-alias", {
@@ -378,7 +378,7 @@ function makeServedBucketDistribution(name, servedBuckets, customDomain) {
     },
     viewerCertificate: viewerCertificate,
     comment: name + " object store CDN",
-    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Platform", "Hosting", "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Platform", "Hosting", "platform", undefined, undefined, undefined, undefined)
   });
   if (customDomain !== undefined) {
     new (Aws.route53.Record)(name + "-domain-alias", {

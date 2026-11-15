@@ -232,7 +232,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     labelField: "name",
     searchableFields: ["name"],
     labelFieldSource: "convention",
-    visibility: "Internal",
+    visibility: Internal,
     singleQueryField: "Ordering_AvailableProduct",
     idField: "productId",
     idFieldSource: "sole",

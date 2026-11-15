@@ -38,12 +38,7 @@ type posture =
   | Observes
   | SelfContained
 
-let postureToString = (p: posture): string =>
-  switch p {
-  | WritesBack => "WritesBack"
-  | Observes => "Observes"
-  | SelfContained => "SelfContained"
-  }
+let postureToString = (p: posture): string => (p :> string)
 
 /**
 One trait's own account of itself, exported by the trait package.

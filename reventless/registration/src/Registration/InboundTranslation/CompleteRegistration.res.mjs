@@ -33,7 +33,7 @@ let Id;
 
 let targetName = "Registrations";
 
-let admissionDoor = "Complete";
+let admissionDoor = "complete";
 
 let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/InboundTranslation/CompleteRegistration.res.mjs";
 

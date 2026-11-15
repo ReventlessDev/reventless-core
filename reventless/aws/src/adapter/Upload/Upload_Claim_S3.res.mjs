@@ -189,10 +189,7 @@ function finish(plugin, stores, iteratorAgeAlarmMsOpt, opts) {
       ]])),
     treatMissingData: "notBreaching",
     alarmDescription: name + ` is behind on committed events. While it is behind, objects an event already references still carry the pending tag — and a store with an expiry rule enabled will delete them.`,
-    tags: AWS_Tags$ReventlessAws.make(name + "Lag", "Plugin", {
-      TAG: "Other",
-      _0: "Alarm"
-    }, undefined, name, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "Lag", "Plugin", "Alarm", undefined, name, undefined, undefined, undefined)
   }, opts);
   registry[plugin] = [];
 }

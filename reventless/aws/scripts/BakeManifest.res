@@ -125,9 +125,27 @@ let payload = (~target: target, ~expect: dict<string>, ~since: option<string>): 
 
 // ── What the bake function answers ───────────────────────────────────────────
 
+/** A registration's state as the bake function answered it: one this build
+    knows, or the word it does not, kept so the line prints what was said. */
+type reportedState =
+  | Reported(BakeRegistrationState.t)
+  | UnknownState(string)
+
+let reportedStateText = (state: reportedState): string =>
+  switch state {
+  | Reported(state) => BakeRegistrationState.name(state)
+  | UnknownState(word) => word
+  }
+
+let reportedStateOf = (word: string): reportedState =>
+  switch BakeRegistrationState.ofName(word) {
+  | Some(state) => Reported(state)
+  | None => UnknownState(word)
+  }
+
 type registration = {
   plugin: string,
-  state: string,
+  state: reportedState,
   expected: string,
   found?: string,
   writtenAt?: string,
@@ -153,7 +171,7 @@ let _registrations = (o: dict<JSON.t>): array<registration> =>
   ->Array.filterMap(JSON.Decode.object)
   ->Array.map(r => {
     plugin: r->_string("plugin")->Option.getOr("?"),
-    state: r->_string("state")->Option.getOr("?"),
+    state: r->_string("state")->Option.getOr("?")->reportedStateOf,
     expected: r->_string("expected")->Option.getOr("?"),
     found: ?(r->_string("found")),
     writtenAt: ?(r->_string("writtenAt")),
@@ -201,7 +219,9 @@ let readAnswer = (json: JSON.t): result<answer, string> => {
 /** Both halves of a plugin's comparison and the row's date — what separates the
     causes on sight. */
 let registrationLine = (r: registration): string =>
-  `  ${r.plugin}: ${r.state} — expected ${r.expected}, row holds ${r.found->Option.getOr(
+  `  ${r.plugin}: ${reportedStateText(
+      r.state,
+    )} — expected ${r.expected}, row holds ${r.found->Option.getOr(
       "no row",
     )} (written ${r.writtenAt->Option.getOr("never")})`
 
@@ -209,7 +229,12 @@ let registrationLine = (r: registration): string =>
     change it. `missing` is waited for: on a first deploy no plugin has a row
     until its registration lands. */
 let unreachable = (registrations: array<registration>): array<registration> =>
-  registrations->Array.filter(r => r.state == "diverged")
+  registrations->Array.filter(r =>
+    switch r.state {
+    | Reported(Diverged) => true
+    | _ => false
+    }
+  )
 
 // ── Asking until it is settled ───────────────────────────────────────────────
 

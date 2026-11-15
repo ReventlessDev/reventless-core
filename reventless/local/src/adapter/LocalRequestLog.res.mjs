@@ -23,8 +23,8 @@ function lineOf(r) {
   } else {
     message = r.kind + ` ` + name + who + took;
   }
-  let level = Primitive_object.notequal(r.errors, []) ? "Warn" : (
-      r.kind === "mutation" ? "Info" : "Debug"
+  let level = Primitive_object.notequal(r.errors, []) ? "WARN" : (
+      r.kind === "mutation" ? "INFO" : "DEBUG"
     );
   let data = Object.fromEntries([
     [

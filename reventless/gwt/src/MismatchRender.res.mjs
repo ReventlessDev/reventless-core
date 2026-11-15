@@ -131,7 +131,7 @@ function normalize(m) {
       ];
   }
   return {
-    kind: Outcome$ReventlessGwt.kindName(m),
+    kind: Outcome$ReventlessGwt.kindOf(m),
     fields: fields
   };
 }

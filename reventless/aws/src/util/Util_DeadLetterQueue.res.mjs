@@ -21,7 +21,7 @@ let name = "DeadLetterQueue";
 let nameFifo = "FIFO" + name;
 
 function queueTags(queueName) {
-  return AWS_Tags$ReventlessAws.make(queueName, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined);
+  return AWS_Tags$ReventlessAws.make(queueName, "Plugin", "DeadLetter", "plugin", undefined, undefined, undefined, undefined);
 }
 
 let queue = new (Aws.sqs.Queue)(name, {
@@ -46,7 +46,7 @@ let opts = {
   parent: opts_parent
 };
 
-let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
+let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Plugin", "Identity", "plugin", undefined, undefined, undefined, undefined), opts);
 
 let entryPointCode = Nodefs.readFileSync(Util_Bundle$ReventlessAws.localRequire.resolve("./Util_DeadLetterHandler.res.mjs"), "utf8");
 
@@ -60,7 +60,7 @@ let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
 
 let layers = Lambda$PulumiAws.reventlessLayers();
 
-let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + `LogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined), opts, undefined);
+let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + `LogGroup`, "Plugin", "Logs", "plugin", undefined, undefined, undefined, undefined), opts, undefined);
 
 let handler = new (Aws.lambda.Function)(name, {
   handler: "index.handler",
@@ -70,7 +70,7 @@ let handler = new (Aws.lambda.Function)(name, {
   memorySize: 128,
   timeout: 30,
   layers: layers,
-  tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined),
+  tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "plugin", undefined, undefined, undefined, undefined),
   environment: {
     variables: Object.fromEntries([
       [
@@ -84,14 +84,14 @@ let handler = new (Aws.lambda.Function)(name, {
   loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
 }, opts);
 
-let deadLetterResource = Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler);
+let deadLetterResource = Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "plugin", undefined, undefined, undefined, undefined), handler);
 
 Monitoring$ReventlessCore.notify("DeadLetterSink", name, deadLetterResource, Util_LambdaLogging$ReventlessAws.logLocatorFor(logGroup, deadLetterResource.name));
 
 let lambda = Pulumi.output(handler);
 
 function esmTags(esmName) {
-  return AWS_Tags$ReventlessAws.make(esmName, "Plugin", "EventSourceMapping", "Plugin", undefined, undefined, undefined, undefined);
+  return AWS_Tags$ReventlessAws.make(esmName, "Plugin", "EventSourceMapping", "plugin", undefined, undefined, undefined, undefined);
 }
 
 let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, esmTags(name), opts);

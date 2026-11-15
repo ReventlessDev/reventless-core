@@ -9,14 +9,7 @@ let schema = Sury.union([
 ]);
 
 function toString(v) {
-  switch (v) {
-    case "EscalateOnRetry" :
-      return "EscalateOnRetry";
-    case "AlwaysStrong" :
-      return "AlwaysStrong";
-    case "AlwaysEventual" :
-      return "AlwaysEventual";
-  }
+  return v;
 }
 
 let $$default = "EscalateOnRetry";

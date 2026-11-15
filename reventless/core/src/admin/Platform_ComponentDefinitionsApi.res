@@ -64,15 +64,7 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(c.name)),
     ("schema", JSON.Encode.string(c.schema)),
-    (
-      "level",
-      JSON.Encode.string(
-        switch c.level {
-        | Collection => "Collection"
-        | Instance => "Instance"
-        },
-      ),
-    ),
+    ("level", JSON.Encode.string((c.level :> string))),
     ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("mutationField", JSON.Encode.string(c.mutationField)),
     ("references", c.references->Array.map(encodeFieldReference)->JSON.Encode.array),
@@ -100,7 +92,11 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
 // (below) answers the second. Neither is a security boundary — an Internal view
 // keeps its resolver and stays queryable, so naming it here publishes a fact the
 // caller is already entitled to.
-let isPublicReadSide = (q: readSideDef): bool => q.visibility != Some("Internal")
+let isPublicReadSide = (q: readSideDef): bool =>
+  switch q.visibility {
+  | Some(Internal) => false
+  | _ => true
+  }
 
 let encodeReadSideDef = (r: readSideDef): JSON.t =>
   Dict.fromArray([
@@ -117,7 +113,10 @@ let encodeReadSideDef = (r: readSideDef): JSON.t =>
     // unfiltered structure needs to know WHICH components are Internal, and a
     // consumer of the filtered query reads null here because nothing Internal
     // survives the filter anyway.
-    ("visibility", r.visibility->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    (
+      "visibility",
+      r.visibility->Option.mapOr(JSON.Encode.null, v => JSON.Encode.string((v :> string))),
+    ),
     ("chapter", r.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("singleQueryField", r.singleQueryField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("plural", r.plural->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),

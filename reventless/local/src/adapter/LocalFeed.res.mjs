@@ -36,23 +36,6 @@ function settingOf(value) {
   }
 }
 
-function levelOfString(s) {
-  let match = s.toLowerCase();
-  switch (match) {
-    case "debug" :
-      return "Debug";
-    case "error" :
-      return "Error";
-    case "info" :
-      return "Info";
-    case "warn" :
-    case "warning" :
-      return "Warn";
-    default:
-      return;
-  }
-}
-
 function parseFilter(line) {
   let d;
   try {
@@ -67,7 +50,7 @@ function parseFilter(line) {
   let string = k => Stdlib_Option.flatMap(d[k], Stdlib_JSON.Decode.string);
   return {
     plugins: strings("plugins"),
-    level: Stdlib_Option.flatMap(string("level"), levelOfString),
+    level: Stdlib_Option.flatMap(string("level"), Logger$ReventlessCore.levelOfWord),
     components: strings("components"),
     eventTypes: strings("eventTypes"),
     correlationId: string("correlationId")
@@ -401,6 +384,8 @@ function stopForTests(feed) {
   resetForTests(feed);
   return Promise.resolve();
 }
+
+let levelOfString = Logger$ReventlessCore.levelOfWord;
 
 export {
   log,

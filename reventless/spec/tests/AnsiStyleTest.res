@@ -11,7 +11,7 @@ let envKey = "REVENTLESS_LOG_FORMAT"
 
 // The module caches its decision, so every case sets the world then reloads. The
 // declared default is module-level too, hence the explicit restore.
-let resolve = (~env: option<string>, ~declared: option<[#text | #json]>): string => {
+let resolve = (~env: option<string>, ~declared: option<AnsiStyle.logFormat>): string => {
   switch env {
   | Some(v) => NodeProcess.env->Dict.set(envKey, v)
   | None => NodeProcess.env->Dict.delete(envKey)
@@ -34,22 +34,22 @@ describe("AnsiStyle format resolution", () => {
   // The fix: `pnpm run serve:watch` and `dev:full` pipe the platform's stdout, so
   // the probe alone called them log collectors and emitted JSON at a human.
   testSync("a runtime that declares itself human-read wins over the pipe", () =>
-    expect(resolve(~env=None, ~declared=Some(#text)))->toEqual("text")
+    expect(resolve(~env=None, ~declared=Some(AnsiStyle.TextFormat)))->toEqual("text")
   )
 
   testSync("a runtime may also declare JSON", () =>
-    expect(resolve(~env=None, ~declared=Some(#json)))->toEqual("json")
+    expect(resolve(~env=None, ~declared=Some(AnsiStyle.JsonFormat)))->toEqual("json")
   )
 
   // The escape hatch has to survive the declaration, or a developer who wants the
   // structured form back from a local platform cannot have it.
   testSync("an explicit REVENTLESS_LOG_FORMAT beats what the runtime declared", () => {
-    expect(resolve(~env=Some("json"), ~declared=Some(#text)))->toEqual("json")
-    expect(resolve(~env=Some("text"), ~declared=Some(#json)))->toEqual("text")
+    expect(resolve(~env=Some("json"), ~declared=Some(AnsiStyle.TextFormat)))->toEqual("json")
+    expect(resolve(~env=Some("text"), ~declared=Some(AnsiStyle.JsonFormat)))->toEqual("text")
   })
 
   testSync("an unrecognised value falls through rather than deciding", () =>
-    expect(resolve(~env=Some("yaml"), ~declared=Some(#text)))->toEqual("text")
+    expect(resolve(~env=Some("yaml"), ~declared=Some(AnsiStyle.TextFormat)))->toEqual("text")
   )
 })
 

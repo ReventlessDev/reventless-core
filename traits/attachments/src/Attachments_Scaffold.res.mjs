@@ -370,7 +370,7 @@ function sliceDecision(c) {
       `    // is a complete graft, so leaving this is legitimate.`,
       `    let (` + c.entityId + `, op) = toOp(command)`,
       single ? `    switch state.attachments->Attachments.decide(~cardinality=Single, op) {` : `    switch state.attachments->Attachments.decide(op) {`,
-      `    | Error(#NotAttached) => Error(` + n.notAttached + `)`,
+      `    | Error(Attachments.NotAttached) => Error(` + n.notAttached + `)`,
       single ? `    | Ok(facts) => Ok(facts->Array.filterMap(toEvent(` + c.entityId + `, _)))` : `    | Ok(facts) => Ok(facts->Array.map(toEvent(` + c.entityId + `, _)))`,
       `    }`,
       `  }`,

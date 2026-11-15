@@ -6,13 +6,17 @@
 // can't drift — previously the generator accepted plural/short folder names that
 // the gwt discovery silently didn't recognize.
 
+// A slice's folder drops the `Slice` the kind carries: the folder already sits
+// inside a plugin's `src/`, so the suffix only lengthened every path. Each case's
+// text is its canonical (singular) folder name, the spelling the naming
+// conventions and the graph `kind` field use.
 type t =
-  | StateChangeSlice
-  | StateViewSlice
-  | StateViewSliceStream
-  | AutomationSlice
-  | InboundTranslationSlice
-  | OutboundTranslationSlice
+  | @as("StateChange") StateChangeSlice
+  | @as("StateView") StateViewSlice
+  | @as("StateViewStream") StateViewSliceStream
+  | @as("Automation") AutomationSlice
+  | @as("InboundTranslation") InboundTranslationSlice
+  | @as("OutboundTranslation") OutboundTranslationSlice
   | Aggregate
   | ReadModel
   | ReadModelStream
@@ -35,25 +39,9 @@ let all = [
   Extension,
 ]
 
-// The canonical (singular) folder name for a kind — the spelling the naming
-// conventions and the graph `kind` field use. A slice folder drops the `Slice`
-// the kind carries: the folder already sits inside a plugin's `src/`, so the
-// suffix only lengthened every path. The suffixed spellings stay accepted below.
-let folderName = (t: t): string =>
-  switch t {
-  | StateChangeSlice => "StateChange"
-  | StateViewSlice => "StateView"
-  | StateViewSliceStream => "StateViewStream"
-  | AutomationSlice => "Automation"
-  | InboundTranslationSlice => "InboundTranslation"
-  | OutboundTranslationSlice => "OutboundTranslation"
-  | Aggregate => "Aggregate"
-  | ReadModel => "ReadModel"
-  | ReadModelStream => "ReadModelStream"
-  | Task => "Task"
-  | ExtensionPoint => "ExtensionPoint"
-  | Extension => "Extension"
-  }
+// The canonical (singular) folder name for a kind. The suffixed spellings stay
+// accepted by `folderToKind` below.
+let folderName = (t: t): string => (t :> string)
 
 // Every folder spelling that denotes a kind → the kind. Tolerates the singular,
 // plural, and (for slices) short forms the generator has always accepted.

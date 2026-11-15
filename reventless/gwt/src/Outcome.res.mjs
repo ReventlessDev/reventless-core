@@ -9,7 +9,7 @@ function fail(m) {
   };
 }
 
-function kindName(m) {
+function kindOf(m) {
   switch (m.TAG) {
     case "EventsMismatch" :
       return "EventsMismatch";
@@ -37,6 +37,8 @@ function kindName(m) {
       return "Throw";
   }
 }
+
+let kindName = kindOf;
 
 function stringifyJson(j) {
   return JSON.stringify(j, undefined, 2);
@@ -92,6 +94,7 @@ let pass = {
 export {
   pass,
   fail,
+  kindOf,
   kindName,
   stringifyJson,
   stringifyOptJson,

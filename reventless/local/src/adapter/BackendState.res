@@ -58,10 +58,10 @@ let getObjectStoreRoot = () =>
 // Absolute, because the platform resolved `./.reventless/local.db` against ITS
 // cwd and a reader may not share it. `:memory:` reports "memory": there is no
 // file to open, which is the only distinction that changes what a tool can do.
-let describeStore = (): (string, option<string>) =>
+let describeStore = (): (LocalPlatformRegistry.storeKind, option<string>) =>
   switch current.contents {
-  | Memory => ("memory", None)
-  | Sqlite({path}) if path == ":memory:" => ("memory", None)
-  | Sqlite({path}) => ("sqlite", Some(NodePath.resolve([path])))
-  | Postgres(_) => ("postgres", None)
+  | Memory => (MemoryStore, None)
+  | Sqlite({path}) if path == ":memory:" => (MemoryStore, None)
+  | Sqlite({path}) => (SqliteStore, Some(NodePath.resolve([path])))
+  | Postgres(_) => (PostgresStore, None)
   }

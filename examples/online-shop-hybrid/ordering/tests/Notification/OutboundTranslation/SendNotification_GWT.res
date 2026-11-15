@@ -39,7 +39,7 @@ describe("SendNotification OutboundTranslationSlice", () => {
     givenTodo("confirm:o1", item)
     ->givenCapabilities(provider(Error(Unavailable("502"))))
     ->whenTranslated
-    ->thenTodoStatus("confirm:o1", #Failed)
+    ->thenTodoStatus("confirm:o1", Failed)
   )
 
   // The half that must settle. Two more attempts would learn the same thing, and

@@ -167,6 +167,9 @@ let evolve = (t, fact) =>
   | Deferred(_) => t
   }
 
+/** The one refusal: preferences for somebody the directory has never heard of. */
+type refusal = RecipientUnknown
+
 /** The whole competency, in one function.
 
     `array<fact>` rather than `option<fact>`: a request can go out on more than
@@ -178,24 +181,21 @@ let evolve = (t, fact) =>
     The one refusal is a client managing preferences for somebody the directory
     has never heard of — a person is at the other end of that one and can be
     told, unlike the relayed ops, which record a fact instead. */
-let decide = (t, op, ~posture: (category, channel) => bool): result<
-  array<fact>,
-  [#RecipientUnknown],
-> =>
+let decide = (t, op, ~posture: (category, channel) => bool): result<array<fact>, refusal> =>
   switch op {
   | Announce({channel, address}) =>
     addressFor(t, channel) == Some(address) ? Ok([]) : Ok([Announced({channel, address})])
 
   | Subscribe({category, channel}) =>
     t.contacts->Array.length == 0
-      ? Error(#RecipientUnknown)
+      ? Error(RecipientUnknown)
       : enabled(t, ~posture, category, channel)
       ? Ok([])
       : Ok([Subscribed({category, channel})])
 
   | Unsubscribe({category, channel}) =>
     t.contacts->Array.length == 0
-      ? Error(#RecipientUnknown)
+      ? Error(RecipientUnknown)
       : enabled(t, ~posture, category, channel)
       ? Ok([Unsubscribed({category, channel})])
       : Ok([])

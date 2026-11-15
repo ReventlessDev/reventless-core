@@ -178,7 +178,7 @@ module Make = (B: AddressGeocoding.Binding) => {
       S.test("an outage leaves the TODO pending", () =>
         S.givenTodo(todoKey(B.subjectA), B.item(~entityId, ~subject=B.subjectA))
         ->S.whenTranslateMocked(translateWith(Error(Reventless.Geocoding.Unavailable("502"))))
-        ->S.thenTodoStatus(todoKey(B.subjectA), #Pending)
+        ->S.thenTodoStatus(todoKey(B.subjectA), Pending)
       )
     })
 }

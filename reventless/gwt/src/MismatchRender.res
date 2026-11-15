@@ -23,7 +23,7 @@ type field =
   | Stack(string)
 
 type normalized = {
-  kind: string,
+  kind: Outcome.mismatchKind,
   fields: array<field>,
 }
 
@@ -82,5 +82,5 @@ let normalize = (m: Outcome.mismatch): normalized => {
     ]
   | Throw({error, stack}) => [Error(error), Stack(stack)]
   }
-  {kind: Outcome.kindName(m), fields}
+  {kind: Outcome.kindOf(m), fields}
 }

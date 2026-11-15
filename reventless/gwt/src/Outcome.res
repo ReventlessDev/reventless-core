@@ -44,21 +44,38 @@ type outcome = result<unit, mismatch>
 let pass: outcome = Ok()
 let fail = (m): outcome => Error(m)
 
-let kindName = (m: mismatch) =>
+/** A mismatch's kind without its values. Its text is the mismatch's constructor name. */
+type mismatchKind =
+  | @as("EventsMismatch") EventsMismatchKind
+  | @as("ErrorMismatch") ErrorMismatchKind
+  | @as("StateMismatch") StateMismatchKind
+  | @as("NoEventExpected") NoEventExpectedKind
+  | @as("TodoMismatch") TodoMismatchKind
+  | @as("AppendConditionMismatch") AppendConditionMismatchKind
+  | @as("TranslateError") TranslateErrorKind
+  | @as("QueryRowsMismatch") QueryRowsMismatchKind
+  | @as("PublishedActionsMismatch") PublishedActionsMismatchKind
+  | @as("ScopeDegraded") ScopeDegradedKind
+  | @as("PartitionUnresolved") PartitionUnresolvedKind
+  | @as("Throw") ThrowKind
+
+let kindOf = (m: mismatch): mismatchKind =>
   switch m {
-  | EventsMismatch(_) => "EventsMismatch"
-  | ErrorMismatch(_) => "ErrorMismatch"
-  | StateMismatch(_) => "StateMismatch"
-  | NoEventExpected(_) => "NoEventExpected"
-  | TodoMismatch(_) => "TodoMismatch"
-  | AppendConditionMismatch(_) => "AppendConditionMismatch"
-  | TranslateError(_) => "TranslateError"
-  | QueryRowsMismatch(_) => "QueryRowsMismatch"
-  | PublishedActionsMismatch(_) => "PublishedActionsMismatch"
-  | ScopeDegraded(_) => "ScopeDegraded"
-  | PartitionUnresolved(_) => "PartitionUnresolved"
-  | Throw(_) => "Throw"
+  | EventsMismatch(_) => EventsMismatchKind
+  | ErrorMismatch(_) => ErrorMismatchKind
+  | StateMismatch(_) => StateMismatchKind
+  | NoEventExpected(_) => NoEventExpectedKind
+  | TodoMismatch(_) => TodoMismatchKind
+  | AppendConditionMismatch(_) => AppendConditionMismatchKind
+  | TranslateError(_) => TranslateErrorKind
+  | QueryRowsMismatch(_) => QueryRowsMismatchKind
+  | PublishedActionsMismatch(_) => PublishedActionsMismatchKind
+  | ScopeDegraded(_) => ScopeDegradedKind
+  | PartitionUnresolved(_) => PartitionUnresolvedKind
+  | Throw(_) => ThrowKind
   }
+
+let kindName = (m: mismatch): string => (kindOf(m) :> string)
 
 let stringifyJson = (j: JSON.t) => JSON.stringify(j, ~space=2)
 let stringifyOptJson = (j: option<JSON.t>) =>

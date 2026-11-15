@@ -48,7 +48,7 @@ let structure: pluginStructure = {
   readModels: [readSide(~name="Customers", ())],
   stateViewSlices: [
     readSide(~name="Orders", ~ownerField="customerId", ()),
-    readSide(~name="AvailableProducts", ~visibility="Internal", ()),
+    readSide(~name="AvailableProducts", ~visibility=Internal, ()),
   ],
   stateChangeSlices: [
     writeSide(

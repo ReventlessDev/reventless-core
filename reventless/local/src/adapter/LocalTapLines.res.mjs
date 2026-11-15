@@ -89,11 +89,11 @@ function rejectionRecord(r) {
   let level;
   switch (cause) {
     case "InfrastructureFailure" :
-      level = "Error";
+      level = "ERROR";
       break;
     case "DomainRejection" :
     case "AccessRefusal" :
-      level = "Warn";
+      level = "WARN";
       break;
   }
   let detailJson;

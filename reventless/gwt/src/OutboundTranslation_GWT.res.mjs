@@ -141,25 +141,18 @@ function Make(Spec) {
       });
     }
   };
-  let statusToString = s => {
-    if (s === "Pending") {
-      return "#Pending";
-    } else {
-      return "#Completed";
-    }
-  };
   let thenTodoStatus = async (pending, expectedId, expectedStatus) => {
     let match = await pending;
     let id = match.id;
     let actualStatus;
-    actualStatus = match.result.TAG === "Ok" ? "Completed" : "Pending";
+    actualStatus = match.result.TAG === "Ok" ? "#Completed" : "#Pending";
     if (id === expectedId && actualStatus === expectedStatus) {
       return Outcome$ReventlessGwt.pass;
     }
     let encOne = (rid, rstatus) => {
       let d = {};
       d["id"] = rid;
-      d["status"] = statusToString(rstatus);
+      d["status"] = rstatus;
       return d;
     };
     return Outcome$ReventlessGwt.fail({
@@ -276,8 +269,8 @@ function FromSlice(Spec) {
       };
       let match = result;
       let tmp;
-      tmp = match.TAG === "Ok" ? "Completed" : (
-          failures >= maxRetries ? "Abandoned" : "Failed"
+      tmp = match.TAG === "Ok" ? "#Completed" : (
+          failures >= maxRetries ? "#Abandoned" : "#Failed"
         );
       return {
         id: todo.id,
@@ -302,7 +295,7 @@ function FromSlice(Spec) {
         _0: Translation.onExhausted(todo.id, todo.item, lastError)
       },
       retries: Spec.maxRetries,
-      status: "Abandoned",
+      status: "#Abandoned",
       sent: []
     });
     let thenCommand = async (pending, expectedId, expectedCmd) => {
@@ -376,20 +369,19 @@ function FromSlice(Spec) {
         });
       }
     };
-    let statusName = s => {
-      if (s === "Failed" || s === "Pending") {
+    let current = s => {
+      if (s === "#Pending") {
         return "#Failed";
-      } else if (s === "Abandoned") {
-        return "#Abandoned";
       } else {
-        return "#Completed";
+        return s;
       }
     };
+    let statusName = current;
     let thenTodoStatus = async (pending, expectedId, expectedStatus) => {
       let match = await pending;
       let status = match.status;
       let id = match.id;
-      if (id === expectedId && statusName(status) === statusName(expectedStatus)) {
+      if (id === expectedId && current(status) === current(expectedStatus)) {
         return Outcome$ReventlessGwt.pass;
       }
       let encOne = (rid, s) => Object.fromEntries([
@@ -399,7 +391,7 @@ function FromSlice(Spec) {
         ],
         [
           "status",
-          statusName(s)
+          current(s)
         ]
       ]);
       return Outcome$ReventlessGwt.fail({
@@ -433,6 +425,7 @@ function FromSlice(Spec) {
       thenSent: thenSent,
       thenNothingSent: thenNothingSent,
       thenRetryRecorded: thenRetryRecorded,
+      current: current,
       statusName: statusName,
       thenTodoStatus: thenTodoStatus
     };

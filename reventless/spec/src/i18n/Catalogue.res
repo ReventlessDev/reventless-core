@@ -136,8 +136,59 @@ let inSentence = (identifier: string): string =>
 
 // ── Keys from a structure ─────────────────────────────────────────────────────
 
+/** Which text of an element a key holds: its name, plural or count, one of its fields,
+    lifecycle states or errors, the plugin's own name, or a role. A lock carries it as the
+    key's last part (`name`, `field.<field>`, …); a text this build does not read is kept
+    as it is. */
+type elementKind =
+  | NameText
+  | PluralText
+  | CountText
+  | FieldText(string)
+  | StateText(string)
+  | ErrorText(string)
+  | PluginText
+  | RoleText
+  | OtherElementText(string)
+
+/** The kind as a key and a lock spell it. */
+let elementKindText = (kind: elementKind): string =>
+  switch kind {
+  | NameText => "name"
+  | PluralText => "plural"
+  | CountText => "count"
+  | FieldText(field) => `field.${field}`
+  | StateText(value) => `state.${value}`
+  | ErrorText(error) => `error.${error}`
+  | PluginText => "plugin"
+  | RoleText => "role"
+  | OtherElementText(text) => text
+  }
+
+/** The kind a lock's text spells; `elementKindText` of it is the text again. */
+let elementKindOfText = (text: string): elementKind =>
+  switch text {
+  | "name" => NameText
+  | "plural" => PluralText
+  | "count" => CountText
+  | "plugin" => PluginText
+  | "role" => RoleText
+  | _ =>
+    switch text->String.indexOf(".") {
+    | -1 => OtherElementText(text)
+    | dot =>
+      let rest = text->String.slice(~start=dot + 1)
+      switch text->String.slice(~start=0, ~end=dot) {
+      | "field" => FieldText(rest)
+      | "state" => StateText(rest)
+      | "error" => ErrorText(rest)
+      | _ => OtherElementText(text)
+      }
+    }
+  }
+
 /** Where a key came from, for a translator's context and, later, the glossary's terms. */
-type element = {plugin: string, identifier: string, kind: string}
+type element = {plugin: string, identifier: string, kind: elementKind}
 
 type entry = {key: string, text: string, element: element}
 
@@ -206,7 +257,7 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
   let out: array<entry> = []
   let add = (~identifier, ~kind, text) =>
     out->Array.push({
-      key: `${plugin}.${identifier}.${kind}`,
+      key: `${plugin}.${identifier}.${elementKindText(kind)}`,
       text,
       element: {plugin, identifier, kind},
     })
@@ -218,35 +269,35 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
     | (Some("declared"), Some(p)) => p
     | _ => view.name
     }
-    add(~identifier=view.name, ~kind="name", humanizeKey(singular))
-    add(~identifier=view.name, ~kind="plural", humanizeKey(plural))
+    add(~identifier=view.name, ~kind=NameText, humanizeKey(singular))
+    add(~identifier=view.name, ~kind=PluralText, humanizeKey(plural))
     add(
       ~identifier=view.name,
-      ~kind="count",
+      ~kind=CountText,
       `{count, plural, one {# ${inSentence(singular)}} other {# ${inSentence(plural)}}}`,
     )
     let properties = propertiesOf(view.schema)
     properties->Array.forEach(((field, _)) =>
-      add(~identifier=view.name, ~kind=`field.${field}`, humanizeKey(field))
+      add(~identifier=view.name, ~kind=FieldText(field), humanizeKey(field))
     )
     view.lifecycleField
     ->Option.flatMap(field => properties->Array.find(((k, _)) => k == field))
     ->Option.forEach(((_, property)) =>
       enumValues(property)->Array.forEach(
-        value => add(~identifier=view.name, ~kind=`state.${value}`, humanizeKey(value)),
+        value => add(~identifier=view.name, ~kind=StateText(value), humanizeKey(value)),
       )
     )
   })
 
   Array.concat(structure.stateChangeSlices, structure.aggregates)->Array.forEach(writeSide => {
     writeSide.commands->Array.forEach(command => {
-      add(~identifier=command.name, ~kind="name", humanizeKey(command.name))
+      add(~identifier=command.name, ~kind=NameText, humanizeKey(command.name))
       propertiesOf(command.schema)->Array.forEach(
-        ((field, _)) => add(~identifier=command.name, ~kind=`field.${field}`, humanizeKey(field)),
+        ((field, _)) => add(~identifier=command.name, ~kind=FieldText(field), humanizeKey(field)),
       )
     })
     writeSide.errors->Array.forEach(error =>
-      add(~identifier=writeSide.name, ~kind=`error.${error.name}`, sentence(error.name))
+      add(~identifier=writeSide.name, ~kind=ErrorText(error.name), sentence(error.name))
     )
   })
 
@@ -254,7 +305,7 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
   out->Array.push({
     key: `${plugin}.plugin.name`,
     text: humanizeKey(plugin),
-    element: {plugin, identifier: plugin, kind: "plugin"},
+    element: {plugin, identifier: plugin, kind: PluginText},
   })
 
   let roles = Array.concat(
@@ -268,7 +319,7 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
       out->Array.push({
         key: `${plugin}.role.${role}`,
         text: humanizeKey(role),
-        element: {plugin, identifier: role, kind: "role"},
+        element: {plugin, identifier: role, kind: RoleText},
       })
     }
   )
@@ -378,7 +429,7 @@ let lockText = (locks: dict<lock>): string =>
               dict{
                 "plugin": JSON.Encode.string(l.element.plugin),
                 "identifier": JSON.Encode.string(l.element.identifier),
-                "kind": JSON.Encode.string(l.element.kind),
+                "kind": JSON.Encode.string(elementKindText(l.element.kind)),
               },
             ),
             "terms": sortedObject(l.terms->Dict.mapValues(JSON.Encode.string)),
@@ -420,7 +471,7 @@ let readLocks = (text: string): dict<lock> =>
               element: {
                 plugin: str(e, "plugin")->Option.getOr(""),
                 identifier: str(e, "identifier")->Option.getOr(""),
-                kind: str(e, "kind")->Option.getOr(""),
+                kind: str(e, "kind")->Option.getOr("")->elementKindOfText,
               },
               terms: o
               ->Dict.get("terms")

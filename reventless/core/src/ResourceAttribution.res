@@ -25,18 +25,13 @@ neither derives from the other.
 module Scope = {
   type t =
     /** owned by one model component */
-    | Component
+    | @as("component") Component
     /** shared substrate within a plugin (DcbEventLog, plugin DLQ, …) */
-    | Plugin
+    | @as("plugin") Plugin
     /** shared substrate across the platform (API, auth, hosting, …) */
-    | Platform
+    | @as("platform") Platform
 
-  let toString = scope =>
-    switch scope {
-    | Component => "component"
-    | Plugin => "plugin"
-    | Platform => "platform"
-    }
+  let toString = (scope: t): string => (scope :> string)
 }
 
 /**
@@ -44,6 +39,7 @@ The deployment role a resource plays. `Other(string)` is the escape hatch
 for support roles and future ones (same pattern as `Monitoring.unitKind`).
 */
 module Role = {
+  @unboxed
   type t =
     | CommandTopic
     | EventTopic
@@ -77,29 +73,7 @@ module Role = {
     | DataTransfer
     | Other(string)
 
-  let toString = role =>
-    switch role {
-    | CommandTopic => "CommandTopic"
-    | EventTopic => "EventTopic"
-    | StateTopic => "StateTopic"
-    | EventLog => "EventLog"
-    | DcbEventLog => "DcbEventLog"
-    | EventLogSubscription => "EventLogSubscription"
-    | EventCollector => "EventCollector"
-    | QueryDb => "QueryDb"
-    | Runtime => "Runtime"
-    | DeadLetter => "DeadLetter"
-    | Scheduler => "Scheduler"
-    | Logs => "Logs"
-    | Identity => "Identity"
-    | Api => "Api"
-    | Auth => "Auth"
-    | Hosting => "Hosting"
-    | Network => "Network"
-    | EventSourceMapping => "EventSourceMapping"
-    | DataTransfer => "DataTransfer"
-    | Other(name) => name
-    }
+  let toString = (role: t): string => (role :> string)
 }
 
 /**

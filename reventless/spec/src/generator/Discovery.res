@@ -4,12 +4,12 @@
 // pattern matches in `Pairing` keep resolving via type inference) and derive the
 // folder classifier from it — one vocabulary shared with the gwt discovery.
 type componentType = ComponentKind.t =
-  | StateChangeSlice
-  | StateViewSlice
-  | StateViewSliceStream
-  | AutomationSlice
-  | InboundTranslationSlice
-  | OutboundTranslationSlice
+  | @as("StateChange") StateChangeSlice
+  | @as("StateView") StateViewSlice
+  | @as("StateViewStream") StateViewSliceStream
+  | @as("Automation") AutomationSlice
+  | @as("InboundTranslation") InboundTranslationSlice
+  | @as("OutboundTranslation") OutboundTranslationSlice
   | Aggregate
   | ReadModel
   | ReadModelStream

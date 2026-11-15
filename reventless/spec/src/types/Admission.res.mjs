@@ -5,32 +5,19 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 
+let doors = [
+  "start",
+  "complete",
+  "invite",
+  "openRoles"
+];
+
 function doorName(door) {
-  switch (door) {
-    case "Start" :
-      return "start";
-    case "Complete" :
-      return "complete";
-    case "Invite" :
-      return "invite";
-    case "OpenRoles" :
-      return "openRoles";
-  }
+  return door;
 }
 
 function doorOfName(name) {
-  switch (name) {
-    case "complete" :
-      return "Complete";
-    case "invite" :
-      return "Invite";
-    case "openRoles" :
-      return "OpenRoles";
-    case "start" :
-      return "Start";
-    default:
-      return;
-  }
+  return doors.find(door => door === name);
 }
 
 let doorDefSchema = Sury.$schema(s => ({
@@ -38,9 +25,16 @@ let doorDefSchema = Sury.$schema(s => ({
   part: s.m(Sury.string)
 }));
 
+let strategyWordSchema = Sury.union([
+  Sury.literal("SelfService"),
+  Sury.literal("Invitation"),
+  Sury.literal("Provisioned"),
+  Sury.$schema(s => (s.m(Sury.string)))
+]);
+
 let defSchema = Sury.$schema(s => ({
   role: s.m(Sury.string),
-  strategy: s.m(Sury.string),
+  strategy: s.m(strategyWordSchema),
   invitedBy: s.m(Sury.$option(Sury.array(Sury.string)))
 }));
 
@@ -94,7 +88,7 @@ function selfService(table) {
   });
 }
 
-function strategyName(s) {
+function strategyWordOf(s) {
   if (typeof s !== "object") {
     if (s === "SelfService") {
       return "SelfService";
@@ -141,12 +135,12 @@ function toDefs(table) {
     if (typeof strategy !== "object") {
       return {
         role: role,
-        strategy: strategyName(strategy)
+        strategy: strategyWordOf(strategy)
       };
     } else {
       return {
         role: role,
-        strategy: strategyName(strategy),
+        strategy: strategyWordOf(strategy),
         invitedBy: strategy.by.map(r => r)
       };
     }
@@ -157,7 +151,21 @@ function fromDefs(defs) {
   let read = defs.map(d => {
     let match = d.strategy;
     let match$1 = d.invitedBy;
+    if (match !== "SelfService" && match !== "Provisioned" && match !== "Invitation") {
+      return {
+        TAG: "Error",
+        _0: d.role + `: ` + match + ` is not a strategy`
+      };
+    }
     switch (match) {
+      case "SelfService" :
+        return {
+          TAG: "Ok",
+          _0: {
+            role: d.role,
+            strategy: "SelfService"
+          }
+        };
       case "Invitation" :
         if (match$1 !== undefined) {
           return {
@@ -183,19 +191,6 @@ function fromDefs(defs) {
             role: d.role,
             strategy: "Provisioned"
           }
-        };
-      case "SelfService" :
-        return {
-          TAG: "Ok",
-          _0: {
-            role: d.role,
-            strategy: "SelfService"
-          }
-        };
-      default:
-        return {
-          TAG: "Error",
-          _0: d.role + `: ` + match + ` is not a strategy`
         };
     }
   });
@@ -227,9 +222,7 @@ function toJson(table) {
   return Object.fromEntries(table.map(param => {
     let strategy = param.strategy;
     let tmp;
-    tmp = typeof strategy !== "object" ? (
-        strategy === "SelfService" ? "SelfService" : "Provisioned"
-      ) : Object.fromEntries([[
+    tmp = typeof strategy !== "object" ? strategyWordOf(strategy) : Object.fromEntries([[
           "Invitation",
           Object.fromEntries([[
               "by",
@@ -247,30 +240,44 @@ function _strategyFromJson(role, json) {
   if (!(json === null || Array.isArray(json))) {
     switch (typeof json) {
       case "string" :
-        switch (json) {
-          case "Provisioned" :
-            return {
-              TAG: "Ok",
-              _0: "Provisioned"
-            };
-          case "SelfService" :
-            return {
-              TAG: "Ok",
-              _0: "SelfService"
-            };
+        let exit = 0;
+        if (json === "SelfService" || json === "Provisioned" || json === "Invitation") {
+          switch (json) {
+            case "SelfService" :
+              return {
+                TAG: "Ok",
+                _0: "SelfService"
+              };
+            case "Invitation" :
+              exit = 2;
+              break;
+            case "Provisioned" :
+              return {
+                TAG: "Ok",
+                _0: "Provisioned"
+              };
+          }
+        } else {
+          exit = 2;
+        }
+        if (exit === 2) {
+          return {
+            TAG: "Error",
+            _0: role + `: ` + JSON.stringify(json) + ` is not a strategy`
+          };
         }
         break;
       case "object" :
-        let match = Object.keys(json);
+        let match = Object.keys(json).map(prim => prim);
         let match$1 = json["Invitation"];
-        let exit = 0;
+        let exit$1 = 0;
         if (match.length !== 1) {
-          exit = 2;
+          exit$1 = 2;
         } else {
           let match$2 = match[0];
           if (match$2 === "Invitation" && typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1)) {
             let match$3 = match$1["by"];
-            let exit$1 = 0;
+            let exit$2 = 0;
             if (match$3 !== undefined) {
               if (Array.isArray(match$3)) {
                 let names = Stdlib_Array.filterMap(match$3, r => {
@@ -293,21 +300,21 @@ function _strategyFromJson(role, json) {
                   };
                 }
               }
-              exit$1 = 3;
+              exit$2 = 3;
             } else {
-              exit$1 = 3;
+              exit$2 = 3;
             }
-            if (exit$1 === 3) {
+            if (exit$2 === 3) {
               return {
                 TAG: "Error",
                 _0: role + `: an invitation names who may send it, as "by"`
               };
             }
           } else {
-            exit = 2;
+            exit$1 = 2;
           }
         }
-        if (exit === 2) {
+        if (exit$1 === 2) {
           return {
             TAG: "Error",
             _0: role + `: ` + JSON.stringify(json) + ` is not a strategy`
@@ -363,16 +370,18 @@ function fromJson(json, roles) {
 }
 
 export {
+  doors,
   doorName,
   doorOfName,
   doorDefSchema,
+  strategyWordSchema,
   defSchema,
   _checkCase,
   declare,
   strategyOf,
   isSelfService,
   selfService,
-  strategyName,
+  strategyWordOf,
   validate,
   toDefs,
   fromDefs,

@@ -84,8 +84,8 @@ let isVisible = (
   module(R: ReventlessInfra.ReadModel.T with type api = unit and type role = unit),
 ): bool =>
   switch R.Spec.visibility {
-  | Public => true
   | Internal => false
+  | _ => true
   }
 
 let readModels: array<
@@ -137,7 +137,9 @@ describe("Plugin_Structure.make — visibility tagging", () => {
 
   testSync("the Internal entry is carried and tagged visibility = Some(\"Internal\")", () => {
     let internal = structure.readModels->Array.find(d => d.name == "InternalView")
-    expect(internal->Option.map(d => d.visibility))->toEqual(Some(Some("Internal")))
+    expect(internal->Option.map(d => d.visibility))->toEqual(
+      Some(Some(Reventless.Visibility.Internal)),
+    )
   })
 
   testSync("a read model's mapping-consumed events surface as qualified consumedEventTypes", () => {

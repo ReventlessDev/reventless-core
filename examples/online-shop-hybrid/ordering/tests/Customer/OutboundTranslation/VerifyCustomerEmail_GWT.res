@@ -76,7 +76,7 @@ describe("VerifyCustomerEmail OutboundTranslationSlice", () => {
       withSecrets(~send=refuses(Reventless.Messaging.Refused("no such mailbox")), ()),
     )
     ->whenTranslated
-    ->thenTodoStatus("c1:alice@x.y", #Failed)
+    ->thenTodoStatus("c1:alice@x.y", Failed)
   )
 
   // scenario-id: a04b17e9-d691-40d3-a431-894a1c75e9f2
@@ -86,7 +86,7 @@ describe("VerifyCustomerEmail OutboundTranslationSlice", () => {
       withSecrets(~send=refuses(Reventless.Messaging.Unavailable("smtp timeout")), ()),
     )
     ->whenTranslated
-    ->thenTodoStatus("c1:alice@x.y", #Failed)
+    ->thenTodoStatus("c1:alice@x.y", Failed)
   )
 
   // A deployment with no secret source cannot prove anything. That is a gap in
@@ -97,7 +97,7 @@ describe("VerifyCustomerEmail OutboundTranslationSlice", () => {
     givenTodo("c1:alice@x.y", item)
     ->givenCapabilities(withoutSecrets())
     ->whenTranslated
-    ->thenTodoStatus("c1:alice@x.y", #Failed)
+    ->thenTodoStatus("c1:alice@x.y", Failed)
   )
 
   // scenario-id: 29f4868d-b099-401f-9609-913f6c55bddf

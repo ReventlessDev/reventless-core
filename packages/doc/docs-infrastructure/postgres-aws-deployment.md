@@ -82,7 +82,7 @@ component or a `StackReference` to a shared network stack).
 | `~backupRetentionPeriod` | `7` | Days |
 | `~deletionProtection` | `true` | Blocks accidental deletion — production safeguard |
 | `~skipFinalSnapshot` | `false` | Keeps a final snapshot on delete |
-| `~lockStrategy` | `#AdvisoryLocks` | DCB append lock — see [Pooling & lock strategy](#connection-pooling--lock-strategy) |
+| `~lockStrategy` | `AdvisoryLocks` | DCB append lock — see [Pooling & lock strategy](#connection-pooling--lock-strategy) |
 
 Only `postgres` (RDS) is wired today. **Aurora / Aurora Serverless v2** is a
 planned second engine behind the same `connectionConfig` output shape — the
@@ -106,7 +106,7 @@ let pg = ReventlessAws.PgConnection.make(
   ~name="my-platform",
   ~vpcId=network.vpcId,
   ~subnetIds=network.privateSubnetIds,
-  // ~lockStrategy=#RowLocks,   // if fronting with RDS Proxy — see below
+  // ~lockStrategy=RowLocks,    // if fronting with RDS Proxy — see below
 )
 
 // 2. Build the platform on it.
@@ -255,8 +255,8 @@ path takes a per-transaction lock, and its strategy is a knob on `PgConnection`:
 
 | Deployment shape | `~lockStrategy` | Why |
 |---|---|---|
-| **Direct-to-RDS** (few long-lived Lambda-container pools) | `#AdvisoryLocks` (default) | Transaction-scoped, lowest overhead |
-| **RDS Proxy** (recommended at Lambda scale for connection multiplexing) | `#RowLocks` | Advisory locks are session state RDS Proxy **cannot multiplex** — they would pin connections; row locks are Proxy-safe |
+| **Direct-to-RDS** (few long-lived Lambda-container pools) | `AdvisoryLocks` (default) | Transaction-scoped, lowest overhead |
+| **RDS Proxy** (recommended at Lambda scale for connection multiplexing) | `RowLocks` | Advisory locks are session state RDS Proxy **cannot multiplex** — they would pin connections; row locks are Proxy-safe |
 
 Only the **DCB command** Lambda takes this lock; classic EventLog and QueryDb
 appends don't. The strategy threads from `PgConnection.make(~lockStrategy)`
@@ -264,8 +264,8 @@ through to the DCB command Lambda automatically.
 
 > **RDS Proxy provisioning is a documented fast-follow.** `PgConnection` does not
 > yet stand up an RDS Proxy or swap the connection host to the Proxy endpoint —
-> the `#RowLocks` knob it pairs with is in place, but wiring the Proxy resource is
-> not landed. Until it is, use `#AdvisoryLocks` with direct-to-RDS and a modest
+> the `RowLocks` knob it pairs with is in place, but wiring the Proxy resource is
+> not landed. Until it is, use `AdvisoryLocks` with direct-to-RDS and a modest
 > `reservedConcurrency` on the command Lambdas to bound the pool count.
 
 ---

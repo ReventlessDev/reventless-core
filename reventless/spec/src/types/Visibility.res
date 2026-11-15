@@ -9,16 +9,17 @@
 // The variant is shipped with two cases initially. Future cases (e.g.
 // `UnlistedInAutoUI`, `InternalToPlugin`, `Hidden`) can be added without
 // breaking existing `@@reventless.visibility(Internal)` declarations.
+//
+// A plugin structure carries the case's name. A word this build does not know
+// decodes as `OtherVisibility`, keeping the word, so a structure written by a
+// newer plugin still decodes in an older reader.
 
-@schema
+@unboxed @schema
 type t =
   | Public
   | Internal
+  | OtherVisibility(string)
 
 let default = Public
 
-let toString = (v: t) =>
-  switch v {
-  | Public => "Public"
-  | Internal => "Internal"
-  }
+let toString = (v: t): string => (v :> string)

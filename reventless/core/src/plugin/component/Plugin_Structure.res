@@ -522,18 +522,12 @@ let checkLifecycleTopology = (
 // Which rung produced the label, published as `labelFieldSource`: a consumer with
 // a name rule of its own has to rank a declaration (rung 1) against a guess.
 type labelFieldSource =
-  | Annotation
-  | Convention
-  | Position
-  | Fallback
+  | @as("annotation") Annotation
+  | @as("convention") Convention
+  | @as("position") Position
+  | @as("fallback") Fallback
 
-let labelFieldSourceToString = (s: labelFieldSource): string =>
-  switch s {
-  | Annotation => "annotation"
-  | Convention => "convention"
-  | Position => "position"
-  | Fallback => "fallback"
-  }
+let labelFieldSourceToString = (s: labelFieldSource): string => (s :> string)
 
 type labelResolution = {
   field: string,
@@ -1131,10 +1125,10 @@ let extractCommandDefs = (
 // Omitted for the default `Public` so a published def stays compact: absent and
 // "public" are the same answer, and writing one would make every ordinary view
 // carry a word that says nothing.
-let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
+let visibilityTag = (v: Reventless.Visibility.t): option<Reventless.Visibility.t> =>
   switch v {
   | Public => None
-  | Internal => Some("Internal")
+  | _ => Some(v)
   }
 
 /**

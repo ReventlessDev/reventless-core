@@ -2,32 +2,19 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
+let all = [
+  "Geocoding",
+  "Messaging",
+  "IdentityProvider",
+  "Stash"
+];
+
 function toString(need) {
-  switch (need) {
-    case "Geocoding" :
-      return "Geocoding";
-    case "Messaging" :
-      return "Messaging";
-    case "IdentityProvider" :
-      return "IdentityProvider";
-    case "Stash" :
-      return "Stash";
-  }
+  return need;
 }
 
 function fromString(name) {
-  switch (name) {
-    case "Geocoding" :
-      return "Geocoding";
-    case "IdentityProvider" :
-      return "IdentityProvider";
-    case "Messaging" :
-      return "Messaging";
-    case "Stash" :
-      return "Stash";
-    default:
-      return;
-  }
+  return all.find(need => need === name);
 }
 
 function unmet(declared, provisioned) {
@@ -43,10 +30,11 @@ function unmet(declared, provisioned) {
 }
 
 function unmetMessage(unmet) {
-  return `Plugin declares capabilit(ies) the platform does not provision: ` + (unmet.map(u => toString(u.need) + ` (` + u.component + `)`).join(", ") + `.\n`) + `  Provision them in the platform stack and redeploy the platform first.\n  Without it every call answers Unavailable, the slice exhausts its retries, and a permanent verdict is recorded against data that is fine — no error anywhere.`;
+  return `Plugin declares capabilit(ies) the platform does not provision: ` + (unmet.map(u => u.need + ` (` + u.component + `)`).join(", ") + `.\n`) + `  Provision them in the platform stack and redeploy the platform first.\n  Without it every call answers Unavailable, the slice exhausts its retries, and a permanent verdict is recorded against data that is fine — no error anywhere.`;
 }
 
 export {
+  all,
   toString,
   fromString,
   unmet,

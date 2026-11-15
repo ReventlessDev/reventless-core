@@ -168,12 +168,15 @@ let evolve = (t, fact) =>
     }
   }
 
+/** The one refusal the set owns: a primary or a caption on a ref it does not hold. */
+type refusal = NotAttached
+
 // Shared by the two captioning ops, which differ only in how they arrive at a
 // ref. Spelled once so a named caption and the primary's caption cannot end up
 // with different ideas of what a repeat is.
-let setAltText = (t, ~ref, ~altText): result<array<fact>, [#NotAttached]> =>
+let setAltText = (t, ~ref, ~altText): result<array<fact>, refusal> =>
   if !(t.attached->Array.includes(ref)) {
-    Error(#NotAttached)
+    Error(NotAttached)
   } else if altTextOf(t, ref) == Some(altText) {
     Ok([])
   } else {
@@ -192,7 +195,7 @@ and an event log records both. Collapsing them into a single "replaced" fact
 would make a host declare an event that only bounded hosts have, which is one
 more way the two cardinalities' emitted surfaces could diverge.
 */
-let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotAttached]> =>
+let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, refusal> =>
   switch op {
   | Attach({ref, altText}) =>
     if t.attached->Array.includes(ref) {
@@ -211,7 +214,7 @@ let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [
   | Clear => Ok(t.attached->Array.map(r => Removed({ref: r})))
   | SetPrimary({ref}) =>
     if !(t.attached->Array.includes(ref)) {
-      Error(#NotAttached)
+      Error(NotAttached)
     } else if effectivePrimary(t) == Some(ref) {
       Ok([])
     } else {
@@ -223,7 +226,7 @@ let decideFacts = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [
   | SetPrimaryAltText({altText}) =>
     switch effectivePrimary(t) {
     | Some(ref) => setAltText(t, ~ref, ~altText)
-    | None => Error(#NotAttached)
+    | None => Error(NotAttached)
     }
   }
 
@@ -238,7 +241,7 @@ be an arm that forgot — and the ops where it moves without anybody choosing (a
 first attachment, a removal that promotes the next) are exactly the ones where
 forgetting is easiest.
 */
-let decide = (t, ~cardinality: cardinality=Many, op): result<array<fact>, [#NotAttached]> =>
+let decide = (t, ~cardinality: cardinality=Many, op): result<array<fact>, refusal> =>
   switch decideFacts(t, ~cardinality, op) {
   | Error(_) as e => e
   | Ok(facts) =>

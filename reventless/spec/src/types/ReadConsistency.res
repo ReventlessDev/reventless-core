@@ -30,9 +30,4 @@ type t =
 
 let default = EscalateOnRetry
 
-let toString = (v: t) =>
-  switch v {
-  | EscalateOnRetry => "EscalateOnRetry"
-  | AlwaysStrong => "AlwaysStrong"
-  | AlwaysEventual => "AlwaysEventual"
-  }
+let toString = (v: t): string => (v :> string)

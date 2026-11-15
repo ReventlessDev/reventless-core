@@ -265,7 +265,8 @@ function makeManageSubscriptions(tableName) {
     return;
   } else {
     return async (pluginDef, action) => {
-      let isConnect = action === "connect";
+      let isConnect;
+      isConnect = action === "ConnectSubscriptions";
       let op = isConnect ? trySubscribe : tryUnsubscribe;
       let peers = await scanConnectedPeers(tableName, pluginDef.id);
       let skip;
@@ -327,7 +328,7 @@ async function reconcileSubscriptionsOnce(tableName, manage) {
       let state = projectPluginRow(rows[i]);
       if (state !== undefined) {
         try {
-          await manage(state, "connect");
+          await manage(state, "ConnectSubscriptions");
         } catch (raw_exn) {
           let exn = Primitive_exceptions.internalToException(raw_exn);
           let prim1_comp = "reconcileSubscriptions";

@@ -31,7 +31,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
           Ok(Some((item.customerId, SetLocation({location: vienna, resolvedFrom: item.address})))),
         ),
     )
-    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Completed)
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", Completed)
   )
 
   // The real `translate`, not a mock of it: a confident answer becomes SetLocation
@@ -104,7 +104,7 @@ describe("GeocodeCustomerAddress OutboundTranslationSlice", () => {
     givenTodo("cust-1:Stephansplatz 1, Vienna", {customerId: cust1, address: viennaAddress})
     ->givenCapabilities(geocoder(Error(Unavailable("timeout"))))
     ->whenTranslated
-    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", #Failed)
+    ->thenTodoStatus("cust-1:Stephansplatz 1, Vienna", Failed)
   )
 
   // The budget ran out with the geocoder never answering: the verdict is recorded

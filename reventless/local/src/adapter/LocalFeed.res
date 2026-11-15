@@ -66,14 +66,8 @@ type facets = {
 
 type item = {line: string, facets: facets}
 
-let levelOfString = (s: string): option<ReventlessCore.Logger.level> =>
-  switch s->String.toLowerCase {
-  | "debug" => Some(Debug)
-  | "info" => Some(Info)
-  | "warn" | "warning" => Some(Warn)
-  | "error" => Some(Error)
-  | _ => None
-  }
+/** A filter's level, in any case, `warning` included. */
+let levelOfString = ReventlessCore.Logger.levelOfWord
 
 /** Reads a filter line. `None` for a line that is not a JSON object; unknown
     keys are ignored. */

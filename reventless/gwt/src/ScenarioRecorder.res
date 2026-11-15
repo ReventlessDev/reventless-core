@@ -11,7 +11,7 @@
 // time; otherwise every call is a no-op. A test file whose sidecar the PPX wrote is left alone:
 // read from source, it carries values and ids a run cannot.
 
-type entry = {kind: string, element: string}
+type entry = {kind: Reventless.SidecarStepKind.t, element: string}
 
 type scenario = {
   title: string,
@@ -90,7 +90,7 @@ let writtenByPpx = (path: string) =>
 
 let entryJson = (e: entry) => JSON.Object(
   Dict.fromArray([
-    ("kind", JSON.String(e.kind)),
+    ("kind", JSON.String(Reventless.SidecarStepKind.toString(e.kind))),
     ("element", JSON.String(e.element)),
     ("values", JSON.Array([])),
   ]),
@@ -175,17 +175,17 @@ let push = (pick: scenario => array<entry>, entries: array<entry>) =>
 
 /** The history a command is decided on, by event name. */
 let given = (names: array<string>) =>
-  push(s => s.given, names->Array.map(element => {kind: "event", element}))
+  push(s => s.given, names->Array.map(element => {kind: Event, element}))
 
 /** The command a test sends. */
-let whenCommand = (name: string) => push(s => s.when_, [{kind: "command", element: name}])
+let whenCommand = (name: string) => push(s => s.when_, [{kind: Command, element: name}])
 
 /** What a test expects: these events. */
 let thenEvents = (names: array<string>) =>
-  push(s => s.then_, names->Array.map(element => {kind: "event", element}))
+  push(s => s.then_, names->Array.map(element => {kind: Event, element}))
 
 /** What a test expects: this error. */
-let thenError = (name: string) => push(s => s.then_, [{kind: "error", element: name}])
+let thenError = (name: string) => push(s => s.then_, [{kind: Error, element: name}])
 
 /** What a test expects: no event. */
-let thenNoEvent = () => push(s => s.then_, [{kind: "noEvent", element: ""}])
+let thenNoEvent = () => push(s => s.then_, [{kind: NoEvent, element: ""}])

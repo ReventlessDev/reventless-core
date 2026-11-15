@@ -44,18 +44,18 @@ describe("PgConnection.connectionConfigToJson", () => {
     expect(cc->PgConnection.connectionConfigToJson->field("lockStrategy"))->toEqual(None)
   )
 
-  testSync("adds lockStrategy=\"AdvisoryLocks\" as the polyvariant string name", () =>
+  testSync("adds lockStrategy=\"AdvisoryLocks\" as the case's name", () =>
     expect(
       cc
-      ->PgConnection.connectionConfigToJson(~lockStrategy=#AdvisoryLocks)
+      ->PgConnection.connectionConfigToJson(~lockStrategy=AdvisoryLocks)
       ->field("lockStrategy"),
     )->toEqual(Some(JSON.Encode.string("AdvisoryLocks")))
   )
 
-  testSync("adds lockStrategy=\"RowLocks\" as the polyvariant string name", () =>
+  testSync("adds lockStrategy=\"RowLocks\" as the case's name", () =>
     expect(
       cc
-      ->PgConnection.connectionConfigToJson(~lockStrategy=#RowLocks)
+      ->PgConnection.connectionConfigToJson(~lockStrategy=RowLocks)
       ->field("lockStrategy"),
     )->toEqual(Some(JSON.Encode.string("RowLocks")))
   )
@@ -63,7 +63,7 @@ describe("PgConnection.connectionConfigToJson", () => {
   testSync("with lockStrategy the object has exactly six keys", () =>
     expect(
       cc
-      ->PgConnection.connectionConfigToJson(~lockStrategy=#RowLocks)
+      ->PgConnection.connectionConfigToJson(~lockStrategy=RowLocks)
       ->obj
       ->Dict.keysToArray
       ->Array.length,

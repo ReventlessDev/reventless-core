@@ -96,10 +96,7 @@ function make(name, opts) {
         maxAgeSeconds: 3000
       }],
     forceDestroy: forceDestroy,
-    tags: AWS_Tags$ReventlessAws.make(name, Task$ReventlessCore.componentType, {
-      TAG: "Other",
-      _0: "Bucket"
-    }, undefined, undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name, Task$ReventlessCore.componentType, "Bucket", undefined, undefined, undefined, undefined, undefined)
   }, opts$1);
   return {
     resources: [Util_S3$ReventlessAws.toResource(bucket)],

@@ -66,7 +66,7 @@ function makeTable(nameOpt, opts) {
       name: Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey,
       type: "S"
     }
-  ], undefined, undefined, Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined), opts$1, name);
+  ], undefined, undefined, Auth_ActiveRoleStore_Schema$ReventlessAws.sortKey, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "platform", undefined, undefined, undefined, undefined), opts$1, name);
   return {
     name: table.name,
     arn: table.arn
@@ -94,7 +94,7 @@ function resolveTable(choice, opts) {
 function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "ActiveRoleStore";
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     table.arn,
     cognitoUserPoolArn
@@ -137,7 +137,7 @@ function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOp
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Auth/Auth_ActiveRoleStore_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Lambda$PulumiAws.reventlessLayers();
-  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: Util_LambdaRuntime$ReventlessAws.node,
@@ -146,7 +146,7 @@ function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOp
     memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [
@@ -175,7 +175,7 @@ function makeWriteDoor(api, table, cognitoUserPoolId, cognitoUserPoolArn, nameOp
     sourceCodeHash: match.sourceCodeHash,
     loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1);
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     lambda.arn,
     dataSourceRole.id

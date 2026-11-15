@@ -133,8 +133,8 @@ function subscriptionLine(conn, verb, channel) {
 }
 
 function logSubscription(conn, verb, channel) {
-  if (Logger$ReventlessCore.shouldLog("Debug", undefined, "Events:Local", undefined)) {
-    return Logger$ReventlessCore.emit("Debug", "Events:Local", undefined, Object.fromEntries([
+  if (Logger$ReventlessCore.shouldLog("DEBUG", undefined, "Events:Local", undefined)) {
+    return Logger$ReventlessCore.emit("DEBUG", "Events:Local", undefined, Object.fromEntries([
       [
         "channel",
         channel

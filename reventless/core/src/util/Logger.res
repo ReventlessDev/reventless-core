@@ -44,7 +44,15 @@ type t = {
   debugLazy: (~comp: string=?, unit => string) => unit,
 }
 
-type level = Debug | Info | Warn | Error
+/** A log line's level. Its text is the upper-case word a JSON line, the platform
+    API and a level setting carry. */
+type level =
+  | @as("DEBUG") Debug
+  | @as("INFO") Info
+  | @as("WARN") Warn
+  | @as("ERROR") Error
+
+let levels = [Debug, Info, Warn, Error]
 
 let levelToInt = l =>
   switch l {
@@ -54,13 +62,19 @@ let levelToInt = l =>
   | Error => 3
   }
 
-let levelLabel = l =>
-  switch l {
-  | Debug => "DEBUG"
-  | Info => "INFO"
-  | Warn => "WARN"
-  | Error => "ERROR"
+let levelLabel = (l: level): string => (l :> string)
+
+/** The level an upper-case word names (`WARN`); `None` for a word that names none. */
+let levelOfLabel = (label: string): option<level> => levels->Array.find(l => levelLabel(l) == label)
+
+/** The level a word names in any case (`warn`, `Warn`), `warning` included. */
+let levelOfWord = (word: string): option<level> => {
+  let lower = word->String.toLowerCase
+  switch lower {
+  | "warning" => Some(Warn)
+  | _ => levels->Array.find(l => levelLabel(l)->String.toLowerCase == lower)
   }
+}
 
 // ─── Shared format + output ──────────────────────────────────────────────────
 // Single definition used by Logger.t AND EffectLogger.

@@ -4,27 +4,38 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect/Effect";
 
 function line(comp, level, msg) {
-  Effect.runSync(Effect$1.annotateLogs(level === "warn" ? Effect$1.logWarning(msg) : (
-      level === "debug" ? Effect$1.logDebug(msg) : (
-          level === "error" ? Effect$1.logError(msg) : Effect$1.logInfo(msg)
-        )
-    ), "comp", comp));
+  let tmp;
+  switch (level) {
+    case "LogDebug" :
+      tmp = Effect$1.logDebug(msg);
+      break;
+    case "LogInfo" :
+      tmp = Effect$1.logInfo(msg);
+      break;
+    case "LogWarn" :
+      tmp = Effect$1.logWarning(msg);
+      break;
+    case "LogError" :
+      tmp = Effect$1.logError(msg);
+      break;
+  }
+  Effect.runSync(Effect$1.annotateLogs(tmp, "comp", comp));
 }
 
 function debug(comp, msg) {
-  line(comp, "debug", msg);
+  line(comp, "LogDebug", msg);
 }
 
 function info(comp, msg) {
-  line(comp, "info", msg);
+  line(comp, "LogInfo", msg);
 }
 
 function warn(comp, msg) {
-  line(comp, "warn", msg);
+  line(comp, "LogWarn", msg);
 }
 
 function error(comp, msg) {
-  line(comp, "error", msg);
+  line(comp, "LogError", msg);
 }
 
 export {

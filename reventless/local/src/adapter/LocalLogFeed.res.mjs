@@ -113,11 +113,11 @@ let problems = {
 
 function isProblem(level) {
   switch (level) {
-    case "Debug" :
-    case "Info" :
+    case "DEBUG" :
+    case "INFO" :
       return false;
-    case "Warn" :
-    case "Error" :
+    case "WARN" :
+    case "ERROR" :
       return true;
   }
 }

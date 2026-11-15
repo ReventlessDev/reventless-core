@@ -74,7 +74,7 @@ let encodeTraitDeclaration = (d: traitDeclaration): JSON.t =>
 let encodeAdmissionDef = (d: Reventless.Admission.def): JSON.t =>
   Dict.fromArray([
     ("role", JSON.Encode.string(d.role)),
-    ("strategy", JSON.Encode.string(d.strategy)),
+    ("strategy", JSON.Encode.string((d.strategy :> string))),
     (
       "invitedBy",
       d.invitedBy->Option.mapOr(JSON.Encode.null, Platform_ComponentDefinitionsApi.encodeStrings),

@@ -16,18 +16,28 @@
 // through a pipe that looks identical. TTY-ness is only a proxy for "a person is
 // reading this", and a pipe is exactly where the proxy fails, so a runtime that
 // knows which it is says so instead of being guessed at.
-let _default: ref<option<string>> = ref(None)
+/** How a log line is written: text for a person, with color in a TTY, or JSON
+    for a collector. The text is the word `REVENTLESS_LOG_FORMAT` takes. */
+type logFormat =
+  | @as("text") TextFormat
+  | @as("json") JsonFormat
 
-// "json" | "text", in precedence order: an explicit REVENTLESS_LOG_FORMAT, then
-// what the runtime declared itself to be, then the TTY probe — a TTY stdout ⇒
-// text, everything else (Lambda, Fargate, ECS, Docker, CI) ⇒ structured JSON.
-let _resolveFormat = (): string =>
-  switch (_logFormat, _default.contents, _isTty) {
-  | (Some("json"), _, _) => "json"
-  | (Some("text"), _, _) => "text"
+/** The format a word names; `None` for a word that names none. */
+let formatOfWord = (word: string): option<logFormat> =>
+  [TextFormat, JsonFormat]->Array.find(f => (f :> string) == word)
+
+let _default: ref<option<logFormat>> = ref(None)
+
+// In precedence order: an explicit REVENTLESS_LOG_FORMAT, then what the runtime
+// declared itself to be, then the TTY probe — a TTY stdout ⇒ text, everything
+// else (Lambda, Fargate, ECS, Docker, CI) ⇒ structured JSON. A word the variable
+// does not know is passed over.
+let _resolveFormat = (): logFormat =>
+  switch (_logFormat->Option.flatMap(formatOfWord), _default.contents, _isTty) {
+  | (Some(f), _, _) => f
   | (_, Some(declared), _) => declared
-  | (_, None, Some(true)) => "text"
-  | _ => "json"
+  | (_, None, Some(true)) => TextFormat
+  | _ => JsonFormat
   }
 
 // Resolved once at module init; recomputable via `reload()` (test-only — after a
@@ -39,14 +49,8 @@ let _format = ref(_resolveFormat())
     Call it at module init, before anything logs. An explicit
     REVENTLESS_LOG_FORMAT still wins, so a developer can always ask for the other
     one. A runtime that says nothing keeps the TTY behavior. */
-let setDefaultFormat = (format: [#text | #json]) => {
-  _default :=
-    Some(
-      switch format {
-      | #text => "text"
-      | #json => "json"
-      },
-    )
+let setDefaultFormat = (format: logFormat) => {
+  _default := Some(format)
   _format := _resolveFormat()
 }
 
@@ -54,10 +58,18 @@ let setDefaultFormat = (format: [#text | #json]) => {
 let reload = () => _format := _resolveFormat()
 
 /** True when output should be structured JSON (non-TTY sink). */
-let isJsonSink = () => _format.contents == "json"
+let isJsonSink = () =>
+  switch _format.contents {
+  | JsonFormat => true
+  | TextFormat => false
+  }
 
 /** True when output should carry ANSI color/bold (TTY text mode). */
-let useAnsi = () => _format.contents == "text"
+let useAnsi = () =>
+  switch _format.contents {
+  | TextFormat => true
+  | JsonFormat => false
+  }
 
 /** Wrap a string in ANSI bold escape codes — no-op in a JSON sink. */
 let bold = s => useAnsi() ? `\x1b[1m${s}\x1b[0m` : s

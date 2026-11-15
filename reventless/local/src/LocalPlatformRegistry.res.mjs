@@ -9,8 +9,15 @@ import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 
+let storeKindSchema = Sury.union([
+  Sury.literal("sqlite"),
+  Sury.literal("memory"),
+  Sury.literal("postgres"),
+  Sury.$schema(s => (s.m(Sury.string)))
+]);
+
 let storeSchema = Sury.$schema(s => ({
-  kind: s.m(Sury.string),
+  kind: s.m(storeKindSchema),
   path: s.m(Sury.$option(Sury.string))
 }));
 
@@ -185,6 +192,7 @@ function register(port, endpoint, loginEndpoint, store, tapPort, platformEndpoin
 }
 
 export {
+  storeKindSchema,
   storeSchema,
   entrySchema,
   runningDir,
@@ -199,4 +207,4 @@ export {
   publishLogPort,
   register,
 }
-/* storeSchema Not a pure module */
+/* storeKindSchema Not a pure module */

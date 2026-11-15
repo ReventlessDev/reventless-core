@@ -5,11 +5,20 @@
 // a different file in every app. `LocalSeedTarget` turns this into the answer to
 // "which platform do you mean".
 
+// What a reader can DO with the store, not which module implements it. A
+// `:memory:` SQLite file reports `memory`. A word this build does not know reads
+// as `OtherStore`, keeping the word: `list` deletes an entry it cannot decode, so
+// a newer platform's store kind must not make it vanish.
+@unboxed @schema
+type storeKind =
+  | @as("sqlite") SqliteStore
+  | @as("memory") MemoryStore
+  | @as("postgres") PostgresStore
+  | OtherStore(string)
+
 @schema
 type store = {
-  // What a reader can DO with the store, not which module implements it —
-  // "sqlite" | "memory" | "postgres". A `:memory:` SQLite file reports "memory".
-  kind: string,
+  kind: storeKind,
   // Some only for a store this machine can open by name.
   path?: string,
 }

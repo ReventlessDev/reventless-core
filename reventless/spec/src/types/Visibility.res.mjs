@@ -4,15 +4,12 @@ import * as Sury from "sury";
 
 let schema = Sury.union([
   Sury.literal("Public"),
-  Sury.literal("Internal")
+  Sury.literal("Internal"),
+  Sury.$schema(s => (s.m(Sury.string)))
 ]);
 
 function toString(v) {
-  if (v === "Public") {
-    return "Public";
-  } else {
-    return "Internal";
-  }
+  return v;
 }
 
 let $$default = "Public";

@@ -16,13 +16,13 @@ describe("SendOrderConfirmation OutboundTranslationSlice", () => {
   test("translate success marks the TODO Completed", () =>
     givenTodo("o1", {orderId: o1, customerId: c1})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Ok(None)))
-    ->thenTodoStatus("o1", #Completed)
+    ->thenTodoStatus("o1", Completed)
   )
 
   // scenario-id: a4563058-8777-4756-8e12-983fcd0e8f20
   test("translate failure leaves the TODO Failed for retry", () =>
     givenTodo("o1", {orderId: o1, customerId: c1})
     ->whenTranslateMocked((_id, _item) => Promise.resolve(Error("smtp down")))
-    ->thenTodoStatus("o1", #Failed)
+    ->thenTodoStatus("o1", Failed)
   )
 })

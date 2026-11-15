@@ -174,7 +174,7 @@ let capabilityDecl: requiredCapabilityDeclaration = {
 
 let admissionDef: Reventless.Admission.def = {
   role: "Clerk",
-  strategy: "Invitation",
+  strategy: InvitationWord,
   invitedBy: ["Admin"],
 }
 

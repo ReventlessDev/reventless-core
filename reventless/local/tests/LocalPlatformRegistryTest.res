@@ -17,8 +17,8 @@ let tempRoot = (): string =>
 // rather than hitting an unrelated process that happens to be running.
 let deadPid = 2147483646
 
-let sqliteStore = (path): LocalPlatformRegistry.store => {kind: "sqlite", path}
-let memoryStore: LocalPlatformRegistry.store = {kind: "memory"}
+let sqliteStore = (path): LocalPlatformRegistry.store => {kind: SqliteStore, path}
+let memoryStore: LocalPlatformRegistry.store = {kind: MemoryStore}
 
 let writeAt = (~cwd, ~port, ~store, ~pid=NodeProcess.pid) =>
   LocalPlatformRegistry.write(
@@ -39,7 +39,7 @@ describe("LocalPlatformRegistry", () => {
     | Some(entry) =>
       expect(entry.port)->toEqual(4000)
       expect(entry.endpoint)->toEqual("http://localhost:4000/graphql")
-      expect(entry.store.kind)->toEqual("sqlite")
+      expect(entry.store.kind)->toEqual(LocalPlatformRegistry.SqliteStore)
       expect(entry.store.path)->toEqual(Some("/abs/.reventless/runner.db"))
     | None => fail("expected the entry just written to be listed")
     }
@@ -127,7 +127,9 @@ describe("LocalSeedTarget.storePath", () => {
 
     expect(target(memoryStore)->reason->String.includes("in memory"))->toEqual(true)
     expect(target(memoryStore)->reason->String.includes("localhost:4000"))->toEqual(true)
-    expect(target({kind: "postgres"})->reason->String.includes("off this machine"))->toEqual(true)
+    expect(target({kind: PostgresStore})->reason->String.includes("off this machine"))->toEqual(
+      true,
+    )
     expect(
       {
         endpoint: "http://localhost:4000/graphql",
@@ -177,7 +179,7 @@ describe("LocalPlatformRegistry.tapPort", () => {
       // The rest of the entry survives the rewrite — a reader still finds the
       // endpoint and store it came for.
       expect(entry.endpoint)->toEqual("http://localhost:4000/graphql")
-      expect(entry.store.kind)->toEqual("memory")
+      expect(entry.store.kind)->toEqual(LocalPlatformRegistry.MemoryStore)
     | None => fail("the updated entry must still be listed")
     }
   })

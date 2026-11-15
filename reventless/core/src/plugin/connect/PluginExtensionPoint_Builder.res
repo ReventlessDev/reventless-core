@@ -5,7 +5,10 @@ module type Spec = {
   let environment: string
   let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
   let manageSubscriptions: option<
-    (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+    (
+      Reventless.Plugin.pluginDefinition,
+      PluginExtensionPoint_Plugin.subscriptionChange,
+    ) => promise<unit>,
   >
 }
 

@@ -11,6 +11,7 @@ open JestGlobals
 // command is legal in.
 
 module Check = CheckLifecycleModel
+module StepKind = SidecarStepKind
 
 let observation = (~command, ~from, ~outcome, ~to_="") => {
   Check.title: `${command} from ${from}`,
@@ -82,7 +83,7 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
         commands: [
           {
             Check.command: "MarkEmailVerified",
-            level: "Instance",
+            level: Instance,
             ?allowedStatesSource,
           },
         ],
@@ -90,7 +91,7 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
       ~derived=derive(observations),
       ~findings,
     )
-    findings->Array.filter(f => f.Check.severity == "contradicted")
+    findings->Array.filter(f => f.Check.severity == Check.Contradicted)
   }
 
   let silentSomewhere = [
@@ -129,12 +130,18 @@ describe("an Unrestricted claim is refuted by a refusal, not by silence", () => 
 // `then: []` for `thenNoEvent` as for a step it could not read.
 describe("commandOutcomes reads each command's outcomes off its scenarios", () => {
   let el = (name): Check.element => {name, values: []}
-  let scenario = (~title, ~whenKind="command", ~when_, ~thenKind, ~then_=[]): Check.scenario => {
+  let scenario = (
+    ~title,
+    ~whenKind=StepKind.Command,
+    ~when_,
+    ~thenKind=?,
+    ~then_=[],
+  ): Check.scenario => {
     title,
     given: [],
     whenKind,
     whenElements: when_->Array.map(el),
-    thenKind,
+    ?thenKind,
     thenElements: then_->Array.map(el),
     thenValues: [],
   }
@@ -150,28 +157,38 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
       corpus(
         ~component="Order",
         [
-          scenario(~title="placing", ~when_=["Place"], ~thenKind="event", ~then_=["OrderPlaced"]),
+          scenario(
+            ~title="placing",
+            ~when_=["Place"],
+            ~thenKind=StepKind.Event,
+            ~then_=["OrderPlaced"],
+          ),
           scenario(
             ~title="placing twice",
             ~when_=["Place"],
-            ~thenKind="error",
+            ~thenKind=StepKind.Error,
             ~then_=["OrderAlreadyPlaced"],
           ),
           scenario(
             ~title="placing again",
             ~when_=["Place"],
-            ~thenKind="event",
+            ~thenKind=StepKind.Event,
             ~then_=["OrderPlaced"],
           ),
           scenario(
             ~title="shipping",
             ~when_=["Ship"],
-            ~thenKind="event",
+            ~thenKind=StepKind.Event,
             ~then_=["OrderShipped", "InvoiceIssued"],
           ),
-          scenario(~title="shipping a shipped order", ~when_=["Ship"], ~thenKind="noEvent"),
-          scenario(~title="cancelling, unreadably", ~when_=["Cancel"], ~thenKind=""),
-          scenario(~title="an opaque when", ~when_=[], ~thenKind="event", ~then_=["OrderPlaced"]),
+          scenario(~title="shipping a shipped order", ~when_=["Ship"], ~thenKind=StepKind.NoEvent),
+          scenario(~title="cancelling, unreadably", ~when_=["Cancel"]),
+          scenario(
+            ~title="an opaque when",
+            ~when_=[],
+            ~thenKind=StepKind.Event,
+            ~then_=["OrderPlaced"],
+          ),
         ],
       ),
       corpus(
@@ -180,7 +197,7 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
           scenario(
             ~title="registering",
             ~when_=["Register"],
-            ~thenKind="event",
+            ~thenKind=StepKind.Event,
             ~then_=["Registered"],
           ),
         ],
@@ -190,9 +207,9 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
         [
           scenario(
             ~title="a placed order is listed",
-            ~whenKind="event",
+            ~whenKind=StepKind.Event,
             ~when_=["OrderPlaced"],
-            ~thenKind="state",
+            ~thenKind=StepKind.State,
           ),
         ],
       ),
@@ -213,8 +230,12 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
   testSync("a single event, and an error, in order of first appearance", () =>
     expect(entry("Place"))->toEqual(
       Some([
-        {Check.kind: "event", names: ["OrderPlaced"], scenarios: ["placing", "placing again"]},
-        {kind: "error", names: ["OrderAlreadyPlaced"], scenarios: ["placing twice"]},
+        {
+          Check.kind: Check.EventOutcome,
+          names: ["OrderPlaced"],
+          scenarios: ["placing", "placing again"],
+        },
+        {kind: Check.ErrorOutcome, names: ["OrderAlreadyPlaced"], scenarios: ["placing twice"]},
       ]),
     )
   )
@@ -223,11 +244,11 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
     expect(entry("Ship"))->toEqual(
       Some([
         {
-          Check.kind: "event",
+          Check.kind: Check.EventOutcome,
           names: ["OrderShipped", "InvoiceIssued"],
           scenarios: ["shipping"],
         },
-        {kind: "noEvent", names: [], scenarios: ["shipping a shipped order"]},
+        {kind: Check.NoEventOutcome, names: [], scenarios: ["shipping a shipped order"]},
       ]),
     )
   )
@@ -251,7 +272,7 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
             scenario(
               ~title="registering",
               ~when_=["Register"],
-              ~thenKind="event",
+              ~thenKind=StepKind.Event,
               ~then_=["Registered"],
             ),
           ],
@@ -262,13 +283,13 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
             scenario(
               ~title="registering",
               ~when_=["Register"],
-              ~thenKind="event",
+              ~thenKind=StepKind.Event,
               ~then_=["Registered"],
             ),
             scenario(
               ~title="registering by invitation",
               ~when_=["Register"],
-              ~thenKind="event",
+              ~thenKind=StepKind.Event,
               ~then_=["Registered"],
             ),
           ],
@@ -278,7 +299,7 @@ describe("commandOutcomes reads each command's outcomes off its scenarios", () =
     expect(twice->Array.map(e => e.Check.outcomes))->toEqual([
       [
         {
-          Check.kind: "event",
+          Check.kind: Check.EventOutcome,
           names: ["Registered"],
           scenarios: ["registering", "registering by invitation"],
         },
@@ -376,9 +397,9 @@ describe("a view with no lifecycle field still places a creating command", () =>
   let scenario = (~given) => {
     Check.title: "enrol a driver",
     given,
-    whenKind: "command",
+    whenKind: StepKind.Command,
     whenElements: [{Check.name: "EnrolDriver", values: [("driverId", driverId)]}],
-    thenKind: "event",
+    thenKind: StepKind.Event,
     thenElements: [{Check.name: "DriverEnrolled", values: [("driverId", driverId)]}],
     thenValues: [],
   }
@@ -389,7 +410,7 @@ describe("a view with no lifecycle field still places a creating command", () =>
     ->Option.map(d => d.level)
 
   testSync("EnrolDriver from an empty history is Collection-level", () =>
-    expect(levelOf([scenario(~given=[])]))->toEqual(Some("Collection"))
+    expect(levelOf([scenario(~given=[])]))->toEqual(Some(Some(Reventless.Plugin.Collection)))
   )
 
   testSync("another driver's events are not this row's history", () =>
@@ -399,7 +420,7 @@ describe("a view with no lifecycle field still places a creating command", () =>
           ~given=[{Check.name: "DriverEnrolled", values: [("driverId", JSON.Encode.string("d2"))]}],
         ),
       ]),
-    )->toEqual(Some("Collection"))
+    )->toEqual(Some(Some(Reventless.Plugin.Collection)))
   )
 
   testSync("a success after events about the row says nothing", () =>
@@ -408,7 +429,7 @@ describe("a view with no lifecycle field still places a creating command", () =>
         scenario(~given=[]),
         scenario(~given=[{Check.name: "DriverEnrolled", values: [("driverId", driverId)]}]),
       ]),
-    )->toEqual(Some(""))
+    )->toEqual(Some(None))
   )
 })
 
@@ -485,8 +506,8 @@ describe("a step the sidecar could not read", () => {
       ~when_=[step("command", "Add")],
       ~then_=[opaque(~of_="event", "added")],
     )
-    expect(s.thenKind)->toBe("event")
-    expect(levels([s]))->toEqual([("Add", "Collection")])
+    expect(s.thenKind)->toEqual(Some(StepKind.Event))
+    expect(levels([s]))->toEqual([("Add", Some(Reventless.Plugin.Collection))])
   })
 
   // An automation or translation scenario: its `when` names no element and is
@@ -553,7 +574,7 @@ describe("a recorded scenario sidecar", () => {
     )->toEqual(
       Some((
         "NotificationPreferences",
-        [(["RequestNotification"], "event", ["NotificationUndeliverable"])],
+        [(["RequestNotification"], Some(StepKind.Event), ["NotificationUndeliverable"])],
       )),
     )
   })

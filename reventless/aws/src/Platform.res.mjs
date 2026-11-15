@@ -921,10 +921,7 @@ function MakeWithConfig(Config) {
     let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",
-      tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", {
-        TAG: "Other",
-        _0: "Offload"
-      }, "Platform", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", "Offload", "platform", undefined, undefined, undefined, undefined)
     }, {
       protect: offloadProtection === "Protected"
     });
@@ -2370,10 +2367,7 @@ function Make($star) {
     let offloadProtection = Util_StoreLayout$ReventlessAws.protectionOfDeployedStack();
     let offloadBucket = new (Aws.s3.Bucket)("reventless-offload", {
       forceDestroy: offloadProtection === "Unprotected",
-      tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", {
-        TAG: "Other",
-        _0: "Offload"
-      }, "Platform", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.make("reventless-offload", "Platform", "Offload", "platform", undefined, undefined, undefined, undefined)
     }, {
       protect: offloadProtection === "Protected"
     });

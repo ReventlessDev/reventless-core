@@ -24,10 +24,7 @@ function make(name, opts) {
     dataSourceConfiguration: {
       intendedUse: intendedUse
     },
-    tags: AWS_Tags$ReventlessAws.make(name, "Platform", {
-      TAG: "Other",
-      _0: "Geocoder"
-    }, "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Geocoder", "platform", undefined, undefined, undefined, undefined)
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
   return {
     indexName: index.indexName

@@ -246,21 +246,6 @@ async function commandOutcomes(_root, args, _ctx) {
   return keptPageJson(LocalCommandOutcomeLog$ReventlessLocal.read(CommandOutcomeLogEntry$ReventlessLocal.filterOfJson(arg(args, "filter")), firstOf(args), afterOf(args)));
 }
 
-function levelOfWire(s) {
-  switch (s) {
-    case "DEBUG" :
-      return "Debug";
-    case "ERROR" :
-      return "Error";
-    case "INFO" :
-      return "Info";
-    case "WARN" :
-      return "Warn";
-    default:
-      return;
-  }
-}
-
 function levelsJson() {
   return Object.fromEntries([
     [
@@ -292,7 +277,7 @@ let log = Logger$ReventlessCore.fromEnv();
 async function setLogLevel(_root, args, _ctx) {
   let plugin = Stdlib_Option.flatMap(arg(args, "plugin"), Stdlib_JSON.Decode.string);
   let comp = Stdlib_Option.flatMap(arg(args, "comp"), Stdlib_JSON.Decode.string);
-  let level = Stdlib_Option.flatMap(Stdlib_Option.flatMap(arg(args, "level"), Stdlib_JSON.Decode.string), levelOfWire);
+  let level = Stdlib_Option.flatMap(Stdlib_Option.flatMap(arg(args, "level"), Stdlib_JSON.Decode.string), Logger$ReventlessCore.levelOfLabel);
   Logger$ReventlessCore.setLevel(plugin, comp, level);
   let scope = plugin !== undefined ? (
       comp !== undefined ? comp + ` of ` + plugin : plugin
@@ -308,7 +293,7 @@ function feedFilterOf(json) {
   let a = k => Stdlib_Option.map(Stdlib_Option.flatMap(d[k], Stdlib_JSON.Decode.array), items => Stdlib_Array.filterMap(items, Stdlib_JSON.Decode.string));
   return {
     plugins: a("plugins"),
-    level: Stdlib_Option.flatMap(Stdlib_Option.flatMap(d["level"], Stdlib_JSON.Decode.string), levelOfWire),
+    level: Stdlib_Option.flatMap(Stdlib_Option.flatMap(d["level"], Stdlib_JSON.Decode.string), Logger$ReventlessCore.levelOfLabel),
     components: a("components"),
     eventTypes: a("eventTypes"),
     correlationId: Stdlib_Option.flatMap(d["correlationId"], Stdlib_JSON.Decode.string)
@@ -588,6 +573,8 @@ function registerMcp(server) {
 let Logger;
 
 let GQL;
+
+let levelOfWire = Logger$ReventlessCore.levelOfLabel;
 
 let subscriptionWindow = 256;
 

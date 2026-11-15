@@ -2,14 +2,7 @@
 
 
 function postureToString(p) {
-  switch (p) {
-    case "WritesBack" :
-      return "WritesBack";
-    case "Observes" :
-      return "Observes";
-    case "SelfContained" :
-      return "SelfContained";
-  }
+  return p;
 }
 
 export {

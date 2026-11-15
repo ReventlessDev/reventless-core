@@ -208,7 +208,7 @@ describe("BakeManifest.readAnswer", () => {
     expect(
       Bake.registrationLine({
         plugin: "Catalog",
-        state: "missing",
+        state: Reported(Missing),
         expected: "sha256/new",
       }),
     )->toBe("  Catalog: missing — expected sha256/new, row holds no row (written never)")

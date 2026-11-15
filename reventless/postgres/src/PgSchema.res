@@ -8,7 +8,7 @@
 //   event_log / snapshot      — classic OCC log (Phase A)
 //   dcb_event                 — DCB log; positions are a global IDENTITY sequence,
 //                               rows stamped with the committing xid8 (Phase B)
-//   dcb_scope                 — companion table for the #RowLocks strategy (B4)
+//   dcb_scope                 — companion table for the RowLocks strategy (B4)
 //   dcb_subscription          — change-feed checkpoints (Phase D)
 //   dcb_condition_where(...)  — compiles a DcbTag.query jsonb AST → SQL WHERE
 //   dcb_append(...)           — the concurrency-critical append (B1): scoped

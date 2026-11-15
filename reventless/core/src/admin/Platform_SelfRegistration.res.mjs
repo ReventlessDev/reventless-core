@@ -23,7 +23,7 @@ function doorField(structures, part) {
 }
 
 function openRolesField(structures) {
-  return Stdlib_Option.map(marked(structures, "OpenRoles"), param => {
+  return Stdlib_Option.map(marked(structures, "openRoles"), param => {
     let d = param[1];
     let plugin = param[0];
     return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Array.findMap(structures, param => {
@@ -50,8 +50,8 @@ function selfServiceGroups(structures) {
 }
 
 function fromStructures(structures) {
-  let match = doorField(structures, "Start");
-  let match$1 = doorField(structures, "Complete");
+  let match = doorField(structures, "start");
+  let match$1 = doorField(structures, "complete");
   if (match !== undefined && match$1 !== undefined) {
     return {
       start: match,

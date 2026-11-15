@@ -14,6 +14,15 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
 
+let lockStrategies = [
+  "AdvisoryLocks",
+  "RowLocks"
+];
+
+function lockStrategyOfName(name) {
+  return lockStrategies.find(s => s === name);
+}
+
 function strategyParam(s) {
   if (s === "AdvisoryLocks") {
     return "advisory";
@@ -416,6 +425,8 @@ function makeOps(pool, name, param, param$1, param$2, param$3, lockStrategyOpt, 
 let pageSize = 500;
 
 export {
+  lockStrategies,
+  lockStrategyOfName,
   strategyParam,
   noTracking,
   selectColumns,

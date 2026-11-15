@@ -10,7 +10,7 @@
 //   - write-skew: two genuinely concurrent conditional appends on one boundary —
 //     exactly one commits, the other conflicts cleanly (the anomaly the advisory
 //     locks close)
-//   - both #AdvisoryLocks and #RowLocks strategies
+//   - both AdvisoryLocks and RowLocks strategies
 
 open JestGlobals
 open ReventlessCore
@@ -184,8 +184,8 @@ switch processEnv->Dict.get("PG_URL") {
         },
       )
 
-    writeSkew(#AdvisoryLocks, "dcb-skew-advisory")
-    writeSkew(#RowLocks, "dcb-skew-rows")
+    writeSkew(AdvisoryLocks, "dcb-skew-advisory")
+    writeSkew(RowLocks, "dcb-skew-rows")
 
     testPromise("hot tag: N concurrent conditional appends, exactly one wins", async () => {
       let (_n, ops, _s) = makeLog("dcb-hot")

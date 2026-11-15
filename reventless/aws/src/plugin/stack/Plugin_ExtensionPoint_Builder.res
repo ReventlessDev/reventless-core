@@ -6,7 +6,10 @@ module MakeWithConfig = (
   Config: {
     let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
     let manageSubscriptions: option<
-      (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+      (
+        Reventless.Plugin.pluginDefinition,
+        ReventlessCore.PluginExtensionPoint_Plugin.subscriptionChange,
+      ) => promise<unit>,
     >
   },
 ): ReventlessCore.ExtensionPoint.T => ReventlessCore.PluginExtensionPoint_Builder.Make(

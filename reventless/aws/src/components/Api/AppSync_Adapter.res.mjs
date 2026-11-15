@@ -261,7 +261,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   };
   let iamRole = new (Aws.iam.Role)(name + `-appsync-role`, {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`,
-    tags: AWS_Tags$ReventlessAws.make(name + `-appsync-role`, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + `-appsync-role`, "Platform", "Identity", "platform", undefined, undefined, undefined, undefined)
   }, customOpts);
   new (Aws.iam.RolePolicyAttachment)(name + `-appsync-cwlogs`, {
     policyArn: "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs",
@@ -285,7 +285,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
       authenticationType: "AWS_IAM"
     }];
   let apiArgs_logConfig = appsyncLogConfig;
-  let apiArgs_tags = AWS_Tags$ReventlessAws.make(name, "Plugin", "Api", "Plugin", undefined, undefined, undefined, undefined);
+  let apiArgs_tags = AWS_Tags$ReventlessAws.make(name, "Plugin", "Api", "plugin", undefined, undefined, undefined, undefined);
   let apiArgs = {
     authenticationType: "AMAZON_COGNITO_USER_POOLS",
     schema: apiArgs_schema,
@@ -302,7 +302,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
     Util_LogGroup_Adopting$ReventlessAws.make(name + `AppSyncLogGroup`, {
       logGroupName: graphQLApi.id.apply(id => `/aws/appsync/apis/` + id),
       retentionInDays: Util_LogRetention$ReventlessAws.retentionDaysFor(stack, prodStacks, Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))),
-      tags: AWS_Tags$ReventlessAws.makeDict(name + `AppSyncLogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.makeDict(name + `AppSyncLogGroup`, "Plugin", "Logs", "plugin", undefined, undefined, undefined, undefined)
     }, customOpts);
   }
   return [

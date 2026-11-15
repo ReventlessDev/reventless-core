@@ -30,7 +30,7 @@ function makeTable(nameOpt, opts) {
   let table = Util_DynamoDb$ReventlessAws.makeTable([{
       name: Auth_IdentityStore_Schema$ReventlessAws.partitionKey,
       type: "S"
-    }], undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined), opts$1, name);
+    }], undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Auth", "platform", undefined, undefined, undefined, undefined), opts$1, name);
   return {
     name: table.name,
     arn: table.arn

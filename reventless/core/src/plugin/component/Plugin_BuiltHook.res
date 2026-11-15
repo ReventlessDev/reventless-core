@@ -51,11 +51,16 @@ type constructorSchema = {
   fields: array<fieldSchema>,
 }
 
+/** What shape a named type has; its text is what a published schema carries. */
+type schemaKind =
+  | @as("record") RecordSchema
+  | @as("variant") VariantSchema
+  | @as("unknown") UnknownSchema
+
 /** Schema for one named type (a command, event, or state type). */
 type typeSchema = {
   typeName: string,
-  /** "record" | "variant" | "unknown" */
-  kind: string,
+  kind: schemaKind,
   fields: array<fieldSchema>,
   constructors?: array<constructorSchema>,
   /** SHA256 of sorted "name:typeDescription:isRequired" tuples — stable shape fingerprint. */

@@ -8,6 +8,22 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Duration$Reventless from "../semantic/Duration.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
+let argTypes = [
+  "number",
+  "date",
+  "time",
+  "spellout",
+  "ordinal",
+  "duration",
+  "plural",
+  "selectordinal",
+  "select"
+];
+
+function argTypeOfWord(word) {
+  return argTypes.find(t => t === word);
+}
+
 let Syntax = /* @__PURE__ */Primitive_exceptions.create("MessageFormat-Reventless.Syntax");
 
 function parse(text) {
@@ -206,91 +222,22 @@ function parse(text) {
       case "," :
         i.contents = i.contents + 1 | 0;
         skipSpace();
-        let kind = word();
+        let kindWord = word();
         skipSpace();
-        let exit = 0;
-        switch (kind) {
-          case "" :
+        let kind = argTypeOfWord(kindWord);
+        if (kind === undefined) {
+          if (kindWord === "") {
             return fail(`the argument "` + name + `" has no type after its comma`);
+          } else {
+            return fail(`the argument "` + name + `" has an unknown type "` + kindWord + `"`);
+          }
+        }
+        switch (kind) {
           case "plural" :
-          case "select" :
           case "selectordinal" :
-            exit = 1;
-            break;
-          case "date" :
-          case "duration" :
-          case "number" :
-          case "ordinal" :
-          case "spellout" :
-          case "time" :
-            exit = 2;
+          case "select" :
             break;
           default:
-            return fail(`the argument "` + name + `" has an unknown type "` + kind + `"`);
-        }
-        switch (exit) {
-          case 1 :
-            expect(",", `the ` + kind + ` "` + name + `" has no cases`);
-            let inPlural$1 = inPlural || kind !== "select";
-            skipSpace();
-            let offset = 0.0;
-            if (kind !== "select" && text.slice(i.contents, i.contents + 7 | 0) === "offset:") {
-              i.contents = i.contents + 7 | 0;
-              skipSpace();
-              let value = Stdlib_Float.fromString(word());
-              if (value !== undefined) {
-                offset = value;
-              } else {
-                fail(`the ` + kind + ` "` + name + `" has an offset without a number`);
-              }
-            }
-            let found = [];
-            let next = () => {
-              while (true) {
-                skipSpace();
-                let match = at(i.contents);
-                if (match === undefined) {
-                  return fail("a '{' is not closed");
-                }
-                if (match === "}") {
-                  i.contents = i.contents + 1 | 0;
-                  return;
-                }
-                let selector = word();
-                if (selector === "") {
-                  fail(`the ` + kind + ` "` + name + `" has a case without a selector`);
-                }
-                skipSpace();
-                expect("{", `the case "` + selector + `" of "` + name + `" has no message`);
-                let body = message(inPlural$1, true);
-                expect("}", "a '{' is not closed");
-                found.push([
-                  selector,
-                  body
-                ]);
-                continue;
-              };
-            };
-            next();
-            if (!found.some(param => param[0] === "other")) {
-              fail(`the ` + kind + ` "` + name + `" has no "other" case`);
-            }
-            if (kind === "select") {
-              return {
-                TAG: "Select",
-                name: name,
-                cases: found
-              };
-            } else {
-              return {
-                TAG: "Plural",
-                name: name,
-                ordinal: kind === "selectordinal",
-                offset: offset,
-                cases: found
-              };
-            }
-          case 2 :
             let match$1 = at(i.contents);
             if (match$1 === undefined) {
               return fail(`the argument "` + name + `" is not closed`);
@@ -316,6 +263,82 @@ function parse(text) {
               default:
                 return fail(`the argument "` + name + `" is not closed`);
             }
+        }
+        expect(",", `the ` + kindWord + ` "` + name + `" has no cases`);
+        let tmp = true;
+        if (!inPlural) {
+          let tmp$1;
+          tmp$1 = kind !== "select";
+          tmp = tmp$1;
+        }
+        skipSpace();
+        let offset = 0.0;
+        let takesOffset;
+        takesOffset = kind !== "select";
+        if (takesOffset && text.slice(i.contents, i.contents + 7 | 0) === "offset:") {
+          i.contents = i.contents + 7 | 0;
+          skipSpace();
+          let value = Stdlib_Float.fromString(word());
+          if (value !== undefined) {
+            offset = value;
+          } else {
+            fail(`the ` + kind + ` "` + name + `" has an offset without a number`);
+          }
+        }
+        let found = [];
+        let next = () => {
+          while (true) {
+            skipSpace();
+            let match = at(i.contents);
+            if (match === undefined) {
+              return fail("a '{' is not closed");
+            }
+            if (match === "}") {
+              i.contents = i.contents + 1 | 0;
+              return;
+            }
+            let selector = word();
+            if (selector === "") {
+              fail(`the ` + kind + ` "` + name + `" has a case without a selector`);
+            }
+            skipSpace();
+            expect("{", `the case "` + selector + `" of "` + name + `" has no message`);
+            let body = message(tmp, true);
+            expect("}", "a '{' is not closed");
+            found.push([
+              selector,
+              body
+            ]);
+            continue;
+          };
+        };
+        next();
+        if (!found.some(param => param[0] === "other")) {
+          fail(`the ` + kind + ` "` + name + `" has no "other" case`);
+        }
+        switch (kind) {
+          case "selectordinal" :
+            return {
+              TAG: "Plural",
+              name: name,
+              ordinal: true,
+              offset: offset,
+              cases: found
+            };
+          case "select" :
+            return {
+              TAG: "Select",
+              name: name,
+              cases: found
+            };
+          default:
+            return {
+              TAG: "Plural",
+              name: name,
+              ordinal: false,
+              offset: offset,
+              cases: found
+            };
         }
         break;
       case "}" :
@@ -450,7 +473,8 @@ function dateFormat(locale, kind, style) {
   } else {
     length = "medium";
   }
-  let options = kind === "time" ? ({
+  let options;
+  options = kind === "time" ? ({
       timeStyle: length
     }) : ({
       dateStyle: length
@@ -551,6 +575,8 @@ function format(message, locale, values) {
 }
 
 export {
+  argTypes,
+  argTypeOfWord,
   Syntax,
   parse,
   namesOf,

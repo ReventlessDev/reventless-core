@@ -61,7 +61,7 @@ let decide = (state, command) =>
   } else {
     let (categoryId, op) = toOp(command)
     switch state.images->Attachments.decide(~cardinality=Single, op) {
-    | Error(#NotAttached) => Error(CategoryImageNotAttached)
+    | Error(Attachments.NotAttached) => Error(CategoryImageNotAttached)
     | Ok(facts) => Ok(facts->Array.filterMap(toEvent(categoryId, _)))
     }
   }

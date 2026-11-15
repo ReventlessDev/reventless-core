@@ -27,7 +27,7 @@ export function response(ctx) {
 function make(api, placeIndexName, nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "GeocodeService";
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "platform", undefined, undefined, undefined, undefined), opts$1);
   placeIndexName.apply(idx => {
     let arn = `arn:aws:geo:*:*:place-index/` + idx;
     new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
@@ -58,7 +58,7 @@ function make(api, placeIndexName, nameOpt, opts) {
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Geocoder/Geocoder_AwsLocation_Resolver_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Lambda$PulumiAws.reventlessLayers();
-  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: Util_LambdaRuntime$ReventlessAws.node,
@@ -67,7 +67,7 @@ function make(api, placeIndexName, nameOpt, opts) {
     memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [
@@ -92,7 +92,7 @@ function make(api, placeIndexName, nameOpt, opts) {
     sourceCodeHash: match.sourceCodeHash,
     loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1);
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     lambda.arn,
     dataSourceRole.id

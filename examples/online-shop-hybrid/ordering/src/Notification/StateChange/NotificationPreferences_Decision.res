@@ -151,7 +151,7 @@ let named = (recipientId, fact: Rules.fact) =>
 let through = (state, recipientId, op) =>
   switch state->Rules.decide(op, ~posture) {
   | Ok(facts) => Ok(facts->Array.filterMap(named(recipientId, _)))
-  | Error(#RecipientUnknown) => Error(RecipientUnknown)
+  | Error(Rules.RecipientUnknown) => Error(RecipientUnknown)
   }
 
 let decide = (state, command) =>

@@ -127,7 +127,7 @@ describe("AdmissionCheck", () => {
   testSync("a table that cannot be read is refused rather than read past", () =>
     expect(
       problems([
-        ("Shop", shop(~admission=[{Admission.role: "Shopper", strategy: "Open"}])),
+        ("Shop", shop(~admission=[{Admission.role: "Shopper", strategy: OtherStrategy("Open")}])),
       ])->Array.length,
     )->toEqual(1)
   )

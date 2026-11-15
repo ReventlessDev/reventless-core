@@ -15,7 +15,7 @@ import * as Util_LambdaRuntime$ReventlessAws from "../../util/Util_LambdaRuntime
 function make(activeRoleTableName, activeRoleTableArn, identityTableName, identityTableArn, nameOpt, opts) {
   let name = nameOpt !== undefined ? nameOpt : "ActiveRoleTrigger";
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     activeRoleTableArn,
     identityTableArn
@@ -55,7 +55,7 @@ function make(activeRoleTableName, activeRoleTableArn, identityTableName, identi
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Auth/Auth_ActiveRoleTrigger_Ops.res.mjs", packageDirs, undefined, false);
   let sourceCodeHash = match.sourceCodeHash;
   let layers = Lambda$PulumiAws.reventlessLayers();
-  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Platform", "Logs", "platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: Util_LambdaRuntime$ReventlessAws.node,
@@ -64,7 +64,7 @@ function make(activeRoleTableName, activeRoleTableArn, identityTableName, identi
     memorySize: 256,
     timeout: 5,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Runtime", "platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [

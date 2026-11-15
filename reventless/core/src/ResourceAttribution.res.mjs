@@ -2,14 +2,7 @@
 
 
 function toString(scope) {
-  switch (scope) {
-    case "Component" :
-      return "component";
-    case "Plugin" :
-      return "plugin";
-    case "Platform" :
-      return "platform";
-  }
+  return scope;
 }
 
 let Scope = {
@@ -17,49 +10,7 @@ let Scope = {
 };
 
 function toString$1(role) {
-  if (typeof role === "object") {
-    return role._0;
-  }
-  switch (role) {
-    case "CommandTopic" :
-      return "CommandTopic";
-    case "EventTopic" :
-      return "EventTopic";
-    case "StateTopic" :
-      return "StateTopic";
-    case "EventLog" :
-      return "EventLog";
-    case "DcbEventLog" :
-      return "DcbEventLog";
-    case "EventLogSubscription" :
-      return "EventLogSubscription";
-    case "EventCollector" :
-      return "EventCollector";
-    case "QueryDb" :
-      return "QueryDb";
-    case "Runtime" :
-      return "Runtime";
-    case "DeadLetter" :
-      return "DeadLetter";
-    case "Scheduler" :
-      return "Scheduler";
-    case "Logs" :
-      return "Logs";
-    case "Identity" :
-      return "Identity";
-    case "Api" :
-      return "Api";
-    case "Auth" :
-      return "Auth";
-    case "Hosting" :
-      return "Hosting";
-    case "Network" :
-      return "Network";
-    case "EventSourceMapping" :
-      return "EventSourceMapping";
-    case "DataTransfer" :
-      return "DataTransfer";
-  }
+  return role;
 }
 
 let Role = {

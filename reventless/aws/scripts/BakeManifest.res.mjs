@@ -13,6 +13,7 @@ import * as ClientLambda from "@aws-sdk/client-lambda";
 import * as PulumiCli$ReventlessAws from "./PulumiCli.res.mjs";
 import * as Util_AwsError$ReventlessAws from "../src/util/Util_AwsError.res.mjs";
 import * as DeployManifest$ReventlessAws from "./DeployManifest.res.mjs";
+import * as BakeRegistrationState$ReventlessAws from "../src/adapter/Api/BakeRegistrationState.res.mjs";
 
 function parseArgs(argv) {
   return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
@@ -121,6 +122,29 @@ function payload(target, expect, since) {
   return Object.fromEntries(fields);
 }
 
+function reportedStateText(state) {
+  if (state.TAG === "Reported") {
+    return BakeRegistrationState$ReventlessAws.name(state._0);
+  } else {
+    return state._0;
+  }
+}
+
+function reportedStateOf(word) {
+  let state = BakeRegistrationState$ReventlessAws.ofName(word);
+  if (state !== undefined) {
+    return {
+      TAG: "Reported",
+      _0: state
+    };
+  } else {
+    return {
+      TAG: "UnknownState",
+      _0: word
+    };
+  }
+}
+
 function _string(o, name) {
   return Stdlib_Option.flatMap(o[name], Stdlib_JSON.Decode.string);
 }
@@ -132,7 +156,7 @@ function _int(o, name) {
 function _registrations(o) {
   return Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(o["registrations"], Stdlib_JSON.Decode.array), []), Stdlib_JSON.Decode.object).map(r => ({
     plugin: Stdlib_Option.getOr(_string(r, "plugin"), "?"),
-    state: Stdlib_Option.getOr(_string(r, "state"), "?"),
+    state: reportedStateOf(Stdlib_Option.getOr(_string(r, "state"), "?")),
     expected: Stdlib_Option.getOr(_string(r, "expected"), "?"),
     found: _string(r, "found"),
     writtenAt: _string(r, "writtenAt")
@@ -181,11 +205,18 @@ function readAnswer(json) {
 }
 
 function registrationLine(r) {
-  return `  ` + r.plugin + `: ` + r.state + ` — expected ` + r.expected + `, row holds ` + Stdlib_Option.getOr(r.found, "no row") + ` (written ` + Stdlib_Option.getOr(r.writtenAt, "never") + `)`;
+  return `  ` + r.plugin + `: ` + reportedStateText(r.state) + ` — expected ` + r.expected + `, row holds ` + Stdlib_Option.getOr(r.found, "no row") + ` (written ` + Stdlib_Option.getOr(r.writtenAt, "never") + `)`;
 }
 
 function unreachable(registrations) {
-  return registrations.filter(r => r.state === "diverged");
+  return registrations.filter(r => {
+    let match = r.state;
+    if (match.TAG === "Reported") {
+      return match._0 === "diverged";
+    } else {
+      return false;
+    }
+  });
 }
 
 async function converge(invoke, sleep, log, attempts) {
@@ -396,6 +427,8 @@ export {
   targetOf,
   structureRefOf,
   payload,
+  reportedStateText,
+  reportedStateOf,
   _string,
   _int,
   _registrations,

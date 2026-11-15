@@ -285,7 +285,7 @@ function resolve(discovered, srcDir) {
     let stem = d.stem;
     let path = Discovery$Reventless.pathOf(d, srcDir);
     switch (d.componentType) {
-      case "StateChangeSlice" :
+      case "StateChange" :
         if (!isImplStem(stem)) {
           stateChangeSlices.push(stem);
           stateChangeSlicePaths[stem] = path;
@@ -293,7 +293,7 @@ function resolve(discovered, srcDir) {
         } else {
           return;
         }
-      case "StateViewSlice" :
+      case "StateView" :
         if (!isImplStem(stem)) {
           stateViewSlices.push(stem);
           stateViewSlicePaths[stem] = path;
@@ -301,7 +301,7 @@ function resolve(discovered, srcDir) {
         } else {
           return;
         }
-      case "StateViewSliceStream" :
+      case "StateViewStream" :
         if (!isImplStem(stem)) {
           stateViewSlicesStream.push(stem);
           stateViewSlicePaths[stem] = path;
@@ -309,7 +309,7 @@ function resolve(discovered, srcDir) {
         } else {
           return;
         }
-      case "AutomationSlice" :
+      case "Automation" :
         if (!isImplStem(stem)) {
           automationSlices.push(stem);
           automationSlicePaths[stem] = path;
@@ -317,7 +317,7 @@ function resolve(discovered, srcDir) {
         } else {
           return;
         }
-      case "InboundTranslationSlice" :
+      case "InboundTranslation" :
         if (!isImplStem(stem)) {
           inboundTranslationSlices.push(stem);
           inboundTranslationSlicePaths[stem] = path;
@@ -325,7 +325,7 @@ function resolve(discovered, srcDir) {
         } else {
           return;
         }
-      case "OutboundTranslationSlice" :
+      case "OutboundTranslation" :
         if (!isImplStem(stem)) {
           outboundTranslationSlices.push(stem);
           outboundTranslationSlicePaths[stem] = path;

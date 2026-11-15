@@ -32,26 +32,26 @@ function _effectMin(comp, param) {
     return "None";
   }
   switch (match) {
-    case "Debug" :
+    case "DEBUG" :
       return "Debug";
-    case "Info" :
+    case "INFO" :
       return "Info";
-    case "Warn" :
+    case "WARN" :
       return "Warn";
-    case "Error" :
+    case "ERROR" :
       return "Error";
   }
 }
 
 function levelOf(level) {
   if (level === "Fatal" || level === "Error") {
-    return "Error";
+    return "ERROR";
   } else if (level === "Info") {
-    return "Info";
+    return "INFO";
   } else if (level === "Warn") {
-    return "Warn";
+    return "WARN";
   } else {
-    return "Debug";
+    return "DEBUG";
   }
 }
 

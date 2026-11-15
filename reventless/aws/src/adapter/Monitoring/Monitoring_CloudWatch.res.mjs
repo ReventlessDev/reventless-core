@@ -55,10 +55,7 @@ function ensureTopicArn() {
     };
   } else if (match$1 !== undefined) {
     let topic = new (Aws.sns.Topic)(topicName, {
-      tags: AWS_Tags$ReventlessAws.make(topicName, "Plugin", {
-        TAG: "Other",
-        _0: "Alarm"
-      }, "Plugin", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.make(topicName, "Plugin", "Alarm", "plugin", undefined, undefined, undefined, undefined)
     });
     new (Aws.sns.TopicSubscription)(topicName + "Email", {
       endpoint: match$1,
@@ -99,10 +96,7 @@ function alarmFor(spec, kind, name, component, plugin, platform, logLocator, top
     alarmActions: actions,
     okActions: actions,
     alarmDescription: alarmDescription,
-    tags: AWS_Tags$ReventlessAws.make(resourceName, "Plugin", {
-      TAG: "Other",
-      _0: "Alarm"
-    }, undefined, name, undefined, plugin, platform)
+    tags: AWS_Tags$ReventlessAws.make(resourceName, "Plugin", "Alarm", undefined, name, undefined, plugin, platform)
   });
 }
 

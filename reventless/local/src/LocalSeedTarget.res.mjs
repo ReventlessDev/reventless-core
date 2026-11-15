@@ -122,26 +122,28 @@ function storePath(t) {
   let match$2 = match$1.store;
   let kind = match$2.kind;
   let endpoint = match$1.endpoint;
-  switch (kind) {
-    case "memory" :
-      return {
-        TAG: "Error",
-        _0: `the platform at ` + endpoint + ` keeps its store in memory; restart it to empty it.`
-      };
-    case "postgres" :
-      return {
-        TAG: "Error",
-        _0: `the platform at ` + endpoint + ` is backed by Postgres, which keeps its event logs off this machine. Reset it against the database.`
-      };
-    case "sqlite" :
-      let path = match$2.path;
-      if (path !== undefined) {
+  if (kind === "sqlite" || kind === "postgres" || kind === "memory") {
+    switch (kind) {
+      case "sqlite" :
+        let path = match$2.path;
+        if (path !== undefined) {
+          return {
+            TAG: "Ok",
+            _0: path
+          };
+        }
+        break;
+      case "memory" :
         return {
-          TAG: "Ok",
-          _0: path
+          TAG: "Error",
+          _0: `the platform at ` + endpoint + ` keeps its store in memory; restart it to empty it.`
         };
-      }
-      break;
+      case "postgres" :
+        return {
+          TAG: "Error",
+          _0: `the platform at ` + endpoint + ` is backed by Postgres, which keeps its event logs off this machine. Reset it against the database.`
+        };
+    }
   }
   return {
     TAG: "Error",

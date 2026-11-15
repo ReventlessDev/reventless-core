@@ -1,8 +1,9 @@
 # Plan: the format is the type
 
 **Date:** 2026-11-15<br/>
-**Status:** 📝 Planned. Nothing built. [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
-comes first.<br/>
+**Status:** 🚧 [TF1](#tf1-closed-sets-held-as-variants-no-format-change) and
+[TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants) built, 2026-11-15.
+[TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) is next.<br/>
 **Nature:** types and readers, no new behaviour. [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
 and [TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants) leave every file and every
 wire word as it is. [TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) and
@@ -90,6 +91,44 @@ polymorphic variant. Every file and wire word stays as it is today.
 Tests: each changed set reads and prints back its words unchanged, an unknown word included where
 there is an `Other` case.
 
+**Built.** Every set in the second table of [§1](#1-what-there-is) is a regular variant. Where a set
+has text, the text comes from the case: `(case :> string)`, with an `@as` where today's word differs
+from the case's name, and the reverse reads against one list of the cases. No file, structure, tag
+or printed word changed. In detail:
+
+- `ComponentType`'s `toString` and `ofString` are derived from one list. The case `QueryDb` keeps
+  its name and carries `@as("QueryDB")`, the word it is deployed as. `toName` keeps `QueryDb`; see [TFQ5](#open-questions).
+- `ComponentKind` carries its folder names as `@as` on the six slice cases, so `folderName` is
+  derived. The accepting `folderToKind` stays as it was. A side effect: those six cases now hold the
+  folder word at run time.
+- `CapabilityNeed`, `Admission`'s doors, `Visibility`, `ReadConsistency`, `Trait`'s posture,
+  `ResourceAttribution`'s scope and role, `labelFieldSource`, the definitions API's level and
+  `Logger.level` are derived the same way.
+- Fields that read a word a newer build may write are `@unboxed` with a case that keeps the word:
+  `Admission.def.strategy` (`OtherStrategy`), the structure's `visibility` (`Visibility.t` gained
+  `OtherVisibility`), and the local registry's `store.kind` (`OtherStore`), because the registry
+  deletes an entry it cannot decode.
+- The other string fields of the table hold variants: `typeSchema.kind`, the bake answer's state
+  (the writer's and the script's states are one list, `BakeRegistrationState`; the script keeps a
+  word it does not know), `MismatchRender.normalized.kind` (a new `Outcome.mismatchKind`),
+  `Catalogue.element.kind` (with a case for each key part, and one that keeps an unknown text), and
+  `ScenarioRecorder.entry.kind` (the sidecar's step kind of
+  [TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants)).
+- Both log-level parsers read through `Logger`: `levelOfLabel` for the API's upper-case enum,
+  `levelOfWord` for a feed filter in any case, `warning` included.
+- `MessageFormat`'s argument types are one variant with ICU's words as `@as`.
+- The polymorphic variants are regular variants: the to-do status of the outbound GWT helpers, the
+  log format, `AppLog`'s level, the Postgres lock strategy, the plugin connect/disconnect hook and
+  the two traits' refusals. Their callers changed with them: the examples' GWT files and deciders,
+  the traits' scaffold text, the conformance suite and two doc pages.
+
+Left as it was: `Platform.viewModeToString`. Its cases carry options, so the word cannot be the case
+itself; it stays the one switch that prints it. The words `Logger` reads from `LOG_LEVEL` were not in
+the table and keep their own switch.
+
+One reader outside this repository reads a field whose type changed: a test formatter that prints
+`MismatchRender.normalized.kind` as a string. It has to print `(kind :> string)` now.
+
 ### TF2 The lifecycle check reads the sidecar into variants
 
 `CheckLifecycleModel` reads the sidecar's step kinds once, at the edge, into a step-kind variant,
@@ -98,6 +137,17 @@ and switches on that variant from there on. `shownOutcome.kind`, `finding.severi
 optional field, not `""`. The `Reventless.Plugin.${level}` text is printed from the variant.
 
 The sidecar's words don't change in this phase, and neither does the check's report.
+
+**Built.** `SidecarStepKind` (in `reventless/spec/src/lifecycle`) lists every step kind the PPX writes,
+with today's words as `@as`, and an `OtherSidecarStep` case that keeps a word this build does not
+know. The check reads a step's kind once, where it reads the sidecar, and switches on it from there;
+a scenario's `whenKind` and `thenKind` are optional fields, absent where the step names none.
+`ScenarioRecorder` writes through the same variant. `shownOutcome.kind` and `finding.severity` are
+variants whose words are the report's, and `severities` is the order a run prints them in.
+`declaredCommand.level` and the derived level are `level?: Plugin.commandLevel`; the golden and the
+report print an absent level as `""`, as before. One reading narrowed: a published level that is
+neither `Collection` nor `Instance` is now read as absent rather than kept as a word. The structure's
+level is a sury-encoded `commandLevel`, so no structure holds such a word.
 
 ### TF3 The sidecar's step kinds take their constructor names
 
@@ -162,3 +212,13 @@ and another `QueryDb`. **Recommendation:** find where each spelling is read at t
 [TF1](#tf1-closed-sets-held-as-variants-no-format-change). Then name the constructor by the
 spelling that is stored or used as a folder name (`QueryDB` is a valid constructor name), so the
 text and the name are the same and both functions are derived.
+
+**Answer (2026-11-15):** both spellings are stored, so both stay. `toString`'s `QueryDB` is the
+component's Pulumi type token, the `reventless:kind` tag on its resources and the `runtimeKind` a
+Lambda's environment carries, which `ofString` reads back at cold start. Readers outside this
+repository accept both `QueryDB` and `QueryDb` there. `toName`'s `QueryDb` is the suffix of every
+physical resource name the query store makes (`ProductsQueryDb`) and of the local platform's bus
+keys. `toName` is a second set of words, the short names (`Aggr`, `CmdGen`, …), not a second
+spelling of the kind. The case keeps its name `QueryDb` and carries `@as("QueryDB")`, so `toString` and
+`ofString` are derived and no stored word changed; `toName` keeps its own switch. The role tag's `QueryDb`
+(`ResourceAttribution.Role`) is a third word, also stored, and unchanged.

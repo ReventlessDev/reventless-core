@@ -27,7 +27,7 @@ let internalRm: readSideDef = {
   ...publicRm,
   name: "ProductAudit",
   queryField: "Catalog_ProductAudit",
-  visibility: "Internal",
+  visibility: Internal,
 }
 
 let structure: pluginStructure = {
@@ -61,8 +61,8 @@ let structure: pluginStructure = {
   ],
   requiredCapabilities: [{capability: "Geocoding", component: "GeocodeAddress"}],
   admission: [
-    {role: "Shopper", strategy: "SelfService"},
-    {role: "Clerk", strategy: "Invitation", invitedBy: ["Admin"]},
+    {role: "Shopper", strategy: SelfServiceWord},
+    {role: "Clerk", strategy: InvitationWord, invitedBy: ["Admin"]},
   ],
   admissionDoors: [{component: "SignUp", part: "start"}],
 }

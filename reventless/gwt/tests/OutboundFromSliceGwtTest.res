@@ -83,20 +83,20 @@ describe("OutboundTranslation_GWT.FromSlice", () => {
     givenTodo("c1", {email: "a@b.c"})
     ->givenCapabilities(down)
     ->whenTranslated
-    ->thenTodoStatus("c1", #Failed)
+    ->thenTodoStatus("c1", Failed)
   )
 
-  test("#Pending still reads as #Failed", () =>
+  test("Pending still reads as Failed", () =>
     givenTodo("c1", {email: "a@b.c"})
     ->givenCapabilities(down)
     ->whenTranslated
-    ->thenTodoStatus("c1", #Pending)
+    ->thenTodoStatus("c1", Pending)
   )
 
   test("maxRetries failed attempts abandon the row", () =>
     givenTodo("c1", {email: "a@b.c"})
     ->whenTranslateRetrying(async (_, _) => Error("down"))
-    ->thenTodoStatus("c1", #Abandoned)
+    ->thenTodoStatus("c1", Abandoned)
   )
 
   test("maxRetries attempts in all, as the runtime makes them", () =>
@@ -108,7 +108,7 @@ describe("OutboundTranslation_GWT.FromSlice", () => {
   test("a throw is a failed attempt", () =>
     givenTodo("c1", {email: "a@b.c"})
     ->whenTranslateMocked(async (_, _) => JsError.throwWithMessage("boom"))
-    ->thenTodoStatus("c1", #Failed)
+    ->thenTodoStatus("c1", Failed)
   )
 
   test("exhausted: onExhausted is what the domain hears", () =>

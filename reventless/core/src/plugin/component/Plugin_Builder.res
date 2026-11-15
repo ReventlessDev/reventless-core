@@ -1063,7 +1063,7 @@ module Make = (
     // docs/plans/done/component-visibility-annotations.md
     let isVisibleReadSide = (q: Reventless.Plugin.readSideDef) =>
       switch q.visibility {
-      | Some("Internal") => false
+      | Some(Internal) => false
       | _ => true
       }
     let visibleReadModels = pluginStructure.readModels->Array.filter(isVisibleReadSide)

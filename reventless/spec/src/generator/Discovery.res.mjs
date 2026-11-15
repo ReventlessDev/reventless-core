@@ -196,11 +196,11 @@ function scanAdmissionDoors(srcDir, discovered) {
     let match = d.componentType;
     let tmp;
     switch (match) {
-      case "StateViewSlice" :
-      case "StateViewSliceStream" :
+      case "StateView" :
+      case "StateViewStream" :
         tmp = !d.stem.endsWith("_Projection");
         break;
-      case "InboundTranslationSlice" :
+      case "InboundTranslation" :
         tmp = !d.stem.endsWith("_Translation");
         break;
       default:

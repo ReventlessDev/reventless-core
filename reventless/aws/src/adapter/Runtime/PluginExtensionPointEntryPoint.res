@@ -83,7 +83,10 @@ module EpSpec = {
   let environment = NodeProcess.env->Dict.get("Environment")->Option.getOr("unknown")
   let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>> = None
   let manageSubscriptions: option<
-    (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+    (
+      Reventless.Plugin.pluginDefinition,
+      ReventlessCore.PluginExtensionPoint_Plugin.subscriptionChange,
+    ) => promise<unit>,
   > = None
 }
 module PluginMappingInstance = ReventlessCore.PluginExtensionPoint_Plugin.Make(EpSpec)

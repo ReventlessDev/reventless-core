@@ -17,10 +17,15 @@ module type SliceSpec = {
   let collect: (consumedEvent, ~sourceId: string) => array<(string, outboundItem)>
 }
 
-// Status enum reflecting how the slice's runtime labels a TODO after a
-// translate call. A successful translate (Ok) marks the item #Completed;
-// a failure (Error) leaves it #Pending for retry up to `maxRetries`.
-type todoStatus = [#Completed | #Pending]
+/** A to-do's status after an attempt, by the word a mismatch prints it with. A
+    successful translate (Ok) marks the item `Completed`; a failure (Error) leaves
+    it `Failed`, or `Abandoned` once `maxRetries` attempts have failed. `Pending`
+    is the older name for `Failed`, kept for one release. */
+type todoStatus =
+  | @as("#Completed") Completed
+  | @as("#Failed") Failed
+  | @as("#Abandoned") Abandoned
+  | @as("#Pending") Pending
 
 module type T = {
   module Spec: SliceSpec
@@ -198,17 +203,13 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     }
   }
 
-  let statusToString = (s: todoStatus) =>
-    switch s {
-    | #Completed => "#Completed"
-    | #Pending => "#Pending"
-    }
+  let statusToString = (s: todoStatus): string => (s :> string)
 
   let thenTodoStatus = async (pending, expectedId, expectedStatus) => {
     let {id, result, _} = await pending
     let actualStatus: todoStatus = switch result {
-    | Ok(_) => #Completed
-    | Error(_) => #Pending
+    | Ok(_) => Completed
+    | Error(_) => Pending
     }
     if id == expectedId && actualStatus == expectedStatus {
       Outcome.pass
@@ -230,9 +231,8 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   }
 }
 
-/** A to-do's status as the runtime leaves it after an attempt. `#Pending` is the
-    older name for `#Failed`, kept for one release. */
-type status = [#Completed | #Failed | #Abandoned | #Pending]
+/** A to-do's status as the runtime leaves it after an attempt. */
+type status = todoStatus
 
 // The slice as written: its `Spec` and its `_Translation` body, run against
 // recording capability fakes.
@@ -324,8 +324,8 @@ module FromSlice = (
       result: result.contents,
       retries: failures.contents,
       status: switch result.contents {
-      | Ok(_) => #Completed
-      | Error(_) => failures.contents >= maxRetries ? #Abandoned : #Failed
+      | Ok(_) => Completed
+      | Error(_) => failures.contents >= maxRetries ? Abandoned : Failed
       },
       sent: todo.fakes.calls(),
     }
@@ -350,7 +350,7 @@ module FromSlice = (
     item: todo.item,
     result: Ok(Translation.onExhausted(todo.id, todo.item, ~lastError)),
     retries: Spec.maxRetries,
-    status: #Abandoned,
+    status: Abandoned,
     sent: [],
   }
 
@@ -407,16 +407,17 @@ module FromSlice = (
         )
   }
 
-  let statusName = (s: status) =>
+  /** `Pending` is read, and printed, as `Failed`. */
+  let current = (s: status): status =>
     switch s {
-    | #Completed => "#Completed"
-    | #Failed | #Pending => "#Failed"
-    | #Abandoned => "#Abandoned"
+    | Pending => Failed
+    | _ => s
     }
+  let statusName = (s: status): string => (current(s) :> string)
 
   let thenTodoStatus = async (pending, expectedId, expectedStatus: status) => {
     let {id, status, _} = await pending
-    if id == expectedId && statusName(status) == statusName(expectedStatus) {
+    if id == expectedId && current(status) == current(expectedStatus) {
       Outcome.pass
     } else {
       let encOne = (rid, s) =>

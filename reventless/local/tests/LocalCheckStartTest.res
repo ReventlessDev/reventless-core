@@ -73,7 +73,7 @@ describe("LocalPlatformStart.orAddressRunning in check mode", () => {
       ~port=4000,
       ~endpoint="http://localhost:4000/graphql",
       ~loginEndpoint="http://localhost:4000/__inmemory/login",
-      ~store={kind: "memory"},
+      ~store={kind: MemoryStore},
       ~pid=NodeProcess.pid,
       ~cwd,
     )

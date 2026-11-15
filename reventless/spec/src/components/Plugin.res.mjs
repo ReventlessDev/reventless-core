@@ -3,6 +3,7 @@
 import * as Sury from "sury";
 import * as Offload$Reventless from "../semantic/Offload.res.mjs";
 import * as Admission$Reventless from "../types/Admission.res.mjs";
+import * as Visibility$Reventless from "../types/Visibility.res.mjs";
 
 let nameSchema = Sury.string;
 
@@ -84,6 +85,15 @@ let commandLevelSchema = Sury.union([
   Sury.literal("Instance")
 ]);
 
+let commandLevels = [
+  "Collection",
+  "Instance"
+];
+
+function commandLevelOfWord(word) {
+  return commandLevels.find(level => level === word);
+}
+
 let fieldReferenceSchema = Sury.$schema(s => ({
   fieldName: s.m(Sury.string),
   entity: s.m(Sury.string),
@@ -120,7 +130,7 @@ let readSideDefSchema = Sury.$schema(s => ({
   retiredField: s.m(Sury.$option(Sury.string)),
   retiredValues: s.m(Sury.$option(Sury.array(Sury.string))),
   namedWhenRetired: s.m(Sury.$option(Sury.boolean)),
-  visibility: s.m(Sury.$option(Sury.string)),
+  visibility: s.m(Sury.$option(Visibility$Reventless.schema)),
   chapter: s.m(Sury.$option(Sury.string)),
   singleQueryField: s.m(Sury.$option(Sury.string)),
   plural: s.m(Sury.$option(Sury.string)),
@@ -292,6 +302,8 @@ export {
   uiFragmentManifestSchema,
   uiFragmentManifestOptionSchema,
   commandLevelSchema,
+  commandLevels,
+  commandLevelOfWord,
   fieldReferenceSchema,
   commandDefSchema,
   readSideDefSchema,

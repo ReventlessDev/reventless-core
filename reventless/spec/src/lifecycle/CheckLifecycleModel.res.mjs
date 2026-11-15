@@ -11,6 +11,7 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Plugin$Reventless from "../components/Plugin.res.mjs";
 import * as CliArgs$Reventless from "../CliArgs.res.mjs";
 import * as Nodechild_process from "node:child_process";
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
@@ -120,12 +121,21 @@ function valuesOf(step) {
   });
 }
 
+function stepKindOf(step) {
+  return Stdlib_Option.map(getStr(step, "kind"), prim => prim);
+}
+
 function elementsOf(steps) {
-  return Stdlib_Array.filterMap(steps, s => Stdlib_Option.map(getStr(s, "element"), name => ({
-    name: lastSegment(name),
-    values: valuesOf(s),
-    opaque: Primitive_object.equal(getStr(s, "kind"), "opaque")
-  })));
+  return Stdlib_Array.filterMap(steps, s => Stdlib_Option.map(getStr(s, "element"), name => {
+    let match = stepKindOf(s);
+    let tmp;
+    tmp = match !== undefined ? match === "opaque" || (match === "state" || match === "sent" || match === "noEvent" || match === "inputRefused" || match === "noState" || match === "notUnderstood" || match === "forbidden" || match === "resolved" || match === "noCommand" || match === "exhausted" || match === "todo" || match === "process" || match === "noTodo" || match === "sweep" || match === "capabilities") && match === "opaque" : false;
+    return {
+      name: lastSegment(name),
+      values: valuesOf(s),
+      opaque: tmp
+    };
+  }));
 }
 
 function isOpaque(e) {
@@ -137,15 +147,19 @@ function readableStep(e) {
 }
 
 function kindOf(steps) {
-  return Stdlib_Option.getOr(Stdlib_Option.flatMap(steps[0], s => getStr(s, "kind")), "");
+  return Stdlib_Option.flatMap(steps[0], stepKindOf);
 }
 
 function thenKindOf(steps) {
   let s = steps[0];
-  if (s !== undefined && Primitive_object.equal(getStr(s, "kind"), "opaque")) {
-    return Stdlib_Option.getOr(getStr(s, "of"), "");
+  if (s === undefined) {
+    return;
+  }
+  let kind = stepKindOf(s);
+  if (kind !== undefined && (kind === "opaque" || (kind === "state" || kind === "sent" || kind === "noEvent" || kind === "inputRefused" || kind === "noState" || kind === "notUnderstood" || kind === "forbidden" || kind === "resolved" || kind === "noCommand" || kind === "exhausted" || kind === "todo" || kind === "process" || kind === "noTodo" || kind === "sweep" || kind === "capabilities") && kind === "opaque")) {
+    return Stdlib_Option.map(getStr(s, "of"), prim => prim);
   } else {
-    return kindOf(steps);
+    return kind;
   }
 }
 
@@ -323,18 +337,18 @@ function emitSidecars(pluginDirs, dirOpt) {
 function levelOf(d) {
   let match = d["level"];
   if (match === undefined) {
-    return "";
+    return;
   }
   if (match === null || Array.isArray(match)) {
-    return "";
+    return;
   }
   switch (typeof match) {
     case "string" :
-      return match;
+      return Plugin$Reventless.commandLevelOfWord(match);
     case "object" :
-      return Stdlib_Option.getOr(getStr(match, "TAG"), "");
+      return Stdlib_Option.flatMap(getStr(match, "TAG"), Plugin$Reventless.commandLevelOfWord);
     default:
-      return "";
+      return;
   }
 }
 
@@ -434,27 +448,44 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
     rounds = rounds + 1 | 0;
     let before = Object.keys(map).length;
     scenarios.forEach(s => {
-      if (s.whenKind !== "event" || s.thenKind !== "state") {
+      let match = s.whenKind;
+      let match$1 = s.thenKind;
+      if (match === undefined) {
         return;
       }
-      let match = last(s.whenElements);
-      let match$1 = lifecycleValue(s.thenValues, field);
-      if (match !== undefined && match$1 !== undefined && (s.given.length === 0 || fold(s.given) !== match$1)) {
-        let event = match.name;
+      if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+        return;
+      }
+      if (match !== "event") {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      if (match$1 !== "event" && match$1 !== "opaque" && match$1 !== "command" && match$1 !== "publicEvent" && match$1 !== "input" && match$1 !== "retries" && match$1 !== "error" && match$1 !== "todoStatus" && match$1 !== "sideEffect" && match$1 !== "nothingSent" && match$1 !== "state" && match$1 !== "sent" && match$1 !== "noEvent" && match$1 !== "inputRefused" && match$1 !== "noState" && match$1 !== "notUnderstood" && match$1 !== "forbidden" && match$1 !== "resolved" && match$1 !== "noCommand" && match$1 !== "exhausted" && match$1 !== "todo" && match$1 !== "process" && match$1 !== "noTodo" && match$1 !== "sweep" && match$1 !== "capabilities") {
+        return;
+      }
+      if (match$1 !== "state") {
+        return;
+      }
+      let match$2 = last(s.whenElements);
+      let match$3 = lifecycleValue(s.thenValues, field);
+      if (match$2 !== undefined && match$3 !== undefined && (s.given.length === 0 || fold(s.given) !== match$3)) {
+        let event = match$2.name;
         let title = s.title;
         let existing = map[event];
         if (existing !== undefined) {
-          if (existing !== match$1) {
+          if (existing !== match$3) {
             ambiguities.push([
               view,
-              view + `: ` + event + ` is projected as both "` + existing + `" and "` + match$1 + `" ` + (`(seen in "` + title + `") — the harvest keeps "` + existing + `"`)
+              view + `: ` + event + ` is projected as both "` + existing + `" and "` + match$3 + `" ` + (`(seen in "` + title + `") — the harvest keeps "` + existing + `"`)
             ]);
             return;
           } else {
             return;
           }
         } else {
-          map[event] = match$1;
+          map[event] = match$3;
           return;
         }
       }
@@ -468,11 +499,17 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
 
 function outcomeOf(s) {
   let match = s.thenKind;
+  if (match === undefined) {
+    return "NoChange";
+  }
+  if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+    return "NoChange";
+  }
   switch (match) {
-    case "error" :
-      return "Rejected";
     case "event" :
       return "Emitted";
+    case "error" :
+      return "Rejected";
     default:
       return "NoChange";
   }
@@ -507,18 +544,26 @@ function observe(scenarios, map, idFieldFor) {
     }
   });
   return Stdlib_Array.filterMap(scenarios, s => {
-    let command = s.whenElements[0];
-    if (command === undefined) {
+    let match = s.whenElements[0];
+    let match$1 = s.whenKind;
+    let match$2 = s.thenKind;
+    if (match === undefined) {
       return;
     }
-    if (s.thenKind === "forbidden") {
+    if (match$2 === "forbidden" && (match$2 === "forbidden" || (match$2 === "noCommand" || match$2 === "exhausted" || match$2 === "todo" || match$2 === "process" || match$2 === "noTodo" || match$2 === "sweep" || match$2 === "capabilities") && match$2 === "forbidden")) {
       return;
     }
-    if (s.whenKind !== "command") {
+    if (match$1 === undefined) {
       return;
     }
-    let idField = idFieldFor(command.name);
-    let idValue = Stdlib_Option.flatMap(idField, field => valueOf(command.values, field));
+    if (match$1 !== "event" && match$1 !== "opaque" && match$1 !== "command" && match$1 !== "publicEvent" && match$1 !== "input" && match$1 !== "retries" && match$1 !== "error" && match$1 !== "todoStatus" && match$1 !== "sideEffect" && match$1 !== "nothingSent" && match$1 !== "state" && match$1 !== "sent" && match$1 !== "noEvent" && match$1 !== "inputRefused" && match$1 !== "noState" && match$1 !== "notUnderstood" && match$1 !== "forbidden" && match$1 !== "resolved" && match$1 !== "noCommand" && match$1 !== "exhausted" && match$1 !== "todo" && match$1 !== "process" && match$1 !== "noTodo" && match$1 !== "sweep" && match$1 !== "capabilities") {
+      return;
+    }
+    if (match$1 !== "command") {
+      return;
+    }
+    let idField = idFieldFor(match.name);
+    let idValue = Stdlib_Option.flatMap(idField, field => valueOf(match.values, field));
     let history = s.given.filter(e => sameRow(e, idField, idValue));
     let from = fold(history);
     let outcome = outcomeOf(s);
@@ -527,7 +572,7 @@ function observe(scenarios, map, idFieldFor) {
     } else {
       return {
         title: s.title,
-        command: command.name,
+        command: match.name,
         from: from,
         outcome: outcome,
         to: outcome === "Emitted" ? fold(history.concat(s.thenElements)) : from,
@@ -576,9 +621,9 @@ function deriveCommands(component, observations, labelled) {
           labelled ? (
               effective.every(o => o.from === noRow) ? "Collection" : "Instance"
             ) : (
-              effective.every(o => o.rowHistory === 0) ? "Collection" : ""
+              effective.every(o => o.rowHistory === 0) ? "Collection" : undefined
             )
-        ) : "",
+        ) : undefined,
       scenarios: mine.length
     };
   });
@@ -586,9 +631,15 @@ function deriveCommands(component, observations, labelled) {
 
 function shownOutcomeOf(s) {
   let match = s.thenKind;
+  if (match === undefined) {
+    return;
+  }
+  if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+    return;
+  }
   switch (match) {
-    case "error" :
     case "event" :
+    case "error" :
       break;
     case "noEvent" :
       return [
@@ -600,11 +651,19 @@ function shownOutcomeOf(s) {
   }
   if (s.thenElements.some(isOpaque)) {
     return;
-  } else {
-    return [
-      s.thenKind,
-      s.thenElements.map(e => e.name)
-    ];
+  }
+  if (match === "event" || match === "opaque" || match === "command" || match === "publicEvent" || match === "input" || match === "retries" || match === "error" || match === "todoStatus" || match === "sideEffect" || match === "nothingSent" || match === "state" || match === "sent" || match === "noEvent" || match === "inputRefused" || match === "noState" || match === "notUnderstood" || match === "forbidden" || match === "resolved" || match === "noCommand" || match === "exhausted" || match === "todo" || match === "process" || match === "noTodo" || match === "sweep" || match === "capabilities") {
+    if (match === "event") {
+      return [
+        "event",
+        s.thenElements.map(e => e.name)
+      ];
+    } else {
+      return [
+        "error",
+        s.thenElements.map(e => e.name)
+      ];
+    }
   }
 }
 
@@ -630,6 +689,12 @@ function commandOutcomes(plugin, corpora) {
       let match = s.whenKind;
       let match$1 = s.whenElements[0];
       let match$2 = shownOutcomeOf(s);
+      if (match === undefined) {
+        return;
+      }
+      if (match !== "event" && match !== "opaque" && match !== "command" && match !== "publicEvent" && match !== "input" && match !== "retries" && match !== "error" && match !== "todoStatus" && match !== "sideEffect" && match !== "nothingSent" && match !== "state" && match !== "sent" && match !== "noEvent" && match !== "inputRefused" && match !== "noState" && match !== "notUnderstood" && match !== "forbidden" && match !== "resolved" && match !== "noCommand" && match !== "exhausted" && match !== "todo" && match !== "process" && match !== "noTodo" && match !== "sweep" && match !== "capabilities") {
+        return;
+      }
       if (match !== "command") {
         return;
       }
@@ -690,6 +755,14 @@ function commandOutcomes(plugin, corpora) {
   });
   return byPluginComponentCommand(entries);
 }
+
+let severities = [
+  "contradicted",
+  "unverified",
+  "undeclared",
+  "level",
+  "ambiguous"
+];
 
 function allUnverified(cmd, add, why) {
   let states = cmd.allowedStates;
@@ -761,8 +834,10 @@ function compare(plugin, writable, derived, findings) {
       add("unverified", [match], `the switch targets "` + match + `", and no scenario shows an edge`);
     }
   }
-  if (derived.level !== "" && declared.level !== "" && derived.level !== declared.level) {
-    return add("level", [], `scenarios make it ` + derived.level + `-level; the published metadata says ` + declared.level);
+  let match$2 = derived.level;
+  let match$3 = declared.level;
+  if (match$2 !== undefined && match$3 !== undefined && match$2 !== match$3) {
+    return add("level", [], `scenarios make it ` + match$2 + `-level; the published metadata says ` + match$3);
   }
 }
 
@@ -825,8 +900,8 @@ function isViewPath(path) {
     return false;
   }
   switch (match) {
-    case "StateViewSlice" :
-    case "StateViewSliceStream" :
+    case "StateView" :
+    case "StateViewStream" :
     case "ReadModel" :
     case "ReadModelStream" :
       return true;
@@ -841,7 +916,7 @@ function isWritablePath(path) {
     return false;
   }
   switch (match) {
-    case "StateChangeSlice" :
+    case "StateChange" :
     case "Aggregate" :
       return true;
     default:
@@ -962,33 +1037,44 @@ function byComponentThenCommand(derived) {
   });
 }
 
+function levelText(level) {
+  if (level !== undefined) {
+    return level;
+  } else {
+    return "";
+  }
+}
+
 function goldenJson(derived) {
-  let entries = byComponentThenCommand(derived).map(d => Object.fromEntries([
-    [
-      "component",
-      d.component
-    ],
-    [
-      "command",
-      d.command
-    ],
-    [
-      "level",
-      d.level
-    ],
-    [
-      "allowedStates",
-      d.allowedStates.map(prim => prim)
-    ],
-    [
-      "targets",
-      d.targets.map(prim => prim)
-    ],
-    [
-      "scenarios",
-      d.scenarios
-    ]
-  ]));
+  let entries = byComponentThenCommand(derived).map(d => {
+    let level = d.level;
+    return Object.fromEntries([
+      [
+        "component",
+        d.component
+      ],
+      [
+        "command",
+        d.command
+      ],
+      [
+        "level",
+        level !== undefined ? level : ""
+      ],
+      [
+        "allowedStates",
+        d.allowedStates.map(prim => prim)
+      ],
+      [
+        "targets",
+        d.targets.map(prim => prim)
+      ],
+      [
+        "scenarios",
+        d.scenarios
+      ]
+    ]);
+  });
   return JSON.stringify(entries, undefined, 2) + "\n";
 }
 
@@ -1025,6 +1111,7 @@ function reportJson(findings, opaque, derived, outcomes, failures) {
   ]);
   let commandJson = param => {
     let d = param[1];
+    let level = d.level;
     return Object.fromEntries([
       [
         "plugin",
@@ -1040,7 +1127,7 @@ function reportJson(findings, opaque, derived, outcomes, failures) {
       ],
       [
         "level",
-        d.level
+        level !== undefined ? level : ""
       ],
       [
         "allowedStates",
@@ -1158,7 +1245,7 @@ function formatted(source) {
 
 function modelSource(plugin, derived) {
   let saysSomething = d => {
-    if (d.level !== "" || d.allowedStates.length !== 0) {
+    if (Stdlib_Option.isSome(d.level) || d.allowedStates.length !== 0) {
       return true;
     } else {
       return d.targets.length !== 0;
@@ -1166,17 +1253,9 @@ function modelSource(plugin, derived) {
   };
   let quoted = xs => "[" + xs.map(s => `"` + s + `"`).join(", ") + "]";
   let entries = byComponentThenCommand(derived.filter(saysSomething)).map(d => {
-    let match = d.level;
-    let level;
-    switch (match) {
-      case "Collection" :
-      case "Instance" :
-        level = `level: Reventless.Plugin.` + d.level + `, `;
-        break;
-      default:
-        level = "";
-    }
-    return `  {component: "` + d.component + `", command: "` + d.command + `", ` + level + (`allowedStates: ` + quoted(d.allowedStates) + `, targets: ` + quoted(d.targets) + `},`);
+    let level = d.level;
+    let level$1 = level !== undefined ? `level: Reventless.Plugin.` + level + `, ` : "";
+    return `  {component: "` + d.component + `", command: "` + d.command + `", ` + level$1 + (`allowedStates: ` + quoted(d.allowedStates) + `, targets: ` + quoted(d.targets) + `},`);
   });
   return formatted([
     [
@@ -1293,13 +1372,7 @@ function main() {
     if (json) {
       console.log(reportJson(findings, opaque, allDerived, outcomes, failures));
     } else {
-      [
-        "contradicted",
-        "unverified",
-        "undeclared",
-        "level",
-        "ambiguous"
-      ].forEach(severity => {
+      severities.forEach(severity => {
         let group = of_(severity);
         if (group.length !== 0) {
           console.log(`\n` + severity + ` (` + group.length.toString() + `)`);
@@ -1343,6 +1416,7 @@ export {
   lastSegment,
   sortedUnique,
   valuesOf,
+  stepKindOf,
   elementsOf,
   isOpaque,
   readableStep,
@@ -1375,6 +1449,7 @@ export {
   shownOutcomeOf,
   byPluginComponentCommand,
   commandOutcomes,
+  severities,
   allUnverified,
   compare,
   pluginDirsIn,
@@ -1384,6 +1459,7 @@ export {
   isWritablePath,
   runPlugin,
   byComponentThenCommand,
+  levelText,
   goldenJson,
   goldenPath,
   reportJson,

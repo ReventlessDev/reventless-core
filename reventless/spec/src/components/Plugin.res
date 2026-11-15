@@ -122,6 +122,12 @@ let uiFragmentManifestOptionSchema = S.option(uiFragmentManifestSchema)
 @schema
 type commandLevel = Collection | Instance
 
+let commandLevels = [Collection, Instance]
+
+/** The level a word names; `None` for a word that names none. */
+let commandLevelOfWord = (word: string): option<commandLevel> =>
+  commandLevels->Array.find(level => (level :> string) == word)
+
 /** One command's lifecycle edge as the component's own scenarios describe it:
     where a scenario shows the command taking effect, where those scenarios land,
     and whether it brings a row into existence or acts on one.
@@ -232,9 +238,9 @@ type readSideDef = {
       to any caller holding a pointer (`@namedWhenRetired`). Never true without
       `retiredField`. */
   namedWhenRetired?: bool,
-  /** `@@reventless.visibility`. `Some("Internal")` hides the component from AutoUI;
+  /** `@@reventless.visibility`. `Some(Internal)` hides the component from AutoUI;
       it is still carried here for developer tooling. `None` means Public. */
-  visibility?: string,
+  visibility?: Visibility.t,
   /** Intra-plugin grouping band, the first non-kind path segment under `src/`.
       `None` renders flat. */
   chapter?: string,

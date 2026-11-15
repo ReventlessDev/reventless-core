@@ -6,20 +6,20 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 
 function makeDict(name, kind, role, scopeOpt, component, owner, plugin, platform) {
-  let scope = scopeOpt !== undefined ? scopeOpt : "Component";
+  let scope = scopeOpt !== undefined ? scopeOpt : "component";
   let ambient = ResourceAttribution$ReventlessCore.current.contents;
   let projectName = Pulumi.getProject();
   let platform$1 = platform !== undefined ? platform : Stdlib_Option.getOr(ambient.platform, projectName);
   let kind$1 = owner !== undefined ? owner.kind : kind;
-  let scope$1 = owner !== undefined && owner.kind === "Plugin" ? "Plugin" : scope;
+  let scope$1 = owner !== undefined && owner.kind === "Plugin" ? "plugin" : scope;
   let plugin$1;
   let exit = 0;
   switch (scope$1) {
-    case "Component" :
-    case "Plugin" :
+    case "component" :
+    case "plugin" :
       exit = 1;
       break;
-    case "Platform" :
+    case "platform" :
       plugin$1 = "";
       break;
   }
@@ -30,11 +30,11 @@ function makeDict(name, kind, role, scopeOpt, component, owner, plugin, platform
   }
   let component$1;
   switch (scope$1) {
-    case "Component" :
+    case "component" :
       component$1 = owner !== undefined ? owner.name : Stdlib_Option.getOr(component, name);
       break;
-    case "Plugin" :
-    case "Platform" :
+    case "plugin" :
+    case "platform" :
       component$1 = "";
       break;
   }
@@ -79,7 +79,7 @@ function withoutEmpty(tags) {
 }
 
 function make(name, kind, role, scopeOpt, component, owner, plugin, platform) {
-  let scope = scopeOpt !== undefined ? scopeOpt : "Component";
+  let scope = scopeOpt !== undefined ? scopeOpt : "component";
   return makeDict(name, kind, role, scope, component, owner, plugin, platform);
 }
 

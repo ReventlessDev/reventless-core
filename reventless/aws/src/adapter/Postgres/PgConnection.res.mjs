@@ -43,17 +43,10 @@ function connectionConfigToJson(lockStrategy, cc) {
     ]
   ];
   if (lockStrategy !== undefined) {
-    if (lockStrategy === "AdvisoryLocks") {
-      fields.push([
-        "lockStrategy",
-        "AdvisoryLocks"
-      ]);
-    } else {
-      fields.push([
-        "lockStrategy",
-        "RowLocks"
-      ]);
-    }
+    fields.push([
+      "lockStrategy",
+      lockStrategy
+    ]);
   }
   return Object.fromEntries(fields);
 }

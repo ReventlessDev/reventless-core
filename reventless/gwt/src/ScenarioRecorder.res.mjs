@@ -4,6 +4,7 @@ import * as Nodefs from "node:fs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as SidecarStepKind$Reventless from "@reventlessdev/reventless-spec/src/lifecycle/SidecarStepKind.res.mjs";
 
 function enabled() {
   let match = process.env["REVENTLESS_EMIT_SIDECAR"];
@@ -104,7 +105,7 @@ function entryJson(e) {
   return Object.fromEntries([
     [
       "kind",
-      e.kind
+      SidecarStepKind$Reventless.toString(e.kind)
     ],
     [
       "element",

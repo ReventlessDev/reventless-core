@@ -190,13 +190,14 @@ let sortedUnique = (xs: array<string>): array<string> => {
 type element = {name: string, values: array<(string, JSON.t)>, opaque?: bool}
 
 /** One scenario, reduced to what the harvest reads. `then` carries at most one
-    step in every DSL here, so it is a kind and a payload rather than a list. */
+    step in every DSL here, so it is a kind and a payload rather than a list. A
+    kind is absent where the step names none. */
 type scenario = {
   title: string,
   given: array<element>,
-  whenKind: string,
+  whenKind?: SidecarStepKind.t,
   whenElements: array<element>,
-  thenKind: string,
+  thenKind?: SidecarStepKind.t,
   thenElements: array<element>,
   thenValues: array<(string, JSON.t)>,
 }
@@ -220,6 +221,10 @@ let valuesOf = (step: dict<JSON.t>): array<(string, JSON.t)> =>
     }
   )
 
+/** The kind a step's `kind` word names, read once here. */
+let stepKindOf = (step: dict<JSON.t>): option<SidecarStepKind.t> =>
+  step->getStr("kind")->Option.map(SidecarStepKind.ofString)
+
 let elementsOf = (steps: array<dict<JSON.t>>): array<element> =>
   steps->Array.filterMap(s =>
     s
@@ -227,7 +232,10 @@ let elementsOf = (steps: array<dict<JSON.t>>): array<element> =>
     ->Option.map(name => {
       name: lastSegment(name),
       values: valuesOf(s),
-      opaque: s->getStr("kind") == Some("opaque"),
+      opaque: switch stepKindOf(s) {
+      | Some(Opaque) => true
+      | _ => false
+      },
     })
   )
 
@@ -237,16 +245,20 @@ let isOpaque = (e: element) => e.opaque == Some(true)
     `exhausted` names no element, and is readable all the same. */
 let readableStep = (e: element) => !isOpaque(e)
 
-let kindOf = (steps: array<dict<JSON.t>>): string =>
-  steps->Array.get(0)->Option.flatMap(s => s->getStr("kind"))->Option.getOr("")
+let kindOf = (steps: array<dict<JSON.t>>): option<SidecarStepKind.t> =>
+  steps->Array.get(0)->Option.flatMap(stepKindOf)
 
 /** A `then` the sidecar could not read still says which kind it asserts:
     `thenEvent(added)` emitted, though nothing says what. A `when` keeps
     `opaque`, so no command is named after a variable. */
-let thenKindOf = (steps: array<dict<JSON.t>>): string =>
+let thenKindOf = (steps: array<dict<JSON.t>>): option<SidecarStepKind.t> =>
   switch steps->Array.get(0) {
-  | Some(s) if s->getStr("kind") == Some("opaque") => s->getStr("of")->Option.getOr("")
-  | _ => kindOf(steps)
+  | Some(s) =>
+    switch stepKindOf(s) {
+    | Some(Opaque) => s->getStr("of")->Option.map(SidecarStepKind.ofString)
+    | kind => kind
+    }
+  | None => None
   }
 
 let scenarioOf = (j: JSON.t): option<scenario> =>
@@ -259,9 +271,9 @@ let scenarioOf = (j: JSON.t): option<scenario> =>
     {
       title: d->getStr("title")->Option.getOr(""),
       given: elementsOf(given),
-      whenKind: kindOf(when_),
+      whenKind: ?kindOf(when_),
       whenElements: elementsOf(when_),
-      thenKind: thenKindOf(then_),
+      thenKind: ?thenKindOf(then_),
       thenElements: elementsOf(then_),
       thenValues: then_->Array.get(0)->Option.map(valuesOf)->Option.getOr([]),
     }
@@ -416,7 +428,7 @@ let emitSidecars = (~pluginDirs: array<string>, ~dir=repoRoot): result<unit, str
 
 type declaredCommand = {
   command: string,
-  level: string,
+  level?: Plugin.commandLevel,
   /** The field carrying the id of the row the command addresses, where the
       component has one. Used to tell this row's setup from the rest of it. */
   aggregateIdField?: string,
@@ -440,13 +452,13 @@ type declared = {writables: array<declaredWritable>, views: array<declaredView>}
 
 /** `commandLevel` is a sury-encoded variant, so it arrives as `"Collection"` /
     `"Instance"` or as a tagged object depending on how it was built. Both are
-    read; anything else is left blank rather than guessed, since a wrong level is
-    worse than an absent one. */
-let levelOf = (d: dict<JSON.t>): string =>
+    read; anything else is left absent rather than guessed, since a wrong level
+    is worse than an absent one. */
+let levelOf = (d: dict<JSON.t>): option<Plugin.commandLevel> =>
   switch d->Dict.get("level") {
-  | Some(String(s)) => s
-  | Some(Object(o)) => o->getStr("TAG")->Option.getOr("")
-  | _ => ""
+  | Some(String(s)) => Plugin.commandLevelOfWord(s)
+  | Some(Object(o)) => o->getStr("TAG")->Option.flatMap(Plugin.commandLevelOfWord)
+  | _ => None
   }
 
 let declaredCommandOf = (d: dict<JSON.t>): option<declaredCommand> =>
@@ -454,7 +466,7 @@ let declaredCommandOf = (d: dict<JSON.t>): option<declaredCommand> =>
   ->getStr("name")
   ->Option.map(command => {
     command,
-    level: levelOf(d),
+    level: ?levelOf(d),
     aggregateIdField: ?(d->getStr("aggregateIdField")),
     allowedStates: ?getStrsOpt(d, "allowedStates"),
     targetState: ?(d->getStr("targetState")),
@@ -576,7 +588,8 @@ let lifecycleMapFor = (
     let before = map->Dict.keysToArray->Array.length
 
     scenarios->Array.forEach(s =>
-      if s.whenKind == "event" && s.thenKind == "state" {
+      switch (s.whenKind, s.thenKind) {
+      | (Some(Event), Some(State)) =>
         switch (s.whenElements->last, lifecycleValue(s.thenValues, ~field)) {
         | (Some(event), Some(value)) =>
           if Array.length(s.given) == 0 || fold(s.given) != value {
@@ -584,6 +597,7 @@ let lifecycleMapFor = (
           }
         | _ => ()
         }
+      | _ => ()
       }
     )
 
@@ -636,20 +650,20 @@ type derivedCommand = {
       landing in two states is the signal that the published `targetState` cannot
       carry the model, and that is worth seeing before spending the change. */
   targets: array<string>,
-  /** `""` where the corpus cannot say. Without a lifecycle map every history
+  /** Absent where the corpus cannot say. Without a lifecycle map every history
       folds to "no row", so the fold cannot answer; an empty history still can,
       and a command that only ever succeeds on one is `Collection`. */
-  level: string,
+  level?: Plugin.commandLevel,
   scenarios: int,
 }
 
 let outcomeOf = (s: scenario): outcome =>
   switch s.thenKind {
-  | "event" => Emitted
+  | Some(Event) => Emitted
   // `thenNoEvent`, and the empty `then` an older sidecar wrote for the same
   // thing. Accepted, and nothing happened.
-  | "noEvent" | "" => NoChange
-  | "error" => Rejected
+  | Some(NoEvent) | None => NoChange
+  | Some(Error) => Rejected
   // A `then` this harvest has no reading for — a side effect, a published
   // command. Not an effect on this row either way.
   | _ => NoChange
@@ -696,11 +710,11 @@ let observe = (
     )
 
   scenarios->Array.filterMap(s =>
-    switch s.whenElements->Array.get(0) {
+    switch (s.whenElements->Array.get(0), s.whenKind, s.thenKind) {
     // `thenForbidden`: the caller did not own the row, which says nothing about
     // the states the command is legal in.
-    | Some(_) if s.thenKind == "forbidden" => None
-    | Some(command) if s.whenKind == "command" =>
+    | (Some(_), _, Some(Forbidden)) => None
+    | (Some(command), Some(Command), _) =>
       let idField = idFieldFor(command.name)
       let idValue = idField->Option.flatMap(field => command.values->valueOf(~field))
       let history = s.given->Array.filter(e => e->sameRow(~idField, ~idValue))
@@ -752,10 +766,10 @@ let deriveCommands = (
       // command's name stem, which misreads `Enroll`, `Provision`, `Onboard`.
       // Without labels only an empty history says "no row"; a non-empty one
       // cannot tell a live row from events that fold to none, so it says nothing.
-      level: switch (labelled, Array.length(effective)) {
-      | (_, 0) => ""
-      | (true, _) => effective->Array.every(o => o.from == noRow) ? "Collection" : "Instance"
-      | (false, _) => effective->Array.every(o => o.rowHistory == 0) ? "Collection" : ""
+      level: ?switch (labelled, Array.length(effective)) {
+      | (_, 0) => None
+      | (true, _) => Some(effective->Array.every(o => o.from == noRow) ? Collection : Instance)
+      | (false, _) => effective->Array.every(o => o.rowHistory == 0) ? Some(Collection) : None
       },
       scenarios: Array.length(mine),
     }
@@ -773,8 +787,13 @@ let deriveCommands = (
     `thenNoEvent` is written as `noEvent`, so an empty `then` is one the sidecar
     could not read (or an older sidecar's `noEvent`), and an outcome shown here
     has to be one a scenario actually states. */
+type outcomeKind =
+  | @as("event") EventOutcome
+  | @as("error") ErrorOutcome
+  | @as("noEvent") NoEventOutcome
+
 type shownOutcome = {
-  kind: string, // "event" | "error" | "noEvent"
+  kind: outcomeKind,
   /** The whole `then`, in order: `thenEvents([A, B])` is one outcome of two
       events — both, not either. Empty for `noEvent`. */
   names: array<string>,
@@ -790,11 +809,12 @@ type commandOutcomes = {
   outcomes: array<shownOutcome>,
 }
 
-let shownOutcomeOf = (s: scenario): option<(string, array<string>)> =>
+let shownOutcomeOf = (s: scenario): option<(outcomeKind, array<string>)> =>
   switch s.thenKind {
-  | "event" | "error" if s.thenElements->Array.some(isOpaque) => None
-  | "event" | "error" => Some((s.thenKind, s.thenElements->Array.map(e => e.name)))
-  | "noEvent" => Some(("noEvent", []))
+  | Some(Event | Error) if s.thenElements->Array.some(isOpaque) => None
+  | Some(Event) => Some((EventOutcome, s.thenElements->Array.map(e => e.name)))
+  | Some(Error) => Some((ErrorOutcome, s.thenElements->Array.map(e => e.name)))
+  | Some(NoEvent) => Some((NoEventOutcome, []))
   // The empty `then` above, and a `then` that is not about this command's
   // result — a side effect, a published command.
   | _ => None
@@ -818,7 +838,7 @@ let commandOutcomes = (~plugin: string, ~corpora: array<corpus>): array<commandO
   corpora->Array.forEach(c =>
     c.scenarios->Array.forEach(s =>
       switch (s.whenKind, s.whenElements->Array.get(0), shownOutcomeOf(s)) {
-      | ("command", Some(command), Some((kind, names))) =>
+      | (Some(Command), Some(command), Some((kind, names))) =>
         let entry = switch entries->Array.find(
           e => e.component == c.component && e.command == command.name,
         ) {
@@ -849,8 +869,18 @@ let commandOutcomes = (~plugin: string, ~corpora: array<corpus>): array<commandO
 
 // ── The three verdicts ──────────────────────────────────────────────────────
 
+/** A finding's verdict, in the order a run prints them. */
+type severity =
+  | @as("contradicted") Contradicted
+  | @as("unverified") Unverified
+  | @as("undeclared") Undeclared
+  | @as("level") LevelMismatch
+  | @as("ambiguous") Ambiguous
+
+let severities = [Contradicted, Unverified, Undeclared, LevelMismatch, Ambiguous]
+
 type finding = {
-  severity: string, // "contradicted" | "unverified" | "undeclared" | "level" | "ambiguous"
+  severity: severity,
   plugin: string,
   /** The component the finding is about: the writable whose switch made the
       claim, or — for `ambiguous` — the view whose corpus disagrees with itself.
@@ -895,16 +925,16 @@ type opaque = {
     the declaration claims, which is exactly what a warning is for. */
 let allUnverified = (
   ~cmd: declaredCommand,
-  ~add: (string, array<string>, string) => unit,
+  ~add: (severity, array<string>, string) => unit,
   ~why: string,
 ): unit => {
   switch cmd.allowedStates {
   | Some(states) if Array.length(states) > 0 =>
-    add("unverified", states, `the switch names ${states->Array.join(", ")}, and ${why}`)
+    add(Unverified, states, `the switch names ${states->Array.join(", ")}, and ${why}`)
   | _ => ()
   }
   switch cmd.targetState {
-  | Some(target) => add("unverified", [target], `the switch targets "${target}", and ${why}`)
+  | Some(target) => add(Unverified, [target], `the switch targets "${target}", and ${why}`)
   | None => ()
   }
 }
@@ -953,7 +983,7 @@ let compare = (
     | None if cmd.allowedStatesSource == Some("unrestricted") =>
       derived.refusedStates->Array.forEach(state =>
         add(
-          "contradicted",
+          Contradicted,
           [state],
           `the switch declares it legal in every state, and a scenario from "${state}" ` ++ `shows it refused`,
         )
@@ -961,7 +991,7 @@ let compare = (
     | None =>
       if Array.length(derived.allowedStates) > 0 {
         add(
-          "undeclared",
+          Undeclared,
           derived.allowedStates,
           `scenarios show it taking effect from ${derived.allowedStates->Array.join(
               ", ",
@@ -974,18 +1004,18 @@ let compare = (
           ()
         } else if derived.inertStates->Array.includes(state) {
           add(
-            "contradicted",
+            Contradicted,
             [state],
             `the switch names "${state}", and a scenario from "${state}" shows it ` ++ `refused or producing nothing`,
           )
         } else {
-          add("unverified", [state], `the switch names "${state}", and no scenario starts there`)
+          add(Unverified, [state], `the switch names "${state}", and no scenario starts there`)
         }
       )
       derived.allowedStates->Array.forEach(state =>
         if !(states->Array.includes(state)) {
           add(
-            "contradicted",
+            Contradicted,
             [state],
             `a scenario shows it taking effect from "${state}", which its declared ` ++
             `from-set (${states->Array.join(", ")}) excludes`,
@@ -994,7 +1024,7 @@ let compare = (
       )
       if Array.length(states) > 0 && Array.length(derived.allowedStates) == 0 {
         add(
-          "unverified",
+          Unverified,
           states,
           `the switch declares ${Array.length(
               states,
@@ -1006,11 +1036,11 @@ let compare = (
     switch (cmd.targetState, derived.targets) {
     | (None, _) => ()
     | (Some(target), []) =>
-      add("unverified", [target], `the switch targets "${target}", and no scenario shows an edge`)
+      add(Unverified, [target], `the switch targets "${target}", and no scenario shows an edge`)
     | (Some(target), observed) =>
       if !(observed->Array.includes(target)) {
         add(
-          "contradicted",
+          Contradicted,
           [target],
           `the switch targets "${target}", and scenarios land in ` ++
           `${observed->Array.join(", ")}`,
@@ -1019,7 +1049,7 @@ let compare = (
       observed->Array.forEach(state =>
         if state != target {
           add(
-            "contradicted",
+            Contradicted,
             [target, state],
             `the switch targets "${target}", and a scenario lands in "${state}" — ` ++ `the published targetState carries one state, so this edge cannot be expressed`,
           )
@@ -1027,12 +1057,14 @@ let compare = (
       )
     }
 
-    if derived.level != "" && cmd.level != "" && derived.level != cmd.level {
+    switch (derived.level, cmd.level) {
+    | (Some(scenarioLevel), Some(publishedLevel)) if scenarioLevel != publishedLevel =>
       add(
-        "level",
+        LevelMismatch,
         [],
-        `scenarios make it ${derived.level}-level; the published metadata says ${cmd.level}`,
+        `scenarios make it ${(scenarioLevel :> string)}-level; the published metadata says ${(publishedLevel :> string)}`,
       )
+    | _ => ()
     }
   }
 }
@@ -1163,7 +1195,7 @@ let runPlugin = async (
     ambiguities->Array.forEach(((view, message)) =>
       findings
       ->Array.push({
-        severity: "ambiguous",
+        severity: Ambiguous,
         plugin,
         component: view,
         command: "",
@@ -1256,6 +1288,13 @@ let byComponentThenCommand = (derived: array<derivedCommand>): array<derivedComm
     }
   )
 
+/** A derived level as the golden and the report print it: empty where absent. */
+let levelText = (level: option<Plugin.commandLevel>): string =>
+  switch level {
+  | Some(level) => (level :> string)
+  | None => ""
+  }
+
 let goldenJson = (derived: array<derivedCommand>): string => {
   let entries =
     derived
@@ -1265,7 +1304,7 @@ let goldenJson = (derived: array<derivedCommand>): string => {
         Dict.fromArray([
           ("component", JSON.Encode.string(d.component)),
           ("command", JSON.Encode.string(d.command)),
-          ("level", JSON.Encode.string(d.level)),
+          ("level", JSON.Encode.string(levelText(d.level))),
           ("allowedStates", JSON.Encode.array(d.allowedStates->Array.map(JSON.Encode.string))),
           ("targets", JSON.Encode.array(d.targets->Array.map(JSON.Encode.string))),
           ("scenarios", JSON.Encode.int(d.scenarios)),
@@ -1309,7 +1348,7 @@ let reportJson = (
 
   let findingJson = (f: finding) =>
     obj([
-      ("verdict", JSON.Encode.string(f.severity)),
+      ("verdict", JSON.Encode.string((f.severity :> string))),
       ("plugin", JSON.Encode.string(f.plugin)),
       ("component", JSON.Encode.string(f.component)),
       ("command", JSON.Encode.string(f.command)),
@@ -1322,7 +1361,7 @@ let reportJson = (
       ("plugin", JSON.Encode.string(plugin)),
       ("component", JSON.Encode.string(d.component)),
       ("command", JSON.Encode.string(d.command)),
-      ("level", JSON.Encode.string(d.level)),
+      ("level", JSON.Encode.string(levelText(d.level))),
       ("allowedStates", strs(d.allowedStates)),
       ("inertStates", strs(d.inertStates)),
       ("targets", strs(d.targets)),
@@ -1340,7 +1379,7 @@ let reportJson = (
 
   let shownOutcomeJson = (o: shownOutcome) =>
     obj([
-      ("kind", JSON.Encode.string(o.kind)),
+      ("kind", JSON.Encode.string((o.kind :> string))),
       ("names", strs(o.names)),
       ("scenarios", strs(o.scenarios)),
     ])
@@ -1396,7 +1435,7 @@ let formatted = (source: string): string =>
     absent one, and writing it out would make most of the file say nothing. */
 let modelSource = (~plugin: string, ~derived: array<derivedCommand>): string => {
   let saysSomething = (d: derivedCommand) =>
-    d.level != "" || Array.length(d.allowedStates) > 0 || Array.length(d.targets) > 0
+    Option.isSome(d.level) || Array.length(d.allowedStates) > 0 || Array.length(d.targets) > 0
   let quoted = (xs: array<string>) => "[" ++ xs->Array.map(s => `"${s}"`)->Array.join(", ") ++ "]"
   let entries =
     derived
@@ -1407,8 +1446,8 @@ let modelSource = (~plugin: string, ~derived: array<derivedCommand>): string => 
       // field, and a corpus that could not label this command's histories has
       // nothing to say about it.
       let level = switch d.level {
-      | "Collection" | "Instance" => `level: Reventless.Plugin.${d.level}, `
-      | _ => ""
+      | Some(level) => `level: Reventless.Plugin.${(level :> string)}, `
+      | None => ""
       }
       `  {component: "${d.component}", command: "${d.command}", ${level}` ++
       `allowedStates: ${quoted(d.allowedStates)}, targets: ${quoted(d.targets)}},`
@@ -1567,21 +1606,15 @@ let main = () =>
     }
 
     let of_ = severity => findings->Array.filter(f => f.severity == severity)
-    let contradicted = of_("contradicted")
+    let contradicted = of_(Contradicted)
 
     if json {
       Console.log(reportJson(~findings, ~opaque, ~derived=allDerived, ~outcomes, ~failures))
     } else {
-      [
-        "contradicted",
-        "unverified",
-        "undeclared",
-        "level",
-        "ambiguous",
-      ]->Array.forEach(severity => {
+      severities->Array.forEach(severity => {
         let group = of_(severity)
         if Array.length(group) > 0 {
-          Console.log(`\n${severity} (${Array.length(group)->Int.toString})`)
+          Console.log(`\n${(severity :> string)} (${Array.length(group)->Int.toString})`)
           group->Array.forEach(f => Console.log(`  ${f.message}`))
         }
       })
