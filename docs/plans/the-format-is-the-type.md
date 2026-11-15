@@ -1,0 +1,164 @@
+# Plan: the format is the type
+
+**Date:** 2026-11-15<br/>
+**Status:** 📝 Planned. Nothing built. [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
+comes first.<br/>
+**Nature:** types and readers, no new behaviour. [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
+and [TF2](#tf2-the-lifecycle-check-reads-the-sidecar-into-variants) leave every file and every
+wire word as it is. [TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names) and
+[TF4](#tf4-the-repositorys-own-reports-and-structures-derived) change formats this repository owns,
+writer and reader in the same release.<br/>
+**Touches:** `reventless/spec` (the lifecycle check, `ComponentKind`, `CapabilityNeed`,
+`Admission`, the plugin structure), `reventless/core` (`ComponentType`, `ResourceAttribution`),
+`packages/reventless-ppx` (the sidecar's step words), `reventless/gwt`, `reventless/local`,
+`reventless/infra`, `reventless/aws`, `traits/*`.
+
+## In plain words
+
+A closed set of words, such as a scenario step's kind or a finding's severity, is held in many
+places here as a `string`. Readers compare it with `== "event"`, and each set has a `toString`
+and an `ofString` written by hand, each listing the words again. A typo or a new word is found
+only at run time, and a `switch` on a string can't tell when a case is missing.
+
+The rule this plan applies:
+
+- **A format this repository owns:** the type is the format. `@schema` derives it, and
+  constructors and fields go on the wire by their own names. Nothing is written by hand, and
+  there is no `@as` to keep a lower-case word. The packages are in alpha, so an owned format
+  changes outright, writer and reader in one release.
+- **A format someone else fixes** (AWS, DynamoDB, Postgres, HTTP, GraphQL, ICU message syntax,
+  Jest's report, a JS API): a variant whose `@as` carries that exact text, converted at the edge.
+  A field named by a keyword (`end`, `with`) keeps its `@as`.
+- **Data a deployed app has stored** (event payloads, view rows, snapshots): left as written.
+  Renaming it would change data already in a store.
+- **A closed set held inside the code:** a regular variant, never a string, never a polymorphic
+  variant. It is converted to text only at the edge that fixes the text.
+
+## 1. What there is
+
+An audit on 2026-11-15 found two things.
+
+**`@as` annotations are almost all needed.** About 1000 lines carry `@as`, and some 95% name
+someone else's text: the AWS SDK and Pulumi bindings (about 800 lines), AWS payload types in
+`reventless/aws` (about 90), and the event names in node bindings (about 25). `reventless/core` and
+`reventless/gwt` have none. The few on formats this repository owns:
+
+| Where | Words | Verdict |
+|---|---|---|
+| `spec/src/components/InboundTranslationSlice.res` `webhookMethod` | `POST`, `PUT` | HTTP fixes them: keep ([TFQ4](#open-questions)) |
+| `aws/scripts/DeployManifest.res` | `stack-defaults`, `depends-on` | kebab-case keys of a file people write: [TFQ3](#open-questions) |
+| `spec/src/generator/Config.res` | `with` | a keyword: keep |
+| `local/tests/adapter/GraphQL_SchemaInspectorTest.res` `sourceKind` | `tagged`, `ancestry`, `substrate` | a test's own type: drop the `@as` |
+
+**Closed sets held as strings are the larger part.**
+
+| Where | Shape | Size |
+|---|---|---|
+| `spec/src/lifecycle/CheckLifecycleModel.res` | `whenKind`, `thenKind` (the sidecar's step kinds), `shownOutcome.kind` (`event`, `error`, `noEvent`, named only in a comment), `finding.severity` (five words, named only in a comment), `declaredCommand.level` and `scenario.level` (`Collection`, `Instance` or `""`, built into `Reventless.Plugin.${level}` as text). About 25 comparisons and switch arms | large |
+| `core/src/ComponentType.res` | `toString` and `ofString` of 27 arms each, and a second `toString` that writes `QueryDb` where the first writes `QueryDB` | medium |
+| `spec/src/components/ComponentKind.res`, `spec/src/semantic/CapabilityNeed.res`, `spec/src/types/Admission.res` (`doorOfName`, and `def.strategy: string`) | `toString` and `ofString` pairs written by hand | medium |
+| `ResourceAttribution`, `Visibility`, `ReadConsistency`, `Trait`, `Platform.viewModeToString`, `Plugin_Structure.labelFieldSourceToString`, `OutboundTranslation_GWT.statusToString`, `Platform_ComponentDefinitionsApi` | a small `toString` written by hand each | small |
+| `Plugin_BuiltHook.typeSchema.kind`, `Plugin.visibility`, `LocalPlatformRegistry.store.kind`, `BakeManifest.registration.state`, `MismatchRender.normalized.kind`, `Catalogue.element.kind`, `ScenarioRecorder.entry.kind` | a `string` field that only holds a fixed set | medium |
+| `LocalFeed.res`, `LocalPlatformObserve.res` | two parsers of log levels, one lower case and one upper case | small |
+| `MessageFormat.Typed.kind` | ICU's words (`plural`, `select`, …), compared 8 times | small: a variant with `@as` |
+| `traits/attachments`, `traits/notification`, `OutboundTranslation_GWT`, `AnsiStyle`, `AppLog`, `DcbEventLogStorage_Postgres_Ops`, the `PluginExtensionPoint_*` files | about 10 polymorphic variants | small |
+
+Left alone: words someone else fixes (AWS status words, HTTP methods in the local servers, GraphQL
+field names, content types by file extension) and `DateRange`'s `end`, which is both a keyword and
+stored in event payloads.
+
+## 2. Phases
+
+### TF1 Closed sets held as variants, no format change
+
+Every closed set in the second table becomes a regular variant, where it is still a string or a
+polymorphic variant. Every file and wire word stays as it is today.
+
+- A set that has a `toString`/`ofString` pair gets one list of its constructors, and both
+  directions are derived from it. While the text is still the old text, a word that differs from
+  its constructor's name keeps an `@as`. [TF4](#tf4-the-repositorys-own-reports-and-structures-derived)
+  removes those.
+- `ComponentType`'s two spellings of `QueryDB` are made one. Where each is read is found first,
+  because a folder or file name may hold one of them ([TFQ5](#open-questions)).
+- The two log-level parsers become one `logLevel` variant.
+- `MessageFormat`'s kinds become a variant with ICU's words as `@as`.
+- The polymorphic variants become regular variants with distinct constructor names.
+- A field that must still read a word written by a newer build (`Admission.def.strategy` says so
+  in its doc comment) becomes an `@unboxed` variant with an `Other…(string)` case. It keeps the
+  word it does not know and writes it back unchanged ([TFQ2](#open-questions)).
+
+Tests: each changed set reads and prints back its words unchanged, an unknown word included where
+there is an `Other` case.
+
+### TF2 The lifecycle check reads the sidecar into variants
+
+`CheckLifecycleModel` reads the sidecar's step kinds once, at the edge, into a step-kind variant,
+and switches on that variant from there on. `shownOutcome.kind`, `finding.severity` and the two
+`level` fields become variants too. `level` reuses `Plugin.level` (`Collection | Instance`) as an
+optional field, not `""`. The `Reventless.Plugin.${level}` text is printed from the variant.
+
+The sidecar's words don't change in this phase, and neither does the check's report.
+
+### TF3 The sidecar's step kinds take their constructor names
+
+The PPX writes each step kind by the step-kind variant's constructor name (`Event`, `NoEvent`,
+`SideEffect`, `NotUnderstood`, …), and `@schema` derives the reader. No `@as` is left on the
+step kind. The OCaml writer and the ReScript reader share one list of names, so a word added to
+one is found missing in the other by a test.
+
+A sidecar is a build output, written again by every build, so no stored copy has to be converted.
+Snapshots and goldens that hold sidecar text are written again. The PPX and `reventless/spec` are
+released together, and readers of the sidecar outside this repository change in that same release
+([TFQ1](#open-questions)).
+
+### TF4 The repository's own reports and structures, derived
+
+The formats this repository owns and writes for others to read take their type's names:
+
+- the lifecycle check's report (`severity` and the outcome kinds)
+- `typeSchema.kind`
+- `visibility`
+- the local registry's `store.kind`
+- the bake manifest's registration `state`
+- `ComponentType`'s and `CapabilityNeed`'s text
+
+Each is derived with `@schema`, and the `@as` that [TF1](#tf1-closed-sets-held-as-variants-no-format-change)
+kept for an old word goes. Before each format changes, its writers and readers are listed, and a
+format a deployed app has stored (a baked manifest, a plugin structure inside a deployment) is
+named and handled. Either it is written again on the next deploy, or it keeps its words with
+`@as`.
+
+### TF5 The few `@as` left on owned formats
+
+The test's `sourceKind` drops its `@as`. The deploy manifest's keys follow
+[TFQ3](#open-questions), and the webhook method follows [TFQ4](#open-questions).
+
+## Open questions
+
+**TFQ1.** *Do the sidecar's step words change, or does a variant read today's lower-case words
+with `@as`?* The words are written by the PPX and read by the lifecycle check and by tools
+outside this repository. **Recommendation:** change them, in
+[TF3](#tf3-the-sidecars-step-kinds-take-their-constructor-names). The sidecar is rebuilt on every
+build, so no data has to be converted, and with the change a step kind's name is the same
+everywhere. The cost is one coordinated release of the PPX and `reventless/spec`. After it, a
+project still on the old PPX writes words the new reader doesn't know, so the reader's `Other`
+case has to name the PPX version to update to.
+
+**TFQ2.** *Does a structure field keep `string` so an older reader decodes a newer structure?*
+`Admission.def.strategy` does so on purpose. **Recommendation:** an `@unboxed` variant with an
+`OtherStrategy(string)` case. It decodes any word, keeps the one it doesn't know, and every reader
+still switches on a variant. The tolerance stays, and the strings go.
+
+**TFQ3.** *Do the deploy manifest's kebab-case keys (`stack-defaults`, `depends-on`) become
+camelCase so the type can name them?* **Recommendation:** keep them with `@as`. People write this
+file by hand, and kebab-case is the convention of the YAML it sits beside. The type is still the
+format; only these two keys are spelled for the file.
+
+**TFQ4.** *Does `webhookMethod` write `Post`/`Put`?* **Recommendation:** no. The word is an HTTP
+method, which HTTP fixes in upper case, so `@as("POST")` stays.
+
+**TFQ5.** *Which spelling does `ComponentType`'s `QueryDb` keep?* One `toString` writes `QueryDB`
+and another `QueryDb`. **Recommendation:** find where each spelling is read at the start of
+[TF1](#tf1-closed-sets-held-as-variants-no-format-change). Then name the constructor by the
+spelling that is stored or used as a folder name (`QueryDB` is a valid constructor name), so the
+text and the name are the same and both functions are derived.
