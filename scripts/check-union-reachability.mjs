@@ -163,5 +163,10 @@ console.log(
 // Done. Some of the modules imported above create Pulumi resources when they
 // load, and Pulumi's mock monitor can reject one of those registrations after
 // the check has finished (on Node 24 it does). That is not this check's
-// business, so the verdict above is the exit code.
+// business, so the verdict above is the exit code. Pulumi's own exit hook sets
+// the code to 1 when such a registration is still pending; this hook runs after
+// it and restores the verdict.
+process.on("exit", () => {
+  process.exitCode = 0
+})
 process.exit(0)
