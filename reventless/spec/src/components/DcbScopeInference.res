@@ -139,6 +139,19 @@ let keysOfEvent = (e: eventShape): array<string> => e.idFields->Array.map(tagKey
 let producedKeys = (s: sliceShape): array<string> =>
   dedupSorted(s.produced->Array.flatMap(keysOfEvent))
 
+/**
+The keys every id-carrying event the slice writes carries: the only keys that can
+be its partition. A key one of its events lacks cannot tag that event, so the
+slice could not read its own history back by it (a question's `QuestionReopened`
+has no `replyId`, though its `AnswerMarked` does).
+*/
+let sharedProducedKeys = (s: sliceShape): array<string> =>
+  switch s.produced->Array.filter(e => e.idFields->Array.length > 0) {
+  | [] => []
+  | events =>
+    producedKeys(s)->Array.filter(k => events->Array.every(e => e->keysOfEvent->Array.includes(k)))
+  }
+
 let consumedKeys = (s: sliceShape): array<string> =>
   dedupSorted(s.consumed->Array.flatMap(keysOfEvent))
 
@@ -222,7 +235,8 @@ Rule 1 over a whole boundary.
 
 1. **Seeds.** A slice whose events carry a single key is partitioned by it, whatever
    it reads; an explicit `@partitionTag` naming a produced key is a seed too.
-2. **Subtraction.** Otherwise, `producedKeys − foreignConsumedKeys`. One key left
+2. **Subtraction.** Otherwise, `sharedProducedKeys − foreignConsumedKeys`: only a key
+   every event the slice writes carries can be its partition. One key left
    is the partition; several go to the chapter (4), then to `@partitionTag`.
 3. **Give-back.** Only when the subtraction leaves nothing: a key comes back when
    every foreign arm carrying it is produced by a slice partitioned by that key.
@@ -320,9 +334,11 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
     | _ => None
     }
   }
+  // Subtraction and give-back choose only among the keys every written event
+  // carries (`sharedProducedKeys`); seeds stay as they are.
   let subtracted = (s: sliceShape) => {
     let foreign = foreignConsumedKeys(s)
-    producedKeys(s)->Array.filter(k => !(foreign->Array.includes(k)))
+    sharedProducedKeys(s)->Array.filter(k => !(foreign->Array.includes(k)))
   }
   let candidatesOf = (s: sliceShape, known) =>
     switch seedOf(s) {
@@ -331,7 +347,7 @@ let resolvePartitions = (slices: array<sliceShape>): partitionResolution => {
       switch subtracted(s) {
       | [] =>
         let blocked = s->blockersOf(known)->Array.map(((k, _)) => k)
-        s->byChapter(producedKeys(s)->Array.filter(k => !(blocked->Array.includes(k))))
+        s->byChapter(sharedProducedKeys(s)->Array.filter(k => !(blocked->Array.includes(k))))
       | remaining => s->byChapter(remaining)
       }
     }

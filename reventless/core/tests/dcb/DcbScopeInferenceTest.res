@@ -602,6 +602,72 @@ describe("DcbScopeInference:", () => {
         expect(issues.contradictions->names)->toEqual(["ShipOrder"])
       },
     )
+
+    // A question's answer is kept per message. `AnswerMarked` names the reply, but
+    // `QuestionReopened` does not, so the reply cannot be the partition — though
+    // `ReplyPosted` comes from a slice partitioned by it, which once gave it back.
+    let postMessage = slice(
+      "PostMessage",
+      ~chapter="Messages",
+      ~produced=[ev("MessagePosted", [scal("messageId"), scal("channelId")])],
+      ~partitionHint="messageId",
+    )
+    let postReply = slice(
+      "PostReply",
+      ~chapter="Messages",
+      ~consumed=[ev("MessagePosted", [scal("messageId"), scal("channelId")])],
+      ~produced=[ev("ReplyPosted", [scal("replyId"), scal("messageId"), scal("channelId")])],
+    )
+    let questionState = slice(
+      "QuestionState",
+      ~chapter="Questions",
+      ~partitionHint="messageId",
+      ~consumed=[
+        ev("AnswerMarked", [scal("messageId"), scal("replyId"), scal("channelId")]),
+        ev("QuestionReopened", [scal("messageId"), scal("channelId")]),
+        ev("MessagePosted", [scal("messageId"), scal("channelId")]),
+        ev("ReplyPosted", [scal("replyId"), scal("messageId"), scal("channelId")]),
+      ],
+      ~produced=[
+        ev("AnswerMarked", [scal("messageId"), scal("replyId"), scal("channelId")]),
+        ev("QuestionReopened", [scal("messageId"), scal("channelId")]),
+      ],
+    )
+    let questions = [postMessage, postReply, questionState]
+
+    testSync(
+      "inference never picks a key one of the slice's own events lacks",
+      () => {
+        let unhinted = {...questionState, partitionHint: None}
+        let r = DSI.resolvePartitions([postMessage, postReply, unhinted])
+        expect(r.partitionBySlice->Dict.get("QuestionState"))->toEqual(None)
+        expect(r.candidatesBySlice->Dict.get("QuestionState"))->toEqual(Some([]))
+      },
+    )
+
+    testSync(
+      "a hint deciding a slice inference leaves unresolved is accepted",
+      () => {
+        let issues = check(questions)
+        expect(issues.contradictions)->toEqual([])
+        expect(issues.redundancies)->toEqual([])
+        expect(
+          DSI.resolvePartitions(questions).partitionBySlice->Dict.get("QuestionState"),
+        )->toEqual(Some("messageId"))
+      },
+    )
+
+    testSync(
+      "a hint naming a key one of the slice's events lacks is still a contradiction",
+      () => {
+        let issues = check([
+          postMessage,
+          postReply,
+          {...questionState, partitionHint: Some("replyId")},
+        ])
+        expect(issues.contradictions->names)->toEqual(["QuestionState"])
+      },
+    )
   })
 
   describe("ambiguity surfacing", () => {

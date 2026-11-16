@@ -606,7 +606,12 @@ let validatePartitionHintsVsInference = (
           })
         | None =>
           let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
-          if candidates->Array.includes(hint) {
+          // No candidate at all: inference has no answer for the hint to contradict,
+          // and its ambiguity asks for exactly this annotation. The hint still has to
+          // name a key every event the slice writes carries.
+          let decidesUnresolved =
+            candidates == [] && DcbScopeInference.sharedProducedKeys(s)->Array.includes(hint)
+          if candidates->Array.includes(hint) || decidesUnresolved {
             ()
           } else if backedByChapter(s, hint, candidates, unaided.partitionBySlice) {
             overridden(s, hint, `candidates: ${candidates->Array.join(", ")}`)

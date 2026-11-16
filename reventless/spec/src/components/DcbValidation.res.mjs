@@ -521,7 +521,8 @@ function validatePartitionHintsVsInference(shapes) {
       }
     }
     let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
-    if (candidates.includes(hint)) {
+    let decidesUnresolved = Primitive_object.equal(candidates, []) && DcbScopeInference$Reventless.sharedProducedKeys(s).includes(hint);
+    if (candidates.includes(hint) || decidesUnresolved) {
       return;
     } else if (backedByChapter(s, hint, candidates, unaided.partitionBySlice)) {
       return overridden(s, hint, `candidates: ` + candidates.join(", "));

@@ -31,6 +31,15 @@ function producedKeys(s) {
   return dedupSorted(s.produced.flatMap(keysOfEvent));
 }
 
+function sharedProducedKeys(s) {
+  let events = s.produced.filter(e => e.idFields.length !== 0);
+  if (events.length !== 0) {
+    return producedKeys(s).filter(k => events.every(e => e.idFields.map(tagKeyOf).includes(k)));
+  } else {
+    return [];
+  }
+}
+
 function consumedKeys(s) {
   return dedupSorted(s.consumed.flatMap(keysOfEvent));
 }
@@ -160,7 +169,7 @@ function resolvePartitions(slices) {
   };
   let subtracted = s => {
     let foreign = foreignConsumedKeys(s);
-    return producedKeys(s).filter(k => !foreign.includes(k));
+    return sharedProducedKeys(s).filter(k => !foreign.includes(k));
   };
   let candidatesOf = (s, known) => {
     let k = seedOf(s);
@@ -172,7 +181,7 @@ function resolvePartitions(slices) {
       return byChapter(s, remaining);
     }
     let blocked = blockersOf(s, known).map(param => param[0]);
-    return byChapter(s, producedKeys(s).filter(k => !blocked.includes(k)));
+    return byChapter(s, sharedProducedKeys(s).filter(k => !blocked.includes(k)));
   };
   let pass = known => {
     let next = {};
@@ -361,6 +370,7 @@ export {
   dedupSorted,
   keysOfEvent,
   producedKeys,
+  sharedProducedKeys,
   consumedKeys,
   commandScalarKeys,
   foreignConsumedKeys,
