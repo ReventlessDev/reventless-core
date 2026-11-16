@@ -74,6 +74,20 @@ describe("Catalogue.entries", () => {
     )
   )
 
+  testSync("names a state change slice that its command does not name", () => {
+    let checkout = {...orders, name: "Checkout"}
+    let keys =
+      Catalogue.entries(~plugin="Ordering", {...structure, stateChangeSlices: [checkout]})
+      ->Array.filter(e => e.key->String.endsWith(".name"))
+      ->Array.map(e => (e.key, e.text))
+    expect(keys)->toEqual([
+      ("Ordering.CancelOrder.name", "Cancel Order"),
+      ("Ordering.Checkout.name", "Checkout"),
+      ("Ordering.Customers.name", "Customer"),
+      ("Ordering.plugin.name", "Ordering"),
+    ])
+  })
+
   testSync("keys are sorted, so a file written from them is stable", () =>
     expect(generated->Array.map(e => e.key))->toEqual(
       generated->Array.map(e => e.key)->Array.toSorted(String.compare),

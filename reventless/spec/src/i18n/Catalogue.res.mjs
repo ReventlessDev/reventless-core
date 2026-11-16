@@ -375,6 +375,7 @@ function entries(plugin, structure) {
       _0: error.name
     }, sentence(error.name)));
   });
+  structure.stateChangeSlices.forEach(slice => add(slice.name, "NameText", humanizeKey(slice.name)));
   out.push({
     key: plugin + `.plugin.name`,
     text: humanizeKey(plugin),

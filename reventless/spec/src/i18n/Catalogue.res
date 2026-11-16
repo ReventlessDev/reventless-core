@@ -13,6 +13,7 @@ identifier, so every reader (the screens, a translator, a glossary) addresses th
 | `Ordering.Customers.field.email` | Email | a top-level field of the view |
 | `Ordering.Customers.state.Deactivated` | Deactivated | a value of its lifecycle field |
 | `Ordering.PlaceOrder.name` | Place Order | a command |
+| `Ordering.Checkout.name` | Checkout | a state change slice, as its command panel is headed |
 | `Ordering.PlaceOrder.field.orderId` | Order ID | a field of the command |
 | `Ordering.CancelOrder.error.OrderAlreadyShipped` | Order already shipped | a write side's refusal |
 | `Ordering.role.Merchandiser` | Merchandiser | a role |
@@ -300,6 +301,10 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
       add(~identifier=writeSide.name, ~kind=ErrorText(error.name), sentence(error.name))
     )
   })
+  // A state change slice heads its own command panel; one named as its command shares the key.
+  structure.stateChangeSlices->Array.forEach(slice =>
+    add(~identifier=slice.name, ~kind=NameText, humanizeKey(slice.name))
+  )
 
   // The plugin itself, as a menu groups its pages under it.
   out->Array.push({
