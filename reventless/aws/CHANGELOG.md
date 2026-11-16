@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.434 (2026-11-16)
+
+### Bug Fixes
+
+* **aws:** a new plugin stack's preview no longer waits for the DCB command Lambda ([175f61b](https://github.com/ReventlessDev/reventless-core/commit/175f61b6b5a5f9c81de28de1c238ed5231a95a80))
+
+
 # 3.0.0-alpha.433 (2026-11-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

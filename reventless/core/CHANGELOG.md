@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.340 (2026-11-16)
+
+### Bug Fixes
+
+* **aws:** a new plugin stack's preview no longer waits for the DCB command Lambda ([175f61b](https://github.com/ReventlessDev/reventless-core/commit/175f61b6b5a5f9c81de28de1c238ed5231a95a80))
+* **dcb:** a partition is a key every event the slice writes carries ([5dae458](https://github.com/ReventlessDev/reventless-core/commit/5dae458443e9dafc119a941962194e315b3c051e))
+* **dcb:** no composite-read warning for a query that fans out ([67b38e5](https://github.com/ReventlessDev/reventless-core/commit/67b38e51c8d6156f52ab5f969987bf2393c573d6))
+
+
 # 3.0.0-alpha.339 (2026-11-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
