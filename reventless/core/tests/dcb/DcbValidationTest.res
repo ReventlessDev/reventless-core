@@ -372,6 +372,27 @@ describe("DcbValidation:", () => {
     )
 
     testSync(
+      "ignores a command with a cross-partition key (single-tag clauses, not composite)",
+      () => {
+        let slices = [("RecordDemand", recordDemandCommandSchema->u, demandConsumedSchema->u)]
+        let fanned = Reventless.DcbValidation.validateCompositeReads(
+          ~slices,
+          ~producedTagKeys,
+          ~crossPartitionTagKeys=["orderId"],
+        )
+        expect(fanned)->toEqual([])
+        // and the query the check now trusts is indeed single-tag clauses
+        let query = Reventless.DcbTag.buildQueryFromCommand(
+          ~eventTypes=["ProductDemandRevoked"],
+          ~schema=recordDemandCommandSchema,
+          ~value=RecordDemand({productId: "p1", orderId: "o1"}),
+          ~crossPartitionTagKeys=["orderId"],
+        )
+        expect(query->Array.every(qi => qi.tags->Option.mapOr(0, Array.length) == 1))->toBe(true)
+      },
+    )
+
+    testSync(
       "no warnings when nothing reads compositely",
       () => {
         expect(check([]))->toEqual([])

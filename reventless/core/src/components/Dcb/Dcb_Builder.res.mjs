@@ -239,7 +239,7 @@ function Make(DcbEventLogStorage) {
       ]), tagKeysByEventType, Object.fromEntries(sliceSchemas.map(slice => [
         slice.name,
         DcbTag$Reventless.commandPayloadTagKeys(DcbTag$Reventless.sliceShape(slice), DcbTag$Reventless.slicePartitionTag(boundaryPartition, slice.name), effectiveCrossPartitionTagKeys)
-      ]))).forEach(w => log.warn("Dcb_Builder", undefined, `DCB composite-read warning (` + w.sliceName + `): ` + w.message));
+      ])), effectiveCrossPartitionTagKeys).forEach(w => log.warn("Dcb_Builder", undefined, `DCB composite-read warning (` + w.sliceName + `): ` + w.message));
       if (effective.droppedCrossPartitionTagKeys.length !== 0) {
         log.error("Dcb_Builder", undefined, `DCB scope degraded (` + name + `): cross-partition reads of [` + effective.droppedCrossPartitionTagKeys.join(", ") + `] were derived but dropped — an ambiguous slice forced the boundary onto @crossPartition annotations that do not carry them. Slices referencing another entity by these keys will decide against an empty history and reject valid commands. Resolve: ` + effective.ambiguities.map(param => param[0] + ` (` + param[1] + `)`).join(" | "));
       }

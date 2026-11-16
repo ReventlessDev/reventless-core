@@ -396,6 +396,7 @@ module Make = (
           Sc.Spec.consumedEventSchema->S.castToUnknown,
         )),
         ~producedTagKeys=tagKeysByEventType,
+        ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
         ~payloadTagKeysBySlice=sliceSchemas
         ->Array.map(slice => (
           slice.name,

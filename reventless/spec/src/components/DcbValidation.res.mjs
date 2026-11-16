@@ -191,8 +191,9 @@ function dedupeKeys(keys) {
   });
 }
 
-function validateCompositeReads(slices, producedTagKeys, payloadTagKeysBySliceOpt) {
+function validateCompositeReads(slices, producedTagKeys, payloadTagKeysBySliceOpt, crossPartitionTagKeysOpt) {
   let payloadTagKeysBySlice = payloadTagKeysBySliceOpt !== undefined ? payloadTagKeysBySliceOpt : ({});
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let warnings = [];
   slices.forEach(param => {
     let commandSchema = param[1];
@@ -205,7 +206,8 @@ function validateCompositeReads(slices, producedTagKeys, payloadTagKeysBySliceOp
     let payload = Stdlib_Option.getOr(payloadTagKeysBySlice[sliceName], []);
     Object.values(commandTagKeysByVariant).forEach(cmdKeys => {
       let querySet = dedupeKeys(cmdKeys).filter(k => !payload.includes(k));
-      if (querySet.length >= 2) {
+      let fansOut = querySet.some(k => crossPartitionTagKeys.includes(k));
+      if (querySet.length >= 2 && !fansOut) {
         consumedTypes.forEach(consumedType => {
           let producedKeys = producedTagKeys[consumedType];
           if (producedKeys === undefined) {

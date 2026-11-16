@@ -165,18 +165,23 @@ later added to a multi-tag event without updating the reading slice.
 
 Only all-scalar multi-tag commands build composite reads: a command carrying a
 tagged array reads via per-element OR (single-tag) clauses, which cannot hit the
-exact-match trap. Returns one `validationError` (warning) per offending
+exact-match trap. Neither does a query with a cross-partition key among its
+tags: `DcbTag.buildQueryFromCommand` then gives every tag its own single-tag
+clause. Returns one `validationError` (warning) per offending
 (slice, consumed type) pair.
 
 @param slices `(sliceName, commandSchema, consumedEventSchema)` per consumer.
 @param producedTagKeys event type → its produced tag-key set (from the event-log schema).
 @param payloadTagKeysBySlice slice → the command keys its query leaves out
 (`DcbTag.commandPayloadTagKeys`), which take no part in a composite read.
+@param crossPartitionTagKeys the boundary's cross-partition keys, the same list the
+decision query is built with.
 */
 let validateCompositeReads = (
   ~slices: array<(string, S.t<unknown>, S.t<unknown>)>,
   ~producedTagKeys: dict<array<string>>,
   ~payloadTagKeysBySlice: dict<array<string>>=Dict.make(),
+  ~crossPartitionTagKeys: array<string>=[],
 ): array<validationError> => {
   let warnings: array<validationError> = []
   slices->Array.forEach(((sliceName, commandSchema, consumedSchema)) =>
@@ -188,7 +193,8 @@ let validateCompositeReads = (
       ->Dict.valuesToArray
       ->Array.forEach(cmdKeys => {
         let querySet = dedupeKeys(cmdKeys)->Array.filter(k => !(payload->Array.includes(k)))
-        if querySet->Array.length >= 2 {
+        let fansOut = querySet->Array.some(k => crossPartitionTagKeys->Array.includes(k))
+        if querySet->Array.length >= 2 && !fansOut {
           consumedTypes->Array.forEach(
             consumedType =>
               switch producedTagKeys->Dict.get(consumedType) {
