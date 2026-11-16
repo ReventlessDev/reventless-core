@@ -163,12 +163,15 @@ describe("Catalogue element kinds", () => {
       "count",
       "field.email",
       "state.Deactivated",
+      "value.tier.Gold",
+      "value.version.v1.2",
       "error.OrderAlreadyPlaced",
       "plugin",
       "role",
       "field.a.b",
       "summary",
       "note.x",
+      "value.tier",
       "",
     ]
     let kinds = texts->Array.map(Catalogue.elementKindOfText)
@@ -178,12 +181,15 @@ describe("Catalogue element kinds", () => {
       CountText,
       FieldText("email"),
       StateText("Deactivated"),
+      ValueText({field: "tier", value: "Gold"}),
+      ValueText({field: "version", value: "v1.2"}),
       ErrorText("OrderAlreadyPlaced"),
       PluginText,
       RoleText,
       FieldText("a.b"),
       OtherElementText("summary"),
       OtherElementText("note.x"),
+      OtherElementText("value.tier"),
       OtherElementText(""),
     ])
     expect(kinds->Array.map(Catalogue.elementKindText))->toEqual(texts)

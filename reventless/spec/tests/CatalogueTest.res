@@ -88,6 +88,61 @@ describe("Catalogue.entries", () => {
     ])
   })
 
+  testSync(
+    "names the values of an enum field other than the lifecycle, on a view and a command",
+    () => {
+      let tiered = {
+        ...customers,
+        schema: `{"type": "object", "properties": {
+        "tier": {"type": "string", "enum": ["Gold", "SilverPlus"]},
+        "accountStatus": {"type": "string", "enum": ["Active"]}
+      }}`,
+      }
+      let ship = {
+        ...orders,
+        commands: [
+          {
+            ...orders.commands->Array.getUnsafe(0),
+            schema: `{"type": "object", "properties": {"mode": {"oneOf": [{"const": "Express"}]}}}`,
+          },
+        ],
+      }
+      let values =
+        Catalogue.entries(
+          ~plugin="Ordering",
+          {...structure, readModels: [tiered], stateChangeSlices: [ship]},
+        )
+        ->Array.filter(e => e.key->String.includes(".value."))
+        ->Array.map(e => (e.key, e.text))
+      expect(values)->toEqual([
+        ("Ordering.CancelOrder.value.mode.Express", "Express"),
+        ("Ordering.Customers.value.tier.Gold", "Gold"),
+        ("Ordering.Customers.value.tier.SilverPlus", "Silver Plus"),
+      ])
+    },
+  )
+
+  testSync("names a field inside a record or a list of records by its path", () => {
+    let withLines = {
+      ...customers,
+      schema: `{"type": "object", "properties": {
+        "address": {"type": "object", "properties": {"postCode": {"type": "string"}}},
+        "lines": {"type": "array", "items": {"type": "object", "properties": {"unitPrice": {"type": "integer"}}}}
+      }}`,
+      lifecycleField: ?None,
+    }
+    let fields =
+      Catalogue.entries(~plugin="Ordering", {...structure, readModels: [withLines]})
+      ->Array.filter(e => e.key->String.startsWith("Ordering.Customers.field."))
+      ->Array.map(e => (e.key, e.text))
+    expect(fields)->toEqual([
+      ("Ordering.Customers.field.address", "Address"),
+      ("Ordering.Customers.field.address.postCode", "Post Code"),
+      ("Ordering.Customers.field.lines", "Lines"),
+      ("Ordering.Customers.field.lines.unitPrice", "Unit Price"),
+    ])
+  })
+
   testSync("keys are sorted, so a file written from them is stable", () =>
     expect(generated->Array.map(e => e.key))->toEqual(
       generated->Array.map(e => e.key)->Array.toSorted(String.compare),

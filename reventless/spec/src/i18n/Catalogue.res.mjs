@@ -217,6 +217,8 @@ function elementKindText(kind) {
         return `field.` + kind._0;
       case "StateText" :
         return `state.` + kind._0;
+      case "ValueText" :
+        return `value.` + kind.field + `.` + kind.value;
       case "ErrorText" :
         return `error.` + kind._0;
       case "OtherElementText" :
@@ -263,6 +265,20 @@ function elementKindOfText(text) {
             TAG: "StateText",
             _0: rest
           };
+        case "value" :
+          let dot$1 = rest.indexOf(".");
+          if (dot$1 !== -1) {
+            return {
+              TAG: "ValueText",
+              field: rest.slice(0, dot$1),
+              value: rest.slice(dot$1 + 1 | 0)
+            };
+          } else {
+            return {
+              TAG: "OtherElementText",
+              _0: text
+            };
+          }
         default:
           return {
             TAG: "OtherElementText",
@@ -288,6 +304,39 @@ function propertiesOf(schema) {
       o
     ]);
   }));
+}
+
+function leafOf(path) {
+  return Stdlib_Option.getOr(path.split(".").at(-1), path);
+}
+
+function innerProperties(property) {
+  let props = o => Stdlib_Option.mapOr(Stdlib_Option.flatMap(o["properties"], Stdlib_JSON.Decode.object), [], props => Stdlib_Array.filterMap(Object.entries(props), param => {
+    let k = param[0];
+    return Stdlib_Option.map(Stdlib_JSON.Decode.object(param[1]), o => [
+      k,
+      o
+    ]);
+  }));
+  let inner = props(property);
+  if (inner.length !== 0) {
+    return inner;
+  } else {
+    return Stdlib_Option.mapOr(Stdlib_Option.flatMap(property["items"], Stdlib_JSON.Decode.object), [], props);
+  }
+}
+
+function fieldPaths(properties) {
+  let walk = (prefix, props, depth) => props.flatMap(param => {
+    let property = param[1];
+    let key = param[0];
+    let path = prefix === "" ? key : prefix + `.` + key;
+    return [[
+        path,
+        property
+      ]].concat(depth >= 3 ? [] : walk(path, innerProperties(property), depth + 1 | 0));
+  });
+  return walk("", properties, 1);
 }
 
 function enumValues(property) {
@@ -345,12 +394,23 @@ function entries(plugin, structure) {
     add(view.name, "PluralText", humanizeKey(plural));
     add(view.name, "CountText", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(plural) + `}}`);
     let properties = propertiesOf(view.schema);
-    properties.forEach(param => {
-      let field = param[0];
+    fieldPaths(properties).forEach(param => {
+      let path = param[0];
       add(view.name, {
         TAG: "FieldText",
-        _0: field
-      }, humanizeKey(field));
+        _0: path
+      }, humanizeKey(leafOf(path)));
+    });
+    properties.forEach(param => {
+      let field = param[0];
+      if (Primitive_object.notequal(view.lifecycleField, field)) {
+        enumValues(param[1]).forEach(value => add(view.name, {
+          TAG: "ValueText",
+          field: field,
+          value: value
+        }, humanizeKey(value)));
+        return;
+      }
     });
     Stdlib_Option.forEach(Stdlib_Option.flatMap(view.lifecycleField, field => properties.find(param => param[0] === field)), param => {
       enumValues(param[1]).forEach(value => add(view.name, {
@@ -362,12 +422,21 @@ function entries(plugin, structure) {
   structure.stateChangeSlices.concat(structure.aggregates).forEach(writeSide => {
     writeSide.commands.forEach(command => {
       add(command.name, "NameText", humanizeKey(command.name));
-      propertiesOf(command.schema).forEach(param => {
-        let field = param[0];
+      let properties = propertiesOf(command.schema);
+      fieldPaths(properties).forEach(param => {
+        let path = param[0];
         add(command.name, {
           TAG: "FieldText",
-          _0: field
-        }, humanizeKey(field));
+          _0: path
+        }, humanizeKey(leafOf(path)));
+      });
+      properties.forEach(param => {
+        let field = param[0];
+        enumValues(param[1]).forEach(value => add(command.name, {
+          TAG: "ValueText",
+          field: field,
+          value: value
+        }, humanizeKey(value)));
       });
     });
     writeSide.errors.forEach(error => add(writeSide.name, {
@@ -560,6 +629,9 @@ export {
   elementKindOfText,
   schemaOf,
   propertiesOf,
+  leafOf,
+  innerProperties,
+  fieldPaths,
   enumValues,
   unprefixed,
   pluginNameOf,

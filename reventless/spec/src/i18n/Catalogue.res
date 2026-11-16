@@ -10,8 +10,10 @@ identifier, so every reader (the screens, a translator, a glossary) addresses th
 | `Ordering.Customers.name` | Customer | a view, singular (its `singleQueryField`) |
 | `Ordering.Customers.plural` | Customers | the view's own name, or its `@plural` |
 | `Ordering.Customers.count` | `{count, plural, one {# customer} other {# customers}}` | the two |
-| `Ordering.Customers.field.email` | Email | a top-level field of the view |
+| `Ordering.Customers.field.email` | Email | a field of the view |
+| `Ordering.Orders.field.lines.quantity` | Quantity | a field inside a record or a list of them, by its path |
 | `Ordering.Customers.state.Deactivated` | Deactivated | a value of its lifecycle field |
+| `Ordering.Customers.value.tier.Gold` | Gold | a value of any other enum field of a view or a command |
 | `Ordering.PlaceOrder.name` | Place Order | a command |
 | `Ordering.Checkout.name` | Checkout | a state change slice, as its command panel is headed |
 | `Ordering.PlaceOrder.field.orderId` | Order ID | a field of the command |
@@ -147,6 +149,7 @@ type elementKind =
   | CountText
   | FieldText(string)
   | StateText(string)
+  | ValueText({field: string, value: string})
   | ErrorText(string)
   | PluginText
   | RoleText
@@ -160,6 +163,7 @@ let elementKindText = (kind: elementKind): string =>
   | CountText => "count"
   | FieldText(field) => `field.${field}`
   | StateText(value) => `state.${value}`
+  | ValueText({field, value}) => `value.${field}.${value}`
   | ErrorText(error) => `error.${error}`
   | PluginText => "plugin"
   | RoleText => "role"
@@ -182,6 +186,16 @@ let elementKindOfText = (text: string): elementKind =>
       switch text->String.slice(~start=0, ~end=dot) {
       | "field" => FieldText(rest)
       | "state" => StateText(rest)
+      // A top-level field, so its name holds no dot; the value after it may.
+      | "value" =>
+        switch rest->String.indexOf(".") {
+        | -1 => OtherElementText(text)
+        | dot =>
+          ValueText({
+            field: rest->String.slice(~start=0, ~end=dot),
+            value: rest->String.slice(~start=dot + 1),
+          })
+        }
       | "error" => ErrorText(rest)
       | _ => OtherElementText(text)
       }
@@ -208,6 +222,40 @@ let propertiesOf = (schema: string): array<(string, dict<JSON.t>)> =>
     ->Dict.toArray
     ->Array.filterMap(((k, v)) => v->JSON.Decode.object->Option.map(o => (k, o)))
   )
+
+/** A path's last field: `lines.quantity` → `quantity`. */
+let leafOf = (path: string): string => path->String.split(".")->Array.at(-1)->Option.getOr(path)
+
+/** The fields inside a property: an object's, or those of a list's records. */
+let innerProperties = (property: dict<JSON.t>): array<(string, dict<JSON.t>)> => {
+  let props = (o: dict<JSON.t>) =>
+    o
+    ->Dict.get("properties")
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.mapOr([], props =>
+      props
+      ->Dict.toArray
+      ->Array.filterMap(((k, v)) => v->JSON.Decode.object->Option.map(o => (k, o)))
+    )
+  switch props(property) {
+  | [] => property->Dict.get("items")->Option.flatMap(JSON.Decode.object)->Option.mapOr([], props)
+  | inner => inner
+  }
+}
+
+/** Every field a person reads a label for, by its path: the top-level ones, then those inside
+    records and lists of records (`lines.quantity`), a few levels deep. */
+let fieldPaths = (properties: array<(string, dict<JSON.t>)>): array<(string, dict<JSON.t>)> => {
+  let rec walk = (prefix, props, depth) =>
+    props->Array.flatMap(((key, property)) => {
+      let path = prefix == "" ? key : `${prefix}.${key}`
+      Array.concat(
+        [(path, property)],
+        depth >= 3 ? [] : walk(path, innerProperties(property), depth + 1),
+      )
+    })
+  walk("", properties, 1)
+}
 
 /** The values an enum field declares: `enum`, or `oneOf` of `const`s. */
 let enumValues = (property: dict<JSON.t>): array<string> =>
@@ -278,8 +326,15 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
       `{count, plural, one {# ${inSentence(singular)}} other {# ${inSentence(plural)}}}`,
     )
     let properties = propertiesOf(view.schema)
-    properties->Array.forEach(((field, _)) =>
-      add(~identifier=view.name, ~kind=FieldText(field), humanizeKey(field))
+    fieldPaths(properties)->Array.forEach(((path, _)) =>
+      add(~identifier=view.name, ~kind=FieldText(path), humanizeKey(leafOf(path)))
+    )
+    properties->Array.forEach(((field, property)) =>
+      if view.lifecycleField != Some(field) {
+        enumValues(property)->Array.forEach(
+          value => add(~identifier=view.name, ~kind=ValueText({field, value}), humanizeKey(value)),
+        )
+      }
     )
     view.lifecycleField
     ->Option.flatMap(field => properties->Array.find(((k, _)) => k == field))
@@ -293,8 +348,17 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
   Array.concat(structure.stateChangeSlices, structure.aggregates)->Array.forEach(writeSide => {
     writeSide.commands->Array.forEach(command => {
       add(~identifier=command.name, ~kind=NameText, humanizeKey(command.name))
-      propertiesOf(command.schema)->Array.forEach(
-        ((field, _)) => add(~identifier=command.name, ~kind=FieldText(field), humanizeKey(field)),
+      let properties = propertiesOf(command.schema)
+      fieldPaths(properties)->Array.forEach(
+        ((path, _)) =>
+          add(~identifier=command.name, ~kind=FieldText(path), humanizeKey(leafOf(path))),
+      )
+      properties->Array.forEach(
+        ((field, property)) =>
+          enumValues(property)->Array.forEach(
+            value =>
+              add(~identifier=command.name, ~kind=ValueText({field, value}), humanizeKey(value)),
+          ),
       )
     })
     writeSide.errors->Array.forEach(error =>
