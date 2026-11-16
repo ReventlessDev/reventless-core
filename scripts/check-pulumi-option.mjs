@@ -169,6 +169,16 @@ const declaredType = (lines, i, type) => {
   return truncateAtClose(joined)
 }
 
+// Whether the declaration continues with `=>` past the type `declaredType` cut:
+// then that type is a function's parameter, not the declaration's own type.
+const takesArrow = (lines, i, rawType, type) => {
+  let joined = rawType
+  for (let j = i + 1; joined.length <= type.length && j < lines.length && j - i <= 12; j++) {
+    joined += " " + lines[j].replace(/\/\/.*$/, "").trim()
+  }
+  return /^\s*=>/.test(joined.slice(type.length))
+}
+
 const declaredOutput = new Map() // "file::name" -> {file, name, line}
 // Every name seen in a declaration position, however it was classified. This is
 // what lets a missing allowlist entry be diagnosed instead of assumed: a name
@@ -213,7 +223,12 @@ for (const file of sources) {
       // way a field that may be absent is now written, so it is Rule 1's
       // population exactly as the long spelling is. Missing it is how moving a
       // field to the optional form would take it out of both rules unseen.
-      if (/^(?:Pulumi\.)?Output\./.test(type.trim())) {
+      //
+      // `hook?: Pulumi.Output.t<unit> => unit` also starts with an Output, but the
+      // option holds a FUNCTION taking one — no Proxy is ever inside it, so it is
+      // in neither rule's population. `type` stops at the Output's closing bracket;
+      // an arrow right after it is what tells the two apart.
+      if (/^(?:Pulumi\.)?Output\./.test(type.trim()) && !takesArrow(lines, i, rawType, type)) {
         declaredOutput.set(`${file}::${name}`, { file, name, line: i + 1 })
         namesOutput.add(name)
         return
