@@ -1914,7 +1914,11 @@ module MakeWithConfig = (
     let _ = I18n.watch(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
-    | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg, ~dir=hostUiDir)
+    | Some(cfg) =>
+      bakeManifest(~pluginComponents=plugins, ~config=cfg, ~dir=hostUiDir)
+      Reventless.Role.providedGroups()
+      ->Option.flatMap(provided => BakedManifest.unheldWarning(~config=cfg, ~provided))
+      ->Option.forEach(message => log.warn(~comp="BakedManifest", message))
     }
     switch (projectionCatchup, pgProjectionCatchup) {
     | (Some((db, upperBound, dcbUpperBound)), _) =>

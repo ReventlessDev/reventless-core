@@ -2,6 +2,7 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
@@ -10,6 +11,17 @@ import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventles
 let log = Logger$ReventlessCore.fromEnv();
 
 let files = Platform_BakedManifest$ReventlessCore.files;
+
+function unheldGroups(config, provided) {
+  return Stdlib_Option.getOr(config.journeys, []).map(j => j.group).filter(g => !provided.includes(g));
+}
+
+function unheldWarning(config, provided) {
+  let groups = unheldGroups(config, provided);
+  if (groups.length !== 0) {
+    return `no account is in the group of the journey for ` + groups.join(", ") + `, so it serves no one and its people read the default; the accounts' groups are ` + provided.join(", ");
+  }
+}
 
 function emit(structures, config, dir) {
   let outputs = Platform_BakedManifest$ReventlessCore.files(config);
@@ -39,6 +51,8 @@ function emit(structures, config, dir) {
 export {
   log,
   files,
+  unheldGroups,
+  unheldWarning,
   emit,
 }
 /* log Not a pure module */

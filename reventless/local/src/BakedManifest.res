@@ -21,6 +21,30 @@ let files = (~config: ReventlessInfra.Platform.bakedManifest): array<(
   array<ReventlessCore.Platform_BakedManifest.selection>,
 )> => ReventlessCore.Platform_BakedManifest.files(~config)
 
+/** The journeys' groups no account holds: such a journey serves no one, and its people read the
+    default. Group names are case-sensitive, so `member` is not `Member`. */
+let unheldGroups = (
+  ~config: ReventlessInfra.Platform.bakedManifest,
+  ~provided: array<string>,
+): array<string> =>
+  config.journeys
+  ->Option.getOr([])
+  ->Array.map(j => j.group)
+  ->Array.filter(g => !(provided->Array.includes(g)))
+
+/** What the log says of the journeys no account holds, if any. */
+let unheldWarning = (~config, ~provided: array<string>): option<string> =>
+  switch unheldGroups(~config, ~provided) {
+  | [] => None
+  | groups =>
+    Some(
+      `no account is in the group of the journey for ${groups->Array.join(", ")}, so it serves ` ++
+      `no one and its people read the default; the accounts' groups are ${provided->Array.join(
+          ", ",
+        )}`,
+    )
+  }
+
 /**
  A declared bake writes the files or fails loudly. Both failure modes it can hit
  are the deployment's own mistake — a name that matches no component, or a shell

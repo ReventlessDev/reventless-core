@@ -61,4 +61,19 @@ describe("BakedManifest.files", () => {
       ["Ordering"],
     ])
   })
+
+  // A journey keyed by a spelling no account holds serves no one, so the log says so.
+  testSync("names the journeys whose group no account holds, case and all", () => {
+    let config: ReventlessInfra.Platform.bakedManifest = {
+      components: [sel("Chat")],
+      journeys: [
+        {group: "member", components: [sel("Chat")]},
+        {group: "Admin", components: [sel("Chat")]},
+      ],
+    }
+    expect((
+      BakedManifest.unheldGroups(~config, ~provided=["Admin", "Member"]),
+      BakedManifest.unheldWarning(~config, ~provided=["Admin", "member"]),
+    ))->toEqual((["member"], None))
+  })
 })

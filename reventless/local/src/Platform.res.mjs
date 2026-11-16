@@ -1410,6 +1410,7 @@ function MakeWithConfig(Config) {
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg, hostUiDir);
+      Stdlib_Option.forEach(Stdlib_Option.flatMap(Role$Reventless.providedGroups(), provided => BakedManifest$ReventlessLocal.unheldWarning(cfg, provided)), message => log.warn("BakedManifest", undefined, message));
     }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
@@ -3225,6 +3226,7 @@ function Make($star) {
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg, hostUiDir);
+      Stdlib_Option.forEach(Stdlib_Option.flatMap(Role$Reventless.providedGroups(), provided => BakedManifest$ReventlessLocal.unheldWarning(cfg, provided)), message => log.warn("BakedManifest", undefined, message));
     }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
