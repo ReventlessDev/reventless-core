@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.203 (2026-11-16)
+
+### Features
+
+* **spec:** a state change slice has a name in the app's catalogue ([eee73b3](https://github.com/ReventlessDev/reventless-core/commit/eee73b37f710dc2a29249339aa1c39fae149da5c))
+* **spec:** the catalogue names enum values and fields inside records ([aa793e4](https://github.com/ReventlessDev/reventless-core/commit/aa793e4163a8bea281c392396e31de18e6fce5d0))
+
+
 # 3.0.0-alpha.202 (2026-11-16)
 
 ### Bug Fixes

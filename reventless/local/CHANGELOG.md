@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.334 (2026-11-16)
+
+### Features
+
+* **local:** the platform warns of a journey whose group no account holds ([705a71a](https://github.com/ReventlessDev/reventless-core/commit/705a71a1bac0d4bc98d8d0f75b95269b6e07f4ae))
+
+
 # 3.0.0-alpha.333 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
