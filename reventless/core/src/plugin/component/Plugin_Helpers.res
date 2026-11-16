@@ -1026,6 +1026,10 @@ type platformHooks = {
   onDcbEventLogCreated?: unknown => unit,
   onDcbCommandTopicCreated?: unknown => unit,
   onDcbSlicesCreated?: unknown => unit,
+  // The outputs the callback that runs `dcbRuntimeSetup` waits for, handed over
+  // before it is applied. A preview skips that callback where they are unknown, so
+  // anything waiting for the DCB command Lambdas waits on these instead.
+  onDcbRuntimeSetupGate?: Pulumi.Output.t<unit> => unit,
   // heartbeatInterval carries the plugin's heartbeat cadence so the AWS bundled
   // heartbeat Lambda emits Heartbeat(interval) matching its EventBridge schedule
   // rate. Both derive from the same heartbeatInterval; threading it here prevents

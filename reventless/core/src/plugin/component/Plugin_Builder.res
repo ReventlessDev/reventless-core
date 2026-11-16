@@ -679,14 +679,19 @@ module Make = (
           toPayload(s, ~schema=Reventless.Plugin.pluginStructureSchema, ~store="pluginStructures")
         )
 
-      (
-        (interstackAdminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
-        aggregateResources->Pulumi.Output.allDict,
-        publishToAggregates->Pulumi.Output.allDict,
-        scheduler,
-        queryEngine,
+      let callbackInputs =
+        (
+          (interstackAdminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
+          aggregateResources->Pulumi.Output.allDict,
+          publishToAggregates->Pulumi.Output.allDict,
+          scheduler,
+          queryEngine,
+        )->Pulumi.Output.all5
+      Spec.hooks.onDcbRuntimeSetupGate->Option.forEach(hook =>
+        hook(callbackInputs->Pulumi.Output.apply(_ => ()))
       )
-      ->Pulumi.Output.all5
+
+      callbackInputs
       // `applyAttributed`, not `apply`: this callback provisions real resources —
       // extension points, tasks, the heartbeat, resolvers — and it runs after
       // this construct has returned, when the ambient attribution context is

@@ -364,76 +364,84 @@ module Make = (
     }
     let _resolvers = adminSchemaPushed->Pulumi.Output.apply(() => allQueryDbs->createResolvers)
 
-    let extensionPointsOutputs =
+    let callbackInputs =
       (
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         queryEngine,
         scheduler,
-      )
-      ->Pulumi.Output.all4
-      ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
-        let _aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
+      )->Pulumi.Output.all4
+    Config.hooks.onDcbRuntimeSetupGate->Option.forEach(hook =>
+      hook(callbackInputs->Pulumi.Output.apply(_ => ()))
+    )
 
-        let (
-          extensionPointsOutputs,
-          extensionPointsOutgoingJsonEventsHandlers,
-          _extensionPointRegistryInfos,
-        ) =
-          extensionPoints->createExtensionPoints(
-            ~aggregateResources,
-            ~publishToAggregates,
-            ~scheduler,
-            ~queryEngine,
-            ~resourceNaming,
-            ~componentRuntime=Dict.make(),
-            ~opts,
-          )
+    let extensionPointsOutputs = callbackInputs->Pulumi.Output.apply(((
+      aggregateResources,
+      publishToAggregates,
+      queryEngine,
+      scheduler,
+    )) => {
+      let _aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
-        let aggregateNames =
-          extensionPointsOutputs
-          ->Array.map(extensionPointOutputs =>
-            extensionPointOutputs.aggregateNames->Belt.Set.String.fromArray
-          )
-          ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
-
-        let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
-        // The admin EventCollector subscribes only to the aggregate event topics
-        // filtered by its extension-point aggregate names. It is NOT a reader of the
-        // admin DcbEventLog stream: ApiFragmentRegistry is now a singleton aggregate
-        // (its reactive push is the ApiSchemaPush SideEffect on the aggregate event
-        // topic), and the remaining DcbEventLog slice (UiFragmentRegistry) is consumed
-        // by the AllStateViewSlices projection, not here.
-        let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
-
-        module EventCollectorHelper = MakeEventCollectorHelper(
-          RuntimeEnvironment,
-          EventCollectorChannel,
-          PlatformRuntimeBuilder,
-        )
-        let (eventCollector, _eventCollectorOutputs) = EventCollectorHelper.make(
-          ~name,
-          ~eventTopics,
+      let (
+        extensionPointsOutputs,
+        extensionPointsOutgoingJsonEventsHandlers,
+        _extensionPointRegistryInfos,
+      ) =
+        extensionPoints->createExtensionPoints(
+          ~aggregateResources,
+          ~publishToAggregates,
+          ~scheduler,
+          ~queryEngine,
+          ~resourceNaming,
+          ~componentRuntime=Dict.make(),
           ~opts,
         )
 
-        let _ =
-          extensionPointsOutgoingJsonEventsHandlers
-          ->Pulumi.Output.all
-          ->Pulumi.Output.flatMap(extensionPointsOutgoingJsonEventsHandlers =>
-            EventCollectorHelper.connect(
-              ~eventCollector,
-              ~eventTopics,
-              ~extensionPointsOutputs,
-              ~extensionPointsOutgoingJsonEventsHandlers,
-            )
-          )
-
-        // Connect DCB command topic to its runtime (if DCB is configured)
-        dcbResult.dcbRuntimeSetup->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
-
+      let aggregateNames =
         extensionPointsOutputs
-      })
+        ->Array.map(extensionPointOutputs =>
+          extensionPointOutputs.aggregateNames->Belt.Set.String.fromArray
+        )
+        ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
+
+      let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
+      // The admin EventCollector subscribes only to the aggregate event topics
+      // filtered by its extension-point aggregate names. It is NOT a reader of the
+      // admin DcbEventLog stream: ApiFragmentRegistry is now a singleton aggregate
+      // (its reactive push is the ApiSchemaPush SideEffect on the aggregate event
+      // topic), and the remaining DcbEventLog slice (UiFragmentRegistry) is consumed
+      // by the AllStateViewSlices projection, not here.
+      let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
+
+      module EventCollectorHelper = MakeEventCollectorHelper(
+        RuntimeEnvironment,
+        EventCollectorChannel,
+        PlatformRuntimeBuilder,
+      )
+      let (eventCollector, _eventCollectorOutputs) = EventCollectorHelper.make(
+        ~name,
+        ~eventTopics,
+        ~opts,
+      )
+
+      let _ =
+        extensionPointsOutgoingJsonEventsHandlers
+        ->Pulumi.Output.all
+        ->Pulumi.Output.flatMap(extensionPointsOutgoingJsonEventsHandlers =>
+          EventCollectorHelper.connect(
+            ~eventCollector,
+            ~eventTopics,
+            ~extensionPointsOutputs,
+            ~extensionPointsOutgoingJsonEventsHandlers,
+          )
+        )
+
+      // Connect DCB command topic to its runtime (if DCB is configured)
+      dcbResult.dcbRuntimeSetup->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
+
+      extensionPointsOutputs
+    })
 
     // Cloner (opt-in)
     if Config.cloner {

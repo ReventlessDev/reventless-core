@@ -1,8 +1,9 @@
 # Plan: a new plugin stack previews
 
-> **Status:** Proposed 2026-11-15. Nothing built. Found on a new plugin stack whose plugin has one
-> state change slice and one outbound translation: `pulumi preview` failed, and `pulumi up
-> --skip-preview` deployed it.
+> **Status:** Done 2026-11-16. [PNS3](#5-steps) was run as a preview only (see [§5](#5-steps)).
+> Found on a new plugin stack whose
+> plugin has one state change slice and one outbound translation: `pulumi preview` failed, and
+> `pulumi up --skip-preview` deployed it.
 >
 > **Questions and short answers:**
 >
@@ -16,8 +17,8 @@
 >    run: the command function's name is then unknown, as a new stack's preview expects.** The fix
 >    ties the wait to the same outputs the callback waits for ([PNQ1](#4-decisions)).
 >
-> **Relates to:** [a-refusal-nobody-hears.md](a-refusal-nobody-hears.md), whose
-> [RNS6](a-refusal-nobody-hears.md#5-steps) made the automations' Lambda wait for the DCB command
+> **Relates to:** [a-refusal-nobody-hears.md](../a-refusal-nobody-hears.md), whose
+> [RNS6](../a-refusal-nobody-hears.md#5-steps) made the automations' Lambda wait for the DCB command
 > Lambda. Its note says the wait resolves *so a preview of a new stack stays unknown rather than
 > waiting forever*; that holds when the plugin's callback runs, which on a new stack it does not.
 >
@@ -55,7 +56,7 @@ translation:
    `DcbCommandFunctions.functionFor(dcbQueueUrl)`, which, with nothing settled yet, is a promise
    that a later `register` or `noFunction` for the same queue resolves.
 3. The plugin's main construction continues in
-   [Plugin_Builder.res](../../reventless/core/src/plugin/component/Plugin_Builder.res) inside
+   [Plugin_Builder.res](../../../reventless/core/src/plugin/component/Plugin_Builder.res) inside
    `ResourceAttribution_Deploytime.applyAttributed` over the admin extension points, the schema push
    (`preResolversSchemaHook`), the aggregate resources, the scheduler and the query engine. At its
    end it calls `dcbResult.dcbRuntimeSetup()`, which builds the DCB command Lambda
@@ -114,9 +115,39 @@ program ends with nothing waiting, and `HANDLER_CONFIG` is unknown rather than m
 
 ## 5. Steps
 
-| Step | What | Exit |
-|---|---|---|
-| PNS1 | The test of [PNQ2](#4-decisions), failing as it should: a new stack's preview of such a plugin waits forever | the test fails with the wait still open |
-| PNS2 | The plugin's gate handed to the platform before the callback; `functionFor` flat-mapped over it ([PNQ1](#4-decisions) (a)) | [PNS1](#5-steps)'s test passes; a preview of an existing stack still names the command function in `HANDLER_CONFIG` |
-| PNS3 | A new plugin stack with an automation previewed and deployed on alpha, then destroyed | the preview ends with the resources listed; the deploy's `HANDLER_CONFIG` names the command function |
-| PNS4 | The workaround of [§3](#3-what-an-app-can-do-until-it-is-fixed) removed from wherever it was written | no `--skip-preview` left for this reason |
+| Step | What | Exit | State |
+|---|---|---|---|
+| PNS1 | The test of [PNQ2](#4-decisions), failing as it should: a new stack's preview of such a plugin waits forever | the test fails with the wait still open | done |
+| PNS2 | The plugin's gate handed to the platform before the callback; `functionFor` flat-mapped over it ([PNQ1](#4-decisions) (a)) | [PNS1](#5-steps)'s test passes; a preview of an existing stack still names the command function in `HANDLER_CONFIG` | done |
+| PNS3 | A new plugin stack with an automation previewed and deployed on alpha, then destroyed | the preview ends with the resources listed; the deploy's `HANDLER_CONFIG` names the command function | preview done; deploy left out |
+| PNS4 | The workaround of [§3](#3-what-an-app-can-do-until-it-is-fixed) removed from wherever it was written | no `--skip-preview` left for this reason | done |
+
+What was built:
+
+- **The gate.** `platformHooks.onDcbRuntimeSetupGate` takes the outputs the callback that runs
+  `dcbRuntimeSetup` waits for, and both `Plugin_Builder` and `Platform_Admin` hand it over just
+  before they apply that callback. AWS's `DcbCommandFunctions.gate` ties every wait still untied
+  to it: the automations' Lambda asks for the function while its plugin is being built, before the
+  plugin hands over its gate, so the next gate is that plugin's. That is how "per plugin" of
+  [PNQ1](#4-decisions) came out, with no plugin name to thread through.
+- **The wait.** `functionFor` answers at once for a queue already settled; otherwise it flat-maps
+  over the gate and only then waits for `register` or `noFunction`. Where the gate is unknown no
+  wait is ever opened.
+- **The test** (`reventless/aws/tests/DcbCommandFunctionsPreviewTest.res`) runs at the level of
+  `DcbCommandFunctions` under Pulumi's mocks in preview mode, not over a whole plugin as
+  [PNQ2](#4-decisions) proposed: an unknown gate gives an unknown name and no open wait (with the
+  old `functionFor` the name was still waiting); a known gate gives the registered name, or `""`
+  where no Lambda was built. That the plugin hands over the right outputs is checked by
+  [PNS3](#5-steps).
+- **The check on alpha** ([PNS3](#5-steps)): a new stack of the hybrid example's ordering plugin,
+  which has state change slices, automations and outbound translations, previewed against the
+  alpha platform from the local build. The preview ends with exit 0 and 122 resources to create,
+  among them the automations' Lambda, its scheduler policy and its reconciling invocation, which
+  the open wait used to hold back. The deploy was left out: the only such plugin alpha can host is
+  that ordering plugin, which alpha already runs, and a second copy would join the same merged API
+  with the same types and register with the admin under the same name, superseding the live one.
+  A deploy is not what the fix changes: `pulumi up` named the command function before it, and the
+  callback it runs is unchanged. The stack was removed again.
+- **The workaround** of [§3](#3-what-an-app-can-do-until-it-is-fixed) was written only here. The
+  `--skip-preview` flags in `.github/workflows/deploy-reventless-aws.yml` are the workflow's own
+  (it previews in a step of its own) and were not added for this.

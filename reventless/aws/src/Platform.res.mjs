@@ -70,6 +70,7 @@ import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-cor
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_SdlDecorate.res.mjs";
+import * as DcbCommandFunctions$ReventlessAws from "./adapter/Runtime/DcbCommandFunctions.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
@@ -626,6 +627,7 @@ function MakeWithConfig(Config) {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(schedulerRoleUrnRef.contents, dcbEventLogUnknown);
   };
+  let hooks_onDcbRuntimeSetupGate = DcbCommandFunctions$ReventlessAws.gate;
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
@@ -652,6 +654,7 @@ function MakeWithConfig(Config) {
     onDcbEventLogCreated: hooks_onDcbEventLogCreated,
     onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
     onDcbSlicesCreated: hooks_onDcbSlicesCreated,
+    onDcbRuntimeSetupGate: hooks_onDcbRuntimeSetupGate,
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
@@ -2089,6 +2092,7 @@ function Make($star) {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(schedulerRoleUrnRef.contents, dcbEventLogUnknown);
   };
+  let hooks_onDcbRuntimeSetupGate = DcbCommandFunctions$ReventlessAws.gate;
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
@@ -2115,6 +2119,7 @@ function Make($star) {
     onDcbEventLogCreated: hooks_onDcbEventLogCreated,
     onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
     onDcbSlicesCreated: hooks_onDcbSlicesCreated,
+    onDcbRuntimeSetupGate: hooks_onDcbRuntimeSetupGate,
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,

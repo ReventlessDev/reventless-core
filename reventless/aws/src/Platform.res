@@ -941,6 +941,7 @@ module MakeWithConfig = (
         dcbEventLog,
       )
     },
+    onDcbRuntimeSetupGate: DcbCommandFunctions.gate,
     // Heartbeat EP channel hook — extracts SQS queue URL for heartbeat Lambda handler
     // and records the calling plugin's id so the Lambda runtime can emit Connect commands
     // with a non-empty SQS MessageGroupId (FIFO requirement).

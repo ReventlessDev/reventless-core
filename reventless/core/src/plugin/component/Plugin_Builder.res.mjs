@@ -437,7 +437,7 @@ function Make(Spec) {
         let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, version, apiSchemaFragment) : Pulumi.output();
         let apiSchemaFragmentPayload = Plugin_Helpers$ReventlessCore.offloadPayload(apiSchemaFragment, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments");
         let structurePayload = Stdlib_Option.map(pluginStructure, s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures"));
-        let builderOutputs = ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(Pulumi.all([
+        let callbackInputs = Pulumi.all([
           Pulumi.all([
             interstackAdminExtensionPoints,
             localAdminResolvedEP,
@@ -447,7 +447,9 @@ function Make(Spec) {
           Pulumi.all(Plugin_Helpers$ReventlessCore.publishToAggregates),
           scheduler,
           queryEngine
-        ]), param => {
+        ]);
+        Stdlib_Option.forEach(Spec.hooks.onDcbRuntimeSetupGate, hook => hook(callbackInputs.apply(param => {})));
+        let builderOutputs = ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(callbackInputs, param => {
           let queryEngine = param[4];
           let scheduler = param[3];
           let publishToAggregates = param[2];

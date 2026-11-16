@@ -153,12 +153,14 @@ function Make(RuntimeEnvironment) {
       let push = Config.hooks.preAdminResolversSchemaHook;
       let adminSchemaPushed = push !== undefined ? push(adminBarrier) : Pulumi.output();
       adminSchemaPushed.apply(() => Builder_Helpers$ReventlessCore.createResolvers(allQueryDbs));
-      let extensionPointsOutputs = Pulumi.all([
+      let callbackInputs = Pulumi.all([
         Pulumi.all(Builder_Helpers$ReventlessCore.aggregateResources),
         Pulumi.all(Builder_Helpers$ReventlessCore.publishToAggregates),
         queryEngine,
         scheduler
-      ]).apply(param => {
+      ]);
+      Stdlib_Option.forEach(Config.hooks.onDcbRuntimeSetupGate, hook => hook(callbackInputs.apply(param => {})));
+      let extensionPointsOutputs = callbackInputs.apply(param => {
         let queryEngine = param[2];
         Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
         let match = Builder_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, {}, opts);

@@ -8,8 +8,10 @@
 // both sides take from the same queue resource.
 //
 // Every sync DCB command topic reaches `register` or `noFunction`
-// (StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic); a queue that reached
-// neither would leave the automations' config unresolved.
+// (StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic) once the plugin's
+// callback runs. A preview skips that callback where its inputs are unknown, so the
+// wait is tied to the same inputs: the plugin hands them over as its gate (`gate`),
+// and where they are unknown the function's name is unknown too.
 
 type commandFunction = {
   queueUrl: Pulumi.Output.t<string>,
@@ -26,6 +28,10 @@ let functions: array<commandFunction> = []
 let settled: array<(Pulumi.Output.t<string>, Pulumi.Output.t<string>)> = []
 let invokers: array<invoker> = []
 let waiters: array<waiter> = []
+// Waits not yet tied to a gate. A plugin's automations Lambda asks for the function
+// while the plugin is being built, before the plugin hands over its gate, so the
+// next gate is that plugin's.
+let ungated: array<Pulumi.Output.t<unit> => unit> = []
 
 let grant = (invoker: invoker, fn: commandFunction) => {
   open PulumiAws.PolicyDocument
@@ -84,18 +90,35 @@ let addInvoker = (~name, ~roleId) => {
   functions->Array.forEach(fn => grant(invoker, fn))
 }
 
-// `pulumi.output` unwraps a promise of an output, and keeps it unknown where the
-// function's name is not known yet (a preview of a new stack).
-@module("@pulumi/pulumi")
-external outputOfPromise: promise<Pulumi.Output.t<string>> => Pulumi.Output.t<string> = "output"
+/** The outputs the plugin's callback that builds its DCB command Lambdas waits for. */
+let gate = (inputs: Pulumi.Output.t<unit>) => {
+  ungated->Array.forEach(tie => tie(inputs))
+  ungated->Array.splice(~start=0, ~remove=ungated->Array.length, ~insert=[])
+}
 
-/** The function serving the queue whose `id` is `queueUrl`, or `""` where none was
-    built. */
-let functionFor = (queueUrl: Pulumi.Output.t<string>): Pulumi.Output.t<string> =>
-  switch settled->Array.find(((url, _)) => url === queueUrl) {
+// `pulumi.output` unwraps a promise of an output, and keeps it unknown where the
+// output is.
+@module("@pulumi/pulumi")
+external outputOfPromise: promise<Pulumi.Output.t<'a>> => Pulumi.Output.t<'a> = "output"
+
+let settledFor = queueUrl => settled->Array.find(((url, _)) => url === queueUrl)
+
+let registered = queueUrl =>
+  switch settledFor(queueUrl) {
   | Some((_, functionName)) => functionName
   | None =>
     Promise.make((resolve, _) =>
       waiters->Array.push({queueUrl, settle: functionName => resolve(functionName)})
     )->outputOfPromise
+  }
+
+/** The function serving the queue whose `id` is `queueUrl`, or `""` where none was
+    built; unknown where the plugin's gate is. */
+let functionFor = (queueUrl: Pulumi.Output.t<string>): Pulumi.Output.t<string> =>
+  switch settledFor(queueUrl) {
+  | Some((_, functionName)) => functionName
+  | None =>
+    Promise.make((resolve, _) => ungated->Array.push(inputs => resolve(inputs)))
+    ->outputOfPromise
+    ->Pulumi.Output.flatMap(() => registered(queueUrl))
   }

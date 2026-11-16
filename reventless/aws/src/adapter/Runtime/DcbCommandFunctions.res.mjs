@@ -13,6 +13,8 @@ let invokers = [];
 
 let waiters = [];
 
+let ungated = [];
+
 function grant(invoker, fn) {
   new (Aws.iam.RolePolicy)(invoker.name + `-invoke-` + fn.name, {
     policy: fn.functionArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, invoker.name + `-invoke-` + fn.name, [{
@@ -64,8 +66,17 @@ function addInvoker(name, roleId) {
   functions.forEach(fn => grant(invoker, fn));
 }
 
-function functionFor(queueUrl) {
-  let match = settled.find(param => param[0] === queueUrl);
+function gate(inputs) {
+  ungated.forEach(tie => tie(inputs));
+  ungated.splice(0, ungated.length);
+}
+
+function settledFor(queueUrl) {
+  return settled.find(param => param[0] === queueUrl);
+}
+
+function registered(queueUrl) {
+  let match = settledFor(queueUrl);
   if (match !== undefined) {
     return match[1];
   } else {
@@ -78,16 +89,31 @@ function functionFor(queueUrl) {
   }
 }
 
+function functionFor(queueUrl) {
+  let match = settledFor(queueUrl);
+  if (match !== undefined) {
+    return match[1];
+  } else {
+    return Output$Pulumi.flatMap(Pulumi.output(new Promise((resolve, param) => {
+      ungated.push(inputs => resolve(inputs));
+    })), () => registered(queueUrl));
+  }
+}
+
 export {
   functions,
   settled,
   invokers,
   waiters,
+  ungated,
   grant,
   settle,
   register,
   noFunction,
   addInvoker,
+  gate,
+  settledFor,
+  registered,
   functionFor,
 }
 /* @pulumi/aws Not a pure module */
