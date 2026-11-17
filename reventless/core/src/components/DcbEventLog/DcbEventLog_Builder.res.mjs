@@ -51,7 +51,8 @@ function Make(Storage) {
             read: Ops.read,
             append: Ops.append,
             readStream: Ops.readStream,
-            appendStream: Ops.appendStream
+            appendStream: Ops.appendStream,
+            readFences: Ops.readFences
           };
         }));
         let outputs_resources = storage.resources;

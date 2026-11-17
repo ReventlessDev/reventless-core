@@ -125,6 +125,7 @@ let makeDynamoStorageOps = (
       table,
       ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
     ),
+    readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(table),
   }
 }
 

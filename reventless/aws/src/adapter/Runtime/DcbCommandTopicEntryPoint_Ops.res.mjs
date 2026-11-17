@@ -79,7 +79,8 @@ function makeDynamoStorageOps(tableName, scope) {
   return {
     read: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, scope.crossPartitionTagKeys),
     append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table, scope.partitionTag, scope.crossPartitionTagKeys),
-    readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(table, scope.crossPartitionTagKeys)
+    readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(table, scope.crossPartitionTagKeys),
+    readFences: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readFences(table)
   };
 }
 

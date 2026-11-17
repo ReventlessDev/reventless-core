@@ -640,4 +640,19 @@ describe("DCB DynamoDb integration — a cross-partition fence counts its carrie
       first->Result.mapOr(None, p => Some(JSON.Encode.string(p))),
     )
   })
+
+  testAsync("the reader reads the counts back, not yet trusted until the backfill", async () => {
+    let table = await H.freshTable()
+    let _ = await Runtime.appendUnconditional(
+      table,
+      [event("OrderPlaced", [tag("orderId", "O-r1"), customer])],
+      ~partitionTag=simple("orderId"),
+      ~crossPartitionTagKeys=["customerId"],
+    )
+    let fences = await Runtime.readFences(table)([customer, tag("customerId", "C-none")])
+    expect(fences->Array.map(f => (f.tag.value, f.counted, f.counts->Dict.toArray)))->toEqual([
+      ("C-count", false, [("OrderPlaced", 1)]),
+      ("C-none", false, []),
+    ])
+  })
 })

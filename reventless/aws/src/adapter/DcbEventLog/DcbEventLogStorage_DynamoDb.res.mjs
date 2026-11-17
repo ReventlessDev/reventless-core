@@ -39,7 +39,8 @@ function make(name, indexes, partitionTag, crossPartitionTagKeysOpt, opts) {
       return {
         read: readFn,
         append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable, partitionTag, crossPartitionTagKeys),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable, crossPartitionTagKeys)
+        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable, crossPartitionTagKeys),
+        readFences: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readFences(resolvedTable)
       };
     })
   };

@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) step 1 (the writers count) built 2026-11-17. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) steps 1 and 2 (the writers count, the reader checks) built 2026-11-17. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -339,10 +339,12 @@ In five steps, each shippable alone:
 1. **The writers count.** Built 2026-11-17. Every fence update of a cross-partition tag, on the
    conditional and the unconditional append, adds the events it writes to `n#<type>` and sets
    `countedFrom` to its position if no write has set it yet. Nothing reads the count yet.
-2. **The reader proves it saw them all.** The event log gains an optional operation that reads the
-   cross-partition fences of a query with a strongly consistent `GetItem`. The slice callback calls
-   it before the index read, compares, waits and reads again, and past the limit answers a
-   retryable conflict. The local backends leave the operation out.
+2. **The reader proves it saw them all.** Built 2026-11-17. The event log gains an optional
+   `readFences`, a strongly consistent `GetItem` per fence (DynamoDB only; the local backends leave
+   it out). The slice callback reads the fences of its cross-partition clauses before the index,
+   counts what it reads into the cached counts (`DcbFenceCount`), and on a shortfall of a counted
+   fence reads again in full after 100, 200 and 300 ms. That uses the same three retries as an
+   append conflict. Past them it answers `Conflict`. A fence not yet `counted` is not checked.
 3. **The append checks the count, and the cache keeps it.** `appendCondition` gains the counts the
    reader saw, and a counted fence's condition becomes `n#C = :seen`.
 4. **The backfill.** Per fence item: with `countedFrom`, count the events of each type below it and

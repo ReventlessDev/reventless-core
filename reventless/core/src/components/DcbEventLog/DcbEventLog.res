@@ -11,6 +11,7 @@ type read = ReventlessInfra.DcbEventLog.read
 type append = ReventlessInfra.DcbEventLog.append
 type readStream = ReventlessInfra.DcbEventLog.readStream
 type appendStream = ReventlessInfra.DcbEventLog.appendStream
+type readFences = ReventlessInfra.DcbEventLog.readFences
 type operations = ReventlessInfra.DcbEventLog.operations
 type component = ReventlessInfra.DcbEventLog.component
 

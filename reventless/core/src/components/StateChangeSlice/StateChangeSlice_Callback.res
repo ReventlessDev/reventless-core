@@ -233,10 +233,11 @@ module Make = (
   // (see the plan's Step 4).
   let projectionCacheCapacity = 100
   // The owners folded so far ride along with the state: a delta read never
-  // sees the event that recorded them.
+  // sees the event that recorded them. So do the events read per cross-partition
+  // fence, which a delta read adds to.
   let projectionCache: Lru.t<
     string,
-    (Decision.state, option<Reventless.DcbTag.sequencePosition>, array<string>),
+    (Decision.state, option<Reventless.DcbTag.sequencePosition>, array<string>, dict<int>),
   > = Lru.make(~capacity=projectionCacheCapacity, ~ttlMs=Lru.decodedStateTtlMs())
 
   let resetCache = () => projectionCache->Lru.clear
@@ -391,10 +392,63 @@ module Make = (
       ~slice=Spec.name,
     )
 
+    // The cross-partition clauses read through an eventually consistent index.
+    // Their fences are read first, strongly, and the read must reach their counts.
+    let fenceClauses = Reventless.DcbFenceCount.clauses(query, ~crossPartitionTagKeys)
+
     let rec attempt = (~retries) => {
-      let (baseState, afterPos, baseOwners) = switch seed.contents {
-      | Some((state, head, owners)) => (state, head, owners)
-      | None => (Decision.initialState, None, [])
+      let (baseState, afterPos, baseOwners, baseSeen) = switch seed.contents {
+      | Some((state, head, owners, seen)) => (state, head, owners, seen)
+      | None => (Decision.initialState, None, [], Dict.make())
+      }
+      let seen = baseSeen->Dict.copy
+      let fencesRead = switch (fenceClauses, dcbEventLog.readFences) {
+      | ([], _) | (_, None) => Effect.succeed([])
+      | (clauses, Some(readFences)) =>
+        Effect.tryPromise(
+          ~catch=e => `reading the fences failed: ${String.make(e)}`,
+          () => readFences(clauses->Array.map(c => c.tag)),
+        )
+      }
+      // The index has not yet shown every event its fence counted. A missed event
+      // may sit below the head, so the next attempt reads in full, after a wait.
+      let indexBehind = (missing: array<Reventless.DcbFenceCount.shortfall>) => {
+        let detail =
+          missing
+          ->Array.map(m =>
+            `${m.tag.key}=${m.tag.value} ${m.eventType}: read ${m.read->Int.toString} of ${m.counted->Int.toString}`
+          )
+          ->Array.join(", ")
+        if retries > 0 {
+          seed := None
+          EffectLogger.logWarn(
+            ~comp,
+            ~ids,
+            `index behind its fence (retrying ${(maxRetries - retries + 1)
+                ->Int.toString}/${maxRetries->Int.toString}): ${detail}`,
+          )
+          ->Effect.flatMap(_ => Effect.sleep(Duration.millis(100 * (maxRetries - retries + 1))))
+          ->Effect.flatMap(_ => attempt(~retries=retries - 1))
+        } else {
+          cacheInvalidate()
+          CommandTopic_Helpers.reportRejected(
+            ~component=Spec.name,
+            ~correlationId=cmdJson.meta.correlationId,
+            ~claimed=cmdJson.meta.callerClaim->Option.isSome,
+            ~causationId=?cmdJson.meta.causationId,
+            ~cause=InfrastructureFailure,
+            cmdJson.meta.msgId,
+            {
+              errorCode: Reventless.CommandOutcome.code(Conflict),
+              errorDetail: `index behind its fence: ${detail}`,
+            },
+          )
+          EffectLogger.logError(
+            ~comp,
+            ~ids,
+            `index behind its fence, retries exhausted: ${detail}`,
+          )->Effect.map(_ => Error(detail))
+        }
       }
       let cacheHit = seed.contents->Option.isSome
 
@@ -416,305 +470,327 @@ module Make = (
       // A slice that consumes nothing (`consumedEvent = unit`) reads nothing: the store is
       // not asked at all.
 
-      (
-        Reventless.DcbTag.readsNothing(query)
-          ? Stream.empty
-          : dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
-      )
-      ->Stream.mapEffect(openRaw)
-      // The head accumulator starts at `afterPos` (the seeded head), not `None`,
-      // so an empty delta read keeps the cached head — the append must condition
-      // on the head that actually exists, not assert "no events exist yet".
-      // Every read event moves the head and is checked as this command's own
-      // doing before it is decoded; only the consumed ones reach `evolve`.
-      ->Stream.runFold((baseState, afterPos, [], baseOwners, false), (
-        (dm, _pos, reads, owners, repeated),
-        raw,
-      ) => {
-        // Only a command with a stable id asks; a fresh id never matches a stored
-        // cause, and asking would only make the answer depend on what the slice
-        // happens to read.
-        let repeated =
-          repeated || (asksForRepeat && raw.meta.causationId == Some(command'.meta.msgId))
-        let data = raw.data->JSON.Decode.object->Option.getOr(Dict.make())
-        switch decoder.decode(~eventType=raw.eventType, ~data) {
-        | None => (dm, Some(raw.position), reads, owners, repeated)
-        | Some(event) => (
-            Decision.evolve(dm, event),
-            Some(raw.position),
-            reads->Array.concat([
-              switch readEventId(~partitionTag, raw.tags) {
-              | Some(id) => `${raw.eventType->LogFormat.bold}(${id})`
-              | None => raw.eventType->LogFormat.bold
-              },
-            ]),
-            owners->Reventless.OwnerScope.recordOwners(~fields=ownerFieldsOf(raw), data),
-            repeated,
-          )
-        }
-      })
-      ->Effect.tap(((_, _, reads, _, _)) => {
-        // On a warm first attempt, record how many events the delta read
-        // returned — near-zero on a healthy hit; a large value means the entity
-        // churned between commands, so the cache saved little. Gated to the first
-        // attempt (retries at maxRetries) so each command yields at most one
-        // sample, aligned 1:1 with a CacheHit. Conflict-driven retry reads are
-        // covered by AppendRetry instead.
-        if cacheHit && retries == maxRetries {
-          Metrics.emitCount(
-            ~metric="DcbDecisionModelDeltaEventCount",
-            ~slice=Spec.name,
-            ~value=reads->Array.length,
-          )
-        }
-        EffectLogger.logInfo(
-          ~comp,
-          ~ids,
-          `read${cacheHit ? " (cached, delta)" : ""}: ${reads
-            ->Array.length
-            ->Int.toString} event(s)${reads->Array.length == 0
-              ? ""
-              : ` [${reads->Array.join(", ")}]`}`,
+      fencesRead->Effect.flatMap(fences =>
+        (
+          Reventless.DcbTag.readsNothing(query)
+            ? Stream.empty
+            : dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
         )
-      })
-      ->Effect.flatMap(((state, headPosition, _, owners, repeated)) =>
-        // Identity, not content: the decision model folds the whole matched
-        // history, so serialising it here makes the line's size a function of
-        // how long the entity has been in use.
-        EffectLogger.logDebug(
-          ~comp,
-          ~ids,
-          `deciding: id=${entityId->Option.getOr("-")} head=${headPosition->Option.getOr(
-              "-",
-            )} cmd=${cmdJson->LogFormat.cmdName}`,
-        )->Effect.flatMap(_ =>
-          switch ownershipRefusal(owners) {
-          | _ if repeated =>
-            // Before `decide`, and before the ownership check it passed the first
-            // time: the partition already holds events this command caused, so it
-            // was delivered again. Accepted, nothing new.
-            CommandTopic_Helpers.reportAccepted(
-              ~component=Spec.name,
-              ~correlationId=cmdJson.meta.correlationId,
-              ~causationId=?cmdJson.meta.causationId,
-              cmdJson.meta.msgId,
-              switch entityId {
-              | Some(eid) => {entityId: eid, eventCount: 0}
-              | None => {eventCount: 0}
-              },
+        ->Stream.mapEffect(openRaw)
+        // The head accumulator starts at `afterPos` (the seeded head), not `None`,
+        // so an empty delta read keeps the cached head — the append must condition
+        // on the head that actually exists, not assert "no events exist yet".
+        // Every read event moves the head and is checked as this command's own
+        // doing before it is decoded; only the consumed ones reach `evolve`.
+        ->Stream.runFold((baseState, afterPos, [], baseOwners, false), (
+          (dm, _pos, reads, owners, repeated),
+          raw,
+        ) => {
+          seen->Reventless.DcbFenceCount.countRead(
+            fenceClauses,
+            ~eventType=raw.eventType,
+            ~tags=raw.tags,
+          )
+          // Only a command with a stable id asks; a fresh id never matches a stored
+          // cause, and asking would only make the answer depend on what the slice
+          // happens to read.
+          let repeated =
+            repeated || (asksForRepeat && raw.meta.causationId == Some(command'.meta.msgId))
+          let data = raw.data->JSON.Decode.object->Option.getOr(Dict.make())
+          switch decoder.decode(~eventType=raw.eventType, ~data) {
+          | None => (dm, Some(raw.position), reads, owners, repeated)
+          | Some(event) => (
+              Decision.evolve(dm, event),
+              Some(raw.position),
+              reads->Array.concat([
+                switch readEventId(~partitionTag, raw.tags) {
+                | Some(id) => `${raw.eventType->LogFormat.bold}(${id})`
+                | None => raw.eventType->LogFormat.bold
+                },
+              ]),
+              owners->Reventless.OwnerScope.recordOwners(~fields=ownerFieldsOf(raw), data),
+              repeated,
             )
-            EffectLogger.logInfo(
+          }
+        })
+        ->Effect.tap(((_, _, reads, _, _)) => {
+          // On a warm first attempt, record how many events the delta read
+          // returned — near-zero on a healthy hit; a large value means the entity
+          // churned between commands, so the cache saved little. Gated to the first
+          // attempt (retries at maxRetries) so each command yields at most one
+          // sample, aligned 1:1 with a CacheHit. Conflict-driven retry reads are
+          // covered by AppendRetry instead.
+          if cacheHit && retries == maxRetries {
+            Metrics.emitCount(
+              ~metric="DcbDecisionModelDeltaEventCount",
+              ~slice=Spec.name,
+              ~value=reads->Array.length,
+            )
+          }
+          EffectLogger.logInfo(
+            ~comp,
+            ~ids,
+            `read${cacheHit ? " (cached, delta)" : ""}: ${reads
+              ->Array.length
+              ->Int.toString} event(s)${reads->Array.length == 0
+                ? ""
+                : ` [${reads->Array.join(", ")}]`}`,
+          )
+        })
+        ->Effect.flatMap(((state, headPosition, _, owners, repeated)) =>
+          switch Reventless.DcbFenceCount.shortfalls(fences, fenceClauses, seen) {
+          | [] =>
+            // Identity, not content: the decision model folds the whole matched
+            // history, so serialising it here makes the line's size a function of
+            // how long the entity has been in use.
+            EffectLogger.logDebug(
               ~comp,
               ~ids,
-              `repeat dropped: ${cmdJson->LogFormat.cmdName} msgId=${cmdJson.meta.msgId} already caused events in id=${entityId->Option.getOr(
+              `deciding: id=${entityId->Option.getOr("-")} head=${headPosition->Option.getOr(
                   "-",
-                )}`,
-            )->Effect.map(_ => Ok("ok"))
-          | Some({rejected, isDefect}) =>
-            // Refused before `decide`; the read snapshot is still valid.
-            cachePut((state, headPosition, owners))
-            CommandTopic_Helpers.reportRejected(
-              ~component=Spec.name,
-              ~correlationId=cmdJson.meta.correlationId,
-              ~claimed=cmdJson.meta.callerClaim->Option.isSome,
-              ~causationId=?cmdJson.meta.causationId,
-              ~cause=AccessRefusal,
-              cmdJson.meta.msgId,
-              rejected,
-            )
-            let line = `refused: ${rejected.errorDetail} id=${entityId->Option.getOr("-")}`
+                )} cmd=${cmdJson->LogFormat.cmdName}`,
+            )->Effect.flatMap(
+              _ =>
+                switch ownershipRefusal(owners) {
+                | _ if repeated =>
+                  // Before `decide`, and before the ownership check it passed the first
+                  // time: the partition already holds events this command caused, so it
+                  // was delivered again. Accepted, nothing new.
+                  CommandTopic_Helpers.reportAccepted(
+                    ~component=Spec.name,
+                    ~correlationId=cmdJson.meta.correlationId,
+                    ~causationId=?cmdJson.meta.causationId,
+                    cmdJson.meta.msgId,
+                    switch entityId {
+                    | Some(eid) => {entityId: eid, eventCount: 0}
+                    | None => {eventCount: 0}
+                    },
+                  )
+                  EffectLogger.logInfo(
+                    ~comp,
+                    ~ids,
+                    `repeat dropped: ${cmdJson->LogFormat.cmdName} msgId=${cmdJson.meta.msgId} already caused events in id=${entityId->Option.getOr(
+                        "-",
+                      )}`,
+                  )->Effect.map(_ => Ok("ok"))
+                | Some({rejected, isDefect}) =>
+                  // Refused before `decide`; the read snapshot is still valid.
+                  cachePut((state, headPosition, owners, seen))
+                  CommandTopic_Helpers.reportRejected(
+                    ~component=Spec.name,
+                    ~correlationId=cmdJson.meta.correlationId,
+                    ~claimed=cmdJson.meta.callerClaim->Option.isSome,
+                    ~causationId=?cmdJson.meta.causationId,
+                    ~cause=AccessRefusal,
+                    cmdJson.meta.msgId,
+                    rejected,
+                  )
+                  let line = `refused: ${rejected.errorDetail} id=${entityId->Option.getOr("-")}`
 
-            (
-              isDefect
-                ? EffectLogger.logError(~comp, ~ids, line)
-                : EffectLogger.logWarn(~comp, ~ids, line)
-            )->Effect.map(_ => Ok("rejected"))
-          | None =>
-            switch Decision.decide(state, command'.command) {
-            | Ok(newEvents) if newEvents->Array.length == 0 =>
-              // No append, but the read snapshot is valid — cache it for the next command.
-              cachePut((state, headPosition, owners))
-              CommandTopic_Helpers.reportAccepted(
-                ~component=Spec.name,
-                ~correlationId=cmdJson.meta.correlationId,
-                ~causationId=?cmdJson.meta.causationId,
-                cmdJson.meta.msgId,
-                switch entityId {
-                | Some(eid) => {entityId: eid, eventCount: 0}
-                | None => {eventCount: 0}
-                },
-              )
-              EffectLogger.logInfo(~comp, ~ids, "no events produced")->Effect.map(_ => Ok("ok"))
-            | Ok(newEvents) =>
-              let encoded =
-                newEvents->Array.map(
-                  e => encodeEvent(~parentMeta=command'.meta, ~tagKeysByEventType, e),
-                )
-              Effect.promise(() => sealRawEvents(encoded))->Effect.flatMap(
-                sealResult =>
-                  switch sealResult {
-                  | Error(detail) =>
-                    // Refused before the append: nothing is stored, and the read
-                    // snapshot is still valid.
-                    cachePut((state, headPosition, owners))
+                  (
+                    isDefect
+                      ? EffectLogger.logError(~comp, ~ids, line)
+                      : EffectLogger.logWarn(~comp, ~ids, line)
+                  )->Effect.map(_ => Ok("rejected"))
+                | None =>
+                  switch Decision.decide(state, command'.command) {
+                  | Ok(newEvents) if newEvents->Array.length == 0 =>
+                    // No append, but the read snapshot is valid — cache it for the next command.
+                    cachePut((state, headPosition, owners, seen))
+                    CommandTopic_Helpers.reportAccepted(
+                      ~component=Spec.name,
+                      ~correlationId=cmdJson.meta.correlationId,
+                      ~causationId=?cmdJson.meta.causationId,
+                      cmdJson.meta.msgId,
+                      switch entityId {
+                      | Some(eid) => {entityId: eid, eventCount: 0}
+                      | None => {eventCount: 0}
+                      },
+                    )
+                    EffectLogger.logInfo(~comp, ~ids, "no events produced")->Effect.map(
+                      _ => Ok("ok"),
+                    )
+                  | Ok(newEvents) =>
+                    let encoded =
+                      newEvents->Array.map(
+                        e => encodeEvent(~parentMeta=command'.meta, ~tagKeysByEventType, e),
+                      )
+                    Effect.promise(() => sealRawEvents(encoded))->Effect.flatMap(
+                      sealResult =>
+                        switch sealResult {
+                        | Error(detail) =>
+                          // Refused before the append: nothing is stored, and the read
+                          // snapshot is still valid.
+                          cachePut((state, headPosition, owners, seen))
+                          CommandTopic_Helpers.reportRejected(
+                            ~component=Spec.name,
+                            ~correlationId=cmdJson.meta.correlationId,
+                            ~claimed=cmdJson.meta.callerClaim->Option.isSome,
+                            ~causationId=?cmdJson.meta.causationId,
+                            ~cause=InfrastructureFailure,
+                            cmdJson.meta.msgId,
+                            {
+                              errorCode: Reventless.CommandOutcome.code(AppendFailed),
+                              errorDetail: detail,
+                            },
+                          )
+                          EffectLogger.logError(
+                            ~comp,
+                            ~ids,
+                            `append refused: ${detail}`,
+                          )->Effect.map(_ => Error(detail))
+                        | Ok(rawEvents) =>
+                          let eventCount = rawEvents->Array.length->Int.toString
+                          // Through the redacting formatter, like every other log line.
+                          let eventDetails =
+                            rawEvents
+                            ->Array.map(
+                              e =>
+                                switch e.data {
+                                | Object(dict) =>
+                                  Message.combineMessage(
+                                    e.eventType,
+                                    dict,
+                                  )->LogFormat.cmdLabelOfJson
+                                | _ => LogFormat.bold(e.eventType)
+                                },
+                            )
+                            ->Array.join(", ")
+                          let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
+                          let condition: Reventless.DcbTag.appendCondition = {
+                            query,
+                            after: ?headPosition,
+                          }
+                          EffectLogger.logInfo(
+                            ~comp,
+                            ~ids,
+                            ~detail=eventJsons,
+                            `produced ${eventCount} event(s): [${eventDetails}]`,
+                          )
+                          ->Effect.flatMap(
+                            _ =>
+                              Effect.promise(
+                                () =>
+                                  // What it did not read cannot have changed under it: no condition.
+                                  Reventless.DcbTag.readsNothing(query)
+                                    ? dcbEventLog.append(rawEvents)
+                                    : dcbEventLog.append(rawEvents, ~condition),
+                              ),
+                          )
+                          ->Effect.flatMap(
+                            appendResult =>
+                              switch appendResult {
+                              | Ok(_position) =>
+                                // Cache the decided-on state at the read head (NOT including the
+                                // events we just appended, and NOT the returned position): the
+                                // next command's delta read picks our events up from `headPosition`.
+                                cachePut((state, headPosition, owners, seen))
+                                CommandTopic_Helpers.reportAccepted(
+                                  ~component=Spec.name,
+                                  ~correlationId=cmdJson.meta.correlationId,
+                                  ~causationId=?cmdJson.meta.causationId,
+                                  cmdJson.meta.msgId,
+                                  switch entityId {
+                                  | Some(eid) => {
+                                      entityId: eid,
+                                      eventCount: rawEvents->Array.length,
+                                    }
+                                  | None => {eventCount: rawEvents->Array.length}
+                                  },
+                                )
+                                EffectLogger.logInfo(
+                                  ~comp,
+                                  ~ids,
+                                  `append: ${eventCount} event(s)`,
+                                )->Effect.map(_ => Ok("ok"))
+                              | Error(err) =>
+                                // Typed classification (was substring-matching the error string,
+                                // which disagreed with the backends' casing).
+                                let (errorCode, errDetail) = switch err {
+                                | ReventlessInfra.DcbEventLog.Conflict => (
+                                    Reventless.CommandOutcome.code(Conflict),
+                                    "conflict: condition check failed",
+                                  )
+                                | StorageFailure(msg) => (
+                                    Reventless.CommandOutcome.code(AppendFailed),
+                                    msg,
+                                  )
+                                }
+                                if retries > 0 {
+                                  // Re-seed from the just-read snapshot so the retry reads only
+                                  // the delta the conflicting writer added, not full history.
+                                  seed := Some((state, headPosition, owners, seen))
+                                  // Per-slice CloudWatch counter: rising AppendRetry signals a
+                                  // slice feeling contention (the metric to watch the eventual
+                                  // default with — see dcb-high-contention-handling.md).
+                                  Metrics.emitCount(~metric="AppendRetry", ~slice=Spec.name)
+                                  EffectLogger.logWarn(
+                                    ~comp,
+                                    ~ids,
+                                    `append failed (retrying ${(maxRetries - retries + 1)
+                                        ->Int.toString}/${maxRetries->Int.toString}): ${errDetail}`,
+                                  )->Effect.flatMap(_ => attempt(~retries=retries - 1))
+                                } else {
+                                  // Retries exhausted — drop any cached snapshot so the next
+                                  // command for this entity takes the cold full-read path.
+                                  cacheInvalidate()
+
+                                  // A surfaced Conflict means the 3-retry loop could not absorb
+                                  // the contention — the operator signal for "this slice is hot"
+                                  // (consider sharding / async — Issue 10, §4 of the analysis).
+                                  if errorCode == Reventless.CommandOutcome.code(Conflict) {
+                                    Metrics.emitCount(~metric="AppendConflict", ~slice=Spec.name)
+                                  }
+                                  // Both arms here are storage, not the model: a surfaced Conflict is
+                                  // contention the retry loop couldn't absorb, and AppendFailed is the
+                                  // store failing. `decide` had already said Ok.
+                                  CommandTopic_Helpers.reportRejected(
+                                    ~component=Spec.name,
+                                    ~correlationId=cmdJson.meta.correlationId,
+                                    ~claimed=cmdJson.meta.callerClaim->Option.isSome,
+                                    ~causationId=?cmdJson.meta.causationId,
+                                    ~cause=InfrastructureFailure,
+                                    cmdJson.meta.msgId,
+                                    {errorCode, errorDetail: errDetail},
+                                  )
+                                  EffectLogger.logError(
+                                    ~comp,
+                                    ~ids,
+                                    `append failed, retries exhausted: ${errDetail}`,
+                                  )->Effect.map(_ => Error(errDetail))
+                                }
+                              },
+                          )
+                        },
+                    )
+                  | Error(error) =>
+                    // Business-rule rejection — no append, but the read snapshot is valid; cache it.
+                    cachePut((state, headPosition, owners, seen))
+                    let errorJson = error->Reventless.Util_Sury.toJson(Spec.errorSchema)
+                    let errorCode = errorJson->Message.variantNameOfJson
+                    let (_, payloadDict) = errorJson->Message.splitMessage
+                    let errorDetail =
+                      payloadDict->Dict.toArray->Array.length == 0
+                        ? ""
+                        : payloadDict->JSON.Encode.object->JSON.stringify
                     CommandTopic_Helpers.reportRejected(
                       ~component=Spec.name,
                       ~correlationId=cmdJson.meta.correlationId,
                       ~claimed=cmdJson.meta.callerClaim->Option.isSome,
                       ~causationId=?cmdJson.meta.causationId,
-                      ~cause=InfrastructureFailure,
+                      ~cause=DomainRejection,
                       cmdJson.meta.msgId,
-                      {
-                        errorCode: Reventless.CommandOutcome.code(AppendFailed),
-                        errorDetail: detail,
-                      },
+                      {errorCode, errorDetail},
                     )
-                    EffectLogger.logError(~comp, ~ids, `append refused: ${detail}`)->Effect.map(
-                      _ => Error(detail),
-                    )
-                  | Ok(rawEvents) =>
-                    let eventCount = rawEvents->Array.length->Int.toString
-                    // Through the redacting formatter, like every other log line.
-                    let eventDetails =
-                      rawEvents
-                      ->Array.map(
-                        e =>
-                          switch e.data {
-                          | Object(dict) =>
-                            Message.combineMessage(e.eventType, dict)->LogFormat.cmdLabelOfJson
-                          | _ => LogFormat.bold(e.eventType)
-                          },
-                      )
-                      ->Array.join(", ")
-                    let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
-                    let condition: Reventless.DcbTag.appendCondition = {
-                      query,
-                      after: ?headPosition,
-                    }
-                    EffectLogger.logInfo(
+                    EffectLogger.logError(
                       ~comp,
                       ~ids,
-                      ~detail=eventJsons,
-                      `produced ${eventCount} event(s): [${eventDetails}]`,
-                    )
-                    ->Effect.flatMap(
-                      _ =>
-                        Effect.promise(
-                          () =>
-                            // What it did not read cannot have changed under it: no condition.
-                            Reventless.DcbTag.readsNothing(query)
-                              ? dcbEventLog.append(rawEvents)
-                              : dcbEventLog.append(rawEvents, ~condition),
-                        ),
-                    )
-                    ->Effect.flatMap(
-                      appendResult =>
-                        switch appendResult {
-                        | Ok(_position) =>
-                          // Cache the decided-on state at the read head (NOT including the
-                          // events we just appended, and NOT the returned position): the
-                          // next command's delta read picks our events up from `headPosition`.
-                          cachePut((state, headPosition, owners))
-                          CommandTopic_Helpers.reportAccepted(
-                            ~component=Spec.name,
-                            ~correlationId=cmdJson.meta.correlationId,
-                            ~causationId=?cmdJson.meta.causationId,
-                            cmdJson.meta.msgId,
-                            switch entityId {
-                            | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
-                            | None => {eventCount: rawEvents->Array.length}
-                            },
-                          )
-                          EffectLogger.logInfo(
-                            ~comp,
-                            ~ids,
-                            `append: ${eventCount} event(s)`,
-                          )->Effect.map(_ => Ok("ok"))
-                        | Error(err) =>
-                          // Typed classification (was substring-matching the error string,
-                          // which disagreed with the backends' casing).
-                          let (errorCode, errDetail) = switch err {
-                          | ReventlessInfra.DcbEventLog.Conflict => (
-                              Reventless.CommandOutcome.code(Conflict),
-                              "conflict: condition check failed",
-                            )
-                          | StorageFailure(msg) => (
-                              Reventless.CommandOutcome.code(AppendFailed),
-                              msg,
-                            )
-                          }
-                          if retries > 0 {
-                            // Re-seed from the just-read snapshot so the retry reads only
-                            // the delta the conflicting writer added, not full history.
-                            seed := Some((state, headPosition, owners))
-                            // Per-slice CloudWatch counter: rising AppendRetry signals a
-                            // slice feeling contention (the metric to watch the eventual
-                            // default with — see dcb-high-contention-handling.md).
-                            Metrics.emitCount(~metric="AppendRetry", ~slice=Spec.name)
-                            EffectLogger.logWarn(
-                              ~comp,
-                              ~ids,
-                              `append failed (retrying ${(maxRetries - retries + 1)
-                                  ->Int.toString}/${maxRetries->Int.toString}): ${errDetail}`,
-                            )->Effect.flatMap(_ => attempt(~retries=retries - 1))
-                          } else {
-                            // Retries exhausted — drop any cached snapshot so the next
-                            // command for this entity takes the cold full-read path.
-                            cacheInvalidate()
-
-                            // A surfaced Conflict means the 3-retry loop could not absorb
-                            // the contention — the operator signal for "this slice is hot"
-                            // (consider sharding / async — Issue 10, §4 of the analysis).
-                            if errorCode == Reventless.CommandOutcome.code(Conflict) {
-                              Metrics.emitCount(~metric="AppendConflict", ~slice=Spec.name)
-                            }
-                            // Both arms here are storage, not the model: a surfaced Conflict is
-                            // contention the retry loop couldn't absorb, and AppendFailed is the
-                            // store failing. `decide` had already said Ok.
-                            CommandTopic_Helpers.reportRejected(
-                              ~component=Spec.name,
-                              ~correlationId=cmdJson.meta.correlationId,
-                              ~claimed=cmdJson.meta.callerClaim->Option.isSome,
-                              ~causationId=?cmdJson.meta.causationId,
-                              ~cause=InfrastructureFailure,
-                              cmdJson.meta.msgId,
-                              {errorCode, errorDetail: errDetail},
-                            )
-                            EffectLogger.logError(
-                              ~comp,
-                              ~ids,
-                              `append failed, retries exhausted: ${errDetail}`,
-                            )->Effect.map(_ => Error(errDetail))
-                          }
-                        },
-                    )
-                  },
-              )
-            | Error(error) =>
-              // Business-rule rejection — no append, but the read snapshot is valid; cache it.
-              cachePut((state, headPosition, owners))
-              let errorJson = error->Reventless.Util_Sury.toJson(Spec.errorSchema)
-              let errorCode = errorJson->Message.variantNameOfJson
-              let (_, payloadDict) = errorJson->Message.splitMessage
-              let errorDetail =
-                payloadDict->Dict.toArray->Array.length == 0
-                  ? ""
-                  : payloadDict->JSON.Encode.object->JSON.stringify
-              CommandTopic_Helpers.reportRejected(
-                ~component=Spec.name,
-                ~correlationId=cmdJson.meta.correlationId,
-                ~claimed=cmdJson.meta.callerClaim->Option.isSome,
-                ~causationId=?cmdJson.meta.causationId,
-                ~cause=DomainRejection,
-                cmdJson.meta.msgId,
-                {errorCode, errorDetail},
-              )
-              EffectLogger.logError(
-                ~comp,
-                ~ids,
-                `decide rejected: ${errorCode} ${errorDetail}`,
-              )->Effect.map(_ => Ok("rejected"))
-            }
+                      `decide rejected: ${errorCode} ${errorDetail}`,
+                    )->Effect.map(_ => Ok("rejected"))
+                  }
+                },
+            )
+          | missing => indexBehind(missing)
           }
         )
       )

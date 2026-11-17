@@ -14,6 +14,7 @@ module type T = {
   let append: DcbEventLog.append
   let readStream: DcbEventLog.readStream
   let appendStream: DcbEventLog.appendStream
+  let readFences: option<DcbEventLog.readFences>
 }
 
 module Make = (Ops: Ops): T => {
@@ -164,4 +165,6 @@ module Make = (Ops: Ops): T => {
     ->Stream.map((rawEvent): DcbEventLog_Adapter.rawStoredEvent => rawEvent->Obj.magic)
     ->Stream.runCollect
     ->Effect.flatMap(rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, ~condition?)))
+
+  let readFences = Ops.storage.readFences
 }

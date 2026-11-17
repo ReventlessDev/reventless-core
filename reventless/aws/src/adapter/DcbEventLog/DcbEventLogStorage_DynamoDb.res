@@ -82,6 +82,7 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
           resolvedTable,
           ~crossPartitionTagKeys,
         ),
+        readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(resolvedTable),
       }
     }),
   }

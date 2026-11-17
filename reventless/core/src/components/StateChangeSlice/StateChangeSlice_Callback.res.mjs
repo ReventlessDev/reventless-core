@@ -11,6 +11,7 @@ import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Duration from "effect/Duration";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -21,6 +22,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Metrics$ReventlessCore from "../../util/Metrics.res.mjs";
+import * as DcbFenceCount$Reventless from "@reventlessdev/reventless-spec/src/components/DcbFenceCount.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -241,18 +243,28 @@ function Make(Spec) {
         contents: cacheGet()
       };
       Metrics$ReventlessCore.emitCount(Stdlib_Option.isSome(seed.contents) ? "DcbDecisionModelCacheHit" : "DcbDecisionModelCacheMiss", Spec.name, undefined);
+      let fenceClauses = DcbFenceCount$Reventless.clauses(query, crossPartitionTagKeys);
       let attempt = retries => {
         let match = seed.contents;
         let match$1 = match !== undefined ? [
             match[0],
             match[1],
-            match[2]
+            match[2],
+            match[3]
           ] : [
             Decision.initialState,
             undefined,
-            []
+            [],
+            {}
           ];
+        let baseOwners = match$1[2];
         let afterPos = match$1[1];
+        let baseState = match$1[0];
+        let seen = Object.assign({}, match$1[3]);
+        let match$2 = dcbEventLog.readFences;
+        let fencesRead = fenceClauses.length !== 0 ? (
+            match$2 !== undefined ? Effect.tryPromise(e => `reading the fences failed: ` + String(e), () => match$2(fenceClauses.map(c => c.tag))) : Effect$1.succeed([])
+          ) : Effect$1.succeed([]);
         let cacheHit = Stdlib_Option.isSome(seed.contents);
         let strongConsistency;
         switch (Spec.readConsistency) {
@@ -266,16 +278,17 @@ function Make(Spec) {
             strongConsistency = false;
             break;
         }
-        return Effect$1.flatMap(Effect$1.tap(Stream.runFold(Stream.mapEffect(DcbTag$Reventless.readsNothing(query) ? Stream$1.empty : dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
-          match$1[0],
+        return Effect$1.flatMap(fencesRead, fences => Effect$1.flatMap(Effect$1.tap(Stream.runFold(Stream.mapEffect(DcbTag$Reventless.readsNothing(query) ? Stream$1.empty : dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
+          baseState,
           afterPos,
           [],
-          match$1[2],
+          baseOwners,
           false
         ], (param, raw) => {
           let owners = param[3];
           let reads = param[2];
           let dm = param[0];
+          DcbFenceCount$Reventless.countRead(seen, fenceClauses, raw.eventType, raw.tags);
           let repeated = param[4] || asksForRepeat && Primitive_object.equal(raw.meta.causationId, command$p.meta.msgId);
           let data = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {});
           let event = decoder.decode(raw.eventType, data);
@@ -311,182 +324,207 @@ function Make(Spec) {
           let owners = param[3];
           let headPosition = param[1];
           let state = param[0];
-          return Effect$1.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, ids, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
-            let match = ownershipRefusal(owners);
-            if (repeated) {
-              CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
-                  entityId: entityId,
-                  eventCount: 0
-                }) : ({
-                  eventCount: 0
-                }));
-              return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, `repeat dropped: ` + LogFormat$ReventlessCore.cmdName(cmdJson) + ` msgId=` + cmdJson.meta.msgId + ` already caused events in id=` + Stdlib_Option.getOr(entityId, "-")), () => ({
-                TAG: "Ok",
-                _0: "ok"
+          let missing = DcbFenceCount$Reventless.shortfalls(fences, fenceClauses, seen);
+          if (missing.length !== 0) {
+            let detail = missing.map(m => m.tag.key + `=` + m.tag.value + ` ` + m.eventType + `: read ` + m.read.toString() + ` of ` + m.counted.toString()).join(", ");
+            if (retries > 0) {
+              seed.contents = undefined;
+              return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, `index behind its fence (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + detail), () => Effect$1.sleep(Duration.millis(100 * ((3 - retries | 0) + 1 | 0) | 0))), () => attempt(retries - 1 | 0));
+            } else {
+              cacheInvalidate();
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
+                errorCode: CommandOutcome$Reventless.code("Conflict"),
+                errorDetail: `index behind its fence: ` + detail
+              });
+              return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `index behind its fence, retries exhausted: ` + detail), () => ({
+                TAG: "Error",
+                _0: detail
               }));
             }
-            if (match !== undefined) {
-              let rejected = match.rejected;
-              cachePut([
-                state,
-                headPosition,
-                owners
-              ]);
-              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, rejected);
-              let line = `refused: ` + rejected.errorDetail + ` id=` + Stdlib_Option.getOr(entityId, "-");
-              return Effect$1.map(match.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, ids, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, line), () => ({
-                TAG: "Ok",
-                _0: "rejected"
-              }));
-            }
-            let newEvents = Decision.decide(state, command$p.command);
-            if (newEvents.TAG === "Ok") {
-              let newEvents$1 = newEvents._0;
-              if (newEvents$1.length === 0) {
-                cachePut([
-                  state,
-                  headPosition,
-                  owners
-                ]);
+          } else {
+            return Effect$1.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, ids, `deciding: id=` + Stdlib_Option.getOr(entityId, "-") + ` head=` + Stdlib_Option.getOr(headPosition, "-") + ` cmd=` + LogFormat$ReventlessCore.cmdName(cmdJson)), () => {
+              let match = ownershipRefusal(owners);
+              if (repeated) {
                 CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
                     entityId: entityId,
                     eventCount: 0
                   }) : ({
                     eventCount: 0
                   }));
-                return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, "no events produced"), () => ({
+                return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, `repeat dropped: ` + LogFormat$ReventlessCore.cmdName(cmdJson) + ` msgId=` + cmdJson.meta.msgId + ` already caused events in id=` + Stdlib_Option.getOr(entityId, "-")), () => ({
                   TAG: "Ok",
                   _0: "ok"
                 }));
               }
-              let encoded = newEvents$1.map(e => {
-                let parentMeta = command$p.meta;
-                let json = Util_Sury$Reventless.toJson(e, Spec.eventSchema);
-                let match = Message$ReventlessCore.splitMessage(json);
-                let eventType = match[0];
-                let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);
-                let keys = tagKeysByEventType[eventType];
-                let indexedTags = keys !== undefined ? baseTags.filter(t => keys.includes(t.key)) : baseTags;
-                let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
-                return {
-                  eventType: eventType,
-                  data: match[1],
-                  tags: indexedTags,
-                  meta: meta
-                };
-              });
-              return Effect$1.flatMap(Effect$1.promise(() => sealRawEvents(encoded)), sealResult => {
-                if (sealResult.TAG === "Ok") {
-                  let rawEvents = sealResult._0;
-                  let eventCount = rawEvents.length.toString();
-                  let eventDetails = rawEvents.map(e => {
-                    let dict = e.data;
-                    if (typeof dict === "object" && dict !== null && !Array.isArray(dict)) {
-                      return LogFormat$ReventlessCore.cmdLabelOfJson(Message$ReventlessCore.combineMessage(e.eventType, dict));
-                    } else {
-                      return LogFormat$ReventlessCore.bold(e.eventType);
-                    }
-                  }).join(", ");
-                  let eventJsons = rawEvents.map(e => e.data);
-                  let condition = {
-                    query: query,
-                    after: headPosition
-                  };
-                  return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, ids, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => {
-                    if (DcbTag$Reventless.readsNothing(query)) {
-                      return dcbEventLog.append(rawEvents, undefined);
-                    } else {
-                      return dcbEventLog.append(rawEvents, condition);
-                    }
-                  })), appendResult => {
-                    if (appendResult.TAG === "Ok") {
-                      cachePut([
-                        state,
-                        headPosition,
-                        owners
-                      ]);
-                      CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
-                          entityId: entityId,
-                          eventCount: rawEvents.length
-                        }) : ({
-                          eventCount: rawEvents.length
-                        }));
-                      return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, `append: ` + eventCount + ` event(s)`), () => ({
-                        TAG: "Ok",
-                        _0: "ok"
-                      }));
-                    }
-                    let err = appendResult._0;
-                    let match;
-                    match = typeof err !== "object" ? [
-                        CommandOutcome$Reventless.code("Conflict"),
-                        "conflict: condition check failed"
-                      ] : [
-                        CommandOutcome$Reventless.code("AppendFailed"),
-                        err._0
-                      ];
-                    let errDetail = match[1];
-                    let errorCode = match[0];
-                    if (retries > 0) {
-                      seed.contents = [
-                        state,
-                        headPosition,
-                        owners
-                      ];
-                      Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
-                      return Effect$1.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + errDetail), () => attempt(retries - 1 | 0));
-                    } else {
-                      cacheInvalidate();
-                      if (errorCode === CommandOutcome$Reventless.code("Conflict")) {
-                        Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
-                      }
-                      CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
-                        errorCode: errorCode,
-                        errorDetail: errDetail
-                      });
-                      return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `append failed, retries exhausted: ` + errDetail), () => ({
-                        TAG: "Error",
-                        _0: errDetail
-                      }));
-                    }
-                  });
-                }
-                let detail = sealResult._0;
+              if (match !== undefined) {
+                let rejected = match.rejected;
                 cachePut([
                   state,
                   headPosition,
-                  owners
+                  owners,
+                  seen
                 ]);
-                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
-                  errorCode: CommandOutcome$Reventless.code("AppendFailed"),
-                  errorDetail: detail
-                });
-                return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `append refused: ` + detail), () => ({
-                  TAG: "Error",
-                  _0: detail
+                CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "AccessRefusal", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, rejected);
+                let line = `refused: ` + rejected.errorDetail + ` id=` + Stdlib_Option.getOr(entityId, "-");
+                return Effect$1.map(match.isDefect ? EffectLogger$ReventlessCore.logError(comp, undefined, ids, line) : EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, line), () => ({
+                  TAG: "Ok",
+                  _0: "rejected"
                 }));
+              }
+              let newEvents = Decision.decide(state, command$p.command);
+              if (newEvents.TAG === "Ok") {
+                let newEvents$1 = newEvents._0;
+                if (newEvents$1.length === 0) {
+                  cachePut([
+                    state,
+                    headPosition,
+                    owners,
+                    seen
+                  ]);
+                  CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
+                      entityId: entityId,
+                      eventCount: 0
+                    }) : ({
+                      eventCount: 0
+                    }));
+                  return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, "no events produced"), () => ({
+                    TAG: "Ok",
+                    _0: "ok"
+                  }));
+                }
+                let encoded = newEvents$1.map(e => {
+                  let parentMeta = command$p.meta;
+                  let json = Util_Sury$Reventless.toJson(e, Spec.eventSchema);
+                  let match = Message$ReventlessCore.splitMessage(json);
+                  let eventType = match[0];
+                  let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);
+                  let keys = tagKeysByEventType[eventType];
+                  let indexedTags = keys !== undefined ? baseTags.filter(t => keys.includes(t.key)) : baseTags;
+                  let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
+                  return {
+                    eventType: eventType,
+                    data: match[1],
+                    tags: indexedTags,
+                    meta: meta
+                  };
+                });
+                return Effect$1.flatMap(Effect$1.promise(() => sealRawEvents(encoded)), sealResult => {
+                  if (sealResult.TAG === "Ok") {
+                    let rawEvents = sealResult._0;
+                    let eventCount = rawEvents.length.toString();
+                    let eventDetails = rawEvents.map(e => {
+                      let dict = e.data;
+                      if (typeof dict === "object" && dict !== null && !Array.isArray(dict)) {
+                        return LogFormat$ReventlessCore.cmdLabelOfJson(Message$ReventlessCore.combineMessage(e.eventType, dict));
+                      } else {
+                        return LogFormat$ReventlessCore.bold(e.eventType);
+                      }
+                    }).join(", ");
+                    let eventJsons = rawEvents.map(e => e.data);
+                    let condition = {
+                      query: query,
+                      after: headPosition
+                    };
+                    return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, ids, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => {
+                      if (DcbTag$Reventless.readsNothing(query)) {
+                        return dcbEventLog.append(rawEvents, undefined);
+                      } else {
+                        return dcbEventLog.append(rawEvents, condition);
+                      }
+                    })), appendResult => {
+                      if (appendResult.TAG === "Ok") {
+                        cachePut([
+                          state,
+                          headPosition,
+                          owners,
+                          seen
+                        ]);
+                        CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.correlationId, cmdJson.meta.causationId, cmdJson.meta.msgId, entityId !== undefined ? ({
+                            entityId: entityId,
+                            eventCount: rawEvents.length
+                          }) : ({
+                            eventCount: rawEvents.length
+                          }));
+                        return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, ids, `append: ` + eventCount + ` event(s)`), () => ({
+                          TAG: "Ok",
+                          _0: "ok"
+                        }));
+                      }
+                      let err = appendResult._0;
+                      let match;
+                      match = typeof err !== "object" ? [
+                          CommandOutcome$Reventless.code("Conflict"),
+                          "conflict: condition check failed"
+                        ] : [
+                          CommandOutcome$Reventless.code("AppendFailed"),
+                          err._0
+                        ];
+                      let errDetail = match[1];
+                      let errorCode = match[0];
+                      if (retries > 0) {
+                        seed.contents = [
+                          state,
+                          headPosition,
+                          owners,
+                          seen
+                        ];
+                        Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
+                        return Effect$1.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + errDetail), () => attempt(retries - 1 | 0));
+                      } else {
+                        cacheInvalidate();
+                        if (errorCode === CommandOutcome$Reventless.code("Conflict")) {
+                          Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
+                        }
+                        CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
+                          errorCode: errorCode,
+                          errorDetail: errDetail
+                        });
+                        return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `append failed, retries exhausted: ` + errDetail), () => ({
+                          TAG: "Error",
+                          _0: errDetail
+                        }));
+                      }
+                    });
+                  }
+                  let detail = sealResult._0;
+                  cachePut([
+                    state,
+                    headPosition,
+                    owners,
+                    seen
+                  ]);
+                  CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
+                    errorCode: CommandOutcome$Reventless.code("AppendFailed"),
+                    errorDetail: detail
+                  });
+                  return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `append refused: ` + detail), () => ({
+                    TAG: "Error",
+                    _0: detail
+                  }));
+                });
+              }
+              cachePut([
+                state,
+                headPosition,
+                owners,
+                seen
+              ]);
+              let errorJson = Util_Sury$Reventless.toJson(newEvents._0, Spec.errorSchema);
+              let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
+              let match$1 = Message$ReventlessCore.splitMessage(errorJson);
+              let payloadDict = match$1[1];
+              let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
+              CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
+                errorCode: errorCode,
+                errorDetail: errorDetail
               });
-            }
-            cachePut([
-              state,
-              headPosition,
-              owners
-            ]);
-            let errorJson = Util_Sury$Reventless.toJson(newEvents._0, Spec.errorSchema);
-            let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
-            let match$1 = Message$ReventlessCore.splitMessage(errorJson);
-            let payloadDict = match$1[1];
-            let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.correlationId, cmdJson.meta.causationId, Stdlib_Option.isSome(cmdJson.meta.callerClaim), cmdJson.meta.msgId, {
-              errorCode: errorCode,
-              errorDetail: errorDetail
+              return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `decide rejected: ` + errorCode + ` ` + errorDetail), () => ({
+                TAG: "Ok",
+                _0: "rejected"
+              }));
             });
-            return Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, ids, `decide rejected: ` + errorCode + ` ` + errorDetail), () => ({
-              TAG: "Ok",
-              _0: "rejected"
-            }));
-          });
-        });
+          }
+        }));
       };
       return attempt(3);
     };

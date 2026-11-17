@@ -33,6 +33,10 @@ type operations = {
     ~after: Reventless.DcbTag.sequencePosition=?,
     ~strongConsistency: bool=?,
   ) => Stream.t<rawSequencedEvent, string, unit>,
+  /** Reads the fences of cross-partition tags, strongly consistent, for a reader
+      of an eventually consistent index to check its read against. Absent on a
+      store whose reads are never stale. */
+  readFences?: array<Reventless.DcbTag.tag> => promise<array<Reventless.DcbFenceCount.fence>>,
 }
 
 type storage = {

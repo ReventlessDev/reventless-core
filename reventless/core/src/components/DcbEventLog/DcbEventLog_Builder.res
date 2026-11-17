@@ -65,6 +65,7 @@ module Make = (
           append: Ops.append,
           readStream: Ops.readStream,
           appendStream: Ops.appendStream,
+          readFences: ?Ops.readFences,
         }
         ops
       }),

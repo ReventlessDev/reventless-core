@@ -111,11 +111,13 @@ function Make(Ops) {
   };
   let readStream = (query, after, strongConsistency) => Stream.map(Ops.storage.readStream(query, after, strongConsistency), raw => raw);
   let appendStream = (stream, condition) => Effect$1.flatMap(Stream$1.runCollect(Stream.map(stream, rawEvent => rawEvent)), rawEvents => Effect$1.promise(() => Ops.storage.append(rawEvents, condition)));
+  let readFences = Ops.storage.readFences;
   return {
     read: read,
     append: append,
     readStream: readStream,
-    appendStream: appendStream
+    appendStream: appendStream,
+    readFences: readFences
   };
 }
 

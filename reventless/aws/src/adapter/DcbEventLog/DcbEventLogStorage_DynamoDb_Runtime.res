@@ -907,6 +907,47 @@ let withCounts = (
   }
 }
 
+// A fence item as the reader sees it: its counts by event type, and whether they
+// include the events written before counting began. No item means no event
+// carries the tag, so there is nothing to count.
+let fenceOfItem = (
+  tag: Reventless.DcbTag.tag,
+  item: option<JSON.t>,
+): Reventless.DcbFenceCount.fence => {
+  let attrs = item->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+  let prefix = fenceCountAttr("")
+  {
+    tag,
+    counted: attrs->Dict.get("counted") == Some(JSON.Boolean(true)),
+    counts: attrs
+    ->Dict.toArray
+    ->Array.filterMap(((name, value)) =>
+      name->String.startsWith(prefix)
+        ? value
+          ->JSON.Decode.float
+          ->Option.map(n => (name->String.slice(~start=prefix->String.length), n->Float.toInt))
+        : None
+    )
+    ->Dict.fromArray,
+  }
+}
+
+let readFences = (table: resolvedTable) =>
+  async (tags: array<Reventless.DcbTag.tag>) =>
+    await tags
+    ->Array.map(tag =>
+      Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+        GetCommand.send(
+          GetCommand.make({tableName: table.name, key: fenceKey(tag), consistentRead: true}),
+        )
+      )
+      ->Effect.retry(DynamoDb_Error.retrySchedule)
+      ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+      ->Effect.map(result => fenceOfItem(tag, result.item))
+      ->Effect.runPromise
+    )
+    ->Promise.all
+
 // Read-only fence assertion: verifies no writer bumped the fence past `after`
 // WITHOUT advancing it. Used for query tags the slice *reads* but does not
 // *partition* by — the read is partition-scoped, so bumping such a tag's fence

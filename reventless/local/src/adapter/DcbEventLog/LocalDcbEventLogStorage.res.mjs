@@ -24,13 +24,10 @@ function Make(Bus) {
       let storageName = match$3[0];
       Bus.registerDcbEventLogRead(storageName, ops.read);
       LocalPgEventLogRead$ReventlessLocal.registerDcb(pool, storageName);
+      let newrecord = {...ops};
       return {
         resources: match$3[2].resources,
-        operations: Pulumi.output({
-          read: ops.read,
-          append: LocalPgEventLogRead$ReventlessLocal.notingDcbAppend(pool, storageName, ops.append),
-          readStream: ops.readStream
-        })
+        operations: Pulumi.output((newrecord.append = LocalPgEventLogRead$ReventlessLocal.notingDcbAppend(pool, storageName, ops.append), newrecord))
       };
     }
     let match$4 = DcbEventLogStorage_InMemory$ReventlessLocal.makeStorage(name, indexes, partitionTag, opts);

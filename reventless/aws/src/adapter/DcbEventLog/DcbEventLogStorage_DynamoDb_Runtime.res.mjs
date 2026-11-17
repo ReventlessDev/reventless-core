@@ -10,6 +10,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
@@ -699,6 +700,32 @@ function withCounts(update, counts) {
   return newrecord;
 }
 
+function fenceOfItem(tag, item) {
+  let attrs = Stdlib_Option.getOr(Stdlib_Option.flatMap(item, Stdlib_JSON.Decode.object), {});
+  let prefix = `n#`;
+  return {
+    tag: tag,
+    counted: Primitive_object.equal(attrs["counted"], true),
+    counts: Object.fromEntries(Stdlib_Array.filterMap(Object.entries(attrs), param => {
+      let name = param[0];
+      if (name.startsWith(prefix)) {
+        return Stdlib_Option.map(Stdlib_JSON.Decode.float(param[1]), n => [
+          name.slice(prefix.length),
+          n | 0
+        ]);
+      }
+    }))
+  };
+}
+
+function readFences(table) {
+  return async tags => await Promise.all(tags.map(tag => Effect.runPromise(Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+    TableName: table.name,
+    Key: fenceKey(tag),
+    ConsistentRead: true
+  }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => fenceOfItem(tag, result.Item)))));
+}
+
 function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
   let names = {};
   if (after !== undefined) {
@@ -1311,6 +1338,8 @@ export {
   countedFromAttr,
   countsByTag,
   withCounts,
+  fenceOfItem,
+  readFences,
   buildFenceConditionCheck,
   transactWriteItemsLimit,
   buildEventPuts,

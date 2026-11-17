@@ -114,11 +114,19 @@ Works with raw events — encode/decode is handled by each slice's callback.
 
 Obtained via `Component.operations(dcbEventLog)`. Available inside Lambda handlers.
 */
+/**
+Reads the fences of cross-partition tags, strongly consistent. A reader of an
+eventually consistent index checks with them that it read every event counted.
+*/
+type readFences = array<Reventless.DcbTag.tag> => promise<array<Reventless.DcbFenceCount.fence>>
+
 type operations = {
   read: read,
   append: append,
   readStream: readStream,
   appendStream: appendStream,
+  /** Absent on a store whose reads are never stale. */
+  readFences?: readFences,
 }
 
 type t
