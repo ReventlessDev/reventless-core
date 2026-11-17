@@ -49,6 +49,26 @@ describe("every bin", () => {
     ~mistake=["--provider_id", "x"],
     ~message=`unknown argument "--provider_id"`,
   )
+  answersLikeEveryTool(
+    CountFences.cli,
+    ~mistake=["--table", "t", "--pairs", "messageId"],
+    ~message="--pairs takes key:EventType, comma-separated",
+  )
+})
+
+describe("count-fences", () => {
+  testSync("takes keys, pairs, or both, and needs one of them", () => {
+    let parsed = CountFences.parseArgs([
+      "--table",
+      "t",
+      "--pairs",
+      "messageId:ReplyPosted, orderId:WarehouseAssigned",
+    ])
+    expect(parsed->Result.map(a => (a.keys, a.pairs)))->toEqual(
+      Ok(([], [("messageId", "ReplyPosted"), ("orderId", "WarehouseAssigned")])),
+    )
+    expect(CountFences.parseArgs(["--table", "t"])->Result.isError)->toBe(true)
+  })
 })
 
 describe("a string flag's value", () => {

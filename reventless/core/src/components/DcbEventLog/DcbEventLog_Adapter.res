@@ -53,6 +53,9 @@ type storageMaker = (
       (per-tag GSI) and its consistency fence is bumped by every carrier. Derived
       once at build time so read-scope = fence-scope per tag. */
   ~crossPartitionTagKeys: array<string>=?,
+  /** Key -> the event types with a pair fence on it (`DcbScopeInference.pairFenceTypes`):
+      every append of such a type carrying the key moves that fence. */
+  ~pairFenceTypes: dict<array<string>>=?,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

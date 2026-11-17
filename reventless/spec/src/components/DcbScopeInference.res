@@ -300,6 +300,19 @@ let pairEventTypes = (pairs: array<pair>, ~reader: string): dict<array<string>> 
   byKey
 }
 
+/** Key -> the event types with a pair fence on it, whoever reads them: what the
+    event log keeps a fence item for, and its writers move. */
+let pairFenceTypes = (pairs: array<pair>): dict<array<string>> => {
+  let byKey = Dict.make()
+  pairs->Array.forEach(p => {
+    let types = byKey->Dict.get(p.key)->Option.getOr([])
+    if !(types->Array.includes(p.eventType)) {
+      byKey->Dict.set(p.key, types->Array.concat([p.eventType]))
+    }
+  })
+  byKey
+}
+
 /** Rule 1's outcome for a boundary, before the scope rules build on it. */
 type partitionResolution = {
   /** sliceName -> its partition key (absent when unresolved). */

@@ -1128,3 +1128,152 @@ describe("readsAcrossPartitions", () => {
     expect(route({tags: [customer], crossPartition: true}, []))->toBe(true)
   )
 })
+
+type item = AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem
+
+describe("Runtime — a pair's fence item", () => {
+  // A question reads the replies under it by messageId; PostReply stores a reply
+  // under replyId.
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+  let pairFenceTypes = Dict.fromArray([("messageId", ["ReplyPosted"])])
+  let reply = event("ReplyPosted", [tag("replyId", "r1"), tag("messageId", "m1")])
+  let message = event("MessagePosted", [tag("messageId", "m1")])
+  let byReply = Some(Reventless.DcbTag.Simple({key: "replyId"}))
+  let byMessage = Some(Reventless.DcbTag.Simple({key: "messageId"}))
+  let keyOf = (it: item) =>
+    switch (it.update, it.conditionCheck, it.put) {
+    | (Some(u), _, _) => Some(u.key)
+    | (_, Some(c), _) => Some(c.key)
+    | _ => None
+    }
+  let sortKeyOf = (it: item) =>
+    it->keyOf->Option.flatMap(k => k->Dict.get("position"))->Option.flatMap(JSON.Decode.string)
+  let pairItems = (items: array<item>) =>
+    items->Array.filter(it => sortKeyOf(it) == Some("FENCE#ReplyPosted"))
+  let idOf = (it: item) =>
+    it->keyOf->Option.flatMap(k => k->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
+  let withoutPairs = (items: array<item>) =>
+    items->Array.filter(it => sortKeyOf(it) != Some("FENCE#ReplyPosted"))->Array.map(idOf)
+  let replyCond: Reventless.DcbTag.appendCondition = {
+    query: [{tags: [tag("replyId", "r1")], eventTypes: ["ReplyPosted"]}],
+    after: "50",
+  }
+
+  testSync("a reply's conditional append updates the pair's item and nothing else new", () => {
+    let items = Runtime.buildConditionalTransactItems(
+      table,
+      [reply],
+      replyCond,
+      "100",
+      ~partitionTag=?byReply,
+      ~pairFenceTypes,
+    )
+    let plain = Runtime.buildConditionalTransactItems(
+      table,
+      [reply],
+      replyCond,
+      "100",
+      ~partitionTag=?byReply,
+    )
+    let pair = items->pairItems
+    expect((pair->Array.length, idOf(pair->Array.getUnsafe(0))))->toEqual((
+      1,
+      Some("fence#messageId:m1"),
+    ))
+    let update = (pair->Array.getUnsafe(0)).update->Option.getOrThrow
+    expect(update.updateExpression)->toBe("SET #p = :new, #cf = if_not_exists(#cf, :new) ADD #n :w")
+    expect(update.conditionExpression)->toEqual(None)
+    expect(withoutPairs(items))->toEqual(withoutPairs(plain))
+  })
+
+  testSync("so does an unconditional one", () => {
+    let items = Runtime.buildUnconditionalTransactItems(
+      table,
+      [reply],
+      "100",
+      ~partitionTag=?byReply,
+      ~pairFenceTypes,
+    )
+    expect(items->pairItems->Array.length)->toBe(1)
+  })
+
+  testSync("a message's append is unchanged", () => {
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("messageId", "m1")], eventTypes: ["MessagePosted"]}],
+    }
+    let items = Runtime.buildConditionalTransactItems(
+      table,
+      [message],
+      cond,
+      "100",
+      ~partitionTag=?byMessage,
+      ~pairFenceTypes,
+    )
+    let plain = Runtime.buildConditionalTransactItems(
+      table,
+      [message],
+      cond,
+      "100",
+      ~partitionTag=?byMessage,
+    )
+    expect(items->Array.length)->toBe(plain->Array.length)
+    expect(items->pairItems)->toEqual([])
+  })
+
+  // The question's own append: it reads its partition, and the replies across partitions.
+  let answer = event("AnswerMarked", [tag("messageId", "m1"), tag("replyId", "r1")])
+  let questionCond = (~fenceCounts=?): Reventless.DcbTag.appendCondition => {
+    query: [
+      {tags: [tag("messageId", "m1")], eventTypes: ["AnswerMarked"]},
+      {tags: [tag("messageId", "m1")], eventTypes: ["ReplyPosted"], crossPartition: true},
+    ],
+    after: "80",
+    ?fenceCounts,
+  }
+  let questionItems = cond =>
+    Runtime.buildConditionalTransactItems(
+      table,
+      [answer],
+      cond,
+      "100",
+      ~partitionTag=?byMessage,
+      ~pairFenceTypes,
+    )
+
+  testSync("the reader checks the pair's item by position, uncounted", () => {
+    let items = questionItems(questionCond())
+    let check = (items->pairItems->Array.getUnsafe(0)).conditionCheck->Option.getOrThrow
+    expect(check.conditionExpression)->toBe("(attribute_not_exists(#p) OR #p <= :after)")
+    expect(check.expressionAttributeNames)->toEqual(
+      Some(Dict.fromArray([("#p", "pos#ReplyPosted")])),
+    )
+    // and the key value's own item no longer checks the pair's type
+    let own =
+      items
+      ->Array.find(it => idOf(it) == Some("fence#messageId:m1") && sortKeyOf(it) == Some("FENCE"))
+      ->Option.flatMap(it => it.update)
+      ->Option.getOrThrow
+    expect(
+      own.expressionAttributeNames
+      ->Option.getOr(Dict.make())
+      ->Dict.valuesToArray
+      ->Array.includes("pos#ReplyPosted"),
+    )->toBe(false)
+  })
+
+  testSync("and by the count it read, counted", () => {
+    let items = questionItems(
+      questionCond(
+        ~fenceCounts=[{tag: tag("messageId", "m1"), eventType: "ReplyPosted", count: 2}],
+      ),
+    )
+    let check = (items->pairItems->Array.getUnsafe(0)).conditionCheck->Option.getOrThrow
+    expect(check.conditionExpression)->toBe("#n = :s")
+    expect(check.expressionAttributeNames)->toEqual(Some(Dict.fromArray([("#n", "n#ReplyPosted")])))
+  })
+})

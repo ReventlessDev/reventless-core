@@ -392,20 +392,6 @@ module Make = (
         log.error(~comp="Dcb_Builder", `DCB scope contradiction (${name}): ${detail}`)
         JsError.throwWithMessage(`DCB scope contradiction (${name}): ${detail}`)
       }
-      // The event log does not yet read a pair's events across partitions or keep
-      // their fence, so a boundary with one would decide against events it misses.
-      switch inferred.crossPartitionPairs {
-      | [] => ()
-      | pairs =>
-        let detail =
-          pairs
-          ->Array.map(p => `${p.reader} reads ${p.eventType} by ${p.key}`)
-          ->Array.join(" | ")
-        let message = `DCB cross-partition pairs are not served yet (${name}): ${detail}. Partition the writers by the reader's key, or drop the read.`
-        log.error(~comp="Dcb_Builder", message)
-        JsError.throwWithMessage(message)
-      }
-
       // All-or-nothing: thread the derived scope only when every slice resolved.
       // An ambiguous boundary keeps the annotated values (no partial inference).
       // Both this builder and the deployed command-handler entry point
@@ -415,6 +401,45 @@ module Make = (
       let effective = Reventless.DcbTag.deriveEffectiveScope(sliceSchemas)
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys
       let effectiveTagKeysByEventType = effective.tagKeysByEventType
+
+      // A pair puts a cost on slices whose specs did not change: each writer of the
+      // pair's event now updates a fence of the reader's. Said once per writer, and
+      // as a warning where its transaction already carries other such fences, since
+      // each adds an item to a transaction capped at 100.
+      effective.crossPartitionPairs->Array.forEach(pair =>
+        pair.writers->Array.forEach(writer => {
+          let writes = (s: Reventless.DcbScopeInference.sliceShape) => s.sliceName == writer
+          let otherPairs =
+            effective.crossPartitionPairs->Array.some(
+              p =>
+                p.writers->Array.includes(writer) &&
+                  (p.eventType != pair.eventType || p.key != pair.key),
+            )
+          let carriesCrossPartition =
+            inferenceShapes
+            ->Array.find(writes)
+            ->Option.mapOr(
+              false,
+              s =>
+                s
+                ->Reventless.DcbScopeInference.producedKeys
+                ->Array.some(k => effectiveCrossPartitionTagKeys->Array.includes(k)),
+            )
+          let composite = switch partitionTagOf(writer) {
+          | Some(Reventless.DcbTag.Composite(_)) => true
+          | _ => false
+          }
+          let message = `DCB pair (${name}): ${writer} now updates fence ${pair.key} for ${pair.reader}, which reads ${pair.eventType} by ${pair.key} across partitions`
+          if otherPairs || carriesCrossPartition || composite {
+            log.warn(
+              ~comp="Dcb_Builder",
+              `${message}; its appends already carry other cross-partition, composite or pair fences, and each adds an item to a transaction capped at 100`,
+            )
+          } else {
+            log.info(~comp="Dcb_Builder", message)
+          }
+        })
+      )
 
       // Warn on composite (multi-tag) decision reads that would silently miss an
       // event carrying extra tags (the tag_composite key is the event's full tag
@@ -467,6 +492,7 @@ module Make = (
         ~indexes,
         ~partitionTag,
         ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+        ~pairFenceTypes=effective.crossPartitionPairs->Reventless.DcbScopeInference.pairFenceTypes,
         ~opts,
       )
 

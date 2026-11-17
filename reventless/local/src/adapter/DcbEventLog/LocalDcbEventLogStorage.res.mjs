@@ -9,7 +9,7 @@ import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./DcbEventLogStora
 import * as DcbEventLogStorage_Postgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/DcbEventLogStorage_Postgres.res.mjs";
 
 function Make(Bus) {
-  let make = (name, indexes, partitionTag, param, opts) => {
+  let make = (name, indexes, partitionTag, param, param$1, opts) => {
     let match = BackendState$ReventlessLocal.getSqliteDb();
     let match$1 = BackendState$ReventlessLocal.getPostgresPool();
     if (match !== undefined) {

@@ -137,6 +137,18 @@ function pairEventTypes(pairs, reader) {
   return byKey;
 }
 
+function pairFenceTypes(pairs) {
+  let byKey = {};
+  pairs.forEach(p => {
+    let types = Stdlib_Option.getOr(byKey[p.key], []);
+    if (!types.includes(p.eventType)) {
+      byKey[p.key] = types.concat([p.eventType]);
+      return;
+    }
+  });
+  return byKey;
+}
+
 function sameAssignment(a, b) {
   let entries = d => Object.entries(d).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
   return Primitive_object.equal(entries(a), entries(b));
@@ -439,6 +451,7 @@ export {
   armsStoredElsewhere,
   pairsOf,
   pairEventTypes,
+  pairFenceTypes,
   sameAssignment,
   chapterKeys,
   resolvePartitions,

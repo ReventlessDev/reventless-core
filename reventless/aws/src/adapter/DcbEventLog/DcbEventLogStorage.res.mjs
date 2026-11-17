@@ -4,12 +4,13 @@ import * as DcbBackend$ReventlessAws from "./DcbBackend.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./DcbEventLogStorage_DynamoDb.res.mjs";
 import * as DcbEventLogStorage_Postgres$ReventlessAws from "./DcbEventLogStorage_Postgres.res.mjs";
 
-function make(name, indexes, partitionTag, crossPartitionTagKeysOpt, opts) {
+function make(name, indexes, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt, opts) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
   if (DcbBackend$ReventlessAws.isPostgres()) {
-    return DcbEventLogStorage_Postgres$ReventlessAws.make(name, indexes, partitionTag, crossPartitionTagKeys, opts);
+    return DcbEventLogStorage_Postgres$ReventlessAws.make(name, indexes, partitionTag, crossPartitionTagKeys, undefined, opts);
   } else {
-    return DcbEventLogStorage_DynamoDb$ReventlessAws.make(name, indexes, partitionTag, crossPartitionTagKeys, opts);
+    return DcbEventLogStorage_DynamoDb$ReventlessAws.make(name, indexes, partitionTag, crossPartitionTagKeys, pairFenceTypes, opts);
   }
 }
 

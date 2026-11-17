@@ -7,6 +7,7 @@ by position as before.
 type args = {
   table: string,
   keys: array<string>,
+  pairs: array<(string, string)>,
   dryRun: bool,
   recount: bool,
   settleMs: int,
@@ -14,7 +15,7 @@ type args = {
 
 let parseArgs = (argv: array<string>): result<args, string> =>
   Reventless.CliArgs.parse(
-    ~strings=["table", "keys", "settle-ms"],
+    ~strings=["table", "keys", "pairs", "settle-ms"],
     ~bools=["dry-run", "recount"],
     argv,
   )
@@ -25,15 +26,32 @@ let parseArgs = (argv: array<string>): result<args, string> =>
       ->Reventless.CliArgs.string("keys")
       ->Option.mapOr([], k => k->String.split(",")->Array.map(String.trim))
       ->Array.filter(k => k != "")
+    let pairs =
+      a
+      ->Reventless.CliArgs.string("pairs")
+      ->Option.mapOr([], p => p->String.split(",")->Array.map(String.trim))
+      ->Array.filter(p => p != "")
+      ->Array.map(p =>
+        switch p->String.split(":") {
+        | [key, eventType] if key != "" && eventType != "" => Some((key, eventType))
+        | _ => None
+        }
+      )
     let settleMs = a->Reventless.CliArgs.string("settle-ms")->Option.map(s => Int.fromString(s))
-    switch (a->Reventless.CliArgs.string("table"), keys, settleMs) {
-    | (None, _, _) => Error("--table names the DCB event log table")
-    | (_, [], _) => Error("--keys names the cross-partition tag keys, comma-separated")
-    | (_, _, Some(None)) => Error("--settle-ms takes a whole number of milliseconds")
-    | (Some(table), keys, settleMs) =>
+    switch (a->Reventless.CliArgs.string("table"), keys, pairs, settleMs) {
+    | (None, _, _, _) => Error("--table names the DCB event log table")
+    | (_, [], [], _) =>
+      Error(
+        "--keys or --pairs names what to count: cross-partition tag keys, or key:EventType pairs",
+      )
+    | (_, _, pairs, _) if pairs->Array.some(Option.isNone) =>
+      Error("--pairs takes key:EventType, comma-separated")
+    | (_, _, _, Some(None)) => Error("--settle-ms takes a whole number of milliseconds")
+    | (Some(table), keys, pairs, settleMs) =>
       Ok({
         table,
         keys,
+        pairs: pairs->Array.filterMap(p => p),
         dryRun: a->Reventless.CliArgs.bool("dry-run"),
         recount: a->Reventless.CliArgs.bool("recount"),
         settleMs: settleMs->Option.flatMap(x => x)->Option.getOr(2000),
@@ -42,7 +60,7 @@ let parseArgs = (argv: array<string>): result<args, string> =>
   })
 
 let usage = `
-Usage: count-fences --table <name> --keys <key,...> [--dry-run] [--recount] [--settle-ms <n>]
+Usage: count-fences --table <name> [--keys <key,...>] [--pairs <key:EventType,...>] [--dry-run] [--recount] [--settle-ms <n>]
 
 Completes the counts of the cross-partition fences of a DCB event log table: counts
 every event of each type that carries the fence's tag, sets the fence's counts to
@@ -52,6 +70,9 @@ by position, as before.
 
   --table <name>     The DCB event log table.
   --keys <key,...>   The cross-partition tag keys (the dcb-scope golden lists them).
+  --pairs <key:EventType,...>
+                     The pairs' fences, by key and event type (the golden lists the
+                     pairs). At least one of --keys and --pairs.
   --dry-run          Count and print, write nothing.
   --recount          Count fences already counted too, to repair one.
   --settle-ms <n>    How long the index gets to show earlier writes. Default 2000.
@@ -70,16 +91,21 @@ let run = async (args: args): result<unit, array<string>> => {
     arn: "",
     hashKey: "id",
   }
-  let tags = await DcbFenceBackfill.listFences(table, ~keys=args.keys, ~recount=args.recount)
-  Console.log(`${tags->Array.length->Int.toString} fence(s) to count in ${args.table}.`)
+  let fences = await DcbFenceBackfill.listFences(
+    table,
+    ~keys=args.keys,
+    ~pairs=args.pairs,
+    ~recount=args.recount,
+  )
+  Console.log(`${fences->Array.length->Int.toString} fence(s) to count in ${args.table}.`)
   let outcomes = await DcbFenceBackfill.countFences(
     table,
-    tags,
+    fences,
     ~settleMs=args.settleMs,
     ~dryRun=args.dryRun,
   )
-  let failures = outcomes->Array.filterMap(((tag, outcome)) => {
-    let fence = `${tag.key}=${tag.value}`
+  let failures = outcomes->Array.filterMap(((ref, outcome)) => {
+    let fence = DcbFenceBackfill.fenceRefText(ref)
     switch outcome {
     | Ok(Counted({before, total})) =>
       Console.log(

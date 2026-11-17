@@ -10,6 +10,21 @@ open AwsSdk.DynamoDb.DocumentClient
 
 module Runtime = DcbEventLogStorage_DynamoDb_Runtime
 
+/** A fence item: a key value's own, or a pair's, which counts one event type. */
+type fenceRef = {
+  tag: Reventless.DcbTag.tag,
+  eventType?: string,
+}
+
+let fenceRefText = (f: fenceRef) =>
+  `${f.tag.key}=${f.tag.value}${f.eventType->Option.mapOr("", t => ` (${t})`)}`
+
+let keyOfRef = (f: fenceRef) =>
+  switch f.eventType {
+  | Some(eventType) => Runtime.pairFenceKey(f.tag, eventType)
+  | None => Runtime.fenceKey(f.tag)
+  }
+
 /** The tag a fence item's id names: `fence#<key>:<value>`. */
 let tagOfFenceId = (id: string): option<Reventless.DcbTag.tag> =>
   switch id->String.startsWith("fence#") {
@@ -23,13 +38,15 @@ let tagOfFenceId = (id: string): option<Reventless.DcbTag.tag> =>
     }
   }
 
-/** The fences of `keys`, all of them or only those not yet counted. A fence item
-    is the one item that holds no event. */
+/** The fences of `keys`, and the pair fences of `pairs` (key, event type), all of
+    them or only those not yet counted. A fence item is the one item that holds no
+    event; a pair's sorts as `FENCE#<eventType>`. */
 let listFences = async (
   table: Util_DynamoDb_Runtime.resolvedTable,
   ~keys: array<string>,
+  ~pairs: array<(string, string)>=[],
   ~recount: bool,
-): array<Reventless.DcbTag.tag> => {
+): array<fenceRef> => {
   let filterExpression = recount
     ? "attribute_not_exists(#evt)"
     : "attribute_not_exists(#evt) AND attribute_not_exists(counted)"
@@ -41,18 +58,27 @@ let listFences = async (
   ->Stream.runCollect
   ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
   ->Effect.runPromise
-  items->Array.filterMap(item =>
-    item
-    ->JSON.Decode.object
-    ->Option.flatMap(o => o->Dict.get("id"))
-    ->Option.flatMap(JSON.Decode.string)
-    ->Option.flatMap(tagOfFenceId)
-    ->Option.flatMap(tag => keys->Array.includes(tag.key) ? Some(tag) : None)
-  )
+  let pairPrefix = `${Runtime.fenceSortKey}#`
+  items->Array.filterMap(item => {
+    let attr = name =>
+      item
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get(name))
+      ->Option.flatMap(JSON.Decode.string)
+    switch (attr("id")->Option.flatMap(tagOfFenceId), attr("position")) {
+    | (Some(tag), Some(sortKey)) if sortKey == Runtime.fenceSortKey =>
+      keys->Array.includes(tag.key) ? Some({tag: tag}) : None
+    | (Some(tag), Some(sortKey)) if sortKey->String.startsWith(pairPrefix) =>
+      let eventType = sortKey->String.slice(~start=pairPrefix->String.length)
+      pairs->Array.some(((k, t)) => k == tag.key && t == eventType) ? Some({tag, eventType}) : None
+    | _ => None
+    }
+  })
 }
 
-/** Every event carrying `tag`, counted by type, through the tag's index. */
-let countEvents = async (table: Util_DynamoDb_Runtime.resolvedTable, tag) => {
+/** Every event carrying `tag`, counted by type, through the tag's index; only
+    `eventType`'s, when given. */
+let countEvents = async (table: Util_DynamoDb_Runtime.resolvedTable, tag, ~eventType=?) => {
   let counts = Dict.make()
   let items = await Runtime.queryBySingleTagCrossPartitionStream(table, tag)
   ->Stream.runCollect
@@ -62,9 +88,9 @@ let countEvents = async (table: Util_DynamoDb_Runtime.resolvedTable, tag) => {
     ->JSON.Decode.object
     ->Option.flatMap(o => o->Dict.get("event"))
     ->Option.flatMap(JSON.Decode.string) {
-    | Some(eventType) =>
-      counts->Dict.set(eventType, counts->Dict.get(eventType)->Option.getOr(0) + 1)
-    | None => ()
+    | Some(t) if eventType->Option.mapOr(true, only => only == t) =>
+      counts->Dict.set(t, counts->Dict.get(t)->Option.getOr(0) + 1)
+    | _ => ()
     }
   )
   counts
@@ -73,7 +99,7 @@ let countEvents = async (table: Util_DynamoDb_Runtime.resolvedTable, tag) => {
 /** Sets a fence's counts to `total` and marks it counted, if they are still `before`. */
 let countUpdate = (
   table: Util_DynamoDb_Runtime.resolvedTable,
-  tag: Reventless.DcbTag.tag,
+  fence: fenceRef,
   ~before: dict<int>,
   ~total: dict<int>,
   ~cut: string,
@@ -102,7 +128,7 @@ let countUpdate = (
   })
   {
     tableName: table.name,
-    key: Runtime.fenceKey(tag),
+    key: keyOfRef(fence),
     updateExpression: `SET ${sets
       ->Array.concat(["counted = :true", "#cf = if_not_exists(#cf, :cut)"])
       ->Array.join(", ")}`,
@@ -120,14 +146,14 @@ type outcome =
   /** The index shows fewer events than the fence already counted: it is behind. */
   | IndexBehind({before: dict<int>, total: dict<int>})
 
-/** Counts one fence read before the index settled. */
+/** Counts one fence, given the counts it held before the index settled. */
 let countFence = async (
   table: Util_DynamoDb_Runtime.resolvedTable,
-  fence: Reventless.DcbFenceCount.fence,
+  fence: fenceRef,
+  ~before: dict<int>,
   ~dryRun: bool,
 ): result<outcome, string> => {
-  let before = fence.counts
-  let total = await countEvents(table, fence.tag)
+  let total = await countEvents(table, fence.tag, ~eventType=?fence.eventType)
   let behind =
     before
     ->Dict.toArray
@@ -137,7 +163,7 @@ let countFence = async (
   } else if dryRun {
     Ok(Counted({before, total}))
   } else {
-    let input = countUpdate(table, fence.tag, ~before, ~total, ~cut=Runtime.generatePosition())
+    let input = countUpdate(table, fence, ~before, ~total, ~cut=Runtime.generatePosition())
     await Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
       input->UpdateCommand.make->UpdateCommand.send
     )
@@ -157,22 +183,27 @@ let countFence = async (
     meanwhile, `rounds` times at most. Reports each fence's last outcome. */
 let rec countFences = async (
   table: Util_DynamoDb_Runtime.resolvedTable,
-  tags: array<Reventless.DcbTag.tag>,
+  fences: array<fenceRef>,
   ~settleMs: int,
   ~dryRun: bool,
   ~rounds: int=3,
-): array<(Reventless.DcbTag.tag, result<outcome, string>)> =>
-  switch tags {
+): array<(fenceRef, result<outcome, string>)> =>
+  switch fences {
   | [] => []
-  | tags =>
-    let fences = await Runtime.readFences(table)(tags)
+  | fences =>
+    let befores = await fences
+    ->Array.map(async f =>
+      Runtime.fenceOfItem(f.tag, await Runtime.getFenceItem(table, keyOfRef(f))).counts
+    )
+    ->Promise.all
     await Effect.sleep(Duration.millis(settleMs))->Effect.runPromise
     let outcomes = []
     for i in 0 to fences->Array.length - 1 {
       let fence = fences->Array.getUnsafe(i)
-      outcomes->Array.push((fence.tag, await countFence(table, fence, ~dryRun)))
+      let before = befores->Array.getUnsafe(i)
+      outcomes->Array.push((fence, await countFence(table, fence, ~before, ~dryRun)))
     }
-    let moved = outcomes->Array.filterMap(((tag, o)) => o == Ok(Moved) ? Some(tag) : None)
+    let moved = outcomes->Array.filterMap(((f, o)) => o == Ok(Moved) ? Some(f) : None)
     let settled = outcomes->Array.filter(((_, o)) => o != Ok(Moved))
     rounds > 1 && moved != []
       ? settled->Array.concat(

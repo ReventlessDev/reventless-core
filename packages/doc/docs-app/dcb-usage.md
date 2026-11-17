@@ -601,8 +601,9 @@ single-tag read of any *other* tag is **partition-scoped** by default — it kee
 that tag's consistency fence narrow. The M:N invariant needs the opposite: read
 `studentId` across every course partition the student appears in.
 
-Mark such a tag `@crossPartition` (on the command **and** the produced event —
-never on `consumedEvent`). Here the events carry two candidate ids, `courseId` and
+Mark such a tag `@crossPartition` on the command **and** the produced event. On a
+`consumedEvent` arm the marker means something else: see
+[the next section](#a-slice-reading-its-own-key-off-another-entitys-events). Here the events carry two candidate ids, `courseId` and
 `studentId`, so the partition also needs `@partitionTag` on the produced event:
 
 ```rescript
@@ -637,6 +638,55 @@ the entity's degree. For threshold rules ("≤ N …") prefer a bounded count re
 over folding the whole set. The scope is a property of the tag *key* and must
 agree across every event type that carries it — `Dcb_Builder` reports a mismatch
 at build time.
+
+### A slice reading its own key off another entity's events
+
+**In plain words:** a question reads the replies posted under it. The replies are
+stored under the reply, so a read by the question's id within its partition never
+finds them. Mark the question's id `@crossPartition` on that consumed arm, and the
+slice reads those events across partitions.
+
+```rescript
+// Questions/StateChange/ChangeQuestionState.res — partitioned by messageId
+@schema
+type consumedEvent =
+  | MessagePosted({messageId: string})
+  | ReplyPosted({replyId: string, @crossPartition messageId: string})
+  | AnswerMarked({messageId: string, replyId: string})
+
+@schema
+type event =
+  | AnswerMarked({@partitionTag messageId: string, replyId: string})
+  | QuestionReopened({@partitionTag messageId: string})
+```
+
+This makes a **pair**: one reader, one event type, the reader's own key. Unlike the
+M:N case above, it does not make `messageId` cross-partition for the whole plugin.
+The slice reads `MessagePosted` and `AnswerMarked` from its partition as before, and
+only `ReplyPosted` from the `tag_messageId` index.
+
+- **Its cost lands on the writer.** Every `PostReply` now also updates a fence item
+  of the question's, `fence#messageId:<id>` / `FENCE#ReplyPosted`. Replies under one
+  question contend with each other and with the question's decisions. Edits and
+  moderation of the question do not, since they keep their own fence item. The build
+  logs one line per writer and pair, and a warning when the writer's appends already
+  carry other cross-partition, composite or pair fences.
+- **The golden shows it.** `check:dcb-scope` records the pair under
+  `crossPartitionPairs`, so adding one is a reviewable change to the writer's path.
+- **Without the marker the build refuses** a `@partitionTag` whose slice reads, by
+  that key, events stored under another key, and names the marker as the way out.
+  A marker on any key other than the slice's own partition is refused too. One the
+  plugin already reads that way is reported as redundant.
+- **A deployed table needs its counts completed.** The fence counts the events it
+  guards, so a reader can tell when the index missed one. On a table that held such
+  events before the pair existed, run `count-fences --table <name> --pairs
+  messageId:ReplyPosted` (from `reventless-aws`) once after the deploy. Until then the
+  reader checks the fence by position.
+
+Prefer it only when a decision needs a few of another entity's events. If the rule
+counts children that are written often, partition the children by the parent
+instead. If the check can live in a view, keep it there. And if the command must
+answer within a strict latency, remember that a lagging index makes it wait.
 
 ## Identities: one type per id
 

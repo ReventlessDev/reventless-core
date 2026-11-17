@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. [Phase 3](#phase-3-pairs-in-inference-and-validation) and [Phase 4](#phase-4-read-split-and-routing) built 2026-11-17; the builder refuses a boundary with a pair until [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) keeps its fence. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Phases [3](#phase-3-pairs-in-inference-and-validation), [4](#phase-4-read-split-and-routing) and [5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) built 2026-11-17: a pair works on DynamoDB; [Phase 6](#phase-6-an-end-to-end-case-on-dynamodb-local) is left, and [Q6](#8-questions-with-recommendations) is open. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -446,6 +446,26 @@ line or warning.
 **Verify:** a transaction-shape test shows that a `ReplyPosted` append updates the pair's item and
 nothing else new. A `MessagePosted` append is unchanged.
 
+**Built 2026-11-17.**
+
+- **The item.** A pair's fence item is `fence#<key>:<value>` / `FENCE#<eventType>`. The event log
+  takes `pairFenceTypes`, key to the types with a pair fence (`DcbScopeInference.pairFenceTypes`).
+- **Writers.** Every append, conditional or not, of such a type carrying the key updates the item
+  without a condition: `SET pos#<type>`, `ADD n#<type>`, and `countedFrom` if not yet set.
+- **The reader.** Its `crossPartition` clause becomes a check on that item, and leaves the key
+  value's own fence item, which the pair's writers never move. The check uses the count it read
+  when the item is `counted`, and the position otherwise. `readFences` reads a pair key's counts
+  off its pair items, and `DcbFenceCount.clauses` now takes the pair's clause, so the reader's
+  count check of [Phase 2](#phase-2-a-count-on-cross-partition-fences) covers it.
+- **The backfill.** `count-fences` takes `--pairs key:EventType,...` and counts a pair's item by
+  its one type.
+- **The builder.** It logs [D7](#3-decisions)'s line per writer and pair, as a warning when the
+  writer's appends already carry other cross-partition, composite or pair fences. It no longer
+  refuses a boundary with a pair.
+- **What DynamoDB-local shows.** An order moves the pair's item, so a reader that read before it
+  conflicts. Once the item is counted, an append that read one order fewer than were counted
+  conflicts, though its position check would pass.
+
 ### Phase 6. An end-to-end case on DynamoDB-local
 
 The question-and-reply shape as a fixture: post a reply, mark it as the answer, then mark a second
@@ -479,6 +499,16 @@ that, conditioned on `n#C` being what it read, after the index has had time to s
 would miss writes by a Lambda still on the old code during the rollout, and a count left short
 conflicts every append on its fence. A key value without the flag is checked as today until its
 backfill has run ([Phase 2](#phase-2-a-count-on-cross-partition-fences), step 4).
+
+**Q6.** A fence item is trusted only once `counted` is set, and only `count-fences` sets it. A key
+value first written after the backfill gets an item whose count is complete from its first write,
+but which no reader trusts, so it is checked by position for good. That holds for
+[Phase 2](#phase-2-a-count-on-cross-partition-fences)'s fences as much as for a pair's. How should
+an item count from birth? **Recommended:** `count-fences` records, per key, the position it ran at.
+A reader trusts an item that is `counted`, or whose `countedFrom` is later than that position. Any
+item that existed when the backfill scanned was counted then, so one first counted after it began
+counting with its first event. The cost is one more strongly consistent read per key, which a
+Lambda can keep for its lifetime.
 
 ## 9. Non-goals
 

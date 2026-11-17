@@ -115,6 +115,7 @@ let makeDynamoStorageOps = (
     arn: "",
     hashKey: "id",
   }
+  let pairFenceTypes = scope.crossPartitionPairs->Reventless.DcbScopeInference.pairFenceTypes
   {
     ReventlessCore.DcbEventLog_Adapter.read: DcbEventLogStorage_DynamoDb_Runtime.read(
       table,
@@ -124,12 +125,13 @@ let makeDynamoStorageOps = (
       table,
       ~partitionTag=?scope.partitionTag,
       ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
+      ~pairFenceTypes,
     ),
     readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(
       table,
       ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
     ),
-    readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(table),
+    readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(table, ~pairFenceTypes),
   }
 }
 

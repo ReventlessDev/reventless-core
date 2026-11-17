@@ -32,12 +32,14 @@ let tagId = (tag: DcbTag.tag) => `${tag.key}:${tag.value}`
 /** The key a read count is kept under: the tag value and the event type. */
 let seenKey = (tag: DcbTag.tag, eventType) => `${tagId(tag)}|${eventType}`
 
-/** The clauses of `query` that read a cross-partition key and name their types. */
+/** The clauses of `query` that read across partitions and name their types: by a
+    key the boundary reads that way, or as a pair's clause. */
 let clauses = (query: DcbTag.query, ~crossPartitionTagKeys: array<string>): array<clause> =>
   query->Array.filterMap(qi =>
     switch (qi.tags, qi.eventTypes) {
     | (Some([tag]), Some(eventTypes))
-      if crossPartitionTagKeys->Array.includes(tag.key) && eventTypes->Array.length > 0 =>
+      if (qi.crossPartition == Some(true) || crossPartitionTagKeys->Array.includes(tag.key)) &&
+        eventTypes->Array.length > 0 =>
       Some({tag, eventTypes})
     | _ => None
     }

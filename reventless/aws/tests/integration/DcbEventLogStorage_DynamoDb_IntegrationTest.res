@@ -747,12 +747,17 @@ describe("DCB DynamoDb integration — the backfill completes a fence's count", 
   testAsync("lists only the fences of the keys given", async () => {
     let table = await givenPartlyCounted()
     let tags = await DcbFenceBackfill.listFences(table, ~keys=["customerId"], ~recount=false)
-    expect(tags->Array.map(t => t.value))->toEqual(["C-fill"])
+    expect(tags->Array.map(f => f.tag.value))->toEqual(["C-fill"])
   })
 
   testAsync("a dry run counts and writes nothing", async () => {
     let table = await givenPartlyCounted()
-    let outcomes = await DcbFenceBackfill.countFences(table, [customer], ~settleMs=0, ~dryRun=true)
+    let outcomes = await DcbFenceBackfill.countFences(
+      table,
+      [{tag: customer}],
+      ~settleMs=0,
+      ~dryRun=true,
+    )
     let shown = outcomes->Array.map(
       ((_, o)) =>
         switch o {
@@ -768,15 +773,20 @@ describe("DCB DynamoDb integration — the backfill completes a fence's count", 
 
   testAsync("sets the count to every event and marks the fence counted", async () => {
     let table = await givenPartlyCounted()
-    let _ = await DcbFenceBackfill.countFences(table, [customer], ~settleMs=0, ~dryRun=false)
+    let _ = await DcbFenceBackfill.countFences(table, [{tag: customer}], ~settleMs=0, ~dryRun=false)
     let listedAgain = await DcbFenceBackfill.listFences(table, ~keys=["customerId"], ~recount=false)
     expect((await fenceOf(table), listedAgain))->toEqual(((true, [("OrderPlaced", 3)]), []))
   })
 
   testAsync("a fence a writer moved since it was read is not written", async () => {
     let table = await givenPartlyCounted()
-    let stale: Reventless.DcbFenceCount.fence = {tag: customer, counted: false, counts: Dict.make()}
-    let outcome = await DcbFenceBackfill.countFence(table, stale, ~dryRun=false)
+    // Read before any write: it held no count.
+    let outcome = await DcbFenceBackfill.countFence(
+      table,
+      {tag: customer},
+      ~before=Dict.make(),
+      ~dryRun=false,
+    )
     expect((outcome == Ok(Moved), await fenceOf(table)))->toEqual((
       true,
       (false, [("OrderPlaced", 1)]),
@@ -848,5 +858,74 @@ describe("DCB DynamoDb integration — a pair's clause is read across partitions
     let sorted = positions->Array.toSorted((a, b) => String.compare(a, b))
     // The index reads every carrier of the tag, the customer's own event too.
     expect((streamed->Array.length, positions == sorted))->toEqual((131, true))
+  })
+})
+
+describe("DCB DynamoDb integration — a pair's fence item", () => {
+  // A customer's decision reads, by customerId, the orders that name it; an order
+  // is stored under orderId.
+  let customer = tag("customerId", "C-pairfence")
+  let pairFenceTypes = Dict.fromArray([("customerId", ["OrderPlaced"])])
+  let order = id => event("OrderPlaced", [tag("orderId", id), customer])
+  let placeOrder = (table, id) =>
+    Runtime.appendConditional(
+      table,
+      [order(id)],
+      {query: [{tags: [tag("orderId", id)], eventTypes: ["OrderPlaced"]}]},
+      ~partitionTag=simple("orderId"),
+      ~pairFenceTypes,
+    )
+  let query: Reventless.DcbTag.query = [
+    {tags: [customer], eventTypes: ["CustomerNoted"]},
+    {tags: [customer], eventTypes: ["OrderPlaced"], crossPartition: true},
+  ]
+  let noteCustomer = (table, ~after=?, ~fenceCounts=?) =>
+    Runtime.appendConditional(
+      table,
+      [event("CustomerNoted", [customer])],
+      {query, ?after, ?fenceCounts},
+      ~partitionTag=simple("customerId"),
+      ~pairFenceTypes,
+    )
+
+  testAsync("an order moves it, so a reader that read before it conflicts", async () => {
+    let table = await H.freshTable()
+    let before = await placeOrder(table, "O-pf1")
+    let readUpTo = before->Result.mapOr(None, p => Some(p))
+    let _ = await placeOrder(table, "O-pf2")
+    let stale = await noteCustomer(table, ~after=?readUpTo)
+    let head = (await Runtime.read(table)(~query)).headPosition
+    let fresh = await noteCustomer(table, ~after=?head)
+    expect((isConflict(stale), isOk(fresh)))->toEqual((true, true))
+  })
+
+  testAsync("once counted, the count catches an order the reader missed", async () => {
+    let table = await H.freshTable()
+    let _ = await placeOrder(table, "O-pc1")
+    let _ = await placeOrder(table, "O-pc2")
+    let listed = await DcbFenceBackfill.listFences(
+      table,
+      ~keys=[],
+      ~pairs=[("customerId", "OrderPlaced")],
+      ~recount=false,
+    )
+    let _ = await DcbFenceBackfill.countFences(table, listed, ~settleMs=0, ~dryRun=false)
+    let fences = await Runtime.readFences(table, ~pairFenceTypes)([customer])
+    let head = (await Runtime.read(table)(~query)).headPosition
+    let read = n => [{Reventless.DcbTag.tag: customer, eventType: "OrderPlaced", count: n}]
+    // The position check passes (head is the latest), the count does not.
+    let missedOne = await noteCustomer(table, ~after=?head, ~fenceCounts=read(1))
+    let readAll = await noteCustomer(table, ~after=?head, ~fenceCounts=read(2))
+    expect((
+      listed->Array.map(DcbFenceBackfill.fenceRefText),
+      fences->Array.map(f => (f.counted, f.counts->Dict.toArray)),
+      isConflict(missedOne),
+      isOk(readAll),
+    ))->toEqual((
+      ["customerId=C-pairfence (OrderPlaced)"],
+      [(true, [("OrderPlaced", 2)])],
+      true,
+      true,
+    ))
   })
 })

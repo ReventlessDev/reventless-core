@@ -11,11 +11,12 @@ module Selectable = {
     ~indexes,
     ~partitionTag,
     ~crossPartitionTagKeys=[],
+    ~pairFenceTypes=Dict.make(),
     ~opts,
   ) =>
     if DcbBackend.isPostgres() {
       Postgres.make(~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys, ~opts)
     } else {
-      DynamoDb.make(~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys, ~opts)
+      DynamoDb.make(~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys, ~pairFenceTypes, ~opts)
     }
 }

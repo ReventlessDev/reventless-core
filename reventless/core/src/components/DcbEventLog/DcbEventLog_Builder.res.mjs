@@ -14,9 +14,10 @@ import * as DcbEventLog_Operations$ReventlessCore from "./DcbEventLog_Operations
 function Make(Storage) {
   return EventTopicPublisher => {
     let eventSchema = Sury.json;
-    let make = (name, indexesOpt, partitionTag, crossPartitionTagKeysOpt, opts) => {
+    let make = (name, indexesOpt, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt, opts) => {
       let indexes = indexesOpt !== undefined ? indexesOpt : [];
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+      let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(DcbEventLog$ReventlessCore.componentType), name, (extra, extra$1) => {
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
@@ -27,7 +28,7 @@ function Make(Storage) {
           kind: "Plugin",
           name: extra$1
         };
-        let storage = Storage.make(logName, indexes, partitionTag, crossPartitionTagKeys, opts);
+        let storage = Storage.make(logName, indexes, partitionTag, crossPartitionTagKeys, pairFenceTypes, opts);
         EventLogProvisioning$ReventlessCore.notify("Dcb", logName, owner, storage.resources, opts);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,

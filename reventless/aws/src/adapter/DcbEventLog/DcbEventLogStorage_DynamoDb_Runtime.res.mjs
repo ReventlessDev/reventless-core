@@ -561,6 +561,19 @@ function fenceKey(tag) {
   ]);
 }
 
+function pairFenceKey(tag, eventType) {
+  return Object.fromEntries([
+    [
+      "id",
+      fencePartitionKey(tag)
+    ],
+    [
+      "position",
+      fenceSortKey + `#` + eventType
+    ]
+  ]);
+}
+
 function collectQueryTags(query) {
   let seen = new Set();
   let acc = [];
@@ -762,12 +775,159 @@ function fenceOfItem(tag, item) {
   };
 }
 
-function readFences(table) {
-  return async tags => await Promise.all(tags.map(tag => Effect.runPromise(Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+function getFenceItem(table, key) {
+  return Effect.runPromise(Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
     TableName: table.name,
-    Key: fenceKey(tag),
+    Key: key,
     ConsistentRead: true
-  }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => fenceOfItem(tag, result.Item)))));
+  }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item));
+}
+
+function readFences(table, pairFenceTypesOpt) {
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
+  return async tags => await Promise.all(tags.map(async tag => {
+    let types = pairFenceTypes[tag.key];
+    if (types !== undefined && Primitive_object.notequal(types, [])) {
+      let parts = await Promise.all(types.map(async eventType => fenceOfItem(tag, await getFenceItem(table, pairFenceKey(tag, eventType)))));
+      return {
+        tag: tag,
+        counted: parts.every(f => f.counted),
+        counts: Object.fromEntries(parts.flatMap(f => Object.entries(f.counts)))
+      };
+    }
+    return fenceOfItem(tag, await getFenceItem(table, fenceKey(tag)));
+  }));
+}
+
+function hasPairFence(pairFenceTypes, tag, eventType) {
+  return Stdlib_Option.mapOr(pairFenceTypes[tag.key], false, types => types.includes(eventType));
+}
+
+function pairFenceOps(events, pairFenceTypes, cond) {
+  let ops = {};
+  let opOf = (tag, eventType) => {
+    let k = tag.key + `:` + tag.value + `|` + eventType;
+    let op = ops[k];
+    if (op !== undefined) {
+      return op;
+    }
+    let op$1 = {
+      tag: tag,
+      eventType: eventType,
+      written: 0
+    };
+    ops[k] = op$1;
+    return op$1;
+  };
+  events.forEach(e => {
+    e.tags.forEach(t => {
+      if (!hasPairFence(pairFenceTypes, t, e.eventType)) {
+        return;
+      }
+      let op = opOf(t, e.eventType);
+      op.written = op.written + 1 | 0;
+    });
+  });
+  Stdlib_Option.forEach(cond, cond => {
+    cond.query.forEach(qi => {
+      let match = qi.crossPartition;
+      let match$1 = qi.tags;
+      let match$2 = qi.eventTypes;
+      if (match === undefined) {
+        return;
+      }
+      if (!match) {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      if (match$1.length !== 1) {
+        return;
+      }
+      let tag = match$1[0];
+      if (match$2 !== undefined) {
+        match$2.forEach(eventType => {
+          let readCount = Stdlib_Option.map(Stdlib_Option.getOr(cond.fenceCounts, []).find(c => {
+            if (c.tag.key === tag.key && c.tag.value === tag.value) {
+              return c.eventType === eventType;
+            } else {
+              return false;
+            }
+          }), c => c.count);
+          opOf(tag, eventType).check = [
+            cond.after,
+            readCount
+          ];
+        });
+        return;
+      }
+    });
+  });
+  return Object.values(ops);
+}
+
+function buildPairFenceItem(tableName, op, newPosition) {
+  let names = {};
+  let values = {};
+  let position = () => {
+    names["#p"] = fenceTypeAttr(op.eventType);
+  };
+  let count = () => {
+    names["#n"] = fenceCountAttr(op.eventType);
+  };
+  let condition = Stdlib_Option.map(op.check, param => {
+    let readCount = param[1];
+    let after = param[0];
+    if (readCount !== undefined) {
+      count();
+      values[":s"] = readCount;
+      if (readCount === 0) {
+        return "(attribute_not_exists(#n) OR #n = :s)";
+      } else {
+        return "#n = :s";
+      }
+    } else if (after !== undefined) {
+      position();
+      values[":after"] = after;
+      return "(attribute_not_exists(#p) OR #p <= :after)";
+    } else {
+      position();
+      return "attribute_not_exists(#p)";
+    }
+  });
+  let key = pairFenceKey(op.tag, op.eventType);
+  if (op.written > 0) {
+    position();
+    count();
+    names["#cf"] = countedFromAttr;
+    values[":new"] = newPosition;
+    values[":w"] = op.written;
+    return {
+      Update: {
+        Key: key,
+        TableName: tableName,
+        UpdateExpression: "SET #p = :new, #cf = if_not_exists(#cf, :new) ADD #n :w",
+        ConditionExpression: condition,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values
+      }
+    };
+  } else {
+    return Stdlib_Option.map(condition, conditionExpression => ({
+      ConditionCheck: {
+        Key: key,
+        TableName: tableName,
+        ConditionExpression: conditionExpression,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: Primitive_object.equal(Object.keys(values), []) ? undefined : values
+      }
+    }));
+  }
+}
+
+function buildPairFenceItems(tableName, events, pairFenceTypes, cond, newPosition) {
+  return Stdlib_Array.filterMap(pairFenceOps(events, pairFenceTypes, cond), op => buildPairFenceItem(tableName, op, newPosition));
 }
 
 function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
@@ -854,8 +1014,9 @@ function countingCrossPartition(crossPartitionTagKeys, events) {
   };
 }
 
-function buildUnconditionalTransactItems(table, events, basePosition, partitionTag, crossPartitionTagKeysOpt) {
+function buildUnconditionalTransactItems(table, events, basePosition, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
   let carriedMap = carriedTypesByTag(events);
   let counting = countingCrossPartition(crossPartitionTagKeys, events);
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
@@ -869,12 +1030,16 @@ function buildUnconditionalTransactItems(table, events, basePosition, partitionT
       };
     }
   });
-  return putItems.concat(updateItems);
+  let pairItems = buildPairFenceItems(table.name, events, pairFenceTypes, undefined, basePosition);
+  return putItems.concat(updateItems.concat(pairItems));
 }
 
-async function appendUnconditional(table, events, partitionTag, crossPartitionTagKeysOpt) {
+async function appendUnconditional(table, events, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
-  let totalItems = events.length + collectEventTags(events).length | 0;
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
+  let basePosition = generatePosition();
+  let transactItems = buildUnconditionalTransactItems(table, events, basePosition, partitionTag, crossPartitionTagKeys, pairFenceTypes);
+  let totalItems = transactItems.length;
   if (events.length === 0) {
     return {
       TAG: "Ok",
@@ -890,10 +1055,8 @@ async function appendUnconditional(table, events, partitionTag, crossPartitionTa
       }
     };
   }
-  let basePosition = generatePosition();
-  let input_TransactItems = buildUnconditionalTransactItems(table, events, basePosition, partitionTag, crossPartitionTagKeys);
   let input = {
-    TransactItems: input_TransactItems
+    TransactItems: transactItems
   };
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
@@ -951,15 +1114,19 @@ function partitionTypesByTag(events, partitionTag) {
   return d;
 }
 
-function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt) {
+function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
+  let pairItems = buildPairFenceItems(table.name, events, pairFenceTypes, cond, basePosition);
+  let newrecord = {...cond};
+  newrecord.query = cond.query.filter(qi => Primitive_object.notequal(qi.crossPartition, true));
   let cond$1;
   if (partitionTag !== undefined) {
     switch (partitionTag.TAG) {
       case "Composite" :
         let spec = partitionTag._0;
-        let newrecord = {...cond};
-        newrecord.query = cond.query.map(qi => {
+        let newrecord$1 = {...newrecord};
+        newrecord$1.query = newrecord.query.map(qi => {
           let clauseTags = qi.tags;
           if (clauseTags === undefined) {
             return qi;
@@ -971,15 +1138,15 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
           newrecord.tags = [makeCompositeFenceTag(clauseTags, spec)];
           return newrecord;
         });
-        cond$1 = newrecord;
+        cond$1 = newrecord$1;
         break;
       case "Simple" :
       case "ByEventType" :
-        cond$1 = cond;
+        cond$1 = newrecord;
         break;
     }
   } else {
-    cond$1 = cond;
+    cond$1 = newrecord;
   }
   let partitionTags = collectEventPartitionTags(events, partitionTag);
   let partitionKeySet = new Set();
@@ -1148,17 +1315,18 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       };
     }
   });
-  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems)));
+  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems.concat(pairItems))));
 }
 
-async function appendConditional(table, events, cond, partitionTag, crossPartitionTagKeysOpt) {
+async function appendConditional(table, events, cond, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
   let guardsNothing = DcbTag$Reventless.readsNothing(cond.query);
   let newrecord = {...cond};
   newrecord.query = cond.query.filter(qi => !DcbTag$Reventless.clauseMatchesNothing(qi));
   let queryTags = collectQueryTags(newrecord.query);
   if (guardsNothing) {
-    return await appendUnconditional(table, events, partitionTag, crossPartitionTagKeys);
+    return await appendUnconditional(table, events, partitionTag, crossPartitionTagKeys, pairFenceTypes);
   }
   if (queryTags.length === 0) {
     return {
@@ -1170,7 +1338,7 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
     };
   }
   let basePosition = generatePosition();
-  let transactItems = buildConditionalTransactItems(table, events, newrecord, basePosition, partitionTag, crossPartitionTagKeys);
+  let transactItems = buildConditionalTransactItems(table, events, newrecord, basePosition, partitionTag, crossPartitionTagKeys, pairFenceTypes);
   let totalItems = transactItems.length;
   if (totalItems > 100) {
     return {
@@ -1187,13 +1355,14 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
-function append(table, partitionTag, crossPartitionTagKeysOpt) {
+function append(table, partitionTag, crossPartitionTagKeysOpt, pairFenceTypesOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
   return async (events, condition) => {
     if (condition !== undefined) {
-      return await appendConditional(table, events, condition, partitionTag, crossPartitionTagKeys);
+      return await appendConditional(table, events, condition, partitionTag, crossPartitionTagKeys, pairFenceTypes);
     } else {
-      return await appendUnconditional(table, events, partitionTag, crossPartitionTagKeys);
+      return await appendUnconditional(table, events, partitionTag, crossPartitionTagKeys, pairFenceTypes);
     }
   };
 }
@@ -1392,6 +1561,7 @@ export {
   fenceSortKey,
   fencePartitionKey,
   fenceKey,
+  pairFenceKey,
   collectQueryTags,
   collectEventTags,
   fenceTypeAttr,
@@ -1404,7 +1574,12 @@ export {
   countsByTag,
   withCounts,
   fenceOfItem,
+  getFenceItem,
   readFences,
+  hasPairFence,
+  pairFenceOps,
+  buildPairFenceItem,
+  buildPairFenceItems,
   buildFenceConditionCheck,
   transactWriteItemsLimit,
   buildEventPuts,

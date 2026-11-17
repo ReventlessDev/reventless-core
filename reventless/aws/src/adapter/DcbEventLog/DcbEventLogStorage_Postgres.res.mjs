@@ -4,7 +4,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbBackend$ReventlessAws from "./DcbBackend.res.mjs";
 import * as DcbEventLogStorage_Postgres_Runtime$ReventlessAws from "./DcbEventLogStorage_Postgres_Runtime.res.mjs";
 
-function make(name, param, partitionTag, $staropt$star, param$1) {
+function make(name, param, partitionTag, $staropt$star, param$1, param$2) {
   $staropt$star !== undefined;
   DcbBackend$ReventlessAws.registerRelayLog(name, partitionTag);
   let match = DcbBackend$ReventlessAws.get();

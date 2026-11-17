@@ -18,6 +18,7 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   ~indexes as _,
   ~partitionTag,
   ~crossPartitionTagKeys as _=[],
+  ~pairFenceTypes as _=?,
   ~opts as _,
 ) => {
   // B2.3d: `name` is the canonical `dcb_event.log_name` (`<plugin>DcbEventLog`).

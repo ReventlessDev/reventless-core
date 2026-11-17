@@ -13,37 +13,67 @@ function parseArgs(argv) {
   return Stdlib_Result.flatMap(Stdlib_Result.flatMap(CliArgs$Reventless.parse([
     "table",
     "keys",
+    "pairs",
     "settle-ms"
   ], [
     "dry-run",
     "recount"
   ], undefined, undefined, argv), CliArgs$Reventless.noPositionals), a => {
     let keys = Stdlib_Option.mapOr(CliArgs$Reventless.string(a, "keys"), [], k => k.split(",").map(prim => prim.trim())).filter(k => k !== "");
+    let pairs = Stdlib_Option.mapOr(CliArgs$Reventless.string(a, "pairs"), [], p => p.split(",").map(prim => prim.trim())).filter(p => p !== "").map(p => {
+      let match = p.split(":");
+      if (match.length !== 2) {
+        return;
+      }
+      let key = match[0];
+      let eventType = match[1];
+      if (key !== "" && eventType !== "") {
+        return [
+          key,
+          eventType
+        ];
+      }
+    });
     let settleMs = Stdlib_Option.map(CliArgs$Reventless.string(a, "settle-ms"), s => Stdlib_Int.fromString(s, undefined));
     let match = CliArgs$Reventless.string(a, "table");
+    let exit = 0;
     if (match === undefined) {
       return {
         TAG: "Error",
         _0: "--table names the DCB event log table"
       };
     }
-    if (keys.length === 0) {
-      return {
-        TAG: "Error",
-        _0: "--keys names the cross-partition tag keys, comma-separated"
-      };
+    if (keys.length !== 0) {
+      exit = 2;
+    } else {
+      if (pairs.length === 0) {
+        return {
+          TAG: "Error",
+          _0: "--keys or --pairs names what to count: cross-partition tag keys, or key:EventType pairs"
+        };
+      }
+      exit = 2;
     }
-    if (settleMs !== undefined && Primitive_option.valFromOption(settleMs) === undefined) {
-      return {
-        TAG: "Error",
-        _0: "--settle-ms takes a whole number of milliseconds"
-      };
+    if (exit === 2) {
+      if (pairs.some(Stdlib_Option.isNone)) {
+        return {
+          TAG: "Error",
+          _0: "--pairs takes key:EventType, comma-separated"
+        };
+      }
+      if (settleMs !== undefined && Primitive_option.valFromOption(settleMs) === undefined) {
+        return {
+          TAG: "Error",
+          _0: "--settle-ms takes a whole number of milliseconds"
+        };
+      }
     }
     return {
       TAG: "Ok",
       _0: {
         table: match,
         keys: keys,
+        pairs: Stdlib_Array.filterMap(pairs, p => p),
         dryRun: CliArgs$Reventless.bool(a, "dry-run"),
         recount: CliArgs$Reventless.bool(a, "recount"),
         settleMs: Stdlib_Option.getOr(Stdlib_Option.flatMap(settleMs, x => x), 2000)
@@ -53,7 +83,7 @@ function parseArgs(argv) {
 }
 
 let usage = `
-Usage: count-fences --table <name> --keys <key,...> [--dry-run] [--recount] [--settle-ms <n>]
+Usage: count-fences --table <name> [--keys <key,...>] [--pairs <key:EventType,...>] [--dry-run] [--recount] [--settle-ms <n>]
 
 Completes the counts of the cross-partition fences of a DCB event log table: counts
 every event of each type that carries the fence's tag, sets the fence's counts to
@@ -63,6 +93,9 @@ by position, as before.
 
   --table <name>     The DCB event log table.
   --keys <key,...>   The cross-partition tag keys (the dcb-scope golden lists them).
+  --pairs <key:EventType,...>
+                     The pairs' fences, by key and event type (the golden lists the
+                     pairs). At least one of --keys and --pairs.
   --dry-run          Count and print, write nothing.
   --recount          Count fences already counted too, to repair one.
   --settle-ms <n>    How long the index gets to show earlier writes. Default 2000.
@@ -85,13 +118,12 @@ async function run(args) {
     arn: "",
     hashKey: "id"
   };
-  let tags = await DcbFenceBackfill$ReventlessAws.listFences(table, args.keys, args.recount);
-  console.log(tags.length.toString() + ` fence(s) to count in ` + args.table + `.`);
-  let outcomes = await DcbFenceBackfill$ReventlessAws.countFences(table, tags, args.settleMs, args.dryRun, undefined);
+  let fences = await DcbFenceBackfill$ReventlessAws.listFences(table, args.keys, args.pairs, args.recount);
+  console.log(fences.length.toString() + ` fence(s) to count in ` + args.table + `.`);
+  let outcomes = await DcbFenceBackfill$ReventlessAws.countFences(table, fences, args.settleMs, args.dryRun, undefined);
   let failures = Stdlib_Array.filterMap(outcomes, param => {
     let outcome = param[1];
-    let tag = param[0];
-    let fence = tag.key + `=` + tag.value;
+    let fence = DcbFenceBackfill$ReventlessAws.fenceRefText(param[0]);
     if (outcome.TAG !== "Ok") {
       return fence + `: ` + outcome._0;
     }

@@ -216,7 +216,7 @@ function makeStorage(_name, param, param$1, param$2) {
   ];
 }
 
-function make(name, indexes, partitionTag, param, opts) {
+function make(name, indexes, partitionTag, param, param$1, opts) {
   return makeStorage(name, indexes, partitionTag, opts)[2];
 }
 

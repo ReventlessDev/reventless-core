@@ -737,6 +737,14 @@ let fenceKey = (tag: Reventless.DcbTag.tag): dict<JSON.t> =>
     ("position", fenceSortKey->JSON.Encode.string),
   ])
 
+// A pair's fence item: beside the key value's, one per event type (see
+// `buildPairFenceItems`).
+let pairFenceKey = (tag: Reventless.DcbTag.tag, eventType: string): dict<JSON.t> =>
+  Dict.fromArray([
+    ("id", fencePartitionKey(tag)->JSON.Encode.string),
+    ("position", `${fenceSortKey}#${eventType}`->JSON.Encode.string),
+  ])
+
 // Collect every distinct tag from a query. Each queryItem's tags are AND'd,
 // across queryItems they're OR'd — both contribute to the fence set.
 let collectQueryTags = (query: Reventless.DcbTag.query): array<Reventless.DcbTag.tag> => {
@@ -1001,21 +1009,174 @@ let fenceOfItem = (
   }
 }
 
-let readFences = (table: resolvedTable) =>
+let getFenceItem = (table: resolvedTable, key: dict<JSON.t>) =>
+  Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+    GetCommand.send(GetCommand.make({tableName: table.name, key, consistentRead: true}))
+  )
+  ->Effect.retry(DynamoDb_Error.retrySchedule)
+  ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+  ->Effect.map(result => result.item)
+  ->Effect.runPromise
+
+// A key with pair fences is read off those items, one per type: the key value's own
+// item counts nothing, since a pair's key is never one the boundary reads across
+// partitions. The fence is counted only when each of them is.
+let readFences = (table: resolvedTable, ~pairFenceTypes: dict<array<string>>=Dict.make()) =>
   async (tags: array<Reventless.DcbTag.tag>) =>
     await tags
-    ->Array.map(tag =>
-      Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
-        GetCommand.send(
-          GetCommand.make({tableName: table.name, key: fenceKey(tag), consistentRead: true}),
+    ->Array.map(async tag =>
+      switch pairFenceTypes->Dict.get(tag.key) {
+      | Some(types) if types != [] =>
+        let parts = await types
+        ->Array.map(async eventType =>
+          fenceOfItem(tag, await getFenceItem(table, pairFenceKey(tag, eventType)))
         )
-      )
-      ->Effect.retry(DynamoDb_Error.retrySchedule)
-      ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
-      ->Effect.map(result => fenceOfItem(tag, result.item))
-      ->Effect.runPromise
+        ->Promise.all
+        let fence: Reventless.DcbFenceCount.fence = {
+          tag,
+          counted: parts->Array.every(f => f.counted),
+          counts: parts->Array.flatMap(f => f.counts->Dict.toArray)->Dict.fromArray,
+        }
+        fence
+      | _ => fenceOfItem(tag, await getFenceItem(table, fenceKey(tag)))
+      }
     )
     ->Promise.all
+
+// --- A pair's fence ---
+//
+// A slice that reads its own key off another slice's event, across partitions (a
+// pair), is guarded by a fence item of its own beside the key value's: same `id`,
+// sort key `FENCE#<eventType>`. Every append of that type carrying the key moves
+// it and counts it, so the pair's writers contend with each other and with the
+// pair's readers, not with the key's other writers. `pairFenceTypes` maps a key to
+// the event types it has a pair fence for.
+
+let hasPairFence = (pairFenceTypes: dict<array<string>>, tag: Reventless.DcbTag.tag, eventType) =>
+  pairFenceTypes->Dict.get(tag.key)->Option.mapOr(false, types => types->Array.includes(eventType))
+
+/** What one append does to one pair fence item: how many events it adds, and what
+    the reader checked (its count, or else the position it read up to). */
+type pairFenceOp = {
+  tag: Reventless.DcbTag.tag,
+  eventType: string,
+  mutable written: int,
+  mutable check?: (option<string>, option<int>),
+}
+
+let pairFenceOps = (
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  ~pairFenceTypes: dict<array<string>>,
+  ~cond: option<Reventless.DcbTag.appendCondition>=?,
+): array<pairFenceOp> => {
+  let ops: dict<pairFenceOp> = Dict.make()
+  let opOf = (tag: Reventless.DcbTag.tag, eventType) => {
+    let k = `${tag.key}:${tag.value}|${eventType}`
+    switch ops->Dict.get(k) {
+    | Some(op) => op
+    | None =>
+      let op = {tag, eventType, written: 0}
+      ops->Dict.set(k, op)
+      op
+    }
+  }
+  events->Array.forEach(e =>
+    e.tags->Array.forEach(t =>
+      if pairFenceTypes->hasPairFence(t, e.eventType) {
+        let op = opOf(t, e.eventType)
+        op.written = op.written + 1
+      }
+    )
+  )
+  cond->Option.forEach(cond =>
+    cond.query->Array.forEach(qi =>
+      switch (qi.crossPartition, qi.tags, qi.eventTypes) {
+      | (Some(true), Some([tag]), Some(types)) =>
+        types->Array.forEach(
+          eventType => {
+            let readCount =
+              cond.fenceCounts
+              ->Option.getOr([])
+              ->Array.find(
+                c => c.tag.key == tag.key && c.tag.value == tag.value && c.eventType == eventType,
+              )
+              ->Option.map(c => c.count)
+            opOf(tag, eventType).check = Some((cond.after, readCount))
+          },
+        )
+      | _ => ()
+      }
+    )
+  )
+  ops->Dict.valuesToArray
+}
+
+// One item per pair fence: an Update when the append writes events it counts (with
+// the reader's check as its condition, should one append do both), else the check.
+let buildPairFenceItem = (tableName: string, op: pairFenceOp, ~newPosition: string): option<
+  TransactWriteCommand.transactWriteItem,
+> => {
+  // DynamoDB refuses a name or value the expressions do not use, so each is set
+  // where it is used.
+  let names = Dict.make()
+  let values = Dict.make()
+  let position = () => names->Dict.set("#p", fenceTypeAttr(op.eventType))
+  let count = () => names->Dict.set("#n", fenceCountAttr(op.eventType))
+  let condition = op.check->Option.map(((after, readCount)) =>
+    switch (readCount, after) {
+    | (Some(n), _) =>
+      count()
+      values->Dict.set(":s", n->Int.toFloat->JSON.Encode.float)
+      n == 0 ? "(attribute_not_exists(#n) OR #n = :s)" : "#n = :s"
+    | (None, Some(pos)) =>
+      position()
+      values->Dict.set(":after", pos->JSON.Encode.string)
+      "(attribute_not_exists(#p) OR #p <= :after)"
+    | (None, None) =>
+      position()
+      "attribute_not_exists(#p)"
+    }
+  )
+  let key = pairFenceKey(op.tag, op.eventType)
+  if op.written > 0 {
+    position()
+    count()
+    names->Dict.set("#cf", countedFromAttr)
+    values->Dict.set(":new", newPosition->JSON.Encode.string)
+    values->Dict.set(":w", op.written->Int.toFloat->JSON.Encode.float)
+    Some({
+      TransactWriteCommand.update: {
+        TransactWriteCommand.key,
+        tableName,
+        updateExpression: "SET #p = :new, #cf = if_not_exists(#cf, :new) ADD #n :w",
+        conditionExpression: ?condition,
+        expressionAttributeNames: names,
+        expressionAttributeValues: values,
+      },
+    })
+  } else {
+    condition->Option.map(conditionExpression => {
+      TransactWriteCommand.conditionCheck: {
+        TransactWriteCommand.key,
+        tableName,
+        conditionExpression,
+        expressionAttributeNames: names,
+        expressionAttributeValues: ?(values->Dict.keysToArray == [] ? None : Some(values)),
+      },
+    })
+  }
+}
+
+let buildPairFenceItems = (
+  tableName: string,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  ~pairFenceTypes: dict<array<string>>,
+  ~cond: option<Reventless.DcbTag.appendCondition>=?,
+  ~newPosition: string,
+): array<TransactWriteCommand.transactWriteItem> =>
+  pairFenceOps(events, ~pairFenceTypes, ~cond?)->Array.filterMap(op =>
+    buildPairFenceItem(tableName, op, ~newPosition)
+  )
 
 // Read-only fence assertion: verifies no writer bumped the fence past `after`
 // WITHOUT advancing it. Used for query tags the slice *reads* but does not
@@ -1136,6 +1297,7 @@ let buildUnconditionalTransactItems = (
   basePosition: string,
   ~partitionTag=?,
   ~crossPartitionTagKeys: array<string>=[],
+  ~pairFenceTypes: dict<array<string>>=Dict.make(),
 ): array<TransactWriteCommand.transactWriteItem> => {
   let carriedMap = carriedTypesByTag(events)
   let counting = countingCrossPartition(~crossPartitionTagKeys, events)
@@ -1153,7 +1315,13 @@ let buildUnconditionalTransactItems = (
           )->counting(tag, _),
         })
   })
-  Array.concat(putItems, updateItems)
+  let pairItems = buildPairFenceItems(
+    table.name,
+    events,
+    ~pairFenceTypes,
+    ~newPosition=basePosition,
+  )
+  Array.concat(putItems, Array.concat(updateItems, pairItems))
 }
 
 let appendUnconditional = async (
@@ -1161,8 +1329,18 @@ let appendUnconditional = async (
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   ~partitionTag=?,
   ~crossPartitionTagKeys: array<string>=[],
+  ~pairFenceTypes: dict<array<string>>=Dict.make(),
 ) => {
-  let totalItems = events->Array.length + collectEventTags(events)->Array.length
+  let basePosition = generatePosition()
+  let transactItems = buildUnconditionalTransactItems(
+    table,
+    events,
+    basePosition,
+    ~partitionTag?,
+    ~crossPartitionTagKeys,
+    ~pairFenceTypes,
+  )
+  let totalItems = transactItems->Array.length
 
   if events->Array.length == 0 {
     Ok(generatePosition())
@@ -1173,16 +1351,7 @@ let appendUnconditional = async (
       ),
     )
   } else {
-    let basePosition = generatePosition()
-    let input: TransactWriteCommand.input = {
-      transactItems: buildUnconditionalTransactItems(
-        table,
-        events,
-        basePosition,
-        ~partitionTag?,
-        ~crossPartitionTagKeys,
-      ),
-    }
+    let input: TransactWriteCommand.input = {transactItems: transactItems}
     await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
   }
 }
@@ -1276,7 +1445,19 @@ let buildConditionalTransactItems = (
   basePosition: string,
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
   ~crossPartitionTagKeys: array<string>=[],
+  ~pairFenceTypes: dict<array<string>>=Dict.make(),
 ): array<TransactWriteCommand.transactWriteItem> => {
+  // A pair's clause is checked on the pair's own fence item, which its writers
+  // move; the key value's fence item, which they do not, is left out of it.
+  let pairItems = buildPairFenceItems(
+    table.name,
+    events,
+    ~pairFenceTypes,
+    ~cond,
+    ~newPosition=basePosition,
+  )
+  let cond = {...cond, query: cond.query->Array.filter(qi => qi.crossPartition != Some(true))}
+
   // For a Composite partition, fold the multi-tag composite read clause into a
   // single synthetic composite fence tag (`makeCompositeFenceTag`) so the rest of
   // this function fences it exactly like a Simple partition — one fence per
@@ -1517,7 +1698,10 @@ let buildConditionalTransactItems = (
         })
   })
 
-  Array.concat(putItems, Array.concat(updateItems, Array.concat(checkItems, bumpItems)))
+  Array.concat(
+    putItems,
+    Array.concat(updateItems, Array.concat(checkItems, Array.concat(bumpItems, pairItems))),
+  )
 }
 
 let appendConditional = async (
@@ -1526,6 +1710,7 @@ let appendConditional = async (
   cond: Reventless.DcbTag.appendCondition,
   ~partitionTag=?,
   ~crossPartitionTagKeys: array<string>=[],
+  ~pairFenceTypes: dict<array<string>>=Dict.make(),
 ) => {
   // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`), so it guards
   // nothing: it is left out, and a condition of only such clauses is no condition. Kept, its tags
@@ -1538,7 +1723,13 @@ let appendConditional = async (
   let queryTags = collectQueryTags(cond.query)
 
   if guardsNothing {
-    await appendUnconditional(table, events, ~partitionTag?, ~crossPartitionTagKeys)
+    await appendUnconditional(
+      table,
+      events,
+      ~partitionTag?,
+      ~crossPartitionTagKeys,
+      ~pairFenceTypes,
+    )
   } else if queryTags->Array.length == 0 {
     Error(
       ReventlessInfra.DcbEventLog.StorageFailure(
@@ -1554,6 +1745,7 @@ let appendConditional = async (
       basePosition,
       ~partitionTag?,
       ~crossPartitionTagKeys,
+      ~pairFenceTypes,
     )
     let totalItems = transactItems->Array.length
     if totalItems > transactWriteItemsLimit {
@@ -1569,12 +1761,31 @@ let appendConditional = async (
   }
 }
 
-let append = (table: resolvedTable, ~partitionTag=?, ~crossPartitionTagKeys: array<string>=[]) =>
+let append = (
+  table: resolvedTable,
+  ~partitionTag=?,
+  ~crossPartitionTagKeys: array<string>=[],
+  ~pairFenceTypes: dict<array<string>>=Dict.make(),
+) =>
   async (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>, ~condition=?) => {
     switch condition {
-    | None => await appendUnconditional(table, events, ~partitionTag?, ~crossPartitionTagKeys)
+    | None =>
+      await appendUnconditional(
+        table,
+        events,
+        ~partitionTag?,
+        ~crossPartitionTagKeys,
+        ~pairFenceTypes,
+      )
     | Some(cond) =>
-      await appendConditional(table, events, cond, ~partitionTag?, ~crossPartitionTagKeys)
+      await appendConditional(
+        table,
+        events,
+        cond,
+        ~partitionTag?,
+        ~crossPartitionTagKeys,
+        ~pairFenceTypes,
+      )
     }
   }
 

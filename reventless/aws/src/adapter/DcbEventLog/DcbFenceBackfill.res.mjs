@@ -14,6 +14,19 @@ import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "./DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
+function fenceRefText(f) {
+  return f.tag.key + `=` + f.tag.value + Stdlib_Option.mapOr(f.eventType, "", t => ` (` + t + `)`);
+}
+
+function keyOfRef(f) {
+  let eventType = f.eventType;
+  if (eventType !== undefined) {
+    return DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.pairFenceKey(f.tag, eventType);
+  } else {
+    return DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceKey(f.tag);
+  }
+}
+
 function tagOfFenceId(id) {
   if (!id.startsWith("fence#")) {
     return;
@@ -28,7 +41,8 @@ function tagOfFenceId(id) {
   }
 }
 
-async function listFences(table, keys, recount) {
+async function listFences(table, keys, pairsOpt, recount) {
+  let pairs = pairsOpt !== undefined ? pairsOpt : [];
   let filterExpression = recount ? "attribute_not_exists(#evt)" : "attribute_not_exists(#evt) AND attribute_not_exists(counted)";
   let items = await Effect.runPromise(Effect$1.catch(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream({
     TableName: table.name,
@@ -38,27 +52,53 @@ async function listFences(table, keys, recount) {
       ]]),
     FilterExpression: filterExpression
   })), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))));
-  return Stdlib_Array.filterMap(items, item => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), o => o["id"]), Stdlib_JSON.Decode.string), tagOfFenceId), tag => {
-    if (keys.includes(tag.key)) {
-      return tag;
+  let pairPrefix = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceSortKey + `#`;
+  return Stdlib_Array.filterMap(items, item => {
+    let attr = name => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), o => o[name]), Stdlib_JSON.Decode.string);
+    let match = Stdlib_Option.flatMap(attr("id"), tagOfFenceId);
+    let match$1 = attr("position");
+    if (match === undefined) {
+      return;
     }
-  }));
+    if (match$1 === undefined) {
+      return;
+    }
+    if (match$1 === DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceSortKey) {
+      if (keys.includes(match.key)) {
+        return {
+          tag: match
+        };
+      } else {
+        return;
+      }
+    }
+    if (!match$1.startsWith(pairPrefix)) {
+      return;
+    }
+    let eventType = match$1.slice(pairPrefix.length);
+    if (pairs.some(param => param[0] === match.key ? param[1] === eventType : false)) {
+      return {
+        tag: match,
+        eventType: eventType
+      };
+    }
+  });
 }
 
-async function countEvents(table, tag) {
+async function countEvents(table, tag, eventType) {
   let counts = {};
   let items = await Effect.runPromise(Stream.runCollect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.queryBySingleTagCrossPartitionStream(table, tag, undefined)));
   items.forEach(item => {
-    let eventType = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), o => o["event"]), Stdlib_JSON.Decode.string);
-    if (eventType !== undefined) {
-      counts[eventType] = Stdlib_Option.getOr(counts[eventType], 0) + 1 | 0;
+    let t = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), o => o["event"]), Stdlib_JSON.Decode.string);
+    if (t !== undefined && Stdlib_Option.mapOr(eventType, true, only => only === t)) {
+      counts[t] = Stdlib_Option.getOr(counts[t], 0) + 1 | 0;
       return;
     }
   });
   return counts;
 }
 
-function countUpdate(table, tag, before, total, cut) {
+function countUpdate(table, fence, before, total, cut) {
   let names = Object.fromEntries([[
       "#cf",
       DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.countedFromAttr
@@ -92,7 +132,7 @@ function countUpdate(table, tag, before, total, cut) {
     conditions.push(`attribute_not_exists(` + ph + `)`);
   });
   return {
-    Key: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceKey(tag),
+    Key: keyOfRef(fence),
     TableName: table.name,
     ConditionExpression: conditions.join(" AND "),
     ExpressionAttributeNames: names,
@@ -104,9 +144,8 @@ function countUpdate(table, tag, before, total, cut) {
   };
 }
 
-async function countFence(table, fence, dryRun) {
-  let before = fence.counts;
-  let total = await countEvents(table, fence.tag);
+async function countFence(table, fence, before, dryRun) {
+  let total = await countEvents(table, fence.tag, fence.eventType);
   let behind = Object.entries(before).some(param => Stdlib_Option.getOr(total[param[0]], 0) < param[1]);
   if (behind) {
     return {
@@ -128,7 +167,7 @@ async function countFence(table, fence, dryRun) {
       }
     };
   }
-  let input = countUpdate(table, fence.tag, before, total, DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition());
+  let input = countUpdate(table, fence, before, total, DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition());
   return await Effect.runPromise(Effect$1.catch(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand(input))), param => ({
     TAG: "Ok",
     _0: {
@@ -153,19 +192,20 @@ async function countFence(table, fence, dryRun) {
   }));
 }
 
-async function countFences(table, tags, settleMs, dryRun, roundsOpt) {
+async function countFences(table, fences, settleMs, dryRun, roundsOpt) {
   let rounds = roundsOpt !== undefined ? roundsOpt : 3;
-  if (tags.length === 0) {
+  if (fences.length === 0) {
     return [];
   }
-  let fences = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readFences(table)(tags);
+  let befores = await Promise.all(fences.map(async f => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceOfItem(f.tag, await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.getFenceItem(table, keyOfRef(f))).counts));
   await Effect.runPromise(Effect$1.sleep(Duration.millis(settleMs)));
   let outcomes = [];
   for (let i = 0, i_finish = fences.length; i < i_finish; ++i) {
     let fence = fences[i];
+    let before = befores[i];
     outcomes.push([
-      fence.tag,
-      await countFence(table, fence, dryRun)
+      fence,
+      await countFence(table, fence, before, dryRun)
     ]);
   }
   let moved = Stdlib_Array.filterMap(outcomes, param => {
@@ -191,6 +231,8 @@ let Runtime;
 
 export {
   Runtime,
+  fenceRefText,
+  keyOfRef,
   tagOfFenceId,
   listFences,
   countEvents,

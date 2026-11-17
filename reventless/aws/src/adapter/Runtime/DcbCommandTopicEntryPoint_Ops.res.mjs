@@ -16,6 +16,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
@@ -78,11 +79,12 @@ function makeDynamoStorageOps(tableName, scope) {
     arn: "",
     hashKey: "id"
   };
+  let pairFenceTypes = DcbScopeInference$Reventless.pairFenceTypes(scope.crossPartitionPairs);
   return {
     read: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, scope.crossPartitionTagKeys),
-    append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table, scope.partitionTag, scope.crossPartitionTagKeys),
+    append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table, scope.partitionTag, scope.crossPartitionTagKeys, pairFenceTypes),
     readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(table, scope.crossPartitionTagKeys),
-    readFences: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readFences(table)
+    readFences: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readFences(table, pairFenceTypes)
   };
 }
 

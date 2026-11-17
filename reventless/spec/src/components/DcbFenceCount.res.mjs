@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 
 function tagId(tag) {
   return tag.key + `:` + tag.value;
@@ -22,7 +23,7 @@ function clauses(query, crossPartitionTagKeys) {
       return;
     }
     let tag = match[0];
-    if (match$1 !== undefined && crossPartitionTagKeys.includes(tag.key) && match$1.length !== 0) {
+    if (match$1 !== undefined && (Primitive_object.equal(qi.crossPartition, true) || crossPartitionTagKeys.includes(tag.key)) && match$1.length !== 0) {
       return {
         tag: tag,
         eventTypes: match$1

@@ -239,6 +239,7 @@ let make: DcbEventLog_Adapter.storageMaker = (
   ~indexes,
   ~partitionTag,
   ~crossPartitionTagKeys as _=?,
+  ~pairFenceTypes as _=?,
   ~opts,
 ) => {
   let (_, _, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)

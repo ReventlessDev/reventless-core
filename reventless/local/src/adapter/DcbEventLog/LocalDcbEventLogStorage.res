@@ -15,6 +15,7 @@ module Make = (Bus: LocalBus.T) => {
     ~indexes,
     ~partitionTag,
     ~crossPartitionTagKeys as _=?,
+    ~pairFenceTypes as _=?,
     ~opts,
   ) => {
     switch (BackendState.getSqliteDb(), BackendState.getPostgresPool()) {

@@ -3,6 +3,7 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   ~indexes,
   ~partitionTag,
   ~crossPartitionTagKeys=[],
+  ~pairFenceTypes=Dict.make(),
   ~opts,
 ) => {
   // Build attributes array from index names
@@ -77,12 +78,13 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
           resolvedTable,
           ~partitionTag,
           ~crossPartitionTagKeys,
+          ~pairFenceTypes,
         ),
         readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(
           resolvedTable,
           ~crossPartitionTagKeys,
         ),
-        readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(resolvedTable),
+        readFences: DcbEventLogStorage_DynamoDb_Runtime.readFences(resolvedTable, ~pairFenceTypes),
       }
     }),
   }
