@@ -7,10 +7,10 @@
 of those rules follows: `Dcb_Builder`, `StateChangeSlice_Callback`, the GWT harness and the
 deployed command handler.
 
-Related: [a decision reads its own key across partitions](a-decision-reads-its-own-key-across-partitions.md)
+Related: [a decision reads its own key across partitions](../a-decision-reads-its-own-key-across-partitions.md)
 (the opposite case: a parent reading its children by its own key),
-[dcb-command-reference-scope-inference](done/dcb-command-reference-scope-inference.md) (where
-rule 4 came from), [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md)
+[dcb-command-reference-scope-inference](dcb-command-reference-scope-inference.md) (where
+rule 4 came from), [dcb-phase7-cross-partition-reads](dcb-phase7-cross-partition-reads.md)
 (what a cross-partition key costs).
 
 ## In plain words

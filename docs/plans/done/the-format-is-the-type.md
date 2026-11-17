@@ -181,7 +181,7 @@ recorded sidecar carries the same words.
   newer than `reventless/spec`. Before, such steps were dropped without a word and the model was
   derived from what was left.
 - Changed with it: the PPX's unit tests and fixture suite, the lifecycle check's tests, the step
-  kinds in [the reverse codegen pipeline guide](../guides/reverse-codegen-pipeline.md), and the
+  kinds in [the reverse codegen pipeline guide](../../guides/reverse-codegen-pipeline.md), and the
   comments that named the old words. No tracked file holds sidecar text: the sidecars are build
   outputs, and the lifecycle goldens and `LifecycleModel.res` files did not move.
 
