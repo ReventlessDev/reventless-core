@@ -719,3 +719,67 @@ describe("DCB DynamoDb integration — the append checks a counted fence's count
     expect(isOk(await appendAfter(table, head, ~count=2)))->toBe(true)
   })
 })
+
+describe("DCB DynamoDb integration — the backfill completes a fence's count", () => {
+  let customer = tag("customerId", "C-fill")
+  let order = id => event("OrderPlaced", [tag("orderId", id), customer])
+  // Two orders written before counting began, one after: the fence counts one.
+  let givenPartlyCounted = async () => {
+    let table = await H.freshTable()
+    let write = (id, ~keys) =>
+      Runtime.appendUnconditional(
+        table,
+        [order(id)],
+        ~partitionTag=simple("orderId"),
+        ~crossPartitionTagKeys=keys,
+      )
+    let _ = await write("O-f1", ~keys=[])
+    let _ = await write("O-f2", ~keys=[])
+    let _ = await write("O-f3", ~keys=["customerId"])
+    table
+  }
+  let fenceOf = async table =>
+    switch await Runtime.readFences(table)([customer]) {
+    | [f] => (f.counted, f.counts->Dict.toArray)
+    | _ => (false, [])
+    }
+
+  testAsync("lists only the fences of the keys given", async () => {
+    let table = await givenPartlyCounted()
+    let tags = await DcbFenceBackfill.listFences(table, ~keys=["customerId"], ~recount=false)
+    expect(tags->Array.map(t => t.value))->toEqual(["C-fill"])
+  })
+
+  testAsync("a dry run counts and writes nothing", async () => {
+    let table = await givenPartlyCounted()
+    let outcomes = await DcbFenceBackfill.countFences(table, [customer], ~settleMs=0, ~dryRun=true)
+    let shown = outcomes->Array.map(
+      ((_, o)) =>
+        switch o {
+        | Ok(Counted({before, total})) => (before->Dict.toArray, total->Dict.toArray)
+        | _ => ([], [])
+        },
+    )
+    expect((shown, await fenceOf(table)))->toEqual((
+      [([("OrderPlaced", 1)], [("OrderPlaced", 3)])],
+      (false, [("OrderPlaced", 1)]),
+    ))
+  })
+
+  testAsync("sets the count to every event and marks the fence counted", async () => {
+    let table = await givenPartlyCounted()
+    let _ = await DcbFenceBackfill.countFences(table, [customer], ~settleMs=0, ~dryRun=false)
+    let listedAgain = await DcbFenceBackfill.listFences(table, ~keys=["customerId"], ~recount=false)
+    expect((await fenceOf(table), listedAgain))->toEqual(((true, [("OrderPlaced", 3)]), []))
+  })
+
+  testAsync("a fence a writer moved since it was read is not written", async () => {
+    let table = await givenPartlyCounted()
+    let stale: Reventless.DcbFenceCount.fence = {tag: customer, counted: false, counts: Dict.make()}
+    let outcome = await DcbFenceBackfill.countFence(table, stale, ~dryRun=false)
+    expect((outcome == Ok(Moved), await fenceOf(table)))->toEqual((
+      true,
+      (false, [("OrderPlaced", 1)]),
+    ))
+  })
+})

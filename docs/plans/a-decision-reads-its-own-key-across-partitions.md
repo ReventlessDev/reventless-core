@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) steps 1 to 3 (the writers count, the reader checks, the append checks) built 2026-11-17. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -350,12 +350,16 @@ In five steps, each shippable alone:
    fence's condition for those types becomes `n#C = :read` in place of the position check, so an
    older event missing behind a newer one is refused, which the position check lets through (the
    DynamoDB-local test shows both). The local backends ignore the field: they check literally.
-4. **The backfill.** Per fence item: with `countedFrom`, count the events of each type below it and
-   add them; without it, count them all and set `countedFrom`, conditioned on its absence so that a
-   writer in between makes it start again. Either way it sets `counted` in the same update. This
-   settles [Q5](#8-questions-with-recommendations): `countedFrom` is per item, not a deploy-wide
-   cut-off.
-5. **The issue inventory** records cases 1 to 3.
+4. **The backfill.** Built 2026-11-17 as `count-fences` in `reventless-aws`
+   (`--table`, `--keys`, `--dry-run`, `--recount`). It reads the fences strongly, waits for the
+   index to settle, counts every event of each type through the index, and sets the counts to that
+   and `counted`, on condition that each count is still what it read. A fence a writer moved
+   meanwhile is counted again. This replaces the `countedFrom` cut-off first planned for
+   [Q5](#8-questions-with-recommendations): a writer still on the old code during the rollout
+   writes after `countedFrom` without counting, and a count left one short would conflict every
+   append on that fence. `countedFrom` stays, as a record of when counting began.
+5. **The issue inventory** records cases 1 to 3. Done 2026-11-17, as Issue 15 of
+   [the consistency-check issues](../analysis/dcb-consistency-check-issues.md#issue-15--a-cross-partition-read-can-miss-an-event-behind-a-position-check-that-passes).
 
 **Verify:**
 
@@ -425,10 +429,11 @@ It would narrow the fences of apps that already run per-key reads, and so needs 
 when such a fence shows contention in a deployment.
 
 **Q5.** How does the backfill of [D9](#3-decisions) count events written before the count existed,
-while writes go on? **Recommended:** it counts, per key value and type, the events whose position
-is below the deploy's cut-off, adds that to `n#C` and sets `counted`, in one conditional update per
-item. Writes after the cut-off have counted themselves. A key value without the flag is checked as
-today until its backfill has run.
+while writes go on? **Decided 2026-11-17:** it counts every event of each type and sets `n#C` to
+that, conditioned on `n#C` being what it read, after the index has had time to settle. A cut-off
+would miss writes by a Lambda still on the old code during the rollout, and a count left short
+conflicts every append on its fence. A key value without the flag is checked as today until its
+backfill has run ([Phase 2](#phase-2-a-count-on-cross-partition-fences), step 4).
 
 ## 9. Non-goals
 

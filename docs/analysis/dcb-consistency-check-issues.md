@@ -26,6 +26,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 12 | Tagless scan read can choke on fence items | Low | Latent / low-confidence |
 | 13 | No single-tag **cross-partition** (secondary-tag) read | Capability gap | **Implemented 2026-06-21** ([Phase 7 plan](../plans/done/dcb-phase7-cross-partition-reads.md); source, mjs/CI pending ppx republish) |
 | 14 | Query clauses carry the full consumed-type list (incl. types that can't carry the tag) | Low–Med | Open — drop vacuous (type,tag) combos; residual over-match = Issue 13 |
+| 15 | A cross-partition read can miss an event behind a position check that passes | Medium (analysis, not observed) | **Fixed 2026-11-17** — counted fences ([plan](../plans/a-decision-reads-its-own-key-across-partitions.md#phase-2-a-count-on-cross-partition-fences)) |
 
 ---
 
@@ -368,6 +369,32 @@ Clause 1 loses `CatalogProductSynced` (it can never carry `orderId`), but clause
 Until Issue 13 lands, a slice that does **not** want those cross-partition reads — like `PlaceOrder`, which only checks availability — must keep tolerating the over-read in its behavior; `PlaceOrder_Behavior` already does (its `placedOrderIds` ignores sibling orders). That tolerance is a behavior responsibility, not a query bug. There is no way, from types and tags alone, to tell "I want this cross-partition read" (the order-cap slice) from "I tolerate it" (`PlaceOrder`) — distinguishing them needs the per-tag scope flag of Issue 13.
 
 **Risk**: low. Dropping vacuous clauses cannot change results. The builder needs each consumed type's full produced tag set (today `buildQueryFromCommand` gets only the consumed type *names* + the command's tags), so the shared event schema must be threaded in. Red→green test: assert no built clause lists a type whose produced tag set lacks the clause's tag (e.g. no `CatalogProductSynced` under an `orderId` clause), and that `OrderPlaced` is **retained** under a `productId` clause.
+
+---
+
+## Issue 15 — A cross-partition read can miss an event behind a position check that passes
+
+**Status: FIXED (2026-11-17)** for fences the backfill has counted. Found by analysis while
+planning [a decision that reads its own key across partitions](../plans/a-decision-reads-its-own-key-across-partitions.md#43-stale-reads);
+not observed.
+
+A cross-partition read goes through the `tag_<key>` index, which is eventually consistent, and its
+fence was checked by position. Three ways that let a stale read decide:
+
+1. **A refusal made on a stale read.** The index has not yet shown an event, the decision refuses,
+   nothing is appended, so no fence checks anything. The same command succeeds on the next try.
+2. **A newer event in another clause hides a missed one.** The fence compares every type with one
+   head for the whole query ([Issue 6](#issue-6--single-global-after-across-a-multi-clause-or-query)).
+   An index that misses an event at 12 while a strong clause reads one at 15 passes `pos <= 15`.
+3. **A newer index entry hides an older missed one.** DynamoDB does not promise that index entries
+   for different items appear in write order. A read that shows 14 but not 12 holds head 14, and
+   the fence holds 14.
+
+**Fix.** A cross-partition fence counts the events of each type that carry its tag value (`n#<type>`).
+The reader reads the fence strongly before the index and reads again while it read fewer than
+counted (1), and the append's condition is that the count is unchanged (2, 3). A fence's count is
+trusted once `count-fences` (a `reventless-aws` bin) has counted the events written before counting
+began; until then the fence is checked by position as before.
 
 ---
 
