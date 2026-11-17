@@ -392,7 +392,7 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
         received := events
         steps->Array.push("phase1")
       },
-      phase2: async (_publish, ~capabilities as _, ~publishJsonsAndWait as _=?) =>
+      phase2: async (_publish, ~capabilities as _, ~publishJsonsAndWait as _=?, ~claim as _=?) =>
         steps->Array.push("phase2"),
     }
     let handler = AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler(
@@ -401,6 +401,7 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
       ~publishJsons=noopPublish,
       ~syncTodoItems=async () => steps->Array.push("sync"),
       ~loadTodoItems=async () => steps->Array.push("restore"),
+      ~claim=async (_, _) => true,
     )
     // `id` is the envelope's subject — the entity the event was published for.
     // An Aggregate's event payload does not repeat it, so this is the only place

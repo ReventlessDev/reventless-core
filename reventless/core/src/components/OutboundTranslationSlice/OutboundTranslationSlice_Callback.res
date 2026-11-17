@@ -32,6 +32,9 @@ type todoRow = {
   /** The event that created the row, so the command sent for it continues its
       flow. Absent on rows written before it existed. */
   source?: Message.flowSource,
+  /** Until when the runtime that claimed the row to translate it holds it. Past
+      it, a `Processing` row is one whose runtime stopped, and may be claimed again. */
+  claimedUntil?: string,
 }
 
 /** The item schema seen through the `JSON.t` the row actually stores.
@@ -66,6 +69,7 @@ let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
     maxRetries: ?s.matches(S.option(S.int)),
     lastError: ?s.matches(S.option(S.string)),
     source: ?s.matches(S.option(Message.flowSourceSchema)),
+    claimedUntil: ?s.matches(S.option(S.string)),
   })
 
 /**
@@ -89,6 +93,26 @@ type phase1<'event> = (
   ~capabilities: Reventless.Capabilities.t,
 ) => promise<unit>
 
+/**
+Where rows are shared by runtimes that run at once, as Lambdas share a table, each
+row is claimed before it is translated, so no two translate it. `claim(id, row)`
+stores `row` (already `Processing`, with its `claimedUntil`) only if the stored row
+is still the one this runtime read, and says whether it did. A row it could not
+claim is another runtime's: phase 2 drops it from its own list. Without a claim,
+the list is this runtime's alone.
+*/
+type claim = (string, todoRow) => promise<bool>
+
+/** How long a claim holds: past the longest a runtime may run. */
+let claimMs =
+  15. *. 60. *. 1000.
+
+/** Whether a `Processing` row's claim has run out at `now`. A row with no claim is
+    one an older build left `Processing`: its runtime is gone. */
+let claimRanOut = (row: todoRow, ~now: Date.t) =>
+  row.status == Processing &&
+    row.claimedUntil->Option.mapOr(true, until => Date.fromString(until) < now)
+
 /** Phase 2: translate all pending items, optionally publishing commands.
 
     `~capabilities` is supplied by whoever drives the callback — the in-process
@@ -99,6 +123,7 @@ type phase2 = (
   ReventlessInfra.CommandTopic.publishJsons,
   ~capabilities: Reventless.Capabilities.t,
   ~publishJsonsAndWait: CommandTopic_Helpers.publishJsonsAndWait=?,
+  ~claim: claim=?,
 ) => promise<unit>
 
 /** The whole protocol as a value — what a driver holding a built callback needs,
@@ -317,6 +342,7 @@ module Make = (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     ~capabilities: Reventless.Capabilities.t,
     ~publishJsonsAndWait: option<CommandTopic_Helpers.publishJsonsAndWait>=?,
+    ~claim: option<claim>=?,
   ) => {
     let publishJsons = CommandSent.announcing(
       ~comp=`OutboundTranslationSlice(${Spec.name})`,
@@ -347,154 +373,179 @@ module Make = (
       todoItems
       ->Dict.toArray
       ->Array.filter(((_, row)) =>
-        row.status == Pending || (row.status == Failed && row.retryCount < Spec.maxRetries)
+        row.status == Pending ||
+        row.status == Failed && row.retryCount < Spec.maxRetries ||
+        claimRanOut(row, ~now=Date.make())
       )
 
     // Process each item individually -- each translate call is independent
-    let _ = await pending->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
+    let _ = await pending->Array.reduce(Promise.resolve(), async (prev, (id, read)) => {
       let _ = await prev
 
-      // Opened first: a personal field is sealed in the row, and one whose
-      // subject was erased since leaves nothing to send.
-      let opened = switch row.item {
-      | Object(data) if personalFields != [] =>
-        switch await Reventless.Pii.openRecord(Spec.outboundItemSchema, data) {
-        | Ok(data) =>
-          switch Reventless.Pii.goneField(Spec.outboundItemSchema, data) {
-          | Some(field) => Error(#Gone(field))
-          | None => Ok(JSON.Object(data))
-          }
-        | Error(e) => Error(#Unopened(e->Reventless.Pii.errorMessage))
-        }
-      | other => Ok(other)
+      // Claimed first, so no other runtime translates it too.
+      let claimed = {
+        ...read,
+        status: Processing,
+        processedAt: now(),
+        claimedUntil: Date.fromTime(Date.now() +. claimMs)->Date.toISOString,
       }
-      let item = switch opened {
-      | Error(#Gone(field)) =>
+      let ours = switch claim {
+      | None => true
+      | Some(claim) => await claim(id, claimed)
+      }
+      if !ours {
         EffectLogger.logInfo(
           ~comp=`OutboundTranslationSlice(${Spec.name})`,
-          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
-          `${id}: its ${field} was erased; nothing to do`,
+          ~ids=?read.source->Option.map(EffectLogger.idsOfSource),
+          `${id}: another runtime holds it; left to that one`,
         )->Effect.runSync
-        todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
-        None
-      | Error(#Unopened(why)) =>
-        EffectLogger.logError(
-          ~comp=`OutboundTranslationSlice(${Spec.name})`,
-          ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
-          `${id}: its work item does not open: ${why}`,
-        )->Effect.runSync
-        let updated = row->afterFailedAttempt(~lastError=why)
-        todoItems->Dict.set(id, updated)
-        if updated.status == Abandoned {
-          newlyAbandoned->Array.push(id)
+        todoItems->Dict.delete(id)
+      } else {
+        todoItems->Dict.set(id, claimed)
+        let row = read
+
+        // Opened first: a personal field is sealed in the row, and one whose
+        // subject was erased since leaves nothing to send.
+        let opened = switch row.item {
+        | Object(data) if personalFields != [] =>
+          switch await Reventless.Pii.openRecord(Spec.outboundItemSchema, data) {
+          | Ok(data) =>
+            switch Reventless.Pii.goneField(Spec.outboundItemSchema, data) {
+            | Some(field) => Error(#Gone(field))
+            | None => Ok(JSON.Object(data))
+            }
+          | Error(e) => Error(#Unopened(e->Reventless.Pii.errorMessage))
+          }
+        | other => Ok(other)
         }
-        None
-      | Ok(itemJson) =>
-        try itemJson->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema)->Some catch {
-        | exn =>
-          let errMsg =
-            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        let item = switch opened {
+        | Error(#Gone(field)) =>
+          EffectLogger.logInfo(
+            ~comp=`OutboundTranslationSlice(${Spec.name})`,
+            ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
+            `${id}: its ${field} was erased; nothing to do`,
+          )->Effect.runSync
+          todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+          None
+        | Error(#Unopened(why)) =>
           EffectLogger.logError(
             ~comp=`OutboundTranslationSlice(${Spec.name})`,
             ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
-            `failed to decode outboundItem: ${errMsg}`,
+            `${id}: its work item does not open: ${why}`,
           )->Effect.runSync
+          let updated = row->afterFailedAttempt(~lastError=why)
+          todoItems->Dict.set(id, updated)
+          if updated.status == Abandoned {
+            newlyAbandoned->Array.push(id)
+          }
           None
-        }
-      }
-
-      switch item {
-      | None => ()
-      | Some(item) =>
-        todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
-
-        let result = try await Translation.translate(id, item, ~capabilities) catch {
-        | exn =>
-          let msg =
-            exn
-            ->JsExn.fromException
-            ->Option.flatMap(JsExn.message)
-            ->Option.getOr("unknown error")
-          Error(msg)
-        }
-
-        switch result {
-        | Ok(Some((targetId, cmd))) =>
-          // Encode command and publish
-          let commandJson = try cmd
-          ->Reventless.Util_Sury.toJson(Spec.inboundCommandSchema)
-          ->Some catch {
+        | Ok(itemJson) =>
+          try itemJson->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema)->Some catch {
           | exn =>
             let errMsg =
               exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
             EffectLogger.logError(
               ~comp=`OutboundTranslationSlice(${Spec.name})`,
               ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
-              `failed to encode inbound command: ${errMsg}`,
+              `failed to decode outboundItem: ${errMsg}`,
             )->Effect.runSync
             None
           }
+        }
 
-          switch commandJson {
-          | Some(commandJson) =>
-            try {
-              let msg: Reventless.Message.commandJson = {
-                id: targetId,
-                meta: makeMeta(row),
-                commandJson,
-              }
-              let refusal = switch publishJsonsAndWait {
-              | Some(wait) =>
-                switch (await wait([msg]))->Array.get(0) {
-                | Some(Rejected({errorCode, errorDetail, cause})) =>
-                  Some((cause, CommandTopic_Helpers.describeRefusal(~errorCode, ~errorDetail)))
-                | Some(Accepted(_) | Pending(_)) | None => None
-                }
-              | None =>
-                await publishJsons([msg])
-                None
-              }
-              switch refusal {
-              | Some((cause, lastError)) =>
-                let updated = row->afterRefusal(~cause, ~lastError)
-                todoItems->Dict.set(id, updated)
-                if updated.status == Abandoned {
-                  newlyAbandoned->Array.push(id)
-                }
-              | None => todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
-              }
-            } catch {
+        switch item {
+        | None => ()
+        | Some(item) =>
+          todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
+
+          let result = try await Translation.translate(id, item, ~capabilities) catch {
+          | exn =>
+            let msg =
+              exn
+              ->JsExn.fromException
+              ->Option.flatMap(JsExn.message)
+              ->Option.getOr("unknown error")
+            Error(msg)
+          }
+
+          switch result {
+          | Ok(Some((targetId, cmd))) =>
+            // Encode command and publish
+            let commandJson = try cmd
+            ->Reventless.Util_Sury.toJson(Spec.inboundCommandSchema)
+            ->Some catch {
             | exn =>
               let errMsg =
                 exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
               EffectLogger.logError(
                 ~comp=`OutboundTranslationSlice(${Spec.name})`,
                 ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
-                `failed to publish command: ${errMsg}`,
+                `failed to encode inbound command: ${errMsg}`,
               )->Effect.runSync
-              let updated = row->afterFailedAttempt(~lastError=errMsg)
+              None
+            }
+
+            switch commandJson {
+            | Some(commandJson) =>
+              try {
+                let msg: Reventless.Message.commandJson = {
+                  id: targetId,
+                  meta: makeMeta(row),
+                  commandJson,
+                }
+                let refusal = switch publishJsonsAndWait {
+                | Some(wait) =>
+                  switch (await wait([msg]))->Array.get(0) {
+                  | Some(Rejected({errorCode, errorDetail, cause})) =>
+                    Some((cause, CommandTopic_Helpers.describeRefusal(~errorCode, ~errorDetail)))
+                  | Some(Accepted(_) | Pending(_)) | None => None
+                  }
+                | None =>
+                  await publishJsons([msg])
+                  None
+                }
+                switch refusal {
+                | Some((cause, lastError)) =>
+                  let updated = row->afterRefusal(~cause, ~lastError)
+                  todoItems->Dict.set(id, updated)
+                  if updated.status == Abandoned {
+                    newlyAbandoned->Array.push(id)
+                  }
+                | None => todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+                }
+              } catch {
+              | exn =>
+                let errMsg =
+                  exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+                EffectLogger.logError(
+                  ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                  ~ids=?row.source->Option.map(EffectLogger.idsOfSource),
+                  `failed to publish command: ${errMsg}`,
+                )->Effect.runSync
+                let updated = row->afterFailedAttempt(~lastError=errMsg)
+                todoItems->Dict.set(id, updated)
+                if updated.status == Abandoned {
+                  newlyAbandoned->Array.push(id)
+                }
+              }
+            | None =>
+              let updated = row->afterFailedAttempt
               todoItems->Dict.set(id, updated)
               if updated.status == Abandoned {
                 newlyAbandoned->Array.push(id)
               }
             }
-          | None =>
-            let updated = row->afterFailedAttempt
+
+          | Ok(None) =>
+            // Fire-and-forget: no command to publish
+            todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
+
+          | Error(msg) =>
+            let updated = row->afterFailedAttempt(~lastError=msg)
             todoItems->Dict.set(id, updated)
             if updated.status == Abandoned {
               newlyAbandoned->Array.push(id)
             }
-          }
-
-        | Ok(None) =>
-          // Fire-and-forget: no command to publish
-          todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
-
-        | Error(msg) =>
-          let updated = row->afterFailedAttempt(~lastError=msg)
-          todoItems->Dict.set(id, updated)
-          if updated.status == Abandoned {
-            newlyAbandoned->Array.push(id)
           }
         }
       }

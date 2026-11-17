@@ -657,4 +657,76 @@ describe("OutboundTranslationSlice Callback", () => {
       },
     )
   })
+
+  // Runtimes that run at once share the rows: each claims a row before it
+  // translates it, so no two translate it.
+  describe("the claim", () => {
+    let published = ref([])
+    let publish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+      published := Array.concat(published.contents, cmds)
+    }
+
+    testPromise(
+      "a row another runtime holds is left to it, untranslated and dropped",
+      async () => {
+        published := []
+        await CommandBackCallback.phase1(
+          [
+            ("evt", PaymentReceived({orderId: "ord-1", amount: 50.0})),
+            ("evt", PaymentReceived({orderId: "ord-2", amount: 20.0})),
+          ],
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        let asked = []
+        await CommandBackCallback.phase2(
+          publish,
+          ~capabilities=Reventless.Capabilities.none,
+          ~claim=async (id, row) => {
+            asked->Array.push((id, row.status, row.claimedUntil->Option.isSome))
+            id == "ord-1"
+          },
+        )
+        expect(
+          asked->Array.toSorted(
+            (a, b) => {
+              let (x, _, _) = a
+              let (y, _, _) = b
+              String.compare(x, y)
+            },
+          ),
+        )->toEqual([("ord-1", Processing, true), ("ord-2", Processing, true)])
+        expect(published.contents->Array.map(c => c.id))->toEqual(["ord-1"])
+        expect(CommandBackCallback.todoItems->Dict.get("ord-2"))->toEqual(None)
+      },
+    )
+
+    testPromise(
+      "a Processing row whose claim ran out is translated again",
+      async () => {
+        published := []
+        let stale: todoRow = {
+          item: {"orderId": "ord-3", "amount": 5.0}->Obj.magic,
+          status: Processing,
+          createdAt: "2026-11-17T00:00:00.000Z",
+          retryCount: 0,
+          claimedUntil: "2026-11-17T00:15:00.000Z",
+        }
+        let held: todoRow = {
+          ...stale,
+          claimedUntil: Date.fromTime(Date.now() +. 60_000.)->Date.toISOString,
+        }
+        CommandBackCallback.todoItems->Dict.set("ord-3", stale)
+        CommandBackCallback.todoItems->Dict.set(
+          "ord-4",
+          {...held, item: {"orderId": "ord-4", "amount": 5.0}->Obj.magic},
+        )
+        await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
+        expect(published.contents->Array.map(c => c.id))->toEqual(["ord-3"])
+        expect((
+          (CommandBackCallback.todoItems->Dict.getUnsafe("ord-3")).status,
+          (CommandBackCallback.todoItems->Dict.getUnsafe("ord-4")).status,
+        ))->toEqual((Completed, Processing))
+      },
+    )
+  })
 })

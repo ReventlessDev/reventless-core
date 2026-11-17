@@ -2,6 +2,7 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
@@ -9,14 +10,17 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
+import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Text_Http_Backend$ReventlessAws from "../Text/Text_Http_Backend.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
@@ -131,7 +135,7 @@ function makePublishJsons(queueUrl, isFifo) {
   return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, isFifo ? "SQS_FIFO" : "SQS");
 }
 
-function makeSyncTodoItems(queryDbTableName, todoItems, rowSchema) {
+function makeSyncTodoItems(queryDbTableName, todoItems, rowSchema, synced) {
   let table = {
     id: "",
     name: queryDbTableName,
@@ -140,11 +144,92 @@ function makeSyncTodoItems(queryDbTableName, todoItems, rowSchema) {
   };
   let save = QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table);
   return async () => {
-    await Promise.all(Object.entries(todoItems).map(param => save(param[0], Util_Sury$Reventless.toJson(param[1], rowSchema), "Overwrite", undefined)));
+    await Promise.all(Stdlib_Array.filterMap(Object.entries(todoItems), param => {
+      let id = param[0];
+      let json = Util_Sury$Reventless.toJson(param[1], rowSchema);
+      let text = JSON.stringify(json);
+      if (Primitive_object.equal(synced[id], text)) {
+        return;
+      } else {
+        synced[id] = text;
+        return save(id, json, "Overwrite", undefined);
+      }
+    }));
   };
 }
 
-function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
+function makeClaimTodoItem(queryDbTableName, synced) {
+  return async (id, claimed) => {
+    let json = Util_Sury$Reventless.toJson(claimed, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema);
+    let read = Stdlib_Option.flatMap(synced[id], text => {
+      try {
+        return Util_Sury$Reventless.fromJson(JSON.parse(text), OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema);
+      } catch (exn) {
+        return;
+      }
+    });
+    let names = Object.fromEntries([
+      [
+        "#s",
+        "status"
+      ],
+      [
+        "#c",
+        "claimedUntil"
+      ]
+    ]);
+    let values = Object.fromEntries([
+      [
+        ":processing",
+        "Processing"
+      ],
+      [
+        ":now",
+        new Date().toISOString()
+      ]
+    ]);
+    let ranOut = "(#s = :processing AND (attribute_not_exists(#c) OR #c < :now))";
+    let condition;
+    if (read !== undefined) {
+      if (read.status === "Processing") {
+        condition = ranOut;
+      } else {
+        names["#r"] = "retryCount";
+        values[":status"] = Util_Sury$Reventless.toJson(read.status, OutboundTranslationSlice_Callback$ReventlessCore.todoStatusSchema);
+        values[":retries"] = read.retryCount;
+        condition = `(#s = :status AND #r = :retries) OR ` + ranOut;
+      }
+    } else {
+      names["#id"] = "id";
+      condition = `attribute_not_exists(#id) OR ` + ranOut;
+    }
+    let val;
+    try {
+      val = await DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+        Item: Util_DynamoDb_Runtime$ReventlessAws.injectId(json, "id", id),
+        TableName: queryDbTableName,
+        ConditionExpression: condition,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values
+      }));
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      let match = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.name);
+      if (match !== undefined) {
+        if (match === "ConditionalCheckFailedException") {
+          Stdlib_Dict.$$delete(synced, id);
+          return false;
+        }
+        throw exn;
+      }
+      throw exn;
+    }
+    synced[id] = JSON.stringify(json);
+    return true;
+  };
+}
+
+function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp, synced) {
   let loaded = {
     contents: false
   };
@@ -154,10 +239,16 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
     }
     loaded.contents = true;
     let params_ConsistentRead = true;
-    let params_ExpressionAttributeNames = Object.fromEntries([[
+    let params_ExpressionAttributeNames = Object.fromEntries([
+      [
         "#s",
         "status"
-      ]]);
+      ],
+      [
+        "#c",
+        "claimedUntil"
+      ]
+    ]);
     let params_ExpressionAttributeValues = Object.fromEntries([
       [
         ":pending",
@@ -166,9 +257,17 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
       [
         ":failed",
         "Failed"
+      ],
+      [
+        ":processing",
+        "Processing"
+      ],
+      [
+        ":now",
+        new Date().toISOString()
       ]
     ]);
-    let params_FilterExpression = "#s = :pending OR #s = :failed";
+    let params_FilterExpression = "#s = :pending OR #s = :failed OR (#s = :processing AND (attribute_not_exists(#c) OR #c < :now))";
     let params = {
       TableName: queryDbTableName,
       ConsistentRead: params_ConsistentRead,
@@ -192,6 +291,7 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
         return count;
       }
       todoItems[id] = row;
+      synced[id] = JSON.stringify(Util_Sury$Reventless.toJson(row, rowSchema));
       return count + 1 | 0;
     })), err => Effect$1.map(EffectLogger$ReventlessCore.logError(comp, undefined, undefined, `restore: couldn't read pending TODO rows from ` + queryDbTableName + `: ` + DynamoDb_Error$ReventlessAws.message(err)), () => 0)));
     if (restored > 0) {
@@ -319,7 +419,7 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, publis
   }));
 }
 
-function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems) {
+function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim) {
   let decoder = DcbDecode$Reventless.makeDecoder(consumedEventSchema);
   return stream => Effect$1.flatMap(Stream$1.runCollect(Stream$1.flatMap(Stream.mapEffect(stream, json => Effect$1.sync(() => {
     let envelope = Stdlib_JSON.Decode.object(json);
@@ -343,7 +443,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
       param[1]
     ]), events.map(param => param[2]), capabilities());
     await syncTodoItems();
-    await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait);
+    await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait, claim);
     return await syncTodoItems();
   }));
 }
@@ -352,8 +452,9 @@ function makeAutomationRegisteredHandler(entry, sliceName, callback, schedule) {
   let comp = `AutomationSlice(` + sliceName + `)`;
   let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
   let publishJsonsAndWait = Stdlib_Option.map(entry.commandFunction, DcbPlatformCommands_Runtime$ReventlessAws.publishJsonsAndWait);
-  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema);
-  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp);
+  let synced = {};
+  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, synced);
+  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp, synced);
   let context = Stdlib_Option.getOr(entry.context, defaultContext(sliceName));
   let step = {
     contents: undefined
@@ -423,16 +524,18 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
   let comp = `OutboundTranslationSlice(` + sliceName + `)`;
   let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
   let publishJsonsAndWait = Stdlib_Option.map(entry.commandFunction, DcbPlatformCommands_Runtime$ReventlessAws.publishJsonsAndWait);
-  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema);
-  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, comp);
+  let synced = {};
+  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, synced);
+  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, comp, synced);
+  let claim = makeClaimTodoItem(entry.queryDbTableName, synced);
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim)),
       comp: comp
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait);
+      await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait, claim);
       return await syncTodoItems();
     },
     comp: comp,
@@ -488,6 +591,7 @@ export {
   defaultContext,
   makePublishJsons,
   makeSyncTodoItems,
+  makeClaimTodoItem,
   makeLoadTodoItems,
   scheduleTable,
   makeScheduleStore,

@@ -445,7 +445,7 @@ Each TODO item moves through these statuses:
 | Status | Description |
 |--------|-------------|
 | `Pending` | Created by `collect`, waiting to be translated |
-| `Processing` | `translate` is being called |
+| `Processing` | `translate` is being called, by the runtime that claimed the row until `claimedUntil` |
 | `Completed` | External call succeeded |
 | `Failed` | External call failed -- eligible for retry |
 | `Abandoned` | External call failed for the last time, or the target refused the command it produced -- `onExhausted` was consulted, and no sweep will pick this row up again |
@@ -476,6 +476,23 @@ slice). It catches:
 
 - Failed items eligible for retry (`retryCount < maxRetries`)
 - Items collected in a previous batch but not yet translated
+- `Processing` items whose claim ran out: the runtime translating them stopped
+
+### Several runtimes, one TODO list
+
+On AWS several Lambdas of the slice run at once (one per stream shard, and the
+sweep), each with the TODO rows it reloaded at its cold start. So that no two
+translate a row, and an outside service is never asked twice:
+
+- **A row is claimed before it is translated.** The runtime stores it as
+  `Processing` with a `claimedUntil` 15 minutes ahead, only if the stored row is
+  still the copy it read: the same status and retry count, or a `Processing` row
+  whose claim ran out. A row it cannot claim is another runtime's; it drops the row
+  from its list and leaves it to that one.
+- **A runtime writes back only the rows it changed.** Its copy of a row someone else
+  has since translated is never written over theirs.
+
+Locally one process holds the list, and nothing is claimed.
 
 ## TODO List Storage
 
@@ -493,6 +510,7 @@ type todoRow = {
   retryCount: int,
   maxRetries?: int,
   lastError?: string,
+  claimedUntil?: string,
 }
 ```
 

@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -33,7 +34,8 @@ let todoRowSchema = Sury.$schema(s => ({
   retryCount: s.m(Sury.int32),
   maxRetries: s.m(Sury.$option(Sury.int32)),
   lastError: s.m(Sury.$option(Sury.string)),
-  source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
+  source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema)),
+  claimedUntil: s.m(Sury.$option(Sury.string))
 }));
 
 function todoRowSchemaFor(itemSchema) {
@@ -46,8 +48,19 @@ function todoRowSchemaFor(itemSchema) {
     retryCount: s.m(Sury.int32),
     maxRetries: s.m(Sury.$option(Sury.int32)),
     lastError: s.m(Sury.$option(Sury.string)),
-    source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema))
+    source: s.m(Sury.$option(Message$ReventlessCore.flowSourceSchema)),
+    claimedUntil: s.m(Sury.$option(Sury.string))
   }));
+}
+
+let claimMs = 15 * 60 * 1000;
+
+function claimRanOut(row, now) {
+  if (row.status === "Processing") {
+    return Stdlib_Option.mapOr(row.claimedUntil, true, until => Primitive_object.lessthan(new Date(until), now));
+  } else {
+    return false;
+  }
 }
 
 function Make(Spec) {
@@ -170,7 +183,7 @@ function Make(Spec) {
         }
       }
     };
-    let phase2 = async (publishJsons, capabilities, publishJsonsAndWait) => {
+    let phase2 = async (publishJsons, capabilities, publishJsonsAndWait, claim) => {
       let publishJsons$1 = CommandSent$ReventlessCore.announcing(`OutboundTranslationSlice(` + Spec.name + `)`, publishJsons);
       let publishJsonsAndWait$1 = Stdlib_Option.map(publishJsonsAndWait, wait => CommandSent$ReventlessCore.announcingAndWaiting(`OutboundTranslationSlice(` + Spec.name + `)`, wait));
       let newlyAbandoned = [];
@@ -187,164 +200,179 @@ function Make(Spec) {
       });
       let pending = Object.entries(todoItems).filter(param => {
         let row = param[1];
-        if (row.status === "Pending") {
+        if (row.status === "Pending" || row.status === "Failed" && row.retryCount < Spec.maxRetries) {
           return true;
-        } else if (row.status === "Failed") {
-          return row.retryCount < Spec.maxRetries;
         } else {
-          return false;
+          return claimRanOut(row, new Date());
         }
       });
       await Stdlib_Array.reduce(pending, Promise.resolve(), async (prev, param) => {
-        let row = param[1];
+        let read = param[1];
         let id = param[0];
         await prev;
-        let data = row.item;
-        let opened;
-        if (typeof data === "object" && data !== null && !Array.isArray(data) && Primitive_object.notequal(personalFields, [])) {
-          let data$1 = await Pii$Reventless.openRecord(Spec.outboundItemSchema, data);
-          if (data$1.TAG === "Ok") {
-            let data$2 = data$1._0;
-            let field = Pii$Reventless.goneField(Spec.outboundItemSchema, data$2);
-            opened = field !== undefined ? ({
+        let newrecord = {...read};
+        newrecord.claimedUntil = new Date(Date.now() + claimMs).toISOString();
+        newrecord.processedAt = new Date().toISOString();
+        newrecord.status = "Processing";
+        let ours = claim !== undefined ? await claim(id, newrecord) : true;
+        if (ours) {
+          todoItems[id] = newrecord;
+          let data = read.item;
+          let opened;
+          if (typeof data === "object" && data !== null && !Array.isArray(data) && Primitive_object.notequal(personalFields, [])) {
+            let data$1 = await Pii$Reventless.openRecord(Spec.outboundItemSchema, data);
+            if (data$1.TAG === "Ok") {
+              let data$2 = data$1._0;
+              let field = Pii$Reventless.goneField(Spec.outboundItemSchema, data$2);
+              opened = field !== undefined ? ({
+                  TAG: "Error",
+                  _0: {
+                    NAME: "Gone",
+                    VAL: field
+                  }
+                }) : ({
+                  TAG: "Ok",
+                  _0: data$2
+                });
+            } else {
+              opened = {
                 TAG: "Error",
                 _0: {
-                  NAME: "Gone",
-                  VAL: field
+                  NAME: "Unopened",
+                  VAL: Pii$Reventless.errorMessage(data$1._0)
                 }
-              }) : ({
-                TAG: "Ok",
-                _0: data$2
-              });
+              };
+            }
           } else {
             opened = {
-              TAG: "Error",
-              _0: {
-                NAME: "Unopened",
-                VAL: Pii$Reventless.errorMessage(data$1._0)
-              }
+              TAG: "Ok",
+              _0: data
             };
           }
-        } else {
-          opened = {
-            TAG: "Ok",
-            _0: data
-          };
-        }
-        let item;
-        if (opened.TAG === "Ok") {
-          try {
-            item = Primitive_option.some(Util_Sury$Reventless.fromJson(opened._0, Spec.outboundItemSchema));
-          } catch (raw_exn) {
-            let exn = Primitive_exceptions.internalToException(raw_exn);
-            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to decode outboundItem: ` + errMsg));
-            item = undefined;
-          }
-        } else {
-          let match = opened._0;
-          if (match.NAME === "Gone") {
-            Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its ` + match.VAL + ` was erased; nothing to do`));
-            let newrecord = {...row};
-            newrecord.completedAt = new Date().toISOString();
-            newrecord.status = "Completed";
-            todoItems[id] = newrecord;
-            item = undefined;
-          } else {
-            let why = match.VAL;
-            Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its work item does not open: ` + why));
-            let updated = afterFailedAttempt(row, why);
-            todoItems[id] = updated;
-            if (updated.status === "Abandoned") {
-              newlyAbandoned.push(id);
-            }
-            item = undefined;
-          }
-        }
-        if (item === undefined) {
-          return;
-        }
-        let newrecord$1 = {...row};
-        newrecord$1.processedAt = new Date().toISOString();
-        newrecord$1.status = "Processing";
-        todoItems[id] = newrecord$1;
-        let result;
-        try {
-          result = await Translation.translate(id, Primitive_option.valFromOption(item), capabilities);
-        } catch (raw_exn$1) {
-          let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-          let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown error");
-          result = {
-            TAG: "Error",
-            _0: msg
-          };
-        }
-        if (result.TAG === "Ok") {
-          let match$1 = result._0;
-          if (match$1 !== undefined) {
-            let commandJson;
+          let item;
+          if (opened.TAG === "Ok") {
             try {
-              commandJson = Util_Sury$Reventless.toJson(match$1[1], Spec.inboundCommandSchema);
-            } catch (raw_exn$2) {
-              let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
-              let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to encode inbound command: ` + errMsg$1));
-              commandJson = undefined;
+              item = Primitive_option.some(Util_Sury$Reventless.fromJson(opened._0, Spec.outboundItemSchema));
+            } catch (raw_exn) {
+              let exn = Primitive_exceptions.internalToException(raw_exn);
+              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), `failed to decode outboundItem: ` + errMsg));
+              item = undefined;
             }
-            if (commandJson !== undefined) {
+          } else {
+            let match = opened._0;
+            if (match.NAME === "Gone") {
+              Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its ` + match.VAL + ` was erased; nothing to do`));
+              let newrecord$1 = {...read};
+              newrecord$1.completedAt = new Date().toISOString();
+              newrecord$1.status = "Completed";
+              todoItems[id] = newrecord$1;
+              item = undefined;
+            } else {
+              let why = match.VAL;
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), id + `: its work item does not open: ` + why));
+              let updated = afterFailedAttempt(read, why);
+              todoItems[id] = updated;
+              if (updated.status === "Abandoned") {
+                newlyAbandoned.push(id);
+              }
+              item = undefined;
+            }
+          }
+          if (item === undefined) {
+            return;
+          }
+          let newrecord$2 = {...read};
+          newrecord$2.processedAt = new Date().toISOString();
+          newrecord$2.status = "Processing";
+          todoItems[id] = newrecord$2;
+          let result;
+          try {
+            result = await Translation.translate(id, Primitive_option.valFromOption(item), capabilities);
+          } catch (raw_exn$1) {
+            let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+            let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown error");
+            result = {
+              TAG: "Error",
+              _0: msg
+            };
+          }
+          if (result.TAG === "Ok") {
+            let match$1 = result._0;
+            if (match$1 !== undefined) {
+              let commandJson;
               try {
-                let msg_id = match$1[0];
-                let msg_meta = makeMeta(row);
-                let msg$1 = {
-                  id: msg_id,
-                  meta: msg_meta,
-                  commandJson: commandJson
-                };
-                let refusal;
-                if (publishJsonsAndWait$1 !== undefined) {
-                  let match$2 = (await publishJsonsAndWait$1([msg$1]))[0];
-                  if (match$2 !== undefined) {
-                    switch (match$2.TAG) {
-                      case "Rejected" :
-                        refusal = [
-                          match$2.cause,
-                          CommandTopic_Helpers$ReventlessCore.describeRefusal(match$2.errorCode, match$2.errorDetail)
-                        ];
-                        break;
-                      case "Accepted" :
-                      case "Pending" :
-                        refusal = undefined;
-                        break;
+                commandJson = Util_Sury$Reventless.toJson(match$1[1], Spec.inboundCommandSchema);
+              } catch (raw_exn$2) {
+                let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
+                let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), `failed to encode inbound command: ` + errMsg$1));
+                commandJson = undefined;
+              }
+              if (commandJson !== undefined) {
+                try {
+                  let msg_id = match$1[0];
+                  let msg_meta = makeMeta(read);
+                  let msg$1 = {
+                    id: msg_id,
+                    meta: msg_meta,
+                    commandJson: commandJson
+                  };
+                  let refusal;
+                  if (publishJsonsAndWait$1 !== undefined) {
+                    let match$2 = (await publishJsonsAndWait$1([msg$1]))[0];
+                    if (match$2 !== undefined) {
+                      switch (match$2.TAG) {
+                        case "Rejected" :
+                          refusal = [
+                            match$2.cause,
+                            CommandTopic_Helpers$ReventlessCore.describeRefusal(match$2.errorCode, match$2.errorDetail)
+                          ];
+                          break;
+                        case "Accepted" :
+                        case "Pending" :
+                          refusal = undefined;
+                          break;
+                      }
+                    } else {
+                      refusal = undefined;
                     }
                   } else {
+                    await publishJsons$1([msg$1]);
                     refusal = undefined;
                   }
-                } else {
-                  await publishJsons$1([msg$1]);
-                  refusal = undefined;
-                }
-                if (refusal !== undefined) {
-                  let updated$1 = afterRefusal(row, refusal[0], refusal[1]);
-                  todoItems[id] = updated$1;
-                  if (updated$1.status === "Abandoned") {
+                  if (refusal !== undefined) {
+                    let updated$1 = afterRefusal(read, refusal[0], refusal[1]);
+                    todoItems[id] = updated$1;
+                    if (updated$1.status === "Abandoned") {
+                      newlyAbandoned.push(id);
+                      return;
+                    } else {
+                      return;
+                    }
+                  }
+                  let newrecord$3 = {...read};
+                  newrecord$3.completedAt = new Date().toISOString();
+                  newrecord$3.status = "Completed";
+                  todoItems[id] = newrecord$3;
+                  return;
+                } catch (raw_exn$3) {
+                  let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
+                  let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
+                  Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), `failed to publish command: ` + errMsg$2));
+                  let updated$2 = afterFailedAttempt(read, errMsg$2);
+                  todoItems[id] = updated$2;
+                  if (updated$2.status === "Abandoned") {
                     newlyAbandoned.push(id);
                     return;
                   } else {
                     return;
                   }
                 }
-                let newrecord$2 = {...row};
-                newrecord$2.completedAt = new Date().toISOString();
-                newrecord$2.status = "Completed";
-                todoItems[id] = newrecord$2;
-                return;
-              } catch (raw_exn$3) {
-                let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
-                let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(row.source, EffectLogger$ReventlessCore.idsOfSource), `failed to publish command: ` + errMsg$2));
-                let updated$2 = afterFailedAttempt(row, errMsg$2);
-                todoItems[id] = updated$2;
-                if (updated$2.status === "Abandoned") {
+              } else {
+                let updated$3 = afterFailedAttempt(read, undefined);
+                todoItems[id] = updated$3;
+                if (updated$3.status === "Abandoned") {
                   newlyAbandoned.push(id);
                   return;
                 } else {
@@ -352,31 +380,25 @@ function Make(Spec) {
                 }
               }
             } else {
-              let updated$3 = afterFailedAttempt(row, undefined);
-              todoItems[id] = updated$3;
-              if (updated$3.status === "Abandoned") {
-                newlyAbandoned.push(id);
-                return;
-              } else {
-                return;
-              }
+              let newrecord$4 = {...read};
+              newrecord$4.completedAt = new Date().toISOString();
+              newrecord$4.status = "Completed";
+              todoItems[id] = newrecord$4;
+              return;
             }
           } else {
-            let newrecord$3 = {...row};
-            newrecord$3.completedAt = new Date().toISOString();
-            newrecord$3.status = "Completed";
-            todoItems[id] = newrecord$3;
-            return;
+            let updated$4 = afterFailedAttempt(read, result._0);
+            todoItems[id] = updated$4;
+            if (updated$4.status === "Abandoned") {
+              newlyAbandoned.push(id);
+              return;
+            } else {
+              return;
+            }
           }
         } else {
-          let updated$4 = afterFailedAttempt(row, result._0);
-          todoItems[id] = updated$4;
-          if (updated$4.status === "Abandoned") {
-            newlyAbandoned.push(id);
-            return;
-          } else {
-            return;
-          }
+          Effect.runSync(EffectLogger$ReventlessCore.logInfo(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, Stdlib_Option.map(read.source, EffectLogger$ReventlessCore.idsOfSource), id + `: another runtime holds it; left to that one`));
+          return Stdlib_Dict.$$delete(todoItems, id);
         }
       });
       await Stdlib_Array.reduce(newlyAbandoned, Promise.resolve(), async (prev, id) => {
@@ -400,6 +422,8 @@ export {
   todoStatusSchema,
   todoRowSchema,
   todoRowSchemaFor,
+  claimMs,
+  claimRanOut,
   Make,
 }
 /* todoStatusSchema Not a pure module */

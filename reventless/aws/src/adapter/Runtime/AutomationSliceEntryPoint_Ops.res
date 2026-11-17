@@ -193,13 +193,19 @@ let makePublishJsons = (
   queue->CommandTopicChannel_SQS_Runtime.publishJsons(isFifo ? AWS.SQS_FIFO : AWS.SQS)
 }
 
-// Overwrite-sync the in-memory TODO list into the slice's view table. Rows are
-// serialized through the callback's row schema — the same JSON shape the
-// deploy-time QueryDb writes.
+// Sync the in-memory TODO list into the slice's view table: only the rows this
+// container changed since it last wrote or read them. Rows are serialized through
+// the callback's row schema — the same JSON shape the deploy-time QueryDb writes.
+//
+// Only the changed rows, because several containers run at once and each holds a
+// copy of the rows it reloaded. Writing every copy back would put a row another
+// container has since translated back to `Pending`, and it would be translated
+// again. `synced` holds, per id, the JSON this container last wrote or read.
 let makeSyncTodoItems = (
   ~queryDbTableName: string,
   ~todoItems: dict<'row>,
   ~rowSchema: S.t<'row>,
+  ~synced: dict<string>,
 ): (unit => promise<unit>) => {
   let table: Util_DynamoDb_Runtime.resolvedTable = {
     id: "",
@@ -211,10 +217,84 @@ let makeSyncTodoItems = (
   async () => {
     let _ = await todoItems
     ->Dict.toArray
-    ->Array.map(((id, row)) =>
-      save(id, row->Reventless.Util_Sury.toJson(rowSchema), ReventlessCore.QueryDb.Overwrite, None)
-    )
+    ->Array.filterMap(((id, row)) => {
+      let json = row->Reventless.Util_Sury.toJson(rowSchema)
+      let text = json->JSON.stringify
+      if synced->Dict.get(id) == Some(text) {
+        None
+      } else {
+        synced->Dict.set(id, text)
+        Some(save(id, json, ReventlessCore.QueryDb.Overwrite, None))
+      }
+    })
     ->Promise.all
+  }
+}
+
+// Claim an outbound row before it is translated: store it as `Processing` only
+// if the stored row is still the copy this container holds, or one whose claim
+// ran out. `false` when another container changed it first.
+let makeClaimTodoItem = (
+  ~queryDbTableName: string,
+  ~synced: dict<string>,
+): ReventlessCore.OutboundTranslationSlice_Callback.claim => {
+  let rowSchema = ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema
+  async (id, claimed) => {
+    let json = claimed->Reventless.Util_Sury.toJson(rowSchema)
+    let read =
+      synced
+      ->Dict.get(id)
+      ->Option.flatMap(text =>
+        try text->JSON.parseOrThrow->Reventless.Util_Sury.fromJson(rowSchema)->Some catch {
+        | _ => None
+        }
+      )
+    // DynamoDB refuses a name or value the expression does not use.
+    let names = Dict.fromArray([("#s", "status"), ("#c", "claimedUntil")])
+    let values = Dict.fromArray([
+      (":processing", "Processing"->JSON.Encode.string),
+      (":now", Date.make()->Date.toISOString->JSON.Encode.string),
+    ])
+    let ranOut = "(#s = :processing AND (attribute_not_exists(#c) OR #c < :now))"
+    let condition = switch read {
+    // Never written by this container, so never read: it must not exist yet.
+    | None =>
+      names->Dict.set("#id", "id")
+      `attribute_not_exists(#id) OR ${ranOut}`
+    // Held as `Processing` whose claim ran out: only if it still has.
+    | Some({status: Processing}) => ranOut
+    // Otherwise the stored row must be the copy this container read.
+    | Some(read) =>
+      names->Dict.set("#r", "retryCount")
+      values->Dict.set(
+        ":status",
+        read.status->Reventless.Util_Sury.toJson(
+          ReventlessCore.OutboundTranslationSlice_Callback.todoStatusSchema,
+        ),
+      )
+      values->Dict.set(":retries", read.retryCount->JSON.Encode.int)
+      `(#s = :status AND #r = :retries) OR ${ranOut}`
+    }
+    switch await AwsSdk.DynamoDb.DocumentClient.PutCommand.send(
+      AwsSdk.DynamoDb.DocumentClient.PutCommand.make({
+        tableName: queryDbTableName,
+        item: json->Util_DynamoDb_Runtime.injectId("id", id),
+        conditionExpression: condition,
+        expressionAttributeNames: names,
+        expressionAttributeValues: values,
+      }),
+    ) {
+    | _ =>
+      synced->Dict.set(id, json->JSON.stringify)
+      true
+    | exception exn =>
+      switch exn->JsExn.fromException->Option.flatMap(JsExn.name) {
+      | Some("ConditionalCheckFailedException") =>
+        synced->Dict.delete(id)
+        false
+      | _ => throw(exn)
+      }
+    }
   }
 }
 
@@ -237,18 +317,23 @@ let makeSyncTodoItems = (
 // (`Processing`) or a status this invocation just advanced; the stored copy is
 // by definition no fresher.
 //
-// Only `Pending` and `Failed` are read. `Completed` rows are the bulk of a
-// mature table and are never actionable, and neither are `Abandoned` ones — a
+// Only `Pending` and `Failed` are read, and `Processing` rows whose claim ran
+// out: their container stopped mid-translation. `Completed` rows are the bulk of
+// a mature table and are never actionable, and neither are `Abandoned` ones — a
 // row whose retry budget is spent is terminal, so it is left in the table rather
 // than carried into memory. That the status says so is what lets this filter
 // decide it: `maxRetries` is Spec-level and still not known here, and before the
 // status existed an exhausted row had to be loaded and then filtered out by
 // `phase2`.
+//
+// Each row read is recorded in `synced` as read, so the sync leaves it alone
+// until this container changes it.
 let makeLoadTodoItems = (
   ~queryDbTableName: string,
   ~todoItems: dict<'row>,
   ~rowSchema: S.t<'row>,
   ~comp: string,
+  ~synced: dict<string>,
 ): (unit => promise<unit>) => {
   let loaded = ref(false)
   async () =>
@@ -259,11 +344,13 @@ let makeLoadTodoItems = (
       let params: AwsSdk.DynamoDb.DocumentClient.ScanCommand.input = {
         tableName: queryDbTableName,
         consistentRead: true,
-        filterExpression: "#s = :pending OR #s = :failed",
-        expressionAttributeNames: [("#s", "status")]->Dict.fromArray,
+        filterExpression: "#s = :pending OR #s = :failed OR (#s = :processing AND (attribute_not_exists(#c) OR #c < :now))",
+        expressionAttributeNames: [("#s", "status"), ("#c", "claimedUntil")]->Dict.fromArray,
         expressionAttributeValues: [
           (":pending", "Pending"->JSON.Encode.string),
           (":failed", "Failed"->JSON.Encode.string),
+          (":processing", "Processing"->JSON.Encode.string),
+          (":now", Date.make()->Date.toISOString->JSON.Encode.string),
         ]->Dict.fromArray,
       }
       let restored = await Util_DynamoDb_Runtime.scanStream(params)
@@ -281,6 +368,7 @@ let makeLoadTodoItems = (
             switch json->Reventless.Util_Sury.fromJson(rowSchema) {
             | row =>
               todoItems->Dict.set(id, row)
+              synced->Dict.set(id, row->Reventless.Util_Sury.toJson(rowSchema)->JSON.stringify)
               count + 1
             | exception _ => count
             }
@@ -539,6 +627,7 @@ let makeOutboundJsonEventsHandler = (
   ~publishJsonsAndWait: option<ReventlessCore.CommandTopic_Helpers.publishJsonsAndWait>=?,
   ~syncTodoItems: unit => promise<unit>,
   ~loadTodoItems: unit => promise<unit>,
+  ~claim: ReventlessCore.OutboundTranslationSlice_Callback.claim,
 ): ReventlessCore.EventCollector.jsonEventsHandler => {
   let decoder = Reventless.DcbDecode.makeDecoder(consumedEventSchema)
   stream =>
@@ -574,7 +663,12 @@ let makeOutboundJsonEventsHandler = (
           ~capabilities=capabilities(),
         )
         await syncTodoItems()
-        await callback.phase2(publishJsons, ~capabilities=capabilities(), ~publishJsonsAndWait?)
+        await callback.phase2(
+          publishJsons,
+          ~capabilities=capabilities(),
+          ~publishJsonsAndWait?,
+          ~claim,
+        )
         await syncTodoItems()
       })
     )
@@ -620,16 +714,19 @@ let makeAutomationRegisteredHandler = (
     entry.commandFunction->Option.map(functionName =>
       DcbPlatformCommands_Runtime.publishJsonsAndWait(~functionName)
     )
+  let synced = Dict.make()
   let syncTodoItems = makeSyncTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
     ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
+    ~synced,
   )
   let loadTodoItems = makeLoadTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
     ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
     ~comp,
+    ~synced,
   )
   let context = entry.context->Option.getOr(defaultContext(sliceName))
   // Built on first use: the platform reads the environment, which a test sets late.
@@ -723,17 +820,21 @@ let makeOutboundRegisteredHandler = (
     entry.commandFunction->Option.map(functionName =>
       DcbPlatformCommands_Runtime.publishJsonsAndWait(~functionName)
     )
+  let synced = Dict.make()
   let syncTodoItems = makeSyncTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
     ~rowSchema=ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema,
+    ~synced,
   )
   let loadTodoItems = makeLoadTodoItems(
     ~queryDbTableName=entry.queryDbTableName,
     ~todoItems=callback.todoItems,
     ~rowSchema=ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema,
     ~comp,
+    ~synced,
   )
+  let claim = makeClaimTodoItem(~queryDbTableName=entry.queryDbTableName, ~synced)
   {
     registered: {
       handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
@@ -744,13 +845,19 @@ let makeOutboundRegisteredHandler = (
           ~publishJsonsAndWait?,
           ~syncTodoItems,
           ~loadTodoItems,
+          ~claim,
         ),
       ),
       comp,
     },
     sweep: async () => {
       await loadTodoItems()
-      await callback.phase2(publishJsons, ~capabilities=capabilities(), ~publishJsonsAndWait?)
+      await callback.phase2(
+        publishJsons,
+        ~capabilities=capabilities(),
+        ~publishJsonsAndWait?,
+        ~claim,
+      )
       await syncTodoItems()
     },
     comp,

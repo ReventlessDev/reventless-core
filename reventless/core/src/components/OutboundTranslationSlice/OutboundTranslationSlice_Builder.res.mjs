@@ -118,7 +118,7 @@ function Make(RuntimeEnvironment) {
                 param[1]
               ]), eventsArr.map(param => param[2]), Capabilities.capabilities());
               await syncToQueryDb(queryDbOps);
-              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait).then(() => syncToQueryDb(queryDbOps)), exn => {
+              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait, undefined).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, undefined, `detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
@@ -138,7 +138,7 @@ function Make(RuntimeEnvironment) {
             let publishJsonsFn = param[1];
             return {
               enqueueEvent: param[0].enqueueEvent,
-              translatePending: async () => await Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait)
+              translatePending: async () => await Callback.phase2(publishJsonsFn, Capabilities.capabilities(), publishJsonsAndWait, undefined)
             };
           }));
           let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
