@@ -849,6 +849,64 @@ let buildUnconditionalFenceUpdate = (
   }
 }
 
+// A cross-partition fence also counts what was written: `n#<type>` holds how many
+// events of the type carry the tag value, so a reader of the eventually consistent
+// index can tell whether it saw them all. `countedFrom` is the position counting
+// began at; the backfill counts the events below it and then sets `counted`.
+let fenceCountAttr = (eventType: string) => `n#${eventType}`
+let countedFromAttr = "countedFrom"
+
+// tagKey ("key:value") -> event type -> how many of `events` of that type carry the tag.
+let countsByTag = (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>): Dict.t<
+  Dict.t<int>,
+> => {
+  let d = Dict.make()
+  events->Array.forEach(e =>
+    e.tags->Array.forEach((t: Reventless.DcbTag.tag) => {
+      let k = `${t.key}:${t.value}`
+      let perType = switch d->Dict.get(k) {
+      | Some(m) => m
+      | None =>
+        let m = Dict.make()
+        d->Dict.set(k, m)
+        m
+      }
+      perType->Dict.set(e.eventType, perType->Dict.get(e.eventType)->Option.getOr(0) + 1)
+    })
+  )
+  d
+}
+
+// Adds the counts of `counts` (type -> events written) to a fence update, and marks
+// where counting began if it had not begun. The update's `:new` is the position.
+let withCounts = (
+  update: TransactWriteCommand.update,
+  counts: Dict.t<int>,
+): TransactWriteCommand.update => {
+  let names = update.expressionAttributeNames->Option.getOr(Dict.make())->Dict.copy
+  let values = update.expressionAttributeValues->Option.getOr(Dict.make())->Dict.copy
+  names->Dict.set("#cf", countedFromAttr)
+  let adds =
+    counts
+    ->Dict.toArray
+    ->Array.mapWithIndex(((eventType, n), i) => {
+      let ph = `#n${i->Int.toString}`
+      let v = `:n${i->Int.toString}`
+      names->Dict.set(ph, fenceCountAttr(eventType))
+      values->Dict.set(v, n->Int.toFloat->JSON.Encode.float)
+      `${ph} ${v}`
+    })
+  let updateExpression = `${update.updateExpression}, #cf = if_not_exists(#cf, :new)${adds->Array.length > 0
+      ? ` ADD ${adds->Array.join(", ")}`
+      : ""}`
+  {
+    ...update,
+    updateExpression,
+    expressionAttributeNames: names,
+    expressionAttributeValues: values,
+  }
+}
+
 // Read-only fence assertion: verifies no writer bumped the fence past `after`
 // WITHOUT advancing it. Used for query tags the slice *reads* but does not
 // *partition* by — the read is partition-scoped, so bumping such a tag's fence
@@ -950,13 +1008,51 @@ let runTransactWrite = async (
 // share a single `TransactWriteItems` with the event Puts so the operation is
 // atomic. Use this path for imports, seeding, and replay tooling that don't
 // need optimistic concurrency but must remain visible to DCB readers.
+// A cross-partition tag's fence update also counts the events that carry it.
+let countingCrossPartition = (
+  ~crossPartitionTagKeys: array<string>,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+) => {
+  let counts = countsByTag(events)
+  (tag: Reventless.DcbTag.tag, update: TransactWriteCommand.update) =>
+    crossPartitionTagKeys->Array.includes(tag.key)
+      ? update->withCounts(counts->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr(Dict.make()))
+      : update
+}
+
+let buildUnconditionalTransactItems = (
+  table: resolvedTable,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  basePosition: string,
+  ~partitionTag=?,
+  ~crossPartitionTagKeys: array<string>=[],
+): array<TransactWriteCommand.transactWriteItem> => {
+  let carriedMap = carriedTypesByTag(events)
+  let counting = countingCrossPartition(~crossPartitionTagKeys, events)
+  let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
+  let updateItems = collectEventTags(events)->Array.filterMap(tag => {
+    let producedTypes = carriedMap->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr([])
+    producedTypes->Array.length == 0
+      ? None
+      : Some({
+          TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+            table.name,
+            tag,
+            ~producedTypes,
+            ~newPosition=basePosition,
+          )->counting(tag, _),
+        })
+  })
+  Array.concat(putItems, updateItems)
+}
+
 let appendUnconditional = async (
   table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   ~partitionTag=?,
+  ~crossPartitionTagKeys: array<string>=[],
 ) => {
-  let eventTags = collectEventTags(events)
-  let totalItems = events->Array.length + eventTags->Array.length
+  let totalItems = events->Array.length + collectEventTags(events)->Array.length
 
   if events->Array.length == 0 {
     Ok(generatePosition())
@@ -968,23 +1064,14 @@ let appendUnconditional = async (
     )
   } else {
     let basePosition = generatePosition()
-    let carriedMap = carriedTypesByTag(events)
-    let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
-    let updateItems = eventTags->Array.filterMap(tag => {
-      let producedTypes = carriedMap->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr([])
-      producedTypes->Array.length == 0
-        ? None
-        : Some({
-            TransactWriteCommand.update: buildUnconditionalFenceUpdate(
-              table.name,
-              tag,
-              ~producedTypes,
-              ~newPosition=basePosition,
-            ),
-          })
-    })
     let input: TransactWriteCommand.input = {
-      transactItems: Array.concat(putItems, updateItems),
+      transactItems: buildUnconditionalTransactItems(
+        table,
+        events,
+        basePosition,
+        ~partitionTag?,
+        ~crossPartitionTagKeys,
+      ),
     }
     await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
   }
@@ -1261,6 +1348,7 @@ let buildConditionalTransactItems = (
     }
   })
 
+  let counting = countingCrossPartition(~crossPartitionTagKeys, events)
   let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
   let updateItems = conditionalUpdateTags->Array.filterMap(tag => {
     let producedTypes = producedTypesFor(tag)
@@ -1277,7 +1365,7 @@ let buildConditionalTransactItems = (
             ~producedTypes,
             ~newPosition=basePosition,
             ~after=cond.after,
-          ),
+          )->counting(tag, _),
         })
   })
   let checkItems = conditionCheckTags->Array.filterMap(tag => {
@@ -1304,7 +1392,7 @@ let buildConditionalTransactItems = (
             tag,
             ~producedTypes,
             ~newPosition=basePosition,
-          ),
+          )->counting(tag, _),
         })
   })
 
@@ -1329,7 +1417,7 @@ let appendConditional = async (
   let queryTags = collectQueryTags(cond.query)
 
   if guardsNothing {
-    await appendUnconditional(table, events, ~partitionTag?)
+    await appendUnconditional(table, events, ~partitionTag?, ~crossPartitionTagKeys)
   } else if queryTags->Array.length == 0 {
     Error(
       ReventlessInfra.DcbEventLog.StorageFailure(
@@ -1363,7 +1451,7 @@ let appendConditional = async (
 let append = (table: resolvedTable, ~partitionTag=?, ~crossPartitionTagKeys: array<string>=[]) =>
   async (events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>, ~condition=?) => {
     switch condition {
-    | None => await appendUnconditional(table, events, ~partitionTag?)
+    | None => await appendUnconditional(table, events, ~partitionTag?, ~crossPartitionTagKeys)
     | Some(cond) =>
       await appendConditional(table, events, cond, ~partitionTag?, ~crossPartitionTagKeys)
     }

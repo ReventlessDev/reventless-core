@@ -600,3 +600,44 @@ describe("DCB DynamoDb integration — a clause with no event type matches nothi
     expect((read, all, isOk(appended)))->toEqual((0, 1, true))
   })
 })
+
+describe("DCB DynamoDb integration — a cross-partition fence counts its carriers", () => {
+  let customer = tag("customerId", "C-count")
+  let fenceItem = async (table: Util_DynamoDb_Runtime.resolvedTable) => {
+    let result = await AwsSdk.DynamoDb.DocumentClient.GetCommand.send(
+      AwsSdk.DynamoDb.DocumentClient.GetCommand.make({
+        tableName: table.name,
+        key: Runtime.fenceKey(customer),
+        consistentRead: true,
+      }),
+    )
+    result.item->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+  }
+
+  testAsync("each append adds its events, and counting starts at the first", async () => {
+    let table = await H.freshTable()
+    let order = id => event("OrderPlaced", [tag("orderId", id), customer])
+    let first = await Runtime.appendUnconditional(
+      table,
+      [order("O-c1"), order("O-c2")],
+      ~partitionTag=simple("orderId"),
+      ~crossPartitionTagKeys=["customerId"],
+    )
+    let second = await Runtime.appendConditional(
+      table,
+      [order("O-c3")],
+      {
+        query: [{tags: [customer], eventTypes: ["OrderPlaced"]}],
+        after: ?(first->Result.mapOr(None, p => Some(p))),
+      },
+      ~partitionTag=simple("orderId"),
+      ~crossPartitionTagKeys=["customerId"],
+    )
+    expect(isOk(second))->toBe(true)
+    let fence = await fenceItem(table)
+    expect(fence->Dict.get("n#OrderPlaced"))->toEqual(Some(JSON.Encode.float(3.)))
+    expect(fence->Dict.get("countedFrom"))->toEqual(
+      first->Result.mapOr(None, p => Some(JSON.Encode.string(p))),
+    )
+  })
+})

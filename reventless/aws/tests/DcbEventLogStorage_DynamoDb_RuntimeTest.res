@@ -535,6 +535,72 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
       },
     )
 
+    // A cross-partition fence counts the events that carry its tag, per type; a
+    // partition-scoped fence counts nothing.
+    let updateOf = (items, fenceId) =>
+      findFence(items, fenceId)->Option.flatMap(
+        i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update,
+      )
+    let countOf = (u: option<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update>, t) =>
+      u->Option.flatMap(
+        u => {
+          let names = u.expressionAttributeNames->Option.getOr(Dict.make())
+          let values = u.expressionAttributeValues->Option.getOr(Dict.make())
+          names
+          ->Dict.toArray
+          ->Array.find(((_, attr)) => attr == `n#${t}`)
+          ->Option.flatMap(
+            ((ph, _)) =>
+              values->Dict.get(ph->String.replace("#", ":"))->Option.flatMap(JSON.Decode.float),
+          )
+        },
+      )
+
+    testSync(
+      "the cross-partition fence adds each written event to its type's count",
+      () => {
+        let second = event("StudentSubscribed", [tag("courseId", "C2"), tag("studentId", "S1")])
+        let items = Runtime.buildConditionalTransactItems(
+          table,
+          [subscribed, second],
+          cond,
+          "100",
+          ~partitionTag?,
+          ~crossPartitionTagKeys=["studentId"],
+        )
+        let student = updateOf(items, "fence#studentId:S1")
+        expect(countOf(student, "StudentSubscribed"))->toEqual(Some(2.))
+        expect(
+          student->Option.mapOr(
+            false,
+            u => u.updateExpression->String.includes("if_not_exists(#cf, :new)"),
+          ),
+        )->toBe(true)
+        let course = updateOf(items, "fence#courseId:C1")
+        expect(countOf(course, "StudentSubscribed"))->toEqual(None)
+        expect(course->Option.mapOr(true, u => u.updateExpression->String.includes("ADD")))->toBe(
+          false,
+        )
+      },
+    )
+
+    testSync(
+      "an unconditional append counts on the cross-partition fence too",
+      () => {
+        let items = Runtime.buildUnconditionalTransactItems(
+          table,
+          [subscribed],
+          "100",
+          ~partitionTag?,
+          ~crossPartitionTagKeys=["studentId"],
+        )
+        expect(countOf(updateOf(items, "fence#studentId:S1"), "StudentSubscribed"))->toEqual(
+          Some(1.),
+        )
+        expect(countOf(updateOf(items, "fence#courseId:C1"), "StudentSubscribed"))->toEqual(None)
+      },
+    )
+
     testSync(
       "without the cross-partition flag, studentId is only a read-only ConditionCheck",
       () => {
