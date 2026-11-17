@@ -262,3 +262,115 @@ describe("DcbTag.buildQueryFromCommand with payload keys", () => {
     ])
   )
 })
+
+// A question reads the replies posted under it, which are stored under the reply:
+// `@crossPartition` on the consumed arm makes that read a pair.
+
+@schema
+type postMessageCommand = PostMessage({messageId: @s.matches(DcbTag.string) string})
+@schema
+type messagePostedEvent = MessagePosted({messageId: @s.matches(DcbTag.string) string})
+@schema
+type postReplyCommand =
+  | PostReply({
+      replyId: @s.matches(DcbTag.string) string,
+      messageId: @s.matches(DcbTag.string) string,
+    })
+@schema
+type replyPostedEvent =
+  | ReplyPosted({
+      replyId: @s.matches(DcbTag.string) string,
+      messageId: @s.matches(DcbTag.string) string,
+    })
+// A reply that names its message without reading it: stored under the reply.
+@schema
+type replyStoredEvent =
+  | ReplyPosted({
+      replyId: @s.matches(DcbTag.partition) string,
+      messageId: @s.matches(DcbTag.string) string,
+    })
+@schema
+type markAnswerCommand =
+  | MarkAnswer({
+      messageId: @s.matches(DcbTag.string) string,
+      replyId: @s.matches(DcbTag.string) string,
+    })
+@schema
+type markAnswerConsumed =
+  | MessagePosted({messageId: @s.matches(DcbTag.string) string})
+  | ReplyPosted({
+      replyId: @s.matches(DcbTag.string) string,
+      messageId: @s.matches(DcbTag.crossPartition) string,
+    })
+  | AnswerMarked({messageId: @s.matches(DcbTag.string) string})
+@schema
+type answerMarkedEvent =
+  | AnswerMarked({
+      messageId: @s.matches(DcbTag.partition) string,
+      replyId: @s.matches(DcbTag.string) string,
+    })
+
+let questionSlices: array<DcbTag.sliceSchemas> = [
+  {
+    DcbTag.name: "PostMessage",
+    commandSchema: postMessageCommandSchema->S.castToUnknown,
+    consumedEventSchema: messagePostedEventSchema->S.castToUnknown,
+    eventSchema: messagePostedEventSchema->S.castToUnknown,
+  },
+  {
+    DcbTag.name: "PostReply",
+    commandSchema: postReplyCommandSchema->S.castToUnknown,
+    consumedEventSchema: messagePostedEventSchema->S.castToUnknown,
+    eventSchema: replyPostedEventSchema->S.castToUnknown,
+  },
+  {
+    DcbTag.name: "MarkAnswer",
+    commandSchema: markAnswerCommandSchema->S.castToUnknown,
+    consumedEventSchema: markAnswerConsumedSchema->S.castToUnknown,
+    eventSchema: answerMarkedEventSchema->S.castToUnknown,
+  },
+]
+
+// With `PostReply` reading the message, it is read across partitions by messageId
+// already, for the whole boundary; without, only the marked arm is.
+let unreadMessage = questionSlices->Array.map(s =>
+  s.name == "PostReply"
+    ? {
+        ...s,
+        consumedEventSchema: replyStoredEventSchema->S.castToUnknown,
+        eventSchema: replyStoredEventSchema->S.castToUnknown,
+      }
+    : s
+)
+
+describe("DcbTag.deriveEffectiveScope (a pair marked on a consumed arm)", () => {
+  testSync("the marked field reaches the shape", () => {
+    let shape = DcbTag.sliceShape(questionSlices->Array.getUnsafe(2))
+    expect(
+      shape.consumed->Array.flatMap(
+        e =>
+          e.idFields
+          ->Array.filter(f => f.crossPartition == Some(true))
+          ->Array.map(f => `${e.eventType}.${f.name}`),
+      ),
+    )->toEqual(["ReplyPosted.messageId"])
+  })
+  testSync("the boundary derives one pair and no cross-partition key", () => {
+    let scope = DcbTag.deriveEffectiveScope(unreadMessage)
+    expect(scope.crossPartitionPairs)->toEqual([
+      {
+        DcbScopeInference.reader: "MarkAnswer",
+        eventType: "ReplyPosted",
+        key: "messageId",
+        writers: ["PostReply"],
+      },
+    ])
+    expect(scope.crossPartitionTagKeys)->toEqual([])
+    expect(scope.ambiguities)->toEqual([])
+  })
+  testSync("a key the boundary already reads across partitions makes no pair", () => {
+    let scope = DcbTag.deriveEffectiveScope(questionSlices)
+    expect(scope.crossPartitionTagKeys)->toEqual(["messageId"])
+    expect(scope.crossPartitionPairs)->toEqual([])
+  })
+})

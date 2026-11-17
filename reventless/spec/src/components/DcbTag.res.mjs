@@ -794,7 +794,7 @@ function idFieldsOfProperties(properties) {
       return;
     }
   };
-  let isDeclared = (fieldSchema, isList) => {
+  let valueOf = (fieldSchema, isList) => {
     let valueSchema;
     if (isList && fieldSchema.type === "array") {
       let item = fieldSchema.additionalItems;
@@ -802,20 +802,28 @@ function idFieldsOfProperties(properties) {
     } else {
       valueSchema = fieldSchema;
     }
-    return isDeclaredTag(Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(valueSchema), valueSchema));
+    return Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(valueSchema), valueSchema);
   };
   let identity = (name, fieldSchema, isList) => {
     let key = typedKey(fieldSchema, isList);
-    return Stdlib_Option.map(key !== undefined ? ({
+    return Stdlib_Option.map(Stdlib_Option.map(key !== undefined ? ({
         name: name,
         isList: isList,
         key: key
       }) : untypedIdentity(name, fieldSchema, isList), f => {
-      if (!isDeclared(fieldSchema, isList)) {
+      if (!isDeclaredTag(valueOf(fieldSchema, isList))) {
         return f;
       }
       let newrecord = {...f};
       newrecord.declared = true;
+      return newrecord;
+    }), f => {
+      let fieldSchema$1 = valueOf(fieldSchema, isList);
+      if (!Stdlib_Option.isSome(Sury.$Metadata_get(fieldSchema$1, dcbCrossPartitionId))) {
+        return f;
+      }
+      let newrecord = {...f};
+      newrecord.crossPartition = true;
       return newrecord;
     });
   };
@@ -952,6 +960,7 @@ function deriveEffectiveScope(slices) {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
     tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
     ambiguities: inferred.ambiguities,
+    crossPartitionPairs: useInferred ? inferred.crossPartitionPairs : [],
     droppedCrossPartitionTagKeys: useInferred ? [] : inferred.crossPartitionTagKeys.filter(k => !annotatedCross.includes(k))
   };
 }

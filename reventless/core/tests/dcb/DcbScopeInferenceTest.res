@@ -5,6 +5,8 @@ module DSI = Reventless.DcbScopeInference
 // --- tiny constructors so the golden vectors read like the spec files ---
 let scal = (name): DSI.idField => {name, isList: false}
 let arr = (name): DSI.idField => {name, isList: true}
+// `@crossPartition`, which also declares the tag.
+let cross = (name): DSI.idField => {name, isList: false, declared: true, crossPartition: true}
 let ev = (eventType, idFields): DSI.eventShape => {eventType, idFields}
 let slice = (
   sliceName,
@@ -600,6 +602,45 @@ describe("DcbScopeInference:", () => {
         let issues = check([placeOrder, ship, assign])
         expect(issues.overrides->names)->toEqual([])
         expect(issues.contradictions->names)->toEqual(["ShipOrder"])
+        expect(
+          issues.contradictions->Array.every(
+            e => e.message->String.includes("mark orderId @crossPartition on WarehouseAssigned"),
+          ),
+        )->toBe(true)
+        expect(DSI.infer([placeOrder, ship, assign]).crossPartitionPairs)->toEqual([])
+      },
+    )
+
+    testSync(
+      "marked @crossPartition, the same read is an override with one pair",
+      () => {
+        let assign = slice(
+          "AssignWarehouse",
+          ~chapter="Warehouse",
+          ~partitionHint="warehouseId",
+          ~produced=[ev("WarehouseAssigned", [scal("warehouseId"), scal("orderId")])],
+        )
+        let ship = {
+          ...shipOrder,
+          consumed: shipOrder.consumed->Array.concat([
+            ev("WarehouseAssigned", [scal("warehouseId"), cross("orderId")]),
+          ]),
+        }
+        let boundary = [placeOrder, ship, assign]
+        let issues = check(boundary)
+        expect(issues.contradictions)->toEqual([])
+        expect(issues.overrides->names)->toEqual(["ShipOrder"])
+        let d = DSI.infer(boundary)
+        expect(d.crossPartitionPairs)->toEqual([
+          {
+            DSI.reader: "ShipOrder",
+            eventType: "WarehouseAssigned",
+            key: "orderId",
+            writers: ["AssignWarehouse"],
+          },
+        ])
+        // the pair reads the reader's own key: no key turns cross-partition
+        expect(d.crossPartitionTagKeys)->toEqual([])
       },
     )
 
@@ -648,12 +689,112 @@ describe("DcbScopeInference:", () => {
     testSync(
       "a hint deciding a slice inference leaves unresolved is accepted",
       () => {
-        let issues = check(questions)
+        // `ReplyPosted`'s writer is outside the boundary: where it is stored is not known here.
+        let boundary = [postMessage, questionState]
+        let issues = check(boundary)
         expect(issues.contradictions)->toEqual([])
         expect(issues.redundancies)->toEqual([])
         expect(
-          DSI.resolvePartitions(questions).partitionBySlice->Dict.get("QuestionState"),
+          DSI.resolvePartitions(boundary).partitionBySlice->Dict.get("QuestionState"),
         )->toEqual(Some("messageId"))
+      },
+    )
+
+    testSync(
+      "a hint deciding an unresolved slice is refused when its read misses events stored elsewhere",
+      () => {
+        // `ReplyPosted` is stored under the reply, so a read by messageId never finds it.
+        let issues = check(questions)
+        expect(issues.contradictions->names)->toEqual(["QuestionState"])
+        expect(
+          issues.contradictions->Array.every(
+            e => e.message->String.includes("mark messageId @crossPartition on ReplyPosted"),
+          ),
+        )->toBe(true)
+      },
+    )
+
+    let markedReplies = {
+      ...questionState,
+      consumed: questionState.consumed->Array.map(
+        e =>
+          e.eventType == "ReplyPosted"
+            ? ev("ReplyPosted", [scal("replyId"), cross("messageId"), scal("channelId")])
+            : e,
+      ),
+    }
+
+    testSync(
+      "marked @crossPartition, the question reads its replies as a pair",
+      () => {
+        let boundary = [postMessage, postReply, markedReplies]
+        let issues = check(boundary)
+        expect(issues.contradictions)->toEqual([])
+        let d = DSI.infer(boundary)
+        expect(d.crossPartitionPairs)->toEqual([
+          {
+            DSI.reader: "QuestionState",
+            eventType: "ReplyPosted",
+            key: "messageId",
+            writers: ["PostReply"],
+          },
+        ])
+        expect(d.crossPartitionTagKeys)->toEqual([])
+        let arms = Reventless.DcbValidation.validateCrossPartitionArms(
+          ~shapes=boundary,
+          ~inferred=d,
+        )
+        expect(arms.contradictions)->toEqual([])
+        expect(arms.redundancies)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a marker on a key that is not the slice's own is refused",
+      () => {
+        let byChannel = {
+          ...questionState,
+          consumed: questionState.consumed->Array.map(
+            e =>
+              e.eventType == "ReplyPosted"
+                ? ev("ReplyPosted", [scal("replyId"), cross("messageId"), cross("channelId")])
+                : e,
+          ),
+        }
+        let boundary = [postMessage, postReply, byChannel]
+        let arms = Reventless.DcbValidation.validateCrossPartitionArms(
+          ~shapes=boundary,
+          ~inferred=DSI.infer(boundary),
+        )
+        expect(arms.contradictions->names)->toEqual(["QuestionState"])
+        expect(
+          arms.contradictions->Array.every(e => e.message->String.includes("marks channelId")),
+        )->toBe(true)
+      },
+    )
+
+    testSync(
+      "a marker on an event already stored under the slice's key is redundant",
+      () => {
+        let markedMessage = {
+          ...markedReplies,
+          consumed: markedReplies.consumed->Array.map(
+            e =>
+              e.eventType == "MessagePosted"
+                ? ev("MessagePosted", [cross("messageId"), scal("channelId")])
+                : e,
+          ),
+        }
+        let boundary = [postMessage, postReply, markedMessage]
+        let d = DSI.infer(boundary)
+        let arms = Reventless.DcbValidation.validateCrossPartitionArms(
+          ~shapes=boundary,
+          ~inferred=d,
+        )
+        expect(arms.contradictions)->toEqual([])
+        expect(arms.redundancies->names)->toEqual(["QuestionState"])
+        // and it makes no pair
+        expect(d.crossPartitionPairs->Array.map(p => p.eventType))->toEqual(["ReplyPosted"])
       },
     )
 

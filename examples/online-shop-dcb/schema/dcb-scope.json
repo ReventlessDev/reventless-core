@@ -11,6 +11,7 @@
       "RenameCategory": "categoryId"
     },
     "crossPartitionTagKeys": [],
+    "crossPartitionPairs": [],
     "partitionKeyByEventType": {
       "CategoryAdded": "categoryId",
       "CategoryArchived": "categoryId",
@@ -35,6 +36,7 @@
       "SyncCatalogProduct": "productId"
     },
     "crossPartitionTagKeys": [],
+    "crossPartitionPairs": [],
     "partitionKeyByEventType": {
       "AddressChanged": "customerId",
       "CatalogProductPriceChanged": "productId",

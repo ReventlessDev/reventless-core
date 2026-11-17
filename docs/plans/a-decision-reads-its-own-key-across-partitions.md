@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. [Phase 3](#phase-3-pairs-in-inference-and-validation) built 2026-11-17; the builder refuses a boundary with a pair until phases 4 and 5 serve it. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -381,6 +381,30 @@ becomes an override with one pair with it. A new test reproduces the `ChangeQues
 ways. A marker on a key that is not the slice's own is refused. The `AddProduct` and "both keys
 everywhere" contradictions are unchanged. All example goldens are unchanged apart from an empty
 pair list.
+
+**Built 2026-11-17.** The PPX needed no change: it already turns `@crossPartition` on a
+`consumedEvent` field into `DcbTag.crossPartition`, and nothing read it there. Now:
+
+- **The shape.** `sliceShapeFromSchemas` marks such a field `crossPartition` on the slice's shape.
+- **The pairs.** `infer` derives `crossPartitionPairs` as (reader, event type, key, writers).
+  `deriveEffectiveScope` returns them, and `check-dcb-scope` records them in the goldens.
+- **The new check.** `validateCrossPartitionArms` refuses a marker on a key that is not the
+  slice's partition. It reports one as redundant when the event's writers already store it under
+  that key, or when the boundary already reads the key across partitions. The boundary already
+  reads it that way when, for example, `PostReply` itself reads `MessagePosted` by `messageId`.
+- **The builder.** The builder and `Flow_GWT.thenBoundaryScopeResolves` refuse a marker on
+  another key. Until [Phase 4](#phase-4-read-split-and-routing) and
+  [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) land, the builder also refuses a
+  boundary that has a pair, naming it: nothing yet reads a pair's events across partitions.
+
+Building it found a gap in today's check. The question shape of [§1](#1-the-case) was no longer
+refused, as [§2.2](#22-the-partition-check-refuses-this-shape-on-purpose) says. Since
+`QuestionReopened` lacks `replyId`, inference finds no partition, and a hint that decides an
+unresolved slice was accepted without asking what the slice reads by it. So on DynamoDB its read
+of `ReplyPosted` silently found nothing. That path now applies the same condition as the
+chapter-backed one: an event read by the hinted key that its writers store under another key, and
+that is not marked, is a contradiction, and the message names the marker. An event whose writer is
+outside the boundary is not counted, since where it is stored is not known there.
 
 ### Phase 4. Read split and routing
 

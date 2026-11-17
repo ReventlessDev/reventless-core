@@ -19,6 +19,7 @@
     "crossPartitionTagKeys": [
       "categoryId"
     ],
+    "crossPartitionPairs": [],
     "partitionKeyByEventType": {
       "CategoryAdded": "categoryId",
       "CategoryArchived": "categoryId",
@@ -57,6 +58,7 @@
     "crossPartitionTagKeys": [
       "sourceId"
     ],
+    "crossPartitionPairs": [],
     "partitionKeyByEventType": {
       "CatalogProductImageChanged": "productId",
       "CatalogProductPriceChanged": "productId",
@@ -92,6 +94,7 @@
     "crossPartitionTagKeys": [
       "role"
     ],
+    "crossPartitionPairs": [],
     "partitionKeyByEventType": {
       "RegistrationAttemptedOnTakenAddress": "contactAddress",
       "RegistrationChallengeIssued": "contactAddress",

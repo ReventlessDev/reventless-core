@@ -68,6 +68,9 @@ type idField = {
   /** The author asked for the tag (`@dcbTag`, `@partitionTag`, `@crossPartition`,
       `@compositePartitionTag`), so a command keeps it in its query (rule 4). */
   declared?: bool,
+  /** The author marked it `@crossPartition`. On a consumed arm naming the slice's own
+      key, the slice reads that event across partitions (a pair). */
+  crossPartition?: bool,
 }
 
 /** One variant arm: its constructor name and the `*Id` fields it carries. */
@@ -95,6 +98,16 @@ type sliceShape = {
 /** Derived scope for one tag key. */
 type scope = Partition | CrossPartition | Payload
 
+/** A slice reading another slice's event by its own partition key, across
+    partitions, because it marked the key `@crossPartition` on that consumed arm. */
+type pair = {
+  reader: string,
+  eventType: string,
+  key: string,
+  /** The slices that write the event, stored under another key. */
+  writers: array<string>,
+}
+
 /**
 The full derivation. `crossPartitionTagKeys` and `tagKeysByEventType` are the two
 values the runtime threads today (via `DcbTag.extractCrossPartitionTagKeys` /
@@ -107,6 +120,8 @@ type derived = {
   ownerByKey: dict<string>,
   /** keys read cross-partition by some slice (sorted, deduped). */
   crossPartitionTagKeys: array<string>,
+  /** The pairs of the boundary, sorted by reader and event type. */
+  crossPartitionPairs: array<pair>,
   /** produced eventType -> its indexed (non-payload) tag keys (sorted). */
   tagKeysByEventType: dict<array<string>>,
   /** (sliceName, reason) for slices whose partition couldn't be inferred. */
@@ -212,6 +227,67 @@ let foreignArms = (s: sliceShape): array<eventShape> => {
   s.produced->Array.forEach(e => own->Set.add(e.eventType))
   s.consumed->Array.filter(e => !(own->Set.has(e.eventType)))
 }
+
+/** The slices that write `eventType`. */
+let producersOf = (slices: array<sliceShape>, eventType: string): array<sliceShape> =>
+  slices->Array.filter(p => p.produced->Array.some(e => e.eventType == eventType))
+
+/** The keys an arm marks `@crossPartition`. */
+let markedKeys = (e: eventShape): array<string> =>
+  e.idFields->Array.filter(f => f.crossPartition == Some(true))->Array.map(tagKeyOf)
+
+/**
+The foreign arms of `s` that carry `key` while some slice writes them under another
+key, so a read by `key` within its partition does not reach them. An event no slice
+of the boundary writes is left out: where it is stored is not known here.
+*/
+let armsStoredElsewhere = (
+  s: sliceShape,
+  slices: array<sliceShape>,
+  ~key: string,
+  ~partitionBySlice: dict<string>,
+): array<eventShape> =>
+  s
+  ->foreignArms
+  ->Array.filter(e =>
+    e->keysOfEvent->Array.includes(key) &&
+      slices
+      ->producersOf(e.eventType)
+      ->Array.some(p => partitionBySlice->Dict.get(p.sliceName) != Some(key))
+  )
+
+/**
+The pairs of a boundary: each slice's arms stored elsewhere that it marks
+`@crossPartition` by its own partition key. A key the boundary already reads across
+partitions needs no pair.
+*/
+let pairsOf = (
+  slices: array<sliceShape>,
+  ~partitionBySlice: dict<string>,
+  ~crossPartitionTagKeys: array<string>,
+): array<pair> =>
+  slices
+  ->Array.flatMap(s =>
+    switch partitionBySlice->Dict.get(s.sliceName) {
+    | Some(key) if !(crossPartitionTagKeys->Array.includes(key)) =>
+      s
+      ->armsStoredElsewhere(slices, ~key, ~partitionBySlice)
+      ->Array.filter(e => e->markedKeys->Array.includes(key))
+      ->Array.map(e => {
+        reader: s.sliceName,
+        eventType: e.eventType,
+        key,
+        writers: slices->producersOf(e.eventType)->Array.map(p => p.sliceName)->dedupSorted,
+      })
+    | _ => []
+    }
+  )
+  ->Array.toSorted((a, b) =>
+    switch String.compare(a.reader, b.reader) {
+    | 0. => String.compare(a.eventType, b.eventType)
+    | c => c
+    }
+  )
 
 /** Rule 1's outcome for a boundary, before the scope rules build on it. */
 type partitionResolution = {
@@ -550,5 +626,14 @@ let infer = (slices: array<sliceShape>): derived => {
     })
   })
 
-  {partitionBySlice, ownerByKey, crossPartitionTagKeys, tagKeysByEventType, ambiguities}
+  let crossPartitionPairs = pairsOf(slices, ~partitionBySlice, ~crossPartitionTagKeys)
+
+  {
+    partitionBySlice,
+    ownerByKey,
+    crossPartitionTagKeys,
+    crossPartitionPairs,
+    tagKeysByEventType,
+    ambiguities,
+  }
 }

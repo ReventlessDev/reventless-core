@@ -437,14 +437,14 @@ function validatePartitionHintsVsInference(shapes) {
   let overrides = [];
   let chapterKeys = DcbScopeInference$Reventless.chapterKeys(shapes);
   let producersOf = eventType => shapes.filter(p => p.produced.some(e => e.eventType === eventType));
+  let chapterAgrees = (s, hint, inferred) => Stdlib_Option.mapOr(Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]), false, keys => {
+    if (keys.includes(hint)) {
+      return !inferred.some(k => keys.includes(k));
+    } else {
+      return false;
+    }
+  });
   let backedByChapter = (s, hint, inferred, partitionBySlice) => {
-    let chapterAgrees = Stdlib_Option.mapOr(Stdlib_Option.flatMap(s.chapter, c => chapterKeys[c]), false, keys => {
-      if (keys.includes(hint)) {
-        return !inferred.some(k => keys.includes(k));
-      } else {
-        return false;
-      }
-    });
     let own = s.produced.map(e => e.eventType);
     let readsOwnEntity = s.consumed.filter(e => {
       if (own.includes(e.eventType)) {
@@ -453,6 +453,9 @@ function validatePartitionHintsVsInference(shapes) {
         return DcbScopeInference$Reventless.keysOfEvent(e).includes(hint);
       }
     }).every(e => {
+      if (DcbScopeInference$Reventless.markedKeys(e).includes(hint)) {
+        return true;
+      }
       let producers = producersOf(e.eventType);
       if (producers.length !== 0) {
         return producers.every(p => Primitive_object.equal(partitionBySlice[p.sliceName], hint));
@@ -460,12 +463,14 @@ function validatePartitionHintsVsInference(shapes) {
         return false;
       }
     });
-    if (chapterAgrees) {
+    if (chapterAgrees(s, hint, inferred)) {
       return readsOwnEntity;
     } else {
       return false;
     }
   };
+  let unreachable = (s, hint, partitionBySlice) => DcbScopeInference$Reventless.armsStoredElsewhere(s, shapes, hint, partitionBySlice).filter(e => !DcbScopeInference$Reventless.markedKeys(e).includes(hint)).map(e => e.eventType);
+  let markHint = (hint, arms) => `mark ` + hint + ` @crossPartition on ` + arms.join("/") + ` in the slice's consumedEvent to read it across partitions`;
   let overridden = (s, hint, inference) => {
     overrides.push({
       sliceName: s.sliceName,
@@ -512,29 +517,40 @@ function validatePartitionHintsVsInference(shapes) {
           message: `@partitionTag ` + hint + ` is what inference derives without it — the annotation is redundant and can be removed.`
         });
         return;
-      } else if (backedByChapter(s, hint, [inferred], unaided.partitionBySlice)) {
-        return overridden(s, hint, `it derives ` + inferred);
-      } else {
-        contradictions.push({
-          sliceName: s.sliceName,
-          message: `@partitionTag names ` + hint + `, but inference derives ` + inferred + ` from the slice graph — ` + hint + ` is read from another entity. Remove the annotation, or move it to ` + inferred + `.`
-        });
-        return;
       }
-    }
-    let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
-    let decidesUnresolved = Primitive_object.equal(candidates, []) && DcbScopeInference$Reventless.sharedProducedKeys(s).includes(hint);
-    if (candidates.includes(hint) || decidesUnresolved) {
-      return;
-    } else if (backedByChapter(s, hint, candidates, unaided.partitionBySlice)) {
-      return overridden(s, hint, `candidates: ` + candidates.join(", "));
-    } else {
+      if (backedByChapter(s, hint, [inferred], unaided.partitionBySlice)) {
+        return overridden(s, hint, `it derives ` + inferred);
+      }
+      let arms = unreachable(s, hint, unaided.partitionBySlice);
+      let way = Primitive_object.notequal(arms, []) && chapterAgrees(s, hint, [inferred]) ? `, or ` + markHint(hint, arms) : "";
       contradictions.push({
         sliceName: s.sliceName,
-        message: `@partitionTag names ` + hint + `, which this slice only reads as a reference to another entity (candidates: ` + candidates.join(", ") + `). Move the annotation to the slice's own key.`
+        message: `@partitionTag names ` + hint + `, but inference derives ` + inferred + ` from the slice graph — ` + hint + ` is read from another entity. Remove the annotation, or move it to ` + inferred + way + `.`
       });
       return;
     }
+    let candidates = Stdlib_Option.getOr(unaided.candidatesBySlice[s.sliceName], []);
+    let decidesUnresolved = Primitive_object.equal(candidates, []) && DcbScopeInference$Reventless.sharedProducedKeys(s).includes(hint);
+    let missed = unreachable(s, hint, unaided.partitionBySlice);
+    if (decidesUnresolved && Primitive_object.notequal(missed, [])) {
+      contradictions.push({
+        sliceName: s.sliceName,
+        message: `@partitionTag ` + hint + ` decides the partition, but ` + missed.join("/") + ` carry ` + hint + ` and are stored under another key, so the slice's read by ` + hint + ` never finds them. Partition their writers by ` + hint + `, or ` + markHint(hint, missed) + `.`
+      });
+      return;
+    }
+    if (candidates.includes(hint) || decidesUnresolved) {
+      return;
+    }
+    if (backedByChapter(s, hint, candidates, unaided.partitionBySlice)) {
+      return overridden(s, hint, `candidates: ` + candidates.join(", "));
+    }
+    let arms$1 = unreachable(s, hint, unaided.partitionBySlice);
+    let way$1 = Primitive_object.notequal(arms$1, []) && chapterAgrees(s, hint, candidates) ? `, or ` + markHint(hint, arms$1) : "";
+    contradictions.push({
+      sliceName: s.sliceName,
+      message: `@partitionTag names ` + hint + `, which this slice only reads as a reference to another entity (candidates: ` + candidates.join(", ") + `). Move the annotation to the slice's own key` + way$1 + `.`
+    });
   });
   return {
     contradictions: contradictions,
@@ -557,6 +573,44 @@ function validateCommandTagSuppressions(shapes, suppressedBySlice, payloadTagKey
   });
 }
 
+function validateCrossPartitionArms(shapes, inferred) {
+  let contradictions = [];
+  let redundancies = [];
+  shapes.forEach(s => Stdlib_Option.forEach(inferred.partitionBySlice[s.sliceName], partition => {
+    let stored = DcbScopeInference$Reventless.armsStoredElsewhere(s, shapes, partition, inferred.partitionBySlice).map(e => e.eventType);
+    DcbScopeInference$Reventless.foreignArms(s).forEach(e => {
+      DcbScopeInference$Reventless.markedKeys(e).forEach(k => {
+        if (k !== partition) {
+          contradictions.push({
+            sliceName: s.sliceName,
+            message: e.eventType + ` marks ` + k + ` @crossPartition, but ` + s.sliceName + ` is partitioned by ` + partition + `. A consumed arm marks only the slice's own key; a read of another entity's ` + k + ` across partitions follows from the slice graph, or from @crossPartition on the event that writes it. Remove the marker.`
+          });
+          return;
+        } else if (inferred.crossPartitionTagKeys.includes(k)) {
+          redundancies.push({
+            sliceName: s.sliceName,
+            message: e.eventType + ` marks ` + k + ` @crossPartition, which the boundary already reads across partitions — the marker is redundant and can be removed.`
+          });
+          return;
+        } else if (!stored.includes(e.eventType)) {
+          redundancies.push({
+            sliceName: s.sliceName,
+            message: e.eventType + ` marks ` + k + ` @crossPartition, but its writers store it under ` + k + `, so ` + s.sliceName + ` reads it in its own partition — the marker is redundant and can be removed.`
+          });
+          return;
+        } else {
+          return;
+        }
+      });
+    });
+  }));
+  return {
+    contradictions: contradictions,
+    redundancies: redundancies,
+    overrides: []
+  };
+}
+
 export {
   extractVariantInfo,
   extractAllVariants,
@@ -572,5 +626,6 @@ export {
   validateScopeVsInference,
   validatePartitionHintsVsInference,
   validateCommandTagSuppressions,
+  validateCrossPartitionArms,
 }
 /* DcbTag-Reventless Not a pure module */

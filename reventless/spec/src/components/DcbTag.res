@@ -1175,18 +1175,22 @@ let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInfer
     } else {
       None
     }
-  let isDeclared = (fieldSchema: S.t<unknown>, isList) => {
+  let valueOf = (fieldSchema: S.t<unknown>, isList) => {
     let valueSchema = switch (isList, fieldSchema) {
     | (true, Array({additionalItems: Schema(item)})) => item
     | _ => fieldSchema
     }
-    valueSchema->Semantic.unwrapOptional->Option.getOr(valueSchema)->isDeclaredTag
+    valueSchema->Semantic.unwrapOptional->Option.getOr(valueSchema)
   }
   let identity = (name, fieldSchema, isList) =>
     switch typedKey(fieldSchema, isList) {
     | Some(key) => Some({DcbScopeInference.name, isList, key})
     | None => untypedIdentity(name, fieldSchema, isList)
-    }->Option.map(f => isDeclared(fieldSchema, isList) ? {...f, declared: true} : f)
+    }
+    ->Option.map(f => valueOf(fieldSchema, isList)->isDeclaredTag ? {...f, declared: true} : f)
+    ->Option.map(f =>
+      valueOf(fieldSchema, isList)->isCrossPartitionTag ? {...f, crossPartition: true} : f
+    )
   properties
   ->Dict.toArray
   ->Array.flatMap(((name, fieldSchema)) => {
@@ -1354,6 +1358,9 @@ type effectiveScope = {
   /** Slices whose partition did not resolve, as `(slice, reason)` — non-empty
       means the two fields above are the *annotated* fallback, not the derivation. */
   ambiguities: array<(string, string)>,
+  /** Slices reading another slice's event by their own key, across partitions.
+      Empty on the fallback. */
+  crossPartitionPairs: array<DcbScopeInference.pair>,
   /** Cross-partition keys the inference found that the fallback does not carry.
       Non-empty is the harmful case and only that: a reference read silently
       narrows to its own partition, so a slice decides against events it cannot
@@ -1404,6 +1411,7 @@ let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
   {
     crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
     tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+    crossPartitionPairs: useInferred ? inferred.crossPartitionPairs : [],
     ambiguities: inferred.ambiguities,
     droppedCrossPartitionTagKeys: useInferred
       ? []

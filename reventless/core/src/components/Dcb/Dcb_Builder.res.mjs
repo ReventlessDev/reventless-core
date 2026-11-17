@@ -229,6 +229,20 @@ function Make(DcbEventLogStorage) {
       let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
+      let armIssues = DcbValidation$Reventless.validateCrossPartitionArms(inferenceShapes, inferred);
+      armIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
+      if (armIssues.contradictions.length !== 0) {
+        let detail$1 = armIssues.contradictions.map(e => e.sliceName + `: ` + e.message).join(" | ");
+        log.error("Dcb_Builder", undefined, `DCB scope contradiction (` + name + `): ` + detail$1);
+        Stdlib_JsError.throwWithMessage(`DCB scope contradiction (` + name + `): ` + detail$1);
+      }
+      let pairs = inferred.crossPartitionPairs;
+      if (pairs.length !== 0) {
+        let detail$2 = pairs.map(p => p.reader + ` reads ` + p.eventType + ` by ` + p.key).join(" | ");
+        let message = `DCB cross-partition pairs are not served yet (` + name + `): ` + detail$2 + `. Partition the writers by the reader's key, or drop the read.`;
+        log.error("Dcb_Builder", undefined, message);
+        Stdlib_JsError.throwWithMessage(message);
+      }
       let effective = DcbTag$Reventless.deriveEffectiveScope(sliceSchemas);
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys;
       let effectiveTagKeysByEventType = effective.tagKeysByEventType;

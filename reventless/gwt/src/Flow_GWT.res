@@ -245,10 +245,16 @@ let thenBoundaryScopeResolves = async (
   // Deploy and boot derive the storage partition from the same slices and refuse
   // the boundary when it fails, so the test fails with their reasons.
   let partitionReasons = {
-    let hints = Reventless.DcbValidation.validatePartitionHintsVsInference(
-      ~shapes=slices->Array.map(Reventless.DcbTag.sliceShape),
+    let shapes = slices->Array.map(Reventless.DcbTag.sliceShape)
+    let hints = Reventless.DcbValidation.validatePartitionHintsVsInference(~shapes)
+    let arms = Reventless.DcbValidation.validateCrossPartitionArms(
+      ~shapes,
+      ~inferred=Reventless.DcbScopeInference.infer(shapes),
     )
-    let contradictions = hints.contradictions->Array.map(e => `${e.sliceName}: ${e.message}`)
+    let contradictions =
+      hints.contradictions
+      ->Array.concat(arms.contradictions)
+      ->Array.map(e => `${e.sliceName}: ${e.message}`)
     switch Reventless.DcbTag.deriveBoundaryPartition(slices) {
     | _ => contradictions
     | exception JsExn(err) =>

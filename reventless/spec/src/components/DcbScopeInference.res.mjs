@@ -81,6 +81,51 @@ function foreignArms(s) {
   return s.consumed.filter(e => !own.has(e.eventType));
 }
 
+function producersOf(slices, eventType) {
+  return slices.filter(p => p.produced.some(e => e.eventType === eventType));
+}
+
+function markedKeys(e) {
+  return e.idFields.filter(f => Primitive_object.equal(f.crossPartition, true)).map(tagKeyOf);
+}
+
+function armsStoredElsewhere(s, slices, key, partitionBySlice) {
+  return foreignArms(s).filter(e => {
+    if (e.idFields.map(tagKeyOf).includes(key)) {
+      return producersOf(slices, e.eventType).some(p => Primitive_object.notequal(partitionBySlice[p.sliceName], key));
+    } else {
+      return false;
+    }
+  });
+}
+
+function pairsOf(slices, partitionBySlice, crossPartitionTagKeys) {
+  return slices.flatMap(s => {
+    let key = partitionBySlice[s.sliceName];
+    if (key !== undefined) {
+      if (crossPartitionTagKeys.includes(key)) {
+        return [];
+      } else {
+        return armsStoredElsewhere(s, slices, key, partitionBySlice).filter(e => markedKeys(e).includes(key)).map(e => ({
+          reader: s.sliceName,
+          eventType: e.eventType,
+          key: key,
+          writers: dedupSorted(producersOf(slices, e.eventType).map(p => p.sliceName))
+        }));
+      }
+    } else {
+      return [];
+    }
+  }).toSorted((a, b) => {
+    let c = Primitive_string.compare(a.reader, b.reader);
+    if (c !== 0) {
+      return c;
+    } else {
+      return Primitive_string.compare(a.eventType, b.eventType);
+    }
+  });
+}
+
 function sameAssignment(a, b) {
   let entries = d => Object.entries(d).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
   return Primitive_object.equal(entries(a), entries(b));
@@ -356,10 +401,12 @@ function infer(slices) {
       tagKeysByEventType[e.eventType] = dedupSorted(indexed);
     });
   });
+  let crossPartitionPairs = pairsOf(slices, partitionBySlice, crossPartitionTagKeys);
   return {
     partitionBySlice: partitionBySlice,
     ownerByKey: ownerByKey,
     crossPartitionTagKeys: crossPartitionTagKeys,
+    crossPartitionPairs: crossPartitionPairs,
     tagKeysByEventType: tagKeysByEventType,
     ambiguities: match.ambiguities
   };
@@ -376,6 +423,10 @@ export {
   foreignConsumedKeys,
   readByKeys,
   foreignArms,
+  producersOf,
+  markedKeys,
+  armsStoredElsewhere,
+  pairsOf,
   sameAssignment,
   chapterKeys,
   resolvePartitions,

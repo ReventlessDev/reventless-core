@@ -141,8 +141,10 @@ function test(name, timeout, body) {
 async function thenBoundaryScopeResolves(flowP, name, slices) {
   let s = await flowP;
   let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
-  let hints = DcbValidation$Reventless.validatePartitionHintsVsInference(slices.map(DcbTag$Reventless.sliceShape));
-  let contradictions = hints.contradictions.map(e => e.sliceName + `: ` + e.message);
+  let shapes = slices.map(DcbTag$Reventless.sliceShape);
+  let hints = DcbValidation$Reventless.validatePartitionHintsVsInference(shapes);
+  let arms = DcbValidation$Reventless.validateCrossPartitionArms(shapes, DcbScopeInference$Reventless.infer(shapes));
+  let contradictions = hints.contradictions.concat(arms.contradictions).map(e => e.sliceName + `: ` + e.message);
   let partitionReasons;
   try {
     DcbTag$Reventless.deriveBoundaryPartition(slices);

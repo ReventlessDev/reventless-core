@@ -375,6 +375,37 @@ module Make = (
         log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
       )
 
+      // A `@crossPartition` on a consumed arm reads the slice's own key across
+      // partitions. On another key it says nothing the build could act on.
+      let armIssues = Reventless.DcbValidation.validateCrossPartitionArms(
+        ~shapes=inferenceShapes,
+        ~inferred,
+      )
+      armIssues.redundancies->Array.forEach(e =>
+        log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
+      )
+      if armIssues.contradictions->Array.length > 0 {
+        let detail =
+          armIssues.contradictions
+          ->Array.map(e => `${e.sliceName}: ${e.message}`)
+          ->Array.join(" | ")
+        log.error(~comp="Dcb_Builder", `DCB scope contradiction (${name}): ${detail}`)
+        JsError.throwWithMessage(`DCB scope contradiction (${name}): ${detail}`)
+      }
+      // The event log does not yet read a pair's events across partitions or keep
+      // their fence, so a boundary with one would decide against events it misses.
+      switch inferred.crossPartitionPairs {
+      | [] => ()
+      | pairs =>
+        let detail =
+          pairs
+          ->Array.map(p => `${p.reader} reads ${p.eventType} by ${p.key}`)
+          ->Array.join(" | ")
+        let message = `DCB cross-partition pairs are not served yet (${name}): ${detail}. Partition the writers by the reader's key, or drop the read.`
+        log.error(~comp="Dcb_Builder", message)
+        JsError.throwWithMessage(message)
+      }
+
       // All-or-nothing: thread the derived scope only when every slice resolved.
       // An ambiguous boundary keeps the annotated values (no partial inference).
       // Both this builder and the deployed command-handler entry point

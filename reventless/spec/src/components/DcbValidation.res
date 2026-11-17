@@ -512,6 +512,11 @@ Checks each `@partitionTag` against what inference derives with that hint remove
   chapter is what separates the two: every event under `Order/` carries `orderId`,
   while a `@partitionTag categoryId` on `AddProduct` disagrees with `Product/`.
 
+An arm the slice marks `@crossPartition` by the hinted key is read across
+partitions, so it backs the hint wherever its writers store it. An unmarked one
+stored under another key is never found by the slice's read: a contradiction even
+where inference has no partition to offer, and the message names the marker.
+
 A hint that names a key the slice's events do not carry is not checked here:
 inference ignores it, and the boundary derivation reports the slice instead.
 */
@@ -529,13 +534,17 @@ let validatePartitionHintsVsInference = (
   // Backing means telling the keys apart: a chapter whose events all carry both the
   // hinted key and inference's (one slice, one event with both ids) says nothing
   // about which one the slice is about, so it backs neither.
+  // An arm marked `@crossPartition` by the hinted key is read across partitions, so
+  // where its writers store it does not matter.
+  let marks = (e: DcbScopeInference.eventShape, hint) =>
+    e->DcbScopeInference.markedKeys->Array.includes(hint)
+  let chapterAgrees = (s: DcbScopeInference.sliceShape, hint, inferred) =>
+    s.chapter
+    ->Option.flatMap(c => chapterKeys->Dict.get(c))
+    ->Option.mapOr(false, keys =>
+      keys->Array.includes(hint) && !(inferred->Array.some(k => keys->Array.includes(k)))
+    )
   let backedByChapter = (s: DcbScopeInference.sliceShape, hint, inferred, partitionBySlice) => {
-    let chapterAgrees =
-      s.chapter
-      ->Option.flatMap(c => chapterKeys->Dict.get(c))
-      ->Option.mapOr(false, keys =>
-        keys->Array.includes(hint) && !(inferred->Array.some(k => keys->Array.includes(k)))
-      )
     let own = s.produced->Array.map(e => e.eventType)
     let readsOwnEntity =
       s.consumed
@@ -544,14 +553,25 @@ let validatePartitionHintsVsInference = (
         e->DcbScopeInference.keysOfEvent->Array.includes(hint)
       )
       ->Array.every(e =>
+        marks(e, hint) ||
         switch producersOf(e.eventType) {
         | [] => false
         | producers =>
           producers->Array.every(p => partitionBySlice->Dict.get(p.sliceName) == Some(hint))
         }
       )
-    chapterAgrees && readsOwnEntity
+    chapterAgrees(s, hint, inferred) && readsOwnEntity
   }
+  // The arms a read by `hint` would miss: stored under another key and not marked.
+  let unreachable = (s, hint, partitionBySlice) =>
+    s
+    ->DcbScopeInference.armsStoredElsewhere(shapes, ~key=hint, ~partitionBySlice)
+    ->Array.filter(e => !marks(e, hint))
+    ->Array.map(e => e.eventType)
+  let markHint = (hint, arms) =>
+    `mark ${hint} @crossPartition on ${arms->Array.join(
+        "/",
+      )} in the slice's consumedEvent to read it across partitions`
   let overridden = (s: DcbScopeInference.sliceShape, hint, inference) =>
     overrides->Array.push({
       sliceName: s.sliceName,
@@ -606,9 +626,14 @@ let validatePartitionHintsVsInference = (
         | Some(inferred) if backedByChapter(s, hint, [inferred], unaided.partitionBySlice) =>
           overridden(s, hint, `it derives ${inferred}`)
         | Some(inferred) =>
+          let way = switch unreachable(s, hint, unaided.partitionBySlice) {
+          | arms if arms != [] && chapterAgrees(s, hint, [inferred]) =>
+            `, or ${markHint(hint, arms)}`
+          | _ => ""
+          }
           contradictions->Array.push({
             sliceName: s.sliceName,
-            message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}.`,
+            message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}${way}.`,
           })
         | None =>
           let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
@@ -617,16 +642,32 @@ let validatePartitionHintsVsInference = (
           // name a key every event the slice writes carries.
           let decidesUnresolved =
             candidates == [] && DcbScopeInference.sharedProducedKeys(s)->Array.includes(hint)
-          if candidates->Array.includes(hint) || decidesUnresolved {
+          let missed = unreachable(s, hint, unaided.partitionBySlice)
+          if decidesUnresolved && missed != [] {
+            contradictions->Array.push({
+              sliceName: s.sliceName,
+              message: `@partitionTag ${hint} decides the partition, but ${missed->Array.join(
+                  "/",
+                )} carry ${hint} and are stored under another key, so the slice's read by ${hint} never finds them. Partition their writers by ${hint}, or ${markHint(
+                  hint,
+                  missed,
+                )}.`,
+            })
+          } else if candidates->Array.includes(hint) || decidesUnresolved {
             ()
           } else if backedByChapter(s, hint, candidates, unaided.partitionBySlice) {
             overridden(s, hint, `candidates: ${candidates->Array.join(", ")}`)
           } else {
+            let way = switch unreachable(s, hint, unaided.partitionBySlice) {
+            | arms if arms != [] && chapterAgrees(s, hint, candidates) =>
+              `, or ${markHint(hint, arms)}`
+            | _ => ""
+            }
             contradictions->Array.push({
               sliceName: s.sliceName,
               message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
                   ", ",
-                )}). Move the annotation to the slice's own key.`,
+                )}). Move the annotation to the slice's own key${way}.`,
             })
           }
         }
@@ -673,3 +714,64 @@ let validateCommandTagSuppressions = (
       )
     )
   })
+
+/**
+Checks each `@crossPartition` a slice writes on a consumed arm it does not produce.
+
+- **Contradiction** — the marked key is not the slice's partition. A slice reads
+  another entity's key across partitions by the slice graph, or by `@crossPartition`
+  on the event that writes it; a marker on one consumed arm cannot say it.
+- **Redundant** — the slice reads the arm by its partition anyway: every writer
+  stores the event under that key, or the boundary already reads the key across
+  partitions.
+
+A slice whose partition did not resolve is skipped; the derivation reports it.
+*/
+let validateCrossPartitionArms = (
+  ~shapes: array<DcbScopeInference.sliceShape>,
+  ~inferred: DcbScopeInference.derived,
+): scopeInferenceIssues => {
+  let contradictions: array<validationError> = []
+  let redundancies: array<validationError> = []
+  shapes->Array.forEach(s =>
+    inferred.partitionBySlice
+    ->Dict.get(s.sliceName)
+    ->Option.forEach(partition => {
+      let stored =
+        s
+        ->DcbScopeInference.armsStoredElsewhere(
+          shapes,
+          ~key=partition,
+          ~partitionBySlice=inferred.partitionBySlice,
+        )
+        ->Array.map(e => e.eventType)
+      s
+      ->DcbScopeInference.foreignArms
+      ->Array.forEach(
+        e =>
+          e
+          ->DcbScopeInference.markedKeys
+          ->Array.forEach(
+            k =>
+              if k != partition {
+                contradictions->Array.push({
+                  sliceName: s.sliceName,
+                  message: `${e.eventType} marks ${k} @crossPartition, but ${s.sliceName} is partitioned by ${partition}. A consumed arm marks only the slice's own key; a read of another entity's ${k} across partitions follows from the slice graph, or from @crossPartition on the event that writes it. Remove the marker.`,
+                })
+              } else if inferred.crossPartitionTagKeys->Array.includes(k) {
+                redundancies->Array.push({
+                  sliceName: s.sliceName,
+                  message: `${e.eventType} marks ${k} @crossPartition, which the boundary already reads across partitions — the marker is redundant and can be removed.`,
+                })
+              } else if !(stored->Array.includes(e.eventType)) {
+                redundancies->Array.push({
+                  sliceName: s.sliceName,
+                  message: `${e.eventType} marks ${k} @crossPartition, but its writers store it under ${k}, so ${s.sliceName} reads it in its own partition — the marker is redundant and can be removed.`,
+                })
+              },
+          ),
+      )
+    })
+  )
+  {contradictions, redundancies, overrides: []}
+}
