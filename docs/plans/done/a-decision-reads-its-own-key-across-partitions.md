@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Phases [3](#phase-3-pairs-in-inference-and-validation), [4](#phase-4-read-split-and-routing) and [5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) built 2026-11-17: a pair works on DynamoDB; [Q6](#8-questions-with-recommendations) decided and built the same day; [Phase 6](#phase-6-an-end-to-end-case-on-dynamodb-local) is left. Found in an app whose decision about a
+**Status**: Done (proposed 2026-11-09, reworked 2026-11-11, finished 2026-11-17). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Phases [3](#phase-3-pairs-in-inference-and-validation), [4](#phase-4-read-split-and-routing) and [5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) built 2026-11-17: a pair works on DynamoDB; [Q6](#8-questions-with-recommendations) decided and built the same day, and [Phase 6](#phase-6-an-end-to-end-case-on-dynamodb-local) too. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -12,12 +12,12 @@ on a consumed event), `reventless/core` (`Dcb_Builder`, `StateChangeSlice_Callba
 `reventless/aws` (the DynamoDB event-log runtime), the local backends (the condition only),
 `scripts/check-dcb-scope.mjs` and its goldens.
 
-Related: [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md) (the
-capability this extends), [dcb-partition-key-inference](done/dcb-partition-key-inference.md) (the
+Related: [dcb-phase7-cross-partition-reads](dcb-phase7-cross-partition-reads.md) (the
+capability this extends), [dcb-partition-key-inference](dcb-partition-key-inference.md) (the
 check that refuses the case today),
-[dcb-fence-event-type-granularity](done/dcb-fence-event-type-granularity.md) (the per-type fences
-this builds on), [the DCB consistency-check issues](../analysis/dcb-consistency-check-issues.md),
-[the partition-key derivation analysis](../analysis/done/dcb-partition-key-derivation.md).
+[dcb-fence-event-type-granularity](dcb-fence-event-type-granularity.md) (the per-type fences
+this builds on), [the DCB consistency-check issues](../../analysis/dcb-consistency-check-issues.md),
+[the partition-key derivation analysis](../../analysis/done/dcb-partition-key-derivation.md).
 
 ## In plain words
 
@@ -52,7 +52,7 @@ never finds it. Locally the read works, because the local backends ignore partit
 the slice's GWT cases pass and the app is refused only when it boots.
 
 The same shape is already pinned in the test suite as a contradiction:
-[`DcbScopeInferenceTest.res:584`](../../reventless/core/tests/dcb/DcbScopeInferenceTest.res#L584),
+[`DcbScopeInferenceTest.res:584`](../../../reventless/core/tests/dcb/DcbScopeInferenceTest.res#L584),
 "a chapter-backed hint read off another entity's events is still a contradiction". There,
 `ShipOrder` (partitioned by `orderId`) reads `WarehouseAssigned{warehouseId, orderId}`, which
 `AssignWarehouse` writes into the `warehouseId` partition.
@@ -64,9 +64,9 @@ made.
 
 ### 2.1 Cross-partition scope belongs to a tag key
 
-[Phase 7](done/dcb-phase7-cross-partition-reads.md) made scope "a static, per-tag-key config"
-([its core decision](done/dcb-phase7-cross-partition-reads.md#core-design-decision--scope-is-a-static-per-tag-key-config)).
-[Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap)
+[Phase 7](dcb-phase7-cross-partition-reads.md) made scope "a static, per-tag-key config"
+([its core decision](dcb-phase7-cross-partition-reads.md#core-design-decision--scope-is-a-static-per-tag-key-config)).
+[Issue 13](../../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap)
 gives the reason: the fence is bumped by **writers**, not readers. If one slice reads a key across
 partitions, every writer of that key must bump its fence. So scope cannot be per reader, and the
 analysis concluded it has to be a property of the whole key.
@@ -76,28 +76,28 @@ Making `messageId` cross-partition for the whole boundary would send every `mess
 (edit, delete, moderation, reactions, reports, questions) through the eventually consistent index
 and the extra `GetItem` per event. Every event carrying `messageId` would bump its fence. Inference
 therefore never makes a slice's own key cross-partition: the rule requires `Some(k) != own`
-([`DcbScopeInference.res:478`](../../reventless/spec/src/components/DcbScopeInference.res#L478)),
+([`DcbScopeInference.res:478`](../../../reventless/spec/src/components/DcbScopeInference.res#L478)),
 and `validateScopeVsInference` calls an explicit `@crossPartition` on the own key a contradiction.
 
-What changed since: two days after [Phase 7](done/dcb-phase7-cross-partition-reads.md), fences
+What changed since: two days after [Phase 7](dcb-phase7-cross-partition-reads.md), fences
 became per **(tag, event type)**
-([dcb-fence-event-type-granularity](done/dcb-fence-event-type-granularity.md)). "Writers of
+([dcb-fence-event-type-granularity](dcb-fence-event-type-granularity.md)). "Writers of
 `ReplyPosted` keep a fence for the `messageId` they carry" can now be expressed without touching
 any other type's fence, and that is what makes a scope per (event type, key) possible.
 
 ### 2.2 The partition check refuses this shape on purpose
 
-[The partition-key inference](done/dcb-partition-key-inference.md) gives each slice the key that
+[The partition-key inference](dcb-partition-key-inference.md) gives each slice the key that
 remains after removing keys it only reads from other entities. For `ChangeQuestionState` both produced
 keys are also read from other slices' events, so nothing remains. The give-back step then returns
 `replyId`, because `ReplyPosted`'s producer is partitioned by it, and blocks `messageId` for the
 same reason.
 
 The hint check
-([its 2026-09-25 follow-up](done/dcb-partition-key-inference.md#follow-up-2026-09-25-a-hint-its-chapter-agrees-with-is-not-a-contradiction))
+([its 2026-09-25 follow-up](dcb-partition-key-inference.md#follow-up-2026-09-25-a-hint-its-chapter-agrees-with-is-not-a-contradiction))
 accepts a hint that goes against inference only when the chapter backs it **and** every event the
 slice reads by that key is written by a slice partitioned by it
-([`backedByChapter`, `DcbValidation.res:526`](../../reventless/spec/src/components/DcbValidation.res#L526)).
+([`backedByChapter`, `DcbValidation.res:526`](../../../reventless/spec/src/components/DcbValidation.res#L526)).
 The chapter does back `messageId`: both Questions events carry it. `ReplyPosted` fails the second
 condition, and with no read route for it the build would send storage, fence and read to a key the
 read cannot reach. So refusing is the correct answer for today's platform, and this plan changes
@@ -107,11 +107,11 @@ the platform, not the check's purpose.
 
 A slice's hint is right or wrong only in view of every other slice: here, of how `PostReply` is
 partitioned. GWT runs one slice at a time, in memory, where partitions are invisible
-([Issue 3](../analysis/dcb-consistency-check-issues.md#issue-3--local-backend--aws-backend-consistency-semantics-test-gap)).
+([Issue 3](../../analysis/dcb-consistency-check-issues.md#issue-3--local-backend--aws-backend-consistency-semantics-test-gap)).
 The whole-boundary check runs at boot, at deploy and in `check:dcb-scope`
-([F7](../analysis/done/dcb-partition-key-derivation.md#f7--no-compile-time-gate)). `check:dcb-scope`
+([F7](../../analysis/done/dcb-partition-key-derivation.md#f7--no-compile-time-gate)). `check:dcb-scope`
 is a script of this repo and covers only its examples. An app can assert the same thing with
-[`Flow_GWT.thenBoundaryScopeResolves`](../../reventless/gwt/src/Flow_GWT.res#L238), but only if it
+[`Flow_GWT.thenBoundaryScopeResolves`](../../../reventless/gwt/src/Flow_GWT.res#L238), but only if it
 writes that test. So an app with this shape passes every test it has and fails when it boots.
 [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) closes that first, because it
 matters whether or not the rest of this plan lands.
@@ -129,7 +129,7 @@ form: per (event type, key) pair, for the slice's own key only. The slice marks 
 it reads across partitions: `ReplyPosted({replyId, @crossPartition messageId, …})` in
 `ChangeQuestionState`'s `consumedEvent`. The marker says what the `@partitionTag` cannot: that the reader
 accepts an index read, and that another slice's writes will now touch a fence of its partition.
-[Phase 7](done/dcb-phase7-cross-partition-reads.md) kept `@crossPartition` off `consumedEvent`
+[Phase 7](dcb-phase7-cross-partition-reads.md) kept `@crossPartition` off `consumedEvent`
 because its scope is per key. A pair is per event type, and the consumed arm is exactly where that
 event type is named. A marker on a key that is not the slice's own is refused, pointing to the
 per-key form. The boundary-wide `crossPartitionTagKeys` is unchanged and keeps its meaning. A pair
@@ -160,7 +160,7 @@ the count of [D8](#3-decisions). How it is keyed beside the existing fence items
 [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item).
 
 **D6. The fence that guards a cross-partition read checks a count, not a position.** That applies
-to pairs and to [Phase 7](done/dcb-phase7-cross-partition-reads.md)'s per-key reads. A position
+to pairs and to [Phase 7](dcb-phase7-cross-partition-reads.md)'s per-key reads. A position
 says only that nothing newer was written, while a count also shows whether anything older was
 missed ([§4.3](#43-stale-reads)). The append condition on such a fence is `n#<type> = :seen`. The
 partition-scoped fences keep their `pos#<type>` check unchanged.
@@ -171,7 +171,7 @@ for ChangeQuestionState"). The `dcb-scope.json` golden records the pairs, so add
 as a change to the writer's write path. When the writer's transaction already carries other
 cross-partition or composite fences, the line becomes a warning, because each one adds an item to a
 transaction capped at 100 items
-([Issue 11](../analysis/dcb-consistency-check-issues.md#issue-11--100-item-transactwriteitems-cap-is-a-hard-cliff)).
+([Issue 11](../../analysis/dcb-consistency-check-issues.md#issue-11--100-item-transactwriteitems-cap-is-a-hard-cliff)).
 
 **D8. A cross-partition fence keeps a count of what was written, and the reader proves it saw it
 all.**
@@ -212,7 +212,7 @@ Worked on the question case: one question with `n` replies, `PostReply` partitio
 
 The cold read still grows with the number of children: about `n / 2` read units at eventual
 consistency for small items. The read side of
-[Issue 13's cost section](../analysis/dcb-consistency-check-issues.md#performance--cost) applies to
+[Issue 13's cost section](../../analysis/dcb-consistency-check-issues.md#performance--cost) applies to
 it. A warm decision pays one item read per command while nothing changes.
 
 ### 4.2 Writes
@@ -225,9 +225,9 @@ it. A warm decision pays one item read per command while nothing changes.
   `MarkAnswer` whose append checks it. Edits, reactions and moderation of the parent do not, since
   they keep their own fence item ([D5](#3-decisions)). A very busy thread can still reach the
   per-item ceiling
-  ([Issue 10](../analysis/dcb-consistency-check-issues.md#issue-10--hot-tag-fence-ceiling-retry-exhaustion-surfaces-as-conflict)).
+  ([Issue 10](../../analysis/dcb-consistency-check-issues.md#issue-10--hot-tag-fence-ceiling-retry-exhaustion-surfaces-as-conflict)).
 - The cost lands on a slice whose own spec did not change. That is why [D7](#3-decisions) exists.
-- Per-key cross-partition writers ([Phase 7](done/dcb-phase7-cross-partition-reads.md)) gain no
+- Per-key cross-partition writers ([Phase 7](dcb-phase7-cross-partition-reads.md)) gain no
   item: `n#C` is added to the update they already make.
 
 ### 4.3 Stale reads
@@ -240,7 +240,7 @@ What an eventually consistent index read can get wrong, and what the count does 
    waits and reads again before deciding.
 2. **A newer event in another clause hides a missed one.** Today the fence compares every type
    against one head position for the whole query
-   ([fence update, `DcbEventLogStorage_DynamoDb_Runtime.res:775`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L775)).
+   ([fence update, `DcbEventLogStorage_DynamoDb_Runtime.res:775`](../../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L775)).
    If the index misses reply 12 while the strong clause reads an `AnswerMarked` at 15, `after` is
    15, `pos#ReplyPosted` is 12, and the check passes. With the count the missed reply is visible:
    one read, two counted.
@@ -249,10 +249,10 @@ What an eventually consistent index read can get wrong, and what the count does 
    DynamoDB does not promise that index entries for different items appear in write order. The
    count notices: two counted, one read.
 
-Cases 1 to 3 apply to [Phase 7](done/dcb-phase7-cross-partition-reads.md)'s reads today. They have
+Cases 1 to 3 apply to [Phase 7](dcb-phase7-cross-partition-reads.md)'s reads today. They have
 not been observed. This is analysis, and [Phase 2](#phase-2-a-count-on-cross-partition-fences)
 records them as a new entry in
-[the consistency-check issues](../analysis/dcb-consistency-check-issues.md#issue-inventory).
+[the consistency-check issues](../../analysis/dcb-consistency-check-issues.md#issue-inventory).
 
 What remains is availability, not consistency. While the index lags, commands that need it wait,
 and past the limit they fail as retryable conflicts.
@@ -325,7 +325,7 @@ does not resolve) is reported too.
 ### Phase 2. A count on cross-partition fences
 
 [D6](#3-decisions), [D8](#3-decisions) and [D9](#3-decisions) for
-[Phase 7](done/dcb-phase7-cross-partition-reads.md)'s per-key reads, before any pair exists:
+[Phase 7](dcb-phase7-cross-partition-reads.md)'s per-key reads, before any pair exists:
 
 - writers add to `n#C`;
 - the reader does the strongly consistent fence read, compares and retries;
@@ -359,7 +359,7 @@ In five steps, each shippable alone:
    writes after `countedFrom` without counting, and a count left one short would conflict every
    append on that fence. `countedFrom` stays, as a record of when counting began.
 5. **The issue inventory** records cases 1 to 3. Done 2026-11-17, as Issue 15 of
-   [the consistency-check issues](../analysis/dcb-consistency-check-issues.md#issue-15--a-cross-partition-read-can-miss-an-event-behind-a-position-check-that-passes).
+   [the consistency-check issues](../../analysis/dcb-consistency-check-issues.md#issue-15--a-cross-partition-read-can-miss-an-event-behind-a-position-check-that-passes).
 
 **Verify:**
 
@@ -428,7 +428,7 @@ routing, which has no unit test today.
   which now has its unit test). The local and Postgres backends ignore the marker.
 - **Hits are fetched in batches.** Every index read resolves its hits with `BatchGetItem`, up to
   100 keys a call, sending again the keys DynamoDB left unprocessed. That covers the per-key reads
-  of [Phase 7](done/dcb-phase7-cross-partition-reads.md) too.
+  of [Phase 7](dcb-phase7-cross-partition-reads.md) too.
 - **What DynamoDB-local shows.** A partition read misses events stored under another key, and the
   split read finds them. 130 hits come back whole and in position order.
 
@@ -439,7 +439,7 @@ fence item from [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item).
 
 [D5](#3-decisions) and [D7](#3-decisions): pass the pairs to the storage maker, give a pair its own
 fence item (keyed beside the existing items the way
-[fence sharding](done/dcb-hot-tag-fence-contention.md#1-fence-sharding-via-composite-sort-key)
+[fence sharding](dcb-hot-tag-fence-contention.md#1-fence-sharding-via-composite-sort-key)
 keys its shards), and add the update in `buildConditionalTransactItems`. The builder logs the info
 line or warning.
 
@@ -472,7 +472,23 @@ The question-and-reply shape as a fixture: post a reply, mark it as the answer, 
 reply and see `QuestionAlreadyAnswered`. Also check that two concurrent replies under one parent
 conflict on the pair's item and both succeed on retry, while an edit of the parent at the same
 time does not conflict with them. Local backends cannot show this
-([Issue 3](../analysis/dcb-consistency-check-issues.md#issue-3--local-backend--aws-backend-consistency-semantics-test-gap)).
+([Issue 3](../../analysis/dcb-consistency-check-issues.md#issue-3--local-backend--aws-backend-consistency-semantics-test-gap)).
+
+**Built 2026-11-17** as `DcbPair_IntegrationTest` in `reventless-aws`. Four slices (post a message,
+edit it, post a reply under it, the question's state) run through their slice callbacks over one
+DynamoDB-local table, with the scope and storage the deployed command handler derives. The reply
+writer sits in a chapter of its own: in the message's chapter, every event carries `messageId`, and
+the chapter would make that the reply's partition.
+
+- **The read reaches.** A reply under another question is refused, a reply under this one is
+  marked, and a second is refused as already answered. With the pairs taken out of the scope, the
+  question finds no reply at all and marks nothing, so the test shows the pair at work.
+- **Concurrent writers.** Three replies and an edit of the question, all at once, all land. The
+  pair's item counts 3, and the question then marks one of them. The test does not show that the
+  replies conflicted first: DynamoDB-local may run them one after another, so it shows the outcome,
+  not the race.
+- **Counted.** The table's backfill runs before anything is written, so every fence counts from its
+  first event, and the question's pair fence reads counted.
 
 ## 8. Questions, with recommendations
 
@@ -526,9 +542,9 @@ Built so:
 
 - Changing the meaning of `crossPartitionTagKeys` or of any existing golden ([Q4](#8-questions-with-recommendations)).
 - A strongly consistent index read. DynamoDB has none; the count works around it.
-- [Issue 6](../analysis/dcb-consistency-check-issues.md#issue-6--single-global-after-across-a-multi-clause-or-query)
+- [Issue 6](../../analysis/dcb-consistency-check-issues.md#issue-6--single-global-after-across-a-multi-clause-or-query)
   for partition-scoped clauses. The count settles the stale-read case for cross-partition clauses.
   False conflicts from one head across several partition clauses stay that issue.
 - Fence sharding for hot parents. That is
-  [the hot-tag plan's fence sharding](done/dcb-hot-tag-fence-contention.md#1-fence-sharding-via-composite-sort-key),
+  [the hot-tag plan's fence sharding](dcb-hot-tag-fence-contention.md#1-fence-sharding-via-composite-sort-key),
   usable as it is.

@@ -4,8 +4,7 @@
 // exactly what a start would use, and every plugin is built by the same builder. What the builder
 // refuses at boot it refuses here, with the same message. Check mode keeps the start from going
 // further than building: the store is in memory, the address check is skipped, and no server,
-// registry entry, event tap or idle timer is started. See
-// docs/plans/a-decision-reads-its-own-key-across-partitions.md, Phase 1.
+// registry entry, event tap or idle timer is started.
 
 let envVar = "REVENTLESS_CHECK_START"
 

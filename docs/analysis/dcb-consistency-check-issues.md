@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-20
 **Scope**: correctness/robustness issues in the DCB optimistic-concurrency check enforced by the AWS `DcbEventLogStorage` adapter's per-tag fence sentinels. Companion to the historical options doc [dcb-dynamodb-consistency-check.md](dcb-dynamodb-consistency-check.md); this file is the live inventory.
-**Related**: plans [dcb-fence-scope-alignment.md](../plans/done/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/done/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/Backlog/dcb-monotonic-position-generation.md)
+**Related**: plans [dcb-fence-scope-alignment.md](../plans/done/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/done/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/done/dcb-monotonic-position-generation.md)
 
 ## How the check works (one paragraph)
 
@@ -26,7 +26,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 12 | Tagless scan read can choke on fence items | Low | Latent / low-confidence |
 | 13 | No single-tag **cross-partition** (secondary-tag) read | Capability gap | **Implemented 2026-06-21** ([Phase 7 plan](../plans/done/dcb-phase7-cross-partition-reads.md); source, mjs/CI pending ppx republish) |
 | 14 | Query clauses carry the full consumed-type list (incl. types that can't carry the tag) | Low–Med | Open — drop vacuous (type,tag) combos; residual over-match = Issue 13 |
-| 15 | A cross-partition read can miss an event behind a position check that passes | Medium (analysis, not observed) | **Fixed 2026-11-17** — counted fences ([plan](../plans/a-decision-reads-its-own-key-across-partitions.md#phase-2-a-count-on-cross-partition-fences)) |
+| 15 | A cross-partition read can miss an event behind a position check that passes | Medium (analysis, not observed) | **Fixed 2026-11-17** — counted fences ([plan](../plans/done/a-decision-reads-its-own-key-across-partitions.md#phase-2-a-count-on-cross-partition-fences)) |
 
 ---
 
@@ -162,7 +162,7 @@ entity used one-event-type-per-attribute slices.
 
 ## Issue 7 — Position ordering ties; stringified-timestamp fragility
 
-`generatePosition = ${ms}-${uuidv4}`. Same-millisecond writers get arbitrary lexical order, so `lastPosition <= :after` can occasionally false/miss under heavy concurrency (already noted in the historical doc, §"Position ordering breaks ties by UUID [PARTIAL]"). Also latent: positions are stringified millisecond timestamps, so lexical order == numeric order only while the digit count is stable (~until year 2286); a digit-count change would break ordering. Batch positions (`generatePositionForBatch`) pad the index to 3 digits — safe only because the 100-item `TransactWriteItems` cap keeps indices ≤ 99. Tracked: [`dcb-monotonic-position-generation`](../plans/Backlog/dcb-monotonic-position-generation.md).
+`generatePosition = ${ms}-${uuidv4}`. Same-millisecond writers get arbitrary lexical order, so `lastPosition <= :after` can occasionally false/miss under heavy concurrency (already noted in the historical doc, §"Position ordering breaks ties by UUID [PARTIAL]"). Also latent: positions are stringified millisecond timestamps, so lexical order == numeric order only while the digit count is stable (~until year 2286); a digit-count change would break ordering. Batch positions (`generatePositionForBatch`) pad the index to 3 digits — safe only because the 100-item `TransactWriteItems` cap keeps indices ≤ 99. Tracked: [`dcb-monotonic-position-generation`](../plans/done/dcb-monotonic-position-generation.md).
 
 ---
 
@@ -375,7 +375,7 @@ Until Issue 13 lands, a slice that does **not** want those cross-partition reads
 ## Issue 15 — A cross-partition read can miss an event behind a position check that passes
 
 **Status: FIXED (2026-11-17)** for fences the backfill has counted. Found by analysis while
-planning [a decision that reads its own key across partitions](../plans/a-decision-reads-its-own-key-across-partitions.md#43-stale-reads);
+planning [a decision that reads its own key across partitions](../plans/done/a-decision-reads-its-own-key-across-partitions.md#43-stale-reads);
 not observed.
 
 A cross-partition read goes through the `tag_<key>` index, which is eventually consistent, and its
