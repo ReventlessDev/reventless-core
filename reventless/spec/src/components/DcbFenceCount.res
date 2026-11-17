@@ -2,8 +2,8 @@
 A cross-partition read goes through an eventually consistent index, which can
 miss an event. Its fence counts the events of each type that carry its tag value,
 so a reader compares what it read with what was counted and knows when it missed
-one. A fence's count is trusted only once `counted` says it includes the events
-written before counting began.
+one. A fence's count is trusted only once `counted` says it includes every event
+written: the backfill counted it, or it began counting after the backfill ran.
 */
 /** One cross-partition fence as a strongly consistent read found it. */
 type fence = {

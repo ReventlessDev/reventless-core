@@ -680,8 +680,10 @@ only `ReplyPosted` from the `tag_messageId` index.
 - **A deployed table needs its counts completed.** The fence counts the events it
   guards, so a reader can tell when the index missed one. On a table that held such
   events before the pair existed, run `count-fences --table <name> --pairs
-  messageId:ReplyPosted` (from `reventless-aws`) once after the deploy. Until then the
-  reader checks the fence by position.
+  messageId:ReplyPosted` (from `reventless-aws`) once after the deploy, when every
+  Lambda runs the new code. Until then the reader checks the fence by position. Once a
+  run has counted every fence, a question first replied to later is trusted from its
+  first reply.
 
 Prefer it only when a decision needs a few of another entity's events. If the rule
 counts children that are written often, partition the children by the parent

@@ -929,3 +929,51 @@ describe("DCB DynamoDb integration — a pair's fence item", () => {
     ))
   })
 })
+
+describe("DCB DynamoDb integration — a fence first written after the backfill", () => {
+  let order = (id, customer) =>
+    event("OrderPlaced", [tag("orderId", id), tag("customerId", customer)])
+  let write = (table, id, customer) =>
+    Runtime.appendUnconditional(
+      table,
+      [order(id, customer)],
+      ~partitionTag=simple("orderId"),
+      ~crossPartitionTagKeys=["customerId"],
+    )
+  let countedOf = async (table, customer) =>
+    switch await Runtime.readFences(table)([tag("customerId", customer)]) {
+    | [f] => (f.counted, f.counts->Dict.toArray)
+    | _ => (false, [])
+    }
+  let countAll = (table, ~dryRun) =>
+    DcbFenceBackfill.countAll(
+      table,
+      ~keys=["customerId"],
+      ~pairs=[],
+      ~recount=false,
+      ~settleMs=0,
+      ~dryRun,
+    )
+
+  testAsync("is trusted from its first event once a run counted every fence", async () => {
+    let table = await H.freshTable()
+    let _ = await write(table, "O-n1", "C-old")
+    let (_, recorded) = await countAll(table, ~dryRun=false)
+    let _ = await write(table, "O-n2", "C-new")
+    expect((recorded, await countedOf(table, "C-new")))->toEqual((
+      true,
+      (true, [("OrderPlaced", 1)]),
+    ))
+  })
+
+  testAsync("a dry run records nothing", async () => {
+    let table = await H.freshTable()
+    let _ = await write(table, "O-d1", "C-dry")
+    let (_, recorded) = await countAll(table, ~dryRun=true)
+    let _ = await write(table, "O-d2", "C-later")
+    expect((recorded, await countedOf(table, "C-later")))->toEqual((
+      false,
+      (false, [("OrderPlaced", 1)]),
+    ))
+  })
+})

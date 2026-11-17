@@ -40,7 +40,8 @@ let tagOfFenceId = (id: string): option<Reventless.DcbTag.tag> =>
 
 /** The fences of `keys`, and the pair fences of `pairs` (key, event type), all of
     them or only those not yet counted. A fence item is the one item that holds no
-    event; a pair's sorts as `FENCE#<eventType>`. */
+    event; a pair's sorts as `FENCE#<eventType>`. The scan is strongly consistent,
+    so every fence written before it began is listed. */
 let listFences = async (
   table: Util_DynamoDb_Runtime.resolvedTable,
   ~keys: array<string>,
@@ -52,6 +53,7 @@ let listFences = async (
     : "attribute_not_exists(#evt) AND attribute_not_exists(counted)"
   let items = await Util_DynamoDb_Runtime.scanStream({
     tableName: table.name,
+    consistentRead: true,
     filterExpression,
     expressionAttributeNames: Dict.fromArray([("#evt", "event")]),
   })
@@ -211,3 +213,56 @@ let rec countFences = async (
         )
       : outcomes
   }
+
+/** Records, for each key and pair, that its fences were counted as of `cut`. */
+let recordCuts = async (
+  table: Util_DynamoDb_Runtime.resolvedTable,
+  ~keys: array<string>,
+  ~pairs: array<(string, string)>,
+  ~cut: string,
+) => {
+  let put = key => {
+    let item = key->Dict.copy
+    item->Dict.set(Runtime.cutAttr, cut->JSON.Encode.string)
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+      PutCommand.send(PutCommand.make({tableName: table.name, item: item->JSON.Encode.object}))
+    )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+    ->Effect.runPromise
+  }
+  let _ = await keys
+  ->Array.map(k => Runtime.cutKey(k))
+  ->Array.concat(pairs->Array.map(((k, eventType)) => Runtime.cutKey(k, ~eventType)))
+  ->Array.map(put)
+  ->Promise.all
+}
+
+/** Counts the fences of `keys` and `pairs`, and when every one of them is counted,
+    records the position taken before the scan, so a fence that begins counting
+    after it is trusted without a run of its own. Reports each fence's last outcome,
+    and whether the position was recorded. */
+let countAll = async (
+  table: Util_DynamoDb_Runtime.resolvedTable,
+  ~keys: array<string>,
+  ~pairs: array<(string, string)>,
+  ~recount: bool,
+  ~settleMs: int,
+  ~dryRun: bool,
+): (array<(fenceRef, result<outcome, string>)>, bool) => {
+  let cut = Runtime.generatePosition()
+  let fences = await listFences(table, ~keys, ~pairs, ~recount)
+  let outcomes = await countFences(table, fences, ~settleMs, ~dryRun)
+  let complete = outcomes->Array.every(((_, o)) =>
+    switch o {
+    | Ok(Counted(_)) => true
+    | _ => false
+    }
+  )
+  if complete && !dryRun {
+    await recordCuts(table, ~keys, ~pairs, ~cut)
+    (outcomes, true)
+  } else {
+    (outcomes, false)
+  }
+}

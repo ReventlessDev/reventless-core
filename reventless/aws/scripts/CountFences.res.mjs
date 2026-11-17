@@ -88,8 +88,10 @@ Usage: count-fences --table <name> [--keys <key,...>] [--pairs <key:EventType,..
 Completes the counts of the cross-partition fences of a DCB event log table: counts
 every event of each type that carries the fence's tag, sets the fence's counts to
 that and marks it counted, on condition that no writer moved it meanwhile. Run it
-once after the deploy that began counting. A fence that is not counted is checked
-by position, as before.
+once after the deploy that began counting, when every Lambda runs the new code.
+When every fence counts, it also records where it ran, so a fence first written
+later is trusted from its first event. A fence that is not counted is checked by
+position, as before.
 
   --table <name>     The DCB event log table.
   --keys <key,...>   The cross-partition tag keys (the dcb-scope golden lists them).
@@ -118,9 +120,12 @@ async function run(args) {
     arn: "",
     hashKey: "id"
   };
-  let fences = await DcbFenceBackfill$ReventlessAws.listFences(table, args.keys, args.pairs, args.recount);
-  console.log(fences.length.toString() + ` fence(s) to count in ` + args.table + `.`);
-  let outcomes = await DcbFenceBackfill$ReventlessAws.countFences(table, fences, args.settleMs, args.dryRun, undefined);
+  let match = await DcbFenceBackfill$ReventlessAws.countAll(table, args.keys, args.pairs, args.recount, args.settleMs, args.dryRun);
+  let outcomes = match[0];
+  console.log(outcomes.length.toString() + ` fence(s) counted in ` + args.table + `.`);
+  if (match[1]) {
+    console.log("Recorded: fences that begin counting from now on are trusted without a run.");
+  }
   let failures = Stdlib_Array.filterMap(outcomes, param => {
     let outcome = param[1];
     let fence = DcbFenceBackfill$ReventlessAws.fenceRefText(param[0]);

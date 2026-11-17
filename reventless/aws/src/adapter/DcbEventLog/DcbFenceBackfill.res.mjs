@@ -46,6 +46,7 @@ async function listFences(table, keys, pairsOpt, recount) {
   let filterExpression = recount ? "attribute_not_exists(#evt)" : "attribute_not_exists(#evt) AND attribute_not_exists(counted)";
   let items = await Effect.runPromise(Effect$1.catch(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream({
     TableName: table.name,
+    ConsistentRead: true,
     ExpressionAttributeNames: Object.fromEntries([[
         "#evt",
         "event"
@@ -197,7 +198,7 @@ async function countFences(table, fences, settleMs, dryRun, roundsOpt) {
   if (fences.length === 0) {
     return [];
   }
-  let befores = await Promise.all(fences.map(async f => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceOfItem(f.tag, await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.getFenceItem(table, keyOfRef(f))).counts));
+  let befores = await Promise.all(fences.map(async f => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceOfItem(f.tag, await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.getFenceItem(table, keyOfRef(f)), undefined).counts));
   await Effect.runPromise(Effect$1.sleep(Duration.millis(settleMs)));
   let outcomes = [];
   for (let i = 0, i_finish = fences.length; i < i_finish; ++i) {
@@ -227,6 +228,48 @@ async function countFences(table, fences, settleMs, dryRun, roundsOpt) {
   }
 }
 
+async function recordCuts(table, keys, pairs, cut) {
+  let put = key => {
+    let item = Object.assign({}, key);
+    item[DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.cutAttr] = cut;
+    return Effect.runPromise(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+      Item: item,
+      TableName: table.name
+    }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))));
+  };
+  await Promise.all(keys.map(k => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.cutKey(k, undefined)).concat(pairs.map(param => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.cutKey(param[0], param[1]))).map(put));
+}
+
+async function countAll(table, keys, pairs, recount, settleMs, dryRun) {
+  let cut = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition();
+  let fences = await listFences(table, keys, pairs, recount);
+  let outcomes = await countFences(table, fences, settleMs, dryRun, undefined);
+  let complete = outcomes.every(param => {
+    let o = param[1];
+    if (o.TAG !== "Ok") {
+      return false;
+    }
+    let tmp = o._0;
+    if (typeof tmp !== "object") {
+      return false;
+    } else {
+      return tmp.TAG === "Counted";
+    }
+  });
+  if (complete && !dryRun) {
+    await recordCuts(table, keys, pairs, cut);
+    return [
+      outcomes,
+      true
+    ];
+  } else {
+    return [
+      outcomes,
+      false
+    ];
+  }
+}
+
 let Runtime;
 
 export {
@@ -239,5 +282,7 @@ export {
   countUpdate,
   countFence,
   countFences,
+  recordCuts,
+  countAll,
 }
 /* Effect Not a pure module */

@@ -1277,3 +1277,23 @@ describe("Runtime — a pair's fence item", () => {
     expect(check.expressionAttributeNames)->toEqual(Some(Dict.fromArray([("#n", "n#ReplyPosted")])))
   })
 })
+
+describe("Runtime.fenceOfItem — which counts a reader trusts", () => {
+  let customer = tag("customerId", "C1")
+  let item = attrs => Some(JSON.Encode.object(Dict.fromArray(attrs)))
+  let counted = (attrs, ~cut=?) => Runtime.fenceOfItem(customer, item(attrs), ~cut?).counted
+  let from = p => ("countedFrom", JSON.Encode.string(p))
+
+  testSync("one the backfill counted", () =>
+    expect(counted([("counted", JSON.Boolean(true))]))->toBe(true)
+  )
+  testSync("not one that began counting before the backfill ran", () =>
+    expect(counted([from("100")], ~cut="200"))->toBe(false)
+  )
+  testSync("one that began counting after it, from its first event", () =>
+    expect(counted([from("300")], ~cut="200"))->toBe(true)
+  )
+  testSync("nor any uncounted one while no backfill has run", () =>
+    expect(counted([from("300")]))->toBe(false)
+  )
+})

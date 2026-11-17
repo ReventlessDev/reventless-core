@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Phases [3](#phase-3-pairs-in-inference-and-validation), [4](#phase-4-read-split-and-routing) and [5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) built 2026-11-17: a pair works on DynamoDB; [Phase 6](#phase-6-an-end-to-end-case-on-dynamodb-local) is left, and [Q6](#8-questions-with-recommendations) is open. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. Phases [3](#phase-3-pairs-in-inference-and-validation), [4](#phase-4-read-split-and-routing) and [5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) built 2026-11-17: a pair works on DynamoDB; [Q6](#8-questions-with-recommendations) decided and built the same day; [Phase 6](#phase-6-an-end-to-end-case-on-dynamodb-local) is left. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -504,11 +504,23 @@ backfill has run ([Phase 2](#phase-2-a-count-on-cross-partition-fences), step 4)
 value first written after the backfill gets an item whose count is complete from its first write,
 but which no reader trusts, so it is checked by position for good. That holds for
 [Phase 2](#phase-2-a-count-on-cross-partition-fences)'s fences as much as for a pair's. How should
-an item count from birth? **Recommended:** `count-fences` records, per key, the position it ran at.
-A reader trusts an item that is `counted`, or whose `countedFrom` is later than that position. Any
-item that existed when the backfill scanned was counted then, so one first counted after it began
-counting with its first event. The cost is one more strongly consistent read per key, which a
-Lambda can keep for its lifetime.
+an item count from birth? **Decided 2026-11-17:** `count-fences` records, per key, the position it
+ran at. A reader trusts an item that is `counted`, or whose `countedFrom` is later than that
+position. Any item that existed when the backfill scanned was counted then, so one first counted
+after it began counting with its first event. The cost is one more strongly consistent read per
+key, which a Lambda can keep for its lifetime.
+
+Built so:
+
+- **The marker.** It sits beside the key's fences, `fence#<key>` / `CUT` (a pair's, `CUT#<type>`),
+  an id no tag value has and no event scan reads, holding `cut`. `count-fences` takes the position
+  before its scan, which is now strongly consistent. It writes the marker only when every fence it
+  listed ended counted, and never on a dry run.
+- **The reader.** `fenceOfItem` applies the rule, and `readFences` reads the marker once per key.
+  It keeps a found one for the Lambda's lifetime and asks again about a missing one after a minute.
+- **One assumption.** The backfill runs once every Lambda runs the counting code. A writer still on
+  the old code after it ran could start an item without `countedFrom`, and the next counting
+  writer would then date the item after the marker while its count misses that event.
 
 ## 9. Non-goals
 

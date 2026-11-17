@@ -65,8 +65,10 @@ Usage: count-fences --table <name> [--keys <key,...>] [--pairs <key:EventType,..
 Completes the counts of the cross-partition fences of a DCB event log table: counts
 every event of each type that carries the fence's tag, sets the fence's counts to
 that and marks it counted, on condition that no writer moved it meanwhile. Run it
-once after the deploy that began counting. A fence that is not counted is checked
-by position, as before.
+once after the deploy that began counting, when every Lambda runs the new code.
+When every fence counts, it also records where it ran, so a fence first written
+later is trusted from its first event. A fence that is not counted is checked by
+position, as before.
 
   --table <name>     The DCB event log table.
   --keys <key,...>   The cross-partition tag keys (the dcb-scope golden lists them).
@@ -91,19 +93,18 @@ let run = async (args: args): result<unit, array<string>> => {
     arn: "",
     hashKey: "id",
   }
-  let fences = await DcbFenceBackfill.listFences(
+  let (outcomes, recorded) = await DcbFenceBackfill.countAll(
     table,
     ~keys=args.keys,
     ~pairs=args.pairs,
     ~recount=args.recount,
-  )
-  Console.log(`${fences->Array.length->Int.toString} fence(s) to count in ${args.table}.`)
-  let outcomes = await DcbFenceBackfill.countFences(
-    table,
-    fences,
     ~settleMs=args.settleMs,
     ~dryRun=args.dryRun,
   )
+  Console.log(`${outcomes->Array.length->Int.toString} fence(s) counted in ${args.table}.`)
+  if recorded {
+    Console.log("Recorded: fences that begin counting from now on are trusted without a run.")
+  }
   let failures = outcomes->Array.filterMap(((ref, outcome)) => {
     let fence = DcbFenceBackfill.fenceRefText(ref)
     switch outcome {

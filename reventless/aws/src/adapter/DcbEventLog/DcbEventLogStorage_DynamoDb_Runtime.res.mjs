@@ -757,12 +757,29 @@ function withCounts(update, counts) {
   return newrecord;
 }
 
-function fenceOfItem(tag, item) {
+let cutAttr = "cut";
+
+function cutKey(key, eventType) {
+  return Object.fromEntries([
+    [
+      "id",
+      `fence#` + key
+    ],
+    [
+      "position",
+      Stdlib_Option.mapOr(eventType, "CUT", t => `CUT#` + t)
+    ]
+  ]);
+}
+
+function fenceOfItem(tag, item, cut) {
   let attrs = Stdlib_Option.getOr(Stdlib_Option.flatMap(item, Stdlib_JSON.Decode.object), {});
   let prefix = `n#`;
+  let countedFrom = Stdlib_Option.flatMap(attrs[countedFromAttr], Stdlib_JSON.Decode.string);
+  let bornCounted = cut !== undefined && countedFrom !== undefined ? Primitive_string.compare(countedFrom, cut) > 0 : false;
   return {
     tag: tag,
-    counted: Primitive_object.equal(attrs["counted"], true),
+    counted: Primitive_object.equal(attrs["counted"], true) || bornCounted,
     counts: Object.fromEntries(Stdlib_Array.filterMap(Object.entries(attrs), param => {
       let name = param[0];
       if (name.startsWith(prefix)) {
@@ -783,19 +800,41 @@ function getFenceItem(table, key) {
   }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item));
 }
 
+let cuts = {};
+
+async function readCut(table, key, eventType) {
+  let k = table.name + `|` + key + `|` + Stdlib_Option.getOr(eventType, "");
+  let match = cuts[k];
+  if (match !== undefined) {
+    let cut = match[0];
+    if (cut !== undefined) {
+      return cut;
+    }
+    if (Date.now() < match[1]) {
+      return;
+    }
+  }
+  let cut$1 = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(await getFenceItem(table, cutKey(key, eventType)), Stdlib_JSON.Decode.object), o => o[cutAttr]), Stdlib_JSON.Decode.string);
+  cuts[k] = [
+    cut$1,
+    Date.now() + 60000
+  ];
+  return cut$1;
+}
+
 function readFences(table, pairFenceTypesOpt) {
   let pairFenceTypes = pairFenceTypesOpt !== undefined ? pairFenceTypesOpt : ({});
   return async tags => await Promise.all(tags.map(async tag => {
     let types = pairFenceTypes[tag.key];
     if (types !== undefined && Primitive_object.notequal(types, [])) {
-      let parts = await Promise.all(types.map(async eventType => fenceOfItem(tag, await getFenceItem(table, pairFenceKey(tag, eventType)))));
+      let parts = await Promise.all(types.map(async eventType => fenceOfItem(tag, await getFenceItem(table, pairFenceKey(tag, eventType)), await readCut(table, tag.key, eventType))));
       return {
         tag: tag,
         counted: parts.every(f => f.counted),
         counts: Object.fromEntries(parts.flatMap(f => Object.entries(f.counts)))
       };
     }
-    return fenceOfItem(tag, await getFenceItem(table, fenceKey(tag)));
+    return fenceOfItem(tag, await getFenceItem(table, fenceKey(tag)), await readCut(table, tag.key, undefined));
   }));
 }
 
@@ -1522,6 +1561,8 @@ function readStream(table, crossPartitionTagKeysOpt) {
 
 let unprocessedRetries = 5;
 
+let cutAbsentForMs = 60000;
+
 let transactWriteItemsLimit = 100;
 
 export {
@@ -1573,8 +1614,13 @@ export {
   countedFromAttr,
   countsByTag,
   withCounts,
+  cutAttr,
+  cutKey,
   fenceOfItem,
   getFenceItem,
+  cuts,
+  cutAbsentForMs,
+  readCut,
   readFences,
   hasPairFence,
   pairFenceOps,

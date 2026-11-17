@@ -984,18 +984,37 @@ let withCounts = (
   }
 }
 
+// Where the backfill of a key's fences ran (a pair's: of its type), as a position
+// taken before its scan. Every fence item that existed then was counted, so one
+// that began counting later counted from its first event, and is trusted too.
+// Kept beside the key's fences, under an id no tag value has: `fence#<key>`.
+let cutAttr = "cut"
+
+let cutKey = (key: string, ~eventType: option<string>=?): dict<JSON.t> =>
+  Dict.fromArray([
+    ("id", `fence#${key}`->JSON.Encode.string),
+    ("position", eventType->Option.mapOr("CUT", t => `CUT#${t}`)->JSON.Encode.string),
+  ])
+
 // A fence item as the reader sees it: its counts by event type, and whether they
-// include the events written before counting began. No item means no event
-// carries the tag, so there is nothing to count.
+// include every event written: the backfill counted it, or it began counting after
+// the backfill's `cut`. No item means no event carries the tag, so there is
+// nothing to count.
 let fenceOfItem = (
   tag: Reventless.DcbTag.tag,
   item: option<JSON.t>,
+  ~cut: option<string>=?,
 ): Reventless.DcbFenceCount.fence => {
   let attrs = item->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
   let prefix = fenceCountAttr("")
+  let countedFrom = attrs->Dict.get(countedFromAttr)->Option.flatMap(JSON.Decode.string)
+  let bornCounted = switch (cut, countedFrom) {
+  | (Some(c), Some(from)) => String.compare(from, c) > 0.
+  | _ => false
+  }
   {
     tag,
-    counted: attrs->Dict.get("counted") == Some(JSON.Boolean(true)),
+    counted: attrs->Dict.get("counted") == Some(JSON.Boolean(true)) || bornCounted,
     counts: attrs
     ->Dict.toArray
     ->Array.filterMap(((name, value)) =>
@@ -1018,6 +1037,27 @@ let getFenceItem = (table: resolvedTable, key: dict<JSON.t>) =>
   ->Effect.map(result => result.item)
   ->Effect.runPromise
 
+// A cut, once recorded, holds for the Lambda's lifetime; its absence is asked again
+// after a minute, so a backfill run meanwhile is seen.
+let cuts: dict<(option<string>, float)> = Dict.make()
+let cutAbsentForMs = 60_000.
+
+let readCut = async (table: resolvedTable, key: string, ~eventType: option<string>=?) => {
+  let k = `${table.name}|${key}|${eventType->Option.getOr("")}`
+  switch cuts->Dict.get(k) {
+  | Some((Some(_) as cut, _)) => cut
+  | Some((None, until)) if Date.now() < until => None
+  | _ =>
+    let cut =
+      (await getFenceItem(table, cutKey(key, ~eventType?)))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(o => o->Dict.get(cutAttr))
+      ->Option.flatMap(JSON.Decode.string)
+    cuts->Dict.set(k, (cut, Date.now() +. cutAbsentForMs))
+    cut
+  }
+}
+
 // A key with pair fences is read off those items, one per type: the key value's own
 // item counts nothing, since a pair's key is never one the boundary reads across
 // partitions. The fence is counted only when each of them is.
@@ -1029,7 +1069,11 @@ let readFences = (table: resolvedTable, ~pairFenceTypes: dict<array<string>>=Dic
       | Some(types) if types != [] =>
         let parts = await types
         ->Array.map(async eventType =>
-          fenceOfItem(tag, await getFenceItem(table, pairFenceKey(tag, eventType)))
+          fenceOfItem(
+            tag,
+            await getFenceItem(table, pairFenceKey(tag, eventType)),
+            ~cut=?await readCut(table, tag.key, ~eventType),
+          )
         )
         ->Promise.all
         let fence: Reventless.DcbFenceCount.fence = {
@@ -1038,7 +1082,12 @@ let readFences = (table: resolvedTable, ~pairFenceTypes: dict<array<string>>=Dic
           counts: parts->Array.flatMap(f => f.counts->Dict.toArray)->Dict.fromArray,
         }
         fence
-      | _ => fenceOfItem(tag, await getFenceItem(table, fenceKey(tag)))
+      | _ =>
+        fenceOfItem(
+          tag,
+          await getFenceItem(table, fenceKey(tag)),
+          ~cut=?await readCut(table, tag.key),
+        )
       }
     )
     ->Promise.all
