@@ -15,6 +15,9 @@ const sqliteGlobalSetup = path.resolve(
 
 /** @type {import('jest').Config} */
 module.exports = {
+  // Locally four workers: each grows past 1 GB, so one per core fills a laptop's
+  // memory. CI keeps jest's default.
+  ...(process.env.CI ? {} : { maxWorkers: 4 }),
   reporters: ["<rootDir>/jest.reporter.js"],
   watchPathIgnorePatterns: ["<rootDir>/.+/lib/bs/"],
   projects: [
