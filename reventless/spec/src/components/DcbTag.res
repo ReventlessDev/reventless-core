@@ -63,6 +63,13 @@ Returned by `append` and accepted by `read` / `readStream` as the `~after` curso
 */
 type sequencePosition = string
 
+/** How many events of `eventType` carrying the cross-partition `tag` a reader read. */
+type fenceCount = {
+  tag: tag,
+  eventType: string,
+  count: int,
+}
+
 /**
 An optimistic-concurrency condition for a DCB `append` operation.
 
@@ -83,6 +90,10 @@ let condition: DcbTag.appendCondition = {
 type appendCondition = {
   query: query,
   after?: sequencePosition,
+  /** How many events of a type carrying a cross-partition tag the reader read,
+      for each fence whose count it checked. A store with such fences checks the
+      count instead of the position; one without ignores it. */
+  fenceCounts?: array<fenceCount>,
 }
 
 // --- Sury metadata for tag annotation ---

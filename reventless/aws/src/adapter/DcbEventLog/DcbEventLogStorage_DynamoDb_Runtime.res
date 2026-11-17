@@ -730,6 +730,9 @@ let collectEventTags = (events: array<ReventlessCore.DcbEventLog_Adapter.rawStor
 // Plan: docs/plans/done/dcb-fence-event-type-granularity.md.
 let fenceTypeAttr = (eventType: string) => `pos#${eventType}`
 
+// A cross-partition fence's count of events of a type (see `withCounts`).
+let fenceCountAttr = (eventType: string) => `n#${eventType}`
+
 let dedupStrings = (xs: array<string>): array<string> => {
   let seen = Set.make()
   xs->Array.filter(x =>
@@ -779,6 +782,7 @@ let buildConditionalFenceUpdate = (
   ~producedTypes: array<string>,
   ~newPosition: string,
   ~after: option<string>,
+  ~readCounts: dict<int>=Dict.make(),
 ): TransactWriteCommand.update => {
   let names = Dict.make()
   let values = Dict.fromArray([(":new", newPosition->JSON.Encode.string)])
@@ -799,7 +803,6 @@ let buildConditionalFenceUpdate = (
     })
     ->Array.join(" AND ")
   | Some(pos) =>
-    values->Dict.set(":after", pos->JSON.Encode.string)
     // A real append condition always carries the consumed types (buildQueryFromCommand
     // sets them). Fall back to the produced types if a caller omits them, so the
     // conditional Update never degenerates to an empty condition expression.
@@ -807,8 +810,19 @@ let buildConditionalFenceUpdate = (
     checkTypes
     ->Array.mapWithIndex((t, i) => {
       let ph = `#c${i->Int.toString}`
-      names->Dict.set(ph, fenceTypeAttr(t))
-      `(attribute_not_exists(${ph}) OR ${ph} <= :after)`
+      switch readCounts->Dict.get(t) {
+      // A counted cross-partition fence: the count proves nothing was written
+      // that the reader did not read, where a position can hide a missed event.
+      | Some(n) =>
+        let v = `:s${i->Int.toString}`
+        names->Dict.set(ph, fenceCountAttr(t))
+        values->Dict.set(v, n->Int.toFloat->JSON.Encode.float)
+        n == 0 ? `(attribute_not_exists(${ph}) OR ${ph} = ${v})` : `${ph} = ${v}`
+      | None =>
+        names->Dict.set(ph, fenceTypeAttr(t))
+        values->Dict.set(":after", pos->JSON.Encode.string)
+        `(attribute_not_exists(${ph}) OR ${ph} <= :after)`
+      }
     })
     ->Array.join(" AND ")
   }
@@ -853,7 +867,6 @@ let buildUnconditionalFenceUpdate = (
 // events of the type carry the tag value, so a reader of the eventually consistent
 // index can tell whether it saw them all. `countedFrom` is the position counting
 // began at; the backfill counts the events below it and then sets `counted`.
-let fenceCountAttr = (eventType: string) => `n#${eventType}`
 let countedFromAttr = "countedFrom"
 
 // tagKey ("key:value") -> event type -> how many of `events` of that type carry the tag.
@@ -1390,6 +1403,16 @@ let buildConditionalTransactItems = (
   })
 
   let counting = countingCrossPartition(~crossPartitionTagKeys, events)
+  // The counts the reader checked, by type, for a cross-partition tag's fence.
+  let readCountsFor = (t: Reventless.DcbTag.tag) =>
+    isCrossPartition(t)
+      ? cond.fenceCounts
+        ->Option.getOr([])
+        ->Array.filterMap(c =>
+          c.tag.key == t.key && c.tag.value == t.value ? Some((c.eventType, c.count)) : None
+        )
+        ->Dict.fromArray
+      : Dict.make()
   let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
   let updateItems = conditionalUpdateTags->Array.filterMap(tag => {
     let producedTypes = producedTypesFor(tag)
@@ -1406,6 +1429,7 @@ let buildConditionalTransactItems = (
             ~producedTypes,
             ~newPosition=basePosition,
             ~after=cond.after,
+            ~readCounts=readCountsFor(tag),
           )->counting(tag, _),
         })
   })

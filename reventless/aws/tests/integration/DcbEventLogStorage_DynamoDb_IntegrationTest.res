@@ -656,3 +656,66 @@ describe("DCB DynamoDb integration — a cross-partition fence counts its carrie
     ])
   })
 })
+
+describe("DCB DynamoDb integration — the append checks a counted fence's count", () => {
+  let customer = tag("customerId", "C-check")
+  let order = id => event("OrderPlaced", [tag("orderId", id), customer])
+  let markCounted = async (table: Util_DynamoDb_Runtime.resolvedTable) => {
+    let _ = await AwsSdk.DynamoDb.DocumentClient.UpdateCommand.send(
+      AwsSdk.DynamoDb.DocumentClient.UpdateCommand.make({
+        tableName: table.name,
+        key: Runtime.fenceKey(customer),
+        updateExpression: "SET counted = :t",
+        expressionAttributeValues: Dict.fromArray([(":t", JSON.Encode.bool(true))]),
+      }),
+    )
+  }
+  // Two orders of the customer; the reader's index showed only the newer one, so
+  // its head is the newer order's position and the position check cannot tell.
+  let givenTwoOrdersReadOne = async () => {
+    let table = await H.freshTable()
+    let write = id =>
+      Runtime.appendUnconditional(
+        table,
+        [order(id)],
+        ~partitionTag=simple("orderId"),
+        ~crossPartitionTagKeys=["customerId"],
+      )
+    let _ = await write("O-k1")
+    let head = await write("O-k2")
+    await markCounted(table)
+    (table, head->Result.mapOr(None, p => Some(p)))
+  }
+  let appendAfter = (table, head, ~count=?) =>
+    Runtime.appendConditional(
+      table,
+      [order("O-k3")],
+      {
+        query: [{tags: [customer], eventTypes: ["OrderPlaced"]}],
+        after: ?head,
+        fenceCounts: ?(
+          count->Option.map(n => [
+            {Reventless.DcbTag.tag: customer, eventType: "OrderPlaced", count: n},
+          ])
+        ),
+      },
+      ~partitionTag=simple("orderId"),
+      ~crossPartitionTagKeys=["customerId"],
+    )
+
+  testAsync("a reader that missed an older event is refused by the count", async () => {
+    let (table, head) = await givenTwoOrdersReadOne()
+    let result = await appendAfter(table, head, ~count=1)
+    expect(result)->toEqual(Error(ReventlessInfra.DcbEventLog.Conflict))
+  })
+
+  testAsync("the position alone lets the same read through", async () => {
+    let (table, head) = await givenTwoOrdersReadOne()
+    expect(isOk(await appendAfter(table, head)))->toBe(true)
+  })
+
+  testAsync("a reader that read every counted event appends", async () => {
+    let (table, head) = await givenTwoOrdersReadOne()
+    expect(isOk(await appendAfter(table, head, ~count=2)))->toBe(true)
+  })
+})

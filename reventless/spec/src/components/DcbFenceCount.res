@@ -75,3 +75,19 @@ let shortfalls = (fences: array<fence>, clauses: array<clause>, seen: dict<int>)
     | _ => []
     }
   )
+
+/** What the reader read of each type of each counted fence, for the append to check. */
+let readCounts = (fences: array<fence>, clauses: array<clause>, seen: dict<int>): array<
+  DcbTag.fenceCount,
+> =>
+  clauses->Array.flatMap(c =>
+    switch fences->Array.find(f => tagId(f.tag) == tagId(c.tag)) {
+    | Some(f) if f.counted =>
+      c.eventTypes->Array.map((eventType): DcbTag.fenceCount => {
+        tag: c.tag,
+        eventType,
+        count: seen->Dict.get(seenKey(c.tag, eventType))->Option.getOr(0),
+      })
+    | _ => []
+    }
+  )

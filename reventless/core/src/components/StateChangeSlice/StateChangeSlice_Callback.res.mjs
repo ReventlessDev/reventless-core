@@ -421,9 +421,12 @@ function Make(Spec) {
                       }
                     }).join(", ");
                     let eventJsons = rawEvents.map(e => e.data);
+                    let fenceCounts = DcbFenceCount$Reventless.readCounts(fences, fenceClauses, seen);
+                    let condition_fenceCounts = Primitive_object.equal(fenceCounts, []) ? undefined : fenceCounts;
                     let condition = {
                       query: query,
-                      after: headPosition
+                      after: headPosition,
+                      fenceCounts: condition_fenceCounts
                     };
                     return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, ids, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => {
                       if (DcbTag$Reventless.readsNothing(query)) {

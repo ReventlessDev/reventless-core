@@ -17,6 +17,7 @@ module LogOps = DcbEventLog_Operations.Make({
 let staleReads = ref(0)
 let reads = ref(0)
 let appends = ref(0)
+let conditions: ref<array<option<Reventless.DcbTag.appendCondition>>> = ref([])
 let counted = ref(true)
 let student: Reventless.DcbTag.tag = {key: "studentId", value: "S1"}
 
@@ -29,6 +30,7 @@ let eventLog: DcbEventLog.operations = {
   },
   append: (events, ~condition=?) => {
     appends := appends.contents + 1
+    conditions := conditions.contents->Array.concat([condition])
     LogOps.append(events, ~condition?)
   },
   appendStream: LogOps.appendStream,
@@ -126,6 +128,7 @@ let _ = beforeEach(() => {
   SubscribeHandler.resetCache()
   reads := 0
   appends := 0
+  conditions := []
   staleReads := 0
   counted := true
 })
@@ -161,5 +164,12 @@ describe("a read of a counted cross-partition fence", () => {
     // Decided on the stale read, as before counting existed: only the append's
     // condition catches it, and the retry reads again.
     expect((mock.getEvents()->Array.length, reads.contents, appends.contents))->toEqual((1, 2, 1))
+  })
+
+  testPromise("the append carries the count it read", async () => {
+    let _ = await subscribe("first", "C1")
+    expect(conditions.contents->Array.map(c => c->Option.flatMap(c => c.fenceCounts)))->toEqual([
+      Some([{Reventless.DcbTag.tag: student, eventType: "StudentSubscribed", count: 0}]),
+    ])
   })
 })

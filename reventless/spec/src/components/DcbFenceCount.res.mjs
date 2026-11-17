@@ -73,11 +73,31 @@ function shortfalls(fences, clauses, seen) {
   });
 }
 
+function readCounts(fences, clauses, seen) {
+  return clauses.flatMap(c => {
+    let f = fences.find(f => tagId(f.tag) === tagId(c.tag));
+    if (f !== undefined) {
+      if (f.counted) {
+        return c.eventTypes.map(eventType => ({
+          tag: c.tag,
+          eventType: eventType,
+          count: Stdlib_Option.getOr(seen[seenKey(c.tag, eventType)], 0)
+        }));
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  });
+}
+
 export {
   tagId,
   seenKey,
   clauses,
   countRead,
   shortfalls,
+  readCounts,
 }
 /* No side effect */

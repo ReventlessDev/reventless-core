@@ -657,9 +657,15 @@ module Make = (
                             )
                             ->Array.join(", ")
                           let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
+                          let fenceCounts = Reventless.DcbFenceCount.readCounts(
+                            fences,
+                            fenceClauses,
+                            seen,
+                          )
                           let condition: Reventless.DcbTag.appendCondition = {
                             query,
                             after: ?headPosition,
+                            fenceCounts: ?(fenceCounts == [] ? None : Some(fenceCounts)),
                           }
                           EffectLogger.logInfo(
                             ~comp,

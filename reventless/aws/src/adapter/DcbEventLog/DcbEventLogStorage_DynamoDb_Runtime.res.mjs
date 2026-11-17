@@ -569,6 +569,10 @@ function fenceTypeAttr(eventType) {
   return `pos#` + eventType;
 }
 
+function fenceCountAttr(eventType) {
+  return `n#` + eventType;
+}
+
 function dedupStrings(xs) {
   let seen = new Set();
   return xs.filter(x => {
@@ -596,7 +600,8 @@ function carriedTypesByTag(events) {
   return d;
 }
 
-function buildConditionalFenceUpdate(tableName, tag, consumedTypes, producedTypes, newPosition, after) {
+function buildConditionalFenceUpdate(tableName, tag, consumedTypes, producedTypes, newPosition, after, readCountsOpt) {
+  let readCounts = readCountsOpt !== undefined ? readCountsOpt : ({});
   let names = {};
   let values = Object.fromEntries([[
       ":new",
@@ -609,11 +614,22 @@ function buildConditionalFenceUpdate(tableName, tag, consumedTypes, producedType
   });
   let conditionExpression;
   if (after !== undefined) {
-    values[":after"] = after;
     let checkTypes = consumedTypes.length === 0 ? producedTypes : consumedTypes;
     conditionExpression = checkTypes.map((t, i) => {
       let ph = `#c` + i.toString();
+      let n = readCounts[t];
+      if (n !== undefined) {
+        let v = `:s` + i.toString();
+        names[ph] = fenceCountAttr(t);
+        values[v] = n;
+        if (n === 0) {
+          return `(attribute_not_exists(` + ph + `) OR ` + ph + ` = ` + v + `)`;
+        } else {
+          return ph + ` = ` + v;
+        }
+      }
       names[ph] = fenceTypeAttr(t);
+      values[":after"] = after;
       return `(attribute_not_exists(` + ph + `) OR ` + ph + ` <= :after)`;
     }).join(" AND ");
   } else {
@@ -651,10 +667,6 @@ function buildUnconditionalFenceUpdate(tableName, tag, producedTypes, newPositio
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: values
   };
-}
-
-function fenceCountAttr(eventType) {
-  return `n#` + eventType;
 }
 
 let countedFromAttr = "countedFrom";
@@ -1059,6 +1071,20 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
     }
   });
   let counting = countingCrossPartition(crossPartitionTagKeys, events);
+  let readCountsFor = t => {
+    if (crossPartitionTagKeys.includes(t.key)) {
+      return Object.fromEntries(Stdlib_Array.filterMap(Stdlib_Option.getOr(cond$1.fenceCounts, []), c => {
+        if (c.tag.key === t.key && c.tag.value === t.value) {
+          return [
+            c.eventType,
+            c.count
+          ];
+        }
+      }));
+    } else {
+      return {};
+    }
+  };
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
   let updateItems = Stdlib_Array.filterMap(conditionalUpdateTags, tag => {
     let producedTypes = producedTypesFor(tag);
@@ -1066,7 +1092,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     } else {
       return {
-        Update: counting(tag, buildConditionalFenceUpdate(table.name, tag, consumedTypesFor(tag), producedTypes, basePosition, cond$1.after))
+        Update: counting(tag, buildConditionalFenceUpdate(table.name, tag, consumedTypesFor(tag), producedTypes, basePosition, cond$1.after, readCountsFor(tag)))
       };
     }
   });
@@ -1330,11 +1356,11 @@ export {
   collectQueryTags,
   collectEventTags,
   fenceTypeAttr,
+  fenceCountAttr,
   dedupStrings,
   carriedTypesByTag,
   buildConditionalFenceUpdate,
   buildUnconditionalFenceUpdate,
-  fenceCountAttr,
   countedFromAttr,
   countsByTag,
   withCounts,

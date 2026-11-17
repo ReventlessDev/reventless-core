@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) steps 1 and 2 (the writers count, the reader checks) built 2026-11-17. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) steps 1 to 3 (the writers count, the reader checks, the append checks) built 2026-11-17. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -345,8 +345,11 @@ In five steps, each shippable alone:
    counts what it reads into the cached counts (`DcbFenceCount`), and on a shortfall of a counted
    fence reads again in full after 100, 200 and 300 ms. That uses the same three retries as an
    append conflict. Past them it answers `Conflict`. A fence not yet `counted` is not checked.
-3. **The append checks the count, and the cache keeps it.** `appendCondition` gains the counts the
-   reader saw, and a counted fence's condition becomes `n#C = :seen`.
+3. **The append checks the count, and the cache keeps it.** Built 2026-11-17. `appendCondition`
+   gains `fenceCounts`, what the reader read of each type of each counted fence. On DynamoDB the
+   fence's condition for those types becomes `n#C = :read` in place of the position check, so an
+   older event missing behind a newer one is refused, which the position check lets through (the
+   DynamoDB-local test shows both). The local backends ignore the field: they check literally.
 4. **The backfill.** Per fence item: with `countedFrom`, count the events of each type below it and
    add them; without it, count them all and set `countedFrom`, conditioned on its absence so that a
    writer in between makes it start again. Either way it sets `counted` in the same update. This
