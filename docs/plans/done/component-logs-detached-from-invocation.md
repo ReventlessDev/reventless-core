@@ -1,15 +1,17 @@
 # Plan: a component's log line belongs to the invocation that caused it
 
 **Date:** 2026-08-20, revised 2026-11-01<br/>
-**Status:** ✅ Built 2026-11-01, not yet released; the AWS measurement of
-[Verification](#verification) is still to be made after a deploy. Decided the same day (the open
+**Status:** ✅ Done 2026-11-17. Built 2026-11-01 and measured on AWS on 2026-11-17
+([Verification](#verification)): 80 of the 136 component lines carry their message's ids where 0
+did. The measurement found one line left detached, the projection's `handling action:` debug line,
+and it now carries the event's ids too. Decided the same day (the open
 questions as recommended), after a revision against today's code: a fourth mechanism
 ([Option D](#option-d--the-handled-messages-ids-on-the-log-call)) is recommended, and the steps
 are numbered [CL1 to CL5](#phases). Found by running the on-AWS verification that
-[entrypoint-dispatch-parity-and-latency-fields.md](done/entrypoint-dispatch-parity-and-latency-fields.md)
+[entrypoint-dispatch-parity-and-latency-fields.md](entrypoint-dispatch-parity-and-latency-fields.md)
 had left open, against the deployed `online-shop-*-aws-alpha` stacks.<br/>
 **Repos:** `reventless-core` only.<br/>
-**Unblocks:** [PF9 of the-local-platform-serves-what-is-watched.md](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line),
+**Unblocks:** [PF9 of the-local-platform-serves-what-is-watched.md](../the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line),
 which puts the handled message's own id and its entity on the same lines.
 
 > **Questions and short answers**
@@ -26,12 +28,12 @@ which puts the handled message's own id and its entity on the same lines.
 >   and the boundary annotates one `correlationId` per batch; the handled message is the only
 >   exact source. It also leaves the 134 call sites' shape as it is.
 > - *What does it add beyond the ids the boundary had?* **The handled message's own `msgId`,
->   and the entity a command is handled for** ([CL3](#cl3-the-component-families)), which [PF9](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)
+>   and the entity a command is handled for** ([CL3](#cl3-the-component-families)), which [PF9](../the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)
 >   asks for.
 
 **Goal.** A framework component's log line carries the `correlationId`,
 `causationId` and `plugin` of the invocation it is running inside — the guarantee
-[Runtime.res:9-14](../../reventless/core/src/adapter/Runtime/Runtime.res#L9-L14)
+[Runtime.res:9-14](../../../reventless/core/src/adapter/Runtime/Runtime.res#L9-L14)
 already claims in prose and the dispatch boundary already computes.
 
 **Non-goal.** Changing what the framework logs, the `comp` vocabulary, or
@@ -43,7 +45,7 @@ as they are; this is about the fields *around* them.
 ## The finding
 
 The dispatch boundary annotates each invocation
-([Runtime.res:15-60](../../reventless/core/src/adapter/Runtime/Runtime.res#L15-L60),
+([Runtime.res:15-60](../../../reventless/core/src/adapter/Runtime/Runtime.res#L15-L60),
 and its JS twin `runEffect` in `HandlerFactoryHelpers.mjs`):
 
 ```rescript
@@ -54,7 +56,7 @@ effect
 ```
 
 Component code then logs like this
-([ReadModel_Callback.res:27-33](../../reventless/core/src/components/ReadModel/ReadModel_Callback.res#L27-L33)):
+([ReadModel_Callback.res:27-33](../../../reventless/core/src/components/ReadModel/ReadModel_Callback.res#L27-L33)):
 
 ```rescript
 EffectLogger.logInfo(~comp, ~detail=json, `handling event ${idxStr}/${total} …`)->Effect.runSync
@@ -63,10 +65,10 @@ EffectLogger.logInfo(~comp, ~detail=json, `handling event ${idxStr}/${total} …
 `Effect.runSync` starts a **fresh fiber with default FiberRefs**. Log annotations
 live in a FiberRef, so the boundary's annotations are not in scope: the only field
 that survives is the `~comp` passed as an argument, which
-[EffectLogger._annotate](../../reventless/core/src/util/EffectLogger.res#L162-L171)
+[EffectLogger._annotate](../../../reventless/core/src/util/EffectLogger.res#L162-L171)
 attaches to the log effect itself.
 
-[EffectLogger.res:154](../../reventless/core/src/util/EffectLogger.res#L154) documents
+[EffectLogger.res:154](../../../reventless/core/src/util/EffectLogger.res#L154) documents
 the detached form as a sanctioned usage — "usable in Effect pipelines or with
 `->Effect.runSync`" — without noting that the second form silently drops whatever
 the caller annotated.
@@ -230,7 +232,7 @@ annotation map does not already carry them.
 - **Concurrency hazard, and it is real.**
   `StreamRoutedEntryPoint_Ops.makeRoutedHandler` maps over source groups with
   `Array.map(async …)->Promise.all`
-  ([StreamRoutedEntryPoint_Ops.res:120-154](../../reventless/aws/src/adapter/Runtime/StreamRoutedEntryPoint_Ops.res#L120-L154)),
+  ([StreamRoutedEntryPoint_Ops.res:120-154](../../../reventless/aws/src/adapter/Runtime/StreamRoutedEntryPoint_Ops.res#L120-L154)),
   so two groups with **different** `correlationId`s are in flight in one
   invocation. A single mutable slot would attribute a line to whichever group
   wrote last. Within one group the handlers share a `correlationId` and differ
@@ -261,7 +263,7 @@ attach them as annotations **on the log effect itself**. `_annotate` already doe
   several flows.
 - **No hazard.** No ambient state and no fiber to thread; a call site gains one argument.
 - **Adds what the boundary never had:** the message's own `msgId`, and the entity a command is
-  handled for ([PF9](the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)).
+  handled for ([PF9](../the-local-platform-serves-what-is-watched.md#pf9-ids-on-every-log-line)).
 - **Cannot reach a line with no message at hand:** utility code (`FTPHandler`, `Validation`,
   `Util_Promise`) and cold reads. Those keep the boundary's annotations only where they are in
   its chain ([CL4](#cl4-the-remainder)).
@@ -326,7 +328,7 @@ the platform, not a flow.
 - `EffectLogger`'s comment on the detached form says what it costs, and points to `~ids`.
 - `docs/guides/cloudwatch-logs-insights.md` gains the "one correlationId, whole chain" query,
   with `msgId` in its field list (together with
-  [PF12](the-local-platform-serves-what-is-watched.md#pf12-the-cloudwatch-guide-follows-the-chain)).
+  [PF12](../the-local-platform-serves-what-is-watched.md#pf12-the-cloudwatch-guide-follows-the-chain)).
 
 ## Decisions
 
@@ -390,8 +392,24 @@ PY
 **On AWS** — re-run the measurement that produced the table above against
 `…-AllReadModels` after [CL3](#cl3-the-component-families) and require a non-zero `correlationId` count on
 component lines. This is the same check
-[entrypoint-dispatch-parity-and-latency-fields.md](done/entrypoint-dispatch-parity-and-latency-fields.md)
+[entrypoint-dispatch-parity-and-latency-fields.md](entrypoint-dispatch-parity-and-latency-fields.md)
 left open, and closing it here is what lets that plan close too.
+
+### Measured on alpha after the deploy
+
+`online-shop-hybrid-platform-aws-alpha-AllReadModels`, log events from 2026-11-11 to 2026-11-16
+(the ordering stack's `AllReadModels` logged no component line in that time):
+
+| `comp` | lines | with `correlationId` | with `msgId` |
+| --- | --- | --- | --- |
+| `ReadModel(Plugins)` | 136 | 80 | 56 |
+
+The 80 are the `view changed` lines and the read model's own lines through `EffectLogger`. The 56
+without ids were all one line: `handling action: …` at Debug, which `Projection.applyAction` logs
+through `Logger.debugLazy`, a logger that took no ids. It now takes `~ids`, and the line carries
+the ids of the event it came from (`Projection.sourceIds`): all of them for one event, and only
+the shared `correlationId` when actions from several events were merged
+(`ViewChangeTest`).
 
 ## Risks
 

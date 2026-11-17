@@ -199,6 +199,34 @@ type changeSource = {
   entityType?: string,
 }
 
+/** The correlation id every source shares, if they share one. */
+let sharedCorrelationId = (sources: array<changeSource>): option<string> =>
+  switch sources->Array.map(s => s.correlationId) {
+  | [] => None
+  | ids =>
+    let first = ids->Array.getUnsafe(0)
+    ids->Array.every(id => id == first) ? first : None
+  }
+
+/** The ids a log line about these sources carries: all of one source's, or the
+    correlation id several share. */
+let sourceIds = (sources: array<changeSource>): dict<string> =>
+  switch sources {
+  | [{msgId, ?correlationId, ?entityId, ?entityType}] =>
+    [
+      ("msgId", Some(msgId)),
+      ("correlationId", correlationId),
+      ("entityId", entityId),
+      ("entityType", entityType),
+    ]
+    ->Array.filterMap(((name, value)) => value->Option.map(v => (name, v)))
+    ->Dict.fromArray
+  | _ =>
+    sharedCorrelationId(sources)->Option.mapOr(Dict.make(), id =>
+      Dict.fromArray([("correlationId", id)])
+    )
+  }
+
 /** One row a projection created, changed or removed. `before` is there where the
     row was loaded first; `Set` and `Delete` write without loading, so theirs is
     absent. `sources` are the events whose actions were applied to the row, all of
@@ -335,10 +363,10 @@ let applyAction = async (
     result
   }
   // Log each applied action at Debug with the full state it creates/changes,
-  // attributed to the owning component. Debug-lazy so the state is only
-  // serialized when debug logging is enabled; shadows the module-level
-  // `logAction` to carry the threaded `~comp` and the `handling action:` prefix.
-  let logAction = makeStr => log.debugLazy(~comp, () => `handling action: ${makeStr()}`)
+  // attributed to the owning component and the events it came from. Debug-lazy so
+  // the state is only serialized when debug logging is enabled.
+  let logAction = makeStr =>
+    log.debugLazy(~comp, ~ids=sourceIds(sources), () => `handling action: ${makeStr()}`)
   let loadAtMost = (n, id) =>
     loadStream(id)
     ->Stream.take(n)

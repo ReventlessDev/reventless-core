@@ -170,4 +170,36 @@ describe("ViewChange", () => {
       ->Option.mapOr(false, s => s->String.includes("new-secret")),
     )->toBe(true)
   })
+
+  testPromise("the action line carries the ids of the event it came from", async () => {
+    let actionLines = async sources => {
+      let lines = []
+      let removeSink = Logger.addSink(r => lines->Array.push(r))
+      Logger.setDefaultMinLevel(Debug)
+      let (_, ops) = makeOps()
+      let _ = await Projection.handleAction(
+        ~sources,
+        Set("a", {name: "A", total: 1, token: "t"}),
+        ops,
+        None,
+      )
+      Logger.setDefaultMinLevel(Info)
+      removeSink()
+      lines->Array.filter(r => r.message->String.startsWith("handling action"))
+    }
+    let one = await actionLines([source("m-1")])
+    expect(
+      one->Array.map(
+        r =>
+          ["msgId", "correlationId", "entityId", "entityType"]->Array.map(
+            k => r.annotations->Dict.get(k),
+          ),
+      ),
+    )->toEqual([[Some("m-1"), Some("flow-1"), Some("order-1"), Some("Order")]])
+    // Several events: only the flow they share.
+    let merged = await actionLines([source("m-1"), source("m-2")])
+    expect(merged->Array.map(r => r.annotations))->toEqual([
+      Dict.fromArray([("correlationId", "flow-1")]),
+    ])
+  })
 })

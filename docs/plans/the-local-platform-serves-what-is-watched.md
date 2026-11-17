@@ -8,12 +8,12 @@
 [PF8](#pf8-automations-and-outbound-translations-carry-the-flow) and
 [PF10](#pf10-the-view-change-line) built 2026-11-01; [PF9](#pf9-ids-on-every-log-line) and
 [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) built the same day with
-[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md), not yet
+[component-logs-detached-from-invocation.md](done/component-logs-detached-from-invocation.md), not yet
 released; [PF12](#pf12-the-cloudwatch-guide-follows-the-chain)'s queries are still to be run against a stack.
 [PF13](#pf13-the-registry-entry-names-the-platform-api) and
 [PF14](#pf14-a-commands-outcome-names-what-caused-it) built 2026-11-01, not yet released.<br/>
 **Repos:** `reventless-core` only.<br/>
-**Builds on:** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md)
+**Builds on:** [component-logs-detached-from-invocation.md](done/component-logs-detached-from-invocation.md)
 (a component's log line keeps its invocation's ids; [PF9](#pf9-ids-on-every-log-line) needs it) ·
 [event-history-query-source-a.md](event-history-query-source-a.md) (the per-plugin history
 query, which stays as it is) · [done/mcp-event-history-resource.md](done/mcp-event-history-resource.md).
@@ -101,7 +101,7 @@ Two releases. **Feeds** ([PF1](#pf1-log-sinks-and-the-recent-rings) to
 [PF6](#pf6-mcp-resources-for-recent-logs-and-all-events)) need nothing else. **The chain**
 ([PF7](#pf7-the-command-outcome-hook-takes-several-listeners) to
 [PF10](#pf10-the-view-change-line)) needs
-[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md) for
+[component-logs-detached-from-invocation.md](done/component-logs-detached-from-invocation.md) for
 [PF9](#pf9-ids-on-every-log-line). [PF11](#pf11-the-feeds-on-the-platform-api-and-its-subscriptions-checked)
 and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either release.
 
@@ -307,9 +307,9 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
 
 ### PF9: ids on every log line
 
-- **Needs** [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md),
+- **Needs** [component-logs-detached-from-invocation.md](done/component-logs-detached-from-invocation.md),
   revised 2026-11-01: its
-  [CL2 and CL3](component-logs-detached-from-invocation.md#phases) put the handled message's
+  [CL2 and CL3](done/component-logs-detached-from-invocation.md#phases) put the handled message's
   `msgId`, `correlationId` and `causationId` on every component line, and a command's
   `entityId` and `entityType` on the lines of its handling, from the message itself rather than
   from the invocation. What is left here is the command's entry:
@@ -328,7 +328,7 @@ and [PF12](#pf12-the-cloudwatch-guide-follows-the-chain) can come in either rele
   - a test that each refusal before the handler logs its warning with the command's ids, and
     that an access refusal reaches the outcome hook.
 - **Built 2026-11-01.** The handling lines' ids and entities are the component-log plan's
-  [CL3](component-logs-detached-from-invocation.md#cl3-the-component-families). Here: the
+  [CL3](done/component-logs-detached-from-invocation.md#cl3-the-component-families). Here: the
   `generated command` line carries the new command's ids, and `refused before its handler: …`
   is one warning per refusal; an owner-field refusal and an interceptor's deny fire the outcome
   hook as rejected with cause `ACCESS` and code `Forbidden`, a payload that cannot be decoded

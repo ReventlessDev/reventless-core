@@ -244,9 +244,9 @@ function makeLoggerWith(shouldLog) {
     info: (comp, data, msg) => log("INFO", comp, data, msg),
     warn: (comp, data, msg) => log("WARN", comp, data, msg),
     error: (comp, data, msg) => log("ERROR", comp, data, msg),
-    debugLazy: (comp, makeMsg) => {
+    debugLazy: (comp, ids, makeMsg) => {
       if (shouldLog("DEBUG", comp)) {
-        return emit("DEBUG", comp, undefined, undefined, undefined, makeMsg());
+        return emit("DEBUG", comp, undefined, undefined, ids, makeMsg());
       }
     }
   };
@@ -273,7 +273,7 @@ function silent_error(param, param$1, param$2) {
   
 }
 
-function silent_debugLazy(param, param$1) {
+function silent_debugLazy(param, param$1, param$2) {
   
 }
 

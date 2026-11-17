@@ -25,7 +25,7 @@ import * as RowChange$ReventlessCore from "./RowChange.res.mjs";
 let log = Logger$ReventlessCore.fromEnv();
 
 function logAction(makeStr) {
-  log.debugLazy("Projection", makeStr);
+  log.debugLazy("Projection", undefined, makeStr);
 }
 
 function overlaysFor(stateSchema) {
@@ -207,6 +207,51 @@ function rewriteJsonAction(action, at, stateSchema) {
   }
 }
 
+function sharedCorrelationId(sources) {
+  let ids = sources.map(s => s.correlationId);
+  if (ids.length === 0) {
+    return;
+  }
+  let first = ids[0];
+  if (ids.every(id => Primitive_object.equal(id, first))) {
+    return first;
+  }
+}
+
+function sourceIds(sources) {
+  if (sources.length !== 1) {
+    return Stdlib_Option.mapOr(sharedCorrelationId(sources), {}, id => Object.fromEntries([[
+        "correlationId",
+        id
+      ]]));
+  }
+  let match = sources[0];
+  return Object.fromEntries(Stdlib_Array.filterMap([
+    [
+      "msgId",
+      match.msgId
+    ],
+    [
+      "correlationId",
+      match.correlationId
+    ],
+    [
+      "entityId",
+      match.entityId
+    ],
+    [
+      "entityType",
+      match.entityType
+    ]
+  ], param => {
+    let name = param[0];
+    return Stdlib_Option.map(param[1], v => [
+      name,
+      v
+    ]);
+  }));
+}
+
 function mergeSources(a, b) {
   return a.concat(b.filter(s => !a.some(other => other.msgId === s.msgId)));
 }
@@ -251,7 +296,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
     ]
   ]);
   let deletedCount = batchToDelete.length;
-  log.debugLazy("Projection", () => action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
+  logAction(() => action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
   let result = await Promise.all([
     param.deleteBatch(batchToDelete),
     param.saveBatch(batchToSave)
@@ -320,7 +365,7 @@ async function applyAction($staropt$star, $staropt$star$1, onChange, action, ope
     }
     return result;
   };
-  let logAction = makeStr => log.debugLazy(comp, () => `handling action: ` + makeStr());
+  let logAction = makeStr => log.debugLazy(comp, sourceIds(sources), () => `handling action: ` + makeStr());
   let loadAtMost = (n, id) => Effect.runPromise(Effect$1.catch(Effect$1.map(Stream.runCollect(Stream.take(loadStream(id), n)), states => ({
     TAG: "Ok",
     _0: states
@@ -585,7 +630,7 @@ function actionsWithId(action) {
           action
         ]];
   }
-  log.debugLazy("Projection", () => "Error: Action not yet supported !");
+  logAction(() => "Error: Action not yet supported !");
   return [];
 }
 
@@ -909,6 +954,8 @@ export {
   trailOverlays,
   rewriteTrail,
   rewriteJsonAction,
+  sharedCorrelationId,
+  sourceIds,
   mergeSources,
   applyChanges,
   stateToString,

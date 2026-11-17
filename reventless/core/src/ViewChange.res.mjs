@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
+import * as Projection$ReventlessCore from "./Projection.res.mjs";
 
 let listeners = {
   contents: []
@@ -63,17 +64,6 @@ function changedFields(before, after) {
     }
   });
   return names.filter(name => Primitive_object.notequal(match[name], match$1[name]));
-}
-
-function sharedCorrelationId(sources) {
-  let ids = sources.map(s => s.correlationId);
-  if (ids.length === 0) {
-    return;
-  }
-  let first = ids[0];
-  if (ids.every(id => Primitive_object.equal(id, first))) {
-    return first;
-  }
 }
 
 function sourceToJson(s) {
@@ -165,7 +155,7 @@ function reporter(comp, view, stateToJson) {
     let c_subId = change.subId;
     let c_kind = change.kind;
     let c_sources = change.sources;
-    let c_correlationId = sharedCorrelationId(change.sources);
+    let c_correlationId = Projection$ReventlessCore.sharedCorrelationId(change.sources);
     let c = {
       view: view,
       key: c_key,
@@ -224,7 +214,6 @@ export {
   clear,
   kindLabel,
   changedFields,
-  sharedCorrelationId,
   sourceToJson,
   summaryFields,
   logLine,

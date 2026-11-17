@@ -40,8 +40,8 @@ type t = {
   // Lazy debug: the message thunk runs only when debug output is actually
   // enabled. On a hot path (e.g. per-projection-action logging) this avoids
   // building — and serializing state into — a string that is then dropped at
-  // the default Info level.
-  debugLazy: (~comp: string=?, unit => string) => unit,
+  // the default Info level. `ids` become top-level fields, as annotations do.
+  debugLazy: (~comp: string=?, ~ids: dict<string>=?, unit => string) => unit,
 }
 
 /** A log line's level. Its text is the upper-case word a JSON line, the platform
@@ -282,9 +282,9 @@ let makeLoggerWith = (shouldLog: (level, option<string>) => bool): t => {
     info: (~comp=?, ~data=?, msg) => log(Info, ~comp?, ~data?, msg),
     warn: (~comp=?, ~data=?, msg) => log(Warn, ~comp?, ~data?, msg),
     error: (~comp=?, ~data=?, msg) => log(Error, ~comp?, ~data?, msg),
-    debugLazy: (~comp=?, makeMsg) =>
+    debugLazy: (~comp=?, ~ids=?, makeMsg) =>
       if shouldLog(Debug, comp) {
-        emit(~level=Debug, ~comp?, makeMsg())
+        emit(~level=Debug, ~comp?, ~annotations=?ids, makeMsg())
       },
   }
 }
@@ -299,7 +299,7 @@ let silent: t = {
   info: (~comp as _=?, ~data as _=?, _) => (),
   warn: (~comp as _=?, ~data as _=?, _) => (),
   error: (~comp as _=?, ~data as _=?, _) => (),
-  debugLazy: (~comp as _=?, _) => (),
+  debugLazy: (~comp as _=?, ~ids as _=?, _) => (),
 }
 
 // Active minimum level: explicit LOG_LEVEL wins, else the platform default.

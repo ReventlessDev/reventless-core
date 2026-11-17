@@ -9,7 +9,7 @@ about the dispatch boundary, including a genuine redelivery carrying
 The same run found that the annotations never reach a *component* log line,
 because component code logs through `Effect.runSync`. That is a pre-existing
 defect in components this plan never touched, and it is
-[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
+[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md).
 
 **Created:** 2026-07-21
 
@@ -191,7 +191,7 @@ alongside (typed against the `HashMap` it actually returns, with
 - ~~An application handler on **deployed AWS** that only calls `Effect.logInfo("…")` emits a JSON
   line carrying `comp`, `correlationId`, and `causationId` as top-level fields.~~ **Moved
   2026-08-20** to
-  [component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
+  [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md).
   Nothing in `examples/` calls `Effect.log*`, so this criterion has no subject on a deployed
   stack; and the run that established that also established it would fail — a handler's own line
   is emitted through `Effect.runSync` and never sees the boundary's annotations. Both halves are
@@ -243,7 +243,7 @@ re-running on the baseline, and a test-harness artifact rather than a product bu
 FiberRefs. So `AllReadModels` — whose every line is a component line — shows `comp` alone
 and no `plugin`/`correlationId`/`causationId` anywhere. That is a pre-existing defect in
 `reventless-core` components this plan never touched; it is
-[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md),
+[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md),
 with the measurements.
 
 - **`retryCount` on a real redelivery — observed.** One occurrence in 80,724 records across
@@ -271,7 +271,7 @@ None. All three recorded on 2026-07-21 are closed:
    - **The application-handler criterion is unexercisable as written** —
      `grep "Effect.log" examples/ --include=*.res` returns nothing, so no deployed handler emits
      an application log line at all. Reworded rather than dropped: the substance moved to
-     [component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md),
+     [component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md),
      whose acceptance covers it on framework lines, of which the estate has plenty. The
      predecessor plan was marked Done on a criterion nobody checked against a deployed stack;
      the lesson holds, and this is what checking it produced.

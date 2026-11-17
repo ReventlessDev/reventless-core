@@ -70,14 +70,6 @@ let changedFields = (~before: option<JSON.t>, ~after: option<JSON.t>): array<str
   }
 }
 
-let sharedCorrelationId = (sources: array<Projection.changeSource>): option<string> =>
-  switch sources->Array.map(s => s.correlationId) {
-  | [] => None
-  | ids =>
-    let first = ids->Array.getUnsafe(0)
-    ids->Array.every(id => id == first) ? first : None
-  }
-
 let sourceToJson = (s: Projection.changeSource): JSON.t =>
   [("msgId", JSON.Encode.string(s.msgId))]
   ->Array.concat(s.correlationId->Option.mapOr([], c => [("correlationId", JSON.Encode.string(c))]))
@@ -144,7 +136,7 @@ let reporter = (~comp: string, ~view: string, ~stateToJson: 'state => JSON.t): (
           ?before,
           ?after,
           sources: change.sources,
-          correlationId: ?sharedCorrelationId(change.sources),
+          correlationId: ?Projection.sharedCorrelationId(change.sources),
         }
         if logs {
           logLine(~comp, c)

@@ -16,7 +16,7 @@ sequence, type, size — not its serialisation.
 **Non-goal.** Changing log *levels* or *retention* — those are tiered by
 [env-tiered-log-retention-and-levels.md](env-tiered-log-retention-and-levels.md) and the
 tiering is correct. Also not the `comp` vocabulary or the fields around a line, which is
-[component-logs-detached-from-invocation.md](../component-logs-detached-from-invocation.md).
+[component-logs-detached-from-invocation.md](component-logs-detached-from-invocation.md).
 Both of those plans declare log *content* out of scope; this is the plan that owns it.
 
 ---
