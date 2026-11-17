@@ -1108,3 +1108,23 @@ describe("Runtime.mergeSortedEvents", () => {
     expect(events->positions)->toEqual(["1", "2"])
   })
 })
+
+describe("readsAcrossPartitions", () => {
+  let customer: Reventless.DcbTag.tag = {key: "customerId", value: "C-1"}
+  let route = (qi, keys) =>
+    DcbEventLogStorage_DynamoDb_Runtime.readsAcrossPartitions(
+      qi,
+      customer,
+      ~crossPartitionTagKeys=keys,
+    )
+
+  testSync("a plain clause reads its partition", () =>
+    expect(route({tags: [customer]}, []))->toBe(false)
+  )
+  testSync("a key the boundary reads across partitions goes to the index", () =>
+    expect(route({tags: [customer]}, ["customerId"]))->toBe(true)
+  )
+  testSync("a pair's clause goes to the index", () =>
+    expect(route({tags: [customer], crossPartition: true}, []))->toBe(true)
+  )
+})

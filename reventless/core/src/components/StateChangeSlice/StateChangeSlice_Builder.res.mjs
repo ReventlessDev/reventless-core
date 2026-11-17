@@ -19,7 +19,7 @@ let log = Logger$ReventlessCore.fromEnv();
 function Make(Spec) {
   return Decision => {
     let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Decision);
-    let makeJsonHandler = (tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLogOps) => (stream => {
+    let makeJsonHandler = (tagKeysByEventType, crossPartitionTagKeys, crossPartitionPairs, partitionTag, dcbEventLogOps) => (stream => {
       let decodedStream = Stream$1.flatMap(Stream.mapEffect(stream, param => {
         let reference = param.reference;
         let json = param.command;
@@ -45,16 +45,17 @@ function Make(Spec) {
           return Stream$1.empty;
         }
       });
-      return Callback.handleCommands(tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLogOps, decodedStream);
+      return Callback.handleCommands(tagKeysByEventType, crossPartitionTagKeys, crossPartitionPairs, partitionTag, dcbEventLogOps, decodedStream);
     });
-    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, partitionTag, param, opts) => {
+    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, crossPartitionPairsOpt, partitionTag, param, opts) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+      let crossPartitionPairs = crossPartitionPairsOpt !== undefined ? crossPartitionPairsOpt : [];
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
         let commandSchema = Spec.commandSchema;
         let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
         Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
-          let jsonHandler = makeJsonHandler(tagKeysByEventType, crossPartitionTagKeys, partitionTag, dcbEventLogOps);
+          let jsonHandler = makeJsonHandler(tagKeysByEventType, crossPartitionTagKeys, crossPartitionPairs, partitionTag, dcbEventLogOps);
           CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
         });
         Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({

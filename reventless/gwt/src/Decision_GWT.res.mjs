@@ -534,7 +534,7 @@ function Make(Spec) {
       }
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined);
       let condition = {
         query: query
       };

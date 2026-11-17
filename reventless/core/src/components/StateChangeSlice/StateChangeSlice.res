@@ -33,6 +33,9 @@ module type T = {
         clause (instead of an AND-ed composite) so the decision read is a real
         secondary-tag read. */
     ~crossPartitionTagKeys: array<string>=?,
+    /** The boundary's pairs: the types a slice reads by its own key across
+        partitions. The slice reads those it is the reader of from the index. */
+    ~crossPartitionPairs: array<Reventless.DcbScopeInference.pair>=?,
     /** This slice's partition, as `Dcb_Builder` derives it for the whole boundary. */
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ~runtime: ReventlessInfra.RuntimeHints.t=?,

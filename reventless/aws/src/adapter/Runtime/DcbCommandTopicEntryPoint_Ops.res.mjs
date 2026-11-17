@@ -29,6 +29,7 @@ function deriveScope(specs) {
   if (specs.length === 0) {
     return {
       crossPartitionTagKeys: [],
+      crossPartitionPairs: [],
       tagKeysByEventType: {},
       partitionTagBySlice: {}
     };
@@ -59,6 +60,7 @@ function deriveScope(specs) {
   }));
   return {
     crossPartitionTagKeys: scope.crossPartitionTagKeys,
+    crossPartitionPairs: scope.crossPartitionPairs,
     tagKeysByEventType: scope.tagKeysByEventType,
     partitionTag: boundary.partitionTag,
     partitionTagBySlice: partitionTagBySlice
@@ -119,7 +121,7 @@ function buildSliceHandler(spec, decision, scope, dcbEventLog) {
         return Stream$1.empty;
       }
     });
-    return callback.handleCommands(scope.tagKeysByEventType, scope.crossPartitionTagKeys, scope.partitionTagBySlice[spec.name], dcbEventLog, decodedStream);
+    return callback.handleCommands(scope.tagKeysByEventType, scope.crossPartitionTagKeys, scope.crossPartitionPairs, scope.partitionTagBySlice[spec.name], dcbEventLog, decodedStream);
   };
 }
 

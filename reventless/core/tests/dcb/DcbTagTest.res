@@ -754,6 +754,74 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.eventTypes, tags: [{key: "orderId", value: "ord-1"}]}]),
     )
 
+    // --- Pairs: the types a slice reads by its own key across partitions ---
+
+    let createItem = DcbFixtures.CreateItem({itemId: "item-1", name: "Test"})
+    let itemTag: Reventless.DcbTag.tag = {key: "itemId", value: "item-1"}
+
+    testSync(
+      "a pair's types leave the partition clause for one read across partitions",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes,
+            ~schema=DcbFixtures.singleTagCommandSchema,
+            ~value=createItem,
+            ~pairEventTypes=Dict.fromArray([("itemId", ["EventB"])]),
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.eventTypes: ["EventA"], tags: [itemTag]},
+          {eventTypes: ["EventB"], tags: [itemTag], crossPartition: true},
+        ]),
+    )
+
+    testSync(
+      "a clause of pair types only is read across partitions alone",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes,
+            ~schema=DcbFixtures.singleTagCommandSchema,
+            ~value=createItem,
+            ~pairEventTypes=Dict.fromArray([("itemId", ["EventA", "EventB"])]),
+          ),
+        )->toEqual([{Reventless.DcbTag.eventTypes, tags: [itemTag], crossPartition: true}]),
+    )
+
+    testSync(
+      "pairs on another key leave the clause as it is",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes,
+            ~schema=DcbFixtures.singleTagCommandSchema,
+            ~value=createItem,
+            ~pairEventTypes=Dict.fromArray([("orderId", ["EventB"])]),
+          ),
+        )->toEqual([{Reventless.DcbTag.eventTypes, tags: [itemTag]}]),
+    )
+
+    testSync(
+      "DcbScopeInference.pairEventTypes keeps the reader's pairs, by key",
+      () => {
+        let pair = (reader, eventType): Reventless.DcbScopeInference.pair => {
+          reader,
+          eventType,
+          key: "messageId",
+          writers: ["PostReply"],
+        }
+        expect(
+          [
+            pair("MarkAnswer", "ReplyPosted"),
+            pair("MarkAnswer", "ReplyEdited"),
+            pair("Other", "ReplyPosted"),
+          ]
+          ->Reventless.DcbScopeInference.pairEventTypes(~reader="MarkAnswer")
+          ->Dict.toArray,
+        )->toEqual([("messageId", ["ReplyPosted", "ReplyEdited"])])
+      },
+    )
+
     // --- Vacuous-clause narrowing (Issue 14) ---
 
     let orderTagKeys = Reventless.DcbTag.extractTagKeysByEventType(DcbFixtures.orderEventLogSchema)

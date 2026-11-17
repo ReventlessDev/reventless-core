@@ -26,6 +26,7 @@ import * as DcbFenceCount$Reventless from "@reventlessdev/reventless-spec/src/co
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function Make(Spec) {
@@ -151,11 +152,11 @@ function Make(Spec) {
     };
     let projectionCache = Lru$ReventlessCore.make(100, Lru$ReventlessCore.decodedStateTtlMs(), undefined);
     let resetCache = () => Lru$ReventlessCore.clear(projectionCache);
-    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, partitionTag, dcbEventLog, command$p) => {
+    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes, partitionTag, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, EffectLogger$ReventlessCore.idsOf(undefined, undefined, cmdJson.meta), `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
       let asksForRepeat = Message$ReventlessCore.hasStableMsgId(command$p.meta);
-      let query = DcbTag$Reventless.buildQueryFromCommand(asksForRepeat ? queryEventTypesWithOwn : queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(asksForRepeat ? queryEventTypesWithOwn : queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -531,14 +532,16 @@ function Make(Spec) {
       };
       return attempt(3);
     };
-    let handleCommands = (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, partitionTag, dcbEventLog, stream) => {
+    let handleCommands = (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, crossPartitionPairsOpt, partitionTag, dcbEventLog, stream) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+      let crossPartitionPairs = crossPartitionPairsOpt !== undefined ? crossPartitionPairsOpt : [];
       let partitionTag$1 = partitionTag !== undefined ? partitionTag : Stdlib_Lazy.get(slicePartitionTag);
       let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, partitionTag$1, crossPartitionTagKeys);
+      let pairEventTypes = DcbScopeInference$Reventless.pairEventTypes(crossPartitionPairs, Spec.name);
       return Stream$1.runCollect(Stream.mapEffect(stream, param => {
         let reference = param.reference;
-        return Effect$1.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, partitionTag$1, dcbEventLog, param.command), result => {
+        return Effect$1.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes, partitionTag$1, dcbEventLog, param.command), result => {
           if (result.TAG === "Ok") {
             return {
               TAG: "Ok",

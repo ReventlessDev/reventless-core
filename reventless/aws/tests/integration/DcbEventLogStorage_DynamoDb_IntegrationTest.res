@@ -783,3 +783,70 @@ describe("DCB DynamoDb integration — the backfill completes a fence's count", 
     ))
   })
 })
+
+describe("DCB DynamoDb integration — a pair's clause is read across partitions", () => {
+  // A customer's decision reads the orders that name it, which are stored under
+  // the order: by the customer's partition it finds none of them.
+  let customer = tag("customerId", "C-pair")
+  let givenOrders = async ids => {
+    let table = await H.freshTable()
+    let _ = await seed(
+      table,
+      event("CustomerRegistered", [customer]),
+      ~partitionTag=simple("customerId"),
+    )
+    // 25 at a time: each order's own fence rides in the transaction too.
+    let rec chunks = async (ids: array<string>) =>
+      switch ids {
+      | [] => ()
+      | ids =>
+        let _ = await Runtime.appendUnconditional(
+          table,
+          ids
+          ->Array.slice(~start=0, ~end=25)
+          ->Array.map(id => event("OrderPlaced", [tag("orderId", id), customer])),
+          ~partitionTag=simple("orderId"),
+        )
+        await chunks(ids->Array.slice(~start=25))
+      }
+    await chunks(ids)
+    table
+  }
+  let inPartition: Reventless.DcbTag.query = [
+    {tags: [customer], eventTypes: ["CustomerRegistered", "OrderPlaced"]},
+  ]
+  let split: Reventless.DcbTag.query = [
+    {tags: [customer], eventTypes: ["CustomerRegistered"]},
+    {tags: [customer], eventTypes: ["OrderPlaced"], crossPartition: true},
+  ]
+  let types = (events: array<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>) =>
+    events->Array.map(e => e.eventType)
+
+  testAsync("the partition read misses the orders; the split read finds them", async () => {
+    let table = await givenOrders(["O-p1", "O-p2"])
+    let partitionOnly = (await Runtime.read(table)(~query=inPartition)).events
+    let both = (await Runtime.read(table)(~query=split)).events
+    let streamed = await Runtime.readStream(table)(~query=split)
+    ->Stream.runCollect
+    ->Effect.runPromise
+    expect((types(partitionOnly), types(both), streamed->Array.length))->toEqual((
+      ["CustomerRegistered"],
+      ["CustomerRegistered", "OrderPlaced", "OrderPlaced"],
+      3,
+    ))
+  })
+
+  testAsync("more hits than one batch come back whole and in position order", async () => {
+    let ids = Array.fromInitializer(~length=130, i => `O-b${i->Int.toString}`)
+    let table = await givenOrders(ids)
+    let streamed = await Runtime.readStream(table)(
+      ~query=[{tags: [customer], eventTypes: ["OrderPlaced"], crossPartition: true}],
+    )
+    ->Stream.runCollect
+    ->Effect.runPromise
+    let positions = streamed->Array.map(e => e.position)
+    let sorted = positions->Array.toSorted((a, b) => String.compare(a, b))
+    // The index reads every carrier of the tag, the customer's own event too.
+    expect((streamed->Array.length, positions == sorted))->toEqual((131, true))
+  })
+})

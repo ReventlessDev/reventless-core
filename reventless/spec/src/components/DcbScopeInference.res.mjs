@@ -126,6 +126,17 @@ function pairsOf(slices, partitionBySlice, crossPartitionTagKeys) {
   });
 }
 
+function pairEventTypes(pairs, reader) {
+  let byKey = {};
+  pairs.forEach(p => {
+    if (p.reader === reader) {
+      byKey[p.key] = Stdlib_Option.getOr(byKey[p.key], []).concat([p.eventType]);
+      return;
+    }
+  });
+  return byKey;
+}
+
 function sameAssignment(a, b) {
   let entries = d => Object.entries(d).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
   return Primitive_object.equal(entries(a), entries(b));
@@ -427,6 +438,7 @@ export {
   markedKeys,
   armsStoredElsewhere,
   pairsOf,
+  pairEventTypes,
   sameAssignment,
   chapterKeys,
   resolvePartitions,

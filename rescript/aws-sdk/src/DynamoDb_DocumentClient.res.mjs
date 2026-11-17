@@ -310,9 +310,21 @@ function send$7(command) {
   return client().send(command);
 }
 
-let ScanCommand = {
+let BatchGetCommand = {
+  maxBatchSize: 100,
   Raw: Raw$8,
   send: send$7
+};
+
+let Raw$9 = {};
+
+function send$8(command) {
+  return client().send(command);
+}
+
+let ScanCommand = {
+  Raw: Raw$9,
+  send: send$8
 };
 
 export {
@@ -333,6 +345,7 @@ export {
   TransactWriteCommand,
   QueryCommand,
   GetCommand,
+  BatchGetCommand,
   ScanCommand,
 }
 /* Stdlib_JsExn Not a pure module */

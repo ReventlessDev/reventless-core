@@ -292,7 +292,7 @@ function Make(DcbEventLogStorage) {
         asyncDcbCommandTopicOpt = undefined;
       }
       let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
-        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
+        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, effective.crossPartitionPairs, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
@@ -302,7 +302,7 @@ function Make(DcbEventLogStorage) {
       if (asyncDcbCommandTopicOpt !== undefined) {
         let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
         asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
-          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, effective.crossPartitionPairs, DcbTag$Reventless.slicePartitionTag(boundaryPartition, StateChangeSlice.Spec.name), componentRuntime[StateChangeSlice.Spec.name], opts);
           return [
             StateChangeSlice.Spec.name,
             Component$ReventlessCore.outputs(ch)

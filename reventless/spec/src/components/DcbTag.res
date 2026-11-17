@@ -36,6 +36,9 @@ its type is in the `eventTypes` list (or the list is absent).
 type queryItem = {
   eventTypes?: array<string>,
   tags?: array<tag>,
+  /** Read across partitions, by the tag's index: the clause of a pair. A store
+      that ignores partitions ignores it too. */
+  crossPartition?: bool,
 }
 
 /**
@@ -990,6 +993,11 @@ absent from the map is kept (cannot be proven vacuous).
 decide by; they are left out of every clause, so they narrow neither the read nor
 the append condition.
 
+`~pairEventTypes` (`DcbScopeInference.pairEventTypes`) are, per key, the types the
+slice reads by that key across partitions. A single-tag clause on such a key is
+split in two: the other types stay in it, read from the partition, and these go
+to a clause marked `crossPartition`, which reads them by the tag's index.
+
 @example
 ```rescript
 // Single-entity command → single AND clause
@@ -1018,12 +1026,26 @@ let buildQueryFromCommand = (
   ~tagKeysByEventType: dict<array<string>>=Dict.make(),
   ~crossPartitionTagKeys: array<string>=[],
   ~payloadTagKeys: array<string>=[],
+  ~pairEventTypes: dict<array<string>>=Dict.make(),
 ): query => {
   let typesForTags = clauseTags =>
     narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
   let decidedBy = (tags: array<tag>) =>
     tags->Array.filter(tag => !(payloadTagKeys->Array.includes(tag.key)))
-  if hasTaggedArrayFields(schema) {
+  let splitPairs = (qi: queryItem): array<queryItem> =>
+    switch (qi.tags, qi.eventTypes) {
+    | (Some([tag]), Some(types)) =>
+      let pairTypes = pairEventTypes->Dict.get(tag.key)->Option.getOr([])
+      switch types->Array.filter(t => pairTypes->Array.includes(t)) {
+      | [] => [qi]
+      | across =>
+        let own = types->Array.filter(t => !(pairTypes->Array.includes(t)))
+        let acrossClause = {eventTypes: across, tags: [tag], crossPartition: true}
+        own == [] ? [acrossClause] : [{...qi, eventTypes: own}, acrossClause]
+      }
+    | _ => [qi]
+    }
+  let clauses = if hasTaggedArrayFields(schema) {
     // Array fields already fan out per element into single-tag clauses, so a
     // cross-partition array tag is already its own clause (the adapter routes it
     // by `crossPartitionTagKeys`).
@@ -1050,6 +1072,8 @@ let buildQueryFromCommand = (
       [{eventTypes: typesForTags(tags), tags}]
     }
   }
+  // A composite clause is left whole: the index reads by one tag only.
+  clauses->Array.flatMap(splitPairs)
 }
 
 // --- Extract tagged field names from event schema ---

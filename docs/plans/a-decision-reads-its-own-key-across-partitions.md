@@ -1,6 +1,6 @@
 # Plan: a decision reads its own key across partitions
 
-**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. [Phase 3](#phase-3-pairs-in-inference-and-validation) built 2026-11-17; the builder refuses a boundary with a pair until phases 4 and 5 serve it. Found in an app whose decision about a
+**Status**: Proposed (2026-11-09, reworked 2026-11-11). [Phase 1](#phase-1-an-app-can-build-its-plugin-without-booting) built 2026-11-11 as `check-start` in `reventless-local` ([the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start)). [Phase 2](#phase-2-a-count-on-cross-partition-fences) built 2026-11-17; on a deployed stack it takes effect once `count-fences` has run. [Phase 3](#phase-3-pairs-in-inference-and-validation) and [Phase 4](#phase-4-read-split-and-routing) built 2026-11-17; the builder refuses a boundary with a pair until [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item) keeps its fence. Found in an app whose decision about a
 question reads the replies posted under it: the build refused it with "DCB partition
 contradiction".<br/>
 **Nature**: three pieces that land in order. A check apps can run before boot. A count on
@@ -413,6 +413,27 @@ outside the boundary is not counted, since where it is stored is not known there
 
 **Verify:** a query test shows the strong clause and the pair clause. An adapter test shows the
 routing, which has no unit test today.
+
+**Built 2026-11-17.**
+
+- **The pairs reach the slice.** The boundary's pairs travel to each slice beside
+  `crossPartitionTagKeys`: from `Dcb_Builder`, and in the deployed command handler from
+  `deriveEffectiveScope`. A slice keeps the pairs it is the reader of
+  (`DcbScopeInference.pairEventTypes`).
+- **The query splits.** `buildQueryFromCommand` takes those types per key and splits a single-tag
+  clause on such a key. The other types stay in a clause read from the partition, and the pair's
+  types go to a clause marked `crossPartition: true`. A composite clause is left whole, since the
+  index reads by one tag only.
+- **DynamoDB routes it.** The adapter sends a marked clause to `tag_<key>` (`readsAcrossPartitions`,
+  which now has its unit test). The local and Postgres backends ignore the marker.
+- **Hits are fetched in batches.** Every index read resolves its hits with `BatchGetItem`, up to
+  100 keys a call, sending again the keys DynamoDB left unprocessed. That covers the per-key reads
+  of [Phase 7](done/dcb-phase7-cross-partition-reads.md) too.
+- **What DynamoDB-local shows.** A partition read misses events stored under another key, and the
+  split read finds them. 130 hits come back whole and in position order.
+
+The pair's clause is not yet counted against a fence ([D8](#3-decisions)): that needs the pair's
+fence item from [Phase 5](#phase-5-writer-bumps-on-the-pairs-own-fence-item).
 
 ### Phase 5. Writer bumps on the pair's own fence item
 

@@ -13,6 +13,7 @@ module Make = (
   let makeJsonHandler = (
     ~tagKeysByEventType,
     ~crossPartitionTagKeys,
+    ~crossPartitionPairs,
     ~partitionTag,
     dcbEventLogOps: DcbEventLog.operations,
   ) => {
@@ -43,6 +44,7 @@ module Make = (
       Callback.handleCommands(
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
+        ~crossPartitionPairs,
         ~partitionTag?,
         dcbEventLogOps,
         decodedStream,
@@ -56,6 +58,7 @@ module Make = (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~tagKeysByEventType,
     ~crossPartitionTagKeys,
+    ~crossPartitionPairs,
     ~partitionTag,
     self,
     _name,
@@ -70,6 +73,7 @@ module Make = (
         let jsonHandler = makeJsonHandler(
           ~tagKeysByEventType,
           ~crossPartitionTagKeys,
+          ~crossPartitionPairs,
           ~partitionTag,
           dcbEventLogOps,
         )
@@ -102,6 +106,7 @@ module Make = (
     ~publishJsons,
     ~tagKeysByEventType=Dict.make(),
     ~crossPartitionTagKeys=[],
+    ~crossPartitionPairs=[],
     ~partitionTag=?,
     ~runtime as _=?,
     ~opts=?,
@@ -114,6 +119,7 @@ module Make = (
         ~publishJsons,
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
+        ~crossPartitionPairs,
         ~partitionTag,
         ...
       ),

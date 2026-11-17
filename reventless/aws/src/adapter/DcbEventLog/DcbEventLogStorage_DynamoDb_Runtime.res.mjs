@@ -10,6 +10,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Duration from "effect/Duration";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
@@ -290,33 +291,62 @@ async function queryByPartitionKey(table, partitionKey, after) {
   return await Effect.runPromise(Stream$1.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
-function resolveBaseItem(table, keyItem) {
+function keyOfIndexItem(keyItem) {
   let obj = Stdlib_JSON.Decode.object(keyItem);
   if (obj === undefined) {
-    return Effect$1.succeed(undefined);
+    return;
   }
   let match = obj["id"];
   let match$1 = obj["position"];
-  if (match === undefined) {
-    return Effect$1.succeed(undefined);
+  if (match !== undefined && match$1 !== undefined) {
+    return Object.fromEntries([
+      [
+        "id",
+        match
+      ],
+      [
+        "position",
+        match$1
+      ]
+    ]);
   }
-  if (match$1 === undefined) {
-    return Effect$1.succeed(undefined);
+}
+
+function positionOfItem(item) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), o => o["position"]), Stdlib_JSON.Decode.string), "");
+}
+
+function batchGetItems(table, keys, foundOpt, attemptOpt) {
+  let found = foundOpt !== undefined ? foundOpt : [];
+  let attempt = attemptOpt !== undefined ? attemptOpt : 0;
+  if (keys.length !== 0) {
+    return Effect$1.flatMap(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.BatchGetCommand.send(new LibDynamodb.BatchGetCommand({
+      RequestItems: Object.fromEntries([[
+          table.name,
+          {
+            Keys: keys
+          }
+        ]])
+    }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), output => {
+      let found$1 = found.concat(Stdlib_Option.getOr(Stdlib_Option.flatMap(output.Responses, r => r[table.name]), []));
+      let left = Stdlib_Option.mapOr(Stdlib_Option.flatMap(output.UnprocessedKeys, u => u[table.name]), [], u => u.Keys);
+      if (left.length !== 0) {
+        if (attempt >= 5) {
+          return Effect$1.fail(`BatchGetItem left ` + left.length.toString() + ` key(s) unprocessed after ` + (attempt + 1 | 0).toString() + ` attempts`);
+        } else {
+          return Effect$1.flatMap(Effect$1.sleep(Duration.millis(50 * (1 << attempt) | 0)), () => batchGetItems(table, left, found$1, attempt + 1 | 0));
+        }
+      } else {
+        return Effect$1.succeed(found$1);
+      }
+    });
+  } else {
+    return Effect$1.succeed(found);
   }
-  let key = Object.fromEntries([
-    [
-      "id",
-      match
-    ],
-    [
-      "position",
-      match$1
-    ]
-  ]);
-  return Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
-    TableName: table.name,
-    Key: key
-  }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item);
+}
+
+function resolveBaseItems(table, keyItems) {
+  return Effect$1.map(batchGetItems(table, Stdlib_Array.filterMap(keyItems, keyOfIndexItem), undefined, undefined), items => items.toSorted((a, b) => Primitive_string.compare(positionOfItem(a), positionOfItem(b))));
 }
 
 function queryBySingleTagCrossPartitionStreamIndexed(table, tag, after) {
@@ -342,7 +372,7 @@ function queryBySingleTagCrossPartitionStreamIndexed(table, tag, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream$1.flatMap(Stream.mapEffect(Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream$1.flatMap(Stream.mapEffect(Stream$1.grouped(Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catch(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -355,13 +385,7 @@ function queryBySingleTagCrossPartitionStreamIndexed(table, tag, after) {
   }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
-  ])), keyItem => resolveBaseItem(table, keyItem)), opt => {
-    if (opt !== undefined) {
-      return Stream$1.fromIterable([opt]);
-    } else {
-      return Stream$1.empty;
-    }
-  });
+  ])), DynamoDb_DocumentClient$AwsSdk.BatchGetCommand.maxBatchSize), keyItems => resolveBaseItems(table, keyItems)), items => Stream$1.fromIterable(items));
 }
 
 function queryBySingleTagCrossPartitionStream(table, tag, after) {
@@ -369,6 +393,14 @@ function queryBySingleTagCrossPartitionStream(table, tag, after) {
     return Stream$1.empty;
   } else {
     return queryBySingleTagCrossPartitionStreamIndexed(table, tag, after);
+  }
+}
+
+function readsAcrossPartitions(queryItem, tag, crossPartitionTagKeys) {
+  if (Primitive_object.equal(queryItem.crossPartition, true)) {
+    return true;
+  } else {
+    return crossPartitionTagKeys.includes(tag.key);
   }
 }
 
@@ -386,7 +418,7 @@ async function executeQueryItem(table, queryItem, after, crossPartitionTagKeysOp
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      if (crossPartitionTagKeys.includes(tag.key)) {
+      if (readsAcrossPartitions(queryItem, tag, crossPartitionTagKeys)) {
         return await Effect.runPromise(Stream$1.runCollect(queryBySingleTagCrossPartitionStream(table, tag, after)));
       } else {
         return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
@@ -1277,7 +1309,7 @@ function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt, c
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      if (crossPartitionTagKeys.includes(tag.key)) {
+      if (readsAcrossPartitions(queryItem, tag, crossPartitionTagKeys)) {
         return queryBySingleTagCrossPartitionStream(table, tag, after);
       } else {
         return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, strongConsistency);
@@ -1319,6 +1351,8 @@ function readStream(table, crossPartitionTagKeysOpt) {
   };
 }
 
+let unprocessedRetries = 5;
+
 let transactWriteItemsLimit = 100;
 
 export {
@@ -1339,9 +1373,14 @@ export {
   scanWithFilter,
   buildQueryByPartitionKeyInput,
   queryByPartitionKey,
-  resolveBaseItem,
+  keyOfIndexItem,
+  positionOfItem,
+  unprocessedRetries,
+  batchGetItems,
+  resolveBaseItems,
   queryBySingleTagCrossPartitionStreamIndexed,
   queryBySingleTagCrossPartitionStream,
+  readsAcrossPartitions,
   executeQueryItem,
   deduplicateByPosition,
   startProducer,

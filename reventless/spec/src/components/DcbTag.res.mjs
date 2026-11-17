@@ -651,28 +651,52 @@ function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
   });
 }
 
-function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, payloadTagKeysOpt) {
+function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, payloadTagKeysOpt, pairEventTypesOpt) {
   let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let payloadTagKeys = payloadTagKeysOpt !== undefined ? payloadTagKeysOpt : [];
+  let pairEventTypes = pairEventTypesOpt !== undefined ? pairEventTypesOpt : ({});
   let decidedBy = tags => tags.filter(tag => !payloadTagKeys.includes(tag.key));
+  let splitPairs = qi => {
+    let match = qi.tags;
+    let match$1 = qi.eventTypes;
+    if (match === undefined) {
+      return [qi];
+    }
+    if (match.length !== 1) {
+      return [qi];
+    }
+    let tag = match[0];
+    if (match$1 === undefined) {
+      return [qi];
+    }
+    let pairTypes = Stdlib_Option.getOr(pairEventTypes[tag.key], []);
+    let across = match$1.filter(t => pairTypes.includes(t));
+    if (across.length === 0) {
+      return [qi];
+    }
+    let own = match$1.filter(t => !pairTypes.includes(t));
+    let acrossClause_eventTypes = across;
+    let acrossClause_tags = [tag];
+    let acrossClause_crossPartition = true;
+    let acrossClause = {
+      eventTypes: acrossClause_eventTypes,
+      tags: acrossClause_tags,
+      crossPartition: acrossClause_crossPartition
+    };
+    if (Primitive_object.equal(own, [])) {
+      return [acrossClause];
+    }
+    let newrecord = {...qi};
+    return [
+      (newrecord.eventTypes = own, newrecord),
+      acrossClause
+    ];
+  };
+  let clauses;
   if (hasTaggedArrayFields(schema)) {
     let tags = decidedBy(extractTagsExpanded(schema, value));
-    return tags.map(tag => {
-      let clauseTags = [{
-          key: tag.key,
-          value: tag.value
-        }];
-      return {
-        eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
-        tags: clauseTags
-      };
-    });
-  }
-  let tags$1 = decidedBy(extractTags(schema, value));
-  let hasCrossPartition = tags$1.some(tag => crossPartitionTagKeys.includes(tag.key));
-  if (hasCrossPartition && tags$1.length > 1) {
-    return tags$1.map(tag => {
+    clauses = tags.map(tag => {
       let clauseTags = [{
           key: tag.key,
           value: tag.value
@@ -683,11 +707,23 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt,
       };
     });
   } else {
-    return [{
-        eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
-        tags: tags$1
-      }];
+    let tags$1 = decidedBy(extractTags(schema, value));
+    let hasCrossPartition = tags$1.some(tag => crossPartitionTagKeys.includes(tag.key));
+    clauses = hasCrossPartition && tags$1.length > 1 ? tags$1.map(tag => {
+        let clauseTags = [{
+            key: tag.key,
+            value: tag.value
+          }];
+        return {
+          eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
+          tags: clauseTags
+        };
+      }) : [{
+          eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
+          tags: tags$1
+        }];
   }
+  return clauses.flatMap(splitPairs);
 }
 
 function extractTaggedFields(schema) {

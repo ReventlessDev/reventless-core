@@ -18,6 +18,7 @@ let staleReads = ref(0)
 let reads = ref(0)
 let appends = ref(0)
 let conditions: ref<array<option<Reventless.DcbTag.appendCondition>>> = ref([])
+let queries: ref<array<Reventless.DcbTag.query>> = ref([])
 let counted = ref(true)
 let student: Reventless.DcbTag.tag = {key: "studentId", value: "S1"}
 
@@ -25,6 +26,7 @@ let eventLog: DcbEventLog.operations = {
   read: LogOps.read,
   readStream: (~query, ~after=?, ~strongConsistency=?) => {
     reads := reads.contents + 1
+    queries := queries.contents->Array.concat([query])
     let stale = reads.contents <= staleReads.contents
     LogOps.readStream(~query, ~after?, ~strongConsistency?)->Stream.filter(_ => !stale)
   },
@@ -129,6 +131,7 @@ let _ = beforeEach(() => {
   reads := 0
   appends := 0
   conditions := []
+  queries := []
   staleReads := 0
   counted := true
 })
@@ -171,5 +174,40 @@ describe("a read of a counted cross-partition fence", () => {
     expect(conditions.contents->Array.map(c => c->Option.flatMap(c => c.fenceCounts)))->toEqual([
       Some([{Reventless.DcbTag.tag: student, eventType: "StudentSubscribed", count: 0}]),
     ])
+  })
+})
+
+describe("a slice that reads a pair", () => {
+  testPromise("reads the pair's types by its key from the index", async () => {
+    let _ = await SubscribeHandler.handleCommands(
+      ~crossPartitionPairs=[
+        {reader: "Subscribe", eventType: "StudentSubscribed", key: "courseId", writers: ["Enrol"]},
+        {reader: "Other", eventType: "StudentSubscribed", key: "studentId", writers: ["Enrol"]},
+      ],
+      ~partitionTag=Reventless.DcbTag.Simple({key: "courseId"}),
+      eventLog,
+      Stream.fromIterable([
+        {
+          ReventlessInfra.CommandTopic.command: {
+            Message.id: Reventless.Id.String.makeFromString("cmd-pair"),
+            meta: DcbFixtures.testMeta,
+            command: SubscribeSpec.Subscribe({courseId: "C9", studentId: student.value}),
+          },
+          reference: "pair",
+        },
+      ]),
+    )->Effect.runPromise
+    let across =
+      queries.contents
+      ->Array.flat
+      ->Array.filter(qi => qi.crossPartition == Some(true))
+      ->Array.map(qi => (qi.tags, qi.eventTypes))
+    expect(across->Array.length > 0)->toBe(true)
+    expect(
+      across->Array.every(
+        ((tags, types)) =>
+          tags == Some([{key: "courseId", value: "C9"}]) && types == Some(["StudentSubscribed"]),
+      ),
+    )->toBe(true)
   })
 })

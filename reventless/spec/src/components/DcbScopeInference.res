@@ -289,6 +289,17 @@ let pairsOf = (
     }
   )
 
+/** Key -> the event types `reader` reads by it across partitions. */
+let pairEventTypes = (pairs: array<pair>, ~reader: string): dict<array<string>> => {
+  let byKey = Dict.make()
+  pairs->Array.forEach(p =>
+    if p.reader == reader {
+      byKey->Dict.set(p.key, byKey->Dict.get(p.key)->Option.getOr([])->Array.concat([p.eventType]))
+    }
+  )
+  byKey
+}
+
 /** Rule 1's outcome for a boundary, before the scope rules build on it. */
 type partitionResolution = {
   /** sliceName -> its partition key (absent when unresolved). */

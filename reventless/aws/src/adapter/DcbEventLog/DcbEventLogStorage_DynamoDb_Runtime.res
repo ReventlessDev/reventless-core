@@ -373,35 +373,87 @@ let queryByPartitionKey = async (
 //
 // A `@crossPartition` tag is read across ALL partitions carrying it, not just
 // the partition it keys. The per-tag `tag_<key>` GSI indexes the tag across
-// every partition; Phase 3 down-projected it to `KEYS_ONLY`, so the read is a
-// two-phase `Query`(keys: id, position) → per-key `GetItem`(base table) for the
-// full event. GSI reads are eventually consistent (DynamoDB constraint) — the
-// strongly-consistent append fence catches any staleness at commit (analysis
-// Issue 13). The GSI returns keys in ascending `position` order (rangeKey =
-// "position"), and `Stream.mapEffect` preserves order, so the resolved stream
-// stays position-ordered for the k-way merge in `readStream`.
+// every partition and projects only the keys, so the read is a `Query` (keys:
+// id, position) followed by `BatchGetItem` on the base table, up to 100 keys a
+// call. GSI reads are eventually consistent (DynamoDB constraint); the fence's
+// count catches what they miss. The GSI returns keys in ascending `position`
+// order, and each batch is put back in that order, so the stream stays
+// position-ordered for the k-way merge in `readStream`.
 
-// Resolves a KEYS_ONLY GSI key-item ({id, position}) to its full base-table item.
-let resolveBaseItem = (table: resolvedTable, keyItem: JSON.t): Effect.t<
-  option<JSON.t>,
+let keyOfIndexItem = (keyItem: JSON.t): option<dict<JSON.t>> =>
+  switch keyItem->JSON.Decode.object {
+  | Some(obj) =>
+    switch (obj->Dict.get("id"), obj->Dict.get("position")) {
+    | (Some(id), Some(position)) => Some(Dict.fromArray([("id", id), ("position", position)]))
+    | _ => None
+    }
+  | None => None
+  }
+
+let positionOfItem = (item: JSON.t): string =>
+  item
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("position"))
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.getOr("")
+
+/** How often keys DynamoDB left unprocessed are sent again before the read fails. */
+let unprocessedRetries = 5
+
+// Fetches the base-table items of up to 100 keys, sending again the keys DynamoDB
+// did not get to, with a growing pause. A key whose item is gone yields nothing.
+let rec batchGetItems = (
+  table: resolvedTable,
+  keys: array<dict<JSON.t>>,
+  ~found: array<JSON.t>=[],
+  ~attempt: int=0,
+): Effect.t<array<JSON.t>, string, unit> =>
+  switch keys {
+  | [] => Effect.succeed(found)
+  | keys =>
+    Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+      BatchGetCommand.send(
+        BatchGetCommand.make({
+          requestItems: Dict.fromArray([(table.name, {BatchGetCommand.keys: keys})]),
+        }),
+      )
+    )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+    ->Effect.flatMap(output => {
+      let found =
+        found->Array.concat(
+          output.responses->Option.flatMap(r => r->Dict.get(table.name))->Option.getOr([]),
+        )
+      let left =
+        output.unprocessedKeys
+        ->Option.flatMap(u => u->Dict.get(table.name))
+        ->Option.mapOr([], u => u.keys)
+      switch left {
+      | [] => Effect.succeed(found)
+      | left if attempt >= unprocessedRetries =>
+        Effect.fail(
+          `BatchGetItem left ${left
+            ->Array.length
+            ->Int.toString} key(s) unprocessed after ${(attempt + 1)->Int.toString} attempts`,
+        )
+      | left =>
+        Effect.sleep(Duration.millis(50 * Int.shiftLeft(1, attempt)))->Effect.flatMap(_ =>
+          batchGetItems(table, left, ~found, ~attempt=attempt + 1)
+        )
+      }
+    })
+  }
+
+// Resolves a batch of KEYS_ONLY GSI key-items to their base-table items, in position order.
+let resolveBaseItems = (table: resolvedTable, keyItems: array<JSON.t>): Effect.t<
+  array<JSON.t>,
   string,
   unit,
 > =>
-  switch keyItem->JSON.Decode.object {
-  | None => Effect.succeed(None)
-  | Some(obj) =>
-    switch (obj->Dict.get("id"), obj->Dict.get("position")) {
-    | (Some(id), Some(position)) =>
-      let key = Dict.fromArray([("id", id), ("position", position)])
-      Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
-        GetCommand.send(GetCommand.make({tableName: table.name, key}))
-      )
-      ->Effect.retry(DynamoDb_Error.retrySchedule)
-      ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
-      ->Effect.map(result => result.item)
-    | _ => Effect.succeed(None)
-    }
-  }
+  batchGetItems(table, keyItems->Array.filterMap(keyOfIndexItem))->Effect.map(items =>
+    items->Array.toSorted((a, b) => String.compare(positionOfItem(a), positionOfItem(b)))
+  )
 
 let queryBySingleTagCrossPartitionStreamIndexed = (
   table: resolvedTable,
@@ -440,13 +492,9 @@ let queryBySingleTagCrossPartitionStreamIndexed = (
       result.lastEvaluatedKey->Option.map(key => Some(key)),
     ))
   )
-  ->Stream.mapEffect(keyItem => resolveBaseItem(table, keyItem))
-  ->Stream.flatMap(opt =>
-    switch opt {
-    | Some(item) => Stream.fromIterable([item])
-    | None => Stream.empty
-    }
-  )
+  ->Stream.grouped(BatchGetCommand.maxBatchSize)
+  ->Stream.mapEffect(keyItems => resolveBaseItems(table, keyItems))
+  ->Stream.flatMap(items => Stream.fromIterable(items))
 }
 
 let queryBySingleTagCrossPartitionStream = (
@@ -466,6 +514,14 @@ let queryBySingleTagCrossPartitionStream = (
 
 // --- Query Item Execution ---
 
+// A single-tag clause goes to the tag's index when its key is read across
+// partitions for the whole boundary, or when the clause is a pair's.
+let readsAcrossPartitions = (
+  queryItem: Reventless.DcbTag.queryItem,
+  tag: Reventless.DcbTag.tag,
+  ~crossPartitionTagKeys: array<string>,
+) => queryItem.crossPartition == Some(true) || crossPartitionTagKeys->Array.includes(tag.key)
+
 let executeQueryItem = async (
   table: resolvedTable,
   queryItem: Reventless.DcbTag.queryItem,
@@ -475,10 +531,10 @@ let executeQueryItem = async (
   switch queryItem.tags {
   // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
   | _ if Reventless.DcbTag.clauseMatchesNothing(queryItem) => []
-  // Single tag: a `@crossPartition` key reads across partitions via the per-tag
-  // GSI (KEYS_ONLY → per-key GetItem, collected); otherwise a base-table
-  // partition lookup.
-  | Some([tag]) if crossPartitionTagKeys->Array.includes(tag.key) =>
+  // Single tag: a `@crossPartition` key, or a pair's clause, reads across
+  // partitions via the per-tag GSI (KEYS_ONLY → BatchGetItem, collected);
+  // otherwise a base-table partition lookup.
+  | Some([tag]) if readsAcrossPartitions(queryItem, tag, ~crossPartitionTagKeys) =>
     await queryBySingleTagCrossPartitionStream(table, tag, ~after?)
     ->Stream.runCollect
     ->Effect.runPromise
@@ -1641,13 +1697,13 @@ let executeQueryItemStream = (
   switch queryItem.tags {
   // A clause with no event type matches nothing (`DcbTag.clauseMatchesNothing`).
   | _ if Reventless.DcbTag.clauseMatchesNothing(queryItem) => Stream.empty
-  // Single tag: a `@crossPartition` key reads every partition via the per-tag
-  // GSI (eventually consistent — fence catches staleness); otherwise a direct
+  // Single tag: a `@crossPartition` key, or a pair's clause, reads every
+  // partition via the per-tag GSI (eventually consistent — fence catches staleness); otherwise a direct
   // base-table partition lookup. Base-table reads can opt into strong
   // consistency; the slice callback defaults to eventual and escalates on retry.
   // GSI-backed branches (cross-partition, composite, scan) cannot opt in —
   // fundamental DynamoDB constraint — so they stay eventually consistent.
-  | Some([tag]) if crossPartitionTagKeys->Array.includes(tag.key) =>
+  | Some([tag]) if readsAcrossPartitions(queryItem, tag, ~crossPartitionTagKeys) =>
     queryBySingleTagCrossPartitionStream(table, tag, ~after?)
   | Some([tag]) =>
     queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, ~after?, ~strongConsistency)

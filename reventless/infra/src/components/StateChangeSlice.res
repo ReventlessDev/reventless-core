@@ -40,6 +40,9 @@ module type T = {
         a cross-partition scalar command tag fans out into its own single-tag
         decision-read clause. */
     ~crossPartitionTagKeys: array<string>=?,
+    /** The boundary's pairs: the types a slice reads by its own key across
+        partitions. The slice reads those it is the reader of from the index. */
+    ~crossPartitionPairs: array<Reventless.DcbScopeInference.pair>=?,
     /** This slice's partition, as `Dcb_Builder` derives it for the whole boundary. */
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ~runtime: RuntimeHints.t=?,

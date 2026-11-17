@@ -207,7 +207,7 @@ function CommandStep(Spec) {
     })), crossPartitionTagKeys);
     let whenCommand = async (flowP, command) => {
       let s = await flowP;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
       let events = Decision.decide(state, command);

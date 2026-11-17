@@ -4,6 +4,8 @@ module type T = {
   let handleCommands: (
     ~tagKeysByEventType: Dict.t<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
+    /** The boundary's pairs; the slice reads those it is the reader of from the index. */
+    ~crossPartitionPairs: array<Reventless.DcbScopeInference.pair>=?,
     /** This slice's partition within its boundary; inferred from the slice alone when absent. */
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     DcbEventLog.operations,
@@ -254,6 +256,7 @@ module Make = (
     ~tagKeysByEventType,
     ~crossPartitionTagKeys,
     ~payloadTagKeys,
+    ~pairEventTypes,
     ~partitionTag,
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
@@ -283,6 +286,7 @@ module Make = (
       ~tagKeysByEventType,
       ~crossPartitionTagKeys,
       ~payloadTagKeys,
+      ~pairEventTypes,
     )
 
     // Log the DCB query parameters — the OR clauses (event types + tags) the
@@ -810,6 +814,7 @@ module Make = (
   let handleCommands = (
     ~tagKeysByEventType=Dict.make(),
     ~crossPartitionTagKeys=[],
+    ~crossPartitionPairs=[],
     ~partitionTag=?,
     dcbEventLog,
     stream,
@@ -820,12 +825,15 @@ module Make = (
     }
     let payloadTagKeys =
       scopeShape->Reventless.DcbTag.commandPayloadTagKeys(~partitionTag, ~crossPartitionTagKeys)
+    let pairEventTypes =
+      crossPartitionPairs->Reventless.DcbScopeInference.pairEventTypes(~reader=Spec.name)
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
       handleSingleCommand(
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
         ~payloadTagKeys,
+        ~pairEventTypes,
         ~partitionTag,
         dcbEventLog,
         command,

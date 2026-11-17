@@ -43,6 +43,8 @@ external asConnectionConfig: pgConnectionJson => PgConnection.connectionConfig =
 // query can't diverge from the storage/GSI scope.
 type derivedScope = {
   crossPartitionTagKeys: array<string>,
+  /** Slices reading another slice's events by their own key, across partitions. */
+  crossPartitionPairs: array<Reventless.DcbScopeInference.pair>,
   tagKeysByEventType: dict<array<string>>,
   /** `None` only for a Lambda hosting no StateChangeSlices, which never appends. */
   partitionTag?: Reventless.DcbTag.derivedPartitionTag,
@@ -54,6 +56,7 @@ let deriveScope = (specs: array<specModule>): derivedScope =>
   switch specs {
   | [] => {
       crossPartitionTagKeys: [],
+      crossPartitionPairs: [],
       tagKeysByEventType: Dict.make(),
       partitionTagBySlice: Dict.make(),
     }
@@ -87,6 +90,7 @@ let deriveScope = (specs: array<specModule>): derivedScope =>
     )
     {
       crossPartitionTagKeys: scope.crossPartitionTagKeys,
+      crossPartitionPairs: scope.crossPartitionPairs,
       tagKeysByEventType: scope.tagKeysByEventType,
       partitionTag: boundary.partitionTag,
       partitionTagBySlice,
@@ -183,6 +187,7 @@ type sliceCallback = {
   handleCommands: (
     ~tagKeysByEventType: dict<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
+    ~crossPartitionPairs: array<Reventless.DcbScopeInference.pair>=?,
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag=?,
     ReventlessInfra.DcbEventLog.operations,
     Stream.t<
@@ -240,6 +245,7 @@ let buildSliceHandler = (
     callback.handleCommands(
       ~tagKeysByEventType=scope.tagKeysByEventType,
       ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
+      ~crossPartitionPairs=scope.crossPartitionPairs,
       ~partitionTag=?scope.partitionTagBySlice->Dict.get(specName(spec)),
       dcbEventLog,
       decodedStream,

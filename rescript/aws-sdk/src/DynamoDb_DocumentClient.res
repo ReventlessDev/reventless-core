@@ -832,6 +832,47 @@ module GetCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module BatchGetCommand = {
+  /*** see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-lib-dynamodb/Class/BatchGetCommand/ */
+
+  type t
+
+  type keysAndAttributes = {
+    @as("Keys") keys: array<dict<JSON.t>>,
+    @as("ConsistentRead") consistentRead?: bool,
+    @as("ExpressionAttributeNames") expressionAttributeNames?: dict<string>,
+    @as("ProjectionExpression") projectionExpression?: string,
+  }
+
+  type input = {
+    /** Table name to the keys to read from it: 100 keys at most per call. */
+    @as("RequestItems")
+    requestItems: dict<keysAndAttributes>,
+    @as("ReturnConsumedCapacity") returnConsumedCapacity?: returnConsumedCapacity,
+  }
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    /** Table name to the items found, in no particular order. */
+    @as("Responses") responses?: dict<array<JSON.t>>,
+    /** The keys DynamoDB did not get to; send them again. */
+    @as("UnprocessedKeys") unprocessedKeys?: dict<keysAndAttributes>,
+    @as("ConsumedCapacity") consumedCapacity?: array<consumedCapacity>,
+  }
+
+  @new @module("@aws-sdk/lib-dynamodb")
+  external make: input => t = "BatchGetCommand"
+
+  let maxBatchSize = 100
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 module ScanCommand = {
   /*** see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-lib-dynamodb/Class/ScanCommand/ */
 
