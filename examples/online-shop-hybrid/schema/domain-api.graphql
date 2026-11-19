@@ -417,6 +417,7 @@ type OrderingEventLogEvent {
 
 type Ordering_AnnounceRecipientContactTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!
@@ -713,6 +714,7 @@ type Ordering_CustomerRef {
 
 type Ordering_GeocodeCustomerAddressTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1165,6 +1167,7 @@ enum Ordering_PlaceOrderShippingMethod {
 
 type Ordering_SendNotificationTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1257,6 +1260,7 @@ enum Ordering_UnsubscribeChannel {
 
 type Ordering_VerifyCustomerEmailTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1625,6 +1629,7 @@ enum Registration_CompleteRegistrationAuditStatus {
 
 type Registration_CreateRegisteredPrincipalTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!
@@ -1756,6 +1761,7 @@ type Registration_RegistrationWindowRef {
 
 type Registration_SendRegistrationChallengeTodo implements Node {
   _change: RowChange
+  claimedUntil: String
   completedAt: String
   createdAt: String!
   id: ID!

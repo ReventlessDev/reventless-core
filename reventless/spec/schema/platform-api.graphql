@@ -111,6 +111,7 @@ type Platform_ComponentDefinitionEntry {
   internalQueryables: [Platform_ReadSideDef!]!
   outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!
   pluginId: String!
+  quantities: [Platform_QuantityDef!]
   readModels: [Platform_ReadSideDef!]!
   stateChangeSlices: [Platform_WriteSideDef!]!
   stateViewSlices: [Platform_ReadSideDef!]!
@@ -351,6 +352,7 @@ type Platform_PluginStructureEntry {
   inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!
   outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!
   pluginId: String!
+  quantities: [Platform_QuantityDef!]
   readModels: [Platform_ReadSideDef!]!
   requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]
   requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]
@@ -363,6 +365,19 @@ type Platform_PluginStructureEntry {
 type Platform_PublishedEventDef {
   fromEventTypes: [String!]!
   name: String!
+}
+
+type Platform_QuantityDef {
+  adds: Boolean!
+  name: String!
+  units: [Platform_QuantityUnitDef!]!
+}
+
+type Platform_QuantityUnitDef {
+  code: String!
+  factor: Float!
+  plural: String!
+  words: String!
 }
 
 type Platform_ReadSideDef {
