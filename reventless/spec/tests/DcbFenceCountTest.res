@@ -3,17 +3,17 @@
 
 open JestGlobals
 
-let student: Reventless.DcbTag.tag = {key: "studentId", value: "S1"}
-let course: Reventless.DcbTag.tag = {key: "courseId", value: "C1"}
+let student: DcbTag.tag = {key: "studentId", value: "S1"}
+let course: DcbTag.tag = {key: "courseId", value: "C1"}
 
-let query: Reventless.DcbTag.query = [
+let query: DcbTag.query = [
   {tags: [course], eventTypes: ["StudentSubscribed"]},
   {tags: [student], eventTypes: ["StudentSubscribed", "StudentLeft"]},
 ]
 
-let clauses = Reventless.DcbFenceCount.clauses(query, ~crossPartitionTagKeys=["studentId"])
+let clauses = DcbFenceCount.clauses(query, ~crossPartitionTagKeys=["studentId"])
 
-let fence = (~counted=true, counts): Reventless.DcbFenceCount.fence => {
+let fence = (~counted=true, counts): DcbFenceCount.fence => {
   tag: student,
   counted,
   counts: Dict.fromArray(counts),
@@ -22,7 +22,7 @@ let fence = (~counted=true, counts): Reventless.DcbFenceCount.fence => {
 let read = events => {
   let seen = Dict.make()
   events->Array.forEach(((eventType, tags)) =>
-    Reventless.DcbFenceCount.countRead(seen, clauses, ~eventType, ~tags)
+    DcbFenceCount.countRead(seen, clauses, ~eventType, ~tags)
   )
   seen
 }
@@ -38,20 +38,20 @@ describe("DcbFenceCount", () => {
       ("StudentSubscribed", [{key: "courseId", value: "C2"}, student]),
     ])
     expect(
-      Reventless.DcbFenceCount.shortfalls([fence([("StudentSubscribed", 2)])], clauses, seen),
+      DcbFenceCount.shortfalls([fence([("StudentSubscribed", 2)])], clauses, seen),
     )->toEqual([])
   })
 
   testSync("an event the index missed is a shortfall of its type", () => {
     let seen = read([("StudentSubscribed", [course, student])])
     expect(
-      Reventless.DcbFenceCount.shortfalls(
+      DcbFenceCount.shortfalls(
         [fence([("StudentSubscribed", 2), ("StudentLeft", 1)])],
         clauses,
         seen,
       ),
     )->toEqual([
-      {Reventless.DcbFenceCount.tag: student, eventType: "StudentSubscribed", read: 1, counted: 2},
+      {DcbFenceCount.tag: student, eventType: "StudentSubscribed", read: 1, counted: 2},
       {tag: student, eventType: "StudentLeft", read: 0, counted: 1},
     ])
   })
@@ -63,7 +63,7 @@ describe("DcbFenceCount", () => {
 
   testSync("a fence not yet counted proves nothing", () => {
     expect(
-      Reventless.DcbFenceCount.shortfalls(
+      DcbFenceCount.shortfalls(
         [fence(~counted=false, [("StudentSubscribed", 5)])],
         clauses,
         read([]),
@@ -75,7 +75,7 @@ describe("DcbFenceCount", () => {
     // A write after the fence was read: the append's own check sees it.
     let seen = read([("StudentSubscribed", [student]), ("StudentSubscribed", [student])])
     expect(
-      Reventless.DcbFenceCount.shortfalls([fence([("StudentSubscribed", 1)])], clauses, seen),
+      DcbFenceCount.shortfalls([fence([("StudentSubscribed", 1)])], clauses, seen),
     )->toEqual([])
   })
 })
