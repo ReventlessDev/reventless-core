@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.94 (2026-11-19)
+
+### Bug Fixes
+
+* **ppx:** the launcher runs the binary of its own version ([d89ccb1](https://github.com/ReventlessDev/reventless-core/commit/d89ccb17387b161894d27f451b6624b71d8a1110))
+
+
 # 1.0.0-alpha.93 (2026-11-19)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding
