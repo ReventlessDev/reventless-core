@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.235 (2026-11-19)
+
+### Features
+
+* **dcb:** a cross-partition read checks it saw every event its fence counted ([3c9f343](https://github.com/ReventlessDev/reventless-core/commit/3c9f34374c49834923a17432aab9c41672232108))
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+
+
 # 3.0.0-alpha.234 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

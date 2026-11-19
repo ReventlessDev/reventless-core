@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.291 (2026-11-19)
+
+### Features
+
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+* **dcb:** a slice can mark its own key on a consumed event to read it across partitions ([bf380ee](https://github.com/ReventlessDev/reventless-core/commit/bf380eeffeed7a1d29ef114c8f8e500a6af306d4))
+
+
 # 1.0.0-alpha.290 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

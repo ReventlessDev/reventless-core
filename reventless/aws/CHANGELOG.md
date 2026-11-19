@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.436 (2026-11-19)
+
+### Bug Fixes
+
+* **aws:** an outbound translation's row is claimed before it is translated ([8c4390f](https://github.com/ReventlessDev/reventless-core/commit/8c4390f8433e326166329005322c81eab9c0faf9))
+### Features
+
+* **aws:** a cross-partition fence counts the events that carry its tag ([dc5d683](https://github.com/ReventlessDev/reventless-core/commit/dc5d6835a832cdc5b2f8145781c3fbeee3dd108a))
+* **aws:** a fence first written after the backfill is trusted from its first event ([555dd09](https://github.com/ReventlessDev/reventless-core/commit/555dd09acd41a69347d95284062a9e39793862cb))
+* **aws:** count-fences completes the counts of cross-partition fences ([a698686](https://github.com/ReventlessDev/reventless-core/commit/a6986866b870c319a2644076e7cceaef866fac91))
+* **dcb:** a cross-partition read checks it saw every event its fence counted ([3c9f343](https://github.com/ReventlessDev/reventless-core/commit/3c9f34374c49834923a17432aab9c41672232108))
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+* **dcb:** a pair's writers keep a fence of the reader's, and the reader checks it ([a347a14](https://github.com/ReventlessDev/reventless-core/commit/a347a1412da4db3ecbf2c68cfb8dc1377f9a5bc2))
+* **dcb:** an append checks a cross-partition fence's count, not its position ([86f60cd](https://github.com/ReventlessDev/reventless-core/commit/86f60cd889a2a70346223a8669224d4d756f6455))
+
+
 # 3.0.0-alpha.435 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

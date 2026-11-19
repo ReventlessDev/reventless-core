@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.40 (2026-11-19)
+
+### Features
+
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+
+
 # 3.0.0-alpha.39 (2026-11-02)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

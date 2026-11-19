@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.290 (2026-11-19)
+
+### Bug Fixes
+
+* **deps:** the examples run host shell 3.0.0-alpha.131 ([30e2e3c](https://github.com/ReventlessDev/reventless-core/commit/30e2e3c48d1286718c29c2e4e6b1d47727a74c90))
+
+
 # 1.0.0-alpha.289 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-aws

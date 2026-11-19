@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.342 (2026-11-19)
+
+### Bug Fixes
+
+* **aws:** an outbound translation's row is claimed before it is translated ([8c4390f](https://github.com/ReventlessDev/reventless-core/commit/8c4390f8433e326166329005322c81eab9c0faf9))
+* **core:** a projection's action line carries the ids of the event it came from ([b7c35a3](https://github.com/ReventlessDev/reventless-core/commit/b7c35a3cd14c3f61f92a9d70e8fac4f9e7427dec))
+### Features
+
+* **dcb:** a cross-partition read checks it saw every event its fence counted ([3c9f343](https://github.com/ReventlessDev/reventless-core/commit/3c9f34374c49834923a17432aab9c41672232108))
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+* **dcb:** a pair's writers keep a fence of the reader's, and the reader checks it ([a347a14](https://github.com/ReventlessDev/reventless-core/commit/a347a1412da4db3ecbf2c68cfb8dc1377f9a5bc2))
+* **dcb:** a slice can mark its own key on a consumed event to read it across partitions ([bf380ee](https://github.com/ReventlessDev/reventless-core/commit/bf380eeffeed7a1d29ef114c8f8e500a6af306d4))
+* **dcb:** an append checks a cross-partition fence's count, not its position ([86f60cd](https://github.com/ReventlessDev/reventless-core/commit/86f60cd889a2a70346223a8669224d4d756f6455))
+* **spec:** a field holds a quantity in its unit, and a price per unit is money ([b35c911](https://github.com/ReventlessDev/reventless-core/commit/b35c911b5c18e5c973e18494887e19a1dcd622d3))
+
+
 # 3.0.0-alpha.341 (2026-11-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

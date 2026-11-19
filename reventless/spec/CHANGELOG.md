@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.204 (2026-11-19)
+
+### Bug Fixes
+
+* **spec:** the catalogue keeps a unit whole and spells it as written ([f3da9ed](https://github.com/ReventlessDev/reventless-core/commit/f3da9ed2fd3b419a50b985daceb02ba4b46ebcf9))
+### Features
+
+* **aws:** a fence first written after the backfill is trusted from its first event ([555dd09](https://github.com/ReventlessDev/reventless-core/commit/555dd09acd41a69347d95284062a9e39793862cb))
+* **dcb:** a cross-partition read checks it saw every event its fence counted ([3c9f343](https://github.com/ReventlessDev/reventless-core/commit/3c9f34374c49834923a17432aab9c41672232108))
+* **dcb:** a pair's events are read across partitions, its hits fetched in batches ([636b9e7](https://github.com/ReventlessDev/reventless-core/commit/636b9e7cdc85c31fe2aa9ca8909fc439f446536d))
+* **dcb:** a pair's writers keep a fence of the reader's, and the reader checks it ([a347a14](https://github.com/ReventlessDev/reventless-core/commit/a347a1412da4db3ecbf2c68cfb8dc1377f9a5bc2))
+* **dcb:** a slice can mark its own key on a consumed event to read it across partitions ([bf380ee](https://github.com/ReventlessDev/reventless-core/commit/bf380eeffeed7a1d29ef114c8f8e500a6af306d4))
+* **dcb:** an append checks a cross-partition fence's count, not its position ([86f60cd](https://github.com/ReventlessDev/reventless-core/commit/86f60cd889a2a70346223a8669224d4d756f6455))
+* **spec:** a field holds a quantity in its unit, and a price per unit is money ([b35c911](https://github.com/ReventlessDev/reventless-core/commit/b35c911b5c18e5c973e18494887e19a1dcd622d3))
+
+
 # 3.0.0-alpha.203 (2026-11-16)
 
 ### Features
