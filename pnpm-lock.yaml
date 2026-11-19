@@ -1694,7 +1694,7 @@ importers:
         specifier: workspace:*
         version: link:../infra
       '@reventlessdev/reventless-ppx':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/reventless-ppx
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
@@ -1779,7 +1779,7 @@ importers:
         specifier: workspace:*
         version: link:../../reventless/infra
       '@reventlessdev/reventless-ppx':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/reventless-ppx
       '@reventlessdev/reventless-spec':
         specifier: workspace:*

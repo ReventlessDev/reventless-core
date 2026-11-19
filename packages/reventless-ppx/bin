@@ -15,7 +15,23 @@
 #
 # Windows is served via WSL2 (which presents as Linux-x86_64); there is no native
 # Windows binary.
-DIR="$(cd "$(dirname "$0")" && pwd)"
+# The real directory, not the path a link gave: under pnpm this package is a link into the
+# store, where the per-platform binary beside it is the very version it depends on. Through the
+# link, the binary beside it is whichever one was hoisted, possibly another version's.
+DIR="$(cd "$(dirname "$0")" && pwd -P)"
+
+# A package.json's version, read without node.
+version_of() {
+  sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$1" 2>/dev/null | head -n 1
+}
+OWN="$(version_of "$DIR/package.json")"
+
+# Whether a candidate binary is this package's version: its package.json says the same, or it is
+# a local build, which has none. A binary of another version writes another sidecar.
+matches_own() {
+  pkg="$(dirname "$1")/package.json"
+  [ ! -f "$pkg" ] || [ -z "$OWN" ] || [ "$(version_of "$pkg")" = "$OWN" ]
+}
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)   PKG="linux-x64";    LOCAL="ppx-linux.exe" ;;
@@ -33,7 +49,7 @@ for CAND in \
   # `-f` (exists), not `-x`: npm/pnpm normalize file modes to 0644 when installing
   # from a published tarball (only package.json `bin` targets are guaranteed +x),
   # so the native binary often arrives non-executable. Restore +x, then exec.
-  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
+  if [ -f "$CAND" ] && matches_own "$CAND"; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
 done
 
 # (1c) Walk up ancestor directories looking for a node_modules with the matching
@@ -43,7 +59,17 @@ ANCESTOR="$DIR"
 while [ "$ANCESTOR" != "/" ] && [ -n "$ANCESTOR" ]; do
   ANCESTOR="$(dirname "$ANCESTOR")"
   CAND="$ANCESTOR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe"
-  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
+  if [ -f "$CAND" ] && matches_own "$CAND"; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
+done
+
+# (3) No binary of this version anywhere: one of another version, said so, rather than none.
+for CAND in \
+  "$DIR/../reventless-ppx-$PKG/ppx.exe" \
+  "$DIR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe"; do
+  if [ -f "$CAND" ]; then
+    echo "reventless-ppx: no binary of $OWN for $PKG; running $(version_of "$(dirname "$CAND")/package.json") instead." >&2
+    chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"
+  fi
 done
 
 echo "reventless-ppx: no binary found for $(uname -s)-$(uname -m)." >&2
