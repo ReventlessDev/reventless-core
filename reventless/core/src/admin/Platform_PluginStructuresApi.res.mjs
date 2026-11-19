@@ -13,7 +13,7 @@ let sdlTypes = [
   `type Platform_TraitDeclaration {\n  trait: String!\n  version: String!\n  posture: String!\n  component: String!\n}`,
   `type Platform_AdmissionDef {\n  role: String!\n  strategy: String!\n  invitedBy: [String!]\n}`,
   `type Platform_AdmissionDoorDef {\n  component: String!\n  part: String!\n}`,
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n  admission: [Platform_AdmissionDef!]\n  admissionDoors: [Platform_AdmissionDoorDef!]\n}`
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n  admission: [Platform_AdmissionDef!]\n  admissionDoors: [Platform_AdmissionDoorDef!]\n  quantities: [Platform_QuantityDef!]\n}`
 ];
 
 function encodeTraitDeclaration(d) {
@@ -213,6 +213,10 @@ function encodePluginStructureEntry(pluginId, def) {
     [
       "admissionDoors",
       Stdlib_Option.mapOr(def.admissionDoors, null, ds => ds.map(encodeAdmissionDoorDef))
+    ],
+    [
+      "quantities",
+      Platform_ComponentDefinitionsApi$ReventlessCore.encodeQuantities(def.quantities)
     ]
   ]);
 }

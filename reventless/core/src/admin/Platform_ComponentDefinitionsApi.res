@@ -45,13 +45,40 @@ let sdlTypes: array<string> = [
   // resolving a reference target reads all three. Keeping it a separate field is
   // what makes that separation structural rather than a filter every enumeration
   // site has to remember.
-  `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  internalQueryables: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`,
+  `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  internalQueryables: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  quantities: [Platform_QuantityDef!]\n}`,
+  // A quantity the plugin's fields measure or price, with its units' factors, so a
+  // page converts between units. A field names only the quantity and the unit.
+  // Nullable on the entry, as a structure written before it cannot say.
+  `type Platform_QuantityUnitDef {\n  code: String!\n  factor: Float!\n  words: String!\n  plural: String!\n}`,
+  `type Platform_QuantityDef {\n  name: String!\n  adds: Boolean!\n  units: [Platform_QuantityUnitDef!]!\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!`
 
 let encodeStrings = (ss: array<string>): JSON.t =>
   ss->Array.map(JSON.Encode.string)->JSON.Encode.array
+
+let encodeQuantityDef = (q: Reventless.Quantity.def): JSON.t =>
+  Dict.fromArray([
+    ("name", JSON.Encode.string(q.name)),
+    ("adds", JSON.Encode.bool(q.adds)),
+    (
+      "units",
+      q.units
+      ->Array.map(u =>
+        Dict.fromArray([
+          ("code", JSON.Encode.string(u.code)),
+          ("factor", JSON.Encode.float(u.factor)),
+          ("words", JSON.Encode.string(u.words)),
+          ("plural", JSON.Encode.string(u.plural)),
+        ])->JSON.Encode.object
+      )
+      ->JSON.Encode.array,
+    ),
+  ])->JSON.Encode.object
+
+let encodeQuantities = (qs: option<array<Reventless.Quantity.def>>): JSON.t =>
+  qs->Option.mapOr(JSON.Encode.null, qs => qs->Array.map(encodeQuantityDef)->JSON.Encode.array)
 
 let encodeFieldReference = (r: fieldReference): JSON.t =>
   Dict.fromArray([
@@ -292,6 +319,7 @@ let encodePluginStructureEntry = (
       ->JSON.Encode.array,
     ),
     ("extensions", def.extensions->Array.map(encodeExtensionDef)->JSON.Encode.array),
+    ("quantities", encodeQuantities(def.quantities)),
   ])
   derived->Option.forEach(kinds =>
     entry->Dict.set("derivedPages", kinds->Array.map(JSON.Encode.string)->JSON.Encode.array)

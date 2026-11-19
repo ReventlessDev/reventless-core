@@ -20,6 +20,11 @@ identifier, so every reader (the screens, a translator, a glossary) addresses th
 | `Ordering.CancelOrder.error.OrderAlreadyShipped` | Order already shipped | a write side's refusal |
 | `Ordering.role.Merchandiser` | Merchandiser | a role |
 | `Ordering.plugin.name` | Ordering | the plugin, as a menu groups its pages |
+| `Ordering.quantity.volume` | Volume | a quantity the plugin declares (not core's own) |
+| `Ordering.quantity.volume.unit.l` | `{count, plural, one {litre} other {litres}}` | each of its units' words |
+
+A field whose schema declares a unit (`x-reventless-semantic-unit`) keeps that unit whole in its
+label, spelled as its quantity spells it, so a unit the spelling table lacks still reads right.
 
 The English is what the screens draw today from the identifier, so a fresh catalogue changes
 nothing on screen; a translation is the first thing that does.
@@ -75,9 +80,17 @@ let units = Dict.fromArray([
 ])
 
 /** How a word is written when it is an acronym or a unit. */
-let spelled = (word: string): option<string> => {
+let spelled = (~unitTable=units, word: string): option<string> => {
   let lower = String.toLowerCase(word)
-  acronyms->Dict.get(lower)->Option.orElse(units->Dict.get(lower))
+  acronyms->Dict.get(lower)->Option.orElse(unitTable->Dict.get(lower))
+}
+
+/** The table with a field's own unit in it, as its quantity spells it: a unit the table
+    lacks (`Nm3`) is kept whole where the field holds it. */
+let withUnit = (code: string): dict<string> => {
+  let table = units->Dict.copy
+  table->Dict.set(String.toLowerCase(code), code)
+  table
 }
 
 let isUpper = (ch: string): bool => ch == String.toUpperCase(ch) && ch != String.toLowerCase(ch)
@@ -87,7 +100,7 @@ let isDigit = (ch: string): bool => ch >= "0" && ch <= "9" && String.length(ch) 
 /** Words at `_`, `-`, spaces and camelCase boundaries; a run of capitals stays one word
     (`ARNValue` → `ARN`, `Value`), and so does a unit that starts a word (`deliveredKWh` →
     `delivered`, `KWh`). */
-let splitWords = (input: string): array<string> => {
+let splitWords = (~unitTable=units, input: string): array<string> => {
   let length = String.length(input)
   let words = []
   let current = ref("")
@@ -100,7 +113,7 @@ let splitWords = (input: string): array<string> => {
   // A unit at `i`, ending at a word's end: the input's end, a separator, a capital or a digit.
   // So `kW` never matches inside `kWh`, and the order of the table does not matter.
   let unitAt = i =>
-    units
+    unitTable
     ->Dict.keysToArray
     ->Array.find(u => {
       let n = String.length(u)
@@ -150,8 +163,8 @@ let splitWords = (input: string): array<string> => {
   words
 }
 
-let capitalizeWord = (word: string): string =>
-  switch spelled(word) {
+let capitalizeWord = (~unitTable=units, word: string): string =>
+  switch spelled(~unitTable, word) {
   | Some(acronym) => acronym
   | None =>
     String.length(word) == 0
@@ -161,10 +174,10 @@ let capitalizeWord = (word: string): string =>
   }
 
 /** `customerId` → "Customer ID", `PlaceOrder` → "Place Order". */
-let humanizeKey = (key: string): string =>
-  switch splitWords(key) {
+let humanizeKey = (~unitTable=units, key: string): string =>
+  switch splitWords(~unitTable, key) {
   | [] => key
-  | words => words->Array.map(capitalizeWord)->Array.join(" ")
+  | words => words->Array.map(w => capitalizeWord(~unitTable, w))->Array.join(" ")
   }
 
 /** `OrderAlreadyShipped` → "Order already shipped". */
@@ -206,6 +219,10 @@ type elementKind =
   | ErrorText(string)
   | PluginText
   | RoleText
+  /** A quantity the plugin declares, by its name. */
+  | QuantityText
+  /** One unit of a declared quantity, by its code: its words, singular and plural. */
+  | UnitText(string)
   | OtherElementText(string)
 
 /** The kind as a key and a lock spell it. */
@@ -220,6 +237,8 @@ let elementKindText = (kind: elementKind): string =>
   | ErrorText(error) => `error.${error}`
   | PluginText => "plugin"
   | RoleText => "role"
+  | QuantityText => "quantity"
+  | UnitText(code) => `unit.${code}`
   | OtherElementText(text) => text
   }
 
@@ -231,6 +250,7 @@ let elementKindOfText = (text: string): elementKind =>
   | "count" => CountText
   | "plugin" => PluginText
   | "role" => RoleText
+  | "quantity" => QuantityText
   | _ =>
     switch text->String.indexOf(".") {
     | -1 => OtherElementText(text)
@@ -250,6 +270,7 @@ let elementKindOfText = (text: string): elementKind =>
           })
         }
       | "error" => ErrorText(rest)
+      | "unit" => UnitText(rest)
       | _ => OtherElementText(text)
       }
     }
@@ -327,6 +348,28 @@ let enumValues = (property: dict<JSON.t>): array<string> =>
     )
   }
 
+/** The unit a field's schema says it holds (`x-reventless-semantic-unit`), a quantity's or
+    a price's, on the field or on a list's elements. */
+let unitOfProperty = (property: dict<JSON.t>): option<string> => {
+  let own = (o: dict<JSON.t>) =>
+    o
+    ->Dict.get("x-reventless-semantic-unit")
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.flatMap(u => u->Dict.get("unit"))
+    ->Option.flatMap(JSON.Decode.string)
+  own(property)->Option.orElse(
+    property->Dict.get("items")->Option.flatMap(JSON.Decode.object)->Option.flatMap(own),
+  )
+}
+
+/** A field's label: its last part humanized, a unit its schema declares kept whole and spelled
+    as its quantity spells it; a field with none reads by the table. */
+let fieldLabel = ((path, property): (string, dict<JSON.t>)): string =>
+  switch unitOfProperty(property) {
+  | Some(code) => humanizeKey(~unitTable=withUnit(code), leafOf(path))
+  | None => humanizeKey(leafOf(path))
+  }
+
 /** A GraphQL field without its plugin's prefix: `Ordering_Customer` → `Customer`. */
 let unprefixed = (field: string): string =>
   switch field->String.indexOf("_") {
@@ -379,8 +422,8 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
       `{count, plural, one {# ${inSentence(singular)}} other {# ${inSentence(plural)}}}`,
     )
     let properties = propertiesOf(view.schema)
-    fieldPaths(properties)->Array.forEach(((path, _)) =>
-      add(~identifier=view.name, ~kind=FieldText(path), humanizeKey(leafOf(path)))
+    fieldPaths(properties)->Array.forEach(((path, _) as field) =>
+      add(~identifier=view.name, ~kind=FieldText(path), fieldLabel(field))
     )
     properties->Array.forEach(((field, property)) =>
       if view.lifecycleField != Some(field) {
@@ -403,8 +446,8 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
       add(~identifier=command.name, ~kind=NameText, humanizeKey(command.name))
       let properties = propertiesOf(command.schema)
       fieldPaths(properties)->Array.forEach(
-        ((path, _)) =>
-          add(~identifier=command.name, ~kind=FieldText(path), humanizeKey(leafOf(path))),
+        ((path, _) as field) =>
+          add(~identifier=command.name, ~kind=FieldText(path), fieldLabel(field)),
       )
       properties->Array.forEach(
         ((field, property)) =>
@@ -428,6 +471,26 @@ let entries = (~plugin: string, structure: Plugin.pluginStructure): array<entry>
     key: `${plugin}.plugin.name`,
     text: humanizeKey(plugin),
     element: {plugin, identifier: plugin, kind: PluginText},
+  })
+
+  // A quantity the plugin declares is the plugin's to translate: its name, and each unit's
+  // words. Core's own quantities are translated once, by whoever draws them.
+  structure.quantities
+  ->Option.getOr([])
+  ->Array.filter(q => !Quantity.isStandardName(q.name))
+  ->Array.forEach(q => {
+    out->Array.push({
+      key: `${plugin}.quantity.${q.name}`,
+      text: humanizeKey(q.name),
+      element: {plugin, identifier: q.name, kind: QuantityText},
+    })
+    q.units->Array.forEach(u =>
+      out->Array.push({
+        key: `${plugin}.quantity.${q.name}.unit.${u.code}`,
+        text: `{count, plural, one {${u.words}} other {${u.plural}}}`,
+        element: {plugin, identifier: q.name, kind: UnitText(u.code)},
+      })
+    )
   })
 
   let roles = Array.concat(

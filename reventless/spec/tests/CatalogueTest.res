@@ -219,6 +219,51 @@ describe("Catalogue.entries", () => {
       "Capacity above MWh",
     ))
   )
+
+  testSync("a field typed with a quantity reads its unit from the schema", () => {
+    // `Nm3` is in no table; the field's schema says it is the unit.
+    let gas = {
+      ...customers,
+      schema: `{"type": "object", "properties": {
+        "deliveredKWh": {"type": "number", "x-reventless-semantic": "quantity",
+          "x-reventless-semantic-unit": {"quantity": "energy", "unit": "kWh"}},
+        "gasNm3": {"type": "number", "x-reventless-semantic": "quantity",
+          "x-reventless-semantic-unit": {"quantity": "gas", "unit": "Nm3"}},
+        "untypedNm3": {"type": "number"}
+      }}`,
+      lifecycleField: ?None,
+    }
+    let fields =
+      Catalogue.entries(~plugin="Ordering", {...structure, readModels: [gas]})
+      ->Array.filter(e => e.key->String.startsWith("Ordering.Customers.field."))
+      ->Array.map(e => (e.key, e.text))
+    expect(fields)->toEqual([
+      ("Ordering.Customers.field.deliveredKWh", "Delivered kWh"),
+      ("Ordering.Customers.field.gasNm3", "Gas Nm3"),
+      ("Ordering.Customers.field.untypedNm3", "Untyped Nm 3"),
+    ])
+  })
+
+  testSync("a declared quantity's name and units' words get keys once; core's own get none", () => {
+    let gas: Quantity.def = {
+      name: "gas",
+      adds: true,
+      units: [
+        {code: "Nm3", factor: 1.0, words: "normal cubic metre", plural: "normal cubic metres"},
+      ],
+    }
+    let keys =
+      Catalogue.entries(~plugin="Ordering", {...structure, quantities: [Quantity.energy, gas]})
+      ->Array.filter(e => e.key->String.includes(".quantity."))
+      ->Array.map(e => (e.key, e.text))
+    expect(keys)->toEqual([
+      ("Ordering.quantity.gas", "Gas"),
+      (
+        "Ordering.quantity.gas.unit.Nm3",
+        "{count, plural, one {normal cubic metre} other {normal cubic metres}}",
+      ),
+    ])
+  })
 })
 
 describe("Catalogue.merge", () => {

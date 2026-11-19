@@ -342,6 +342,7 @@ function withSemantic(fieldSchema, sem) {
   obj["x-reventless-semantic"] = sem.id;
   obj["x-reventless-semantic-source"] = "type";
   let match = sem.payload;
+  let exit = 0;
   if (typeof match === "object") {
     switch (match.TAG) {
       case "ReferenceTo" :
@@ -387,7 +388,24 @@ function withSemantic(fieldSchema, sem) {
             match.key
           ]]);
         break;
+      case "InUnit" :
+      case "PerUnit" :
+        exit = 1;
+        break;
     }
+  }
+  if (exit === 1) {
+    let match$4 = match._0;
+    obj["x-reventless-semantic-unit"] = Object.fromEntries([
+      [
+        "quantity",
+        match$4.quantity
+      ],
+      [
+        "unit",
+        match$4.unit
+      ]
+    ]);
   }
   return obj;
 }

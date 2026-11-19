@@ -216,12 +216,65 @@ placedAt: @s.matches(Reventless.DateTime.string) string,  // calendar / timeline
 
 Available in `Reventless.*`: `Money`, `Currency`, `GeoPoint`, `DateRange`,
 `DateTime`, `Duration`, `Bytes`, `Color`, `Email`, `Phone`, `Percent`, `Url`,
-`StorageRef`, `Offload`.
+`StorageRef`, `Offload`, `Energy`, `Power`, `Quantity`, `PricePer`.
 
 Why this beats a name-based guess: `GeoPoint.t` says *one declared point*, so the
 view drops a pin per row rather than hunting for a `lat`/`lng` pair among the
 numeric fields. `DateRange.t` says *one span*, so a scheduler lays out a bar
 directly instead of pairing `start*`/`end*` by name.
+
+#### Quantities and their units
+
+A number that has a unit says which: the field holds a **quantity**, such as
+energy, in one of its **units**, such as kWh. The value stays a plain number in
+that unit, so typing an existing `float` field changes nothing stored.
+
+```rescript
+delivered: @s.matches(Reventless.Energy.kilowattHour) float,  // 12.4, in kWh
+maxPower: @s.matches(Reventless.Power.kilowatt) float,        // 22.0, in kW
+```
+
+Core ships `Energy` (`wattHour`, `kilowattHour`, `megawattHour`, `gigawattHour`)
+and `Power` (`watt`, `kilowatt`, `megawatt`). Each unit has a factor and its name
+in words, so a reader converts *1240 kWh* to *1.24 MWh* and adds up energy held in
+different units. The field's JSON schema carries `x-reventless-semantic: "quantity"`
+and `x-reventless-semantic-unit: {"quantity": "energy", "unit": "kWh"}`; the
+plugin's structure lists each quantity's units and factors once.
+
+A quantity core does not ship is declared the same way, and its name and units'
+words reach the plugin's catalogue to be translated. Its first unit is the one
+the factors count from:
+
+```rescript
+module Volume = Reventless.Quantity.Make({
+  let name = "volume"
+  let adds = true
+  let units = [
+    {Reventless.Quantity.code: "l", factor: 1.0, words: "litre", plural: "litres"},
+    {code: "m3", factor: 1000.0, words: "cubic metre", plural: "cubic metres"},
+  ]
+})
+let litre = Volume.in_("l")
+```
+
+A plugin never redefines a standard quantity: a changed factor would change what
+stored numbers mean.
+
+#### A price per unit
+
+A price per unit is money per a quantity's unit. The value is `Money.t`, with its
+currency; only the field's schema says *per kWh*:
+
+```rescript
+price: @s.matches(Reventless.PricePer.unit(Reventless.Energy.kilowattHour)) Reventless.Money.t,
+```
+
+`PricePer.charge(price, ~per, delivered, ~in_)` charges a quantity at it: the
+quantity is converted into the price's unit, multiplied, and rounded once to the
+currency's minor unit, half away from zero. 12.4 kWh at 39 ct per kWh is 4.84 €,
+and the same energy at 39,000 ct per MWh gives the same amount. A price per kW
+charged with energy is refused. Retyping a `price: float` as a price per unit
+changes what is stored, as retyping it as `Money.t` does.
 
 **`@semantic("id")`** says the same thing about a field whose type cannot. Reach
 for it when you are not in a position to change the type; the vocabulary is the

@@ -13,6 +13,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as Trait$Reventless from "@reventlessdev/reventless-spec/src/types/Trait.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Quantity$Reventless from "@reventlessdev/reventless-spec/src/semantic/Quantity.res.mjs";
 import * as Schedule$Reventless from "@reventlessdev/reventless-spec/src/types/Schedule.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
@@ -1080,6 +1081,45 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   if (found.length !== 0) {
     Stdlib_JsError.throwWithMessage(name + `: two declared object stores look like one store misspelled.\n` + found.map(Capability_Inference$ReventlessCore.collisionMessage).join("\n"));
   }
+  let collect = (schema, depth) => {
+    let q = Quantity$Reventless.defOf(schema);
+    if (q !== undefined) {
+      return [q];
+    }
+    if (depth >= 6) {
+      return [];
+    }
+    let inner = __x => collect(__x, depth + 1 | 0);
+    let match = Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(schema), schema);
+    switch (match.type) {
+      case "array" :
+        let item = match.additionalItems;
+        if (item === "strip" || item === "strict") {
+          if (item === "strip") {
+            return [];
+          } else {
+            return [];
+          }
+        } else {
+          return inner(item);
+        }
+      case "object" :
+        return Object.values(match.properties).flatMap(inner);
+      case "anyOf" :
+        return match.anyOf.flatMap(inner);
+      default:
+        return [];
+    }
+  };
+  let found$1 = Stdlib_Array.reduce(storeDeclarationSites.flatMap(param => collect(param[1], 0)), [], (acc, q) => {
+    if (acc.some(seen => Primitive_object.equal(seen, q))) {
+      return acc;
+    } else {
+      return acc.concat([q]);
+    }
+  }).toSorted((a, b) => Primitive_string.compare(a.name, b.name));
+  let pairs = Quantity$Reventless.conflicts(found$1);
+  let quantities = pairs.length !== 0 ? Stdlib_JsError.throwWithMessage(name + `: ` + pairs.map(param => `two fields declare the quantity "` + param[0].name + `" with different units`).join("; ") + `. A quantity is declared once and every field uses that declaration.`) : found$1;
   let declarationsOf = (component, needs) => needs.map(need => ({
     capability: CapabilityNeed$Reventless.toString(need),
     component: component
@@ -1642,7 +1682,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     admissionDoors: admissionDoors.length !== 0 ? admissionDoors.map(param => ({
         component: param[0],
         part: Admission$Reventless.doorName(param[1])
-      })) : undefined
+      })) : undefined,
+    quantities: quantities.length !== 0 ? quantities : undefined
   };
 }
 

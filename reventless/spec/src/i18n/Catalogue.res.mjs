@@ -6,6 +6,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Quantity$Reventless from "../semantic/Quantity.res.mjs";
 
 let acronyms = Object.fromEntries([
   [
@@ -145,9 +146,16 @@ let units = Object.fromEntries([
   ]
 ]);
 
-function spelled(word) {
+function spelled(unitTableOpt, word) {
+  let unitTable = unitTableOpt !== undefined ? unitTableOpt : units;
   let lower = word.toLowerCase();
-  return Stdlib_Option.orElse(acronyms[lower], units[lower]);
+  return Stdlib_Option.orElse(acronyms[lower], unitTable[lower]);
+}
+
+function withUnit(code) {
+  let table = Object.assign({}, units);
+  table[code.toLowerCase()] = code;
+  return table;
 }
 
 function isUpper(ch) {
@@ -174,7 +182,8 @@ function isDigit(ch) {
   }
 }
 
-function splitWords(input) {
+function splitWords(unitTableOpt, input) {
+  let unitTable = unitTableOpt !== undefined ? unitTableOpt : units;
   let length = input.length;
   let words = [];
   let current = {
@@ -187,7 +196,7 @@ function splitWords(input) {
       return;
     }
   };
-  let unitAt = i => Object.keys(units).find(u => {
+  let unitAt = i => Object.keys(unitTable).find(u => {
     let n = u.length;
     let next = input.charAt(i + n | 0);
     if (input.slice(i, i + n | 0).toLowerCase() === u) {
@@ -236,8 +245,9 @@ function splitWords(input) {
   return words;
 }
 
-function capitalizeWord(word) {
-  let acronym = spelled(word);
+function capitalizeWord(unitTableOpt, word) {
+  let unitTable = unitTableOpt !== undefined ? unitTableOpt : units;
+  let acronym = spelled(unitTable, word);
   if (acronym !== undefined) {
     return acronym;
   } else if (word.length === 0) {
@@ -247,31 +257,32 @@ function capitalizeWord(word) {
   }
 }
 
-function humanizeKey(key) {
-  let words = splitWords(key);
+function humanizeKey(unitTableOpt, key) {
+  let unitTable = unitTableOpt !== undefined ? unitTableOpt : units;
+  let words = splitWords(unitTable, key);
   if (words.length !== 0) {
-    return words.map(capitalizeWord).join(" ");
+    return words.map(w => capitalizeWord(unitTable, w)).join(" ");
   } else {
     return key;
   }
 }
 
 function sentence(code) {
-  return splitWords(code).map((word, i) => {
-    let match = spelled(word);
+  return splitWords(undefined, code).map((word, i) => {
+    let match = spelled(undefined, word);
     if (match !== undefined) {
       return match;
     } else if (i !== 0) {
       return word.toLowerCase();
     } else {
-      return capitalizeWord(word);
+      return capitalizeWord(undefined, word);
     }
   }).join(" ");
 }
 
 function inSentence(identifier) {
-  return splitWords(identifier).map(word => {
-    let acronym = spelled(word);
+  return splitWords(undefined, identifier).map(word => {
+    let acronym = spelled(undefined, word);
     if (acronym !== undefined) {
       return acronym;
     } else {
@@ -293,6 +304,8 @@ function elementKindText(kind) {
         return "plugin";
       case "RoleText" :
         return "role";
+      case "QuantityText" :
+        return "quantity";
     }
   } else {
     switch (kind.TAG) {
@@ -304,6 +317,8 @@ function elementKindText(kind) {
         return `value.` + kind.field + `.` + kind.value;
       case "ErrorText" :
         return `error.` + kind._0;
+      case "UnitText" :
+        return `unit.` + kind._0;
       case "OtherElementText" :
         return kind._0;
     }
@@ -320,6 +335,8 @@ function elementKindOfText(text) {
       return "PluginText";
     case "plural" :
       return "PluralText";
+    case "quantity" :
+      return "QuantityText";
     case "role" :
       return "RoleText";
     default:
@@ -346,6 +363,11 @@ function elementKindOfText(text) {
         case "state" :
           return {
             TAG: "StateText",
+            _0: rest
+          };
+        case "unit" :
+          return {
+            TAG: "UnitText",
             _0: rest
           };
         case "value" :
@@ -431,6 +453,21 @@ function enumValues(property) {
   }
 }
 
+function unitOfProperty(property) {
+  let own = o => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(o["x-reventless-semantic-unit"], Stdlib_JSON.Decode.object), u => u["unit"]), Stdlib_JSON.Decode.string);
+  return Stdlib_Option.orElse(own(property), Stdlib_Option.flatMap(Stdlib_Option.flatMap(property["items"], Stdlib_JSON.Decode.object), own));
+}
+
+function fieldLabel(param) {
+  let path = param[0];
+  let code = unitOfProperty(param[1]);
+  if (code !== undefined) {
+    return humanizeKey(withUnit(code), leafOf(path));
+  } else {
+    return humanizeKey(undefined, leafOf(path));
+  }
+}
+
 function unprefixed(field) {
   let match = field.indexOf("_");
   if (match !== -1) {
@@ -473,17 +510,14 @@ function entries(plugin, structure) {
     let match = view.pluralSource;
     let match$1 = view.plural;
     let plural = match === "declared" && match$1 !== undefined ? match$1 : view.name;
-    add(view.name, "NameText", humanizeKey(singular));
-    add(view.name, "PluralText", humanizeKey(plural));
+    add(view.name, "NameText", humanizeKey(undefined, singular));
+    add(view.name, "PluralText", humanizeKey(undefined, plural));
     add(view.name, "CountText", `{count, plural, one {# ` + inSentence(singular) + `} other {# ` + inSentence(plural) + `}}`);
     let properties = propertiesOf(view.schema);
-    fieldPaths(properties).forEach(param => {
-      let path = param[0];
-      add(view.name, {
-        TAG: "FieldText",
-        _0: path
-      }, humanizeKey(leafOf(path)));
-    });
+    fieldPaths(properties).forEach(field => add(view.name, {
+      TAG: "FieldText",
+      _0: field[0]
+    }, fieldLabel(field)));
     properties.forEach(param => {
       let field = param[0];
       if (Primitive_object.notequal(view.lifecycleField, field)) {
@@ -491,7 +525,7 @@ function entries(plugin, structure) {
           TAG: "ValueText",
           field: field,
           value: value
-        }, humanizeKey(value)));
+        }, humanizeKey(undefined, value)));
         return;
       }
     });
@@ -499,27 +533,24 @@ function entries(plugin, structure) {
       enumValues(param[1]).forEach(value => add(view.name, {
         TAG: "StateText",
         _0: value
-      }, humanizeKey(value)));
+      }, humanizeKey(undefined, value)));
     });
   });
   structure.stateChangeSlices.concat(structure.aggregates).forEach(writeSide => {
     writeSide.commands.forEach(command => {
-      add(command.name, "NameText", humanizeKey(command.name));
+      add(command.name, "NameText", humanizeKey(undefined, command.name));
       let properties = propertiesOf(command.schema);
-      fieldPaths(properties).forEach(param => {
-        let path = param[0];
-        add(command.name, {
-          TAG: "FieldText",
-          _0: path
-        }, humanizeKey(leafOf(path)));
-      });
+      fieldPaths(properties).forEach(field => add(command.name, {
+        TAG: "FieldText",
+        _0: field[0]
+      }, fieldLabel(field)));
       properties.forEach(param => {
         let field = param[0];
         enumValues(param[1]).forEach(value => add(command.name, {
           TAG: "ValueText",
           field: field,
           value: value
-        }, humanizeKey(value)));
+        }, humanizeKey(undefined, value)));
       });
     });
     writeSide.errors.forEach(error => add(writeSide.name, {
@@ -527,22 +558,47 @@ function entries(plugin, structure) {
       _0: error.name
     }, sentence(error.name)));
   });
-  structure.stateChangeSlices.forEach(slice => add(slice.name, "NameText", humanizeKey(slice.name)));
+  structure.stateChangeSlices.forEach(slice => add(slice.name, "NameText", humanizeKey(undefined, slice.name)));
   out.push({
     key: plugin + `.plugin.name`,
-    text: humanizeKey(plugin),
+    text: humanizeKey(undefined, plugin),
     element: {
       plugin: plugin,
       identifier: plugin,
       kind: "PluginText"
     }
   });
+  Stdlib_Option.getOr(structure.quantities, []).filter(q => !Quantity$Reventless.isStandardName(q.name)).forEach(q => {
+    out.push({
+      key: plugin + `.quantity.` + q.name,
+      text: humanizeKey(undefined, q.name),
+      element: {
+        plugin: plugin,
+        identifier: q.name,
+        kind: "QuantityText"
+      }
+    });
+    q.units.forEach(u => {
+      out.push({
+        key: plugin + `.quantity.` + q.name + `.unit.` + u.code,
+        text: `{count, plural, one {` + u.words + `} other {` + u.plural + `}}`,
+        element: {
+          plugin: plugin,
+          identifier: q.name,
+          kind: {
+            TAG: "UnitText",
+            _0: u.code
+          }
+        }
+      });
+    });
+  });
   let roles = Stdlib_Option.getOr(structure.admission, []).map(a => a.role).concat(structure.stateChangeSlices.concat(structure.aggregates).flatMap(w => w.commands).flatMap(c => Stdlib_Option.getOr(c.requiredRoles, [])));
   roles.forEach(role => {
     if (!out.some(e => e.key === plugin + `.role.` + role)) {
       out.push({
         key: plugin + `.role.` + role,
-        text: humanizeKey(role),
+        text: humanizeKey(undefined, role),
         element: {
           plugin: plugin,
           identifier: role,
@@ -702,6 +758,7 @@ export {
   acronyms,
   units,
   spelled,
+  withUnit,
   isUpper,
   isLower,
   isDigit,
@@ -718,6 +775,8 @@ export {
   innerProperties,
   fieldPaths,
   enumValues,
+  unitOfProperty,
+  fieldLabel,
   unprefixed,
   pluginNameOf,
   entries,

@@ -195,6 +195,7 @@ let structure: pluginStructure = {
   requiredCapabilities: [capabilityDecl],
   admission: [admissionDef],
   admissionDoors: [admissionDoor],
+  quantities: [Reventless.Quantity.energy],
 }
 
 let panel: panelManifestEntry = {
@@ -398,6 +399,28 @@ let guards: array<guard> = [
     sdlTypes: structuresSdl,
     recordFields: schemaKeys(requiredStoreDeclarationSchema),
     wireFields: jsonKeys(Platform_PluginStructuresApi.encodeRequiredStoreDeclaration(storeDecl)),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
+    gqlType: "Platform_QuantityDef",
+    sdlTypes: componentSdl,
+    recordFields: schemaKeys(Reventless.Quantity.defSchema),
+    wireFields: jsonKeys(
+      Platform_ComponentDefinitionsApi.encodeQuantityDef(Reventless.Quantity.energy),
+    ),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
+    gqlType: "Platform_QuantityUnitDef",
+    sdlTypes: componentSdl,
+    recordFields: schemaKeys(Reventless.Quantity.unitDefSchema),
+    wireFields: jsonKeys(
+      Platform_ComponentDefinitionsApi.encodeQuantityDef(Reventless.Quantity.energy)->firstOf(
+        "units",
+      ),
+    ),
     wireOnly: [],
     recordOnly: [],
   },

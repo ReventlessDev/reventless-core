@@ -147,6 +147,29 @@ module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   ): component => Obj.magic(0)
 }
 
+module PsRateSessionSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsRateSession
+  module Decision = {
+    type state = PsRateSession.state
+    let initialState = PsRateSession.initialState
+    let evolve = PsRateSession.evolve
+    let decide = PsRateSession.decide
+    let moduleUrl = PsRateSession.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (
+    ~dcbEventLog as _,
+    ~publishJsons as _,
+    ~tagKeysByEventType as _=?,
+    ~crossPartitionTagKeys as _=?,
+    ~crossPartitionPairs as _=?,
+    ~partitionTag as _=?,
+    ~runtime as _=?,
+    ~opts as _=?,
+  ): component => Obj.magic(0)
+}
+
 module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsUploadAvatar
   module Decision = {
@@ -2040,6 +2063,34 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   // A field typed as a storage ref states that the deployment needs that store
   // to exist. Collecting the requirement onto the structure is what lets the
   // deploy read it without re-walking every component's schema.
+  // A field names its quantity and unit; the structure lists each quantity once,
+  // with its units and factors, so a reader converting between units finds them.
+  describe("quantities", () => {
+    let rated = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsRateSessionSlice)],
+    )
+
+    testSync(
+      "each quantity the fields measure or price is listed once, nested ones too",
+      () =>
+        expect(rated.quantities)->toEqual(
+          Some([Reventless.Quantity.energy, Reventless.Quantity.power]),
+        ),
+    )
+
+    testSync(
+      "a plugin with no quantity lists none",
+      () =>
+        expect(
+          Plugin_Structure.make(
+            ~name="TestPlugin",
+            ~stateChangeSlices=[module(PsAttachInvoiceSlice)],
+          ).quantities,
+        )->toEqual(None),
+    )
+  })
+
   describe("requiredStores", () => {
     let withStores = Plugin_Structure.make(
       ~name="TestPlugin",

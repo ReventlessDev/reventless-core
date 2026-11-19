@@ -112,6 +112,16 @@
 .structure.outboundTranslationSlices[].consumedSources[]: string
 .structure.outboundTranslationSlices[].inboundCommandTypes[]: string
 .structure.outboundTranslationSlices[].name: string
+# `quantities` is itself optional and is NEW, so no persisted payload carries the
+# array: a stored structure heals to `None` and these six are never reached.
+# Required inside it because a quantity is its name and its units' factors; a
+# fabricated `0` factor would convert every stored number to nothing.
+.structure.quantities[].adds: boolean
+.structure.quantities[].name: string
+.structure.quantities[].units[].code: string
+.structure.quantities[].units[].factor: number
+.structure.quantities[].units[].plural: string
+.structure.quantities[].units[].words: string
 .structure.readModels[].consumedEventTypes[]: string
 .structure.readModels[].labelField: string
 .structure.readModels[].linkedWriteSide[]: string

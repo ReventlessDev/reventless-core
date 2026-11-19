@@ -26,6 +26,9 @@ let sampleCaptionedImage = {
 let sampleDuration = 3600
 let samplePercent = 50.0
 let sampleBytes = 1024.0
+let sampleEnergy = 1.0
+let samplePower = 1.0
+let samplePricePer = Money.make(~amount=1000.0, ~currency=Currency.EUR)
 
 /** Whitespace and the formatter's trailing commas removed, so a fixture the
     formatter wrapped still matches its one-line sample. */
@@ -70,6 +73,9 @@ let decodesValue: array<(string, unit => bool)> = [
   ("Duration", () => roundTrips(sampleDuration, Duration.schema)),
   ("Percent", () => roundTrips(samplePercent, Percent.schema)),
   ("Bytes", () => roundTrips(sampleBytes, Bytes.schema)),
+  ("Energy", () => roundTrips(sampleEnergy, Energy.kilowattHour)),
+  ("Power", () => roundTrips(samplePower, Power.kilowatt)),
+  ("PricePer", () => roundTrips(samplePricePer, PricePer.unit(Energy.kilowattHour))),
 ]
 
 /** A raw string accepted by the schema and, where the module has one, by its
@@ -128,6 +134,7 @@ let decodesString: array<(string, string => bool)> = [
     value other than its module's sample (a range does not end where it starts). */
 let partOverrides: array<((string, string), string)> = [
   (("Money", "amount"), "1000.0"),
+  (("PricePer", "amount"), "1000.0"),
   (("DateRange", "end_"), `"2024-01-02T00:00:00Z"`),
   (("GeoPoint", "lat"), "0.0"),
   (("GeoPoint", "lng"), "0.0"),

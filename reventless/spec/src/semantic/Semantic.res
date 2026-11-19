@@ -44,6 +44,11 @@ type memberTarget = {
   content?: string,
 }
 
+/** Which quantity and which of its units: `{quantity: "energy", unit: "kWh"}`.
+    The quantity's units and factors are not repeated here; a plugin's structure
+    lists each quantity once. */
+type unitTarget = {quantity: string, unit: string}
+
 /** Per-semantic detail, for the semantics that carry any. */
 type payload =
   | Plain
@@ -52,6 +57,10 @@ type payload =
   | MemberOf(memberTarget)
   /** Which identity an id is: named by its key (`orderId`). */
   | IdentityOf({key: string})
+  /** A number in this unit of a quantity. */
+  | InUnit(unitTarget)
+  /** Money per one of this unit of a quantity. */
+  | PerUnit(unitTarget)
 
 /** A field's semantic: the vocabulary id, plus its detail. */
 type t = {id: string, payload: payload}
@@ -117,6 +126,14 @@ module Id = {
   // Which entity an id names, carried by the type `Id.Make` produces. A string on
   // the wire, so adopting one changes nothing stored.
   let identity = "identity"
+
+  // A number in a declared quantity and unit (energy in kWh). The value stays a
+  // number, so adopting one changes nothing stored.
+  let quantity = "quantity"
+
+  // Money per a quantity's unit (ct per kWh). Money's shape, so adopting one on a
+  // bare number changes the wire as `money` does.
+  let pricePerUnit = "pricePerUnit"
 }
 
 /** One transparent-string semantic: a `semantic/` module whose `type t` is a
@@ -282,6 +299,16 @@ let valueTypes: array<valueType> = [
   },
   {moduleName: "Percent", shape: Number({integer: false}), sample: "50.0", writer: "$value"},
   {moduleName: "Bytes", shape: Number({integer: false}), sample: "1024.0", writer: "$value"},
+  // A number in the field's unit, whichever unit of the quantity it declares.
+  {moduleName: "Energy", shape: Number({integer: false}), sample: "1.0", writer: "$value"},
+  {moduleName: "Power", shape: Number({integer: false}), sample: "1.0", writer: "$value"},
+  // Money's parts; the unit is the field's, not the value's.
+  {
+    moduleName: "PricePer",
+    shape: Parts({parts: [("amount", "float"), ("currency", "Currency")]}),
+    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)",
+  },
 ]
 
 /** `semantic/` modules whose `type t` types a field, but whose shape
@@ -300,6 +327,9 @@ let nonValueModules: array<string> = [
   "Media_Ref",
   "Messaging",
   "Offload",
+  // Defines quantities; a field's value is in one of `Energy`'s, `Power`'s or a
+  // plugin's own.
+  "Quantity",
   "RowImage",
   "Secrets",
   "Semantic",

@@ -52,13 +52,13 @@ let sdlTypes: array<string> = [
   // A door into the admission flow, and which part of it the door serves.
   `type Platform_AdmissionDoorDef {\n  component: String!\n  part: String!\n}`,
   // `extensionPoints` / `requiredStores` / `requiredStoreDeclarations` /
-  // `requiredCapabilities` / `traitDeclarations` / `admission` / `admissionDoors` are
-  // nullable lists, not `[T!]!`: all seven are optional on
+  // `requiredCapabilities` / `traitDeclarations` / `admission` / `admissionDoors` /
+  // `quantities` are nullable lists, not `[T!]!`: all eight are optional on
   // `pluginStructure` so that plugin definitions persisted before the field existed
   // still decode. A structure written by an older deploy sends null, and null is the
   // honest answer — an empty list would claim the plugin has no extension points when
   // the truth is that the deployment cannot say.
-  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n  admission: [Platform_AdmissionDef!]\n  admissionDoors: [Platform_AdmissionDoorDef!]\n}`,
+  `type Platform_PluginStructureEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  extensionPoints: [Platform_ExtensionPointDef!]\n  requiredStores: [String!]\n  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]\n  requiredCapabilities: [Platform_RequiredCapabilityDeclaration!]\n  traitDeclarations: [Platform_TraitDeclaration!]\n  admission: [Platform_AdmissionDef!]\n  admissionDoors: [Platform_AdmissionDoorDef!]\n  quantities: [Platform_QuantityDef!]\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_PluginStructures: [Platform_PluginStructureEntry!]!`
@@ -238,4 +238,5 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
         ds->Array.map(encodeAdmissionDoorDef)->JSON.Encode.array
       ),
     ),
+    ("quantities", Platform_ComponentDefinitionsApi.encodeQuantities(def.quantities)),
   ])->JSON.Encode.object

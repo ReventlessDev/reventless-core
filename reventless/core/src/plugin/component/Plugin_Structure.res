@@ -1493,6 +1493,47 @@ let make = (
     )
   }
 
+  // The quantities the fields measure or price, each once. A field names only the
+  // quantity and the unit, so a reader converting between units finds the factors
+  // here. Walked into records and lists: a line item's energy is a field too.
+  let quantities = {
+    // Bounded, so a recursive type ends; a quantity six records deep is not one.
+    let rec collect = (schema: S.t<unknown>, ~depth): array<Reventless.Quantity.def> =>
+      switch Reventless.Quantity.defOf(schema) {
+      | Some(q) => [q]
+      | None if depth >= 6 => []
+      | None =>
+        let inner = collect(_, ~depth=depth + 1)
+        switch schema->Reventless.Semantic.unwrapOptional->Option.getOr(schema) {
+        | Object({properties}) => properties->Dict.valuesToArray->Array.flatMap(inner)
+        | Array({additionalItems: Schema(item)}) => inner(item)
+        | AnyOf({anyOf}) => anyOf->Array.flatMap(inner)
+        | _ => []
+        }
+      }
+    let found =
+      storeDeclarationSites
+      ->Array.flatMap(((_, schema)) => collect(schema, ~depth=0))
+      ->Array.reduce([], (acc, q) =>
+        acc->Array.some(seen => seen == q) ? acc : acc->Array.concat([q])
+      )
+      ->Array.toSorted((a, b) => String.compare(a.name, b.name))
+    // Two fields disagreeing on what a quantity is would make one of them read
+    // wrong; a factor is what a stored number means.
+    switch Reventless.Quantity.conflicts(found) {
+    | [] => found
+    | pairs =>
+      JsError.throwWithMessage(
+        `${name}: ` ++
+        pairs
+        ->Array.map(((a, _)) => `two fields declare the quantity "${a.name}" with different units`)
+        ->Array.join(
+          "; ",
+        ) ++ `. A quantity is declared once and every field uses that declaration.`,
+      )
+    }
+  }
+
   // Capabilities a slice declares its `translate` reaches for. Sorted and
   // deduplicated for the same reason the store declarations are: the manifest is
   // committed, so it must not churn on a re-build. Translation slices are the ones
@@ -2384,6 +2425,10 @@ let make = (
           part: Reventless.Admission.doorName(door),
         }),
       )
+    },
+    quantities: ?switch quantities {
+    | [] => None
+    | found => Some(found)
     },
   }
 }

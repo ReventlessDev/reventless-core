@@ -517,6 +517,10 @@ type pluginStructure = {
   /** The inbound doors that play a part in admission — start, complete, invite —
       by component. Absent → None, read as []. */
   admissionDoors?: array<Admission.doorDef>,
+  /** The quantities this plugin's fields measure or price, each once with its
+      units and their factors, core's own among them; a field's schema names only
+      the quantity and the unit. Absent → None, read as []. */
+  quantities?: array<Quantity.def>,
 }
 
 let pluginStructureOffloadSchema = Offload.optionSchema(

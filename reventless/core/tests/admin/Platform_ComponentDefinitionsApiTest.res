@@ -95,6 +95,7 @@ describe("encodePluginStructureEntry", () => {
       "internalQueryables",
       "outboundTranslationSlices",
       "pluginId",
+      "quantities",
       "readModels",
       "stateChangeSlices",
       "stateViewSlices",

@@ -346,6 +346,13 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
           ->optional("content", content),
         ),
       )
+    // Its own key, not `-target`: a unit is not something the value points at.
+    // The quantity's units and factors are listed once in the plugin's structure.
+    | InUnit({quantity, unit}) | PerUnit({quantity, unit}) =>
+      obj->Dict.set(
+        "x-reventless-semantic-unit",
+        jsonObject([("quantity", str(quantity)), ("unit", str(unit))]),
+      )
     }
     JSON.Encode.object(obj)
   }

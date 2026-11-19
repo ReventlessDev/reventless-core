@@ -1,8 +1,18 @@
 # Plan: a field holds a quantity in its unit, and a price per unit is money
 
 **Date:** 2026-11-19<br/>
-**Status:** 📝 Planned. Built so far: the catalogue keeps a unit whole in an identifier's English
-(`deliveredKWh` reads *Delivered kWh*), `f3da9ed2f`, 2026-11-19.<br/>
+**Status:** 🔨 Built, not yet released: [QC1 to QC6](#steps), 2026-11-19. Before that, the
+catalogue keeps a unit whole in an identifier's English (`deliveredKWh` reads *Delivered kWh*),
+`f3da9ed2f`. Where the build differs from the steps below:
+- a unit's schema is named in words, `Reventless.Energy.kilowattHour`, not `Energy.kWh`: a value's
+  name cannot start with a capital (`MWh`), and one spelling for all units reads better than two;
+- `Plugin_Structure` collects `quantities` from every field, nested records and lists too, and
+  refuses two fields that declare one name differently;
+- `quantities` reaches the wire on both `Platform_ComponentDefinitions` (which the kit reads) and
+  `Platform_PluginStructures`, with the types `Platform_QuantityDef` and
+  `Platform_QuantityUnitDef`;
+- `Energy`, `Power` and `PricePer` are value types; `Quantity` itself is listed with the modules
+  that are not a field's value.<br/>
 **Part of:** a wider plan that orders this work with the readers of a plugin's schema; this plan
 holds core's part, and nothing in it waits on another repo.<br/>
 **Facts from:** this repo at `f3da9ed2f`, surveyed 2026-11-19.

@@ -100,6 +100,7 @@ describe("Platform_PluginStructures entry", () => {
       "inboundTranslationSlices",
       "outboundTranslationSlices",
       "pluginId",
+      "quantities",
       "readModels",
       "requiredCapabilities",
       "requiredStoreDeclarations",

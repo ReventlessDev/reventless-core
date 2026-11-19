@@ -53,7 +53,9 @@ let Id = {
   geoPoint: "geoPoint",
   lifecycleTrail: "lifecycleTrail",
   geolocation: "geolocation",
-  identity: "identity"
+  identity: "identity",
+  quantity: "quantity",
+  pricePerUnit: "pricePerUnit"
 };
 
 let brandedStrings = [
@@ -243,6 +245,42 @@ let valueTypes = [
     },
     sample: "1024.0",
     writer: "$value"
+  },
+  {
+    moduleName: "Energy",
+    shape: {
+      TAG: "Number",
+      integer: false
+    },
+    sample: "1.0",
+    writer: "$value"
+  },
+  {
+    moduleName: "Power",
+    shape: {
+      TAG: "Number",
+      integer: false
+    },
+    sample: "1.0",
+    writer: "$value"
+  },
+  {
+    moduleName: "PricePer",
+    shape: {
+      TAG: "Parts",
+      parts: [
+        [
+          "amount",
+          "float"
+        ],
+        [
+          "currency",
+          "Currency"
+        ]
+      ]
+    },
+    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)"
   }
 ];
 
@@ -256,6 +294,7 @@ let nonValueModules = [
   "Media_Ref",
   "Messaging",
   "Offload",
+  "Quantity",
   "RowImage",
   "Secrets",
   "Semantic",
