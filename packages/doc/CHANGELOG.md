@@ -718,6 +718,13 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-19
+- feat(spec): a field holds a quantity in its unit, and a price per unit is money ([b35c911](https://github.com/ReventlessDev/reventless-core/commit/b35c911b5c18e5c973e18494887e19a1dcd622d3))
+
+### 2026-11-17
+- feat(aws): a fence first written after the backfill is trusted from its first event ([555dd09](https://github.com/ReventlessDev/reventless-core/commit/555dd09acd41a69347d95284062a9e39793862cb))
+- feat(dcb): a pair's writers keep a fence of the reader's, and the reader checks it ([a347a14](https://github.com/ReventlessDev/reventless-core/commit/a347a1412da4db3ecbf2c68cfb8dc1377f9a5bc2))
+- fix(aws): an outbound translation's row is claimed before it is translated ([8c4390f](https://github.com/ReventlessDev/reventless-core/commit/8c4390f8433e326166329005322c81eab9c0faf9))
 ### 2026-11-15
 - refactor: a closed set is held as a variant, its words derived from one list ([03fb588](https://github.com/ReventlessDev/reventless-core/commit/03fb588701ca27a569e58d5b51b86bcee759b937))
 ### 2026-11-11
