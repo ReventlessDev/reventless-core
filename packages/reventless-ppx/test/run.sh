@@ -4632,6 +4632,23 @@ type event = ShelfRegistered({@partitionTag shelfId: string, label: string})
 @schema
 type error = ShelfAlreadyRegistered
 EOF
+cat > "$SPEC_SIDECARS/src/RateSession.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = RateSession({
+  @partitionTag sessionId: string,
+  delivered: @s.matches(Reventless.Energy.kilowattHour) float,
+  maxPower?: @s.matches(Reventless.Power.kilowatt) float,
+  price: @s.matches(Reventless.PricePer.unit(Reventless.Energy.kilowattHour)) Reventless.Money.t,
+})
+
+@schema
+type event = SessionRated({@partitionTag sessionId: string})
+
+@schema
+type error = SessionNotFound
+EOF
 cat > "$SPEC_SIDECARS/src/StockShelf.res" <<'EOF'
 @@reventless.spec
 
@@ -4767,6 +4784,14 @@ else
   assert_js_contains "$SPEC_SIDECARS/src/Automation/Restock.model.json" \
     '{ "key": "schedule", "value": "Reventless.Schedule.Every(Minutes(15))" }' \
     "an automation's declared schedule, as its source text"
+  # A field's type matched against a schema keeps it as written: a quantity's unit, which its
+  # kind (`float`) does not say.
+  assert_js_contains "$SPEC_SIDECARS/src/RateSession.model.json" \
+    '"matches": "Reventless.Energy.kilowattHour"' "a quantity's unit, as its schema"
+  assert_js_contains "$SPEC_SIDECARS/src/RateSession.model.json" \
+    '"matches": "Reventless.Power.kilowatt"' "an optional quantity's unit"
+  assert_js_contains "$SPEC_SIDECARS/src/RateSession.model.json" \
+    '"matches": "Reventless.PricePer.unit(Reventless.Energy.kilowattHour)"' "a price per unit's schema"
   if diff <(grep -v '"file":' "$SPEC_SIDECARS/src/RegisterShelf.model.json") \
        "$PPX_DIR/test/golden/RegisterShelf.model.golden.json" > /dev/null; then
     pass "a spec without arguments is written as before"

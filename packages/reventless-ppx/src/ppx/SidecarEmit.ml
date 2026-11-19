@@ -213,6 +213,30 @@ let ref_json (attrs : attributes) : (string * Yojson.Safe.t) list =
             ("plugin", match plugin with Some p -> `String p | None -> `Null) ] ) ]
   | None -> []
 
+(* The schema a field's type is matched against, `@s.matches(<here>)`, as written:
+   what a reader of the sidecar learns a quantity's unit from
+   (`Reventless.Energy.kilowattHour`), since the field's kind is only `float`.
+   Read through `option<…>` and `array<…>`. Only fields whose type carries one
+   get the key, so other sidecars are unchanged; without the source, none. *)
+let rec matches_of_type ~(src : string) (ct : core_type) : string option =
+  let own =
+    List.find_map
+      (fun (a : attribute) ->
+        if String.equal a.attr_name.txt "s.matches" then attribute_args ~src a else None)
+      ct.ptyp_attributes
+  in
+  match own, ct.ptyp_desc with
+  | Some _, _ -> own
+  | None, Ptyp_constr ({ txt = Lident ("option" | "array" | "list"); _ }, [ t ]) ->
+    matches_of_type ~src t
+  | None, _ -> None
+
+let matches_json ?src (ct : core_type) : (string * Yojson.Safe.t) list =
+  match src with
+  | Some src -> (
+    match matches_of_type ~src ct with Some m -> [ ("matches", `String m) ] | None -> [])
+  | None -> []
+
 let field_json ?src ~dcb_context ?(nested = false) (ld : label_declaration) : Yojson.Safe.t =
   let name = ld.pld_name.txt in
   let attrs = ld.pld_attributes in
@@ -232,7 +256,8 @@ let field_json ?src ~dcb_context ?(nested = false) (ld : label_declaration) : Yo
        ("dcbRole", dcb_role_json ~dcb_context ~nested ~name ~ct:ld.pld_type ~attrs ());
        ("example", `Null);
        ("annotations", `List (List.map (annotation_json ?src) attrs)) ]
-     @ ref_json attrs)
+     @ ref_json attrs
+     @ matches_json ?src ld.pld_type)
 
 (* ── constructor / record → element JSON ────────────────────────────────── *)
 
