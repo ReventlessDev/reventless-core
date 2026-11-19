@@ -199,6 +199,26 @@ describe("Catalogue.entries", () => {
       Catalogue.sentence("OrderNotYetPaid"),
     ))->toEqual(("Primary Resource ARN", "ARN Value", "Order not yet paid"))
   )
+
+  testSync("keeps a unit whole and spelled as written", () =>
+    expect((
+      Catalogue.humanizeKey("deliveredKWh"),
+      Catalogue.humanizeKey("kWh"),
+      Catalogue.humanizeKey("priceMWh"),
+      Catalogue.humanizeKey("maxKW"),
+      Catalogue.humanizeKey("kwhPrice"),
+      Catalogue.humanizeKey("whatever"),
+      Catalogue.sentence("CapacityAboveMWh"),
+    ))->toEqual((
+      "Delivered kWh",
+      "kWh",
+      "Price MWh",
+      "Max kW",
+      "kWh Price",
+      "Whatever",
+      "Capacity above MWh",
+    ))
+  )
 })
 
 describe("Catalogue.merge", () => {

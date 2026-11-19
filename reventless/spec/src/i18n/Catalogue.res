@@ -56,12 +56,37 @@ let acronyms = Dict.fromArray([
   ("ux", "UX"),
 ])
 
+/** Units whose spelling mixes cases (`kWh`): kept as one word and written as spelled, where a
+    camelCase split would cut them (`deliveredKWh` → "Delivered K Wh"). */
+let units = Dict.fromArray([
+  ("kwh", "kWh"),
+  ("mwh", "MWh"),
+  ("gwh", "GWh"),
+  ("twh", "TWh"),
+  ("wh", "Wh"),
+  ("kw", "kW"),
+  ("mw", "MW"),
+  ("gw", "GW"),
+  ("kva", "kVA"),
+  ("mah", "mAh"),
+  ("khz", "kHz"),
+  ("mhz", "MHz"),
+  ("ghz", "GHz"),
+])
+
+/** How a word is written when it is an acronym or a unit. */
+let spelled = (word: string): option<string> => {
+  let lower = String.toLowerCase(word)
+  acronyms->Dict.get(lower)->Option.orElse(units->Dict.get(lower))
+}
+
 let isUpper = (ch: string): bool => ch == String.toUpperCase(ch) && ch != String.toLowerCase(ch)
 let isLower = (ch: string): bool => ch == String.toLowerCase(ch) && ch != String.toUpperCase(ch)
 let isDigit = (ch: string): bool => ch >= "0" && ch <= "9" && String.length(ch) == 1
 
 /** Words at `_`, `-`, spaces and camelCase boundaries; a run of capitals stays one word
-    (`ARNValue` → `ARN`, `Value`). */
+    (`ARNValue` → `ARN`, `Value`), and so does a unit that starts a word (`deliveredKWh` →
+    `delivered`, `KWh`). */
 let splitWords = (input: string): array<string> => {
   let length = String.length(input)
   let words = []
@@ -71,26 +96,54 @@ let splitWords = (input: string): array<string> => {
       words->Array.push(current.contents)
       current := ""
     }
-  for i in 0 to length - 1 {
-    let ch = String.charAt(input, i)
-    if ch == "_" || ch == "-" || ch == " " {
+  let at = i => String.charAt(input, i)
+  // A unit at `i`, ending at a word's end: the input's end, a separator, a capital or a digit.
+  // So `kW` never matches inside `kWh`, and the order of the table does not matter.
+  let unitAt = i =>
+    units
+    ->Dict.keysToArray
+    ->Array.find(u => {
+      let n = String.length(u)
+      let next = at(i + n)
+      String.toLowerCase(String.slice(input, ~start=i, ~end=i + n)) == u &&
+        (i + n >= length ||
+        next == "_" ||
+        next == "-" ||
+        next == " " ||
+        isUpper(next) ||
+        isDigit(next))
+    })
+  let i = ref(0)
+  while i.contents < length {
+    let ch = at(i.contents)
+    let startsWord =
+      String.length(current.contents) == 0 || (isUpper(ch) && isLower(at(i.contents - 1)))
+    switch startsWord ? unitAt(i.contents) : None {
+    | Some(u) =>
       flush()
-    } else if isUpper(ch) {
-      let prevLower = i > 0 && isLower(String.charAt(input, i - 1))
-      let nextLower = i + 1 < length && isLower(String.charAt(input, i + 1))
-      let prevUpper = i > 0 && isUpper(String.charAt(input, i - 1))
-      if prevLower || (prevUpper && nextLower) {
+      words->Array.push(String.slice(input, ~start=i.contents, ~end=i.contents + String.length(u)))
+      i := i.contents + String.length(u)
+    | None =>
+      if ch == "_" || ch == "-" || ch == " " {
         flush()
+      } else if isUpper(ch) {
+        let prevLower = i.contents > 0 && isLower(at(i.contents - 1))
+        let nextLower = i.contents + 1 < length && isLower(at(i.contents + 1))
+        let prevUpper = i.contents > 0 && isUpper(at(i.contents - 1))
+        if prevLower || (prevUpper && nextLower) {
+          flush()
+        }
+        current := current.contents ++ ch
+      } else if isDigit(ch) {
+        let prev = i.contents > 0 ? at(i.contents - 1) : ""
+        if isUpper(prev) || isLower(prev) {
+          flush()
+        }
+        current := current.contents ++ ch
+      } else {
+        current := current.contents ++ ch
       }
-      current := current.contents ++ ch
-    } else if isDigit(ch) {
-      let prev = i > 0 ? String.charAt(input, i - 1) : ""
-      if isUpper(prev) || isLower(prev) {
-        flush()
-      }
-      current := current.contents ++ ch
-    } else {
-      current := current.contents ++ ch
+      i := i.contents + 1
     }
   }
   flush()
@@ -98,7 +151,7 @@ let splitWords = (input: string): array<string> => {
 }
 
 let capitalizeWord = (word: string): string =>
-  switch acronyms->Dict.get(String.toLowerCase(word)) {
+  switch spelled(word) {
   | Some(acronym) => acronym
   | None =>
     String.length(word) == 0
@@ -118,7 +171,7 @@ let humanizeKey = (key: string): string =>
 let sentence = (code: string): string =>
   splitWords(code)
   ->Array.mapWithIndex((word, i) =>
-    switch (i, acronyms->Dict.get(String.toLowerCase(word))) {
+    switch (i, spelled(word)) {
     | (_, Some(acronym)) => acronym
     | (0, None) => capitalizeWord(word)
     | (_, None) => String.toLowerCase(word)
@@ -130,7 +183,7 @@ let sentence = (code: string): string =>
 let inSentence = (identifier: string): string =>
   splitWords(identifier)
   ->Array.map(word =>
-    switch acronyms->Dict.get(String.toLowerCase(word)) {
+    switch spelled(word) {
     | Some(acronym) => acronym
     | None => String.toLowerCase(word)
     }

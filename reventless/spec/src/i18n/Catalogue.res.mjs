@@ -90,6 +90,66 @@ let acronyms = Object.fromEntries([
   ]
 ]);
 
+let units = Object.fromEntries([
+  [
+    "kwh",
+    "kWh"
+  ],
+  [
+    "mwh",
+    "MWh"
+  ],
+  [
+    "gwh",
+    "GWh"
+  ],
+  [
+    "twh",
+    "TWh"
+  ],
+  [
+    "wh",
+    "Wh"
+  ],
+  [
+    "kw",
+    "kW"
+  ],
+  [
+    "mw",
+    "MW"
+  ],
+  [
+    "gw",
+    "GW"
+  ],
+  [
+    "kva",
+    "kVA"
+  ],
+  [
+    "mah",
+    "mAh"
+  ],
+  [
+    "khz",
+    "kHz"
+  ],
+  [
+    "mhz",
+    "MHz"
+  ],
+  [
+    "ghz",
+    "GHz"
+  ]
+]);
+
+function spelled(word) {
+  let lower = word.toLowerCase();
+  return Stdlib_Option.orElse(acronyms[lower], units[lower]);
+}
+
 function isUpper(ch) {
   if (ch === ch.toUpperCase()) {
     return ch !== ch.toLowerCase();
@@ -127,34 +187,57 @@ function splitWords(input) {
       return;
     }
   };
-  for (let i = 0; i < length; ++i) {
-    let ch = input.charAt(i);
-    if (ch === "_" || ch === "-" || ch === " ") {
-      flush();
-    } else if (isUpper(ch)) {
-      let prevLower = i > 0 && isLower(input.charAt(i - 1 | 0));
-      let nextLower = (i + 1 | 0) < length && isLower(input.charAt(i + 1 | 0));
-      let prevUpper = i > 0 && isUpper(input.charAt(i - 1 | 0));
-      if (prevLower || prevUpper && nextLower) {
-        flush();
+  let unitAt = i => Object.keys(units).find(u => {
+    let n = u.length;
+    let next = input.charAt(i + n | 0);
+    if (input.slice(i, i + n | 0).toLowerCase() === u) {
+      if ((i + n | 0) >= length || next === "_" || next === "-" || next === " " || isUpper(next)) {
+        return true;
+      } else {
+        return isDigit(next);
       }
-      current.contents = current.contents + ch;
-    } else if (isDigit(ch)) {
-      let prev = i > 0 ? input.charAt(i - 1 | 0) : "";
-      if (isUpper(prev) || isLower(prev)) {
-        flush();
-      }
-      current.contents = current.contents + ch;
     } else {
-      current.contents = current.contents + ch;
+      return false;
     }
-  }
+  });
+  let i = 0;
+  while (i < length) {
+    let ch = input.charAt(i);
+    let startsWord = current.contents.length === 0 || isUpper(ch) && isLower(input.charAt(i - 1 | 0));
+    let u = startsWord ? unitAt(i) : undefined;
+    if (u !== undefined) {
+      flush();
+      words.push(input.slice(i, i + u.length | 0));
+      i = i + u.length | 0;
+    } else {
+      if (ch === "_" || ch === "-" || ch === " ") {
+        flush();
+      } else if (isUpper(ch)) {
+        let prevLower = i > 0 && isLower(input.charAt(i - 1 | 0));
+        let nextLower = (i + 1 | 0) < length && isLower(input.charAt(i + 1 | 0));
+        let prevUpper = i > 0 && isUpper(input.charAt(i - 1 | 0));
+        if (prevLower || prevUpper && nextLower) {
+          flush();
+        }
+        current.contents = current.contents + ch;
+      } else if (isDigit(ch)) {
+        let prev = i > 0 ? input.charAt(i - 1 | 0) : "";
+        if (isUpper(prev) || isLower(prev)) {
+          flush();
+        }
+        current.contents = current.contents + ch;
+      } else {
+        current.contents = current.contents + ch;
+      }
+      i = i + 1 | 0;
+    }
+  };
   flush();
   return words;
 }
 
 function capitalizeWord(word) {
-  let acronym = acronyms[word.toLowerCase()];
+  let acronym = spelled(word);
   if (acronym !== undefined) {
     return acronym;
   } else if (word.length === 0) {
@@ -175,7 +258,7 @@ function humanizeKey(key) {
 
 function sentence(code) {
   return splitWords(code).map((word, i) => {
-    let match = acronyms[word.toLowerCase()];
+    let match = spelled(word);
     if (match !== undefined) {
       return match;
     } else if (i !== 0) {
@@ -188,7 +271,7 @@ function sentence(code) {
 
 function inSentence(identifier) {
   return splitWords(identifier).map(word => {
-    let acronym = acronyms[word.toLowerCase()];
+    let acronym = spelled(word);
     if (acronym !== undefined) {
       return acronym;
     } else {
@@ -617,6 +700,8 @@ function readLocks(text) {
 
 export {
   acronyms,
+  units,
+  spelled,
   isUpper,
   isLower,
   isDigit,
