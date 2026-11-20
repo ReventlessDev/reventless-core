@@ -83,3 +83,26 @@ let parse = (raw: string): result<t, string> => {
 /** The wait the first `count` sends add up to. */
 let totalMs = (pace: t, ~count: int): int =>
   Array.fromInitializer(~length=count, i => pace.gapMs(i))->Array.reduce(0, (a, b) => a + b)
+
+// ── Speed ───────────────────────────────────────────────────────────────────
+//
+// A pace spaces sends; a speed shortens time itself, for a client whose timers
+// stand for simulated intervals (a reading every simulated minute). Every time
+// such a client sends is still the true one.
+
+/** How many simulated milliseconds pass in one real one; `1.` is real time. */
+type speed = float
+
+/** Reads a speed: `10x`, `0.5x` or a bare number. */
+let parseSpeed = (raw: string): result<speed, string> => {
+  let text = raw->String.trim
+  let body = text->String.endsWith("x") ? text->String.slice(~start=0, ~end=-1) : text
+  switch number(body) {
+  | Some(n) => Ok(n)
+  | None => Error(`"${raw}" is not a speed — expected a factor such as 10x or 0.5x`)
+  }
+}
+
+/** The real wait for a simulated interval at `speed`. */
+let realMs = (speed: speed, simulatedMs: float): int =>
+  (simulatedMs /. speed)->Math.round->Float.toInt

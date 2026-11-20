@@ -88,3 +88,21 @@ describe("Seed_Commands.encode:", () => {
     refused("Shop_PlaceOrder", `{"lines": {"productId": "p"}}`, "expected a list")
   })
 })
+
+describe("Seed_Commands.checkBody:", () => {
+  testSync("passes a body the mutation takes, and names what it does not", () => {
+    expect(
+      commands->Seed_Commands.checkBody(
+        ~field="Shop_AddProduct",
+        JSON.parseOrThrow(`{"productId": "p", "price": {"amount": 1, "currency": "EUR"}}`),
+      ),
+    )->toEqual(Ok())
+    switch commands->Seed_Commands.checkBody(
+      ~field="Shop_AddProduct",
+      JSON.parseOrThrow(`{"productId": "p", "price": {"amount": 1, "currency": "eur"}}`),
+    ) {
+    | Error(message) => expect(message->String.includes("one of EUR, USD"))->toBe(true)
+    | Ok() => failwith("expected a refusal")
+    }
+  })
+})

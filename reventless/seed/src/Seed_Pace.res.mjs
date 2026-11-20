@@ -128,6 +128,27 @@ function totalMs(pace, count) {
   return Stdlib_Array.reduce(Stdlib_Array.fromInitializer(count, i => pace.gapMs(i)), 0, (a, b) => a + b | 0);
 }
 
+function parseSpeed(raw) {
+  let text = raw.trim();
+  let body = text.endsWith("x") ? text.slice(0, -1) : text;
+  let n = number(body);
+  if (n !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: n
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `"` + raw + `" is not a speed — expected a factor such as 10x or 0.5x`
+    };
+  }
+}
+
+function realMs(speed, simulatedMs) {
+  return Math.round(simulatedMs / speed) | 0;
+}
+
 export {
   fixed,
   jittered,
@@ -135,5 +156,7 @@ export {
   number,
   parse,
   totalMs,
+  parseSpeed,
+  realMs,
 }
 /* No side effect */

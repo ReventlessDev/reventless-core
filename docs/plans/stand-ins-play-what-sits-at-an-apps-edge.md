@@ -123,14 +123,16 @@ A new package beside `reventless/seed`, a client of the platform's public doors 
 - **Instances** of a thing come from the app's view that lists them, read through the GraphQL API
   as the seed reads; the runtime keeps no list of its own. An instance that appears in the view
   gets a twin, one that leaves it loses its twin ([SCQ1](#open-questions)).
-- **A send** is the decision's payload, encoded by the adapter the player plan generates from the
-  command definitions
-  ([SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)),
-  posted to the inbound translation's door and signed with its secret ([SC1](#sc1-the-local-webhook-door-listens-over-http),
+- **A send** is the decision's payload as a JSON body, checked against the API's own description
+  by the adapter the player plan generates
+  ([SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions),
+  `Seed.Commands.checkBody`: every inbound translation has a mutation whose arguments are its
+  external input's fields), posted to the inbound translation's door and signed with its secret ([SC1](#sc1-the-local-webhook-door-listens-over-http),
   [SC2](#sc2-the-local-platform-makes-each-doors-secret)). Never a GraphQL mutation: that is the
   door people use, not the door a thing uses.
-- **Timers** run forward only. Faster runs shorten the intervals with the player's pace
-  ([SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client)); a value that grows with
+- **Timers** run forward only. Faster runs shorten the intervals by a speed beside the player's pace
+  ([SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), `Seed.Pace.parseSpeed`
+  and `realMs`; a pace spaces sends, a speed shortens time); a value that grows with
   time (energy from power) is computed from the simulated interval, while every time sent is the
   true one.
 - **Random values** come from the seed's seeded random, so a run is the same each time it is

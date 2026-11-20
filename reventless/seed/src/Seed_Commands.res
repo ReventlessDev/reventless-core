@@ -215,3 +215,12 @@ let encodeOrThrow = (s: t, ~field: string, args: JSON.t): mutation =>
   | Ok(m) => m
   | Error(message) => throw(Failed(message))
   }
+
+/**
+ * Whether `body` is what the mutation `field` takes, as a JSON body: what a
+ * webhook door of an inbound translation is posted. Every inbound translation has
+ * a mutation whose arguments are its external input's fields, so the API's own
+ * description checks the body a door will read, before it is sent.
+ */
+let checkBody = (s: t, ~field: string, body: JSON.t): result<unit, string> =>
+  encode(s, ~field, body)->Result.map(_ => ())

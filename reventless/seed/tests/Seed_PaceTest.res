@@ -43,3 +43,23 @@ describe("Seed_Pace.parse:", () => {
     expect(parsed("2s")->Seed_Pace.totalMs(~count=4))->toBe(6000)
   )
 })
+
+describe("Seed_Pace speed:", () => {
+  testSync("reads a factor, with or without its x", () => {
+    expect(Seed_Pace.parseSpeed("10x"))->toEqual(Ok(10.))
+    expect(Seed_Pace.parseSpeed("0.5x"))->toEqual(Ok(0.5))
+    expect(Seed_Pace.parseSpeed("3"))->toEqual(Ok(3.))
+  })
+
+  testSync("refuses what is not a positive factor", () =>
+    ["", "x", "0x", "-2x", "fast", "10xx"]->Array.forEach(
+      text => expect(Seed_Pace.parseSpeed(text)->Result.isError)->toBe(true),
+    )
+  )
+
+  testSync("shortens a simulated interval by the factor", () => {
+    expect(Seed_Pace.realMs(10., 60000.))->toBe(6000)
+    expect(Seed_Pace.realMs(1., 60000.))->toBe(60000)
+    expect(Seed_Pace.realMs(0.5, 1000.))->toBe(2000)
+  })
+})

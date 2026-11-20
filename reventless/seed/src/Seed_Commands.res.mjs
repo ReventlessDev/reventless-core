@@ -464,6 +464,10 @@ function encodeOrThrow(s, field, args) {
   };
 }
 
+function checkBody(s, field, body) {
+  return Stdlib_Result.map(encode(s, field, body), param => {});
+}
+
 export {
   typeRefFragment,
   introspectionQuery,
@@ -480,5 +484,6 @@ export {
   argsOf,
   encode,
   encodeOrThrow,
+  checkBody,
 }
 /* No side effect */
