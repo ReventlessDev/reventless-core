@@ -26,6 +26,16 @@
 - the runtime reads views with the client it is given; the stand-ins' own account
   ([SCQ3](#open-questions)) comes with [SC7](#sc7-the-local-platform-starts-the-stand-ins).
 
+[SC5](#sc5-a-devices-capability) built 2026-11-20, not yet released: `Capabilities.devices`
+(`Devices.t`, answers `Accepted`, `Refused`, `NotReachable`), a local slot the running stand-ins
+fill (`LocalCapabilities.registerDevices`), not reachable on AWS, and `Told` calls in the scenario
+fake. A kind says what it understands when told something (`told`). No `CapabilityNeed` is
+declared for it: a platform with no provider answers *not reachable*, which is what this plan
+wants of a deployed one ([SCD4](#decisions)). Its *done when* is checked in two halves: the
+fixture's `TellChargerPower` scenario reads the call from the fake, and the runtime's suite tells
+a twin a new power and reads it metering at it; the whole chain, translation to twin, waits for
+the stand-ins to run in the platform's process ([SC7](#sc7-the-local-platform-starts-the-stand-ins)).
+
 Found while building it: on a fresh app the secrets file is missing on the first start, because
 `.reventless/` is only made afterwards, by the registry entry, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
 *done when* holds from the second start on. The runtime's suite makes the folder first.

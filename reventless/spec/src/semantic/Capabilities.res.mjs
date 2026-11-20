@@ -2,6 +2,7 @@
 
 import * as Text$Reventless from "../i18n/Text.res.mjs";
 import * as Stash$Reventless from "./Stash.res.mjs";
+import * as Devices$Reventless from "./Devices.res.mjs";
 import * as Secrets$Reventless from "./Secrets.res.mjs";
 import * as Messaging$Reventless from "./Messaging.res.mjs";
 import * as IdentityProvider$Reventless from "./IdentityProvider.res.mjs";
@@ -30,13 +31,16 @@ let none_secrets = Secrets$Reventless.unavailable("no secret source is configure
 
 let none_stash = Stash$Reventless.unavailable("no stash is configured for this platform");
 
+let none_devices = Devices$Reventless.unreachable("no devices provider is configured for this platform");
+
 let none = {
   geocode: none_geocode,
   messaging: none_messaging,
   identityProvider: none_identityProvider,
   secrets: none_secrets,
   stash: none_stash,
-  text: Text$Reventless.sourceOnly
+  text: Text$Reventless.sourceOnly,
+  devices: none_devices
 };
 
 export {

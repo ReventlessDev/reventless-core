@@ -289,6 +289,7 @@ let valueTypesWithoutWriter = ["Geolocation"];
 let nonValueModules = [
   "Capabilities",
   "CapabilityNeed",
+  "Devices",
   "Geocoding",
   "IdentityProvider",
   "Media_Ref",

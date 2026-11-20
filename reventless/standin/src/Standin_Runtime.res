@@ -171,3 +171,11 @@ let byHand = (r: t, ~kind: string, ~id: string, ~message: string, ~fields=Dict.m
 /** Every kind with its twins and their state. */
 let state = (r: t): array<(string, array<(string, JSON.t)>)> =>
   r.kinds->Array.map(k => (k.name, k.twins()))
+
+/** Tells one twin something, as the app's devices capability does: accepted,
+    refused with its reason, or not reachable when no stand-in plays it. */
+let tell = (r: t, ~kind: string, ~instance: string, ~message: string, ~body: JSON.t) =>
+  switch r.kinds->Array.find(k => k.name == kind) {
+  | None => Promise.resolve(Standin_Kind.NotReachable(`no stand-in plays ${kind}`))
+  | Some(k) => k.tell(~id=instance, ~message, ~body, ~now=Date.make(), send(r))
+  }

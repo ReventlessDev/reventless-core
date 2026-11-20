@@ -36,6 +36,19 @@ type message<'state> = {
   build: (~id: string, 'state, ~fields: dict<JSON.t>, ~now: Date.t) => result<step<'state>, string>,
 }
 
+/** What a twin does when the app tells it something: its next state and what
+    it sends, or a refusal with its reason. */
+type told<'state> = {
+  message: string,
+  run: (~id: string, 'state, ~body: JSON.t, ~now: Date.t) => result<step<'state>, string>,
+}
+
+/** How a twin answers being told something; `Devices.answer` on the platform's side. */
+type answer =
+  | Accepted
+  | Refused(string)
+  | NotReachable(string)
+
 type thing<'state> = {
   name: string,
   // The app's view that lists the things, its id field, and what to read of a row.
@@ -45,6 +58,8 @@ type thing<'state> = {
   init: (~id: string, ~row: JSON.t, ~random: Seed.Random.t) => 'state,
   timers: array<timer<'state>>,
   messages: array<message<'state>>,
+  // What it understands when told something; absent, it refuses everything.
+  told?: array<told<'state>>,
   // The state as the platform serves it, for a person to read.
   describe: 'state => JSON.t,
 }
@@ -54,6 +69,7 @@ type service<'state> = {
   init: (~random: Seed.Random.t) => 'state,
   timers: array<timer<'state>>,
   messages: array<message<'state>>,
+  told?: array<told<'state>>,
   describe: 'state => JSON.t,
 }
 
@@ -80,6 +96,8 @@ type t = {
     ~now: Date.t,
     sendTo,
   ) => promise<result<unit, string>>,
+  // Answers being told something, for one twin; its sends go out after.
+  tell: (~id: string, ~message: string, ~body: JSON.t, ~now: Date.t, sendTo) => promise<answer>,
   twins: unit => array<(string, JSON.t)>,
 }
 
@@ -108,6 +126,7 @@ let erase = (
   ~init: (~id: string, ~row: JSON.t, ~random: Seed.Random.t) => 'state,
   ~timers: array<timer<'state>>,
   ~messages: array<message<'state>>,
+  ~told: array<told<'state>>,
   ~describe: 'state => JSON.t,
 ): t => {
   let twins: dict<twin<'state>> = Dict.make()
@@ -168,6 +187,19 @@ let erase = (
           Ok()
         }
       },
+    tell: async (~id, ~message, ~body, ~now, sendTo) =>
+      switch (twins->Dict.get(id), told->Array.find(t => t.message == message)) {
+      | (None, _) => NotReachable(`${name} ${id} is not played by any stand-in`)
+      | (_, None) => Refused(`${name} does not understand ${message}`)
+      | (Some(twin), Some(t)) =>
+        switch t.run(~id, twin.state, ~body, ~now) {
+        | Error(why) => Refused(why)
+        | Ok(step) =>
+          twin.state = step.state
+          deliver(twin, ~id, step.sends, sendTo)->ignore
+          Accepted
+        }
+      },
     twins: () =>
       twins
       ->Dict.toArray
@@ -184,6 +216,7 @@ let thing = (def: thing<'state>): t =>
     ~init=def.init,
     ~timers=def.timers,
     ~messages=def.messages,
+    ~told=def.told->Option.getOr([]),
     ~describe=def.describe,
   )
 
@@ -195,6 +228,7 @@ let service = (def: service<'state>): t => {
     ~init=(~id as _, ~row as _, ~random) => def.init(~random),
     ~timers=def.timers,
     ~messages=def.messages,
+    ~told=def.told->Option.getOr([]),
     ~describe=def.describe,
   )
   {

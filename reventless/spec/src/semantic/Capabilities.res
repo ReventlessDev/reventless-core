@@ -43,6 +43,9 @@ type t = {
   /** The language to write to a recipient in, and the deployment's catalogue to write
       it with. See `Text.t`. */
   text: Text.t,
+  /** Tell one thing at the app's edge something, by kind and instance. See
+      `Devices.t`. */
+  devices: Devices.t,
 }
 
 /**
@@ -82,4 +85,5 @@ let none: t = {
   // Not unavailable: a deployment with no catalogue writes in English, which is a
   // complete answer rather than a gap.
   text: Text.sourceOnly,
+  devices: Devices.unreachable(~reason="no devices provider is configured for this platform"),
 }

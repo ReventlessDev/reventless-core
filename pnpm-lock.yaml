@@ -1794,6 +1794,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../infra

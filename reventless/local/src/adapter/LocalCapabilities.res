@@ -95,6 +95,17 @@ let stash = ref(ReventlessCore.Stash_Memory_Backend.make())
 /** A fresh stash, for a test that must not see another's values. */
 let resetStash = () => stash := ReventlessCore.Stash_Memory_Backend.make()
 
+// The things a translation tells: the running stand-ins once one registers here,
+// otherwise not reachable, as a real thing that is offline.
+let devicesRef = ref(Reventless.Devices.unreachable(~reason="no stand-in is running"))
+
+/** The devices provider translations tell things through: the running stand-ins. */
+let registerDevices = (devices: Reventless.Devices.t) => devicesRef := devices
+
+/** Back to not reachable, for when the stand-ins stop. */
+let unregisterDevices = () =>
+  devicesRef := Reventless.Devices.unreachable(~reason="no stand-in is running")
+
 let capabilities = (): Reventless.Capabilities.t => {
   geocode: Reventless.Capabilities.none.geocode,
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
@@ -102,4 +113,5 @@ let capabilities = (): Reventless.Capabilities.t => {
   secrets: ReventlessCore.Secrets_Node_Backend.make(~fingerprintKey=LocalFingerprintKey.get),
   stash: stash.contents,
   text: textRef.contents,
+  devices: devicesRef.contents,
 }

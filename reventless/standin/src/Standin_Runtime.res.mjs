@@ -184,6 +184,18 @@ function state(r) {
   ]);
 }
 
+function tell(r, kind, instance, message, body) {
+  let k = r.kinds.find(k => k.name === kind);
+  if (k !== undefined) {
+    return k.tell(instance, message, body, new Date(), send(r));
+  } else {
+    return Promise.resolve({
+      TAG: "NotReachable",
+      _0: `no stand-in plays ` + kind
+    });
+  }
+}
+
 let keep = 200;
 
 export {
@@ -197,5 +209,6 @@ export {
   stop,
   byHand,
   state,
+  tell,
 }
 /* node:timers Not a pure module */

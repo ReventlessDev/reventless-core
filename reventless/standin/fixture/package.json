@@ -11,10 +11,11 @@
     "clean": "rescript clean"
   },
   "dependencies": {
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "sury": "11.1.0"
   },
   "devDependencies": {

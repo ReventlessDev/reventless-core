@@ -536,6 +536,8 @@ let capabilities = (): Reventless.Capabilities.t => {
   // and this answers `Unavailable` should one run regardless.
   stash: Reventless.Capabilities.none.stash,
   text: Text_Http_Backend.text(),
+  // None deployed yet: a translation that tells a thing is told it is not reachable.
+  devices: Reventless.Capabilities.none.devices,
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

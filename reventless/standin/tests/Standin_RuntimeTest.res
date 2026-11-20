@@ -215,4 +215,64 @@ describe("Standin.Runtime, against the fixture app:", () => {
     },
     60_000,
   )
+
+  testPromiseWithTimeout(
+    "a twin told a new power meters at it, and says no to what it does not understand",
+    async () => {
+      let commands = await Seed.Commands.fetch(theClient())
+      let runtime = Standin.Runtime.make(
+        ~client=theClient(),
+        ~doors=doors.contents,
+        ~commands,
+        ~kinds=[ChargerStandin.kind],
+        ~speed=600.,
+        ~seed=43,
+        ~refreshMs=200,
+        (),
+      )
+      await runtime->Standin.Runtime.start
+      let tell = (instance, message, body) =>
+        runtime->Standin.Runtime.tell(
+          ~kind="Charger",
+          ~instance,
+          ~message,
+          ~body=JSON.parseOrThrow(body),
+        )
+      expect(await tell("bay-1", "setPower", `{"powerKw": 11}`))->toEqual(Standin.Accepted)
+      expect(await tell("bay-1", "setPower", `{"powerKw": -1}`))->toEqual(
+        Standin.Refused("powerKw must be a positive number"),
+      )
+      expect(await tell("bay-1", "unlock", `{}`))->toEqual(
+        Standin.Refused("Charger does not understand unlock"),
+      )
+      expect(await tell("bay-9", "setPower", `{"powerKw": 11}`))->toEqual(
+        Standin.NotReachable("Charger bay-9 is not played by any stand-in"),
+      )
+      let session = switch runtime->Standin.Runtime.state {
+      | [(_, twins)] =>
+        twins
+        ->Array.find(((id, _)) => id == "bay-1")
+        ->Option.flatMap(((_, s)) => s->Seed.Commands.str("sessionId"))
+        ->Option.getOrThrow
+      | _ => failwith("one kind")
+      }
+      await waitFor(
+        async () =>
+          (
+            await theClient()->Seed.Client.queryAllNodes(
+              ~field="Charging_Sessions",
+              ~selection="sessionId powerW",
+            )
+          )->Array.some(
+            row =>
+              row->Seed.Commands.str("sessionId") == Some(session) &&
+                row->Seed.Commands.get("powerW") == Some(Number(11000.)),
+          ),
+        ~until=Date.now() +. 10_000.,
+        ~what="bay-1 to meter at 11 kW",
+      )
+      await runtime->Standin.Runtime.stop
+    },
+    60_000,
+  )
 })

@@ -5,16 +5,27 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Chargers$ChargingPlugin from "./Charger/StateView/Chargers.res.mjs";
 import * as Sessions$ChargingPlugin from "./Metering/StateView/Sessions.res.mjs";
 import * as ChargerId$ChargingPlugin from "./ChargerId.res.mjs";
+import * as LimitPower$ChargingPlugin from "./Charger/StateChange/LimitPower.res.mjs";
 import * as MeterCharger$ChargingPlugin from "./Metering/InboundTranslation/MeterCharger.res.mjs";
 import * as RecordReading$ChargingPlugin from "./Metering/StateChange/RecordReading.res.mjs";
 import * as RegisterCharger$ChargingPlugin from "./Charger/StateChange/RegisterCharger.res.mjs";
+import * as TellChargerPower$ChargingPlugin from "./Charger/OutboundTranslation/TellChargerPower.res.mjs";
 import * as Chargers_Projection$ChargingPlugin from "./Charger/StateView/Chargers_Projection.res.mjs";
+import * as LimitPower_Decision$ChargingPlugin from "./Charger/StateChange/LimitPower_Decision.res.mjs";
 import * as Sessions_Projection$ChargingPlugin from "./Metering/StateView/Sessions_Projection.res.mjs";
 import * as RecordReading_Decision$ChargingPlugin from "./Metering/StateChange/RecordReading_Decision.res.mjs";
 import * as MeterCharger_Translation$ChargingPlugin from "./Metering/InboundTranslation/MeterCharger_Translation.res.mjs";
 import * as RegisterCharger_Decision$ChargingPlugin from "./Charger/StateChange/RegisterCharger_Decision.res.mjs";
+import * as TellChargerPower_Translation$ChargingPlugin from "./Charger/OutboundTranslation/TellChargerPower_Translation.res.mjs";
 
 let dcbSliceSchemas = [
+  {
+    name: LimitPower$ChargingPlugin.name,
+    commandSchema: LimitPower$ChargingPlugin.commandSchema,
+    consumedEventSchema: LimitPower$ChargingPlugin.consumedEventSchema,
+    eventSchema: LimitPower$ChargingPlugin.eventSchema,
+    moduleUrl: LimitPower$ChargingPlugin.moduleUrl
+  },
   {
     name: RecordReading$ChargingPlugin.name,
     commandSchema: RecordReading$ChargingPlugin.commandSchema,
@@ -32,6 +43,23 @@ let dcbSliceSchemas = [
 ];
 
 function Make(Platform) {
+  let LimitPowerSlice = Platform.StateChangeSlice.Make({
+    name: LimitPower$ChargingPlugin.name,
+    moduleUrl: LimitPower$ChargingPlugin.moduleUrl,
+    consumedEventSchema: LimitPower$ChargingPlugin.consumedEventSchema,
+    errorSchema: LimitPower$ChargingPlugin.errorSchema,
+    eventSchema: LimitPower$ChargingPlugin.eventSchema,
+    commandSchema: LimitPower$ChargingPlugin.commandSchema,
+    authorizationOf: LimitPower$ChargingPlugin.authorizationOf,
+    commandTransition: LimitPower$ChargingPlugin.commandTransition,
+    traits: LimitPower$ChargingPlugin.traits,
+    readConsistency: LimitPower$ChargingPlugin.readConsistency
+  })({
+    initialState: LimitPower_Decision$ChargingPlugin.initialState,
+    evolve: LimitPower_Decision$ChargingPlugin.evolve,
+    decide: LimitPower_Decision$ChargingPlugin.decide,
+    moduleUrl: LimitPower_Decision$ChargingPlugin.moduleUrl
+  });
   let RecordReadingSlice = Platform.StateChangeSlice.Make({
     name: RecordReading$ChargingPlugin.name,
     moduleUrl: RecordReading$ChargingPlugin.moduleUrl,
@@ -100,6 +128,24 @@ function Make(Platform) {
     project: Sessions_Projection$ChargingPlugin.project,
     moduleUrl: Sessions_Projection$ChargingPlugin.moduleUrl
   });
+  let TellChargerPowerSlice = Platform.OutboundTranslationSlice.Make({
+    name: TellChargerPower$ChargingPlugin.name,
+    moduleUrl: TellChargerPower$ChargingPlugin.moduleUrl,
+    consumedEventSchema: TellChargerPower$ChargingPlugin.consumedEventSchema,
+    outboundItemSchema: TellChargerPower$ChargingPlugin.outboundItemSchema,
+    inboundCommandSchema: TellChargerPower$ChargingPlugin.inboundCommandSchema,
+    maxRetries: TellChargerPower$ChargingPlugin.maxRetries,
+    targetName: undefined,
+    sourceNames: TellChargerPower$ChargingPlugin.sourceNames,
+    externalSystem: TellChargerPower$ChargingPlugin.externalSystem,
+    capabilityNeeds: TellChargerPower$ChargingPlugin.capabilityNeeds,
+    traits: TellChargerPower$ChargingPlugin.traits
+  })({
+    collect: TellChargerPower_Translation$ChargingPlugin.collect,
+    translate: TellChargerPower_Translation$ChargingPlugin.translate,
+    onExhausted: TellChargerPower_Translation$ChargingPlugin.onExhausted,
+    moduleUrl: TellChargerPower_Translation$ChargingPlugin.moduleUrl
+  });
   let MeterChargerSlice = Platform.InboundTranslationSlice.Make({
     name: MeterCharger$ChargingPlugin.name,
     moduleUrl: MeterCharger$ChargingPlugin.moduleUrl,
@@ -118,11 +164,16 @@ function Make(Platform) {
     ChargersSlice,
     SessionsSlice
   ], [
+    LimitPowerSlice,
     RecordReadingSlice,
     RegisterChargerSlice
-  ], undefined, undefined, [MeterChargerSlice], undefined, undefined, Object.fromEntries([
+  ], undefined, [TellChargerPowerSlice], [MeterChargerSlice], undefined, undefined, Object.fromEntries([
     [
       "Chargers",
+      "Charger"
+    ],
+    [
+      "LimitPower",
       "Charger"
     ],
     [
@@ -140,20 +191,27 @@ function Make(Platform) {
     [
       "Sessions",
       "Metering"
+    ],
+    [
+      "TellChargerPower",
+      "Charger"
     ]
   ]), undefined, [ChargerId$ChargingPlugin.key], undefined, undefined);
   let make = () => Platform.Plugin.make("Charging", 5, undefined, undefined, undefined, undefined, undefined, [
+    LimitPowerSlice,
     RecordReadingSlice,
     RegisterChargerSlice
   ], [
     ChargersSlice,
     SessionsSlice
-  ], undefined, undefined, [MeterChargerSlice], undefined, undefined, Stdlib_Option.map(process.env.CHARGING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Charging", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], undefined, [TellChargerPowerSlice], [MeterChargerSlice], undefined, undefined, Stdlib_Option.map(process.env.CHARGING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Charging", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
+    LimitPowerSlice: LimitPowerSlice,
     RecordReadingSlice: RecordReadingSlice,
     RegisterChargerSlice: RegisterChargerSlice,
     ChargersSlice: ChargersSlice,
     SessionsSlice: SessionsSlice,
+    TellChargerPowerSlice: TellChargerPowerSlice,
     MeterChargerSlice: MeterChargerSlice,
     pluginStructure: pluginStructure,
     make: make

@@ -20,7 +20,7 @@ function randomFor(seed, kind, id) {
   return Seed_Random$ReventlessSeed.make(seed ^ hash(kind + `/` + id));
 }
 
-function erase(name, view, init, timers, messages, describe) {
+function erase(name, view, init, timers, messages, told, describe) {
   let twins = {};
   let deliver = (twin, id, sends, sendTo) => {
     let next = twin.queue.then(async () => {
@@ -106,6 +106,33 @@ function erase(name, view, init, timers, messages, describe) {
         _0: undefined
       };
     },
+    tell: async (id, message, body, now, sendTo) => {
+      let match = twins[id];
+      let match$1 = told.find(t => t.message === message);
+      if (match === undefined) {
+        return {
+          TAG: "NotReachable",
+          _0: name + ` ` + id + ` is not played by any stand-in`
+        };
+      }
+      if (match$1 === undefined) {
+        return {
+          TAG: "Refused",
+          _0: name + ` does not understand ` + message
+        };
+      }
+      let why = match$1.run(id, match.state, body, now);
+      if (why.TAG !== "Ok") {
+        return {
+          TAG: "Refused",
+          _0: why._0
+        };
+      }
+      let step = why._0;
+      match.state = step.state;
+      deliver(match, id, step.sends, sendTo);
+      return "Accepted";
+    },
     twins: () => Object.entries(twins).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => [
       param[0],
       describe(param[1].state)
@@ -118,11 +145,11 @@ function thing(def) {
     def.view,
     def.idField,
     def.selection
-  ], def.init, def.timers, def.messages, def.describe);
+  ], def.init, def.timers, def.messages, Stdlib_Option.getOr(def.told, []), def.describe);
 }
 
 function service(def) {
-  let kind = erase(def.name, undefined, (param, param$1, random) => def.init(random), def.timers, def.messages, def.describe);
+  let kind = erase(def.name, undefined, (param, param$1, random) => def.init(random), def.timers, def.messages, Stdlib_Option.getOr(def.told, []), def.describe);
   return {
     name: kind.name,
     view: kind.view,
@@ -134,6 +161,7 @@ function service(def) {
       ]]),
     fire: kind.fire,
     byHand: kind.byHand,
+    tell: kind.tell,
     twins: kind.twins
   };
 }

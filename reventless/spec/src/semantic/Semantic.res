@@ -322,6 +322,7 @@ let valueTypesWithoutWriter: array<string> = ["Geolocation"]
 let nonValueModules: array<string> = [
   "Capabilities",
   "CapabilityNeed",
+  "Devices",
   "Geocoding",
   "IdentityProvider",
   "Media_Ref",

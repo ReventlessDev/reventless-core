@@ -3,6 +3,7 @@
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Devices$Reventless from "@reventlessdev/reventless-spec/src/semantic/Devices.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as LocalFingerprintKey$ReventlessLocal from "./LocalFingerprintKey.res.mjs";
@@ -69,6 +70,18 @@ function resetStash() {
   stash.contents = Stash_Memory_Backend$ReventlessCore.make(undefined);
 }
 
+let devicesRef = {
+  contents: Devices$Reventless.unreachable("no stand-in is running")
+};
+
+function registerDevices(devices) {
+  devicesRef.contents = devices;
+}
+
+function unregisterDevices() {
+  devicesRef.contents = Devices$Reventless.unreachable("no stand-in is running");
+}
+
 function capabilities() {
   return {
     geocode: Capabilities$Reventless.none.geocode,
@@ -76,7 +89,8 @@ function capabilities() {
     identityProvider: identityProviderRef.contents,
     secrets: Secrets_Node_Backend$ReventlessCore.make(LocalFingerprintKey$ReventlessLocal.get),
     stash: stash.contents,
-    text: textRef.contents
+    text: textRef.contents,
+    devices: devicesRef.contents
   };
 }
 
@@ -91,6 +105,9 @@ export {
   unmetWarning,
   stash,
   resetStash,
+  devicesRef,
+  registerDevices,
+  unregisterDevices,
   capabilities,
 }
 /* stash Not a pure module */

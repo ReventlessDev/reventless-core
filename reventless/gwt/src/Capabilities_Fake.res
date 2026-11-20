@@ -28,6 +28,8 @@ type call =
       assert which secret was handed over — a fake has no log to keep it out of. */
   | Stashed({key: string, value: string, ttl: Reventless.Duration.t})
   | Taken({key: string})
+  /** A thing told something, by kind and instance. */
+  | Told({kind: string, instance: string, message: string, body: JSON.t})
 
 type t = {
   capabilities: Capabilities.t,
@@ -43,7 +45,8 @@ that prefixes `"hash:"`. `~secrets` replaces the secret source whole, e.g. with
 `Secrets.unavailable`; its calls are still recorded. The stash holds what is put
 in it and hands each value over once, starting from `~stashed`; `~stash`
 replaces it whole, e.g. with `Stash.unavailable`. `~text` is the deployment's
-languages and catalogue; without it every message is in its English.
+languages and catalogue; without it every message is in its English. A thing told
+something accepts it unless `~tell` answers otherwise.
 */
 let make = (
   ~geocode: option<Geocoding.search>=?,
@@ -63,6 +66,14 @@ let make = (
   ~stashed: array<(string, string)>=[],
   ~stash: option<Stash.t>=?,
   ~text: Text.t=Text.sourceOnly,
+  ~tell: option<
+    (
+      ~kind: string,
+      ~instance: string,
+      ~message: string,
+      ~body: JSON.t,
+    ) => promise<Reventless.Devices.answer>,
+  >=?,
   (),
 ): t => {
   let log: array<call> = []
@@ -151,6 +162,15 @@ let make = (
       },
     },
     text,
+    devices: {
+      tell: async (~kind, ~instance, ~message, ~body) => {
+        record(Told({kind, instance, message, body}))
+        switch tell {
+        | Some(f) => await f(~kind, ~instance, ~message, ~body)
+        | None => Accepted
+        }
+      },
+    },
   }
   {capabilities, calls: () => log->Array.copy}
 }
@@ -196,5 +216,10 @@ let toJson = (c: call): JSON.t => {
   | Hashed({input}) => obj("Hashed", [("input", str(input))])
   | Stashed({key, ttl, _}) => obj("Stashed", [("key", str(key)), ("ttl", JSON.Encode.int(ttl))])
   | Taken({key}) => obj("Taken", [("key", str(key))])
+  | Told({kind, instance, message, body}) =>
+    obj(
+      "Told",
+      [("kind", str(kind)), ("instance", str(instance)), ("message", str(message)), ("body", body)],
+    )
   }
 }

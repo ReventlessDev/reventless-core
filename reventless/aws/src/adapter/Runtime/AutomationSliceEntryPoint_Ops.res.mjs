@@ -385,7 +385,8 @@ function capabilities() {
     identityProvider: IdentityProvider_Cognito_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["IDENTITY_PROVIDER_ID"], ""), Stdlib_Option.getOr(process.env["IDENTITY_STORE_TABLE"], "")),
     secrets: Secrets_Node_Backend$ReventlessCore.provider,
     stash: Capabilities$Reventless.none.stash,
-    text: Text_Http_Backend$ReventlessAws.text()
+    text: Text_Http_Backend$ReventlessAws.text(),
+    devices: Capabilities$Reventless.none.devices
   };
 }
 

@@ -68,6 +68,15 @@ must reach a provider only after a `decide` the door cannot run has said yes. Th
 door puts it in the stash under a key both sides can name, and the slice that reacts
 to the decision takes it. Taken once, and gone after its time either way.
 
+One more is reached through `capabilities` but declared by nobody: **Devices**,
+telling one thing at the app's edge something (*charge at 11 kW*). A translation
+names the kind of thing, the instance, the message and its body, through
+`capabilities.devices.tell`, and gets one of three answers: `Accepted`, `Refused`
+with the thing's reason, or `NotReachable`, as a real thing that is offline. A local
+platform carries it to its running stand-ins (see the stand-in runtime,
+`reventless-standin`); with none running, and on AWS for now, every thing answers
+`NotReachable`, so the work stays queued and visible.
+
 `ObjectStore` is the one carrying an identity beyond its own name, and the reason
 is that a deployment has several: two plugins that pick the same store name get two
 stores. That mirrors how a field's declaration reads — an unqualified
@@ -203,6 +212,7 @@ type t = {
   secrets: Secrets.t,
   stash: Stash.t,
   text: Text.t,
+  devices: Devices.t,
 }
 ```
 

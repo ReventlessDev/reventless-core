@@ -8,7 +8,7 @@ import * as Secrets$Reventless from "@reventlessdev/reventless-spec/src/semantic
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
-function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, param) {
+function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, tell, param) {
   let channels = channelsOpt !== undefined ? channelsOpt : [
       "Email",
       "Sms"
@@ -178,13 +178,30 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
       };
     }
   };
+  let capabilities_devices = {
+    tell: async (kind, instance, message, body) => {
+      log.push({
+        TAG: "Told",
+        kind: kind,
+        instance: instance,
+        message: message,
+        body: body
+      });
+      if (tell !== undefined) {
+        return await tell(kind, instance, message, body);
+      } else {
+        return "Accepted";
+      }
+    }
+  };
   let capabilities = {
     geocode: geocode$1,
     messaging: capabilities_messaging,
     identityProvider: capabilities_identityProvider,
     secrets: capabilities_secrets,
     stash: capabilities_stash,
-    text: text
+    text: text,
+    devices: capabilities_devices
   };
   return {
     capabilities: capabilities,
@@ -301,6 +318,25 @@ function toJson(c) {
           "key",
           c.key
         ]]);
+    case "Told" :
+      return obj("Told", [
+        [
+          "kind",
+          c.kind
+        ],
+        [
+          "instance",
+          c.instance
+        ],
+        [
+          "message",
+          c.message
+        ],
+        [
+          "body",
+          c.body
+        ]
+      ]);
   }
 }
 

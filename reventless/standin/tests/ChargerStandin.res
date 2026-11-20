@@ -31,7 +31,7 @@ let kind = Standin.Thing.make({
     | _ => 11000.
     }
     {
-      sessionId: `${id}-s1`,
+      sessionId: `${id}-s${Seed.Random.int(random, ~min=1000, ~max=9999)->Int.toString}`,
       powerW: Math.round(3700. +. Seed.Random.float(random) *. (maxW -. 3700.)),
       seq: 0,
     }
@@ -58,6 +58,16 @@ let kind = Standin.Thing.make({
         }
         Ok({state: s, sends: [{slice: "MeterCharger", body: reading(~id, s, ~energyWh, ~now)}]})
       },
+    },
+  ],
+  told: [
+    {
+      message: "setPower",
+      run: (~id as _, s, ~body, ~now as _) =>
+        switch body->Seed.Commands.get("powerKw") {
+        | Some(Number(kw)) if kw > 0. => Ok({state: {...s, powerW: kw *. 1000.}, sends: []})
+        | _ => Error("powerKw must be a positive number")
+        },
     },
   ],
   describe: s =>

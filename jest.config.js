@@ -153,6 +153,25 @@ module.exports = {
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],
     },
+    // The stand-in runtime's test app: its own scenarios, as an app's plugin has.
+    {
+      displayName: "reventless-standin-fixture",
+      rootDir: "./reventless/standin/fixture",
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
+      moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
+        "^@npmcli/arborist$":
+          "<rootDir>/../../../examples/online-shop-hybrid/catalog/__mocks__/emptyModule.js",
+        "^spdx-license-ids$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
+        "^spdx-license-ids/deprecated$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/deprecated.json",
+        "^spdx-exceptions$":
+          "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
+      },
+    },
     {
       displayName: "reventless-seed-aws",
       rootDir: "./reventless/seed-aws",
