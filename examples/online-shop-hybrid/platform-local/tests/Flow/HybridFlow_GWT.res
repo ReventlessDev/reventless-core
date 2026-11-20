@@ -18,6 +18,11 @@ open PlatformLocal_Examples
 
 module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Decision)
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
+module Archive = CommandStep(CatalogPlugin.ArchiveProduct, CatalogPlugin.ArchiveProduct_Decision)
+module Unarchive = CommandStep(
+  CatalogPlugin.UnarchiveProduct,
+  CatalogPlugin.UnarchiveProduct_Decision,
+)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
 module Sync = CommandStep(
@@ -137,6 +142,97 @@ describe("Hybrid cross-plugin flow", () => {
       }),
     )
     ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
+  )
+
+  // The withdrawal round trip across the boundary: an archived product cannot be
+  // ordered, and unarchiving it makes it orderable again.
+  // scenario-id: 46034b40-be5c-4934-86e2-da5bcefe78b7
+  test(
+    "Tier 2 — archiving a product withdraws it from ordering, and unarchiving relists it",
+    () =>
+      start
+      ->Add.givenEvents([
+        CatalogPlugin.AddProduct.ProductAdded({
+          productId: p1,
+          name: "Book",
+          description: "A good book",
+          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          categoryId: cat1,
+        }),
+      ])
+      ->Sync.givenEvents([
+        OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
+          productId: p1,
+          name: "Book",
+          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        }),
+      ])
+      ->Archive.whenCommand(CatalogPlugin.ArchiveProduct.ArchiveProduct({productId: p1}))
+      ->Archive.thenEvent(CatalogPlugin.ArchiveProduct.ProductArchived({productId: p1}))
+      ->ProductsEp.whenPublishedThrough
+      ->ProductsEp.thenPublicEvent(
+        CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: p1}),
+      )
+      ->ProductsExt.whenExtensionReacts
+      ->ProductsExt.thenIssuesCommand(
+        OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
+      )
+      ->Sync.whenCommand(OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}))
+      ->Sync.thenEvent(OrderingPlugin.SyncCatalogProduct.CatalogProductWithdrawn({productId: p1}))
+      ->Place.whenCommand(
+        OrderingPlugin.PlaceOrder.PlaceOrder({
+          orderId: o1,
+          customerId: c1,
+          lineItems: [{productId: p1, quantity: 1}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
+      ->Unarchive.whenCommand(CatalogPlugin.UnarchiveProduct.UnarchiveProduct({productId: p1}))
+      ->Unarchive.thenEvent(CatalogPlugin.UnarchiveProduct.ProductUnarchived({productId: p1}))
+      ->ProductsEp.whenPublishedThrough
+      ->ProductsEp.thenPublicEvent(
+        CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: p1}),
+      )
+      ->ProductsExt.whenExtensionReacts
+      ->ProductsExt.thenIssuesCommand(
+        OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
+      )
+      ->Sync.whenCommand(OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}))
+      ->Sync.thenEvent(
+        OrderingPlugin.SyncCatalogProduct.CatalogProductRelisted({
+          productId: p1,
+          name: "Book",
+          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        }),
+      )
+      ->Place.whenCommand(
+        OrderingPlugin.PlaceOrder.PlaceOrder({
+          orderId: o1,
+          customerId: c1,
+          lineItems: [{productId: p1, quantity: 1}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->Place.thenEvent(
+        OrderingPlugin.PlaceOrder.OrderPlaced({
+          orderId: o1,
+          customerId: c1,
+          productIds: [p1],
+          lines: [
+            {
+              productId: p1,
+              name: "Book",
+              quantity: 1,
+              unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+              lineTotal: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+            },
+          ],
+          total: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          shippingMethod: Standard,
+          firstProductName: "Book",
+        }),
+      ),
   )
 
   // scenario-id: 5b6dea26-5929-4dff-8431-287196239d1f

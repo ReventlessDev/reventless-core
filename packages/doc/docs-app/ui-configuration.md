@@ -821,6 +821,7 @@ nav, and which cross-plugin actions a row offers. The hybrid shop's file:
             "slice": "PlaceOrder",
             "command": "PlaceOrder",
             "field": "lineItems[].productId",
+            "whenState": ["Listed"],
             "then": "/Ordering/Orders"
           }
         ]
@@ -847,6 +848,23 @@ its group and its sort order. A `rowActions` entry turns a row into the start of
 command in another plugin: the row's key is carried into the named command's
 `field`, and `then` is where the user lands afterwards. A row and that row's own
 detail page offer the same set — a detail page is one of the view's rows.
+
+A row action is offered only where its row is open for business, by the same rule
+a view's own commands follow:
+
+- **A retired row offers none.** A row whose `@retired` field reads retired (an
+  archived or discontinued product) offers no row action, declared or inferred.
+  `"whenRetired": true` opts one back in, for an action that is about the archive
+  itself, such as a reinstatement.
+- **`whenState` names the states it is offered in**, read against this view's own
+  lifecycle field. The target command's `@transition` speaks of the view it writes
+  (`Orders`), not of the row it is offered on (`Products`), so where two plugins
+  meet the from-set is declared here. Unset, the action is offered in every state;
+  set, a row in another state, or with no state, does not offer it.
+
+A `whenState` naming a state the view does not have, an empty one, or a
+`whenRetired` on a view with no `@retired` field is reported like any other bad
+hint.
 
 `field` takes a **path** where the command holds its ids inside records rather
 than as bare strings: `lineItems[].productId` is one line's product, `[]` reading
