@@ -479,6 +479,36 @@ $ pnpm run serve
 The authoring tools rely on this: they add an account for each role people sign
 in as, and the Screens tab's preview signs in as it.
 
+## Places the local geocoder knows
+
+The local platform has no real geocoder: a place index is an account and a bill.
+What it has is a list. `.reventless/places.yaml` names places and their points,
+and a slice that geocodes an address is answered from it:
+
+```yaml
+- place: Delft
+  point: { lat: 52.0116, lng: 4.3571 }
+```
+
+- **An address resolves when it names a listed place**, as its whole text or as
+  its last comma-separated part, compared without case or extra spaces:
+  `12 Elm Row, Delft` lands on Delft's point. A place inside an address but not
+  at its end does not match.
+- **Nothing else is resolved.** An address that names no listed place is answered
+  *unavailable*, as with no file at all: its item is retried, stays queued, and is
+  never given a made-up point.
+- **The file is read at start**, and the log says how many places it gave. A file
+  that does not parse, or holds a point out of range, is not used, and the log
+  says why. Without the file the platform logs nothing about geocoding.
+
+The hybrid example ships `places.example.yaml` with the cities its seed's
+customers live in, and `pnpm run setup` copies it into place beside
+`accounts.yaml`. A customer the seed moves is then located by the geocoding slice
+and shows on the `Customers` map.
+
+The map picker's search box in the browser is a separate door and still answers
+with a placeholder point for any text.
+
 ## Staying logged in across restarts
 
 Local tokens are signed with an HMAC secret resolved in three steps: the

@@ -9,7 +9,9 @@
 //   4. Ensure a ReScript PPX binary exists for this platform (prebuilt from the
 //      registry if available, otherwise built from source via opam/dune)
 //   5. Seed the hybrid example's .reventless/accounts.yaml from its committed
-//      accounts.example.yaml so local login works out of the box
+//      accounts.example.yaml so local login works out of the box, and its
+//      .reventless/places.yaml from places.example.yaml so its geocoder knows
+//      the seed's cities
 //   6. Build the hybrid in-memory example (unless --no-build)
 //
 // Usage:
@@ -19,7 +21,7 @@
 // Run from the repo root.
 
 import { execSync } from 'node:child_process'
-import { existsSync, copyFileSync, chmodSync } from 'node:fs'
+import { existsSync, copyFileSync, chmodSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -51,6 +53,7 @@ ensurePpx()
 // ── 5. Seed example users ───────────────────────────────────────────────────
 step(5, 'Local dev users for the hybrid example')
 seedUsers()
+seedPlaces()
 
 // ── 6. Build the example ────────────────────────────────────────────────────
 if (NO_BUILD) {
@@ -172,4 +175,22 @@ function seedUsers() {
     return
   }
   run('pnpm exec prepare-accounts', { cwd: platform })
+}
+
+// A plain copy: the places file holds nothing to generate, and an existing one
+// is the developer's, so it is left alone.
+function seedPlaces() {
+  const platform = join(ROOT, 'examples/online-shop-hybrid/platform-local')
+  const target = join(platform, '.reventless/places.yaml')
+  if (existsSync(target)) {
+    ok('.reventless/places.yaml already present')
+    return
+  }
+  if (!existsSync(join(platform, 'places.example.yaml'))) {
+    warn('places.example.yaml not found — the local geocoder will know no places')
+    return
+  }
+  mkdirSync(join(platform, '.reventless'), { recursive: true })
+  copyFileSync(join(platform, 'places.example.yaml'), target)
+  ok('.reventless/places.yaml copied from places.example.yaml')
 }

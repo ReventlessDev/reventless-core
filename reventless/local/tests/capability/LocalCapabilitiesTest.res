@@ -11,6 +11,7 @@ let declared = [
 ]
 
 let reset = () => {
+  LocalCapabilities.unregisterGeocoder()
   LocalCapabilities.registerMessagingSender("")
   LocalCapabilities.registerIdentityProvider(Reventless.Capabilities.none.identityProvider)
 }
@@ -21,6 +22,7 @@ describe("LocalCapabilities.unmetWarning", () => {
     expect(LocalCapabilities.provisioned())->toEqual([Reventless.CapabilityNeed.Stash])
     let message = LocalCapabilities.unmetWarning(~declared)->Option.getOr("")
     expect(message->String.includes("Geocoding (GeocodeAddress)"))->toBe(true)
+    expect(message->String.includes(".reventless/places.yaml"))->toBe(true)
     expect(message->String.includes("Capability_Messaging_Log.make()"))->toBe(true)
     expect(message->String.includes("Capability_IdentityProvider_AccountStore.make()"))->toBe(true)
   })
@@ -40,6 +42,15 @@ describe("LocalCapabilities.unmetWarning", () => {
     expect(message->String.includes("Messaging"))->toBe(false)
     expect(message->String.includes("IdentityProvider"))->toBe(false)
     expect(message->String.includes("Geocoding"))->toBe(true)
+    reset()
+  })
+
+  testSync("a places file provisions geocoding", () => {
+    reset()
+    LocalCapabilities.registerGeocoder(Capability_Geocoding_Places.search([]))
+    expect(LocalCapabilities.provisioned())->toEqual([Reventless.CapabilityNeed.Geocoding, Stash])
+    let message = LocalCapabilities.unmetWarning(~declared)->Option.getOr("")
+    expect(message->String.includes("Geocoding"))->toBe(false)
     reset()
   })
 

@@ -118,6 +118,7 @@ import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLo
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Decision$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Decision.res.mjs";
+import * as Capability_Geocoding_Places$ReventlessLocal from "./capability/Capability_Geocoding_Places.res.mjs";
 import * as Platform_PluginStructuresApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_PluginStructuresApi.res.mjs";
 import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
@@ -1342,6 +1343,19 @@ function MakeWithConfig(Config) {
     if (provider !== undefined) {
       LocalCapabilities$ReventlessLocal.registerIdentityProvider(provider);
       log.info("Platform", undefined, `identity provider: the accounts file`);
+    }
+    let match$2 = Capability_Geocoding_Places$ReventlessLocal.load(undefined);
+    if (match$2 !== undefined) {
+      if (match$2.TAG === "Ok") {
+        let places = match$2._0;
+        LocalCapabilities$ReventlessLocal.registerGeocoder(Capability_Geocoding_Places$ReventlessLocal.search(places));
+        log.info("Platform", undefined, `geocoding: ` + places.length.toString() + ` places from ` + Capability_Geocoding_Places$ReventlessLocal.defaultPath() + `; any other address stays queued`);
+      } else {
+        LocalCapabilities$ReventlessLocal.unregisterGeocoder();
+        log.warn("Platform", undefined, `geocoding: ` + Capability_Geocoding_Places$ReventlessLocal.defaultPath() + ` not read (` + match$2._0 + `); addresses stay queued`);
+      }
+    } else {
+      LocalCapabilities$ReventlessLocal.unregisterGeocoder();
     }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
@@ -3172,6 +3186,19 @@ function Make($star) {
     if (provider !== undefined) {
       LocalCapabilities$ReventlessLocal.registerIdentityProvider(provider);
       log.info("Platform", undefined, `identity provider: the accounts file`);
+    }
+    let match$1 = Capability_Geocoding_Places$ReventlessLocal.load(undefined);
+    if (match$1 !== undefined) {
+      if (match$1.TAG === "Ok") {
+        let places = match$1._0;
+        LocalCapabilities$ReventlessLocal.registerGeocoder(Capability_Geocoding_Places$ReventlessLocal.search(places));
+        log.info("Platform", undefined, `geocoding: ` + places.length.toString() + ` places from ` + Capability_Geocoding_Places$ReventlessLocal.defaultPath() + `; any other address stays queued`);
+      } else {
+        LocalCapabilities$ReventlessLocal.unregisterGeocoder();
+        log.warn("Platform", undefined, `geocoding: ` + Capability_Geocoding_Places$ReventlessLocal.defaultPath() + ` not read (` + match$1._0 + `); addresses stay queued`);
+      }
+    } else {
+      LocalCapabilities$ReventlessLocal.unregisterGeocoder();
     }
     RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [

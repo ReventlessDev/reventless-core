@@ -1698,6 +1698,24 @@ module MakeWithConfig = (
       log.info(~comp="Platform", `identity provider: the accounts file`)
     | None => ()
     }
+    // No root declaration: the file being there is the declaration, as with accounts.
+    switch Capability_Geocoding_Places.load() {
+    | Some(Ok(places)) =>
+      LocalCapabilities.registerGeocoder(Capability_Geocoding_Places.search(places))
+      log.info(
+        ~comp="Platform",
+        `geocoding: ${places
+          ->Array.length
+          ->Int.toString} places from ${Capability_Geocoding_Places.defaultPath()}; any other address stays queued`,
+      )
+    | Some(Error(why)) =>
+      LocalCapabilities.unregisterGeocoder()
+      log.warn(
+        ~comp="Platform",
+        `geocoding: ${Capability_Geocoding_Places.defaultPath()} not read (${why}); addresses stay queued`,
+      )
+    | None => LocalCapabilities.unregisterGeocoder()
+    }
 
     // Runtime extension seam. Fired before anything is built, so an extension's
     // interception and publish hooks are registered before the first command or

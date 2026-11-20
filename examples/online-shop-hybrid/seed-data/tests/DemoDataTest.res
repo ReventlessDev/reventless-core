@@ -130,3 +130,28 @@ describe("DemoData.resolveOwners", () => {
     ])
   })
 })
+
+// The local geocoder resolves a moved customer's address by its city, so the
+// example's places file lists each city the seed draws, at the point the seed uses.
+let placeSchema = S.object(s => (
+  s.field("place", S.string),
+  s.field("point", Reventless.GeoPoint.schema),
+))
+
+describe("the local platform's places file", () => {
+  testSync("lists every city the seed's addresses name, at the seed's point", () => {
+    let places =
+      NodePath.join([here, "..", "..", "platform-local", "places.example.yaml"])
+      ->NodeFs.readFileSync
+      ->Reventless.AccountsManifest.parseYaml
+      ->S.parseOrThrow(~to=S.array(placeSchema))
+    expect(places->Array.map(((place, point)) => (place, point.lat, point.lng)))->toEqual(
+      DemoData.cities->Array.mapWithIndex(
+        (city, i) => {
+          let (lat, lng) = DemoData.cityCoords->Array.getUnsafe(i)
+          (city, lat, lng)
+        },
+      ),
+    )
+  })
+})

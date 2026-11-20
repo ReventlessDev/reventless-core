@@ -1,7 +1,7 @@
 # Plan: the online shop example closes its gaps, and runs its whole story locally
 
 **Date:** 2026-10-30<br/>
-**Status:** 🚧 [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) built 2026-10-30, uncommitted; they ship as the next alpha once committed and pushed. [OE4](#oe4-a-stand-in-geocoder-for-the-local-platform) to [OE7](#oe7-the-examples-readme-says-it) not started.<br/>
+**Status:** 🚧 [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) built 2026-10-30 and committed in `e05f287ee`. [OE4](#oe4-a-stand-in-geocoder-for-the-local-platform) built 2026-11-20, not yet released, with two framework fixes it uncovered. [OE5](#oe5-contact-verification-extracted-as-a-trait) to [OE7](#oe7-the-examples-readme-says-it) not started.<br/>
 **Owns:** two behavior gaps in
 [examples/online-shop-hybrid](../../examples/online-shop-hybrid/README.md), a plugin with no
 slices yet that fails its build, and a stand-in geocoder for the local platform. It also orders
@@ -147,6 +147,41 @@ and wrote the empty manifest. No change was needed.
 **Exit:** with the file, a seeded customer's address is located on the local platform and the
 `Customers` map shows them; without it, the platform logs the same line as today and nothing else
 changes. Size M.
+
+**Built** 2026-11-20. Where the build differs from the steps above:
+- the file lists **places**, not addresses: `- place: Delft` with `point: {lat, lng}`. An
+  address resolves when it names a listed place, as its whole text or as its last
+  comma-separated part, compared without case or extra spaces. The seed's addresses are drawn
+  (`12 Elm Row, Delft`), so a list of whole addresses could not name them ahead of time. The
+  answer is then as precise as a city, which is what the seed's own points already were.
+- the geocoder is `Capability_Geocoding_Places` in `reventless-local`, beside the other local
+  capabilities, and the file being there is the whole declaration: `makePlatform` loads it, logs
+  how many places it gave, and logs why when it cannot read it. `LocalCapabilities.provisioned`
+  then includes geocoding, so the unmet-capability warning goes away with the file.
+- the seed's registered customers are placed by the seed itself (`SetAddressLocation`), as
+  before; the customers it moves (`UpdateAddress`) are the ones the geocoding slice locates.
+  `DemoDataTest` checks that the example's file lists every city the seed draws, at the seed's
+  point.
+- the map picker's search box in the browser still answers with a placeholder point for any
+  text; it is a separate door and was left as it is.
+
+Running it end to end showed that no outbound translation had ever reached an aggregate on the
+local platform. Until now every geocode answered *unavailable*, so nothing exposed it. Two
+framework fixes ship with this step:
+- `Dcb_Builder` chose an aggregate's publisher with `Option.getOr` over `option<Output>`. An
+  Output answers every property read, so the unwrap took it for a nested `None`, and the slice
+  was handed that instead of a publisher (`publishJsons is not a function`).
+  `Dcb_Builder.publisherFor` now chooses by name; `DcbOutboundTargetTest` fails without it.
+- `Aggregate_Callback` cached the folded state only after the append returned, but the local
+  event log hands events on before then. A command that a reaction sent to the same aggregate
+  was decided on the state from before those events, and a decision that records nothing there
+  (the slice's stale-answer guard) is fenced by no append. The state is now cached before the
+  append, and both failure branches still drop it; a new row in `AggregateCacheTest` fails
+  without it.
+
+Checked on the local platform (memory backend): `12 Elm Row, Delft` was located at Delft's point
+within seconds of the move, and `3 Canal Street, Utrecht` stayed pending, its log naming the
+file.
 
 ### OE5: contact verification extracted as a trait
 

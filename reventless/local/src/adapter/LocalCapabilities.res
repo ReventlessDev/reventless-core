@@ -1,10 +1,10 @@
 // What the local platform hands a slice's `translate`.
 //
-// No geocoder: the local platform provisions none (a place index is an account
-// and a bill), so `Capabilities.none`'s `geocode` reports `Unavailable`, which
-// `translate` maps to a retryable `Error` and the sweep surfaces. A dev running a
-// geocoding slice sees its items stay queued, which is true, instead of seeing
-// them written off as unresolvable addresses, which would not be.
+// Geocoding answers only for the places `.reventless/places.yaml` lists
+// (`Capability_Geocoding_Places`); a real place index is an account and a bill.
+// Without the file, and for any address it does not name, `geocode` reports
+// `Unavailable`, which `translate` maps to a retryable `Error`: the items stay
+// queued, which is true, instead of being written off as unresolvable addresses.
 //
 // Messaging is provisioned when a root asks for it, exactly as on AWS: a
 // `Capability_Messaging_Log.make()` handle passed as `~messagingSender`
@@ -35,6 +35,15 @@ let identityProviderRef = ref(Reventless.Capabilities.none.identityProvider)
 let registerIdentityProvider = (provider: Reventless.IdentityProvider.t) =>
   identityProviderRef := provider
 
+// No geocoder until a places file is loaded.
+let geocodeRef = ref(None)
+
+/** Provision geocoding from the places a file lists. Called by `makePlatform`. */
+let registerGeocoder = (search: Reventless.Geocoding.search) => geocodeRef := Some(search)
+
+/** Back to no geocoder, for a start that finds no places file. */
+let unregisterGeocoder = () => geocodeRef := None
+
 // English until a root declares its languages: a complete answer, not a gap.
 let textRef = ref(Reventless.Text.sourceOnly)
 
@@ -44,9 +53,10 @@ let registerText = (text: Reventless.Text.t) => textRef := text
 
 /** What this platform provisions, in the terms a plugin declares its needs:
     read off the same refs `capabilities()` reads, so it cannot disagree with
-    what a slice is handed. Geocoding is never here — no local geocoder exists. */
+    what a slice is handed. */
 let provisioned = (): array<Reventless.CapabilityNeed.t> =>
   [
+    geocodeRef.contents->Option.isNone ? [] : [Reventless.CapabilityNeed.Geocoding],
     messagingSenderRef.contents == "" ? [] : [Reventless.CapabilityNeed.Messaging],
     identityProviderRef.contents.operations == []
       ? []
@@ -59,9 +69,9 @@ let provisioned = (): array<Reventless.CapabilityNeed.t> =>
 The warning for a plugin declaring needs this platform does not provision, or
 `None` when every need is met.
 
-A warning where the AWS deploy refuses, and the difference is deliberate: no
-local geocoder exists, so a refusal would stop every plugin carrying the
-geocoding trait from running locally at all. What the developer loses without
+A warning where the AWS deploy refuses, and the difference is deliberate: a
+places file is optional, so a refusal would stop every plugin carrying the
+geocoding trait from running locally without one. What the developer loses without
 this is the explanation — the slice's items stay retried and nothing says why.
 */
 let unmetWarning = (~declared: array<(string, string)>): option<string> =>
@@ -73,7 +83,7 @@ let unmetWarning = (~declared: array<(string, string)>): option<string> =>
       missing
       ->Array.map(u =>
         switch u.need {
-        | Geocoding => `\n  Geocoding has no local provider; the slice's items are retried and stay queued.`
+        | Geocoding => `\n  Geocoding is \`.reventless/places.yaml\`, a list of places with their points; without it the slice's items are retried and stay queued.`
         | Messaging =>
           `\n  Messaging is \`Capability_Messaging_Log.make()\`, passed to the platform as ` ++ `\`~messagingSender\`.`
         | IdentityProvider =>
@@ -107,7 +117,7 @@ let unregisterDevices = () =>
   devicesRef := Reventless.Devices.unreachable(~reason="no stand-in is running")
 
 let capabilities = (): Reventless.Capabilities.t => {
-  geocode: Reventless.Capabilities.none.geocode,
+  geocode: geocodeRef.contents->Option.getOr(Reventless.Capabilities.none.geocode),
   messaging: ReventlessCore.Messaging_Log_Backend.provider(~sender=messagingSenderRef.contents),
   identityProvider: identityProviderRef.contents,
   secrets: ReventlessCore.Secrets_Node_Backend.make(~fingerprintKey=LocalFingerprintKey.get),

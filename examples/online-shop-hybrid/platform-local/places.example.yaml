@@ -1,0 +1,18 @@
+# The places the local platform's geocoder knows, copied to .reventless/places.yaml
+# by `pnpm run setup`. An address resolves when it names one of them, as a whole or
+# as its last comma-separated part ("12 Elm Row, Delft"), and lands on its point.
+# Any other address is not resolved: its item stays queued, as with no geocoder.
+#
+# These are the cities the seed's customers live in (DemoData.cities).
+- place: Bruges
+  point: { lat: 51.2093, lng: 3.2247 }
+- place: Cortona
+  point: { lat: 43.2749, lng: 11.9853 }
+- place: Delft
+  point: { lat: 52.0116, lng: 4.3571 }
+- place: Espoo
+  point: { lat: 60.2055, lng: 24.6559 }
+- place: Freiburg
+  point: { lat: 47.999, lng: 7.8421 }
+- place: Gdansk
+  point: { lat: 54.352, lng: 18.6466 }
