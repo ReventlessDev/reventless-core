@@ -282,10 +282,6 @@ function Make(Spec) {
           if (item === undefined) {
             return;
           }
-          let newrecord$2 = {...read};
-          newrecord$2.processedAt = new Date().toISOString();
-          newrecord$2.status = "Processing";
-          todoItems[id] = newrecord$2;
           let result;
           try {
             result = await Translation.translate(id, Primitive_option.valFromOption(item), capabilities);
@@ -351,10 +347,10 @@ function Make(Spec) {
                       return;
                     }
                   }
-                  let newrecord$3 = {...read};
-                  newrecord$3.completedAt = new Date().toISOString();
-                  newrecord$3.status = "Completed";
-                  todoItems[id] = newrecord$3;
+                  let newrecord$2 = {...read};
+                  newrecord$2.completedAt = new Date().toISOString();
+                  newrecord$2.status = "Completed";
+                  todoItems[id] = newrecord$2;
                   return;
                 } catch (raw_exn$3) {
                   let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
@@ -380,10 +376,10 @@ function Make(Spec) {
                 }
               }
             } else {
-              let newrecord$4 = {...read};
-              newrecord$4.completedAt = new Date().toISOString();
-              newrecord$4.status = "Completed";
-              todoItems[id] = newrecord$4;
+              let newrecord$3 = {...read};
+              newrecord$3.completedAt = new Date().toISOString();
+              newrecord$3.status = "Completed";
+              todoItems[id] = newrecord$3;
               return;
             }
           } else {

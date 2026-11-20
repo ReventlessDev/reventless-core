@@ -277,5 +277,7 @@ domain, not a reason to fake the state.
 
 **Found on the way, not part of this plan:** on the in-memory backend, the `sample` seed set off a
 loop in the outbound notification slice: one order's confirmation was sent more than 21,000 times
-before the server stopped answering. The same seed on SQLite sent each mail a handful of times. It
-needs its own look.
+before the server stopped answering. The same seed on SQLite sent each mail a handful of times.
+Fixed since: before translating, the slice rewrote its claimed row without the claim, and a pass
+the in-process bus started during the send read that row as abandoned and sent it again. Each mail
+now goes out once.

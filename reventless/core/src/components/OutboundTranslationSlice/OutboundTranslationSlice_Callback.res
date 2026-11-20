@@ -456,8 +456,6 @@ module Make = (
         switch item {
         | None => ()
         | Some(item) =>
-          todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
-
           let result = try await Translation.translate(id, item, ~capabilities) catch {
           | exn =>
             let msg =

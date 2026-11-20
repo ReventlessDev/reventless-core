@@ -728,5 +728,38 @@ describe("OutboundTranslationSlice Callback", () => {
         ))->toEqual((Completed, Processing))
       },
     )
+
+    // The in-process bus handles the command a translation sends before the
+    // send returns, so the slice is invoked again while its row is in flight.
+    // That pass must see the claim: a row without one reads as abandoned, and
+    // was sent again on every pass.
+    testPromise(
+      "a pass that starts while a row is being translated leaves it to the first",
+      async () => {
+        published := []
+        await CommandBackCallback.phase1(
+          [("evt", PaymentReceived({orderId: "ord-5", amount: 5.0}))],
+          ~capabilities=Reventless.Capabilities.none,
+        )
+        let translated = ref(0)
+        ProcessPaymentSpec.translateFn :=
+          (
+            async (id, _item) => {
+              translated := translated.contents + 1
+              if translated.contents == 1 {
+                await CommandBackCallback.phase2(
+                  publish,
+                  ~capabilities=Reventless.Capabilities.none,
+                )
+              }
+              Ok(Some((id, ProcessPaymentSpec.ConfirmPayment({orderId: id}))))
+            }
+          )
+
+        await CommandBackCallback.phase2(publish, ~capabilities=Reventless.Capabilities.none)
+        expect(translated.contents)->toBe(1)
+        expect(published.contents->Array.map(c => c.id))->toEqual(["ord-5"])
+      },
+    )
   })
 })
