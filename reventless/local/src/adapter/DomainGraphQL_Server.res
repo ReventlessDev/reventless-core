@@ -424,6 +424,15 @@ let _dispatch = (
     )
   } else if path == "/__inmemory/schedules/fire" && req.method == "POST" {
     handleFireSchedule(req, res)
+  } else if path->String.startsWith(LocalStandins.prefix) {
+    readBody(req, body => {
+      let _ = LocalStandins.route(~method=req.method, ~path, ~body)->Promise.thenResolve(answer =>
+        switch answer {
+        | Some((status, json)) => _writeJson(res, ~status, json)
+        | None => _writeJson(res, ~status=404, JSON.Encode.null)
+        }
+      )
+    })
   } else if path == "/events" && req.method == "POST" {
     // Local AppSync Events publish endpoint (`/client/**` only). The
     // Authorization header carries the token raw (AWS Cognito-publish shape),

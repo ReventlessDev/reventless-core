@@ -44,6 +44,20 @@ function hasReaders() {
   return LocalFeed$ReventlessLocal.hasReaders(feed);
 }
 
+let listeners = [];
+
+function listen(f) {
+  listeners.push(f);
+}
+
+function hasListeners() {
+  return listeners.length !== 0;
+}
+
+function notify(eventType) {
+  listeners.forEach(f => f(eventType));
+}
+
 function publish(item) {
   LocalFeed$ReventlessLocal.publish(feed, item);
 }
@@ -78,6 +92,10 @@ export {
   feed,
   port,
   hasReaders,
+  listeners,
+  listen,
+  hasListeners,
+  notify,
   publish,
   broadcast,
   start,

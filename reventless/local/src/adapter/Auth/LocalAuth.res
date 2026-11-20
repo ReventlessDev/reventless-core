@@ -283,6 +283,15 @@ module Login = {
     | _ => Error("Invalid credentials")
     }
 
+  /** A token for `identity`, signed as a login's is, for a caller inside this process
+      that has no password to give: the platform's own stand-ins. */
+  let mint = (identity: Identity.t): string => {
+    let payload = _b64urlEncode(
+      identity->Reventless.Util_Sury.toJson(Identity.schema)->JSON.stringify,
+    )
+    `${payload}.${_sign(payload)}`
+  }
+
   /**
    The identity a token carries, for a caller that has just been issued one.
 

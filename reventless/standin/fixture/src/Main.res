@@ -7,4 +7,6 @@ module Charging = Plugin.Make(Platform)
 
 Platform.makePlatform(~version="0.0.0-fixture", ~plugins=[module(Charging)])
 
+ReventlessLocal.LocalStandins.use({kinds: [ChargerStandin.kind]})
+
 Platform.startServers()

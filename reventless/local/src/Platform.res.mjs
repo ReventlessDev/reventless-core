@@ -49,6 +49,7 @@ import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as LocalEventTap$ReventlessLocal from "./adapter/LocalEventTap.res.mjs";
 import * as LocalIdleExit$ReventlessLocal from "./adapter/LocalIdleExit.res.mjs";
+import * as LocalStandins$ReventlessLocal from "./LocalStandins.res.mjs";
 import * as LocalTapLines$ReventlessLocal from "./adapter/LocalTapLines.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
@@ -1206,6 +1207,15 @@ function MakeWithConfig(Config) {
       LocalIdleExit$ReventlessLocal.start(process.env);
       LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
       LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+      LocalStandins$ReventlessLocal.registerTools();
+      let config = LocalStandins$ReventlessLocal.handed.contents;
+      if (config !== undefined) {
+        LocalStandins$ReventlessLocal.start(config, domainPort, undefined).then(() => {
+          if (Stdlib_Option.isSome(LocalStandins$ReventlessLocal.running.contents)) {
+            return LocalPlatformRegistry$ReventlessLocal.publishStandins(domainPort, `http://localhost:` + domainPort.toString() + LocalStandins$ReventlessLocal.prefix, undefined);
+          }
+        });
+      }
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
@@ -3028,6 +3038,15 @@ function Make($star) {
       LocalIdleExit$ReventlessLocal.start(process.env);
       LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
       LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
+      LocalStandins$ReventlessLocal.registerTools();
+      let config = LocalStandins$ReventlessLocal.handed.contents;
+      if (config !== undefined) {
+        LocalStandins$ReventlessLocal.start(config, domainPort, undefined).then(() => {
+          if (Stdlib_Option.isSome(LocalStandins$ReventlessLocal.running.contents)) {
+            return LocalPlatformRegistry$ReventlessLocal.publishStandins(domainPort, `http://localhost:` + domainPort.toString() + LocalStandins$ReventlessLocal.prefix, undefined);
+          }
+        });
+      }
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",

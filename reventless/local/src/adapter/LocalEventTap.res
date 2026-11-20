@@ -51,6 +51,16 @@ let port = () => feed->LocalFeed.port
     wants. */
 let hasReaders = () => feed->LocalFeed.hasReaders
 
+// In this process, told each event's type, with no line built for them: what the
+// platform's own stand-ins follow to read their views again.
+let listeners: array<string => unit> = []
+
+let listen = (f: string => unit): unit => listeners->Array.push(f)
+
+let hasListeners = () => listeners->Array.length > 0
+
+let notify = (~eventType: string): unit => listeners->Array.forEach(f => f(eventType))
+
 /** Sends a line with what a filter can ask about it. */
 let publish = (item: LocalFeed.item): unit => feed->LocalFeed.publish(item)
 

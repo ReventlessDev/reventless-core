@@ -1468,6 +1468,21 @@ module MakeWithConfig = (
         ~onBound=logPort => LocalPlatformRegistry.publishLogPort(~port=domainPort, ~logPort),
         (),
       )
+      // The app's stand-ins, once the servers listen: they read and send over HTTP. Their tools
+      // are there whether they run or not, and say so.
+      LocalStandins.registerTools()
+      switch LocalStandins.handed.contents {
+      | Some(config) =>
+        let _ = LocalStandins.start(config, ~domainPort)->Promise.thenResolve(() =>
+          if LocalStandins.running.contents->Option.isSome {
+            LocalPlatformRegistry.publishStandins(
+              ~port=domainPort,
+              ~url=`http://localhost:${domainPort->Int.toString}${LocalStandins.prefix}`,
+            )
+          }
+        )
+      | None => ()
+      }
     }
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.

@@ -13,6 +13,8 @@ type fetchInit = {method: string, headers: dict<string>, body: string}
 type response
 
 @val external fetch: (string, fetchInit) => promise<response> = "fetch"
+/** A GET, which may carry no body at all. */
+@val external fetchGet: string => promise<response> = "fetch"
 @send external responseJson: response => promise<JSON.t> = "json"
 @send external responseText: response => promise<string> = "text"
 @get external responseOk: response => bool = "ok"

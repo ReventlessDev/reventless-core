@@ -1625,6 +1625,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../spec
+      '@reventlessdev/reventless-standin':
+        specifier: workspace:*
+        version: link:../standin
       graphql:
         specifier: ^16.0.0
         version: 16.13.2
@@ -1803,9 +1806,15 @@ importers:
       '@reventlessdev/reventless-local':
         specifier: workspace:*
         version: link:../../local
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../../seed
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../spec
+      '@reventlessdev/reventless-standin':
+        specifier: workspace:*
+        version: link:..
       sury:
         specifier: 11.1.0
         version: 11.1.0(rescript@12.3.1)

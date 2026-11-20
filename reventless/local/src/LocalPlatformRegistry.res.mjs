@@ -37,7 +37,8 @@ let entrySchema = Sury.$schema(s => ({
   tapPort: s.m(Sury.$option(Sury.int32)),
   logPort: s.m(Sury.$option(Sury.int32)),
   platformEndpoint: s.m(Sury.$option(Sury.string)),
-  webhooks: s.m(Sury.$option(webhooksSchema))
+  webhooks: s.m(Sury.$option(webhooksSchema)),
+  standins: s.m(Sury.$option(Sury.string))
 }));
 
 function runningDir(cwdOpt, param) {
@@ -169,6 +170,22 @@ function publishTapPort(port, tapPort, cwdOpt) {
   }
 }
 
+function publishStandins(port, url, cwdOpt) {
+  let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
+  let path = entryPath(port, cwd);
+  let entry = readEntry(path);
+  if (entry === undefined) {
+    return;
+  }
+  try {
+    let newrecord = {...entry};
+    Nodefs.writeFileSync(path, JSON.stringify(Util_Sury$Reventless.toJson((newrecord.standins = url, newrecord), entrySchema), undefined, 2), "utf8");
+    return;
+  } catch (exn) {
+    return;
+  }
+}
+
 function publishLogPort(port, logPort, cwdOpt) {
   let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
   let path = entryPath(port, cwd);
@@ -212,6 +229,7 @@ export {
   list,
   write,
   publishTapPort,
+  publishStandins,
   publishLogPort,
   register,
 }

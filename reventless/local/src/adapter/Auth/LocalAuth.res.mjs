@@ -233,6 +233,11 @@ async function issue(username, password, activeRole) {
   };
 }
 
+function mint(identity) {
+  let payload = _b64urlEncode(JSON.stringify(Util_Sury$Reventless.toJson(identity, Identity$Reventless.schema)));
+  return payload + `.` + _sign(payload);
+}
+
 function mintedIdentity(username, activeRole) {
   return Stdlib_Option.flatMap(store.contents[username], param => {
     let identity = param.identity;
@@ -330,6 +335,7 @@ let Login = {
   availableRolesClaim: Auth_ActiveRole$ReventlessCore.availableRolesClaim,
   narrow: narrow,
   issue: issue,
+  mint: mint,
   mintedIdentity: mintedIdentity,
   verifyAndDecode: verifyAndDecode,
   setLocale: setLocale,

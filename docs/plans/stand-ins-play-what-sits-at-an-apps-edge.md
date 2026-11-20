@@ -43,6 +43,30 @@ were; drift moves the times a twin writes, never the signature's, which a door r
 five minutes. Its *done when* runs in the runtime's suite against the fixture app: with repeats
 at one in two, readings go out twice and the sessions view counts each once.
 
+[SC7](#sc7-the-local-platform-starts-the-stand-ins) built 2026-11-20, not yet released. Where the
+build differs from the step:
+- an app hands its stand-ins over with `ReventlessLocal.LocalStandins.use({kinds, speed?, seed?})`
+  before `Platform.startServers()`, whose signature the platform contract fixes;
+  `REVENTLESS_STANDINS_SPEED` and `REVENTLESS_STANDINS_SEED` override the speed and the seed;
+- served at `GET /__inmemory/standins` and `POST /__inmemory/standins/send`, `/switch` and
+  `/misbehave`, and as the domain MCP tools `local_standins`, `local_standin_send`,
+  `local_standin_switch` and `local_standin_misbehave`; the registry entry names them under
+  `standins` once they run;
+- in the platform's process the stand-ins take the doors from its webhook registry and the secrets
+  from the variables it set, so the secrets file is not needed there;
+- [SCQ1](#open-questions): the views are read again on every event the bus publishes (told in
+  process, a tenth of a second apart at most), not only on events for the thing's identity, with
+  the minute's read kept as the fallback;
+- [SCQ3](#open-questions): the stand-ins read as an identity of their own (`standins`, in no
+  group), whose token the platform signs in process. No role was added: they read every view a
+  signed-in caller may read, and a view kept to a role is not read.
+
+Its *done when* runs in the stand-in package's `Standin_PlatformTest` against the fixture app: the
+chargers meter from the start, a faulty reading sent by hand is refused by the app (422) and a
+good one accepted, a power limit travels through the outbound translation to the twin
+([SC5](#sc5-a-devices-capability)'s whole chain), a kind switched off sends nothing, and with
+`REVENTLESS_STANDINS=off` the platform starts quiet.
+
 Found while building it: on a fresh app the secrets file is missing on the first start, because
 `.reventless/` is only made afterwards, by the registry entry, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
 *done when* holds from the second start on. The runtime's suite makes the folder first.

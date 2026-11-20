@@ -6,52 +6,16 @@ open ReventlessSeed
 // metering without a restart, and a reading can be sent by hand. Everything the
 // stand-ins need is read from the platform's registry entry.
 
-let here = NodePath.dirname(NodeUrl.fileURLToPath(NodeImportMeta.url))
-let fixtureDir = NodePath.join([here, "..", "fixture"])
-let scratch = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "standin-"]))
-let accountsFile = NodePath.join([scratch, "accounts.yaml"])
 let port = 48000 + Math.Int.random(0, 300) * 10
-
-let env = () => {
-  let env = NodeProcess.env->Dict.copy
-  [
-    ("REVENTLESS_DOMAIN_PORT", port->Int.toString),
-    ("REVENTLESS_PLATFORM_PORT", (port + 1)->Int.toString),
-    ("REVENTLESS_DOMAIN_MCP_PORT", (port + 2)->Int.toString),
-    ("REVENTLESS_PLATFORM_MCP_PORT", (port + 3)->Int.toString),
-    ("REVENTLESS_LOCAL_BACKEND", "memory"),
-    ("REVENTLESS_ACCOUNTS_FILE", accountsFile),
-  ]->Array.forEach(((k, v)) => env->Dict.set(k, v))
-  env
-}
-
-let server = ref(None)
-// Every runtime a test starts, stopped at the end even when its test failed.
-let started: array<Standin.Runtime.t> = []
-let output = ref("")
+let platform = ref(None)
 let client = ref(None)
 let doors = ref([])
+// Every runtime a test starts, stopped at the end even when its test failed.
+let started: array<Standin.Runtime.t> = []
 
-let rec waitFor = async (check: unit => promise<bool>, ~until: float, ~what: string) =>
-  if await check() {
-    ()
-  } else if Date.now() > until {
-    failwith(`timed out waiting for ${what}\n${output.contents}`)
-  } else {
-    await Seed.Client.sleep(200)
-    await waitFor(check, ~until, ~what)
-  }
-
+let waitFor = FixturePlatform.waitFor
 let theClient = () => client.contents->Option.getOrThrow
-
-let register = async (id, ~maxPowerKw) => {
-  let _ = await theClient()->Seed.Client.send(
-    Seed.mutation(
-      "Charging_RegisterCharger",
-      [("chargerId", Id(id)), ("name", String(id)), ("maxPowerKw", Float(maxPowerKw))],
-    ),
-  )
-}
+let register = (id, ~maxPowerKw) => FixturePlatform.registerCharger(theClient(), id, ~maxPowerKw)
 
 let sessions = async () =>
   (
@@ -73,80 +37,24 @@ let sessions = async () =>
     )
   })
 
+// The platform's own stand-ins are off: the runtime under test plays the chargers.
 beforeAllAsyncWithTimeout(async () => {
-  NodeFs.writeFileSync(
-    accountsFile,
-    NodeFs.readFileSync(
-      NodePath.join([
-        here,
-        "..",
-        "..",
-        "..",
-        "examples",
-        "online-shop-hybrid",
-        "platform-local",
-        "accounts.example.yaml",
-      ]),
-    ),
-  )
-  // The platform keeps the doors' secrets file only where `.reventless/` exists.
-  NodeFs.mkdirSync(NodePath.join([fixtureDir, ".reventless"]), {recursive: true})
-  let child = NodeChildProcess.spawn(
-    "node",
-    [NodePath.join([fixtureDir, "src", "Main.res.mjs"])],
-    {cwd: fixtureDir, env: env(), stdio: ["ignore", "pipe", "pipe"]},
-  )
-  [child->NodeChildProcess.stdout, child->NodeChildProcess.stderr]->Array.forEach(s =>
-    switch s->Nullable.toOption {
-    | Some(s) =>
-      s
-      ->NodeStreams.Readable.setEncoding("utf8")
-      ->NodeStreams.Readable.onDataFromString(chunk => output := output.contents ++ chunk)
-      ->ignore
-    | None => ()
-    }
-  )
-  server := Some(child)
-  let entry = NodePath.join([fixtureDir, ".reventless", "running", `${port->Int.toString}.json`])
-  await waitFor(
-    async () => NodeFs.existsSync(entry),
-    ~until=Date.now() +. 90_000.,
-    ~what="the fixture platform's registry entry",
-  )
-  let platform = switch Standin.Doors.fromRegistryEntry(~path=entry) {
-  | Ok(p) => p
+  let p = await FixturePlatform.start(~port, ~vars=[("REVENTLESS_STANDINS", "off")])
+  platform := Some(p)
+  let entry = switch Standin.Doors.fromRegistryEntry(~path=p.entry) {
+  | Ok(entry) => entry
   | Error(why) => failwith(why)
   }
-  doors := platform.doors
-  let c = Seed.Client.make(
-    ~config={
-      endpoint: platform.endpoint,
-      loginEndpoint: platform.loginEndpoint,
-      username: "admin",
-      password: "admin",
-    },
-  )
-  await waitFor(async () =>
-    switch await c->Seed.Client.login {
-    | () => true
-    | exception _ => false
-    }
-  , ~until=Date.now() +. 30_000., ~what="a login")
-  client := Some(c)
+  doors := entry.doors
+  client := Some(await FixturePlatform.admin(p))
 }, 120_000)
 
 afterAllAsyncWithTimeout(async () => {
   let _ = await Promise.all(started->Array.map(Standin.Runtime.stop))
-  switch server.contents {
-  | Some(child) =>
-    let closed = Promise.make((resolve, _) =>
-      child->NodeChildProcess.onClose((_, _) => resolve())->ignore
-    )
-    child->NodeChildProcess.kill("SIGTERM")->ignore
-    await closed
+  switch platform.contents {
+  | Some(p) => await FixturePlatform.stop(p)
   | None => ()
   }
-  NodeFs.rmSync(scratch, {recursive: true, force: true})
 }, 30_000)
 
 describe("Standin.Runtime, against the fixture app:", () => {

@@ -51,6 +51,7 @@
     "@reventlessdev/reventless-postgres": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
+    "@reventlessdev/reventless-standin": "workspace:*",
     "graphql": "^16.13.2",
     "graphql-ws": "^5.16.0",
     "graphql-yoga": "^5.21.0",

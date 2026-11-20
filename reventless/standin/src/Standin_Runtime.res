@@ -22,6 +22,8 @@ type t = {
   mutable handles: array<NodeTimers.timeout>,
   mutable inFlight: array<promise<unit>>,
   mutable running: bool,
+  // Kinds switched off: their timers do not run; by hand they still send.
+  mutable off: array<string>,
 }
 
 let keep = 200
@@ -49,6 +51,7 @@ let make = (
   handles: [],
   inFlight: [],
   running: false,
+  off: [],
 }
 
 /** Whether every send a kind declares has a door and a mutation to check it by;
@@ -139,7 +142,7 @@ let start = async (r: t): unit =>
       kind.timers->Array.map(((timer, everyMs)) =>
         NodeTimers.setInterval(
           () =>
-            if r.running {
+            if r.running && !(r.off->Array.includes(kind.name)) {
               kind.fire(~timer, ~now=Date.make(), send(r))->ignore
             },
           Seed.Pace.realMs(r.speed, everyMs)->Math.Int.max(1),
@@ -194,3 +197,17 @@ let silence = (r: t, ~kind: string, ~id: string, ~ticks: int): result<unit, stri
   | None => Error(`no kind ${kind}`)
   | Some(k) => k.silence(~id, ~ticks)
   }
+
+/** Switches a kind's timers on or off; by hand it still sends. */
+let switchKind = (r: t, ~kind: string, ~on: bool): result<unit, string> =>
+  switch r.kinds->Array.find(k => k.name == kind) {
+  | None => Error(`no kind ${kind}`)
+  | Some(_) =>
+    r.off = on ? r.off->Array.filter(k => k != kind) : r.off->Array.concat([kind])
+    Ok()
+  }
+
+let isOn = (r: t, ~kind: string): bool => !(r.off->Array.includes(kind))
+
+/** The last sends, oldest first. */
+let recent = (r: t): array<sent> => r.recent

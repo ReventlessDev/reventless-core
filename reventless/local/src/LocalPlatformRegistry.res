@@ -53,6 +53,8 @@ type entry = {
   platformEndpoint?: string,
   // Where a caller posts to the inbound translations' doors. Optional for the same reason.
   webhooks?: webhooks,
+  // Where the running stand-ins are listed and driven, once they run. Optional for the same reason.
+  standins?: string,
 }
 
 // Threaded rather than read at each use, so tests need not move the process.
@@ -183,6 +185,21 @@ let publishTapPort = (~port: int, ~tapPort: int, ~cwd=NodeProcess.cwd()): unit =
     try NodeFs.writeFileSync(
       path,
       {...entry, tapPort}->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
+    ) catch {
+    | _ => ()
+    }
+  }
+}
+
+/** Adds where the stand-ins are served to an entry already written, once they run. */
+let publishStandins = (~port: int, ~url: string, ~cwd=NodeProcess.cwd()): unit => {
+  let path = entryPath(~port, ~cwd)
+  switch readEntry(path) {
+  | None => ()
+  | Some(entry) =>
+    try NodeFs.writeFileSync(
+      path,
+      {...entry, standins: url}->Reventless.Util_Sury.toJson(entrySchema)->JSON.stringify(~space=2),
     ) catch {
     | _ => ()
     }

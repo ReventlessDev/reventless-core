@@ -73,6 +73,9 @@ let emitEventTap = (
   // Taken whether or not anyone reads, so the note does not wait for a reader.
   let stored = LocalEventLogRead.take(meta.msgId)
   let toStdout = LocalEventTap.stdoutEnabled()
+  if LocalEventTap.hasListeners() {
+    LocalEventTap.notify(~eventType=ReventlessCore.Message.eventNameOfEvent'Json(payload))
+  }
 
   // The line is built only for somebody: serialising every event for no reader is
   // pure cost on the publish path.

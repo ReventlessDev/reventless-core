@@ -26,6 +26,9 @@ function emitEventTap(topic, service, meta, payload) {
   eventTapSeq.contents = eventTapSeq.contents + 1 | 0;
   let stored = LocalEventLogRead$ReventlessLocal.take(meta.msgId);
   let toStdout = LocalEventTap$ReventlessLocal.stdoutEnabled(undefined);
+  if (LocalEventTap$ReventlessLocal.hasListeners()) {
+    LocalEventTap$ReventlessLocal.notify(Message$ReventlessCore.eventNameOfEvent$pJson(payload));
+  }
   if (!(toStdout || LocalEventTap$ReventlessLocal.hasReaders())) {
     return;
   }

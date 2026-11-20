@@ -20,6 +20,7 @@ import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/comp
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as AccountStore$ReventlessLocal from "./Auth/AccountStore.res.mjs";
 import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
+import * as LocalStandins$ReventlessLocal from "../LocalStandins.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalRequestLog$ReventlessLocal from "./LocalRequestLog.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
@@ -360,6 +361,17 @@ function _dispatch(req, res, yoga, getSdl) {
   }
   if (path === "/__inmemory/schedules/fire" && req.method === "POST") {
     return handleFireSchedule(req, res);
+  }
+  if (path.startsWith(LocalStandins$ReventlessLocal.prefix)) {
+    return readBody(req, body => {
+      LocalStandins$ReventlessLocal.route(req.method, path, body).then(answer => {
+        if (answer !== undefined) {
+          return _writeJson(res, answer[0], answer[1]);
+        } else {
+          return _writeJson(res, 404, null);
+        }
+      });
+    });
   }
   if (path !== "/events" || req.method !== "POST") {
     if (path === "/events" && req.method === "OPTIONS") {

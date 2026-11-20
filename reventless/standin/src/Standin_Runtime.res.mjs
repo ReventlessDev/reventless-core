@@ -25,7 +25,8 @@ function make(client, doors, commands, kinds, speedOpt, seedOpt, refreshMsOpt, o
     recent: [],
     handles: [],
     inFlight: [],
-    running: false
+    running: false,
+    off: []
   };
 }
 
@@ -142,7 +143,7 @@ async function start(r) {
   let timers = r.kinds.flatMap(kind => kind.timers.map(param => {
     let timer = param[0];
     return Nodetimers.setInterval(() => {
-      if (r.running) {
+      if (r.running && !r.off.includes(kind.name)) {
         kind.fire(timer, new Date(), send(r));
         return;
       }
@@ -225,6 +226,30 @@ function silence(r, kind, id, ticks) {
   }
 }
 
+function switchKind(r, kind, on) {
+  let match = r.kinds.find(k => k.name === kind);
+  if (match !== undefined) {
+    r.off = on ? r.off.filter(k => k !== kind) : r.off.concat([kind]);
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `no kind ` + kind
+    };
+  }
+}
+
+function isOn(r, kind) {
+  return !r.off.includes(kind);
+}
+
+function recent(r) {
+  return r.recent;
+}
+
 let keep = 200;
 
 export {
@@ -241,5 +266,8 @@ export {
   tell,
   setRates,
   silence,
+  switchKind,
+  isOn,
+  recent,
 }
 /* node:timers Not a pure module */

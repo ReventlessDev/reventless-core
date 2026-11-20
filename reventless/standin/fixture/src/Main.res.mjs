@@ -2,6 +2,8 @@
 
 import * as Plugin$ChargingPlugin from "./Plugin.res.mjs";
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
+import * as ChargerStandin$ChargingPlugin from "./Standins/ChargerStandin.res.mjs";
+import * as LocalStandins$ReventlessLocal from "@reventlessdev/reventless-local/src/LocalStandins.res.mjs";
 
 let Platform = Platform$ReventlessLocal.Make({});
 
@@ -10,6 +12,10 @@ let Charging = Plugin$ChargingPlugin.Make(Platform);
 Platform.makePlatform("0.0.0-fixture", [{
     make: Charging.make
   }], undefined);
+
+LocalStandins$ReventlessLocal.use({
+  kinds: [ChargerStandin$ChargingPlugin.kind]
+});
 
 Platform.startServers();
 
