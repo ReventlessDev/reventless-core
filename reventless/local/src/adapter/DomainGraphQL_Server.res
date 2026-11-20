@@ -296,6 +296,92 @@ let _isInvalidBearer = (req: nodeRequest): bool =>
   | _ => false
   }
 
+/** The prefix the inbound translations' doors are served under: `/webhooks/<path>`. */
+let webhooksPrefix = "/webhooks/"
+
+// A post to an inbound translation's door: the raw body and the headers, as sent, to the
+// registry, which checks the signature and dispatches as the AWS Function URL does.
+let handleWebhook = (req: nodeRequest, res: nodeResponse, ~path: string) =>
+  readBody(req, body => {
+    let _ =
+      LocalWebhookRegistry.post(
+        ~path=path->String.slice(~start=String.length(webhooksPrefix)),
+        ~method=req.method,
+        ~headers=req.headers,
+        body,
+      )
+      ->Promise.thenResolve(r => {
+        let json = r.body->String.startsWith("{") || r.body->String.startsWith("[")
+        res->writeHead(r.status, {"Content-Type": json ? "application/json" : "text/plain"})
+        res->end_(r.body)
+      })
+      ->Promise.catch(_ => {
+        res->writeHead(500, {"Content-Type": "text/plain"})
+        res->end_("the webhook failed")
+        Promise.resolve()
+      })
+  })
+
+let scheduleJson = (s: LocalAutomationSchedules.listed): JSON.t =>
+  JSON.Encode.object(
+    Dict.fromArray([
+      ("slice", JSON.Encode.string(s.slice)),
+      ("key", JSON.Encode.string(s.key)),
+      (
+        "next",
+        s.next->Option.mapOr(JSON.Encode.null, at =>
+          JSON.Encode.string(Date.fromTime(at)->Date.toISOString)
+        ),
+      ),
+    ]),
+  )
+
+// Fires one schedule now: `{slice, key}`, answered with the time it was fired at.
+let handleFireSchedule = (req: nodeRequest, res: nodeResponse) =>
+  readBody(req, body => {
+    let field = (d, k) => d->Dict.get(k)->Option.flatMap(JSON.Decode.string)
+    switch try JSON.parseOrThrow(body)->JSON.Decode.object catch {
+    | _ => None
+    } {
+    | Some(d) =>
+      switch (field(d, "slice"), field(d, "key")) {
+      | (Some(slice), Some(key)) =>
+        let _ = LocalAutomationSchedules.fireNow(~slice, ~key)->Promise.thenResolve(r =>
+          switch r {
+          | Ok(at) =>
+            _writeJson(
+              res,
+              ~status=200,
+              JSON.Encode.object(
+                Dict.fromArray([
+                  ("firedAt", JSON.Encode.string(Date.fromTime(at)->Date.toISOString)),
+                ]),
+              ),
+            )
+          | Error(error) =>
+            _writeJson(
+              res,
+              ~status=404,
+              JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string(error))])),
+            )
+          }
+        )
+      | _ =>
+        _writeJson(
+          res,
+          ~status=400,
+          JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string("give slice and key"))])),
+        )
+      }
+    | None =>
+      _writeJson(
+        res,
+        ~status=400,
+        JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string("body is not JSON"))])),
+      )
+    }
+  })
+
 // Shared dispatch for start(). Order matters: built-in
 // endpoints win over the yoga catch-all so they aren't shadowed by graphql.
 let _dispatch = (
@@ -307,10 +393,13 @@ let _dispatch = (
   // Strip query string before path matching.
   let path = req.url->String.split("?")->Array.get(0)->Option.getOr(req.url)
 
-  // /__inmemory/login is the path that *issues* tokens — it never carries
-  // one. Every other path must reject an unverifiable Bearer with 401 so
-  // the host-shell's `on401` logout path can fire on stale tokens.
-  if path != "/__inmemory/login" && _isInvalidBearer(req) {
+  // A thing or a service posts to its door signed, never with a token: before the bearer check.
+  if path->String.startsWith(webhooksPrefix) {
+    handleWebhook(req, res, ~path)
+    // /__inmemory/login is the path that *issues* tokens — it never carries
+    // one. Every other path must reject an unverifiable Bearer with 401 so
+    // the host-shell's `on401` logout path can fire on stale tokens.
+  } else if path != "/__inmemory/login" && _isInvalidBearer(req) {
     _writeJson(
       res,
       ~status=401,
@@ -327,6 +416,14 @@ let _dispatch = (
     handleSetLocale(req, res)
   } else if path == "/__inmemory/logout" && req.method == "POST" {
     handleLogout(req, res)
+  } else if path == "/__inmemory/schedules" && req.method == "GET" {
+    _writeJson(
+      res,
+      ~status=200,
+      JSON.Encode.array(LocalAutomationSchedules.list()->Array.map(scheduleJson)),
+    )
+  } else if path == "/__inmemory/schedules/fire" && req.method == "POST" {
+    handleFireSchedule(req, res)
   } else if path == "/events" && req.method == "POST" {
     // Local AppSync Events publish endpoint (`/client/**` only). The
     // Authorization header carries the token raw (AWS Cognito-publish shape),

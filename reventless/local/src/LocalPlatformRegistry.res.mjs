@@ -21,6 +21,11 @@ let storeSchema = Sury.$schema(s => ({
   path: s.m(Sury.$option(Sury.string))
 }));
 
+let webhooksSchema = Sury.$schema(s => ({
+  base: s.m(Sury.string),
+  secrets: s.m(Sury.$option(Sury.string))
+}));
+
 let entrySchema = Sury.$schema(s => ({
   app: s.m(Sury.string),
   port: s.m(Sury.int32),
@@ -31,7 +36,8 @@ let entrySchema = Sury.$schema(s => ({
   startedAt: s.m(Sury.string),
   tapPort: s.m(Sury.$option(Sury.int32)),
   logPort: s.m(Sury.$option(Sury.int32)),
-  platformEndpoint: s.m(Sury.$option(Sury.string))
+  platformEndpoint: s.m(Sury.$option(Sury.string)),
+  webhooks: s.m(Sury.$option(webhooksSchema))
 }));
 
 function runningDir(cwdOpt, param) {
@@ -118,7 +124,7 @@ function list(cwdOpt, param) {
   }).toSorted((a, b) => Primitive_int.compare(a.port, b.port));
 }
 
-function write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, pidOpt, cwdOpt) {
+function write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, webhooks, pidOpt, cwdOpt) {
   let pid = pidOpt !== undefined ? pidOpt : process.pid;
   let cwd = cwdOpt !== undefined ? cwdOpt : process.cwd();
   let path = entryPath(port, cwd);
@@ -133,7 +139,8 @@ function write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, 
     store: store,
     startedAt: entry_startedAt,
     tapPort: tapPort,
-    platformEndpoint: platformEndpoint
+    platformEndpoint: platformEndpoint,
+    webhooks: webhooks
   };
   try {
     Nodefs.mkdirSync(runningDir(cwd, undefined), {
@@ -178,8 +185,8 @@ function publishLogPort(port, logPort, cwdOpt) {
   }
 }
 
-function register(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint) {
-  let path = write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, undefined, undefined);
+function register(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, webhooks) {
+  let path = write(port, endpoint, loginEndpoint, store, tapPort, platformEndpoint, webhooks, undefined, undefined);
   process.on("exit", param => removeQuietly(path));
   process.on("SIGINT", () => {
     removeQuietly(path);
@@ -194,6 +201,7 @@ function register(port, endpoint, loginEndpoint, store, tapPort, platformEndpoin
 export {
   storeKindSchema,
   storeSchema,
+  webhooksSchema,
   entrySchema,
   runningDir,
   entryPath,

@@ -404,7 +404,14 @@ new and the old one there, and either passes.
 - **AWS:** set it in the plugin stack's config, `pulumi config set --secret
   webhook:supplierFeed <value>`. The deploy (and `pulumi preview`) fails while it
   is missing.
-- **Locally:** export `REVENTLESS_WEBHOOK_SECRET_SUPPLIERFEED` before you start.
+- **Locally:** nothing to do. At start the local platform makes a secret for each
+  signed endpoint whose variable is not set, keeps it in
+  `.reventless/webhook-secrets.json` (the same one on every start) and sets the
+  variable. Export `REVENTLESS_WEBHOOK_SECRET_SUPPLIERFEED` to pin one instead.
+  The file also lists each endpoint's path, header and secret name, so a caller on
+  the same machine, such as a stand-in or a tool, signs as the real sender will;
+  the running-platform entry in `.reventless/running/` names the file under
+  `webhooks.secrets`. It is local state: never commit it.
 
 A request the platform has no secret for is answered `500` and logged; it is never
 treated as open.
@@ -450,8 +457,11 @@ program after `deployPlugin`, to export it and register it with the sender:
 let webhookUrl = Platform.webhookUrl() // "" when no slice declares an endpoint
 ```
 
-**Locally** there is no HTTP server. The routes live in `LocalWebhookRegistry`, and
-a test posts the raw body through the same signature check and dispatch:
+**Locally** the domain server serves each endpoint at `/webhooks/<path>`, beside
+`/graphql`: `http://localhost:4000/webhooks/supplier-feed`. The running-platform
+entry names the base under `webhooks.base`. The route hands the raw body and headers
+to `LocalWebhookRegistry`, which runs the same signature check and dispatch as the
+Function URL. A test can post through the registry directly:
 
 ```rescript
 let response = await LocalWebhookRegistry.post(~path="supplier-feed", ~headers, body)

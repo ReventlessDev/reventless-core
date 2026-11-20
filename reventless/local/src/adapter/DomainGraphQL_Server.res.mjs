@@ -10,6 +10,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as GraphqlYoga$1 from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -24,6 +25,8 @@ import * as LocalRequestLog$ReventlessLocal from "./LocalRequestLog.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./Api/LocalEvents_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
+import * as LocalWebhookRegistry$ReventlessLocal from "./Webhook/LocalWebhookRegistry.res.mjs";
+import * as LocalAutomationSchedules$ReventlessLocal from "../components/LocalAutomationSchedules.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -244,8 +247,88 @@ function _isInvalidBearer(req) {
   return Stdlib_Option.isNone(LocalAuth$ReventlessLocal.Login.verifyAndDecode(token));
 }
 
+let webhooksPrefix = "/webhooks/";
+
+function handleWebhook(req, res, path) {
+  readBody(req, body => {
+    Stdlib_Promise.$$catch(LocalWebhookRegistry$ReventlessLocal.post(path.slice(webhooksPrefix.length), req.method, req.headers, undefined, undefined, body).then(r => {
+      let json = r.body.startsWith("{") || r.body.startsWith("[");
+      res.writeHead(r.status, {
+        "Content-Type": json ? "application/json" : "text/plain"
+      });
+      res.end(r.body);
+    }), param => {
+      res.writeHead(500, {
+        "Content-Type": "text/plain"
+      });
+      res.end("the webhook failed");
+      return Promise.resolve();
+    });
+  });
+}
+
+function scheduleJson(s) {
+  return Object.fromEntries([
+    [
+      "slice",
+      s.slice
+    ],
+    [
+      "key",
+      s.key
+    ],
+    [
+      "next",
+      Stdlib_Option.mapOr(s.next, null, at => new Date(at).toISOString())
+    ]
+  ]);
+}
+
+function handleFireSchedule(req, res) {
+  readBody(req, body => {
+    let field = (d, k) => Stdlib_Option.flatMap(d[k], Stdlib_JSON.Decode.string);
+    let d;
+    try {
+      d = Stdlib_JSON.Decode.object(JSON.parse(body));
+    } catch (exn) {
+      d = undefined;
+    }
+    if (d === undefined) {
+      return _writeJson(res, 400, Object.fromEntries([[
+          "error",
+          "body is not JSON"
+        ]]));
+    }
+    let match = field(d, "slice");
+    let match$1 = field(d, "key");
+    if (match !== undefined && match$1 !== undefined) {
+      LocalAutomationSchedules$ReventlessLocal.fireNow(match, match$1, undefined).then(r => {
+        if (r.TAG === "Ok") {
+          return _writeJson(res, 200, Object.fromEntries([[
+              "firedAt",
+              new Date(r._0).toISOString()
+            ]]));
+        } else {
+          return _writeJson(res, 404, Object.fromEntries([[
+              "error",
+              r._0
+            ]]));
+        }
+      });
+      return;
+    }
+    _writeJson(res, 400, Object.fromEntries([[
+        "error",
+        "give slice and key"
+      ]]));
+  });
+}
+
 function _dispatch(req, res, yoga, getSdl) {
   let path = Stdlib_Option.getOr(req.url.split("?")[0], req.url);
+  if (path.startsWith(webhooksPrefix)) {
+    return handleWebhook(req, res, path);
+  }
   if (path !== "/__inmemory/login" && _isInvalidBearer(req)) {
     return _writeJson(res, 401, Object.fromEntries([[
         "error",
@@ -271,6 +354,12 @@ function _dispatch(req, res, yoga, getSdl) {
   }
   if (path === "/__inmemory/logout" && req.method === "POST") {
     return handleLogout(req, res);
+  }
+  if (path === "/__inmemory/schedules" && req.method === "GET") {
+    return _writeJson(res, 200, LocalAutomationSchedules$ReventlessLocal.list(undefined).map(scheduleJson));
+  }
+  if (path === "/__inmemory/schedules/fire" && req.method === "POST") {
+    return handleFireSchedule(req, res);
   }
   if (path !== "/events" || req.method !== "POST") {
     if (path === "/events" && req.method === "OPTIONS") {
@@ -880,6 +969,10 @@ export {
   handleObjectPut,
   handleObjectGet,
   _isInvalidBearer,
+  webhooksPrefix,
+  handleWebhook,
+  scheduleJson,
+  handleFireSchedule,
   _dispatch,
   buildAuthContext,
   encodeGlobalId,

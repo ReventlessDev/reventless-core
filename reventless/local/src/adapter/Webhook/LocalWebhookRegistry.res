@@ -1,6 +1,6 @@
-// The local platform's webhook routes, served in process: no HTTP server, so a
-// test (or a dev tool) posts a raw body with `post`, which runs the same
-// signature check and dispatch as the AWS Function URL.
+// The local platform's webhook routes. A test posts a raw body with `post`; a stand-in or a
+// tool posts over HTTP to `/webhooks/<path>` on the domain server, which hands the bytes to
+// `post`. Either way the same signature check and dispatch run as on the AWS Function URL.
 
 open ReventlessCore
 
@@ -60,5 +60,20 @@ let post = (
       body,
     },
   )
+
+/** The doors registered so far, by path: what a caller needs to post to each. */
+let doors = (): array<InboundTranslationSlice_Webhook.route> =>
+  slices->Dict.valuesToArray->Array.map(s => s.route)
+
+/** The names of the secrets the signed doors are checked with, each once. */
+let signedSecrets = (): array<string> =>
+  doors()
+  ->Array.filterMap(r =>
+    switch r.auth {
+    | SignedBody({secret}) => Some(secret)
+    | Open => None
+    }
+  )
+  ->Array.reduce([], (seen, n) => seen->Array.includes(n) ? seen : [...seen, n])
 
 let reset = () => slices->Dict.keysToArray->Array.forEach(path => slices->Dict.delete(path))

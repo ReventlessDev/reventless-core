@@ -30,6 +30,14 @@ let handleObjectGet = DomainGraphQL_Server$ReventlessLocal.handleObjectGet;
 
 let _isInvalidBearer = DomainGraphQL_Server$ReventlessLocal._isInvalidBearer;
 
+let webhooksPrefix = DomainGraphQL_Server$ReventlessLocal.webhooksPrefix;
+
+let handleWebhook = DomainGraphQL_Server$ReventlessLocal.handleWebhook;
+
+let scheduleJson = DomainGraphQL_Server$ReventlessLocal.scheduleJson;
+
+let handleFireSchedule = DomainGraphQL_Server$ReventlessLocal.handleFireSchedule;
+
 let _dispatch = DomainGraphQL_Server$ReventlessLocal._dispatch;
 
 let buildAuthContext = DomainGraphQL_Server$ReventlessLocal.buildAuthContext;
@@ -147,6 +155,10 @@ export {
   handleObjectPut,
   handleObjectGet,
   _isInvalidBearer,
+  webhooksPrefix,
+  handleWebhook,
+  scheduleJson,
+  handleFireSchedule,
   _dispatch,
   buildAuthContext,
   encodeGlobalId,

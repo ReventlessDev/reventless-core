@@ -1,10 +1,22 @@
 # Plan: stand-ins play what sits at an app's edge, beside the local platform
 
 **Date:** 2026-11-20<br/>
-**Status:** Proposed, not started. [SC1](#sc1-the-local-webhook-door-listens-over-http) to
-[SC3](#sc3-a-schedule-can-be-fired-now) need nothing from another plan;
-[SC4](#sc4-the-stand-in-runtime) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) wait on
-[the seed player plan](done/seed-plays-forward-as-a-player.md) (*the player plan*).<br/>
+**Status:** 🔨 [SC1](#sc1-the-local-webhook-door-listens-over-http) to
+[SC3](#sc3-a-schedule-can-be-fired-now) built 2026-11-20, with the doc page of
+[SC8](#sc8-the-checks-and-the-docs)'s last point. Where the build differs from the steps:
+- the doors are served at `/webhooks/<path>` on the domain server, so a path cannot shadow
+  `/graphql` or `/sdl`; the running-platform entry names the base and the secrets file under
+  `webhooks`;
+- the secrets file, `.reventless/webhook-secrets.json`, also lists each door's path, header and
+  secret name, so a caller needs nothing else; like the fingerprint key, it is only written where
+  `.reventless/` exists, and an app the tools make ignores that folder but for its board status
+  ([SCQ2](#open-questions), checked);
+- the schedules are listed and fired at `GET /__inmemory/schedules` and
+  `POST /__inmemory/schedules/fire`, and by the MCP tools `local_schedules` and
+  `local_fire_schedule_now`.
+
+[SC4](#sc4-the-stand-in-runtime) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) can start:
+[the seed player plan](done/seed-plays-forward-as-a-player.md) (*the player plan*) is done.<br/>
 **Part of:** a wider plan that orders this work with the editor's tools, which generate an app's
 stand-ins and show them; this plan holds core's part.<br/>
 **Builds on:** the webhook door of an inbound translation

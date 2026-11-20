@@ -23,6 +23,15 @@ type store = {
   path?: string,
 }
 
+/** Where the webhook doors are served, and the file that names each door and the secret it
+    signs with (`LocalWebhookSecrets`). */
+@schema
+type webhooks = {
+  base: string,
+  // Absent when the platform has no `.reventless/` to keep the file in.
+  secrets?: string,
+}
+
 @schema
 type entry = {
   app: string,
@@ -42,6 +51,8 @@ type entry = {
   // Where the platform API is served: its own port when the platform serves two
   // APIs, else the same endpoint as `endpoint`. Optional for the same reason.
   platformEndpoint?: string,
+  // Where a caller posts to the inbound translations' doors. Optional for the same reason.
+  webhooks?: webhooks,
 }
 
 // Threaded rather than read at each use, so tests need not move the process.
@@ -128,6 +139,7 @@ let write = (
   ~store: store,
   ~tapPort: option<int>=?,
   ~platformEndpoint: option<string>=?,
+  ~webhooks: option<webhooks>=?,
   ~pid: int=NodeProcess.pid,
   ~cwd: string=NodeProcess.cwd(),
 ): string => {
@@ -142,6 +154,7 @@ let write = (
     startedAt: Date.make()->Date.toISOString,
     ?tapPort,
     ?platformEndpoint,
+    ?webhooks,
   }
   try {
     NodeFs.mkdirSync(runningDir(~cwd, ()), {recursive: true})
@@ -202,8 +215,17 @@ let register = (
   ~store: store,
   ~tapPort: option<int>=?,
   ~platformEndpoint: option<string>=?,
+  ~webhooks: option<webhooks>=?,
 ): unit => {
-  let path = write(~port, ~endpoint, ~loginEndpoint, ~store, ~tapPort?, ~platformEndpoint?)
+  let path = write(
+    ~port,
+    ~endpoint,
+    ~loginEndpoint,
+    ~store,
+    ~tapPort?,
+    ~platformEndpoint?,
+    ~webhooks?,
+  )
   NodeProcess.onExit(_ => removeQuietly(path))
   NodeProcess.onSignal(SIGINT, () => {
     removeQuietly(path)

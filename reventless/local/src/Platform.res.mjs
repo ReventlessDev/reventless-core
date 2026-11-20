@@ -78,11 +78,13 @@ import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Build
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
 import * as LocalPlatformStart$ReventlessLocal from "./LocalPlatformStart.res.mjs";
+import * as LocalScheduleTools$ReventlessLocal from "./components/LocalScheduleTools.res.mjs";
 import * as LocalViewChangeLog$ReventlessLocal from "./adapter/ViewChangeLog/LocalViewChangeLog.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+import * as LocalWebhookSecrets$ReventlessLocal from "./adapter/Webhook/LocalWebhookSecrets.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
@@ -1192,10 +1194,15 @@ function MakeWithConfig(Config) {
         }
       }
       let match = BackendState$ReventlessLocal.describeStore();
+      let secrets = LocalWebhookSecrets$ReventlessLocal.ensure();
+      LocalScheduleTools$ReventlessLocal.register();
       LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
         kind: match[0],
         path: match[1]
-      }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`);
+      }, undefined, Config.splitApi ? `http://localhost:` + platformPort.toString() + `/graphql` : `http://localhost:` + domainPort.toString() + `/graphql`, {
+        base: `http://localhost:` + domainPort.toString() + `/webhooks`,
+        secrets: secrets
+      });
       LocalIdleExit$ReventlessLocal.start(process.env);
       LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
       LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);
@@ -3009,10 +3016,15 @@ function Make($star) {
         PlatformMCP_Server$ReventlessLocal.printDiagnostics();
       }
       let match = BackendState$ReventlessLocal.describeStore();
+      let secrets = LocalWebhookSecrets$ReventlessLocal.ensure();
+      LocalScheduleTools$ReventlessLocal.register();
       LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
         kind: match[0],
         path: match[1]
-      }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`);
+      }, undefined, `http://localhost:` + platformPort.toString() + `/graphql`, {
+        base: `http://localhost:` + domainPort.toString() + `/webhooks`,
+        secrets: secrets
+      });
       LocalIdleExit$ReventlessLocal.start(process.env);
       LocalEventTap$ReventlessLocal.start(undefined, tapPort => LocalPlatformRegistry$ReventlessLocal.publishTapPort(domainPort, tapPort, undefined), undefined);
       LocalLogFeed$ReventlessLocal.start(undefined, logPort => LocalPlatformRegistry$ReventlessLocal.publishLogPort(domainPort, logPort, undefined), undefined);

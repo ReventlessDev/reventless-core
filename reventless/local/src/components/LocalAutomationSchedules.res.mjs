@@ -6,12 +6,16 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Primitive_float from "@rescript/runtime/lib/es6/Primitive_float.js";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as LocalTimers$ReventlessLocal from "../adapter/Scheduler/LocalTimers.res.mjs";
+import * as ScheduleTime$ReventlessCore from "@reventlessdev/reventless-core/src/util/ScheduleTime.res.mjs";
 
 let timers = LocalTimers$ReventlessLocal.make();
 
 let ticks = {};
+
+let scheduled = {};
 
 function timerName(slice, key) {
   return slice + `/` + key;
@@ -40,8 +44,19 @@ function fire(slice, key, at) {
 
 function platformFor(slice) {
   return {
-    put: async (key, time) => LocalTimers$ReventlessLocal.start(timers, timerName(slice, key), time, Date.now(), at => fire(slice, key, at)),
-    removeName: async key => LocalTimers$ReventlessLocal.stop(timers, timerName(slice, key)),
+    put: async (key, time) => {
+      let setAt = Date.now();
+      LocalTimers$ReventlessLocal.start(timers, timerName(slice, key), time, setAt, at => fire(slice, key, at));
+      scheduled[timerName(slice, key)] = {
+        slice: slice,
+        key: key,
+        time: ScheduleTime$ReventlessCore.resolveOnce(time, setAt)
+      };
+    },
+    removeName: async key => {
+      LocalTimers$ReventlessLocal.stop(timers, timerName(slice, key));
+      return Stdlib_Dict.$$delete(scheduled, timerName(slice, key));
+    },
     names: async () => {
       let prefix = timerName(slice, "");
       return Stdlib_Array.filterMap(Object.keys(timers.contents), name => {
@@ -54,19 +69,57 @@ function platformFor(slice) {
   };
 }
 
+function list(nowOpt) {
+  let now = nowOpt !== undefined ? nowOpt : Date.now();
+  return Object.values(scheduled).map(s => ({
+    slice: s.slice,
+    key: s.key,
+    next: ScheduleTime$ReventlessCore.nextFiring(s.time, now)
+  })).toSorted((a, b) => Primitive_float.compare(Stdlib_Option.getOr(a.next, Number.MAX_VALUE), Stdlib_Option.getOr(b.next, Number.MAX_VALUE)));
+}
+
+async function fireNow(slice, key, nowOpt) {
+  let now = nowOpt !== undefined ? nowOpt : Date.now();
+  let match = scheduled[timerName(slice, key)];
+  let match$1 = ticks[slice];
+  if (match !== undefined) {
+    if (match$1 !== undefined) {
+      await match$1(key, now);
+      return {
+        TAG: "Ok",
+        _0: now
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: `the slice ` + slice + ` is not registered`
+      };
+    }
+  } else {
+    return {
+      TAG: "Error",
+      _0: `no schedule ` + key + ` of ` + slice
+    };
+  }
+}
+
 function reset() {
   LocalTimers$ReventlessLocal.reset(timers);
+  Object.keys(scheduled).forEach(name => Stdlib_Dict.$$delete(scheduled, name));
   Object.keys(ticks).forEach(slice => Stdlib_Dict.$$delete(ticks, slice));
 }
 
 export {
   timers,
   ticks,
+  scheduled,
   timerName,
   tickFailed,
   register,
   fire,
   platformFor,
+  list,
+  fireNow,
   reset,
 }
 /* timers Not a pure module */

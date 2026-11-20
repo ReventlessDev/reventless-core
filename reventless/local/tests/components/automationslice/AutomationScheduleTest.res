@@ -86,3 +86,34 @@ describe("a declared schedule, locally", () => {
     )->toEqual(Some(true))
   })
 })
+
+// A schedule fired now runs its tick at the current time, as if it were due; nothing is
+// backdated, and its next firing stays where it was.
+describe("a schedule fired now", () => {
+  afterEach(() => LocalAutomationSchedules.reset())
+
+  testPromise("ticks at the current time and keeps its next firing", async () => {
+    let ticked = ref([])
+    LocalAutomationSchedules.register(
+      ~slice="settlement",
+      async (~key, ~at) => ticked := ticked.contents->Array.concat([(key, at)]),
+    )
+    let schedules = LocalAutomationSchedules.platformFor(~slice="settlement")
+    await schedules.put(
+      ~key="month-end",
+      Calendar({calendar: Monthly({day: 1, hour: 0, minute: 0}), zone: "UTC"}),
+    )
+    let before = LocalAutomationSchedules.list()
+    let now = Date.now()
+    let fired = await LocalAutomationSchedules.fireNow(~slice="settlement", ~key="month-end", ~now)
+    let missing = await LocalAutomationSchedules.fireNow(~slice="settlement", ~key="no-such")
+    expect((
+      before->Array.map(s => (s.slice, s.key, s.next->Option.isSome)),
+      fired,
+      ticked.contents,
+      LocalAutomationSchedules.list() == before,
+      missing->Result.isError,
+    ))->toEqual(([("settlement", "month-end", true)], Ok(now), [("month-end", now)], true, true))
+    await schedules.removeName("month-end")
+  })
+})

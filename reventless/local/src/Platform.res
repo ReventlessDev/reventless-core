@@ -1437,6 +1437,10 @@ module MakeWithConfig = (
       // split mode they start just above, in unified mode makePlatform started
       // them and this still runs before the process serves its first request.
       let (kind, path) = BackendState.describeStore()
+      // Every plugin has registered its doors by now: each signed one gets its secret, kept where a
+      // stand-in or a tool on this machine finds it.
+      let secrets = LocalWebhookSecrets.ensure()
+      LocalScheduleTools.register()
       LocalPlatformRegistry.register(
         ~port=domainPort,
         ~endpoint=`http://localhost:${domainPort->Int.toString}/graphql`,
@@ -1445,6 +1449,10 @@ module MakeWithConfig = (
         ~platformEndpoint=Config.splitApi
           ? `http://localhost:${platformPort->Int.toString}/graphql`
           : `http://localhost:${domainPort->Int.toString}/graphql`,
+        ~webhooks={
+          base: `http://localhost:${domainPort->Int.toString}/webhooks`,
+          ?secrets,
+        },
       )
       // A platform left running for an editor stops once nothing has watched it for a while.
       LocalIdleExit.start(~env=NodeProcess.env)

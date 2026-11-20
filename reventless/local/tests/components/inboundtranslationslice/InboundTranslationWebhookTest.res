@@ -323,3 +323,144 @@ describe("which doors a slice has", () => {
     expect((check(~webhook=false), check(~webhook=true)))->toEqual((true, false))
   })
 })
+
+// ── The door over HTTP, and the secrets the local platform makes ──────────────
+
+type httpOptions = {
+  hostname: string,
+  port: int,
+  path: string,
+  method: string,
+  headers: dict<string>,
+}
+type httpReq
+type httpRes
+@module("node:http") external httpRequest: (httpOptions, httpRes => unit) => httpReq = "request"
+@send external reqWrite: (httpReq, string) => unit = "write"
+@send external reqEnd: (httpReq, @as(json`null`) _) => unit = "end"
+@send external resOnData: (httpRes, @as("data") _, string => unit) => unit = "on"
+@send external resOnEnd: (httpRes, @as("end") _, unit => unit) => unit = "on"
+@send external resSetEncoding: (httpRes, string) => unit = "setEncoding"
+@get external resStatus: httpRes => int = "statusCode"
+
+// High ephemeral port, clear of dev-server defaults and the other HTTP tests.
+let httpPort = 49341
+
+let httpPost = (path, ~headers, body): promise<(int, string)> =>
+  Promise.make((resolve, _) => {
+    let req = httpRequest(
+      {
+        hostname: "localhost",
+        port: httpPort,
+        path,
+        method: "POST",
+        headers: headers
+        ->Dict.toArray
+        ->Array.concat([("content-type", "application/json")])
+        ->Dict.fromArray,
+      },
+      res => {
+        res->resSetEncoding("utf8")
+        let text = ref("")
+        res->resOnData(chunk => text := text.contents ++ chunk)
+        res->resOnEnd(() => resolve((res->resStatus, text.contents)))
+      },
+    )
+    req->reqWrite(body)
+    req->reqEnd
+  })
+
+let feedVariable = Webhook.secretEnvKey("feed")
+
+let secretsFile = (dir): LocalWebhookSecrets.file =>
+  NodePath.join([dir, LocalWebhookSecrets.fileName])
+  ->NodeFs.readFileSync
+  ->JSON.parseOrThrow
+  ->Reventless.Util_Sury.fromJson(LocalWebhookSecrets.fileSchema)
+
+describe("webhook door over HTTP", () => {
+  let dir = NodePath.join([
+    NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "webhook-secrets-"])),
+    ".reventless",
+  ])
+
+  beforeAllAsync(async () => {
+    NodeProcess.env->Dict.delete(feedVariable)
+    NodeFs.mkdirSync(dir, {recursive: true})
+    LocalWebhookRegistry.reset()
+    switch (FeedCallback.webhook, OpenCallback.webhook) {
+    | (Some(feed), Some(open_)) =>
+      LocalWebhookRegistry.register(~route=feed, ~operations=Pulumi.Output.make(feedOps))
+      LocalWebhookRegistry.register(~route=open_, ~operations=Pulumi.Output.make(openOps))
+    | _ => JsError.throwWithMessage("fixture specs declare endpoints")
+    }
+    DomainGraphQL_Server.reset()
+    DomainGraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+    DomainGraphQL_Server.registerQueries(
+      ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
+      ~resolvers=Dict.make(),
+    )
+    DomainGraphQL_Server.start(~port=httpPort, ())
+    await Promise.make((resolve, _) => setTimeout(() => resolve(), 50)->ignore)
+  })
+  afterAll(() => {
+    DomainGraphQL_Server.stop()
+    LocalWebhookRegistry.reset()
+    NodeProcess.env->Dict.delete(feedVariable)
+  })
+  beforeEach(() => published := [])
+
+  testSync("each signed door gets a secret, kept with the doors a caller posts to", () => {
+    let written = LocalWebhookSecrets.ensureIn(~dir)
+    let file = secretsFile(dir)
+    let kept = file.secrets->Dict.get("feed")
+    // Started again, the platform keeps the secret a caller already signs with.
+    NodeProcess.env->Dict.delete(feedVariable)
+    LocalWebhookSecrets.ensureIn(~dir)->ignore
+    expect((
+      written->Option.isSome,
+      kept->Option.map(String.length),
+      NodeProcess.env->Dict.get(feedVariable) == kept,
+      secretsFile(dir).secrets->Dict.get("feed") == kept,
+      file.doors->Array.map(d => (d.path, d.secret, d.header)),
+    ))->toEqual((
+      true,
+      Some(64),
+      true,
+      true,
+      [("feeds/signed", Some("feed"), Some("X-Signature")), ("open", None, None)],
+    ))
+  })
+
+  testPromise("a post signed with that secret reaches the translation over HTTP", async () => {
+    LocalWebhookSecrets.ensureIn(~dir)->ignore
+    let secret = secretsFile(dir).secrets->Dict.get("feed")->Option.getOr("")
+    let text = body()
+    let (status, _) = await httpPost(
+      "/webhooks/feeds/signed",
+      ~headers=signedHeaders(~secret, ~at=Date.now() /. 1000., text),
+      text,
+    )
+    let (refused, _) = await httpPost(
+      "/webhooks/feeds/signed",
+      ~headers=signedHeaders(~secret="other", ~at=Date.now() /. 1000., text),
+      text,
+    )
+    let (nowhere, _) = await httpPost("/webhooks/no/such/door", ~headers=Dict.make(), text)
+    expect((status, published.contents->Array.map(c => c.id), refused == 200, nowhere))->toEqual((
+      200,
+      ["p-1"],
+      false,
+      404,
+    ))
+  })
+
+  testSync("a secret pinned in its variable is left as it is", () => {
+    NodeProcess.env->Dict.set(feedVariable, "pinned")
+    LocalWebhookSecrets.ensureIn(~dir)->ignore
+    expect((
+      NodeProcess.env->Dict.get(feedVariable),
+      secretsFile(dir).secrets->Dict.get("feed"),
+    ))->toEqual((Some("pinned"), Some("pinned")))
+  })
+})
