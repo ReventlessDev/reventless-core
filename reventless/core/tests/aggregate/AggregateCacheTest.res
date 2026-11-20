@@ -20,6 +20,9 @@ module AggSpec = {
   type command =
     | Add({name: string})
     | Checkpoint
+    // Records nothing until two names are in: a stale state decides it as a no-op,
+    // which no append fences.
+    | CheckpointAtTwo
     | Noop
 
   @schema
@@ -58,6 +61,10 @@ module TestDecision = {
     switch command {
     | Add({name}) => Ok([AggSpec.Added({name: name})])
     | Checkpoint => Ok([AggSpec.CheckpointTaken({count: state.names->Array.length})])
+    | CheckpointAtTwo =>
+      state.names->Array.length < 2
+        ? Ok([])
+        : Ok([AggSpec.CheckpointTaken({count: state.names->Array.length})])
     | Noop => Ok([])
     }
 }
@@ -85,6 +92,9 @@ type mockEL = {
   injectExternal: (string, AggSpec.event) => unit,
   appendCallCount: ref<int>,
   replayCallCount: ref<int>,
+  // Runs once, inside the next successful append and before it returns, as the
+  // local event log hands events on before its append resolves.
+  onAppended: ref<option<unit => promise<unit>>>,
   reset: unit => unit,
 }
 
@@ -92,6 +102,7 @@ let makeMockEL = (): mockEL => {
   let storedRef: ref<array<Message.event'<string, AggSpec.event>>> = ref([])
   let appendCount = ref(0)
   let replayCount = ref(0)
+  let onAppended = ref(None)
 
   let eventsFor = id => storedRef.contents->Array.filter(e => e.id == id)
 
@@ -102,6 +113,12 @@ let makeMockEL = (): mockEL => {
       Error(EventLog.Conflict)
     } else {
       storedRef := storedRef.contents->Array.concat(newEvents)
+      switch onAppended.contents {
+      | Some(react) =>
+        onAppended := None
+        await react()
+      | None => ()
+      }
       Ok()
     }
   }
@@ -125,7 +142,9 @@ let makeMockEL = (): mockEL => {
       storedRef := storedRef.contents->Array.concat([{Message.id, meta: testMeta, event}]),
     appendCallCount: appendCount,
     replayCallCount: replayCount,
+    onAppended,
     reset: () => {
+      onAppended := None
       storedRef := []
       appendCount := 0
       replayCount := 0
@@ -262,6 +281,25 @@ describe("Aggregate_Callback — replay cache:", () => {
     // Neither the Noop nor the third command replayed.
     expect(mock.replayCallCount.contents)->toBe(1)
     expect(mock.getAll()->Array.length)->toBe(2)
+  })
+
+  testPromise("a command sent while the append hands its events on decides on them", async () => {
+    let _ = await run(AggSpec.Add({name: "a"}))
+    mock.onAppended :=
+      Some(
+        async () => {
+          let _ = await run(AggSpec.CheckpointAtTwo)
+        },
+      )
+    let _ = await run(AggSpec.Add({name: "b"}))
+    let checkpoints = mock.getAll()->Array.filterMap(
+      e =>
+        switch e.event {
+        | CheckpointTaken({count}) => Some(count)
+        | _ => None
+        },
+    )
+    expect(checkpoints)->toEqual([2])
   })
 
   testPromise("resetCache forces the next command to replay cold", async () => {

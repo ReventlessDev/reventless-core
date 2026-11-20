@@ -596,16 +596,19 @@ module Make = (
           ~detail=eventJsons,
           `produced ${eventCount} event(s): [${eventDetails}]`,
         )
-        ->Effect.flatMap(_ =>
+        ->Effect.flatMap(_ => {
+          // The post-decide fold state IS the post-append replay result. Cached
+          // before the append, because an append may hand its events on before it
+          // returns, and a command that reaction sends this id must be decided on
+          // them; both failure branches below drop the entry again.
+          let newSeq = sequenceNr + generatedEvents'->Array.length
+          replayCache->Lru.put(idStr, (finalState, newSeq, finalOwners))
           Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents'))
-        )
+        })
         ->Effect.flatMap(appendResult =>
           switch appendResult {
           | Ok(_) =>
-            // The post-decide fold state IS the post-append replay result;
-            // cache it so the next command for this id skips the replay.
             let newSeq = sequenceNr + generatedEvents'->Array.length
-            replayCache->Lru.put(idStr, (finalState, newSeq, finalOwners))
             // Persist a snapshot if this append crossed an interval boundary
             // (fire-and-forget — never blocks or fails the command).
             maybeWriteSnapshot(id, idStr, ~oldSeq=sequenceNr, ~newSeq, finalState)

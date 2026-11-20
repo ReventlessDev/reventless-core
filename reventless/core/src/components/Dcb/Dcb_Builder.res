@@ -96,6 +96,26 @@ let inboundDoorPermission = (
     ~authorizationOf=name => name->authorizationOf->Reventless.Authorization.named,
   )
 
+/**
+The aggregate an outbound slice's command goes to, when its `targetName` names one
+`publishToAggregates` holds. Chosen by name, never as an `option` of the Output: an
+Output answers every property read, so unwrapping one from an option reads it as a
+nested `None`, and the slice is handed that instead of a publisher.
+*/
+let aggregateTarget = (~targetName: option<string>, publishToAggregates: dict<_>) =>
+  targetName->Option.filter(target => publishToAggregates->Dict.has(target))
+
+/** The publisher for that aggregate, or `fallback` (the plugin's DCB topic). */
+let publisherFor = (
+  ~targetName: option<string>,
+  publishToAggregates: dict<Pulumi.Output.t<'publish>>,
+  ~fallback: Pulumi.Output.t<'publish>,
+): Pulumi.Output.t<'publish> =>
+  switch aggregateTarget(~targetName, publishToAggregates) {
+  | Some(target) => publishToAggregates->Dict.getUnsafe(target)
+  | None => fallback
+  }
+
 module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
@@ -800,15 +820,18 @@ module Make = (
           // Aggregate routes to that aggregate's CommandTopic; anything else —
           // a DCB slice, or no target at all — keeps the plugin's DCB topic,
           // which is what every slice wanted before aggregates were reachable.
-          let targetPublishJsons =
-            OTS.Spec.targetName
-            ->Option.flatMap(target => publishToAggregates->Dict.get(target))
-            ->Option.getOr(publishJsons)
+          let aggregateTarget = aggregateTarget(
+            ~targetName=OTS.Spec.targetName,
+            publishToAggregates,
+          )
+          let targetPublishJsons = publisherFor(
+            ~targetName=OTS.Spec.targetName,
+            publishToAggregates,
+            ~fallback=publishJsons,
+          )
           // An aggregate's topic offers no waiting publish here, so only the DCB
           // topic's outcomes are heard.
-          let targetPublishJsonsAndWait = switch OTS.Spec.targetName->Option.flatMap(target =>
-            publishToAggregates->Dict.get(target)
-          ) {
+          let targetPublishJsonsAndWait = switch aggregateTarget {
           | Some(_) => Pulumi.Output.make(None)
           | None => publishJsonsAndWait
           }

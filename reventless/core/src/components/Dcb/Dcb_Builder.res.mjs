@@ -122,6 +122,19 @@ function inboundDoorPermission(commandSchema, authorizationOf) {
   return Plugin_Structure$ReventlessCore.inboundDoorPermission(commandSchema, name => Authorization$Reventless.named(authorizationOf(name)));
 }
 
+function aggregateTarget(targetName, publishToAggregates) {
+  return Stdlib_Option.filter(targetName, target => target in publishToAggregates);
+}
+
+function publisherFor(targetName, publishToAggregates, fallback) {
+  let target = aggregateTarget(targetName, publishToAggregates);
+  if (target !== undefined) {
+    return publishToAggregates[target];
+  } else {
+    return fallback;
+  }
+}
+
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
     let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, aggregateProducedEventsOpt, publishToAggregatesOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
@@ -440,9 +453,9 @@ function Make(DcbEventLogStorage) {
         ];
       }));
       let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
-        let targetPublishJsons = Stdlib_Option.getOr(Stdlib_Option.flatMap(OTS.Spec.targetName, target => publishToAggregates[target]), publishJsons);
-        let match = Stdlib_Option.flatMap(OTS.Spec.targetName, target => publishToAggregates[target]);
-        let targetPublishJsonsAndWait = match !== undefined ? Pulumi.output(undefined) : publishJsonsAndWait;
+        let aggregateTarget$1 = aggregateTarget(OTS.Spec.targetName, publishToAggregates);
+        let targetPublishJsons = publisherFor(OTS.Spec.targetName, publishToAggregates, publishJsons);
+        let targetPublishJsonsAndWait = aggregateTarget$1 !== undefined ? Pulumi.output(undefined) : publishJsonsAndWait;
         let ots = OTS.make(dcbEventLog, allEventTopics, targetPublishJsons, targetPublishJsonsAndWait, componentRuntime[OTS.Spec.name], opts);
         return [
           OTS.Spec.name,
@@ -752,6 +765,8 @@ export {
   mergedEventSchema,
   emptyResult,
   inboundDoorPermission,
+  aggregateTarget,
+  publisherFor,
   Make,
 }
 /* log Not a pure module */

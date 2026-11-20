@@ -415,14 +415,17 @@ function Make(Spec) {
             return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
           }).join(", ");
           let eventJsons = eventsToAppend.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
-          return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, batchIds(idStr, topicItemsForId), `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect$1.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
+          return Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, batchIds(idStr, topicItemsForId), `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => {
+            let newSeq = sequenceNr + eventsToAppend.length | 0;
+            Lru$ReventlessCore.put(replayCache, idStr, [
+              finalState,
+              newSeq,
+              finalOwners
+            ]);
+            return Effect$1.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend));
+          }), appendResult => {
             if (appendResult.TAG === "Ok") {
               let newSeq = sequenceNr + eventsToAppend.length | 0;
-              Lru$ReventlessCore.put(replayCache, idStr, [
-                finalState,
-                newSeq,
-                finalOwners
-              ]);
               maybeWriteSnapshot(id, idStr, sequenceNr, newSeq, finalState);
               let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length, undefined);
               return Effect$1.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, batchIds(idStr, topicItemsForId), `append: id=` + idStr), () => ({
