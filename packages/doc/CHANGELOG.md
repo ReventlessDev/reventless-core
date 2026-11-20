@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-20
+- docs(standin): a page for stand-ins, and a fresh app publishes its doors' secrets ([3a7ce8c](https://github.com/ReventlessDev/reventless-core/commit/3a7ce8cf960d66196597e11a880949427337aa9f))
+- feat(spec): a translation tells one thing something through a devices capability ([548f28b](https://github.com/ReventlessDev/reventless-core/commit/548f28bcff1caa6f40273619826a387f0bcf9b70))
+- feat(local): the webhook doors listen over HTTP with secrets of their own, and a schedule fires now ([87672f2](https://github.com/ReventlessDev/reventless-core/commit/87672f27a4b6817100f5efe5ccdd2cb170adfe74))
 ### 2026-11-19
 - feat(spec): a field holds a quantity in its unit, and a price per unit is money ([b35c911](https://github.com/ReventlessDev/reventless-core/commit/b35c911b5c18e5c973e18494887e19a1dcd622d3))
 
