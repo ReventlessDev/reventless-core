@@ -564,6 +564,7 @@ type operations = {
 ## Related Components
 
 - **[OutboundTranslationSlice](./outboundtranslationslice.md)** -- Complementary component for calling external services
+- **[Stand-ins](./standins.md)** -- Play the things and services that post to a door, on a local platform
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands InboundTranslationSlice produces
 - **[DcbEventLog](/framework/runtime-components/dcbeventlog)** -- Shared event log that receives events from processed commands
 - **[CommandTopic](/framework/runtime-components/commandtopic)** -- Receives commands from the translator

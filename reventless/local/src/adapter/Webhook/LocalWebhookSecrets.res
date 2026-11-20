@@ -6,9 +6,9 @@
 //
 //   1. `REVENTLESS_WEBHOOK_SECRET_<NAME>` — an explicit pin, left as it is.
 //   2. `.reventless/webhook-secrets.json` beside the platform's other local state, minted on the
-//      first run that finds the directory and reused after, so a caller started earlier still
-//      signs right.
-//   3. A random 32 bytes, per process, for a run with no `.reventless/`.
+//      first run (which makes the directory, as the registry entry does) and reused after, so a
+//      caller started earlier still signs right.
+//   3. A random 32 bytes, per process, when the directory cannot be made.
 //
 // The value it settles on is put into the variable the door reads, so the check stays the one AWS
 // runs. The file holds no real secret: it is the local platform's, and is never committed.
@@ -64,6 +64,11 @@ let readAt = (path: string): dict<string> =>
     wrote there, if it could. */
 let ensureIn = (~dir: string): option<string> => {
   let path = NodePath.join([dir, fileName])
+  // Made here rather than waited for: the registry entry makes it a moment later, and a fresh
+  // app's first start would otherwise publish no file.
+  try NodeFs.mkdirSync(dir, {recursive: true}) catch {
+  | _ => ()
+  }
   let kept = NodeFs.existsSync(dir) ? readAt(path) : Dict.make()
   let secrets = Dict.make()
   LocalWebhookRegistry.signedSecrets()->Array.forEach(name => {

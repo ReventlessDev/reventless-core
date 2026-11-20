@@ -39,8 +39,6 @@ let start = async (~port: int, ~vars: array<(string, string)>=[]): t => {
   let scratch = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "standin-"]))
   let accounts = NodePath.join([scratch, "accounts.yaml"])
   NodeFs.writeFileSync(accounts, NodeFs.readFileSync(template))
-  // The platform keeps the doors' secrets file only where `.reventless/` exists.
-  NodeFs.mkdirSync(NodePath.join([dir, ".reventless"]), {recursive: true})
   let env = NodeProcess.env->Dict.copy
   [
     ("REVENTLESS_DOMAIN_PORT", port->Int.toString),

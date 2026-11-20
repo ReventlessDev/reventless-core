@@ -455,6 +455,14 @@ describe("webhook door over HTTP", () => {
     ))
   })
 
+  testSync("a fresh app's first start publishes the file, making its directory", () => {
+    let fresh = NodePath.join([dir, "fresh", ".reventless"])
+    expect((
+      LocalWebhookSecrets.ensureIn(~dir=fresh)->Option.isSome,
+      NodeFs.existsSync(NodePath.join([fresh, LocalWebhookSecrets.fileName])),
+    ))->toEqual((true, true))
+  })
+
   testSync("a secret pinned in its variable is left as it is", () => {
     NodeProcess.env->Dict.set(feedVariable, "pinned")
     LocalWebhookSecrets.ensureIn(~dir)->ignore

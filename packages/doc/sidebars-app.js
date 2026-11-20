@@ -33,6 +33,7 @@ const sidebars = {
         'components/automationslice',
         'components/inboundtranslationslice',
         'components/outboundtranslationslice',
+        'components/standins',
         'components/task',
         'components/sideeffecthandler',
       ],

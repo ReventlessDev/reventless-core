@@ -1,22 +1,24 @@
 # Plan: stand-ins play what sits at an app's edge, beside the local platform
 
 **Date:** 2026-11-20<br/>
-**Status:** 🔨 [SC1](#sc1-the-local-webhook-door-listens-over-http) to
+**Status:** ✅ Built 2026-11-20, every step, not yet released. Each step below says where its
+build differs from it.
+
+[SC1](#sc1-the-local-webhook-door-listens-over-http) to
 [SC3](#sc3-a-schedule-can-be-fired-now) built 2026-11-20, with the doc page of
 [SC8](#sc8-the-checks-and-the-docs)'s last point. Where the build differs from the steps:
 - the doors are served at `/webhooks/<path>` on the domain server, so a path cannot shadow
   `/graphql` or `/sdl`; the running-platform entry names the base and the secrets file under
   `webhooks`;
 - the secrets file, `.reventless/webhook-secrets.json`, also lists each door's path, header and
-  secret name, so a caller needs nothing else; like the fingerprint key, it is only written where
-  `.reventless/` exists, and an app the tools make ignores that folder but for its board status
-  ([SCQ2](#open-questions), checked);
+  secret name, so a caller needs nothing else; an app the tools make ignores `.reventless/` but
+  for its board status ([SCQ2](#open-questions), checked);
 - the schedules are listed and fired at `GET /__inmemory/schedules` and
   `POST /__inmemory/schedules/fire`, and by the MCP tools `local_schedules` and
   `local_fire_schedule_now`.
 
 [SC4](#sc4-the-stand-in-runtime) built 2026-11-20, not yet released: the package
-[`reventless/standin`](../../reventless/standin/README.md). Where the build differs from the step:
+[`reventless/standin`](../../../reventless/standin/README.md). Where the build differs from the step:
 - the test app is `reventless/standin/fixture`, a private workspace package (chargers, a signed
   meter-reading door, readings per session) that the runtime's suite starts as a child process;
   a published package cannot carry the PPX its slices need;
@@ -67,20 +69,26 @@ good one accepted, a power limit travels through the outbound translation to the
 ([SC5](#sc5-a-devices-capability)'s whole chain), a kind switched off sends nothing, and with
 `REVENTLESS_STANDINS=off` the platform starts quiet.
 
-Found while building it: on a fresh app the secrets file is missing on the first start, because
-`.reventless/` is only made afterwards, by the registry entry, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
-*done when* holds from the second start on. The runtime's suite makes the folder first.
+[SC8](#sc8-the-checks-and-the-docs) built 2026-11-20: each step's *done when* is a test, as each
+step above says, and the component doc page is [standins.md](../../../packages/doc/docs-app/components/standins.md),
+linked from the inbound translation's.
 
-The player plan, [done/seed-plays-forward-as-a-player.md](done/seed-plays-forward-as-a-player.md)
+Found while building it, and fixed: on a fresh app the secrets file was missing on the first
+start, because it was written only where `.reventless/` already existed and the registry entry
+makes that folder a moment later, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
+*done when* held only from the second start on. The platform now makes the folder when it writes
+the file; the stand-in suites run from a fresh folder to check it.
+
+The player plan, [done/seed-plays-forward-as-a-player.md](seed-plays-forward-as-a-player.md)
 (*the player plan*), is done.<br/>
 **Part of:** a wider plan that orders this work with the editor's tools, which generate an app's
 stand-ins and show them; this plan holds core's part.<br/>
 **Builds on:** the webhook door of an inbound translation
-([`InboundTranslationSlice_Webhook.res`](../../reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res)),
-the seed client ([`reventless/seed`](../../reventless/seed/README.md)), the local schedules
-([`LocalAutomationSchedules.res`](../../reventless/local/src/components/LocalAutomationSchedules.res))
+([`InboundTranslationSlice_Webhook.res`](../../../reventless/core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res)),
+the seed client ([`reventless/seed`](../../../reventless/seed/README.md)), the local schedules
+([`LocalAutomationSchedules.res`](../../../reventless/local/src/components/LocalAutomationSchedules.res))
 and the running-platform registry
-([`LocalPlatformRegistry.res`](../../reventless/local/src/LocalPlatformRegistry.res)).<br/>
+([`LocalPlatformRegistry.res`](../../../reventless/local/src/LocalPlatformRegistry.res)).<br/>
 **Facts from:** this repo at `1e69fca85`, surveyed 2026-11-20.
 
 ## In plain words
@@ -110,7 +118,7 @@ The steps are **SC1 to SC8**. **SC** stands for *stand-ins, core*. **SCD** are t
 | SC1 | The local webhook door listens over HTTP, at the path AWS serves it on | nothing | S |
 | SC2 | The local platform makes each door's secret and says where it keeps them | nothing | S |
 | SC3 | A schedule can be fired now, at the true time, over HTTP and MCP | nothing | S |
-| SC4 | The stand-in runtime: kinds, instances, state, timers, sends through the door | [SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), [SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions) | M–L |
+| SC4 | The stand-in runtime: kinds, instances, state, timers, sends through the door | [SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), [SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions) | M–L |
 | SC5 | A *devices* capability: tell one thing something, the stand-ins as its local provider | [SC4](#sc4-the-stand-in-runtime) | M |
 | SC6 | Behaving as things do: silence, repeats, late readings, a clock that drifts | [SC4](#sc4-the-stand-in-runtime) | S–M |
 | SC7 | The local platform starts the stand-ins and serves their state and their sends | [SC4](#sc4-the-stand-in-runtime) to [SC6](#sc6-behaving-as-things-do) | M |
@@ -120,12 +128,12 @@ The steps are **SC1 to SC8**. **SC** stands for *stand-ins, core*. **SCD** are t
 
 ### SC1 The local webhook door listens over HTTP
 
-Today [`LocalWebhookRegistry.res`](../../reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res)
+Today [`LocalWebhookRegistry.res`](../../../reventless/local/src/adapter/Webhook/LocalWebhookRegistry.res)
 has no HTTP server: a test calls `post(~path, ~headers, body)` in the same process. A stand-in, or
 a tool, runs in another process and cannot reach it.
 
 The local domain GraphQL server
-([`DomainGraphQL_Server.res`](../../reventless/local/src/adapter/DomainGraphQL_Server.res)) gains
+([`DomainGraphQL_Server.res`](../../../reventless/local/src/adapter/DomainGraphQL_Server.res)) gains
 one more route that hands the raw body and headers to the registry's `post`, at the path
 `InboundTranslationSlice_Webhook.routeOf` gives, so a caller builds the same path locally and on
 AWS. The verification, the dispatch and the answers stay the registry's; the route only carries
@@ -163,7 +171,7 @@ The local platform serves:
 Both as an HTTP route beside the `/__inmemory/` ones and as tools of the local MCP server. Nothing
 is backdated: the automation sees the true time and runs exactly the code the due tick will run,
 as the player plan's rule on time demands
-([its §4](done/seed-plays-forward-as-a-player.md#4-forward-only)). A fired tick does not move the next
+([its §4](seed-plays-forward-as-a-player.md#4-forward-only)). A fired tick does not move the next
 due one.
 
 **Done when:** firing a monthly schedule now on a local platform runs its automation once, with
@@ -181,13 +189,13 @@ A new package beside `reventless/seed`, a client of the platform's public doors 
   gets a twin, one that leaves it loses its twin ([SCQ1](#open-questions)).
 - **A send** is the decision's payload as a JSON body, checked against the API's own description
   by the adapter the player plan generates
-  ([SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions),
+  ([SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions),
   `Seed.Commands.checkBody`: every inbound translation has a mutation whose arguments are its
   external input's fields), posted to the inbound translation's door and signed with its secret ([SC1](#sc1-the-local-webhook-door-listens-over-http),
   [SC2](#sc2-the-local-platform-makes-each-doors-secret)). Never a GraphQL mutation: that is the
   door people use, not the door a thing uses.
 - **Timers** run forward only. Faster runs shorten the intervals by a speed beside the player's pace
-  ([SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), `Seed.Pace.parseSpeed`
+  ([SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), `Seed.Pace.parseSpeed`
   and `realMs`; a pace spaces sends, a speed shortens time); a value that grows with
   time (energy from power) is computed from the simulated interval, while every time sent is the
   true one.
@@ -196,7 +204,7 @@ A new package beside `reventless/seed`, a client of the platform's public doors 
 - **By hand:** any message of a kind can be sent for one instance on request, with fields given
   or filled from the instance's state ([SC7](#sc7-the-local-platform-starts-the-stand-ins)).
 - **A stop** ends every timer and leaves no send half done, as the player's stop does
-  ([SP4](done/seed-plays-forward-as-a-player.md#sp4-a-stop-that-waits-for-the-end-of-a-repetition)).
+  ([SP4](seed-plays-forward-as-a-player.md#sp4-a-stop-that-waits-for-the-end-of-a-repetition)).
 
 **Done when:** a test app's charger kind meters each running session every simulated minute
 through the door, two runs with one seed send the same values, and a charger added to the view
@@ -208,7 +216,7 @@ An outbound translation that tells a thing something (charge at 11 kW) has nowhe
 `translate` calls the outside world itself and the framework knows no address per thing.
 
 A capability beside `geocode` and `messaging` in
-[`Capabilities.res`](../../reventless/spec/src/semantic/Capabilities.res): *tell this instance of
+[`Capabilities.res`](../../../reventless/spec/src/semantic/Capabilities.res): *tell this instance of
 this kind this message*, answered with accepted, refused with a reason, or not reachable. The
 translation names the kind and the instance; which provider carries it is the platform's
 business, never the domain's.
@@ -218,7 +226,7 @@ This plan builds two providers:
   from its state; with no stand-in running, the answer is *not reachable*, as a real charger that
   is offline;
 - **in scenarios**, the fake of
-  [`Capabilities_Fake.res`](../../reventless/gwt/src/Capabilities_Fake.res), which records the call
+  [`Capabilities_Fake.res`](../../../reventless/gwt/src/Capabilities_Fake.res), which records the call
   and answers what the scenario says.
 
 Providers for a deployed platform (a stand-ins' stack, a device broker, a charging system, a
@@ -280,8 +288,8 @@ its schedules and its registry, none of the files of the player plan, but are st
 since one working tree is shared.
 
 [SC4](#sc4-the-stand-in-runtime) waits on the player plan's
-[SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client) and
-[SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)
+[SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client) and
+[SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)
 being released, so that it reuses the pace and the adapter instead of copying their shapes.
 [SC5](#sc5-a-devices-capability) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) follow and
 are released together.
@@ -292,7 +300,7 @@ are released together.
 |---|---|---|
 | **SCD1** | A stand-in is a client of the platform's public doors: the webhook door to send, the GraphQL API to read, the devices capability to be told | A shortcut into the decision tests a path no thing takes, and passes while the translation is broken |
 | **SCD2** | A stand-in is told things only through an outbound translation and the devices capability, never by watching the app's events | Watching events would let a simulation work while the real thing is never told; a missing translation must show |
-| **SCD3** | Time runs forward only; *faster* is shorter intervals, a schedule is fired now at the true time | The player plan's rule ([its §4](done/seed-plays-forward-as-a-player.md#4-forward-only)) holds for every client |
+| **SCD3** | Time runs forward only; *faster* is shorter intervals, a schedule is fired now at the true time | The player plan's rule ([its §4](seed-plays-forward-as-a-player.md#4-forward-only)) holds for every client |
 | **SCD4** | This plan runs stand-ins on a local platform only; a deployed platform answers *not reachable* until a later plan gives it a provider | A deployed stand-in needs a kind of deployment that refuses it in production, a stack of its own, a rate and an end; none of that is here |
 | **SCD5** | The runtime lives in core, beside the seed | A deployed demo must run it without the editor; it reuses the seed's client, random values and the player's pace |
 
@@ -319,7 +327,7 @@ platform needs it; there the role is the one a deployment of the right kind hold
 ## Out of scope
 
 - Stand-ins on a deployed platform: a kind of deployment that refuses them in production (the
-  `purpose` of [`Environments.res`](../../reventless/spec/src/types/Environments.res) is a start),
+  `purpose` of [`Environments.res`](../../../reventless/spec/src/types/Environments.res) is a start),
   a stack of their own, a rate and an end time, the list of instances they play.
 - A WebSocket door for protocols where the thing opens the connection, and an OCPP charge point
   stand-in.

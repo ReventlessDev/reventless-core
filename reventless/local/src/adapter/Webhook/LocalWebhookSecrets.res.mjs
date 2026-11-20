@@ -61,6 +61,13 @@ function readAt(path) {
 
 function ensureIn(dir) {
   let path = Nodepath.join(dir, fileName);
+  try {
+    Nodefs.mkdirSync(dir, {
+      recursive: true
+    });
+  } catch (exn) {
+    
+  }
   let kept = Nodefs.existsSync(dir) ? readAt(path) : ({});
   let secrets = {};
   LocalWebhookRegistry$ReventlessLocal.signedSecrets().forEach(name => {
@@ -91,7 +98,7 @@ function ensureIn(dir) {
       secrets: secrets
     }, fileSchema), undefined, 2), "utf8");
     val = undefined;
-  } catch (exn) {
+  } catch (exn$1) {
     return;
   }
   return path;
