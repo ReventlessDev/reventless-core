@@ -8,6 +8,13 @@ import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
 
+let calm = {
+  silence: 0.002,
+  repeats: 0.01,
+  late: 0.01,
+  drift: 0.05
+};
+
 function hash(text) {
   let h = 5381;
   for (let i = 0, i_finish = text.length; i < i_finish; ++i) {
@@ -20,8 +27,19 @@ function randomFor(seed, kind, id) {
   return Seed_Random$ReventlessSeed.make(seed ^ hash(kind + `/` + id));
 }
 
+function drifted(now, driftMs) {
+  if (driftMs === 0) {
+    return now;
+  } else {
+    return new Date(now.getTime() + driftMs);
+  }
+}
+
 function erase(name, view, init, timers, messages, told, describe) {
   let twins = {};
+  let rates = {
+    contents: calm
+  };
   let deliver = (twin, id, sends, sendTo) => {
     let next = twin.queue.then(async () => {
       for (let i = 0, i_finish = sends.length; i < i_finish; ++i) {
@@ -30,6 +48,48 @@ function erase(name, view, init, timers, messages, told, describe) {
     });
     twin.queue = Stdlib_Promise.$$catch(next, param => Promise.resolve());
     return next;
+  };
+  let misbehave = (twin, sends) => {
+    let r = rates.contents;
+    let chance = p => {
+      if (p > 0) {
+        return Seed_Random$ReventlessSeed.float(twin.mischief) < p;
+      } else {
+        return false;
+      }
+    };
+    if (twin.silentFor > 0) {
+      twin.silentFor = twin.silentFor - 1 | 0;
+      twin.kept = twin.kept.concat(sends);
+      if (twin.silentFor > 0) {
+        return [];
+      }
+      let back = chance(0.5) ? twin.kept : [];
+      twin.kept = [];
+      twin.silenceOnPurpose = false;
+      return back;
+    }
+    if (chance(r.silence)) {
+      twin.silentFor = Seed_Random$ReventlessSeed.int(twin.mischief, 2, 5);
+      twin.kept = sends;
+      return [];
+    }
+    let late = twin.held;
+    twin.held = [];
+    let now = sends.flatMap(send => {
+      if (chance(r.late)) {
+        twin.held = twin.held.concat([send]);
+        return [];
+      } else if (chance(r.repeats)) {
+        return [
+          send,
+          send
+        ];
+      } else {
+        return [send];
+      }
+    });
+    return now.concat(late);
   };
   return {
     name: name,
@@ -50,10 +110,20 @@ function erase(name, view, init, timers, messages, told, describe) {
           return;
         }
         let random = randomFor(seed, name, id);
+        let mischief = randomFor(seed ^ 27925, name, id);
+        let driftMs = Seed_Random$ReventlessSeed.float(mischief) < rates.contents.drift ? (Seed_Random$ReventlessSeed.int(mischief, 1, 30) * 1000 | 0) * (
+            Seed_Random$ReventlessSeed.float(mischief) < 0.5 ? -1 : 1
+          ) : 0;
         twins[id] = {
           state: init(id, param[1], random),
           random: random,
-          queue: Promise.resolve()
+          mischief: mischief,
+          queue: Promise.resolve(),
+          silentFor: 0,
+          silenceOnPurpose: false,
+          kept: [],
+          held: [],
+          driftMs: driftMs
         };
         return id;
       });
@@ -70,9 +140,9 @@ function erase(name, view, init, timers, messages, told, describe) {
       let runs = Object.entries(twins).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => {
         let twin = param[1];
         let id = param[0];
-        let step = t.run(id, twin.state, t.everyMs, twin.random, now);
+        let step = t.run(id, twin.state, t.everyMs, twin.random, drifted(now, twin.driftMs));
         twin.state = step.state;
-        return deliver(twin, id, step.sends, sendTo);
+        return deliver(twin, id, misbehave(twin, step.sends), sendTo);
       });
       await Promise.all(runs);
     },
@@ -91,7 +161,7 @@ function erase(name, view, init, timers, messages, told, describe) {
           _0: name + ` sends no message ` + message
         };
       }
-      let why = match$1.build(id, match.state, fields, now);
+      let why = match$1.build(id, match.state, fields, drifted(now, match.driftMs));
       if (why.TAG !== "Ok") {
         return {
           TAG: "Error",
@@ -121,7 +191,7 @@ function erase(name, view, init, timers, messages, told, describe) {
           _0: name + ` does not understand ` + message
         };
       }
-      let why = match$1.run(id, match.state, body, now);
+      let why = match$1.run(id, match.state, body, drifted(now, match.driftMs));
       if (why.TAG !== "Ok") {
         return {
           TAG: "Refused",
@@ -133,10 +203,63 @@ function erase(name, view, init, timers, messages, told, describe) {
       deliver(match, id, step.sends, sendTo);
       return "Accepted";
     },
-    twins: () => Object.entries(twins).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => [
-      param[0],
-      describe(param[1].state)
-    ])
+    rates: () => rates.contents,
+    setRates: r => {
+      rates.contents = r;
+    },
+    silence: (id, ticks) => {
+      let twin = twins[id];
+      if (twin !== undefined) {
+        if (ticks < 1) {
+          return {
+            TAG: "Error",
+            _0: "a silence lasts at least one tick"
+          };
+        } else {
+          twin.silentFor = ticks;
+          twin.silenceOnPurpose = true;
+          return {
+            TAG: "Ok",
+            _0: undefined
+          };
+        }
+      } else {
+        return {
+          TAG: "Error",
+          _0: name + ` has no instance ` + id
+        };
+      }
+    },
+    twins: () => Object.entries(twins).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => {
+      let twin = param[1];
+      let fields = [
+        [
+          "state",
+          describe(twin.state)
+        ],
+        [
+          "driftSeconds",
+          twin.driftMs / 1000
+        ]
+      ];
+      let silence = twin.silentFor > 0 ? [[
+            "silent",
+            Object.fromEntries([
+              [
+                "ticks",
+                twin.silentFor
+              ],
+              [
+                "onPurpose",
+                twin.silenceOnPurpose
+              ]
+            ])
+          ]] : [];
+      return [
+        param[0],
+        Object.fromEntries(fields.concat(silence))
+      ];
+    })
   };
 }
 
@@ -162,13 +285,26 @@ function service(def) {
     fire: kind.fire,
     byHand: kind.byHand,
     tell: kind.tell,
+    rates: kind.rates,
+    setRates: kind.setRates,
+    silence: kind.silence,
     twins: kind.twins
   };
 }
 
+let exact = {
+  silence: 0,
+  repeats: 0,
+  late: 0,
+  drift: 0
+};
+
 export {
+  calm,
+  exact,
   hash,
   randomFor,
+  drifted,
   erase,
   thing,
   service,

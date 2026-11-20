@@ -36,6 +36,13 @@ fixture's `TellChargerPower` scenario reads the call from the fake, and the runt
 a twin a new power and reads it metering at it; the whole chain, translation to twin, waits for
 the stand-ins to run in the platform's process ([SC7](#sc7-the-local-platform-starts-the-stand-ins)).
 
+[SC6](#sc6-behaving-as-things-do) built 2026-11-20, not yet released: four rates per kind,
+on and low by default (`Standin.Kind.calm`), changed while it runs. A twin draws them from a
+generator apart from the kind's own, so turning them up leaves the values the kind draws as they
+were; drift moves the times a twin writes, never the signature's, which a door refuses outside
+five minutes. Its *done when* runs in the runtime's suite against the fixture app: with repeats
+at one in two, readings go out twice and the sessions view counts each once.
+
 Found while building it: on a fresh app the secrets file is missing on the first start, because
 `.reventless/` is only made afterwards, by the registry entry, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
 *done when* holds from the second start on. The runtime's suite makes the folder first.

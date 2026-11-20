@@ -37,6 +37,20 @@ is computed from it, while every time a send carries is the true one.
 Every twin draws its random values from its own generator, seeded by the run's seed, the kind and
 its id, so a run started with one seed sends the same values.
 
+## Behaving as things do
+
+A stand-in kinder than the thing makes every run green. Each kind has four rates, on by default
+and low (`Standin.Kind.calm`), changed while it runs with `Standin.Runtime.setRates`:
+
+- **silence**: a twin stops sending for a few ticks and comes back, half the time with the
+  readings it kept; `Standin.Runtime.silence` silences one on purpose, which its state says;
+- **repeats**: a send goes out twice;
+- **late**: a send is held and goes out after a newer one;
+- **drift**: a twin's own clock is off by seconds, in the times it writes, never in the signature.
+
+Each twin draws them from a generator of its own, so a run is the same under one seed, and
+`Standin.Kind.exact` turns all four off.
+
 ## Running
 
 ```rescript

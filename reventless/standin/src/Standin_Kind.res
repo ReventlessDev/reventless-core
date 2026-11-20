@@ -73,6 +73,21 @@ type service<'state> = {
   describe: 'state => JSON.t,
 }
 
+// ── Behaving as things do ───────────────────────────────────────────────────
+//
+// A stand-in kinder than the thing makes every run green. Each rate is a chance:
+// per tick, that a twin falls silent for a few ticks (and comes back, half the time
+// with the readings it kept); per send, that it is sent twice, or held and sent
+// after a newer one; per twin, that its own clock is off by seconds.
+
+type rates = {silence: float, repeats: float, late: float, drift: float}
+
+/** On by default, and low, so a plain run stays calm. */
+let calm = {silence: 0.002, repeats: 0.01, late: 0.01, drift: 0.05}
+
+/** None at all: every send once, in order, on time. */
+let exact = {silence: 0., repeats: 0., late: 0., drift: 0.}
+
 // ── Erased ──────────────────────────────────────────────────────────────────
 
 /** Where a step's sends go; the runtime's. */
@@ -98,6 +113,12 @@ type t = {
   ) => promise<result<unit, string>>,
   // Answers being told something, for one twin; its sends go out after.
   tell: (~id: string, ~message: string, ~body: JSON.t, ~now: Date.t, sendTo) => promise<answer>,
+  // The kind's misbehaviour, read and changed while it runs.
+  rates: unit => rates,
+  setRates: rates => unit,
+  // Silences one twin for `ticks` of its timers, on purpose.
+  silence: (~id: string, ~ticks: int) => result<unit, string>,
+  // Every twin: its state, whether it is silent (and if so on purpose), its clock's drift.
   twins: unit => array<(string, JSON.t)>,
 }
 
@@ -116,9 +137,20 @@ let randomFor = (~seed: int, ~kind: string, ~id: string): Seed.Random.t =>
 type twin<'state> = {
   mutable state: 'state,
   random: Seed.Random.t,
+  // Draws the misbehaviour, apart from `random`, so turning it up or down leaves
+  // the values the kind draws unchanged.
+  mischief: Seed.Random.t,
   // The twin's sends, one after another.
   mutable queue: promise<unit>,
+  mutable silentFor: int,
+  mutable silenceOnPurpose: bool,
+  mutable kept: array<send>,
+  mutable held: array<send>,
+  driftMs: float,
 }
+
+let drifted = (now: Date.t, ~driftMs: float): Date.t =>
+  driftMs == 0. ? now : Date.fromTime(now->Date.getTime +. driftMs)
 
 let erase = (
   ~name: string,
@@ -130,6 +162,7 @@ let erase = (
   ~describe: 'state => JSON.t,
 ): t => {
   let twins: dict<twin<'state>> = Dict.make()
+  let rates = ref(calm)
   let deliver = (twin: twin<'state>, ~id, sends: array<send>, sendTo: sendTo) => {
     let next = twin.queue->Promise.then(async () =>
       for i in 0 to sends->Array.length - 1 {
@@ -138,6 +171,41 @@ let erase = (
     )
     twin.queue = next->Promise.catch(_ => Promise.resolve())
     next
+  }
+  // What a tick's sends become: kept while silent, sent again or held back now and then.
+  let misbehave = (twin: twin<'state>, sends: array<send>): array<send> => {
+    let r = rates.contents
+    let chance = p => p > 0. && Seed.Random.float(twin.mischief) < p
+    if twin.silentFor > 0 {
+      twin.silentFor = twin.silentFor - 1
+      twin.kept = twin.kept->Array.concat(sends)
+      if twin.silentFor > 0 {
+        []
+      } else {
+        let back = chance(0.5) ? twin.kept : []
+        twin.kept = []
+        twin.silenceOnPurpose = false
+        back
+      }
+    } else if chance(r.silence) {
+      twin.silentFor = Seed.Random.int(twin.mischief, ~min=2, ~max=5)
+      twin.kept = sends
+      []
+    } else {
+      let late = twin.held
+      twin.held = []
+      let now = sends->Array.flatMap(send =>
+        if chance(r.late) {
+          twin.held = twin.held->Array.concat([send])
+          []
+        } else if chance(r.repeats) {
+          [send, send]
+        } else {
+          [send]
+        }
+      )
+      now->Array.concat(late)
+    }
   }
   {
     name,
@@ -153,7 +221,27 @@ let erase = (
         | Some(_) => None
         | None =>
           let random = randomFor(~seed, ~kind=name, ~id)
-          twins->Dict.set(id, {state: init(~id, ~row, ~random), random, queue: Promise.resolve()})
+          let mischief = randomFor(~seed=seed->Int.bitwiseXor(0x6d15), ~kind=name, ~id)
+          let driftMs =
+            Seed.Random.float(mischief) < rates.contents.drift
+              ? Int.toFloat(Seed.Random.int(mischief, ~min=1, ~max=30) * 1000) *. (
+                  Seed.Random.float(mischief) < 0.5 ? -1. : 1.
+                )
+              : 0.
+          twins->Dict.set(
+            id,
+            {
+              state: init(~id, ~row, ~random),
+              random,
+              mischief,
+              queue: Promise.resolve(),
+              silentFor: 0,
+              silenceOnPurpose: false,
+              kept: [],
+              held: [],
+              driftMs,
+            },
+          )
           Some(id)
         }
       )
@@ -168,9 +256,15 @@ let erase = (
           ->Dict.toArray
           ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
           ->Array.map(((id, twin)) => {
-            let step = t.run(~id, twin.state, ~elapsedMs=t.everyMs, ~random=twin.random, ~now)
+            let step = t.run(
+              ~id,
+              twin.state,
+              ~elapsedMs=t.everyMs,
+              ~random=twin.random,
+              ~now=drifted(now, ~driftMs=twin.driftMs),
+            )
             twin.state = step.state
-            deliver(twin, ~id, step.sends, sendTo)
+            deliver(twin, ~id, misbehave(twin, step.sends), sendTo)
           })
         let _ = await Promise.all(runs)
       },
@@ -179,7 +273,7 @@ let erase = (
       | (None, _) => Error(`${name} has no instance ${id}`)
       | (_, None) => Error(`${name} sends no message ${message}`)
       | (Some(twin), Some(m)) =>
-        switch m.build(~id, twin.state, ~fields, ~now) {
+        switch m.build(~id, twin.state, ~fields, ~now=drifted(now, ~driftMs=twin.driftMs)) {
         | Error(why) => Error(why)
         | Ok(step) =>
           twin.state = step.state
@@ -192,7 +286,7 @@ let erase = (
       | (None, _) => NotReachable(`${name} ${id} is not played by any stand-in`)
       | (_, None) => Refused(`${name} does not understand ${message}`)
       | (Some(twin), Some(t)) =>
-        switch t.run(~id, twin.state, ~body, ~now) {
+        switch t.run(~id, twin.state, ~body, ~now=drifted(now, ~driftMs=twin.driftMs)) {
         | Error(why) => Refused(why)
         | Ok(step) =>
           twin.state = step.state
@@ -200,11 +294,42 @@ let erase = (
           Accepted
         }
       },
+    rates: () => rates.contents,
+    setRates: r => rates := r,
+    silence: (~id, ~ticks) =>
+      switch twins->Dict.get(id) {
+      | None => Error(`${name} has no instance ${id}`)
+      | Some(_) if ticks < 1 => Error("a silence lasts at least one tick")
+      | Some(twin) =>
+        twin.silentFor = ticks
+        twin.silenceOnPurpose = true
+        Ok()
+      },
     twins: () =>
       twins
       ->Dict.toArray
       ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
-      ->Array.map(((id, twin)) => (id, describe(twin.state))),
+      ->Array.map(((id, twin)) => {
+        let fields = [
+          ("state", describe(twin.state)),
+          ("driftSeconds", JSON.Encode.float(twin.driftMs /. 1000.)),
+        ]
+        let silence =
+          twin.silentFor > 0
+            ? [
+                (
+                  "silent",
+                  JSON.Encode.object(
+                    Dict.fromArray([
+                      ("ticks", JSON.Encode.int(twin.silentFor)),
+                      ("onPurpose", JSON.Encode.bool(twin.silenceOnPurpose)),
+                    ]),
+                  ),
+                ),
+              ]
+            : []
+        (id, JSON.Encode.object(Dict.fromArray(fields->Array.concat(silence))))
+      }),
   }
 }
 

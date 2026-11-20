@@ -6,7 +6,7 @@
 open ReventlessSeed
 
 /** One post through a door, as the door answered it. */
-type sent = {kind: string, id: string, slice: string, status: int, at: string}
+type sent = {kind: string, id: string, slice: string, body: JSON.t, status: int, at: string}
 
 type t = {
   client: Seed.Client.t,
@@ -85,6 +85,7 @@ let send = (r: t): Standin_Kind.sendTo =>
             kind,
             id,
             slice: send.slice,
+            body: send.body,
             status: answer.status,
             at: Date.fromTime(now)->Date.toISOString,
           }
@@ -178,4 +179,18 @@ let tell = (r: t, ~kind: string, ~instance: string, ~message: string, ~body: JSO
   switch r.kinds->Array.find(k => k.name == kind) {
   | None => Promise.resolve(Standin_Kind.NotReachable(`no stand-in plays ${kind}`))
   | Some(k) => k.tell(~id=instance, ~message, ~body, ~now=Date.make(), send(r))
+  }
+
+/** Changes a kind's misbehaviour while it runs. */
+let setRates = (r: t, ~kind: string, rates: Standin_Kind.rates): result<unit, string> =>
+  switch r.kinds->Array.find(k => k.name == kind) {
+  | None => Error(`no kind ${kind}`)
+  | Some(k) => Ok(k.setRates(rates))
+  }
+
+/** Silences one twin on purpose, for `ticks` of its timers. */
+let silence = (r: t, ~kind: string, ~id: string, ~ticks: int): result<unit, string> =>
+  switch r.kinds->Array.find(k => k.name == kind) {
+  | None => Error(`no kind ${kind}`)
+  | Some(k) => k.silence(~id, ~ticks)
   }

@@ -26,6 +26,8 @@ let env = () => {
 }
 
 let server = ref(None)
+// Every runtime a test starts, stopped at the end even when its test failed.
+let started: array<Standin.Runtime.t> = []
 let output = ref("")
 let client = ref(None)
 let doors = ref([])
@@ -134,6 +136,7 @@ beforeAllAsyncWithTimeout(async () => {
 }, 120_000)
 
 afterAllAsyncWithTimeout(async () => {
+  let _ = await Promise.all(started->Array.map(Standin.Runtime.stop))
   switch server.contents {
   | Some(child) =>
     let closed = Promise.make((resolve, _) =>
@@ -152,6 +155,8 @@ describe("Standin.Runtime, against the fixture app:", () => {
     async () => {
       await register("bay-1", ~maxPowerKw=22.)
       await register("bay-2", ~maxPowerKw=11.)
+      let charger = ChargerStandin.make()
+      charger.setRates(Standin.Kind.exact)
       let commands = await Seed.Commands.fetch(theClient())
       let sent = []
       // A simulated minute every 100 ms.
@@ -159,7 +164,7 @@ describe("Standin.Runtime, against the fixture app:", () => {
         ~client=theClient(),
         ~doors=doors.contents,
         ~commands,
-        ~kinds=[ChargerStandin.kind],
+        ~kinds=[charger],
         ~speed=600.,
         ~seed=42,
         ~refreshMs=200,
@@ -172,6 +177,7 @@ describe("Standin.Runtime, against the fixture app:", () => {
         ~until=Date.now() +. 10_000.,
         ~what="two chargers in the view",
       )
+      started->Array.push(runtime)
       await runtime->Standin.Runtime.start
       await Seed.Client.sleep(600)
       await register("bay-3", ~maxPowerKw=7.4)
@@ -219,17 +225,20 @@ describe("Standin.Runtime, against the fixture app:", () => {
   testPromiseWithTimeout(
     "a twin told a new power meters at it, and says no to what it does not understand",
     async () => {
+      let charger = ChargerStandin.make()
+      charger.setRates(Standin.Kind.exact)
       let commands = await Seed.Commands.fetch(theClient())
       let runtime = Standin.Runtime.make(
         ~client=theClient(),
         ~doors=doors.contents,
         ~commands,
-        ~kinds=[ChargerStandin.kind],
+        ~kinds=[charger],
         ~speed=600.,
         ~seed=43,
         ~refreshMs=200,
         (),
       )
+      started->Array.push(runtime)
       await runtime->Standin.Runtime.start
       let tell = (instance, message, body) =>
         runtime->Standin.Runtime.tell(
@@ -252,7 +261,8 @@ describe("Standin.Runtime, against the fixture app:", () => {
       | [(_, twins)] =>
         twins
         ->Array.find(((id, _)) => id == "bay-1")
-        ->Option.flatMap(((_, s)) => s->Seed.Commands.str("sessionId"))
+        ->Option.flatMap(((_, t)) => t->Seed.Commands.get("state"))
+        ->Option.flatMap(s => s->Seed.Commands.str("sessionId"))
         ->Option.getOrThrow
       | _ => failwith("one kind")
       }
@@ -272,6 +282,59 @@ describe("Standin.Runtime, against the fixture app:", () => {
         ~what="bay-1 to meter at 11 kW",
       )
       await runtime->Standin.Runtime.stop
+    },
+    60_000,
+  )
+
+  testPromiseWithTimeout(
+    "with repeats turned up, readings are sent twice now and then and counted once",
+    async () => {
+      let charger = ChargerStandin.make()
+      charger.setRates({...Standin.Kind.exact, repeats: 0.5})
+      let commands = await Seed.Commands.fetch(theClient())
+      let sent = []
+      let runtime = Standin.Runtime.make(
+        ~client=theClient(),
+        ~doors=doors.contents,
+        ~commands,
+        ~kinds=[charger],
+        ~speed=600.,
+        ~seed=44,
+        ~refreshMs=200,
+        ~onSent=s => sent->Array.push(s),
+        (),
+      )
+      started->Array.push(runtime)
+      await runtime->Standin.Runtime.start
+      await Seed.Client.sleep(800)
+      await runtime->Standin.Runtime.stop
+      let readingOf = (s: Standin.Runtime.sent) =>
+        s.body->Seed.Commands.str("readingId")->Option.getOr("")
+      let distinct = sent->Array.map(readingOf)->Set.fromArray->Set.size
+      expect(sent->Array.length > distinct)->toBe(true)
+      expect(sent->Array.every(s => s.status >= 200 && s.status < 300))->toBe(true)
+      let sessions = sent->Array.map(s => s.body->Seed.Commands.str("sessionId")->Option.getOr(""))
+      let counted = async () =>
+        (
+          await theClient()->Seed.Client.queryAllNodes(
+            ~field="Charging_Sessions",
+            ~selection="sessionId readings",
+          )
+        )
+        ->Array.filter(row =>
+          sessions->Array.includes(row->Seed.Commands.str("sessionId")->Option.getOr(""))
+        )
+        ->Array.reduce(0., (acc, row) =>
+          switch row->Seed.Commands.get("readings") {
+          | Some(Number(n)) => acc +. n
+          | _ => acc
+          }
+        )
+      await waitFor(
+        async () => (await counted()) == distinct->Int.toFloat,
+        ~until=Date.now() +. 10_000.,
+        ~what="each reading counted once",
+      )
     },
     60_000,
   )

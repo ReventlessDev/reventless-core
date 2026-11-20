@@ -69,12 +69,14 @@ function send(r) {
             };
           }
           let record_slice = send.slice;
+          let record_body = send.body;
           let record_status = answer.status;
           let record_at = new Date(now).toISOString();
           let record = {
             kind: kind,
             id: id,
             slice: record_slice,
+            body: record_body,
             status: record_status,
             at: record_at
           };
@@ -196,6 +198,33 @@ function tell(r, kind, instance, message, body) {
   }
 }
 
+function setRates(r, kind, rates) {
+  let k = r.kinds.find(k => k.name === kind);
+  if (k !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: k.setRates(rates)
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: `no kind ` + kind
+    };
+  }
+}
+
+function silence(r, kind, id, ticks) {
+  let k = r.kinds.find(k => k.name === kind);
+  if (k !== undefined) {
+    return k.silence(id, ticks);
+  } else {
+    return {
+      TAG: "Error",
+      _0: `no kind ` + kind
+    };
+  }
+}
+
 let keep = 200;
 
 export {
@@ -210,5 +239,7 @@ export {
   byHand,
   state,
   tell,
+  setRates,
+  silence,
 }
 /* node:timers Not a pure module */
