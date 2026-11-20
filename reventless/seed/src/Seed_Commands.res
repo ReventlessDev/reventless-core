@@ -224,3 +224,11 @@ let encodeOrThrow = (s: t, ~field: string, args: JSON.t): mutation =>
  */
 let checkBody = (s: t, ~field: string, body: JSON.t): result<unit, string> =>
   encode(s, ~field, body)->Result.map(_ => ())
+
+/** The mutation of the inbound translation named `slice`: the one field named
+    `<Plugin>_<slice>`. None when no field is, or when several plugins have one. */
+let fieldForSlice = (s: t, ~slice: string): option<string> =>
+  switch s.mutations->Dict.keysToArray->Array.filter(f => f->String.endsWith(`_${slice}`)) {
+  | [field] => Some(field)
+  | _ => None
+  }

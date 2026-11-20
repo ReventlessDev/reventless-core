@@ -1,0 +1,30 @@
+{
+  "name": "@reventlessdev/reventless-standin-fixture",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": "ChargingPlugin",
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-local",
+    "@reventlessdev/rescript-pulumi-pulumi"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@reventlessdev/reventless-standin",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": "ReventlessStandin",
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true,
+      "type": "dev"
+    }
+  ],
+  "dependencies": [
+    "@reventlessdev/rescript-node",
+    "@reventlessdev/reventless-seed",
+    "@reventlessdev/rescript-jest"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

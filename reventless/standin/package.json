@@ -1,0 +1,31 @@
+{
+  "name": "@reventlessdev/reventless-standin",
+  "version": "1.0.0-alpha.0",
+  "description": "Stand-ins for the things and services at an app's edge: they send through the app's own doors and answer what the app tells them",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build"
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-node": "workspace:*",
+    "@reventlessdev/reventless-seed": "workspace:*"
+  },
+  "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "rescript": "12.3.1"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/standin"
+  }
+}

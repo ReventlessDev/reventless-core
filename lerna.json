@@ -5,6 +5,7 @@
     "packages/*",
     "rescript/*",
     "reventless/*",
+    "reventless/standin/fixture",
     "examples/**",
     "traits/*"
   ],

@@ -468,6 +468,15 @@ function checkBody(s, field, body) {
   return Stdlib_Result.map(encode(s, field, body), param => {});
 }
 
+function fieldForSlice(s, slice) {
+  let match = Object.keys(s.mutations).filter(f => f.endsWith(`_` + slice));
+  if (match.length !== 1) {
+    return;
+  } else {
+    return match[0];
+  }
+}
+
 export {
   typeRefFragment,
   introspectionQuery,
@@ -485,5 +494,6 @@ export {
   encode,
   encodeOrThrow,
   checkBody,
+  fieldForSlice,
 }
 /* No side effect */

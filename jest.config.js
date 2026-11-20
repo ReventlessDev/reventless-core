@@ -144,6 +144,15 @@ module.exports = {
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],
     },
+    // The stand-in runtime; its runtime suite starts the fixture app beside it
+    // (`reventless/standin/fixture`) as a child process.
+    {
+      displayName: "reventless-standin",
+      rootDir: "./reventless/standin",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
     {
       displayName: "reventless-seed-aws",
       rootDir: "./reventless/seed-aws",

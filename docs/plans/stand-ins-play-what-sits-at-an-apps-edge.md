@@ -15,8 +15,23 @@
   `POST /__inmemory/schedules/fire`, and by the MCP tools `local_schedules` and
   `local_fire_schedule_now`.
 
-[SC4](#sc4-the-stand-in-runtime) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) can start:
-[the seed player plan](done/seed-plays-forward-as-a-player.md) (*the player plan*) is done.<br/>
+[SC4](#sc4-the-stand-in-runtime) built 2026-11-20, not yet released: the package
+[`reventless/standin`](../../reventless/standin/README.md). Where the build differs from the step:
+- the test app is `reventless/standin/fixture`, a private workspace package (chargers, a signed
+  meter-reading door, readings per session) that the runtime's suite starts as a child process;
+  a published package cannot carry the PPX its slices need;
+- a twin's instances are read again on a fixed interval (`refreshMs`); following the event tap
+  ([SCQ1](#open-questions)) waits for [SC7](#sc7-the-local-platform-starts-the-stand-ins), where
+  the stand-ins run beside the tap;
+- the runtime reads views with the client it is given; the stand-ins' own account
+  ([SCQ3](#open-questions)) comes with [SC7](#sc7-the-local-platform-starts-the-stand-ins).
+
+Found while building it: on a fresh app the secrets file is missing on the first start, because
+`.reventless/` is only made afterwards, by the registry entry, so [SC2](#sc2-the-local-platform-makes-each-doors-secret)'s
+*done when* holds from the second start on. The runtime's suite makes the folder first.
+
+The player plan, [done/seed-plays-forward-as-a-player.md](done/seed-plays-forward-as-a-player.md)
+(*the player plan*), is done.<br/>
 **Part of:** a wider plan that orders this work with the editor's tools, which generate an app's
 stand-ins and show them; this plan holds core's part.<br/>
 **Builds on:** the webhook door of an inbound translation

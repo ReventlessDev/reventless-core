@@ -1773,6 +1773,50 @@ importers:
         specifier: 12.3.1
         version: 12.3.1
 
+  reventless/standin:
+    dependencies:
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../seed
+    devDependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/jest
+      rescript:
+        specifier: 12.3.1
+        version: 12.3.1
+
+  reventless/standin/fixture:
+    dependencies:
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/pulumi-pulumi
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../infra
+      '@reventlessdev/reventless-local':
+        specifier: workspace:*
+        version: link:../../local
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../spec
+      sury:
+        specifier: 11.1.0
+        version: 11.1.0(rescript@12.3.1)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: 12.3.1
+        version: 12.3.1
+      sury-ppx:
+        specifier: 11.1.0
+        version: 11.1.0(sury@11.1.0(rescript@12.3.1))
+
   traits/address-geocoding:
     dependencies:
       '@reventlessdev/reventless-gwt':
