@@ -76,8 +76,13 @@ let parseString = (yamlText: string): array<user> => {
 }
 
 /** Where the file lives for the platform being seeded — the seed runs from that
-    package's directory, which is the same cwd the local auth adapter reads. */
-let defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless", "accounts.yaml"])
+    package's directory, which is the same cwd the local auth adapter reads —
+    unless `REVENTLESS_ACCOUNTS_FILE` names it, as it does for the platform. */
+let defaultPath = (): string =>
+  switch NodeProcess.env->Dict.get("REVENTLESS_ACCOUNTS_FILE") {
+  | Some(path) if path != "" => path
+  | _ => NodePath.join([NodeProcess.cwd(), ".reventless", "accounts.yaml"])
+  }
 
 /**
  * The accounts on disk, with the path they came from. `None` when there is no

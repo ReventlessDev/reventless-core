@@ -53,7 +53,12 @@ function parseString(yamlText) {
 }
 
 function defaultPath() {
-  return Nodepath.join(process.cwd(), ".reventless", "accounts.yaml");
+  let path = process.env["REVENTLESS_ACCOUNTS_FILE"];
+  if (path !== undefined && path !== "") {
+    return path;
+  } else {
+    return Nodepath.join(process.cwd(), ".reventless", "accounts.yaml");
+  }
 }
 
 function load(path) {

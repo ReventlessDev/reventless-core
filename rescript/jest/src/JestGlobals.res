@@ -69,6 +69,11 @@ module Runner = {
   @scope("globalThis") @val external afterAll: (unit => unit) => unit = "afterAll"
   // Async variant — Jest awaits the returned promise after all tests.
   @scope("globalThis") @val external afterAllAsync: (unit => promise<unit>) => unit = "afterAll"
+  // Async hooks with a custom timeout (milliseconds) — for setup that starts a process.
+  @scope("globalThis") @val
+  external beforeAllAsyncWithTimeout: (unit => promise<unit>, int) => unit = "beforeAll"
+  @scope("globalThis") @val
+  external afterAllAsyncWithTimeout: (unit => promise<unit>, int) => unit = "afterAll"
 
   // Fail the current test with a message. Jest's global `fail` was removed in
   // Jest 27 ESM mode, so this throws a JS Error — the portable way to mark a

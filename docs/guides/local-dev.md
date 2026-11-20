@@ -457,8 +457,9 @@ rather than data:
 
 ## Editing accounts without restarting
 
-The accounts the platform signs in, `.reventless/accounts.yaml` (or the
-`~accountsFile` it was given), are followed the same way: add an account, change a
+The accounts the platform signs in, `.reventless/accounts.yaml` (or the file
+`REVENTLESS_ACCOUNTS_FILE` names, which the seed reads too, or the `~accountsFile` it
+was given), are followed the same way: add an account, change a
 password or a group, and it signs in a moment after the save.
 
 ```

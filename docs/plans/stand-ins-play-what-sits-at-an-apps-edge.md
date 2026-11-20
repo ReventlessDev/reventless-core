@@ -4,7 +4,7 @@
 **Status:** Proposed, not started. [SC1](#sc1-the-local-webhook-door-listens-over-http) to
 [SC3](#sc3-a-schedule-can-be-fired-now) need nothing from another plan;
 [SC4](#sc4-the-stand-in-runtime) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) wait on
-[the seed player plan](seed-plays-forward-as-a-player.md) (*the player plan*).<br/>
+[the seed player plan](done/seed-plays-forward-as-a-player.md) (*the player plan*).<br/>
 **Part of:** a wider plan that orders this work with the editor's tools, which generate an app's
 stand-ins and show them; this plan holds core's part.<br/>
 **Builds on:** the webhook door of an inbound translation
@@ -42,7 +42,7 @@ The steps are **SC1 to SC8**. **SC** stands for *stand-ins, core*. **SCD** are t
 | SC1 | The local webhook door listens over HTTP, at the path AWS serves it on | nothing | S |
 | SC2 | The local platform makes each door's secret and says where it keeps them | nothing | S |
 | SC3 | A schedule can be fired now, at the true time, over HTTP and MCP | nothing | S |
-| SC4 | The stand-in runtime: kinds, instances, state, timers, sends through the door | [SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), [SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions) | M–L |
+| SC4 | The stand-in runtime: kinds, instances, state, timers, sends through the door | [SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client), [SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions) | M–L |
 | SC5 | A *devices* capability: tell one thing something, the stand-ins as its local provider | [SC4](#sc4-the-stand-in-runtime) | M |
 | SC6 | Behaving as things do: silence, repeats, late readings, a clock that drifts | [SC4](#sc4-the-stand-in-runtime) | S–M |
 | SC7 | The local platform starts the stand-ins and serves their state and their sends | [SC4](#sc4-the-stand-in-runtime) to [SC6](#sc6-behaving-as-things-do) | M |
@@ -95,7 +95,7 @@ The local platform serves:
 Both as an HTTP route beside the `/__inmemory/` ones and as tools of the local MCP server. Nothing
 is backdated: the automation sees the true time and runs exactly the code the due tick will run,
 as the player plan's rule on time demands
-([its §4](seed-plays-forward-as-a-player.md#4-forward-only)). A fired tick does not move the next
+([its §4](done/seed-plays-forward-as-a-player.md#4-forward-only)). A fired tick does not move the next
 due one.
 
 **Done when:** firing a monthly schedule now on a local platform runs its automation once, with
@@ -113,12 +113,12 @@ A new package beside `reventless/seed`, a client of the platform's public doors 
   gets a twin, one that leaves it loses its twin ([SCQ1](#open-questions)).
 - **A send** is the decision's payload, encoded by the adapter the player plan generates from the
   command definitions
-  ([SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)),
+  ([SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)),
   posted to the inbound translation's door and signed with its secret ([SC1](#sc1-the-local-webhook-door-listens-over-http),
   [SC2](#sc2-the-local-platform-makes-each-doors-secret)). Never a GraphQL mutation: that is the
   door people use, not the door a thing uses.
 - **Timers** run forward only. Faster runs shorten the intervals with the player's pace
-  ([SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client)); a value that grows with
+  ([SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client)); a value that grows with
   time (energy from power) is computed from the simulated interval, while every time sent is the
   true one.
 - **Random values** come from the seed's seeded random, so a run is the same each time it is
@@ -126,7 +126,7 @@ A new package beside `reventless/seed`, a client of the platform's public doors 
 - **By hand:** any message of a kind can be sent for one instance on request, with fields given
   or filled from the instance's state ([SC7](#sc7-the-local-platform-starts-the-stand-ins)).
 - **A stop** ends every timer and leaves no send half done, as the player's stop does
-  ([SP4](seed-plays-forward-as-a-player.md#sp4-a-stop-that-waits-for-the-end-of-a-repetition)).
+  ([SP4](done/seed-plays-forward-as-a-player.md#sp4-a-stop-that-waits-for-the-end-of-a-repetition)).
 
 **Done when:** a test app's charger kind meters each running session every simulated minute
 through the door, two runs with one seed send the same values, and a charger added to the view
@@ -210,8 +210,8 @@ its schedules and its registry, none of the files of the player plan, but are st
 since one working tree is shared.
 
 [SC4](#sc4-the-stand-in-runtime) waits on the player plan's
-[SP1](seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client) and
-[SP5](seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)
+[SP1](done/seed-plays-forward-as-a-player.md#sp1-a-pace-held-by-the-client) and
+[SP5](done/seed-plays-forward-as-a-player.md#sp5-a-generated-adapter-read-from-the-command-definitions)
 being released, so that it reuses the pace and the adapter instead of copying their shapes.
 [SC5](#sc5-a-devices-capability) to [SC7](#sc7-the-local-platform-starts-the-stand-ins) follow and
 are released together.
@@ -222,7 +222,7 @@ are released together.
 |---|---|---|
 | **SCD1** | A stand-in is a client of the platform's public doors: the webhook door to send, the GraphQL API to read, the devices capability to be told | A shortcut into the decision tests a path no thing takes, and passes while the translation is broken |
 | **SCD2** | A stand-in is told things only through an outbound translation and the devices capability, never by watching the app's events | Watching events would let a simulation work while the real thing is never told; a missing translation must show |
-| **SCD3** | Time runs forward only; *faster* is shorter intervals, a schedule is fired now at the true time | The player plan's rule ([its §4](seed-plays-forward-as-a-player.md#4-forward-only)) holds for every client |
+| **SCD3** | Time runs forward only; *faster* is shorter intervals, a schedule is fired now at the true time | The player plan's rule ([its §4](done/seed-plays-forward-as-a-player.md#4-forward-only)) holds for every client |
 | **SCD4** | This plan runs stand-ins on a local platform only; a deployed platform answers *not reachable* until a later plan gives it a provider | A deployed stand-in needs a kind of deployment that refuses it in production, a stack of its own, a rate and an end; none of that is here |
 | **SCD5** | The runtime lives in core, beside the seed | A deployed demo must run it without the editor; it reuses the seed's client, random values and the player's pace |
 

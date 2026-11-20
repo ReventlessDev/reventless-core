@@ -102,9 +102,18 @@ let _current = (dir: string, ~name: string, ~old: string): string => {
   }
 }
 
-/** Where both platforms keep it: beside the package the process runs from. */
+/** The variable that names the file instead, so a platform started from its package
+    can read accounts kept elsewhere (a test's own copy of the template). */
+let pathVariable = "REVENTLESS_ACCOUNTS_FILE"
+
+/** Where both platforms keep it: beside the package the process runs from, unless
+    `REVENTLESS_ACCOUNTS_FILE` names it. */
 let defaultPath = (): string =>
-  _current(NodePath.join([NodeProcess.cwd(), ".reventless"]), ~name=fileName, ~old=oldFileName)
+  switch NodeProcess.env->Dict.get(pathVariable) {
+  | Some(path) if path != "" => path
+  | _ =>
+    _current(NodePath.join([NodeProcess.cwd(), ".reventless"]), ~name=fileName, ~old=oldFileName)
+  }
 
 /** The template a platform package in `dir` keeps. */
 let templateIn = (dir: string): string => _current(dir, ~name=templateName, ~old=oldTemplateName)

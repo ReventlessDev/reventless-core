@@ -90,7 +90,13 @@ function _current(dir, name, old) {
   }
 }
 
+let pathVariable = "REVENTLESS_ACCOUNTS_FILE";
+
 function defaultPath() {
+  let path = process.env[pathVariable];
+  if (path !== undefined && path !== "") {
+    return path;
+  }
   return _current(Nodepath.join(process.cwd(), ".reventless"), fileName, oldFileName);
 }
 
@@ -497,6 +503,7 @@ export {
   oldTemplateName,
   oldNameLeft,
   _current,
+  pathVariable,
   defaultPath,
   templateIn,
   path,

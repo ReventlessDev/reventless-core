@@ -2,9 +2,8 @@
 
 **Date:** 2026-09-20, revised 2026-11-20<br/>
 **Status:** 🔨 Built 2026-11-20, not yet released: [SP1](#sp1-a-pace-held-by-the-client) to
-[SP6](#sp6-commands-as-data-for-a-caller-without-rescript). Of [SP7](#sp7-the-checks), the adapter
-equality is a test; the other three checks were run by hand against a local platform, not in CI
-([§8](#8-what-was-built)). Where the build differs from the steps below:
+[SP7](#sp7-the-checks). Every check of [§5](#5-verify) is a test; the forward-only one was also run
+by hand ([§8](#8-what-was-built)). Where the build differs from the steps below:
 - the adapter reads GraphQL introspection of the domain API, not the command definitions
   ([SPQ2](#7-open-questions) answered the other way);
 - a set is marked `repeatable` and `SEED_REPEAT` chooses how often, rather than a `repeat` on the
@@ -13,7 +12,7 @@ equality is a test; the other three checks were run by hand against a local plat
 - the file player is `SEED_FILE`, read by every app's seed entry, not a bin of its own; its file
   is a flat list of steps with waits, not phases.<br/>
 **Repos:** `reventless-core` only.<br/>
-**Builds on:** [online-shop-seed-over-days.md](done/online-shop-seed-over-days.md), which gave the
+**Builds on:** [online-shop-seed-over-days.md](online-shop-seed-over-days.md), which gave the
 seed a repeatable follow-up run and is the source of the constraint in
 [§4](#4-forward-only).<br/>
 **Facts from:** this repo at `1e69fca85`, surveyed 2026-11-20.
@@ -40,7 +39,7 @@ seed a repeatable follow-up run and is the source of the constraint in
 
 A **seed** fills a platform with demo data by sending real commands through its public API: add
 these categories, register these customers, place these orders. The package that does this,
-[`reventless-seed`](../../reventless/seed/src), sends everything as fast as the platform answers
+[`reventless-seed`](../../../reventless/seed/src), sends everything as fast as the platform answers
 and then stops. A seeded shop therefore appears fully formed, all at once.
 
 That is wrong for three uses. Watching a live view fill needs rows to arrive one by one. An
@@ -51,7 +50,7 @@ stop.
 
 The second gap is the **adapter**: the code that turns a plugin's typed commands into GraphQL
 mutations. Today each app writes its own by hand (the online-shop example's is
-[`DemoCommands.res`](../../examples/online-shop-hybrid/seed-data/src/DemoCommands.res), 287
+[`DemoCommands.res`](../../../examples/online-shop-hybrid/seed-data/src/DemoCommands.res), 287
 lines). That is right for a ReScript app, which gets a compile error when a command changes. It is
 a wall for anyone not writing ReScript, and everything it encodes is already published by the
 platform itself. This plan generates it.
@@ -63,29 +62,29 @@ The steps are numbered SP1 to SP7 (**SP** for *seed player*); open questions are
 ## 2. What the seed does today
 
 - **It sends, it does not wait.**
-  [`Seed_Client.sendAll`](../../reventless/seed/src/Seed_Client.res#L503) sends a list of mutations
+  [`Seed_Client.sendAll`](../../../reventless/seed/src/Seed_Client.res#L503) sends a list of mutations
   one after another; the only sleep in the client is the retry backoff of a transient error.
 - **Phases are a data set's code, not a primitive.** The package has no phase type.
-  [`HybridSeedData.res`](../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res) writes
+  [`HybridSeedData.res`](../../../examples/online-shop-hybrid/seed-data/src/HybridSeedData.res) writes
   each phase as its own `sendAll` call, with domain checks between them
   (`waitForIds` before the orders that need products). A schedule can therefore not "compose with
   phases" as a value; it can only sit underneath them, in the client.
 - **A run is a one-shot, or a follow-up.** The first run refuses a store that holds data
-  (`probeViews`, [`Seed_Runner.assertStoreEmpty`](../../reventless/seed/src/Seed_Runner.res)). The
+  (`probeViews`, [`Seed_Runner.assertStoreEmpty`](../../../reventless/seed/src/Seed_Runner.res)). The
   follow-up run, `runFollowUp` with its `preflight`, adds a day of activity to a filled shop; its ids
   and its random generator are named by the run date and the run's number that day
-  ([`DemoFollowUp.res`](../../examples/online-shop-hybrid/seed-data/src/DemoFollowUp.res)). It is
+  ([`DemoFollowUp.res`](../../../examples/online-shop-hybrid/seed-data/src/DemoFollowUp.res)). It is
   already the repeatable unit a loop needs, except that its number comes from the date.
-- **Every end is an exit.** [`Seed_Runner.run`](../../reventless/seed/src/Seed_Runner.res) exits the
+- **Every end is an exit.** [`Seed_Runner.run`](../../../reventless/seed/src/Seed_Runner.res) exits the
   process on success and on failure, and reports any failure as "the store is now half-seeded".
   Nothing listens for a signal, so Ctrl-C stops a run mid-phase with no report at all.
-- **The adapter is the caller's.** [`Seed.res:6`](../../reventless/seed/src/Seed.res#L6): *"the
+- **The adapter is the caller's.** [`Seed.res:6`](../../../reventless/seed/src/Seed.res#L6): *"the
   mapping from a plugin's command types to `mutation` values is the caller's adapter."*
 - **What a generator would read is published.** Each command's definition on the component
-  definitions API ([`Platform_ComponentDefinitionsApi.res`](../../reventless/core/src/admin/Platform_ComponentDefinitionsApi.res),
+  definitions API ([`Platform_ComponentDefinitionsApi.res`](../../../reventless/core/src/admin/Platform_ComponentDefinitionsApi.res),
   type `Platform_CommandDef`) carries its `mutationField`, its JSON `schema`, its
   `aggregateIdField` and its `requiredAccess`. That is what a generated command form is built from.
-  The SDL golden ([`domain-api.graphql`](../../examples/online-shop-hybrid/schema/domain-api.graphql))
+  The SDL golden ([`domain-api.graphql`](../../../examples/online-shop-hybrid/schema/domain-api.graphql))
   says the same per argument but loses the command's own name and which argument is the entity id.
 
 ---
@@ -110,7 +109,7 @@ change. No pace is today's behavior. Retries keep their own backoff and do not c
 
 A pace is a value, not a loop of sleeps in a data set, which is what lets the same run play
 faster or slower ([§5](#5-verify), first check). Two shapes cover the uses: a fixed gap, and a
-mean rate with seeded jitter from [`Seed_Random`](../../reventless/seed/src/Seed_Random.res), so a
+mean rate with seeded jitter from [`Seed_Random`](../../../reventless/seed/src/Seed_Random.res), so a
 paced run repeats itself exactly.
 
 ### SP2 A pace chosen per run
@@ -171,7 +170,7 @@ online-shop example as the specimen.
 
 ## 4. Forward only
 
-[online-shop-seed-over-days.md](done/online-shop-seed-over-days.md) puts backdating out of scope on
+[online-shop-seed-over-days.md](online-shop-seed-over-days.md) puts backdating out of scope on
 a stated ground: *"It would turn the recorded time into a claim made by the caller, and automations
 would still react at today's time, so a backdated order's trail would read out of order."*
 
@@ -193,7 +192,7 @@ domain, not a reason to fake the state.
   without a pace ends in the same state, compared view by view.
 - A repeating run stopped by one signal ends after a whole repetition: every order it placed in
   that repetition has the follow-ups the repetition planned for it.
-- The generated adapter and [`DemoCommands.res`](../../examples/online-shop-hybrid/seed-data/src/DemoCommands.res)
+- The generated adapter and [`DemoCommands.res`](../../../examples/online-shop-hybrid/seed-data/src/DemoCommands.res)
   render the same mutation text for every command the demo seed sends.
 - No event carries a time earlier than the send of the command that caused it, checked over every
   event a paced run produced, not assumed from [§4](#4-forward-only).
@@ -238,28 +237,32 @@ domain, not a reason to fake the state.
 ## 8. What was built
 
 - **[SP1](#sp1-a-pace-held-by-the-client), [SP2](#sp2-a-pace-chosen-per-run).**
-  [`Seed_Pace.res`](../../reventless/seed/src/Seed_Pace.res) reads `2s`, `500ms`, `30/min` and a
-  trailing `~` for random gaps; [`Seed_Client.send`](../../reventless/seed/src/Seed_Client.res) waits
+  [`Seed_Pace.res`](../../../reventless/seed/src/Seed_Pace.res) reads `2s`, `500ms`, `30/min` and a
+  trailing `~` for random gaps; [`Seed_Client.send`](../../../reventless/seed/src/Seed_Client.res) waits
   on it before every command, chained so that concurrent senders keep it too. `SEED_PACE`, else the
   set's `pace`.
 - **[SP3](#sp3-a-loop-repeats-a-follow-up-run), [SP4](#sp4-a-stop-that-waits-for-the-end-of-a-repetition).**
-  [`Seed_Runner.play`](../../reventless/seed/src/Seed_Runner.res) plays a set `SEED_REPEAT` times or
+  [`Seed_Runner.play`](../../../reventless/seed/src/Seed_Runner.res) plays a set `SEED_REPEAT` times or
   `forever`, and refuses at start a set that is not `repeatable` or that wants an empty store. The
   example's follow-up run is marked `repeatable`.
 - **[SP5](#sp5-a-generated-adapter-read-from-the-command-definitions).**
-  [`Seed_Commands.res`](../../reventless/seed/src/Seed_Commands.res) reads the domain API's
+  [`Seed_Commands.res`](../../../reventless/seed/src/Seed_Commands.res) reads the domain API's
   introspection. The command definitions were the plan's choice; the build found three reasons
   against them: they are served on the platform API, not the domain API; only Admin may read them;
   and they leave out inbound translations, so `Catalog_ImportProduct` could not be encoded.
   Introspection has none of these limits and says all an encoder needs.
 - **[SP6](#sp6-commands-as-data-for-a-caller-without-rescript).**
-  [`Seed_Play.res`](../../reventless/seed/src/Seed_Play.res), offered by every seed entry through
+  [`Seed_Play.res`](../../../reventless/seed/src/Seed_Play.res), offered by every seed entry through
   `SEED_FILE`; a mutation the API would refuse stops the run before anything is sent. A bin of its
   own was left out: a bin reads its arguments through `CliArgs`, which lives in `reventless-spec`,
   and adding that package to the seed's graph would reorder the root build. The specimen is
-  [`traffic.yaml`](../../examples/online-shop-hybrid/seed-data/play/traffic.yaml).
+  [`traffic.yaml`](../../../examples/online-shop-hybrid/seed-data/play/traffic.yaml).
 
-**The checks of [§5](#5-verify)**, on an isolated local platform with a SQLite store:
+**The checks of [§5](#5-verify).** [`SeedPlayerTest.res`](../../../examples/online-shop-hybrid/seed-data/tests/SeedPlayerTest.res)
+starts two in-memory example platforms on spare ports, with a copy of the accounts template named
+by `REVENTLESS_ACCOUNTS_FILE` (added for it, and read by the platform and the seed alike), seeds
+both and checks pace, same state and stop in about 25 seconds. The adapter equality is a test of
+its own. First run by hand, on an isolated local platform with a SQLite store:
 
 - **Pace.** The follow-up played twice at `100ms` sent 43 commands in 4.9 s; unpaced, in 0.6 s. The
   file played three times at `1s` sent 15 commands in 14.6 s.
@@ -269,7 +272,7 @@ domain, not a reason to fake the state.
 - **Stop.** One SIGINT during the second repetition of a `forever` run: it finished, its growth
   checks passed, the run reported 2 repetitions and exited 0. Two SIGINTs: exit 130, naming the
   repetition cut short.
-- **Adapter equality.** [`GeneratedAdapterTest.res`](../../examples/online-shop-hybrid/seed-data/tests/GeneratedAdapterTest.res)
+- **Adapter equality.** [`GeneratedAdapterTest.res`](../../../examples/online-shop-hybrid/seed-data/tests/GeneratedAdapterTest.res)
   encodes every command the demo seed sends through both adapters, the generated one reading the
   committed SDL golden, and compares them.
 - **Forward only.** The 42 events of the file run were recorded inside the run's window, in the
