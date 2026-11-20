@@ -997,6 +997,9 @@ importers:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
         version: link:../../../rescript/jest
+      graphql:
+        specifier: ^16.0.0
+        version: 16.13.2
       rescript:
         specifier: 12.3.1
         version: 12.3.1

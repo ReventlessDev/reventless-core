@@ -74,6 +74,42 @@ seed data can reach, with the reason, so a zero is never read as a gap.
 `Seed.value` carries the argument types GraphQL needs, including `Enum`, which
 renders as a bare identifier — quoting an enum is rejected by the server.
 
+### `Seed.Commands` — a generated adapter
+
+Reads the domain API's own description (GraphQL introspection) and turns a
+mutation's name and its arguments as JSON into a `Seed.mutation`, rendered by
+the declared types. An unknown argument, a missing required one or a value of
+the wrong type is an error naming it, before anything is sent:
+
+```rescript
+let commands = await Seed.Commands.fetch(client)
+let m = commands->Seed.Commands.encodeOrThrow(~field="Catalog_AddCategory", args)
+```
+
+A ReScript app keeps its typed adapter, which turns a renamed command field into
+a compile error rather than a refused mutation.
+
+## Playing a run over time
+
+A run sends as fast as the platform answers unless told otherwise. Three
+variables make it a player; each is checked before anything is sent:
+
+- **`SEED_PACE`** — the wait before each command: a gap (`2s`, `500ms`) or a
+  rate (`30/min`), with a trailing `~` for random gaps around that mean that
+  repeat from run to run. A data set may name its own with `pace`.
+- **`SEED_REPEAT`** — play the set this many times, or `forever`. Only a set
+  marked `repeatable` (one that names new ids each time and does not refuse a
+  store that holds data) may run more than once. The first SIGINT or SIGTERM
+  lets the repetition in progress finish; a second stops at once.
+- **`SEED_FILE`** — play a file instead of the app's own sets: mutations by
+  name with their arguments, encoded by `Seed.Commands`, and waits for rows to
+  arrive. `{rep}` is the repetition's number and `{run}` names the run
+  (`SEED_RUN_TAG`, else the start time). See `Seed_Play.res` for the format, and
+  the online-shop example's `seed-data/play/traffic.yaml`.
+
+A pace changes the gaps between events, never the time an event records: the
+platform stamps every event when it accepts the command.
+
 ## A minimal seed
 
 Three parts: the data, the adapter, and the run.

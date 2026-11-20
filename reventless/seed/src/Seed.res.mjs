@@ -16,6 +16,12 @@ let Users;
 
 let Connect;
 
+let Pace;
+
+let Commands;
+
+let Play;
+
 let Failed = Seed_Types$ReventlessSeed.Failed;
 
 let mutation = Seed_Types$ReventlessSeed.mutation;
@@ -34,6 +40,9 @@ export {
   Prompt,
   Users,
   Connect,
+  Pace,
+  Commands,
+  Play,
   Failed,
   mutation,
   ids,

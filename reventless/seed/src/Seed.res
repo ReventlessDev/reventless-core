@@ -2,8 +2,9 @@
 //
 // A seed run is: build a list of mutations from typed domain commands, send
 // them through the public GraphQL API in phases, then verify what the views
-// actually contain. Nothing here knows about a specific domain — the mapping
-// from a plugin's command types to `mutation` values is the caller's adapter.
+// actually contain. Nothing here knows about a specific domain: the mapping from
+// a plugin's command types to `mutation` values is the caller's adapter, or the
+// one `Commands` reads from the API itself.
 
 module Random = Seed_Random
 module Client = Seed_Client
@@ -12,6 +13,9 @@ module Upload = Seed_Upload
 module Prompt = Seed_Prompt
 module Users = Seed_Accounts
 module Connect = Seed_Connect
+module Pace = Seed_Pace
+module Commands = Seed_Commands
+module Play = Seed_Play
 
 exception Failed = Seed_Types.Failed
 
@@ -37,6 +41,8 @@ type dataSet = Seed_Runner.dataSet = {
   seed: connection => promise<unit>,
   probeViews?: array<string>,
   preflight?: connection => promise<unit>,
+  repeatable?: bool,
+  pace?: string,
 }
 
 type rec value = Seed_Types.value =

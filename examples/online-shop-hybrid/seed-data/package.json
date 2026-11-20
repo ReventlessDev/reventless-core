@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-seed",
   "version": "1.0.0-alpha.178",
-  "description": "Shareable app-level definitions for the online-shop-hybrid example — demo data sets for reventless-seed, and the storefront's curated component manifest",
+  "description": "Shareable app-level definitions for the online-shop-hybrid example \u2014 demo data sets for reventless-seed, and the storefront's curated component manifest",
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",
+    "graphql": "^16.13.2",
     "rescript": "12.3.1"
   },
   "peerDependencies": {

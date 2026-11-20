@@ -1,12 +1,17 @@
 # Plan: the seed becomes a player, and generates its own adapter
 
 **Date:** 2026-09-20, revised 2026-11-20<br/>
-**Status:** Proposed, not started. Revised against the code: the follow-up run of
-[online-shop-seed-over-days.md](done/online-shop-seed-over-days.md) now exists and is the unit a loop
-repeats ([SP3](#sp3-a-loop-repeats-a-follow-up-run)); phases turned out to be a data set's own code,
-not a primitive of the package ([§2](#2-what-the-seed-does-today)); and a generated command form
-reads the component definitions, not GraphQL introspection
-([SP5](#sp5-a-generated-adapter-read-from-the-command-definitions)).<br/>
+**Status:** 🔨 Built 2026-11-20, not yet released: [SP1](#sp1-a-pace-held-by-the-client) to
+[SP6](#sp6-commands-as-data-for-a-caller-without-rescript). Of [SP7](#sp7-the-checks), the adapter
+equality is a test; the other three checks were run by hand against a local platform, not in CI
+([§8](#8-what-was-built)). Where the build differs from the steps below:
+- the adapter reads GraphQL introspection of the domain API, not the command definitions
+  ([SPQ2](#7-open-questions) answered the other way);
+- a set is marked `repeatable` and `SEED_REPEAT` chooses how often, rather than a `repeat` on the
+  set; the follow-up run needed no repetition number, since it already numbers itself from the
+  ids in the shop;
+- the file player is `SEED_FILE`, read by every app's seed entry, not a bin of its own; its file
+  is a flat list of steps with waits, not phases.<br/>
 **Repos:** `reventless-core` only.<br/>
 **Builds on:** [online-shop-seed-over-days.md](done/online-shop-seed-over-days.md), which gave the
 seed a repeatable follow-up run and is the source of the constraint in
@@ -217,7 +222,8 @@ domain, not a reason to fake the state.
   committed SDL golden?* **Recommendation: the command definitions**
   ([SP5](#sp5-a-generated-adapter-read-from-the-command-definitions)). They name the command as its
   author wrote it and say which argument is the entity id; introspection and the golden name only
-  the mutation field, and the golden exists only for this repo's examples.
+  the mutation field, and the golden exists only for this repo's examples. **Built the other way:
+  introspection** ([§8](#8-what-was-built)).
 - **SPQ3.** *Should a ReScript app be moved onto the generated adapter?* **Recommendation: no.** The
   hand-written adapter turns a renamed command field into a compile error; the generated one turns
   it into a refused mutation at run time. The equality check of [§5](#5-verify) keeps the two in
@@ -226,3 +232,50 @@ domain, not a reason to fake the state.
   run time?* **Recommendation: at run time.** Generated ReScript helps only ReScript callers, who
   already have the typed path ([SPQ3](#7-open-questions)); a run-time encoder serves the file-based
   caller of [SP6](#sp6-commands-as-data-for-a-caller-without-rescript) and any language.
+
+---
+
+## 8. What was built
+
+- **[SP1](#sp1-a-pace-held-by-the-client), [SP2](#sp2-a-pace-chosen-per-run).**
+  [`Seed_Pace.res`](../../reventless/seed/src/Seed_Pace.res) reads `2s`, `500ms`, `30/min` and a
+  trailing `~` for random gaps; [`Seed_Client.send`](../../reventless/seed/src/Seed_Client.res) waits
+  on it before every command, chained so that concurrent senders keep it too. `SEED_PACE`, else the
+  set's `pace`.
+- **[SP3](#sp3-a-loop-repeats-a-follow-up-run), [SP4](#sp4-a-stop-that-waits-for-the-end-of-a-repetition).**
+  [`Seed_Runner.play`](../../reventless/seed/src/Seed_Runner.res) plays a set `SEED_REPEAT` times or
+  `forever`, and refuses at start a set that is not `repeatable` or that wants an empty store. The
+  example's follow-up run is marked `repeatable`.
+- **[SP5](#sp5-a-generated-adapter-read-from-the-command-definitions).**
+  [`Seed_Commands.res`](../../reventless/seed/src/Seed_Commands.res) reads the domain API's
+  introspection. The command definitions were the plan's choice; the build found three reasons
+  against them: they are served on the platform API, not the domain API; only Admin may read them;
+  and they leave out inbound translations, so `Catalog_ImportProduct` could not be encoded.
+  Introspection has none of these limits and says all an encoder needs.
+- **[SP6](#sp6-commands-as-data-for-a-caller-without-rescript).**
+  [`Seed_Play.res`](../../reventless/seed/src/Seed_Play.res), offered by every seed entry through
+  `SEED_FILE`; a mutation the API would refuse stops the run before anything is sent. A bin of its
+  own was left out: a bin reads its arguments through `CliArgs`, which lives in `reventless-spec`,
+  and adding that package to the seed's graph would reorder the root build. The specimen is
+  [`traffic.yaml`](../../examples/online-shop-hybrid/seed-data/play/traffic.yaml).
+
+**The checks of [§5](#5-verify)**, on an isolated local platform with a SQLite store:
+
+- **Pace.** The follow-up played twice at `100ms` sent 43 commands in 4.9 s; unpaced, in 0.6 s. The
+  file played three times at `1s` sent 15 commands in 14.6 s.
+- **Same state.** A fresh store seeded `sample` and then the follow-up twice with no pace, compared
+  with one that played the follow-up at `100ms`: 112 rows across five views, identical apart from
+  recorded times and message ids.
+- **Stop.** One SIGINT during the second repetition of a `forever` run: it finished, its growth
+  checks passed, the run reported 2 repetitions and exited 0. Two SIGINTs: exit 130, naming the
+  repetition cut short.
+- **Adapter equality.** [`GeneratedAdapterTest.res`](../../examples/online-shop-hybrid/seed-data/tests/GeneratedAdapterTest.res)
+  encodes every command the demo seed sends through both adapters, the generated one reading the
+  committed SDL golden, and compares them.
+- **Forward only.** The 42 events of the file run were recorded inside the run's window, in the
+  order sent and one pace apart; each event's time is the platform's.
+
+**Found on the way, not part of this plan:** on the in-memory backend, the `sample` seed set off a
+loop in the outbound notification slice: one order's confirmation was sent more than 21,000 times
+before the server stopped answering. The same seed on SQLite sent each mail a handful of times. It
+needs its own look.

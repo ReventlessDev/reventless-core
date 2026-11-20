@@ -139,22 +139,111 @@ let run = async (main: unit => promise<unit>): unit =>
     NodeProcess.exit(1)
   }
 
-/**
- * A named, seedable data set. `seed` owns everything domain-specific — the
- * phases, `verifyViews`, the summary board — so the generic runner never sees
- * domain detail. `label` is what the selection menu shows.
- */
-type dataSet = {
+// See `Seed_DataSet`.
+type dataSet = Seed_DataSet.t = {
   name: string,
   label: string,
   seed: Seed_Connect.connection => promise<unit>,
-  // View names probed by the fresh-store guard before any command is sent; a
-  // non-empty one aborts the run at startup. Omit to skip the guard.
   probeViews?: array<string>,
-  // Any other check that must pass before a command is sent — a set that adds to
-  // an existing store refuses an empty one here. Throw `Failed` to refuse; the
-  // run then reports that nothing was written.
   preflight?: Seed_Connect.connection => promise<unit>,
+  repeatable?: bool,
+  pace?: string,
+}
+
+/** How many times a run plays its set: `SEED_REPEAT`, a count or `forever`. */
+type repeat = Times(int) | Forever
+
+let repeatFromEnv = (): repeat =>
+  switch Seed_Prompt.envValue("SEED_REPEAT") {
+  | None => Times(1)
+  | Some(raw) =>
+    switch (raw->String.toLowerCase, Int.fromString(raw)) {
+    | ("forever", _) => Forever
+    | (_, Some(n)) if n >= 1 => Times(n)
+    | _ =>
+      throw(Failed(`SEED_REPEAT="${raw}" is not a count — expected a number from 1, or forever`))
+    }
+  }
+
+/** The pace a run plays `set` at: `SEED_PACE`, else the set's own, else none. */
+let paceFor = (set: dataSet): option<Seed_Pace.t> =>
+  switch Seed_Prompt.envValue("SEED_PACE")->Option.orElse(set.pace) {
+  | None => None
+  | Some(text) =>
+    switch Seed_Pace.parse(text) {
+    | Ok(pace) => Some(pace)
+    | Error(message) => throw(Failed(`SEED_PACE: ${message}`))
+    }
+  }
+
+/** Why `set` cannot be played `repeat` times, if it cannot. */
+let refuseRepeat = (set: dataSet, repeat: repeat): option<string> =>
+  switch (repeat, set.repeatable, set.probeViews) {
+  | (Times(1), _, _) => None
+  | (_, Some(true), None | Some([])) => None
+  | (_, Some(true), Some(_)) =>
+    Some(`"${set.name}" refuses a store that holds data, so it cannot run more than once`)
+  | (_, _, _) => Some(`"${set.name}" is not repeatable — it would send the same ids again`)
+  }
+
+let errorMessage = (exn: exn): string =>
+  switch exn {
+  | Failed(message) => message
+  | exn => exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+  }
+
+/**
+ * Plays a set again and again. The first SIGINT or SIGTERM lets the repetition
+ * in progress finish, so the store holds only whole repetitions; a second stops
+ * at once and says which repetition it cut short. What the platform does after
+ * the last command (an automation reacting) goes on without the player.
+ */
+let play = async (set: dataSet, connection: Seed_Connect.connection, ~repeat: repeat): unit => {
+  let stopAsked = ref(false)
+  let current = ref(0)
+  let onSignal = () =>
+    if stopAsked.contents {
+      Console.error("")
+      Console.error(
+        `Stopped at once — repetition ${current.contents->Int.toString} was cut short; ` ++ `the ones before it are whole.`,
+      )
+      NodeProcess.exit(130)
+    } else {
+      stopAsked := true
+      Console.log("")
+      Console.log(
+        `  stopping after repetition ${current.contents->Int.toString} finishes (signal again to stop now)`,
+      )
+    }
+  NodeProcess.onSignal(SIGINT, onSignal)
+  NodeProcess.onSignal(SIGTERM, onSignal)
+  let more = () =>
+    !stopAsked.contents &&
+    switch repeat {
+    | Forever => true
+    | Times(n) => current.contents < n
+    }
+  while more() {
+    current := current.contents + 1
+    heading(`Repetition ${current.contents->Int.toString}`)
+    try await set.seed(connection) catch {
+    | exn =>
+      Console.error("")
+      Console.error(
+        `Repetition ${current.contents->Int.toString} stopped part way; the ${(current.contents - 1)
+            ->Int.toString} before it are whole.`,
+      )
+      Console.error("")
+      Console.error(errorMessage(exn))
+      NodeProcess.exit(1)
+    }
+  }
+  heading(
+    `Played ${current.contents->Int.toString} repetition(s), ${connection.client
+      ->Seed_Client.sentCount
+      ->Int.toString} commands${stopAsked.contents ? ", stopped on request" : ""}.`,
+  )
+  NodeProcess.exit(0)
 }
 
 /**
@@ -184,6 +273,11 @@ let abortStartup = (message: string): unit => {
 let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connection>): unit => {
   let go = async () => {
     let started = try {
+      // `SEED_FILE` plays a file instead of the app's own sets (see `Seed_Play`).
+      let sets = switch Seed_Prompt.envValue("SEED_FILE") {
+      | Some(path) => [Seed_Play.dataSet(~path)]
+      | None => sets
+      }
       let chosen = switch sets {
       | [only] => only
       | _ =>
@@ -204,7 +298,14 @@ let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connec
           await Seed_Prompt.select(~title="Data set:", ~options=sets->Array.map(s => (s.label, s)))
         }
       }
+      let repeat = repeatFromEnv()
+      switch refuseRepeat(chosen, repeat) {
+      | Some(message) => throw(Failed(message))
+      | None => ()
+      }
+      let pace = paceFor(chosen)
       let connection = await connect()
+      connection.client->Seed_Client.usePace(pace)
       Seed_Prompt.close()
       // Runs inside this pre-seed `try`, so refusing a non-empty store (or a
       // failed probe query) is reported as "did not start", not "half-seeded".
@@ -213,7 +314,7 @@ let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connec
       | Some(check) => await check(connection)
       | None => ()
       }
-      Some((chosen, connection))
+      Some((chosen, connection, repeat, pace))
     } catch {
     | Failed(message) =>
       abortStartup(message)
@@ -224,9 +325,13 @@ let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connec
     }
     switch started {
     | None => () // unreachable: abortStartup has already exited
-    | Some((chosen, connection)) =>
-      heading(`Seeding "${chosen.label}" into ${connection.label}`)
-      await run(() => chosen.seed(connection))
+    | Some((chosen, connection, repeat, pace)) =>
+      let paceNote = pace->Option.mapOr("", p => ` at ${p.text}`)
+      heading(`Seeding "${chosen.label}" into ${connection.label}${paceNote}`)
+      switch repeat {
+      | Times(1) => await run(() => chosen.seed(connection))
+      | _ => await play(chosen, connection, ~repeat)
+      }
     }
   }
   go()->ignore

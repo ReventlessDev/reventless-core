@@ -715,7 +715,8 @@ let dataSets = [
     name: "next",
     label: "next — add a day of activity to a seeded shop",
     seed: runFollowUp,
-    preflight: followUpPreflight
+    preflight: followUpPreflight,
+    repeatable: true
   },
   AuthzProbe$OnlineShopHybridSeed.dataSet
 ];

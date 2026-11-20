@@ -1,0 +1,31 @@
+# Shop traffic, played by the seed from a file:
+#
+#   SEED_FILE=../seed-data/play/traffic.yaml SEED_REPEAT=forever pnpm run seed
+#
+# Each repetition adds a product, registers a customer who orders it, and ships
+# the order. {run} names the run and {rep} the repetition, so ids never repeat.
+pace: 20/min~
+repeatable: true
+steps:
+  - send: Catalog_AddCategory
+    args: {categoryId: "cat-{run}-{rep}", name: "Arrivals {rep}"}
+  - waitFor: {field: Catalog_CategoriesByIds, ids: ["cat-{run}-{rep}"]}
+  - send: Catalog_AddProduct
+    args:
+      productId: "prd-{run}-{rep}"
+      categoryId: "cat-{run}-{rep}"
+      name: "Arrival {rep}"
+      description: "A product that arrived with repetition {rep}."
+      price: {amount: 1999, currency: EUR}
+  - waitFor: {field: Ordering_AvailableProductsByIds, ids: ["prd-{run}-{rep}"]}
+  - send: Ordering_Customer_Register
+    args: {id: "cust-{run}-{rep}", email: "buyer.{run}.{rep}@example.com", address: "{rep} Market Street"}
+  - waitFor: {field: Ordering_CustomersByIds, ids: ["cust-{run}-{rep}"]}
+  - send: Ordering_PlaceOrder
+    args:
+      orderId: "ord-{run}-{rep}"
+      customerId: "cust-{run}-{rep}"
+      lineItems: [{productId: "prd-{run}-{rep}", quantity: 2}]
+      shippingMethod: Standard
+  - send: Ordering_ShipOrder
+    args: {orderId: "ord-{run}-{rep}"}

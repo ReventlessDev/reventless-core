@@ -15,8 +15,31 @@ function sleep(ms) {
 function make(config) {
   return {
     config: config,
-    token: undefined
+    token: undefined,
+    pace: undefined,
+    sent: 0,
+    gate: Promise.resolve()
   };
+}
+
+function usePace(t, pace) {
+  t.pace = pace;
+}
+
+function sentCount(t) {
+  return t.sent;
+}
+
+async function paced(t) {
+  let index = t.sent;
+  t.sent = index + 1 | 0;
+  let pace = t.pace;
+  if (pace === undefined) {
+    return;
+  }
+  let mine = t.gate.then(() => sleep(pace.gapMs(index)));
+  t.gate = mine;
+  return await mine;
 }
 
 function currentToken(t) {
@@ -349,6 +372,7 @@ async function send(t, m, tolerateOpt) {
   let tolerate = tolerateOpt !== undefined ? tolerateOpt : [];
   let label = Seed_Types$ReventlessSeed.describe(m);
   let query = `mutation { r: ` + m.field + `(` + Seed_Types$ReventlessSeed.renderArgs(m.args) + `) { ` + commandResultSelection + ` } }`;
+  await paced(t);
   let attempt = async n => {
     let data = await gql(t, query, label);
     let result = Stdlib_Option.getOr(field(data, "r"), null);
@@ -551,6 +575,9 @@ let attempts = 4;
 export {
   sleep,
   make,
+  usePace,
+  sentCount,
+  paced,
   currentToken,
   endpoint,
   useToken,

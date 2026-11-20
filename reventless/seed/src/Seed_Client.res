@@ -36,9 +36,41 @@ type config = {
   password?: string,
 }
 
-type t = {config: config, mutable token: option<string>}
+type t = {
+  config: config,
+  mutable token: option<string>,
+  // The pace sends wait on, the number of sends so far, and the end of the last
+  // wait, which every send chains onto so concurrent senders keep the pace too.
+  mutable pace: option<Seed_Pace.t>,
+  mutable sent: int,
+  mutable gate: promise<unit>,
+}
 
-let make = (~config: config): t => {config, token: None}
+let make = (~config: config): t => {
+  config,
+  token: None,
+  pace: None,
+  sent: 0,
+  gate: Promise.resolve(),
+}
+
+/** Sends from now on wait as `pace` says; `None` sends at full speed. */
+let usePace = (t: t, pace: option<Seed_Pace.t>): unit => t.pace = pace
+
+/** How many commands this client has sent. */
+let sentCount = (t: t): int => t.sent
+
+let paced = async (t: t): unit => {
+  let index = t.sent
+  t.sent = index + 1
+  switch t.pace {
+  | None => ()
+  | Some(pace) =>
+    let mine = t.gate->Promise.then(() => sleep(pace.gapMs(index)))
+    t.gate = mine
+    await mine
+  }
+}
 
 /** The bearer token from the last successful `login`, if any — so callers (e.g.
     Seed.Upload) can authenticate side-channel requests with the same identity. */
@@ -424,6 +456,7 @@ let describeRejection = (~label: string, ~tried: int, result: JSON.t): string =>
 let send = async (t: t, m: mutation, ~tolerate: array<string>=[]): option<string> => {
   let label = m->describe
   let query = `mutation { r: ${m.field}(${m.args->renderArgs}) { ${commandResultSelection} } }`
+  await paced(t)
   let rec attempt = async (n: int): option<string> => {
     let data = await gql(t, ~query, ~label)
     let result = data->field("r")->Option.getOr(JSON.Encode.null)

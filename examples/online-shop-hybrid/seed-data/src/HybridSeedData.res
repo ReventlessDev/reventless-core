@@ -1116,6 +1116,9 @@ let dataSets: array<Seed.dataSet> = [
     label: "next — add a day of activity to a seeded shop",
     seed: runFollowUp,
     preflight: followUpPreflight,
+    // Each run numbers its ids past the ones the shop holds, and waits for its
+    // rows to reach the views before it ends, so the next run reads them.
+    repeatable: true,
   },
   // Not a data set in the "fills a store" sense, and offered here anyway: this
   // is the menu an operator already reaches for, and a check nobody can find is
