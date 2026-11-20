@@ -25,10 +25,31 @@ steps:
     expect(file.repeatable)->toBe(true)
     expect(file.steps->Array.length)->toBe(3)
     switch file.steps[1] {
-    | Some(WaitFor(field, ids)) =>
+    | Some(WaitFor({field, ids})) =>
       expect((field, ids))->toEqual(("Shop_CategoriesByIds", ["cat-{rep}"]))
     | _ => failwith("expected a wait")
     }
+  })
+
+  testSync("reads whom a step acts as, and refuses an empty one", () => {
+    let file = parsed(`
+steps:
+  - send: Shop_PlaceOrder
+    as: ada
+  - waitFor: {field: Shop_OrdersByIds, ids: ["o-1"]}
+    as: ada
+  - send: Shop_Ping
+`)
+    expect((
+      file.steps->Array.map(
+        step =>
+          switch step {
+          | Send({?as_}) | WaitFor({?as_}) => as_
+          },
+      ),
+      Seed_Play.people(file),
+      Seed_Play.parse(`steps: [{send: A, as: ""}]`)->Result.isError,
+    ))->toEqual(([Some("ada"), Some("ada"), None], ["ada"], true))
   })
 
   testSync("is not repeatable unless it says so", () =>

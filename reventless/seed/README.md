@@ -104,8 +104,11 @@ variables make it a player; each is checked before anything is sent:
 - **`SEED_FILE`** — play a file instead of the app's own sets: mutations by
   name with their arguments, encoded by `Seed.Commands`, and waits for rows to
   arrive. `{rep}` is the repetition's number and `{run}` names the run
-  (`SEED_RUN_TAG`, else the start time). See `Seed_Play.res` for the format, and
-  the online-shop example's `seed-data/play/traffic.yaml`.
+  (`SEED_RUN_TAG`, else the start time). A step with `as: <name>` is sent as
+  the account that plays that person (its `demoOwner`, else its username, in
+  the accounts file), each signed in once; the rest go as the run's caller.
+  See `Seed_Play.res` for the format, and the online-shop example's
+  `seed-data/play/traffic.yaml`.
 
 A pace changes the gaps between events, never the time an event records: the
 platform stamps every event when it accepts the command.

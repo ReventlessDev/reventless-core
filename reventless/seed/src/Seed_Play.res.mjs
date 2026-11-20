@@ -2,6 +2,7 @@
 
 import * as Yaml from "yaml";
 import * as Nodefs from "node:fs";
+import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -10,13 +11,22 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
 import * as Seed_Client$ReventlessSeed from "./Seed_Client.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "./Seed_Prompt.res.mjs";
+import * as Seed_Connect$ReventlessSeed from "./Seed_Connect.res.mjs";
+import * as Seed_Accounts$ReventlessSeed from "./Seed_Accounts.res.mjs";
 import * as Seed_Commands$ReventlessSeed from "./Seed_Commands.res.mjs";
 
 function stepOf(json, index) {
   let at = `step ` + (index + 1 | 0).toString();
+  let as_ = Seed_Commands$ReventlessSeed.str(json, "as");
   let match = Seed_Commands$ReventlessSeed.str(json, "send");
   let match$1 = Seed_Commands$ReventlessSeed.get(json, "args");
   let match$2 = Seed_Commands$ReventlessSeed.get(json, "waitFor");
+  if (Stdlib_Option.isSome(Seed_Commands$ReventlessSeed.get(json, "as")) && Primitive_object.equal(as_, "")) {
+    return {
+      TAG: "Error",
+      _0: at + `: as names nobody`
+    };
+  }
   if (match !== undefined) {
     if (match$1 !== undefined) {
       if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) && match$2 === undefined) {
@@ -24,8 +34,9 @@ function stepOf(json, index) {
           TAG: "Ok",
           _0: {
             TAG: "Send",
-            _0: match,
-            _1: match$1
+            field: match,
+            args: match$1,
+            as_: as_
           }
         };
       }
@@ -34,8 +45,9 @@ function stepOf(json, index) {
         TAG: "Ok",
         _0: {
           TAG: "Send",
-          _0: match,
-          _1: {}
+          field: match,
+          args: {},
+          as_: as_
         }
       };
     }
@@ -48,12 +60,13 @@ function stepOf(json, index) {
           TAG: "Ok",
           _0: {
             TAG: "WaitFor",
-            _0: match$3,
-            _1: Stdlib_Array.filterMap(match$4, id => {
+            field: match$3,
+            ids: Stdlib_Array.filterMap(match$4, id => {
               if (typeof id === "string") {
                 return id;
               }
-            })
+            }),
+            as_: as_
           }
         };
       } else {
@@ -134,14 +147,37 @@ function runTag() {
   return Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("SEED_RUN_TAG"), new Date().toISOString().slice(0, 19).replaceAll("-", "").replaceAll(":", ""));
 }
 
-async function playOnce(file, commands, client, vars) {
+function people(file) {
+  return Stdlib_Array.reduce(Stdlib_Array.filterMap(file.steps, step => step.as_), [], (seen, name) => {
+    if (seen.includes(name)) {
+      return seen;
+    } else {
+      return Belt_Array.concatMany([
+        seen,
+        [name]
+      ]);
+    }
+  });
+}
+
+async function playOnce(file, commands, client, clientOfOpt, vars) {
+  let clientOf = clientOfOpt !== undefined ? clientOfOpt : async param => client;
   for (let i = 0, i_finish = file.steps.length; i < i_finish; ++i) {
+    let clientAs = async as_ => {
+      if (as_ !== undefined) {
+        return await clientOf(as_);
+      } else {
+        return client;
+      }
+    };
     let match = file.steps[i];
     if (match !== undefined) {
       if (match.TAG === "Send") {
-        await Seed_Client$ReventlessSeed.send(client, Seed_Commands$ReventlessSeed.encodeOrThrow(commands, match._0, fill(match._1, vars)), undefined);
+        let client$1 = await clientAs(match.as_);
+        await Seed_Client$ReventlessSeed.send(client$1, Seed_Commands$ReventlessSeed.encodeOrThrow(commands, match.field, fill(match.args, vars)), undefined);
       } else {
-        let ids = match._1.map(id => {
+        let client$2 = await clientAs(match.as_);
+        let ids = match.ids.map(id => {
           let filled = fill(id, vars);
           if (typeof filled === "string") {
             return filled;
@@ -149,7 +185,7 @@ async function playOnce(file, commands, client, vars) {
             return id;
           }
         });
-        await Seed_Client$ReventlessSeed.waitForIds(client, match._0, ids, undefined);
+        await Seed_Client$ReventlessSeed.waitForIds(client$2, match.field, ids, undefined);
       }
     }
   }
@@ -185,9 +221,27 @@ function dataSet(path, nameOpt) {
       repetition.contents = repetition.contents + 1 | 0;
       let rep = repetition.contents.toString();
       console.log(`  run ` + run + `, repetition ` + rep);
+      let clients = {};
+      let clientOf = async name => {
+        let client = clients[name];
+        if (client !== undefined) {
+          return client;
+        }
+        let account = Seed_Accounts$ReventlessSeed.playing(connection.accounts, name);
+        if (account !== undefined) {
+          let client$1 = await Seed_Connect$ReventlessSeed.clientFor(connection, account);
+          clients[name] = client$1;
+          return client$1;
+        }
+        throw {
+          RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+          _1: path + `: no account plays ` + name,
+          Error: new Error()
+        };
+      };
       let commands$1 = commands.contents;
       if (commands$1 !== undefined) {
-        return await playOnce(file$1, commands$1, connection.client, [
+        return await playOnce(file$1, commands$1, connection.client, clientOf, [
           [
             "run",
             run
@@ -206,11 +260,22 @@ function dataSet(path, nameOpt) {
     },
     preflight: async connection => {
       let read = await Seed_Commands$ReventlessSeed.fetch(connection.client);
+      people(file$1).forEach(name => {
+        let match = Seed_Accounts$ReventlessSeed.playing(connection.accounts, name);
+        if (match !== undefined) {
+          return;
+        }
+        throw {
+          RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+          _1: path + `: a step acts as ` + name + `, and no account in the accounts file plays ` + name,
+          Error: new Error()
+        };
+      });
       file$1.steps.forEach(step => {
         if (step.TAG !== "Send") {
           return;
         }
-        let message = Seed_Commands$ReventlessSeed.encode(read, step._0, fill(step._1, [
+        let message = Seed_Commands$ReventlessSeed.encode(read, step.field, fill(step.args, [
           [
             "run",
             run
@@ -241,6 +306,7 @@ export {
   parse,
   fill,
   runTag,
+  people,
   playOnce,
   dataSet,
 }

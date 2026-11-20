@@ -7,41 +7,53 @@
 //     - send: Catalog_AddCategory
 //       args: {categoryId: "cat-{run}-{rep}", name: "Toys {rep}"}
 //     - waitFor: {field: Catalog_CategoriesByIds, ids: ["cat-{run}-{rep}"]}
+//     - send: Ordering_PlaceOrder
+//       as: ada
+//       args: {orderId: "o-{run}-{rep}", categoryId: "cat-{run}-{rep}"}
 //
 // `{rep}` is the repetition's number in this run, `{run}` names the run
 // (`SEED_RUN_TAG`, else the start time), so ids differ between runs and repeat
 // within one when the tag is given.
+//
+// A step with `as` is sent, or waited for, as the account that plays that
+// person: the account whose `demoOwner` is the name, else the one whose
+// username it is, from the accounts file. Each such account signs in once per
+// run; a step without `as` goes as the run's caller.
 
 open Seed_Types
 
 type step =
-  | Send(string, JSON.t)
-  | WaitFor(string, array<string>)
+  | Send({field: string, args: JSON.t, as_?: string})
+  | WaitFor({field: string, ids: array<string>, as_?: string})
 
 type file = {pace?: string, repeatable: bool, steps: array<step>}
 
 let stepOf = (json: JSON.t, ~index: int): result<step, string> => {
   let at = `step ${(index + 1)->Int.toString}`
+  let as_ = json->Seed_Commands.str("as")
   switch (
     json->Seed_Commands.str("send"),
     json->Seed_Commands.get("args"),
     json->Seed_Commands.get("waitFor"),
   ) {
-  | (Some(field), Some(Object(_) as args), None) => Ok(Send(field, args))
-  | (Some(field), None, None) => Ok(Send(field, JSON.Encode.object(Dict.make())))
+  | _ if json->Seed_Commands.get("as")->Option.isSome && as_ == Some("") =>
+    Error(`${at}: as names nobody`)
+  | (Some(field), Some(Object(_) as args), None) => Ok(Send({field, args, ?as_}))
+  | (Some(field), None, None) => Ok(Send({field, args: JSON.Encode.object(Dict.make()), ?as_}))
   | (None, None, Some(wait)) =>
     switch (wait->Seed_Commands.str("field"), wait->Seed_Commands.items("ids")) {
     | (Some(field), ids) if ids->Array.length > 0 =>
       Ok(
-        WaitFor(
+        WaitFor({
           field,
-          ids->Array.filterMap(id =>
+          ids: ids->Array.filterMap(id =>
             switch id {
             | String(s) => Some(s)
             | _ => None
             }
           ),
-        ),
+          ?as_,
+        }),
       )
     | _ => Error(`${at}: waitFor needs a field and a list of ids`)
     }
@@ -89,17 +101,42 @@ let runTag = (): string =>
     ->String.replaceAll(":", ""),
   )
 
-/** Sends one repetition of `file`'s steps. */
-let playOnce = async (file: file, ~commands: Seed_Commands.t, ~client, ~vars) =>
+/** The people the file's steps act as, each once, in the order they first act. */
+let people = (file: file): array<string> =>
+  file.steps
+  ->Array.filterMap(step =>
+    switch step {
+    | Send({?as_}) | WaitFor({?as_}) => as_
+    }
+  )
+  ->Array.reduce([], (seen, name) => seen->Array.includes(name) ? seen : [...seen, name])
+
+/** Sends one repetition of `file`'s steps, each as its person's client (`clientOf`), else as
+    `client`. */
+let playOnce = async (
+  file: file,
+  ~commands: Seed_Commands.t,
+  ~client,
+  ~clientOf: string => promise<Seed_Client.t>=async _ => client,
+  ~vars,
+) =>
   for i in 0 to file.steps->Array.length - 1 {
+    let clientAs = async (as_: option<string>) =>
+      switch as_ {
+      | Some(name) => await clientOf(name)
+      | None => client
+      }
     switch file.steps[i] {
-    | Some(Send(field, args)) =>
+    | Some(Send({field, args, ?as_})) =>
+      let client = await clientAs(as_)
+
       (
         await client->Seed_Client.send(
           commands->Seed_Commands.encodeOrThrow(~field, fill(args, ~vars)),
         )
       )->ignore
-    | Some(WaitFor(field, ids)) =>
+    | Some(WaitFor({field, ids, ?as_})) =>
+      let client = await clientAs(as_)
       let ids = ids->Array.map(id => {
         let filled = fill(String(id), ~vars)
         switch filled {
@@ -134,9 +171,21 @@ let dataSet = (~path: string, ~name="file"): Seed_DataSet.t => {
     pace: ?file.pace,
     preflight: async connection => {
       let read = await Seed_Commands.fetch(connection.client)
+      // Every person a step acts as is played by an account, before anything is sent.
+      people(file)->Array.forEach(name =>
+        switch Seed_Accounts.playing(connection.accounts, name) {
+        | Some(_) => ()
+        | None =>
+          throw(
+            Failed(
+              `${path}: a step acts as ${name}, and no account in the accounts file plays ${name}`,
+            ),
+          )
+        }
+      )
       file.steps->Array.forEach(step =>
         switch step {
-        | Send(field, args) =>
+        | Send({field, args}) =>
           switch read->Seed_Commands.encode(
             ~field,
             fill(args, ~vars=[("run", run), ("rep", "1")]),
@@ -153,12 +202,27 @@ let dataSet = (~path: string, ~name="file"): Seed_DataSet.t => {
       repetition := repetition.contents + 1
       let rep = repetition.contents->Int.toString
       Console.log(`  run ${run}, repetition ${rep}`)
+      // Each person's account signs in once, the first time a step acts as them.
+      let clients: dict<Seed_Client.t> = Dict.make()
+      let clientOf = async name =>
+        switch clients->Dict.get(name) {
+        | Some(client) => client
+        | None =>
+          switch Seed_Accounts.playing(connection.accounts, name) {
+          | None => throw(Failed(`${path}: no account plays ${name}`))
+          | Some(account) =>
+            let client = await Seed_Connect.clientFor(connection, ~account)
+            clients->Dict.set(name, client)
+            client
+          }
+        }
       switch commands.contents {
       | Some(commands) =>
         await playOnce(
           file,
           ~commands,
           ~client=connection.client,
+          ~clientOf,
           ~vars=[("run", run), ("rep", rep)],
         )
       | None => throw(Failed("the file's mutations were not checked before the run"))
