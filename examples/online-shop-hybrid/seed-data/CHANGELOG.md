@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.179 (2026-11-20)
+
+### Features
+
+* **seed:** a run plays at a pace, repeats until stopped, and reads its adapter from the API ([0218ee4](https://github.com/ReventlessDev/reventless-core/commit/0218ee470bc20cfafee84ca52ae02196084cca3a))
+
+
 # 1.0.0-alpha.178 (2026-11-19)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

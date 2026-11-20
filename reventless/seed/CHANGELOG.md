@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.43 (2026-11-20)
+
+### Features
+
+* **local:** the local platform starts an app's stand-ins and serves them ([c438a55](https://github.com/ReventlessDev/reventless-core/commit/c438a553a1f8ce897c0264a0bed6631af8a14e48))
+* **seed:** a run plays at a pace, repeats until stopped, and reads its adapter from the API ([0218ee4](https://github.com/ReventlessDev/reventless-core/commit/0218ee470bc20cfafee84ca52ae02196084cca3a))
+* **seed:** a webhook body is checked against the API, and a speed shortens simulated time ([a1fc0d9](https://github.com/ReventlessDev/reventless-core/commit/a1fc0d9bb4d4e622e70307a7098b056f1f6eb836))
+* **standin:** stand-ins send through an app's own doors, one twin per thing ([35c065b](https://github.com/ReventlessDev/reventless-core/commit/35c065bea60268d83de42c49685c6a9f8897efe4))
+
+
 # 1.0.0-alpha.42 (2026-11-06)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed

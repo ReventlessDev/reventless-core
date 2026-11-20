@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.205 (2026-11-20)
+
+### Features
+
+* **spec:** a translation tells one thing something through a devices capability ([548f28b](https://github.com/ReventlessDev/reventless-core/commit/548f28bcff1caa6f40273619826a387f0bcf9b70))
+
+
 # 3.0.0-alpha.204 (2026-11-19)
 
 ### Bug Fixes

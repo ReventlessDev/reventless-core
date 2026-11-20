@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.343 (2026-11-20)
+
+### Bug Fixes
+
+* **core:** an outbound translation keeps its claim while it translates ([56672a9](https://github.com/ReventlessDev/reventless-core/commit/56672a9db0261a53a30f10071fe64670d1ff2373))
+
+
 # 3.0.0-alpha.342 (2026-11-19)
 
 ### Bug Fixes

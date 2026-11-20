@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.336 (2026-11-20)
+
+### Bug Fixes
+
+* **core:** an outbound translation keeps its claim while it translates ([56672a9](https://github.com/ReventlessDev/reventless-core/commit/56672a9db0261a53a30f10071fe64670d1ff2373))
+### Features
+
+* **local:** the local platform starts an app's stand-ins and serves them ([c438a55](https://github.com/ReventlessDev/reventless-core/commit/c438a553a1f8ce897c0264a0bed6631af8a14e48))
+* **local:** the webhook doors listen over HTTP with secrets of their own, and a schedule fires now ([87672f2](https://github.com/ReventlessDev/reventless-core/commit/87672f27a4b6817100f5efe5ccdd2cb170adfe74))
+* **spec:** a translation tells one thing something through a devices capability ([548f28b](https://github.com/ReventlessDev/reventless-core/commit/548f28bcff1caa6f40273619826a387f0bcf9b70))
+
+
 # 3.0.0-alpha.335 (2026-11-19)
 
 ### Bug Fixes
