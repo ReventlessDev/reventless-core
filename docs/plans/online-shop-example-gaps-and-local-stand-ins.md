@@ -1,7 +1,7 @@
 # Plan: the online shop example closes its gaps, and runs its whole story locally
 
 **Date:** 2026-10-30<br/>
-**Status:** 🚧 [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) built 2026-10-30 and committed in `e05f287ee`. [OE4](#oe4-a-stand-in-geocoder-for-the-local-platform) built 2026-11-20, not yet released, with two framework fixes it uncovered. [OE5](#oe5-contact-verification-extracted-as-a-trait) to [OE7](#oe7-the-examples-readme-says-it) not started.<br/>
+**Status:** 🚧 [OE1](#oe1-a-category-brought-back-takes-products-again) to [OE3](#oe3-a-plugin-with-no-slices-yet-builds) built 2026-10-30 and committed in `e05f287ee`. [OE4](#oe4-a-stand-in-geocoder-for-the-local-platform) built 2026-11-20, not yet released, with two framework fixes it uncovered. [OE7](#oe7-the-examples-readme-says-it)'s places half written 2026-11-21; its trait half waits for [OE5](#oe5-contact-verification-extracted-as-a-trait). [OE5](#oe5-contact-verification-extracted-as-a-trait) and [OE6](#oe6-the-visitor-door-on-aws-when-the-example-is-to-sign-visitors-up-there) not started.<br/>
 **Owns:** two behavior gaps in
 [examples/online-shop-hybrid](../../examples/online-shop-hybrid/README.md), a plugin with no
 slices yet that fails its build, and a stand-in geocoder for the local platform. It also orders

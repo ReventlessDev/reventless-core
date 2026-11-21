@@ -116,6 +116,15 @@ reads every customer's orders and may ship them; acting as `Shopper`, the same
 account reads only its own and the API refuses `ShipOrder` outright — the switch
 narrows the token, so the menu, the data and what the server accepts all agree.
 
+`setup` also copies [`places.example.yaml`](platform-local/places.example.yaml) to
+`platform-local/.reventless/places.yaml`: the six cities the seed's customers live in,
+with their points. The local platform has no real geocoder, so this list is what
+answers the `Customer` aggregate's geocoding slice. An address ending in a listed
+city, such as `12 Elm Row, Delft`, is located and shows on the `Customers` map. Any
+other address stays pending rather than getting a made-up point. Add a line to the
+file to locate more places. See
+[Places the local geocoder knows](../../docs/guides/local-dev.md#places-the-local-geocoder-knows).
+
 Via the UI, use the LoginPage; against the backend directly:
 
 ```bash
