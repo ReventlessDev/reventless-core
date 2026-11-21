@@ -13,11 +13,13 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as RowImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/RowImage.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as RowChange$ReventlessCore from "@reventlessdev/reventless-core/src/RowChange.res.mjs";
+import * as SchemaType$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
@@ -743,6 +745,9 @@ function Make(Bus) {
       }
     };
     fieldResolvers[RowChange$ReventlessCore.key] = changeResolver;
+    Stdlib_Option.forEach(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], s => SchemaType$ReventlessCore.trailEntered(returnTypeName, s)), param => {
+      fieldResolvers[param.field] = async (root, _args, _ctx) => Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(root), null, Lifecycle$Reventless.Trail.readEntered);
+    });
     server.registerFieldResolvers(returnTypeName, fieldResolvers);
     let allSdl = [byIdSdl].concat(byIdsSdl).concat(refsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};

@@ -77,6 +77,38 @@ export function response(ctx) {
 `->Pulumi.Input.make
 
 /**
+A lifecycle trail's dates, read off the attributes stored beside it: per state
+`<enteredPrefix><State>` (latest), its `_first` twin and `<visitsPrefix><State>`,
+and `currentAttr`. Answered without a data source call.
+*/
+let trailEnteredField = (
+  ~enteredPrefix: string,
+  ~visitsPrefix: string,
+  ~currentAttr: string,
+  ~currentKey: string,
+): Pulumi.Input.t<string> =>
+  `import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const row = ctx.source ?? {};
+  const out = { ${currentKey}: row['${currentAttr}'] ?? null };
+  for (const key of Object.keys(row)) {
+    if (key.startsWith('${enteredPrefix}') && key !== '${currentAttr}' && !key.endsWith('_first')) {
+      const state = key.slice(${enteredPrefix->String.length->Int.toString});
+      out[state.charAt(0).toLowerCase() + state.slice(1)] = {
+        latest: row[key],
+        first: row[key + '_first'] ?? row[key],
+        visits: row['${visitsPrefix}' + state] ?? 1,
+      };
+    }
+  }
+  return runtime.earlyReturn(out);
+}
+export function response(ctx) {
+  return ctx.result;
+}
+`->Pulumi.Input.make
+
+/**
 A by-key read's retirement guard: `_live(row)`, true when the caller may see it.
 The post-read half of what `listAllItemsConnection` pushes into a
 FilterExpression — `GetItem` has none to push into.

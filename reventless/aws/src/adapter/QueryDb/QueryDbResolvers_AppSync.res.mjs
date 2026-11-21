@@ -21,6 +21,7 @@ import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-p
 import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as QueryDbResolvers_TrailEntered$ReventlessAws from "./QueryDbResolvers_TrailEntered.res.mjs";
 import * as QueryInterceptor_Provisioning$ReventlessAws from "./QueryInterceptor_Provisioning.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -305,13 +306,15 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       );
     let refsResolvers = Stdlib_Option.mapOr(resolverRefs, [], r => [r]);
     let changeResolver = AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + "RowChange", api, dataSourceName, parentTypeName, RowChange$ReventlessCore.key, AppSync_Resolver_Functions$PulumiAws.rowChangeField(RowChange$ReventlessCore.key, elevatedGroups), opts);
+    let enteredResolvers = Stdlib_Option.mapOr(QueryDbResolvers_TrailEntered$ReventlessAws.make(name$1, api, dataSourceName, parentTypeName, stateSchemaOpt, opts), [], r => [r]);
     return [
       mainResolvers,
       refsResolvers,
       resolversByIndex,
       idResolvers,
       idsResolvers,
-      [changeResolver]
+      [changeResolver],
+      enteredResolvers
     ].flat().map(Util_AppSync$ReventlessAws.toResourceNative);
   };
   return {

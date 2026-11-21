@@ -3,6 +3,8 @@
 import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
@@ -11,6 +13,7 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as CalendarDate$Reventless from "@reventlessdev/reventless-spec/src/semantic/CalendarDate.res.mjs";
 import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 function isIdentity(schema) {
   let match = Sury.$Metadata_get(schema, Semantic$Reventless.semanticId);
@@ -394,6 +397,59 @@ function trailShape(parentName, trailField, lifecycleField, schema) {
   }
 }
 
+function trailEntered(typeName, schema) {
+  return Stdlib_Option.map(Stdlib_Option.filter(Lifecycle$Reventless.Trail.readableField(schema), trailField => !Stdlib_Option.getOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(schema), spec => spec.internal), []).includes(trailField)), trailField => {
+    let base = typeName + Stdlib_String.capitalize(trailField);
+    let visits_0 = base + "Visits";
+    let visits_1 = Object.fromEntries([
+      [
+        "latest",
+        "DateTime"
+      ],
+      [
+        "first",
+        "DateTime"
+      ],
+      [
+        "visits",
+        "ScalarInt"
+      ]
+    ]);
+    let visits = {
+      TAG: "ObjectRef",
+      _0: visits_0,
+      _1: visits_1
+    };
+    let fields = {};
+    Lifecycle$Reventless.stateNames(schema).forEach(state => {
+      let key = Lifecycle$Reventless.Trail.stateKey(state);
+      if (key === Lifecycle$Reventless.Trail.currentKey) {
+        Stdlib_JsError.throwWithMessage(typeName + `: the state "` + state + `" reads as "` + key + `", which its trail's dates use for the current state. Rename the state.`);
+      }
+      fields[key] = {
+        TAG: "Nullable",
+        _0: visits
+      };
+    });
+    fields[Lifecycle$Reventless.Trail.currentKey] = {
+      TAG: "Nullable",
+      _0: "DateTime"
+    };
+    return {
+      trailField: trailField,
+      field: Lifecycle$Reventless.Trail.enteredField(trailField),
+      shape: {
+        TAG: "Nullable",
+        _0: {
+          TAG: "ObjectRef",
+          _0: base + "Entered",
+          _1: fields
+        }
+      }
+    };
+  });
+}
+
 function fromSuryObject(typeName, schema) {
   if (schema.type !== "object") {
     return;
@@ -448,6 +504,7 @@ export {
   unclassifiedUnions,
   optionalFieldNames,
   trailShape,
+  trailEntered,
   fromSuryObject,
 }
 /* sury Not a pure module */

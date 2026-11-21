@@ -189,6 +189,16 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   } else {
     filteredFields = fields;
   }
+  let match = SchemaType$ReventlessCore.trailEntered(typeName, schema);
+  if (match !== undefined) {
+    let field = match.field;
+    if (Stdlib_Option.isSome(filteredFields[match.trailField])) {
+      if (Stdlib_Option.isSome(fields[field])) {
+        Stdlib_JsError.throwWithMessage(typeName + `.` + field + ` is a field of the state record, and a trail's dates are read under that name. Name the field something else.`);
+      }
+      filteredFields[field] = match.shape;
+    }
+  }
   let collectedTypes = [];
   let seenTypes = new Set();
   seenTypes.add(typeName);

@@ -239,6 +239,17 @@ let deriveObjectTypeWithNested = (
     } else {
       fields
     }
+    // A trail's derived dates, beside the trail they are read from.
+    switch SchemaType.trailEntered(~typeName, schema) {
+    | Some({trailField, field, shape}) if filteredFields->Dict.get(trailField)->Option.isSome =>
+      if fields->Dict.get(field)->Option.isSome {
+        JsError.throwWithMessage(
+          `${typeName}.${field} is a field of the state record, and a trail's dates are read under that name. Name the field something else.`,
+        )
+      }
+      filteredFields->Dict.set(field, shape)
+    | _ => ()
+    }
     let collectedTypes: array<string> = []
     let seenTypes = Set.make()
     seenTypes->Set.add(typeName)

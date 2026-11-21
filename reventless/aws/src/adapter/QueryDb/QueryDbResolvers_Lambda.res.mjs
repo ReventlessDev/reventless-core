@@ -8,6 +8,7 @@ import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-p
 import * as PgQueryResolver_Builder$ReventlessAws from "./PgQueryResolver_Builder.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as QueryDbResolvers_TrailEntered$ReventlessAws from "./QueryDbResolvers_TrailEntered.res.mjs";
 
 let identityBlock = `id != null && id.sub != null
       ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
@@ -149,10 +150,11 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
       let extra = `\n      sourceIdsField: '` + match.idsField + `',`;
       return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(resolvedField), api, dataSourceName, parentTypeName, resolvedField, invokeFieldTemplate(name$1, "resolveMany", targetKey, extra), opts);
     });
+    let entered = Stdlib_Option.mapOr(QueryDbResolvers_TrailEntered$ReventlessAws.make(name$1, api, dataSourceName, parentTypeName, Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name$1], opts), [], r => [r]);
     return [
       byId,
       all
-    ].concat(items).concat(byIds).concat(refs).concat(byIndex).concat(idResolvers).concat(idsResolvers).map(Util_AppSync$ReventlessAws.toResourceNative);
+    ].concat(items).concat(byIds).concat(refs).concat(byIndex).concat(idResolvers).concat(idsResolvers).concat(entered).map(Util_AppSync$ReventlessAws.toResourceNative);
   };
   return {
     resources: [],

@@ -720,6 +720,15 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ~code=Resolver.Functions.rowChangeField(~field=ReventlessCore.RowChange.key, ~elevatedGroups),
       ~opts,
     )
+    let enteredResolvers =
+      QueryDbResolvers_TrailEntered.make(
+        ~name,
+        ~api,
+        ~dataSourceName,
+        ~parentTypeName,
+        ~stateSchema=stateSchemaOpt,
+        ~opts,
+      )->Option.mapOr([], r => [r])
     Array.flat([
       mainResolvers,
       refsResolvers,
@@ -727,6 +736,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       idResolvers,
       idsResolvers,
       [changeResolver],
+      enteredResolvers,
     ])->Array.map(Util.AppSync.toResourceNative)
   }
 

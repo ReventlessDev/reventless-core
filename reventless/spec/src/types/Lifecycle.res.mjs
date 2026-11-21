@@ -61,6 +61,34 @@ function fieldName(stateSchema) {
   }
 }
 
+function stateNames(stateSchema) {
+  let match = fieldName(stateSchema);
+  if (match === undefined) {
+    return [];
+  }
+  if (stateSchema.type !== "object") {
+    return [];
+  }
+  let match$1 = stateSchema.properties[match];
+  if (match$1 !== undefined) {
+    if (match$1.type === "anyOf") {
+      return Stdlib_Array.filterMap(match$1.anyOf, v => {
+        if (v.type !== "string") {
+          return;
+        }
+        let c = v.const;
+        if (c !== undefined) {
+          return c;
+        }
+      });
+    } else {
+      return [];
+    }
+  } else {
+    return [];
+  }
+}
+
 function entrySchema(_stateSchema) {
   return Sury.$schema(s => ({
     state: s.m(_stateSchema),
@@ -176,6 +204,52 @@ function writeDerived(stateDict, field) {
   });
 }
 
+function enteredField(trailField) {
+  return trailField + "Entered";
+}
+
+function stateKey(state) {
+  return state.charAt(0).toLowerCase() + state.slice(1);
+}
+
+let currentKey = "current";
+
+function readableField(stateSchema) {
+  let trail = fieldName$1(stateSchema);
+  if (trail !== undefined && Stdlib_Option.isSome(fieldName(stateSchema))) {
+    return trail;
+  }
+}
+
+function readEntered(row) {
+  let out = {};
+  Object.entries(row).forEach(param => {
+    let key = param[0];
+    if (!(key.startsWith(enteredPrefix) && key !== enteredCurrentAttr && !key.endsWith("_first"))) {
+      return;
+    }
+    let latest = param[1];
+    let state = key.slice(enteredPrefix.length);
+    let visits = Object.fromEntries([
+      [
+        "latest",
+        latest
+      ],
+      [
+        "first",
+        Stdlib_Option.getOr(row[enteredFirstAttr(state)], latest)
+      ],
+      [
+        "visits",
+        Stdlib_Option.getOr(row[visitsPrefix + state], 1)
+      ]
+    ]);
+    out[stateKey(state)] = visits;
+  });
+  out[currentKey] = Stdlib_Option.getOr(row[enteredCurrentAttr], null);
+  return out;
+}
+
 let Trail = {
   entrySchema: entrySchema,
   schema: schema,
@@ -189,13 +263,19 @@ let Trail = {
   enteredFirstAttr: enteredFirstAttr,
   visitsAttr: visitsAttr,
   enteredCurrentAttr: enteredCurrentAttr,
-  writeDerived: writeDerived
+  writeDerived: writeDerived,
+  enteredField: enteredField,
+  stateKey: stateKey,
+  currentKey: currentKey,
+  readableField: readableField,
+  readEntered: readEntered
 };
 
 export {
   isEnumSchema,
   isLifecycleShape,
   fieldName,
+  stateNames,
   Trail,
 }
 /* sury Not a pure module */

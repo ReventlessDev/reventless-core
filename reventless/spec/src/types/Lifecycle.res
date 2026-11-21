@@ -49,6 +49,23 @@ let fieldName = (stateSchema: S.t<unknown>): option<string> =>
     }
   }
 
+/** The lifecycle's states as the wire spells them, in declared order. */
+let stateNames = (stateSchema: S.t<unknown>): array<string> =>
+  switch (fieldName(stateSchema), stateSchema) {
+  | (Some(field), Object({properties})) =>
+    switch properties->Dict.get(field) {
+    | Some(AnyOf({anyOf})) =>
+      anyOf->Array.filterMap(v =>
+        switch v {
+        | String({const: ?Some(c)}) => Some(c)
+        | _ => None
+        }
+      )
+    | _ => []
+    }
+  | _ => []
+  }
+
 /**
 The ordered record of the states a row has been through.
 
@@ -56,6 +73,8 @@ Ordered rather than keyed by state because a lifecycle revisits states — a
 reopened order is `Placed` twice, and a map has to choose which visit to keep.
 A state the row never reached has no entry; there is no value to invent for it.
 */
+%%private(let lifecycleFieldName = fieldName)
+
 module Trail = {
   /** One state the row entered, and the instant it did. */
   @schema
@@ -164,5 +183,48 @@ module Trail = {
       current->Option.forEach(at => stateDict->Dict.set(enteredCurrentAttr, JSON.Encode.string(at)))
     | _ => ()
     }
+  }
+
+  /** The API field beside a trail that reads its derived dates. */
+  let enteredField = trailField => trailField ++ "Entered"
+
+  /** A state's key inside that object: `Placed` → `placed`. */
+  let stateKey = state =>
+    state->String.charAt(0)->String.toLowerCase ++ state->String.slice(~start=1)
+
+  /** The key the object holds the current state's entry under. */
+  let currentKey = "current"
+
+  /** The trail field whose dates a view reads: its trail, when it also declares a
+      lifecycle the entries name. */
+  let readableField = (stateSchema: S.t<unknown>): option<string> =>
+    switch fieldName(stateSchema) {
+    | Some(_) as trail if lifecycleFieldName(stateSchema)->Option.isSome => trail
+    | _ => None
+    }
+
+  /** The `<trail>Entered` object a row's derived attributes read as: per state
+      visited, `{latest, first, visits}`, and `current`. */
+  let readEntered = (row: dict<JSON.t>): JSON.t => {
+    let out = Dict.make()
+    row
+    ->Dict.toArray
+    ->Array.forEach(((key, latest)) =>
+      if (
+        key->String.startsWith(enteredPrefix) &&
+        key != enteredCurrentAttr &&
+        !(key->String.endsWith("_first"))
+      ) {
+        let state = key->String.slice(~start=enteredPrefix->String.length)
+        let visits = Dict.fromArray([
+          ("latest", latest),
+          ("first", row->Dict.get(enteredFirstAttr(state))->Option.getOr(latest)),
+          ("visits", row->Dict.get(visitsAttr(state))->Option.getOr(JSON.Encode.int(1))),
+        ])
+        out->Dict.set(stateKey(state), visits->JSON.Encode.object)
+      }
+    )
+    out->Dict.set(currentKey, row->Dict.get(enteredCurrentAttr)->Option.getOr(JSON.Encode.null))
+    out->JSON.Encode.object
   }
 }

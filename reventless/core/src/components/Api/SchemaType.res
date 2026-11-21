@@ -431,6 +431,46 @@ let trailShape = (
   }
 }
 
+/** The `<trail>Entered` field of a view whose trail names a lifecycle: the trail
+    it reads, its name and its shape (one nullable entry per state, and the
+    current state's instant). */
+type trailEntered = {trailField: string, field: string, shape: schemaType}
+
+let trailEntered = (~typeName: string, schema: S.t<unknown>): option<trailEntered> =>
+  Reventless.Lifecycle.Trail.readableField(schema)
+  // An `@internal` trail keeps its dates internal too.
+  ->Option.filter(trailField =>
+    !(
+      Reventless.StateAnnotations.getSpec(schema)
+      ->Option.flatMap(spec => spec.internal)
+      ->Option.getOr([])
+      ->Array.includes(trailField)
+    )
+  )
+  ->Option.map(trailField => {
+    let base = typeName ++ trailField->String.capitalize
+    let visits = ObjectRef(
+      base ++ "Visits",
+      Dict.fromArray([("latest", DateTime), ("first", DateTime), ("visits", ScalarInt)]),
+    )
+    let fields = Dict.make()
+    Reventless.Lifecycle.stateNames(schema)->Array.forEach(state => {
+      let key = Reventless.Lifecycle.Trail.stateKey(state)
+      if key == Reventless.Lifecycle.Trail.currentKey {
+        JsError.throwWithMessage(
+          `${typeName}: the state "${state}" reads as "${key}", which its trail's dates use for the current state. Rename the state.`,
+        )
+      }
+      fields->Dict.set(key, Nullable(visits))
+    })
+    fields->Dict.set(Reventless.Lifecycle.Trail.currentKey, Nullable(DateTime))
+    {
+      trailField,
+      field: Reventless.Lifecycle.Trail.enteredField(trailField),
+      shape: Nullable(ObjectRef(base ++ "Entered", fields)),
+    }
+  })
+
 let fromSuryObject = (~typeName: string, schema: S.t<unknown>): option<dict<schemaType>> =>
   switch schema {
   | Object({properties}) =>

@@ -1213,6 +1213,17 @@ module Make = (Bus: LocalBus.T) => {
         ? root->sourceField(ReventlessCore.RowChange.key)->Option.getOr(JSON.Encode.null)
         : JSON.Encode.null
     fieldResolvers->Dict.set(ReventlessCore.RowChange.key, changeResolver)
+    // A trail's dates, read off the attributes the projection derives beside it.
+    Plugin_Helpers.stateSchemaRegistry
+    ->Dict.get(name)
+    ->Option.flatMap(s => SchemaType.trailEntered(~typeName=returnTypeName, s))
+    ->Option.forEach(({field}) =>
+      fieldResolvers->Dict.set(field, async (root, _args, _ctx) =>
+        root
+        ->JSON.Decode.object
+        ->Option.mapOr(JSON.Encode.null, Reventless.Lifecycle.Trail.readEntered)
+      )
+    )
     server.registerFieldResolvers(~typeName=returnTypeName, ~resolvers=fieldResolvers)
 
     // -- Register all fields --------------------------------------------------

@@ -49,6 +49,7 @@ type Catalog_Category implements Node {
   name: String!
   shelfStatus: Catalog_CategoryShelfStatus!
   trail: [Catalog_CategoryTrail!]!
+  trailEntered: Catalog_CategoryTrailEntered
 }
 
 type Catalog_CategoryConnection {
@@ -94,6 +95,18 @@ type Catalog_CategoryTrail {
   afterGap: Boolean
   at: String!
   state: Catalog_CategoryShelfStatus!
+}
+
+type Catalog_CategoryTrailEntered {
+  archived: Catalog_CategoryTrailVisits
+  current: String
+  listed: Catalog_CategoryTrailVisits
+}
+
+type Catalog_CategoryTrailVisits {
+  first: String!
+  latest: String!
+  visits: Int!
 }
 
 type Catalog_ImportProductAudit implements Node {
@@ -154,6 +167,7 @@ type Catalog_Product implements Node {
   productImages: [CaptionedImage!]!
   shelfStatus: Catalog_ProductShelfStatus!
   trail: [Catalog_ProductTrail!]!
+  trailEntered: Catalog_ProductTrailEntered
 }
 
 type Catalog_ProductConnection {
@@ -245,6 +259,19 @@ type Catalog_ProductTrail {
   afterGap: Boolean
   at: String!
   state: Catalog_ProductShelfStatus!
+}
+
+type Catalog_ProductTrailEntered {
+  archived: Catalog_ProductTrailVisits
+  current: String
+  discontinued: Catalog_ProductTrailVisits
+  listed: Catalog_ProductTrailVisits
+}
+
+type Catalog_ProductTrailVisits {
+  first: String!
+  latest: String!
+  visits: Int!
 }
 
 type CommandAccepted {
@@ -1063,6 +1090,7 @@ type Ordering_Order implements Node {
   shippingMethod: Ordering_OrderShippingMethod!
   total: Money!
   trail: [Ordering_OrderTrail!]!
+  trailEntered: Ordering_OrderTrailEntered
 }
 
 type Ordering_OrderConnection {
@@ -1123,6 +1151,19 @@ type Ordering_OrderTrail {
   afterGap: Boolean
   at: String!
   state: Ordering_OrderLifecycle!
+}
+
+type Ordering_OrderTrailEntered {
+  cancelled: Ordering_OrderTrailVisits
+  current: String
+  placed: Ordering_OrderTrailVisits
+  shipped: Ordering_OrderTrailVisits
+}
+
+type Ordering_OrderTrailVisits {
+  first: String!
+  latest: String!
+  visits: Int!
 }
 
 input Ordering_OrderingEventHistoryFilter {

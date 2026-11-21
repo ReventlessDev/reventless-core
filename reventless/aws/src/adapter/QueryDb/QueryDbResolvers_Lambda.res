@@ -284,6 +284,16 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     })
 
+    let entered =
+      QueryDbResolvers_TrailEntered.make(
+        ~name,
+        ~api,
+        ~dataSourceName,
+        ~parentTypeName,
+        ~stateSchema=ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.get(name),
+        ~opts,
+      )->Option.mapOr([], r => [r])
+
     [byId, all]
     ->Array.concat(items)
     ->Array.concat(byIds)
@@ -291,6 +301,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     ->Array.concat(byIndex)
     ->Array.concat(idResolvers)
     ->Array.concat(idsResolvers)
+    ->Array.concat(entered)
     ->Array.map(Util.AppSync.toResourceNative)
   }
 

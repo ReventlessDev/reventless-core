@@ -55,6 +55,29 @@ export function response(ctx) {
 `;
 }
 
+function trailEnteredField(enteredPrefix, visitsPrefix, currentAttr, currentKey) {
+  return `import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const row = ctx.source ?? {};
+  const out = { ` + currentKey + `: row['` + currentAttr + `'] ?? null };
+  for (const key of Object.keys(row)) {
+    if (key.startsWith('` + enteredPrefix + `') && key !== '` + currentAttr + `' && !key.endsWith('_first')) {
+      const state = key.slice(` + enteredPrefix.length.toString() + `);
+      out[state.charAt(0).toLowerCase() + state.slice(1)] = {
+        latest: row[key],
+        first: row[key + '_first'] ?? row[key],
+        visits: row['` + visitsPrefix + `' + state] ?? 1,
+      };
+    }
+  }
+  return runtime.earlyReturn(out);
+}
+export function response(ctx) {
+  return ctx.result;
+}
+`;
+}
+
 function retiredGuardPreamble(retiredField, retiredValues, elevatedGroups, ownerScoped) {
   if (retiredField === undefined) {
     return "";
@@ -1314,6 +1337,7 @@ export {
   ownerGuardPreamble,
   exemptPreamble,
   rowChangeField,
+  trailEnteredField,
   retiredGuardPreamble,
   ownerFilterClause,
   retiredFilterClause,

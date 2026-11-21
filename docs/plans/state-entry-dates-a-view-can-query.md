@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) done). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) and [QDS2](#4-steps) done). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -97,6 +97,15 @@ trail no longer holds.
 synthetic attributes. The attributes themselves stay out of the SDL.
 *Done when* a GraphQL test on the in-memory backend reads `trailEntered { placed { latest first
 visits } current }` for a reopened row, and the SDL snapshot shows the type.
+*Done* 2026-11-22. The object is a field resolver on the view's type, as `_change` is, rather
+than a step in each backend's row reader: one resolver locally (in-memory, SQLite and Postgres
+alike) and one APPSYNC_JS field resolver on AWS, attached by both the DynamoDB and the Postgres
+resolver sets, which answers without a data source call. Both read the same attributes
+(`Lifecycle.Trail.readEntered` locally). The SDL types are `<Type><Trail>Entered` (one nullable
+entry per state, keyed `placed`, and `current`) and `<Type><Trail>Visits { latest first visits }`;
+the field is nullable, and absent when the trail is `@internal`. A state whose key would be
+`current` is refused at generation. The hybrid example's `domain-api.graphql` golden carries the
+three views' types.
 
 **QDS3 The annotation.** `@trail` joins the ppx vocabulary with an optional `index` argument: a
 list of lifecycle constructors, or nothing for the lifecycle index alone ([QDD2](#3-decisions)).

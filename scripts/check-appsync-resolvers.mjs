@@ -27,6 +27,7 @@
 import { AppSyncClient, EvaluateCodeCommand } from '@aws-sdk/client-appsync'
 import * as F from '../rescript/pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs'
 import * as Lambda from '../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_Lambda.res.mjs'
+import * as TrailEntered from '../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_TrailEntered.res.mjs'
 
 const VERBOSE = process.argv.includes('--verbose')
 const REGION = process.env.AWS_REGION ?? 'eu-west-1'
@@ -132,6 +133,8 @@ const generateUnits = () => {
     'listAllItems', 'pipelinePassThrough', 'putItem', 'queryById', 'result', 'resultList',
     'resultListResponseCode', 'resultResponseCode'])
     push(name, F[name])
+
+  push('trailEnteredField', TrailEntered.code())
 
   // The Postgres read models reach their Lambda through templates of their own.
   push('invokeTemplate__plain', Lambda.invokeTemplate('Products', 'list', undefined, undefined, undefined))
