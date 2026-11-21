@@ -185,6 +185,23 @@ module Trail = {
     }
   }
 
+  /** A derived date as a query names it, and the attribute it is stored under. */
+  type queryName = {name: string, attr: string, isCount: bool}
+
+  /** The name the current state's entry date is queried by. */
+  let enteredCurrentName = "enteredCurrent"
+
+  /** A state's dates as a query names them: `enteredPlaced` (latest visit),
+      `enteredPlacedFirst` and `visitsPlaced`. */
+  let queryNames = (state: string): array<queryName> => {
+    let s = state->String.charAt(0)->String.toUpperCase ++ state->String.slice(~start=1)
+    [
+      {name: "entered" ++ s, attr: enteredAttr(state), isCount: false},
+      {name: "entered" ++ s ++ "First", attr: enteredFirstAttr(state), isCount: false},
+      {name: "visits" ++ s, attr: visitsAttr(state), isCount: true},
+    ]
+  }
+
   /** The API field beside a trail that reads its derived dates. */
   let enteredField = trailField => trailField ++ "Entered"
 

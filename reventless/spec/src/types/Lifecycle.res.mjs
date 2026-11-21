@@ -204,6 +204,27 @@ function writeDerived(stateDict, field) {
   });
 }
 
+function queryNames(state) {
+  let s = state.charAt(0).toUpperCase() + state.slice(1);
+  return [
+    {
+      name: "entered" + s,
+      attr: enteredPrefix + state,
+      isCount: false
+    },
+    {
+      name: "entered" + s + "First",
+      attr: enteredFirstAttr(state),
+      isCount: false
+    },
+    {
+      name: "visits" + s,
+      attr: visitsPrefix + state,
+      isCount: true
+    }
+  ];
+}
+
 function enteredField(trailField) {
   return trailField + "Entered";
 }
@@ -264,6 +285,8 @@ let Trail = {
   visitsAttr: visitsAttr,
   enteredCurrentAttr: enteredCurrentAttr,
   writeDerived: writeDerived,
+  enteredCurrentName: "enteredCurrent",
+  queryNames: queryNames,
   enteredField: enteredField,
   stateKey: stateKey,
   currentKey: currentKey,

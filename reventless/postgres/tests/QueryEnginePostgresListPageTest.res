@@ -218,6 +218,119 @@ switch processEnv->Dict.get("PG_URL") {
     )
   })
 
+  // ── a trail's derived dates ───────────────────────────────────────────────
+  // "In Placed since before a bound, longest there first", read under the
+  // attributes the dates are stored as, across two pages.
+  let trailName = "trailparity"
+  let trailCapability: GraphQL_FragmentGenerator.serverCapability = {
+    filterFields: [
+      {name: "lifecycle", gqlType: "String", range: false},
+      {name: "enteredCurrent", gqlType: "String", range: true},
+    ],
+    sortFields: ["enteredCurrent"],
+    stored: Dict.fromArray([("enteredCurrent", "_entered_current")]),
+  }
+  let trailRow = (id, lifecycle, entries: array<(string, string)>) => {
+    let d = Dict.fromArray([
+      ("id", JSON.Encode.string(id)),
+      ("lifecycle", JSON.Encode.string(lifecycle)),
+      (
+        "trail",
+        entries
+        ->Array.map(((state, at)) =>
+          Dict.fromArray([
+            ("state", JSON.Encode.string(state)),
+            ("at", JSON.Encode.string(at)),
+          ])->JSON.Encode.object
+        )
+        ->JSON.Encode.array,
+      ),
+    ])
+    Reventless.Lifecycle.Trail.writeDerived(d, ~field="trail")
+    (id, d->JSON.Encode.object)
+  }
+  let trailRows = [
+    trailRow("o-1", "Placed", [("Placed", "2026-03-01T09:00:00Z")]),
+    trailRow("o-2", "Placed", [("Placed", "2026-03-03T09:00:00Z")]),
+    trailRow(
+      "o-3",
+      "Shipped",
+      [("Placed", "2026-02-26T09:00:00Z"), ("Shipped", "2026-03-02T09:00:00Z")],
+    ),
+    trailRow("o-4", "Placed", [("Placed", "2026-03-02T09:00:00Z")]),
+    trailRow(
+      "o-5",
+      "Placed",
+      [
+        ("Placed", "2026-02-28T09:00:00Z"),
+        ("Cancelled", "2026-03-01T09:00:00Z"),
+        ("Placed", "2026-03-04T09:00:00Z"),
+      ],
+    ),
+    trailRow("o-6", "Placed", [("Placed", "2026-02-27T09:00:00Z")]),
+  ]
+  let trailRequest = (~after=?) =>
+    argsOf(
+      [
+        (
+          "filter",
+          filterOf([
+            ("lifecycleEq", JSON.Encode.string("Placed")),
+            ("enteredCurrentTo", JSON.Encode.string("2026-03-03T12:00:00Z")),
+          ]),
+        ),
+        ("orderBy", orderBy("enteredCurrent", "ASC")),
+        ("first", JSON.Encode.int(2)),
+      ]->Array.concat(
+        switch after {
+        | Some(c) => [("after", JSON.Encode.string(c))]
+        | None => []
+        },
+      ),
+    )
+  beforeAllAsync(async () => {
+    let ops = QueryDbStorage_Postgres.makeOperations(
+      ~pool,
+      ~name=trailName,
+      ~indexes=[],
+      ~subIdField=None,
+    )
+    for i in 0 to trailRows->Array.length - 1 {
+      let (id, item) = trailRows->Array.getUnsafe(i)
+      let _ = await ops.save(id, item, QueryDb.Any, None)
+    }
+  })
+
+  testPromise("a trail's dates: a state and how long rows have been in it, two pages", async () => {
+    let page = async argsDict =>
+      (
+        await Eng.listPage(
+          ~readModelName=trailName,
+          ~argsDict,
+          ~capability=trailCapability,
+          ~labelField="id",
+        )
+      )->Option.getOrThrow
+    let spec = argsDict =>
+      QueryDbListQuery.run(
+        ~items=trailRows->Array.map(((_, item)) => item),
+        ~argsDict,
+        ~capability=trailCapability,
+        ~labelField="id",
+        ~decodeLocalId=_ => None,
+      )->norm
+    let first = await page(trailRequest())
+    expect((first->norm).edges->Array.map(e => e.id))->toEqual(["o-6", "o-1"])
+    expect(first->norm)->toEqual(spec(trailRequest()))
+    let after = (first->norm).endCursor->Option.getOrThrow
+    let second = await page(trailRequest(~after))
+    expect(((second->norm).edges->Array.map(e => e.id), (second->norm).hasNext))->toEqual((
+      ["o-4", "o-2"],
+      false,
+    ))
+    expect(second->norm)->toEqual(spec(trailRequest(~after)))
+  })
+
   // ── indexLookup / byIds push-downs ────────────────────────────────────────
   let idsOf = (items: array<JSON.t>): array<string> =>
     items->Array.filterMap(i => i->str("id"))->Array.toSorted(String.compare)

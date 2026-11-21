@@ -7,6 +7,7 @@ import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "./Api_Ids.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "./GraphQL_FragmentGenerator.res.mjs";
 
 function encodeCursor(value) {
   return btoa(value);
@@ -60,24 +61,26 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
   let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
   let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
+  let stored = name => GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name);
   let perFieldChecks = capability.filterFields.flatMap(f => {
+    let attr = GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, f.name);
     let checks = [];
     let v = filterDict[f.name + "Eq"];
     if (v !== undefined && v !== null) {
       let s = Stdlib_JSON.Decode.string(v);
       let expected = s !== undefined ? s : Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString()), "");
-      checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v === expected));
+      checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => v === expected));
     }
     if (f.range) {
       let v$1 = filterDict[f.name + "From"];
       if (v$1 !== undefined && v$1 !== null) {
         let from = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$1), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$1), f => f.toString()), ""));
-        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v >= from));
+        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => v >= from));
       }
       let v$2 = filterDict[f.name + "To"];
       if (v$2 !== undefined && v$2 !== null) {
         let to_ = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$2), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$2), f => f.toString()), ""));
-        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v <= to_));
+        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => v <= to_));
       }
     }
     return checks;
@@ -109,7 +112,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     }
   });
   let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
-  let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
+  let orderByField = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string), stored);
   let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC");
   let isDesc = direction === "DESC";
   let sorted;

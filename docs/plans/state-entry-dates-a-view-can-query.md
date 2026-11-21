@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS3](#4-steps) done). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS4](#4-steps) done). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -126,6 +126,16 @@ trail; the lifecycle field becomes filterable by `Eq`. Each name sorts. The in-m
 Postgres resolvers map the API names to the attributes through the table of [QDD8](#3-decisions).
 *Done when* on each of the three, one request filters `lifecycleEq: Placed` with `enteredCurrentTo`
 and sorts by `enteredCurrent`, and returns the rows the test expects in order, across two pages.
+*Done* 2026-11-22. The table of [QDD8](#3-decisions) is the capability's own `stored` map (API name →
+attribute), filled by `deriveServerCapability` from `Lifecycle.Trail.queryNames` and read through
+`storedName` by the in-memory spec, the SQLite push-down and the Postgres push-down, for filters,
+the order and the cursor alike. The lifecycle filter is `<lifecycle>Eq: String`, like every other
+enum filter. A declared field named like a derived one is refused at generation. The request ran on
+all three; Postgres against a throwaway `postgres:16-alpine` (the test still skips without
+`PG_URL`). Two existing rules carry over unchanged: every backend compares values as text, so a
+`visits` range compares `"10"` below `"9"`; and a row with no date for the named state sorts first
+ascending on the in-memory and SQLite backends and last on Postgres, as any absent field does. The
+DynamoDB resolver reads the map in [QDS5](#4-steps).
 
 **QDS5 DynamoDB.** An opted-in trail adds derived GSIs: one per opted-in state on `_entered_<State>`
 (sparse: a row that never entered the state is not in it), and the lifecycle index, key the lifecycle

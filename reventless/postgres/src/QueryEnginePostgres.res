@@ -284,13 +284,13 @@ module Make = (
         | Some(s) => Some(s)
         | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
         }
+      let stored = name => ReventlessCore.GraphQL_FragmentGenerator.storedName(capability, name)
       capability.filterFields->Array.forEach(f => {
+        let attr = stored(f.name)
         switch filterDict->Dict.get(f.name ++ "Eq") {
         | Some(v) if v != JSON.Encode.null =>
           whereParts->Array.push(
-            `${jsonTextC(f.name)} = ${b->param(
-                JSON.Encode.string(valString(v)->Option.getOr("")),
-              )}`,
+            `${jsonTextC(attr)} = ${b->param(JSON.Encode.string(valString(v)->Option.getOr("")))}`,
           )
         | _ => ()
         }
@@ -298,7 +298,7 @@ module Make = (
           switch filterDict->Dict.get(f.name ++ "From") {
           | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
-              `${jsonTextC(f.name)} >= ${b->param(
+              `${jsonTextC(attr)} >= ${b->param(
                   JSON.Encode.string(valString(v)->Option.getOr("")),
                 )}`,
             )
@@ -307,7 +307,7 @@ module Make = (
           switch filterDict->Dict.get(f.name ++ "To") {
           | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
-              `${jsonTextC(f.name)} <= ${b->param(
+              `${jsonTextC(attr)} <= ${b->param(
                   JSON.Encode.string(valString(v)->Option.getOr("")),
                 )}`,
             )
@@ -317,7 +317,10 @@ module Make = (
       })
       let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
       let orderByField =
-        orderByDict->Option.flatMap(ob => ob->Dict.get("field"))->Option.flatMap(JSON.Decode.string)
+        orderByDict
+        ->Option.flatMap(ob => ob->Dict.get("field"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.map(stored)
       let isDesc =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("direction"))

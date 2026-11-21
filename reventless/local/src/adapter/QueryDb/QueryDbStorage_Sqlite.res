@@ -506,23 +506,25 @@ let makeStorage = (
         | Some(s) => Some(s)
         | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
         }
+      let stored = name => GraphQL_FragmentGenerator.storedName(capability, name)
       capability.filterFields->Array.forEach(f => {
+        let attr = stored(f.name)
         switch filterDict->Dict.get(f.name ++ "Eq") {
         | Some(v) if v != JSON.Encode.null =>
-          whereParts->Array.push(`${jsonText(f.name)} = ?`)
+          whereParts->Array.push(`${jsonText(attr)} = ?`)
           params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
         | _ => ()
         }
         if f.range {
           switch filterDict->Dict.get(f.name ++ "From") {
           | Some(v) if v != JSON.Encode.null =>
-            whereParts->Array.push(`${jsonText(f.name)} >= ?`)
+            whereParts->Array.push(`${jsonText(attr)} >= ?`)
             params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
           | _ => ()
           }
           switch filterDict->Dict.get(f.name ++ "To") {
           | Some(v) if v != JSON.Encode.null =>
-            whereParts->Array.push(`${jsonText(f.name)} <= ?`)
+            whereParts->Array.push(`${jsonText(attr)} <= ?`)
             params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
           | _ => ()
           }
@@ -530,7 +532,10 @@ let makeStorage = (
       })
       let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
       let orderByField =
-        orderByDict->Option.flatMap(ob => ob->Dict.get("field"))->Option.flatMap(JSON.Decode.string)
+        orderByDict
+        ->Option.flatMap(ob => ob->Dict.get("field"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.map(stored)
       let isDesc =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("direction"))

@@ -320,7 +320,14 @@ type filterField = {
 type serverCapability = {
   filterFields: array<filterField>,
   sortFields: array<string>,
+  /** The attribute a name is stored under where the two differ: a trail's
+      derived dates (`enteredPlaced` → `_entered_Placed`). */
+  stored?: dict<string>,
 }
+
+/** The attribute a filter or sort name reads on a stored row. */
+let storedName = (capability: serverCapability, name: string): string =>
+  capability.stored->Option.flatMap(d => d->Dict.get(name))->Option.getOr(name)
 
 let emptyCapability: serverCapability = {filterFields: [], sortFields: []}
 
@@ -483,10 +490,10 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
   let seenFilter: Set.t<string> = Set.make()
   let seenSort: Set.t<string> = Set.make()
 
-  let pushFilter = (name, ~range) =>
+  let pushFilter = (name, ~range, ~gqlType=?) =>
     if !(seenFilter->Set.has(name)) {
       seenFilter->Set.add(name)
-      filterFields->Array.push({name, gqlType: scalarOf(name), range})
+      filterFields->Array.push({name, gqlType: gqlType->Option.getOr(scalarOf(name)), range})
     }
   let pushSort = name =>
     if !(seenSort->Set.has(name)) {
@@ -522,6 +529,38 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
     spec.scanSort->Array.forEach(name => pushSort(name))
   }
 
+  // A trail's opted-in states: their dates filter by range and sort, and the
+  // lifecycle field filters, so a state and how long rows have been in it are
+  // one request.
+  let stored = Dict.make()
+  switch (
+    Reventless.StateAnnotations.getSpec(schema)->Option.flatMap(spec => spec.trailIndex),
+    SchemaType.trailEntered(~typeName="", schema),
+    Reventless.Lifecycle.fieldName(schema),
+  ) {
+  | (Some(states), Some(_), Some(lifecycleField)) =>
+    pushFilter(lifecycleField, ~range=false)
+    let derived = ({name, attr, isCount}: Reventless.Lifecycle.Trail.queryName) => {
+      if fieldTypes->Dict.get(name)->Option.isSome {
+        JsError.throwWithMessage(
+          `${entityName}.${name} is a field of the state record, and a trail's derived date is queried under that name. Name the field something else.`,
+        )
+      }
+      stored->Dict.set(name, attr)
+      pushFilter(name, ~range=true, ~gqlType=isCount ? "Int" : "String")
+      pushSort(name)
+    }
+    states->Array.forEach(state =>
+      Reventless.Lifecycle.Trail.queryNames(state)->Array.forEach(derived)
+    )
+    derived({
+      name: Reventless.Lifecycle.Trail.enteredCurrentName,
+      attr: Reventless.Lifecycle.Trail.enteredCurrentAttr,
+      isCount: false,
+    })
+  | _ => ()
+  }
+
   // A state that declares nothing structural used to land here with an empty
   // capability — no per-field filter and no order-by at all, so every narrowing
   // a client asked for happened client-side over one page. Its key is knowable
@@ -536,7 +575,7 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
   | None => ()
   }
 
-  {filterFields, sortFields}
+  {filterFields, sortFields, stored: ?(stored->Dict.size > 0 ? Some(stored) : None)}
 }
 
 // Returns one warning per `@scanSort` field that is NOT also a sort key of the

@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as LocalStateChangeDescriptor$ReventlessLocal from "../LocalStateChangeDescriptor.res.mjs";
 
 function tableName(name) {
@@ -371,10 +372,12 @@ function makeStorage(db, bus, name, indexes, subIdField) {
         return Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString());
       }
     };
+    let stored = name => GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name);
     capability.filterFields.forEach(f => {
+      let attr = GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, f.name);
       let v = filterDict[f.name + "Eq"];
       if (v !== undefined && v !== null) {
-        whereParts.push(jsonText(f.name) + ` = ?`);
+        whereParts.push(jsonText(attr) + ` = ?`);
         params.push(Stdlib_Option.getOr(valString(v), ""));
       }
       if (!f.range) {
@@ -382,18 +385,18 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       }
       let v$1 = filterDict[f.name + "From"];
       if (v$1 !== undefined && v$1 !== null) {
-        whereParts.push(jsonText(f.name) + ` >= ?`);
+        whereParts.push(jsonText(attr) + ` >= ?`);
         params.push(Stdlib_Option.getOr(valString(v$1), ""));
       }
       let v$2 = filterDict[f.name + "To"];
       if (v$2 !== undefined && v$2 !== null) {
-        whereParts.push(jsonText(f.name) + ` <= ?`);
+        whereParts.push(jsonText(attr) + ` <= ?`);
         params.push(Stdlib_Option.getOr(valString(v$2), ""));
         return;
       }
     });
     let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
-    let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
+    let orderByField = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string), stored);
     let isDesc = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC") === "DESC";
     let cursorExpr = orderByField !== undefined ? jsonText(orderByField) : idExpr;
     let afterCursor = Stdlib_Option.flatMap(Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string), c => {

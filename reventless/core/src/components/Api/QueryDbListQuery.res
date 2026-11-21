@@ -131,7 +131,9 @@ let run = (
     ->Option.getOr("")
   // Per-field eq / from / to filters derived from capability — applied alongside
   // the legacy search/searchPrefix/ids block.
+  let stored = name => GraphQL_FragmentGenerator.storedName(capability, name)
   let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
+    let attr = stored(f.name)
     let checks: array<JSON.t => bool> = []
     switch filterDict->Dict.get(f.name ++ "Eq") {
     | Some(v) if v != JSON.Encode.null =>
@@ -140,7 +142,7 @@ let run = (
       | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr("")
       }
       checks->Array.push(item =>
-        getFieldString(item, f.name)->Option.mapOr(false, v => v == expected)
+        getFieldString(item, attr)->Option.mapOr(false, v => v == expected)
       )
     | _ => ()
     }
@@ -151,9 +153,7 @@ let run = (
           v
           ->JSON.Decode.string
           ->Option.getOr(v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""))
-        checks->Array.push(item =>
-          getFieldString(item, f.name)->Option.mapOr(false, v => v >= from)
-        )
+        checks->Array.push(item => getFieldString(item, attr)->Option.mapOr(false, v => v >= from))
       | _ => ()
       }
       switch filterDict->Dict.get(f.name ++ "To") {
@@ -162,7 +162,7 @@ let run = (
           v
           ->JSON.Decode.string
           ->Option.getOr(v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""))
-        checks->Array.push(item => getFieldString(item, f.name)->Option.mapOr(false, v => v <= to_))
+        checks->Array.push(item => getFieldString(item, attr)->Option.mapOr(false, v => v <= to_))
       | _ => ()
       }
     }
@@ -214,7 +214,10 @@ let run = (
 
   let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
   let orderByField =
-    orderByDict->Option.flatMap(ob => ob->Dict.get("field"))->Option.flatMap(JSON.Decode.string)
+    orderByDict
+    ->Option.flatMap(ob => ob->Dict.get("field"))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.map(stored)
   let direction =
     orderByDict
     ->Option.flatMap(ob => ob->Dict.get("direction"))
