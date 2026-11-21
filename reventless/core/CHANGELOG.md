@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.344 (2026-11-21)
+
+### Bug Fixes
+
+* **core:** an outbound translation reaches the aggregate it names, and decides on the events it reacts to ([28a520b](https://github.com/ReventlessDev/reventless-core/commit/28a520b2e845b099b29b0913fbc863d5d4824768))
+### Features
+
+* **gwt:** a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
+
+
 # 3.0.0-alpha.343 (2026-11-20)
 
 ### Bug Fixes

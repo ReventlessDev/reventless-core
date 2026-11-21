@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.44 (2026-11-21)
+
+### Features
+
+* **seed:** a played step may act as a person of the accounts file ([7831280](https://github.com/ReventlessDev/reventless-core/commit/7831280b776daffecea80006c47d4e4de1ab7b4b))
+
+
 # 1.0.0-alpha.43 (2026-11-20)
 
 ### Features

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.180 (2026-11-21)
+
+### Features
+
+* **examples:** the shop's Order action names the states it is offered in, and the withdrawal round trip has a flow test ([4a3207d](https://github.com/ReventlessDev/reventless-core/commit/4a3207d7314a02583ec61bda6912370d5e362d90))
+* **local:** the local platform geocodes the places a file lists ([512f453](https://github.com/ReventlessDev/reventless-core/commit/512f45372faabe362c1eabd2cc848057cdc63ad7))
+
+
 # 1.0.0-alpha.179 (2026-11-20)
 
 ### Features

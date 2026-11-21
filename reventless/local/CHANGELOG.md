@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.337 (2026-11-21)
+
+### Features
+
+* **gwt:** a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
+* **local:** the local platform geocodes the places a file lists ([512f453](https://github.com/ReventlessDev/reventless-core/commit/512f45372faabe362c1eabd2cc848057cdc63ad7))
+
+
 # 3.0.0-alpha.336 (2026-11-20)
 
 ### Bug Fixes

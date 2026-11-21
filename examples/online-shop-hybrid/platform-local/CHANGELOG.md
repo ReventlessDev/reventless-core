@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.351 (2026-11-21)
+
+### Features
+
+* **examples:** the shop's Order action names the states it is offered in, and the withdrawal round trip has a flow test ([4a3207d](https://github.com/ReventlessDev/reventless-core/commit/4a3207d7314a02583ec61bda6912370d5e362d90))
+* **gwt:** a flow runs what was sent, states rows and acceptance, and keeps time ([0d418c9](https://github.com/ReventlessDev/reventless-core/commit/0d418c9f890a4255d5b906f1246ccb705d3a9a6a))
+* **gwt:** a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
+* **gwt:** a plugin's flow steps come ready-made, and a failure names its step ([861bb08](https://github.com/ReventlessDev/reventless-core/commit/861bb08cea20b006fd44f08b6c10c51774487faf))
+* **gwt:** a system's boundary is tested without a test written, and a flow reaches every part ([9475f85](https://github.com/ReventlessDev/reventless-core/commit/9475f858027b55a819b5132b25b9d2e186ade934))
+* **local:** the local platform geocodes the places a file lists ([512f453](https://github.com/ReventlessDev/reventless-core/commit/512f45372faabe362c1eabd2cc848057cdc63ad7))
+
+
 # 1.0.0-alpha.350 (2026-11-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

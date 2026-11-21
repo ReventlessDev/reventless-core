@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.327 (2026-11-21)
+
+### Features
+
+* **gwt:** a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
+* **gwt:** a plugin's flow steps come ready-made, and a failure names its step ([861bb08](https://github.com/ReventlessDev/reventless-core/commit/861bb08cea20b006fd44f08b6c10c51774487faf))
+
+
 # 3.0.0-alpha.326 (2026-11-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering
