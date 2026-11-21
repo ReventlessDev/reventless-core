@@ -1658,6 +1658,73 @@ let strip_retired_attrs (str : structure) : structure =
     | _ -> item
   ) str
 
+(* ── @trail: the states a view filters and sorts by on the server ──
+   On the trail field. `{index: [Placed, Shipped]}` puts those states' entry
+   dates on the server and adds the lifecycle index; `{index: true}` adds the
+   lifecycle index alone. Deriving and reading the dates need no annotation. *)
+
+let find_trail_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) -> String.equal a.attr_name.txt "trail") attrs
+
+let strip_trail_field_attr (attrs : attributes) =
+  List.filter (fun (a : attribute) -> not (String.equal a.attr_name.txt "trail")) attrs
+
+let trail_payload_error ~loc =
+  Location.raise_errorf ~loc
+    "@trail expects {index: [Placed, Shipped]}, which puts those states' entry \
+     dates on the server and adds the lifecycle index, or {index: true}, which \
+     adds the lifecycle index alone."
+
+(* The states a `@trail` opts in; [] for the lifecycle index alone. *)
+let get_trail_index ~loc (attr : attribute) : string list =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({ pexp_desc = Pexp_record (fields, None); _ }, _); _ }] ->
+    (match List.find_opt (fun (lid, _) ->
+       match lid.txt with Lident "index" -> true | _ -> false) fields with
+     | Some (_, { pexp_desc = Pexp_construct ({ txt = Lident "true"; _ }, None); _ }) -> []
+     | Some (_, { pexp_desc = Pexp_array els; _ }) when els <> [] ->
+       List.map (fun e ->
+         match retired_ctor_of_expr ~loc e with
+         | Some c -> c
+         | None -> trail_payload_error ~loc) els
+     | _ -> trail_payload_error ~loc)
+  | _ -> trail_payload_error ~loc
+
+(* The lifecycle a trail field's entries name, when the field's type is
+   `….Trail.t<x>` and `x` is declared in this file. *)
+let trail_lifecycle_type (ct : core_type) : string option =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Ldot (Ldot (_, "Trail"), "t") | Ldot (Lident "Trail", "t"); _ }, [ arg ]) ->
+    local_type_name arg
+  | _ -> None
+
+let is_trail_type (ct : core_type) : bool =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Ldot (Ldot (_, "Trail"), "t") | Ldot (Lident "Trail", "t"); _ }, [ _ ]) -> true
+  | _ -> false
+
+(** Strip @trail attributes from @schema type state record fields. Mirrors
+    [strip_lifecycle_attrs]. *)
+let strip_trail_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_trail_field_attr ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
 let strip_semantic_metric_field_attrs (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
     not (String.equal attr.attr_name.txt "semantic"
@@ -2125,11 +2192,45 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?p
          carry @retired. Two retirement flags do not narrow the read further, \
          they leave it undecided — the query layer tests a single field."
   in
+  let trail_fields = List.filter_map (fun (ld : label_declaration) ->
+    match find_trail_attr ld.pld_attributes with
+    | None -> None
+    | Some attr ->
+      if not (is_trail_type ld.pld_type) then
+        Location.raise_errorf ~loc:ld.pld_loc
+          "@trail belongs on the trail field, the one typed \
+           Reventless.Lifecycle.Trail.t<…>; `%s` is not that field."
+          ld.pld_name.txt;
+      let states = get_trail_index ~loc:ld.pld_loc attr in
+      (* The states are checked where the lifecycle is declared in this file;
+         an imported one cannot be reached, as with `@retired`. *)
+      (match trail_lifecycle_type ld.pld_type with
+       | Some type_name ->
+         (match List.find_opt (fun sv -> String.equal sv.sv_name type_name) variants with
+          | Some sv ->
+            List.iter (fun st ->
+              if not (List.mem st sv.sv_constructors) then
+                Location.raise_errorf ~loc:ld.pld_loc
+                  "@trail({index: [...]}): `%s` declares no constructor %s — its \
+                   cases are %s."
+                  type_name st (String.concat " | " sv.sv_constructors)) states
+          | None -> ())
+       | None -> ());
+      Some (states, ld.pld_loc)
+  ) fields in
+  let trail_index =
+    match trail_fields with
+    | [] -> None
+    | [(states, _)] -> Some states
+    | _ :: (_, loc2) :: _ ->
+      Location.raise_errorf ~loc:loc2
+        "duplicate @trail annotation; a state record has one trail"
+  in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = [] && internal = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
-     && lifecycle = None && group_by = None && retired = None
+     && lifecycle = None && group_by = None && retired = None && trail_index = None
      && visibility = None && live = None && plural = None && singular = None then None
   else
     let ident lid =
@@ -2258,6 +2359,9 @@ let make_state_annotations_binding ~loc ~visibility ~live ~named_when_retired ?p
             ({ txt = Lident "retired"; loc }, retired_value) ]
           (* Optional on the record, so a schema from an older PPX still reads;
              written only when declared. *)
+          @ (match trail_index with
+             | None -> []
+             | Some states -> [ ({ txt = Lident "trailIndex"; loc }, estr_array ~loc states) ])
           @ (match plural with
              | None -> []
              | Some p -> [ ({ txt = Lident "plural"; loc }, Ast_builder.Default.estring ~loc p) ])

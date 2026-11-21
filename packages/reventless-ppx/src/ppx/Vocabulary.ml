@@ -194,6 +194,9 @@ let all : entry list =
     e ~args:Optional ~ex:{|"Archived"|} "retired" [ Field State; Case Other ]
       "The flag, or the lifecycle state, that withdraws a row from ordinary reads."
       [ "StateAnnotations"; "TaggedUnionInference" ];
+    e ~args:Required ~ex:{|{index: [Placed, Shipped]}|} "trail" state
+      "Puts the named states' entry dates on the server, and the lifecycle index."
+      [ "StateAnnotations"; "TaggedUnionInference" ];
     e "hidden" state "Left out of summary and list views." [ "StateAnnotations" ];
     e "summary" state "Always shown in summary and list views." [ "StateAnnotations" ];
     e "internal" state "Left out of the generated GraphQL type; still stored." [ "StateAnnotations" ];

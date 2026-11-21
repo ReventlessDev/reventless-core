@@ -119,7 +119,7 @@ let state_union_fields (str : structure)
 let refused_field_attrs =
   [ "id"; "compositeId"; "subId"; "compositeSubId";
     "index"; "indexSubId"; "scan"; "scanSort";
-    "groupBy"; "lifecycle"; "retired" ]
+    "groupBy"; "lifecycle"; "retired"; "trail" ]
 
 let arm_error ~field ~type_name (cd : constructor_declaration) (shape : ctor_shape) =
   let carries =

@@ -441,6 +441,14 @@
       "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
     },
     {
+      "name": "trail",
+      "positions": [ "field.state" ],
+      "args": "required",
+      "argsExample": "{index: [Placed, Shipped]}",
+      "summary": "Puts the named states' entry dates on the server, and the lifecycle index.",
+      "readBy": [ "StateAnnotations", "TaggedUnionInference" ]
+    },
+    {
       "name": "hidden",
       "positions": [ "field.state" ],
       "args": "none",

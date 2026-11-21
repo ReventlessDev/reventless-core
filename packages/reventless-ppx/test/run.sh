@@ -1428,6 +1428,41 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @trail (states the server filters and sorts by) ─────
+
+cat > "$PLUGIN/src/ReadModel/TrailIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase =
+  | Placed
+  | Shipped
+  | Cancelled
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle phase: phase,
+  @trail({index: [Placed, Shipped]}) trail: Reventless.Lifecycle.Trail.t<phase>,
+}
+EOF
+
+cat > "$PLUGIN/src/ReadModel/TrailLifecycleIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase =
+  | Placed
+  | Shipped
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle phase: phase,
+  @trail({index: true}) trail: Reventless.Lifecycle.Trail.t<phase>,
+}
+EOF
+
 # ─── Fixture: @retired (row withdrawn from ordinary reads) ────────
 
 cat > "$PLUGIN/src/ReadModel/RetiredReadModel.res" <<'EOF'
@@ -2616,6 +2651,16 @@ JS="$PLUGIN/src/ReadModel/LifecycleReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'        "@lifecycle: stateAnnotations metadata emitted"
 assert_js_contains "$JS" 'lifecycle: "phase"'        "@lifecycle: 'phase' recorded in lifecycle field"
 assert_js_not_contains "$JS" '@lifecycle'            "@lifecycle: annotation stripped from output"
+
+echo ""
+echo "=== Test: @trail → the opted-in states in the metadata ==="
+JS="$PLUGIN/src/ReadModel/TrailIndexReadModel.res.mjs"
+assert_js_contains "$JS" 'trailIndex: \['           "@trail: trailIndex recorded"
+assert_js_contains "$JS" '"Placed"'                  "@trail: first state recorded"
+assert_js_contains "$JS" '"Shipped"'                 "@trail: second state recorded"
+assert_js_not_contains "$JS" '@trail'                "@trail: annotation stripped from output"
+JS="$PLUGIN/src/ReadModel/TrailLifecycleIndexReadModel.res.mjs"
+assert_js_contains "$JS" 'trailIndex: \[\]'         "@trail({index: true}): the lifecycle index alone"
 
 echo ""
 echo "=== Test: @retired on a state → the set in the metadata ==="
@@ -3937,6 +3982,65 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/RetiredTypeReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @trail names a state the lifecycle does not declare ==="
+
+cat > "$ERROR/src/ReadModel/TrailTypoReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase =
+  | Placed
+  | Shipped
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle phase: phase,
+  @trail({index: [Placed, Shiped]}) trail: Reventless.Lifecycle.Trail.t<phase>,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@trail misspelled state" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "declares no constructor Shiped — its cases are Placed | Shipped"; then
+    pass "@trail naming a state the lifecycle lacks → correct compile error"
+  else
+    fail "@trail misspelled state" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/TrailTypoReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @trail on a field that is not the trail ==="
+
+cat > "$ERROR/src/ReadModel/TrailFieldReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase =
+  | Placed
+  | Shipped
+
+@schema
+type state = {
+  @id id: string,
+  @trail({index: true}) @lifecycle phase: phase,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@trail off the trail" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@trail belongs on the trail field"; then
+    pass "@trail on a field that is not the trail → correct compile error"
+  else
+    fail "@trail off the trail" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/TrailFieldReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @retired names a state the enum does not declare ==="

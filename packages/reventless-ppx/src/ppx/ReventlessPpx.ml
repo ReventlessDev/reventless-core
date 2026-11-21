@@ -966,6 +966,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_lifecycle_attrs
                       |> StateAnnotations.strip_group_by_attrs
                       |> StateAnnotations.strip_retired_attrs
+                      |> StateAnnotations.strip_trail_attrs
                       |> StateAnnotations.strip_retired_ctor_attrs
                       |> StateAnnotations.strip_live_attrs
                       |> StateAnnotations.strip_named_when_retired_attrs

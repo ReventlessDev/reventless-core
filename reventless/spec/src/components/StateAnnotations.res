@@ -209,6 +209,14 @@ type stateAnnotationSpec = {
   */
   retired: option<retiredSpec>,
   /**
+  `@trail({index: […]})` on the trail field: the lifecycle states whose entry dates
+  the server filters and sorts by. Present, even empty (`{index: true}`), it also
+  adds the lifecycle index, keyed by the lifecycle field and sorted by when a row
+  entered its state. Absent, the dates are derived and readable but not queried
+  on the server.
+  */
+  trailIndex?: array<string>,
+  /**
   The plural `@plural("…")` names on the `@schema type state` declaration: what the
   view's list field and plural type are built from where the English rule
   (`Api_Naming.pluralize`) is wrong. Absent, the rule applies.

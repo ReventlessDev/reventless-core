@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) and [QDS2](#4-steps) done). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS3](#4-steps) done). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -10,8 +10,8 @@
 >    when a row first and last entered each state, how often, and when it entered the state it is
 >    in. They are readable over GraphQL, and filterable and sortable by range for the states a view
 >    opts into ([§4](#4-steps)).
-> 2. *What does an app write?* **One annotation on its trail field**, `@trail(index=[Placed,
->    Shipped])`, for the states it wants on the server; deriving needs nothing
+> 2. *What does an app write?* **One annotation on its trail field**, `@trail({index: [Placed,
+>    Shipped]})`, for the states it wants on the server; deriving needs nothing
 >    ([QDD2](#3-decisions)).
 > 3. *Can a query combine a state and its date?* **Yes.** An opted-in trail adds an index keyed by
 >    the lifecycle field and sorted by when the row entered its state, so "in Placed, longest there
@@ -66,7 +66,7 @@ The analysis's recommendations, taken.
 | # | Question | Decision |
 |---|---|---|
 | **QDD1** | First or latest visit? | Both are derived. The unqualified name is the latest visit (`enteredPlaced`), which answers "since when in that state" for every state alike; the first visit is named (`enteredPlacedFirst`). From the analysis's [SEQ1](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD2** | Where is the opt-in written? | On the trail field: `@trail(index=[Placed, Shipped])` puts those states' fields on the server and adds the lifecycle index; a bare `@trail(index)` adds only the lifecycle index. Deriving and reading need no annotation. [SEQ2](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD2** | Where is the opt-in written? | On the trail field: `@trail({index: [Placed, Shipped]})` puts those states' fields on the server and adds the lifecycle index; `@trail({index: true})` adds only the lifecycle index. (The analysis wrote `@trail(index=[…])` and a bare `@trail(index)`; neither parses as a ReScript attribute payload, so the record payload `@owner` and `@retired` already take is used, as [QDS3](#4-steps) allowed.) Deriving and reading need no annotation. [SEQ2](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD3** | Are durations stored? | No. A client computes them from the derived dates; a stored duration waits for an app that sorts by one. [SEQ3](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD4** | Rows stored before the change? | They are derived on their next write; a rebuild recomputes every row from its trail. [SEQ4](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD5** | Can a row be named by a derived date? | No. `@displayName` points at declared fields. [SEQ5](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
@@ -113,6 +113,12 @@ list of lifecycle constructors, or nothing for the lifecycle index alone ([QDD2]
 error that names the declared ones. If the payload syntax cannot carry constructors, the nearest
 spelling the vocabulary already uses (a list of strings) is taken and the decision updated.
 *Done when* the ppx tests cover a list, a bare `@trail(index)`, and an unknown state.
+*Done* 2026-11-22, spelled `@trail({index: [Placed, Shipped]})` and `@trail({index: true})`
+([QDD2](#3-decisions)); the constructors stay constructors. The spec carries it as the optional
+`trailIndex: array<string>` (empty for the lifecycle index alone). Beside the plan's three cases,
+the ppx refuses `@trail` on a field not typed `Reventless.Lifecycle.Trail.t<…>` and a second
+`@trail` on one record; the unknown-state check runs where the lifecycle is declared in the same
+file, as `@retired`'s does. `@trail` joins the annotations a union field refuses.
 
 **QDS4 Filter and sort.** `deriveServerCapability` pushes, for each opted-in state, `entered<State>`,
 `entered<State>First` and `visits<State>` with `range: true`, and `enteredCurrent` for any opted-in
@@ -130,15 +136,15 @@ that added them.
 *Done when* the DynamoDB adapter tests run the request of [QDS4](#4-steps) as a `Query` on the lifecycle index,
 and a component with too many indexes fails its deploy check with the count.
 
-**QDS6 The shop opts in.** Orders gets `@trail(index=[Placed, Shipped, Cancelled])`, Products and
-Categories `@trail(index=[Archived])`. `placedAt` stays ([QDD5](#3-decisions)).
+**QDS6 The shop opts in.** Orders gets `@trail({index: [Placed, Shipped, Cancelled]})`, Products
+and Categories `@trail({index: [Archived]})`. `placedAt` stays ([QDD5](#3-decisions)).
 *Done when* the shop's GraphQL answers "orders in Placed for more than three days, oldest first" on
 the local platform and on the `alpha` stack, where the seed's runs on several days spread the trails
 ([online-shop-seed-over-days.md](done/online-shop-seed-over-days.md)).
 
 **QDS7 Docs.** The doc page's section
 [Recording When a Row Reached Each State](../../packages/doc/docs-app/components/stateviewslice.md#recording-when-a-row-reached-each-state)
-gains the derived fields, `@trail(index=…)` and the lifecycle index; the vocabulary reference the
+gains the derived fields, `@trail({index: …})` and the lifecycle index; the vocabulary reference the
 annotation; the list ordering analysis a pointer under
 [Richer filter primitives](../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
 *Done when* the docs build, and their links check.
