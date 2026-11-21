@@ -157,7 +157,7 @@ feature plan, which is the trade [§6](#6--the-aws-half) declined on purpose.
 - `docs/plans/done/curated-manifest-per-journey.md` — what each role *sees*. Independent
   of this one and buildable in either order; this plan decides what a role
   *may do*, which is the half that has to be right.
-- `reventless-ui: docs/plans/shell-active-role-switch.md` — the control that asks
+- `reventless-ui: docs/plans/done/shell-active-role-switch.md` — the control that asks
   for the narrowing this plan mints.
 
 **Goal.** A user whose account holds several groups can act as one of them, and
