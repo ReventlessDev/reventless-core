@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.207 (2026-11-21)
+
+### Features
+
+* **local:** a refused start says why as data ([2771ca2](https://github.com/ReventlessDev/reventless-core/commit/2771ca2e4932f6d3c0836e6f3a9265c4e764b0e4))
+
+
 # 3.0.0-alpha.206 (2026-11-21)
 
 ### Features
