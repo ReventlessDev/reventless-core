@@ -604,3 +604,147 @@ describe("a flow keeps time", () => {
     }
   })
 })
+
+// -- Read and acted as a person ----------------------------------------------
+
+describe("a flow's caller", () => {
+  test("a signed-out caller reads no row of a view that wants a signed-in one", () =>
+    placed()->asCaller(Caller.anonymous)->View.thenNoRow("o1")
+  )
+
+  JestGlobals.testPromise("a signed-in caller reads the row", async () => {
+    let failure = await placed()->asCaller(Caller.owner("c1"))->View.thenNoRow("o1")->failureOf
+    JestGlobals.expect(failure->Option.map(Outcome.kindName))->JestGlobals.toEqual(
+      Some("StateMismatch"),
+    )
+  })
+
+  test("a signed-out caller's command is refused before its decision runs", () =>
+    start
+    ->asCaller(Caller.anonymous)
+    ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+    ->Place.thenForbidden
+    // Refused, so nothing was recorded: the row is not there.
+    ->View.thenNoRow("o1")
+  )
+
+  JestGlobals.testPromise("thenForbidden fails when the command was decided", async () => {
+    let failure = await start
+    ->asCaller(Caller.owner("c1"))
+    ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+    ->Place.thenForbidden
+    ->failureOf
+    JestGlobals.expect(failure->Option.map(Outcome.kindName))->JestGlobals.toEqual(
+      Some("ErrorMismatch"),
+    )
+  })
+})
+
+// -- What reacts reacts once -------------------------------------------------
+
+// The order's parts, as a plugin's generated `Flow` module lists them.
+let orderParts: parts = {
+  reacting: [Auto.reacting, AutoByOrder.reacting],
+  deciding: [Place.deciding, Ship.deciding],
+}
+let shippingParts: parts = {reacting: [Auto.reacting], deciding: [Place.deciding, Ship.deciding]}
+
+describe("a reaction step called twice", () => {
+  test("reports only what is new since that automation's last step", () =>
+    placed()
+    ->Auto.whenReacts
+    ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
+    ->Auto.whenReacts
+    ->Auto.thenIssuesNoCommand
+  )
+})
+
+describe("nothing else reacts", () => {
+  JestGlobals.testPromise(
+    "an automation the flow did not name, that would send, fails it",
+    async () => {
+      let failure = await placed()
+      ->Auto.whenReacts
+      ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
+      ->thenNothingElseReacts([orderParts])
+      ->failureOf
+      switch failure {
+      | Some(PublishedActionsMismatch({actual})) =>
+        JestGlobals.expect(actual->Array.map(j => JSON.stringify(j)))->JestGlobals.toEqual([
+          `{"reacts":"AutoShipByOrder","sends":{"TAG":"ShipOrder","order":"o1"}}`,
+        ])
+      | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+      }
+    },
+  )
+
+  test("with both named, nothing else reacts", () =>
+    placed()
+    ->Auto.whenReacts
+    ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
+    ->AutoByOrder.whenReacts
+    ->AutoByOrder.thenIssuesCommand(AutoShipByOrderSlice.ShipOrder({order: "o1"}))
+    ->thenNothingElseReacts([orderParts])
+  )
+})
+
+describe("the app does the rest", () => {
+  test("the automation ships the order and the decision records it", () =>
+    placed()
+    ->whenSettled([shippingParts])
+    ->View.thenRow("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
+    ->thenNothingElseReacts([shippingParts])
+  )
+
+  JestGlobals.testPromise("a command no decision reads stops it, named", async () => {
+    let failure = await placed()->whenSettled([orderParts])->failureOf
+    switch failure {
+    | Some(TranslateError({actual: Some(reason)})) =>
+      JestGlobals.expect(
+        reason,
+      )->JestGlobals.toBe(`no decision reads {"TAG":"ShipOrder","order":"o1"}`)
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+})
+
+// -- A flow starts after another ---------------------------------------------
+
+describe("a flow that starts after another", () => {
+  test("an order is placed", () => placed())
+
+  test("it is shipped, on the record the placing left", () =>
+    after("an order is placed")
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o1"}))
+  )
+
+  // A failing flow, kept out of jest's list so that it fails only here.
+  flows->Dict.set("an order placed twice", () =>
+    placed()
+    ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+    ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"}))
+  )
+
+  JestGlobals.testPromise("after a failing flow, it is not run, and says so", async () => {
+    let failure = await after("an order placed twice")
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o1"}))
+    ->failureOf
+    switch failure {
+    | Some(Throw({error, ?step})) => {
+        JestGlobals.expect(
+          error,
+        )->JestGlobals.toBe(`not run: the flow it starts after, "an order placed twice", failed`)
+        // Not a step of its own: nothing it did failed.
+        JestGlobals.expect(step)->JestGlobals.toEqual(None)
+      }
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+
+  JestGlobals.testPromise("after a title no flow has, it is not run", async () => {
+    let failure = await after("no such flow")->failureOf
+    JestGlobals.expect(failure->Option.map(Outcome.kindName))->JestGlobals.toEqual(Some("Throw"))
+  })
+})

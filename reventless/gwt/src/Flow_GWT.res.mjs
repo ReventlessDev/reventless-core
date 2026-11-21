@@ -17,13 +17,67 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
+import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as StubRuntime$ReventlessGwt from "./StubRuntime.res.mjs";
+import * as Decision_GWT$ReventlessGwt from "./Decision_GWT.res.mjs";
 import * as ScheduleTime$ReventlessCore from "@reventlessdev/reventless-core/src/util/ScheduleTime.res.mjs";
 import * as Automation_GWT$ReventlessGwt from "./Automation_GWT.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as Projection_GWT$ReventlessGwt from "./Projection_GWT.res.mjs";
 import * as InboundTranslation_GWT$ReventlessGwt from "./InboundTranslation_GWT.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
+
+function handledBy(s, key) {
+  return Stdlib_Option.getOr(s.handled[key], []);
+}
+
+function markHandled(s, key, ids) {
+  let handled = Object.assign({}, s.handled);
+  handled[key] = handledBy(s, key).concat(ids);
+  return {
+    log: s.log,
+    outcome: s.outcome,
+    lastEvents: s.lastEvents,
+    lastError: s.lastError,
+    lastCommands: s.lastCommands,
+    lastPublic: s.lastPublic,
+    lastAggregateId: s.lastAggregateId,
+    lastRefusal: s.lastRefusal,
+    steps: s.steps,
+    at: s.at,
+    failedAt: s.failedAt,
+    now: s.now,
+    caller: s.caller,
+    lastForbidden: s.lastForbidden,
+    handled: handled,
+    named: s.named
+  };
+}
+
+function markNamed(s, key) {
+  if (s.named.includes(key)) {
+    return s;
+  } else {
+    return {
+      log: s.log,
+      outcome: s.outcome,
+      lastEvents: s.lastEvents,
+      lastError: s.lastError,
+      lastCommands: s.lastCommands,
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId,
+      lastRefusal: s.lastRefusal,
+      steps: s.steps,
+      at: s.at,
+      failedAt: s.failedAt,
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named.concat([key])
+    };
+  }
+}
 
 let emptyState_log = [];
 
@@ -32,6 +86,10 @@ let emptyState_lastEvents = [];
 let emptyState_lastCommands = [];
 
 let emptyState_lastPublic = [];
+
+let emptyState_handled = {};
+
+let emptyState_named = [];
 
 let emptyState = {
   log: emptyState_log,
@@ -45,7 +103,11 @@ let emptyState = {
   steps: 0,
   at: undefined,
   failedAt: undefined,
-  now: 0.0
+  now: 0.0,
+  caller: undefined,
+  lastForbidden: false,
+  handled: emptyState_handled,
+  named: emptyState_named
 };
 
 let start = Promise.resolve(emptyState);
@@ -65,7 +127,11 @@ function recordOutcome(s, o) {
       steps: s.steps,
       at: s.at,
       failedAt: s.at,
-      now: s.now
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
     };
   } else {
     return s;
@@ -95,6 +161,10 @@ async function enter(flowP, verb, part, at) {
   };
   let s_failedAt = s.failedAt;
   let s_now = s.now;
+  let s_caller = s.caller;
+  let s_lastForbidden = s.lastForbidden;
+  let s_handled = s.handled;
+  let s_named = s.named;
   let s$1 = {
     log: s_log,
     outcome: s_outcome,
@@ -107,7 +177,11 @@ async function enter(flowP, verb, part, at) {
     steps: number,
     at: s_at,
     failedAt: s_failedAt,
-    now: s_now
+    now: s_now,
+    caller: s_caller,
+    lastForbidden: s_lastForbidden,
+    handled: s_handled,
+    named: s_named
   };
   if (at === undefined) {
     return s$1;
@@ -138,7 +212,11 @@ async function enter(flowP, verb, part, at) {
       steps: number,
       at: s_at,
       failedAt: s_failedAt,
-      now: millis
+      now: millis,
+      caller: s_caller,
+      lastForbidden: s_lastForbidden,
+      handled: s_handled,
+      named: s_named
     };
   }
 }
@@ -237,8 +315,96 @@ function outcomeOf(s) {
   };
 }
 
-function test(name, param, timeout, body) {
-  JestBind$ReventlessGwt.testPromise("Flow", name, timeout, async () => outcomeOf(await body()));
+let elevated = {
+  contents: []
+};
+
+let flows = {};
+
+function test(name, param, groupsOpt, timeout, body) {
+  let groups = groupsOpt !== undefined ? groupsOpt : [];
+  flows[name] = body;
+  JestBind$ReventlessGwt.testPromise("Flow", name, timeout, async () => {
+    elevated.contents = groups;
+    let outcome = outcomeOf(await body());
+    elevated.contents = [];
+    return outcome;
+  });
+}
+
+async function after(title) {
+  let notRun = why => ({
+    log: emptyState_log,
+    outcome: Outcome$ReventlessGwt.fail({
+      TAG: "Throw",
+      error: why,
+      stack: ""
+    }),
+    lastEvents: emptyState_lastEvents,
+    lastError: undefined,
+    lastCommands: emptyState_lastCommands,
+    lastPublic: emptyState_lastPublic,
+    lastAggregateId: undefined,
+    lastRefusal: undefined,
+    steps: 0,
+    at: undefined,
+    failedAt: undefined,
+    now: 0.0,
+    caller: undefined,
+    lastForbidden: false,
+    handled: emptyState_handled,
+    named: emptyState_named
+  });
+  let body = flows[title];
+  if (body === undefined) {
+    return notRun(`after("` + title + `"): no flow of that title in this file`);
+  }
+  let before = await body();
+  let match = outcomeOf(before);
+  if (match.TAG === "Ok") {
+    return {
+      log: before.log,
+      outcome: Outcome$ReventlessGwt.pass,
+      lastEvents: emptyState_lastEvents,
+      lastError: undefined,
+      lastCommands: emptyState_lastCommands,
+      lastPublic: emptyState_lastPublic,
+      lastAggregateId: undefined,
+      lastRefusal: undefined,
+      steps: 0,
+      at: undefined,
+      failedAt: undefined,
+      now: before.now,
+      caller: undefined,
+      lastForbidden: false,
+      handled: before.handled,
+      named: emptyState_named
+    };
+  } else {
+    return notRun(`not run: the flow it starts after, "` + title + `", failed`);
+  }
+}
+
+async function asCaller(flowP, who) {
+  let init = await enter(flowP, "asCaller", undefined, undefined);
+  return {
+    log: init.log,
+    outcome: init.outcome,
+    lastEvents: init.lastEvents,
+    lastError: init.lastError,
+    lastCommands: init.lastCommands,
+    lastPublic: init.lastPublic,
+    lastAggregateId: init.lastAggregateId,
+    lastRefusal: init.lastRefusal,
+    steps: init.steps,
+    at: init.at,
+    failedAt: init.failedAt,
+    now: init.now,
+    caller: who,
+    lastForbidden: init.lastForbidden,
+    handled: init.handled,
+    named: init.named
+  };
 }
 
 async function thenBoundaryScopeResolves(flowP, name, slices) {
@@ -333,6 +499,41 @@ function acceptedWas(s) {
     }) : Outcome$ReventlessGwt.pass);
 }
 
+let forbiddenCode = CommandOutcome$Reventless.code("Forbidden");
+
+function forbidden(s, refusal) {
+  return {
+    log: s.log,
+    outcome: s.outcome,
+    lastEvents: [],
+    lastError: refusal,
+    lastCommands: s.lastCommands,
+    lastPublic: s.lastPublic,
+    lastAggregateId: s.lastAggregateId,
+    lastRefusal: s.lastRefusal,
+    steps: s.steps,
+    at: s.at,
+    failedAt: s.failedAt,
+    now: s.now,
+    caller: s.caller,
+    lastForbidden: true,
+    handled: s.handled,
+    named: s.named
+  };
+}
+
+function forbiddenWas(s) {
+  return recordOutcome(s, s.lastForbidden ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: Object.fromEntries([[
+          "errorCode",
+          forbiddenCode
+        ]]),
+      actual: s.lastError,
+      actualEvents: s.lastEvents
+    }));
+}
+
 function issued(s, only, name, schema) {
   let sent = s.lastCommands;
   let picked;
@@ -402,7 +603,11 @@ function runIssued(s, commands, decideOne) {
       steps: s.steps,
       at: s.at,
       failedAt: s.failedAt,
-      now: s.now
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
     }, (acc, command) => {
       let match = acc.lastError;
       if (match !== undefined) {
@@ -421,7 +626,11 @@ function runIssued(s, commands, decideOne) {
         steps: next.steps,
         at: next.at,
         failedAt: next.failedAt,
-        now: next.now
+        now: next.now,
+        caller: next.caller,
+        lastForbidden: next.lastForbidden,
+        handled: next.handled,
+        named: next.named
       };
     });
   } else {
@@ -437,7 +646,11 @@ function runIssued(s, commands, decideOne) {
       steps: s.steps,
       at: s.at,
       failedAt: s.failedAt,
-      now: s.now
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
     }, Outcome$ReventlessGwt.fail({
       TAG: "TranslateError",
       expected: "a command the decision reads",
@@ -469,7 +682,11 @@ function DecisionStep(Spec) {
         steps: s.steps,
         at: s.at,
         failedAt: s.failedAt,
-        now: s.now
+        now: s.now,
+        caller: s.caller,
+        lastForbidden: s.lastForbidden,
+        handled: s.handled,
+        named: s.named
       };
     };
     let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
@@ -488,9 +705,16 @@ function DecisionStep(Spec) {
         key: key
       }
     })), crossPartitionTagKeys);
+    let historyFor = (s, command) => decodeMatching(s.log, consumedDecoder, DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined));
+    let Guard = Decision_GWT$ReventlessGwt.Acting({
+      name: Spec.name,
+      historySchema: Spec.consumedEventSchema,
+      commandSchema: Spec.commandSchema,
+      authorizationOf: Spec.authorizationOf,
+      ownedById: false
+    });
     let decideOne = (s, command) => {
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined);
-      let history = decodeMatching(s.log, consumedDecoder, query);
+      let history = historyFor(s, command);
       let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
       let events = Decision.decide(state, command);
       if (events.TAG !== "Ok") {
@@ -506,7 +730,11 @@ function DecisionStep(Spec) {
           steps: s.steps,
           at: s.at,
           failedAt: s.failedAt,
-          now: s.now
+          now: s.now,
+          caller: s.caller,
+          lastForbidden: false,
+          handled: s.handled,
+          named: s.named
         };
       }
       let events$1 = events._0;
@@ -522,19 +750,55 @@ function DecisionStep(Spec) {
         steps: s.steps,
         at: s.at,
         failedAt: s.failedAt,
-        now: s.now
+        now: s.now,
+        caller: s.caller,
+        lastForbidden: false,
+        handled: s.handled,
+        named: s.named
       };
     };
-    let whenCommand = async (flowP, at, command) => decideOne(await enter(flowP, "whenCommand", part, at), command);
+    let whenCommand = async (flowP, at, command) => {
+      let s = await enter(flowP, "whenCommand", part, at);
+      let who = s.caller;
+      if (who !== undefined) {
+        Guard.asCaller([], {
+          claim: Decision_GWT$ReventlessGwt.Caller.claimWith(who, elevated.contents),
+          roles: who.roles,
+          signedIn: who.signedIn
+        });
+        if (Guard.refuses(historyFor(s, command), command)) {
+          return forbidden(s, Stdlib_Option.map(Guard.refusal.contents, Guard.encRefusal));
+        } else {
+          return decideOne(s, command);
+        }
+      } else {
+        return decideOne(s, command);
+      }
+    };
     let whenIssued = async (flowP, only, at) => {
       let s = await enter(flowP, "whenIssued", part, at);
       return runIssued(s, issued(s, only, Spec.name, Spec.commandSchema), decideOne);
+    };
+    let deciding_name = Spec.name;
+    let deciding_run = (s, json) => {
+      let command;
+      try {
+        command = Util_Sury$Reventless.fromJson(json, Spec.commandSchema);
+      } catch (exn) {
+        return;
+      }
+      return decideOne(s, command);
+    };
+    let deciding = {
+      name: deciding_name,
+      run: deciding_run
     };
     let thenEvents = async (flowP, expected) => eventsWere(await enter(flowP, "thenEvents", part, undefined), expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)));
     let thenEvent = async (flowP, event) => eventsWere(await enter(flowP, "thenEvent", part, undefined), [Message$ReventlessCore.encode(event, Spec.eventSchema)]);
     let thenError = async (flowP, expected) => errorWas(await enter(flowP, "thenError", part, undefined), Message$ReventlessCore.encode(expected, Spec.errorSchema));
     let thenNoEvent = async flowP => noEventWas(await enter(flowP, "thenNoEvent", part, undefined));
     let thenAccepted = async flowP => acceptedWas(await enter(flowP, "thenAccepted", part, undefined));
+    let thenForbidden = async flowP => forbiddenWas(await enter(flowP, "thenForbidden", part, undefined));
     return {
       part: part,
       consumedDecoder: consumedDecoder,
@@ -544,14 +808,18 @@ function DecisionStep(Spec) {
       crossPartitionTagKeys: crossPartitionTagKeys,
       tagKeysByEventType: tagKeysByEventType,
       payloadTagKeys: payloadTagKeys,
+      historyFor: historyFor,
+      Guard: Guard,
       decideOne: decideOne,
       whenCommand: whenCommand,
       whenIssued: whenIssued,
+      deciding: deciding,
       thenEvents: thenEvents,
       thenEvent: thenEvent,
       thenError: thenError,
       thenNoEvent: thenNoEvent,
-      thenAccepted: thenAccepted
+      thenAccepted: thenAccepted,
+      thenForbidden: thenForbidden
     };
   };
 }
@@ -578,9 +846,20 @@ function AggregateStep(Spec) {
         steps: s.steps,
         at: s.at,
         failedAt: s.failedAt,
-        now: s.now
+        now: s.now,
+        caller: s.caller,
+        lastForbidden: s.lastForbidden,
+        handled: s.handled,
+        named: s.named
       };
     };
+    let Guard = Decision_GWT$ReventlessGwt.Acting({
+      name: Spec.name,
+      historySchema: Spec.eventSchema,
+      commandSchema: Spec.commandSchema,
+      authorizationOf: Spec.authorizationOf,
+      ownedById: false
+    });
     let decideOne = (s, id, command) => {
       let history = decodeAggregateMatching(s.log, id, aggregateDecoder);
       let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
@@ -598,7 +877,11 @@ function AggregateStep(Spec) {
           steps: s.steps,
           at: s.at,
           failedAt: s.failedAt,
-          now: s.now
+          now: s.now,
+          caller: s.caller,
+          lastForbidden: false,
+          handled: s.handled,
+          named: s.named
         };
       }
       let events$1 = events._0;
@@ -614,10 +897,31 @@ function AggregateStep(Spec) {
         steps: s.steps,
         at: s.at,
         failedAt: s.failedAt,
-        now: s.now
+        now: s.now,
+        caller: s.caller,
+        lastForbidden: false,
+        handled: s.handled,
+        named: s.named
       };
     };
-    let whenCommand = async (flowP, id, at, command) => decideOne(await enter(flowP, "whenCommand", part, at), id, command);
+    let whenCommand = async (flowP, id, at, command) => {
+      let s = await enter(flowP, "whenCommand", part, at);
+      let who = s.caller;
+      if (who !== undefined) {
+        Guard.asCaller([], {
+          claim: Decision_GWT$ReventlessGwt.Caller.claimWith(who, elevated.contents),
+          roles: who.roles,
+          signedIn: who.signedIn
+        });
+        if (Guard.refuses(decodeAggregateMatching(s.log, id, aggregateDecoder), command)) {
+          return forbidden(s, Stdlib_Option.map(Guard.refusal.contents, Guard.encRefusal));
+        } else {
+          return decideOne(s, id, command);
+        }
+      } else {
+        return decideOne(s, id, command);
+      }
+    };
     let whenIssued = async (flowP, id, only, at) => {
       let s = await enter(flowP, "whenIssued", part, at);
       return runIssued(s, issued(s, only, Spec.name, Spec.commandSchema), (s, c) => decideOne(s, id, c));
@@ -626,11 +930,13 @@ function AggregateStep(Spec) {
     let thenEvent = async (flowP, event) => eventsWere(await enter(flowP, "thenEvent", part, undefined), [Message$ReventlessCore.encode(event, Spec.eventSchema)]);
     let thenNoEvent = async flowP => noEventWas(await enter(flowP, "thenNoEvent", part, undefined));
     let thenAccepted = async flowP => acceptedWas(await enter(flowP, "thenAccepted", part, undefined));
+    let thenForbidden = async flowP => forbiddenWas(await enter(flowP, "thenForbidden", part, undefined));
     let thenError = async (flowP, expected) => errorWas(await enter(flowP, "thenError", part, undefined), Message$ReventlessCore.encode(expected, Spec.errorSchema));
     return {
       part: part,
       aggregateDecoder: aggregateDecoder,
       givenEvents: givenEvents,
+      Guard: Guard,
       decideOne: decideOne,
       whenCommand: whenCommand,
       whenIssued: whenIssued,
@@ -638,6 +944,7 @@ function AggregateStep(Spec) {
       thenEvent: thenEvent,
       thenNoEvent: thenNoEvent,
       thenAccepted: thenAccepted,
+      thenForbidden: thenForbidden,
       thenError: thenError
     };
   };
@@ -659,7 +966,13 @@ function ViewStep(Spec) {
         iso(entry.at)
       ]));
       let store = await P.givenEventsAt(events);
-      return Stdlib_Option.getOr(store[id], []);
+      let rows = Stdlib_Option.getOr(store[id], []);
+      let who = s.caller;
+      if (who !== undefined) {
+        return P.readableBy(rows, who, elevated.contents);
+      } else {
+        return rows;
+      }
     };
     let compared = (s, id, expected, actual) => recordOutcome(s, Primitive_object.equal(actual, expected) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
         TAG: "StateMismatch",
@@ -734,33 +1047,8 @@ function AutomationStep(Spec) {
       entry,
       Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, Stdlib_Option.getOr(entry.aggregateId, ""), A.withRecordedAt(A.testContext, entry.at)))
     ]);
-    let sent = (s, commands) => ({
-      log: s.log,
-      outcome: s.outcome,
-      lastEvents: s.lastEvents,
-      lastError: s.lastError,
-      lastCommands: commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
-      lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
-      lastRefusal: undefined,
-      steps: s.steps,
-      at: s.at,
-      failedAt: s.failedAt,
-      now: s.now
-    });
-    let whenReacts = async (flowP, at) => {
-      let s = await enter(flowP, "whenReacts", part, at);
-      let routed = routedLog(s).flatMap(param => param[1]);
-      return sent(s, A.sweep(routed, s.now, undefined).commands);
-    };
-    let whenTimePasses = async (flowP, until) => {
-      let from = (await flowP).now;
-      let s = await enter(flowP, "whenTimePasses", part, until);
-      let match = s.outcome;
-      if (match.TAG !== "Ok") {
-        return s;
-      }
-      let log = routedLog(s);
+    let key = "automation:" + Spec.name;
+    let dueTicks = (s, log, from) => {
       let rows = A.declaredRows(0.0);
       log.forEach(param => {
         let entry = param[0];
@@ -798,11 +1086,65 @@ function AutomationStep(Spec) {
           continue;
         };
       }).toSorted((param, param$1) => Primitive_float.compare(param[1], param$1[1]));
-      let ticks = A.routeEach(firings.map(param => A.tick(param[0], param[1])), A.testContext).flatMap(param => param[1]);
-      let fromLog = log.flatMap(param => param[1]);
-      let before = A.sweep(fromLog, s.now, undefined).commands;
-      let after = A.sweep(fromLog.concat(ticks), s.now, undefined).commands;
-      return sent(s, after.filter(c => !before.some(b => Primitive_object.equal(b, c))));
+      return A.routeEach(firings.map(param => A.tick(param[0], param[1])), A.testContext).flatMap(param => param[1]);
+    };
+    let reactWith = (s, ticksOpt) => {
+      let ticks = ticksOpt !== undefined ? ticksOpt : [];
+      let fromLog = routedLog(s).flatMap(param => param[1]);
+      let handled = handledBy(s, key);
+      let commands = A.sweep(fromLog.concat(ticks), s.now, undefined).commands.filter(param => !handled.includes(param[0]));
+      return [
+        markHandled(s, key, commands.map(param => param[0])),
+        commands
+      ];
+    };
+    let sent = (s, commands) => ({
+      log: s.log,
+      outcome: s.outcome,
+      lastEvents: s.lastEvents,
+      lastError: s.lastError,
+      lastCommands: commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId,
+      lastRefusal: undefined,
+      steps: s.steps,
+      at: s.at,
+      failedAt: s.failedAt,
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
+    });
+    let whenReacts = async (flowP, at) => {
+      let s = await enter(flowP, "whenReacts", part, at);
+      let match = reactWith(markNamed(s, key), undefined);
+      return sent(match[0], match[1]);
+    };
+    let whenTimePasses = async (flowP, until) => {
+      let from = (await flowP).now;
+      let s = await enter(flowP, "whenTimePasses", part, until);
+      let match = s.outcome;
+      if (match.TAG !== "Ok") {
+        return s;
+      }
+      let match$1 = reactWith(markNamed(s, key), dueTicks(s, routedLog(s), from));
+      return sent(match$1[0], match$1[1]);
+    };
+    let reacting_react = async s => {
+      let match = reactWith(s, undefined);
+      return [
+        match[0],
+        match[1].map(param => ({
+          target: Spec.targetName,
+          command: Message$ReventlessCore.encode(param[1], Spec.commandSchema)
+        }))
+      ];
+    };
+    let reacting = {
+      key: key,
+      part: part,
+      react: reacting_react
     };
     let issued = async (flowP, verb, expected) => encodedCommandsMatch(await enter(flowP, verb, part, undefined), expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema)));
     let thenIssuesCommands = (flowP, expected) => issued(flowP, "thenIssuesCommands", expected);
@@ -812,9 +1154,13 @@ function AutomationStep(Spec) {
       A: A,
       part: part,
       routedLog: routedLog,
+      key: key,
+      dueTicks: dueTicks,
+      reactWith: reactWith,
       sent: sent,
       whenReacts: whenReacts,
       whenTimePasses: whenTimePasses,
+      reacting: reacting,
       issued: issued,
       thenIssuesCommands: thenIssuesCommands,
       thenIssuesCommand: thenIssuesCommand,
@@ -885,7 +1231,11 @@ function InboundStep(Spec) {
             steps: s.steps,
             at: s.at,
             failedAt: s.failedAt,
-            now: s.now
+            now: s.now,
+            caller: s.caller,
+            lastForbidden: s.lastForbidden,
+            handled: s.handled,
+            named: s.named
           };
         case "NotUnderstood" :
           return {
@@ -900,7 +1250,11 @@ function InboundStep(Spec) {
             steps: s.steps,
             at: s.at,
             failedAt: s.failedAt,
-            now: s.now
+            now: s.now,
+            caller: s.caller,
+            lastForbidden: s.lastForbidden,
+            handled: s.handled,
+            named: s.named
           };
         case "InputRefused" :
           return {
@@ -915,7 +1269,11 @@ function InboundStep(Spec) {
             steps: s.steps,
             at: s.at,
             failedAt: s.failedAt,
-            now: s.now
+            now: s.now,
+            caller: s.caller,
+            lastForbidden: s.lastForbidden,
+            handled: s.handled,
+            named: s.named
           };
       }
     };
@@ -989,7 +1347,11 @@ function ExtensionPointStep(M) {
       steps: s.steps,
       at: s.at,
       failedAt: s.failedAt,
-      now: s.now
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
     };
   };
   let published = async (flowP, verb, expected) => {
@@ -1023,14 +1385,24 @@ function ExtensionStep(M) {
   };
   let epDecoder = DcbDecode$Reventless.makeDecoder(M.ExtensionPoint.eventSchema);
   let encCmd = c => Message$ReventlessCore.encode(c, M.Delegate.commandSchema);
-  let whenReacts = async (flowP, at) => {
-    let s = await enter(flowP, "whenReacts", part, at);
-    let epEvents = Stdlib_Array.filterMap(s.lastPublic, json => {
-      let data;
-      data = typeof json === "object" && json !== null && !Array.isArray(json) ? json : ({});
-      return epDecoder.decode(Message$Reventless.variantNameOfJson(json), data);
+  let key = "extension:" + part_name;
+  let reactWith = async s => {
+    let handled = handledBy(s, key);
+    let fresh = Stdlib_Array.filterMap(s.log.map((entry, i) => [
+      i.toString(),
+      entry
+    ]), param => {
+      let i = param[0];
+      if (handled.includes(i)) {
+        return;
+      } else {
+        return Stdlib_Option.map(decodeMatching([param[1]], epDecoder, [])[0], ev => [
+          i,
+          ev
+        ]);
+      }
     });
-    let actions = epEvents.map(ev => M.mapIncomingEvent("gwt-id", ev, StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.pluginDefinition, StubRuntime$ReventlessGwt.queryEngine)).flat();
+    let actions = fresh.map(param => M.mapIncomingEvent("gwt-id", param[1], StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.pluginDefinition, StubRuntime$ReventlessGwt.queryEngine)).flat();
     let nested = await Promise.all(actions.map(async action => {
       switch (action.TAG) {
         case "PublishAggregateCommand" :
@@ -1051,20 +1423,48 @@ function ExtensionStep(M) {
           return [];
       }
     }));
+    return [
+      markHandled(s, key, fresh.map(param => param[0])),
+      nested.flat()
+    ];
+  };
+  let whenReacts = async (flowP, at) => {
+    let s = await enter(flowP, "whenReacts", part, at);
+    let match = await reactWith(markNamed(s, key));
+    let s$1 = match[0];
     return {
-      log: s.log,
-      outcome: s.outcome,
-      lastEvents: s.lastEvents,
-      lastError: s.lastError,
-      lastCommands: nested.flat(),
-      lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
-      lastRefusal: s.lastRefusal,
-      steps: s.steps,
-      at: s.at,
-      failedAt: s.failedAt,
-      now: s.now
+      log: s$1.log,
+      outcome: s$1.outcome,
+      lastEvents: s$1.lastEvents,
+      lastError: s$1.lastError,
+      lastCommands: match[1],
+      lastPublic: s$1.lastPublic,
+      lastAggregateId: s$1.lastAggregateId,
+      lastRefusal: s$1.lastRefusal,
+      steps: s$1.steps,
+      at: s$1.at,
+      failedAt: s$1.failedAt,
+      now: s$1.now,
+      caller: s$1.caller,
+      lastForbidden: s$1.lastForbidden,
+      handled: s$1.handled,
+      named: s$1.named
     };
+  };
+  let reacting_react = async s => {
+    let match = await reactWith(s);
+    return [
+      match[0],
+      match[1].map(command => ({
+        target: M.Delegate.name,
+        command: command
+      }))
+    ];
+  };
+  let reacting = {
+    key: key,
+    part: part,
+    react: reacting_react
   };
   let issued = async (flowP, verb, expected) => {
     let s = await enter(flowP, verb, part, undefined);
@@ -1083,12 +1483,190 @@ function ExtensionStep(M) {
     part: part,
     epDecoder: epDecoder,
     encCmd: encCmd,
+    key: key,
+    reactWith: reactWith,
     whenReacts: whenReacts,
+    reacting: reacting,
     issued: issued,
     thenIssuesCommands: thenIssuesCommands,
     thenIssuesCommand: thenIssuesCommand,
     thenIssuesNoCommand: thenIssuesNoCommand
   };
+}
+
+async function reactAll(s, reacting) {
+  let go = async (s, i, sent) => {
+    let r = reacting[i];
+    if (r === undefined) {
+      return [
+        s,
+        sent
+      ];
+    }
+    let match = await r.react(s);
+    return await go(match[0], i + 1 | 0, sent.concat(match[1].map(x => [
+      r,
+      x
+    ])));
+  };
+  return await go(s, 0, []);
+}
+
+async function thenNothingElseReacts(flowP, systems) {
+  let s = await enter(flowP, "thenNothingElseReacts", undefined, undefined);
+  let unnamed = systems.flatMap(p => p.reacting).filter(r => !s.named.includes(r.key));
+  let match = await reactAll(s, unnamed);
+  let sent = match[1];
+  let match$1 = sent[0];
+  let s$1;
+  if (match$1 !== undefined) {
+    let r = match$1[0];
+    s$1 = {
+      log: s.log,
+      outcome: s.outcome,
+      lastEvents: s.lastEvents,
+      lastError: s.lastError,
+      lastCommands: s.lastCommands,
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId,
+      lastRefusal: s.lastRefusal,
+      steps: s.steps,
+      at: Stdlib_Option.map(s.at, step => {
+        let newrecord = {...step};
+        newrecord.part = r.part;
+        return newrecord;
+      }),
+      failedAt: s.failedAt,
+      now: s.now,
+      caller: s.caller,
+      lastForbidden: s.lastForbidden,
+      handled: s.handled,
+      named: s.named
+    };
+  } else {
+    s$1 = s;
+  }
+  return recordOutcome(s$1, sent.length !== 0 ? Outcome$ReventlessGwt.fail({
+      TAG: "PublishedActionsMismatch",
+      expected: [],
+      actual: sent.map(param => Object.fromEntries([
+        [
+          "reacts",
+          param[0].part.name
+        ],
+        [
+          "sends",
+          param[1].command
+        ]
+      ]))
+    }) : Outcome$ReventlessGwt.pass);
+}
+
+async function whenSettled(flowP, systems) {
+  let s = await enter(flowP, "whenSettled", undefined, undefined);
+  let reacting = systems.flatMap(p => p.reacting);
+  let deciding = systems.flatMap(p => p.deciding);
+  let decide = (s, param) => {
+    let command = param.command;
+    let s$1 = Stdlib_Option.flatMap(Stdlib_Option.flatMap(param.target, t => deciding.find(d => d.name === t)), d => d.run(s, command));
+    if (s$1 !== undefined) {
+      return s$1;
+    } else {
+      return Stdlib_Array.findMap(deciding, d => d.run(s, command));
+    }
+  };
+  let round = async (s, n, events, commands) => {
+    let match = await reactAll(s, reacting);
+    let sent = match[1];
+    let s$1 = Stdlib_Array.reduce(reacting, match[0], (s, r) => markNamed(s, r.key));
+    if (sent.length === 0) {
+      return {
+        log: s$1.log,
+        outcome: s$1.outcome,
+        lastEvents: events,
+        lastError: s$1.lastError,
+        lastCommands: commands,
+        lastPublic: s$1.lastPublic,
+        lastAggregateId: s$1.lastAggregateId,
+        lastRefusal: s$1.lastRefusal,
+        steps: s$1.steps,
+        at: s$1.at,
+        failedAt: s$1.failedAt,
+        now: s$1.now,
+        caller: s$1.caller,
+        lastForbidden: s$1.lastForbidden,
+        handled: s$1.handled,
+        named: s$1.named
+      };
+    }
+    if (n >= 20) {
+      return recordOutcome(s$1, Outcome$ReventlessGwt.fail({
+        TAG: "Throw",
+        error: `the flow does not settle: still sending after ` + (20).toString() + ` rounds`,
+        stack: ""
+      }));
+    }
+    let match$1 = Stdlib_Array.reduce(sent, [
+      s$1,
+      events,
+      undefined
+    ], (param, param$1) => {
+      let unread = param[2];
+      let events = param[1];
+      let s = param[0];
+      if (unread !== undefined) {
+        return [
+          s,
+          events,
+          unread
+        ];
+      }
+      let reaction = param$1[1];
+      let next = decide(s, reaction);
+      if (next !== undefined) {
+        return [
+          next,
+          events.concat(next.lastEvents),
+          undefined
+        ];
+      } else {
+        return [
+          s,
+          events,
+          reaction.command
+        ];
+      }
+    });
+    let unread = match$1[2];
+    let s$2 = match$1[0];
+    if (unread !== undefined) {
+      return recordOutcome(s$2, Outcome$ReventlessGwt.fail({
+        TAG: "TranslateError",
+        expected: "a decision of the systems given that reads the command",
+        actual: `no decision reads ` + JSON.stringify(unread)
+      }));
+    } else {
+      return await round(s$2, n + 1 | 0, match$1[1], commands.concat(sent.map(param => param[1].command)));
+    }
+  };
+  return await round({
+    log: s.log,
+    outcome: s.outcome,
+    lastEvents: [],
+    lastError: undefined,
+    lastCommands: s.lastCommands,
+    lastPublic: s.lastPublic,
+    lastAggregateId: s.lastAggregateId,
+    lastRefusal: s.lastRefusal,
+    steps: s.steps,
+    at: s.at,
+    failedAt: s.failedAt,
+    now: s.now,
+    caller: s.caller,
+    lastForbidden: s.lastForbidden,
+    handled: s.handled,
+    named: s.named
+  }, 0, [], []);
 }
 
 function CommandStep(_) {
@@ -1111,15 +1689,23 @@ function InboundSlice(_) {
   return _ => ({});
 }
 
+let Caller;
+
 let EPMapping;
 
 let ExtMapping;
 
 let describe = JestBind$ReventlessGwt.describe;
 
+let settleBound = 20;
+
 export {
+  Caller,
   EPMapping,
   ExtMapping,
+  handledBy,
+  markHandled,
+  markNamed,
   emptyState,
   start,
   recordOutcome,
@@ -1132,12 +1718,19 @@ export {
   decodeAggregateMatching,
   describe,
   outcomeOf,
+  elevated,
+  flows,
   test,
+  after,
+  asCaller,
   thenBoundaryScopeResolves,
   eventsWere,
   errorWas,
   noEventWas,
   acceptedWas,
+  forbiddenCode,
+  forbidden,
+  forbiddenWas,
   issued,
   runIssued,
   DecisionStep,
@@ -1152,6 +1745,10 @@ export {
   sortJson,
   ExtensionPointStep,
   ExtensionStep,
+  reactAll,
+  thenNothingElseReacts,
+  settleBound,
+  whenSettled,
   CommandStep,
   AggregateCommandStep,
   AutomationSlice,

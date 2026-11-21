@@ -22,3 +22,9 @@ module TellChargerPower = ReventlessGwt.Flow_GWT.OutboundStep(
 
 // Ways in
 module MeterCharger = ReventlessGwt.Flow_GWT.InboundStep(MeterCharger, MeterCharger_Translation)
+
+// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.
+let parts: ReventlessGwt.Flow_GWT.parts = {
+  reacting: [],
+  deciding: [LimitPower.deciding, RecordReading.deciding, RegisterCharger.deciding],
+}

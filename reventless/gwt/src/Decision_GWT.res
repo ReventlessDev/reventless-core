@@ -93,6 +93,34 @@ module Caller = {
   }
   /** A caller with no identity. */
   let anonymous: t = {claim: Unidentified, roles: [], signedIn: false}
+
+  /** The group a test's operator holds, elevated in every read the test makes. */
+  let operatorGroup = "reventless-gwt-operator"
+
+  /** The caller as the read rules take them. */
+  let identity = (who: t): Reventless.Identity.t => {
+    let groups = who.roles->Array.map(Reventless.Role.groupOf)
+    switch who.claim {
+    | Owned({userId}) => {userId, username: userId, groups, provider: InMemory}
+    | Exempt => {
+        userId: "operator",
+        username: "operator",
+        groups: groups->Array.concat([operatorGroup]),
+        provider: InMemory,
+      }
+    | Unidentified => Reventless.Identity.anonymous
+    }
+  }
+
+  /** The claim a command carries: an owner holding a role whose group is elevated
+      acts for anyone, as the platform classifies them. */
+  let claimWith = (who: t, ~elevated: array<string>): Message.CallerClaim.t =>
+    switch who.claim {
+    | Owned(_)
+      if who.roles->Array.some(role => elevated->Array.includes(Reventless.Role.groupOf(role))) =>
+      Exempt
+    | claim => claim
+    }
 }
 
 /** `Caller` as a scenario sees it: roles typed by the spec's own `role`, so they

@@ -11,6 +11,13 @@ let c1: OrderingPlugin.CustomerId.t = OrderingPlugin.CustomerId.makeFromString("
 
 let book: string = "Book"
 let bookDescription: string = "A good book"
+let confirmationBody: string = "Thanks — we have your order o1 and will let you know when it ships."
+let confirmationSubject: string = "Your order o1 is confirmed"
+let confirmReference: string = "confirm:o1"
+let customerRef: string = "c1"
+let orderPlacedSource: string = "OrderingDcbEventLog:OrderPlaced"
+let orderRef: string = "o1"
+let orderSubject: string = "Order"
 let pen: string = "Pen"
 
 let bookAndThreePensPrice: Reventless.Money.t = Reventless.Money.make(

@@ -157,3 +157,51 @@ OrdersQuery.describe("OrdersView StateViewSlice queries", () => {
     ->OrdersQuery.thenRowFromComposite(None)
   )
 })
+
+// ---------------------------------------------------------------------------
+// Read as a person: a cart is its customer's. A spec file says `@owner`; an
+// inline spec marks the field as the PPX would.
+// ---------------------------------------------------------------------------
+
+module CartsReadModel = {
+  module Id = Reventless.Id.StringPure
+  let name = "Carts"
+  let moduleUrl = ""
+
+  @schema
+  type state = {cartId: string, customerId: @s.matches(Reventless.Owner.string) string, items: int}
+
+  let config = Reventless.ReadModel.config()
+  let subIdConfig = None
+}
+
+module CartsQuery = Query_GWT.Make(Query_GWT.FromReadModel(CartsReadModel))
+
+CartsQuery.describe("Carts read as a person", () => {
+  let carts = () =>
+    CartsQuery.givenStore([
+      ("k1", {cartId: "k1", customerId: "c1", items: 2}),
+      ("k2", {cartId: "k2", customerId: "c2", items: 1}),
+    ])
+
+  CartsQuery.test("the customer finds their cart", () =>
+    carts()
+    ->CartsQuery.asCaller(CartsQuery.Caller.owner("c1"))
+    ->CartsQuery.whenQueryById("k1")
+    ->CartsQuery.thenRow(Some({cartId: "k1", customerId: "c1", items: 2}))
+  )
+
+  CartsQuery.test("another customer's cart is not there to be found", () =>
+    carts()
+    ->CartsQuery.asCaller(CartsQuery.Caller.owner("c1"))
+    ->CartsQuery.whenQueryById("k2")
+    ->CartsQuery.thenRow(None)
+  )
+
+  CartsQuery.test("an operator finds every cart", () =>
+    carts()
+    ->CartsQuery.asCaller(CartsQuery.Caller.operator)
+    ->CartsQuery.whenQueryById("k2")
+    ->CartsQuery.thenRow(Some({cartId: "k2", customerId: "c2", items: 1}))
+  )
+})

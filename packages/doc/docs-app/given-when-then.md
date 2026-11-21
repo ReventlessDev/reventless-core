@@ -909,8 +909,8 @@ the part's own code, with no bus and no timers.
 
 | Step | Takes | When | Then |
 |---|---|---|---|
-| `DecisionStep` | a state change slice and its decision | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted` |
-| `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted` |
+| `DecisionStep` | a state change slice and its decision | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted`, `thenForbidden` |
+| `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted`, `thenForbidden` |
 | `ViewStep` | a view and its projection | | `thenRow(s)`, `thenNoRow`, `thenRowShows` |
 | `AutomationStep` | an automation slice as written | `whenReacts`, `whenTimePasses(~until)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 | `OutboundStep` | a way out as written | | `thenOutbound`, `thenOutboundNothing` |
@@ -1024,9 +1024,65 @@ hint: decide() returned different events than expected. Check the event payload 
 The JSON hint carries the same as `step`
 ([§5](#5-the-outcome-algebra)).
 
+**Who acts.** `asCaller(Caller.owner(c1))` names the person who takes the steps
+after it, until the next `asCaller`; `Caller.inRoles([…])`, `Caller.operator` and
+`Caller.anonymous` are the others, as in a decision's own test
+([who may act](#who-may-act-ascaller-and-thenforbidden)). A command the person issues
+is checked as the platform checks it, against its rule and against the owners its
+history records; a refused one records nothing, and `thenForbidden` expects that.
+A view step shows only the rows the person may read: one the view's rule refuses
+them, one they do not own, or a retired one reads as no row. What an automation
+or an extension sends is still run by the platform. The groups that read every
+row are given to the test, `test("…", ~elevated=["admins"], () => …)`, none by
+default. The rule a view step applies is the one every read door of the platform
+applies (`OwnerScope.mayReadRow`), and a view's and a query's own test take
+`asCaller` too.
+
+```rescript
+->asCaller(Caller.owner(c1))
+->Flow.PlaceOrder.whenCommand(PlaceOrder.PlaceOrder({orderId: o1, customerId: c1, /* … */}))
+->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+->Flow.ShipOrder.thenForbidden
+->asCaller(Caller.owner(c2))
+->Flow.Orders.thenNoRow("o1")
+```
+
+**What reacts reacts once.** A reaction step reports what is new since that part
+last reacted: an automation's to-do items it has not acted on, an extension's
+events of the extension point it has not reacted to. Called twice over the same
+record, the second sends nothing.
+
+**Nothing else reacts.** A plugin's generated `Flow` module also lists its
+reacting and its deciding parts as `parts`. `thenNothingElseReacts([Flow.parts])`
+runs every automation and extension of the systems given that the flow did not
+name, and fails naming the first that would send a command: a flow that leaves a
+reaction out says so. `whenSettled([Catalog.parts, Ordering.parts])` lets the app
+do the rest: the reacting parts react, the decision that reads each command sent
+runs it, and again, until nothing is sent; a flow still sending after twenty
+rounds fails, as a loop. An aggregate decides no command there, since its step
+needs an id.
+
+**A flow starts after another.** `after("title")` in place of `start` takes the
+record and the time where the flow of that title, in the same file, ended; it is
+run first and must pass. If it fails, the later flow is not run and says so,
+naming it, rather than failing on what the other left undone. The steps file
+records the flow a scenario starts after, by its title and scenario id.
+
+```rescript
+test("Tier 2 — a product added in Catalog is synced into Ordering", () =>
+  start->Catalog.AddProduct.whenCommand(/* … */)/* … */
+)
+
+test("Tier 2 — archiving a product withdraws it from ordering", () =>
+  after("Tier 2 — a product added in Catalog is synced into Ordering")
+  ->Catalog.ArchiveProduct.whenCommand(/* … */)
+)
+```
+
 **The steps file.** With `REVENTLESS_EMIT_SIDECAR=1` a flow's build writes the
 same steps file as any other test's. Each step also records its `step` number,
-counted as the flow counts it, its `at` when it says one, and its `part`: the system (the plugin's
+counted as the flow counts it (`asCaller` counts), its `at` when it says one, its
+`caller` from `asCaller` on, and its `part`: the system (the plugin's
 namespace, absent for the plugin's own), the kind and the name. A part is read
 from the step's set-up when it was set up by hand, and from the path of a
 ready-made step otherwise. `~tells` on a flow's test, a free name for what the

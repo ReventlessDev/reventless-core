@@ -31,6 +31,49 @@ let trail = (states: array<lifecycle>) =>
   })
 
 describe("Orders StateViewSlice", () => {
+  // Read as a person: an order is its customer's.
+  let placedByC1 = () =>
+    givenEvents([])->whenEvent(
+      OrderPlaced({
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
+        lines: [dockLine],
+        total: Reventless.Money.make(~amount=2500.0, ~currency=Reventless.Currency.EUR),
+        shippingMethod: Standard,
+        deliveryWindow: None,
+        firstProductName: None,
+        firstProductImage: None,
+      }),
+    )
+
+  // scenario-id: bb77534b-0239-4d71-8fb0-0f31febf2479
+  test("the customer who placed an order reads it", () =>
+    placedByC1()
+    ->asCaller(Caller.owner(c1))
+    ->thenStateWithId(
+      "o1",
+      {
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
+        lines: [dockLine],
+        total: Reventless.Money.make(~amount=2500.0, ~currency=Reventless.Currency.EUR),
+        itemCount: 1,
+        lifecycle: Placed,
+        shippingMethod: Standard,
+        placedAt: epoch,
+        trail: trail([Placed]),
+        firstProductImage: None,
+      },
+    )
+  )
+
+  // scenario-id: 9ed24550-9942-4233-ada8-77c017a87c27
+  test("another customer reads no row of it", () =>
+    placedByC1()->asCaller(Caller.owner(c2))->thenNoState
+  )
+
   // scenario-id: f758b677-2fad-4184-b8f6-185a47a9c4ea
   test("OrderPlaced creates a row with status Placed", () =>
     givenEvents([])

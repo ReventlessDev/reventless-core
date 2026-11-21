@@ -3,11 +3,13 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
@@ -80,13 +82,51 @@ let anonymous = {
   signedIn: false
 };
 
+let operatorGroup = "reventless-gwt-operator";
+
+function identity(who) {
+  let groups = who.roles.map(Role$Reventless.groupOf);
+  let match = who.claim;
+  if (typeof match !== "object") {
+    if (match === "Exempt") {
+      return {
+        userId: "operator",
+        username: "operator",
+        groups: groups.concat([operatorGroup]),
+        provider: "InMemory"
+      };
+    } else {
+      return Identity$Reventless.anonymous;
+    }
+  }
+  let userId = match.userId;
+  return {
+    userId: userId,
+    username: userId,
+    groups: groups,
+    provider: "InMemory"
+  };
+}
+
+function claimWith(who, elevated) {
+  let claim = who.claim;
+  if (typeof claim !== "object" || !who.roles.some(role => elevated.includes(Role$Reventless.groupOf(role)))) {
+    return claim;
+  } else {
+    return "Exempt";
+  }
+}
+
 let Caller = {
   roleNames: roleNames,
   owner: owner,
   inRoles: inRoles,
   operator: operator,
   operatorIn: operatorIn,
-  anonymous: anonymous
+  anonymous: anonymous,
+  operatorGroup: operatorGroup,
+  identity: identity,
+  claimWith: claimWith
 };
 
 function Callers(R) {
@@ -1012,4 +1052,4 @@ export {
   Make,
   MakeFromAggregate,
 }
-/* Owner-Reventless Not a pure module */
+/* Role-Reventless Not a pure module */

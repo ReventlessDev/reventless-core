@@ -26,6 +26,10 @@ module type Spec = {
   type consumedEvent
 
   let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>>
+
+  /** The roles the view's rule names, and the rule: who may read the view at all. */
+  type role
+  let authorization: Reventless.Authorization.rule<role>
 }
 
 // Implementation half — one binding (`project`).
@@ -61,6 +65,13 @@ module type T = {
   let thenNoState: storeThunk => promise<Outcome.outcome>
   let thenThrow: storeThunk => promise<Outcome.outcome>
   let thenFail: storeThunk => promise<Outcome.outcome>
+
+  // Who reads the rows; see `Decision_GWT.Caller`. Refused by the view's rule,
+  // not the row's owner, or the row retired, all read as no row.
+  module Caller: Decision_GWT.Callers with type role = Spec.role
+  let asCaller: (storeThunk, Caller.t) => storeThunk
+  /** The rows `who` may read, given the groups that read every row. */
+  let readableBy: (array<Spec.state>, Caller.t, ~elevated: array<string>) => array<Spec.state>
 }
 
 let handleActions = Projection.handleActions // local alias to avoid shadowing
@@ -199,6 +210,39 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
 
     store->sortStore
   }
+
+  module Caller = Decision_GWT.Callers({
+    type role = Spec.role
+  })
+
+  let ownerField = Reventless.Owner.fieldNames(Spec.stateSchema->S.castToUnknown)->Array.get(0)
+  let retired =
+    Spec.stateSchema
+    ->S.castToUnknown
+    ->Reventless.StateAnnotations.getSpec
+    ->Option.flatMap(spec => spec.retired)
+
+  let readableBy = (rows: array<Spec.state>, who: Caller.t, ~elevated) => {
+    let identity = Decision_GWT.Caller.identity(who)
+    rows->Array.filter(row =>
+      identity->Reventless.OwnerScope.mayReadRow(
+        row->Message.encode(Spec.stateSchema),
+        ~rule=Reventless.Authorization.named(Spec.authorization),
+        ~ownerField,
+        ~retiredField=?retired->Option.map(r => r.field),
+        ~retiredValues=?retired->Option.flatMap(r => r.values),
+        ~elevated=elevated->Array.concat([Decision_GWT.Caller.operatorGroup]),
+      )
+    )
+  }
+
+  let asCaller = (thunk: storeThunk, who: Caller.t): storeThunk =>
+    async () =>
+      (await thunk())
+      ->Dict.mapValues(rows => rows->readableBy(who, ~elevated=[]))
+      ->Dict.toArray
+      ->Array.filter(((_, rows)) => rows->Array.length > 0)
+      ->Dict.fromArray
 
   // Every event at the fixed test time.
   let update = (store, events) =>

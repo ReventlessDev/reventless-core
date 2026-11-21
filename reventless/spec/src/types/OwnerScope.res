@@ -486,3 +486,58 @@ let isRetiredValue = (scope: retiredScope, cell: option<JSON.t>): bool =>
     | Some(s) => states->Array.includes(s)
     }
   }
+
+/**
+Whether a row holds `required` in its owner `field`. A string, or a number read
+as its text. A row that states no owner never matches: treating a missing field
+as "belongs to everyone" would expose exactly the rows that predate the
+annotation, which are the ones nobody remembers to check.
+*/
+let ownsRow = (row: JSON.t, ~field: string, ~required: string): bool =>
+  switch row->JSON.Decode.object->Option.flatMap(d => d->Dict.get(field)) {
+  | Some(String(s)) => s == required
+  | Some(Number(n)) => Float.toString(n) == required
+  | _ => false
+  }
+
+/** Whether a retirement narrowing keeps a row: it keeps every row not retired. */
+let keepsRow = (scope: retiredScope, row: JSON.t): bool =>
+  !(scope->isRetiredValue(row->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field))))
+
+/** Whether an owner decision, already made for the caller, lets them read a row. */
+let ownerAdmits = (decision: decision, row: JSON.t): bool =>
+  switch decision {
+  | Unscoped => true
+  | RefuseOwned => false
+  | ScopeTo(field, required) => row->ownsRow(~field, ~required)
+  }
+
+/** Whether a retirement decision, already made for the caller, lets them read a row. */
+let retiredAdmits = (decision: retiredDecision, row: JSON.t): bool =>
+  switch decision {
+  | RetiredVisible => true
+  | ExcludeRetired(scope) => scope->keepsRow(row)
+  }
+
+/**
+May this caller read this row of this view: the view's rule, then the owner and
+the retirement decisions, each compared with the row. One answer for every door
+that hands a row back and for a test that reads a view as a person, so a reading
+rule shown in a test is the rule the platform applies. A row refused for any of
+the reasons reads as no row, which is what the platform answers.
+*/
+let mayReadRow = (
+  identity: Identity.t,
+  row: JSON.t,
+  ~rule: Authorization.permission,
+  ~ownerField: option<string>,
+  ~retiredField: option<string>=?,
+  ~retiredValues: option<array<string>>=?,
+  ~asked: bool=false,
+  ~elevated: array<string>=elevatedGroups(),
+): bool =>
+  Authorization.isAllowed(rule, identity) &&
+  identity->decide(~ownerField, ~elevated)->ownerAdmits(row) &&
+  identity
+  ->decideRetired(~retiredField, ~retiredValues?, ~asked, ~elevated)
+  ->retiredAdmits(row)

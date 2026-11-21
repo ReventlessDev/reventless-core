@@ -3,18 +3,24 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as Decision_GWT$ReventlessGwt from "./Decision_GWT.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 function FromReadModel(Spec) {
   return {
     name: Spec.name,
     stateSchema: Spec.stateSchema,
     config: Spec.config,
-    subIdConfig: Spec.subIdConfig
+    subIdConfig: Spec.subIdConfig,
+    authorization: Spec.authorization
   };
 }
 
@@ -23,7 +29,8 @@ function FromStateViewSlice(Spec) {
     name: Spec.name,
     stateSchema: Spec.stateSchema,
     config: Spec.config,
-    subIdConfig: Spec.subIdConfig
+    subIdConfig: Spec.subIdConfig,
+    authorization: Spec.authorization
   };
 }
 
@@ -40,6 +47,13 @@ function Make(Spec) {
     subId: param[1],
     state: param[2]
   }));
+  let Caller = Decision_GWT$ReventlessGwt.Callers({});
+  let ownerField = Owner$Reventless.fieldNames(Spec.stateSchema)[0];
+  let retired = Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(Spec.stateSchema), spec => spec.retired);
+  let asCaller = (s, who) => {
+    let identity = Decision_GWT$ReventlessGwt.Caller.identity(who);
+    return s.filter(r => OwnerScope$Reventless.mayReadRow(identity, Util_Sury$Reventless.toJson(r.state, Spec.stateSchema), Authorization$Reventless.named(Spec.authorization), ownerField, Stdlib_Option.map(retired, r => r.field), Stdlib_Option.flatMap(retired, r => r.values), undefined, [Decision_GWT$ReventlessGwt.Caller.operatorGroup]));
+  };
   let whenQueryById = (s, id) => Stdlib_Array.findMap(s, r => {
     if (r.id === id) {
       return Primitive_option.some(r.state);
@@ -189,7 +203,9 @@ function Make(Spec) {
     thenRow: thenRow,
     thenRows: thenRows,
     thenRowCount: thenRowCount,
-    thenRowFromComposite: thenRowFromComposite
+    thenRowFromComposite: thenRowFromComposite,
+    Caller: Caller,
+    asCaller: asCaller
   };
 }
 
@@ -354,4 +370,4 @@ export {
   Make,
   MakeResolver,
 }
-/* Util_Sury-Reventless Not a pure module */
+/* Owner-Reventless Not a pure module */

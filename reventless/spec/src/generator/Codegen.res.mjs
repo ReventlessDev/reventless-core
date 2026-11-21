@@ -474,10 +474,18 @@ function renderFlowSteps(resolved, discovered) {
       resolved.extensions.map(stem => step(stem, "ExtensionStep", [path(stem) + ".Mapping"]))
     ]
   ].filter(param => param[1].length !== 0);
+  let listed = (names, field) => names.map(name => name + `.` + field).join(", ");
+  let parts = [
+    "// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.",
+    "let parts: ReventlessGwt.Flow_GWT.parts = {",
+    `  reacting: [` + listed(resolved.automationSlices.concat(resolved.extensions), "reacting") + `],`,
+    `  deciding: [` + listed(resolved.stateChangeSlices, "deciding") + `],`,
+    "}"
+  ].join("\n");
   if (groups.length === 0) {
     return;
   }
-  let body = groups.map(param => [`// ` + param[0]].concat(param[1]).join("\n"));
+  let body = groups.map(param => [`// ` + param[0]].concat(param[1]).join("\n")).concat([parts]);
   return [
     "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
     "",

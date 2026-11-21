@@ -199,21 +199,14 @@ let run = (
     // missing field as "belongs to everyone" would expose exactly the rows that
     // predate the annotation, which are the ones nobody remembers to check.
     let passOwner = switch ownerScope {
-    | Some((field, required)) =>
-      getFieldString(item, field)->Option.mapOr(false, v => v == required)
+    | Some((field, required)) => item->Reventless.OwnerScope.ownsRow(~field, ~required)
     | None => true
     }
     // The missing-field rule lives in `OwnerScope.isRetiredValue`, beside the two
     // forms it has to answer for; the note on why it lands the opposite way from
     // `passOwner` is there.
     let passRetired = switch retiredScope {
-    | Some(scope) =>
-      !(
-        scope->Reventless.OwnerScope.isRetiredValue(
-          item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
-        )
-      )
-
+    | Some(scope) => scope->Reventless.OwnerScope.keepsRow(item)
     | None => true
     }
     passSearch && passPrefix && passIds && passPerField && passOwner && passRetired

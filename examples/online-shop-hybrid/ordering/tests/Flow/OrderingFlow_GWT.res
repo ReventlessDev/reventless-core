@@ -138,6 +138,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         origin: Default,
       }),
     ])
+    // Nothing else in Ordering reacts to this order.
+    ->thenNothingElseReacts([Flow.parts])
   })
 
   // scenario-id: c8689953-3429-4fe0-a146-cc9fcfc4a6c6
@@ -152,5 +154,39 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       }),
     )
     ->Flow.PlaceOrder.thenError(ProductsNotAvailable({missing: [p1]}))
+  )
+
+  // Read as a person: the order is its customer's, and shipping it is not.
+  // scenario-id: 9956f671-356d-4c7f-b297-fdb83aba4da9
+  test(
+    "a customer reads their own order, and another customer reads none",
+    ~tells="A customer reads their order",
+    () =>
+      start
+      ->Flow.SyncCatalogProduct.givenEvents([
+        SyncCatalogProduct.CatalogProductSynced({productId: p1, name: book, price: bookPrice}),
+      ])
+      ->asCaller(Caller.owner(c1))
+      ->Flow.PlaceOrder.whenCommand(
+        PlaceOrder.PlaceOrder({
+          orderId: o1,
+          customerId: c1,
+          lineItems: [{productId: p1, quantity: 2}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->Flow.Orders.thenRowShows(
+        "o1",
+        row => {"customerId": row.customerId, "lifecycle": row.lifecycle},
+        {
+          "customerId": c1,
+          "lifecycle": Orders.Placed,
+        },
+      )
+      // Shipping takes the fulfilment role, which a customer does not hold.
+      ->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+      ->Flow.ShipOrder.thenForbidden
+      ->asCaller(Caller.owner(c2))
+      ->Flow.Orders.thenNoRow("o1"),
   )
 })

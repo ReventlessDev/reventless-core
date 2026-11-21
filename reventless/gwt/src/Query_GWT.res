@@ -25,6 +25,10 @@ module type QueryableSpec = {
 
   let config: Reventless.ReadModel.config
   let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>>
+
+  /** The roles the view's rule names, and the rule: who may read the view at all. */
+  type role
+  let authorization: Reventless.Authorization.rule<role>
 }
 
 module FromReadModel = (Spec: Reventless.ReadModel.Spec) => {
@@ -33,6 +37,8 @@ module FromReadModel = (Spec: Reventless.ReadModel.Spec) => {
   let stateSchema = Spec.stateSchema
   let config = Spec.config
   let subIdConfig = Spec.subIdConfig
+  type role = Spec.role
+  let authorization = Spec.authorization
 }
 
 module FromStateViewSlice = (Spec: Reventless.StateViewSlice.Spec) => {
@@ -41,6 +47,8 @@ module FromStateViewSlice = (Spec: Reventless.StateViewSlice.Spec) => {
   let stateSchema = Spec.stateSchema
   let config = Spec.config
   let subIdConfig = Spec.subIdConfig
+  type role = Spec.role
+  let authorization = Spec.authorization
 }
 
 // -- Query argument shapes ---------------------------------------------------
@@ -82,6 +90,12 @@ module type T = {
     result<option<Spec.state>, Outcome.mismatch>,
     option<Spec.state>,
   ) => Outcome.outcome
+
+  // Who asks; see `Decision_GWT.Caller`. The rows the caller may not read are
+  // not there to be found: refused by the view's rule, not the row's owner, or
+  // the row retired.
+  module Caller: Decision_GWT.Callers with type role = Spec.role
+  let asCaller: (store, Caller.t) => store
 }
 
 module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
@@ -100,6 +114,31 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
 
   let givenCompositeStore = triples =>
     triples->Array.map(((id, subId, state)) => {id, subId: Some(subId), state})
+
+  module Caller = Decision_GWT.Callers({
+    type role = Spec.role
+  })
+
+  let ownerField = Reventless.Owner.fieldNames(Spec.stateSchema->S.castToUnknown)->Array.get(0)
+  let retired =
+    Spec.stateSchema
+    ->S.castToUnknown
+    ->Reventless.StateAnnotations.getSpec
+    ->Option.flatMap(spec => spec.retired)
+
+  let asCaller = (s: store, who: Caller.t) => {
+    let identity = Decision_GWT.Caller.identity(who)
+    s->Array.filter(r =>
+      identity->Reventless.OwnerScope.mayReadRow(
+        encState(r.state),
+        ~rule=Reventless.Authorization.named(Spec.authorization),
+        ~ownerField,
+        ~retiredField=?retired->Option.map(r => r.field),
+        ~retiredValues=?retired->Option.flatMap(r => r.values),
+        ~elevated=[Decision_GWT.Caller.operatorGroup],
+      )
+    )
+  }
 
   // `whenQueryById` ignores `subId` — returns the first row with the given id.
   // Callers who want composite-id lookup go through `whenQueryByCompositeId`.

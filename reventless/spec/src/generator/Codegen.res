@@ -714,11 +714,27 @@ let renderFlowSteps = (
       ),
     ),
   ]->Array.filter(((_, lines)) => lines->Array.length > 0)
+  // What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.
+  // An aggregate's step takes an id, so it decides no command sent to it there.
+  let listed = (names, field) => names->Array.map(name => `${name}.${field}`)->Array.join(", ")
+  let parts =
+    [
+      "// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.",
+      "let parts: ReventlessGwt.Flow_GWT.parts = {",
+      `  reacting: [${listed(
+          Array.concat(resolved.automationSlices, resolved.extensions),
+          "reacting",
+        )}],`,
+      `  deciding: [${listed(resolved.stateChangeSlices, "deciding")}],`,
+      "}",
+    ]->Array.join("\n")
   if groups->Array.length == 0 {
     None
   } else {
     let body =
-      groups->Array.map(((title, lines)) => [`// ${title}`]->Array.concat(lines)->Array.join("\n"))
+      groups
+      ->Array.map(((title, lines)) => [`// ${title}`]->Array.concat(lines)->Array.join("\n"))
+      ->Array.concat([parts])
     Some(
       [
         "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",

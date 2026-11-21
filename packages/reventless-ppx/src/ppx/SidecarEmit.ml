@@ -812,7 +812,7 @@ let step_names =
     "thenNotUnderstood"; "thenRefusedInput"; "thenSent"; "thenNothingSent"; "thenOutbound";
     "thenOutboundNothing"; "thenTodoStatus"; "thenRetryRecorded"; "thenPublicEvent";
     "thenPublicEvents"; "whenIssued"; "thenRow"; "thenRows"; "thenNoRow"; "thenRowShows";
-    "thenAccepted"; "whenTimePasses" ]
+    "thenAccepted"; "whenTimePasses"; "asCaller"; "whenSettled"; "thenNothingElseReacts" ]
 
 (* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`,
    `Auto.thenIssuesCommand` — and the step is the same step, so the last segment
@@ -1017,6 +1017,7 @@ type call = {
   number : int;  (* the step's place among every step of the test, from 1 *)
   labels : string list;  (* the labelled arguments it was called with *)
   at : Yojson.Safe.t option;  (* when a flow's step says it happens *)
+  caller : Yojson.Safe.t option;  (* who a flow's step is taken as, from `asCaller` on *)
 }
 
 (* What one verb asserts. None for a verb this walk does not know. *)
@@ -1033,7 +1034,7 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
   let labels = List.filter_map (function (Labelled l | Optional l), _ -> Some l | _ -> None) args in
   let at = Option.bind (labelled "at") (example_of_expr ?src) in
   let mk ?(grouped = true) group entries =
-    Some { group; verb; via = step_via lid; grouped; entries; number; labels; at }
+    Some { group; verb; via = step_via lid; grouped; entries; number; labels; at; caller = None }
   in
   let input p =
     match element_of_constructor ?src p with
@@ -1068,6 +1069,10 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
       | None -> []
     in
     mk "when" (one StepKind.Issued ~values ())
+  (* The app does the rest: reactions and their commands until nothing is sent. *)
+  | "whenSettled" -> mk "when" (one StepKind.Sweep ())
+  (* No reacting part the flow did not name would send a command. *)
+  | "thenNothingElseReacts" -> mk "then" (one StepKind.NoCommand ())
   (* Time passes to `~until`; the schedules due on the way fire. *)
   | "whenTimePasses" ->
     let values =
@@ -1153,8 +1158,19 @@ let absorb_reacted_events (calls : call list) : call list =
 let calls_of_body ?src (body : expression) : call list =
   ordered_steps ~deep:true body []
   |> List.rev
-  |> List.mapi (fun i (lid, args) -> call_of ?src ~number:(i + 1) lid args)
-  |> List.filter_map Fun.id
+  |> List.mapi (fun i (lid, args) -> (i + 1, lid, args))
+  (* `asCaller` names who takes the steps after it; it is a step, not a call. *)
+  |> List.fold_left
+       (fun (caller, acc) (number, lid, args) ->
+         if String.equal (step_name_of lid) "asCaller" then
+           let who = List.filter_map (function Nolabel, e -> Some e | _ -> None) args in
+           (Option.bind (last who) (example_of_expr ?src), acc)
+         else
+           match call_of ?src ~number lid args with
+           | Some c -> (caller, { c with caller } :: acc)
+           | None -> (caller, acc))
+       (None, [])
+  |> snd |> List.rev
   |> absorb_reacted_events
 
 (* ── the part behind a flow's step ─────────────────────────────────────── *)
@@ -1297,6 +1313,7 @@ let steps_json ?(flow = false) ?(parts = []) (calls : call list) : Yojson.Safe.t
              @ (match c.via with Some v -> [ ("via", `String v) ] | None -> [])
              @ (if flow then [ ("step", `Int c.number) ] else [])
              @ (match c.at with Some v when flow -> [ ("at", v) ] | _ -> [])
+             @ (match c.caller with Some v when flow -> [ ("caller", v) ] | _ -> [])
              @ match part with Some p -> [ ("part", part_json p) ] | None -> []))
         c.entries)
     calls
@@ -1445,6 +1462,19 @@ let describe_of_item (item : structure_item) :
     | _ -> None)
   | _ -> None
 
+(* The title a flow names in `after("…")`, in place of `start`. *)
+let rec after_of (e : expression) : string option =
+  match e.pexp_desc with
+  | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args)
+    when String.equal (step_name_of txt) "after" ->
+    List.find_map (function Nolabel, a -> string_of_expr a | _ -> None) args
+  | Pexp_apply (f, args) ->
+    List.find_map Fun.id (after_of f :: List.map (fun (_, a) -> after_of a) args)
+  | Pexp_constraint (inner, _) -> after_of inner
+  | Pexp_let (_, _, cont) -> after_of cont
+  | Pexp_sequence (a, b) -> ( match after_of a with Some t -> Some t | None -> after_of b)
+  | _ -> None
+
 let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
   let src = read_source fname in
   let scenario_ids =
@@ -1467,23 +1497,33 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
     let tested =
       List.concat_map
         (fun (_, tests) ->
-          List.map (fun (loc, title, body, tells) -> (loc, title, tells, calls_of_body ?src body)) tests)
+          List.map
+            (fun (loc, title, body, tells) ->
+              (loc, title, tells, calls_of_body ?src body, if flow then after_of body else None))
+            tests)
         describes
     in
     let parts =
-      if flow then parts_of_flow str (List.concat_map (fun (_, _, _, calls) -> calls) tested)
+      if flow then parts_of_flow str (List.concat_map (fun (_, _, _, calls, _) -> calls) tested)
       else []
+    in
+    let id_of (loc : Location.t) =
+      match scenario_id_for loc.loc_start.pos_lnum ~tests:test_lines scenario_ids with
+      | Some id -> id
+      | None -> ""
+    in
+    (* The flow a scenario starts after: its title, and its id when it has one. *)
+    let after_json title =
+      `Assoc
+        (("title", `String title)
+         :: (match List.find_opt (fun (_, t, _, _, _) -> String.equal t title) tested with
+             | Some (loc, _, _, _, _) when id_of loc <> "" -> [ ("scenarioId", `String (id_of loc)) ]
+             | _ -> []))
     in
     let scenarios =
           List.map
-            (fun ((loc : Location.t), title, tells, calls) ->
-              let scenario_id =
-                match
-                  scenario_id_for loc.loc_start.pos_lnum ~tests:test_lines scenario_ids
-                with
-                | Some id -> id
-                | None -> ""
-              in
+            (fun ((loc : Location.t), title, tells, calls, after) ->
+              let scenario_id = id_of loc in
               let given, when_, then_ = extract_groups calls in
               (* `specId` repeats the id for the released codegen, which reads
                  only that key; it goes once the codegen reads `scenarioId`. *)
@@ -1495,7 +1535,8 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
                   ("when", `List when_);
                   ("then", `List then_);
                   ("steps", `List (steps_json ~flow ~parts calls)) ]
-                @ match tells with Some t -> [ ("tells", `String t) ] | None -> []))
+                @ (match tells with Some t -> [ ("tells", `String t) ] | None -> [])
+                @ match after with Some t -> [ ("after", after_json t) ] | None -> []))
             tested
     in
     Some

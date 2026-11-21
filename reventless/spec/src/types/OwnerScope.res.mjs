@@ -7,6 +7,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "./Role.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "./Identity.res.mjs";
+import * as Authorization$Reventless from "./Authorization.res.mjs";
 
 let isJsString = (v => typeof v === "string");
 
@@ -350,6 +351,51 @@ function isRetiredValue(scope, cell) {
   }
 }
 
+function ownsRow(row, field, required) {
+  let match = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(row), d => d[field]);
+  if (match === undefined) {
+    return false;
+  }
+  switch (typeof match) {
+    case "string" :
+      return match === required;
+    case "number" :
+      return match.toString() === required;
+    default:
+      return false;
+  }
+}
+
+function keepsRow(scope, row) {
+  return !isRetiredValue(scope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(row), d => d[scope.field]));
+}
+
+function ownerAdmits(decision, row) {
+  if (typeof decision !== "object") {
+    return decision === "Unscoped";
+  } else {
+    return ownsRow(row, decision._0, decision._1);
+  }
+}
+
+function retiredAdmits(decision, row) {
+  if (typeof decision !== "object") {
+    return true;
+  } else {
+    return keepsRow(decision._0, row);
+  }
+}
+
+function mayReadRow(identity, row, rule, ownerField, retiredField, retiredValues, askedOpt, elevatedOpt) {
+  let asked = askedOpt !== undefined ? askedOpt : false;
+  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups();
+  if (Authorization$Reventless.isAllowed(rule, identity) && ownerAdmits(decide(identity, ownerField, elevated), row)) {
+    return retiredAdmits(decideRetired(identity, retiredField, retiredValues, asked, elevated), row);
+  } else {
+    return false;
+  }
+}
+
 export {
   isJsString,
   systemProviders,
@@ -377,5 +423,10 @@ export {
   decideRetired,
   retiredScopeOf,
   isRetiredValue,
+  ownsRow,
+  keepsRow,
+  ownerAdmits,
+  retiredAdmits,
+  mayReadRow,
 }
 /* Role-Reventless Not a pure module */

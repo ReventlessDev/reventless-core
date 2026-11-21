@@ -34,3 +34,9 @@ module CompleteRegistration = ReventlessGwt.Flow_GWT.InboundStep(
   Plugin.CompleteRegistration_Translation,
 )
 module SignUp = ReventlessGwt.Flow_GWT.InboundStep(Plugin.SignUp, Plugin.SignUp_Translation)
+
+// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.
+let parts: ReventlessGwt.Flow_GWT.parts = {
+  reacting: [],
+  deciding: [RegistrationPolicy.deciding, Registrations.deciding],
+}

@@ -684,4 +684,60 @@ describe("Owner.fieldNamesByVariant:", () => {
   testSync("a permissive schema answers empty", () =>
     expect(Owner.fieldNamesByVariant(S.json->S.castToUnknown)->Dict.toArray)->toEqual([])
   )
+
+  describe("may this caller read this row:", () => {
+    let cognito = (~userId, ~groups): Identity.t =>
+      rawIdentity({"userId": userId, "username": userId, "groups": groups, "provider": "Cognito"})
+    let row = owner =>
+      JSON.parseOrThrow(`{"orderId": "o1", "customerId": "${owner}", "retired": false}`)
+    let retiredRow = JSON.parseOrThrow(`{"orderId": "o1", "customerId": "c1", "retired": true}`)
+    let read = (~rule=Authorization.AllowAuthenticated, ~retired=false, identity, row) =>
+      OwnerScope.mayReadRow(
+        identity,
+        row,
+        ~rule,
+        ~ownerField=Some("customerId"),
+        ~retiredField=?retired ? Some("retired") : None,
+        ~elevated=["admins"],
+      )
+
+    testSync(
+      "the owner reads their row",
+      () => expect(read(cognito(~userId="c1", ~groups=[]), row("c1")))->toBe(true),
+    )
+    testSync(
+      "another caller reads no row",
+      () => expect(read(cognito(~userId="c2", ~groups=[]), row("c1")))->toBe(false),
+    )
+    testSync(
+      "an elevated caller reads every owner's row",
+      () => expect(read(cognito(~userId="a1", ~groups=["admins"]), row("c1")))->toBe(true),
+    )
+    testSync(
+      "the view's rule refuses before any row is compared",
+      () =>
+        expect(
+          read(
+            ~rule=AllowRoles([Role.make("Clerk")]),
+            cognito(~userId="c1", ~groups=[]),
+            row("c1"),
+          ),
+        )->toBe(false),
+    )
+    testSync(
+      "a retired row reads as none, even to its owner",
+      () => expect(read(~retired=true, cognito(~userId="c1", ~groups=[]), retiredRow))->toBe(false),
+    )
+    testSync(
+      "an owner given as a number matches its text, as the list door reads it",
+      () =>
+        expect(
+          OwnerScope.ownsRow(
+            JSON.parseOrThrow(`{"customerId": 7}`),
+            ~field="customerId",
+            ~required="7",
+          ),
+        )->toBe(true),
+    )
+  })
 })

@@ -17,3 +17,9 @@ module Orders_ExtensionPoint = ReventlessGwt.Flow_GWT.ExtensionPointStep(
 
 // Extensions
 module Products_Extension = ReventlessGwt.Flow_GWT.ExtensionStep(Products_Extension.Mapping)
+
+// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.
+let parts: ReventlessGwt.Flow_GWT.parts = {
+  reacting: [Products_Extension.reacting],
+  deciding: [],
+}

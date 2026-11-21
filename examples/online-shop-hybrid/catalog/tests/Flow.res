@@ -57,3 +57,24 @@ module Products_ExtensionPoint = ReventlessGwt.Flow_GWT.ExtensionPointStep(
 
 // Extensions
 module Orders_Extension = ReventlessGwt.Flow_GWT.ExtensionStep(Orders_Extension.Mapping)
+
+// What reacts and what decides, for `thenNothingElseReacts` and `whenSettled`.
+let parts: ReventlessGwt.Flow_GWT.parts = {
+  reacting: [Orders_Extension.reacting],
+  deciding: [
+    AddCategory.deciding,
+    AddProduct.deciding,
+    ArchiveCategory.deciding,
+    ArchiveProduct.deciding,
+    CategoryImages.deciding,
+    ChangeProductDescription.deciding,
+    ChangeProductName.deciding,
+    ChangeProductPrice.deciding,
+    DiscontinueProduct.deciding,
+    ProductImages.deciding,
+    RecordProductDemand.deciding,
+    RenameCategory.deciding,
+    UnarchiveCategory.deciding,
+    UnarchiveProduct.deciding,
+  ],
+}

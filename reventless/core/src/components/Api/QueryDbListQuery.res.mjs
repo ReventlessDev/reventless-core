@@ -100,14 +100,8 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
       passIds = true;
     }
     let passPerField = perFieldChecks.every(check => check(item));
-    let passOwner;
-    if (ownerScope !== undefined) {
-      let required = ownerScope[1];
-      passOwner = Stdlib_Option.mapOr(getFieldString(item, ownerScope[0]), false, v => v === required);
-    } else {
-      passOwner = true;
-    }
-    let passRetired = retiredScope !== undefined ? !OwnerScope$Reventless.isRetiredValue(retiredScope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[retiredScope.field])) : true;
+    let passOwner = ownerScope !== undefined ? OwnerScope$Reventless.ownsRow(item, ownerScope[0], ownerScope[1]) : true;
+    let passRetired = retiredScope !== undefined ? OwnerScope$Reventless.keepsRow(retiredScope, item) : true;
     if (passSearch && passPrefix && passIds && passPerField && passOwner) {
       return passRetired;
     } else {

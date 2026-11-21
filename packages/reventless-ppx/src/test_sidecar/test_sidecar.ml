@@ -1063,6 +1063,25 @@ let () =
                 "o9"))]
   in
   let ej = scenarios_of "tests/Flow/ExpectFlow_GWT.res" expect_body in
+  let settle_body : structure =
+    [%str
+      describe "Settle" (fun () ->
+          test "the app does the rest" (fun () ->
+              thenNothingElseReacts (whenSettled start [| Flow.parts |]) [| Flow.parts |]))]
+  in
+  let sj = scenarios_of "tests/Flow/SettleFlow_GWT.res" settle_body in
+  let after_body : structure =
+    [%str
+      describe "After" (fun () ->
+          test "placed" (fun () -> Flow.PlaceOrder.whenCommand start (PlaceOrder { orderId = "o1" }));
+          test "shipped" (fun () ->
+              Flow.ShipOrder.whenCommand (after "placed") (ShipOrder { orderId = "o1" })))]
+  in
+  let aj = scenarios_of "tests/Flow/AfterFlow_GWT.res" after_body in
+  sequal aj "shipped" "after" "after(title): the flow it starts after" "{\"title\":\"placed\"}";
+  smust aj "shipped" "steps" "…its own steps counted from 1" "\"verb\":\"whenCommand\",\"kind\":\"Command\",\"element\":\"ShipOrder\"";
+  sequal sj "the app does the rest" "steps" "whenSettled and thenNothingElseReacts, no part"
+    "[{\"group\":\"when\",\"verb\":\"whenSettled\",\"kind\":\"Sweep\",\"element\":\"\",\"values\":[],\"step\":1},{\"group\":\"then\",\"verb\":\"thenNothingElseReacts\",\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[],\"step\":2}]";
   sequal ej "sent and run" "when" "whenIssued: the commands sent, ~only kept"
     "[{\"kind\":\"Issued\",\"element\":\"\",\"values\":[[\"only\",{\"kind\":\"int\",\"value\":2}]]}]";
   sequal ej "sent and run" "then" "thenAccepted, thenRowShows' fields, thenNoRow"
@@ -1082,6 +1101,24 @@ let () =
     "\"at\":{\"kind\":\"string\",\"value\":\"2026-03-02T09:00:00Z\"}";
   smust tj "an hour later" "steps" "whenTimePasses: the time it passes to, an automation's"
     "\"values\":[[\"until\",{\"kind\":\"string\",\"value\":\"2026-03-02T10:00:00Z\"}]],\"via\":\"Flow.Remind\",\"step\":2,\"part\":{\"kind\":\"Automation\",\"name\":\"Remind\"}";
+  let caller_body : structure =
+    [%str
+      describe "Caller" (fun () ->
+          test "read as the customer" (fun () ->
+              Flow.Orders.thenNoRow
+                (asCaller
+                   (Flow.ShipOrder.thenForbidden
+                      (Flow.ShipOrder.whenCommand
+                         (asCaller start (Caller.owner "c1"))
+                         (ShipOrder { orderId = "o1" })))
+                   (Caller.owner "c2"))
+                "o1"))]
+  in
+  let cj = scenarios_of "tests/Flow/CallerFlow_GWT.res" caller_body in
+  smust cj "read as the customer" "steps" "a step taken as the caller asCaller named, counted after it"
+    "\"via\":\"Flow.ShipOrder\",\"step\":2,\"caller\":{\"kind\":\"string\",\"value\":\"c1\",\"constructor\":\"Caller.owner\"}";
+  smust cj "read as the customer" "steps" "thenForbidden, then the next caller's step"
+    "\"via\":\"Flow.Orders\",\"step\":5,\"caller\":{\"kind\":\"string\",\"value\":\"c2\"";
   smust ej "sent and run" "steps" "…a view's too"
     "\"part\":{\"kind\":\"View\",\"name\":\"Orders\"}";
 

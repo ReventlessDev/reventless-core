@@ -39,6 +39,9 @@ open ReventlessCore
 // Every step counts itself as the flow passes it, so a failure names its step:
 // *step 6 of 8, ShipOrder.thenEvent*.
 
+// Who acts in a flow: `Caller.owner(c1)`, `Caller.inRoles([…])`, `Caller.operator`.
+module Caller = Decision_GWT.Caller
+
 module EPMapping = ReventlessInfra.ExtensionPointMapping
 module ExtMapping = ReventlessInfra.ExtensionMapping
 
@@ -90,7 +93,51 @@ type flowState = {
   // The flow's time, in milliseconds since 1970. It starts at 0 and moves only
   // forward, when a step says when it happens.
   now: float,
+  // Who takes the steps a person takes, from `asCaller` on; none is the
+  // platform acting for itself.
+  caller: option<Caller.t>,
+  // The last command was refused before its decision ran: by its rule, or
+  // because the caller does not own what it acts on.
+  lastForbidden: bool,
+  // What each reacting part has already reacted to, by part: an automation's
+  // to-do items, an extension's entries of the record. A reaction reports what
+  // is new since then.
+  handled: dict<array<string>>,
+  // The reacting parts the flow named, by key.
+  named: array<string>,
 }
+
+// One command a reacting part sends, and the part it is meant for when it says.
+type reaction = {target: option<string>, command: JSON.t}
+
+// A part that reacts to the record: what it sends that it has not sent yet,
+// and the flow with that marked as sent.
+type reacting = {
+  key: string,
+  part: Outcome.part,
+  react: flowState => promise<(flowState, array<reaction>)>,
+}
+
+// A part that decides: runs a sent command when it reads it, as the platform.
+type deciding = {
+  name: string,
+  run: (flowState, JSON.t) => option<flowState>,
+}
+
+// A system's reacting and deciding parts, as its generated `Flow` module lists
+// them.
+type parts = {reacting: array<reacting>, deciding: array<deciding>}
+
+let handledBy = (s: flowState, key) => s.handled->Dict.get(key)->Option.getOr([])
+
+let markHandled = (s: flowState, key, ids: array<string>) => {
+  let handled = s.handled->Dict.copy
+  handled->Dict.set(key, s->handledBy(key)->Array.concat(ids))
+  {...s, handled}
+}
+
+let markNamed = (s: flowState, key) =>
+  s.named->Array.includes(key) ? s : {...s, named: s.named->Array.concat([key])}
 
 type flow = promise<flowState>
 
@@ -107,6 +154,10 @@ let emptyState = {
   at: None,
   failedAt: None,
   now: 0.0,
+  caller: None,
+  lastForbidden: false,
+  handled: Dict.make(),
+  named: [],
 }
 
 // Entry point for a chain — an empty flow with no prior history.
@@ -273,11 +324,57 @@ let outcomeOf = (s: flowState): Outcome.outcome =>
   | (outcome, _) => outcome
   }
 
+// The groups whose members read every row and act for anyone, as a deployment
+// names them. A flow's test gives them (`~elevated`); none by default.
+let elevated: ref<array<string>> = ref([])
+
+// This file's flows, by the title of their test, so that one can start after
+// another.
+let flows: dict<unit => flow> = Dict.make()
+
 // The chain returns a `flow`; `test` awaits it and reports its outcome. Bodies
 // read top-to-bottom and end on the last `then*`. `~tells` names what the flow
 // tells, for a reader of its steps file; the flow itself does nothing with it.
-let test = (name, ~tells as _: option<string>=?, ~timeout=?, body: unit => flow) =>
-  JestBind.testPromise(~slice="Flow", name, ~timeout?, async () => outcomeOf(await body()))
+let test = (
+  name,
+  ~tells as _: option<string>=?,
+  ~elevated as groups: array<string>=[],
+  ~timeout=?,
+  body: unit => flow,
+) => {
+  flows->Dict.set(name, body)
+  JestBind.testPromise(~slice="Flow", name, ~timeout?, async () => {
+    elevated := groups
+    let outcome = outcomeOf(await body())
+    elevated := []
+    outcome
+  })
+}
+
+// In place of `start`: the record and the time where the flow titled `title`,
+// in this file, ended. That flow must pass; if it fails, this one is not run,
+// and says so rather than failing on what the other left undone.
+let after = async (title: string): flowState => {
+  let notRun = why => {...emptyState, outcome: Outcome.fail(Throw({error: why, stack: ""}))}
+  switch flows->Dict.get(title) {
+  | None => notRun(`after("${title}"): no flow of that title in this file`)
+  | Some(body) =>
+    let before = await body()
+    switch outcomeOf(before) {
+    | Error(_) => notRun(`not run: the flow it starts after, "${title}", failed`)
+    | Ok() => {...emptyState, log: before.log, now: before.now, handled: before.handled}
+    }
+  }
+}
+
+// Who takes the steps a person takes from here on: commands are checked against
+// their rule and the owners their history records, and a view shows only the
+// rows this caller may read. What an automation or an extension sends is still
+// run by the platform.
+let asCaller = async (flowP: flow, who: Caller.t) => {
+  ...await flowP->enter(~verb="asCaller"),
+  caller: Some(who),
+}
 
 // -- Boundary scope ----------------------------------------------------------
 
@@ -398,6 +495,30 @@ let acceptedWas = (s: flowState) =>
     },
   )
 
+let forbiddenCode = Reventless.CommandOutcome.code(Forbidden)
+
+let forbidden = (s: flowState, refusal: option<JSON.t>) => {
+  ...s,
+  lastEvents: [],
+  lastError: refusal,
+  lastForbidden: true,
+}
+
+let forbiddenWas = (s: flowState) =>
+  s->recordOutcome(
+    s.lastForbidden
+      ? Outcome.pass
+      : Outcome.fail(
+          ErrorMismatch({
+            expected: JSON.Encode.object(
+              Dict.fromArray([("errorCode", JSON.Encode.string(forbiddenCode))]),
+            ),
+            actual: s.lastError,
+            actualEvents: s.lastEvents,
+          }),
+        ),
+  )
+
 // -- What the step before sent -----------------------------------------------
 
 // The commands the step before sent, read by the decision that runs them: all of
@@ -503,16 +624,33 @@ module DecisionStep = (
     ~crossPartitionTagKeys,
   )
 
-  let decideOne = (s: flowState, command: Spec.command) => {
-    let query = Reventless.DcbTag.buildQueryFromCommand(
-      ~eventTypes=consumedEventTypes,
-      ~schema=Spec.commandSchema,
-      ~value=command,
-      ~tagKeysByEventType,
-      ~crossPartitionTagKeys,
-      ~payloadTagKeys,
+  let historyFor = (s: flowState, command: Spec.command) =>
+    decodeMatching(
+      s.log,
+      consumedDecoder,
+      Reventless.DcbTag.buildQueryFromCommand(
+        ~eventTypes=consumedEventTypes,
+        ~schema=Spec.commandSchema,
+        ~value=command,
+        ~tagKeysByEventType,
+        ~crossPartitionTagKeys,
+        ~payloadTagKeys,
+      ),
     )
-    let history = decodeMatching(s.log, consumedDecoder, query)
+
+  module Guard = Decision_GWT.Acting({
+    let name = Spec.name
+    type history = Spec.consumedEvent
+    let historySchema = Spec.consumedEventSchema
+    type command = Spec.command
+    let commandSchema = Spec.commandSchema
+    type role = Spec.role
+    let authorizationOf = Spec.authorizationOf
+    let ownedById = false
+  })
+
+  let decideOne = (s: flowState, command: Spec.command) => {
+    let history = s->historyFor(command)
     let state = history->Array.reduce(Decision.initialState, Decision.evolve)
     switch Decision.decide(state, command) {
     | Ok(events) => {
@@ -521,23 +659,48 @@ module DecisionStep = (
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
         lastAggregateId: None,
+        lastForbidden: false,
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
         lastAggregateId: None,
+        lastForbidden: false,
       }
     }
   }
 
-  let whenCommand = async (flowP: flow, ~at=?, command: Spec.command) =>
-    (await flowP->enter(~verb="whenCommand", ~part, ~at?))->decideOne(command)
+  // A person's command: refused before its decision runs, as the platform
+  // refuses it, when the caller may not issue it.
+  let whenCommand = async (flowP: flow, ~at=?, command: Spec.command) => {
+    let s = await flowP->enter(~verb="whenCommand", ~part, ~at?)
+    switch s.caller {
+    | None => s->decideOne(command)
+    | Some(who) =>
+      Guard.asCaller(
+        [],
+        {...who, claim: who->Caller.claimWith(~elevated=elevated.contents)},
+      )->ignore
+      Guard.refuses(s->historyFor(command), command)
+        ? s->forbidden(Guard.refusal.contents->Option.map(Guard.encRefusal))
+        : s->decideOne(command)
+    }
+  }
 
   // Runs the commands the step before sent, as this decision reads them.
   let whenIssued = async (flowP: flow, ~only=?, ~at=?) => {
     let s = await flowP->enter(~verb="whenIssued", ~part, ~at?)
     s->runIssued(s->issued(~only?, ~name=Spec.name, Spec.commandSchema), decideOne)
+  }
+
+  let deciding: deciding = {
+    name: Spec.name,
+    run: (s, json) =>
+      switch json->Reventless.Util_Sury.fromJson(Spec.commandSchema) {
+      | command => Some(s->decideOne(command))
+      | exception _ => None
+      },
   }
 
   let thenEvents = async (flowP: flow, expected: array<Spec.event>) =>
@@ -560,6 +723,9 @@ module DecisionStep = (
 
   let thenAccepted = async (flowP: flow) =>
     (await flowP->enter(~verb="thenAccepted", ~part))->acceptedWas
+
+  let thenForbidden = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenForbidden", ~part))->forbiddenWas
 }
 
 // -- AggregateStep: an Aggregate decider partitioned by aggregate-ID --
@@ -594,6 +760,17 @@ module AggregateStep = (
   // Rebuild `id`'s state from the log, run `decide`, then either append the
   // emitted events (still tagged with `~id`) or remember the error for the
   // next `thenError`.
+  module Guard = Decision_GWT.Acting({
+    let name = Spec.name
+    type history = Spec.event
+    let historySchema = Spec.eventSchema
+    type command = Spec.command
+    let commandSchema = Spec.commandSchema
+    type role = Spec.role
+    let authorizationOf = Spec.authorizationOf
+    let ownedById = false
+  })
+
   let decideOne = (s: flowState, ~id: string, command: Spec.command) => {
     let history = decodeAggregateMatching(s.log, ~id, aggregateDecoder)
     let state = history->Array.reduce(Decision.initialState, Decision.evolve)
@@ -604,18 +781,32 @@ module AggregateStep = (
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
         lastAggregateId: Some(id),
+        lastForbidden: false,
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
         lastAggregateId: Some(id),
+        lastForbidden: false,
       }
     }
   }
 
-  let whenCommand = async (flowP: flow, ~id: string, ~at=?, command: Spec.command) =>
-    (await flowP->enter(~verb="whenCommand", ~part, ~at?))->decideOne(~id, command)
+  let whenCommand = async (flowP: flow, ~id: string, ~at=?, command: Spec.command) => {
+    let s = await flowP->enter(~verb="whenCommand", ~part, ~at?)
+    switch s.caller {
+    | None => s->decideOne(~id, command)
+    | Some(who) =>
+      Guard.asCaller(
+        [],
+        {...who, claim: who->Caller.claimWith(~elevated=elevated.contents)},
+      )->ignore
+      Guard.refuses(decodeAggregateMatching(s.log, ~id, aggregateDecoder), command)
+        ? s->forbidden(Guard.refusal.contents->Option.map(Guard.encRefusal))
+        : s->decideOne(~id, command)
+    }
+  }
 
   // Runs the commands the step before sent, as this aggregate reads them.
   let whenIssued = async (flowP: flow, ~id: string, ~only=?, ~at=?) => {
@@ -640,6 +831,9 @@ module AggregateStep = (
 
   let thenAccepted = async (flowP: flow) =>
     (await flowP->enter(~verb="thenAccepted", ~part))->acceptedWas
+
+  let thenForbidden = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenForbidden", ~part))->forbiddenWas
 
   let thenError = async (flowP: flow, expected: Spec.error) =>
     (await flowP->enter(~verb="thenError", ~part))->errorWas(
@@ -672,7 +866,11 @@ module ViewStep = (
         decodeMatching([entry], consumedDecoder, [])->Array.map(e => (e, iso(entry.at)))
       )
     let store = await P.givenEventsAt(events)
-    store->Dict.get(id)->Option.getOr([])
+    let rows = store->Dict.get(id)->Option.getOr([])
+    switch s.caller {
+    | None => rows
+    | Some(who) => rows->P.readableBy(who, ~elevated=elevated.contents)
+    }
   }
 
   let compared = (s: flowState, id, ~expected: array<JSON.t>, ~actual: array<JSON.t>) =>
@@ -762,17 +960,72 @@ module AutomationStep = (
       ),
     ))
 
+  let key = "automation:" ++ Spec.name
+
+  // The schedules due between `from` and the flow's time, as ticks: the
+  // declared one, and those the record's events set.
+  let dueTicks = (s: flowState, log, ~from) => {
+    let rows = A.declaredRows(~now=0.0)
+    log->Array.forEach(((
+      entry: logEntry,
+      routed: array<AutomationSlice_Route.routed<Spec.todoItem>>,
+    )) =>
+      routed->Array.forEach(r =>
+        r.rescheduled->Array.forEach(
+          change =>
+            rows
+            ->AutomationSlice_Schedules.apply(change, ~setBy="flow", ~recordedAt=entry.at)
+            ->ignore,
+        )
+      )
+    )
+    let firings =
+      rows
+      ->Dict.valuesToArray
+      ->Array.flatMap(row =>
+        switch row->AutomationSlice_Schedules.timeOf {
+        | None => []
+        | Some(time) =>
+          let rec due = (after, acc, tries) =>
+            switch time->ScheduleTime.nextFiring(~after) {
+            | Some(next) if next <= s.now && tries < 1000 =>
+              due(next, acc->Array.concat([(row.key, next)]), tries + 1)
+            | _ => acc
+            }
+          due(from, [], 0)
+        }
+      )
+      ->Array.toSorted(((_, a), (_, b)) => Float.compare(a, b))
+    A.routeEach(
+      firings->Array.map(((key, at)) => A.tick(~key, at)),
+      A.testContext,
+    )->Array.flatMap(((_, routed)) => routed)
+  }
+
+  // A sweep of the record at the flow's time, and of the ticks given: the
+  // to-do items it has not acted on yet, now marked as acted on.
+  let reactWith = (s: flowState, ~ticks=[]) => {
+    let fromLog = s->routedLog->Array.flatMap(((_, routed)) => routed)
+    let handled = s->handledBy(key)
+    let commands =
+      A.sweep(fromLog->Array.concat(ticks), ~now=s.now).commands->Array.filter(((id, _)) =>
+        !(handled->Array.includes(id))
+      )
+    (s->markHandled(key, commands->Array.map(((id, _)) => id)), commands)
+  }
+
   let sent = (s: flowState, commands: array<(string, Spec.command)>) => {
     ...s,
     lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
     lastRefusal: None,
   }
 
-  // The automation sweeps the record at the flow's time.
+  // The automation sweeps the record at the flow's time and sends what is new
+  // since its last step.
   let whenReacts = async (flowP: flow, ~at=?) => {
     let s = await flowP->enter(~verb="whenReacts", ~part, ~at?)
-    let routed = s->routedLog->Array.flatMap(((_, routed)) => routed)
-    s->sent(A.sweep(routed, ~now=s.now).commands)
+    let (s, commands) = s->markNamed(key)->reactWith
+    s->sent(commands)
   }
 
   // The flow's time moves to `until`, and every schedule that comes due on the
@@ -784,45 +1037,24 @@ module AutomationStep = (
     switch s.outcome {
     | Error(_) => s
     | Ok() =>
-      let log = s->routedLog
-      let rows = A.declaredRows(~now=0.0)
-      log->Array.forEach(((entry, routed)) =>
-        routed->Array.forEach(r =>
-          r.rescheduled->Array.forEach(
-            change =>
-              rows
-              ->AutomationSlice_Schedules.apply(change, ~setBy="flow", ~recordedAt=entry.at)
-              ->ignore,
-          )
-        )
-      )
-      let firings =
-        rows
-        ->Dict.valuesToArray
-        ->Array.flatMap(row =>
-          switch row->AutomationSlice_Schedules.timeOf {
-          | None => []
-          | Some(time) =>
-            let rec due = (after, acc, tries) =>
-              switch time->ScheduleTime.nextFiring(~after) {
-              | Some(next) if next <= s.now && tries < 1000 =>
-                due(next, acc->Array.concat([(row.key, next)]), tries + 1)
-              | _ => acc
-              }
-            due(from, [], 0)
-          }
-        )
-        ->Array.toSorted(((_, a), (_, b)) => Float.compare(a, b))
-      let ticks =
-        A.routeEach(
-          firings->Array.map(((key, at)) => A.tick(~key, at)),
-          A.testContext,
-        )->Array.flatMap(((_, routed)) => routed)
-      let fromLog = log->Array.flatMap(((_, routed)) => routed)
-      let before = A.sweep(fromLog, ~now=s.now).commands
-      let after = A.sweep(fromLog->Array.concat(ticks), ~now=s.now).commands
-      s->sent(after->Array.filter(c => !(before->Array.some(b => b == c))))
+      let (s, commands) = s->markNamed(key)->reactWith(~ticks=s->dueTicks(s->routedLog, ~from))
+      s->sent(commands)
     }
+  }
+
+  let reacting: reacting = {
+    key,
+    part,
+    react: async s => {
+      let (s, commands) = s->reactWith
+      (
+        s,
+        commands->Array.map(((_, cmd)) => {
+          target: Some(Spec.targetName),
+          command: cmd->Message.encode(Spec.commandSchema),
+        }),
+      )
+    },
   }
 
   let issued = async (flowP: flow, ~verb, expected: array<Spec.command>) =>
@@ -985,18 +1217,23 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
   let epDecoder = Reventless.DcbDecode.makeDecoder(M.ExtensionPoint.eventSchema)
   let encCmd = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
 
-  let whenReacts = async (flowP: flow, ~at=?) => {
-    let s = await flowP->enter(~verb="whenReacts", ~part, ~at?)
-    let epEvents = s.lastPublic->Array.filterMap(json => {
-      let data = switch json {
-      | Object(d) => d
-      | _ => Dict.make()
-      }
-      epDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
-    })
+  let key = "extension:" ++ part.name
+
+  // The extension point's events on the record it has not reacted to yet, and
+  // the commands it sends for them; the events now marked as reacted to.
+  let reactWith = async (s: flowState) => {
+    let handled = s->handledBy(key)
+    let fresh =
+      s.log
+      ->Array.mapWithIndex((entry, i) => (Int.toString(i), entry))
+      ->Array.filterMap(((i, entry)) =>
+        handled->Array.includes(i)
+          ? None
+          : decodeMatching([entry], epDecoder, [])->Array.get(0)->Option.map(ev => (i, ev))
+      )
     let actions =
-      epEvents
-      ->Array.map(ev =>
+      fresh
+      ->Array.map(((_, ev)) =>
         M.mapIncomingEvent(
           "gwt-id",
           ev,
@@ -1026,7 +1263,23 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
       }
     )
     ->Promise.all
-    {...s, lastCommands: nested->Array.flat}
+    (s->markHandled(key, fresh->Array.map(((i, _)) => i)), nested->Array.flat)
+  }
+
+  // The extension reacts to the extension point's events it has not reacted to.
+  let whenReacts = async (flowP: flow, ~at=?) => {
+    let s = await flowP->enter(~verb="whenReacts", ~part, ~at?)
+    let (s, commands) = await s->markNamed(key)->reactWith
+    {...s, lastCommands: commands}
+  }
+
+  let reacting: reacting = {
+    key,
+    part,
+    react: async s => {
+      let (s, commands) = await s->reactWith
+      (s, commands->Array.map(command => {target: Some(M.Delegate.name), command}))
+    },
   }
 
   let issued = async (flowP: flow, ~verb, expected: array<M.Delegate.command>) => {
@@ -1042,6 +1295,120 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
   let thenIssuesCommands = (flowP, expected) => issued(flowP, ~verb="thenIssuesCommands", expected)
   let thenIssuesCommand = (flowP, command) => issued(flowP, ~verb="thenIssuesCommand", [command])
   let thenIssuesNoCommand = flowP => issued(flowP, ~verb="thenIssuesNoCommand", [])
+}
+
+// -- What else reacts --------------------------------------------------------
+
+// Each reacting part of `systems` over the flow, in turn: the flow after them,
+// and what each sent.
+let reactAll = async (s: flowState, reacting: array<reacting>) => {
+  let rec go = async (s, i, sent) =>
+    switch reacting->Array.get(i) {
+    | None => (s, sent)
+    | Some(r) =>
+      let (s, reactions) = await r.react(s)
+      await go(s, i + 1, sent->Array.concat(reactions->Array.map(x => (r, x))))
+    }
+  await go(s, 0, [])
+}
+
+// Every reacting part of the systems given that the flow did not name, run over
+// the record: one that would send a command fails the flow, and is named.
+let thenNothingElseReacts = async (flowP: flow, systems: array<parts>) => {
+  let s = await flowP->enter(~verb="thenNothingElseReacts")
+  let unnamed =
+    systems->Array.flatMap(p => p.reacting)->Array.filter(r => !(s.named->Array.includes(r.key)))
+  let (_, sent) = await s->reactAll(unnamed)
+  // The failure points at the first part that would send.
+  let s = switch sent[0] {
+  | Some((r, _)) => {...s, at: s.at->Option.map(step => {...step, part: r.part})}
+  | None => s
+  }
+  s->recordOutcome(
+    switch sent {
+    | [] => Outcome.pass
+    | sent =>
+      Outcome.fail(
+        PublishedActionsMismatch({
+          expected: [],
+          actual: sent->Array.map(((r, {command})) =>
+            JSON.Encode.object(
+              Dict.fromArray([("reacts", JSON.Encode.string(r.part.name)), ("sends", command)]),
+            )
+          ),
+        }),
+      )
+    },
+  )
+}
+
+// How many rounds of reacting and deciding a flow settles within.
+let settleBound = 20
+
+// The app does the rest: the systems' reacting parts react, the commands they
+// send are decided by the part that reads them (the one they are meant for
+// first), and again, until nothing is sent. A flow still sending after
+// `settleBound` rounds fails: it loops. The step's events are all of theirs.
+let whenSettled = async (flowP: flow, systems: array<parts>) => {
+  let s = await flowP->enter(~verb="whenSettled")
+  let reacting = systems->Array.flatMap(p => p.reacting)
+  let deciding = systems->Array.flatMap(p => p.deciding)
+  let decide = (s, {target, command}: reaction) =>
+    switch target
+    ->Option.flatMap(t => deciding->Array.find(d => d.name == t))
+    ->Option.flatMap(d => d.run(s, command)) {
+    | Some(s) => Some(s)
+    | None => deciding->Array.findMap(d => d.run(s, command))
+    }
+  let rec round = async (s: flowState, n, events, commands) => {
+    let (s, sent) = await s->reactAll(reacting)
+    let s = reacting->Array.reduce(s, (s, r) => s->markNamed(r.key))
+    switch sent {
+    | [] => {...s, lastEvents: events, lastCommands: commands}
+    | _ if n >= settleBound =>
+      s->recordOutcome(
+        Outcome.fail(
+          Throw({
+            error: `the flow does not settle: still sending after ${settleBound->Int.toString} rounds`,
+            stack: "",
+          }),
+        ),
+      )
+    | sent =>
+      let (s, events, unread) = sent->Array.reduce((s, events, None), (
+        (s, events, unread),
+        (_, reaction),
+      ) =>
+        switch unread {
+        | Some(_) => (s, events, unread)
+        | None =>
+          switch s->decide(reaction) {
+          | Some(next) => (next, events->Array.concat(next.lastEvents), None)
+          | None => (s, events, Some(reaction.command))
+          }
+        }
+      )
+      switch unread {
+      | Some(command) =>
+        s->recordOutcome(
+          Outcome.fail(
+            TranslateError({
+              expected: "a decision of the systems given that reads the command",
+              actual: Some(`no decision reads ${JSON.stringify(command)}`),
+            }),
+          ),
+        )
+      | None =>
+        await round(
+          s,
+          n + 1,
+          events,
+          commands->Array.concat(sent->Array.map(((_, {command})) => command)),
+        )
+      }
+    }
+  }
+  await round({...s, lastEvents: [], lastError: None}, 0, [], [])
 }
 
 // -- Old names ---------------------------------------------------------------

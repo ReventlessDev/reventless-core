@@ -195,16 +195,7 @@ module Make = (Bus: LocalBus.T) => {
     // page to narrow — the row is already in hand and either belongs to the
     // caller or does not.
     let ownerAllows = (~ctx, item: JSON.t) =>
-      switch ownerDecision(~ctx) {
-      | Unscoped => true
-      | RefuseOwned => false
-      | ScopeTo(field, required) =>
-        item
-        ->JSON.Decode.object
-        ->Option.flatMap(d => d->Dict.get(field))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.mapOr(false, v => v == required)
-      }
+      ownerDecision(~ctx)->Reventless.OwnerScope.ownerAdmits(item)
 
     // ── Retirement narrowing ─────────────────────────────────────────────────
     // The same two forms as owner scoping above, for the same reason: a door
@@ -248,19 +239,10 @@ module Make = (Bus: LocalBus.T) => {
     // Post-read form. The single-row and by-ids doors are where a filtered list
     // would otherwise be walked around: a pasted URL, or a reference resolved
     // from another row, reaches the entity directly.
+    // Absent keeps the row, matching `QueryDbListQuery`: a row written before the
+    // annotation existed is not retired.
     let retiredAllows = (~ctx, ~args, item: JSON.t) =>
-      switch retiredScopeFor(~ctx, ~args) {
-      | None => true
-      // Absent keeps the row, matching `QueryDbListQuery`: a row written before
-      // the annotation existed is not retired. Which of the two forms decides
-      // that is `isRetiredValue`'s question, not this door's.
-      | Some(scope) =>
-        !(
-          scope->Reventless.OwnerScope.isRetiredValue(
-            item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(scope.field)),
-          )
-        )
-      }
+      retiredDecision(~ctx, ~args)->Reventless.OwnerScope.retiredAdmits(item)
 
     // Resolve query field names: check registry first, fall back to safe defaults.
     // Fallbacks use simple GraphQL built-in types to avoid referencing non-existent custom types.

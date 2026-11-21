@@ -106,27 +106,11 @@ function Make(Bus) {
     let ownerFieldOf = () => Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], s => Owner$Reventless.fieldNames(s)[0]);
     OwnerScopeDiagnostics$ReventlessCore.warnIfNoElevatedGroups("QueryDbResolvers_GraphQL", name, ownerFieldOf());
     let ownerDecision = ctx => OwnerScope$Reventless.decide(extractIdentity(ctx), ownerFieldOf(), undefined);
-    let ownerAllows = (ctx, item) => {
-      let match = ownerDecision(ctx);
-      if (typeof match !== "object") {
-        return match === "Unscoped";
-      }
-      let required = match._1;
-      let field = match._0;
-      return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === required);
-    };
     let retiredSpecOf = () => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired);
     let imageSourceOf = () => Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], RowImage$Reventless.sourceFrom);
     let askedForRetired = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["includeRetired"]), Stdlib_JSON.Decode.bool), false);
     let retiredDecision = (ctx, args) => OwnerScope$Reventless.decideRetired(extractIdentity(ctx), Stdlib_Option.map(retiredSpecOf(), r => r.field), Stdlib_Option.flatMap(retiredSpecOf(), r => r.values), askedForRetired(args), undefined);
-    let retiredAllows = (ctx, args, item) => {
-      let scope = OwnerScope$Reventless.retiredScopeOf(retiredDecision(ctx, args));
-      if (scope !== undefined) {
-        return !OwnerScope$Reventless.isRetiredValue(scope, Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[scope.field]));
-      } else {
-        return true;
-      }
-    };
+    let retiredAllows = (ctx, args, item) => OwnerScope$Reventless.retiredAdmits(retiredDecision(ctx, args), item);
     let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name];
     let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
     let listQueryName = registryEntry !== undefined ? registryEntry.listFieldName : name + "s";
@@ -165,7 +149,7 @@ function Make(Bus) {
       if (item === undefined) {
         return null;
       }
-      if (!ownerAllows(ctx, item) || !retiredAllows(ctx, args, item)) {
+      if (!OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item) || !retiredAllows(ctx, args, item)) {
         return null;
       }
       if (!includeIdParam) {
@@ -213,7 +197,7 @@ function Make(Bus) {
         return Stdlib_Array.filterMap(loaded, param => {
           let id = param[0];
           return Stdlib_Option.map(Stdlib_Option.filter(param[1], item => {
-            if (ownerAllows(ctx, item)) {
+            if (OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item)) {
               return retiredAllows(ctx, args, item);
             } else {
               return false;
@@ -293,7 +277,7 @@ function Make(Bus) {
         }));
         return Stdlib_Array.filterMap(loaded, param => {
           let id = param[0];
-          return Stdlib_Option.flatMap(Stdlib_Option.filter(param[1], item => ownerAllows(ctx, item)), item => {
+          return Stdlib_Option.flatMap(Stdlib_Option.filter(param[1], item => OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item)), item => {
             let match = retirementOf(item);
             let retired = match[0];
             if (retired && !namesRetired) {
@@ -408,7 +392,7 @@ function Make(Bus) {
         }
         let all = await fetchAllItems();
         let items = all.filter(item => {
-          if (ownerAllows(ctx, item)) {
+          if (OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item)) {
             return retiredAllows(ctx, args, item);
           } else {
             return false;
@@ -473,7 +457,7 @@ function Make(Bus) {
         }
         let loaded = await Effect.runPromise(Effect$1.catch(Stream.runCollect(ops.loadStream(id)), param => Effect$1.succeed([])));
         let allItems = loaded.filter(item => {
-          if (ownerAllows(ctx, item)) {
+          if (OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item)) {
             return retiredAllows(ctx, args, item);
           } else {
             return false;
@@ -616,7 +600,7 @@ function Make(Bus) {
         rejectBackwardPaging(args);
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[filterField]), Stdlib_JSON.Decode.string), "");
         let scoped = rows => rows.filter(item => {
-          if (ownerAllows(ctx, item)) {
+          if (OwnerScope$Reventless.ownerAdmits(ownerDecision(ctx), item)) {
             return retiredAllows(ctx, args, item);
           } else {
             return false;

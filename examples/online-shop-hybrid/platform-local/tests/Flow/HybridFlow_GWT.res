@@ -20,8 +20,8 @@ module Catalog = CatalogPlugin.Flow
 module Ordering = OrderingPlugin.Flow
 
 describe("Hybrid cross-plugin flow", () => {
-  // scenario-id: fb61d285-6b0f-47ac-9967-c5e060794865
-  test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
+  // scenario-id: 248c2d39-f883-41e5-a4d7-e128489029f6
+  test("Tier 2 — a product added in Catalog is synced into Ordering", () =>
     start
     // AddProduct now verifies the category exists, so seed it into the shared log first.
     ->Catalog.AddCategory.givenEvents([
@@ -69,6 +69,11 @@ describe("Hybrid cross-plugin flow", () => {
         price: bookPrice,
       }),
     )
+  )
+
+  // scenario-id: fb61d285-6b0f-47ac-9967-c5e060794865
+  test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
+    after("Tier 2 — a product added in Catalog is synced into Ordering")
     ->Ordering.PlaceOrder.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: o1,
@@ -115,23 +120,8 @@ describe("Hybrid cross-plugin flow", () => {
   test(
     "Tier 2 — archiving a product withdraws it from ordering, and unarchiving relists it",
     () =>
-      start
-      ->Catalog.AddProduct.givenEvents([
-        CatalogPlugin.AddProduct.ProductAdded({
-          productId: p1,
-          name: book,
-          description: bookDescription,
-          price: bookPrice,
-          categoryId: cat1,
-        }),
-      ])
-      ->Ordering.SyncCatalogProduct.givenEvents([
-        OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
-          productId: p1,
-          name: book,
-          price: bookPrice,
-        }),
-      ])
+      // The product as the sync left it, not typed in again.
+      after("Tier 2 — a product added in Catalog is synced into Ordering")
       ->Catalog.ArchiveProduct.whenCommand(
         CatalogPlugin.ArchiveProduct.ArchiveProduct({productId: p1}),
       )
@@ -238,6 +228,21 @@ describe("Hybrid cross-plugin flow", () => {
           firstProductName: book,
         }),
       )
+      // The placement is confirmed to the customer, as in Ordering's own flow.
+      ->Ordering.NotificationIntake.whenReacts
+      ->Ordering.NotificationIntake.thenIssuesCommand(
+        OrderingPlugin.NotificationIntake.RequestNotification({
+          recipientId: customerRef,
+          category: OrderConfirmation,
+          reference: confirmReference,
+          subjectType: orderSubject,
+          subjectRef: orderRef,
+          subject: confirmationSubject,
+          body: confirmationBody,
+          sourceId: orderPlacedSource,
+          origin: Default,
+        }),
+      )
       ->Ordering.Orders_ExtensionPoint.whenPublished
       ->Ordering.Orders_ExtensionPoint.thenPublicEvents([
         OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
@@ -261,7 +266,9 @@ describe("Hybrid cross-plugin flow", () => {
       ->Catalog.RecordProductDemand.thenEvents([
         CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: p1, orderId: "o1"}),
         CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: p2, orderId: "o1"}),
-      ]),
+      ])
+      // Nothing else in either system reacts to this order.
+      ->thenNothingElseReacts([Catalog.parts, Ordering.parts]),
   )
 
   // The steps above name the slices a scenario walks through. These two name

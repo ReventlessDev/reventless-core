@@ -4,14 +4,19 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
+import * as Decision_GWT$ReventlessGwt from "./Decision_GWT.res.mjs";
 import * as TestFixtures$ReventlessGwt from "./TestFixtures.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 function Make(Spec) {
   return Projection => {
@@ -192,6 +197,14 @@ function Make(Spec) {
         return store;
       }
     };
+    let Caller = Decision_GWT$ReventlessGwt.Callers({});
+    let ownerField = Owner$Reventless.fieldNames(Spec.stateSchema)[0];
+    let retired = Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(Spec.stateSchema), spec => spec.retired);
+    let readableBy = (rows, who, elevated) => {
+      let identity = Decision_GWT$ReventlessGwt.Caller.identity(who);
+      return rows.filter(row => OwnerScope$Reventless.mayReadRow(identity, Message$ReventlessCore.encode(row, Spec.stateSchema), Authorization$Reventless.named(Spec.authorization), ownerField, Stdlib_Option.map(retired, r => r.field), Stdlib_Option.flatMap(retired, r => r.values), undefined, elevated.concat([Decision_GWT$ReventlessGwt.Caller.operatorGroup])));
+    };
+    let asCaller = (thunk, who) => (async () => Object.fromEntries(Object.entries(Stdlib_Dict.mapValues(await thunk(), rows => readableBy(rows, who, []))).filter(param => param[1].length !== 0)));
     let update = (store, events) => updateAt(store, events.map(ev => [
       ev,
       TestFixtures$ReventlessGwt.meta.time
@@ -333,7 +346,10 @@ function Make(Spec) {
       thenStateWithId: thenStateWithId,
       thenNoState: thenNoState,
       thenThrow: thenThrow,
-      thenFail: thenFail
+      thenFail: thenFail,
+      Caller: Caller,
+      asCaller: asCaller,
+      readableBy: readableBy
     };
   };
 }
