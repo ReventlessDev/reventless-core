@@ -909,10 +909,10 @@ the part's own code, with no bus and no timers.
 
 | Step | Takes | When | Then |
 |---|---|---|---|
-| `DecisionStep` | a state change slice and its decision | `givenEvents`, `whenCommand` | `thenEvent(s)`, `thenError` |
-| `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand` | `thenEvent(s)`, `thenNoEvent`, `thenError` |
-| `ViewStep` | a view and its projection | | `thenViewState(s)` |
-| `AutomationStep` | an automation slice as written | `whenReacts` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
+| `DecisionStep` | a state change slice and its decision | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted` |
+| `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted` |
+| `ViewStep` | a view and its projection | | `thenRow(s)`, `thenNoRow`, `thenRowShows` |
+| `AutomationStep` | an automation slice as written | `whenReacts`, `whenTimePasses(~until)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 | `OutboundStep` | a way out as written | | `thenOutbound`, `thenOutboundNothing` |
 | `InboundStep` | a way in as written | `whenReceived(json)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 | `ExtensionPointStep` | an extension point mapping | `whenPublished` | `thenPublicEvent(s)` |
@@ -938,7 +938,7 @@ describe("Ordering flow", () => {
     ->Flow.PlaceOrder.thenEvent(PlaceOrder.OrderPlaced({orderId: o1, customerId: c1, /* … */}))
     ->Flow.AutoShipOrder.whenReacts
     ->Flow.AutoShipOrder.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
-    ->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.whenIssued
     ->Flow.ShipOrder.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
   )
 })
@@ -965,6 +965,51 @@ module Ordering = OrderingPlugin.Flow
 extension point's public events; `ExtensionStep.whenReacts` turns those into the
 commands the other plugin's extension sends.
 
+**What was sent is what runs.** `whenIssued` runs the commands the step before
+sent (an automation, an extension, a way in) through the decision, each read by
+the decision's own command schema. A command it cannot read fails the step with
+sury's reason, so an automation and a decision that disagree on a field are
+caught; typing the command again for `whenCommand` would hide it. A fan-out runs
+whole: two commands sent, two decided, and the step's events are all of theirs.
+`whenIssued(~only=2)` runs the second alone (the first is 1). `thenIssuesCommand`
+still states what is expected to be sent; `whenCommand` stays for a step a
+person takes.
+
+**Rows.** `thenRow(id, row)` states the whole row and `thenNoRow(id)` that there
+is none. `thenRowShows(id, pick, expected)` builds the row, takes some fields
+from it with `pick` and compares only those:
+
+```rescript
+->Flow.Orders.thenRowShows(o1, row => {"lifecycle": row.lifecycle}, {"lifecycle": Shipped})
+```
+
+A field `pick` leaves out is built and not compared, so a wrong value in it goes
+unnoticed here; the view's own test states the whole row.
+
+**`thenAccepted`** passes when the decision did not refuse and compares no event.
+It is for a flow written with no author present, whose worked-out values nobody
+has confirmed yet; its steps file marks the step `Accepted`, values open. It is
+not for a flow a person writes: state the events.
+
+**Time.** A flow starts at 1970-01-01T00:00:00Z. A step that happens (a given, a
+command, a reaction, something received or published) may say when with `~at`, an
+ISO instant; one that says nothing happens at the time of the step before it. Each
+event is recorded at the flow's time, so a view row that keeps when something
+happened shows the story's times, and an automation sweeps at the flow's time.
+`whenTimePasses(~until)` on an automation step moves the time and fires every
+schedule that comes due on the way, the declared one and those the record's
+events set; the commands the firings make are what the step sent. Time only
+moves forward: a step dated before the flow's time fails the flow.
+
+```rescript
+start
+->Flow.PlaceOrder.whenCommand(~at="2026-03-02T09:00:00Z", PlaceOrder.PlaceOrder({/* … */}))
+->Flow.Remind.whenTimePasses(~until="2026-03-02T09:59:00Z")
+->Flow.Remind.thenIssuesNoCommand
+->Flow.Remind.whenTimePasses(~until="2026-03-02T10:00:00Z")
+->Flow.Remind.thenIssuesCommand(Remind.RemindCustomer({orderId: o1}))
+```
+
 **A failure names its step.** Every step counts itself as the flow passes it.
 The mismatch a flow fails with carries the step it was found at: its number, the
 number of steps in the flow, its verb, and the part it ran. The hint says so and
@@ -981,7 +1026,7 @@ The JSON hint carries the same as `step`
 
 **The steps file.** With `REVENTLESS_EMIT_SIDECAR=1` a flow's build writes the
 same steps file as any other test's. Each step also records its `step` number,
-counted as the flow counts it, and its `part`: the system (the plugin's
+counted as the flow counts it, its `at` when it says one, and its `part`: the system (the plugin's
 namespace, absent for the plugin's own), the kind and the name. A part is read
 from the step's set-up when it was set up by hand, and from the path of a
 ready-made step otherwise. `~tells` on a flow's test, a free name for what the
@@ -1000,8 +1045,8 @@ single slice's test can show.
 **Old names.** `CommandStep`, `AggregateCommandStep`, `AutomationSlice`,
 `OutboundSlice` and `InboundSlice` were renamed to the names above, and the
 adapter forms of `AutomationStep` and `OutboundStep` are gone.
-`whenPublishedThrough` is now `whenPublished`, and `whenExtensionReacts` is
-`whenReacts`. A flow still on an old step name fails to build with a message
+`whenPublishedThrough` is now `whenPublished`, `whenExtensionReacts` is
+`whenReacts`, and a view step's `thenViewState(s)` is `thenRow(s)`. A flow still on an old step name fails to build with a message
 that names the new one.
 
 Runnable copies:

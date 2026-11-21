@@ -26,6 +26,8 @@ let known = [
   "TodoStatus",
   "Retries",
   "PublicEvent",
+  "Issued",
+  "Accepted",
   "Opaque"
 ];
 

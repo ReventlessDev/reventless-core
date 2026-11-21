@@ -106,7 +106,7 @@ describe("Aggregates cross-plugin flow", () => {
     ->Ordering.Products_Extension.thenIssuesCommand(
       OrderingPlugin.CatalogProduct.Sync({name: book, price: bookPrice}),
     )
-    ->Ordering.CatalogProduct.whenCommand(~id="p1", Sync({name: book, price: bookPrice}))
+    ->Ordering.CatalogProduct.whenIssued(~id="p1")
     ->Ordering.CatalogProduct.thenEvent(Synced({name: book, price: bookPrice}))
   )
 
@@ -133,7 +133,8 @@ describe("Aggregates cross-plugin flow", () => {
       CatalogPlugin.ProductDemand.Record({orderId: "o1"}),
       CatalogPlugin.ProductDemand.Record({orderId: "o1"}),
     ])
-    ->Catalog.ProductDemand.whenCommand(~id="p1", Record({orderId: "o1"}))
+    // An aggregate step runs against one id, so of the two products only p1's.
+    ->Catalog.ProductDemand.whenIssued(~id="p1", ~only=1)
     ->Catalog.ProductDemand.thenEvent(Recorded({orderId: "o1"}))
   )
 })

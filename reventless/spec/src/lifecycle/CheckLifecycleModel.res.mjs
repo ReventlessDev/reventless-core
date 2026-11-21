@@ -130,7 +130,7 @@ function elementsOf(steps) {
   return Stdlib_Array.filterMap(steps, s => Stdlib_Option.map(getStr(s, "element"), name => {
     let match = stepKindOf(s);
     let tmp;
-    tmp = match !== undefined ? match === "Opaque" || (match === "State" || match === "Sent" || match === "NoEvent" || match === "InputRefused" || match === "NoState" || match === "NotUnderstood" || match === "Forbidden" || match === "Resolved" || match === "NoCommand" || match === "Exhausted" || match === "Todo" || match === "Process" || match === "NoTodo" || match === "Sweep" || match === "Capabilities") && match === "Opaque" : false;
+    tmp = match !== undefined ? match === "Opaque" || (match === "State" || match === "TodoStatus" || match === "NoEvent" || match === "NothingSent" || match === "NoState" || match === "Sent" || match === "Forbidden" || match === "InputRefused" || match === "NoCommand" || match === "NotUnderstood" || match === "Todo" || match === "Resolved" || match === "NoTodo" || match === "Exhausted" || match === "Capabilities" || match === "Process" || match === "Sweep") && match === "Opaque" : false;
     return {
       name: lastSegment(name),
       values: valuesOf(s),
@@ -157,7 +157,7 @@ function thenKindOf(steps) {
     return;
   }
   let kind = stepKindOf(s);
-  if (kind !== undefined && (kind === "Opaque" || (kind === "State" || kind === "Sent" || kind === "NoEvent" || kind === "InputRefused" || kind === "NoState" || kind === "NotUnderstood" || kind === "Forbidden" || kind === "Resolved" || kind === "NoCommand" || kind === "Exhausted" || kind === "Todo" || kind === "Process" || kind === "NoTodo" || kind === "Sweep" || kind === "Capabilities") && kind === "Opaque")) {
+  if (kind !== undefined && (kind === "Opaque" || (kind === "State" || kind === "TodoStatus" || kind === "NoEvent" || kind === "NothingSent" || kind === "NoState" || kind === "Sent" || kind === "Forbidden" || kind === "InputRefused" || kind === "NoCommand" || kind === "NotUnderstood" || kind === "Todo" || kind === "Resolved" || kind === "NoTodo" || kind === "Exhausted" || kind === "Capabilities" || kind === "Process" || kind === "Sweep") && kind === "Opaque")) {
     return Stdlib_Option.map(getStr(s, "of"), prim => prim);
   } else {
     return kind;
@@ -194,7 +194,7 @@ function unknownKindsOf(scenarios) {
     stepKindOf(step),
     Stdlib_Option.map(getStr(step, "of"), prim => prim)
   ]), kind => {
-    if (kind !== undefined && kind !== "Event" && kind !== "Opaque" && kind !== "Command" && kind !== "PublicEvent" && kind !== "Input" && kind !== "Retries" && kind !== "Error" && kind !== "TodoStatus" && kind !== "SideEffect" && kind !== "NothingSent" && kind !== "State" && kind !== "Sent" && kind !== "NoEvent" && kind !== "InputRefused" && kind !== "NoState" && kind !== "NotUnderstood" && kind !== "Forbidden" && kind !== "Resolved" && kind !== "NoCommand" && kind !== "Exhausted" && kind !== "Todo" && kind !== "Process" && kind !== "NoTodo" && kind !== "Sweep" && kind !== "Capabilities") {
+    if (kind !== undefined && kind !== "Event" && kind !== "Opaque" && kind !== "Command" && kind !== "Accepted" && kind !== "Input" && kind !== "Issued" && kind !== "Error" && kind !== "PublicEvent" && kind !== "SideEffect" && kind !== "Retries" && kind !== "State" && kind !== "TodoStatus" && kind !== "NoEvent" && kind !== "NothingSent" && kind !== "NoState" && kind !== "Sent" && kind !== "Forbidden" && kind !== "InputRefused" && kind !== "NoCommand" && kind !== "NotUnderstood" && kind !== "Todo" && kind !== "Resolved" && kind !== "NoTodo" && kind !== "Exhausted" && kind !== "Capabilities" && kind !== "Process" && kind !== "Sweep") {
       return kind;
     }
   }));
@@ -472,7 +472,7 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
       if (match === undefined) {
         return;
       }
-      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
+      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "Accepted" && match !== "Input" && match !== "Issued" && match !== "Error" && match !== "PublicEvent" && match !== "SideEffect" && match !== "Retries" && match !== "State" && match !== "TodoStatus" && match !== "NoEvent" && match !== "NothingSent" && match !== "NoState" && match !== "Sent" && match !== "Forbidden" && match !== "InputRefused" && match !== "NoCommand" && match !== "NotUnderstood" && match !== "Todo" && match !== "Resolved" && match !== "NoTodo" && match !== "Exhausted" && match !== "Capabilities" && match !== "Process" && match !== "Sweep") {
         return;
       }
       if (match !== "Event") {
@@ -481,7 +481,7 @@ function lifecycleMapFor(scenarios, field, ambiguities, view) {
       if (match$1 === undefined) {
         return;
       }
-      if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "PublicEvent" && match$1 !== "Input" && match$1 !== "Retries" && match$1 !== "Error" && match$1 !== "TodoStatus" && match$1 !== "SideEffect" && match$1 !== "NothingSent" && match$1 !== "State" && match$1 !== "Sent" && match$1 !== "NoEvent" && match$1 !== "InputRefused" && match$1 !== "NoState" && match$1 !== "NotUnderstood" && match$1 !== "Forbidden" && match$1 !== "Resolved" && match$1 !== "NoCommand" && match$1 !== "Exhausted" && match$1 !== "Todo" && match$1 !== "Process" && match$1 !== "NoTodo" && match$1 !== "Sweep" && match$1 !== "Capabilities") {
+      if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "Accepted" && match$1 !== "Input" && match$1 !== "Issued" && match$1 !== "Error" && match$1 !== "PublicEvent" && match$1 !== "SideEffect" && match$1 !== "Retries" && match$1 !== "State" && match$1 !== "TodoStatus" && match$1 !== "NoEvent" && match$1 !== "NothingSent" && match$1 !== "NoState" && match$1 !== "Sent" && match$1 !== "Forbidden" && match$1 !== "InputRefused" && match$1 !== "NoCommand" && match$1 !== "NotUnderstood" && match$1 !== "Todo" && match$1 !== "Resolved" && match$1 !== "NoTodo" && match$1 !== "Exhausted" && match$1 !== "Capabilities" && match$1 !== "Process" && match$1 !== "Sweep") {
         return;
       }
       if (match$1 !== "State") {
@@ -521,7 +521,7 @@ function outcomeOf(s) {
   if (match === undefined) {
     return "NoChange";
   }
-  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
+  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "Accepted" && match !== "Input" && match !== "Issued" && match !== "Error" && match !== "PublicEvent" && match !== "SideEffect" && match !== "Retries" && match !== "State" && match !== "TodoStatus" && match !== "NoEvent" && match !== "NothingSent" && match !== "NoState" && match !== "Sent" && match !== "Forbidden" && match !== "InputRefused" && match !== "NoCommand" && match !== "NotUnderstood" && match !== "Todo" && match !== "Resolved" && match !== "NoTodo" && match !== "Exhausted" && match !== "Capabilities" && match !== "Process" && match !== "Sweep") {
     return "NoChange";
   }
   switch (match) {
@@ -569,13 +569,13 @@ function observe(scenarios, map, idFieldFor) {
     if (match === undefined) {
       return;
     }
-    if (match$2 === "Forbidden" && (match$2 === "Forbidden" || (match$2 === "NoCommand" || match$2 === "Exhausted" || match$2 === "Todo" || match$2 === "Process" || match$2 === "NoTodo" || match$2 === "Sweep" || match$2 === "Capabilities") && match$2 === "Forbidden")) {
+    if (match$2 === "Forbidden" && (match$2 === "Forbidden" || (match$2 === "NoCommand" || match$2 === "NotUnderstood" || match$2 === "Todo" || match$2 === "Resolved" || match$2 === "NoTodo" || match$2 === "Exhausted" || match$2 === "Capabilities" || match$2 === "Process" || match$2 === "Sweep") && match$2 === "Forbidden")) {
       return;
     }
     if (match$1 === undefined) {
       return;
     }
-    if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "PublicEvent" && match$1 !== "Input" && match$1 !== "Retries" && match$1 !== "Error" && match$1 !== "TodoStatus" && match$1 !== "SideEffect" && match$1 !== "NothingSent" && match$1 !== "State" && match$1 !== "Sent" && match$1 !== "NoEvent" && match$1 !== "InputRefused" && match$1 !== "NoState" && match$1 !== "NotUnderstood" && match$1 !== "Forbidden" && match$1 !== "Resolved" && match$1 !== "NoCommand" && match$1 !== "Exhausted" && match$1 !== "Todo" && match$1 !== "Process" && match$1 !== "NoTodo" && match$1 !== "Sweep" && match$1 !== "Capabilities") {
+    if (match$1 !== "Event" && match$1 !== "Opaque" && match$1 !== "Command" && match$1 !== "Accepted" && match$1 !== "Input" && match$1 !== "Issued" && match$1 !== "Error" && match$1 !== "PublicEvent" && match$1 !== "SideEffect" && match$1 !== "Retries" && match$1 !== "State" && match$1 !== "TodoStatus" && match$1 !== "NoEvent" && match$1 !== "NothingSent" && match$1 !== "NoState" && match$1 !== "Sent" && match$1 !== "Forbidden" && match$1 !== "InputRefused" && match$1 !== "NoCommand" && match$1 !== "NotUnderstood" && match$1 !== "Todo" && match$1 !== "Resolved" && match$1 !== "NoTodo" && match$1 !== "Exhausted" && match$1 !== "Capabilities" && match$1 !== "Process" && match$1 !== "Sweep") {
       return;
     }
     if (match$1 !== "Command") {
@@ -653,7 +653,7 @@ function shownOutcomeOf(s) {
   if (match === undefined) {
     return;
   }
-  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
+  if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "Accepted" && match !== "Input" && match !== "Issued" && match !== "Error" && match !== "PublicEvent" && match !== "SideEffect" && match !== "Retries" && match !== "State" && match !== "TodoStatus" && match !== "NoEvent" && match !== "NothingSent" && match !== "NoState" && match !== "Sent" && match !== "Forbidden" && match !== "InputRefused" && match !== "NoCommand" && match !== "NotUnderstood" && match !== "Todo" && match !== "Resolved" && match !== "NoTodo" && match !== "Exhausted" && match !== "Capabilities" && match !== "Process" && match !== "Sweep") {
     return;
   }
   switch (match) {
@@ -671,7 +671,7 @@ function shownOutcomeOf(s) {
   if (s.thenElements.some(isOpaque)) {
     return;
   }
-  if (match === "Event" || match === "Opaque" || match === "Command" || match === "PublicEvent" || match === "Input" || match === "Retries" || match === "Error" || match === "TodoStatus" || match === "SideEffect" || match === "NothingSent" || match === "State" || match === "Sent" || match === "NoEvent" || match === "InputRefused" || match === "NoState" || match === "NotUnderstood" || match === "Forbidden" || match === "Resolved" || match === "NoCommand" || match === "Exhausted" || match === "Todo" || match === "Process" || match === "NoTodo" || match === "Sweep" || match === "Capabilities") {
+  if (match === "Event" || match === "Opaque" || match === "Command" || match === "Accepted" || match === "Input" || match === "Issued" || match === "Error" || match === "PublicEvent" || match === "SideEffect" || match === "Retries" || match === "State" || match === "TodoStatus" || match === "NoEvent" || match === "NothingSent" || match === "NoState" || match === "Sent" || match === "Forbidden" || match === "InputRefused" || match === "NoCommand" || match === "NotUnderstood" || match === "Todo" || match === "Resolved" || match === "NoTodo" || match === "Exhausted" || match === "Capabilities" || match === "Process" || match === "Sweep") {
     if (match === "Event") {
       return [
         "EventOutcome",
@@ -711,7 +711,7 @@ function commandOutcomes(plugin, corpora) {
       if (match === undefined) {
         return;
       }
-      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "PublicEvent" && match !== "Input" && match !== "Retries" && match !== "Error" && match !== "TodoStatus" && match !== "SideEffect" && match !== "NothingSent" && match !== "State" && match !== "Sent" && match !== "NoEvent" && match !== "InputRefused" && match !== "NoState" && match !== "NotUnderstood" && match !== "Forbidden" && match !== "Resolved" && match !== "NoCommand" && match !== "Exhausted" && match !== "Todo" && match !== "Process" && match !== "NoTodo" && match !== "Sweep" && match !== "Capabilities") {
+      if (match !== "Event" && match !== "Opaque" && match !== "Command" && match !== "Accepted" && match !== "Input" && match !== "Issued" && match !== "Error" && match !== "PublicEvent" && match !== "SideEffect" && match !== "Retries" && match !== "State" && match !== "TodoStatus" && match !== "NoEvent" && match !== "NothingSent" && match !== "NoState" && match !== "Sent" && match !== "Forbidden" && match !== "InputRefused" && match !== "NoCommand" && match !== "NotUnderstood" && match !== "Todo" && match !== "Resolved" && match !== "NoTodo" && match !== "Exhausted" && match !== "Capabilities" && match !== "Process" && match !== "Sweep") {
         return;
       }
       if (match !== "Command") {

@@ -59,3 +59,7 @@ let twoBooksPrice: Reventless.Money.t = Reventless.Money.make(
 )
 
 let epoch: Reventless.DateTime.t = "1970-01-01T00:00:00Z"
+
+let placedTime: Reventless.DateTime.t = "2026-03-02T08:00:00Z"
+
+let shippedTime: Reventless.DateTime.t = "2026-03-02T08:30:00Z"

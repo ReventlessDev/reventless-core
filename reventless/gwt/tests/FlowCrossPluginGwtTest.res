@@ -337,7 +337,7 @@ describe("Cross-plugin flow", () => {
     ->ProductsExt.thenIssuesCommand(
       SyncProductSlice.SyncProduct({productId: "p1", name: "Book", price: 9.99}),
     )
-    ->Sync.whenCommand(SyncProductSlice.SyncProduct({productId: "p1", name: "Book", price: 9.99}))
+    ->Sync.whenIssued
     ->Sync.thenEvent(SyncProductSlice.ProductSynced({productId: "p1", name: "Book", price: 9.99}))
     ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", productIds: ["p1"]}))
     ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", productIds: ["p1"]}))
@@ -369,7 +369,10 @@ describe("Cross-plugin flow", () => {
         RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}),
         RecordDemandSlice.RecordDemand({productId: "p2", orderId: "o1"}),
       ])
-      ->Demand.whenCommand(RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}))
-      ->Demand.thenEvent(RecordDemandSlice.DemandRecorded({productId: "p1", orderId: "o1"})),
+      ->Demand.whenIssued
+      ->Demand.thenEvents([
+        RecordDemandSlice.DemandRecorded({productId: "p1", orderId: "o1"}),
+        RecordDemandSlice.DemandRecorded({productId: "p2", orderId: "o1"}),
+      ]),
   )
 })

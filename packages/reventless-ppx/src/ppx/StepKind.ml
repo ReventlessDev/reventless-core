@@ -30,6 +30,10 @@ type t =
   | TodoStatus
   | Retries
   | PublicEvent
+  (* A flow's step that runs the commands the step before it sent. *)
+  | Issued
+  (* A flow's step that passes when the decision did not refuse, its values open. *)
+  | Accepted
   (* A step the sidecar could not read; its `of` names the kind it stands for. *)
   | Opaque
 
@@ -58,4 +62,6 @@ let word = function
   | TodoStatus -> "TodoStatus"
   | Retries -> "Retries"
   | PublicEvent -> "PublicEvent"
+  | Issued -> "Issued"
+  | Accepted -> "Accepted"
   | Opaque -> "Opaque"

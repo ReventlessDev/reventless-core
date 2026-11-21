@@ -811,7 +811,8 @@ let step_names =
     "thenTodos"; "thenScenarioTodos"; "thenResolved"; "thenTranslateError";
     "thenNotUnderstood"; "thenRefusedInput"; "thenSent"; "thenNothingSent"; "thenOutbound";
     "thenOutboundNothing"; "thenTodoStatus"; "thenRetryRecorded"; "thenPublicEvent";
-    "thenPublicEvents" ]
+    "thenPublicEvents"; "whenIssued"; "thenRow"; "thenRows"; "thenNoRow"; "thenRowShows";
+    "thenAccepted"; "whenTimePasses" ]
 
 (* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`,
    `Auto.thenIssuesCommand` — and the step is the same step, so the last segment
@@ -1015,6 +1016,7 @@ type call = {
   entries : entry list;
   number : int;  (* the step's place among every step of the test, from 1 *)
   labels : string list;  (* the labelled arguments it was called with *)
+  at : Yojson.Safe.t option;  (* when a flow's step says it happens *)
 }
 
 (* What one verb asserts. None for a verb this walk does not know. *)
@@ -1029,8 +1031,9 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
   in
   let one kind ?element ?values () = [ entry ~kind ?element ?values () ] in
   let labels = List.filter_map (function (Labelled l | Optional l), _ -> Some l | _ -> None) args in
+  let at = Option.bind (labelled "at") (example_of_expr ?src) in
   let mk ?(grouped = true) group entries =
-    Some { group; verb; via = step_via lid; grouped; entries; number; labels }
+    Some { group; verb; via = step_via lid; grouped; entries; number; labels; at }
   in
   let input p =
     match element_of_constructor ?src p with
@@ -1057,6 +1060,22 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
     | None -> mk "when" [])
   | "whenReceived" -> mk "when" (on_last input)
   | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
+  (* The commands the step before sent; `~only` names the one run, the rest left. *)
+  | "whenIssued" ->
+    let values =
+      match labelled "only" with
+      | Some e -> Option.to_list (Option.map (fun v -> `List [ `String "only"; v ]) (example_of_expr ?src e))
+      | None -> []
+    in
+    mk "when" (one StepKind.Issued ~values ())
+  (* Time passes to `~until`; the schedules due on the way fire. *)
+  | "whenTimePasses" ->
+    let values =
+      match labelled "until" with
+      | Some e -> Option.to_list (Option.map (fun v -> `List [ `String "until"; v ]) (example_of_expr ?src e))
+      | None -> []
+    in
+    mk "when" (one StepKind.Sweep ~values ())
   (* The event a collect or resolve reacts to is the given one, moved here. *)
   | "whenCollect" | "whenResolve" -> mk "when" (one StepKind.Event ())
   | "whenSweep" | "whenReacts" | "whenPublished" ->
@@ -1074,8 +1093,14 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
   (* `thenStateWithId(id, record)` names the row; the id routes the fold and is
      not part of the row's value. *)
   | "thenState" | "thenStates" | "thenStateWithId" | "thenStatesWithId" | "thenViewState"
-  | "thenViewStates" ->
+  | "thenViewStates" | "thenRow" | "thenRows" ->
     mk "then" (on_last (each (state_entry ?src)))
+  (* Some fields of a row: the fields picked and the values expected of them. *)
+  | "thenRowShows" ->
+    mk "then" (on_last (fun p -> one StepKind.State ~element:"state" ~values:(entries_of ?src p) ()))
+  | "thenNoRow" -> mk "then" (one StepKind.NoState ())
+  (* The decision did not refuse; its values are open, for someone to confirm. *)
+  | "thenAccepted" -> mk "then" (one StepKind.Accepted ())
   (* No element and no payload: the absence is the assertion. *)
   | "thenNoEvent" -> mk "then" (one StepKind.NoEvent ())
   | "thenNoState" -> mk "then" (one StepKind.NoState ())
@@ -1206,11 +1231,15 @@ let kind_of_calls (calls : call list) : string option =
   if has [ "whenPublished"; "thenPublicEvent"; "thenPublicEvents" ] then Some "ExtensionPoint"
   else if has [ "whenReceived" ] then Some "Inbound"
   else if has [ "thenOutbound"; "thenOutboundNothing" ] then Some "Outbound"
-  else if has [ "thenViewState"; "thenViewStates" ] then Some "View"
-  else if has [ "whenReacts" ] then Some "Automation"
+  else if has [ "thenViewState"; "thenViewStates"; "thenRow"; "thenRows"; "thenNoRow"; "thenRowShows" ]
+  then Some "View"
+  else if has [ "whenReacts"; "whenTimePasses" ] then Some "Automation"
   else if has [ "thenNoEvent" ] || List.exists (fun (c : call) -> List.mem "id" c.labels) calls
   then Some "Aggregate"
-  else if has [ "givenEvents"; "whenCommand"; "thenEvents"; "thenEvent"; "thenError" ] then
+  else if
+    has [ "givenEvents"; "whenCommand"; "whenIssued"; "thenEvents"; "thenEvent"; "thenError";
+          "thenAccepted" ]
+  then
     Some "Decision"
   else None
 
@@ -1267,6 +1296,7 @@ let steps_json ?(flow = false) ?(parts = []) (calls : call list) : Yojson.Safe.t
              @ entry_fields en
              @ (match c.via with Some v -> [ ("via", `String v) ] | None -> [])
              @ (if flow then [ ("step", `Int c.number) ] else [])
+             @ (match c.at with Some v when flow -> [ ("at", v) ] | _ -> [])
              @ match part with Some p -> [ ("part", part_json p) ] | None -> []))
         c.entries)
     calls

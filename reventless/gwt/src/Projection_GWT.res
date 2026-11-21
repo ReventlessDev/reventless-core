@@ -49,6 +49,8 @@ module type T = {
   type storeThunk = unit => promise<store>
 
   let givenEvents: array<Spec.consumedEvent> => promise<store>
+  /** Each event recorded at its own time (an ISO instant), as a flow records them. */
+  let givenEventsAt: array<(Spec.consumedEvent, string)> => promise<store>
   let whenEvent: (promise<store>, Spec.consumedEvent) => storeThunk
   let whenEvents: (promise<store>, array<Spec.consumedEvent>) => storeThunk
   let thenStates: (storeThunk, array<Spec.state>) => promise<Outcome.outcome>
@@ -161,7 +163,7 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
       )
     }
 
-  let update = async (store, events) => {
+  let updateAt = async (store, events: array<(Spec.consumedEvent, string)>) => {
     // Projection.project produces an array of actions per event — flatten and
     // feed them through handleActions against the dict store. Each bare event is
     // wrapped in the `consumed` envelope with the deterministic test `meta` /
@@ -171,17 +173,17 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
     // the machinery, so a harness that skipped this would assert an empty one.
     let actions =
       events
-      ->Array.map(ev =>
+      ->Array.map(((ev, time)) =>
         {
           Reventless.StateViewSlice.event: ev,
-          meta: TestFixtures.meta,
-          recordedAt: TestFixtures.recordedAt,
+          meta: {...TestFixtures.meta, time},
+          recordedAt: time == TestFixtures.meta.time ? TestFixtures.recordedAt : time,
         }
         ->Projection.project
         ->Array.map(action =>
           action
           ->Reventless.Projection.mapActionId(~to_=Spec.Id.toString, ~from=Spec.Id.makeFromString)
-          ->ReventlessCore.Projection.rewriteTrail(~at=TestFixtures.meta.time, Spec.stateSchema)
+          ->ReventlessCore.Projection.rewriteTrail(~at=time, Spec.stateSchema)
         )
       )
       ->Array.flat
@@ -198,7 +200,12 @@ module Make = (Spec: Spec, Projection: Projection with module Spec := Spec): (
     store->sortStore
   }
 
+  // Every event at the fixed test time.
+  let update = (store, events) =>
+    store->updateAt(events->Array.map(ev => (ev, TestFixtures.meta.time)))
+
   let givenEvents = events => Dict.make()->update(events)
+  let givenEventsAt = events => Dict.make()->updateAt(events)
 
   let whenEvent = (store, event): storeThunk =>
     () => (async () => await (await store)->update([event]))()

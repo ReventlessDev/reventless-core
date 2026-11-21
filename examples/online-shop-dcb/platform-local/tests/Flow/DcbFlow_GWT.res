@@ -55,13 +55,7 @@ describe("DCB cross-plugin flow", () => {
         price: bookPrice,
       }),
     )
-    ->Ordering.SyncCatalogProduct.whenCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: p1,
-        name: book,
-        price: bookPrice,
-      }),
-    )
+    ->Ordering.SyncCatalogProduct.whenIssued
     ->Ordering.SyncCatalogProduct.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
@@ -101,7 +95,7 @@ describe("DCB cross-plugin flow", () => {
     ->Ordering.AutoShipOrder.thenIssuesCommand(
       OrderingPlugin.AutoShipOrder.ShipOrder({orderId: o1}),
     )
-    ->Ordering.ShipOrder.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: o1}))
+    ->Ordering.ShipOrder.whenIssued
     ->Ordering.ShipOrder.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: o1}))
     ->Ordering.SendOrderConfirmation.thenOutbound([
       ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: o1, customerId: c1}),

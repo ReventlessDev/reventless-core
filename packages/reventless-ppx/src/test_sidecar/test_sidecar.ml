@@ -944,7 +944,7 @@ let () =
               Notify.thenIssuesNoCommand
                 (Notify.whenReacts
                    (Out.thenOutbound
-                      (View.thenViewState
+                      (View.thenRow
                          (Ship.thenEvent
                             (Ship.whenCommand
                                (Auto.thenIssuesCommand
@@ -985,7 +985,7 @@ let () =
   vequal "place and ship" "both whenCommands, in written order, each with its module"
     "Sync.givenEvents:Event:Synced Place.whenCommand:Command:PlaceOrder Place.thenEvent:Event:OrderPlaced \
      Auto.whenReacts:Sweep: Auto.thenIssuesCommand:Command:ShipOrder Ship.whenCommand:Command:ShipOrder \
-     Ship.thenEvent:Event:OrderShipped View.thenViewState:State:state Out.thenOutbound:Sent:o1 \
+     Ship.thenEvent:Event:OrderShipped View.thenRow:State:state Out.thenOutbound:Sent:o1 \
      Notify.whenReacts:Sweep: Notify.thenIssuesNoCommand:NoCommand:";
   sequal fj "place and ship" "when" "the groups keep the last act's when"
     "[{\"kind\":\"Sweep\",\"element\":\"\",\"values\":[]}]";
@@ -1010,7 +1010,7 @@ let () =
       describe "Parts" (fun () ->
           test "by hand and ready-made" ~tells:"Placing an order" (fun () ->
               Flow.Order.thenNoEvent
-                (Flow.Orders.thenViewState
+                (Flow.Orders.thenRow
                    (OrderingPlugin.Flow.AutoShipOrder.whenReacts
                       (thenBoundaryScopeResolves
                          (Catalog.Products_ExtensionPoint.whenPublished
@@ -1047,6 +1047,43 @@ let () =
      3:CatalogPlugin/Decision/AddProduct 4:CatalogPlugin/ExtensionPoint/Products \
      6:OrderingPlugin/Automation/AutoShipOrder 7:?/View/Orders 8:?/Aggregate/Order";
   sequal pj "by hand and ready-made" "tells" "~tells is what the flow tells" "\"Placing an order\"";
+
+  (* What was sent runs; the expectations besides whole events and rows. *)
+  let expect_body : structure =
+    [%str
+      describe "Expectations" (fun () ->
+          test "sent and run" (fun () ->
+              Flow.Orders.thenNoRow
+                (Flow.Orders.thenRowShows
+                   (Flow.ShipOrder.thenAccepted
+                      (Flow.ShipOrder.whenIssued ~only:2 (Flow.AutoShipOrder.whenReacts start)))
+                   "o1"
+                   (fun row -> [%obj { status = row.status }])
+                   [%obj { status = Shipped }])
+                "o9"))]
+  in
+  let ej = scenarios_of "tests/Flow/ExpectFlow_GWT.res" expect_body in
+  sequal ej "sent and run" "when" "whenIssued: the commands sent, ~only kept"
+    "[{\"kind\":\"Issued\",\"element\":\"\",\"values\":[[\"only\",{\"kind\":\"int\",\"value\":2}]]}]";
+  sequal ej "sent and run" "then" "thenAccepted, thenRowShows' fields, thenNoRow"
+    "[{\"kind\":\"Accepted\",\"element\":\"\",\"values\":[]},{\"kind\":\"State\",\"element\":\"state\",\"values\":[[\"status\",{\"kind\":\"enum\",\"value\":\"Shipped\"}]]},{\"kind\":\"NoState\",\"element\":\"\",\"values\":[]}]";
+  smust ej "sent and run" "steps" "the parts follow from the verbs"
+    "\"part\":{\"kind\":\"Decision\",\"name\":\"ShipOrder\"}";
+  let time_body : structure =
+    [%str
+      describe "Time" (fun () ->
+          test "an hour later" (fun () ->
+              Flow.Remind.whenTimePasses ~until:"2026-03-02T10:00:00Z"
+                (Flow.PlaceOrder.whenCommand start ~at:"2026-03-02T09:00:00Z"
+                   (PlaceOrder { orderId = "o1" }))))]
+  in
+  let tj = scenarios_of "tests/Flow/TimeFlow_GWT.res" time_body in
+  smust tj "an hour later" "steps" "a step's ~at is recorded"
+    "\"at\":{\"kind\":\"string\",\"value\":\"2026-03-02T09:00:00Z\"}";
+  smust tj "an hour later" "steps" "whenTimePasses: the time it passes to, an automation's"
+    "\"values\":[[\"until\",{\"kind\":\"string\",\"value\":\"2026-03-02T10:00:00Z\"}]],\"via\":\"Flow.Remind\",\"step\":2,\"part\":{\"kind\":\"Automation\",\"name\":\"Remind\"}";
+  smust ej "sent and run" "steps" "…a view's too"
+    "\"part\":{\"kind\":\"View\",\"name\":\"Orders\"}";
 
   (* ── The automation wiring sidecar ─────────────────────────────────────── *)
   let wiring_body : structure =

@@ -27,7 +27,7 @@ open ReventlessCore
 //   ->Flow.PlaceOrder.thenEvents([OrderPlaced({...})])
 //   ->Flow.AutoShipOrder.whenReacts
 //   ->Flow.AutoShipOrder.thenIssuesCommand(ShipOrder({...}))
-//   ->Flow.Orders.thenViewState("o1", {...})
+//   ->Flow.Orders.thenRow("o1", {...})
 //
 // A part no plugin generates a step for is set up by hand:
 // `module Place = DecisionStep(PlaceOrder, PlaceOrder_Decision)`.
@@ -52,12 +52,14 @@ module ExtMapping = ReventlessInfra.ExtensionMapping
 // `AggregateStep` can rebuild per-aggregate history without DCB tag
 // inference. Filtering by `aggregateId` and filtering by DCB tags are mutually
 // exclusive: DCB queries look only at `eventType` + `tags`, and the aggregate
-// decoder looks only at `aggregateId` + `eventType`.
+// decoder looks only at `aggregateId` + `eventType`. `at` is when the event was
+// recorded, in milliseconds since 1970: the flow's time at the step.
 type logEntry = {
   eventType: string,
   tags: array<Reventless.DcbTag.tag>,
   json: JSON.t,
   aggregateId: option<string>,
+  at: float,
 }
 
 // The flow state threaded through every step. `outcome` accumulates assertions
@@ -85,6 +87,9 @@ type flowState = {
   steps: int,
   at: option<Outcome.step>,
   failedAt: option<Outcome.step>,
+  // The flow's time, in milliseconds since 1970. It starts at 0 and moves only
+  // forward, when a step says when it happens.
+  now: float,
 }
 
 type flow = promise<flowState>
@@ -101,6 +106,7 @@ let emptyState = {
   steps: 0,
   at: None,
   failedAt: None,
+  now: 0.0,
 }
 
 // Entry point for a chain — an empty flow with no prior history.
@@ -114,11 +120,37 @@ let recordOutcome = (s: flowState, o: Outcome.outcome): flowState =>
   | (Ok(), Error(_)) => {...s, outcome: o, failedAt: s.at}
   }
 
-// Every step counts itself as the flow passes it, so a failure can say where.
-let enter = async (flowP: flow, ~verb, ~part=?) => {
+// An instant as the examples write one: no milliseconds when there are none.
+let iso = (millis: float) => millis->Date.fromTime->Date.toISOString->String.replace(".000Z", "Z")
+
+// Every step counts itself as the flow passes it, so a failure can say where. A
+// step that says when it happens (`~at`, an ISO instant) moves the flow's time
+// there; one that says nothing happens at the time of the step before it.
+let enter = async (flowP: flow, ~verb, ~part=?, ~at=?) => {
   let s = await flowP
   let number = s.steps + 1
-  {...s, steps: number, at: Some({Outcome.number, total: 0, verb, ?part})}
+  let s = {...s, steps: number, at: Some({Outcome.number, total: 0, verb, ?part})}
+  switch at {
+  | None => s
+  | Some(text) =>
+    let millis = Date.fromString(text)->Date.getTime
+    if Float.isNaN(millis) {
+      s->recordOutcome(Outcome.fail(Throw({error: `~at="${text}" is not an instant`, stack: ""})))
+    } else if millis < s.now {
+      s->recordOutcome(
+        Outcome.fail(
+          Throw({
+            error: `~at="${text}" is before the flow's time, ${iso(
+                s.now,
+              )}: time only moves forward`,
+            stack: "",
+          }),
+        ),
+      )
+    } else {
+      {...s, now: millis}
+    }
+  }
 }
 
 // Mirror the in-memory DCB event log's `matchesQuery`: an empty query matches
@@ -145,7 +177,9 @@ let entryMatchesQuery = (entry: logEntry, query: Reventless.DcbTag.query) =>
   }
 
 // Encode + tag a batch of typed events and append them to the log.
-let appendEvents = (log: array<logEntry>, events: array<'e>, schema: S.t<'e>): array<logEntry> =>
+let appendEvents = (log: array<logEntry>, ~at: float, events: array<'e>, schema: S.t<'e>): array<
+  logEntry,
+> =>
   Array.concat(
     log,
     events->Array.map(ev => {
@@ -155,6 +189,7 @@ let appendEvents = (log: array<logEntry>, events: array<'e>, schema: S.t<'e>): a
         tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
         json,
         aggregateId: None,
+        at,
       }
     }),
   )
@@ -167,6 +202,7 @@ let appendEvents = (log: array<logEntry>, events: array<'e>, schema: S.t<'e>): a
 let appendAggregateEvents = (
   log: array<logEntry>,
   ~id: string,
+  ~at: float,
   events: array<'e>,
   schema: S.t<'e>,
 ): array<logEntry> =>
@@ -179,6 +215,7 @@ let appendAggregateEvents = (
         tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
         json,
         aggregateId: Some(id),
+        at,
       }
     }),
   )
@@ -334,6 +371,89 @@ let errorWas = (s: flowState, expJson: JSON.t) =>
     },
   )
 
+let noEventWas = (s: flowState) =>
+  s->recordOutcome(
+    switch s.lastError {
+    | Some(err) =>
+      Outcome.fail(
+        ErrorMismatch({expected: JSON.Encode.null, actual: Some(err), actualEvents: s.lastEvents}),
+      )
+    | None =>
+      s.lastEvents->Array.length == 0
+        ? Outcome.pass
+        : Outcome.fail(NoEventExpected({actual: s.lastEvents}))
+    },
+  )
+
+// The decision did not refuse; its events are not compared. For a flow written
+// with no author present, whose worked-out values nobody has confirmed yet.
+let acceptedWas = (s: flowState) =>
+  s->recordOutcome(
+    switch s.lastError {
+    | Some(err) =>
+      Outcome.fail(
+        ErrorMismatch({expected: JSON.Encode.null, actual: Some(err), actualEvents: s.lastEvents}),
+      )
+    | None => Outcome.pass
+    },
+  )
+
+// -- What the step before sent -----------------------------------------------
+
+// The commands the step before sent, read by the decision that runs them: all of
+// them, or the one `~only` names (the first is 1). Read strictly, so a command
+// the decision cannot read fails here rather than being filled in.
+let issued = (s: flowState, ~only=?, ~name, schema: S.t<'c>): result<array<'c>, string> => {
+  let sent = s.lastCommands
+  let picked = switch only {
+  | None => Ok(sent)
+  | Some(n) =>
+    switch sent->Array.get(n - 1) {
+    | Some(c) => Ok([c])
+    | None =>
+      Error(
+        `~only=${n->Int.toString}, but ${sent->Array.length->Int.toString} command(s) were sent`,
+      )
+    }
+  }
+  picked->Result.flatMap(sent =>
+    sent->Array.length == 0
+      ? Error("the step before sent no command")
+      : sent->Array.reduce(Ok([]), (acc, json) =>
+          acc->Result.flatMap(
+            commands =>
+              switch json->Reventless.Util_Sury.fromJson(schema) {
+              | command => Ok(commands->Array.concat([command]))
+              | exception S.Exn(e) =>
+                Error(`${name} cannot read ${JSON.stringify(json)}: ${e.message}`)
+              | exception _ => Error(`${name} cannot read ${JSON.stringify(json)}`)
+              },
+          )
+        )
+  )
+}
+
+// Run the sent commands in order. The step's events are all of theirs; the
+// first refusal ends it.
+let runIssued = (s: flowState, commands: result<array<'c>, string>, decideOne) =>
+  switch commands {
+  | Error(reason) =>
+    {...s, lastEvents: [], lastError: None}->recordOutcome(
+      Outcome.fail(
+        TranslateError({expected: "a command the decision reads", actual: Some(reason)}),
+      ),
+    )
+  | Ok(commands) =>
+    commands->Array.reduce({...s, lastEvents: [], lastError: None}, (acc, command) =>
+      switch acc.lastError {
+      | Some(_) => acc
+      | None =>
+        let next = acc->decideOne(command)
+        {...next, lastEvents: acc.lastEvents->Array.concat(next.lastEvents)}
+      }
+    )
+  }
+
 // -- DecisionStep: a StateChangeSlice / Aggregate decider ---------------------
 
 module DecisionStep = (
@@ -345,9 +465,9 @@ module DecisionStep = (
   let consumedEventTypes = consumedDecoder.eventTypes
 
   // Seed prior history with events this slice can emit.
-  let givenEvents = async (flowP: flow, events: array<Spec.event>) => {
-    let s = await flowP->enter(~verb="givenEvents", ~part)
-    {...s, log: s.log->appendEvents(events, Spec.eventSchema)}
+  let givenEvents = async (flowP: flow, ~at=?, events: array<Spec.event>) => {
+    let s = await flowP->enter(~verb="givenEvents", ~part, ~at?)
+    {...s, log: s.log->appendEvents(~at=s.now, events, Spec.eventSchema)}
   }
 
   // Filter the log by the command's DCB tags, fold `evolve`, run `decide`, and
@@ -383,8 +503,7 @@ module DecisionStep = (
     ~crossPartitionTagKeys,
   )
 
-  let whenCommand = async (flowP: flow, command: Spec.command) => {
-    let s = await flowP->enter(~verb="whenCommand", ~part)
+  let decideOne = (s: flowState, command: Spec.command) => {
     let query = Reventless.DcbTag.buildQueryFromCommand(
       ~eventTypes=consumedEventTypes,
       ~schema=Spec.commandSchema,
@@ -398,7 +517,7 @@ module DecisionStep = (
     switch Decision.decide(state, command) {
     | Ok(events) => {
         ...s,
-        log: s.log->appendEvents(events, Spec.eventSchema),
+        log: s.log->appendEvents(~at=s.now, events, Spec.eventSchema),
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
         lastAggregateId: None,
@@ -410,6 +529,15 @@ module DecisionStep = (
         lastAggregateId: None,
       }
     }
+  }
+
+  let whenCommand = async (flowP: flow, ~at=?, command: Spec.command) =>
+    (await flowP->enter(~verb="whenCommand", ~part, ~at?))->decideOne(command)
+
+  // Runs the commands the step before sent, as this decision reads them.
+  let whenIssued = async (flowP: flow, ~only=?, ~at=?) => {
+    let s = await flowP->enter(~verb="whenIssued", ~part, ~at?)
+    s->runIssued(s->issued(~only?, ~name=Spec.name, Spec.commandSchema), decideOne)
   }
 
   let thenEvents = async (flowP: flow, expected: array<Spec.event>) =>
@@ -426,6 +554,12 @@ module DecisionStep = (
     (await flowP->enter(~verb="thenError", ~part))->errorWas(
       expected->Message.encode(Spec.errorSchema),
     )
+
+  let thenNoEvent = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenNoEvent", ~part))->noEventWas
+
+  let thenAccepted = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenAccepted", ~part))->acceptedWas
 }
 
 // -- AggregateStep: an Aggregate decider partitioned by aggregate-ID --
@@ -452,22 +586,21 @@ module AggregateStep = (
 
   // Seed `id`'s history before the first `whenCommand`. Useful when a flow
   // starts mid-stream (e.g. the order is already Placed when the test begins).
-  let givenEvents = async (flowP: flow, ~id: string, events: array<Spec.event>) => {
-    let s = await flowP->enter(~verb="givenEvents", ~part)
-    {...s, log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema)}
+  let givenEvents = async (flowP: flow, ~id: string, ~at=?, events: array<Spec.event>) => {
+    let s = await flowP->enter(~verb="givenEvents", ~part, ~at?)
+    {...s, log: s.log->appendAggregateEvents(~id, ~at=s.now, events, Spec.eventSchema)}
   }
 
   // Rebuild `id`'s state from the log, run `decide`, then either append the
   // emitted events (still tagged with `~id`) or remember the error for the
   // next `thenError`.
-  let whenCommand = async (flowP: flow, ~id: string, command: Spec.command) => {
-    let s = await flowP->enter(~verb="whenCommand", ~part)
+  let decideOne = (s: flowState, ~id: string, command: Spec.command) => {
     let history = decodeAggregateMatching(s.log, ~id, aggregateDecoder)
     let state = history->Array.reduce(Decision.initialState, Decision.evolve)
     switch Decision.decide(state, command) {
     | Ok(events) => {
         ...s,
-        log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema),
+        log: s.log->appendAggregateEvents(~id, ~at=s.now, events, Spec.eventSchema),
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
         lastAggregateId: Some(id),
@@ -481,6 +614,17 @@ module AggregateStep = (
     }
   }
 
+  let whenCommand = async (flowP: flow, ~id: string, ~at=?, command: Spec.command) =>
+    (await flowP->enter(~verb="whenCommand", ~part, ~at?))->decideOne(~id, command)
+
+  // Runs the commands the step before sent, as this aggregate reads them.
+  let whenIssued = async (flowP: flow, ~id: string, ~only=?, ~at=?) => {
+    let s = await flowP->enter(~verb="whenIssued", ~part, ~at?)
+    s->runIssued(s->issued(~only?, ~name=Spec.name, Spec.commandSchema), (s, c) =>
+      s->decideOne(~id, c)
+    )
+  }
+
   let thenEvents = async (flowP: flow, expected: array<Spec.event>) =>
     (await flowP->enter(~verb="thenEvents", ~part))->eventsWere(
       expected->Array.map(e => e->Message.encode(Spec.eventSchema)),
@@ -491,20 +635,11 @@ module AggregateStep = (
       event->Message.encode(Spec.eventSchema),
     ])
 
-  let thenNoEvent = async (flowP: flow) => {
-    let s = await flowP->enter(~verb="thenNoEvent", ~part)
-    let o = switch s.lastError {
-    | Some(err) =>
-      Outcome.fail(
-        ErrorMismatch({expected: JSON.Encode.null, actual: Some(err), actualEvents: s.lastEvents}),
-      )
-    | None =>
-      s.lastEvents->Array.length == 0
-        ? Outcome.pass
-        : Outcome.fail(NoEventExpected({actual: s.lastEvents}))
-    }
-    s->recordOutcome(o)
-  }
+  let thenNoEvent = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenNoEvent", ~part))->noEventWas
+
+  let thenAccepted = async (flowP: flow) =>
+    (await flowP->enter(~verb="thenAccepted", ~part))->acceptedWas
 
   let thenError = async (flowP: flow, expected: Spec.error) =>
     (await flowP->enter(~verb="thenError", ~part))->errorWas(
@@ -513,6 +648,11 @@ module AggregateStep = (
 }
 
 // -- ViewStep: a StateViewSlice / projection over the log --------------------
+
+// The view step's former verbs, kept only so that a flow using one fails to
+// build with a message naming the new verb.
+type renamedToThenRow
+type renamedToThenRows
 
 module ViewStep = (
   Spec: Projection_GWT.Spec,
@@ -524,30 +664,63 @@ module ViewStep = (
 
   let encState = (st: Spec.state) => st->Message.encode(Spec.stateSchema)
 
-  // Fold the projection over every consumed event in the log and assert the
-  // row(s) for `id`.
-  let rowsAre = async (s: flowState, id, expected: array<Spec.state>) => {
-    let events = decodeMatching(s.log, consumedDecoder, [])
-    let store = await P.givenEvents(events)
-    let actual = store->Dict.get(id)->Option.getOr([])->Array.map(encState)
-    let expectedJson = expected->Array.map(encState)
-    let o =
-      actual == expectedJson
+  // Fold the projection over every consumed event in the log: the row(s) for `id`.
+  // Each event projected at the time it was recorded.
+  let rowsOf = async (s: flowState, id) => {
+    let events =
+      s.log->Array.flatMap(entry =>
+        decodeMatching([entry], consumedDecoder, [])->Array.map(e => (e, iso(entry.at)))
+      )
+    let store = await P.givenEventsAt(events)
+    store->Dict.get(id)->Option.getOr([])
+  }
+
+  let compared = (s: flowState, id, ~expected: array<JSON.t>, ~actual: array<JSON.t>) =>
+    s->recordOutcome(
+      actual == expected
         ? Outcome.pass
         : Outcome.fail(
             StateMismatch({
               key: id,
-              expected: Some(JSON.Encode.array(expectedJson)),
+              expected: Some(JSON.Encode.array(expected)),
               actual: Some(JSON.Encode.array(actual)),
+              fold: Project,
             }),
-          )
-    s->recordOutcome(o)
+          ),
+    )
+
+  let rowsAre = async (s: flowState, id, expected: array<Spec.state>) =>
+    s->compared(
+      id,
+      ~expected=expected->Array.map(encState),
+      ~actual=(await s->rowsOf(id))->Array.map(encState),
+    )
+
+  let thenRows = async (flowP: flow, id, expected: array<Spec.state>) =>
+    await (await flowP->enter(~verb="thenRows", ~part))->rowsAre(id, expected)
+  let thenRow = async (flowP: flow, id, row: Spec.state) =>
+    await (await flowP->enter(~verb="thenRow", ~part))->rowsAre(id, [row])
+
+  let thenNoRow = async (flowP: flow, id) =>
+    await (await flowP->enter(~verb="thenNoRow", ~part))->rowsAre(id, [])
+
+  // Some fields of the row: `pick` takes them from the row as built, and they
+  // are compared with `expected`. A field `pick` leaves out is built and not
+  // compared; the view's own test states the whole row.
+  let thenRowShows = async (flowP: flow, id, pick: Spec.state => 'shown, expected: 'shown) => {
+    let s = await flowP->enter(~verb="thenRowShows", ~part)
+    let shown = (await s->rowsOf(id))->Array.map(pick)
+    // What `pick` returns has no schema; it is shown as the value it is.
+    let asJson = (v: 'shown): JSON.t => Obj.magic(v)
+    shown == [expected]
+      ? s->recordOutcome(Outcome.pass)
+      : s->compared(id, ~expected=[asJson(expected)], ~actual=shown->Array.map(asJson))
   }
 
-  let thenViewStates = async (flowP: flow, id, expected: array<Spec.state>) =>
-    await (await flowP->enter(~verb="thenViewStates", ~part))->rowsAre(id, expected)
-  let thenViewState = async (flowP: flow, id, state: Spec.state) =>
-    await (await flowP->enter(~verb="thenViewState", ~part))->rowsAre(id, [state])
+  @deprecated("Renamed thenRow.")
+  let thenViewState = (_: renamedToThenRow, _: renamedToThenRow, _: renamedToThenRow) => ()
+  @deprecated("Renamed thenRows.")
+  let thenViewStates = (_: renamedToThenRows, _: renamedToThenRows, _: renamedToThenRows) => ()
 }
 
 // -- Automation, way out, way in ---------------------------------------------
@@ -576,19 +749,79 @@ module AutomationStep = (
   module A = Automation_GWT.FromSlice(Spec, Automation)
   let part: Outcome.part = {kind: Automation, name: Spec.name}
 
-  let whenReacts = async (flowP: flow) => {
-    let s = await flowP->enter(~verb="whenReacts", ~part)
-    let routed =
-      s.log->Array.flatMap(entry =>
-        A.Route.dispatches->Array.filterMap(d =>
-          d.handle(entry.json, ~sourceId=entry->sourceIdOf, A.testContext)
+  // Each entry routed as the runtime delivers it, recorded at its own time.
+  let routedLog = (s: flowState) =>
+    s.log->Array.map(entry => (
+      entry,
+      A.Route.dispatches->Array.filterMap(d =>
+        d.handle(
+          entry.json,
+          ~sourceId=entry->sourceIdOf,
+          A.testContext->A.withRecordedAt(Some(entry.at)),
+        )
+      ),
+    ))
+
+  let sent = (s: flowState, commands: array<(string, Spec.command)>) => {
+    ...s,
+    lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
+    lastRefusal: None,
+  }
+
+  // The automation sweeps the record at the flow's time.
+  let whenReacts = async (flowP: flow, ~at=?) => {
+    let s = await flowP->enter(~verb="whenReacts", ~part, ~at?)
+    let routed = s->routedLog->Array.flatMap(((_, routed)) => routed)
+    s->sent(A.sweep(routed, ~now=s.now).commands)
+  }
+
+  // The flow's time moves to `until`, and every schedule that comes due on the
+  // way fires in turn: the declared one, and those the record's events set. The
+  // commands the firings make are what the step sent.
+  let whenTimePasses = async (flowP: flow, ~until) => {
+    let from = (await flowP).now
+    let s = await flowP->enter(~verb="whenTimePasses", ~part, ~at=until)
+    switch s.outcome {
+    | Error(_) => s
+    | Ok() =>
+      let log = s->routedLog
+      let rows = A.declaredRows(~now=0.0)
+      log->Array.forEach(((entry, routed)) =>
+        routed->Array.forEach(r =>
+          r.rescheduled->Array.forEach(
+            change =>
+              rows
+              ->AutomationSlice_Schedules.apply(change, ~setBy="flow", ~recordedAt=entry.at)
+              ->ignore,
+          )
         )
       )
-    let {commands, _} = A.sweep(routed, ~now=Automation_GWT.clockNow())
-    {
-      ...s,
-      lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
-      lastRefusal: None,
+      let firings =
+        rows
+        ->Dict.valuesToArray
+        ->Array.flatMap(row =>
+          switch row->AutomationSlice_Schedules.timeOf {
+          | None => []
+          | Some(time) =>
+            let rec due = (after, acc, tries) =>
+              switch time->ScheduleTime.nextFiring(~after) {
+              | Some(next) if next <= s.now && tries < 1000 =>
+                due(next, acc->Array.concat([(row.key, next)]), tries + 1)
+              | _ => acc
+              }
+            due(from, [], 0)
+          }
+        )
+        ->Array.toSorted(((_, a), (_, b)) => Float.compare(a, b))
+      let ticks =
+        A.routeEach(
+          firings->Array.map(((key, at)) => A.tick(~key, at)),
+          A.testContext,
+        )->Array.flatMap(((_, routed)) => routed)
+      let fromLog = log->Array.flatMap(((_, routed)) => routed)
+      let before = A.sweep(fromLog, ~now=s.now).commands
+      let after = A.sweep(fromLog->Array.concat(ticks), ~now=s.now).commands
+      s->sent(after->Array.filter(c => !(before->Array.some(b => b == c))))
     }
   }
 
@@ -641,8 +874,8 @@ module InboundStep = (
   let part: Outcome.part = {kind: Inbound, name: Spec.name}
 
   // Received input becomes the flow's next commands, as an automation's do.
-  let whenReceived = async (flowP: flow, json: JSON.t, ~fakes=?) => {
-    let s = await flowP->enter(~verb="whenReceived", ~part)
+  let whenReceived = async (flowP: flow, ~at=?, json: JSON.t, ~fakes=?) => {
+    let s = await flowP->enter(~verb="whenReceived", ~part, ~at?)
     switch (await I.whenReceived(json, ~fakes?)).outcome {
     | Translated(pairs) => {
         ...s,
@@ -711,8 +944,8 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
       nested->Array.flat
     }
 
-  let whenPublished = async (flowP: flow) => {
-    let s = await flowP->enter(~verb="whenPublished", ~part)
+  let whenPublished = async (flowP: flow, ~at=?) => {
+    let s = await flowP->enter(~verb="whenPublished", ~part, ~at?)
     let delegateEvents = s.lastEvents->Array.filterMap(json => {
       let data = switch json {
       | Object(d) => d
@@ -724,7 +957,7 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
     let publicEvents = await runMapping(sourceId, delegateEvents)
     {
       ...s,
-      log: s.log->appendEvents(publicEvents, M.ExtensionPoint.eventSchema),
+      log: s.log->appendEvents(~at=s.now, publicEvents, M.ExtensionPoint.eventSchema),
       lastPublic: publicEvents->Array.map(e => e->Message.encode(M.ExtensionPoint.eventSchema)),
     }
   }
@@ -752,8 +985,8 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
   let epDecoder = Reventless.DcbDecode.makeDecoder(M.ExtensionPoint.eventSchema)
   let encCmd = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
 
-  let whenReacts = async (flowP: flow) => {
-    let s = await flowP->enter(~verb="whenReacts", ~part)
+  let whenReacts = async (flowP: flow, ~at=?) => {
+    let s = await flowP->enter(~verb="whenReacts", ~part, ~at?)
     let epEvents = s.lastPublic->Array.filterMap(json => {
       let data = switch json {
       | Object(d) => d

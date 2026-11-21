@@ -59,12 +59,16 @@ function Make(Spec) {
       store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
     };
     let runActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, undefined, actions, operations, Spec.subIdConfig);
-    let update = async (store, events) => {
-      let actions = events.map(ev => Projection.project({
-        event: ev,
-        meta: TestFixtures$ReventlessGwt.meta,
-        recordedAt: TestFixtures$ReventlessGwt.recordedAt
-      }).map(action => Projection$ReventlessCore.rewriteTrail(Projection$Reventless.mapActionId(action, Spec.Id.toString, Spec.Id.makeFromString), TestFixtures$ReventlessGwt.meta.time, Spec.stateSchema))).flat();
+    let updateAt = async (store, events) => {
+      let actions = events.map(param => {
+        let time = param[1];
+        let newrecord = {...TestFixtures$ReventlessGwt.meta};
+        return Projection.project({
+          event: param[0],
+          meta: (newrecord.time = time, newrecord),
+          recordedAt: time === TestFixtures$ReventlessGwt.meta.time ? TestFixtures$ReventlessGwt.recordedAt : time
+        }).map(action => Projection$ReventlessCore.rewriteTrail(Projection$Reventless.mapActionId(action, Spec.Id.toString, Spec.Id.makeFromString), time, Spec.stateSchema));
+      }).flat();
       await runActions(actions, {
         load: extra => Promise.resolve({
           TAG: "Ok",
@@ -188,7 +192,12 @@ function Make(Spec) {
         return store;
       }
     };
+    let update = (store, events) => updateAt(store, events.map(ev => [
+      ev,
+      TestFixtures$ReventlessGwt.meta.time
+    ]));
     let givenEvents = events => update({}, events);
+    let givenEventsAt = events => updateAt({}, events);
     let whenEvent = (store, event) => (() => (async () => await update(await store, [event]))());
     let whenEvents = (store, events) => (() => (async () => await update(await store, events))());
     let encState = s => Message$ReventlessCore.encode(s, Spec.stateSchema);
@@ -314,6 +323,7 @@ function Make(Spec) {
       todo: JestBind$ReventlessGwt.todo,
       test: test,
       givenEvents: givenEvents,
+      givenEventsAt: givenEventsAt,
       whenEvent: whenEvent,
       whenEvents: whenEvents,
       thenStates: thenStates,

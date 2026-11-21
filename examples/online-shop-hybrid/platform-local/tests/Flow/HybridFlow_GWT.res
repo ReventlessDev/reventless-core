@@ -61,13 +61,7 @@ describe("Hybrid cross-plugin flow", () => {
         price: bookPrice,
       }),
     )
-    ->Ordering.SyncCatalogProduct.whenCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
-        productId: p1,
-        name: book,
-        price: bookPrice,
-      }),
-    )
+    ->Ordering.SyncCatalogProduct.whenIssued
     ->Ordering.SyncCatalogProduct.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
@@ -152,9 +146,7 @@ describe("Hybrid cross-plugin flow", () => {
       ->Ordering.Products_Extension.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
       )
-      ->Ordering.SyncCatalogProduct.whenCommand(
-        OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
-      )
+      ->Ordering.SyncCatalogProduct.whenIssued
       ->Ordering.SyncCatalogProduct.thenEvent(
         OrderingPlugin.SyncCatalogProduct.CatalogProductWithdrawn({productId: p1}),
       )
@@ -181,9 +173,7 @@ describe("Hybrid cross-plugin flow", () => {
       ->Ordering.Products_Extension.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
       )
-      ->Ordering.SyncCatalogProduct.whenCommand(
-        OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
-      )
+      ->Ordering.SyncCatalogProduct.whenIssued
       ->Ordering.SyncCatalogProduct.thenEvent(
         OrderingPlugin.SyncCatalogProduct.CatalogProductRelisted({
           productId: p1,
@@ -266,15 +256,12 @@ describe("Hybrid cross-plugin flow", () => {
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p1, orderId: "o1"}),
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p2, orderId: "o1"}),
       ])
-      ->Catalog.RecordProductDemand.whenCommand(
-        CatalogPlugin.RecordProductDemand.RecordDemand({productId: p1, orderId: "o1"}),
-      )
-      ->Catalog.RecordProductDemand.thenEvent(
-        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({
-          productId: p1,
-          orderId: "o1",
-        }),
-      ),
+      // The fan-out is run whole: both lines' demand is recorded.
+      ->Catalog.RecordProductDemand.whenIssued
+      ->Catalog.RecordProductDemand.thenEvents([
+        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: p1, orderId: "o1"}),
+        CatalogPlugin.RecordProductDemand.ProductDemandRecorded({productId: p2, orderId: "o1"}),
+      ]),
   )
 
   // The steps above name the slices a scenario walks through. These two name

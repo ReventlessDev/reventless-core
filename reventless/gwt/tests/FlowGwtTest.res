@@ -206,6 +206,118 @@ module ConfirmTranslation = {
   let onExhausted = (_id, _item, ~lastError as _) => None
 }
 
+// The same automation, whose command names its field `order` where the decision
+// that runs it says `orderId`: a flow that types each side's command passes.
+module AutoShipByOrderSlice = {
+  let name = "AutoShipByOrder"
+  let moduleUrl = ""
+
+  @schema
+  type todoItem = {orderId: string}
+
+  @schema
+  type command = ShipOrder({order: string})
+
+  let maxRetries = 3
+  let targetName = "Order"
+  let schedule = None
+}
+
+module AutoShipByOrderAutomation = {
+  module M = Reventless.AutomationSlice.Mappings.Make(AutoShipByOrderSlice)
+  module type Mapping = M.Mapping
+  let moduleUrl = ""
+
+  module FromOrders = Reventless.AutomationSlice.Mapping.Make(
+    AutoShipAutomation.Orders,
+    AutoShipByOrderSlice,
+    {
+      let collect = (event, ~sourceId as _, _ctx) =>
+        switch event {
+        | AutoShipAutomation.Orders.OrderPlaced({orderId}) => [
+            (orderId, ({orderId: orderId}: AutoShipByOrderSlice.todoItem)),
+          ]
+        | OrderShipped(_) => []
+        }
+      let resolve = event =>
+        switch event {
+        | AutoShipAutomation.Orders.OrderShipped({orderId}) => Some(orderId)
+        | OrderPlaced(_) => None
+        }
+      let reschedule = _ => []
+    },
+  )
+
+  let mappings: array<module(Mapping)> = [module(FromOrders)]
+  let process = (id, _todo: AutoShipByOrderSlice.todoItem, ~now as _) => Some((
+    id,
+    AutoShipByOrderSlice.ShipOrder({order: id}),
+  ))
+  let onExhausted = (_id, _todo, ~lastError as _) => None
+}
+
+// A reminder an hour after an order is placed, unless it ships first: the
+// schedule is set by the event, keyed by the order, and its tick makes the item.
+module RemindSlice = {
+  let name = "Remind"
+  let moduleUrl = ""
+
+  @schema
+  type todoItem = {orderId: string}
+
+  @schema
+  type command = RemindCustomer({orderId: string})
+
+  let maxRetries = 3
+  let targetName = "Order"
+  let schedule = None
+}
+
+module RemindAutomation = {
+  module M = Reventless.AutomationSlice.Mappings.Make(RemindSlice)
+  module type Mapping = M.Mapping
+  let moduleUrl = ""
+
+  module FromClock = Reventless.AutomationSlice.Mapping.Make(
+    Reventless.Clock,
+    RemindSlice,
+    {
+      open Reventless.Clock
+      let collect = (Tick({key, at}), ~sourceId as _, _ctx) => [
+        (itemId(key, at), ({orderId: key}: RemindSlice.todoItem)),
+      ]
+      let resolve = _ => None
+      let reschedule = _ => []
+    },
+  )
+
+  module FromOrders = Reventless.AutomationSlice.Mapping.Make(
+    AutoShipAutomation.Orders,
+    RemindSlice,
+    {
+      let collect = (_, ~sourceId as _, _ctx) => []
+      let resolve = _ => None
+      let reschedule = event =>
+        switch event {
+        | AutoShipAutomation.Orders.OrderPlaced({orderId}) => [
+            Reventless.AutomationSlice.Set({
+              key: orderId,
+              time: Once({moment: After(Hours(1))}),
+            }),
+          ]
+        | OrderShipped({orderId}) => [Clear({key: orderId})]
+        }
+    },
+  )
+
+  let mappings: array<module(Mapping)> = [module(FromClock), module(FromOrders)]
+  let process = (id, item: RemindSlice.todoItem, ~now as _) => Some((
+    id,
+    RemindSlice.RemindCustomer({orderId: item.orderId}),
+  ))
+  let onExhausted = (_id, _item, ~lastError as _) => None
+}
+
 // -- Step modules ------------------------------------------------------------
 
 module Place = DecisionStep(PlaceOrderSlice, PlaceOrderDecision)
@@ -213,6 +325,8 @@ module Auto = AutomationStep(AutoShipSlice, AutoShipAutomation)
 module Ship = DecisionStep(ShipOrderSlice, ShipOrderDecision)
 module View = ViewStep(OrdersViewSlice, OrdersViewProjection)
 module Confirm = OutboundStep(ConfirmSlice, ConfirmTranslation)
+module AutoByOrder = AutomationStep(AutoShipByOrderSlice, AutoShipByOrderAutomation)
+module Remind = AutomationStep(RemindSlice, RemindAutomation)
 
 // -- Flows -------------------------------------------------------------------
 
@@ -226,9 +340,9 @@ describe("Order flow (single plugin)", () => {
       ->Place.thenEvents([PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"})])
       ->Auto.whenReacts
       ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
-      ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+      ->Ship.whenIssued
       ->Ship.thenEvents([ShipOrderSlice.OrderShipped({orderId: "o1"})])
-      ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
+      ->View.thenRow("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
       ->Confirm.thenOutbound([("o1", {ConfirmSlice.orderId: "o1"})]),
   )
 
@@ -260,8 +374,8 @@ describe("Order flow (single plugin)", () => {
     ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
     ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o2", item: "pen"}))
     ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
-    ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
-    ->View.thenViewState("o2", {OrdersViewSlice.orderId: "o2", item: "pen", status: "Placed"})
+    ->View.thenRow("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
+    ->View.thenRow("o2", {OrdersViewSlice.orderId: "o2", item: "pen", status: "Placed"})
   )
 })
 
@@ -275,10 +389,10 @@ describe("a flow that fails at its sixth step", () => {
       ->Place.thenEvents([PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"})])
       ->Auto.whenReacts
       ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
-      ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+      ->Ship.whenIssued
       // Wrong on purpose: the order shipped is o1.
       ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o2"}))
-      ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Placed"})
+      ->View.thenRow("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Placed"})
       ->Confirm.thenOutbound([("o1", {ConfirmSlice.orderId: "o1"})])
     )->outcomeOf
 
@@ -335,5 +449,158 @@ describe("a flow that fails at its sixth step", () => {
       ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"}))
     )->outcomeOf
     JestGlobals.expect(outcome)->JestGlobals.toEqual(Outcome.pass)
+  })
+})
+
+// -- What was sent is what runs ----------------------------------------------
+
+let failureOf = async (flowP: flow) =>
+  switch (await flowP)->outcomeOf {
+  | Error(m) => Some(m)
+  | Ok() => None
+  }
+
+let placed = () =>
+  start
+  ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+  ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"}))
+
+describe("a command sent by one part and run by the next", () => {
+  JestGlobals.testPromise("typed twice, each side to its own type, it passes", async () => {
+    let failure = await placed()
+    ->AutoByOrder.whenReacts
+    ->AutoByOrder.thenIssuesCommand(AutoShipByOrderSlice.ShipOrder({order: "o1"}))
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o1"}))
+    ->failureOf
+    JestGlobals.expect(failure)->JestGlobals.toEqual(None)
+  })
+
+  JestGlobals.testPromise("run as sent, the field the decision cannot read fails it", async () => {
+    let failure = await placed()
+    ->AutoByOrder.whenReacts
+    ->AutoByOrder.thenIssuesCommand(AutoShipByOrderSlice.ShipOrder({order: "o1"}))
+    ->Ship.whenIssued
+    ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o1"}))
+    ->failureOf
+    switch failure {
+    | Some(TranslateError({actual: Some(reason), ?step})) => {
+        JestGlobals.expect(
+          reason->String.startsWith(`ShipOrder cannot read {"TAG":"ShipOrder","order":"o1"}`),
+        )->JestGlobals.toBe(true)
+        JestGlobals.expect(step->Option.map(s => s.verb))->JestGlobals.toEqual(Some("whenIssued"))
+      }
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+
+  JestGlobals.testPromise("~only past what was sent fails, naming how many were", async () => {
+    let failure = await placed()->Auto.whenReacts->Ship.whenIssued(~only=2)->failureOf
+    switch failure {
+    | Some(TranslateError({actual: Some(reason)})) =>
+      JestGlobals.expect(reason)->JestGlobals.toBe("~only=2, but 1 command(s) were sent")
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+
+  JestGlobals.testPromise("nothing sent is nothing to run", async () => {
+    let failure = await start->Ship.whenIssued->failureOf
+    switch failure {
+    | Some(TranslateError({actual: Some(reason)})) =>
+      JestGlobals.expect(reason)->JestGlobals.toBe("the step before sent no command")
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+})
+
+// -- The expectations a flow lacked ------------------------------------------
+
+describe("what a flow can expect besides whole events and rows", () => {
+  test("a decision that records nothing", () =>
+    placed()
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.thenNoEvent
+  )
+
+  test("a decision that did not refuse, its events not compared", () =>
+    placed()->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))->Ship.thenAccepted
+  )
+
+  test("no row for an order never placed", () => placed()->View.thenNoRow("o9"))
+
+  test("some fields of the row", () =>
+    placed()->View.thenRowShows("o1", row => {"status": row.status}, {"status": "Placed"})
+  )
+
+  JestGlobals.testPromise("a field picked and wrong fails, showing what was picked", async () => {
+    let failure = await placed()
+    ->View.thenRowShows("o1", row => {"status": row.status}, {"status": "Shipped"})
+    ->failureOf
+    switch failure {
+    | Some(StateMismatch({key, expected, actual})) => {
+        JestGlobals.expect(key)->JestGlobals.toBe("o1")
+        JestGlobals.expect(expected->Option.map(j => JSON.stringify(j)))->JestGlobals.toEqual(
+          Some(`[{"status":"Shipped"}]`),
+        )
+        JestGlobals.expect(actual->Option.map(j => JSON.stringify(j)))->JestGlobals.toEqual(
+          Some(`[{"status":"Placed"}]`),
+        )
+      }
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
+  })
+
+  JestGlobals.testPromise("thenAccepted fails on a refusal", async () => {
+    let failure = await start
+    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Ship.thenAccepted
+    ->failureOf
+    JestGlobals.expect(failure->Option.map(Outcome.kindName))->JestGlobals.toEqual(
+      Some("ErrorMismatch"),
+    )
+  })
+})
+
+// -- A flow keeps time -------------------------------------------------------
+
+let placedAtNine = () =>
+  start->Place.whenCommand(
+    ~at="2026-03-02T09:00:00Z",
+    PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}),
+  )
+
+describe("a flow keeps time", () => {
+  test("a schedule an event set fires an hour later, and not before", () =>
+    placedAtNine()
+    ->Remind.whenTimePasses(~until="2026-03-02T09:59:00Z")
+    ->Remind.thenIssuesNoCommand
+    ->Remind.whenTimePasses(~until="2026-03-02T10:00:00Z")
+    ->Remind.thenIssuesCommand(RemindSlice.RemindCustomer({orderId: "o1"}))
+    // Once only: it does not fire again.
+    ->Remind.whenTimePasses(~until="2026-03-03T10:00:00Z")
+    ->Remind.thenIssuesNoCommand
+  )
+
+  test("an event that clears the schedule before it is due stops it", () =>
+    placedAtNine()
+    ->Ship.whenCommand(~at="2026-03-02T09:30:00Z", ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->Remind.whenTimePasses(~until="2026-03-02T11:00:00Z")
+    ->Remind.thenIssuesNoCommand
+  )
+
+  JestGlobals.testPromise("time only moves forward", async () => {
+    let failure = await placedAtNine()
+    ->Ship.whenCommand(~at="2026-03-02T08:00:00Z", ShipOrderSlice.ShipOrder({orderId: "o1"}))
+    ->failureOf
+    switch failure {
+    | Some(Throw({error, ?step})) => {
+        JestGlobals.expect(
+          error,
+        )->JestGlobals.toBe(`~at="2026-03-02T08:00:00Z" is before the flow's time, 2026-03-02T09:00:00Z: time only moves forward`)
+        JestGlobals.expect(step->Option.map(s => s.number))->JestGlobals.toEqual(Some(2))
+      }
+    | other => JestGlobals.expect(other)->JestGlobals.toEqual(None)
+    }
   })
 })

@@ -39,6 +39,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.
     ->Flow.PlaceOrder.whenCommand(
+      ~at=placedTime,
       PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
@@ -74,9 +75,9 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     )
     ->Flow.AutoShipOrder.whenReacts
     ->Flow.AutoShipOrder.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
-    ->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.whenIssued(~at=shippedTime)
     ->Flow.ShipOrder.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
-    ->Flow.Orders.thenViewState(
+    ->Flow.Orders.thenRow(
       "o1",
       {
         Orders.orderId: o1,
@@ -95,11 +96,10 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         itemCount: 2,
         lifecycle: Shipped,
         shippingMethod: Express,
-        placedAt: epoch,
-        // Both entries at the harness's fixed producer time: the machinery
-        // stamps each envelope's own `meta.time`, and every event here carries
-        // the same one.
-        trail: [{state: Placed, at: epoch}, {state: Shipped, at: epoch}],
+        placedAt: placedTime,
+        // Each entry at the time its step happened: the machinery stamps each
+        // envelope's own `meta.time`, which is the flow's time at that step.
+        trail: [{state: Placed, at: placedTime}, {state: Shipped, at: shippedTime}],
         deliveryWindow: window,
         firstProductName: book,
         firstProductImage: None,
