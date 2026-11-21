@@ -1,4 +1,4 @@
-// Worked example for Flow_GWT.AggregateCommandStep — two aggregate-style
+// Worked example for Flow_GWT.AggregateStep — two aggregate-style
 // command steps threaded through one shared log. Verifies the framework's
 // new aggregate-ID partitioning:
 //
@@ -103,8 +103,8 @@ module OrderDecision = {
 
 // -- Step modules -------------------------------------------------------------
 
-module Sync = AggregateCommandStep(CatalogProductAggregate, CatalogProductDecision)
-module Place = AggregateCommandStep(OrderAggregate, OrderDecision)
+module Sync = AggregateStep(CatalogProductAggregate, CatalogProductDecision)
+module Place = AggregateStep(OrderAggregate, OrderDecision)
 
 // -- Flows --------------------------------------------------------------------
 

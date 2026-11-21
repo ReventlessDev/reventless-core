@@ -172,7 +172,7 @@ async function thenBoundaryScopeResolves(flowP, name, slices) {
   return recordOutcome(s, outcome);
 }
 
-function CommandStep(Spec) {
+function DecisionStep(Spec) {
   return Decision => {
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let consumedEventTypes = consumedDecoder.eventTypes;
@@ -289,7 +289,7 @@ function CommandStep(Spec) {
   };
 }
 
-function AggregateCommandStep(Spec) {
+function AggregateStep(Spec) {
   return Decision => {
     let aggregateDecoder = DcbDecode$Reventless.makeDecoder(Spec.eventSchema);
     let givenEvents = async (flowP, id, events) => {
@@ -400,48 +400,6 @@ function AggregateCommandStep(Spec) {
   };
 }
 
-function AutomationStep(Spec) {
-  let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
-  let whenReacts = async flowP => {
-    let s = await flowP;
-    let events = decodeMatching(s.log, consumedDecoder, []);
-    let collected = events.map(e => Spec.collect(e)).flat();
-    let resolvedIds = Stdlib_Array.filterMap(events, e => Spec.resolve(e));
-    let pending = collected.filter(param => !resolvedIds.includes(param[0]));
-    let now = Automation_GWT$ReventlessGwt.clockNow();
-    let commands = Stdlib_Array.filterMap(pending, param => Spec.process(param[0], param[1], now));
-    return {
-      log: s.log,
-      outcome: s.outcome,
-      lastEvents: s.lastEvents,
-      lastError: s.lastError,
-      lastCommands: commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
-      lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
-      lastRefusal: s.lastRefusal
-    };
-  };
-  let thenIssuesCommands = async (flowP, expected) => {
-    let s = await flowP;
-    let expJson = expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema));
-    let o = Primitive_object.equal(s.lastCommands, expJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-        TAG: "EventsMismatch",
-        expected: expJson,
-        actual: s.lastCommands
-      });
-    return recordOutcome(s, o);
-  };
-  let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command]);
-  let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, []);
-  return {
-    consumedDecoder: consumedDecoder,
-    whenReacts: whenReacts,
-    thenIssuesCommands: thenIssuesCommands,
-    thenIssuesCommand: thenIssuesCommand,
-    thenIssuesNoCommand: thenIssuesNoCommand
-  };
-}
-
 function ViewStep(Spec) {
   return Projection => {
     let P = Projection_GWT$ReventlessGwt.Make(Spec)(Projection);
@@ -472,34 +430,6 @@ function ViewStep(Spec) {
   };
 }
 
-function OutboundStep(Spec) {
-  let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
-  let encItems = arr => arr.map(param => [
-    param[0],
-    Message$ReventlessCore.encode(param[1], Spec.outboundItemSchema)
-  ]);
-  let thenOutbound = async (flowP, expected) => {
-    let s = await flowP;
-    let events = decodeMatching(s.log, consumedDecoder, []);
-    let collected = events.map(e => Spec.collect(e, "")).flat();
-    let actual = encItems(collected);
-    let expectedJson = encItems(expected);
-    let o = Primitive_object.equal(actual, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-        TAG: "TodoMismatch",
-        expected: expectedJson,
-        actual: actual
-      });
-    return recordOutcome(s, o);
-  };
-  let thenOutboundNothing = flowP => thenOutbound(flowP, []);
-  return {
-    consumedDecoder: consumedDecoder,
-    encItems: encItems,
-    thenOutbound: thenOutbound,
-    thenOutboundNothing: thenOutboundNothing
-  };
-}
-
 function sourceIdOf(entry) {
   return Stdlib_Option.getOr(entry.aggregateId, "");
 }
@@ -521,7 +451,7 @@ async function encodedCommandsMatch(flowP, expJson) {
   return recordOutcome(s, o);
 }
 
-function AutomationSlice(Spec) {
+function AutomationStep(Spec) {
   return Automation => {
     let A = Automation_GWT$ReventlessGwt.FromSlice(Spec)(Automation);
     let whenReacts = async flowP => {
@@ -552,7 +482,7 @@ function AutomationSlice(Spec) {
   };
 }
 
-function OutboundSlice(Spec) {
+function OutboundStep(Spec) {
   return Translation => {
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let encItems = arr => arr.map(param => [
@@ -581,7 +511,7 @@ function OutboundSlice(Spec) {
   };
 }
 
-function InboundSlice(Spec) {
+function InboundStep(Spec) {
   return Translation => {
     let I = InboundTranslation_GWT$ReventlessGwt.FromSlice(Spec)(Translation);
     let whenReceived = async (flowP, json, fakes) => {
@@ -660,7 +590,7 @@ function ExtensionPointStep(M) {
       }
     }))).flat();
   };
-  let whenPublishedThrough = async flowP => {
+  let whenPublished = async flowP => {
     let s = await flowP;
     let delegateEvents = Stdlib_Array.filterMap(s.lastEvents, json => {
       let data;
@@ -694,7 +624,7 @@ function ExtensionPointStep(M) {
   return {
     delegateDecoder: delegateDecoder,
     runMapping: runMapping,
-    whenPublishedThrough: whenPublishedThrough,
+    whenPublished: whenPublished,
     thenPublicEvents: thenPublicEvents,
     thenPublicEvent: thenPublicEvent
   };
@@ -703,7 +633,7 @@ function ExtensionPointStep(M) {
 function ExtensionStep(M) {
   let epDecoder = DcbDecode$Reventless.makeDecoder(M.ExtensionPoint.eventSchema);
   let encCmd = c => Message$ReventlessCore.encode(c, M.Delegate.commandSchema);
-  let whenExtensionReacts = async flowP => {
+  let whenReacts = async flowP => {
     let s = await flowP;
     let epEvents = Stdlib_Array.filterMap(s.lastPublic, json => {
       let data;
@@ -757,11 +687,31 @@ function ExtensionStep(M) {
   return {
     epDecoder: epDecoder,
     encCmd: encCmd,
-    whenExtensionReacts: whenExtensionReacts,
+    whenReacts: whenReacts,
     thenIssuesCommands: thenIssuesCommands,
     thenIssuesCommand: thenIssuesCommand,
     thenIssuesNoCommand: thenIssuesNoCommand
   };
+}
+
+function CommandStep(_) {
+  return _ => ({});
+}
+
+function AggregateCommandStep(_) {
+  return _ => ({});
+}
+
+function AutomationSlice(_) {
+  return _ => ({});
+}
+
+function OutboundSlice(_) {
+  return _ => ({});
+}
+
+function InboundSlice(_) {
+  return _ => ({});
 }
 
 let EPMapping;
@@ -784,18 +734,21 @@ export {
   describe,
   test,
   thenBoundaryScopeResolves,
-  CommandStep,
-  AggregateCommandStep,
-  AutomationStep,
+  DecisionStep,
+  AggregateStep,
   ViewStep,
-  OutboundStep,
   sourceIdOf,
   encodedCommandsMatch,
-  AutomationSlice,
-  OutboundSlice,
-  InboundSlice,
+  AutomationStep,
+  OutboundStep,
+  InboundStep,
   sortJson,
   ExtensionPointStep,
   ExtensionStep,
+  CommandStep,
+  AggregateCommandStep,
+  AutomationSlice,
+  OutboundSlice,
+  InboundSlice,
 }
 /* start Not a pure module */

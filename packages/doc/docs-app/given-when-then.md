@@ -33,6 +33,10 @@ Two cross-cutting DSLs round out the surface:
   for both ReadModel and StateViewSlice consumers. This is the only DSL that
   asserts against `config` rather than `decide` / `evolve` / `project`.
 
+And one that tests the parts together: `Flow_GWT`, a chain of steps over one
+shared record of events
+([§4.13](#413-flow_gwt--several-parts-over-one-record)).
+
 ---
 
 ## 2. Getting set up
@@ -642,11 +646,10 @@ is deprecated and goes one release after the examples have moved; a module
 alias (`module Rule = …`) or a functor application (`module Orders = Mapping(…)`)
 does not count as one.
 
-**In a flow.** `Flow_GWT.AutomationSlice(Spec, Automation)`,
-`Flow_GWT.OutboundSlice(Spec, Translation)` and
-`Flow_GWT.InboundSlice(Spec, Translation)` take the same two modules, with
-`whenReacts` / `thenIssuesCommand(s)`, `thenOutbound(items)` and
-`whenReceived(json)` / `thenIssuesCommand(s)`.
+**In a flow.** `Flow_GWT.AutomationStep(Spec, Automation)`,
+`Flow_GWT.OutboundStep(Spec, Translation)` and
+`Flow_GWT.InboundStep(Spec, Translation)` take the same two modules
+([§4.13](#413-flow_gwt--several-parts-over-one-record)).
 
 ### 4.10 Testing external slice modules (the consumer pattern)
 
@@ -893,6 +896,78 @@ passes a name a `let` could bind, or a money writer whose every call writes its
 amount out, is a finding. A helper stays when a call passes a variable, or when an
 id's literal is not a name — `pid("p-1")` has to say its value, because no `let`
 can bind `p-1`.
+
+### 4.13 `Flow_GWT` — several parts over one record
+
+Every other DSL tests one part. A flow tests that parts connect: a command is
+decided, its event is recorded, an automation reacts and sends the next command,
+a view shows the row, an extension point carries the event into another plugin.
+It runs one chain of steps over one shared record of events, each step running
+the part's own code, with no bus and no timers.
+
+**One step per part, each named `…Step`:**
+
+| Step | Takes | When | Then |
+|---|---|---|---|
+| `DecisionStep` | a state change slice and its decision | `givenEvents`, `whenCommand` | `thenEvent(s)`, `thenError` |
+| `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand` | `thenEvent(s)`, `thenNoEvent`, `thenError` |
+| `ViewStep` | a view and its projection | | `thenViewState(s)` |
+| `AutomationStep` | an automation slice as written | `whenReacts` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
+| `OutboundStep` | a way out as written | | `thenOutbound`, `thenOutboundNothing` |
+| `InboundStep` | a way in as written | `whenReceived(json)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
+| `ExtensionPointStep` | an extension point mapping | `whenPublished` | `thenPublicEvent(s)` |
+| `ExtensionStep` | an extension's mapping | `whenReacts` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
+
+Each step is set up once above the tests, under a short name, and the chain
+starts at `start`:
+
+```rescript
+@@reventless.gwt
+
+open Ordering_Examples
+
+module Place = DecisionStep(PlaceOrder, PlaceOrder_Decision)
+module Auto = AutomationStep(AutoShipOrder, AutoShipOrder_Automation)
+module Ship = DecisionStep(ShipOrder, ShipOrder_Decision)
+
+describe("Ordering flow", () => {
+  test("an express order is shipped by itself", () =>
+    start
+    ->Place.whenCommand(PlaceOrder.PlaceOrder({orderId: o1, customerId: c1, /* … */}))
+    ->Place.thenEvent(PlaceOrder.OrderPlaced({orderId: o1, customerId: c1, /* … */}))
+    ->Auto.whenReacts
+    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
+    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
+  )
+})
+```
+
+**Across plugins**, the flow lives in the platform package, the only one that
+holds both. `ExtensionPointStep.whenPublished` turns the events of the step
+before into the extension point's public events; `ExtensionStep.whenReacts`
+turns those into the commands the other plugin's extension sends.
+
+**An event is stated in full.** The event a step records is what the next step
+runs on, so a flow names every field of it. A value that repeats (the book, its
+price, the priced line) is named once in the examples file the flow opens
+([§4.12](#412-example-files-plugin_examplesres-slice_examplesres)), not left out.
+
+**A boundary's scope.** `thenBoundaryScopeResolves(~name, Plugin.dcbSliceSchemas)`
+checks that a DCB boundary derives its tag scope over all its slices, which no
+single slice's test can show.
+
+**Old names.** `CommandStep`, `AggregateCommandStep`, `AutomationSlice`,
+`OutboundSlice` and `InboundSlice` were renamed to the names above, and the
+adapter forms of `AutomationStep` and `OutboundStep` are gone.
+`whenPublishedThrough` is now `whenPublished`, and `whenExtensionReacts` is
+`whenReacts`. A flow still on an old step name fails to build with a message
+that names the new one.
+
+Runnable copies:
+[`reventless/gwt/tests/FlowGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowGwtTest.res),
+[`FlowCrossPluginGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowCrossPluginGwtTest.res),
+[`FlowAggregateGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowAggregateGwtTest.res).
 
 ---
 

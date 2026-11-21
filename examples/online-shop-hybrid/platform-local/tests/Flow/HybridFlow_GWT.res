@@ -16,31 +16,26 @@
 
 open PlatformLocal_Examples
 
-module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Decision)
-module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
-module Archive = CommandStep(CatalogPlugin.ArchiveProduct, CatalogPlugin.ArchiveProduct_Decision)
-module Unarchive = CommandStep(
+module Cat = DecisionStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Decision)
+module Add = DecisionStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
+module Archive = DecisionStep(CatalogPlugin.ArchiveProduct, CatalogPlugin.ArchiveProduct_Decision)
+module Unarchive = DecisionStep(
   CatalogPlugin.UnarchiveProduct,
   CatalogPlugin.UnarchiveProduct_Decision,
 )
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = CommandStep(
+module Sync = DecisionStep(
   OrderingPlugin.SyncCatalogProduct,
   OrderingPlugin.SyncCatalogProduct_Decision,
 )
-module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
+module Place = DecisionStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
 module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping)
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
-module Demand = CommandStep(
+module Demand = DecisionStep(
   CatalogPlugin.RecordProductDemand,
   CatalogPlugin.RecordProductDemand_Decision,
 )
-
-// Prices are money, so a test writes the amount a person would say and converts
-// it once. `ofMajor` scales by the currency's own exponent, which is what keeps
-// the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
-// would scale by 1.
 
 describe("Hybrid cross-plugin flow", () => {
   // scenario-id: fb61d285-6b0f-47ac-9967-c5e060794865
@@ -51,49 +46,49 @@ describe("Hybrid cross-plugin flow", () => {
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: p1,
-        name: "Book",
-        description: "A good book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
         categoryId: cat1,
       }),
     )
     ->Add.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
         productId: p1,
-        name: "Book",
-        description: "A good book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
         categoryId: cat1,
       }),
     )
-    ->ProductsEp.whenPublishedThrough
+    ->ProductsEp.whenPublished
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: p1,
-        name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        price: bookPrice,
       }),
     )
-    ->ProductsExt.whenExtensionReacts
+    ->ProductsExt.whenReacts
     ->ProductsExt.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
-        name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Sync.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
-        name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
-        name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Place.whenCommand(
@@ -112,20 +107,12 @@ describe("Hybrid cross-plugin flow", () => {
         // The price crossed the boundary with the name and the availability, so
         // the total is computed on the Ordering side with no read back into
         // Catalog — two of a EUR 9.99 book.
-        lines: [
-          {
-            productId: p1,
-            name: "Book",
-            quantity: 2,
-            unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-            lineTotal: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
-          },
-        ],
-        total: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
+        lines: [twoBooksLine],
+        total: twoBooksPrice,
         shippingMethod: Standard,
         // Recorded off the catalog's own sync, which is the point of this tier:
         // the name crossed the plugin boundary with the availability.
-        firstProductName: "Book",
+        firstProductName: book,
       }),
     )
   )
@@ -154,26 +141,26 @@ describe("Hybrid cross-plugin flow", () => {
       ->Add.givenEvents([
         CatalogPlugin.AddProduct.ProductAdded({
           productId: p1,
-          name: "Book",
-          description: "A good book",
-          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          name: book,
+          description: bookDescription,
+          price: bookPrice,
           categoryId: cat1,
         }),
       ])
       ->Sync.givenEvents([
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
           productId: p1,
-          name: "Book",
-          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          name: book,
+          price: bookPrice,
         }),
       ])
       ->Archive.whenCommand(CatalogPlugin.ArchiveProduct.ArchiveProduct({productId: p1}))
       ->Archive.thenEvent(CatalogPlugin.ArchiveProduct.ProductArchived({productId: p1}))
-      ->ProductsEp.whenPublishedThrough
+      ->ProductsEp.whenPublished
       ->ProductsEp.thenPublicEvent(
         CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: p1}),
       )
-      ->ProductsExt.whenExtensionReacts
+      ->ProductsExt.whenReacts
       ->ProductsExt.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
       )
@@ -190,11 +177,11 @@ describe("Hybrid cross-plugin flow", () => {
       ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
       ->Unarchive.whenCommand(CatalogPlugin.UnarchiveProduct.UnarchiveProduct({productId: p1}))
       ->Unarchive.thenEvent(CatalogPlugin.UnarchiveProduct.ProductUnarchived({productId: p1}))
-      ->ProductsEp.whenPublishedThrough
+      ->ProductsEp.whenPublished
       ->ProductsEp.thenPublicEvent(
         CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: p1}),
       )
-      ->ProductsExt.whenExtensionReacts
+      ->ProductsExt.whenReacts
       ->ProductsExt.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
       )
@@ -202,8 +189,8 @@ describe("Hybrid cross-plugin flow", () => {
       ->Sync.thenEvent(
         OrderingPlugin.SyncCatalogProduct.CatalogProductRelisted({
           productId: p1,
-          name: "Book",
-          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          name: book,
+          price: bookPrice,
         }),
       )
       ->Place.whenCommand(
@@ -219,18 +206,10 @@ describe("Hybrid cross-plugin flow", () => {
           orderId: o1,
           customerId: c1,
           productIds: [p1],
-          lines: [
-            {
-              productId: p1,
-              name: "Book",
-              quantity: 1,
-              unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-              lineTotal: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-            },
-          ],
-          total: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          lines: [oneBookLine],
+          total: bookPrice,
           shippingMethod: Standard,
-          firstProductName: "Book",
+          firstProductName: book,
         }),
       ),
   )
@@ -243,13 +222,13 @@ describe("Hybrid cross-plugin flow", () => {
       ->Sync.givenEvents([
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
           productId: p1,
-          name: "Book",
-          price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+          name: book,
+          price: bookPrice,
         }),
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
           productId: p2,
-          name: "Pen",
-          price: Reventless.Money.make(~amount=150.0, ~currency=Reventless.Currency.EUR),
+          name: pen,
+          price: penPrice,
         }),
       ])
       ->Place.whenCommand(
@@ -265,28 +244,13 @@ describe("Hybrid cross-plugin flow", () => {
           orderId: o1,
           customerId: c1,
           productIds: [p1, p2],
-          lines: [
-            {
-              productId: p1,
-              name: "Book",
-              quantity: 1,
-              unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-              lineTotal: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-            },
-            {
-              productId: p2,
-              name: "Pen",
-              quantity: 3,
-              unitPrice: Reventless.Money.make(~amount=150.0, ~currency=Reventless.Currency.EUR),
-              lineTotal: Reventless.Money.make(~amount=450.0, ~currency=Reventless.Currency.EUR),
-            },
-          ],
-          total: Reventless.Money.make(~amount=1449.0, ~currency=Reventless.Currency.EUR),
+          lines: [oneBookLine, threePensLine],
+          total: bookAndThreePensPrice,
           shippingMethod: Standard,
-          firstProductName: "Book",
+          firstProductName: book,
         }),
       )
-      ->OrdersEp.whenPublishedThrough
+      ->OrdersEp.whenPublished
       ->OrdersEp.thenPublicEvents([
         OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
           productId: "p1",
@@ -299,7 +263,7 @@ describe("Hybrid cross-plugin flow", () => {
           customerId: "c1",
         }),
       ])
-      ->OrdersExt.whenExtensionReacts
+      ->OrdersExt.whenReacts
       ->OrdersExt.thenIssuesCommands([
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p1, orderId: "o1"}),
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p2, orderId: "o1"}),

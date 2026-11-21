@@ -16,21 +16,21 @@
 
 open PlatformLocal_Examples
 
-module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
+module Add = DecisionStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = CommandStep(
+module Sync = DecisionStep(
   OrderingPlugin.SyncCatalogProduct,
   OrderingPlugin.SyncCatalogProduct_Decision,
 )
-module Register = CommandStep(
+module Register = DecisionStep(
   OrderingPlugin.RegisterCustomer,
   OrderingPlugin.RegisterCustomer_Decision,
 )
-module Place = CommandStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
-module Auto = AutomationSlice(OrderingPlugin.AutoShipOrder, OrderingPlugin.AutoShipOrder_Automation)
-module Ship = CommandStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Decision)
-module Confirm = OutboundSlice(
+module Place = DecisionStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
+module Auto = AutomationStep(OrderingPlugin.AutoShipOrder, OrderingPlugin.AutoShipOrder_Automation)
+module Ship = DecisionStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Decision)
+module Confirm = OutboundStep(
   OrderingPlugin.SendOrderConfirmation,
   OrderingPlugin.SendOrderConfirmation_Translation,
 )
@@ -42,61 +42,61 @@ describe("DCB cross-plugin flow", () => {
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: p1,
-        name: "Book",
-        description: "A good book",
-        price: 9.99,
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
       }),
     )
     ->Add.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
         productId: p1,
-        name: "Book",
-        description: "A good book",
-        price: 9.99,
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
       }),
     )
-    ->ProductsEp.whenPublishedThrough
+    ->ProductsEp.whenPublished
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: p1,
-        name: "Book",
-        price: 9.99,
+        name: book,
+        price: bookPrice,
       }),
     )
-    ->ProductsExt.whenExtensionReacts
+    ->ProductsExt.whenReacts
     ->ProductsExt.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
-        name: "Book",
-        price: 9.99,
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Sync.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
-        name: "Book",
-        price: 9.99,
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
-        name: "Book",
-        price: 9.99,
+        name: book,
+        price: bookPrice,
       }),
     )
     ->Register.whenCommand(
       OrderingPlugin.RegisterCustomer.RegisterCustomer({
         customerId: c1,
-        email: "alice@example.com",
-        address: "1 Test St",
+        email: aliceEmail,
+        address: testStreet,
       }),
     )
     ->Register.thenEvent(
       OrderingPlugin.RegisterCustomer.CustomerRegistered({
         customerId: c1,
-        email: Value("alice@example.com"),
-        address: Value("1 Test St"),
+        email: Value(aliceEmail),
+        address: Value(testStreet),
       }),
     )
     ->Place.whenCommand(

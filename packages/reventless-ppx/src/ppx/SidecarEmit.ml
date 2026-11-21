@@ -801,8 +801,8 @@ let element_of_constructor ?src (e : expression) :
 let step_names =
   [ "givenEvents"; "givenEvent"; "givenTodo"; "givenCapabilities";
     "whenCmd"; "whenCommand"; "whenInput"; "whenReceived"; "whenEvent"; "whenEvents";
-    "whenCollect"; "whenResolve"; "whenSweep"; "whenReacts"; "whenPublishedThrough";
-    "whenExtensionReacts"; "whenProcess"; "whenTranslated"; "whenTranslateMocked";
+    "whenCollect"; "whenResolve"; "whenSweep"; "whenReacts"; "whenPublished";
+    "whenProcess"; "whenTranslated"; "whenTranslateMocked";
     "whenTranslateRetrying"; "whenExhausted"; "andThenEvents";
     "thenEvent"; "thenEvents"; "thenError"; "thenState"; "thenStates";
     "thenStateWithId"; "thenStatesWithId"; "thenNoState"; "thenViewState"; "thenViewStates";
@@ -1050,7 +1050,7 @@ let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : ca
   | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
   (* The event a collect or resolve reacts to is the given one, moved here. *)
   | "whenCollect" | "whenResolve" -> mk "when" (one StepKind.Event ())
-  | "whenSweep" | "whenReacts" | "whenPublishedThrough" | "whenExtensionReacts" ->
+  | "whenSweep" | "whenReacts" | "whenPublished" ->
     mk "when" (one StepKind.Sweep ())
   | "whenProcess" | "whenTranslated" | "whenTranslateMocked" | "whenTranslateRetrying" ->
     mk "when" (one StepKind.Process ())

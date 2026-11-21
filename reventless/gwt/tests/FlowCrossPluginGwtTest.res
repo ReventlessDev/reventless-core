@@ -13,7 +13,6 @@
 // Proves the property no single-component test can: a product added in Catalog
 // becomes orderable in Ordering only via the cross-plugin sync, and a batch
 // order fans out into one demand command per product across the boundary.
-// See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 3.
 
 open Flow_GWT
 
@@ -308,14 +307,14 @@ module PlaceOrderDecision = {
 // Step modules
 // ===========================================================================
 
-module AddProduct = CommandStep(AddProductSlice, AddProductDecision)
+module AddProduct = DecisionStep(AddProductSlice, AddProductDecision)
 module ProductsEp = ExtensionPointStep(ProductsEpMapping)
 module ProductsExt = ExtensionStep(ProductsExtMapping)
-module Sync = CommandStep(SyncProductSlice, SyncProductDecision)
-module Place = CommandStep(PlaceOrderSlice, PlaceOrderDecision)
+module Sync = DecisionStep(SyncProductSlice, SyncProductDecision)
+module Place = DecisionStep(PlaceOrderSlice, PlaceOrderDecision)
 module OrdersEp = ExtensionPointStep(OrdersEpMapping)
 module OrdersExt = ExtensionStep(OrdersExtMapping)
-module Demand = CommandStep(RecordDemandSlice, RecordDemandDecision)
+module Demand = DecisionStep(RecordDemandSlice, RecordDemandDecision)
 
 // ===========================================================================
 // Flows
@@ -330,11 +329,11 @@ describe("Cross-plugin flow", () => {
     ->AddProduct.thenEvent(
       AddProductSlice.ProductAdded({productId: "p1", name: "Book", price: 9.99}),
     )
-    ->ProductsEp.whenPublishedThrough
+    ->ProductsEp.whenPublished
     ->ProductsEp.thenPublicEvent(
       ProductsEpSpec.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
     )
-    ->ProductsExt.whenExtensionReacts
+    ->ProductsExt.whenReacts
     ->ProductsExt.thenIssuesCommand(
       SyncProductSlice.SyncProduct({productId: "p1", name: "Book", price: 9.99}),
     )
@@ -360,12 +359,12 @@ describe("Cross-plugin flow", () => {
       ])
       ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", productIds: ["p1", "p2"]}))
       ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", productIds: ["p1", "p2"]}))
-      ->OrdersEp.whenPublishedThrough
+      ->OrdersEp.whenPublished
       ->OrdersEp.thenPublicEvents([
         OrdersEpSpec.ItemOrdered({productId: "p1", orderId: "o1"}),
         OrdersEpSpec.ItemOrdered({productId: "p2", orderId: "o1"}),
       ])
-      ->OrdersExt.whenExtensionReacts
+      ->OrdersExt.whenReacts
       ->OrdersExt.thenIssuesCommands([
         RecordDemandSlice.RecordDemand({productId: "p1", orderId: "o1"}),
         RecordDemandSlice.RecordDemand({productId: "p2", orderId: "o1"}),

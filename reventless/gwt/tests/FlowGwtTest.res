@@ -6,7 +6,6 @@
 // Also exercises DCB tag isolation: a second order is placed successfully even
 // though a first order is already on the shared log, because each command step
 // filters the log by its command's tags.
-// See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 2.
 
 open Flow_GWT
 
@@ -49,11 +48,7 @@ module PlaceOrderDecision = {
 
 module AutoShipSlice = {
   let name = "AutoShip"
-
-  @schema
-  type consumedEvent =
-    | OrderPlaced({orderId: string})
-    | OrderShipped({orderId: string})
+  let moduleUrl = ""
 
   @schema
   type todoItem = {orderId: string}
@@ -61,19 +56,48 @@ module AutoShipSlice = {
   @schema
   type command = ShipOrder({orderId: string})
 
-  let collect = event =>
-    switch event {
-    | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: todoItem))]
-    | OrderShipped(_) => []
-    }
+  let maxRetries = 3
+  let targetName = "Order"
+  let schedule = None
+}
 
-  let resolve = event =>
-    switch event {
-    | OrderShipped({orderId}) => Some(orderId)
-    | OrderPlaced(_) => None
-    }
+module AutoShipAutomation = {
+  module M = Reventless.AutomationSlice.Mappings.Make(AutoShipSlice)
+  module type Mapping = M.Mapping
+  let moduleUrl = ""
 
-  let process = (id, _todo, ~now as _) => Some((id, ShipOrder({orderId: id})))
+  module Orders = {
+    module Id = Reventless.Id.String
+    let name = "Orders"
+    @schema
+    type event =
+      | OrderPlaced({orderId: string})
+      | OrderShipped({orderId: string})
+  }
+
+  module FromOrders = Reventless.AutomationSlice.Mapping.Make(
+    Orders,
+    AutoShipSlice,
+    {
+      let collect = (event, ~sourceId as _, _ctx) =>
+        switch event {
+        | Orders.OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipSlice.todoItem))]
+        | OrderShipped(_) => []
+        }
+      let resolve = event =>
+        switch event {
+        | Orders.OrderShipped({orderId}) => Some(orderId)
+        | OrderPlaced(_) => None
+        }
+      let reschedule = _ => []
+    },
+  )
+
+  let mappings: array<module(Mapping)> = [module(FromOrders)]
+  let process = (id, _todo: AutoShipSlice.todoItem, ~now as _) => Some((
+    id,
+    AutoShipSlice.ShipOrder({orderId: id}),
+  ))
   let onExhausted = (_id, _todo, ~lastError as _) => None
 }
 
@@ -149,6 +173,7 @@ module OrdersViewProjection = {
 
 module ConfirmSlice = {
   let name = "Confirm"
+  let moduleUrl = ""
 
   @schema
   type consumedEvent = OrderPlaced({orderId: string})
@@ -159,19 +184,35 @@ module ConfirmSlice = {
   @schema
   type inboundCommand = unit
 
+  let maxRetries = 1
+  let targetName = None
+  let sourceNames = []
+  let externalSystem = None
+  let capabilityNeeds = []
+  let traits = []
+}
+
+module ConfirmTranslation = {
+  let moduleUrl = ""
+
   let collect = (event, ~sourceId as _) =>
     switch event {
-    | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: outboundItem))]
+    | ConfirmSlice.OrderPlaced({orderId}) => [
+        (orderId, ({orderId: orderId}: ConfirmSlice.outboundItem)),
+      ]
     }
+
+  let translate = async (_id, _item, ~capabilities as _) => Ok(None)
+  let onExhausted = (_id, _item, ~lastError as _) => None
 }
 
 // -- Step modules ------------------------------------------------------------
 
-module Place = CommandStep(PlaceOrderSlice, PlaceOrderDecision)
-module Auto = AutomationStep(AutoShipSlice)
-module Ship = CommandStep(ShipOrderSlice, ShipOrderDecision)
+module Place = DecisionStep(PlaceOrderSlice, PlaceOrderDecision)
+module Auto = AutomationStep(AutoShipSlice, AutoShipAutomation)
+module Ship = DecisionStep(ShipOrderSlice, ShipOrderDecision)
 module View = ViewStep(OrdersViewSlice, OrdersViewProjection)
-module Confirm = OutboundStep(ConfirmSlice)
+module Confirm = OutboundStep(ConfirmSlice, ConfirmTranslation)
 
 // -- Flows -------------------------------------------------------------------
 

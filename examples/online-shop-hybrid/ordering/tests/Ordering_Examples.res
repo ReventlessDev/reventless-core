@@ -13,6 +13,7 @@ let o2: OrderId.t = OrderId.makeFromString("o2")
 let aliceEmail: string = "alice@x.y"
 let aliceNewEmail: string = "alice2@x.y"
 let anyEmail: string = "x@y"
+let book: string = "Book"
 let campaignRules: string = "campaign-rules"
 let cirrusCharger: string = "Cirrus Charger"
 let confirmationBody: string = "Thanks — we have your order o1 and will let you know when it ships."
@@ -32,6 +33,11 @@ let sesRef: string = "ses-123"
 let suppressedReason: string = "address on the suppression list"
 let viennaAddress: string = "Stephansplatz 1, Vienna"
 
+let bookPrice: Reventless.Money.t = Reventless.Money.make(
+  ~amount=999.0,
+  ~currency=Reventless.Currency.EUR,
+)
+
 let dockPrice: Reventless.Money.t = Reventless.Money.make(
   ~amount=2500.0,
   ~currency=Reventless.Currency.EUR,
@@ -44,6 +50,11 @@ let laptopChangedPrice: Reventless.Money.t = Reventless.Money.make(
 
 let laptopPrice: Reventless.Money.t = Reventless.Money.make(
   ~amount=99999.0,
+  ~currency=Reventless.Currency.EUR,
+)
+
+let twoBooksPrice: Reventless.Money.t = Reventless.Money.make(
+  ~amount=1998.0,
   ~currency=Reventless.Currency.EUR,
 )
 

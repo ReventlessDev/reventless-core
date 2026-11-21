@@ -961,8 +961,8 @@ let () =
                       [| ("o1", { orderId = "o1" }) |])));
           test "publish" (fun () ->
               Ext.thenIssuesCommands
-                (Ext.whenExtensionReacts
-                   (Pub.thenPublicEvent (Pub.whenPublishedThrough start) (ProductListed { productId = "p1" })))
+                (Ext.whenReacts
+                   (Pub.thenPublicEvent (Pub.whenPublished start) (ProductListed { productId = "p1" })))
                 [| SyncProduct { productId = "p1" } |]);
           test "nothing out" (fun () ->
               Out.thenOutboundNothing (Auto.thenIssuesCommands (Auto.whenReacts start) [||])))]
@@ -992,8 +992,8 @@ let () =
   sequal fj "place and ship" "then" "…and the thens written after it"
     "[{\"kind\":\"NoCommand\",\"element\":\"\",\"values\":[]}]";
   vequal "publish" "the port steps"
-    "Pub.whenPublishedThrough:Sweep: Pub.thenPublicEvent:PublicEvent:ProductListed \
-     Ext.whenExtensionReacts:Sweep: Ext.thenIssuesCommands:Command:SyncProduct";
+    "Pub.whenPublished:Sweep: Pub.thenPublicEvent:PublicEvent:ProductListed \
+     Ext.whenReacts:Sweep: Ext.thenIssuesCommands:Command:SyncProduct";
   vequal "nothing out" "thenIssuesCommands([]) and thenOutboundNothing"
     "Auto.whenReacts:Sweep: Auto.thenIssuesCommands:NoCommand: Out.thenOutboundNothing:NothingSent:";
 

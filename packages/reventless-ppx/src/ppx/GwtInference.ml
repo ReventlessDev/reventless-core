@@ -418,7 +418,7 @@ let transform (str : structure) : structure =
     if String.equal kind "Flow" then begin
       (* The Flow kind is functor-less: a flow references several slice modules
          and has no single Spec, so there is nothing to apply a `Make` to. The
-         author instantiates the per-step functors (CommandStep / AutomationStep
+         author instantiates the per-step functors (DecisionStep / AutomationStep
          / ViewStep / OutboundStep) themselves, so the PPX only needs to bring
          the Flow_GWT module into scope. No `include`, no Spec resolution. *)
       let loc = attr_loc in

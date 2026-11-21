@@ -25,24 +25,18 @@ open PlatformLocal_Examples
 
 // Single-plugin steps inside Ordering ----------------------------------------
 
-module Sync = AggregateCommandStep(
-  OrderingPlugin.CatalogProduct,
-  OrderingPlugin.CatalogProduct_Decision,
-)
-module Place = AggregateCommandStep(OrderingPlugin.Order, OrderingPlugin.Order_Decision)
+module Sync = AggregateStep(OrderingPlugin.CatalogProduct, OrderingPlugin.CatalogProduct_Decision)
+module Place = AggregateStep(OrderingPlugin.Order, OrderingPlugin.Order_Decision)
 
 // Cross-plugin steps --------------------------------------------------------
 
-module Add = AggregateCommandStep(CatalogPlugin.Product, CatalogPlugin.Product_Decision)
+module Add = AggregateStep(CatalogPlugin.Product, CatalogPlugin.Product_Decision)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
 
 module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping)
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
-module Demand = AggregateCommandStep(
-  CatalogPlugin.ProductDemand,
-  CatalogPlugin.ProductDemand_Decision,
-)
+module Demand = AggregateStep(CatalogPlugin.ProductDemand, CatalogPlugin.ProductDemand_Decision)
 
 // Flows ---------------------------------------------------------------------
 
@@ -50,8 +44,8 @@ describe("Aggregates ordering flow (single plugin)", () => {
   // scenario-id: d92cb603-8688-401c-a54f-8d877410a6cf
   test("sync product → place order → ship order", () =>
     start
-    ->Sync.whenCommand(~id="p1", Sync({name: "Book", price: 9.99}))
-    ->Sync.thenEvent(Synced({name: "Book", price: 9.99}))
+    ->Sync.whenCommand(~id="p1", Sync({name: book, price: bookPrice}))
+    ->Sync.thenEvent(Synced({name: book, price: bookPrice}))
     ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
     ->Place.thenEvent(Placed({customerId: c1, productIds: [p1]}))
     ->Place.whenCommand(~id="o1", Ship)
@@ -98,32 +92,34 @@ describe("Aggregates cross-plugin flow", () => {
     ->Add.whenCommand(
       ~id="p1",
       Add({
-        name: "Book",
-        description: "A good book",
-        price: 9.99,
-        imageUrl: "/productImages/book.jpg",
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
+        imageUrl: bookImage,
       }),
     )
     ->Add.thenEvent(
       Added({
-        name: "Book",
-        description: "A good book",
-        price: 9.99,
-        imageUrl: "/productImages/book.jpg",
+        name: book,
+        description: bookDescription,
+        price: bookPrice,
+        imageUrl: bookImage,
       }),
     )
-    ->ProductsEp.whenPublishedThrough
+    ->ProductsEp.whenPublished
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: p1,
-        name: "Book",
-        price: 9.99,
+        name: book,
+        price: bookPrice,
       }),
     )
-    ->ProductsExt.whenExtensionReacts
-    ->ProductsExt.thenIssuesCommand(OrderingPlugin.CatalogProduct.Sync({name: "Book", price: 9.99}))
-    ->Sync.whenCommand(~id="p1", Sync({name: "Book", price: 9.99}))
-    ->Sync.thenEvent(Synced({name: "Book", price: 9.99}))
+    ->ProductsExt.whenReacts
+    ->ProductsExt.thenIssuesCommand(
+      OrderingPlugin.CatalogProduct.Sync({name: book, price: bookPrice}),
+    )
+    ->Sync.whenCommand(~id="p1", Sync({name: book, price: bookPrice}))
+    ->Sync.thenEvent(Synced({name: book, price: bookPrice}))
   )
 
   // scenario-id: 3a17540f-034e-47d6-8807-bbd7602f2c62
@@ -131,7 +127,7 @@ describe("Aggregates cross-plugin flow", () => {
     start
     ->Place.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1, p2]}))
     ->Place.thenEvent(Placed({customerId: c1, productIds: [p1, p2]}))
-    ->OrdersEp.whenPublishedThrough
+    ->OrdersEp.whenPublished
     ->OrdersEp.thenPublicEvents([
       OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
         productId: "p1",
@@ -144,7 +140,7 @@ describe("Aggregates cross-plugin flow", () => {
         customerId: "c1",
       }),
     ])
-    ->OrdersExt.whenExtensionReacts
+    ->OrdersExt.whenReacts
     ->OrdersExt.thenIssuesCommands([
       CatalogPlugin.ProductDemand.Record({orderId: "o1"}),
       CatalogPlugin.ProductDemand.Record({orderId: "o1"}),

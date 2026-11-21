@@ -18,17 +18,12 @@
 
 open Ordering_Examples
 
-module Sync = CommandStep(SyncCatalogProduct, SyncCatalogProduct_Decision)
-module Place = CommandStep(PlaceOrder, PlaceOrder_Decision)
-module Auto = AutomationSlice(AutoShipOrder, AutoShipOrder_Automation)
-module Ship = CommandStep(ShipOrder, ShipOrder_Decision)
+module Sync = DecisionStep(SyncCatalogProduct, SyncCatalogProduct_Decision)
+module Place = DecisionStep(PlaceOrder, PlaceOrder_Decision)
+module Auto = AutomationStep(AutoShipOrder, AutoShipOrder_Automation)
+module Ship = DecisionStep(ShipOrder, ShipOrder_Decision)
 module OrdersView = ViewStep(Orders, Orders_Projection)
-module Notify = AutomationSlice(NotificationIntake, NotificationIntake_Automation)
-
-// Prices are money, so a test writes the amount a person would say and converts
-// it once. `ofMajor` scales by the currency's own exponent, which is what keeps
-// the literal honest: 9.99 EUR is 999 cents, and the same call on a JPY price
-// would scale by 1.
+module Notify = AutomationStep(NotificationIntake, NotificationIntake_Automation)
 
 describe("Ordering flow — place → auto-ship → confirm", () => {
   // scenario-id: 0c04bbd0-be72-479b-9731-73c122f66b20
@@ -44,8 +39,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ->Sync.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
-        name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        name: book,
+        price: bookPrice,
       }),
     ])
     // Express, so the automation picks it up — a Standard or Pickup order would
@@ -70,18 +65,18 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         lines: [
           {
             productId: p1,
-            name: "Book",
+            name: book,
             quantity: 2,
-            unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-            lineTotal: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
+            unitPrice: bookPrice,
+            lineTotal: twoBooksPrice,
           },
         ],
-        total: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
+        total: twoBooksPrice,
         shippingMethod: Express,
         deliveryWindow: window,
         // Captured off the shelf at placement — the same name the catalog
         // synced above, now part of the order's own record.
-        firstProductName: "Book",
+        firstProductName: book,
       }),
     )
     ->Auto.whenReacts
@@ -97,26 +92,23 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         lines: [
           {
             productId: p1,
-            name: "Book",
+            name: book,
             quantity: 2,
-            unitPrice: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
-            lineTotal: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
+            unitPrice: bookPrice,
+            lineTotal: twoBooksPrice,
           },
         ],
-        total: Reventless.Money.make(~amount=1998.0, ~currency=Reventless.Currency.EUR),
+        total: twoBooksPrice,
         itemCount: 2,
         lifecycle: Shipped,
         shippingMethod: Express,
-        placedAt: "1970-01-01T00:00:00Z",
+        placedAt: epoch,
         // Both entries at the harness's fixed producer time: the machinery
         // stamps each envelope's own `meta.time`, and every event here carries
         // the same one.
-        trail: [
-          {state: Placed, at: "1970-01-01T00:00:00Z"},
-          {state: Shipped, at: "1970-01-01T00:00:00Z"},
-        ],
+        trail: [{state: Placed, at: epoch}, {state: Shipped, at: epoch}],
         deliveryWindow: window,
-        firstProductName: "Book",
+        firstProductName: book,
         firstProductImage: None,
       },
     )
@@ -131,22 +123,22 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ->Notify.whenReacts
     ->Notify.thenIssuesCommands([
       NotificationIntake.RequestNotification({
-        recipientId: "c1",
+        recipientId: customerRef,
         category: OrderConfirmation,
-        reference: "confirm:o1",
-        subjectType: "Order",
-        subjectRef: "o1",
-        subject: "Your order o1 is confirmed",
-        body: "Thanks — we have your order o1 and will let you know when it ships.",
-        sourceId: "OrderingDcbEventLog:OrderPlaced",
+        reference: confirmReference,
+        subjectType: orderSubject,
+        subjectRef: orderRef,
+        subject: confirmationSubject,
+        body: confirmationBody,
+        sourceId: orderPlacedSource,
         origin: Default,
       }),
       NotificationIntake.RequestNotification({
-        recipientId: "c1",
+        recipientId: customerRef,
         category: ShippingUpdate,
         reference: "ship:o1",
-        subjectType: "Order",
-        subjectRef: "o1",
+        subjectType: orderSubject,
+        subjectRef: orderRef,
         subject: "Your order o1 is on its way",
         body: "Good news — order o1 has shipped.",
         sourceId: "OrderingDcbEventLog:OrderShipped",

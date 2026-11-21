@@ -16,12 +16,12 @@ open ReventlessCore
 // command step honors DCB tag filtering so downstream deciders never see
 // phantom cross-entity events.
 //
-// The chain is built from per-step functors (one per slice), threaded with
+// The chain is built from one step per part, each named `…Step`, threaded with
 // pipe-first so it reads top-to-bottom:
 //
-//   module Place = Flow_GWT.CommandStep(PlaceOrder, PlaceOrder_Decision)
-//   module Auto  = Flow_GWT.AutomationSlice(AutoShipOrder, AutoShipOrder_Automation)
-//   module Ship  = Flow_GWT.CommandStep(ShipOrder, ShipOrder_Decision)
+//   module Place = Flow_GWT.DecisionStep(PlaceOrder, PlaceOrder_Decision)
+//   module Auto  = Flow_GWT.AutomationStep(AutoShipOrder, AutoShipOrder_Automation)
+//   module Ship  = Flow_GWT.DecisionStep(ShipOrder, ShipOrder_Decision)
 //   module View  = Flow_GWT.ViewStep(Orders, Orders_Projection)
 //
 //   start
@@ -31,12 +31,9 @@ open ReventlessCore
 //   ->Ship.whenCommand(ShipOrder({...}))->Ship.thenEvents([OrderShipped({...})])
 //   ->View.thenViewState("o1", {...})
 //
-// Cross-plugin flows (Phase 3) add two boundary steps — `ExtensionPointStep`
-// and `ExtensionStep` — that continue a flow from one plugin into the next
-// through the ExtensionPoint mapping / Extension delegate, exactly as the
-// runtime routes it across the plugin boundary.
-//
-// See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phases 2–3.
+// Across plugins, `ExtensionPointStep` and `ExtensionStep` continue a flow from
+// one plugin into the next through the extension point mapping and the
+// extension, as the runtime routes it across the plugin boundary.
 
 module EPMapping = ReventlessInfra.ExtensionPointMapping
 module ExtMapping = ReventlessInfra.ExtensionMapping
@@ -48,7 +45,7 @@ module ExtMapping = ReventlessInfra.ExtensionMapping
 // runtime), the encoded event JSON, and — for events emitted by an aggregate
 // step — the producing aggregate-ID. DCB step entries leave `aggregateId` as
 // `None`; aggregate step entries set it to `Some(id)` so the matching
-// `AggregateCommandStep` can rebuild per-aggregate history without DCB tag
+// `AggregateStep` can rebuild per-aggregate history without DCB tag
 // inference. Filtering by `aggregateId` and filtering by DCB tags are mutually
 // exclusive: DCB queries look only at `eventType` + `tags`, and the aggregate
 // decoder looks only at `aggregateId` + `eventType`.
@@ -70,10 +67,10 @@ type flowState = {
   lastCommands: array<JSON.t>, // encoded commands from the last automation / extension reaction
   lastPublic: array<JSON.t>, // encoded public EP events from the last ExtensionPoint step
   // The producing aggregate-ID for `lastEvents`, when the producer was an
-  // `AggregateCommandStep`. Aggregate-style EP mappings reference the source
+  // `AggregateStep`. Aggregate-style EP mappings reference the source
   // aggregate-ID inside `mapOutgoingEvent` (e.g. the catalog Product EP uses
   // it as `productId`); the next `ExtensionPointStep` reads this field and
-  // threads it through. DCB `CommandStep` events leave it `None` and the EP
+  // threads it through. DCB `DecisionStep` events leave it `None` and the EP
   // step falls back to the synthetic `gwt-id` so the existing DCB Flow tests
   // are unchanged.
   lastAggregateId: option<string>,
@@ -282,9 +279,9 @@ let thenBoundaryScopeResolves = async (
   s->recordOutcome(outcome)
 }
 
-// -- CommandStep: a StateChangeSlice / Aggregate decider ---------------------
+// -- DecisionStep: a StateChangeSlice / Aggregate decider ---------------------
 
-module CommandStep = (
+module DecisionStep = (
   Spec: Decision_GWT.DecisionSpec,
   Decision: Decision_GWT.Decision with module Spec := Spec,
 ) => {
@@ -394,9 +391,9 @@ module CommandStep = (
   }
 }
 
-// -- AggregateCommandStep: an Aggregate decider partitioned by aggregate-ID --
+// -- AggregateStep: an Aggregate decider partitioned by aggregate-ID --
 //
-// Mirror of `CommandStep` for `Reventless.Decision.T` (the aggregate-flavor
+// Mirror of `DecisionStep` for `Reventless.Decision.T` (the aggregate-flavor
 // decision). Differences from the slice form:
 //   * No `consumedEvent` distinction — aggregates fold their own `event`
 //     stream; the decoder uses `Spec.eventSchema`.
@@ -409,7 +406,7 @@ module CommandStep = (
 // state across the chain; sequencing them for different `~id` keeps their
 // histories isolated (a `Place` on `o2` does not see the events of `o1`).
 
-module AggregateCommandStep = (
+module AggregateStep = (
   Spec: Decision_GWT.AggregateDeciderSpec,
   Decision: Reventless.Decision.T with module Spec = Spec,
 ) => {
@@ -496,43 +493,6 @@ module AggregateCommandStep = (
   }
 }
 
-// -- AutomationStep: a policy that reacts to log events and issues a command --
-
-// Deprecated: takes an adapter. Use `AutomationSlice`; this goes one release
-// after the examples have moved.
-module AutomationStep = (Spec: Automation_GWT.SliceSpec) => {
-  let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
-
-  // Sweep the log: collect todos, drop the ones resolved within the same
-  // stream, process the remainder into commands.
-  let whenReacts = async (flowP: flow) => {
-    let s = await flowP
-    let events = decodeMatching(s.log, consumedDecoder, [])
-    let collected = events->Array.map(e => e->Spec.collect)->Array.flat
-    let resolvedIds = events->Array.filterMap(e => e->Spec.resolve)
-    let pending = collected->Array.filter(((id, _)) => !(resolvedIds->Array.includes(id)))
-    let now = Automation_GWT.clockNow()
-    let commands = pending->Array.filterMap(((id, todo)) => Spec.process(id, todo, ~now))
-    {
-      ...s,
-      lastCommands: commands->Array.map(((_id, cmd)) => cmd->Message.encode(Spec.commandSchema)),
-    }
-  }
-
-  let thenIssuesCommands = async (flowP: flow, expected: array<Spec.command>) => {
-    let s = await flowP
-    let expJson = expected->Array.map(c => c->Message.encode(Spec.commandSchema))
-    let o =
-      s.lastCommands == expJson
-        ? Outcome.pass
-        : Outcome.fail(EventsMismatch({expected: expJson, actual: s.lastCommands}))
-    s->recordOutcome(o)
-  }
-
-  let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command])
-  let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
-}
-
 // -- ViewStep: a StateViewSlice / projection over the log --------------------
 
 module ViewStep = (
@@ -568,43 +528,10 @@ module ViewStep = (
   let thenViewState = (flowP, id, state) => thenViewStates(flowP, id, [state])
 }
 
-// -- OutboundStep: an OutboundTranslationSlice's `collect` over the log -------
-
-// Deprecated: takes an adapter. Use `OutboundSlice`; this goes one release
-// after the examples have moved.
-module OutboundStep = (Spec: OutboundTranslation_GWT.SliceSpec) => {
-  let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
-
-  let encItems = (arr: array<(string, Spec.outboundItem)>) =>
-    arr->Array.map(((id, item)) => (id, item->Message.encode(Spec.outboundItemSchema)))
-
-  // Assert the outbound effects the slice would fire — the `collect` result.
-  // (The async `translate` leg hits an external service, so it is exercised
-  // only by the dedicated `OutboundTranslation_GWT`, not the flow.)
-  let thenOutbound = async (flowP: flow, expected: array<(string, Spec.outboundItem)>) => {
-    let s = await flowP
-    let events = decodeMatching(s.log, consumedDecoder, [])
-    // The flow log carries decoded events, not their envelopes, so there is no
-    // entity id to thread here. A collect that keys off `~sourceId` (an
-    // aggregate source) should be exercised by the dedicated
-    // `OutboundTranslation_GWT`, which can supply one.
-    let collected = events->Array.map(e => e->Spec.collect(~sourceId=""))->Array.flat
-    let actual = encItems(collected)
-    let expectedJson = encItems(expected)
-    let o =
-      actual == expectedJson
-        ? Outcome.pass
-        : Outcome.fail(TodoMismatch({expected: expectedJson, actual}))
-    s->recordOutcome(o)
-  }
-
-  let thenOutboundNothing = flowP => thenOutbound(flowP, [])
-}
-
-// -- Slice-as-written steps --------------------------------------------------
+// -- Automation, way out, way in ---------------------------------------------
 //
-// The same steps over a slice's `Spec` and body, with no adapter. The log keeps
-// no source name, so every mapping is offered every entry; the source id is the
+// Each takes the slice as written: its `Spec` and its body. The log keeps no
+// source name, so every mapping is offered every entry; the source id is the
 // producing aggregate's, or "" for a DCB event, which names its own subject.
 
 let sourceIdOf = (entry: logEntry) => entry.aggregateId->Option.getOr("")
@@ -621,7 +548,7 @@ let encodedCommandsMatch = async (flowP: flow, expJson: array<JSON.t>) => {
   s->recordOutcome(o)
 }
 
-module AutomationSlice = (
+module AutomationStep = (
   Spec: Reventless.AutomationSlice.Spec,
   Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
 ) => {
@@ -649,7 +576,7 @@ module AutomationSlice = (
   let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
 }
 
-module OutboundSlice = (
+module OutboundStep = (
   Spec: Reventless.OutboundTranslationSlice.Spec,
   Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
 ) => {
@@ -679,7 +606,7 @@ module OutboundSlice = (
   let thenOutboundNothing = flowP => thenOutbound(flowP, [])
 }
 
-module InboundSlice = (
+module InboundStep = (
   Spec: Reventless.InboundTranslationSlice.Spec,
   Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
 ) => {
@@ -705,7 +632,7 @@ module InboundSlice = (
   let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
 }
 
-// -- Cross-plugin boundary steps (Phase 3) -----------------------------------
+// -- Across plugins ----------------------------------------------------------
 
 // Order-independent comparison for published actions — fan-out order is
 // non-deterministic, so compare sorted by stringified JSON.
@@ -748,7 +675,7 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
       nested->Array.flat
     }
 
-  let whenPublishedThrough = async (flowP: flow) => {
+  let whenPublished = async (flowP: flow) => {
     let s = await flowP
     let delegateEvents = s.lastEvents->Array.filterMap(json => {
       let data = switch json {
@@ -781,13 +708,13 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
 
 // ExtensionStep: runs an Extension delegate's `mapIncomingEvent` over the public
 // EP events the last ExtensionPoint step produced, surfacing the commands the
-// extension issues onto its own plugin's slices. The next `CommandStep` then
+// extension issues onto its own plugin's slices. The next `DecisionStep` then
 // executes the asserted command.
 module ExtensionStep = (M: ExtMapping.Mapping) => {
   let epDecoder = Reventless.DcbDecode.makeDecoder(M.ExtensionPoint.eventSchema)
   let encCmd = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
 
-  let whenExtensionReacts = async (flowP: flow) => {
+  let whenReacts = async (flowP: flow) => {
     let s = await flowP
     let epEvents = s.lastPublic->Array.filterMap(json => {
       let data = switch json {
@@ -844,3 +771,41 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
   let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command])
   let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, [])
 }
+
+// -- Old names ---------------------------------------------------------------
+//
+// Each old step name stays for one release so that a flow using it fails to
+// build with a message naming the new step. None of them runs.
+
+type renamedToDecisionStep
+type renamedToAggregateStep
+type renamedToAutomationStep
+type renamedToOutboundStep
+type renamedToInboundStep
+
+module type RenamedToDecisionStep = {
+  type renamedToDecisionStep = renamedToDecisionStep
+}
+module type RenamedToAggregateStep = {
+  type renamedToAggregateStep = renamedToAggregateStep
+}
+module type RenamedToAutomationStep = {
+  type renamedToAutomationStep = renamedToAutomationStep
+}
+module type RenamedToOutboundStep = {
+  type renamedToOutboundStep = renamedToOutboundStep
+}
+module type RenamedToInboundStep = {
+  type renamedToInboundStep = renamedToInboundStep
+}
+
+@deprecated("Renamed DecisionStep.")
+module CommandStep = (_: RenamedToDecisionStep, _: RenamedToDecisionStep) => {}
+@deprecated("Renamed AggregateStep.")
+module AggregateCommandStep = (_: RenamedToAggregateStep, _: RenamedToAggregateStep) => {}
+@deprecated("Renamed AutomationStep.")
+module AutomationSlice = (_: RenamedToAutomationStep, _: RenamedToAutomationStep) => {}
+@deprecated("Renamed OutboundStep.")
+module OutboundSlice = (_: RenamedToOutboundStep, _: RenamedToOutboundStep) => {}
+@deprecated("Renamed InboundStep.")
+module InboundSlice = (_: RenamedToInboundStep, _: RenamedToInboundStep) => {}
