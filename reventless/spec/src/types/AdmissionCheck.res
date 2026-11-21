@@ -11,7 +11,8 @@ is refused a role no group stands for.
 
 type problem = {plugin: string, role: string, why: string}
 
-let describe = (p: problem) => `${p.plugin}: ${p.role} ${p.why}`
+let describe = ({plugin, role, why}: problem) =>
+  StartRefusal.RoleUnhonoured({plugin, role, why})->StartRefusal.describe
 
 let hasDoor = (doors: array<Admission.doorDef>, part: Admission.door) =>
   doors->Array.some(d => d.part == Admission.doorName(part))
@@ -107,13 +108,20 @@ let problems = (
   )
 }
 
-let message = (problems: array<problem>): string =>
-  `Admission this platform cannot honor — the people it is for could not get in:\n` ++
-  problems->Array.map(p => `  ${describe(p)}`)->Array.join("\n")
+/** The start refusal the problems make, one finding per role. */
+let refusal = (problems: array<problem>): StartRefusal.t => {
+  refusals: problems->Array.map(({plugin, role, why}) => StartRefusal.RoleUnhonoured({
+    plugin,
+    role,
+    why,
+  })),
+}
+
+let message = (problems: array<problem>): string => problems->refusal->StartRefusal.message
 
 /** Refuse a deployment whose admission declarations nothing honors. */
 let check = (~structures, ~provisioned, ~elevatedGroups, ~adminGroup, ~anonymousDoors): unit =>
   switch problems(~structures, ~provisioned, ~elevatedGroups, ~adminGroup, ~anonymousDoors) {
   | [] => ()
-  | found => JsError.throwWithMessage(message(found))
+  | found => found->refusal->StartRefusal.throw
   }

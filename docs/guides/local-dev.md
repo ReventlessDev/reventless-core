@@ -133,6 +133,22 @@ servers, the registry entry, the event tap, the log feed and the idle timer. It 
 fits a CI step or a tool that wants to know before it reports an app as working. A
 platform already running in the directory is left alone.
 
+With `--json` the verdict is one JSON object on stdout, for a program to read rather
+than parse the sentence:
+
+```
+$ npx check-start --json
+{"starts":false,"refusal":{"message":"DCB partition contradiction (Forum): …","component":"Forum",
+ "refusals":[{"code":"partition-contradiction","message":"…","slice":"QuestionState",
+ "named":"channelId","derived":"messageId","arms":[]}]}}
+```
+
+An app that starts prints `{"starts":true}`. Each finding has a stable `code`
+(`partition-contradiction`, `partition-unreachable`, `scope-contradiction`,
+`no-partition-key`, `store-in-use`, `roles-unhonoured`) and the fields it found; a
+refusal that carries none is one finding coded `unknown` with the message. The exit
+codes stay 0 and 1, and the logs stay quiet unless `LOG_LEVEL` asks for them.
+
 ### Reading the event stream from outside
 
 Every local platform serves its domain events as NDJSON — one `@@RVLESS_EVT@@`

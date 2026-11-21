@@ -473,12 +473,23 @@ describe("DcbScopeInference:", () => {
     let check = shapes => Reventless.DcbValidation.validatePartitionHintsVsInference(~shapes)
     let names = (issues: array<Reventless.DcbValidation.validationError>) =>
       issues->Array.map(e => e.sliceName)
+    let refusals = (issues: array<Reventless.DcbValidation.validationError>) =>
+      issues->Array.map(e => e.refusal)
 
     testSync(
       "a hint naming a key the slice only references is a contradiction",
       () => {
         let issues = check([hinted(addProduct, "categoryId"), addCategory])
-        expect(issues.contradictions->names)->toEqual(["AddProduct"])
+        expect(issues.contradictions->refusals)->toEqual([
+          Some(
+            Reventless.StartRefusal.PartitionContradiction({
+              slice: "AddProduct",
+              named: "categoryId",
+              inference: Derives("productId"),
+              arms: [],
+            }),
+          ),
+        ])
         expect(issues.redundancies)->toEqual([])
       },
     )
@@ -601,12 +612,16 @@ describe("DcbScopeInference:", () => {
         }
         let issues = check([placeOrder, ship, assign])
         expect(issues.overrides->names)->toEqual([])
-        expect(issues.contradictions->names)->toEqual(["ShipOrder"])
-        expect(
-          issues.contradictions->Array.every(
-            e => e.message->String.includes("mark orderId @crossPartition on WarehouseAssigned"),
+        expect(issues.contradictions->refusals)->toEqual([
+          Some(
+            Reventless.StartRefusal.PartitionContradiction({
+              slice: "ShipOrder",
+              named: "orderId",
+              inference: Derives("carrierBookingId"),
+              arms: ["WarehouseAssigned"],
+            }),
           ),
-        )->toBe(true)
+        ])
         expect(DSI.infer([placeOrder, ship, assign]).crossPartitionPairs)->toEqual([])
       },
     )
@@ -705,12 +720,15 @@ describe("DcbScopeInference:", () => {
       () => {
         // `ReplyPosted` is stored under the reply, so a read by messageId never finds it.
         let issues = check(questions)
-        expect(issues.contradictions->names)->toEqual(["QuestionState"])
-        expect(
-          issues.contradictions->Array.every(
-            e => e.message->String.includes("mark messageId @crossPartition on ReplyPosted"),
+        expect(issues.contradictions->refusals)->toEqual([
+          Some(
+            Reventless.StartRefusal.PartitionUnreachable({
+              slice: "QuestionState",
+              named: "messageId",
+              missed: ["ReplyPosted"],
+            }),
           ),
-        )->toBe(true)
+        ])
       },
     )
 
@@ -766,10 +784,16 @@ describe("DcbScopeInference:", () => {
           ~shapes=boundary,
           ~inferred=DSI.infer(boundary),
         )
-        expect(arms.contradictions->names)->toEqual(["QuestionState"])
-        expect(
-          arms.contradictions->Array.every(e => e.message->String.includes("marks channelId")),
-        )->toBe(true)
+        expect(arms.contradictions->refusals)->toEqual([
+          Some(
+            Reventless.StartRefusal.ScopeContradiction({
+              slice: "QuestionState",
+              eventType: "ReplyPosted",
+              marked: "channelId",
+              partition: "messageId",
+            }),
+          ),
+        ])
       },
     )
 

@@ -444,6 +444,14 @@ let shouldLog = (level: level, ~plugin: option<string>=?, ~comp: option<string>=
   | Some(min) => levelToInt(level) >= levelToInt(min)
   }
 
+/** One line whose record carries `detail`: the structured payload the JSON line
+    prints beside the message, which stays the text people read. Filtered by level
+    and component as a `fromEnv` logger's lines are. */
+let withDetail = (level: level, ~comp: string, ~detail: JSON.t, msg: string): unit =>
+  if shouldLog(level, ~comp, ()) {
+    emit(~level, ~comp, ~detail, msg)
+  }
+
 // Reads LOG_LEVEL from process.env on every call and honors the platform default
 // when unset. Safe to call at module top-level: the returned logger evaluates the
 // level lazily, so a platform lowering the default afterwards (e.g.

@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as CliArgs$Reventless from "@reventlessdev/reventless-spec/src/CliArgs.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as StartRefusal$Reventless from "@reventlessdev/reventless-spec/src/components/StartRefusal.res.mjs";
 
 let envVar = "REVENTLESS_CHECK_START";
 
@@ -21,17 +22,21 @@ function active(envOpt, param) {
   }
 }
 
-let usage = `Usage: check-start [<mainModule>]
+let usage = `Usage: check-start [--json] [<mainModule>]
 
   <mainModule>  the app's compiled start module; default src/Main.res.mjs
+  --json        print the verdict as one JSON object on stdout:
+                {"starts": true}, or {"starts": false, "refusal": {…}} with the
+                message, the component and each finding with its code
 
   Run from the app's local platform package, after rescript build. Builds every
   plugin the way a start does, in memory, and serves nothing. Exits 0 when the
   app would start, 1 with the reason when it would not.`;
 
 function parseArgs(argv) {
-  return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, undefined, undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => ({
-    mainModule: CliArgs$Reventless.positionals(a)[0]
+  return Stdlib_Result.map(Stdlib_Result.flatMap(CliArgs$Reventless.parse(undefined, ["json"], undefined, undefined, argv), a => CliArgs$Reventless.atMost(a, 1)), a => ({
+    mainModule: CliArgs$Reventless.positionals(a)[0],
+    json: CliArgs$Reventless.bool(a, "json") ? true : undefined
   }));
 }
 
@@ -49,47 +54,81 @@ function reasonOf(e) {
   return Stdlib_Option.getOr(Stdlib_JsExn.message(e), "it threw without a message");
 }
 
-function wouldNotStart(reason) {
-  console.error(`check-start: the app would not start: ` + reason);
+function startsJson() {
+  return Object.fromEntries([[
+      "starts",
+      true
+    ]]);
+}
+
+function refusedJson(refusal, reason) {
+  return Object.fromEntries([
+    [
+      "starts",
+      false
+    ],
+    [
+      "refusal",
+      refusal !== undefined ? StartRefusal$Reventless.toJson(refusal) : StartRefusal$Reventless.unknownToJson(reason)
+    ]
+  ]);
+}
+
+function wouldNotStart(json, refusal, reason) {
+  if (json) {
+    console.log(JSON.stringify(refusedJson(refusal, reason)));
+  } else {
+    console.error(`check-start: the app would not start: ` + reason);
+  }
   process.exit(1);
 }
 
-function enterCheckMode(envOpt, param) {
+function refused(json, e) {
+  wouldNotStart(json, StartRefusal$Reventless.ofError(e), Stdlib_Option.getOr(Stdlib_JsExn.message(e), "it threw without a message"));
+}
+
+function enterCheckMode(envOpt, jsonOpt, param) {
   let env = envOpt !== undefined ? envOpt : process.env;
+  let json = jsonOpt !== undefined ? jsonOpt : false;
   env[envVar] = "1";
   env["REVENTLESS_LOCAL_BACKEND"] = "memory";
   let match = env["LOG_LEVEL"];
   if (match !== undefined) {
     return;
   } else {
-    env["LOG_LEVEL"] = "warn";
+    env["LOG_LEVEL"] = json ? "silent" : "warn";
     return;
   }
 }
 
 function main() {
   return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
+    let json = Stdlib_Option.getOr(param.json, false);
     let path = mainModulePath(param.mainModule);
     if (!Nodefs.existsSync(path)) {
-      wouldNotStart(path + ` not found — run \`rescript build\` first.`);
+      wouldNotStart(json, undefined, path + ` not found — run \`rescript build\` first.`);
     }
-    enterCheckMode(undefined, undefined);
-    process.on("uncaughtException", e => wouldNotStart(Stdlib_Option.getOr(Stdlib_JsExn.message(e), "it threw without a message")));
-    process.on("unhandledRejection", e => wouldNotStart(Stdlib_Option.getOr(Stdlib_JsExn.message(e), "it threw without a message")));
+    enterCheckMode(undefined, json, undefined);
+    process.on("uncaughtException", e => refused(json, e));
+    process.on("unhandledRejection", e => refused(json, e));
     let val;
     try {
       val = await import(Nodeurl.pathToFileURL(path).href);
     } catch (raw_e) {
       let e = Primitive_exceptions.internalToException(raw_e);
       if (e.RE_EXN_ID === "JsExn") {
-        return wouldNotStart(Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "it threw without a message"));
+        return refused(json, e._1);
       }
       throw e;
     }
     await new Promise((resolve, param) => {
       setTimeout(() => resolve(), 0);
     });
-    console.log("check-start: the app starts.");
+    if (json) {
+      console.log(JSON.stringify(startsJson()));
+    } else {
+      console.log("check-start: the app starts.");
+    }
     process.exit(0);
   });
 }
@@ -102,7 +141,10 @@ export {
   cli,
   mainModulePath,
   reasonOf,
+  startsJson,
+  refusedJson,
   wouldNotStart,
+  refused,
   enterCheckMode,
   main,
 }

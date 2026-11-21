@@ -140,9 +140,19 @@ describe("AdmissionCheck", () => {
       ~adminGroup="Admin",
       ~anonymousDoors=true,
     ) {
-    | () => false
-    | exception _ => true
+    | () => None
+    | exception JsExn(e) => StartRefusal.ofError(e)
     }
-    expect(refused)->toEqual(true)
+    expect(refused)->toEqual(
+      Some({
+        StartRefusal.refusals: [
+          StartRefusal.RoleUnhonoured({
+            plugin: "Shop",
+            role: "Admin",
+            why: "is self-service, but its group Admin is elevated: anyone could sign up as an operator",
+          }),
+        ],
+      }),
+    )
   })
 })

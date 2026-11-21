@@ -105,6 +105,12 @@ describe("check-start on the command line", () => {
     )
   })
 
+  testSync("takes --json beside the start module", () =>
+    expect(LocalCheckStart.parseArgs(["--json", "lib/Start.res.mjs"]))->toEqual(
+      Ok({LocalCheckStart.mainModule: "lib/Start.res.mjs", json: true}),
+    )
+  )
+
   test("a second argument is a usage mistake, exit 2", async () =>
     expect(await CliArgs.observe(LocalCheckStart.cli, ["a", "b"]))->toEqual({
       CliArgs.stdout: [],
@@ -113,4 +119,150 @@ describe("check-start on the command line", () => {
       reachedMain: false,
     })
   )
+})
+
+// An app whose `@partitionTag` inference contradicts: `AddProduct` names the category it reads
+// the lifecycle of, where its own key is the product.
+module Catalog = {
+  module AddProduct = {
+    @schema
+    type command = AddProduct({productId: string, categoryId: string})
+    @schema
+    type consumedEvent = ProductAdded({productId: string}) | CategoryAdded({categoryId: string})
+    @schema
+    type event =
+      | ProductAdded({
+          productId: @s.matches(Reventless.DcbTag.string) string,
+          categoryId: @s.matches(Reventless.DcbTag.partition) string,
+        })
+  }
+  module AddCategory = {
+    @schema
+    type command = AddCategory({categoryId: string})
+    @schema
+    type consumedEvent = CategoryAdded({categoryId: string})
+    @schema
+    type event = CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string})
+  }
+  let shapes = [
+    Reventless.DcbTag.sliceShapeFromSchemas(
+      ~name="AddProduct",
+      ~commandSchema=AddProduct.commandSchema->S.castToUnknown,
+      ~consumedEventSchema=AddProduct.consumedEventSchema->S.castToUnknown,
+      ~eventSchema=AddProduct.eventSchema->S.castToUnknown,
+    ),
+    Reventless.DcbTag.sliceShapeFromSchemas(
+      ~name="AddCategory",
+      ~commandSchema=AddCategory.commandSchema->S.castToUnknown,
+      ~consumedEventSchema=AddCategory.consumedEventSchema->S.castToUnknown,
+      ~eventSchema=AddCategory.eventSchema->S.castToUnknown,
+    ),
+  ]
+}
+
+describe("check-start --json", () => {
+  let printed = (json: JSON.t) => json->JSON.stringify->JSON.parseOrThrow
+
+  testSync("says the app starts", () =>
+    expect(LocalCheckStart.startsJson()->printed)->toEqual(%raw(`{starts: true}`))
+  )
+
+  testSync("reads the code, the component, the slice and both keys off a refused build", () => {
+    let error = switch ReventlessCore.Dcb_Builder.checkPartitionHints(
+      ~component="Catalog",
+      ~shapes=Catalog.shapes,
+    ) {
+    | () => None
+    | exception JsExn(e) => Some(e)
+    }
+    let json = switch error {
+    | Some(e) =>
+      LocalCheckStart.refusedJson(
+        ~refusal=Reventless.StartRefusal.ofError(e),
+        LocalCheckStart.reasonOf(e),
+      )->printed
+    | None => JSON.Encode.null
+    }
+    let field = (o, path) =>
+      path->Array.reduce(
+        Some(o),
+        (at, key) =>
+          at->Option.flatMap(
+            v =>
+              switch v {
+              | JSON.Object(d) => d->Dict.get(key)
+              | JSON.Array(xs) => key->Int.fromString->Option.flatMap(i => xs->Array.get(i))
+              | _ => None
+              },
+          ),
+      )
+    let text = path => json->field(path)->Option.flatMap(JSON.Decode.string)
+    expect(json->field(["starts"]))->toEqual(Some(JSON.Encode.bool(false)))
+    expect((
+      text(["refusal", "component"]),
+      text(["refusal", "refusals", "0", "code"]),
+      text(["refusal", "refusals", "0", "slice"]),
+      text(["refusal", "refusals", "0", "named"]),
+      text(["refusal", "refusals", "0", "derived"]),
+    ))->toEqual((
+      Some("Catalog"),
+      Some("partition-contradiction"),
+      Some("AddProduct"),
+      Some("categoryId"),
+      Some("productId"),
+    ))
+    // The message is the one the line without --json prints.
+    expect(text(["refusal", "message"]))->toEqual(error->Option.map(LocalCheckStart.reasonOf))
+  })
+
+  testSync("codes a refusal the error does not carry as unknown", () =>
+    expect(LocalCheckStart.refusedJson(~refusal=None, "Main.res.mjs not found")->printed)->toEqual(
+      %raw(`{
+        starts: false,
+        refusal: {
+          message: "Main.res.mjs not found",
+          refusals: [{code: "unknown", message: "Main.res.mjs not found"}],
+        },
+      }`),
+    )
+  )
+
+  testSync("reports a store in use and roles nothing honours under their codes", () => {
+    let codes = (r: Reventless.StartRefusal.t) =>
+      switch LocalCheckStart.refusedJson(~refusal=Some(r), r->Reventless.StartRefusal.message)
+      ->printed
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("refusal"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(o => o->Dict.get("refusals")) {
+      | Some(JSON.Array(items)) =>
+        items->Array.filterMap(
+          i =>
+            i
+            ->JSON.Decode.object
+            ->Option.flatMap(o => o->Dict.get("code"))
+            ->Option.flatMap(JSON.Decode.string),
+        )
+      | _ => []
+      }
+    let store: LocalPlatformRegistry.entry = {
+      port: 4000,
+      endpoint: "http://localhost:4000/graphql",
+      loginEndpoint: "http://localhost:4000/__inmemory/login",
+      store: {kind: SqliteStore, path: "/app/local.db"},
+      pid: 42,
+      app: "shop",
+      startedAt: "",
+    }
+    expect(codes(LocalPlatformStart.refusal(~path="/app/local.db", store)))->toEqual([
+      "store-in-use",
+    ])
+    expect(
+      codes(
+        Reventless.AdmissionCheck.refusal([
+          {plugin: "Shop", role: "Shopper", why: "is self-service"},
+        ]),
+      ),
+    )->toEqual(["roles-unhonoured"])
+  })
 })

@@ -1,6 +1,8 @@
 # Plan: a refused start says why as data
 
-> **Status:** 📋 Planned, 2026-11-21. Nothing built yet.
+> **Status:** ✅ Built, 2026-11-21: [RTS1](#4-steps) to [RTS5](#4-steps). The refusal type is
+> [`StartRefusal`](../../reventless/spec/src/components/StartRefusal.res); `check-start --json` is
+> described in [the local-dev guide](../guides/local-dev.md#checking-that-the-app-starts-check-start).
 >
 > **Questions and short answers:**
 >
@@ -54,7 +56,7 @@ reworded. Every value in that sentence was a variable in the build a moment befo
   `DCB partition contradiction (<component>): …` with `JsError.throwWithMessage`. A scope
   contradiction (`validateCrossPartitionArms`) throws the same way, and `deriveBoundaryPartition`
   throws when a slice has no partition key.
-- **Other refusals.** A reset over a store in use (`LocalPlatformStart.refusalMessage`) and roles
+- **Other refusals.** A reset over a store in use (`LocalPlatformStart.guardReset`) and roles
   that nothing honours (`AdmissionCheck`) refuse with their own sentences.
 - **Who hears it.** [`LocalCheckStart`](../../reventless/local/src/LocalCheckStart.res) catches the
   error, takes its message, prints `check-start: the app would not start: <message>` on stderr,
@@ -65,7 +67,8 @@ There is no error type, no code, and no JSON form.
 
 ## 3. Decisions
 
-Proposed, each with its reason.
+Taken, each with its reason. The JSON of [RTQ5](#3-decisions) gained a `refusals` list, since one
+refused build can name several slices ([RTS3](#4-steps)).
 
 | # | Question | Decision |
 |---|---|---|
@@ -84,22 +87,58 @@ Proposed, each with its reason.
 *Done when* each kind's message is made from its value and the validators' tests assert the
 values, not the sentences.
 
+**Done.** [`StartRefusal`](../../reventless/spec/src/components/StartRefusal.res) holds the six
+kinds and their codes (`Code`), says each one's sentence (`describe`) and the whole message
+(`message`), and prints them as JSON (`toJson`). `validationError` gained `refusal?`, and
+`DcbValidation.refused` makes the finding's slice and message from it. The plan's `field` and
+`derived` became `inference`, `Derives(key)` or `Candidates(keys)`, because a contradiction
+without an inferred key names the candidates instead; `arms` are the events a
+`@crossPartition` marker would reach, empty when the message offers no marker. The scope check
+makes `ScopeContradiction`, and `DcbTag.deriveBoundaryPartition` throws `NoPartitionKey` per
+ambiguous slice. Its two other throws (an event without the partition tag, an event under two
+keys) stay plain errors, reported as `unknown`. Tests: `StartRefusalTest` (every message word
+for word), `DcbScopeInferenceTest` (the validators' refusal values).
+
 **RTS2 The build throws the refusal.** `Dcb_Builder` throws `StartRefusal.error(refusals,
 ~component)`: the same message, the refusals in its `refusal` property.
 *Done when* a test of the build reads the refusal back from the error with `ofError`.
+
+**Done.** [`Dcb_Builder`](../../reventless/core/src/components/Dcb/Dcb_Builder.res) runs the
+two checks as `checkPartitionHints` and `checkCrossPartitionArms`, which throw through `refuse`;
+its `deriveBoundaryPartition` adds the component to a `NoPartitionKey` refusal (that message
+names none, so it reads as before). `DcbBuilderRefusalTest` reads each back with `ofError`.
 
 **RTS3 `check-start --json`.** `LocalCheckStart` reads the refusal from the error it catches, and
 with `--json` prints it as [RTQ5](#3-decisions) says; without it, the line it prints today.
 *Done when* a test starts an app with a contradicting annotation and reads the code, the
 component, the slice and both keys from stdout.
 
+**Done.** [`LocalCheckStart`](../../reventless/local/src/LocalCheckStart.res) takes `--json`
+and prints `startsJson` or `refusedJson`. One refused build can name several slices, so the
+`refusal` object holds the `message`, the `component` and a `refusals` list, and each finding
+there carries its own `code`; an error without a refusal is one finding coded `unknown`. With
+`--json` the log level defaults to `silent`, so the verdict is the only line on stdout. No
+fixture app with a contradicting annotation exists, so `LocalCheckStartTest` builds the
+contradiction from `@schema` types, throws it through `Dcb_Builder.checkPartitionHints`, and
+reads the code, the component, the slice and both keys from `refusedJson`'s printed JSON.
+
 **RTS4 The other start refusals.** A store in use and roles nothing honours refuse with
 `StartRefusal` too, under their codes.
 *Done when* `check-start --json` reports each with its code.
 
+**Done.** `LocalPlatformStart.guardReset` throws `StoreInUse` (`LocalPlatformStart.refusal`),
+and `AdmissionCheck.check` throws one `RoleUnhonoured` per problem (`AdmissionCheck.refusal`),
+coded `roles-unhonoured`. Their tests read the values back, and `LocalCheckStartTest` reads
+both codes from `refusedJson`.
+
 **RTS5 The logger's record.** The error log the build writes carries the refusal as its `detail`,
 so a JSON log line says it as data.
 *Done when* a JSON-format log of a refused start holds the refusal in `detail`.
+
+**Done.** `Logger.withDetail` writes one line whose record carries a `detail`, filtered as a
+`fromEnv` logger's lines are; `Dcb_Builder.refuse` logs the refusal's JSON there. The logger's
+`logFn` is unchanged, so no caller's compiled code moves. `DcbBuilderRefusalTest` reads the
+`detail` off the record a sink receives, as `recordToJson` prints it.
 
 ## 5. Open questions
 

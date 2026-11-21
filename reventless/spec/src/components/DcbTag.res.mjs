@@ -10,6 +10,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
+import * as StartRefusal$Reventless from "./StartRefusal.res.mjs";
 import * as ComponentKind$Reventless from "./ComponentKind.res.mjs";
 import * as DcbScopeInference$Reventless from "./DcbScopeInference.res.mjs";
 
@@ -1112,7 +1113,13 @@ function deriveBoundaryPartition(slices) {
   }
   let resolution = DcbScopeInference$Reventless.resolvePartitions(slices.map(sliceShape));
   if (resolution.ambiguities.length !== 0) {
-    Stdlib_JsError.throwWithMessage(`DCB partition key cannot be inferred — ` + resolution.ambiguities.map(param => param[0] + `: ` + param[1]).join(" | "));
+    StartRefusal$Reventless.$$throw({
+      refusals: resolution.ambiguities.map(param => ({
+        TAG: "NoPartitionKey",
+        slice: param[0],
+        reason: param[1]
+      }))
+    });
   }
   let byEventType = {};
   slices.forEach(s => {

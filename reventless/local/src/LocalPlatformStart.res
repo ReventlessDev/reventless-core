@@ -56,14 +56,16 @@ let servedBy = (~path: string, ~cwd=NodeProcess.cwd(), ()): option<LocalPlatform
   LocalPlatformRegistry.list(~cwd, ())->Array.find(e => e.store.path == Some(resolved))
 }
 
-let refusalMessage = (~path: string, e: LocalPlatformRegistry.entry): string =>
-  `refusing to reset ${path}: it is the store of ${e.app} running at :${e.port->Int.toString} (pid ${e.pid->Int.toString}). ` ++ `Stop that platform first, or start this one without ?reset.`
+/** The refusal to reset a store the platform `e` is serving. */
+let refusal = (~path: string, e: LocalPlatformRegistry.entry): Reventless.StartRefusal.t => {
+  refusals: [StoreInUse({path, app: e.app, port: e.port, pid: e.pid})],
+}
 
 /** Throws rather than letting a reset unlink a store something is serving. Always
     on: it must protect an app that never calls {!orAddressRunning}. */
 let guardReset = (~path: string, ~cwd=NodeProcess.cwd(), ()): unit =>
   switch servedBy(~path, ~cwd, ()) {
-  | Some(e) => JsError.throwWithMessage(refusalMessage(~path, e))
+  | Some(e) => refusal(~path, e)->Reventless.StartRefusal.throw
   | None => ()
   }
 

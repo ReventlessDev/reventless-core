@@ -7,13 +7,14 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Clock$Reventless from "@reventlessdev/reventless-spec/src/components/Clock.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
+import * as StartRefusal$Reventless from "@reventlessdev/reventless-spec/src/components/StartRefusal.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
@@ -135,6 +136,50 @@ function publisherFor(targetName, publishToAggregates, fallback) {
   }
 }
 
+function refuse(component, findings) {
+  let refusals = Stdlib_Array.filterMap(findings, e => e.refusal);
+  if (!Primitive_object.notequal(refusals, [])) {
+    return;
+  }
+  let refusal_component = component;
+  let refusal = {
+    component: refusal_component,
+    refusals: refusals
+  };
+  Logger$ReventlessCore.withDetail("ERROR", "Dcb_Builder", StartRefusal$Reventless.toJson(refusal), StartRefusal$Reventless.message(refusal));
+  StartRefusal$Reventless.$$throw(refusal);
+}
+
+function checkPartitionHints(component, shapes) {
+  let hintIssues = DcbValidation$Reventless.validatePartitionHintsVsInference(shapes);
+  hintIssues.redundancies.concat(hintIssues.overrides).forEach(e => log.info("Dcb_Builder", undefined, `DCB partition (` + e.sliceName + `): ` + e.message));
+  refuse(component, hintIssues.contradictions);
+}
+
+function checkCrossPartitionArms(component, shapes, inferred) {
+  let armIssues = DcbValidation$Reventless.validateCrossPartitionArms(shapes, inferred);
+  armIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
+  refuse(component, armIssues.contradictions);
+}
+
+function deriveBoundaryPartition(component, slices) {
+  try {
+    return DcbTag$Reventless.deriveBoundaryPartition(slices);
+  } catch (raw_e) {
+    let e = Primitive_exceptions.internalToException(raw_e);
+    if (e.RE_EXN_ID === "JsExn") {
+      let e$1 = e._1;
+      let refusal = StartRefusal$Reventless.ofError(e$1);
+      if (refusal !== undefined) {
+        let newrecord = {...refusal};
+        return StartRefusal$Reventless.$$throw((newrecord.component = component, newrecord));
+      }
+      throw e$1;
+    }
+    throw e;
+  }
+}
+
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
     let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, aggregateProducedEventsOpt, publishToAggregatesOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
@@ -200,14 +245,8 @@ function Make(DcbEventLogStorage) {
         moduleUrl: Sc.Spec.moduleUrl
       }));
       let inferenceShapes = sliceSchemas.map(DcbTag$Reventless.sliceShape);
-      let hintIssues = DcbValidation$Reventless.validatePartitionHintsVsInference(inferenceShapes);
-      hintIssues.redundancies.concat(hintIssues.overrides).forEach(e => log.info("Dcb_Builder", undefined, `DCB partition (` + e.sliceName + `): ` + e.message));
-      if (hintIssues.contradictions.length !== 0) {
-        let detail = hintIssues.contradictions.map(e => e.sliceName + `: ` + e.message).join(" | ");
-        log.error("Dcb_Builder", undefined, `DCB partition contradiction (` + name + `): ` + detail);
-        Stdlib_JsError.throwWithMessage(`DCB partition contradiction (` + name + `): ` + detail);
-      }
-      let boundaryPartition = DcbTag$Reventless.deriveBoundaryPartition(sliceSchemas);
+      checkPartitionHints(name, inferenceShapes);
+      let boundaryPartition = deriveBoundaryPartition(name, sliceSchemas);
       let partitionTag = boundaryPartition.partitionTag;
       let arr$1 = producedSchemas.flatMap(DcbTag$Reventless.extractCrossPartitionTagKeys);
       let seen$1 = new Set();
@@ -242,13 +281,7 @@ function Make(DcbEventLogStorage) {
       let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
-      let armIssues = DcbValidation$Reventless.validateCrossPartitionArms(inferenceShapes, inferred);
-      armIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
-      if (armIssues.contradictions.length !== 0) {
-        let detail$1 = armIssues.contradictions.map(e => e.sliceName + `: ` + e.message).join(" | ");
-        log.error("Dcb_Builder", undefined, `DCB scope contradiction (` + name + `): ` + detail$1);
-        Stdlib_JsError.throwWithMessage(`DCB scope contradiction (` + name + `): ` + detail$1);
-      }
+      checkCrossPartitionArms(name, inferenceShapes, inferred);
       let effective = DcbTag$Reventless.deriveEffectiveScope(sliceSchemas);
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys;
       let effectiveTagKeysByEventType = effective.tagKeysByEventType;
@@ -767,6 +800,10 @@ export {
   inboundDoorPermission,
   aggregateTarget,
   publisherFor,
+  refuse,
+  checkPartitionHints,
+  checkCrossPartitionArms,
+  deriveBoundaryPartition,
   Make,
 }
 /* log Not a pure module */

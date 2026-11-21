@@ -1608,11 +1608,12 @@ let deriveBoundaryPartition = (slices: array<sliceSchemas>): boundaryPartition =
   | None =>
     let resolution = DcbScopeInference.resolvePartitions(slices->Array.map(sliceShape))
     if resolution.ambiguities->Array.length > 0 {
-      JsError.throwWithMessage(
-        `DCB partition key cannot be inferred — ${resolution.ambiguities
-          ->Array.map(((slice, reason)) => `${slice}: ${reason}`)
-          ->Array.join(" | ")}`,
-      )
+      StartRefusal.throw({
+        refusals: resolution.ambiguities->Array.map(((
+          slice,
+          reason,
+        )) => StartRefusal.NoPartitionKey({slice, reason})),
+      })
     }
     let byEventType = Dict.make()
     slices->Array.forEach(s => {

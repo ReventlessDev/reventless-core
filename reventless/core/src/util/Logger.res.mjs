@@ -447,6 +447,12 @@ function shouldLog(level, plugin, comp, param) {
   }
 }
 
+function withDetail(level, comp, detail, msg) {
+  if (shouldLog(level, undefined, comp, undefined)) {
+    return emit(level, comp, undefined, detail, undefined, msg);
+  }
+}
+
 function fromEnv() {
   return makeLoggerWith((l, comp) => shouldLog(l, undefined, comp, undefined));
 }
@@ -505,6 +511,7 @@ export {
   levelSettings,
   minLevelFor,
   shouldLog,
+  withDetail,
   fromEnv,
 }
 /* s Not a pure module */

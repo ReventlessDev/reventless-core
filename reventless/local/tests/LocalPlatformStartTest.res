@@ -54,6 +54,11 @@ describe("LocalPlatformStart.guardReset", () => {
       let message = e->JsExn.message->Option.getOr("")
       expect(message->String.includes(":4000"))->toEqual(true)
       expect(message->String.includes(NodeProcess.pid->Int.toString))->toEqual(true)
+      switch Reventless.StartRefusal.ofError(e) {
+      | Some({refusals: [StoreInUse({path, port, pid})]}) =>
+        expect((path, port, pid))->toEqual((store, 4000, NodeProcess.pid))
+      | _ => fail("expected the error to carry a store-in-use refusal")
+      }
     }
   })
 

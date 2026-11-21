@@ -1,6 +1,15 @@
 type validationError = {
   sliceName: string,
   message: string,
+  /** What a finding that stops the start found, as a value; `message` is made from it. */
+  refusal?: StartRefusal.refusal,
+}
+
+/** A finding that stops the start: its slice, its sentence, and the value both come from. */
+let refused = (refusal: StartRefusal.refusal): validationError => {
+  sliceName: refusal->StartRefusal.slice->Option.getOr(""),
+  message: refusal->StartRefusal.describe,
+  refusal,
 }
 
 type variantInfo = {
@@ -568,10 +577,6 @@ let validatePartitionHintsVsInference = (
     ->DcbScopeInference.armsStoredElsewhere(shapes, ~key=hint, ~partitionBySlice)
     ->Array.filter(e => !marks(e, hint))
     ->Array.map(e => e.eventType)
-  let markHint = (hint, arms) =>
-    `mark ${hint} @crossPartition on ${arms->Array.join(
-        "/",
-      )} in the slice's consumedEvent to read it across partitions`
   let overridden = (s: DcbScopeInference.sliceShape, hint, inference) =>
     overrides->Array.push({
       sliceName: s.sliceName,
@@ -626,15 +631,20 @@ let validatePartitionHintsVsInference = (
         | Some(inferred) if backedByChapter(s, hint, [inferred], unaided.partitionBySlice) =>
           overridden(s, hint, `it derives ${inferred}`)
         | Some(inferred) =>
-          let way = switch unreachable(s, hint, unaided.partitionBySlice) {
-          | arms if arms != [] && chapterAgrees(s, hint, [inferred]) =>
-            `, or ${markHint(hint, arms)}`
-          | _ => ""
+          let arms = switch unreachable(s, hint, unaided.partitionBySlice) {
+          | arms if arms != [] && chapterAgrees(s, hint, [inferred]) => arms
+          | _ => []
           }
-          contradictions->Array.push({
-            sliceName: s.sliceName,
-            message: `@partitionTag names ${hint}, but inference derives ${inferred} from the slice graph — ${hint} is read from another entity. Remove the annotation, or move it to ${inferred}${way}.`,
-          })
+          contradictions->Array.push(
+            refused(
+              PartitionContradiction({
+                slice: s.sliceName,
+                named: hint,
+                inference: Derives(inferred),
+                arms,
+              }),
+            ),
+          )
         | None =>
           let candidates = unaided.candidatesBySlice->Dict.get(s.sliceName)->Option.getOr([])
           // No candidate at all: inference has no answer for the hint to contradict,
@@ -644,31 +654,28 @@ let validatePartitionHintsVsInference = (
             candidates == [] && DcbScopeInference.sharedProducedKeys(s)->Array.includes(hint)
           let missed = unreachable(s, hint, unaided.partitionBySlice)
           if decidesUnresolved && missed != [] {
-            contradictions->Array.push({
-              sliceName: s.sliceName,
-              message: `@partitionTag ${hint} decides the partition, but ${missed->Array.join(
-                  "/",
-                )} carry ${hint} and are stored under another key, so the slice's read by ${hint} never finds them. Partition their writers by ${hint}, or ${markHint(
-                  hint,
-                  missed,
-                )}.`,
-            })
+            contradictions->Array.push(
+              refused(PartitionUnreachable({slice: s.sliceName, named: hint, missed})),
+            )
           } else if candidates->Array.includes(hint) || decidesUnresolved {
             ()
           } else if backedByChapter(s, hint, candidates, unaided.partitionBySlice) {
             overridden(s, hint, `candidates: ${candidates->Array.join(", ")}`)
           } else {
-            let way = switch unreachable(s, hint, unaided.partitionBySlice) {
-            | arms if arms != [] && chapterAgrees(s, hint, candidates) =>
-              `, or ${markHint(hint, arms)}`
-            | _ => ""
+            let arms = switch unreachable(s, hint, unaided.partitionBySlice) {
+            | arms if arms != [] && chapterAgrees(s, hint, candidates) => arms
+            | _ => []
             }
-            contradictions->Array.push({
-              sliceName: s.sliceName,
-              message: `@partitionTag names ${hint}, which this slice only reads as a reference to another entity (candidates: ${candidates->Array.join(
-                  ", ",
-                )}). Move the annotation to the slice's own key${way}.`,
-            })
+            contradictions->Array.push(
+              refused(
+                PartitionContradiction({
+                  slice: s.sliceName,
+                  named: hint,
+                  inference: Candidates(candidates),
+                  arms,
+                }),
+              ),
+            )
           }
         }
       }
@@ -754,10 +761,16 @@ let validateCrossPartitionArms = (
           ->Array.forEach(
             k =>
               if k != partition {
-                contradictions->Array.push({
-                  sliceName: s.sliceName,
-                  message: `${e.eventType} marks ${k} @crossPartition, but ${s.sliceName} is partitioned by ${partition}. A consumed arm marks only the slice's own key; a read of another entity's ${k} across partitions follows from the slice graph, or from @crossPartition on the event that writes it. Remove the marker.`,
-                })
+                contradictions->Array.push(
+                  refused(
+                    ScopeContradiction({
+                      slice: s.sliceName,
+                      eventType: e.eventType,
+                      marked: k,
+                      partition,
+                    }),
+                  ),
+                )
               } else if inferred.crossPartitionTagKeys->Array.includes(k) {
                 redundancies->Array.push({
                   sliceName: s.sliceName,

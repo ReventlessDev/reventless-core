@@ -116,6 +116,64 @@ let publisherFor = (
   | None => fallback
   }
 
+/**
+Refuses the start over findings that stop it: logs the refusal, with the
+findings as the record's `detail`, and throws it (`StartRefusal.error`).
+Nothing happens when there are none.
+*/
+let refuse = (~component: string, findings: array<Reventless.DcbValidation.validationError>) => {
+  let refusals = findings->Array.filterMap(e => e.refusal)
+  if refusals != [] {
+    let refusal: Reventless.StartRefusal.t = {component, refusals}
+    Logger.withDetail(
+      Error,
+      ~comp="Dcb_Builder",
+      ~detail=refusal->Reventless.StartRefusal.toJson,
+      refusal->Reventless.StartRefusal.message,
+    )
+    refusal->Reventless.StartRefusal.throw
+  }
+}
+
+/**
+A `@partitionTag` inference contradicts would steer storage, fence and read
+scope to a key the slice only references, so it stops the build. One that
+inference agrees with is noise, and says so. One its chapter backs against
+inference is the author deciding what inference cannot see, and is kept.
+*/
+let checkPartitionHints = (~component, ~shapes) => {
+  let hintIssues = Reventless.DcbValidation.validatePartitionHintsVsInference(~shapes)
+  hintIssues.redundancies
+  ->Array.concat(hintIssues.overrides)
+  ->Array.forEach(e =>
+    log.info(~comp="Dcb_Builder", `DCB partition (${e.sliceName}): ${e.message}`)
+  )
+  refuse(~component, hintIssues.contradictions)
+}
+
+/**
+A `@crossPartition` on a consumed arm reads the slice's own key across
+partitions. On another key it says nothing the build could act on, and stops it.
+*/
+let checkCrossPartitionArms = (~component, ~shapes, ~inferred) => {
+  let armIssues = Reventless.DcbValidation.validateCrossPartitionArms(~shapes, ~inferred)
+  armIssues.redundancies->Array.forEach(e =>
+    log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
+  )
+  refuse(~component, armIssues.contradictions)
+}
+
+/** `DcbTag.deriveBoundaryPartition`, its refusal naming the component it refused. */
+let deriveBoundaryPartition = (~component, slices) =>
+  switch Reventless.DcbTag.deriveBoundaryPartition(slices) {
+  | partition => partition
+  | exception JsExn(e) =>
+    switch Reventless.StartRefusal.ofError(e) {
+    | Some(refusal) => {...refusal, component}->Reventless.StartRefusal.throw
+    | None => JsExn.throw(e)
+    }
+  }
+
 module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
@@ -264,30 +322,12 @@ module Make = (
       })
       let inferenceShapes = sliceSchemas->Array.map(Reventless.DcbTag.sliceShape)
 
-      // A `@partitionTag` inference contradicts would steer storage, fence and read
-      // scope to a key the slice only references, so it stops the build. One that
-      // inference agrees with is noise, and says so. One its chapter backs against
-      // inference is the author deciding what inference cannot see, and is kept.
-      let hintIssues = Reventless.DcbValidation.validatePartitionHintsVsInference(
-        ~shapes=inferenceShapes,
-      )
-      hintIssues.redundancies
-      ->Array.concat(hintIssues.overrides)
-      ->Array.forEach(e =>
-        log.info(~comp="Dcb_Builder", `DCB partition (${e.sliceName}): ${e.message}`)
-      )
-      if hintIssues.contradictions->Array.length > 0 {
-        let detail =
-          hintIssues.contradictions
-          ->Array.map(e => `${e.sliceName}: ${e.message}`)
-          ->Array.join(" | ")
-        log.error(~comp="Dcb_Builder", `DCB partition contradiction (${name}): ${detail}`)
-        JsError.throwWithMessage(`DCB partition contradiction (${name}): ${detail}`)
-      }
+      // Each `@partitionTag` against inference: a contradiction stops the build.
+      checkPartitionHints(~component=name, ~shapes=inferenceShapes)
 
       // Where each event is stored — and so its fence, and each command's envelope
       // id. Throws, naming the slice, when a partition cannot be inferred.
-      let boundaryPartition = Reventless.DcbTag.deriveBoundaryPartition(sliceSchemas)
+      let boundaryPartition = deriveBoundaryPartition(~component=name, sliceSchemas)
       let partitionTag = boundaryPartition.partitionTag
       let partitionTagOf = sliceName =>
         boundaryPartition->Reventless.DcbTag.slicePartitionTag(sliceName)
@@ -395,23 +435,9 @@ module Make = (
         log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
       )
 
-      // A `@crossPartition` on a consumed arm reads the slice's own key across
-      // partitions. On another key it says nothing the build could act on.
-      let armIssues = Reventless.DcbValidation.validateCrossPartitionArms(
-        ~shapes=inferenceShapes,
-        ~inferred,
-      )
-      armIssues.redundancies->Array.forEach(e =>
-        log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
-      )
-      if armIssues.contradictions->Array.length > 0 {
-        let detail =
-          armIssues.contradictions
-          ->Array.map(e => `${e.sliceName}: ${e.message}`)
-          ->Array.join(" | ")
-        log.error(~comp="Dcb_Builder", `DCB scope contradiction (${name}): ${detail}`)
-        JsError.throwWithMessage(`DCB scope contradiction (${name}): ${detail}`)
-      }
+      // A `@crossPartition` on a consumed arm by another key than the slice's own stops it.
+      checkCrossPartitionArms(~component=name, ~shapes=inferenceShapes, ~inferred)
+
       // All-or-nothing: thread the derived scope only when every slice resolved.
       // An ambiguous boundary keeps the annotated values (no partial inference).
       // Both this builder and the deployed command-handler entry point
