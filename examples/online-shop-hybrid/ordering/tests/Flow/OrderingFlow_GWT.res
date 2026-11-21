@@ -18,13 +18,6 @@
 
 open Ordering_Examples
 
-module Sync = DecisionStep(SyncCatalogProduct, SyncCatalogProduct_Decision)
-module Place = DecisionStep(PlaceOrder, PlaceOrder_Decision)
-module Auto = AutomationStep(AutoShipOrder, AutoShipOrder_Automation)
-module Ship = DecisionStep(ShipOrder, ShipOrder_Decision)
-module OrdersView = ViewStep(Orders, Orders_Projection)
-module Notify = AutomationStep(NotificationIntake, NotificationIntake_Automation)
-
 describe("Ordering flow — place → auto-ship → confirm", () => {
   // scenario-id: 0c04bbd0-be72-479b-9731-73c122f66b20
   test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () => {
@@ -36,7 +29,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         ~end_="2026-03-02T11:00:00Z",
       )->Result.getOrThrow
     start
-    ->Sync.givenEvents([
+    ->Flow.SyncCatalogProduct.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
         name: book,
@@ -45,7 +38,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ])
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.
-    ->Place.whenCommand(
+    ->Flow.PlaceOrder.whenCommand(
       PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
@@ -54,7 +47,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         deliveryWindow: window,
       }),
     )
-    ->Place.thenEvent(
+    ->Flow.PlaceOrder.thenEvent(
       PlaceOrder.OrderPlaced({
         orderId: o1,
         customerId: c1,
@@ -79,11 +72,11 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         firstProductName: book,
       }),
     )
-    ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
-    ->OrdersView.thenViewState(
+    ->Flow.AutoShipOrder.whenReacts
+    ->Flow.AutoShipOrder.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
+    ->Flow.Orders.thenViewState(
       "o1",
       {
         Orders.orderId: o1,
@@ -120,8 +113,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     // Two commands from one sweep is the point: the order lane produced two
     // notifiable facts, and the relay carries both across without either one
     // knowing what the other's category is.
-    ->Notify.whenReacts
-    ->Notify.thenIssuesCommands([
+    ->Flow.NotificationIntake.whenReacts
+    ->Flow.NotificationIntake.thenIssuesCommands([
       NotificationIntake.RequestNotification({
         recipientId: customerRef,
         category: OrderConfirmation,
@@ -150,7 +143,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
   // scenario-id: c8689953-3429-4fe0-a146-cc9fcfc4a6c6
   test("placing an order for an unsynced product is rejected", () =>
     start
-    ->Place.whenCommand(
+    ->Flow.PlaceOrder.whenCommand(
       PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
@@ -158,6 +151,6 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
+    ->Flow.PlaceOrder.thenError(ProductsNotAvailable({missing: [p1]}))
   )
 })

@@ -633,6 +633,105 @@ let renderAwsWrapper = (~compositionNamespace: string): string => {
   ]->Array.join("\n")
 }
 
+// ── Flow steps (tests/Flow.res) ──────────────────────────────────────────────
+// A flow test's step for every part, under the name the part has in Plugin.res,
+// so a flow reads `Flow.PlaceOrder.whenCommand(…)` and sets nothing up by hand.
+// Written into the tests folder: the steps are test code, and from src they
+// would pull the test harness into every running bundle. A slice listed from an
+// installed package is reached through Plugin.res, which aliases it.
+
+let renderFlowSteps = (
+  ~resolved: Pairing.resolved,
+  ~discovered: array<Discovery.discoveredFile>,
+): option<string> => {
+  let packaged = discovered->Array.filterMap(d => d.origin->Option.map(_ => d.stem))
+  let path = stem => packaged->Array.includes(stem) ? "Plugin." ++ stem : stem
+  let step = (~name, ~functor, args) =>
+    `module ${name} = ReventlessGwt.Flow_GWT.${functor}(${args->Array.join(", ")})`
+  let slices = (stems, ~functor, ~implSuffix) =>
+    stems->Array.map(stem => step(~name=stem, ~functor, [path(stem), path(stem ++ implSuffix)]))
+  let groups = [
+    (
+      "Decisions",
+      slices(
+        resolved.stateChangeSlices,
+        ~functor="DecisionStep",
+        ~implSuffix=Pairing.implSuffixForStateChange,
+      ),
+    ),
+    (
+      "Aggregates",
+      resolved.aggregates->Array.map(({spec, decision}) =>
+        step(~name=spec, ~functor="AggregateStep", [path(spec), path(decision)])
+      ),
+    ),
+    (
+      "Views",
+      slices(
+        Array.concat(resolved.stateViewSlices, resolved.stateViewSlicesStream)->Array.toSorted(
+          String.compare,
+        ),
+        ~functor="ViewStep",
+        ~implSuffix=Pairing.implSuffixForStateView,
+      ),
+    ),
+    (
+      "Automations",
+      slices(
+        resolved.automationSlices,
+        ~functor="AutomationStep",
+        ~implSuffix=Pairing.implSuffixForAutomation,
+      ),
+    ),
+    (
+      "Ways out",
+      slices(
+        resolved.outboundTranslationSlices,
+        ~functor="OutboundStep",
+        ~implSuffix=Pairing.implSuffixForTranslation,
+      ),
+    ),
+    (
+      "Ways in",
+      slices(
+        resolved.inboundTranslationSlices,
+        ~functor="InboundStep",
+        ~implSuffix=Pairing.implSuffixForTranslation,
+      ),
+    ),
+    (
+      "Extension points",
+      resolved.extensionPoints
+      ->Array.flatMap(({mappings}) => mappings)
+      ->Array.map(mapping =>
+        step(~name=epModuleName(mapping), ~functor="ExtensionPointStep", [path(mapping)])
+      ),
+    ),
+    (
+      "Extensions",
+      resolved.extensions->Array.map(stem =>
+        step(~name=stem, ~functor="ExtensionStep", [path(stem) ++ ".Mapping"])
+      ),
+    ),
+  ]->Array.filter(((_, lines)) => lines->Array.length > 0)
+  if groups->Array.length == 0 {
+    None
+  } else {
+    let body =
+      groups->Array.map(((title, lines)) => [`// ${title}`]->Array.concat(lines)->Array.join("\n"))
+    Some(
+      [
+        "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+        "",
+        "// A flow's steps, one per part, under the part's own name.",
+        "",
+        body->Array.join("\n\n"),
+        "",
+      ]->Array.join("\n"),
+    )
+  }
+}
+
 // ── Composition-variant render ───────────────────────────────────────────────
 
 let renderComposition = (

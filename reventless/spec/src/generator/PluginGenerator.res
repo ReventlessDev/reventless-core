@@ -36,9 +36,9 @@ let formatted = (source: string, ~cwd: string): string =>
     {cwd, encoding: "utf8", input: source},
   )
 
-/** The composition for the plugin whose sources are `srcDir`, unformatted.
-    Reads the sources and any package plugin.json lists; writes nothing. */
-let render = (~srcDir: string, ~variant: Config.variant): (Config.config, string) => {
+type composed = {config: Config.config, source: string, flowSteps: option<string>}
+
+let compose = (~srcDir: string, ~variant: Config.variant): composed => {
   let config = {...Config.read(~srcDir), variant}
   let packaged =
     config.slicesFrom
@@ -70,7 +70,32 @@ let render = (~srcDir: string, ~variant: Config.variant): (Config.config, string
     ~admissionDoors,
     ~aliases=Packaged.aliases(packaged),
   )
+  {config, source, flowSteps: Codegen.renderFlowSteps(~resolved, ~discovered)}
+}
+
+/** The composition for the plugin whose sources are `srcDir`, unformatted.
+    Reads the sources and any package plugin.json lists; writes nothing. */
+let render = (~srcDir: string, ~variant: Config.variant): (Config.config, string) => {
+  let {config, source} = compose(~srcDir, ~variant)
   (config, source)
+}
+
+/** A plugin's tests folder gets its flow steps when its tests can compile
+    them: the folder is there and the plugin depends on the test package. */
+let flowStepsDir = (~srcDir: string): option<string> => {
+  let pluginDir = NodePath.dirname(srcDir)
+  let testsDir = NodePath.join([pluginDir, "tests"])
+  let dependsOnGwt =
+    Config.readJson(NodePath.join([pluginDir, "rescript.json"]))
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.flatMap(d => d->Dict.get("dependencies"))
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.mapOr(false, deps =>
+      deps->Array.some(dep =>
+        dep->JSON.Decode.string->Option.mapOr(false, String.endsWith(_, "/reventless-gwt"))
+      )
+    )
+  NodeFs.existsSync(testsDir) && dependsOnGwt ? Some(testsDir) : None
 }
 
 // A usage mistake exits non-zero, so `prebuild` (and CI) fail instead of
@@ -79,7 +104,7 @@ let main = () =>
   CliArgs.run(cli, async ({variant, srcDir: srcDirArg}) => {
     // Resolve to absolute path (handles relative paths and trailing slashes)
     let srcDir = NodePath.resolve([srcDirArg])
-    let (config, source) = render(~srcDir, ~variant)
+    let {config, source, flowSteps} = compose(~srcDir, ~variant)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir
@@ -91,7 +116,14 @@ let main = () =>
     Console.log("Generated: " ++ pluginPath)
 
     switch variant {
-    | Config.Composition => ()
+    | Config.Composition =>
+      switch (flowSteps, flowStepsDir(~srcDir)) {
+      | (Some(steps), Some(testsDir)) =>
+        let flowPath = NodePath.join([testsDir, "Flow.res"])
+        NodeFs.writeFileSync(flowPath, steps->formatted(~cwd=testsDir))
+        Console.log("Generated: " ++ flowPath)
+      | _ => ()
+      }
     | Config.Aws(_) =>
       let mainSource = Codegen.renderMain(~config)
       let mainPath = NodePath.join([outputDir, "Main.res"])

@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Pairing$Reventless from "./Pairing.res.mjs";
 import * as Discovery$Reventless from "./Discovery.res.mjs";
 
@@ -419,6 +420,74 @@ function renderAwsWrapper(compositionNamespace) {
   ].join("\n");
 }
 
+function renderFlowSteps(resolved, discovered) {
+  let packaged = Stdlib_Array.filterMap(discovered, d => Stdlib_Option.map(d.origin, param => d.stem));
+  let path = stem => {
+    if (packaged.includes(stem)) {
+      return "Plugin." + stem;
+    } else {
+      return stem;
+    }
+  };
+  let step = (name, functor, args) => `module ` + name + ` = ReventlessGwt.Flow_GWT.` + functor + `(` + args.join(", ") + `)`;
+  let slices = (stems, functor, implSuffix) => stems.map(stem => step(stem, functor, [
+    path(stem),
+    path(stem + implSuffix)
+  ]));
+  let groups = [
+    [
+      "Decisions",
+      slices(resolved.stateChangeSlices, "DecisionStep", Pairing$Reventless.implSuffixForStateChange)
+    ],
+    [
+      "Aggregates",
+      resolved.aggregates.map(param => {
+        let spec = param.spec;
+        return step(spec, "AggregateStep", [
+          path(spec),
+          path(param.decision)
+        ]);
+      })
+    ],
+    [
+      "Views",
+      slices(resolved.stateViewSlices.concat(resolved.stateViewSlicesStream).toSorted(Primitive_string.compare), "ViewStep", Pairing$Reventless.implSuffixForStateView)
+    ],
+    [
+      "Automations",
+      slices(resolved.automationSlices, "AutomationStep", Pairing$Reventless.implSuffixForAutomation)
+    ],
+    [
+      "Ways out",
+      slices(resolved.outboundTranslationSlices, "OutboundStep", Pairing$Reventless.implSuffixForTranslation)
+    ],
+    [
+      "Ways in",
+      slices(resolved.inboundTranslationSlices, "InboundStep", Pairing$Reventless.implSuffixForTranslation)
+    ],
+    [
+      "Extension points",
+      resolved.extensionPoints.flatMap(param => param.mappings).map(mapping => step(stripSuffix(mapping, "Mapping"), "ExtensionPointStep", [path(mapping)]))
+    ],
+    [
+      "Extensions",
+      resolved.extensions.map(stem => step(stem, "ExtensionStep", [path(stem) + ".Mapping"]))
+    ]
+  ].filter(param => param[1].length !== 0);
+  if (groups.length === 0) {
+    return;
+  }
+  let body = groups.map(param => [`// ` + param[0]].concat(param[1]).join("\n"));
+  return [
+    "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+    "",
+    "// A flow's steps, one per part, under the part's own name.",
+    "",
+    body.join("\n\n"),
+    ""
+  ].join("\n");
+}
+
 function renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors, aliases) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
@@ -603,6 +672,7 @@ export {
   renderMain,
   pluginNameToEnvBase,
   renderAwsWrapper,
+  renderFlowSteps,
   renderComposition,
   render,
 }

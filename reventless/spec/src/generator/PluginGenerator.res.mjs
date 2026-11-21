@@ -2,6 +2,7 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -80,7 +81,7 @@ function formatted(source, cwd) {
   });
 }
 
-function render(srcDir, variant) {
+function compose(srcDir, variant) {
   let newrecord = {...Config$Reventless.read(srcDir)};
   newrecord.variant = variant;
   let packaged = Stdlib_Option.getOr(newrecord.slicesFrom, []).map(__x => Packaged$Reventless.scan(Nodepath.dirname(srcDir), newrecord.exclude, __x));
@@ -91,26 +92,55 @@ function render(srcDir, variant) {
   let hasAdmission = Nodefs.existsSync(Nodepath.join(srcDir, "Admission.res"));
   let admissionDoors = Discovery$Reventless.scanAdmissionDoors(srcDir, discovered);
   let source = Codegen$Reventless.render(newrecord, resolved, discovered, hasLifecycleModel, identities, hasAdmission, admissionDoors, Packaged$Reventless.aliases(packaged));
+  return {
+    config: newrecord,
+    source: source,
+    flowSteps: Codegen$Reventless.renderFlowSteps(resolved, discovered)
+  };
+}
+
+function render(srcDir, variant) {
+  let match = compose(srcDir, variant);
   return [
-    newrecord,
-    source
+    match.config,
+    match.source
   ];
+}
+
+function flowStepsDir(srcDir) {
+  let pluginDir = Nodepath.dirname(srcDir);
+  let testsDir = Nodepath.join(pluginDir, "tests");
+  let dependsOnGwt = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Config$Reventless.readJson(Nodepath.join(pluginDir, "rescript.json")), Stdlib_JSON.Decode.object), d => d["dependencies"]), Stdlib_JSON.Decode.array), false, deps => deps.some(dep => Stdlib_Option.mapOr(Stdlib_JSON.Decode.string(dep), false, __x => __x.endsWith("/reventless-gwt"))));
+  if (Nodefs.existsSync(testsDir) && dependsOnGwt) {
+    return testsDir;
+  }
 }
 
 function main() {
   return CliArgs$Reventless.run(cli, undefined, undefined, async param => {
     let variant = param.variant;
     let srcDir = Nodepath.resolve(param.srcDir);
-    let match = render(srcDir, variant);
+    let match = compose(srcDir, variant);
+    let flowSteps = match.flowSteps;
     let outputDir;
     outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
     let pluginPath = Nodepath.join(outputDir, "Plugin.res");
-    Nodefs.writeFileSync(pluginPath, formatted(match[1], outputDir), "utf8");
+    Nodefs.writeFileSync(pluginPath, formatted(match.source, outputDir), "utf8");
     console.log("Generated: " + pluginPath);
     if (typeof variant !== "object") {
+      let match$1 = flowStepsDir(srcDir);
+      if (flowSteps === undefined) {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      let flowPath = Nodepath.join(match$1, "Flow.res");
+      Nodefs.writeFileSync(flowPath, formatted(flowSteps, match$1), "utf8");
+      console.log("Generated: " + flowPath);
       return;
     }
-    let mainSource = Codegen$Reventless.renderMain(match[0]);
+    let mainSource = Codegen$Reventless.renderMain(match.config);
     let mainPath = Nodepath.join(outputDir, "Main.res");
     Nodefs.writeFileSync(mainPath, formatted(mainSource, outputDir), "utf8");
     console.log("Generated: " + mainPath);
@@ -122,7 +152,9 @@ export {
   parseArgs,
   cli,
   formatted,
+  compose,
   render,
+  flowStepsDir,
   main,
 }
 /* node:fs Not a pure module */

@@ -217,16 +217,19 @@ module Confirm = OutboundStep(ConfirmSlice, ConfirmTranslation)
 // -- Flows -------------------------------------------------------------------
 
 describe("Order flow (single plugin)", () => {
-  test("place → auto-ship → ship → view Shipped → confirmation fired", () =>
-    start
-    ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
-    ->Place.thenEvents([PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"})])
-    ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
-    ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
-    ->Ship.thenEvents([ShipOrderSlice.OrderShipped({orderId: "o1"})])
-    ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
-    ->Confirm.thenOutbound([("o1", {ConfirmSlice.orderId: "o1"})])
+  test(
+    "place → auto-ship → ship → view Shipped → confirmation fired",
+    ~tells="An order ships",
+    () =>
+      start
+      ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+      ->Place.thenEvents([PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"})])
+      ->Auto.whenReacts
+      ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
+      ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+      ->Ship.thenEvents([ShipOrderSlice.OrderShipped({orderId: "o1"})])
+      ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
+      ->Confirm.thenOutbound([("o1", {ConfirmSlice.orderId: "o1"})]),
   )
 
   test("automation does not re-issue ShipOrder once the order is shipped", () =>
@@ -260,4 +263,77 @@ describe("Order flow (single plugin)", () => {
     ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Shipped"})
     ->View.thenViewState("o2", {OrdersViewSlice.orderId: "o2", item: "pen", status: "Placed"})
   )
+})
+
+// -- A failure names its step ------------------------------------------------
+
+describe("a flow that fails at its sixth step", () => {
+  let failed = async () =>
+    (
+      await start
+      ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+      ->Place.thenEvents([PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"})])
+      ->Auto.whenReacts
+      ->Auto.thenIssuesCommand(AutoShipSlice.ShipOrder({orderId: "o1"}))
+      ->Ship.whenCommand(ShipOrderSlice.ShipOrder({orderId: "o1"}))
+      // Wrong on purpose: the order shipped is o1.
+      ->Ship.thenEvent(ShipOrderSlice.OrderShipped({orderId: "o2"}))
+      ->View.thenViewState("o1", {OrdersViewSlice.orderId: "o1", item: "book", status: "Placed"})
+      ->Confirm.thenOutbound([("o1", {ConfirmSlice.orderId: "o1"})])
+    )->outcomeOf
+
+  let mismatchOf = async () =>
+    switch await failed() {
+    | Error(m) => m
+    | Ok() => JsError.throwWithMessage("the flow was meant to fail")
+    }
+
+  JestGlobals.testPromise("the mismatch carries the step, not a later one", async () => {
+    let m = await mismatchOf()
+    JestGlobals.expect(Outcome.stepOf(m))->JestGlobals.toEqual(
+      Some({
+        Outcome.number: 6,
+        total: 8,
+        verb: "thenEvent",
+        part: {Outcome.kind: Decision, name: "ShipOrder"},
+      }),
+    )
+  })
+
+  JestGlobals.testPromise("the hint names the step and points at its part", async () => {
+    let hint = Hint.forMismatch(~slice="Flow", await mismatchOf())
+    JestGlobals.expect(hint.locus)->JestGlobals.toBe("ShipOrder.decide")
+    JestGlobals.expect(
+      hint->Hint.format->String.startsWith("At step 6 of 8, ShipOrder.thenEvent.\n"),
+    )->JestGlobals.toBe(true)
+  })
+
+  JestGlobals.testPromise("the JSON hint carries the step", async () => {
+    let json = Hint.forMismatch(~slice="Flow", await mismatchOf())->Hint.toJson
+    JestGlobals.expect(
+      JSON.stringify(
+        json,
+      )->String.includes(`"step":{"number":6,"total":8,"verb":"thenEvent","part":{"kind":"Decision","name":"ShipOrder"}}`),
+    )->JestGlobals.toBe(true)
+  })
+
+  JestGlobals.testPromise("jest's failure message says the step", async () => {
+    let outcome = await failed()
+    let message = switch JestBind.assertOutcome(~slice="Flow", outcome) {
+    | () => ""
+    | exception JsExn(e) => e->JsExn.message->Option.getOr("")
+    }
+    JestGlobals.expect(
+      message->String.includes("At step 6 of 8, ShipOrder.thenEvent."),
+    )->JestGlobals.toBe(true)
+  })
+
+  JestGlobals.testPromise("a flow that passes has no step to name", async () => {
+    let outcome = (
+      await start
+      ->Place.whenCommand(PlaceOrderSlice.PlaceOrder({orderId: "o1", item: "book"}))
+      ->Place.thenEvent(PlaceOrderSlice.OrderPlaced({orderId: "o1", item: "book"}))
+    )->outcomeOf
+    JestGlobals.expect(outcome)->JestGlobals.toEqual(Outcome.pass)
+  })
 })

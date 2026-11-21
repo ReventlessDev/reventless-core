@@ -16,30 +16,14 @@
 
 open PlatformLocal_Examples
 
-module Add = DecisionStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
-module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
-module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = DecisionStep(
-  OrderingPlugin.SyncCatalogProduct,
-  OrderingPlugin.SyncCatalogProduct_Decision,
-)
-module Register = DecisionStep(
-  OrderingPlugin.RegisterCustomer,
-  OrderingPlugin.RegisterCustomer_Decision,
-)
-module Place = DecisionStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
-module Auto = AutomationStep(OrderingPlugin.AutoShipOrder, OrderingPlugin.AutoShipOrder_Automation)
-module Ship = DecisionStep(OrderingPlugin.ShipOrder, OrderingPlugin.ShipOrder_Decision)
-module Confirm = OutboundStep(
-  OrderingPlugin.SendOrderConfirmation,
-  OrderingPlugin.SendOrderConfirmation_Translation,
-)
+module Catalog = CatalogPlugin.Flow
+module Ordering = OrderingPlugin.Flow
 
 describe("DCB cross-plugin flow", () => {
   // scenario-id: bc4ba8e3-3d3d-4ba9-b3ec-a0dfe07bdf4b
   test("Catalog product → Ordering sync → register → place → auto-ship → confirm", () =>
     start
-    ->Add.whenCommand(
+    ->Catalog.AddProduct.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: p1,
         name: book,
@@ -47,7 +31,7 @@ describe("DCB cross-plugin flow", () => {
         price: bookPrice,
       }),
     )
-    ->Add.thenEvent(
+    ->Catalog.AddProduct.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
         productId: p1,
         name: book,
@@ -55,69 +39,71 @@ describe("DCB cross-plugin flow", () => {
         price: bookPrice,
       }),
     )
-    ->ProductsEp.whenPublished
-    ->ProductsEp.thenPublicEvent(
+    ->Catalog.Products_ExtensionPoint.whenPublished
+    ->Catalog.Products_ExtensionPoint.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->ProductsExt.whenReacts
-    ->ProductsExt.thenIssuesCommand(
+    ->Ordering.Products_Extension.whenReacts
+    ->Ordering.Products_Extension.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Sync.whenCommand(
+    ->Ordering.SyncCatalogProduct.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Sync.thenEvent(
+    ->Ordering.SyncCatalogProduct.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Register.whenCommand(
+    ->Ordering.RegisterCustomer.whenCommand(
       OrderingPlugin.RegisterCustomer.RegisterCustomer({
         customerId: c1,
         email: aliceEmail,
         address: testStreet,
       }),
     )
-    ->Register.thenEvent(
+    ->Ordering.RegisterCustomer.thenEvent(
       OrderingPlugin.RegisterCustomer.CustomerRegistered({
         customerId: c1,
         email: Value(aliceEmail),
         address: Value(testStreet),
       }),
     )
-    ->Place.whenCommand(
+    ->Ordering.PlaceOrder.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
         productIds: [p1],
       }),
     )
-    ->Place.thenEvent(
+    ->Ordering.PlaceOrder.thenEvent(
       OrderingPlugin.PlaceOrder.OrderPlaced({
         orderId: o1,
         customerId: c1,
         productIds: [p1],
       }),
     )
-    ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(OrderingPlugin.AutoShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: o1}))
-    ->Confirm.thenOutbound([
+    ->Ordering.AutoShipOrder.whenReacts
+    ->Ordering.AutoShipOrder.thenIssuesCommand(
+      OrderingPlugin.AutoShipOrder.ShipOrder({orderId: o1}),
+    )
+    ->Ordering.ShipOrder.whenCommand(OrderingPlugin.ShipOrder.ShipOrder({orderId: o1}))
+    ->Ordering.ShipOrder.thenEvent(OrderingPlugin.ShipOrder.OrderShipped({orderId: o1}))
+    ->Ordering.SendOrderConfirmation.thenOutbound([
       ("o1", {OrderingPlugin.SendOrderConfirmation.orderId: o1, customerId: c1}),
     ])
   )
@@ -125,13 +111,13 @@ describe("DCB cross-plugin flow", () => {
   // scenario-id: f6b53074-8d6a-431a-b223-25a06ffb41e6
   test("placing an order for an unsynced product is rejected", () =>
     start
-    ->Place.whenCommand(
+    ->Ordering.PlaceOrder.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
         productIds: [p1],
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
+    ->Ordering.PlaceOrder.thenError(ProductsNotAvailable({missing: [p1]}))
   )
 })

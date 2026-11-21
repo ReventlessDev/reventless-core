@@ -122,6 +122,45 @@ describe("a plugin composing slices from a package", () => {
   )
 })
 
+describe("a flow's steps, written for the plugin's tests", () => {
+  let root = fixture(~pluginJson=listing, ())
+  let srcDir = NodePath.join([root, "src"])
+  let steps =
+    PluginGenerator.compose(~srcDir, ~variant=Config.Composition).flowSteps->Option.getOr("")
+  let noTestsDir = PluginGenerator.flowStepsDir(~srcDir)
+  write(root, "tests/.keep", "")
+  let noGwt = PluginGenerator.flowStepsDir(~srcDir)
+  write(root, "rescript.json", `{"dependencies": ["@reventlessdev/reventless-gwt"]}`)
+  let both = PluginGenerator.flowStepsDir(~srcDir)
+  NodeFs.rmSync(root, {recursive: true, force: true})
+  let has = needle => steps->String.includes(needle)
+
+  testSync("a part of the plugin's own is stepped under its own name", () =>
+    expect(
+      has("module Accounts = ReventlessGwt.Flow_GWT.DecisionStep(Accounts, Accounts_Decision)"),
+    )->toBe(true)
+  )
+
+  testSync("a packaged part is reached through Plugin, which aliases it", () => {
+    expect(
+      has(
+        "module Policy = ReventlessGwt.Flow_GWT.DecisionStep(Plugin.Policy, Plugin.Policy_Decision)",
+      ),
+    )->toBe(true)
+    expect(
+      has(
+        "module SignUp = ReventlessGwt.Flow_GWT.InboundStep(Plugin.SignUp, Plugin.SignUp_Translation)",
+      ),
+    )->toBe(true)
+  })
+
+  testSync("they are written only where the tests can compile them", () => {
+    expect(noTestsDir)->toEqual(None)
+    expect(noGwt)->toEqual(None)
+    expect(both)->toEqual(Some(NodePath.join([root, "tests"])))
+  })
+})
+
 describe("a plugin listing no package", () => {
   let root = fixture(~pluginJson=`{"name": "Registration"}`, ())
   let source = generate(root)

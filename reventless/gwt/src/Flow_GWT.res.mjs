@@ -35,14 +35,17 @@ let emptyState = {
   lastCommands: emptyState_lastCommands,
   lastPublic: emptyState_lastPublic,
   lastAggregateId: undefined,
-  lastRefusal: undefined
+  lastRefusal: undefined,
+  steps: 0,
+  at: undefined,
+  failedAt: undefined
 };
 
 let start = Promise.resolve(emptyState);
 
 function recordOutcome(s, o) {
   let match = s.outcome;
-  if (match.TAG === "Ok") {
+  if (match.TAG === "Ok" && o.TAG !== "Ok") {
     return {
       log: s.log,
       outcome: o,
@@ -51,11 +54,37 @@ function recordOutcome(s, o) {
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
       lastAggregateId: s.lastAggregateId,
-      lastRefusal: s.lastRefusal
+      lastRefusal: s.lastRefusal,
+      steps: s.steps,
+      at: s.at,
+      failedAt: s.at
     };
   } else {
     return s;
   }
+}
+
+async function enter(flowP, verb, part) {
+  let s = await flowP;
+  let number = s.steps + 1 | 0;
+  return {
+    log: s.log,
+    outcome: s.outcome,
+    lastEvents: s.lastEvents,
+    lastError: s.lastError,
+    lastCommands: s.lastCommands,
+    lastPublic: s.lastPublic,
+    lastAggregateId: s.lastAggregateId,
+    lastRefusal: s.lastRefusal,
+    steps: number,
+    at: {
+      number: number,
+      total: 0,
+      verb: verb,
+      part: part
+    },
+    failedAt: s.failedAt
+  };
 }
 
 function entryMatchesQuery(entry, query) {
@@ -134,12 +163,28 @@ function decodeAggregateMatching(log, id, decoder) {
   });
 }
 
-function test(name, timeout, body) {
-  JestBind$ReventlessGwt.testPromise("Flow", name, timeout, async () => (await body()).outcome);
+function outcomeOf(s) {
+  let match = s.outcome;
+  let match$1 = s.failedAt;
+  if (match.TAG === "Ok") {
+    return match;
+  }
+  if (match$1 === undefined) {
+    return match;
+  }
+  let newrecord = {...match$1};
+  return {
+    TAG: "Error",
+    _0: Outcome$ReventlessGwt.atStep(match._0, (newrecord.total = s.steps, newrecord))
+  };
+}
+
+function test(name, param, timeout, body) {
+  JestBind$ReventlessGwt.testPromise("Flow", name, timeout, async () => outcomeOf(await body()));
 }
 
 async function thenBoundaryScopeResolves(flowP, name, slices) {
-  let s = await flowP;
+  let s = await enter(flowP, "thenBoundaryScopeResolves", undefined);
   let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
   let shapes = slices.map(DcbTag$Reventless.sliceShape);
   let hints = DcbValidation$Reventless.validatePartitionHintsVsInference(shapes);
@@ -172,12 +217,50 @@ async function thenBoundaryScopeResolves(flowP, name, slices) {
   return recordOutcome(s, outcome);
 }
 
+function eventsWere(s, expectedJson) {
+  let err = s.lastError;
+  return recordOutcome(s, err !== undefined ? Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: null,
+      actual: err,
+      actualEvents: s.lastEvents
+    }) : (
+      Primitive_object.equal(s.lastEvents, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expectedJson,
+          actual: s.lastEvents
+        })
+    ));
+}
+
+function errorWas(s, expJson) {
+  let actual = s.lastError;
+  return recordOutcome(s, actual !== undefined ? (
+      Primitive_object.equal(actual, expJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expJson,
+          actual: actual,
+          actualEvents: s.lastEvents
+        })
+    ) : Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: expJson,
+      actual: undefined,
+      actualEvents: s.lastEvents
+    }));
+}
+
 function DecisionStep(Spec) {
   return Decision => {
+    let part_name = Spec.name;
+    let part = {
+      kind: "Decision",
+      name: part_name
+    };
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let consumedEventTypes = consumedDecoder.eventTypes;
     let givenEvents = async (flowP, events) => {
-      let s = await flowP;
+      let s = await enter(flowP, "givenEvents", part);
       return {
         log: appendEvents(s.log, events, Spec.eventSchema),
         outcome: s.outcome,
@@ -186,7 +269,10 @@ function DecisionStep(Spec) {
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
         lastAggregateId: s.lastAggregateId,
-        lastRefusal: s.lastRefusal
+        lastRefusal: s.lastRefusal,
+        steps: s.steps,
+        at: s.at,
+        failedAt: s.failedAt
       };
     };
     let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
@@ -206,7 +292,7 @@ function DecisionStep(Spec) {
       }
     })), crossPartitionTagKeys);
     let whenCommand = async (flowP, command) => {
-      let s = await flowP;
+      let s = await enter(flowP, "whenCommand", part);
       let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
@@ -220,7 +306,10 @@ function DecisionStep(Spec) {
           lastCommands: s.lastCommands,
           lastPublic: s.lastPublic,
           lastAggregateId: undefined,
-          lastRefusal: s.lastRefusal
+          lastRefusal: s.lastRefusal,
+          steps: s.steps,
+          at: s.at,
+          failedAt: s.failedAt
         };
       }
       let events$1 = events._0;
@@ -232,48 +321,17 @@ function DecisionStep(Spec) {
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
         lastAggregateId: undefined,
-        lastRefusal: s.lastRefusal
+        lastRefusal: s.lastRefusal,
+        steps: s.steps,
+        at: s.at,
+        failedAt: s.failedAt
       };
     };
-    let thenEvents = async (flowP, expected) => {
-      let s = await flowP;
-      let expectedJson = expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema));
-      let err = s.lastError;
-      let o = err !== undefined ? Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: null,
-          actual: err,
-          actualEvents: s.lastEvents
-        }) : (
-          Primitive_object.equal(s.lastEvents, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-              TAG: "EventsMismatch",
-              expected: expectedJson,
-              actual: s.lastEvents
-            })
-        );
-      return recordOutcome(s, o);
-    };
-    let thenEvent = (flowP, event) => thenEvents(flowP, [event]);
-    let thenError = async (flowP, expected) => {
-      let s = await flowP;
-      let expJson = Message$ReventlessCore.encode(expected, Spec.errorSchema);
-      let actual = s.lastError;
-      let o = actual !== undefined ? (
-          Primitive_object.equal(actual, expJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-              TAG: "ErrorMismatch",
-              expected: expJson,
-              actual: actual,
-              actualEvents: s.lastEvents
-            })
-        ) : Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: expJson,
-          actual: undefined,
-          actualEvents: s.lastEvents
-        });
-      return recordOutcome(s, o);
-    };
+    let thenEvents = async (flowP, expected) => eventsWere(await enter(flowP, "thenEvents", part), expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)));
+    let thenEvent = async (flowP, event) => eventsWere(await enter(flowP, "thenEvent", part), [Message$ReventlessCore.encode(event, Spec.eventSchema)]);
+    let thenError = async (flowP, expected) => errorWas(await enter(flowP, "thenError", part), Message$ReventlessCore.encode(expected, Spec.errorSchema));
     return {
+      part: part,
       consumedDecoder: consumedDecoder,
       consumedEventTypes: consumedEventTypes,
       givenEvents: givenEvents,
@@ -291,9 +349,14 @@ function DecisionStep(Spec) {
 
 function AggregateStep(Spec) {
   return Decision => {
+    let part_name = Spec.name;
+    let part = {
+      kind: "Aggregate",
+      name: part_name
+    };
     let aggregateDecoder = DcbDecode$Reventless.makeDecoder(Spec.eventSchema);
     let givenEvents = async (flowP, id, events) => {
-      let s = await flowP;
+      let s = await enter(flowP, "givenEvents", part);
       return {
         log: appendAggregateEvents(s.log, id, events, Spec.eventSchema),
         outcome: s.outcome,
@@ -302,11 +365,14 @@ function AggregateStep(Spec) {
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
         lastAggregateId: s.lastAggregateId,
-        lastRefusal: s.lastRefusal
+        lastRefusal: s.lastRefusal,
+        steps: s.steps,
+        at: s.at,
+        failedAt: s.failedAt
       };
     };
     let whenCommand = async (flowP, id, command) => {
-      let s = await flowP;
+      let s = await enter(flowP, "whenCommand", part);
       let history = decodeAggregateMatching(s.log, id, aggregateDecoder);
       let state = Stdlib_Array.reduce(history, Decision.initialState, Decision.evolve);
       let events = Decision.decide(state, command);
@@ -319,7 +385,10 @@ function AggregateStep(Spec) {
           lastCommands: s.lastCommands,
           lastPublic: s.lastPublic,
           lastAggregateId: id,
-          lastRefusal: s.lastRefusal
+          lastRefusal: s.lastRefusal,
+          steps: s.steps,
+          at: s.at,
+          failedAt: s.failedAt
         };
       }
       let events$1 = events._0;
@@ -331,30 +400,16 @@ function AggregateStep(Spec) {
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
         lastAggregateId: id,
-        lastRefusal: s.lastRefusal
+        lastRefusal: s.lastRefusal,
+        steps: s.steps,
+        at: s.at,
+        failedAt: s.failedAt
       };
     };
-    let thenEvents = async (flowP, expected) => {
-      let s = await flowP;
-      let expectedJson = expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema));
-      let err = s.lastError;
-      let o = err !== undefined ? Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: null,
-          actual: err,
-          actualEvents: s.lastEvents
-        }) : (
-          Primitive_object.equal(s.lastEvents, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-              TAG: "EventsMismatch",
-              expected: expectedJson,
-              actual: s.lastEvents
-            })
-        );
-      return recordOutcome(s, o);
-    };
-    let thenEvent = (flowP, event) => thenEvents(flowP, [event]);
+    let thenEvents = async (flowP, expected) => eventsWere(await enter(flowP, "thenEvents", part), expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)));
+    let thenEvent = async (flowP, event) => eventsWere(await enter(flowP, "thenEvent", part), [Message$ReventlessCore.encode(event, Spec.eventSchema)]);
     let thenNoEvent = async flowP => {
-      let s = await flowP;
+      let s = await enter(flowP, "thenNoEvent", part);
       let err = s.lastError;
       let o = err !== undefined ? Outcome$ReventlessGwt.fail({
           TAG: "ErrorMismatch",
@@ -369,26 +424,9 @@ function AggregateStep(Spec) {
         );
       return recordOutcome(s, o);
     };
-    let thenError = async (flowP, expected) => {
-      let s = await flowP;
-      let expJson = Message$ReventlessCore.encode(expected, Spec.errorSchema);
-      let actual = s.lastError;
-      let o = actual !== undefined ? (
-          Primitive_object.equal(actual, expJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
-              TAG: "ErrorMismatch",
-              expected: expJson,
-              actual: actual,
-              actualEvents: s.lastEvents
-            })
-        ) : Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: expJson,
-          actual: undefined,
-          actualEvents: s.lastEvents
-        });
-      return recordOutcome(s, o);
-    };
+    let thenError = async (flowP, expected) => errorWas(await enter(flowP, "thenError", part), Message$ReventlessCore.encode(expected, Spec.errorSchema));
     return {
+      part: part,
       aggregateDecoder: aggregateDecoder,
       givenEvents: givenEvents,
       whenCommand: whenCommand,
@@ -403,10 +441,14 @@ function AggregateStep(Spec) {
 function ViewStep(Spec) {
   return Projection => {
     let P = Projection_GWT$ReventlessGwt.Make(Spec)(Projection);
+    let part_name = Spec.name;
+    let part = {
+      kind: "View",
+      name: part_name
+    };
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let encState = st => Message$ReventlessCore.encode(st, Spec.stateSchema);
-    let thenViewStates = async (flowP, id, expected) => {
-      let s = await flowP;
+    let rowsAre = async (s, id, expected) => {
       let events = decodeMatching(s.log, consumedDecoder, []);
       let store = await P.givenEvents(events);
       let actual = Stdlib_Option.getOr(store[id], []).map(encState);
@@ -419,11 +461,14 @@ function ViewStep(Spec) {
         });
       return recordOutcome(s, o);
     };
-    let thenViewState = (flowP, id, state) => thenViewStates(flowP, id, [state]);
+    let thenViewStates = async (flowP, id, expected) => await rowsAre(await enter(flowP, "thenViewStates", part), id, expected);
+    let thenViewState = async (flowP, id, state) => await rowsAre(await enter(flowP, "thenViewState", part), id, [state]);
     return {
       P: P,
+      part: part,
       consumedDecoder: consumedDecoder,
       encState: encState,
+      rowsAre: rowsAre,
       thenViewStates: thenViewStates,
       thenViewState: thenViewState
     };
@@ -434,8 +479,7 @@ function sourceIdOf(entry) {
   return Stdlib_Option.getOr(entry.aggregateId, "");
 }
 
-async function encodedCommandsMatch(flowP, expJson) {
-  let s = await flowP;
+function encodedCommandsMatch(s, expJson) {
   let reason = s.lastRefusal;
   let o = reason !== undefined ? Outcome$ReventlessGwt.fail({
       TAG: "TranslateError",
@@ -454,8 +498,13 @@ async function encodedCommandsMatch(flowP, expJson) {
 function AutomationStep(Spec) {
   return Automation => {
     let A = Automation_GWT$ReventlessGwt.FromSlice(Spec)(Automation);
+    let part_name = Spec.name;
+    let part = {
+      kind: "Automation",
+      name: part_name
+    };
     let whenReacts = async flowP => {
-      let s = await flowP;
+      let s = await enter(flowP, "whenReacts", part);
       let routed = s.log.flatMap(entry => Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, Stdlib_Option.getOr(entry.aggregateId, ""), A.testContext)));
       let match = A.sweep(routed, Automation_GWT$ReventlessGwt.clockNow(), undefined);
       return {
@@ -466,15 +515,21 @@ function AutomationStep(Spec) {
         lastCommands: match.commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
         lastPublic: s.lastPublic,
         lastAggregateId: s.lastAggregateId,
-        lastRefusal: undefined
+        lastRefusal: undefined,
+        steps: s.steps,
+        at: s.at,
+        failedAt: s.failedAt
       };
     };
-    let thenIssuesCommands = (flowP, expected) => encodedCommandsMatch(flowP, expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema)));
-    let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command]);
-    let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, []);
+    let issued = async (flowP, verb, expected) => encodedCommandsMatch(await enter(flowP, verb, part), expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema)));
+    let thenIssuesCommands = (flowP, expected) => issued(flowP, "thenIssuesCommands", expected);
+    let thenIssuesCommand = (flowP, command) => issued(flowP, "thenIssuesCommand", [command]);
+    let thenIssuesNoCommand = flowP => issued(flowP, "thenIssuesNoCommand", []);
     return {
       A: A,
+      part: part,
       whenReacts: whenReacts,
+      issued: issued,
       thenIssuesCommands: thenIssuesCommands,
       thenIssuesCommand: thenIssuesCommand,
       thenIssuesNoCommand: thenIssuesNoCommand
@@ -484,13 +539,18 @@ function AutomationStep(Spec) {
 
 function OutboundStep(Spec) {
   return Translation => {
+    let part_name = Spec.name;
+    let part = {
+      kind: "Outbound",
+      name: part_name
+    };
     let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let encItems = arr => arr.map(param => [
       param[0],
       Message$ReventlessCore.encode(param[1], Spec.outboundItemSchema)
     ]);
-    let thenOutbound = async (flowP, expected) => {
-      let s = await flowP;
+    let outbound = async (flowP, verb, expected) => {
+      let s = await enter(flowP, verb, part);
       let collected = s.log.flatMap(entry => decodeMatching([entry], consumedDecoder, []).flatMap(e => Translation.collect(e, Stdlib_Option.getOr(entry.aggregateId, ""))));
       let actual = encItems(collected);
       let expectedJson = encItems(expected);
@@ -501,10 +561,13 @@ function OutboundStep(Spec) {
         });
       return recordOutcome(s, o);
     };
-    let thenOutboundNothing = flowP => thenOutbound(flowP, []);
+    let thenOutbound = (flowP, expected) => outbound(flowP, "thenOutbound", expected);
+    let thenOutboundNothing = flowP => outbound(flowP, "thenOutboundNothing", []);
     return {
+      part: part,
       consumedDecoder: consumedDecoder,
       encItems: encItems,
+      outbound: outbound,
       thenOutbound: thenOutbound,
       thenOutboundNothing: thenOutboundNothing
     };
@@ -514,8 +577,13 @@ function OutboundStep(Spec) {
 function InboundStep(Spec) {
   return Translation => {
     let I = InboundTranslation_GWT$ReventlessGwt.FromSlice(Spec)(Translation);
+    let part_name = Spec.name;
+    let part = {
+      kind: "Inbound",
+      name: part_name
+    };
     let whenReceived = async (flowP, json, fakes) => {
-      let s = await flowP;
+      let s = await enter(flowP, "whenReceived", part);
       let pairs = (await I.whenReceived(json, fakes, undefined)).outcome;
       switch (pairs.TAG) {
         case "Translated" :
@@ -527,7 +595,10 @@ function InboundStep(Spec) {
             lastCommands: pairs._0.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
             lastPublic: s.lastPublic,
             lastAggregateId: s.lastAggregateId,
-            lastRefusal: undefined
+            lastRefusal: undefined,
+            steps: s.steps,
+            at: s.at,
+            failedAt: s.failedAt
           };
         case "NotUnderstood" :
           return {
@@ -538,7 +609,10 @@ function InboundStep(Spec) {
             lastCommands: [],
             lastPublic: s.lastPublic,
             lastAggregateId: s.lastAggregateId,
-            lastRefusal: `not understood: ` + pairs._0
+            lastRefusal: `not understood: ` + pairs._0,
+            steps: s.steps,
+            at: s.at,
+            failedAt: s.failedAt
           };
         case "InputRefused" :
           return {
@@ -549,16 +623,22 @@ function InboundStep(Spec) {
             lastCommands: [],
             lastPublic: s.lastPublic,
             lastAggregateId: s.lastAggregateId,
-            lastRefusal: `input refused: ` + pairs._0
+            lastRefusal: `input refused: ` + pairs._0,
+            steps: s.steps,
+            at: s.at,
+            failedAt: s.failedAt
           };
       }
     };
-    let thenIssuesCommands = (flowP, expected) => encodedCommandsMatch(flowP, expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema)));
-    let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command]);
-    let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, []);
+    let issued = async (flowP, verb, expected) => encodedCommandsMatch(await enter(flowP, verb, part), expected.map(c => Message$ReventlessCore.encode(c, Spec.commandSchema)));
+    let thenIssuesCommands = (flowP, expected) => issued(flowP, "thenIssuesCommands", expected);
+    let thenIssuesCommand = (flowP, command) => issued(flowP, "thenIssuesCommand", [command]);
+    let thenIssuesNoCommand = flowP => issued(flowP, "thenIssuesNoCommand", []);
     return {
       I: I,
+      part: part,
       whenReceived: whenReceived,
+      issued: issued,
       thenIssuesCommands: thenIssuesCommands,
       thenIssuesCommand: thenIssuesCommand,
       thenIssuesNoCommand: thenIssuesNoCommand
@@ -566,11 +646,20 @@ function InboundStep(Spec) {
   };
 }
 
+function portName(name) {
+  return Stdlib_Option.getOr(name.split(".").at(-1), name);
+}
+
 function sortJson(arr) {
   return arr.toSorted((a, b) => Primitive_string.compare(JSON.stringify(a), JSON.stringify(b)));
 }
 
 function ExtensionPointStep(M) {
+  let part_name = portName(M.ExtensionPoint.name);
+  let part = {
+    kind: "ExtensionPoint",
+    name: part_name
+  };
   let delegateDecoder = DcbDecode$Reventless.makeDecoder(M.Delegate.eventSchema);
   let runMapping = async (sourceId, events) => {
     let f = M.mapOutgoingEvent;
@@ -591,7 +680,7 @@ function ExtensionPointStep(M) {
     }))).flat();
   };
   let whenPublished = async flowP => {
-    let s = await flowP;
+    let s = await enter(flowP, "whenPublished", part);
     let delegateEvents = Stdlib_Array.filterMap(s.lastEvents, json => {
       let data;
       data = typeof json === "object" && json !== null && !Array.isArray(json) ? json : ({});
@@ -607,11 +696,14 @@ function ExtensionPointStep(M) {
       lastCommands: s.lastCommands,
       lastPublic: publicEvents.map(e => Message$ReventlessCore.encode(e, M.ExtensionPoint.eventSchema)),
       lastAggregateId: s.lastAggregateId,
-      lastRefusal: s.lastRefusal
+      lastRefusal: s.lastRefusal,
+      steps: s.steps,
+      at: s.at,
+      failedAt: s.failedAt
     };
   };
-  let thenPublicEvents = async (flowP, expected) => {
-    let s = await flowP;
+  let published = async (flowP, verb, expected) => {
+    let s = await enter(flowP, verb, part);
     let expJson = expected.map(e => Message$ReventlessCore.encode(e, M.ExtensionPoint.eventSchema));
     let o = Primitive_object.equal(sortJson(s.lastPublic), sortJson(expJson)) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
         TAG: "PublishedActionsMismatch",
@@ -620,21 +712,29 @@ function ExtensionPointStep(M) {
       });
     return recordOutcome(s, o);
   };
-  let thenPublicEvent = (flowP, event) => thenPublicEvents(flowP, [event]);
+  let thenPublicEvents = (flowP, expected) => published(flowP, "thenPublicEvents", expected);
+  let thenPublicEvent = (flowP, event) => published(flowP, "thenPublicEvent", [event]);
   return {
+    part: part,
     delegateDecoder: delegateDecoder,
     runMapping: runMapping,
     whenPublished: whenPublished,
+    published: published,
     thenPublicEvents: thenPublicEvents,
     thenPublicEvent: thenPublicEvent
   };
 }
 
 function ExtensionStep(M) {
+  let part_name = portName(M.ExtensionPoint.name);
+  let part = {
+    kind: "Extension",
+    name: part_name
+  };
   let epDecoder = DcbDecode$Reventless.makeDecoder(M.ExtensionPoint.eventSchema);
   let encCmd = c => Message$ReventlessCore.encode(c, M.Delegate.commandSchema);
   let whenReacts = async flowP => {
-    let s = await flowP;
+    let s = await enter(flowP, "whenReacts", part);
     let epEvents = Stdlib_Array.filterMap(s.lastPublic, json => {
       let data;
       data = typeof json === "object" && json !== null && !Array.isArray(json) ? json : ({});
@@ -669,11 +769,14 @@ function ExtensionStep(M) {
       lastCommands: nested.flat(),
       lastPublic: s.lastPublic,
       lastAggregateId: s.lastAggregateId,
-      lastRefusal: s.lastRefusal
+      lastRefusal: s.lastRefusal,
+      steps: s.steps,
+      at: s.at,
+      failedAt: s.failedAt
     };
   };
-  let thenIssuesCommands = async (flowP, expected) => {
-    let s = await flowP;
+  let issued = async (flowP, verb, expected) => {
+    let s = await enter(flowP, verb, part);
     let expJson = expected.map(encCmd);
     let o = Primitive_object.equal(sortJson(s.lastCommands), sortJson(expJson)) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
         TAG: "PublishedActionsMismatch",
@@ -682,12 +785,15 @@ function ExtensionStep(M) {
       });
     return recordOutcome(s, o);
   };
-  let thenIssuesCommand = (flowP, command) => thenIssuesCommands(flowP, [command]);
-  let thenIssuesNoCommand = flowP => thenIssuesCommands(flowP, []);
+  let thenIssuesCommands = (flowP, expected) => issued(flowP, "thenIssuesCommands", expected);
+  let thenIssuesCommand = (flowP, command) => issued(flowP, "thenIssuesCommand", [command]);
+  let thenIssuesNoCommand = flowP => issued(flowP, "thenIssuesNoCommand", []);
   return {
+    part: part,
     epDecoder: epDecoder,
     encCmd: encCmd,
     whenReacts: whenReacts,
+    issued: issued,
     thenIssuesCommands: thenIssuesCommands,
     thenIssuesCommand: thenIssuesCommand,
     thenIssuesNoCommand: thenIssuesNoCommand
@@ -726,14 +832,18 @@ export {
   emptyState,
   start,
   recordOutcome,
+  enter,
   entryMatchesQuery,
   appendEvents,
   appendAggregateEvents,
   decodeMatching,
   decodeAggregateMatching,
   describe,
+  outcomeOf,
   test,
   thenBoundaryScopeResolves,
+  eventsWere,
+  errorWas,
   DecisionStep,
   AggregateStep,
   ViewStep,
@@ -742,6 +852,7 @@ export {
   AutomationStep,
   OutboundStep,
   InboundStep,
+  portName,
   sortJson,
   ExtensionPointStep,
   ExtensionStep,

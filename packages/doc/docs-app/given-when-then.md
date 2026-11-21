@@ -905,7 +905,7 @@ a view shows the row, an extension point carries the event into another plugin.
 It runs one chain of steps over one shared record of events, each step running
 the part's own code, with no bus and no timers.
 
-**One step per part, each named `…Step`:**
+**One step per part, each a `…Step` applied to the part:**
 
 | Step | Takes | When | Then |
 |---|---|---|---|
@@ -918,35 +918,75 @@ the part's own code, with no bus and no timers.
 | `ExtensionPointStep` | an extension point mapping | `whenPublished` | `thenPublicEvent(s)` |
 | `ExtensionStep` | an extension's mapping | `whenReacts` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 
-Each step is set up once above the tests, under a short name, and the chain
-starts at `start`:
+**The steps are ready-made.** `generate-plugin`, which writes a plugin's
+`Plugin.res`, also writes `tests/Flow.res` when the plugin has a tests folder
+and depends on the test package: one step for every part, under the name the
+part has in `Plugin.res`. An extension point's step is `Products_ExtensionPoint`,
+an extension's `Products_Extension`. It is written into the tests folder because
+it is test code, which a running bundle must not carry. The chain starts at
+`start`:
 
 ```rescript
 @@reventless.gwt
 
 open Ordering_Examples
 
-module Place = DecisionStep(PlaceOrder, PlaceOrder_Decision)
-module Auto = AutomationStep(AutoShipOrder, AutoShipOrder_Automation)
-module Ship = DecisionStep(ShipOrder, ShipOrder_Decision)
-
 describe("Ordering flow", () => {
-  test("an express order is shipped by itself", () =>
+  test("an express order is shipped by itself", ~tells="An order ships", () =>
     start
-    ->Place.whenCommand(PlaceOrder.PlaceOrder({orderId: o1, customerId: c1, /* … */}))
-    ->Place.thenEvent(PlaceOrder.OrderPlaced({orderId: o1, customerId: c1, /* … */}))
-    ->Auto.whenReacts
-    ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
-    ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
+    ->Flow.PlaceOrder.whenCommand(PlaceOrder.PlaceOrder({orderId: o1, customerId: c1, /* … */}))
+    ->Flow.PlaceOrder.thenEvent(PlaceOrder.OrderPlaced({orderId: o1, customerId: c1, /* … */}))
+    ->Flow.AutoShipOrder.whenReacts
+    ->Flow.AutoShipOrder.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.whenCommand(ShipOrder.ShipOrder({orderId: o1}))
+    ->Flow.ShipOrder.thenEvent(ShipOrder.OrderShipped({orderId: o1, customerId: c1}))
   )
 })
 ```
 
+A part no plugin generates a step for, as in the test package's own tests, is
+set up by hand above the tests: `module Place = DecisionStep(PlaceOrder,
+PlaceOrder_Decision)`.
+
 **Across plugins**, the flow lives in the platform package, the only one that
-holds both. `ExtensionPointStep.whenPublished` turns the events of the step
-before into the extension point's public events; `ExtensionStep.whenReacts`
-turns those into the commands the other plugin's extension sends.
+holds both, and names each plugin's steps once:
+
+```rescript
+module Catalog = CatalogPlugin.Flow
+module Ordering = OrderingPlugin.Flow
+
+// …
+->Catalog.AddProduct.whenCommand(CatalogPlugin.AddProduct.AddProduct({/* … */}))
+->Catalog.Products_ExtensionPoint.whenPublished
+->Ordering.Products_Extension.whenReacts
+```
+
+`ExtensionPointStep.whenPublished` turns the events of the step before into the
+extension point's public events; `ExtensionStep.whenReacts` turns those into the
+commands the other plugin's extension sends.
+
+**A failure names its step.** Every step counts itself as the flow passes it.
+The mismatch a flow fails with carries the step it was found at: its number, the
+number of steps in the flow, its verb, and the part it ran. The hint says so and
+points at that part, not at the flow:
+
+```text
+At step 6 of 8, ShipOrder.thenEvent.
+hint: decide() returned different events than expected. Check the event payload and count.
+      Look at ShipOrder.decide.
+```
+
+The JSON hint carries the same as `step`
+([§5](#5-the-outcome-algebra)).
+
+**The steps file.** With `REVENTLESS_EMIT_SIDECAR=1` a flow's build writes the
+same steps file as any other test's. Each step also records its `step` number,
+counted as the flow counts it, and its `part`: the system (the plugin's
+namespace, absent for the plugin's own), the kind and the name. A part is read
+from the step's set-up when it was set up by hand, and from the path of a
+ready-made step otherwise. `~tells` on a flow's test, a free name for what the
+flow tells, is recorded as the scenario's `tells`; the flow itself gives it no
+meaning.
 
 **An event is stated in full.** The event a step records is what the next step
 runs on, so a flow names every field of it. A value that repeats (the book, its
@@ -967,7 +1007,11 @@ that names the new one.
 Runnable copies:
 [`reventless/gwt/tests/FlowGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowGwtTest.res),
 [`FlowCrossPluginGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowCrossPluginGwtTest.res),
-[`FlowAggregateGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowAggregateGwtTest.res).
+[`FlowAggregateGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/tests/FlowAggregateGwtTest.res),
+all set up by hand; on ready-made steps,
+[`OrderingFlow_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-hybrid/ordering/tests/Flow/OrderingFlow_GWT.res)
+and, across plugins,
+[`HybridFlow_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/examples/online-shop-hybrid/platform-local/tests/Flow/HybridFlow_GWT.res).
 
 ---
 
@@ -991,6 +1035,10 @@ value — they only differ in how they render it.
 | `TranslateError`            | `thenTranslateError`                                | `{slice}.translate`                                             |
 | `QueryRowsMismatch`         | `thenRow(s)` / `thenRowCount` / missing-index check | `{slice}.config`                                                |
 | `Throw`                     | any uncaught exception inside the DSL's pipeline    | `{slice}`                                                       |
+
+A mismatch a flow found also carries the flow's `step`
+([§4.13](#413-flow_gwt--several-parts-over-one-record)), and its hint names the
+part that step ran.
 
 Every failure is paired with a `Hint` record `{locus, branch, message}`. Hints
 ship inside the JSON/VS Code output so downstream tools can route a fix without

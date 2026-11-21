@@ -1007,10 +1007,18 @@ let state_entry ?src (e : expression) : entry =
 (* One step call as written. [grouped] is false for a step that has no place in
    the three groups: a second act (`andThenEvents`) or the capabilities a
    translation runs against. *)
-type call = { group : string; verb : string; via : string option; grouped : bool; entries : entry list }
+type call = {
+  group : string;
+  verb : string;
+  via : string option;
+  grouped : bool;
+  entries : entry list;
+  number : int;  (* the step's place among every step of the test, from 1 *)
+  labels : string list;  (* the labelled arguments it was called with *)
+}
 
 (* What one verb asserts. None for a verb this walk does not know. *)
-let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : call option =
+let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expression) list) : call option =
   let verb = step_name_of lid in
   let pos = List.filter_map (function (Nolabel, e) -> Some e | _ -> None) args in
   let on_last f = match last pos with Some p -> f p | None -> [] in
@@ -1020,8 +1028,9 @@ let call_of ?src (lid : Longident.t) (args : (arg_label * expression) list) : ca
       args
   in
   let one kind ?element ?values () = [ entry ~kind ?element ?values () ] in
+  let labels = List.filter_map (function (Labelled l | Optional l), _ -> Some l | _ -> None) args in
   let mk ?(grouped = true) group entries =
-    Some { group; verb; via = step_via lid; grouped; entries }
+    Some { group; verb; via = step_via lid; grouped; entries; number; labels }
   in
   let input p =
     match element_of_constructor ?src p with
@@ -1114,21 +1123,151 @@ let absorb_reacted_events (calls : call list) : call list =
          | _ -> c :: acc)
        [] calls)
 
+(* Every step is numbered, a verb this walk does not read included, so the
+   numbers are the ones a flow counts as it runs. *)
 let calls_of_body ?src (body : expression) : call list =
   ordered_steps ~deep:true body []
   |> List.rev
-  |> List.filter_map (fun (lid, args) -> call_of ?src lid args)
+  |> List.mapi (fun i (lid, args) -> call_of ?src ~number:(i + 1) lid args)
+  |> List.filter_map Fun.id
   |> absorb_reacted_events
 
-let steps_json (calls : call list) : Yojson.Safe.t list =
+(* ── the part behind a flow's step ─────────────────────────────────────── *)
+
+(* A flow step is called through a module: one the file sets up by hand
+   (`module Place = DecisionStep(OrderingPlugin.PlaceOrder, …)`), or one a
+   system's generated `Flow` module offers under the part's own name
+   (`OrderingPlugin.Flow.PlaceOrder`, or `Ordering.PlaceOrder` after
+   `module Ordering = OrderingPlugin.Flow`). *)
+type part = { system : string option; part_kind : string option; part_name : string }
+
+let step_functors =
+  [ ("DecisionStep", "Decision"); ("AggregateStep", "Aggregate"); ("ViewStep", "View");
+    ("AutomationStep", "Automation"); ("OutboundStep", "Outbound"); ("InboundStep", "Inbound");
+    ("ExtensionPointStep", "ExtensionPoint"); ("ExtensionStep", "Extension") ]
+
+(* The suffixes a port's module carries beyond its name: its mapping as written,
+   or the name Plugin.res and the generated steps give it. *)
+let port_suffixes =
+  [ ("_ExtensionPointMapping", "ExtensionPoint"); ("_ExtensionPoint", "ExtensionPoint");
+    ("_Extension", "Extension") ]
+
+let part_of_path ~(kind : string option) (path : string) : part option =
+  let segs = String.split_on_char '.' path in
+  (* An extension is reached through its `Mapping`. *)
+  let segs =
+    match List.rev segs with "Mapping" :: (_ :: _ as rest) -> List.rev rest | _ -> segs
+  in
+  match List.rev segs with
+  | [] -> None
+  | last :: before ->
+    let port =
+      List.find_map
+        (fun (suf, k) ->
+          if ends_with last suf && String.length last > String.length suf then
+            Some (String.sub last 0 (String.length last - String.length suf), k)
+          else None)
+        port_suffixes
+    in
+    let name, kind = match port with Some (n, k) -> (n, Some k) | None -> (last, kind) in
+    Some
+      { system = (match before with [] -> None | _ -> Some (String.concat "." (List.rev before)));
+        part_kind = kind; part_name = name }
+
+(* The file's top-level `module X = Path` aliases and hand-set-up steps. *)
+let flow_modules (str : structure) : (string * string) list * (string * (string * string)) list =
+  List.fold_left
+    (fun (aliases, handset) (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_module { pmb_name = { txt = Some name; _ }; pmb_expr; _ } -> (
+        match module_path pmb_expr with
+        | Some p -> ((name, p) :: aliases, handset)
+        | None -> (
+          match functor_args pmb_expr with
+          | head, arg :: _ -> (
+            match
+              Option.bind (module_path head) (fun h ->
+                  match List.rev (String.split_on_char '.' h) with
+                  | last :: _ -> List.assoc_opt last step_functors
+                  | [] -> None)
+            with
+            | Some kind -> (
+              match module_path arg with
+              | Some p -> (aliases, (name, (kind, p)) :: handset)
+              | None -> (aliases, handset))
+            | None -> (aliases, handset))
+          | _ -> (aliases, handset)))
+      | _ -> (aliases, handset))
+    ([], []) str
+
+(* A ready-made step names no kind; what it is called for does. *)
+let kind_of_calls (calls : call list) : string option =
+  let has verbs = List.exists (fun (c : call) -> List.mem c.verb verbs) calls in
+  if has [ "whenPublished"; "thenPublicEvent"; "thenPublicEvents" ] then Some "ExtensionPoint"
+  else if has [ "whenReceived" ] then Some "Inbound"
+  else if has [ "thenOutbound"; "thenOutboundNothing" ] then Some "Outbound"
+  else if has [ "thenViewState"; "thenViewStates" ] then Some "View"
+  else if has [ "whenReacts" ] then Some "Automation"
+  else if has [ "thenNoEvent" ] || List.exists (fun (c : call) -> List.mem "id" c.labels) calls
+  then Some "Aggregate"
+  else if has [ "givenEvents"; "whenCommand"; "thenEvents"; "thenEvent"; "thenError" ] then
+    Some "Decision"
+  else None
+
+(* The part of every module a flow file calls steps through. *)
+let parts_of_flow (str : structure) (calls : call list) : (string * part) list =
+  let aliases, handset = flow_modules str in
+  let vias = List.sort_uniq String.compare (List.filter_map (fun (c : call) -> c.via) calls) in
+  List.filter_map
+    (fun via ->
+      let part =
+        match List.assoc_opt via handset with
+        | Some (kind, path) -> part_of_path ~kind:(Some kind) path
+        | None -> (
+          let segs =
+            match String.split_on_char '.' via with
+            | first :: rest -> (
+              match List.assoc_opt first aliases with
+              | Some p -> String.split_on_char '.' p @ rest
+              | None -> first :: rest)
+            | [] -> []
+          in
+          match List.rev segs with
+          | name :: "Flow" :: system ->
+            Option.map
+              (fun p ->
+                match p.part_kind with
+                | Some _ -> p
+                | None ->
+                  { p with
+                    part_kind =
+                      kind_of_calls
+                        (List.filter (fun (c : call) -> c.via = Some via) calls) })
+              (part_of_path ~kind:None (String.concat "." (List.rev system @ [ name ])))
+          | _ -> None)
+      in
+      Option.map (fun p -> (via, p)) part)
+    vias
+
+let part_json (p : part) : Yojson.Safe.t =
+  `Assoc
+    ((match p.system with Some s -> [ ("system", `String s) ] | None -> [])
+     @ (match p.part_kind with Some k -> [ ("kind", `String k) ] | None -> [])
+     @ [ ("name", `String p.part_name) ])
+
+(* A flow's step also records its number and its part. *)
+let steps_json ?(flow = false) ?(parts = []) (calls : call list) : Yojson.Safe.t list =
   List.concat_map
     (fun (c : call) ->
+      let part = Option.bind c.via (fun v -> List.assoc_opt v parts) in
       List.map
         (fun en ->
           `Assoc
             ([ ("group", `String c.group); ("verb", `String c.verb) ]
              @ entry_fields en
-             @ match c.via with Some v -> [ ("via", `String v) ] | None -> []))
+             @ (match c.via with Some v -> [ ("via", `String v) ] | None -> [])
+             @ (if flow then [ ("step", `Int c.number) ] else [])
+             @ match part with Some p -> [ ("part", part_json p) ] | None -> []))
         c.entries)
     calls
 
@@ -1233,8 +1372,8 @@ let rec fun_body (e : expression) : expression option =
   | _ -> None
 
 let rec collect_tests (e : expression)
-    (acc : (Location.t * string * expression) list) :
-    (Location.t * string * expression) list =
+    (acc : (Location.t * string * expression * string option) list) :
+    (Location.t * string * expression * string option) list =
   match e.pexp_desc with
   | Pexp_sequence (a, b) -> collect_tests b (collect_tests a acc)
   (* `testSync` is a test too; `~timeout` and other labels are not its title
@@ -1242,10 +1381,16 @@ let rec collect_tests (e : expression)
   | Pexp_apply ({ pexp_desc = Pexp_ident { txt; _ }; _ }, args)
     when List.mem (step_name_of txt) [ "test"; "testSync" ] -> (
     let arg_exprs = List.filter_map (function (Nolabel, a) -> Some a | _ -> None) args in
+    (* What a flow tells, a name its test is given. *)
+    let tells =
+      List.find_map
+        (function (Labelled "tells", a) -> string_of_expr a | _ -> None)
+        args
+    in
     match arg_exprs with
     | title_e :: fn :: _ -> (
       match (string_of_expr title_e, fun_body fn) with
-      | Some title, Some test_body -> (e.pexp_loc, title, test_body) :: acc
+      | Some title, Some test_body -> (e.pexp_loc, title, test_body, tells) :: acc
       | _ -> acc)
     | _ -> acc)
   | Pexp_let (_, _, cont) -> collect_tests cont acc
@@ -1253,7 +1398,7 @@ let rec collect_tests (e : expression)
 
 (* A top-level `describe("Spec", () => { ... })` → (specName, tests). *)
 let describe_of_item (item : structure_item) :
-    (string * (Location.t * string * expression) list) option =
+    (string * (Location.t * string * expression * string option) list) option =
   match item.pstr_desc with
   | Pstr_eval
       ( { pexp_desc =
@@ -1285,14 +1430,23 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
     let test_lines =
       List.concat_map
         (fun (_, tests) ->
-          List.map (fun ((loc : Location.t), _, _) -> loc.loc_start.pos_lnum) tests)
+          List.map (fun ((loc : Location.t), _, _, _) -> loc.loc_start.pos_lnum) tests)
         describes
     in
-    let scenarios =
+    let flow = Util.derive_gwt_kind fname = Some "Flow" in
+    let tested =
       List.concat_map
         (fun (_, tests) ->
+          List.map (fun (loc, title, body, tells) -> (loc, title, tells, calls_of_body ?src body)) tests)
+        describes
+    in
+    let parts =
+      if flow then parts_of_flow str (List.concat_map (fun (_, _, _, calls) -> calls) tested)
+      else []
+    in
+    let scenarios =
           List.map
-            (fun ((loc : Location.t), title, body) ->
+            (fun ((loc : Location.t), title, tells, calls) ->
               let scenario_id =
                 match
                   scenario_id_for loc.loc_start.pos_lnum ~tests:test_lines scenario_ids
@@ -1300,20 +1454,19 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
                 | Some id -> id
                 | None -> ""
               in
-              let calls = calls_of_body ?src body in
               let given, when_, then_ = extract_groups calls in
               (* `specId` repeats the id for the released codegen, which reads
                  only that key; it goes once the codegen reads `scenarioId`. *)
               `Assoc
-                [ ("scenarioId", `String scenario_id);
+                ([ ("scenarioId", `String scenario_id);
                   ("specId", `String scenario_id);
                   ("title", `String title);
                   ("given", `List given);
                   ("when", `List when_);
                   ("then", `List then_);
-                  ("steps", `List (steps_json calls)) ])
-            tests)
-        describes
+                  ("steps", `List (steps_json ~flow ~parts calls)) ]
+                @ match tells with Some t -> [ ("tells", `String t) ] | None -> []))
+            tested
     in
     Some
       (`Assoc

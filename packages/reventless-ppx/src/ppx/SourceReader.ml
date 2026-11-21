@@ -284,7 +284,7 @@ let describe_json ~src ~scenario_ids ~test_lines (item : structure_item) : Yojso
   match SidecarEmit.describe_of_item item with
   | None -> None
   | Some (name, tests) ->
-    let test ((loc : Location.t), title, body) =
+    let test ((loc : Location.t), title, body, _) =
       let marker =
         match SidecarEmit.scenario_id_for loc.loc_start.pos_lnum ~tests:test_lines scenario_ids with
         | Some id -> `String id
@@ -309,7 +309,7 @@ let file_json ~(fname : string) ~(src : string) (str : structure) : Yojson.Safe.
     List.concat_map
       (fun item ->
         match SidecarEmit.describe_of_item item with
-        | Some (_, tests) -> List.map (fun ((l : Location.t), _, _) -> l.loc_start.pos_lnum) tests
+        | Some (_, tests) -> List.map (fun ((l : Location.t), _, _, _) -> l.loc_start.pos_lnum) tests
         | None -> [])
       str
   in

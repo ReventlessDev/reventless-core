@@ -109,8 +109,7 @@ binaries are rebuilt for each. Steps that touch it are best landed one after the
 where the table lets them run side by side.
 
 Every step that touches the PPX rebuilds both binaries (macOS, and Linux through Docker) and
-adds a fixture under the PPX tests. Every step keeps the four example files green under jest and
-under the CLI runner.
+adds a fixture under the PPX tests. Every step keeps the four example files green under jest.
 
 ### FS1 One naming for the steps
 
@@ -145,7 +144,8 @@ green; no `Slice` in a step's name; the price literal of the two-system flow wri
 
 - **Each system has a module of its steps under the parts' own names**, generated where the
   system's list of parts is, so that a flow reads `Ordering.Flow.PlaceOrder.whenCommand(…)` and
-  the block of made-up names above the tests goes ([FSQ2](#4-open-questions)).
+  the block of made-up names above the tests goes ([FSQ2](#4-open-questions): `generate-plugin`
+  writes it as `tests/Flow.res`).
 - **A flow across systems** opens the flow modules of the systems it crosses; it still lives in
   the platform's package, which is the only one that holds both.
 - **Setting a step up by hand stays possible**, for a flow over parts that belong to no
@@ -165,7 +165,10 @@ arguments.
   flow's outcome, not a new mismatch kind; the JSON formatter's schema version moves.
 - **The hint names the part**: `Ordering.PlaceOrder.decide`, not `Flow.decide`
   ([`Hint.res`](../../reventless/gwt/src/Hint.res)).
-- **The human and the editor formatters** print *step 6 of 11, ShipOrder*.
+- **The human and the editor formatters** print *step 6 of 11, ShipOrder*. Of the formats, only
+  jest's is in this repository; the runner and its formatters are not. The step therefore travels
+  in what every formatter already prints, the hint: `Hint.format` opens with the step, and
+  `Hint.toJson` carries it as `step`.
 - **`~tells` on a flow's test**: a free name for what the flow tells, recorded in the steps
   file. This repository gives it no meaning. It is here, in the first release, because a reader
   of the steps file joins a flow to what it tells by it.
@@ -330,11 +333,14 @@ works. A module under the old name whose only content is a deprecation that name
 removed one release later. A flow is test code; a clear compile error costs its author a
 minute, and two names for one step cost every reader.
 
-**FSQ2.** *Where are a system's ready-made steps generated?* **Recommendation:** by the PPX,
-with the system's own module, from the same list of parts that gives `dcbSliceSchemas`; a
-module `Flow` inside the system. To check first: that the gwt package, which the step functors
-live in, can be a dependency of what the PPX writes there without every system depending on
-test code at run time. If it cannot, the module is generated into the system's tests folder.
+**FSQ2.** *Where are a system's ready-made steps generated?* **Answered while building
+[FS2](#fs2-a-system-offers-its-steps-ready-made):** by `generate-plugin`, into the system's tests
+folder as `tests/Flow.res`. The list of parts that gives `dcbSliceSchemas` is read by
+`generate-plugin`, not by the PPX, which sees one file at a time. Written into `src`, the steps
+would make every running bundle carry the test package and jest. The tests folder is in the
+system's namespace and is not dev-only, so a platform reaches the steps as `OrderingPlugin.Flow`.
+The file is written only where the tests folder exists and the system depends on the test
+package.
 
 **FSQ3.** *How does a flow know the groups that read every row?* **Recommendation:** a flow's
 test takes them (`~elevated`), with none as the default; the ready-made caller for an operator
@@ -353,6 +359,6 @@ confirmed, which then look confirmed, or writes nothing and proves no connection
 
 ## 5. Verify
 
-Per release: the gwt package under jest and the CLI runner, the PPX tests, the three example
+Per release: the gwt package under jest (no CLI runner lives in this repository any more), the PPX tests, the three example
 shops built and their tests green, zero warnings. Release A and [FS6](#fs6-expectations-that-are-missing) change what the steps file
 holds: its schema version moves, and whatever in this repository reads it is updated in the same step.

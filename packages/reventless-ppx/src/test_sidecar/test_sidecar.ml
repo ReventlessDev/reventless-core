@@ -997,6 +997,57 @@ let () =
   vequal "nothing out" "thenIssuesCommands([]) and thenOutboundNothing"
     "Auto.whenReacts:Sweep: Auto.thenIssuesCommands:NoCommand: Out.thenOutboundNothing:NothingSent:";
 
+  (* The part behind each step: read from the functor a step is set up with by
+     hand, or from the path of a system's ready-made step, through an alias of
+     its `Flow` module or not. Every step is numbered, one it does not read too. *)
+  let parts_body : structure =
+    [%str
+      module Place = DecisionStep (OrderingPlugin.PlaceOrder) (OrderingPlugin.PlaceOrder_Decision)
+      module ProductsExt = ExtensionStep (OrderingPlugin.Products_Extension.Mapping)
+      module Catalog = CatalogPlugin.Flow
+
+      ;;
+      describe "Parts" (fun () ->
+          test "by hand and ready-made" ~tells:"Placing an order" (fun () ->
+              Flow.Order.thenNoEvent
+                (Flow.Orders.thenViewState
+                   (OrderingPlugin.Flow.AutoShipOrder.whenReacts
+                      (thenBoundaryScopeResolves
+                         (Catalog.Products_ExtensionPoint.whenPublished
+                            (Catalog.AddProduct.whenCommand
+                               (ProductsExt.whenReacts
+                                  (Place.whenCommand start (PlaceOrder { orderId = "o1" })))
+                               (AddProduct { productId = "p1" })))
+                         ~name:"Catalog" [||]))
+                   "o1" { orderId = "o1" })))]
+  in
+  let pj = scenarios_of "tests/Flow/PartsFlow_GWT.res" parts_body in
+  let parts title =
+    let open Yojson.Safe.Util in
+    scenario pj title |> member "steps" |> to_list
+    |> List.map (fun s ->
+           let step = to_int (member "step" s) in
+           let part =
+             match member "part" s with
+             | `Null -> "-"
+             | p ->
+               let opt k = match member k p with `String v -> v | _ -> "?" in
+               opt "system" ^ "/" ^ opt "kind" ^ "/" ^ opt "name"
+           in
+           string_of_int step ^ ":" ^ part)
+    |> String.concat " "
+  in
+  let pequal title label expected =
+    let got = parts title in
+    if String.equal got expected then Printf.printf "  ok(parts): %s\n" label
+    else (Printf.printf "  FAIL(parts): %s\n    got      %s\n    expected %s\n" label got expected; exit 1)
+  in
+  pequal "by hand and ready-made" "each step's number and part"
+    "1:OrderingPlugin/Decision/PlaceOrder 2:OrderingPlugin/Extension/Products \
+     3:CatalogPlugin/Decision/AddProduct 4:CatalogPlugin/ExtensionPoint/Products \
+     6:OrderingPlugin/Automation/AutoShipOrder 7:?/View/Orders 8:?/Aggregate/Order";
+  sequal pj "by hand and ready-made" "tells" "~tells is what the flow tells" "\"Placing an order\"";
+
   (* ── The automation wiring sidecar ─────────────────────────────────────── *)
   let wiring_body : structure =
     [%str

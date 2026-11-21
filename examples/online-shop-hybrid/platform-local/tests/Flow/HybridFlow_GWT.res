@@ -16,34 +16,18 @@
 
 open PlatformLocal_Examples
 
-module Cat = DecisionStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Decision)
-module Add = DecisionStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Decision)
-module Archive = DecisionStep(CatalogPlugin.ArchiveProduct, CatalogPlugin.ArchiveProduct_Decision)
-module Unarchive = DecisionStep(
-  CatalogPlugin.UnarchiveProduct,
-  CatalogPlugin.UnarchiveProduct_Decision,
-)
-module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
-module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
-module Sync = DecisionStep(
-  OrderingPlugin.SyncCatalogProduct,
-  OrderingPlugin.SyncCatalogProduct_Decision,
-)
-module Place = DecisionStep(OrderingPlugin.PlaceOrder, OrderingPlugin.PlaceOrder_Decision)
-module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping)
-module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
-module Demand = DecisionStep(
-  CatalogPlugin.RecordProductDemand,
-  CatalogPlugin.RecordProductDemand_Decision,
-)
+module Catalog = CatalogPlugin.Flow
+module Ordering = OrderingPlugin.Flow
 
 describe("Hybrid cross-plugin flow", () => {
   // scenario-id: fb61d285-6b0f-47ac-9967-c5e060794865
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
     start
     // AddProduct now verifies the category exists, so seed it into the shared log first.
-    ->Cat.givenEvents([CatalogPlugin.AddCategory.CategoryAdded({categoryId: cat1, name: "Books"})])
-    ->Add.whenCommand(
+    ->Catalog.AddCategory.givenEvents([
+      CatalogPlugin.AddCategory.CategoryAdded({categoryId: cat1, name: "Books"}),
+    ])
+    ->Catalog.AddProduct.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: p1,
         name: book,
@@ -52,7 +36,7 @@ describe("Hybrid cross-plugin flow", () => {
         categoryId: cat1,
       }),
     )
-    ->Add.thenEvent(
+    ->Catalog.AddProduct.thenEvent(
       CatalogPlugin.AddProduct.ProductAdded({
         productId: p1,
         name: book,
@@ -61,37 +45,37 @@ describe("Hybrid cross-plugin flow", () => {
         categoryId: cat1,
       }),
     )
-    ->ProductsEp.whenPublished
-    ->ProductsEp.thenPublicEvent(
+    ->Catalog.Products_ExtensionPoint.whenPublished
+    ->Catalog.Products_ExtensionPoint.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->ProductsExt.whenReacts
-    ->ProductsExt.thenIssuesCommand(
+    ->Ordering.Products_Extension.whenReacts
+    ->Ordering.Products_Extension.thenIssuesCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Sync.whenCommand(
+    ->Ordering.SyncCatalogProduct.whenCommand(
       OrderingPlugin.SyncCatalogProduct.SyncNewProduct({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Sync.thenEvent(
+    ->Ordering.SyncCatalogProduct.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: p1,
         name: book,
         price: bookPrice,
       }),
     )
-    ->Place.whenCommand(
+    ->Ordering.PlaceOrder.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
@@ -99,7 +83,7 @@ describe("Hybrid cross-plugin flow", () => {
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenEvent(
+    ->Ordering.PlaceOrder.thenEvent(
       OrderingPlugin.PlaceOrder.OrderPlaced({
         orderId: o1,
         customerId: c1,
@@ -120,7 +104,7 @@ describe("Hybrid cross-plugin flow", () => {
   // scenario-id: 9aa05b2a-960a-4fbf-938b-74114a4ce4ac
   test("Tier 2 — placing an order for an unsynced product is rejected", () =>
     start
-    ->Place.whenCommand(
+    ->Ordering.PlaceOrder.whenCommand(
       OrderingPlugin.PlaceOrder.PlaceOrder({
         orderId: o1,
         customerId: c1,
@@ -128,7 +112,7 @@ describe("Hybrid cross-plugin flow", () => {
         shippingMethod: Standard,
       }),
     )
-    ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
+    ->Ordering.PlaceOrder.thenError(ProductsNotAvailable({missing: [p1]}))
   )
 
   // The withdrawal round trip across the boundary: an archived product cannot be
@@ -138,7 +122,7 @@ describe("Hybrid cross-plugin flow", () => {
     "Tier 2 — archiving a product withdraws it from ordering, and unarchiving relists it",
     () =>
       start
-      ->Add.givenEvents([
+      ->Catalog.AddProduct.givenEvents([
         CatalogPlugin.AddProduct.ProductAdded({
           productId: p1,
           name: book,
@@ -147,26 +131,34 @@ describe("Hybrid cross-plugin flow", () => {
           categoryId: cat1,
         }),
       ])
-      ->Sync.givenEvents([
+      ->Ordering.SyncCatalogProduct.givenEvents([
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
           productId: p1,
           name: book,
           price: bookPrice,
         }),
       ])
-      ->Archive.whenCommand(CatalogPlugin.ArchiveProduct.ArchiveProduct({productId: p1}))
-      ->Archive.thenEvent(CatalogPlugin.ArchiveProduct.ProductArchived({productId: p1}))
-      ->ProductsEp.whenPublished
-      ->ProductsEp.thenPublicEvent(
+      ->Catalog.ArchiveProduct.whenCommand(
+        CatalogPlugin.ArchiveProduct.ArchiveProduct({productId: p1}),
+      )
+      ->Catalog.ArchiveProduct.thenEvent(
+        CatalogPlugin.ArchiveProduct.ProductArchived({productId: p1}),
+      )
+      ->Catalog.Products_ExtensionPoint.whenPublished
+      ->Catalog.Products_ExtensionPoint.thenPublicEvent(
         CatalogSpec.Products_ExtensionPoint.ProductWithdrawn({productId: p1}),
       )
-      ->ProductsExt.whenReacts
-      ->ProductsExt.thenIssuesCommand(
+      ->Ordering.Products_Extension.whenReacts
+      ->Ordering.Products_Extension.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
       )
-      ->Sync.whenCommand(OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}))
-      ->Sync.thenEvent(OrderingPlugin.SyncCatalogProduct.CatalogProductWithdrawn({productId: p1}))
-      ->Place.whenCommand(
+      ->Ordering.SyncCatalogProduct.whenCommand(
+        OrderingPlugin.SyncCatalogProduct.WithdrawSyncedProduct({productId: p1}),
+      )
+      ->Ordering.SyncCatalogProduct.thenEvent(
+        OrderingPlugin.SyncCatalogProduct.CatalogProductWithdrawn({productId: p1}),
+      )
+      ->Ordering.PlaceOrder.whenCommand(
         OrderingPlugin.PlaceOrder.PlaceOrder({
           orderId: o1,
           customerId: c1,
@@ -174,26 +166,32 @@ describe("Hybrid cross-plugin flow", () => {
           shippingMethod: Standard,
         }),
       )
-      ->Place.thenError(ProductsNotAvailable({missing: [p1]}))
-      ->Unarchive.whenCommand(CatalogPlugin.UnarchiveProduct.UnarchiveProduct({productId: p1}))
-      ->Unarchive.thenEvent(CatalogPlugin.UnarchiveProduct.ProductUnarchived({productId: p1}))
-      ->ProductsEp.whenPublished
-      ->ProductsEp.thenPublicEvent(
+      ->Ordering.PlaceOrder.thenError(ProductsNotAvailable({missing: [p1]}))
+      ->Catalog.UnarchiveProduct.whenCommand(
+        CatalogPlugin.UnarchiveProduct.UnarchiveProduct({productId: p1}),
+      )
+      ->Catalog.UnarchiveProduct.thenEvent(
+        CatalogPlugin.UnarchiveProduct.ProductUnarchived({productId: p1}),
+      )
+      ->Catalog.Products_ExtensionPoint.whenPublished
+      ->Catalog.Products_ExtensionPoint.thenPublicEvent(
         CatalogSpec.Products_ExtensionPoint.ProductRelisted({productId: p1}),
       )
-      ->ProductsExt.whenReacts
-      ->ProductsExt.thenIssuesCommand(
+      ->Ordering.Products_Extension.whenReacts
+      ->Ordering.Products_Extension.thenIssuesCommand(
         OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
       )
-      ->Sync.whenCommand(OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}))
-      ->Sync.thenEvent(
+      ->Ordering.SyncCatalogProduct.whenCommand(
+        OrderingPlugin.SyncCatalogProduct.RelistSyncedProduct({productId: p1}),
+      )
+      ->Ordering.SyncCatalogProduct.thenEvent(
         OrderingPlugin.SyncCatalogProduct.CatalogProductRelisted({
           productId: p1,
           name: book,
           price: bookPrice,
         }),
       )
-      ->Place.whenCommand(
+      ->Ordering.PlaceOrder.whenCommand(
         OrderingPlugin.PlaceOrder.PlaceOrder({
           orderId: o1,
           customerId: c1,
@@ -201,7 +199,7 @@ describe("Hybrid cross-plugin flow", () => {
           shippingMethod: Standard,
         }),
       )
-      ->Place.thenEvent(
+      ->Ordering.PlaceOrder.thenEvent(
         OrderingPlugin.PlaceOrder.OrderPlaced({
           orderId: o1,
           customerId: c1,
@@ -219,7 +217,7 @@ describe("Hybrid cross-plugin flow", () => {
     "Tier 3 — a batch order fans out to one demand command per product, round-tripping into Catalog",
     () =>
       start
-      ->Sync.givenEvents([
+      ->Ordering.SyncCatalogProduct.givenEvents([
         OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
           productId: p1,
           name: book,
@@ -231,7 +229,7 @@ describe("Hybrid cross-plugin flow", () => {
           price: penPrice,
         }),
       ])
-      ->Place.whenCommand(
+      ->Ordering.PlaceOrder.whenCommand(
         OrderingPlugin.PlaceOrder.PlaceOrder({
           orderId: o1,
           customerId: c1,
@@ -239,7 +237,7 @@ describe("Hybrid cross-plugin flow", () => {
           shippingMethod: Standard,
         }),
       )
-      ->Place.thenEvent(
+      ->Ordering.PlaceOrder.thenEvent(
         OrderingPlugin.PlaceOrder.OrderPlaced({
           orderId: o1,
           customerId: c1,
@@ -250,8 +248,8 @@ describe("Hybrid cross-plugin flow", () => {
           firstProductName: book,
         }),
       )
-      ->OrdersEp.whenPublished
-      ->OrdersEp.thenPublicEvents([
+      ->Ordering.Orders_ExtensionPoint.whenPublished
+      ->Ordering.Orders_ExtensionPoint.thenPublicEvents([
         OrderingSpec.Orders_ExtensionPoint.ItemOrdered({
           productId: "p1",
           orderId: "o1",
@@ -263,15 +261,15 @@ describe("Hybrid cross-plugin flow", () => {
           customerId: "c1",
         }),
       ])
-      ->OrdersExt.whenReacts
-      ->OrdersExt.thenIssuesCommands([
+      ->Catalog.Orders_Extension.whenReacts
+      ->Catalog.Orders_Extension.thenIssuesCommands([
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p1, orderId: "o1"}),
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p2, orderId: "o1"}),
       ])
-      ->Demand.whenCommand(
+      ->Catalog.RecordProductDemand.whenCommand(
         CatalogPlugin.RecordProductDemand.RecordDemand({productId: p1, orderId: "o1"}),
       )
-      ->Demand.thenEvent(
+      ->Catalog.RecordProductDemand.thenEvent(
         CatalogPlugin.RecordProductDemand.ProductDemandRecorded({
           productId: p1,
           orderId: "o1",

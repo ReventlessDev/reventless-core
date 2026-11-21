@@ -231,11 +231,7 @@ function MakeResolver(Primary) {
       if (match === undefined) {
         return {
           TAG: "Error",
-          _0: {
-            TAG: "QueryRowsMismatch",
-            expected: [`@resolves on field "` + field + `" is missing from ` + Primary.name + `.config.idResolvers`],
-            actual: []
-          }
+          _0: missing(`@resolves on field "` + field + `" is missing from ` + Primary.name + `.config.idResolvers`)
         };
       }
       let pstate = Stdlib_Array.findMap(scenario.primary, param => {
@@ -267,11 +263,7 @@ function MakeResolver(Primary) {
       if (match === undefined) {
         return {
           TAG: "Error",
-          _0: {
-            TAG: "QueryRowsMismatch",
-            expected: [`@resolvesMany on field "` + field + `" is missing from ` + Primary.name + `.config.idsResolvers`],
-            actual: []
-          }
+          _0: missing(`@resolvesMany on field "` + field + `" is missing from ` + Primary.name + `.config.idsResolvers`)
         };
       }
       let pstate = Stdlib_Array.findMap(scenario.primary, param => {

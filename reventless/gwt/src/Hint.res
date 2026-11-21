@@ -8,12 +8,14 @@
 // `locus` is a dotted pointer like "CategoryDecision.decide" filled in by
 // the DSL at `then*` call time when the slice module name is in scope, else a
 // generic pointer. A `StateMismatch` names its fold, so a view's points at
-// `project` rather than `evolve`.
+// `project` rather than `evolve`. A mismatch a flow found carries its step, and
+// the locus names the part that step ran.
 
 type t = {
   locus: string,
   branch: option<string>,
   message: string,
+  step?: Outcome.step,
 }
 
 // The constructor name of an encoded variant, if any: a payload-less variant is
@@ -32,7 +34,15 @@ let variantTag = (j: JSON.t): option<string> =>
 // Generic fallback mapping, parameterised by the slice module name when the
 // caller can supply one. Branch specificity lives in the DSLs (they can pass
 // a richer hint through `withLocus` below).
-let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
+let rec forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
+  switch Outcome.stepOf(m) {
+  | Some(step) => {
+      ...forMismatchAt(~slice=step.part->Option.mapOr(slice, p => p.name), m),
+      step,
+    }
+  | None => forMismatchAt(~slice, m)
+  }
+and forMismatchAt = (~slice, m: Outcome.mismatch): t =>
   switch m {
   | EventsMismatch(_) => {
       locus: `${slice}.decide`,
@@ -117,17 +127,43 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
     }
   }
 
-// Convert to the JSON shape documented in §3.3.
+let stepJson = ({number, total, verb, ?part}: Outcome.step): JSON.t => {
+  let obj = Dict.make()
+  obj->Dict.set("number", JSON.Encode.int(number))
+  obj->Dict.set("total", JSON.Encode.int(total))
+  obj->Dict.set("verb", JSON.Encode.string(verb))
+  part->Option.forEach(({kind, name}) =>
+    obj->Dict.set(
+      "part",
+      JSON.Encode.object(
+        Dict.fromArray([
+          ("kind", JSON.Encode.string((kind :> string))),
+          ("name", JSON.Encode.string(name)),
+        ]),
+      ),
+    )
+  )
+  JSON.Encode.object(obj)
+}
+
+// Convert to the JSON shape documented in §3.3, with the flow's step when a
+// flow found the mismatch.
 let toJson = (h: t): JSON.t => {
   let obj = Dict.make()
   obj->Dict.set("locus", JSON.Encode.string(h.locus))
   obj->Dict.set("branch", h.branch->Option.mapOr(JSON.Encode.null, JSON.Encode.string))
   obj->Dict.set("message", JSON.Encode.string(h.message))
+  h.step->Option.forEach(step => obj->Dict.set("step", stepJson(step)))
   JSON.Encode.object(obj)
 }
 
-let format = (h: t) =>
-  switch h.branch {
+let format = (h: t) => {
+  let hint = switch h.branch {
   | None => `hint: ${h.message}\n      Look at ${h.locus}.`
   | Some(b) => `hint: ${h.message}\n      Look at ${h.locus}'s branch ${b}.`
   }
+  switch h.step {
+  | Some(step) => `At ${Outcome.describeStep(step)}.\n${hint}`
+  | None => hint
+  }
+}

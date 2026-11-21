@@ -9,6 +9,50 @@ function fail(m) {
   };
 }
 
+function stepOf(m) {
+  switch (m.TAG) {
+    case "StateMismatch" :
+      return m.step;
+    case "NoEventExpected" :
+      return m.step;
+    case "ErrorMismatch" :
+    case "ScopeDegraded" :
+      return m.step;
+    default:
+      return m.step;
+  }
+}
+
+function atStep(m, step) {
+  switch (m.TAG) {
+    case "StateMismatch" :
+      let newrecord = {...m};
+      newrecord.step = step;
+      return newrecord;
+    case "NoEventExpected" :
+      let newrecord$1 = {...m};
+      newrecord$1.step = step;
+      return newrecord$1;
+    case "ErrorMismatch" :
+    case "ScopeDegraded" :
+      break;
+    default:
+      let newrecord$2 = {...m};
+      newrecord$2.step = step;
+      return newrecord$2;
+  }
+  let newrecord$3 = {...m};
+  newrecord$3.step = step;
+  return newrecord$3;
+}
+
+function describeStep(param) {
+  let part = param.part;
+  let verb = param.verb;
+  let at = part !== undefined ? part.name + `.` + verb : verb;
+  return `step ` + param.number.toString() + ` of ` + param.total.toString() + `, ` + at;
+}
+
 function kindOf(m) {
   switch (m.TAG) {
     case "EventsMismatch" :
@@ -94,6 +138,9 @@ let pass = {
 export {
   pass,
   fail,
+  stepOf,
+  atStep,
+  describeStep,
   kindOf,
   kindName,
   stringifyJson,
