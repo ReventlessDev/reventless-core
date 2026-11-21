@@ -134,3 +134,175 @@ describe("the lifecycle trail:", () => {
     )->toEqual(Some(("o1", Placed)))
   })
 })
+
+// The dates derived from the trail, as stored. A typed path (the builder and the
+// callback both rewrite with `rewriteAction` and save through
+// `QueryDb_Operations`) and the JSON path a deployed slice takes.
+module OrdersSpec = {
+  module Id = Reventless.Id.StringPure
+  let name = "TrailOrders"
+  let moduleUrl: string = %raw(`import.meta.url`)
+  @schema
+  type state = order
+  let config = Reventless.ReadModel.config()
+  let subIdConfig = None
+}
+
+module Orders = QueryDb_Operations.Make(
+  OrdersSpec,
+  {
+    let jsonOps = QueryDbFixtures.mockJsonOps
+  },
+)
+
+let derivedOf = (row: dict<JSON.t>) =>
+  row
+  ->Dict.toArray
+  ->Array.filter(((k, _)) => k->String.startsWith("_entered_") || k->String.startsWith("_visits_"))
+  ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+
+let typedStored = async (actions: array<(string, action<string, order>)>) => {
+  QueryDbFixtures.reset()
+  switch run(actions) {
+  | Some(state) =>
+    let _ = await Orders.save("o1", state, Init, None)
+  | None => ()
+  }
+  QueryDbFixtures.store.contents
+  ->Dict.get("o1")
+  ->Option.flatMap(rows => rows->Array.get(0))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.mapOr([], derivedOf)
+}
+
+let jsonOrder = (state: order) =>
+  state->Reventless.Util_Sury.toJson(orderSchema)->JSON.Decode.object->Option.getOrThrow
+
+let withLifecycle = (row: JSON.t, value) =>
+  switch row->JSON.Decode.object {
+  | Some(d) =>
+    let d = d->Dict.copy
+    d->Dict.set("lifecycle", JSON.Encode.string(value))
+    d->JSON.Encode.object
+  | None => row
+  }
+
+let jsonStored = (actions: array<(string, action<string, JSON.t>)>) =>
+  actions
+  ->Array.reduce(None, (state, (at, action)) =>
+    switch (
+      Projection.rewriteJsonAction(action, ~at, ~stateSchema=Some(orderSchema->S.castToUnknown)),
+      state,
+    ) {
+    | (Set(_, s), _) => Some(s)
+    | (Update(_, fn), Some(s)) => Some(fn(s))
+    | _ => state
+    }
+  )
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.mapOr([], derivedOf)
+
+let s = JSON.Encode.string
+let n = JSON.Encode.int
+
+let created = [
+  ("_entered_Placed", s(nine)),
+  ("_entered_Placed_first", s(nine)),
+  ("_entered_current", s(nine)),
+  ("_visits_Placed", n(1)),
+]
+let shipped = [
+  ("_entered_Placed", s(nine)),
+  ("_entered_Placed_first", s(nine)),
+  ("_entered_Shipped", s(ten)),
+  ("_entered_Shipped_first", s(ten)),
+  ("_entered_current", s(ten)),
+  ("_visits_Placed", n(1)),
+  ("_visits_Shipped", n(1)),
+]
+let reopened = [
+  ("_entered_Cancelled", s(ten)),
+  ("_entered_Cancelled_first", s(ten)),
+  ("_entered_Placed", s(eleven)),
+  ("_entered_Placed_first", s(nine)),
+  ("_entered_current", s(eleven)),
+  ("_visits_Cancelled", n(1)),
+  ("_visits_Placed", n(2)),
+]
+
+describe("the dates derived from a trail, on a typed save:", () => {
+  testPromise("a create", async () =>
+    expect(await typedStored([(nine, Set("o1", placed))]))->toEqual(created)
+  )
+  testPromise("a transition", async () =>
+    expect(
+      await typedStored([
+        (nine, Set("o1", placed)),
+        (ten, Update("o1", s => {...s, lifecycle: Shipped})),
+      ]),
+    )->toEqual(shipped)
+  )
+  testPromise("a reopen keeps the first visit and counts both", async () =>
+    expect(
+      await typedStored([
+        (nine, Set("o1", placed)),
+        (ten, Update("o1", s => {...s, lifecycle: Cancelled})),
+        (eleven, Update("o1", s => {...s, lifecycle: Placed})),
+      ]),
+    )->toEqual(reopened)
+  )
+  testPromise("an update that changes no state", async () =>
+    expect(
+      await typedStored([
+        (nine, Set("o1", placed)),
+        (ten, Update("o1", s => {...s, orderId: "o2"})),
+      ]),
+    )->toEqual(created)
+  )
+})
+
+describe("the dates derived from a trail, on the JSON path:", () => {
+  // Fresh per case: the JSON path rewrites the state it is handed in place.
+  let placedJson = () => jsonOrder(placed)->JSON.Encode.object
+  testSync("a create", () =>
+    expect(jsonStored([(nine, Set("o1", placedJson()))]))->toEqual(created)
+  )
+  testSync("a transition", () =>
+    expect(
+      jsonStored([
+        (nine, Set("o1", placedJson())),
+        (ten, Update("o1", r => r->withLifecycle("Shipped"))),
+      ]),
+    )->toEqual(shipped)
+  )
+  testSync("a reopen keeps the first visit and counts both", () =>
+    expect(
+      jsonStored([
+        (nine, Set("o1", placedJson())),
+        (ten, Update("o1", r => r->withLifecycle("Cancelled"))),
+        (eleven, Update("o1", r => r->withLifecycle("Placed"))),
+      ]),
+    )->toEqual(reopened)
+  )
+  testSync("an update that changes no state", () =>
+    expect(
+      jsonStored([
+        (nine, Set("o1", placedJson())),
+        (
+          ten,
+          Update(
+            "o1",
+            r =>
+              switch r->JSON.Decode.object {
+              | Some(d) =>
+                let d = d->Dict.copy
+                d->Dict.set("orderId", s("o2"))
+                d->JSON.Encode.object
+              | None => r
+              },
+          ),
+        ),
+      ]),
+    )->toEqual(created)
+  )
+})

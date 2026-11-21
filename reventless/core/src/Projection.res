@@ -52,13 +52,15 @@ let applyOverlays = (
       JSON.Encode.string(Reventless.DisplayName.computeLabel(spec, stateDict)),
     )
   )
-  trail->Option.forEach(((trailField, lifecycleField)) =>
+  trail->Option.forEach(((trailField, lifecycleField)) => {
     switch stateDict->Dict.get(lifecycleField) {
     | Some(value) if Some(value) != priorLifecycle =>
       stateDict->Reventless.Lifecycle.Trail.record(~field=trailField, ~state=value, ~at)
     | _ => ()
     }
-  )
+    // Every pass, not only a transition: they are a function of the trail.
+    stateDict->Reventless.Lifecycle.Trail.writeDerived(~field=trailField)
+  })
 }
 
 // The action shapes, once, over a lens onto whatever a state is on this path:

@@ -114,6 +114,12 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       }
     )
 
+  // A typed state cannot hold a trail's derived dates, so a typed save writes
+  // them again from the trail it encodes.
+  let trailField = Reventless.Lifecycle.Trail.fieldName(ReadModelSpec.stateSchema->S.castToUnknown)
+  let injectTrailDates = dict =>
+    trailField->Option.forEach(field => dict->Reventless.Lifecycle.Trail.writeDerived(~field))
+
   let stampUnionMembers = dict => {
     Reventless.TaggedUnion.stampInto(
       ~schema=ReadModelSpec.stateSchema->S.castToUnknown,
@@ -128,6 +134,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
       injectSubId(dict, state)
       injectCompositeIndexAttrs(dict)
+      injectTrailDates(dict)
       stampUnionMembers(dict)
       RowChange.stampInto(dict)
       let json = JSON.Encode.object(dict)
@@ -144,6 +151,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
           dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
           injectSubId(dict, state)
           injectCompositeIndexAttrs(dict)
+          injectTrailDates(dict)
           stampUnionMembers(dict)
           RowChange.stampInto(dict)
           let json = JSON.Encode.object(dict)

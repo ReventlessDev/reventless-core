@@ -6,6 +6,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Effect from "effect/Effect";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -94,6 +95,8 @@ function Make(ReadModelSpec) {
         }
       });
     };
+    let trailField = Lifecycle$Reventless.Trail.fieldName(ReadModelSpec.stateSchema);
+    let injectTrailDates = dict => Stdlib_Option.forEach(trailField, field => Lifecycle$Reventless.Trail.writeDerived(dict, field));
     let stampUnionMembers = dict => {
       TaggedUnion$Reventless.stampInto(ReadModelSpec.stateSchema, dict);
       reportUnstamped(dict);
@@ -104,6 +107,7 @@ function Make(ReadModelSpec) {
         dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
         injectSubId(dict, state);
         injectCompositeIndexAttrs(dict);
+        injectTrailDates(dict);
         stampUnionMembers(dict);
         RowChange$ReventlessCore.stampInto(dict);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
@@ -131,6 +135,7 @@ function Make(ReadModelSpec) {
             dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
             injectSubId(dict, state);
             injectCompositeIndexAttrs(dict);
+            injectTrailDates(dict);
             stampUnionMembers(dict);
             RowChange$ReventlessCore.stampInto(dict);
             return {
@@ -178,6 +183,8 @@ function Make(ReadModelSpec) {
       injectCompositeIndexAttrs: injectCompositeIndexAttrs,
       declaredUnionFields: declaredUnionFields,
       reportUnstamped: reportUnstamped,
+      trailField: trailField,
+      injectTrailDates: injectTrailDates,
       stampUnionMembers: stampUnionMembers,
       save: save,
       saveBatch: saveBatch,

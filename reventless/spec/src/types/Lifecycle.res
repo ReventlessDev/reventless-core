@@ -104,4 +104,65 @@ module Trail = {
       entries->Array.concat([entry->JSON.Encode.object])->JSON.Encode.array,
     )
   }
+
+  /** When a row first and last entered one state, and how many times. */
+  type visits = {first: string, latest: string, visits: int}
+
+  /** A trail's dates by state name, and when the row entered its current state. */
+  type derived = {byState: dict<visits>, current?: string}
+
+  /** The trail's dates per state, from its JSON entries. An entry whose state is
+      not a string, or that has no `at`, is skipped. */
+  let derive = (entries: array<JSON.t>): derived =>
+    entries->Array.reduce({byState: Dict.make()}, (acc, entry) =>
+      switch entry->JSON.Decode.object {
+      | Some(e) =>
+        switch (
+          e->Dict.get("state")->Option.flatMap(JSON.Decode.string),
+          e->Dict.get("at")->Option.flatMap(JSON.Decode.string),
+        ) {
+        | (Some(state), Some(at)) =>
+          let next = switch acc.byState->Dict.get(state) {
+          | Some({first, visits}) => {first, latest: at, visits: visits + 1}
+          | None => {first: at, latest: at, visits: 1}
+          }
+          acc.byState->Dict.set(state, next)
+          {...acc, current: at}
+        | _ => acc
+        }
+      | None => acc
+      }
+    )
+
+  let enteredPrefix = "_entered_"
+  let visitsPrefix = "_visits_"
+
+  /** The synthetic attribute names a state's dates are stored under. */
+  let enteredAttr = state => enteredPrefix ++ state
+  let enteredFirstAttr = state => enteredPrefix ++ state ++ "_first"
+  let visitsAttr = state => visitsPrefix ++ state
+  let enteredCurrentAttr = "_entered_current"
+
+  /** Replaces the derived attributes on a state's JSON with those of the trail
+      at `field`. A row without a trail gets none. */
+  let writeDerived = (stateDict: dict<JSON.t>, ~field: string): unit => {
+    stateDict
+    ->Dict.keysToArray
+    ->Array.forEach(key =>
+      if key->String.startsWith(enteredPrefix) || key->String.startsWith(visitsPrefix) {
+        stateDict->Dict.delete(key)
+      }
+    )
+    switch stateDict->Dict.get(field) {
+    | Some(Array(entries)) =>
+      let {byState, ?current} = derive(entries)
+      byState->Dict.forEachWithKey(({first, latest, visits}, state) => {
+        stateDict->Dict.set(enteredAttr(state), JSON.Encode.string(latest))
+        stateDict->Dict.set(enteredFirstAttr(state), JSON.Encode.string(first))
+        stateDict->Dict.set(visitsAttr(state), JSON.Encode.int(visits))
+      })
+      current->Option.forEach(at => stateDict->Dict.set(enteredCurrentAttr, JSON.Encode.string(at)))
+    | _ => ()
+    }
+  }
 }

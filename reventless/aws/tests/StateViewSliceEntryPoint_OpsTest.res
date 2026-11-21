@@ -189,7 +189,7 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
   // The deployed slice assembles JSON-level operations instead of going through
   // the typed rewrite, so the trail has to be appended on this path too — the
   // same gap `withDisplayName` was written to close.
-  test("appends a trail entry from the envelope's producer time", async () => {
+  test("appends a trail entry from the envelope's producer time, and its dates", async () => {
     let saved = []
     let handler = StateViewSliceEntryPoint_Ops.makeJsonEventsHandler(
       ~sliceName="TrailSlice",
@@ -217,6 +217,10 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
               obj([("state", str("Placed")), ("at", str("2026-03-02T09:00:00Z"))]),
             ]),
           ),
+          ("_entered_Placed", str("2026-03-02T09:00:00Z")),
+          ("_entered_Placed_first", str("2026-03-02T09:00:00Z")),
+          ("_visits_Placed", JSON.Encode.int(1)),
+          ("_entered_current", str("2026-03-02T09:00:00Z")),
         ]),
       ),
     ])

@@ -116,3 +116,40 @@ describe("Lifecycle:", () => {
     )
   })
 })
+
+// The dates a trail answers by state: the first and latest visit and how many,
+// and when the row entered the state it is in.
+describe("Lifecycle.Trail.writeDerived:", () => {
+  let reopened = `{"trail":[{"state":"Placed","at":"2026-03-02T09:00:00Z"},{"state":"Cancelled","at":"2026-03-02T10:00:00Z"},{"state":"Placed","at":"2026-03-02T11:00:00Z"}]}`
+
+  testSync("writes each state's first and latest visit, its visits, and the current entry", () => {
+    let state = dict(reopened)
+    state->Lifecycle.Trail.writeDerived(~field="trail")
+    let derived =
+      state
+      ->Dict.toArray
+      ->Array.filter(((k, _)) => k != "trail")
+      ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+    expect(derived)->toEqual([
+      ("_entered_Cancelled", JSON.Encode.string("2026-03-02T10:00:00Z")),
+      ("_entered_Cancelled_first", JSON.Encode.string("2026-03-02T10:00:00Z")),
+      ("_entered_Placed", JSON.Encode.string("2026-03-02T11:00:00Z")),
+      ("_entered_Placed_first", JSON.Encode.string("2026-03-02T09:00:00Z")),
+      ("_entered_current", JSON.Encode.string("2026-03-02T11:00:00Z")),
+      ("_visits_Cancelled", JSON.Encode.int(1)),
+      ("_visits_Placed", JSON.Encode.int(2)),
+    ])
+  })
+
+  testSync("drops dates the trail no longer holds", () => {
+    let state = dict(`{"trail":[],"_entered_Shipped":"2026-03-01T09:00:00Z","_visits_Shipped":1,"_entered_current":"x"}`)
+    state->Lifecycle.Trail.writeDerived(~field="trail")
+    expect(state->JSON.Encode.object->JSON.stringify)->toBe(`{"trail":[]}`)
+  })
+
+  testSync("writes nothing for a row without a trail", () => {
+    let state = dict(`{"lifecycle":"Placed"}`)
+    state->Lifecycle.Trail.writeDerived(~field="trail")
+    expect(state->JSON.Encode.object->JSON.stringify)->toBe(`{"lifecycle":"Placed"}`)
+  })
+})

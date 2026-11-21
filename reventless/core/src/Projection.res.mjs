@@ -51,10 +51,12 @@ function applyOverlays(stateDict, param, priorLifecycle, at) {
     stateDict["displayName"] = DisplayName$Reventless.computeLabel(spec, stateDict);
   });
   Stdlib_Option.forEach(param.trail, param => {
+    let trailField = param[0];
     let value = stateDict[param[1]];
     if (value !== undefined && Primitive_object.notequal(value, priorLifecycle)) {
-      return Lifecycle$Reventless.Trail.record(stateDict, param[0], value, at);
+      Lifecycle$Reventless.Trail.record(stateDict, trailField, value, at);
     }
+    Lifecycle$Reventless.Trail.writeDerived(stateDict, trailField);
   });
 }
 

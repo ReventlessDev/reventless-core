@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · not started. Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) done). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -85,6 +85,12 @@ one that does not gets the same call.
 *Done when* `LifecycleTrailTest` asserts the attributes after a create, a transition, a reopen (two
 visits to `Placed`) and an update that changes no state, on the builder, the callback and the JSON
 path; and the AWS state-view entry point's test asserts them on a saved item.
+*Done* 2026-11-21. The trail is appended on four paths: the state-view builder and callback and
+the read-model callback (`rewriteAction`), and the AWS state-view entry point (`rewriteJsonAction`);
+all four go through `applyOverlays`. A typed state cannot hold the attributes (sury drops them when
+it decodes the row back), so `QueryDb_Operations` writes them again from the trail at every typed
+save; `Lifecycle.Trail.writeDerived` is the one function both call. It also removes attributes the
+trail no longer holds.
 
 **QDS2 Read.** `SchemaType.trailShape` gains the `<trailField>Entered` object of
 [QDD8](#3-decisions), one field per lifecycle state, and every backend's row reader fills it from the
