@@ -812,7 +812,8 @@ let step_names =
     "thenNotUnderstood"; "thenRefusedInput"; "thenSent"; "thenNothingSent"; "thenOutbound";
     "thenOutboundNothing"; "thenTodoStatus"; "thenRetryRecorded"; "thenPublicEvent";
     "thenPublicEvents"; "whenIssued"; "thenRow"; "thenRows"; "thenNoRow"; "thenRowShows";
-    "thenAccepted"; "whenTimePasses"; "asCaller"; "whenSettled"; "thenNothingElseReacts" ]
+    "thenAccepted"; "whenTimePasses"; "asCaller"; "whenSettled"; "thenNothingElseReacts";
+    "whenSent"; "whenQueried"; "thenListed"; "thenCounted"; "whenRuns"; "thenDid"; "thenDidNothing" ]
 
 (* A GWT module built by a functor is called qualified — `CustomerGwt.thenState`,
    `Auto.thenIssuesCommand` — and the step is the same step, so the last segment
@@ -1069,6 +1070,22 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
       | None -> []
     in
     mk "when" (one StepKind.Issued ~values ())
+  (* A way out sends what it queued, against fakes for the outside services. *)
+  | "whenSent" -> mk "when" (one StepKind.Process ())
+  (* A query over a view: the field, the value, and what else the query names. *)
+  | "whenQueried" ->
+    mk "when" (on_last (fun p -> one StepKind.Input ~element:"query" ~values:(entries_of ?src p) ()))
+  | "thenListed" -> mk "then" (on_last (each ~none:StepKind.NoState (state_entry ?src)))
+  | "thenCounted" ->
+    mk "then"
+      (on_last (fun p ->
+           one StepKind.State ~element:"count"
+             ~values:(Option.to_list (Option.map (fun v -> `List [ `String "count"; v ]) (example_of_expr ?src p)))
+             ()))
+  (* A side effect runs over the record; what it did, by its mock's record. *)
+  | "whenRuns" -> mk "when" (one StepKind.Process ())
+  | "thenDid" -> mk "then" (on_last (each ~none:StepKind.NothingSent (ctor_entry ?src ~kind:StepKind.SideEffect)))
+  | "thenDidNothing" -> mk "then" (one StepKind.NothingSent ())
   (* The app does the rest: reactions and their commands until nothing is sent. *)
   | "whenSettled" -> mk "when" (one StepKind.Sweep ())
   (* No reacting part the flow did not name would send a command. *)
@@ -1185,7 +1202,8 @@ type part = { system : string option; part_kind : string option; part_name : str
 let step_functors =
   [ ("DecisionStep", "Decision"); ("AggregateStep", "Aggregate"); ("ViewStep", "View");
     ("AutomationStep", "Automation"); ("OutboundStep", "Outbound"); ("InboundStep", "Inbound");
-    ("ExtensionPointStep", "ExtensionPoint"); ("ExtensionStep", "Extension") ]
+    ("ExtensionPointStep", "ExtensionPoint"); ("ExtensionStep", "Extension");
+    ("QueryStep", "Query"); ("SideEffectStep", "SideEffect") ]
 
 (* The suffixes a port's module carries beyond its name: its mapping as written,
    or the name Plugin.res and the generated steps give it. *)
@@ -1246,7 +1264,9 @@ let kind_of_calls (calls : call list) : string option =
   let has verbs = List.exists (fun (c : call) -> List.mem c.verb verbs) calls in
   if has [ "whenPublished"; "thenPublicEvent"; "thenPublicEvents" ] then Some "ExtensionPoint"
   else if has [ "whenReceived" ] then Some "Inbound"
-  else if has [ "thenOutbound"; "thenOutboundNothing" ] then Some "Outbound"
+  else if has [ "thenOutbound"; "thenOutboundNothing"; "whenSent"; "thenSent" ] then Some "Outbound"
+  else if has [ "whenQueried"; "thenListed"; "thenCounted" ] then Some "Query"
+  else if has [ "whenRuns"; "thenDid"; "thenDidNothing" ] then Some "SideEffect"
   else if has [ "thenViewState"; "thenViewStates"; "thenRow"; "thenRows"; "thenNoRow"; "thenRowShows" ]
   then Some "View"
   else if has [ "whenReacts"; "whenTimePasses" ] then Some "Automation"

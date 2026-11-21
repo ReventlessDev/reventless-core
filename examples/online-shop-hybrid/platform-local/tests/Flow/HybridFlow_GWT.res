@@ -270,20 +270,4 @@ describe("Hybrid cross-plugin flow", () => {
       // Nothing else in either system reacts to this order.
       ->thenNothingElseReacts([Catalog.parts, Ordering.parts]),
   )
-
-  // The steps above name the slices a scenario walks through. These two name
-  // every slice in each plugin, because the property is the boundary's and not
-  // any slice's: one slice that cannot resolve its partition discards the
-  // derived scope for all of them, and `AddProduct`'s category check silently
-  // stops reading categories. Both plugins pass their own per-slice tests
-  // throughout, which is why the assertion belongs here.
-  // scenario-id: 9bc616d7-83a3-47c3-aa1d-3113656f16b8
-  test("the Catalog boundary derives its DCB scope", () =>
-    start->thenBoundaryScopeResolves(~name="Catalog", CatalogPlugin.Plugin.dcbSliceSchemas)
-  )
-
-  // scenario-id: fd69ab9b-c245-4bc8-a8fb-f677d63c91fd
-  test("the Ordering boundary derives its DCB scope", () =>
-    start->thenBoundaryScopeResolves(~name="Ordering", OrderingPlugin.Plugin.dcbSliceSchemas)
-  )
 })

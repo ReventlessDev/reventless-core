@@ -36,7 +36,12 @@ let formatted = (source: string, ~cwd: string): string =>
     {cwd, encoding: "utf8", input: source},
   )
 
-type composed = {config: Config.config, source: string, flowSteps: option<string>}
+type composed = {
+  config: Config.config,
+  source: string,
+  flowSteps: option<string>,
+  boundaryTest: option<string>,
+}
 
 let compose = (~srcDir: string, ~variant: Config.variant): composed => {
   let config = {...Config.read(~srcDir), variant}
@@ -70,7 +75,12 @@ let compose = (~srcDir: string, ~variant: Config.variant): composed => {
     ~admissionDoors,
     ~aliases=Packaged.aliases(packaged),
   )
-  {config, source, flowSteps: Codegen.renderFlowSteps(~resolved, ~discovered)}
+  {
+    config,
+    source,
+    flowSteps: Codegen.renderFlowSteps(~resolved, ~discovered),
+    boundaryTest: Codegen.renderBoundaryTest(~config, ~resolved),
+  }
 }
 
 /** The composition for the plugin whose sources are `srcDir`, unformatted.
@@ -104,7 +114,7 @@ let main = () =>
   CliArgs.run(cli, async ({variant, srcDir: srcDirArg}) => {
     // Resolve to absolute path (handles relative paths and trailing slashes)
     let srcDir = NodePath.resolve([srcDirArg])
-    let {config, source, flowSteps} = compose(~srcDir, ~variant)
+    let {config, source, flowSteps, boundaryTest} = compose(~srcDir, ~variant)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir
@@ -117,13 +127,16 @@ let main = () =>
 
     switch variant {
     | Config.Composition =>
-      switch (flowSteps, flowStepsDir(~srcDir)) {
-      | (Some(steps), Some(testsDir)) =>
-        let flowPath = NodePath.join([testsDir, "Flow.res"])
-        NodeFs.writeFileSync(flowPath, steps->formatted(~cwd=testsDir))
-        Console.log("Generated: " ++ flowPath)
-      | _ => ()
-      }
+      let writeTest = (source, ~file) =>
+        switch (source, flowStepsDir(~srcDir)) {
+        | (Some(source), Some(testsDir)) =>
+          let path = NodePath.join([testsDir, file])
+          NodeFs.writeFileSync(path, source->formatted(~cwd=testsDir))
+          Console.log("Generated: " ++ path)
+        | _ => ()
+        }
+      writeTest(flowSteps, ~file="Flow.res")
+      writeTest(boundaryTest, ~file="DcbBoundary_GWT.res")
     | Config.Aws(_) =>
       let mainSource = Codegen.renderMain(~config)
       let mainPath = NodePath.join([outputDir, "Main.res"])

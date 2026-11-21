@@ -748,6 +748,24 @@ let renderFlowSteps = (
   }
 }
 
+// ── Boundary test (tests/DcbBoundary_GWT.res) ───────────────────────────────
+// The check that the system's DCB boundary derives its scope over all its
+// slices, as a test named for the system: no author has to remember to write it.
+let renderBoundaryTest = (~config: Config.config, ~resolved: Pairing.resolved): option<string> =>
+  if resolved.stateChangeSlices->Array.length == 0 {
+    None
+  } else {
+    Some(
+      [
+        "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+        "",
+        `// The ${config.name} boundary derives its DCB scope over all its slices.`,
+        `ReventlessGwt.Boundary_GWT.test(~system="${config.name}", Plugin.dcbSliceSchemas)`,
+        "",
+      ]->Array.join("\n"),
+    )
+  }
+
 // ── Composition-variant render ───────────────────────────────────────────────
 
 let renderComposition = (

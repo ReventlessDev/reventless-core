@@ -125,8 +125,9 @@ describe("a plugin composing slices from a package", () => {
 describe("a flow's steps, written for the plugin's tests", () => {
   let root = fixture(~pluginJson=listing, ())
   let srcDir = NodePath.join([root, "src"])
-  let steps =
-    PluginGenerator.compose(~srcDir, ~variant=Config.Composition).flowSteps->Option.getOr("")
+  let composed = PluginGenerator.compose(~srcDir, ~variant=Config.Composition)
+  let steps = composed.flowSteps->Option.getOr("")
+  let boundary = composed.boundaryTest->Option.getOr("")
   let noTestsDir = PluginGenerator.flowStepsDir(~srcDir)
   write(root, "tests/.keep", "")
   let noGwt = PluginGenerator.flowStepsDir(~srcDir)
@@ -153,6 +154,12 @@ describe("a flow's steps, written for the plugin's tests", () => {
       ),
     )->toBe(true)
   })
+
+  testSync("the system's boundary test is written beside them, named for it", () =>
+    expect(
+      boundary->String.includes(`ReventlessGwt.Boundary_GWT.test(~system="Registration", Plugin.dcbSliceSchemas)`),
+    )->toBe(true)
+  )
 
   testSync("they are written only where the tests can compile them", () => {
     expect(noTestsDir)->toEqual(None)

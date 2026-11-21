@@ -496,6 +496,20 @@ function renderFlowSteps(resolved, discovered) {
   ].join("\n");
 }
 
+function renderBoundaryTest(config, resolved) {
+  if (resolved.stateChangeSlices.length === 0) {
+    return;
+  } else {
+    return [
+      "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+      "",
+      `// The ` + config.name + ` boundary derives its DCB scope over all its slices.`,
+      `ReventlessGwt.Boundary_GWT.test(~system="` + config.name + `", Plugin.dcbSliceSchemas)`,
+      ""
+    ].join("\n");
+  }
+}
+
 function renderComposition(config, resolved, componentChapters, hasLifecycleModel, identities, hasAdmission, admissionDoors, aliases) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
@@ -681,6 +695,7 @@ export {
   pluginNameToEnvBase,
   renderAwsWrapper,
   renderFlowSteps,
+  renderBoundaryTest,
   renderComposition,
   render,
 }

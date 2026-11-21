@@ -16,7 +16,7 @@ import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/U
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
+import * as Query_GWT$ReventlessGwt from "./Query_GWT.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as StubRuntime$ReventlessGwt from "./StubRuntime.res.mjs";
 import * as Decision_GWT$ReventlessGwt from "./Decision_GWT.res.mjs";
@@ -24,8 +24,14 @@ import * as ScheduleTime$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as Automation_GWT$ReventlessGwt from "./Automation_GWT.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as Projection_GWT$ReventlessGwt from "./Projection_GWT.res.mjs";
+import * as SideEffect_GWT$ReventlessGwt from "./SideEffect_GWT.res.mjs";
+import * as Capabilities_Fake$ReventlessGwt from "./Capabilities_Fake.res.mjs";
 import * as InboundTranslation_GWT$ReventlessGwt from "./InboundTranslation_GWT.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
+
+function sourceIdOf(entry) {
+  return entry.id;
+}
 
 function handledBy(s, key) {
   return Stdlib_Option.getOr(s.handled[key], []);
@@ -41,7 +47,7 @@ function markHandled(s, key, ids) {
     lastError: s.lastError,
     lastCommands: s.lastCommands,
     lastPublic: s.lastPublic,
-    lastAggregateId: s.lastAggregateId,
+    lastIds: s.lastIds,
     lastRefusal: s.lastRefusal,
     steps: s.steps,
     at: s.at,
@@ -50,7 +56,10 @@ function markHandled(s, key, ids) {
     caller: s.caller,
     lastForbidden: s.lastForbidden,
     handled: handled,
-    named: s.named
+    named: s.named,
+    lastSent: s.lastSent,
+    lastRows: s.lastRows,
+    lastCalls: s.lastCalls
   };
 }
 
@@ -65,7 +74,7 @@ function markNamed(s, key) {
       lastError: s.lastError,
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: s.at,
@@ -74,7 +83,10 @@ function markNamed(s, key) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named.concat([key])
+      named: s.named.concat([key]),
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     };
   }
 }
@@ -87,9 +99,17 @@ let emptyState_lastCommands = [];
 
 let emptyState_lastPublic = [];
 
+let emptyState_lastIds = [];
+
 let emptyState_handled = {};
 
 let emptyState_named = [];
+
+let emptyState_lastSent = [];
+
+let emptyState_lastRows = [];
+
+let emptyState_lastCalls = [];
 
 let emptyState = {
   log: emptyState_log,
@@ -98,7 +118,7 @@ let emptyState = {
   lastError: undefined,
   lastCommands: emptyState_lastCommands,
   lastPublic: emptyState_lastPublic,
-  lastAggregateId: undefined,
+  lastIds: emptyState_lastIds,
   lastRefusal: undefined,
   steps: 0,
   at: undefined,
@@ -107,7 +127,10 @@ let emptyState = {
   caller: undefined,
   lastForbidden: false,
   handled: emptyState_handled,
-  named: emptyState_named
+  named: emptyState_named,
+  lastSent: emptyState_lastSent,
+  lastRows: emptyState_lastRows,
+  lastCalls: emptyState_lastCalls
 };
 
 let start = Promise.resolve(emptyState);
@@ -122,7 +145,7 @@ function recordOutcome(s, o) {
       lastError: s.lastError,
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: s.at,
@@ -131,7 +154,10 @@ function recordOutcome(s, o) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     };
   } else {
     return s;
@@ -151,7 +177,7 @@ async function enter(flowP, verb, part, at) {
   let s_lastError = s.lastError;
   let s_lastCommands = s.lastCommands;
   let s_lastPublic = s.lastPublic;
-  let s_lastAggregateId = s.lastAggregateId;
+  let s_lastIds = s.lastIds;
   let s_lastRefusal = s.lastRefusal;
   let s_at = {
     number: number,
@@ -165,6 +191,9 @@ async function enter(flowP, verb, part, at) {
   let s_lastForbidden = s.lastForbidden;
   let s_handled = s.handled;
   let s_named = s.named;
+  let s_lastSent = s.lastSent;
+  let s_lastRows = s.lastRows;
+  let s_lastCalls = s.lastCalls;
   let s$1 = {
     log: s_log,
     outcome: s_outcome,
@@ -172,7 +201,7 @@ async function enter(flowP, verb, part, at) {
     lastError: s_lastError,
     lastCommands: s_lastCommands,
     lastPublic: s_lastPublic,
-    lastAggregateId: s_lastAggregateId,
+    lastIds: s_lastIds,
     lastRefusal: s_lastRefusal,
     steps: number,
     at: s_at,
@@ -181,7 +210,10 @@ async function enter(flowP, verb, part, at) {
     caller: s_caller,
     lastForbidden: s_lastForbidden,
     handled: s_handled,
-    named: s_named
+    named: s_named,
+    lastSent: s_lastSent,
+    lastRows: s_lastRows,
+    lastCalls: s_lastCalls
   };
   if (at === undefined) {
     return s$1;
@@ -207,7 +239,7 @@ async function enter(flowP, verb, part, at) {
       lastError: s_lastError,
       lastCommands: s_lastCommands,
       lastPublic: s_lastPublic,
-      lastAggregateId: s_lastAggregateId,
+      lastIds: s_lastIds,
       lastRefusal: s_lastRefusal,
       steps: number,
       at: s_at,
@@ -216,7 +248,10 @@ async function enter(flowP, verb, part, at) {
       caller: s_caller,
       lastForbidden: s_lastForbidden,
       handled: s_handled,
-      named: s_named
+      named: s_named,
+      lastSent: s_lastSent,
+      lastRows: s_lastRows,
+      lastCalls: s_lastCalls
     };
   }
 }
@@ -245,30 +280,34 @@ function entryMatchesQuery(entry, query) {
   }
 }
 
-function appendEvents(log, at, events, schema) {
-  return log.concat(events.map(ev => {
-    let json = Message$ReventlessCore.encode(ev, schema);
-    return {
-      eventType: Message$Reventless.variantNameOfJson(json),
-      tags: DcbTag$Reventless.extractTagsExpanded(schema, ev),
-      json: json,
-      aggregateId: undefined,
-      at: at
-    };
-  }));
+function entryOf(ev, schema, at, aggregateId, id, tagKeys) {
+  let json = Message$ReventlessCore.encode(ev, schema);
+  let eventType = Message$Reventless.variantNameOfJson(json);
+  let tags = DcbTag$Reventless.extractTagsExpanded(schema, ev);
+  let keys = Stdlib_Option.flatMap(tagKeys, keys => keys[eventType]);
+  let indexed = keys !== undefined ? tags.filter(t => keys.includes(t.key)) : tags;
+  return {
+    eventType: eventType,
+    tags: tags,
+    json: json,
+    aggregateId: aggregateId,
+    at: at,
+    id: id !== undefined ? id : (
+        aggregateId !== undefined ? aggregateId : Stdlib_Option.mapOr(indexed[0], "", t => t.value)
+      )
+  };
+}
+
+function appendEvents(log, at, tagKeys, events, schema) {
+  return log.concat(events.map(ev => entryOf(ev, schema, at, undefined, undefined, tagKeys)));
 }
 
 function appendAggregateEvents(log, id, at, events, schema) {
-  return log.concat(events.map(ev => {
-    let json = Message$ReventlessCore.encode(ev, schema);
-    return {
-      eventType: Message$Reventless.variantNameOfJson(json),
-      tags: DcbTag$Reventless.extractTagsExpanded(schema, ev),
-      json: json,
-      aggregateId: id,
-      at: at
-    };
-  }));
+  return log.concat(events.map(ev => entryOf(ev, schema, at, id, undefined, undefined)));
+}
+
+function lastIdsOf(log, n) {
+  return log.slice(log.length - n | 0).map(e => e.id);
 }
 
 function decodeMatching(log, decoder, query) {
@@ -344,7 +383,7 @@ async function after(title) {
     lastError: undefined,
     lastCommands: emptyState_lastCommands,
     lastPublic: emptyState_lastPublic,
-    lastAggregateId: undefined,
+    lastIds: emptyState_lastIds,
     lastRefusal: undefined,
     steps: 0,
     at: undefined,
@@ -353,7 +392,10 @@ async function after(title) {
     caller: undefined,
     lastForbidden: false,
     handled: emptyState_handled,
-    named: emptyState_named
+    named: emptyState_named,
+    lastSent: emptyState_lastSent,
+    lastRows: emptyState_lastRows,
+    lastCalls: emptyState_lastCalls
   });
   let body = flows[title];
   if (body === undefined) {
@@ -369,7 +411,7 @@ async function after(title) {
       lastError: undefined,
       lastCommands: emptyState_lastCommands,
       lastPublic: emptyState_lastPublic,
-      lastAggregateId: undefined,
+      lastIds: emptyState_lastIds,
       lastRefusal: undefined,
       steps: 0,
       at: undefined,
@@ -378,7 +420,10 @@ async function after(title) {
       caller: undefined,
       lastForbidden: false,
       handled: before.handled,
-      named: emptyState_named
+      named: emptyState_named,
+      lastSent: emptyState_lastSent,
+      lastRows: emptyState_lastRows,
+      lastCalls: emptyState_lastCalls
     };
   } else {
     return notRun(`not run: the flow it starts after, "` + title + `", failed`);
@@ -394,7 +439,7 @@ async function asCaller(flowP, who) {
     lastError: init.lastError,
     lastCommands: init.lastCommands,
     lastPublic: init.lastPublic,
-    lastAggregateId: init.lastAggregateId,
+    lastIds: init.lastIds,
     lastRefusal: init.lastRefusal,
     steps: init.steps,
     at: init.at,
@@ -403,42 +448,11 @@ async function asCaller(flowP, who) {
     caller: who,
     lastForbidden: init.lastForbidden,
     handled: init.handled,
-    named: init.named
+    named: init.named,
+    lastSent: init.lastSent,
+    lastRows: init.lastRows,
+    lastCalls: init.lastCalls
   };
-}
-
-async function thenBoundaryScopeResolves(flowP, name, slices) {
-  let s = await enter(flowP, "thenBoundaryScopeResolves", undefined, undefined);
-  let scope = DcbTag$Reventless.deriveEffectiveScope(slices);
-  let shapes = slices.map(DcbTag$Reventless.sliceShape);
-  let hints = DcbValidation$Reventless.validatePartitionHintsVsInference(shapes);
-  let arms = DcbValidation$Reventless.validateCrossPartitionArms(shapes, DcbScopeInference$Reventless.infer(shapes));
-  let contradictions = hints.contradictions.concat(arms.contradictions).map(e => e.sliceName + `: ` + e.message);
-  let partitionReasons;
-  try {
-    DcbTag$Reventless.deriveBoundaryPartition(slices);
-    partitionReasons = contradictions;
-  } catch (raw_err) {
-    let err = Primitive_exceptions.internalToException(raw_err);
-    if (err.RE_EXN_ID === "JsExn") {
-      partitionReasons = contradictions.concat([Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "partition derivation failed")]);
-    } else {
-      throw err;
-    }
-  }
-  let outcome = partitionReasons.length !== 0 ? Outcome$ReventlessGwt.fail({
-      TAG: "PartitionUnresolved",
-      boundary: name,
-      reasons: partitionReasons
-    }) : (
-      scope.droppedCrossPartitionTagKeys.length !== 0 ? Outcome$ReventlessGwt.fail({
-          TAG: "ScopeDegraded",
-          boundary: name,
-          dropped: scope.droppedCrossPartitionTagKeys,
-          ambiguities: scope.ambiguities.map(param => param[0] + `: ` + param[1])
-        }) : Outcome$ReventlessGwt.pass
-    );
-  return recordOutcome(s, outcome);
 }
 
 function eventsWere(s, expectedJson) {
@@ -509,7 +523,7 @@ function forbidden(s, refusal) {
     lastError: refusal,
     lastCommands: s.lastCommands,
     lastPublic: s.lastPublic,
-    lastAggregateId: s.lastAggregateId,
+    lastIds: s.lastIds,
     lastRefusal: s.lastRefusal,
     steps: s.steps,
     at: s.at,
@@ -518,7 +532,10 @@ function forbidden(s, refusal) {
     caller: s.caller,
     lastForbidden: true,
     handled: s.handled,
-    named: s.named
+    named: s.named,
+    lastSent: s.lastSent,
+    lastRows: s.lastRows,
+    lastCalls: s.lastCalls
   };
 }
 
@@ -598,7 +615,7 @@ function runIssued(s, commands, decideOne) {
       lastError: undefined,
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: s.at,
@@ -607,7 +624,10 @@ function runIssued(s, commands, decideOne) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     }, (acc, command) => {
       let match = acc.lastError;
       if (match !== undefined) {
@@ -621,7 +641,7 @@ function runIssued(s, commands, decideOne) {
         lastError: next.lastError,
         lastCommands: next.lastCommands,
         lastPublic: next.lastPublic,
-        lastAggregateId: next.lastAggregateId,
+        lastIds: next.lastIds,
         lastRefusal: next.lastRefusal,
         steps: next.steps,
         at: next.at,
@@ -630,7 +650,10 @@ function runIssued(s, commands, decideOne) {
         caller: next.caller,
         lastForbidden: next.lastForbidden,
         handled: next.handled,
-        named: next.named
+        named: next.named,
+        lastSent: next.lastSent,
+        lastRows: next.lastRows,
+        lastCalls: next.lastCalls
       };
     });
   } else {
@@ -641,7 +664,7 @@ function runIssued(s, commands, decideOne) {
       lastError: undefined,
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: s.at,
@@ -650,7 +673,10 @@ function runIssued(s, commands, decideOne) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     }, Outcome$ReventlessGwt.fail({
       TAG: "TranslateError",
       expected: "a command the decision reads",
@@ -671,13 +697,13 @@ function DecisionStep(Spec) {
     let givenEvents = async (flowP, at, events) => {
       let s = await enter(flowP, "givenEvents", part, at);
       return {
-        log: appendEvents(s.log, s.now, events, Spec.eventSchema),
+        log: appendEvents(s.log, s.now, undefined, events, Spec.eventSchema),
         outcome: s.outcome,
         lastEvents: s.lastEvents,
         lastError: s.lastError,
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
-        lastAggregateId: s.lastAggregateId,
+        lastIds: s.lastIds,
         lastRefusal: s.lastRefusal,
         steps: s.steps,
         at: s.at,
@@ -686,7 +712,10 @@ function DecisionStep(Spec) {
         caller: s.caller,
         lastForbidden: s.lastForbidden,
         handled: s.handled,
-        named: s.named
+        named: s.named,
+        lastSent: s.lastSent,
+        lastRows: s.lastRows,
+        lastCalls: s.lastCalls
       };
     };
     let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema, undefined);
@@ -725,7 +754,7 @@ function DecisionStep(Spec) {
           lastError: Message$ReventlessCore.encode(events._0, Spec.errorSchema),
           lastCommands: s.lastCommands,
           lastPublic: s.lastPublic,
-          lastAggregateId: undefined,
+          lastIds: [],
           lastRefusal: s.lastRefusal,
           steps: s.steps,
           at: s.at,
@@ -734,18 +763,22 @@ function DecisionStep(Spec) {
           caller: s.caller,
           lastForbidden: false,
           handled: s.handled,
-          named: s.named
+          named: s.named,
+          lastSent: s.lastSent,
+          lastRows: s.lastRows,
+          lastCalls: s.lastCalls
         };
       }
       let events$1 = events._0;
+      let log = appendEvents(s.log, s.now, tagKeysByEventType, events$1, Spec.eventSchema);
       return {
-        log: appendEvents(s.log, s.now, events$1, Spec.eventSchema),
+        log: log,
         outcome: s.outcome,
         lastEvents: events$1.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)),
         lastError: undefined,
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
-        lastAggregateId: undefined,
+        lastIds: lastIdsOf(log, events$1.length),
         lastRefusal: s.lastRefusal,
         steps: s.steps,
         at: s.at,
@@ -754,7 +787,10 @@ function DecisionStep(Spec) {
         caller: s.caller,
         lastForbidden: false,
         handled: s.handled,
-        named: s.named
+        named: s.named,
+        lastSent: s.lastSent,
+        lastRows: s.lastRows,
+        lastCalls: s.lastCalls
       };
     };
     let whenCommand = async (flowP, at, command) => {
@@ -841,7 +877,7 @@ function AggregateStep(Spec) {
         lastError: s.lastError,
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
-        lastAggregateId: s.lastAggregateId,
+        lastIds: s.lastIds,
         lastRefusal: s.lastRefusal,
         steps: s.steps,
         at: s.at,
@@ -850,7 +886,10 @@ function AggregateStep(Spec) {
         caller: s.caller,
         lastForbidden: s.lastForbidden,
         handled: s.handled,
-        named: s.named
+        named: s.named,
+        lastSent: s.lastSent,
+        lastRows: s.lastRows,
+        lastCalls: s.lastCalls
       };
     };
     let Guard = Decision_GWT$ReventlessGwt.Acting({
@@ -872,7 +911,7 @@ function AggregateStep(Spec) {
           lastError: Message$ReventlessCore.encode(events._0, Spec.errorSchema),
           lastCommands: s.lastCommands,
           lastPublic: s.lastPublic,
-          lastAggregateId: id,
+          lastIds: [],
           lastRefusal: s.lastRefusal,
           steps: s.steps,
           at: s.at,
@@ -881,7 +920,10 @@ function AggregateStep(Spec) {
           caller: s.caller,
           lastForbidden: false,
           handled: s.handled,
-          named: s.named
+          named: s.named,
+          lastSent: s.lastSent,
+          lastRows: s.lastRows,
+          lastCalls: s.lastCalls
         };
       }
       let events$1 = events._0;
@@ -892,7 +934,7 @@ function AggregateStep(Spec) {
         lastError: undefined,
         lastCommands: s.lastCommands,
         lastPublic: s.lastPublic,
-        lastAggregateId: id,
+        lastIds: events$1.map(param => id),
         lastRefusal: s.lastRefusal,
         steps: s.steps,
         at: s.at,
@@ -901,7 +943,10 @@ function AggregateStep(Spec) {
         caller: s.caller,
         lastForbidden: false,
         handled: s.handled,
-        named: s.named
+        named: s.named,
+        lastSent: s.lastSent,
+        lastRows: s.lastRows,
+        lastCalls: s.lastCalls
       };
     };
     let whenCommand = async (flowP, id, at, command) => {
@@ -1015,8 +1060,207 @@ function ViewStep(Spec) {
   };
 }
 
-function sourceIdOf(entry) {
-  return Stdlib_Option.getOr(entry.aggregateId, "");
+function QueryStep(Spec) {
+  return Projection => {
+    let P = Projection_GWT$ReventlessGwt.Make(Spec)(Projection);
+    let Q = Query_GWT$ReventlessGwt.Make({
+      name: Spec.name,
+      stateSchema: Spec.stateSchema,
+      config: Spec.config,
+      subIdConfig: Spec.subIdConfig,
+      authorization: Spec.authorization
+    });
+    let part_name = Spec.name;
+    let part = {
+      kind: "Query",
+      name: part_name
+    };
+    let consumedDecoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
+    let encState = st => Message$ReventlessCore.encode(st, Spec.stateSchema);
+    let rowsOf = async s => {
+      let store = await P.givenEventsAt(s.log.flatMap(entry => decodeMatching([entry], consumedDecoder, []).map(e => [
+        e,
+        iso(entry.at)
+      ])));
+      return Object.entries(store).flatMap(param => {
+        let rows = param[1];
+        let id = param[0];
+        let who = s.caller;
+        let rows$1 = who !== undefined ? P.readableBy(rows, who, elevated.contents) : rows;
+        return rows$1.map(row => [
+          id,
+          row
+        ]);
+      });
+    };
+    let whenQueried = async (flowP, args) => {
+      let s = await enter(flowP, "whenQueried", part, undefined);
+      let rows = Q.whenQuery(Q.givenStore(await rowsOf(s)), args);
+      if (rows.TAG === "Ok") {
+        return {
+          log: s.log,
+          outcome: s.outcome,
+          lastEvents: s.lastEvents,
+          lastError: s.lastError,
+          lastCommands: s.lastCommands,
+          lastPublic: s.lastPublic,
+          lastIds: s.lastIds,
+          lastRefusal: s.lastRefusal,
+          steps: s.steps,
+          at: s.at,
+          failedAt: s.failedAt,
+          now: s.now,
+          caller: s.caller,
+          lastForbidden: s.lastForbidden,
+          handled: s.handled,
+          named: s.named,
+          lastSent: s.lastSent,
+          lastRows: rows._0.map(encState),
+          lastCalls: s.lastCalls
+        };
+      } else {
+        return recordOutcome({
+          log: s.log,
+          outcome: s.outcome,
+          lastEvents: s.lastEvents,
+          lastError: s.lastError,
+          lastCommands: s.lastCommands,
+          lastPublic: s.lastPublic,
+          lastIds: s.lastIds,
+          lastRefusal: s.lastRefusal,
+          steps: s.steps,
+          at: s.at,
+          failedAt: s.failedAt,
+          now: s.now,
+          caller: s.caller,
+          lastForbidden: s.lastForbidden,
+          handled: s.handled,
+          named: s.named,
+          lastSent: s.lastSent,
+          lastRows: [],
+          lastCalls: s.lastCalls
+        }, {
+          TAG: "Error",
+          _0: rows._0
+        });
+      }
+    };
+    let listed = (s, expected) => recordOutcome(s, Primitive_object.equal(s.lastRows, expected) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+        TAG: "QueryRowsMismatch",
+        expected: expected,
+        actual: s.lastRows
+      }));
+    let thenListed = async (flowP, expected) => listed(await enter(flowP, "thenListed", part, undefined), expected.map(encState));
+    let thenCounted = async (flowP, count) => {
+      let s = await enter(flowP, "thenCounted", part, undefined);
+      return recordOutcome(s, s.lastRows.length === count ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+          TAG: "StateMismatch",
+          key: "count",
+          expected: count,
+          actual: s.lastRows.length
+        }));
+    };
+    return {
+      P: P,
+      Q: Q,
+      part: part,
+      consumedDecoder: consumedDecoder,
+      encState: encState,
+      rowsOf: rowsOf,
+      whenQueried: whenQueried,
+      listed: listed,
+      thenListed: thenListed,
+      thenCounted: thenCounted
+    };
+  };
+}
+
+function SideEffectStep(SE) {
+  let name = Stdlib_Option.getOr(Stdlib_Option.flatMap(SE.moduleUrl.split("/").at(-1), file => file.split(".")[0]), "SideEffect");
+  let part = {
+    kind: "SideEffect",
+    name: name
+  };
+  let decoder = DcbDecode$Reventless.makeDecoder(SE.Source.eventSchema);
+  let key = "sideEffect:" + name;
+  let whenRuns = async (flowP, mock) => {
+    let s = await enter(flowP, "whenRuns", part, undefined);
+    let handled = handledBy(s, key);
+    let fresh = Stdlib_Array.filterMap(s.log.map((entry, i) => [
+      i.toString(),
+      entry
+    ]), param => {
+      let i = param[0];
+      if (handled.includes(i)) {
+        return;
+      }
+      let entry = param[1];
+      return Stdlib_Option.map(decodeMatching([entry], decoder, [])[0], ev => [
+        i,
+        entry,
+        ev
+      ]);
+    });
+    let before = mock.snapshot().length;
+    let run = async i => {
+      let match = fresh[i];
+      if (match === undefined) {
+        return;
+      }
+      let entry = match[1];
+      let newrecord = {...StubRuntime$ReventlessGwt.meta};
+      await SE.execute(SE.Source.Id.makeFromString(entry.id), (newrecord.time = iso(entry.at), newrecord), match[2], SideEffect_GWT$ReventlessGwt.stubQueryEngine);
+      return await run(i + 1 | 0);
+    };
+    await run(0);
+    let init = markHandled(s, key, fresh.map(param => param[0]));
+    return {
+      log: init.log,
+      outcome: init.outcome,
+      lastEvents: init.lastEvents,
+      lastError: init.lastError,
+      lastCommands: init.lastCommands,
+      lastPublic: init.lastPublic,
+      lastIds: init.lastIds,
+      lastRefusal: init.lastRefusal,
+      steps: init.steps,
+      at: init.at,
+      failedAt: init.failedAt,
+      now: init.now,
+      caller: init.caller,
+      lastForbidden: init.lastForbidden,
+      handled: init.handled,
+      named: init.named,
+      lastSent: init.lastSent,
+      lastRows: init.lastRows,
+      lastCalls: mock.snapshot().slice(before).map(mock.encode)
+    };
+  };
+  let thenDid = async (flowP, mock, expected) => {
+    let s = await enter(flowP, "thenDid", part, undefined);
+    let expectedJson = expected.map(mock.encode);
+    return recordOutcome(s, Primitive_object.equal(s.lastCalls, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+        TAG: "EventsMismatch",
+        expected: expectedJson,
+        actual: s.lastCalls
+      }));
+  };
+  let thenDidNothing = async flowP => {
+    let s = await enter(flowP, "thenDidNothing", part, undefined);
+    return recordOutcome(s, Primitive_object.equal(s.lastCalls, []) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+        TAG: "NoEventExpected",
+        actual: s.lastCalls
+      }));
+  };
+  return {
+    name: name,
+    part: part,
+    decoder: decoder,
+    key: key,
+    whenRuns: whenRuns,
+    thenDid: thenDid,
+    thenDidNothing: thenDidNothing
+  };
 }
 
 function encodedCommandsMatch(s, expJson) {
@@ -1045,7 +1289,7 @@ function AutomationStep(Spec) {
     };
     let routedLog = s => s.log.map(entry => [
       entry,
-      Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, Stdlib_Option.getOr(entry.aggregateId, ""), A.withRecordedAt(A.testContext, entry.at)))
+      Stdlib_Array.filterMap(A.Route.dispatches, d => d.handle(entry.json, entry.id, A.withRecordedAt(A.testContext, entry.at)))
     ]);
     let key = "automation:" + Spec.name;
     let dueTicks = (s, log, from) => {
@@ -1105,7 +1349,7 @@ function AutomationStep(Spec) {
       lastError: s.lastError,
       lastCommands: commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: undefined,
       steps: s.steps,
       at: s.at,
@@ -1114,7 +1358,10 @@ function AutomationStep(Spec) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     });
     let whenReacts = async (flowP, at) => {
       let s = await enter(flowP, "whenReacts", part, at);
@@ -1181,10 +1428,10 @@ function OutboundStep(Spec) {
       param[0],
       Message$ReventlessCore.encode(param[1], Spec.outboundItemSchema)
     ]);
+    let collected = s => s.log.flatMap(entry => decodeMatching([entry], consumedDecoder, []).flatMap(e => Translation.collect(e, entry.id)));
     let outbound = async (flowP, verb, expected) => {
       let s = await enter(flowP, verb, part, undefined);
-      let collected = s.log.flatMap(entry => decodeMatching([entry], consumedDecoder, []).flatMap(e => Translation.collect(e, Stdlib_Option.getOr(entry.aggregateId, ""))));
-      let actual = encItems(collected);
+      let actual = encItems(collected(s));
       let expectedJson = encItems(expected);
       let o = Primitive_object.equal(actual, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
           TAG: "TodoMismatch",
@@ -1193,13 +1440,103 @@ function OutboundStep(Spec) {
         });
       return recordOutcome(s, o);
     };
+    let key = "outbound:" + Spec.name;
+    let whenSent = async (flowP, fakesOpt, at) => {
+      let fakes = fakesOpt !== undefined ? fakesOpt : Capabilities_Fake$ReventlessGwt.make(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      let s = await enter(flowP, "whenSent", part, at);
+      let handled = handledBy(s, key);
+      let items = collected(s).filter(param => !handled.includes(param[0]));
+      let send = async (i, commands, refusal) => {
+        let match = items[i];
+        if (match === undefined) {
+          return [
+            commands,
+            refusal
+          ];
+        }
+        if (refusal !== undefined) {
+          return [
+            commands,
+            refusal
+          ];
+        }
+        let reason;
+        try {
+          reason = await Translation.translate(match[0], match[1], fakes.capabilities);
+        } catch (raw_e) {
+          let e = Primitive_exceptions.internalToException(raw_e);
+          if (e.RE_EXN_ID === "JsExn") {
+            return [
+              commands,
+              `translate threw: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "an exception")
+            ];
+          }
+          throw e;
+        }
+        if (reason.TAG !== "Ok") {
+          return [
+            commands,
+            `translate failed: ` + reason._0
+          ];
+        }
+        let match$1 = reason._0;
+        if (match$1 !== undefined) {
+          return await send(i + 1 | 0, commands.concat([match$1[1]]), undefined);
+        } else {
+          return await send(i + 1 | 0, commands, undefined);
+        }
+      };
+      let match = await send(0, [], undefined);
+      let init = markHandled(s, key, items.map(param => param[0]));
+      return {
+        log: init.log,
+        outcome: init.outcome,
+        lastEvents: init.lastEvents,
+        lastError: init.lastError,
+        lastCommands: match[0].map(c => Message$ReventlessCore.encode(c, Spec.inboundCommandSchema)),
+        lastPublic: init.lastPublic,
+        lastIds: init.lastIds,
+        lastRefusal: match[1],
+        steps: init.steps,
+        at: init.at,
+        failedAt: init.failedAt,
+        now: init.now,
+        caller: init.caller,
+        lastForbidden: init.lastForbidden,
+        handled: init.handled,
+        named: init.named,
+        lastSent: fakes.calls(),
+        lastRows: init.lastRows,
+        lastCalls: init.lastCalls
+      };
+    };
+    let thenSent = async (flowP, expected) => {
+      let s = await enter(flowP, "thenSent", part, undefined);
+      return recordOutcome(s, Primitive_object.equal(s.lastSent, expected) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expected.map(Capabilities_Fake$ReventlessGwt.toJson),
+          actual: s.lastSent.map(Capabilities_Fake$ReventlessGwt.toJson)
+        }));
+    };
+    let issued = async (flowP, verb, expected) => encodedCommandsMatch(await enter(flowP, verb, part, undefined), expected.map(c => Message$ReventlessCore.encode(c, Spec.inboundCommandSchema)));
+    let thenIssuesCommands = (flowP, expected) => issued(flowP, "thenIssuesCommands", expected);
+    let thenIssuesCommand = (flowP, command) => issued(flowP, "thenIssuesCommand", [command]);
+    let thenIssuesNoCommand = flowP => issued(flowP, "thenIssuesNoCommand", []);
     let thenOutbound = (flowP, expected) => outbound(flowP, "thenOutbound", expected);
     let thenOutboundNothing = flowP => outbound(flowP, "thenOutboundNothing", []);
     return {
       part: part,
       consumedDecoder: consumedDecoder,
       encItems: encItems,
+      collected: collected,
       outbound: outbound,
+      key: key,
+      whenSent: whenSent,
+      thenSent: thenSent,
+      issued: issued,
+      thenIssuesCommands: thenIssuesCommands,
+      thenIssuesCommand: thenIssuesCommand,
+      thenIssuesNoCommand: thenIssuesNoCommand,
       thenOutbound: thenOutbound,
       thenOutboundNothing: thenOutboundNothing
     };
@@ -1226,7 +1563,7 @@ function InboundStep(Spec) {
             lastError: s.lastError,
             lastCommands: pairs._0.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
             lastPublic: s.lastPublic,
-            lastAggregateId: s.lastAggregateId,
+            lastIds: s.lastIds,
             lastRefusal: undefined,
             steps: s.steps,
             at: s.at,
@@ -1235,7 +1572,10 @@ function InboundStep(Spec) {
             caller: s.caller,
             lastForbidden: s.lastForbidden,
             handled: s.handled,
-            named: s.named
+            named: s.named,
+            lastSent: s.lastSent,
+            lastRows: s.lastRows,
+            lastCalls: s.lastCalls
           };
         case "NotUnderstood" :
           return {
@@ -1245,7 +1585,7 @@ function InboundStep(Spec) {
             lastError: s.lastError,
             lastCommands: [],
             lastPublic: s.lastPublic,
-            lastAggregateId: s.lastAggregateId,
+            lastIds: s.lastIds,
             lastRefusal: `not understood: ` + pairs._0,
             steps: s.steps,
             at: s.at,
@@ -1254,7 +1594,10 @@ function InboundStep(Spec) {
             caller: s.caller,
             lastForbidden: s.lastForbidden,
             handled: s.handled,
-            named: s.named
+            named: s.named,
+            lastSent: s.lastSent,
+            lastRows: s.lastRows,
+            lastCalls: s.lastCalls
           };
         case "InputRefused" :
           return {
@@ -1264,7 +1607,7 @@ function InboundStep(Spec) {
             lastError: s.lastError,
             lastCommands: [],
             lastPublic: s.lastPublic,
-            lastAggregateId: s.lastAggregateId,
+            lastIds: s.lastIds,
             lastRefusal: `input refused: ` + pairs._0,
             steps: s.steps,
             at: s.at,
@@ -1273,7 +1616,10 @@ function InboundStep(Spec) {
             caller: s.caller,
             lastForbidden: s.lastForbidden,
             handled: s.handled,
-            named: s.named
+            named: s.named,
+            lastSent: s.lastSent,
+            lastRows: s.lastRows,
+            lastCalls: s.lastCalls
           };
       }
     };
@@ -1308,19 +1654,21 @@ function ExtensionPointStep(M) {
     name: part_name
   };
   let delegateDecoder = DcbDecode$Reventless.makeDecoder(M.Delegate.eventSchema);
-  let runMapping = async (sourceId, events) => {
+  let runMapping = async events => {
     let f = M.mapOutgoingEvent;
     if (f === undefined) {
       return [];
     }
-    let actions = events.map(ev => f(sourceId, ev, StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.queryEngine)).flat();
+    let actions = events.map(param => f(param[0], param[1], StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.queryEngine)).flat();
     return (await Promise.all(actions.map(async action => {
       switch (action.TAG) {
         case "PublishEvent" :
-          return [action._1];
+          return [[
+              action._0,
+              action._1
+            ]];
         case "PublishEventAsync" :
-          let match = await action._0;
-          return [match[1]];
+          return [await action._0];
         case "HandleDirective" :
           return [];
       }
@@ -1328,21 +1676,28 @@ function ExtensionPointStep(M) {
   };
   let whenPublished = async (flowP, at) => {
     let s = await enter(flowP, "whenPublished", part, at);
-    let delegateEvents = Stdlib_Array.filterMap(s.lastEvents, json => {
+    let delegateEvents = Stdlib_Array.filterMap(s.lastEvents.map((json, i) => [
+      Stdlib_Option.getOr(s.lastIds[i], ""),
+      json
+    ]), param => {
+      let json = param[1];
+      let id = param[0];
       let data;
       data = typeof json === "object" && json !== null && !Array.isArray(json) ? json : ({});
-      return delegateDecoder.decode(Message$Reventless.variantNameOfJson(json), data);
+      return Stdlib_Option.map(delegateDecoder.decode(Message$Reventless.variantNameOfJson(json), data), ev => [
+        id,
+        ev
+      ]);
     });
-    let sourceId = Stdlib_Option.getOr(s.lastAggregateId, "gwt-id");
-    let publicEvents = await runMapping(sourceId, delegateEvents);
+    let publicEvents = await runMapping(delegateEvents);
     return {
-      log: appendEvents(s.log, s.now, publicEvents, M.ExtensionPoint.eventSchema),
+      log: s.log.concat(publicEvents.map(param => entryOf(param[1], M.ExtensionPoint.eventSchema, s.now, undefined, param[0], undefined))),
       outcome: s.outcome,
       lastEvents: s.lastEvents,
       lastError: s.lastError,
       lastCommands: s.lastCommands,
-      lastPublic: publicEvents.map(e => Message$ReventlessCore.encode(e, M.ExtensionPoint.eventSchema)),
-      lastAggregateId: s.lastAggregateId,
+      lastPublic: publicEvents.map(param => Message$ReventlessCore.encode(param[1], M.ExtensionPoint.eventSchema)),
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: s.at,
@@ -1351,7 +1706,10 @@ function ExtensionPointStep(M) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     };
   };
   let published = async (flowP, verb, expected) => {
@@ -1395,14 +1753,15 @@ function ExtensionStep(M) {
       let i = param[0];
       if (handled.includes(i)) {
         return;
-      } else {
-        return Stdlib_Option.map(decodeMatching([param[1]], epDecoder, [])[0], ev => [
-          i,
-          ev
-        ]);
       }
+      let entry = param[1];
+      return Stdlib_Option.map(decodeMatching([entry], epDecoder, [])[0], ev => [
+        i,
+        entry.id,
+        ev
+      ]);
     });
-    let actions = fresh.map(param => M.mapIncomingEvent("gwt-id", param[1], StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.pluginDefinition, StubRuntime$ReventlessGwt.queryEngine)).flat();
+    let actions = fresh.map(param => M.mapIncomingEvent(param[1], param[2], StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.pluginDefinition, StubRuntime$ReventlessGwt.queryEngine)).flat();
     let nested = await Promise.all(actions.map(async action => {
       switch (action.TAG) {
         case "PublishAggregateCommand" :
@@ -1439,7 +1798,7 @@ function ExtensionStep(M) {
       lastError: s$1.lastError,
       lastCommands: match[1],
       lastPublic: s$1.lastPublic,
-      lastAggregateId: s$1.lastAggregateId,
+      lastIds: s$1.lastIds,
       lastRefusal: s$1.lastRefusal,
       steps: s$1.steps,
       at: s$1.at,
@@ -1448,7 +1807,10 @@ function ExtensionStep(M) {
       caller: s$1.caller,
       lastForbidden: s$1.lastForbidden,
       handled: s$1.handled,
-      named: s$1.named
+      named: s$1.named,
+      lastSent: s$1.lastSent,
+      lastRows: s$1.lastRows,
+      lastCalls: s$1.lastCalls
     };
   };
   let reacting_react = async s => {
@@ -1528,7 +1890,7 @@ async function thenNothingElseReacts(flowP, systems) {
       lastError: s.lastError,
       lastCommands: s.lastCommands,
       lastPublic: s.lastPublic,
-      lastAggregateId: s.lastAggregateId,
+      lastIds: s.lastIds,
       lastRefusal: s.lastRefusal,
       steps: s.steps,
       at: Stdlib_Option.map(s.at, step => {
@@ -1541,7 +1903,10 @@ async function thenNothingElseReacts(flowP, systems) {
       caller: s.caller,
       lastForbidden: s.lastForbidden,
       handled: s.handled,
-      named: s.named
+      named: s.named,
+      lastSent: s.lastSent,
+      lastRows: s.lastRows,
+      lastCalls: s.lastCalls
     };
   } else {
     s$1 = s;
@@ -1587,7 +1952,7 @@ async function whenSettled(flowP, systems) {
         lastError: s$1.lastError,
         lastCommands: commands,
         lastPublic: s$1.lastPublic,
-        lastAggregateId: s$1.lastAggregateId,
+        lastIds: s$1.lastIds,
         lastRefusal: s$1.lastRefusal,
         steps: s$1.steps,
         at: s$1.at,
@@ -1596,7 +1961,10 @@ async function whenSettled(flowP, systems) {
         caller: s$1.caller,
         lastForbidden: s$1.lastForbidden,
         handled: s$1.handled,
-        named: s$1.named
+        named: s$1.named,
+        lastSent: s$1.lastSent,
+        lastRows: s$1.lastRows,
+        lastCalls: s$1.lastCalls
       };
     }
     if (n >= 20) {
@@ -1656,7 +2024,7 @@ async function whenSettled(flowP, systems) {
     lastError: undefined,
     lastCommands: s.lastCommands,
     lastPublic: s.lastPublic,
-    lastAggregateId: s.lastAggregateId,
+    lastIds: s.lastIds,
     lastRefusal: s.lastRefusal,
     steps: s.steps,
     at: s.at,
@@ -1665,7 +2033,10 @@ async function whenSettled(flowP, systems) {
     caller: s.caller,
     lastForbidden: s.lastForbidden,
     handled: s.handled,
-    named: s.named
+    named: s.named,
+    lastSent: s.lastSent,
+    lastRows: s.lastRows,
+    lastCalls: s.lastCalls
   }, 0, [], []);
 }
 
@@ -1689,7 +2060,13 @@ function InboundSlice(_) {
   return _ => ({});
 }
 
+function thenBoundaryScopeResolves(param, param$1, param$2) {
+  
+}
+
 let Caller;
+
+let Fakes;
 
 let EPMapping;
 
@@ -1701,8 +2078,10 @@ let settleBound = 20;
 
 export {
   Caller,
+  Fakes,
   EPMapping,
   ExtMapping,
+  sourceIdOf,
   handledBy,
   markHandled,
   markNamed,
@@ -1712,8 +2091,10 @@ export {
   iso,
   enter,
   entryMatchesQuery,
+  entryOf,
   appendEvents,
   appendAggregateEvents,
+  lastIdsOf,
   decodeMatching,
   decodeAggregateMatching,
   describe,
@@ -1723,7 +2104,6 @@ export {
   test,
   after,
   asCaller,
-  thenBoundaryScopeResolves,
   eventsWere,
   errorWas,
   noEventWas,
@@ -1736,7 +2116,8 @@ export {
   DecisionStep,
   AggregateStep,
   ViewStep,
-  sourceIdOf,
+  QueryStep,
+  SideEffectStep,
   encodedCommandsMatch,
   AutomationStep,
   OutboundStep,
@@ -1754,5 +2135,6 @@ export {
   AutomationSlice,
   OutboundSlice,
   InboundSlice,
+  thenBoundaryScopeResolves,
 }
 /* start Not a pure module */

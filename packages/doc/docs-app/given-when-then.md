@@ -913,10 +913,12 @@ the part's own code, with no bus and no timers.
 | `AggregateStep` | an aggregate and its decision; every call takes `~id` | `givenEvents`, `whenCommand`, `whenIssued` | `thenEvent(s)`, `thenNoEvent`, `thenError`, `thenAccepted`, `thenForbidden` |
 | `ViewStep` | a view and its projection | | `thenRow(s)`, `thenNoRow`, `thenRowShows` |
 | `AutomationStep` | an automation slice as written | `whenReacts`, `whenTimePasses(~until)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
-| `OutboundStep` | a way out as written | | `thenOutbound`, `thenOutboundNothing` |
+| `OutboundStep` | a way out as written | `whenSent(~fakes)` | `thenOutbound`, `thenOutboundNothing`, `thenSent`, `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 | `InboundStep` | a way in as written | `whenReceived(json)` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
 | `ExtensionPointStep` | an extension point mapping | `whenPublished` | `thenPublicEvent(s)` |
 | `ExtensionStep` | an extension's mapping | `whenReacts` | `thenIssuesCommand(s)`, `thenIssuesNoCommand` |
+| `QueryStep` | a view and its projection, queried | `whenQueried({by, value, …})` | `thenListed`, `thenCounted` |
+| `SideEffectStep` | an aggregate's side effect | `whenRuns(mock)` | `thenDid(mock, calls)`, `thenDidNothing` |
 
 **The steps are ready-made.** `generate-plugin`, which writes a plugin's
 `Plugin.res`, also writes `tests/Flow.res` when the plugin has a tests folder
@@ -1024,6 +1026,38 @@ hint: decide() returned different events than expected. Check the event payload 
 The JSON hint carries the same as `step`
 ([§5](#5-the-outcome-algebra)).
 
+**The id an event was recorded under.** Each entry of the record keeps it, and
+every part that reacts to the event is given it as its source id, as the runtime
+gives it: an aggregate's event its aggregate's id; a public event the id its
+extension point mapping published it with; a DCB event, as the local runtime
+records it, the value of its first indexed tag. A way out whose `collect` keys
+its work on the source id is tested as it runs.
+
+**What a way out sends.** `whenSent(~fakes=Fakes.make(…))` runs the way out's
+own `translate` for every item it queued and has not sent, against fakes that
+stand in for the outside services ([`Capabilities_Fake`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/gwt/src/Capabilities_Fake.res)).
+`thenSent` states what it asked of them; what the answers become are the step's
+sent commands, stated with `thenIssuesCommand` and run with `whenIssued`:
+
+```rescript
+->Flow.GeocodeCustomerAddress.whenSent(~fakes=Fakes.make(~geocode=async (~text as _) => Ok([/* … */]), ()))
+->Flow.GeocodeCustomerAddress.thenSent([Fakes.Geocoded({text: viennaAddress})])
+->Flow.GeocodeCustomerAddress.thenIssuesCommand(SetLocation({location: vienna, resolvedFrom: viennaAddress}))
+->Flow.Customer.whenIssued(~id=cust1)
+```
+
+**A query.** `module OrdersQuery = QueryStep(Orders, Orders_Projection)` queries
+a view whose spec carries its query `config`, as its doors answer: by a field,
+through the index a query names (one the view lacks fails the step), filtered and
+limited, over the rows the flow's caller may read. `thenListed` states the rows,
+`thenCounted` how many.
+
+**A side effect.** `module OrderEmail = SideEffectStep(Order_EmailNotification)`
+runs an aggregate's side effect for each of its source's events on the record it
+has not run for, with the id the event was recorded under and the flow's time.
+What it did is what its mock recorded meanwhile: `thenDid(mock, calls)`,
+`thenDidNothing`. A scheduled task has no step: it is bound to infrastructure.
+
 **Who acts.** `asCaller(Caller.owner(c1))` names the person who takes the steps
 after it, until the next `asCaller`; `Caller.inRoles([…])`, `Caller.operator` and
 `Caller.anonymous` are the others, as in a decision's own test
@@ -1094,9 +1128,11 @@ runs on, so a flow names every field of it. A value that repeats (the book, its
 price, the priced line) is named once in the examples file the flow opens
 ([§4.12](#412-example-files-plugin_examplesres-slice_examplesres)), not left out.
 
-**A boundary's scope.** `thenBoundaryScopeResolves(~name, Plugin.dcbSliceSchemas)`
-checks that a DCB boundary derives its tag scope over all its slices, which no
-single slice's test can show.
+**A boundary's scope** is not a flow's to check. `generate-plugin` writes
+`tests/DcbBoundary_GWT.res` for every system with state change slices: a test,
+named for the system, that its DCB boundary derives its tag scope over all its
+slices (`Boundary_GWT`), which no single slice's test can show. A flow still on
+`thenBoundaryScopeResolves` fails to build with a message saying where it went.
 
 **Old names.** `CommandStep`, `AggregateCommandStep`, `AutomationSlice`,
 `OutboundSlice` and `InboundSlice` were renamed to the names above, and the

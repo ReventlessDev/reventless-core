@@ -95,7 +95,8 @@ function compose(srcDir, variant) {
   return {
     config: newrecord,
     source: source,
-    flowSteps: Codegen$Reventless.renderFlowSteps(resolved, discovered)
+    flowSteps: Codegen$Reventless.renderFlowSteps(resolved, discovered),
+    boundaryTest: Codegen$Reventless.renderBoundaryTest(newrecord, resolved)
   };
 }
 
@@ -121,24 +122,26 @@ function main() {
     let variant = param.variant;
     let srcDir = Nodepath.resolve(param.srcDir);
     let match = compose(srcDir, variant);
-    let flowSteps = match.flowSteps;
     let outputDir;
     outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
     let pluginPath = Nodepath.join(outputDir, "Plugin.res");
     Nodefs.writeFileSync(pluginPath, formatted(match.source, outputDir), "utf8");
     console.log("Generated: " + pluginPath);
     if (typeof variant !== "object") {
-      let match$1 = flowStepsDir(srcDir);
-      if (flowSteps === undefined) {
-        return;
-      }
-      if (match$1 === undefined) {
-        return;
-      }
-      let flowPath = Nodepath.join(match$1, "Flow.res");
-      Nodefs.writeFileSync(flowPath, formatted(flowSteps, match$1), "utf8");
-      console.log("Generated: " + flowPath);
-      return;
+      let writeTest = (source, file) => {
+        let match = flowStepsDir(srcDir);
+        if (source === undefined) {
+          return;
+        }
+        if (match === undefined) {
+          return;
+        }
+        let path = Nodepath.join(match, file);
+        Nodefs.writeFileSync(path, formatted(source, match), "utf8");
+        console.log("Generated: " + path);
+      };
+      writeTest(match.flowSteps, "Flow.res");
+      return writeTest(match.boundaryTest, "DcbBoundary_GWT.res");
     }
     let mainSource = Codegen$Reventless.renderMain(match.config);
     let mainPath = Nodepath.join(outputDir, "Main.res");

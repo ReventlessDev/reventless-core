@@ -42,6 +42,9 @@ open ReventlessCore
 // Who acts in a flow: `Caller.owner(c1)`, `Caller.inRoles([…])`, `Caller.operator`.
 module Caller = Decision_GWT.Caller
 
+// What stands in for the outside services a way out reaches: `Fakes.make(…)`.
+module Fakes = Capabilities_Fake
+
 module EPMapping = ReventlessInfra.ExtensionPointMapping
 module ExtMapping = ReventlessInfra.ExtensionMapping
 
@@ -63,7 +66,14 @@ type logEntry = {
   json: JSON.t,
   aggregateId: option<string>,
   at: float,
+  // The id the event was recorded under, which every part that reacts to it is
+  // given as its source id: an aggregate's id; a public event's, the one its
+  // mapping published it with; a DCB event's, the value of its first indexed
+  // tag, as the local runtime records it.
+  id: string,
 }
+
+let sourceIdOf = (entry: logEntry) => entry.id
 
 // The flow state threaded through every step. `outcome` accumulates assertions
 // (first failure wins); the `last*` fields carry the most recent `when*`
@@ -75,14 +85,9 @@ type flowState = {
   lastError: option<JSON.t>, // encoded error from the last command step
   lastCommands: array<JSON.t>, // encoded commands from the last automation / extension reaction
   lastPublic: array<JSON.t>, // encoded public EP events from the last ExtensionPoint step
-  // The producing aggregate-ID for `lastEvents`, when the producer was an
-  // `AggregateStep`. Aggregate-style EP mappings reference the source
-  // aggregate-ID inside `mapOutgoingEvent` (e.g. the catalog Product EP uses
-  // it as `productId`); the next `ExtensionPointStep` reads this field and
-  // threads it through. DCB `DecisionStep` events leave it `None` and the EP
-  // step falls back to the synthetic `gwt-id` so the existing DCB Flow tests
-  // are unchanged.
-  lastAggregateId: option<string>,
+  // The ids `lastEvents` were recorded under, in order: what an extension point
+  // mapping is given for each, as the runtime gives it.
+  lastIds: array<string>,
   // Why the last inbound step produced no commands, when it was refused.
   lastRefusal: option<string>,
   // How many steps the flow has passed, the one it is at, and the one its first
@@ -105,6 +110,11 @@ type flowState = {
   handled: dict<array<string>>,
   // The reacting parts the flow named, by key.
   named: array<string>,
+  // What the last way out asked of the outside services it stands for.
+  lastSent: array<Capabilities_Fake.call>,
+  // The rows the last query returned, and what the last side effect did.
+  lastRows: array<JSON.t>,
+  lastCalls: array<JSON.t>,
 }
 
 // One command a reacting part sends, and the part it is meant for when it says.
@@ -148,7 +158,7 @@ let emptyState = {
   lastError: None,
   lastCommands: [],
   lastPublic: [],
-  lastAggregateId: None,
+  lastIds: [],
   lastRefusal: None,
   steps: 0,
   at: None,
@@ -158,6 +168,9 @@ let emptyState = {
   lastForbidden: false,
   handled: Dict.make(),
   named: [],
+  lastSent: [],
+  lastRows: [],
+  lastCalls: [],
 }
 
 // Entry point for a chain — an empty flow with no prior history.
@@ -227,28 +240,48 @@ let entryMatchesQuery = (entry: logEntry, query: Reventless.DcbTag.query) =>
     })
   }
 
-// Encode + tag a batch of typed events and append them to the log.
-let appendEvents = (log: array<logEntry>, ~at: float, events: array<'e>, schema: S.t<'e>): array<
-  logEntry,
-> =>
-  Array.concat(
-    log,
-    events->Array.map(ev => {
-      let json = ev->Message.encode(schema)
-      {
-        eventType: json->Reventless.Message.variantNameOfJson,
-        tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
-        json,
-        aggregateId: None,
-        at,
-      }
-    }),
-  )
+// One event as an entry of the log, encoded and tagged, recorded at `at` under
+// the id `~id`, or the aggregate's, or the value of its first tag `~tagKeys`
+// indexes for its type (any tag when no keys are given).
+let entryOf = (
+  ev: 'e,
+  schema: S.t<'e>,
+  ~at: float,
+  ~aggregateId=?,
+  ~id=?,
+  ~tagKeys: option<dict<array<string>>>=?,
+): logEntry => {
+  let json = ev->Message.encode(schema)
+  let eventType = json->Reventless.Message.variantNameOfJson
+  let tags = Reventless.DcbTag.extractTagsExpanded(schema, ev)
+  let indexed = switch tagKeys->Option.flatMap(keys => keys->Dict.get(eventType)) {
+  | Some(keys) => tags->Array.filter(t => keys->Array.includes(t.key))
+  | None => tags
+  }
+  {
+    eventType,
+    tags,
+    json,
+    aggregateId,
+    at,
+    id: switch (id, aggregateId) {
+    | (Some(id), _) | (None, Some(id)) => id
+    | (None, None) => indexed->Array.get(0)->Option.mapOr("", t => t.value)
+    },
+  }
+}
 
-// Aggregate-style append: encode + tag with the producing aggregate-ID so
-// `decodeAggregateMatching` can rebuild that aggregate's history later. DCB
-// tags are intentionally still extracted (cheap and lets a downstream DCB
-// step pick the events up if any are tagged), but the `aggregateId` is the
+// Encode + tag a batch of typed events and append them to the log.
+let appendEvents = (
+  log: array<logEntry>,
+  ~at: float,
+  ~tagKeys=?,
+  events: array<'e>,
+  schema: S.t<'e>,
+): array<logEntry> =>
+  Array.concat(log, events->Array.map(ev => entryOf(ev, schema, ~at, ~tagKeys?)))
+
+// Aggregate-style append: the producing aggregate's id is the entry's, and the
 // authoritative filter for aggregate consumers.
 let appendAggregateEvents = (
   log: array<logEntry>,
@@ -257,19 +290,11 @@ let appendAggregateEvents = (
   events: array<'e>,
   schema: S.t<'e>,
 ): array<logEntry> =>
-  Array.concat(
-    log,
-    events->Array.map(ev => {
-      let json = ev->Message.encode(schema)
-      {
-        eventType: json->Reventless.Message.variantNameOfJson,
-        tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
-        json,
-        aggregateId: Some(id),
-        at,
-      }
-    }),
-  )
+  Array.concat(log, events->Array.map(ev => entryOf(ev, schema, ~at, ~aggregateId=id)))
+
+// The ids the last `n` entries were recorded under.
+let lastIdsOf = (log: array<logEntry>, n) =>
+  log->Array.slice(~start=log->Array.length - n)->Array.map(e => e.id)
 
 // Decode the log entries a consumer cares about. `query` filters by event type
 // and DCB tags (use `[]` to take all of the consumer's event types); the
@@ -374,68 +399,6 @@ let after = async (title: string): flowState => {
 let asCaller = async (flowP: flow, who: Caller.t) => {
   ...await flowP->enter(~verb="asCaller"),
   caller: Some(who),
-}
-
-// -- Boundary scope ----------------------------------------------------------
-
-// Assert that a DCB consistency boundary derives its tag scope.
-//
-// Every other step here tests slices; this one tests the set of them, and it is
-// in the flow DSL because a flow is the only test kind that already reasons
-// about more than one slice at a time. The rest of the harness derives scope
-// per slice (`DcbScopeInference.crossPartitionForSlice`), which cannot fail the
-// way a boundary fails: a single slice always resolves, so the all-or-nothing
-// fallback in `deriveEffectiveScope` — one unresolvable slice discarding the
-// derived scope for every slice beside it — has no per-slice symptom at all. The
-// slices keep passing their own tests and the platform rejects valid commands.
-//
-// Takes the generated `<Plugin>.Plugin.dcbSliceSchemas`, so it asserts over the
-// boundary as deployed rather than over the steps a given flow happens to name.
-let thenBoundaryScopeResolves = async (
-  flowP: flow,
-  ~name: string,
-  slices: array<Reventless.DcbTag.sliceSchemas>,
-) => {
-  let s = await flowP->enter(~verb="thenBoundaryScopeResolves")
-  let scope = Reventless.DcbTag.deriveEffectiveScope(slices)
-  // Deploy and boot derive the storage partition from the same slices and refuse
-  // the boundary when it fails, so the test fails with their reasons.
-  let partitionReasons = {
-    let shapes = slices->Array.map(Reventless.DcbTag.sliceShape)
-    let hints = Reventless.DcbValidation.validatePartitionHintsVsInference(~shapes)
-    let arms = Reventless.DcbValidation.validateCrossPartitionArms(
-      ~shapes,
-      ~inferred=Reventless.DcbScopeInference.infer(shapes),
-    )
-    let contradictions =
-      hints.contradictions
-      ->Array.concat(arms.contradictions)
-      ->Array.map(e => `${e.sliceName}: ${e.message}`)
-    switch Reventless.DcbTag.deriveBoundaryPartition(slices) {
-    | _ => contradictions
-    | exception JsExn(err) =>
-      contradictions->Array.concat([
-        JsExn.message(err)->Option.getOr("partition derivation failed"),
-      ])
-    }
-  }
-  // Beyond that, an ambiguity that costs nothing is not a failure: a boundary whose
-  // fallback carries every derived key reads exactly as the derivation would. What
-  // fails is losing a key, because that is the case where the runtime answers wrongly.
-  let outcome = if partitionReasons->Array.length > 0 {
-    Outcome.fail(PartitionUnresolved({boundary: name, reasons: partitionReasons}))
-  } else if scope.droppedCrossPartitionTagKeys->Array.length > 0 {
-    Outcome.fail(
-      ScopeDegraded({
-        boundary: name,
-        dropped: scope.droppedCrossPartitionTagKeys,
-        ambiguities: scope.ambiguities->Array.map(((slice, reason)) => `${slice}: ${reason}`),
-      }),
-    )
-  } else {
-    Outcome.pass
-  }
-  s->recordOutcome(outcome)
 }
 
 // -- What a decision returned ------------------------------------------------
@@ -653,19 +616,22 @@ module DecisionStep = (
     let history = s->historyFor(command)
     let state = history->Array.reduce(Decision.initialState, Decision.evolve)
     switch Decision.decide(state, command) {
-    | Ok(events) => {
+    | Ok(events) =>
+      let log =
+        s.log->appendEvents(~at=s.now, ~tagKeys=tagKeysByEventType, events, Spec.eventSchema)
+      {
         ...s,
-        log: s.log->appendEvents(~at=s.now, events, Spec.eventSchema),
+        log,
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
-        lastAggregateId: None,
+        lastIds: log->lastIdsOf(events->Array.length),
         lastForbidden: false,
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
-        lastAggregateId: None,
+        lastIds: [],
         lastForbidden: false,
       }
     }
@@ -780,14 +746,14 @@ module AggregateStep = (
         log: s.log->appendAggregateEvents(~id, ~at=s.now, events, Spec.eventSchema),
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
-        lastAggregateId: Some(id),
+        lastIds: events->Array.map(_ => id),
         lastForbidden: false,
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
-        lastAggregateId: Some(id),
+        lastIds: [],
         lastForbidden: false,
       }
     }
@@ -921,13 +887,159 @@ module ViewStep = (
   let thenViewStates = (_: renamedToThenRows, _: renamedToThenRows, _: renamedToThenRows) => ()
 }
 
+// -- QueryStep: a query over a view ------------------------------------------
+
+// A view's spec as a query reads it: its rows and the indexes they are queried by.
+module type QueryableView = {
+  include Projection_GWT.Spec
+  let config: Reventless.ReadModel.config
+}
+
+module QueryStep = (
+  Spec: QueryableView,
+  Projection: Projection_GWT.Projection with module Spec := Spec,
+) => {
+  module P = Projection_GWT.Make(Spec, Projection)
+  module Q = Query_GWT.Make({
+    let name = Spec.name
+    type state = Spec.state
+    let stateSchema = Spec.stateSchema
+    let config = Spec.config
+    let subIdConfig = Spec.subIdConfig
+    type role = Spec.role
+    let authorization = Spec.authorization
+  })
+  let part: Outcome.part = {kind: Query, name: Spec.name}
+  let consumedDecoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
+  let encState = (st: Spec.state) => st->Message.encode(Spec.stateSchema)
+
+  // Every row of the view, built from the record at the times of its events, and
+  // read as the flow's caller.
+  let rowsOf = async (s: flowState) => {
+    let store = await P.givenEventsAt(
+      s.log->Array.flatMap(entry =>
+        decodeMatching([entry], consumedDecoder, [])->Array.map(e => (e, iso(entry.at)))
+      ),
+    )
+    store
+    ->Dict.toArray
+    ->Array.flatMap(((id, rows)) => {
+      let rows = switch s.caller {
+      | None => rows
+      | Some(who) => rows->P.readableBy(who, ~elevated=elevated.contents)
+      }
+      rows->Array.map(row => (id, row))
+    })
+  }
+
+  // A query as the view's doors answer it: by a field, through the index that
+  // covers it, filtered and limited. An index the view lacks fails the step.
+  let whenQueried = async (flowP: flow, args: Query_GWT.queryArgs<Spec.state>) => {
+    let s = await flowP->enter(~verb="whenQueried", ~part)
+    switch (await s->rowsOf)->Q.givenStore->Q.whenQuery(args) {
+    | Ok(rows) => {...s, lastRows: rows->Array.map(encState)}
+    | Error(mismatch) => {...s, lastRows: []}->recordOutcome(Error(mismatch))
+    }
+  }
+
+  let listed = (s: flowState, expected: array<JSON.t>) =>
+    s->recordOutcome(
+      s.lastRows == expected
+        ? Outcome.pass
+        : Outcome.fail(QueryRowsMismatch({expected, actual: s.lastRows})),
+    )
+
+  let thenListed = async (flowP: flow, expected: array<Spec.state>) =>
+    (await flowP->enter(~verb="thenListed", ~part))->listed(expected->Array.map(encState))
+
+  let thenCounted = async (flowP: flow, count: int) => {
+    let s = await flowP->enter(~verb="thenCounted", ~part)
+    s->recordOutcome(
+      s.lastRows->Array.length == count
+        ? Outcome.pass
+        : Outcome.fail(
+            StateMismatch({
+              key: "count",
+              expected: Some(JSON.Encode.int(count)),
+              actual: Some(JSON.Encode.int(s.lastRows->Array.length)),
+            }),
+          ),
+    )
+  }
+}
+
+// -- SideEffectStep: an aggregate's side effect over the record --------------
+
+module SideEffectStep = (SE: Reventless.SideEffect.T) => {
+  // A side effect has no name of its own; its file's is the one it is known by.
+  let name =
+    SE.moduleUrl
+    ->String.split("/")
+    ->Array.at(-1)
+    ->Option.flatMap(file => file->String.split(".")->Array.get(0))
+    ->Option.getOr("SideEffect")
+  let part: Outcome.part = {kind: SideEffect, name}
+  let decoder = Reventless.DcbDecode.makeDecoder(SE.Source.eventSchema)
+  let key = "sideEffect:" ++ name
+
+  // The side effect runs for each of its source's events on the record it has
+  // not run for yet, with the id the event was recorded under and the flow's
+  // time. What it did is what its mock recorded meanwhile.
+  let whenRuns = async (flowP: flow, mock: SideEffect_GWT.mock<'call>) => {
+    let s = await flowP->enter(~verb="whenRuns", ~part)
+    let handled = s->handledBy(key)
+    let fresh =
+      s.log
+      ->Array.mapWithIndex((entry, i) => (Int.toString(i), entry))
+      ->Array.filterMap(((i, entry)) =>
+        handled->Array.includes(i)
+          ? None
+          : decodeMatching([entry], decoder, [])->Array.get(0)->Option.map(ev => (i, entry, ev))
+      )
+    let before = mock.snapshot()->Array.length
+    let rec run = async i =>
+      switch fresh->Array.get(i) {
+      | None => ()
+      | Some((_, entry, event)) =>
+        await SE.execute(
+          SE.Source.Id.makeFromString(entry->sourceIdOf),
+          {...StubRuntime.meta, time: iso(entry.at)},
+          event,
+          SideEffect_GWT.stubQueryEngine,
+        )
+        await run(i + 1)
+      }
+    await run(0)
+    {
+      ...s->markHandled(key, fresh->Array.map(((i, _, _)) => i)),
+      lastCalls: mock.snapshot()->Array.slice(~start=before)->Array.map(mock.encode),
+    }
+  }
+
+  // What the side effect did, by the mock's own record of it.
+  let thenDid = async (flowP: flow, mock: SideEffect_GWT.mock<'call>, expected: array<'call>) => {
+    let s = await flowP->enter(~verb="thenDid", ~part)
+    let expectedJson = expected->Array.map(mock.encode)
+    s->recordOutcome(
+      s.lastCalls == expectedJson
+        ? Outcome.pass
+        : Outcome.fail(EventsMismatch({expected: expectedJson, actual: s.lastCalls})),
+    )
+  }
+
+  let thenDidNothing = async (flowP: flow) => {
+    let s = await flowP->enter(~verb="thenDidNothing", ~part)
+    s->recordOutcome(
+      s.lastCalls == [] ? Outcome.pass : Outcome.fail(NoEventExpected({actual: s.lastCalls})),
+    )
+  }
+}
+
 // -- Automation, way out, way in ---------------------------------------------
 //
 // Each takes the slice as written: its `Spec` and its body. The log keeps no
-// source name, so every mapping is offered every entry; the source id is the
-// producing aggregate's, or "" for a DCB event, which names its own subject.
-
-let sourceIdOf = (entry: logEntry) => entry.aggregateId->Option.getOr("")
+// source name, so every mapping is offered every entry; the source id is the id
+// the entry was recorded under.
 
 let encodedCommandsMatch = (s: flowState, expJson: array<JSON.t>) => {
   let o = switch s.lastRefusal {
@@ -1076,16 +1188,18 @@ module OutboundStep = (
   let encItems = (arr: array<(string, Spec.outboundItem)>) =>
     arr->Array.map(((id, item)) => (id, item->Message.encode(Spec.outboundItemSchema)))
 
-  // Asserts what `collect` queues; `translate` is the slice test's to run.
+  // What `collect` queues over the record, each entry with the id it was
+  // recorded under.
+  let collected = (s: flowState) =>
+    s.log->Array.flatMap(entry =>
+      decodeMatching([entry], consumedDecoder, [])->Array.flatMap(e =>
+        Translation.collect(e, ~sourceId=entry->sourceIdOf)
+      )
+    )
+
   let outbound = async (flowP: flow, ~verb, expected: array<(string, Spec.outboundItem)>) => {
     let s = await flowP->enter(~verb, ~part)
-    let collected =
-      s.log->Array.flatMap(entry =>
-        decodeMatching([entry], consumedDecoder, [])->Array.flatMap(e =>
-          Translation.collect(e, ~sourceId=entry->sourceIdOf)
-        )
-      )
-    let actual = encItems(collected)
+    let actual = encItems(s->collected)
     let expectedJson = encItems(expected)
     let o =
       actual == expectedJson
@@ -1093,6 +1207,62 @@ module OutboundStep = (
         : Outcome.fail(TodoMismatch({expected: expectedJson, actual}))
     s->recordOutcome(o)
   }
+
+  let key = "outbound:" ++ Spec.name
+
+  // The way out sends what it queued and has not sent yet: its own `translate`,
+  // against fakes that stand in for the outside services (`Capabilities_Fake`).
+  // What the answers become are the step's sent commands, for `whenIssued`; a
+  // translate that fails is what `thenIssues…` reports.
+  let whenSent = async (flowP: flow, ~fakes=Capabilities_Fake.make(), ~at=?) => {
+    let s = await flowP->enter(~verb="whenSent", ~part, ~at?)
+    let handled = s->handledBy(key)
+    let items = s->collected->Array.filter(((id, _)) => !(handled->Array.includes(id)))
+    let rec send = async (i, commands, refusal) =>
+      switch (items->Array.get(i), refusal) {
+      | (None, _) | (_, Some(_)) => (commands, refusal)
+      | (Some((id, item)), None) =>
+        switch await Translation.translate(id, item, ~capabilities=fakes.capabilities) {
+        | Ok(Some((_, command))) => await send(i + 1, commands->Array.concat([command]), None)
+        | Ok(None) => await send(i + 1, commands, None)
+        | Error(reason) => (commands, Some(`translate failed: ${reason}`))
+        | exception JsExn(e) => (
+            commands,
+            Some(`translate threw: ${e->JsExn.message->Option.getOr("an exception")}`),
+          )
+        }
+      }
+    let (commands, refusal) = await send(0, [], None)
+    {
+      ...s->markHandled(key, items->Array.map(((id, _)) => id)),
+      lastCommands: commands->Array.map(c => c->Message.encode(Spec.inboundCommandSchema)),
+      lastRefusal: refusal,
+      lastSent: fakes.calls(),
+    }
+  }
+
+  // What the way out asked of the outside services, in order.
+  let thenSent = async (flowP: flow, expected: array<Capabilities_Fake.call>) => {
+    let s = await flowP->enter(~verb="thenSent", ~part)
+    s->recordOutcome(
+      s.lastSent == expected
+        ? Outcome.pass
+        : Outcome.fail(
+            EventsMismatch({
+              expected: expected->Array.map(Capabilities_Fake.toJson),
+              actual: s.lastSent->Array.map(Capabilities_Fake.toJson),
+            }),
+          ),
+    )
+  }
+
+  let issued = async (flowP: flow, ~verb, expected: array<Spec.inboundCommand>) =>
+    (await flowP->enter(~verb, ~part))->encodedCommandsMatch(
+      expected->Array.map(c => c->Message.encode(Spec.inboundCommandSchema)),
+    )
+  let thenIssuesCommands = (flowP, expected) => issued(flowP, ~verb="thenIssuesCommands", expected)
+  let thenIssuesCommand = (flowP, command) => issued(flowP, ~verb="thenIssuesCommand", [command])
+  let thenIssuesNoCommand = flowP => issued(flowP, ~verb="thenIssuesNoCommand", [])
 
   let thenOutbound = (flowP, expected) => outbound(flowP, ~verb="thenOutbound", expected)
   let thenOutboundNothing = flowP => outbound(flowP, ~verb="thenOutboundNothing", [])
@@ -1148,27 +1318,25 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
   let part: Outcome.part = {kind: ExtensionPoint, name: portName(M.ExtensionPoint.name)}
   let delegateDecoder = Reventless.DcbDecode.makeDecoder(M.Delegate.eventSchema)
 
-  // Aggregate-style EP mappings address the source aggregate's identity via
-  // the first arg (e.g. catalog Product → ProductBecameAvailable uses it as
-  // `productId`). DCB upstreams don't set `lastAggregateId` and fall back to
-  // the synthetic `gwt-id` so existing DCB Flow tests keep their behavior.
-  let runMapping = async (sourceId: string, events: array<M.Delegate.event>): array<
+  // Each event the step before recorded, mapped with the id it was recorded
+  // under, as the runtime gives it; each public event appended with the id the
+  // mapping published it with.
+  let runMapping = async (events: array<(string, M.Delegate.event)>): array<(
+    string,
     M.ExtensionPoint.event,
-  > =>
+  )> =>
     switch M.mapOutgoingEvent {
     | None => []
     | Some(f) =>
       let actions =
         events
-        ->Array.map(ev => f(sourceId, ev, StubRuntime.meta, StubRuntime.queryEngine))
+        ->Array.map(((sourceId, ev)) => f(sourceId, ev, StubRuntime.meta, StubRuntime.queryEngine))
         ->Array.flat
       let nested = await actions
       ->Array.map(async action =>
         switch action {
-        | EPMapping.PublishEvent(_id, e) => [e]
-        | EPMapping.PublishEventAsync(p) =>
-          let (_id, e) = await p
-          [e]
+        | EPMapping.PublishEvent(id, e) => [(id, e)]
+        | EPMapping.PublishEventAsync(p) => [await p]
         | EPMapping.HandleDirective(_, _) => []
         }
       )
@@ -1178,19 +1346,30 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
 
   let whenPublished = async (flowP: flow, ~at=?) => {
     let s = await flowP->enter(~verb="whenPublished", ~part, ~at?)
-    let delegateEvents = s.lastEvents->Array.filterMap(json => {
-      let data = switch json {
-      | Object(d) => d
-      | _ => Dict.make()
-      }
-      delegateDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
-    })
-    let sourceId = s.lastAggregateId->Option.getOr("gwt-id")
-    let publicEvents = await runMapping(sourceId, delegateEvents)
+    let delegateEvents =
+      s.lastEvents
+      ->Array.mapWithIndex((json, i) => (s.lastIds->Array.get(i)->Option.getOr(""), json))
+      ->Array.filterMap(((id, json)) => {
+        let data = switch json {
+        | Object(d) => d
+        | _ => Dict.make()
+        }
+        delegateDecoder.decode(
+          ~eventType=json->Reventless.Message.variantNameOfJson,
+          ~data,
+        )->Option.map(ev => (id, ev))
+      })
+    let publicEvents = await runMapping(delegateEvents)
     {
       ...s,
-      log: s.log->appendEvents(~at=s.now, publicEvents, M.ExtensionPoint.eventSchema),
-      lastPublic: publicEvents->Array.map(e => e->Message.encode(M.ExtensionPoint.eventSchema)),
+      log: s.log->Array.concat(
+        publicEvents->Array.map(((id, e)) =>
+          entryOf(e, M.ExtensionPoint.eventSchema, ~at=s.now, ~id)
+        ),
+      ),
+      lastPublic: publicEvents->Array.map(((_, e)) =>
+        e->Message.encode(M.ExtensionPoint.eventSchema)
+      ),
     }
   }
 
@@ -1229,13 +1408,15 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
       ->Array.filterMap(((i, entry)) =>
         handled->Array.includes(i)
           ? None
-          : decodeMatching([entry], epDecoder, [])->Array.get(0)->Option.map(ev => (i, ev))
+          : decodeMatching([entry], epDecoder, [])
+            ->Array.get(0)
+            ->Option.map(ev => (i, entry.id, ev))
       )
     let actions =
       fresh
-      ->Array.map(((_, ev)) =>
+      ->Array.map(((_, sourceId, ev)) =>
         M.mapIncomingEvent(
-          "gwt-id",
+          sourceId,
           ev,
           StubRuntime.meta,
           StubRuntime.pluginDefinition,
@@ -1263,7 +1444,7 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
       }
     )
     ->Promise.all
-    (s->markHandled(key, fresh->Array.map(((i, _)) => i)), nested->Array.flat)
+    (s->markHandled(key, fresh->Array.map(((i, _, _)) => i)), nested->Array.flat)
   }
 
   // The extension reacts to the extension point's events it has not reacted to.
@@ -1417,6 +1598,7 @@ let whenSettled = async (flowP: flow, systems: array<parts>) => {
 // build with a message naming the new step. None of them runs.
 
 type renamedToDecisionStep
+type movedToGeneratedBoundaryTest
 type renamedToAggregateStep
 type renamedToAutomationStep
 type renamedToOutboundStep
@@ -1448,3 +1630,12 @@ module AutomationSlice = (_: RenamedToAutomationStep, _: RenamedToAutomationStep
 module OutboundSlice = (_: RenamedToOutboundStep, _: RenamedToOutboundStep) => {}
 @deprecated("Renamed InboundStep.")
 module InboundSlice = (_: RenamedToInboundStep, _: RenamedToInboundStep) => {}
+
+// A system's boundary is checked by the test `generate-plugin` writes for it
+// (`Boundary_GWT`), not in a flow.
+@deprecated("Moved: generate-plugin writes each system's boundary test (Boundary_GWT).")
+let thenBoundaryScopeResolves = (
+  _: movedToGeneratedBoundaryTest,
+  ~name as _: movedToGeneratedBoundaryTest,
+  _: movedToGeneratedBoundaryTest,
+) => ()

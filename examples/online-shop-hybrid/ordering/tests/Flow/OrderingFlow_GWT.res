@@ -18,6 +18,9 @@
 
 open Ordering_Examples
 
+// The order view queried as its doors answer, read as the caller.
+module OrdersQuery = QueryStep(Orders, Orders_Projection)
+
 describe("Ordering flow — place → auto-ship → confirm", () => {
   // scenario-id: 0c04bbd0-be72-479b-9731-73c122f66b20
   test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () => {
@@ -188,5 +191,39 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
       ->Flow.ShipOrder.thenForbidden
       ->asCaller(Caller.owner(c2))
       ->Flow.Orders.thenNoRow("o1"),
+  )
+
+  // A query over the view, as a person's list shows it.
+  // scenario-id: 67980d83-cfb5-43f6-982b-8c35f08a95d7
+  test(
+    "a customer lists their placed orders, and sees only their own",
+    ~tells="A customer lists their orders",
+    () =>
+      start
+      ->Flow.SyncCatalogProduct.givenEvents([
+        SyncCatalogProduct.CatalogProductSynced({productId: p1, name: book, price: bookPrice}),
+      ])
+      ->Flow.PlaceOrder.whenCommand(
+        PlaceOrder.PlaceOrder({
+          orderId: o1,
+          customerId: c1,
+          lineItems: [{productId: p1, quantity: 1}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->Flow.PlaceOrder.whenCommand(
+        PlaceOrder.PlaceOrder({
+          orderId: o2,
+          customerId: c2,
+          lineItems: [{productId: p1, quantity: 2}],
+          shippingMethod: Standard,
+        }),
+      )
+      ->asCaller(Caller.owner(c1))
+      ->OrdersQuery.whenQueried({by: "lifecycle", value: "Placed"})
+      ->OrdersQuery.thenCounted(1)
+      ->asCaller(Caller.operator)
+      ->OrdersQuery.whenQueried({by: "lifecycle", value: "Placed"})
+      ->OrdersQuery.thenCounted(2),
   )
 })

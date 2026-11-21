@@ -308,6 +308,13 @@ generated test with no line written for it.
 **Exit:** a way out whose `collect` keys on the source id, tested in a flow; the two-system
 flow green with no synthetic id.
 
+**Found while building it:** the platform records a DCB event under two different ids. The
+local runtime takes the bare value of the event's *first* tag (`p-1`), which need not be its
+partition tag; on AWS, the DynamoDB and Postgres stores take the partition tag as `key:value`
+(`productId:p-1`). Every consumer is given that id as the source id, so a way out or an
+automation keyed on it queues different work locally and on AWS. A flow follows the local
+runtime. Which id is right is a decision of its own, outside this plan.
+
 ### FS13 The parts that have no step
 
 Each on its own, when a flow needs it:

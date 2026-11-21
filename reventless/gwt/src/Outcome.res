@@ -22,6 +22,8 @@ type partKind =
   | @as("Inbound") Inbound
   | @as("ExtensionPoint") ExtensionPoint
   | @as("Extension") Extension
+  | @as("Query") Query
+  | @as("SideEffect") SideEffect
 
 type part = {kind: partKind, name: string}
 

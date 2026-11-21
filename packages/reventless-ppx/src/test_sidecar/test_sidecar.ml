@@ -1078,6 +1078,34 @@ let () =
               Flow.ShipOrder.whenCommand (after "placed") (ShipOrder { orderId = "o1" })))]
   in
   let aj = scenarios_of "tests/Flow/AfterFlow_GWT.res" after_body in
+  let parts13_body : structure =
+    [%str
+      module OrdersQuery = QueryStep (Orders) (Orders_Projection)
+      module OrderEmail = SideEffectStep (OrderingPlugin.Order_EmailNotification)
+
+      ;;
+      describe "No step before" (fun () ->
+          test "sent, queried, run" (fun () ->
+              OrderEmail.thenDid
+                (OrderEmail.whenRuns
+                   (OrdersQuery.thenCounted
+                      (OrdersQuery.whenQueried
+                         (Flow.GeocodeCustomerAddress.whenSent start)
+                         { by = "lifecycle"; value = "Placed" })
+                      1)
+                   mock)
+                mock
+                [| SendOrderConfirmation { orderId = "o1" } |]))]
+  in
+  let pj13 = scenarios_of "tests/Flow/PartsFlow13_GWT.res" parts13_body in
+  smust pj13 "sent, queried, run" "steps" "whenSent: a way out's, ready-made"
+    "\"verb\":\"whenSent\",\"kind\":\"Process\",\"element\":\"\",\"values\":[],\"via\":\"Flow.GeocodeCustomerAddress\",\"step\":1,\"part\":{\"kind\":\"Outbound\",\"name\":\"GeocodeCustomerAddress\"}";
+  smust pj13 "sent, queried, run" "steps" "whenQueried: the query's fields, a query part"
+    "\"element\":\"query\",\"values\":[[\"by\",{\"kind\":\"string\",\"value\":\"lifecycle\"}],[\"value\",{\"kind\":\"string\",\"value\":\"Placed\"}]],\"via\":\"OrdersQuery\",\"step\":2,\"part\":{\"kind\":\"Query\",\"name\":\"Orders\"}";
+  smust pj13 "sent, queried, run" "steps" "thenCounted, the count"
+    "\"element\":\"count\",\"values\":[[\"count\",{\"kind\":\"int\",\"value\":1}]]";
+  smust pj13 "sent, queried, run" "steps" "thenDid: what the side effect did, its part read from the functor"
+    "\"kind\":\"SideEffect\",\"element\":\"SendOrderConfirmation\",\"values\":[[\"orderId\",{\"kind\":\"string\",\"value\":\"o1\"}]],\"via\":\"OrderEmail\",\"step\":5,\"part\":{\"system\":\"OrderingPlugin\",\"kind\":\"SideEffect\",\"name\":\"Order_EmailNotification\"}";
   sequal aj "shipped" "after" "after(title): the flow it starts after" "{\"title\":\"placed\"}";
   smust aj "shipped" "steps" "…its own steps counted from 1" "\"verb\":\"whenCommand\",\"kind\":\"Command\",\"element\":\"ShipOrder\"";
   sequal sj "the app does the rest" "steps" "whenSettled and thenNothingElseReacts, no part"

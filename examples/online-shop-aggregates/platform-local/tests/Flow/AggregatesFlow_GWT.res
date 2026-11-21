@@ -15,8 +15,8 @@
 //                                └─[Catalog Orders_Extension]→ Record
 //                                     └─→ Catalog.ProductDemand.Record ─→ Recorded
 //
-// The SideEffect tail (Order_EmailNotification) is exercised in isolation by
-// Order_EmailNotification_GWT — Flow_GWT does not thread SideEffects.
+// The order's confirmation email (Order_EmailNotification) is a side effect: it
+// runs over the record in the first flow, against its recording mock.
 
 @@reventless.gwt
 
@@ -26,19 +26,29 @@ open PlatformLocal_Examples
 module Catalog = CatalogPlugin.Flow
 module Ordering = OrderingPlugin.Flow
 
+module OrderEmail = SideEffectStep(OrderingPlugin.Order_EmailNotification)
+module Mailer = OrderingPlugin.EmailService_Mock
+
 // Flows ---------------------------------------------------------------------
 
 describe("Aggregates ordering flow (single plugin)", () => {
   // scenario-id: d92cb603-8688-401c-a54f-8d877410a6cf
-  test("sync product → place order → ship order", () =>
+  test("sync product → place order → ship order", () => {
+    Mailer.install()
     start
     ->Ordering.CatalogProduct.whenCommand(~id="p1", Sync({name: book, price: bookPrice}))
     ->Ordering.CatalogProduct.thenEvent(Synced({name: book, price: bookPrice}))
     ->Ordering.Order.whenCommand(~id="o1", Place({customerId: c1, productIds: [p1]}))
     ->Ordering.Order.thenEvent(Placed({customerId: c1, productIds: [p1]}))
+    // The placed order is confirmed by mail, to the order recorded under o1.
+    ->OrderEmail.whenRuns(Mailer.mock)
+    ->OrderEmail.thenDid(Mailer.mock, [SendOrderConfirmation({email: "c1", orderId: "o1"})])
     ->Ordering.Order.whenCommand(~id="o1", Ship)
     ->Ordering.Order.thenEvent(Shipped)
-  )
+    // Shipping sends no mail.
+    ->OrderEmail.whenRuns(Mailer.mock)
+    ->OrderEmail.thenDidNothing
+  })
 
   // scenario-id: 7e738dad-a991-4453-bf69-be8f3a900a23
   test("re-placing the same order returns OrderAlreadyPlaced", () =>
