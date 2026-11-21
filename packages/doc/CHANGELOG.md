@@ -718,6 +718,13 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-21
+- feat(gwt): a system's boundary is tested without a test written, and a flow reaches every part ([9475f85](https://github.com/ReventlessDev/reventless-core/commit/9475f858027b55a819b5132b25b9d2e186ade934))
+- feat(gwt): a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
+- feat(gwt): a flow runs what was sent, states rows and acceptance, and keeps time ([0d418c9](https://github.com/ReventlessDev/reventless-core/commit/0d418c9f890a4255d5b906f1246ccb705d3a9a6a))
+- feat(gwt): a plugin's flow steps come ready-made, and a failure names its step ([861bb08](https://github.com/ReventlessDev/reventless-core/commit/861bb08cea20b006fd44f08b6c10c51774487faf))
+- refactor(gwt): one naming for a flow's steps ([02dc41f](https://github.com/ReventlessDev/reventless-core/commit/02dc41fd9fae6d50939fe2d8b42c724b43df19a3))
+- feat(examples): the shop's Order action names the states it is offered in, and the withdrawal round trip has a flow test ([4a3207d](https://github.com/ReventlessDev/reventless-core/commit/4a3207d7314a02583ec61bda6912370d5e362d90))
 ### 2026-11-20
 - docs(standin): a page for stand-ins, and a fresh app publishes its doors' secrets ([3a7ce8c](https://github.com/ReventlessDev/reventless-core/commit/3a7ce8cf960d66196597e11a880949427337aa9f))
 - feat(spec): a translation tells one thing something through a devices capability ([548f28b](https://github.com/ReventlessDev/reventless-core/commit/548f28bcff1caa6f40273619826a387f0bcf9b70))
