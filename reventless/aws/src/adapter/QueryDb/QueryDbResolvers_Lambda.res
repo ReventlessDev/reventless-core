@@ -204,26 +204,30 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // Per-index equality queries: {single}By{Index}. A group-restricted index
     // (indexConfig.authorization) bakes the auth-table pipeline params — the
     // Lambda verifies group membership + ownership against the auth read model.
-    let byIndex = indexes->Array.map((ic: indexConfig) => {
-      let index = ic.index
-      let field = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
-        ~singleFieldName=fieldNameForSingle,
-        ~index,
-      )
-      let resolverName = field->String.capitalize
-      switch ic.authorization {
-      | Some({tableName, group}) =>
-        mkResolver(
-          ~resolverName,
-          ~field,
-          ~kind="index",
+    // A derived index has no SDL door to attach to.
+    let byIndex =
+      indexes
+      ->Array.filter(ic => !Reventless.ReadModel.isDerivedIndex(ic))
+      ->Array.map((ic: indexConfig) => {
+        let index = ic.index
+        let field = ReventlessCore.GraphQL_FragmentGenerator.indexQueryFieldName(
+          ~singleFieldName=fieldNameForSingle,
           ~index,
-          ~authTable=tableName->String.capitalize,
-          ~authGroup=group,
         )
-      | None => mkResolver(~resolverName, ~field, ~kind="index", ~index)
-      }
-    })
+        let resolverName = field->String.capitalize
+        switch ic.authorization {
+        | Some({tableName, group}) =>
+          mkResolver(
+            ~resolverName,
+            ~field,
+            ~kind="index",
+            ~index,
+            ~authTable=tableName->String.capitalize,
+            ~authGroup=group,
+          )
+        | None => mkResolver(~resolverName, ~field, ~kind="index", ~index)
+        }
+      })
 
     // The GraphQL type the cross-table fields hang off — the plugin-prefixed SDL
     // name, not the QueryDb's own. A resolver naming the other one is refused at
@@ -285,7 +289,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     })
 
     let entered =
-      QueryDbResolvers_TrailEntered.make(
+      QueryDbResolvers_Trail.enteredResolver(
         ~name,
         ~api,
         ~dataSourceName,

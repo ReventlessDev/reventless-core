@@ -180,9 +180,13 @@ function visitsAttr(state) {
 
 let enteredCurrentAttr = "_entered_current";
 
+let keyAttr = "_trail";
+
+let keyValue = "1";
+
 function writeDerived(stateDict, field) {
   Object.keys(stateDict).forEach(key => {
-    if (key.startsWith(enteredPrefix) || key.startsWith(visitsPrefix)) {
+    if (key.startsWith(enteredPrefix) || key.startsWith(visitsPrefix) || key === keyAttr) {
       return Stdlib_Dict.$$delete(stateDict, key);
     }
   });
@@ -201,6 +205,7 @@ function writeDerived(stateDict, field) {
   });
   Stdlib_Option.forEach(match$1.current, at => {
     stateDict[enteredCurrentAttr] = at;
+    stateDict[keyAttr] = keyValue;
   });
 }
 
@@ -284,6 +289,10 @@ let Trail = {
   enteredFirstAttr: enteredFirstAttr,
   visitsAttr: visitsAttr,
   enteredCurrentAttr: enteredCurrentAttr,
+  keyAttr: keyAttr,
+  keyValue: keyValue,
+  lifecycleIndexName: "_lifecycle",
+  stateIndexName: enteredAttr,
   writeDerived: writeDerived,
   enteredCurrentName: "enteredCurrent",
   queryNames: queryNames,

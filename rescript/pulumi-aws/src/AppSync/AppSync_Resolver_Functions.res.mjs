@@ -644,16 +644,56 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues, ownerIndex, ownerIndexSortField) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues, ownerIndex, ownerIndexSortField, storedNamesOpt, keyedReadsOpt) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
   let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
+  let storedNames = storedNamesOpt !== undefined ? storedNamesOpt : ({});
+  let keyedReads = keyedReadsOpt !== undefined ? keyedReadsOpt : [];
   let ownerIndex$1 = Stdlib_Option.isSome(ownerField) ? ownerIndex : undefined;
+  let attrOf = f => Stdlib_Option.getOr(storedNames[f], f);
+  let keyed = keyedReads.length !== 0;
+  let keyedPreamble;
+  if (keyed) {
+    let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+    let allowed = ownerIndex$1 !== undefined ? `_kSub == null || _kGroups.some(g => [` + elevatedLiteral + `].indexOf(g) >= 0)` : "true";
+    let chain = keyedReads.map(k => `if (` + k.pick + `) {
+      _keyed = { index: '` + k.index + `', hashAttr: '` + k.hashAttr + `', hashFilter: '` + Stdlib_Option.getOr(k.hashFilter, "") + `', value: ` + k.hashValue + `, sortAttr: '` + k.sortAttr + `', sortApi: '` + k.sortApi + `', tag: '` + k.tag + `' };
+    }`).join(" else ");
+    keyedPreamble = `
+  const _kFilter = ctx.args.filter ?? {};
+  const _has = (v) => v !== undefined && v !== null && v !== '';
+  const _ob = ctx.args.orderBy;
+  const _kId = ctx.identity;
+  const _kSub = _kId == null ? null : _kId.sub;
+  const _kGroups = (_kId != null && _kId.claims != null && _kId.claims['cognito:groups']) || [];
+  let _keyed = null;
+  if (` + allowed + `) {
+    ` + chain + `
+  }
+  const _kOrdered = _keyed !== null && !!(_ob && _ob.field === _keyed.sortApi);`;
+  } else {
+    keyedPreamble = "";
+  }
+  let hashGuard = f => {
+    if (keyed) {
+      return ` && !(_keyed !== null && _keyed.hashFilter === '` + f + `')`;
+    } else {
+      return "";
+    }
+  };
+  let sortKeyGuard = f => {
+    if (keyed) {
+      return ` && !(_keyed !== null && _keyed.sortApi === '` + f + `')`;
+    } else {
+      return "";
+    }
+  };
   let requireAttributeClause = requireAttribute !== undefined ? `
   names['#` + requireAttribute + `'] = '` + requireAttribute + `';
   parts.push('attribute_exists(#` + requireAttribute + `)');` : "";
-  let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+  let elevatedLiteral$1 = elevatedGroups.map(g => `'` + g + `'`).join(", ");
   let ownerIdentityPreamble = `
   // ── owner scoping (generated) ──
   // Not read from ctx.args: a predicate deciding what the caller may see must
@@ -662,7 +702,7 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const _id = ctx.identity;
   const _sub = _id == null ? null : _id.sub;
   const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
-  const _elevated = [` + elevatedLiteral + `];
+  const _elevated = [` + elevatedLiteral$1 + `];
   // No identity at all, or an identity with no \`sub\`, is the IAM service caller
   // the API also accepts — inside the trust boundary, and exempt.
   const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
@@ -676,12 +716,12 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
     ) : "";
   let retiredClause;
   if (retiredField !== undefined) {
-    let elevatedLiteral$1 = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+    let elevatedLiteral$2 = elevatedGroups.map(g => `'` + g + `'`).join(", ");
     let exemptPrelude = ownerField !== undefined ? "" : `
   const _id = ctx.identity;
   const _sub = _id == null ? null : _id.sub;
   const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
-  const _elevated = [` + elevatedLiteral$1 + `];
+  const _elevated = [` + elevatedLiteral$2 + `];
   const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);`;
     let tmp;
     if (retiredValues !== undefined) {
@@ -707,25 +747,30 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   } else {
     retiredClause = "";
   }
-  let filterClauses = filterFields.map(f => `
-  if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== '') {
-    names['#` + f + `'] = '` + f + `';
+  let filterClauses = keyedPreamble + filterFields.map(f => `
+  if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== ''` + hashGuard(f) + `) {
+    names['#` + f + `'] = '` + attrOf(f) + `';
     values[':` + f + `Eq'] = util.dynamodb.toDynamoDB(filter.` + f + `Eq);
     parts.push('#` + f + ` = :` + f + `Eq');
   }`).join("");
   let rangeClauses = rangeFields.map(f => `
-  if (filter.` + f + `From !== undefined && filter.` + f + `From !== null && filter.` + f + `From !== '') {
-    names['#` + f + `'] = '` + f + `';
+  if (filter.` + f + `From !== undefined && filter.` + f + `From !== null && filter.` + f + `From !== ''` + sortKeyGuard(f) + `) {
+    names['#` + f + `'] = '` + attrOf(f) + `';
     values[':` + f + `From'] = util.dynamodb.toDynamoDB(filter.` + f + `From);
     parts.push('#` + f + ` >= :` + f + `From');
   }
-  if (filter.` + f + `To !== undefined && filter.` + f + `To !== null && filter.` + f + `To !== '') {
-    names['#` + f + `'] = '` + f + `';
+  if (filter.` + f + `To !== undefined && filter.` + f + `To !== null && filter.` + f + `To !== ''` + sortKeyGuard(f) + `) {
+    names['#` + f + `'] = '` + attrOf(f) + `';
     values[':` + f + `To'] = util.dynamodb.toDynamoDB(filter.` + f + `To);
     parts.push('#` + f + ` <= :` + f + `To');
   }`).join("");
   let sortFieldsLiteral = sortFields.map(f => `'` + f + `'`).join(", ");
-  let sortGuard = ownerIndex$1 !== undefined && ownerIndexSortField !== undefined ? "!_indexOrdered && " : "";
+  let sortGuard = (
+    ownerIndex$1 !== undefined && ownerIndexSortField !== undefined ? "!_indexOrdered && " : ""
+  ) + (
+    keyed ? "!_kOrdered && " : ""
+  );
+  let storedLiteral = Object.entries(storedNames).map(param => param[0] + `: '` + param[1] + `'`).join(", ");
   let sortBlock = sortFields.length === 0 ? "" : `
   // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
   // does not apply to Scan). Global ordering across pages requires v1.5 index
@@ -733,7 +778,8 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const orderBy = ctx.args.orderBy;
   const sortFields = [` + sortFieldsLiteral + `];
   if (` + sortGuard + `orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
-    const field = orderBy.field;
+    const _stored = { ` + storedLiteral + ` };
+    const field = _stored[orderBy.field] ?? orderBy.field;
     const nulls = items.filter(it => it[field] === null || it[field] === undefined);
     const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
     const encoded = nonNulls.map(it => {
@@ -780,11 +826,55 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
     limit: ` + listPageWindowBudget + `,
     nextToken: _window,
   };`;
-  let requestPathGuard = Stdlib_Option.isSome(ownerIndex$1) ? cursorPathGuard : "";
-  let responsePathPreamble = ownerIndex$1 !== undefined ? ownerIdentityPreamble + `
+  let requestOperation$1 = keyed ? requestOperation.replace("const req = ", "const _baseReq = ") + (`
+  const _kFrom = _keyed === null ? null : _kFilter[_keyed.sortApi + 'From'];
+  const _kTo = _keyed === null ? null : _kFilter[_keyed.sortApi + 'To'];
+  const _kNames = { '#kh': _keyed === null ? '' : _keyed.hashAttr };
+  const _kValues = { ':kh': util.dynamodb.toDynamoDB(_keyed === null ? '' : _keyed.value) };
+  let _kExpr = '#kh = :kh';
+  if (_keyed !== null && (_has(_kFrom) || _has(_kTo))) {
+    _kNames['#ks'] = _keyed.sortAttr;
+  }
+  if (_keyed !== null && _has(_kFrom) && _has(_kTo)) {
+    _kExpr = _kExpr + ' AND #ks BETWEEN :kf AND :kt';
+    _kValues[':kf'] = util.dynamodb.toDynamoDB(_kFrom);
+    _kValues[':kt'] = util.dynamodb.toDynamoDB(_kTo);
+  } else if (_keyed !== null && _has(_kFrom)) {
+    _kExpr = _kExpr + ' AND #ks >= :kf';
+    _kValues[':kf'] = util.dynamodb.toDynamoDB(_kFrom);
+  } else if (_keyed !== null && _has(_kTo)) {
+    _kExpr = _kExpr + ' AND #ks <= :kt';
+    _kValues[':kt'] = util.dynamodb.toDynamoDB(_kTo);
+  }
+  const req = _keyed === null
+    ? _baseReq
+    : {
+        operation: 'Query',
+        index: _keyed.index,
+        query: { expression: _kExpr, expressionNames: _kNames, expressionValues: _kValues },
+        limit: ` + listPageWindowBudget + `,
+        nextToken: _window,
+        scanIndexForward: !(_kOrdered && _ob.direction === 'DESC'),
+      };`) : requestOperation;
+  let basePath = Stdlib_Option.isSome(ownerIndex$1) ? "(_exempt ? 's' : 'q')" : "'s'";
+  let requestPathGuard = keyed ? `
+  const _expectPath = _keyed !== null ? _keyed.tag : ` + basePath + `;
+  if (_cursorPath !== null && _cursorPath !== _expectPath) {
+    util.error('This cursor belongs to a different read of this list; restart from the first page.', 'CursorPathMismatch');
+  }` : (
+      Stdlib_Option.isSome(ownerIndex$1) ? cursorPathGuard : ""
+    );
+  let responsePathPreamble = ownerIndex$1 !== undefined ? (
+      keyed ? ownerIdentityPreamble + keyedPreamble + `
+  const _path = _keyed !== null ? _keyed.tag : (_exempt ? 's' : 'q');
+  const _indexOrdered = ` + indexOrderedExpr + `;` : ownerIdentityPreamble + `
   const _path = _exempt ? 's' : 'q';
-  const _indexOrdered = ` + indexOrderedExpr + `;` : "";
-  let pageResponse = ownerIndex$1 !== undefined ? connectionPageResponse("_path", true) : connectionPageResponse(undefined, true);
+  const _indexOrdered = ` + indexOrderedExpr + `;`
+    ) : (
+      keyed ? keyedPreamble + `
+  const _path = _keyed !== null ? _keyed.tag : 's';` : ""
+    );
+  let pageResponse = ownerIndex$1 !== undefined || keyed ? connectionPageResponse("_path", true) : connectionPageResponse(undefined, true);
   return importUtil + `
 export function request(ctx) {
   // 'before' IS served — the page is cut backward out of the window the cursor
@@ -825,7 +915,7 @@ export function request(ctx) {
   // caller can act on this one (page forward from the start).
   if (_backward && _upTo <= 0 && _window !== null) {
     util.error('The previous page begins in an earlier read window, which this cursor cannot name; page forward from the start.', 'UnsupportedPagination');
-  }` + requestOperation + `
+  }` + requestOperation$1 + `
   if (parts.length > 0) {
     req.filter = {
       expression: parts.join(' AND '),

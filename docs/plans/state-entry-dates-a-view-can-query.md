@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS4](#4-steps) done). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -71,7 +71,7 @@ The analysis's recommendations, taken.
 | **QDD4** | Rows stored before the change? | They are derived on their next write; a rebuild recomputes every row from its trail. [SEQ4](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD5** | Can a row be named by a derived date? | No. `@displayName` points at declared fields. [SEQ5](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD6** | A filter relative to now? | No new operator; a client sends an absolute bound. [SEQ6](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
+| **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. With them `_trail`, one value on every row whose trail has an entry, which the per-state indexes are keyed by ([QDS5](#4-steps)). Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
 | **QDD8** | What does the API call them? | Camel case without the underscore, in one table both the SDL and every resolver read: `enteredPlaced`, `enteredPlacedFirst`, `visitsPlaced`, `enteredCurrent`. Reading is an object beside the trail, `<trailField>Entered { placed { latest first visits } current }`. [SEF3](../analysis/state-entry-dates-as-queryable-fields.md#sef3-capability-and-the-graphql-surface). |
 | **QDD9** | When are they written? | On every write of a row with a trail, not only on a transition: they are a pure function of the trail, so recomputing is cheap, and a row whose typed state dropped the synthetic attributes on the way through an update gets them back. |
 
@@ -145,6 +145,24 @@ lifecycle index with `From`/`To` as the key condition; another opted-in state's 
 that added them.
 *Done when* the DynamoDB adapter tests run the request of [QDS4](#4-steps) as a `Query` on the lifecycle index,
 and a component with too many indexes fails its deploy check with the count.
+*Done* 2026-11-22. The indexes are derived in core, not by the ppx: `ReadModel.trailIndexes` reads
+`trailIndex` off the state schema, and `QueryDb_Builder` hands the declared and the derived indexes
+to the storage and the resolvers together. The plan left the per-state index's partition key open,
+and a date cannot be one (a Query needs equality on it). The save now also writes `_trail = "1"` on
+every row whose trail has an entry, and each per-state index is keyed `_trail` and sorted by
+`_entered_<State>`, so a row that never entered the state is absent from it. The lifecycle index is
+`_lifecycle`. The list door picks a Query from the request: `<lifecycle>Eq` keys the lifecycle
+index, with `enteredCurrentFrom`/`To` as its sort-key condition and `orderBy: enteredCurrent`
+read in index order, either direction; failing that, a range on or an order by `entered<State>`
+keys that state's index. What the key condition answers leaves the FilterExpression, every other
+filter stays in it, and the rest is a Scan as before. A caller the `@owner` index scopes keeps
+that Query; an exempt one may take the trail's. Cursors carry which read minted them, and one
+replayed on another read is refused. The count check sits in the DynamoDB storage maker and names
+each index's annotation (`@index`, `@owner`, `@trail`). The Postgres resolver set on AWS no longer
+gives a derived index a by-index door the SDL lacks, which the `@owner` index had been getting too.
+Tested on the generated resolver run in jest and compiled by AppSync's `EvaluateCode`; not yet
+against a live table. Each per-state index, and each lifecycle state, is one partition, so a view
+writing past a partition's throughput would need it sharded.
 
 **QDS6 The shop opts in.** Orders gets `@trail({index: [Placed, Shipped, Cancelled]})`, Products
 and Categories `@trail({index: [Archived]})`. `placedAt` stays ([QDD5](#3-decisions)).

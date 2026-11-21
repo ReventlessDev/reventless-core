@@ -10,21 +10,16 @@ module Make = (
   type operations = QueryDb.operations<Spec.Id.t, Spec.state>
   type component = Component.t<QueryDb.t, QueryDb.outputs, operations>
 
+  // The declared indexes and those a `@trail({index: […]})` derives.
+  let indexes =
+    Spec.config.indexes->Reventless.ReadModel.withTrailIndexes(Spec.stateSchema->S.castToUnknown)
+
   let construct = (self, name, ~api, ~apiRole, ~ttl=?, ~owner=?) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let subIdField = Spec.subIdConfig->Option.map(config => config.subIdField)
 
-    let storage = Storage.make(
-      ~name,
-      ~indexes=Spec.config.indexes,
-      ~subIdField?,
-      ~ttl?,
-      ~api,
-      ~apiRole,
-      ~owner,
-      ~opts,
-    )
+    let storage = Storage.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
 
     self->Component.setOperations(
       storage.operations->Pulumi.Output.apply(jsonOps => {
@@ -51,7 +46,7 @@ module Make = (
       ~api,
       ~apiRole,
       ~dataSourceName=storage.dataSourceName,
-      ~indexes=Spec.config.indexes,
+      ~indexes,
       ~subIdField,
       ~idResolverConfigs=Spec.config.idResolvers,
       ~idsResolverConfigs=Spec.config.idsResolvers,

@@ -3,6 +3,9 @@
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -90,7 +93,27 @@ function dataSource(name, table, api, apiRole, opts) {
   return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, opts);
 }
 
+function indexSource(ic) {
+  if (ReadModel$Reventless.isDerivedIndex(ic)) {
+    if (ic.index === Lifecycle$Reventless.Trail.lifecycleIndexName || ic.index.startsWith(Lifecycle$Reventless.Trail.enteredPrefix)) {
+      return "@trail";
+    } else {
+      return "@owner";
+    }
+  } else {
+    return "@index";
+  }
+}
+
+function indexCountProblem(name, indexes) {
+  let count = indexes.length;
+  if (count > 20) {
+    return name + ` asks for ` + count.toString() + ` global secondary indexes and DynamoDB allows ` + (20).toString() + ` on a table: ` + indexes.map(ic => ic.index + ` (` + indexSource(ic) + `)`).join(", ") + ". Name fewer states in @trail({index: [...]}), or drop an @index.";
+  }
+}
+
 function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
+  Stdlib_Option.forEach(indexCountProblem(name, indexes), Stdlib_JsError.throwWithMessage);
   let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType, "QueryDb", undefined, undefined, owner, undefined, undefined);
   let table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), globalSecondaryIndexes(indexes), ttl, subIdField, tags, opts, name);
   return {
@@ -108,11 +131,16 @@ function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
   };
 }
 
+let gsiLimit = 20;
+
 export {
   globalSecondaryIndexes,
   attributes,
   dataSourcePolicyDocument,
   dataSource,
+  gsiLimit,
+  indexSource,
+  indexCountProblem,
   make,
 }
 /* @pulumi/aws Not a pure module */

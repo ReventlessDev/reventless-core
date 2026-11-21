@@ -2,13 +2,14 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
+import * as QueryDbResolvers_Trail$ReventlessAws from "./QueryDbResolvers_Trail.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./PgQueryResolver_Builder.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
-import * as QueryDbResolvers_TrailEntered$ReventlessAws from "./QueryDbResolvers_TrailEntered.res.mjs";
 
 let identityBlock = `id != null && id.sub != null
       ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
@@ -97,7 +98,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     } else {
       refs = [];
     }
-    let byIndex = indexes.map(ic => {
+    let byIndex = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(ic => {
       let index = ic.index;
       let field = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);
       let resolverName = Stdlib_String.capitalize(field);
@@ -150,7 +151,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
       let extra = `\n      sourceIdsField: '` + match.idsField + `',`;
       return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(resolvedField), api, dataSourceName, parentTypeName, resolvedField, invokeFieldTemplate(name$1, "resolveMany", targetKey, extra), opts);
     });
-    let entered = Stdlib_Option.mapOr(QueryDbResolvers_TrailEntered$ReventlessAws.make(name$1, api, dataSourceName, parentTypeName, Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name$1], opts), [], r => [r]);
+    let entered = Stdlib_Option.mapOr(QueryDbResolvers_Trail$ReventlessAws.enteredResolver(name$1, api, dataSourceName, parentTypeName, Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name$1], opts), [], r => [r]);
     return [
       byId,
       all
@@ -171,4 +172,4 @@ export {
   invokeFieldTemplate,
   make,
 }
-/* Util_AppSync-ReventlessAws Not a pure module */
+/* ReadModel-Reventless Not a pure module */

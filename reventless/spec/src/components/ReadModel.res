@@ -114,6 +114,48 @@ type indexConfig = {
 let isDerivedIndex = (ic: indexConfig) => ic.derived->Option.getOr(false)
 
 /**
+The indexes `@trail({index: […]})` derives: the lifecycle index (key the
+lifecycle field, sort key the current state's entry) and, per named state, one
+sorted by that state's latest entry. A row that never entered the state has no
+sort key there, so the per-state index holds only the rows that did.
+*/
+let trailIndexes = (stateSchema: S.t<unknown>): array<indexConfig> =>
+  switch (
+    StateAnnotations.getSpec(stateSchema)->Option.flatMap(spec => spec.trailIndex),
+    Lifecycle.Trail.readableField(stateSchema),
+    Lifecycle.fieldName(stateSchema),
+  ) {
+  | (Some(states), Some(_), Some(lifecycleField)) =>
+    [
+      {
+        index: Lifecycle.Trail.lifecycleIndexName,
+        type_: "S",
+        idField: lifecycleField,
+        subIdField: Lifecycle.Trail.enteredCurrentAttr,
+        projectionType: ALL,
+        derived: true,
+      },
+    ]->Array.concat(
+      states->Array.map(state => {
+        index: Lifecycle.Trail.stateIndexName(state),
+        type_: "S",
+        idField: Lifecycle.Trail.keyAttr,
+        subIdField: Lifecycle.Trail.enteredAttr(state),
+        projectionType: ALL,
+        derived: true,
+      }),
+    )
+  | _ => []
+  }
+
+/** A view's declared indexes and those its trail derives. */
+let withTrailIndexes = (indexes: array<indexConfig>, stateSchema: S.t<unknown>) => {
+  let derived =
+    trailIndexes(stateSchema)->Array.filter(t => !(indexes->Array.some(i => i.index == t.index)))
+  indexes->Array.concat(derived)
+}
+
+/**
 Composite-key configuration for a read model that has both a primary ID and a sub-ID.
 
 - `subIdField` — the DynamoDB range-key attribute name

@@ -97,6 +97,36 @@ let dataSource = (name, table, api, apiRole, opts) => {
   AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts)
 }
 
+/** DynamoDB's cap on global secondary indexes per table. */
+let gsiLimit = 20
+
+// The annotation an index comes from, for the message that refuses too many.
+let indexSource = (ic: Reventless.ReadModel.indexConfig) =>
+  if !Reventless.ReadModel.isDerivedIndex(ic) {
+    "@index"
+  } else if (
+    ic.index == Reventless.Lifecycle.Trail.lifecycleIndexName ||
+      ic.index->String.startsWith(Reventless.Lifecycle.Trail.enteredPrefix)
+  ) {
+    "@trail"
+  } else {
+    "@owner"
+  }
+
+/** Why a table cannot be provisioned with these indexes, if it cannot. Counted
+    here, where the table is declared, so the deploy stops before AWS refuses it. */
+let indexCountProblem = (~name: string, indexes: array<Reventless.ReadModel.indexConfig>) => {
+  let count = indexes->Array.length
+  count > gsiLimit
+    ? Some(
+        `${name} asks for ${count->Int.toString} global secondary indexes and DynamoDB allows ${gsiLimit->Int.toString} on a table: ` ++
+        indexes
+        ->Array.map(ic => `${ic.index} (${indexSource(ic)})`)
+        ->Array.join(", ") ++ ". Name fewer states in @trail({index: [...]}), or drop an @index.",
+      )
+    : None
+}
+
 let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
@@ -107,6 +137,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~owner,
   ~opts,
 ) => {
+  indexCountProblem(~name, indexes)->Option.forEach(JsError.throwWithMessage)
   let tags = AWS.Tags.make(
     ~name,
     ~kind=ReventlessCore.QueryDb.componentType,

@@ -162,13 +162,28 @@ module Trail = {
   let visitsAttr = state => visitsPrefix ++ state
   let enteredCurrentAttr = "_entered_current"
 
+  /** One value on every row whose trail has an entry: the partition key of the
+      per-state indexes, which hold only the rows that entered their state. */
+  let keyAttr = "_trail"
+  let keyValue = "1"
+
+  /** The index keyed by the lifecycle field and sorted by `enteredCurrentAttr`. */
+  let lifecycleIndexName = "_lifecycle"
+
+  /** The index of one state's latest entry, keyed by `keyAttr`. */
+  let stateIndexName = enteredAttr
+
   /** Replaces the derived attributes on a state's JSON with those of the trail
       at `field`. A row without a trail gets none. */
   let writeDerived = (stateDict: dict<JSON.t>, ~field: string): unit => {
     stateDict
     ->Dict.keysToArray
     ->Array.forEach(key =>
-      if key->String.startsWith(enteredPrefix) || key->String.startsWith(visitsPrefix) {
+      if (
+        key->String.startsWith(enteredPrefix) ||
+        key->String.startsWith(visitsPrefix) ||
+        key == keyAttr
+      ) {
         stateDict->Dict.delete(key)
       }
     )
@@ -180,7 +195,10 @@ module Trail = {
         stateDict->Dict.set(enteredFirstAttr(state), JSON.Encode.string(first))
         stateDict->Dict.set(visitsAttr(state), JSON.Encode.int(visits))
       })
-      current->Option.forEach(at => stateDict->Dict.set(enteredCurrentAttr, JSON.Encode.string(at)))
+      current->Option.forEach(at => {
+        stateDict->Dict.set(enteredCurrentAttr, JSON.Encode.string(at))
+        stateDict->Dict.set(keyAttr, JSON.Encode.string(keyValue))
+      })
     | _ => ()
     }
   }

@@ -19,9 +19,9 @@ import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aw
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
+import * as QueryDbResolvers_Trail$ReventlessAws from "./QueryDbResolvers_Trail.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
-import * as QueryDbResolvers_TrailEntered$ReventlessAws from "./QueryDbResolvers_TrailEntered.res.mjs";
 import * as QueryInterceptor_Provisioning$ReventlessAws from "./QueryInterceptor_Provisioning.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -146,7 +146,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is filtered after the page is read, so pages ` + "shrink as the archive's share of the rows grows. An @index on that field would not help — the list read does not use one, and a flag makes a poor partition key. Reshape the view so the rows you serve are the rows you keep, or accept the cost while the archive stays small.");
       }
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField, capability.stored, QueryDbResolvers_Trail$ReventlessAws.keyedReads(indexes)) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(indexConfig => {
       let index = indexConfig.index;
       let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);
@@ -306,7 +306,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       );
     let refsResolvers = Stdlib_Option.mapOr(resolverRefs, [], r => [r]);
     let changeResolver = AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + "RowChange", api, dataSourceName, parentTypeName, RowChange$ReventlessCore.key, AppSync_Resolver_Functions$PulumiAws.rowChangeField(RowChange$ReventlessCore.key, elevatedGroups), opts);
-    let enteredResolvers = Stdlib_Option.mapOr(QueryDbResolvers_TrailEntered$ReventlessAws.make(name$1, api, dataSourceName, parentTypeName, stateSchemaOpt, opts), [], r => [r]);
+    let enteredResolvers = Stdlib_Option.mapOr(QueryDbResolvers_Trail$ReventlessAws.enteredResolver(name$1, api, dataSourceName, parentTypeName, stateSchemaOpt, opts), [], r => [r]);
     return [
       mainResolvers,
       refsResolvers,

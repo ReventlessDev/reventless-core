@@ -221,6 +221,7 @@ describe("StateViewSliceEntryPoint_Ops.makeJsonEventsHandler", () => {
           ("_entered_Placed_first", str("2026-03-02T09:00:00Z")),
           ("_visits_Placed", JSON.Encode.int(1)),
           ("_entered_current", str("2026-03-02T09:00:00Z")),
+          ("_trail", str("1")),
         ]),
       ),
     ])

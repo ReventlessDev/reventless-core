@@ -136,13 +136,14 @@ describe("Lifecycle.Trail.writeDerived:", () => {
       ("_entered_Placed", JSON.Encode.string("2026-03-02T11:00:00Z")),
       ("_entered_Placed_first", JSON.Encode.string("2026-03-02T09:00:00Z")),
       ("_entered_current", JSON.Encode.string("2026-03-02T11:00:00Z")),
+      ("_trail", JSON.Encode.string("1")),
       ("_visits_Cancelled", JSON.Encode.int(1)),
       ("_visits_Placed", JSON.Encode.int(2)),
     ])
   })
 
   testSync("drops dates the trail no longer holds", () => {
-    let state = dict(`{"trail":[],"_entered_Shipped":"2026-03-01T09:00:00Z","_visits_Shipped":1,"_entered_current":"x"}`)
+    let state = dict(`{"trail":[],"_entered_Shipped":"2026-03-01T09:00:00Z","_visits_Shipped":1,"_entered_current":"x","_trail":"1"}`)
     state->Lifecycle.Trail.writeDerived(~field="trail")
     expect(state->JSON.Encode.object->JSON.stringify)->toBe(`{"trail":[]}`)
   })

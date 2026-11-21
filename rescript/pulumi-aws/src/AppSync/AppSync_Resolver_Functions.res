@@ -962,6 +962,25 @@ by whether the caller is exempt from owner scoping: a Query on the derived
 a scoped caller searching their own rows can still get a short page — but bounded
 by their row count rather than the table's.
 */
+/**
+A read the list door makes as a Query on an index rather than a Scan: the index,
+its partition key and the value it takes (a JS expression over `_kFilter`, the
+request's filter), its sort key, and the name the API filters and orders that sort
+key by. `pick` is the JS condition that chooses it; the first that holds wins.
+`hashFilter` is the filter whose `Eq` supplies the value, which the key condition
+then answers in place of the FilterExpression. `tag` marks the cursors it mints.
+*/
+type keyedRead = {
+  index: string,
+  hashAttr: string,
+  hashValue: string,
+  hashFilter?: string,
+  sortAttr: string,
+  sortApi: string,
+  pick: string,
+  tag: string,
+}
+
 let listAllItemsConnection = (
   ~labelField: string,
   ~filterFields: array<string>=[],
@@ -988,10 +1007,53 @@ let listAllItemsConnection = (
   // predicate from a post-read sieve into a key condition for a scoped caller.
   ~ownerIndex: option<string>=?,
   ~ownerIndexSortField: option<string>=?,
+  // The attribute a filter or sort name is stored under where the two differ.
+  ~storedNames: dict<string>=Dict.make(),
+  // Reads this door makes as a Query when the request names their key.
+  ~keyedReads: array<keyedRead>=[],
 ) => {
   // The Query branch needs `ownerField` to key on; an index without one would
   // have nothing to name in the key condition.
   let ownerIndex = ownerField->Option.isSome ? ownerIndex : None
+  let attrOf = f => storedNames->Dict.get(f)->Option.getOr(f)
+  let keyed = keyedReads->Array.length > 0
+  // ── keyed reads (generated) ──
+  // Chosen from the request alone, so the response half can choose again. A
+  // caller the owner index scopes keeps that Query; the others may take one.
+  let keyedPreamble = if !keyed {
+    ""
+  } else {
+    let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+    let allowed = switch ownerIndex {
+    | None => "true"
+    | Some(_) => `_kSub == null || _kGroups.some(g => [${elevatedLiteral}].indexOf(g) >= 0)`
+    }
+    let chain =
+      keyedReads
+      ->Array.map(k =>
+        `if (${k.pick}) {
+      _keyed = { index: '${k.index}', hashAttr: '${k.hashAttr}', hashFilter: '${k.hashFilter->Option.getOr(
+            "",
+          )}', value: ${k.hashValue}, sortAttr: '${k.sortAttr}', sortApi: '${k.sortApi}', tag: '${k.tag}' };
+    }`
+      )
+      ->Array.join(" else ")
+    `
+  const _kFilter = ctx.args.filter ?? {};
+  const _has = (v) => v !== undefined && v !== null && v !== '';
+  const _ob = ctx.args.orderBy;
+  const _kId = ctx.identity;
+  const _kSub = _kId == null ? null : _kId.sub;
+  const _kGroups = (_kId != null && _kId.claims != null && _kId.claims['cognito:groups']) || [];
+  let _keyed = null;
+  if (${allowed}) {
+    ${chain}
+  }
+  const _kOrdered = _keyed !== null && !!(_ob && _ob.field === _keyed.sortApi);`
+  }
+  let hashGuard = f => keyed ? ` && !(_keyed !== null && _keyed.hashFilter === '${f}')` : ""
+  let sortKeyGuard = f => keyed ? ` && !(_keyed !== null && _keyed.sortApi === '${f}')` : ""
+
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) =>
     `
@@ -1095,11 +1157,14 @@ ${switch retiredValues {
   }`
   }
   let filterClauses =
+    keyedPreamble ++
     filterFields
     ->Array.map(f =>
       `
-  if (filter.${f}Eq !== undefined && filter.${f}Eq !== null && filter.${f}Eq !== '') {
-    names['#${f}'] = '${f}';
+  if (filter.${f}Eq !== undefined && filter.${f}Eq !== null && filter.${f}Eq !== ''${hashGuard(
+          f,
+        )}) {
+    names['#${f}'] = '${attrOf(f)}';
     values[':${f}Eq'] = util.dynamodb.toDynamoDB(filter.${f}Eq);
     parts.push('#${f} = :${f}Eq');
   }`
@@ -1109,13 +1174,17 @@ ${switch retiredValues {
     rangeFields
     ->Array.map(f =>
       `
-  if (filter.${f}From !== undefined && filter.${f}From !== null && filter.${f}From !== '') {
-    names['#${f}'] = '${f}';
+  if (filter.${f}From !== undefined && filter.${f}From !== null && filter.${f}From !== ''${sortKeyGuard(
+          f,
+        )}) {
+    names['#${f}'] = '${attrOf(f)}';
     values[':${f}From'] = util.dynamodb.toDynamoDB(filter.${f}From);
     parts.push('#${f} >= :${f}From');
   }
-  if (filter.${f}To !== undefined && filter.${f}To !== null && filter.${f}To !== '') {
-    names['#${f}'] = '${f}';
+  if (filter.${f}To !== undefined && filter.${f}To !== null && filter.${f}To !== ''${sortKeyGuard(
+          f,
+        )}) {
+    names['#${f}'] = '${attrOf(f)}';
     values[':${f}To'] = util.dynamodb.toDynamoDB(filter.${f}To);
     parts.push('#${f} <= :${f}To');
   }`
@@ -1125,10 +1194,16 @@ ${switch retiredValues {
   // When the Query branch already ordered on the index's own sort key, the page
   // arrives globally ordered and re-sorting it here is the one way to break that
   // order — a sort over a page is not a sort over the caller's rows.
-  let sortGuard = switch (ownerIndex, ownerIndexSortField) {
-  | (Some(_), Some(_)) => "!_indexOrdered && "
-  | _ => ""
-  }
+  let sortGuard =
+    switch (ownerIndex, ownerIndexSortField) {
+    | (Some(_), Some(_)) => "!_indexOrdered && "
+    | _ => ""
+    } ++ (keyed ? "!_kOrdered && " : "")
+  let storedLiteral =
+    storedNames
+    ->Dict.toArray
+    ->Array.map(((name, attr)) => `${name}: '${attr}'`)
+    ->Array.join(", ")
   let sortBlock = if sortFields->Array.length == 0 {
     ""
   } else {
@@ -1144,7 +1219,8 @@ ${switch retiredValues {
   const orderBy = ctx.args.orderBy;
   const sortFields = [${sortFieldsLiteral}];
   if (${sortGuard}orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
-    const field = orderBy.field;
+    const _stored = { ${storedLiteral} };
+    const field = _stored[orderBy.field] ?? orderBy.field;
     const nulls = items.filter(it => it[field] === null || it[field] === undefined);
     const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
     const encoded = nonNulls.map(it => {
@@ -1200,18 +1276,71 @@ ${switch retiredValues {
     nextToken: _window,
   };`
   }
+  let requestOperation = if !keyed {
+    requestOperation
+  } else {
+    requestOperation->String.replace("const req = ", "const _baseReq = ") ++
+      `
+  const _kFrom = _keyed === null ? null : _kFilter[_keyed.sortApi + 'From'];
+  const _kTo = _keyed === null ? null : _kFilter[_keyed.sortApi + 'To'];
+  const _kNames = { '#kh': _keyed === null ? '' : _keyed.hashAttr };
+  const _kValues = { ':kh': util.dynamodb.toDynamoDB(_keyed === null ? '' : _keyed.value) };
+  let _kExpr = '#kh = :kh';
+  if (_keyed !== null && (_has(_kFrom) || _has(_kTo))) {
+    _kNames['#ks'] = _keyed.sortAttr;
+  }
+  if (_keyed !== null && _has(_kFrom) && _has(_kTo)) {
+    _kExpr = _kExpr + ' AND #ks BETWEEN :kf AND :kt';
+    _kValues[':kf'] = util.dynamodb.toDynamoDB(_kFrom);
+    _kValues[':kt'] = util.dynamodb.toDynamoDB(_kTo);
+  } else if (_keyed !== null && _has(_kFrom)) {
+    _kExpr = _kExpr + ' AND #ks >= :kf';
+    _kValues[':kf'] = util.dynamodb.toDynamoDB(_kFrom);
+  } else if (_keyed !== null && _has(_kTo)) {
+    _kExpr = _kExpr + ' AND #ks <= :kt';
+    _kValues[':kt'] = util.dynamodb.toDynamoDB(_kTo);
+  }
+  const req = _keyed === null
+    ? _baseReq
+    : {
+        operation: 'Query',
+        index: _keyed.index,
+        query: { expression: _kExpr, expressionNames: _kNames, expressionValues: _kValues },
+        limit: ${listPageWindowBudget},
+        nextToken: _window,
+        scanIndexForward: !(_kOrdered && _ob.direction === 'DESC'),
+      };`
+  }
   // Only a door with two reads tests the tag, and only that door stamps one.
-  let requestPathGuard = ownerIndex->Option.isSome ? cursorPathGuard : ""
-  let responsePathPreamble = switch ownerIndex {
-  | None => ""
-  | Some(_) =>
+  let basePath = ownerIndex->Option.isSome ? "(_exempt ? 's' : 'q')" : "'s'"
+  let requestPathGuard = if keyed {
+    `
+  const _expectPath = _keyed !== null ? _keyed.tag : ${basePath};
+  if (_cursorPath !== null && _cursorPath !== _expectPath) {
+    util.error('This cursor belongs to a different read of this list; restart from the first page.', 'CursorPathMismatch');
+  }`
+  } else if ownerIndex->Option.isSome {
+    cursorPathGuard
+  } else {
+    ""
+  }
+  let responsePathPreamble = switch (ownerIndex, keyed) {
+  | (None, false) => ""
+  | (Some(_), false) =>
     `${ownerIdentityPreamble}
   const _path = _exempt ? 's' : 'q';
   const _indexOrdered = ${indexOrderedExpr};`
+  | (None, true) =>
+    `${keyedPreamble}
+  const _path = _keyed !== null ? _keyed.tag : 's';`
+  | (Some(_), true) =>
+    `${ownerIdentityPreamble}${keyedPreamble}
+  const _path = _keyed !== null ? _keyed.tag : (_exempt ? 's' : 'q');
+  const _indexOrdered = ${indexOrderedExpr};`
   }
-  let pageResponse = switch ownerIndex {
-  | None => connectionPageResponse(~bidirectional=true)
-  | Some(_) => connectionPageResponse(~pathExpr="_path", ~bidirectional=true)
+  let pageResponse = switch (ownerIndex, keyed) {
+  | (None, false) => connectionPageResponse(~bidirectional=true)
+  | _ => connectionPageResponse(~pathExpr="_path", ~bidirectional=true)
   }
   `${importUtil}
 export function request(ctx) {

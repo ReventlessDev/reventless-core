@@ -18,7 +18,7 @@ let row = (fields: array<(string, JSON.t)>) => fields->Dict.fromArray->JSON.Enco
 
 describe("the trail's dates on DynamoDB", () => {
   testSync("reads each visited state and the current one off the attributes", () => {
-    let code = QueryDbResolvers_TrailEntered.code()->asString
+    let code = QueryDbResolvers_Trail.enteredCode()->asString
     let result = run(
       code,
       row([
@@ -56,7 +56,7 @@ describe("the trail's dates on DynamoDB", () => {
   })
 
   testSync("a row stored before the dates were derived reads no dates", () =>
-    expect(run(QueryDbResolvers_TrailEntered.code()->asString, row([])))->toEqual(
+    expect(run(QueryDbResolvers_Trail.enteredCode()->asString, row([])))->toEqual(
       row([("current", JSON.Encode.null)]),
     )
   )

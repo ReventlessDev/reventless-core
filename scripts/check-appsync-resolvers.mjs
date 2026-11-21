@@ -27,7 +27,7 @@
 import { AppSyncClient, EvaluateCodeCommand } from '@aws-sdk/client-appsync'
 import * as F from '../rescript/pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs'
 import * as Lambda from '../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_Lambda.res.mjs'
-import * as TrailEntered from '../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_TrailEntered.res.mjs'
+import * as Trail from '../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_Trail.res.mjs'
 
 const VERBOSE = process.argv.includes('--verbose')
 const REGION = process.env.AWS_REGION ?? 'eu-west-1'
@@ -134,7 +134,20 @@ const generateUnits = () => {
     'resultListResponseCode', 'resultResponseCode'])
     push(name, F[name])
 
-  push('trailEnteredField', TrailEntered.code())
+  push('trailEnteredField', Trail.enteredCode())
+  // A trail's derived indexes: the list door keys on them when a request names
+  // the lifecycle or ranges a state's entry, beside the owner index or alone.
+  const TRAIL_INDEXES = [
+    { index: '_lifecycle', type_: 'S', idField: 'lifecycle', subIdField: '_entered_current', projectionType: 'ALL', derived: true },
+    { index: '_entered_Placed', type_: 'S', idField: '_trail', subIdField: '_entered_Placed', projectionType: 'ALL', derived: true },
+  ]
+  const STORED = { enteredPlaced: '_entered_Placed', enteredCurrent: '_entered_current' }
+  for (const owner of OWNERS)
+    push(`listAllItemsConnection__trail_${owner ? 'owned' : 'unowned'}`,
+      F.listAllItemsConnection('name', ['lifecycle', 'enteredPlaced', 'enteredCurrent'],
+        ['enteredPlaced', 'enteredCurrent'], ['enteredPlaced', 'enteredCurrent'], undefined, owner,
+        ELEVATED, undefined, undefined, owner ? '_owner' : undefined, owner ? 'id' : undefined,
+        STORED, Trail.keyedReads(TRAIL_INDEXES)))
 
   // The Postgres read models reach their Lambda through templates of their own.
   push('invokeTemplate__plain', Lambda.invokeTemplate('Products', 'list', undefined, undefined, undefined))

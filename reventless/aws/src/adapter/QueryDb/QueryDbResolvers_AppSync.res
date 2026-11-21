@@ -374,6 +374,8 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~retiredValues?,
           ~ownerIndex?,
           ~ownerIndexSortField?,
+          ~storedNames=?capability.stored,
+          ~keyedReads=QueryDbResolvers_Trail.keyedReads(indexes),
         )
       } else {
         Resolver.Functions.listAllItems
@@ -721,7 +723,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ~opts,
     )
     let enteredResolvers =
-      QueryDbResolvers_TrailEntered.make(
+      QueryDbResolvers_Trail.enteredResolver(
         ~name,
         ~api,
         ~dataSourceName,
