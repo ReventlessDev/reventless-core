@@ -30,6 +30,7 @@ import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessde
 // compiler-checked against the framework signatures (see the module header and
 // docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver, buildWebhookSlice, serveWebhook } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
+import { admits as visitorAdmits, throttled as visitorThrottled } from "./VisitorLimit_Ops.res.mjs";
 import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -365,8 +366,20 @@ export async function handler(event, context) {
       log.warn("no inbound translation receiver for field: " + fieldName, { comp: "DcbCommandTopicRuntime" });
       throw new Error("no inbound translation receiver for field: " + fieldName);
     }
+    // A door on the narrow API for visitors says so, with the caller's address:
+    // it is counted per door and source before anything is relayed. Only that
+    // API's resolver sets the mark; the address is not logged.
+    if (event.visitor === true && !(await visitorAdmits(fieldName, event.sourceAddress))) {
+      return visitorThrottled(fieldName);
+    }
     log.debug("InboundTranslation invocation (" + fieldName + ")", { comp: "DcbCommandTopicRuntime" });
     return await receiver(event.arguments, event.identity ?? null);
+  }
+
+  // Route L: a view on the narrow API for visitors asks, before it reads, whether
+  // one more request from this source reaches it: `{__visitorLimit, door, sourceAddress}`.
+  if (event.__visitorLimit === true) {
+    return { admitted: await visitorAdmits(event.door, event.sourceAddress) };
   }
 
   // Route P: a platform Lambda (automations, outbound translations) invokes this

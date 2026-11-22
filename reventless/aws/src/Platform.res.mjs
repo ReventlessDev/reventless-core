@@ -19,6 +19,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -65,6 +66,7 @@ import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core
 import * as Upload_Presign_S3$ReventlessAws from "./adapter/Upload/Upload_Presign_S3.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
+import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
 import * as AppSync_VisitorApi$ReventlessAws from "./components/Api/AppSync_VisitorApi.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
@@ -75,12 +77,14 @@ import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_Sdl
 import * as DcbCommandFunctions$ReventlessAws from "./adapter/Runtime/DcbCommandFunctions.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
+import * as AppSync_VisitorLimit$ReventlessAws from "./components/Api/AppSync_VisitorLimit.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as AppSync_VisitorSchema$ReventlessAws from "./components/Api/AppSync_VisitorSchema.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
+import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
@@ -615,6 +619,7 @@ function MakeWithConfig(Config) {
       return pushed;
     }
     let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
     let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
@@ -1514,6 +1519,11 @@ function MakeWithConfig(Config) {
     let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
+    let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey()));
+    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
@@ -2134,6 +2144,7 @@ function Make($star) {
       return pushed;
     }
     let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
     let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
@@ -3008,6 +3019,11 @@ function Make($star) {
     let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
+    let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey()));
+    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();

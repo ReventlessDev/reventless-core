@@ -69,18 +69,21 @@ module Selectable = {
                 ~tableName=table.name,
                 ~opts,
               )
-              QueryDbResolvers_AppSync.make(
-                ~name,
-                ~api=visitors.api,
-                ~apiRole=visitors.role,
-                ~dataSourceName=dataSource,
-                ~indexes,
-                ~subIdField,
-                ~idResolverConfigs,
-                ~idsResolverConfigs,
-                ~authorization,
-                ~opts,
-              ).resourcesMaker(allQueryDbs)
+              // Every read of it is counted per source first, like a door.
+              AppSync_VisitorLimit.guarding(~visitors, ~door=name->String.capitalize, () =>
+                QueryDbResolvers_AppSync.make(
+                  ~name,
+                  ~api=visitors.api,
+                  ~apiRole=visitors.role,
+                  ~dataSourceName=dataSource,
+                  ~indexes,
+                  ~subIdField,
+                  ~idResolverConfigs,
+                  ~idsResolverConfigs,
+                  ~authorization,
+                  ~opts,
+                ).resourcesMaker(allQueryDbs)
+              )
             },
         }
       | _ => onPluginApi()

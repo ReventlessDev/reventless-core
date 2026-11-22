@@ -51,6 +51,9 @@ let forDcbCommandTopic = (
   ~stashDeclared: bool=false,
   ~stashTable: Pulumi.Output.t<string>=Pulumi.Output.make(""),
   ~stashArn: Pulumi.Output.t<string>=Pulumi.Output.make(""),
+  // The deployment's settings a door reads: the limit for visitors, the starting
+  // state of a self-service role, the fingerprint key.
+  ~doorEnv: array<(string, Pulumi.Output.t<string>)>=[],
   ~connect,
   dcbCommandTopic,
 ) => {
@@ -122,6 +125,14 @@ let forDcbCommandTopic = (
     if stashDeclared {
       envVars->Dict.set("STASH_TABLE", stashTable->Pulumi.Output.asInput)
     }
+    doorEnv->Array.forEach(((name, value)) => envVars->Dict.set(name, value->Pulumi.Output.asInput))
+    // Where the plugin's stack hosts a narrow API for visitors, this function
+    // counts their requests: it is handed the count table and granted its one call.
+    let visitorLimitTable =
+      AppSync_VisitorApi.hosted() && !isAsync ? Some(AppSync_VisitorLimit.table(~opts={})) : None
+    visitorLimitTable->Option.forEach(table =>
+      envVars->Dict.set(VisitorLimit_Ops.tableVariable, table.name->Pulumi.Output.asInput)
+    )
     let webhookSecrets = isAsync ? None : webhookSecrets
     webhookSecrets->Option.forEach(secrets =>
       secrets->Dict.forEachWithKey((value, key) =>
@@ -323,6 +334,19 @@ let forDcbCommandTopic = (
     | None => ()
     }
 
+    visitorLimitTable->Option.forEach(table => {
+      let _ = PulumiAws.IAM.RolePolicy.make(
+        ~name=`${name}-visitorLimit`,
+        ~args={
+          policy: table.arn
+          ->Pulumi.Output.apply(arn =>
+            AppSync_VisitorLimit.policy(~id=`${name}-visitorLimitPolicy`, arn)
+          )
+          ->Pulumi.Output.asInput,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    })
     if stashDeclared {
       let _ = PulumiAws.IAM.RolePolicy.make(
         ~name=`${name}-stash`,

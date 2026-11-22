@@ -45,6 +45,13 @@ let registerCapabilityEnv = (name: string, value: Pulumi.Output.t<string>) =>
     capability, so this returns `[]` rather than throwing. */
 let capabilityEnv = () => capabilityEnvRef->Dict.toArray
 
+/** The settings among them the command function hands its doors too. */
+let doorSettings = [
+  Reventless.AnonymousRequestLimit.envKey,
+  Reventless.Admission.initiallyEnvKey,
+  ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
+]
+
 /**
 The geocoding place index, when the platform provisioned one.
 
@@ -970,6 +977,7 @@ module Make = (
       ~stashDeclared,
       ~stashTable=stashTable(),
       ~stashArn=stashArn(),
+      ~doorEnv=capabilityEnv()->Array.filter(((name, _)) => doorSettings->Array.includes(name)),
       ~webhookSecrets=?webhookSlices->Array.length > 0 ? Some(webhookSecrets) : None,
       ~onWebhookUrl=url => webhookUrlRef := url,
       ~dcbTableName=dcbConfig.dcbTableName,

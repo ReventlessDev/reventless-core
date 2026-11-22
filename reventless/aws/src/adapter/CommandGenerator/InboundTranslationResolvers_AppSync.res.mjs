@@ -9,6 +9,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as AppSync_VisitorCode$ReventlessAws from "../../components/Api/AppSync_VisitorCode.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/CommandSubscriptionResolvers_AppSync.res.mjs";
@@ -48,7 +49,7 @@ function make(api, runtime, fieldNames, forVisitorsOpt, opts) {
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
   fieldNames.forEach(fieldName => {
-    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(named(Stdlib_String.capitalize(fieldName)), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
+    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(named(Stdlib_String.capitalize(fieldName)), api, dataSource.name, "Mutation", fieldName, forVisitors ? AppSync_VisitorCode$ReventlessAws.invokeDoor(fieldName) : AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
   });
   if (!forVisitors) {
     return CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);

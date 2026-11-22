@@ -7,6 +7,7 @@ import * as QueryDbBackend$ReventlessAws from "./QueryDbBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as AppSync_VisitorApi$ReventlessAws from "../../components/Api/AppSync_VisitorApi.res.mjs";
 import * as AppSync_VisitorView$ReventlessAws from "../../components/Api/AppSync_VisitorView.res.mjs";
+import * as AppSync_VisitorLimit$ReventlessAws from "../../components/Api/AppSync_VisitorLimit.res.mjs";
 import * as QueryDbResolvers_Lambda$ReventlessAws from "./QueryDbResolvers_Lambda.res.mjs";
 import * as QueryDbResolvers_AppSync$ReventlessAws from "./QueryDbResolvers_AppSync.res.mjs";
 
@@ -25,7 +26,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         }
         let table = Adapter$ReventlessCore.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Helpers$ReventlessCore.getStorageResources(allQueryDbs, undefined, Stdlib_String.capitalize(name))));
         let dataSource = AppSync_VisitorView$ReventlessAws.dataSource(Stdlib_String.capitalize(name), visitors, table.name, opts);
-        return QueryDbResolvers_AppSync$ReventlessAws.make(name, visitors.api, visitors.role, dataSource, indexes, subIdField, idResolverConfigs, idsResolverConfigs, authorization, opts).resourcesMaker(allQueryDbs);
+        return AppSync_VisitorLimit$ReventlessAws.guarding(visitors, Stdlib_String.capitalize(name), () => QueryDbResolvers_AppSync$ReventlessAws.make(name, visitors.api, visitors.role, dataSource, indexes, subIdField, idResolverConfigs, idsResolverConfigs, authorization, opts).resourcesMaker(allQueryDbs));
       }
     };
   } else {

@@ -149,6 +149,45 @@ let _signUpMode = (~cfg: Pulumi.Config.t): Auth_SignUpMode.t => {
   }
 }
 
+// ── What the deployment says for its doors ──────────────────────────────────
+
+/** `platform:anonymousRequestLimit`, as written (`10/3600`); `""` when unset,
+    which every reader takes as the default. Refused when it does not parse. */
+let anonymousRequestLimit = (): string =>
+  switch Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("anonymousRequestLimit") {
+  | None | Some("") => ""
+  | Some(raw) =>
+    switch Reventless.AnonymousRequestLimit.parse(raw) {
+    | Ok(limit) => Reventless.AnonymousRequestLimit.toString(limit)
+    | Error(_) =>
+      JsError.throwWithMessage(
+        `platform:anonymousRequestLimit: "${raw}" is not a limit — write requests/seconds, such as ${Reventless.AnonymousRequestLimit.default->Reventless.AnonymousRequestLimit.toString}`,
+      )
+    }
+  }
+
+/** `platform:selfRegistrationInitially`: `open` or `closed`, closed when unset. */
+let selfRegistrationInitially = (): string =>
+  switch Reventless.Admission.initiallyFrom(
+    Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("selfRegistrationInitially"),
+    ~key=Reventless.Admission.initiallyConfigKey,
+    ~default=Reventless.Admission.awsInitially,
+  ) {
+  | Ok(initially) => Reventless.Admission.initiallyName(initially)
+  | Error(message) => JsError.throwWithMessage(message)
+  }
+
+let _present: Nullable.t<'a> => bool = %raw(`v => v != null`)
+external _asOutput: Nullable.t<Pulumi.Output.t<string>> => Pulumi.Output.t<string> = "%identity"
+
+/** `platform:fingerprintKey`, a secret: what addresses are fingerprinted with
+    before they are kept as a key. `""` when unset, and then nothing that needs a
+    fingerprint works; a deployment with a door for visitors is refused without it. */
+let fingerprintKey = (): Pulumi.Output.t<string> => {
+  let given = Pulumi.Config.make(Some("platform"))->Pulumi.Config.getSecret("fingerprintKey")
+  _present(given) ? _asOutput(given) : Pulumi.Output.make("")
+}
+
 let _resolveUncached = (): cognitoUserPool => {
   let cfg = Pulumi.Config.make(Some("platform"))
   let existingPoolId = _identityProviderId(~cfg)
@@ -434,6 +473,11 @@ let _resolveUncached = (): cognitoUserPool => {
   Pulumi.Pulumi.export("identityStore", result.identityTable.name)
   // What a plugin stack grants its principal-making slices write access to.
   Pulumi.Pulumi.export("identityStoreArn", result.identityTable.arn)
+  // What the deployment says for its doors: read by every plugin stack and handed
+  // to its functions. Each is refused here when mistyped, where someone is watching.
+  Pulumi.Pulumi.export("anonymousRequestLimit", Pulumi.Output.make(anonymousRequestLimit()))
+  Pulumi.Pulumi.export("selfRegistrationInitially", Pulumi.Output.make(selfRegistrationInitially()))
+  Pulumi.Pulumi.export("fingerprintKey", fingerprintKey())
   // What a plugin stack hands, and grants, the slices that declare a stash.
   Pulumi.Pulumi.export("stash", result.stashTable.name)
   Pulumi.Pulumi.export("stashArn", result.stashTable.arn)

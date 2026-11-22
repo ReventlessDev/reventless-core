@@ -934,6 +934,7 @@ module MakeWithConfig = (
       switch AppSync_VisitorApi.fragmentRef.contents {
       | Some(visitorFragment) if !AppSync_VisitorSchema.isEmpty(visitorFields) =>
         let visitors = AppSync_VisitorApi.make(~name=`${name}Visitors`, ~opts={})
+        AppSync_VisitorLimit.makeCeiling(~name=`${name}Visitors`, ~visitors, ~opts={})
         let visitorSdl = AppSync_VisitorSchema.sdl(visitorFragment)
         let visitorsPushed = visitors.api->Pulumi.Output.flatMap(api =>
           api.id->Pulumi.Output.flatMap(apiId => {
@@ -2912,6 +2913,26 @@ module MakeWithConfig = (
       ),
     )
 
+    // What the deployment says for its doors, read across the same two halves: the
+    // limit for visitors, how a self-service role starts, the fingerprint key.
+    let anonymousRequestLimit = platformOutput("anonymousRequestLimit", ~local=() =>
+      Pulumi.Output.make(Platform_Stack.anonymousRequestLimit())
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      Reventless.AnonymousRequestLimit.envKey,
+      anonymousRequestLimit,
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      Reventless.Admission.initiallyEnvKey,
+      platformOutput("selfRegistrationInitially", ~local=() =>
+        Pulumi.Output.make(Platform_Stack.selfRegistrationInitially())
+      ),
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
+      platformOutput("fingerprintKey", ~local=() => Platform_Stack.fingerprintKey()),
+    )
+    AppSync_VisitorLimit.configure(anonymousRequestLimit)
     // A plugin stack hosts a narrow API for the fields it declares for visitors.
     AppSync_VisitorApi.host()
     module P = unpack(plugin)

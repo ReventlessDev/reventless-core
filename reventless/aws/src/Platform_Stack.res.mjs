@@ -6,10 +6,12 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
+import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
 import * as Auth_IdentityStore$ReventlessAws from "./adapter/Auth/Auth_IdentityStore.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
@@ -61,6 +63,42 @@ function _signUpMode(cfg) {
     return mode._0;
   } else {
     return Stdlib_JsError.throwWithMessage(mode._0);
+  }
+}
+
+function anonymousRequestLimit() {
+  let raw = new Pulumi.Config("platform").get("anonymousRequestLimit");
+  if (raw === undefined) {
+    return "";
+  }
+  if (raw === "") {
+    return "";
+  }
+  let limit = AnonymousRequestLimit$Reventless.parse(raw);
+  if (limit.TAG === "Ok") {
+    return AnonymousRequestLimit$Reventless.toString(limit._0);
+  } else {
+    return Stdlib_JsError.throwWithMessage(`platform:anonymousRequestLimit: "` + raw + `" is not a limit — write requests/seconds, such as ` + AnonymousRequestLimit$Reventless.toString(AnonymousRequestLimit$Reventless.default));
+  }
+}
+
+function selfRegistrationInitially() {
+  let initially = Admission$Reventless.initiallyFrom(new Pulumi.Config("platform").get("selfRegistrationInitially"), Admission$Reventless.initiallyConfigKey, Admission$Reventless.awsInitially);
+  if (initially.TAG === "Ok") {
+    return Admission$Reventless.initiallyName(initially._0);
+  } else {
+    return Stdlib_JsError.throwWithMessage(initially._0);
+  }
+}
+
+let _present = (v => v != null);
+
+function fingerprintKey() {
+  let given = new Pulumi.Config("platform").getSecret("fingerprintKey");
+  if (_present(given)) {
+    return given;
+  } else {
+    return Pulumi.output("");
   }
 }
 
@@ -192,6 +230,9 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   Pulumi$Pulumi.$$export("identityStore", result.identityTable.name);
   Pulumi$Pulumi.$$export("identityStoreArn", result.identityTable.arn);
+  Pulumi$Pulumi.$$export("anonymousRequestLimit", Pulumi.output(anonymousRequestLimit()));
+  Pulumi$Pulumi.$$export("selfRegistrationInitially", Pulumi.output(selfRegistrationInitially()));
+  Pulumi$Pulumi.$$export("fingerprintKey", fingerprintKey());
   Pulumi$Pulumi.$$export("stash", result.stashTable.name);
   Pulumi$Pulumi.$$export("stashArn", result.stashTable.arn);
   return result;
@@ -217,6 +258,10 @@ export {
   _identityProviderId,
   _loginIdentifier,
   _signUpMode,
+  anonymousRequestLimit,
+  selfRegistrationInitially,
+  _present,
+  fingerprintKey,
   _resolveUncached,
   _cached,
   resolveCognitoUserPool,

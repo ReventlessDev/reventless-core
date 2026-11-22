@@ -833,6 +833,34 @@ configured one, which is why it is the ceiling and not the limit.
 the narrow API and not on the platform API; no address in a stored row or a log line; in the walk
 ([DW9](#dw9-the-example-on-aws-and-the-walk)), the request past the limit answers `Throttled`.
 
+*As built (2026-11-22), not yet deployed:*
+
+- **The exact limit** is the plugin's command function's (`VisitorLimit_Ops`,
+  `AnonymousLimiter_DynamoDb`): the same fixed windows as the local limiter, one item per door,
+  source and window in a count table of the plugin stack (`AppSync_VisitorLimit.table`, the
+  stash table's shape: expiring items, no backup), counted up by an atomic add. The source is
+  stored as a keyed fingerprint (the deployment's fingerprint key, under a purpose of its own),
+  never as the address, and no line prints it. A function with no fingerprint key or no table
+  admits nobody.
+- **A door** on the narrow API marks its request as a visitor's and passes the first address of
+  the forwarded-for header; the function counts it before anything is relayed and answers the
+  local platform's `Throttled` rejection past the limit.
+- **A view** on the narrow API begins every Query resolver with a step that asks the same
+  function (`__visitorLimit`), and answers an error of type `Throttled` where it is not
+  admitted, as the local platform answers an error rather than an empty page. A view for
+  visitors in a plugin with no command function is refused at deploy.
+- **The limit** is `platform:anonymousRequestLimit` on the platform stack, refused there when
+  mistyped, exported, and handed to the plugin stacks' functions as
+  `REVENTLESS_ANONYMOUS_REQUEST_LIMIT`. Beside it, and the same way,
+  `platform:selfRegistrationInitially` and the secret `platform:fingerprintKey`, which no
+  platform stack had and the doors need: an address is fingerprinted before it is a key.
+- **The coarse ceiling** is a WAF rate rule on the narrow API only (`makeCeiling`): per source
+  address, ten times the configured limit and never under 100 in five minutes, no sampled
+  requests. Needed `WafV2.WebAcl` and `WafV2.WebAclAssociation` bindings.
+
+Not yet shown on a deployed stack: the header AppSync passes, the rule's association, and the
+request past the limit answering `Throttled` ([DW9](#dw9-the-example-on-aws-and-the-walk)).
+
 #### DW7: the stash on AWS
 
 A `Stash` backend over DynamoDB: `put` with an expiry attribute, `take` as a delete returning the

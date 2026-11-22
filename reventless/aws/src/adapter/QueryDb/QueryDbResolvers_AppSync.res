@@ -126,9 +126,18 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
   // (interceptor Lambda → DynamoDB query), for the Query fields that have no
   // second step of their own.
+  // The steps a Query resolver begins with: the limit's, while this view's
+  // resolvers are being made on the narrow API for visitors, then the
+  // interceptor's.
+  let stepsBefore = (~resolverName) =>
+    Array.concat(
+      AppSync_VisitorLimit.step(~resolverName, ~opts)->Option.mapOr([], f => [f]),
+      interceptorFunction(~resolverName)->Option.mapOr([], f => [f]),
+    )
+
   let makeQueryResolver = (~resolverName, ~field, ~code) =>
-    switch interceptorFunction(~resolverName) {
-    | None =>
+    switch stepsBefore(~resolverName) {
+    | [] =>
       Resolver.makeUnitJsResolver(
         ~name=resolverName,
         ~api,
@@ -138,7 +147,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~code,
         ~opts,
       )
-    | Some(interceptorFn) =>
+    | before =>
       let queryFn = Function.makeJs(
         ~name=resolverName ++ "Query",
         ~api,
@@ -152,7 +161,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~type_="Query"->Pulumi.Input.make,
         ~field,
         ~code=Resolver.Functions.pipelinePassThrough,
-        ~functions=[interceptorFn, queryFn],
+        ~functions=Array.concat(before, [queryFn]),
         ~opts,
       )
     }
@@ -480,10 +489,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
             ~type_="Query"->Pulumi.Input.make,
             ~field=fieldName->Pulumi.Input.make,
             ~code=Resolver.Functions.pipelinePassThrough,
-            ~functions=switch interceptorFunction(~resolverName) {
-            | None => [authFunction, queryFunction]
-            | Some(interceptorFn) => [interceptorFn, authFunction, queryFunction]
-            },
+            ~functions=Array.concat(stepsBefore(~resolverName), [authFunction, queryFunction]),
             ~opts,
           )
         }

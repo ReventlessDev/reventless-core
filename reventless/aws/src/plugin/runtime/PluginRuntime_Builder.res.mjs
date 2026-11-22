@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
@@ -19,7 +20,9 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../../adapter/EventLog/EventLogBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
+import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res.mjs";
@@ -42,6 +45,12 @@ function registerCapabilityEnv(name, value) {
 function capabilityEnv() {
   return Object.entries(capabilityEnvRef);
 }
+
+let doorSettings = [
+  AnonymousRequestLimit$Reventless.envKey,
+  Admission$Reventless.initiallyEnvKey,
+  Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable
+];
 
 let geocoderPlaceIndexRef = {
   contents: Pulumi.output("")
@@ -593,7 +602,7 @@ function Make(EventCollectorChannel) {
     let stashDeclared = stashProvisionedRef.contents && Object.values(registeredInboundSlices).some(reg => reg.capabilityNeeds.includes("Stash"));
     StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, inboundSlices, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, memorySize, timeout, webhookSlices.length !== 0 ? webhookSecrets : undefined, url => {
       webhookUrlRef.contents = url;
-    }, stashDeclared, stashTableRef.contents, stashArnRef.contents, connect, dcbCommandTopic);
+    }, stashDeclared, stashTableRef.contents, stashArnRef.contents, Object.entries(capabilityEnvRef).filter(param => doorSettings.includes(param[0])), connect, dcbCommandTopic);
   };
   let finish = () => {};
   return {
@@ -612,6 +621,7 @@ export {
   capabilityEnvRef,
   registerCapabilityEnv,
   capabilityEnv,
+  doorSettings,
   geocoderPlaceIndexRef,
   geocoderProvisionedRef,
   registerGeocoderPlaceIndex,

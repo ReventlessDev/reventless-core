@@ -27,7 +27,7 @@ let make = (~name: string="Stash", ~opts: Pulumi.ComponentResource.options): tab
       tags: AWS.Tags.make(
         ~name=name ++ "Table",
         ~kind=ReventlessCore.ComponentType.Platform,
-        ~role=Other("Stash"),
+        ~role=Other(name),
         ~scope=Platform,
       ),
     },

@@ -17,6 +17,7 @@ import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as AppSync_VisitorLimit$ReventlessAws from "../../components/Api/AppSync_VisitorLimit.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as QueryDbResolvers_Trail$ReventlessAws from "./QueryDbResolvers_Trail.res.mjs";
@@ -82,16 +83,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       return AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, interceptorDsName._0, interceptorCode(name$1), opts);
     }
   };
+  let stepsBefore = resolverName => Stdlib_Option.mapOr(AppSync_VisitorLimit$ReventlessAws.step(resolverName, opts), [], f => [f]).concat(Stdlib_Option.mapOr(interceptorFunction(resolverName), [], f => [f]));
   let makeQueryResolver = (resolverName, field, code) => {
-    let interceptorFn = interceptorFunction(resolverName);
-    if (interceptorFn === undefined) {
+    let before = stepsBefore(resolverName);
+    if (before.length === 0) {
       return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, code, opts);
     }
     let queryFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Query", api, dataSourceName, code, opts);
-    return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", field, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
-      interceptorFn,
-      queryFn
-    ], opts);
+    return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", field, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, before.concat([queryFn]), opts);
   };
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
   let resourcesMaker = allQueryDbs => {
@@ -157,15 +156,10 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         let authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(resolverName + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
         let authFunction = AppSync_Function$PulumiAws.makeJs(resolverName + "Auth", api, authDataSource.name, AppSync_Resolver_Functions$PulumiAws.authorizeIndexedAccess(index, match.group), opts);
         let queryFunction = AppSync_Function$PulumiAws.makeJs(resolverName, api, dataSourceName, AppSync_Resolver_Functions$PulumiAws.queryByIndexFiltered(index, idField, undefined, retiredField, retiredValues, elevatedGroups), opts);
-        let interceptorFn = interceptorFunction(resolverName);
-        return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", fieldName, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, interceptorFn !== undefined ? [
-            interceptorFn,
-            authFunction,
-            queryFunction
-          ] : [
-            authFunction,
-            queryFunction
-          ], opts);
+        return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", fieldName, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, stepsBefore(resolverName).concat([
+          authFunction,
+          queryFunction
+        ]), opts);
       }
       let sortField = indexConfig.subIdField;
       return makeQueryResolver(resolverName, fieldName, sortField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIndexSortFiltered(index, idField, ownerField, sortField, retiredField, retiredValues, elevatedGroups) : AppSync_Resolver_Functions$PulumiAws.queryByIndexFiltered(index, idField, ownerField, retiredField, retiredValues, elevatedGroups));

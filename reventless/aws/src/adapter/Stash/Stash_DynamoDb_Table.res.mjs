@@ -15,7 +15,7 @@ function make(nameOpt, opts) {
       }],
     hashKey: Stash_DynamoDb_Backend$ReventlessAws.keyAttribute,
     billingMode: "PAY_PER_REQUEST",
-    tags: AWS_Tags$ReventlessAws.make(name + "Table", "Platform", "Stash", "platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "Table", "Platform", name, "platform", undefined, undefined, undefined, undefined),
     ttl: {
       attributeName: Stash_DynamoDb_Backend$ReventlessAws.expiryAttribute,
       enabled: true

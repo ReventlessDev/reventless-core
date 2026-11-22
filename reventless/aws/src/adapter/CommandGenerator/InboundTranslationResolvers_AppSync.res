@@ -82,7 +82,9 @@ let make = (
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=fieldName->Pulumi.Input.make,
-      ~code=PulumiAws.AppSync.Resolver.Functions.invokeInboundTranslation(fieldName),
+      ~code=forVisitors
+        ? AppSync_VisitorCode.invokeDoor(fieldName)
+        : PulumiAws.AppSync.Resolver.Functions.invokeInboundTranslation(fieldName),
       ~opts,
     )
   })
