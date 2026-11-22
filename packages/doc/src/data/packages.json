@@ -55,6 +55,11 @@
           "private": false
         },
         {
+          "name": "@reventlessdev/reventless-registration",
+          "description": "Self-registration as a library of slices: a person with no account proves control of an address and ends up with one, admitted per role as the app declares",
+          "private": false
+        },
+        {
           "name": "@reventlessdev/reventless-seed",
           "description": "Reusable harness for seeding a Reventless platform through its public GraphQL command API",
           "private": false
@@ -68,6 +73,11 @@
           "name": "@reventlessdev/reventless-spec",
           "description": "Specifications for Reventless",
           "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-standin",
+          "description": "Stand-ins for the things and services at an app's edge: they send through the app's own doors and answer what the app tells them",
+          "private": false
         }
       ]
     },
@@ -78,6 +88,11 @@
         {
           "name": "@reventlessdev/rescript-aws-sdk",
           "description": "ReScript bindings for aws-sdk",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-dom",
+          "description": "ReScript bindings for the browser DOM: documents, elements, SVG, styles, class lists and events",
           "private": false
         },
         {
@@ -102,7 +117,7 @@
         },
         {
           "name": "@reventlessdev/rescript-jest",
-          "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies",
+          "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies, plus glennsl's `Jest` API on the same behaviour",
           "private": false
         },
         {
