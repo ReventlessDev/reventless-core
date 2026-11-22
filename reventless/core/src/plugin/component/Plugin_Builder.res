@@ -66,6 +66,7 @@ module Make = (
     // Restored at the end of construct; nested constructs (none today) would stack.
     let _prevPluginName = Logger.currentPluginName.contents
     Logger.currentPluginName := Some(name)
+    Plugin_Helpers.currentStructureRef := pluginStructure
 
     // Before any query entry: a `@resolves` field reaches its target's row type by spec name.
     readModels->Array.forEach((

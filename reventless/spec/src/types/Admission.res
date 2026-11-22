@@ -39,7 +39,8 @@ The part a slice plays in admission, declared on its spec as
 complete and invite, the one view (`OpenRoles`) that tells a visitor which
 self-service roles are open right now, and the decision (`Policy`) an
 administrator opens and closes a role with: one command whose name starts with
-`Open`, one whose name starts with `Close`. The platform collects the marked slices
+`Open`, one whose name starts with `Close`, and the outbound slice (`Mail`) that
+writes to the addresses visitors name, whose mail a deployment caps per day. The platform collects the marked slices
 into the shell's configuration, so nobody names a mutation or a query by hand,
 and the deploy check reads them: a role declared by invitation needs a door that
 invites.
@@ -50,9 +51,10 @@ type door =
   | @as("invite") Invite
   | @as("openRoles") OpenRoles
   | @as("policy") Policy
+  | @as("mail") Mail
 
 /** Every door, in declaration order: what `doorOfName` reads against. */
-let doors = [Start, Complete, Invite, OpenRoles, Policy]
+let doors = [Start, Complete, Invite, OpenRoles, Policy, Mail]
 
 /** The door's word, as a marked door's `part` carries it. */
 let doorName = (door: door): string => (door :> string)

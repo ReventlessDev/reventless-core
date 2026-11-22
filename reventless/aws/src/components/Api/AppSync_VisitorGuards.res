@@ -28,8 +28,8 @@ let describe = (guard: guard): string =>
   switch guard {
   | FingerprintKey => "a fingerprint key: set the secret platform:fingerprintKey on the platform stack (32 characters or more, and never changed afterwards)"
   | PersonCheck => "a check that a person is signing up, which the framework does not provide yet"
-  | BoundedSender => "a mail sender that stops at a daily cap, which the framework does not provide yet"
-  | BillAlarm => "an alarm on the bill, which the framework does not provide yet"
+  | BoundedSender => "a mail sender that keeps bounced addresses off its list: a messaging sender on the platform, which then makes its configuration set; deploy the platform stack again first"
+  | BillAlarm => "an alarm on the bill: set platform:operatorAddress on the platform stack, the address its alarms and budget write to"
   }
 
 let missing = (has: has): array<guard> =>

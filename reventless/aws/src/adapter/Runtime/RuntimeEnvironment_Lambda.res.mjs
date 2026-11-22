@@ -9,6 +9,7 @@ import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.r
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
@@ -51,11 +52,12 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
+function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, metricNamesOpt, vpcConfig, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
+  let metricNames = metricNamesOpt !== undefined ? metricNamesOpt : [];
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let stack = Pulumi.getStack();
   let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined, undefined);
@@ -157,9 +159,12 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     vpcConfig: vpcConfig,
     loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  if (dcbMetrics) {
+  let extracted = (
+    dcbMetrics ? Util_DcbMetrics$ReventlessAws.metricNames : []
+  ).concat(metricNames);
+  if (Primitive_object.notequal(extracted, [])) {
     Stdlib_Option.forEach(logGroup, logGroup => {
-      Util_DcbMetrics$ReventlessAws.metricNames.forEach(metricName => {
+      extracted.forEach(metricName => {
         new (Aws.cloudwatch.LogMetricFilter)(name + metricName + `Filter`, {
           pattern: Util_DcbMetrics$ReventlessAws.patternFor(metricName),
           logGroupName: logGroup.name,

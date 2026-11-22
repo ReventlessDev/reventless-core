@@ -204,6 +204,7 @@ function scanAdmissionDoors(srcDir, discovered) {
         tmp = !d.stem.endsWith("_Projection");
         break;
       case "InboundTranslation" :
+      case "OutboundTranslation" :
         tmp = !d.stem.endsWith("_Translation");
         break;
       default:

@@ -78,3 +78,6 @@ let maxRetries = 3
 let targetName = Some("Registrations")
 let sourceNames: array<string> = []
 let capabilityNeeds = [Reventless.CapabilityNeed.Messaging]
+
+/** This slice writes to the addresses visitors name; a deployment caps its mail per day. */
+let admissionDoor = Reventless.Admission.Mail

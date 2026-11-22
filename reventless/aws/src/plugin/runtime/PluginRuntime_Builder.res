@@ -130,6 +130,12 @@ let registerStash = (~table: Pulumi.Output.t<string>, ~arn: Pulumi.Output.t<stri
 }
 
 let stashArn = () => stashArnRef.contents
+
+/** Where an alarm of the deployment tells its operator: the platform's topic, or
+    `""` where the platform names no operator. */
+let operatorAlertsRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let registerOperatorAlerts = (arn: Pulumi.Output.t<string>) => operatorAlertsRef := arn
+let operatorAlerts = () => operatorAlertsRef.contents
 let stashTable = () => stashTableRef.contents
 let stashProvisioned = () => stashProvisionedRef.contents
 

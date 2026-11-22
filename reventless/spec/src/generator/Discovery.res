@@ -263,7 +263,8 @@ let scan = (~srcDir: string, ~exclude: array<string>): array<discoveredFile> => 
 
 /** The slices that say which part they play in admission: an
     `InboundTranslation/` spec, the `StateView/` spec of the open roles, or the
-    `StateChange/` spec of the policy, whose source binds `admissionDoor`. Named by stem, so the generated call reads the
+    `StateChange/` spec of the policy, or the `OutboundTranslation/` spec that mails
+    the addresses visitors name, whose source binds `admissionDoor`. Named by stem, so the generated call reads the
     part off the compiled module (`SignUp.admissionDoor`) and the compiler checks
     it. Sorted, so the generated file is stable. */
 let scanAdmissionDoors = (~srcDir: string, discovered: array<discoveredFile>): array<string> =>
@@ -273,6 +274,7 @@ let scanAdmissionDoors = (~srcDir: string, discovered: array<discoveredFile>): a
     | InboundTranslationSlice => !(d.stem->String.endsWith("_Translation"))
     | StateViewSlice | StateViewSliceStream => !(d.stem->String.endsWith("_Projection"))
     | StateChangeSlice => !(d.stem->String.endsWith("_Decision"))
+    | OutboundTranslationSlice => !(d.stem->String.endsWith("_Translation"))
     | _ => false
     } &&
     d->pathOf(~srcDir)->NodeFs.readFileSync->String.includes("let admissionDoor")

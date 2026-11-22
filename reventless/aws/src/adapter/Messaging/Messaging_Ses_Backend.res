@@ -33,6 +33,9 @@ and anything SES itself refuses is settled.
 */
 let send = async (
   ~sender: string,
+  // The deployment's configuration set: bounced and complained-about addresses
+  // are kept off its list, so one that refused once is not mailed again.
+  ~configurationSet: string="",
   ~recipient: Reventless.Messaging.recipient,
   ~message: Reventless.Messaging.message,
 ): result<Reventless.Messaging.receipt, Reventless.Messaging.failure> =>
@@ -49,6 +52,7 @@ let send = async (
         switch await Send.send(
           Send.make({
             fromEmailAddress: sender,
+            configurationSetName: ?(configurationSet == "" ? None : Some(configurationSet)),
             destination: {toAddresses: [address->Reventless.Email.toString]},
             // UTF-8 named, since SES otherwise sends 7-bit ASCII and a translated
             // mail is not ASCII; the language labeled for a reader's mail client.
@@ -88,8 +92,8 @@ let send = async (
     No push service, so `makeProvider` publishes no `Push` channel. SES is an email
     transport; a push one would be a separate provisioning with its own
     credential. */
-let provider = (~sender: string): Reventless.Messaging.provider =>
+let provider = (~sender: string, ~configurationSet: string=""): Reventless.Messaging.provider =>
   Reventless.Messaging.makeProvider(~emailAndSms=channels(~sender), ~pushServices=[], ~send=(
     ~recipient,
     ~message,
-  ) => send(~sender, ~recipient, ~message))
+  ) => send(~sender, ~configurationSet, ~recipient, ~message))

@@ -94,6 +94,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       (CompleteRegistration.name, CompleteRegistration.admissionDoor),
       (RegistrationPolicy.name, RegistrationPolicy.admissionDoor),
       (RegistrationWindows.name, RegistrationWindows.admissionDoor),
+      (SendRegistrationChallenge.name, SendRegistrationChallenge.admissionDoor),
       (SignUp.name, SignUp.admissionDoor),
     ],
   )

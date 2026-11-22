@@ -19,6 +19,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
+import * as AutomationMailCap$ReventlessAws from "./AutomationMailCap.res.mjs";
 import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.mjs";
 import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
 import * as CommandTopicRegistry$ReventlessAws from "../CommandTopic/CommandTopicRegistry.res.mjs";
@@ -171,7 +172,10 @@ function makeMessagingGrant(runtime, opts) {
       Sid: "AllowSendEmail",
       Effect: "Allow",
       Action: "ses:SendEmail",
-      Resource: `arn:aws:ses:*:*:identity/` + sender
+      Resource: [
+        `arn:aws:ses:*:*:identity/` + sender,
+        "arn:aws:ses:*:*:configuration-set/*"
+      ]
     }])));
   new (Aws.iam.RolePolicy)("AllAutomationSlicesSendEmail", {
     policy: policyJson,
@@ -385,7 +389,7 @@ function finish() {
         envVars[param[0]] = param[1];
       });
       let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined, undefined);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, undefined, opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", channelSpecs, runtime, opts);
     } else {
@@ -526,12 +530,13 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
         envVars[param[0]] = param[1];
       });
+      AutomationMailCap$ReventlessAws.env(envVars);
       envVars["SCHEDULER_ROLE_ARN"] = schedulerRoleArn;
       let extraStringAssets = {};
       extraStringAssets["automationSliceModules.json"] = `{` + sliceModuleEntries.join(",") + `}`;
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
       let sourceCodeHash = match.sourceCodeHash;
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, AutomationMailCap$ReventlessAws.metricNames(), undefined, opts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", [{
           channel: channel,
           eventTopics: eventTopics,
@@ -543,6 +548,7 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       makeMessagingGrant(runtime, opts);
       makeRecipientLanguageGrant(runtime, opts);
       makeIdentityProviderGrant(runtime, opts);
+      AutomationMailCap$ReventlessAws.make(runtime, opts);
       makeStashGrant(runtime, opts);
       if (anyDcbFallback.contents) {
         DcbCommandFunctions$ReventlessAws.addInvoker("AllAutomationSlices", runtime.parts.lambdaRole.id);

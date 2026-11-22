@@ -5,8 +5,11 @@ let EmailIdentity = {};
 
 let IdentityPolicy = {};
 
+let ConfigurationSet = {};
+
 export {
   EmailIdentity,
   IdentityPolicy,
+  ConfigurationSet,
 }
 /* No side effect */

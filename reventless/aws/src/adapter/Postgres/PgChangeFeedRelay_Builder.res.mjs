@@ -72,7 +72,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "ChangeFeed"
-  }, "Platform", match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "Platform", match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
   let secretArns = logs.map(l => l.connectionConfig.apply(cc => cc.secretArn));
   let queueArns = logs.map(l => l.targetQueueArn);
   Pulumi.all([

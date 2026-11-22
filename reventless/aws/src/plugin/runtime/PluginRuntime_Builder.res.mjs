@@ -140,6 +140,18 @@ function stashArn() {
   return stashArnRef.contents;
 }
 
+let operatorAlertsRef = {
+  contents: Pulumi.output("")
+};
+
+function registerOperatorAlerts(arn) {
+  operatorAlertsRef.contents = arn;
+}
+
+function operatorAlerts() {
+  return operatorAlertsRef.contents;
+}
+
 function stashTable() {
   return stashTableRef.contents;
 }
@@ -465,7 +477,7 @@ function Make(EventCollectorChannel) {
     });
     let codeOutput = bundleOutput.apply(b => b.code);
     let sourceCodeHashOutput = bundleOutput.apply(b => b.sourceCodeHash);
-    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "EventCollector", "EventCollector", codeOutput, sourceCodeHashOutput, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts);
+    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "EventCollector", "EventCollector", codeOutput, sourceCodeHashOutput, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, undefined, opts);
     EventCollectorChannel.connect(name, [{
         channel: eventCollector.channel,
         eventTopics: eventTopics,
@@ -578,7 +590,7 @@ function Make(EventCollectorChannel) {
     envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
     envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs", {}, undefined, undefined);
-    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "Scheduler", "Scheduler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
+    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "Scheduler", "Scheduler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, undefined, opts));
   };
   let forDcbCommandTopic = (param, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 0;
@@ -642,6 +654,9 @@ export {
   stashProvisionedRef,
   registerStash,
   stashArn,
+  operatorAlertsRef,
+  registerOperatorAlerts,
+  operatorAlerts,
   stashTable,
   stashProvisioned,
   dcbConfigRef,

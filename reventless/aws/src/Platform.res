@@ -2370,6 +2370,22 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("messagingEmailProvider", messagingEmailProviderFlat)
       messagingEmailProviderRef := messagingEmailProviderFlat
 
+      // The mail guards and the operator's alerts: what a public sign-up needs
+      // beyond its door. See `Platform_Guards`.
+      let guards = Platform_Guards.make(
+        ~sender=switch cfg.messagingSender {
+        | Some({emailSender: ?Some(_)}) => true
+        | _ => false
+        },
+      )
+      Pulumi.Pulumi.export("messagingConfigurationSet", guards.configurationSet)
+      Pulumi.Pulumi.export("operatorAlerts", guards.operatorAlerts)
+      Pulumi.Pulumi.export("billAlarm", Pulumi.Output.make(guards.billAlarm ? "on" : ""))
+      Pulumi.Pulumi.export(
+        "registrationMailDailyCap",
+        Pulumi.Output.make(Platform_Guards.registrationMailDailyCap()),
+      )
+
       // Exported but not handed to a Lambda: nothing reads an SMS sender yet, and
       // an env var no runtime consults is a setting that looks wired. The export
       // is how a stack can see what it configured.
@@ -2938,6 +2954,24 @@ module MakeWithConfig = (
     let fingerprintKey = platformOutput("fingerprintKey", ~local=() =>
       Platform_Stack.fingerprintKey()
     )
+    // The mail guards and the operator's alerts, as the platform stack made them.
+    let messagingConfigurationSet = platformOutput("messagingConfigurationSet", ~local=() =>
+      Pulumi.Output.make("")
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      "MESSAGING_CONFIGURATION_SET",
+      messagingConfigurationSet,
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      Messaging_DailyCap.capVariable,
+      platformOutput("registrationMailDailyCap", ~local=() =>
+        Pulumi.Output.make(Platform_Guards.registrationMailDailyCap())
+      ),
+    )
+    PluginRuntime_Builder.registerOperatorAlerts(
+      platformOutput("operatorAlerts", ~local=() => Pulumi.Output.make("")),
+    )
+    let billAlarm = platformOutput("billAlarm", ~local=() => Pulumi.Output.make(""))
     PluginRuntime_Builder.registerCapabilityEnv(
       ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
       fingerprintKey,
@@ -3145,17 +3179,24 @@ module MakeWithConfig = (
           stackRef->Pulumi.StackReference.getOutput("objectStores"),
           geocoderPlaceIndex,
           messagingEmailSender,
-          Pulumi.Output.all4((identityProviderId, stashTable, fingerprintKey, pluginOutputs.id)),
+          Pulumi.Output.all6((
+            identityProviderId,
+            stashTable,
+            fingerprintKey,
+            pluginOutputs.id,
+            messagingConfigurationSet,
+            billAlarm,
+          )),
         )
         ->Pulumi.Output.all5
         ->Pulumi.Output.apply((
-          (structure, objectStores, placeIndex, emailSender, (poolId, stash, fingerprint, id)): (
-            _,
-            option<JSON.t>,
-            string,
-            string,
-            (string, string, string, _),
-          ),
+          (
+            structure,
+            objectStores,
+            placeIndex,
+            emailSender,
+            (poolId, stash, fingerprint, id, configurationSet, bill),
+          ): (_, option<JSON.t>, string, string, (string, string, string, _, string, string)),
         ) => {
           // ── Who may come to hold a role ────────────────────────────────────
           //
@@ -3185,8 +3226,10 @@ module MakeWithConfig = (
               {
                 fingerprintKey: fingerprint != "",
                 personCheck: false,
-                boundedSender: false,
-                billAlarm: false,
+                // Bounded: it keeps refusing addresses off its list, and the
+                // automation function caps its registration mail per day.
+                boundedSender: emailSender != "" && configurationSet != "",
+                billAlarm: bill == "on",
               },
             ) {
             | Some(why) => JsError.throwWithMessage(why)

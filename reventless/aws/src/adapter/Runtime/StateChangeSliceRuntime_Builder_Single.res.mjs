@@ -135,7 +135,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       subnetIds: pgSelection.subnetIds,
       securityGroupIds: [sgId]
     })) : undefined;
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "StateChangeSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "StateChangeSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, undefined, vpcConfig, opts);
   if (isAsync) {
     DcbCommandFunctions$ReventlessAws.noFunction(queue.id);
   } else {

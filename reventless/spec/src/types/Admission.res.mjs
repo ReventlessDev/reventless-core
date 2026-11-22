@@ -10,7 +10,8 @@ let doors = [
   "complete",
   "invite",
   "openRoles",
-  "policy"
+  "policy",
+  "mail"
 ];
 
 function doorName(door) {

@@ -50,6 +50,7 @@ import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
 import * as EventLogBackend$ReventlessAws from "./adapter/EventLog/EventLogBackend.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
+import * as Platform_Guards$ReventlessAws from "./Platform_Guards.res.mjs";
 import * as PluginDecision$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginDecision.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as Upload_Claim_S3$ReventlessAws from "./adapter/Upload/Upload_Claim_S3.res.mjs";
@@ -71,6 +72,7 @@ import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spe
 import * as AppSync_VisitorApi$ReventlessAws from "./components/Api/AppSync_VisitorApi.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
+import * as Messaging_DailyCap$ReventlessAws from "./adapter/Messaging/Messaging_DailyCap.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
@@ -1290,16 +1292,22 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("messagingEmailProvider", messagingEmailProviderFlat);
       messagingEmailProviderRef.contents = messagingEmailProviderFlat;
       let match$7 = hostUiBundle.messagingSender;
+      let guards = Platform_Guards$ReventlessAws.make(match$7 !== undefined ? match$7.emailSender !== undefined : false);
+      Pulumi$Pulumi.$$export("messagingConfigurationSet", guards.configurationSet);
+      Pulumi$Pulumi.$$export("operatorAlerts", guards.operatorAlerts);
+      Pulumi$Pulumi.$$export("billAlarm", Pulumi.output(guards.billAlarm ? "on" : ""));
+      Pulumi$Pulumi.$$export("registrationMailDailyCap", Pulumi.output(Platform_Guards$ReventlessAws.registrationMailDailyCap()));
+      let match$8 = hostUiBundle.messagingSender;
       let tmp$2;
-      if (match$7 !== undefined) {
-        let sender$1 = match$7.smsSender;
+      if (match$8 !== undefined) {
+        let sender$1 = match$8.smsSender;
         tmp$2 = sender$1 !== undefined ? sender$1 : Pulumi.output("");
       } else {
         tmp$2 = Pulumi.output("");
       }
       Pulumi$Pulumi.$$export("messagingSmsSender", tmp$2);
-      let match$8 = hostUiBundle.messagingSender;
-      let emailSenderProvisioned = match$8 !== undefined ? match$8.emailSender !== undefined : false;
+      let match$9 = hostUiBundle.messagingSender;
+      let emailSenderProvisioned = match$9 !== undefined ? match$9.emailSender !== undefined : false;
       if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
@@ -1414,9 +1422,9 @@ function MakeWithConfig(Config) {
           cacheControl: bootFileCacheControl
         });
       }
-      let match$9 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$9 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$9).map(param => param[0]);
+      let match$10 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$10 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$10).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -1531,6 +1539,11 @@ function MakeWithConfig(Config) {
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
     let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
+    let messagingConfigurationSet = platformOutput("messagingConfigurationSet", () => Pulumi.output(""));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_CONFIGURATION_SET", messagingConfigurationSet);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Messaging_DailyCap$ReventlessAws.capVariable, platformOutput("registrationMailDailyCap", () => Pulumi.output(Platform_Guards$ReventlessAws.registrationMailDailyCap())));
+    PluginRuntime_Builder$ReventlessAws.registerOperatorAlerts(platformOutput("operatorAlerts", () => Pulumi.output("")));
+    let billAlarm = platformOutput("billAlarm", () => Pulumi.output(""));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, fingerprintKey);
     AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
@@ -1637,10 +1650,14 @@ function MakeWithConfig(Config) {
           identityProviderId,
           stashTable,
           fingerprintKey,
-          pluginOutputs.id
+          pluginOutputs.id,
+          messagingConfigurationSet,
+          billAlarm
         ])
       ]).apply(param => {
         let match = param[4];
+        let bill = match[5];
+        let configurationSet = match[4];
         let fingerprint = match[2];
         let stash = match[1];
         let poolId = match[0];
@@ -1660,8 +1677,8 @@ function MakeWithConfig(Config) {
           let why = AppSync_VisitorGuards$ReventlessAws.refusal(pluginName, AppSync_VisitorGuards$ReventlessAws.selfServiceRoles(s), {
             fingerprintKey: fingerprint !== "",
             personCheck: false,
-            boundedSender: false,
-            billAlarm: false
+            boundedSender: emailSender !== "" && configurationSet !== "",
+            billAlarm: bill === "on"
           });
           if (why !== undefined) {
             return Stdlib_JsError.throwWithMessage(why);
@@ -2861,16 +2878,22 @@ function Make($star) {
       Pulumi$Pulumi.$$export("messagingEmailProvider", messagingEmailProviderFlat);
       messagingEmailProviderRef.contents = messagingEmailProviderFlat;
       let match$7 = hostUiBundle.messagingSender;
+      let guards = Platform_Guards$ReventlessAws.make(match$7 !== undefined ? match$7.emailSender !== undefined : false);
+      Pulumi$Pulumi.$$export("messagingConfigurationSet", guards.configurationSet);
+      Pulumi$Pulumi.$$export("operatorAlerts", guards.operatorAlerts);
+      Pulumi$Pulumi.$$export("billAlarm", Pulumi.output(guards.billAlarm ? "on" : ""));
+      Pulumi$Pulumi.$$export("registrationMailDailyCap", Pulumi.output(Platform_Guards$ReventlessAws.registrationMailDailyCap()));
+      let match$8 = hostUiBundle.messagingSender;
       let tmp$2;
-      if (match$7 !== undefined) {
-        let sender$1 = match$7.smsSender;
+      if (match$8 !== undefined) {
+        let sender$1 = match$8.smsSender;
         tmp$2 = sender$1 !== undefined ? sender$1 : Pulumi.output("");
       } else {
         tmp$2 = Pulumi.output("");
       }
       Pulumi$Pulumi.$$export("messagingSmsSender", tmp$2);
-      let match$8 = hostUiBundle.messagingSender;
-      let emailSenderProvisioned = match$8 !== undefined ? match$8.emailSender !== undefined : false;
+      let match$9 = hostUiBundle.messagingSender;
+      let emailSenderProvisioned = match$9 !== undefined ? match$9.emailSender !== undefined : false;
       if (capabilities.includes("Messaging") && !emailSenderProvisioned) {
         Stdlib_JsError.throwWithMessage(`A plugin of this deployment declares the Messaging capability, but this platform provisions no email sender.\n  The sender is configuration and has no default: set \`platform:messagingEmailSender\` in Pulumi.<stack>.yaml (or the env var REVENTLESS_MESSAGING_EMAIL_SENDER), then verify the address with SES.\n  A stack that should not mail anybody sets \`platform:messagingEmailProvider: log\` instead — every message is logged and none is sent, and the address is optional.\n  The root must also pass \`~messagingSender\` in \`~hostUiBundle\`, from \`ReventlessAws.Capability_Messaging.make(~name=…)\`.\n  The declaration is generated from the plugins' capabilities.json — regenerate with \`pnpm run generate:platform\` if it is stale.`);
       }
@@ -2985,9 +3008,9 @@ function Make($star) {
           cacheControl: bootFileCacheControl
         });
       }
-      let match$9 = hostUiBundle.bakedManifest;
-      if (componentDefinitions !== undefined && match$9 !== undefined) {
-        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$9).map(param => param[0]);
+      let match$10 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$10 !== undefined) {
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$10).map(param => param[0]);
         let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
@@ -3100,6 +3123,11 @@ function Make($star) {
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
     let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
+    let messagingConfigurationSet = platformOutput("messagingConfigurationSet", () => Pulumi.output(""));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("MESSAGING_CONFIGURATION_SET", messagingConfigurationSet);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Messaging_DailyCap$ReventlessAws.capVariable, platformOutput("registrationMailDailyCap", () => Pulumi.output(Platform_Guards$ReventlessAws.registrationMailDailyCap())));
+    PluginRuntime_Builder$ReventlessAws.registerOperatorAlerts(platformOutput("operatorAlerts", () => Pulumi.output("")));
+    let billAlarm = platformOutput("billAlarm", () => Pulumi.output(""));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, fingerprintKey);
     AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
@@ -3206,10 +3234,14 @@ function Make($star) {
           identityProviderId,
           stashTable,
           fingerprintKey,
-          pluginOutputs.id
+          pluginOutputs.id,
+          messagingConfigurationSet,
+          billAlarm
         ])
       ]).apply(param => {
         let match = param[4];
+        let bill = match[5];
+        let configurationSet = match[4];
         let fingerprint = match[2];
         let stash = match[1];
         let poolId = match[0];
@@ -3229,8 +3261,8 @@ function Make($star) {
           let why = AppSync_VisitorGuards$ReventlessAws.refusal(pluginName, AppSync_VisitorGuards$ReventlessAws.selfServiceRoles(s), {
             fingerprintKey: fingerprint !== "",
             personCheck: false,
-            boundedSender: false,
-            billAlarm: false
+            boundedSender: emailSender !== "" && configurationSet !== "",
+            billAlarm: bill === "on"
           });
           if (why !== undefined) {
             return Stdlib_JsError.throwWithMessage(why);

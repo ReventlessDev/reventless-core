@@ -126,6 +126,9 @@ let makeFromCodeAsset: (
       `~logRetentionDays` is set or the stack tier manages its groups
       (`Util_LogRetention.managesLogGroup`). */
   ~dcbMetrics: bool=?,
+  /** Further metric lines to turn into CloudWatch metrics on the managed log group,
+      by name, in the DCB metrics' namespace and shape. */
+  ~metricNames: array<string>=?,
   /** Place the Lambda in a VPC (needed to reach RDS/managed Postgres). When set,
       the execution role also gets the EC2 network-interface permissions AWS
       requires for VPC Lambdas. Build it from `PgConnection.{securityGroupId,
@@ -145,6 +148,7 @@ let makeFromCodeAsset: (
   ~ephemeralStorageMb=?,
   ~logRetentionDays=?,
   ~dcbMetrics=false,
+  ~metricNames=[],
   ~vpcConfig=?,
   ~opts=?,
 ) => {
@@ -343,9 +347,10 @@ let makeFromCodeAsset: (
   // into CloudWatch metrics. Attached to the managed log group, which is the only
   // group the function ever writes to. Namespace/dimension are CloudWatch-specific
   // and live here, not in core (provider-neutral).
-  if dcbMetrics {
+  let extracted = Array.concat(dcbMetrics ? Util_DcbMetrics.metricNames : [], metricNames)
+  if extracted != [] {
     logGroup->Option.forEach(logGroup =>
-      Util_DcbMetrics.metricNames->Array.forEach(metricName => {
+      extracted->Array.forEach(metricName => {
         let _ = Cloudwatch.LogMetricFilter.make(
           ~name=`${name}${metricName}Filter`,
           ~args={

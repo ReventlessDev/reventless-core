@@ -513,7 +513,13 @@ let messagingEmailProvider = (): Reventless.Messaging.provider => {
   let sender = NodeProcess.env->Dict.get("MESSAGING_EMAIL_SENDER")->Option.getOr("")
   switch NodeProcess.env->Dict.get("MESSAGING_EMAIL_PROVIDER")->Option.getOr("") {
   | "log" => ReventlessCore.Messaging_Log_Backend.provider(~sender)
-  | _ => Messaging_Ses_Backend.provider(~sender)
+  | _ =>
+    Messaging_Ses_Backend.provider(
+      ~sender,
+      ~configurationSet=NodeProcess.env
+      ->Dict.get("MESSAGING_CONFIGURATION_SET")
+      ->Option.getOr(""),
+    )
   }
 }
 
@@ -626,6 +632,9 @@ let makeAutomationJsonEventsHandler = (
 // event types the slice does not consume are dropped silently instead of
 // logging an error per event.
 let makeOutboundJsonEventsHandler = (
+  // What this slice is handed: the function's capabilities, its mail capped when
+  // it sends registration mail.
+  ~capabilities: unit => Reventless.Capabilities.t=capabilities,
   ~consumedEventSchema: S.t<'event>,
   ~callback: outboundCallback<'event>,
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
@@ -840,10 +849,12 @@ let makeOutboundRegisteredHandler = (
     ~synced,
   )
   let claim = makeClaimTodoItem(~queryDbTableName=entry.queryDbTableName, ~synced)
+  let sliceCapabilities = () => Messaging_DailyCap.forSlice(capabilities(), ~slice=sliceName)
   {
     registered: {
       handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
         makeOutboundJsonEventsHandler(
+          ~capabilities=sliceCapabilities,
           ~consumedEventSchema,
           ~callback,
           ~publishJsons,
@@ -859,7 +870,7 @@ let makeOutboundRegisteredHandler = (
       await loadTodoItems()
       await callback.phase2(
         publishJsons,
-        ~capabilities=capabilities(),
+        ~capabilities=sliceCapabilities(),
         ~publishJsonsAndWait?,
         ~claim,
       )

@@ -965,6 +965,18 @@ other. The "someone tried" notice stays at one an hour per address.
 **Exit:** a suppressed address is not mailed; the cap stops the sender and the alarm fires, both on a
 fixture stack.
 
+*As built (2026-11-22), not yet deployed:* where the platform has a messaging sender, its stack
+makes an SES configuration set (`Platform_Guards`) that suppresses bounced and complained-about
+addresses, and every send names it, so one that refused once is not mailed again. Per stack
+rather than the account's own list setting, which is one per account and would be claimed by
+every deployment in it. The slice that mails visitors marks itself
+(`let admissionDoor = Reventless.Admission.Mail`, on `SendRegistrationChallenge`); for it, the
+automation function counts the day's mail in the plugin stack's count table and refuses past
+`platform:registrationMailDailyCap` (default 50), not retried, with a metric line the
+deployment's alarm counts (`Messaging_DailyCap`, `AutomationMailCap`). The "someone tried"
+notice keeps its hour per address, in the ledger. Not built: a sender that stops on its own
+bounce rate, which SES's own reputation measures do for the account.
+
 #### DW12: an alarm on the bill
 
 A budget on the platform stack covering mail, the identity provider and API requests, notifying an
@@ -973,6 +985,15 @@ raised without a code change.
 
 **Exit:** the budget and its notification exist on a deployed stack; a deploy without an operator
 address for it is refused where a self-service role is declared.
+
+*As built (2026-11-22), not yet deployed:* `platform:operatorAddress` names the operator. With
+it, the platform stack makes a topic for the deployment's alarms with an email subscription
+(confirmed once, from the address), and a monthly budget, `platform:billAlarmMonthlyUsd`
+dollars (default 20), on SES, Cognito, AppSync and WAF, which writes to the address at 100 %,
+actual and forecast. A budget filters by service across the account, so it counts every
+deployment in the account that uses them: an upper bound. The cap on registration mail alarms
+on the same topic. Without an address the guards' check refuses a self-service role, naming
+the setting.
 
 ## Verification
 

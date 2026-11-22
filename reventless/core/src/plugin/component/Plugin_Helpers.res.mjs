@@ -966,6 +966,10 @@ function exportPluginOutputs(pluginOutputs) {
   Pulumi$Pulumi.$$export("_pluginDeployedSync", hookOutput);
 }
 
+let currentStructureRef = {
+  contents: undefined
+};
+
 let adminPluginExtensionPointMappingsModule = PluginExtensionPoint_Plugin$ReventlessCore.moduleUrl;
 
 let pluginConnectExtensionMappingsModule = PluginConnectExtension_Mapping$ReventlessCore.moduleUrl;
@@ -1100,5 +1104,6 @@ export {
   serializeEventMappersOutputs,
   exportPlatformOutputs,
   exportPluginOutputs,
+  currentStructureRef,
 }
 /* log Not a pure module */

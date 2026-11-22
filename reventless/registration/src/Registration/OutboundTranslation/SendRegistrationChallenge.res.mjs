@@ -72,6 +72,8 @@ let maxRetries = 3;
 
 let targetName = "Registrations";
 
+let admissionDoor = "mail";
+
 let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge.res.mjs";
 
 let externalSystem;
@@ -86,6 +88,7 @@ export {
   targetName,
   sourceNames,
   capabilityNeeds,
+  admissionDoor,
   moduleUrl,
   externalSystem,
   traits,

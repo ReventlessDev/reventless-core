@@ -15,7 +15,8 @@ function channels(sender) {
   }
 }
 
-async function send(sender, recipient, message) {
+async function send(sender, configurationSetOpt, recipient, message) {
+  let configurationSet = configurationSetOpt !== undefined ? configurationSetOpt : "";
   switch (recipient.TAG) {
     case "ToEmail" :
       if (sender === "") {
@@ -67,6 +68,7 @@ async function send(sender, recipient, message) {
                 }])
             }
           },
+          ConfigurationSetName: configurationSet === "" ? undefined : configurationSet,
           Destination: {
             ToAddresses: [recipient._0]
           },
@@ -109,8 +111,9 @@ async function send(sender, recipient, message) {
   }
 }
 
-function provider(sender) {
-  return Messaging$Reventless.makeProvider(channels(sender), [], (recipient, message) => send(sender, recipient, message));
+function provider(sender, configurationSetOpt) {
+  let configurationSet = configurationSetOpt !== undefined ? configurationSetOpt : "";
+  return Messaging$Reventless.makeProvider(channels(sender), [], (recipient, message) => send(sender, configurationSet, recipient, message));
 }
 
 let Send;

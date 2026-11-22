@@ -43,7 +43,7 @@ function buildInterceptor(api, opts) {
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "QueryInterceptor"
-  }, "Plugin", match.code, match.sourceCodeHash, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, componentOpts);
+  }, "Plugin", match.code, match.sourceCodeHash, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, componentOpts);
   new (Aws.iam.RolePolicy)(name + "Logging", {
     policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
     role: runtime.parts.lambdaRole.id

@@ -92,7 +92,7 @@ function provision(api, selection, opts) {
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "QueryResolver"
-  }, "QueryDB", match.code, match.sourceCodeHash, envVars, 512, 30, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "QueryDB", match.code, match.sourceCodeHash, envVars, 512, 30, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
   selection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + "-pgSecret", {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "-pgSecretPolicy", [{
         Sid: "AllowGetPgSecret",

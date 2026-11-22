@@ -22,6 +22,7 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Text_Http_Backend$ReventlessAws from "../Text/Text_Http_Backend.res.mjs";
+import * as Messaging_DailyCap$ReventlessAws from "../Messaging/Messaging_DailyCap.res.mjs";
 import * as AwsSelfRegistration$ReventlessAws from "./AwsSelfRegistration.res.mjs";
 import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses_Backend.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
@@ -376,7 +377,7 @@ function messagingEmailProvider() {
   if (match === "log") {
     return Messaging_Log_Backend$ReventlessCore.provider(sender);
   } else {
-    return Messaging_Ses_Backend$ReventlessAws.provider(sender);
+    return Messaging_Ses_Backend$ReventlessAws.provider(sender, Stdlib_Option.getOr(process.env["MESSAGING_CONFIGURATION_SET"], ""));
   }
 }
 
@@ -423,7 +424,8 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, publis
   }));
 }
 
-function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim) {
+function makeOutboundJsonEventsHandler(capabilitiesOpt, consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim) {
+  let capabilities$1 = capabilitiesOpt !== undefined ? capabilitiesOpt : capabilities;
   let decoder = DcbDecode$Reventless.makeDecoder(consumedEventSchema);
   return stream => Effect$1.flatMap(Stream$1.runCollect(Stream$1.flatMap(Stream.mapEffect(stream, json => Effect$1.sync(() => {
     let envelope = Stdlib_JSON.Decode.object(json);
@@ -445,9 +447,9 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
     await callback.phase1(events.map(param => [
       param[0],
       param[1]
-    ]), events.map(param => param[2]), capabilities());
+    ]), events.map(param => param[2]), capabilities$1());
     await syncTodoItems();
-    await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait, claim);
+    await callback.phase2(publishJsons, capabilities$1(), publishJsonsAndWait, claim);
     return await syncTodoItems();
   }));
 }
@@ -532,14 +534,15 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
   let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, synced);
   let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, comp, synced);
   let claim = makeClaimTodoItem(entry.queryDbTableName, synced);
+  let sliceCapabilities = () => Messaging_DailyCap$ReventlessAws.forSlice(capabilities(), sliceName);
   return {
     registered: {
-      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim)),
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(sliceCapabilities, consumedEventSchema, callback, publishJsons, publishJsonsAndWait, syncTodoItems, loadTodoItems, claim)),
       comp: comp
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons, capabilities(), publishJsonsAndWait, claim);
+      await callback.phase2(publishJsons, Messaging_DailyCap$ReventlessAws.forSlice(capabilities(), sliceName), publishJsonsAndWait, claim);
       return await syncTodoItems();
     },
     comp: comp,

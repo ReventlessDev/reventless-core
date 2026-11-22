@@ -11,9 +11,9 @@ function describe(guard) {
     case "PersonCheck" :
       return "a check that a person is signing up, which the framework does not provide yet";
     case "BoundedSender" :
-      return "a mail sender that stops at a daily cap, which the framework does not provide yet";
+      return "a mail sender that keeps bounced addresses off its list: a messaging sender on the platform, which then makes its configuration set; deploy the platform stack again first";
     case "BillAlarm" :
-      return "an alarm on the bill, which the framework does not provide yet";
+      return "an alarm on the bill: set platform:operatorAddress on the platform stack, the address its alarms and budget write to";
   }
 }
 

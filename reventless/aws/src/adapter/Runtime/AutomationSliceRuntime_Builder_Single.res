@@ -324,7 +324,11 @@ let makeMessagingGrant = (~runtime: ReventlessCore.Runtime.environment<runtimePa
             // resource is the identity the message is sent FROM — not the
             // recipient, which is why one grant covers every destination.
             actions: Action("ses:SendEmail"),
-            resources: Resource(`arn:aws:ses:*:*:identity/${sender}`),
+            // And the configuration set a send names, which SES authorizes too.
+            resources: Resources([
+              `arn:aws:ses:*:*:identity/${sender}`,
+              "arn:aws:ses:*:*:configuration-set/*",
+            ]),
           },
         ],
       )->PulumiAws.PolicyDocument.toJsonString
@@ -945,6 +949,7 @@ let finishWithDcbEventLog = (
         PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
           envVars->Dict.set(name, value->Pulumi.Output.asInput)
         )
+        AutomationMailCap.env(envVars)
         // The stack's scheduler role, which also names its group: where the
         // automations' schedules go.
         envVars->Dict.set("SCHEDULER_ROLE_ARN", schedulerRoleArn->Pulumi.Output.asInput)
@@ -970,6 +975,7 @@ let finishWithDcbEventLog = (
           ~code,
           ~sourceCodeHash,
           ~envVars,
+          ~metricNames=AutomationMailCap.metricNames(),
           ~memorySize=1024,
           ~timeout=30,
           ~opts,
@@ -988,6 +994,7 @@ let finishWithDcbEventLog = (
         makeMessagingGrant(~runtime, ~opts)
         makeRecipientLanguageGrant(~runtime, ~opts)
         makeIdentityProviderGrant(~runtime, ~opts)
+        AutomationMailCap.make(~runtime, ~opts)
         makeStashGrant(~runtime, ~opts)
         if anyDcbFallback.contents {
           DcbCommandFunctions.addInvoker(

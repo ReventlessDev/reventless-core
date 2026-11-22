@@ -1879,3 +1879,8 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
   | None => ()
   }
 }
+
+/** The structure of the plugin being constructed, for an adapter that provisions
+    by what the plugin declares (the senders of registration mail, say) and is
+    reached far below the builder. Set by the builder before any component. */
+let currentStructureRef: ref<option<Reventless.Plugin.pluginStructure>> = ref(None)

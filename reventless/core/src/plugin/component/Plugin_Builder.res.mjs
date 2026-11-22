@@ -128,6 +128,7 @@ function Make(Spec) {
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let _prevPluginName = Logger$ReventlessCore.currentPluginName.contents;
         Logger$ReventlessCore.currentPluginName.contents = extra$1;
+        Plugin_Helpers$ReventlessCore.currentStructureRef.contents = pluginStructure;
         readModels.forEach(R => Api_Naming$ReventlessCore.registerSingular(extra$1, R.Spec.name, R.Spec.stateSchema));
         stateViewSlices.forEach(V => Api_Naming$ReventlessCore.registerSingular(extra$1, V.Spec.name, V.Spec.stateSchema));
         let _prevAttribution = ResourceAttribution$ReventlessCore.enter(Spec.platformName, extra$1);
