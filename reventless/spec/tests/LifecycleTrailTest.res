@@ -154,3 +154,54 @@ describe("Lifecycle.Trail.writeDerived:", () => {
     expect(state->JSON.Encode.object->JSON.stringify)->toBe(`{"lifecycle":"Placed"}`)
   })
 })
+
+// A stored row's trail and the derived attributes it should carry, compared
+// without changing the row: what a backfill writes.
+describe("Lifecycle.Trail.rederive:", () => {
+  let trail = `[{"state":"Placed","at":"2026-03-02T09:00:00Z"},{"state":"Shipped","at":"2026-03-02T10:00:00Z"}]`
+
+  testSync("finds the trail field by its shape", () => {
+    expect(
+      dict(`{"id":"o1","trail":${trail},"lines":[{"name":"x"}]}`)->Lifecycle.Trail.fieldOfRow,
+    )->toEqual(Some("trail"))
+    expect(dict(`{"id":"o1","trail":[]}`)->Lifecycle.Trail.fieldOfRow)->toEqual(None)
+    expect(dict(`{"a":${trail},"b":${trail}}`)->Lifecycle.Trail.fieldOfRow)->toEqual(None)
+  })
+
+  testSync("sets every derived attribute on a row saved before they existed", () => {
+    let row = dict(`{"id":"o1","trail":${trail}}`)
+    let change = row->Lifecycle.Trail.rederive(~field="trail")
+    expect(change.set->Dict.keysToArray->Array.toSorted(String.compare))->toEqual([
+      "_entered_Placed",
+      "_entered_Placed_first",
+      "_entered_Shipped",
+      "_entered_Shipped_first",
+      "_entered_current",
+      "_trail",
+      "_visits_Placed",
+      "_visits_Shipped",
+    ])
+    expect(change.remove)->toEqual([])
+    expect(row->Dict.keysToArray)->toEqual(["id", "trail"])
+  })
+
+  testSync("is unchanged once the row carries them", () => {
+    let row = dict(`{"id":"o1","trail":${trail}}`)
+    row->Lifecycle.Trail.writeDerived(~field="trail")
+    expect(row->Lifecycle.Trail.rederive(~field="trail")->Lifecycle.Trail.isUnchanged)->toBe(true)
+  })
+
+  testSync("removes a date the trail no longer gives and corrects a stale one", () => {
+    let row = dict(
+      `{"id":"o1","trail":${trail},"_entered_Cancelled":"x","_entered_current":"stale"}`,
+    )
+    row->Lifecycle.Trail.writeDerived(~field="trail")
+    row->Dict.set("_entered_Cancelled", JSON.Encode.string("x"))
+    row->Dict.set("_entered_current", JSON.Encode.string("stale"))
+    let change = row->Lifecycle.Trail.rederive(~field="trail")
+    expect(change.remove)->toEqual(["_entered_Cancelled"])
+    expect(change.set)->toEqual(
+      Dict.fromArray([("_entered_current", JSON.Encode.string("2026-03-02T10:00:00Z"))]),
+    )
+  })
+})

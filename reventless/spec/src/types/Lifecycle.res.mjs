@@ -5,6 +5,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as DcbTag$Reventless from "../components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "../semantic/DateTime.res.mjs";
 import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
@@ -184,9 +185,17 @@ let keyAttr = "_trail";
 
 let keyValue = "1";
 
+function isDerivedAttr(key) {
+  if (key.startsWith(enteredPrefix) || key.startsWith(visitsPrefix)) {
+    return true;
+  } else {
+    return key === keyAttr;
+  }
+}
+
 function writeDerived(stateDict, field) {
   Object.keys(stateDict).forEach(key => {
-    if (key.startsWith(enteredPrefix) || key.startsWith(visitsPrefix) || key === keyAttr) {
+    if (isDerivedAttr(key)) {
       return Stdlib_Dict.$$delete(stateDict, key);
     }
   });
@@ -207,6 +216,65 @@ function writeDerived(stateDict, field) {
     stateDict[enteredCurrentAttr] = at;
     stateDict[keyAttr] = keyValue;
   });
+}
+
+function fieldOfRow(row) {
+  let isEntry = entry => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      return false;
+    }
+    let match = entry["state"];
+    let match$1 = entry["at"];
+    if (typeof match === "string") {
+      return typeof match$1 === "string";
+    } else {
+      return false;
+    }
+  };
+  let fields = Object.entries(row).filter(param => {
+    let value = param[1];
+    if (Array.isArray(value) && value.length !== 0) {
+      return value.every(isEntry);
+    } else {
+      return false;
+    }
+  });
+  if (fields.length !== 1) {
+    return;
+  }
+  let match = fields[0];
+  return match[0];
+}
+
+function rederive(row, field) {
+  let next = Object.assign({}, row);
+  writeDerived(next, field);
+  let set = {};
+  Stdlib_Dict.forEachWithKey(next, (value, key) => {
+    if (isDerivedAttr(key) && Primitive_object.notequal(row[key], value)) {
+      set[key] = value;
+      return;
+    }
+  });
+  let remove = Object.keys(row).filter(key => {
+    if (isDerivedAttr(key)) {
+      return Stdlib_Option.isNone(next[key]);
+    } else {
+      return false;
+    }
+  });
+  return {
+    set: set,
+    remove: remove
+  };
+}
+
+function isUnchanged(change) {
+  if (Object.keys(change.set).length === 0) {
+    return change.remove.length === 0;
+  } else {
+    return false;
+  }
 }
 
 function queryNames(state) {
@@ -293,7 +361,11 @@ let Trail = {
   keyValue: keyValue,
   lifecycleIndexName: "_lifecycle",
   stateIndexName: enteredAttr,
+  isDerivedAttr: isDerivedAttr,
   writeDerived: writeDerived,
+  fieldOfRow: fieldOfRow,
+  rederive: rederive,
+  isUnchanged: isUnchanged,
   enteredCurrentName: "enteredCurrent",
   queryNames: queryNames,
   enteredField: enteredField,

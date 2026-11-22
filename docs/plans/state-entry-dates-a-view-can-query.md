@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done; [QDS6](#4-steps) done locally, the `alpha` stack open). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done; [QDS6](#4-steps) done locally, the `alpha` stack open; [QDS8](#4-steps) built, its run on `alpha` open). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -68,7 +68,7 @@ The analysis's recommendations, taken.
 | **QDD1** | First or latest visit? | Both are derived. The unqualified name is the latest visit (`enteredPlaced`), which answers "since when in that state" for every state alike; the first visit is named (`enteredPlacedFirst`). From the analysis's [SEQ1](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD2** | Where is the opt-in written? | On the trail field: `@trail({index: [Placed, Shipped]})` puts those states' fields on the server and adds the lifecycle index; `@trail({index: true})` adds only the lifecycle index. (The analysis wrote `@trail(index=[…])` and a bare `@trail(index)`; neither parses as a ReScript attribute payload, so the record payload `@owner` and `@retired` already take is used, as [QDS3](#4-steps) allowed.) Deriving and reading need no annotation. [SEQ2](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD3** | Are durations stored? | No. A client computes them from the derived dates; a stored duration waits for an app that sorts by one. [SEQ3](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD4** | Rows stored before the change? | They are derived on their next write; a rebuild recomputes every row from its trail. [SEQ4](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD4** | Rows stored before the change? | They are derived on their next write, and `pnpm run views:rederive` backfills every row from its trail, on a deployed stack's DynamoDB tables and on a local SQLite store ([QDS8](#4-steps)). [SEQ4](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD5** | Can a row be named by a derived date? | No. `@displayName` points at declared fields. [SEQ5](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD6** | A filter relative to now? | No new operator; a client sends an absolute bound. [SEQ6](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
 | **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. With them `_trail`, one value on every row whose trail has an entry, which the per-state indexes are keyed by ([QDS5](#4-steps)). Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
@@ -201,6 +201,25 @@ partition, so a view writing past a partition's throughput (about 1000 writes/s;
 CloudWatch) would need a shard count on `@trail`. Sharding keys the index by `hash(id) mod N`, a read
 queries all N and merges them, and a rebuild re-keys the rows.
 *Done when* the docs build, and their links check.
+
+**QDS8 Backfill.** A row saved before [QDS1](#4-steps) carries its trail and none of the derived
+attributes, so the indexes of [QDS5](#4-steps) leave it out until its next write, and the rows that
+have sat longest in a state are the ones nothing writes again. `views:rederive` writes them from the
+trail with the same `Lifecycle.Trail` functions a save uses. On AWS (`ReventlessSeedAws_Rederive`,
+run from the deployment's platform project like `seed:reconcile`) it finds a stack's view tables by
+their tags (`reventless:platform`, `reventless:environment`, `reventless:role=QueryDb`), scans each,
+and sends an `UpdateItem` that sets or removes only the derived attributes, conditioned on
+`size(<trail>) = <length when read>`; a row written in between already got them from its save and
+is skipped. On SQLite (`LocalViewsRederive`, from platform-local) the update is conditioned on the
+row's stored text being unchanged. The trail field is found by its shape (a non-empty array of
+`{state, at}`), since a table does not name its schema. A dry run is the default; `-- --apply`
+writes; a second run finds nothing.
+*Done when* unit tests cover the update a row gets, a second run changing nothing and a row written
+during the run being skipped, on DynamoDB and SQLite; and on the `alpha` stack the dry run counts
+the rows, `--apply` writes them, and the three-day request of [QDS6](#4-steps) answers.
+*Built* 2026-11-22. The `alpha` dry run picked `Categories-812337e` (9 rows, 8 to change),
+`Products-0ba6849` (26, 25) and `Orders-10f6a39` (79, 78) by their tags. *Open:* `--apply` on
+`alpha`, then the request of [QDS6](#4-steps).
 
 ## 5. Out of scope
 

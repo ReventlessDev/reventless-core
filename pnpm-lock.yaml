@@ -1743,6 +1743,9 @@ importers:
       '@reventlessdev/reventless-seed':
         specifier: workspace:*
         version: link:../seed
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../spec
     devDependencies:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*

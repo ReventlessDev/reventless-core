@@ -10,7 +10,8 @@
     "seed": "node src/SeedAws.res.mjs",
     "verify:client-publish": "node src/VerifyClientPublish.res.mjs",
     "seed:reset": "node src/SeedAwsReset.res.mjs",
-    "seed:reconcile": "node src/SeedAwsReconcile.res.mjs"
+    "seed:reconcile": "node src/SeedAwsReconcile.res.mjs",
+    "views:rederive": "node src/ViewsRederive.res.mjs"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-seed": "workspace:*",

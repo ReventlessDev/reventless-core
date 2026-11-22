@@ -175,15 +175,14 @@ module Trail = {
 
   /** Replaces the derived attributes on a state's JSON with those of the trail
       at `field`. A row without a trail gets none. */
+  let isDerivedAttr = (key: string): bool =>
+    key->String.startsWith(enteredPrefix) || key->String.startsWith(visitsPrefix) || key == keyAttr
+
   let writeDerived = (stateDict: dict<JSON.t>, ~field: string): unit => {
     stateDict
     ->Dict.keysToArray
     ->Array.forEach(key =>
-      if (
-        key->String.startsWith(enteredPrefix) ||
-        key->String.startsWith(visitsPrefix) ||
-        key == keyAttr
-      ) {
+      if isDerivedAttr(key) {
         stateDict->Dict.delete(key)
       }
     )
@@ -202,6 +201,57 @@ module Trail = {
     | _ => ()
     }
   }
+
+  /** The field holding a trail on a stored row, found by its shape: a non-empty
+      array of objects that each carry a string `state` and `at`. None when no
+      field, or more than one, has that shape. */
+  let fieldOfRow = (row: dict<JSON.t>): option<string> => {
+    let isEntry = (entry: JSON.t) =>
+      switch entry {
+      | Object(e) =>
+        switch (e->Dict.get("state"), e->Dict.get("at")) {
+        | (Some(String(_)), Some(String(_))) => true
+        | _ => false
+        }
+      | _ => false
+      }
+    let fields =
+      row
+      ->Dict.toArray
+      ->Array.filter(((_, value)) =>
+        switch value {
+        | Array(entries) => entries->Array.length > 0 && entries->Array.every(isEntry)
+        | _ => false
+        }
+      )
+    switch fields {
+    | [(field, _)] => Some(field)
+    | _ => None
+    }
+  }
+
+  /** How a stored row's derived attributes differ from what its trail gives. */
+  type change = {set: dict<JSON.t>, remove: array<string>}
+
+  /** What `writeDerived` would change on a stored row, without changing it. */
+  let rederive = (row: dict<JSON.t>, ~field: string): change => {
+    let next = row->Dict.copy
+    next->writeDerived(~field)
+    let set = Dict.make()
+    next->Dict.forEachWithKey((value, key) =>
+      if isDerivedAttr(key) && row->Dict.get(key) != Some(value) {
+        set->Dict.set(key, value)
+      }
+    )
+    let remove =
+      row
+      ->Dict.keysToArray
+      ->Array.filter(key => isDerivedAttr(key) && next->Dict.get(key)->Option.isNone)
+    {set, remove}
+  }
+
+  let isUnchanged = (change: change): bool =>
+    change.set->Dict.keysToArray->Array.length == 0 && change.remove->Array.length == 0
 
   /** A derived date as a query names it, and the attribute it is stored under. */
   type queryName = {name: string, attr: string, isCount: bool}

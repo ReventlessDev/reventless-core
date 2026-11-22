@@ -501,29 +501,28 @@ let scopeOptions = (plugins: array<string>): array<(string, scope)> =>
     Note for callers wiring this into a package script: do NOT default the
     variable there (`${REVENTLESS_LOCAL_BACKEND:-sqlite:./…}`). It would make
     step 2 always fire, and that default is the very guess this replaces. */
+let resolveStore = async (~dbPath: option<string>=?): result<string, string> => {
+  let fromBackendEnv = () =>
+    switch Backend.fromEnv() {
+    | Backend.Sqlite({path}) if path != ":memory:" => Ok(path)
+    | Backend.Sqlite(_) | Backend.Memory =>
+      Error("REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.")
+    | Backend.Postgres(_) =>
+      Error("the Postgres backend keeps its data off this machine. Run it against the database.")
+    }
+  switch (dbPath, Seed.Prompt.envValue("REVENTLESS_LOCAL_BACKEND")) {
+  | (Some(p), _) => Ok(p)
+  | (None, Some(_)) => fromBackendEnv()
+  | (None, None) =>
+    let target = await LocalSeedTarget.select()
+    target->LocalSeedTarget.announce
+    target->LocalSeedTarget.storePath
+  }
+}
+
 let run = (~dbPath: option<string>=?): unit => {
   let go = async () => {
-    let fromBackendEnv = () =>
-      switch Backend.fromEnv() {
-      | Backend.Sqlite({path}) if path != ":memory:" => Ok(path)
-      | Backend.Sqlite(_) | Backend.Memory =>
-        Error(
-          "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.",
-        )
-      | Backend.Postgres(_) =>
-        Error(
-          "the Postgres backend keeps its event logs off this machine. Reset it against the database.",
-        )
-      }
-
-    let resolved = switch (dbPath, Seed.Prompt.envValue("REVENTLESS_LOCAL_BACKEND")) {
-    | (Some(p), _) => Ok(p)
-    | (None, Some(_)) => fromBackendEnv()
-    | (None, None) =>
-      let target = await LocalSeedTarget.select()
-      target->LocalSeedTarget.announce
-      target->LocalSeedTarget.storePath
-    }
+    let resolved = await resolveStore(~dbPath?)
 
     let resolved = switch resolved {
     | Ok(path) => Some(path)

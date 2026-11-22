@@ -436,49 +436,52 @@ function scopeOptions(plugins) {
   ]);
 }
 
+async function resolveStore(dbPath) {
+  let fromBackendEnv = () => {
+    let match = Backend$ReventlessLocal.fromEnv();
+    if (typeof match !== "object") {
+      return {
+        TAG: "Error",
+        _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
+      };
+    }
+    if (match.TAG !== "Sqlite") {
+      return {
+        TAG: "Error",
+        _0: "the Postgres backend keeps its data off this machine. Run it against the database."
+      };
+    }
+    let path = match.path;
+    if (path !== ":memory:") {
+      return {
+        TAG: "Ok",
+        _0: path
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
+      };
+    }
+  };
+  let match = Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOCAL_BACKEND");
+  if (dbPath !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: dbPath
+    };
+  }
+  if (match !== undefined) {
+    return fromBackendEnv();
+  }
+  let target = await LocalSeedTarget$ReventlessLocal.select();
+  LocalSeedTarget$ReventlessLocal.announce(target);
+  return LocalSeedTarget$ReventlessLocal.storePath(target);
+}
+
 function run(dbPath) {
   let go = async () => {
-    let fromBackendEnv = () => {
-      let match = Backend$ReventlessLocal.fromEnv();
-      if (typeof match !== "object") {
-        return {
-          TAG: "Error",
-          _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
-        };
-      }
-      if (match.TAG !== "Sqlite") {
-        return {
-          TAG: "Error",
-          _0: "the Postgres backend keeps its event logs off this machine. Reset it against the database."
-        };
-      }
-      let path = match.path;
-      if (path !== ":memory:") {
-        return {
-          TAG: "Ok",
-          _0: path
-        };
-      } else {
-        return {
-          TAG: "Error",
-          _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
-        };
-      }
-    };
-    let match = Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOCAL_BACKEND");
-    let resolved;
-    if (dbPath !== undefined) {
-      resolved = {
-        TAG: "Ok",
-        _0: dbPath
-      };
-    } else if (match !== undefined) {
-      resolved = fromBackendEnv();
-    } else {
-      let target = await LocalSeedTarget$ReventlessLocal.select();
-      LocalSeedTarget$ReventlessLocal.announce(target);
-      resolved = LocalSeedTarget$ReventlessLocal.storePath(target);
-    }
+    let resolved = await resolveStore(dbPath);
     let resolved$1;
     if (resolved.TAG === "Ok") {
       resolved$1 = resolved._0;
@@ -539,6 +542,7 @@ export {
   describe,
   execute,
   scopeOptions,
+  resolveStore,
   run,
 }
 /* node:fs Not a pure module */

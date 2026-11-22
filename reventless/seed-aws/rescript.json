@@ -20,6 +20,7 @@
   ],
   "dependencies": [
     "@reventlessdev/reventless-seed",
+    "@reventlessdev/reventless-spec",
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-jest"
