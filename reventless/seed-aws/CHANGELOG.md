@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.61 (2026-11-22)
+
+### Features
+
+* **seed:** a play file says what each step expects ([d2159f3](https://github.com/ReventlessDev/reventless-core/commit/d2159f3bb6358ee43ce57f673fed9cda32805e14))
+
+
 # 1.0.0-alpha.60 (2026-11-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed-aws

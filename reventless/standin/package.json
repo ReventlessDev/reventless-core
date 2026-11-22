@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-standin",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "Stand-ins for the things and services at an app's edge: they send through the app's own doors and answer what the app tells them",
   "license": "Apache-2.0",
   "scripts": {
