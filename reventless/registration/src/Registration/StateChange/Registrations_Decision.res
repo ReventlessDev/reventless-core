@@ -10,8 +10,8 @@ module V = ContactVerification
 module Guards = ContactVerification_Guards
 
 type policyState =
-  /** Nothing recorded about the role: open if the app declares it
-      self-service, closed otherwise. */
+  /** Nothing recorded about the role: the deployment's starting state if the app
+      declares it self-service, closed otherwise. */
   | Unset
   | Closed
   | Open(option<Reventless.DateTime.t>)
@@ -137,17 +137,29 @@ let evolve = (state, event) =>
   | RegistrationReleased(_) => {...state, stage: Unclaimed, lastNoticeAt: None}
   }
 
-/** Whether the policy admits a registration for `role` that arrived at `at`.
-    A role nobody has recorded anything about is open exactly when it is declared
-    self-service; past an open window's end it refuses exactly as closed does,
-    with no event to close it. */
-let admits = (admission, ~table, ~role, ~at) =>
+/** Whether the policy admits a registration for `role` that arrived at `at`,
+    on a deployment that starts `initially`. A role nobody has recorded anything
+    about reads as the starting state, if it is declared self-service; so does one
+    past an open window's end, with no event to close it. A request stamped with no
+    starting state was made when every role started open. */
+let admits = (
+  admission,
+  ~table,
+  ~role,
+  ~at,
+  ~initially: option<Reventless.Admission.initially>,
+) => {
+  let starting = () =>
+    table->Reventless.Admission.isSelfService(role) &&
+      initially->Option.getOr(Reventless.Admission.InitiallyOpen) ==
+        Reventless.Admission.InitiallyOpen
   switch admission {
-  | Unset => table->Reventless.Admission.isSelfService(role)
+  | Unset => starting()
   | Closed => false
   | Open(None) => true
-  | Open(Some(until)) => Reventless.DateTime.isBefore(at, until)
+  | Open(Some(until)) => Reventless.DateTime.isBefore(at, until) || starting()
   }
+}
 
 /** Whether the app declares `role` as one a person is invited to. */
 let isByInvitation = (table, role) =>
@@ -189,8 +201,8 @@ module Make = (App: Reventless.Admission.Declaration) => {
     // decision: the policy is consulted before the address, so a closed
     // deployment sends nothing — not even the notice to an address that is
     // already registered.
-    | Register({emailId, email, role, requestedAt, ?language}) =>
-      if !admits(state.admission, ~table=App.table, ~role, ~at=requestedAt) {
+    | Register({emailId, email, role, requestedAt, ?language, ?initially}) =>
+      if !admits(state.admission, ~table=App.table, ~role, ~at=requestedAt, ~initially) {
         Ok([])
       } else {
         let roles = [(role :> string)]

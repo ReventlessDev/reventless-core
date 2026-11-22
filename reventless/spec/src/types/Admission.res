@@ -292,3 +292,61 @@ let fromJson = (json: JSON.t, ~roles: array<Role.name>): result<t, string> =>
     }
   | _ => Error("Admission: a table is an object from role to strategy")
   }
+
+// ── The starting state ──────────────────────────────────────────────────────
+
+/**
+What a self-service role is while no administrator has opened or closed it, or once
+the window one opened has ended: open, or closed.
+
+Deploy configuration, not domain state. Whether a deployment is a laptop or a
+public address is a fact of the environment; what an administrator did since is
+recorded, and wins. Locally a self-service role starts open, so a developer signs
+up with no command first; on AWS it starts closed, so a public address takes no
+stranger until someone opens it, for a while.
+
+The sign-up door stamps it onto the request (`Register`), so the ledger that reads
+it stays a function of what it is told. A request stamped with nothing was made
+before there was a starting state, when every role started open, and reads as open.
+*/
+@schema
+type initially =
+  | @as("open") InitiallyOpen
+  | @as("closed") InitiallyClosed
+
+/** The setting as an environment variable, on the local platform. */
+let initiallyEnvKey = "REVENTLESS_SELF_REGISTRATION_INITIALLY"
+
+/** The setting as a stack's configuration, on AWS. */
+let initiallyConfigKey = "platform:selfRegistrationInitially"
+
+/** Open: a developer signing up on their own machine needs no command first. */
+let localInitially = InitiallyOpen
+
+/** Closed: a public address takes no stranger until someone decides so. */
+let awsInitially = InitiallyClosed
+
+let initiallyName = (i: initially): string => (i :> string)
+
+/**
+`open` or `closed`. Refuses anything else rather than reading the platform's
+default, because a setting someone wrote and mistyped would otherwise be replaced
+by one they did not choose.
+*/
+let parseInitially = (raw: string, ~key: string): result<initially, string> =>
+  switch raw->String.trim {
+  | "open" => Ok(InitiallyOpen)
+  | "closed" => Ok(InitiallyClosed)
+  | _ => Error(`${key}: "${raw}" is not a starting state — write open or closed`)
+  }
+
+/** The starting state a platform reads: its setting when one is given, else the
+    platform's default. An empty setting is no setting. */
+let initiallyFrom = (raw: option<string>, ~key: string, ~default: initially): result<
+  initially,
+  string,
+> =>
+  switch raw->Option.map(String.trim) {
+  | None | Some("") => Ok(default)
+  | Some(given) => parseInitially(given, ~key)
+  }

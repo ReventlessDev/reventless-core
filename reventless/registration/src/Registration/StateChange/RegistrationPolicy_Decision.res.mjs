@@ -4,11 +4,6 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as RegistrationPolicy$ReventlessRegistration from "./RegistrationPolicy.res.mjs";
 
-let initialState = {
-  TAG: "Open",
-  _0: undefined
-};
-
 function evolve(_state, event) {
   if (event.TAG === "RegistrationOpened") {
     return {
@@ -33,7 +28,7 @@ function Make(App) {
       };
     }
     if (typeof state !== "object") {
-      if (command.TAG !== "OpenRegistration") {
+      if (state !== "Unset" && command.TAG !== "OpenRegistration") {
         return {
           TAG: "Ok",
           _0: []
@@ -56,25 +51,37 @@ function Make(App) {
         };
       }
     }
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "RegistrationOpened",
-          role: command.role,
-          until: command.until
-        }]
-    };
+    if (command.TAG === "OpenRegistration") {
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "RegistrationOpened",
+            role: command.role,
+            until: command.until
+          }]
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "RegistrationClosed",
+            role: command.role
+          }]
+      };
+    }
   };
   return {
     Spec: undefined,
     moduleUrl: RegistrationPolicy$ReventlessRegistration.moduleUrl,
-    initialState: initialState,
+    initialState: "Unset",
     evolve: evolve,
     decide: decide
   };
 }
 
 let Spec;
+
+let initialState = "Unset";
 
 let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateChange/RegistrationPolicy_Decision.res.mjs";
 

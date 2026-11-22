@@ -52,6 +52,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
                 role,
                 requestedAt: Date.make()->Date.toISOString->Reventless.DateTime.unsafe,
                 language: ?languageOf(input.language),
+                initially: capabilities.selfRegistrationInitially,
               }),
             ),
           ])

@@ -66,6 +66,7 @@ let make = (
   ~stashed: array<(string, string)>=[],
   ~stash: option<Stash.t>=?,
   ~text: Text.t=Text.sourceOnly,
+  ~selfRegistrationInitially: Reventless.Admission.initially=Reventless.Admission.localInitially,
   ~tell: option<
     (
       ~kind: string,
@@ -171,6 +172,7 @@ let make = (
         }
       },
     },
+    selfRegistrationInitially,
   }
   {capabilities, calls: () => log->Array.copy}
 }

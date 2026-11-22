@@ -369,6 +369,56 @@ function fromJson(json, roles) {
   }
 }
 
+let initiallySchema = Sury.union([
+  Sury.literal("open"),
+  Sury.literal("closed")
+]);
+
+function initiallyName(i) {
+  return i;
+}
+
+function parseInitially(raw, key) {
+  let match = raw.trim();
+  switch (match) {
+    case "closed" :
+      return {
+        TAG: "Ok",
+        _0: "closed"
+      };
+    case "open" :
+      return {
+        TAG: "Ok",
+        _0: "open"
+      };
+    default:
+      return {
+        TAG: "Error",
+        _0: key + `: "` + raw + `" is not a starting state — write open or closed`
+      };
+  }
+}
+
+function initiallyFrom(raw, key, $$default) {
+  let given = Stdlib_Option.map(raw, prim => prim.trim());
+  if (given !== undefined && given !== "") {
+    return parseInitially(given, key);
+  } else {
+    return {
+      TAG: "Ok",
+      _0: $$default
+    };
+  }
+}
+
+let initiallyEnvKey = "REVENTLESS_SELF_REGISTRATION_INITIALLY";
+
+let initiallyConfigKey = "platform:selfRegistrationInitially";
+
+let localInitially = "open";
+
+let awsInitially = "closed";
+
 export {
   doors,
   doorName,
@@ -388,5 +438,13 @@ export {
   toJson,
   _strategyFromJson,
   fromJson,
+  initiallySchema,
+  initiallyEnvKey,
+  initiallyConfigKey,
+  localInitially,
+  awsInitially,
+  initiallyName,
+  parseInitially,
+  initiallyFrom,
 }
 /* doorDefSchema Not a pure module */

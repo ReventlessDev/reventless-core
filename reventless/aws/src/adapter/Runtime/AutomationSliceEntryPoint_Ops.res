@@ -538,6 +538,7 @@ let capabilities = (): Reventless.Capabilities.t => {
   text: Text_Http_Backend.text(),
   // None deployed yet: a translation that tells a thing is told it is not reachable.
   devices: Reventless.Capabilities.none.devices,
+  selfRegistrationInitially: AwsSelfRegistration.initially(),
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

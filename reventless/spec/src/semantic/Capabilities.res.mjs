@@ -40,7 +40,8 @@ let none = {
   secrets: none_secrets,
   stash: none_stash,
   text: Text$Reventless.sourceOnly,
-  devices: none_devices
+  devices: none_devices,
+  selfRegistrationInitially: "closed"
 };
 
 export {

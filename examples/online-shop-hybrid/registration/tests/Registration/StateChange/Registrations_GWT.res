@@ -40,7 +40,13 @@ let verified: array<consumedEvent> =
 let completed: array<consumedEvent> =
   verified->Array.concat([RegistrationCompleted({emailId: emailId})])
 
-let register = (~role=role, ~at=requestedAt) => Register({emailId, email, role, requestedAt: at})
+let register = (~role=role, ~at=requestedAt, ~initially=?) => Register({
+  emailId,
+  email,
+  role,
+  requestedAt: at,
+  ?initially,
+})
 let submit = (~hash=secretHash, ~at=soonAfter) => SubmitRegistrationProof({
   emailId,
   proofHash: hash,
@@ -97,6 +103,14 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents([])->whenCmd(register(~role=merchandiser))->thenNoEvent
   )
 
+  // The starting state opens only roles the app declares self-service.
+  // scenario-id: 37aef343-e58c-49c9-be31-42ae7e5155c1
+  test("a role that is not self-service is refused on a deployment that starts open", () =>
+    givenEvents([])
+    ->whenCmd(register(~role=merchandiser, ~initially=Reventless.Admission.InitiallyOpen))
+    ->thenNoEvent
+  )
+
   // scenario-id: 2b7f9c1d-4e6a-4b8c-9d0e-1f2a3b4c5d6e
   test("a role nobody knows records nothing", () =>
     givenEvents([])->whenCmd(register(~role=Reventless.Role.make("Guest")))->thenNoEvent
@@ -114,12 +128,35 @@ describe("Registrations StateChangeSlice", () => {
     givenEvents([RegistrationClosed({role: role})])->whenCmd(register())->thenNoEvent
   )
 
-  // A window someone forgot to close closes itself, with no event to close it.
+  // A window someone forgot to close ends by itself, with no event to close it: the
+  // role is then what the deployment starts as.
   // scenario-id: ee7d41c0-5f7d-4ae2-a9e2-5af69a071833
-  test("past an open window's end, it refuses exactly as closed does", () =>
+  test("past an open window's end, a deployment that starts closed refuses", () =>
     givenEvents([RegistrationOpened({role, until: windowEnd})])
-    ->whenCmd(register())
+    ->whenCmd(register(~initially=Reventless.Admission.InitiallyClosed))
     ->thenNoEvent
+  )
+
+  // scenario-id: f41365c2-218a-4992-89d5-fb999cad6e40
+  test("past an open window's end, a deployment that starts open claims the address", () =>
+    givenEvents([RegistrationOpened({role, until: windowEnd})])
+    ->whenCmd(register(~initially=Reventless.Admission.InitiallyOpen))
+    ->thenEvent(RegistrationRequested({emailId, email: personal, roles, requestedAt}))
+  )
+
+  // Nothing recorded is the starting state: a public deployment takes no stranger
+  // until an administrator opens the role.
+  // scenario-id: a2cc958f-c011-45f9-94fa-ae41129c9536
+  test("with nothing recorded, a deployment that starts closed refuses", () =>
+    givenEvents([])->whenCmd(register(~initially=Reventless.Admission.InitiallyClosed))->thenNoEvent
+  )
+
+  // A request stamped with no starting state was made when every role started open.
+  // scenario-id: f9d5918e-e77a-4b1a-9da6-21f2ac15de46
+  test("with nothing recorded, a request with no starting state claims the address", () =>
+    givenEvents([])
+    ->whenCmd(register())
+    ->thenEvent(RegistrationRequested({emailId, email: personal, roles, requestedAt}))
   )
 
   // scenario-id: 8206c898-8733-4858-996c-2e253f63ea3a

@@ -6,6 +6,7 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as Email$Reventless from "@reventlessdev/reventless-spec/src/semantic/Email.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateTime.res.mjs";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
 import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.res.mjs";
 
@@ -21,7 +22,8 @@ let commandSchema = Sury.$schema(s => ({
   email: s.m(Pii$Reventless.mark("emailId", undefined, Email$Reventless.schema)),
   role: s.m(Role$Reventless.nameSchema),
   requestedAt: s.m(DateTime$Reventless.schema),
-  language: s.m(Sury.$option(Sury.string))
+  language: s.m(Sury.$option(Sury.string)),
+  initially: s.m(Sury.$option(Admission$Reventless.initiallySchema))
 }));
 
 let capabilityNeeds = [];

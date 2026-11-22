@@ -1,14 +1,15 @@
 @@reventless.decision
 
-// Nothing recorded is open: a role reaches this slice only if the app declares
-// it self-service. Opening an open role with the same end, or closing a closed
-// one, changes nothing and records nothing.
+// Nothing recorded is the deployment's starting state, which this slice does not
+// know: from it, opening and closing both record. Opening an open role with the
+// same end, or closing a closed one, changes nothing and records nothing.
 
 type state =
+  | Unset
   | Closed
   | Open(option<Reventless.DateTime.t>)
 
-let initialState = Open(None)
+let initialState = Unset
 
 let evolve = (_state, event) =>
   switch event {
@@ -36,7 +37,7 @@ module Make = (App: Reventless.Admission.Declaration) => {
       | (Open(current), OpenRegistration({?until})) if current == until => Ok([])
       | (_, OpenRegistration({role, ?until})) => Ok([RegistrationOpened({role, ?until})])
       | (Closed, CloseRegistration(_)) => Ok([])
-      | (Open(_), CloseRegistration({role})) => Ok([RegistrationClosed({role: role})])
+      | (Open(_) | Unset, CloseRegistration({role})) => Ok([RegistrationClosed({role: role})])
       }
     }
   }

@@ -101,3 +101,47 @@ describe("Admission", () => {
     )->toEqual(Error("Admission: Shopper is declared twice"))
   )
 })
+
+describe("Admission.initially:", () => {
+  let key = Reventless.Admission.initiallyEnvKey
+  testSync("reads open and closed, and refuses anything else", () =>
+    expect((
+      Reventless.Admission.parseInitially(" open ", ~key),
+      Reventless.Admission.parseInitially("closed", ~key),
+      Reventless.Admission.parseInitially("Closed", ~key)->Result.isError,
+      Reventless.Admission.parseInitially("yes", ~key)->Result.isError,
+    ))->toEqual((
+      Ok(Reventless.Admission.InitiallyOpen),
+      Ok(Reventless.Admission.InitiallyClosed),
+      true,
+      true,
+    ))
+  )
+
+  testSync("an unset or empty setting is the platform's default", () =>
+    expect((
+      Reventless.Admission.initiallyFrom(None, ~key, ~default=Reventless.Admission.InitiallyClosed),
+      Reventless.Admission.initiallyFrom(
+        Some(" "),
+        ~key,
+        ~default=Reventless.Admission.InitiallyOpen,
+      ),
+      Reventless.Admission.initiallyFrom(
+        Some("open"),
+        ~key,
+        ~default=Reventless.Admission.InitiallyClosed,
+      ),
+    ))->toEqual((
+      Ok(Reventless.Admission.InitiallyClosed),
+      Ok(Reventless.Admission.InitiallyOpen),
+      Ok(Reventless.Admission.InitiallyOpen),
+    ))
+  )
+
+  testSync("a laptop starts open, a deployment on AWS closed", () =>
+    expect((Reventless.Admission.localInitially, Reventless.Admission.awsInitially))->toEqual((
+      Reventless.Admission.InitiallyOpen,
+      Reventless.Admission.InitiallyClosed,
+    ))
+  )
+})

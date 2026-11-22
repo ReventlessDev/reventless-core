@@ -61,7 +61,8 @@ function Make(App) {
             email: email,
             role: role,
             requestedAt: new Date().toISOString(),
-            language: languageOf(input.language)
+            language: languageOf(input.language),
+            initially: capabilities.selfRegistrationInitially
           }
         ]]
     };

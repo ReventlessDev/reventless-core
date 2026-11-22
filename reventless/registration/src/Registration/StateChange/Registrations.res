@@ -105,6 +105,9 @@ type command =
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
       language?: string,
+      /** The deployment's starting state, stamped by the door: what the role is
+          while nobody has opened or closed it. */
+      initially?: @s.matches(Reventless.Admission.initiallySchema) Reventless.Admission.initially,
     })
   | @noApi
   IssueRegistrationChallenge({

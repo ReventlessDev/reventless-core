@@ -124,4 +124,5 @@ let capabilities = (): Reventless.Capabilities.t => {
   stash: stash.contents,
   text: textRef.contents,
   devices: devicesRef.contents,
+  selfRegistrationInitially: LocalSelfRegistration.initially(),
 }

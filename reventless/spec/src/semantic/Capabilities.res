@@ -46,6 +46,10 @@ type t = {
   /** Tell one thing at the app's edge something, by kind and instance. See
       `Devices.t`. */
   devices: Devices.t,
+  /** What a self-service role is while no administrator has opened or closed it:
+      configuration of the deployment, handed to the doors beside what it can do, so
+      the sign-up door stamps it onto the request. See `Admission.initially`. */
+  selfRegistrationInitially: Admission.initially,
 }
 
 /**
@@ -86,4 +90,6 @@ let none: t = {
   // complete answer rather than a gap.
   text: Text.sourceOnly,
   devices: Devices.unreachable(~reason="no devices provider is configured for this platform"),
+  // Closed: a platform that says nothing about its starting state takes no stranger.
+  selfRegistrationInitially: Admission.InitiallyClosed,
 }

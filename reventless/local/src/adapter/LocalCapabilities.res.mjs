@@ -11,6 +11,7 @@ import * as LocalFingerprintKey$ReventlessLocal from "./LocalFingerprintKey.res.
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Stash_Memory_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Stash/Stash_Memory_Backend.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
+import * as LocalSelfRegistration$ReventlessLocal from "./LocalSelfRegistration.res.mjs";
 
 let messagingSenderRef = {
   contents: ""
@@ -104,7 +105,8 @@ function capabilities() {
     secrets: Secrets_Node_Backend$ReventlessCore.make(LocalFingerprintKey$ReventlessLocal.get),
     stash: stash.contents,
     text: textRef.contents,
-    devices: devicesRef.contents
+    devices: devicesRef.contents,
+    selfRegistrationInitially: LocalSelfRegistration$ReventlessLocal.initially()
   };
 }
 

@@ -746,6 +746,20 @@ starting state.
 open and opening from unset closed both record; a window past its end reads as the starting state;
 a role not declared self-service is refused whatever the starting state.
 
+*DW1 and DW2 as built (2026-11-22):* `Reventless.Admission.initially` (`InitiallyOpen` |
+`InitiallyClosed`, written `open` / `closed`), `parseInitially` refusing anything else and
+`initiallyFrom` reading a platform's setting over its default; the local platform reads
+`REVENTLESS_SELF_REGISTRATION_INITIALLY` (`LocalSelfRegistration`, open when unset), a deployed
+function the same variable, which the stack's `platform:selfRegistrationInitially` will set
+(`AwsSelfRegistration`, closed when unset). The setting reaches the doors as
+`Capabilities.selfRegistrationInitially`, beside what the platform can do: `Capabilities.none`
+says closed, the test fake open. The sign-up door stamps it onto `Register` (`initially?`); the
+ledger reads a role with nothing recorded, and one past its window's end, as that starting state
+if the role is self-service, and a request stamped with none as open, which is what it meant
+before. The policy slice's own state gained `Unset`, from which opening and closing both record.
+The hybrid shop's scenarios cover each starting state, unset and past a window's end, and a role
+not self-service under an open start.
+
 #### DW3: the shell is told the starting state
 
 `Platform_SelfRegistration.config` gains `initially` (`"open"` or `"closed"`), written into

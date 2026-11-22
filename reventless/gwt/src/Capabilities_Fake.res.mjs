@@ -5,10 +5,11 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Secrets$Reventless from "@reventlessdev/reventless-spec/src/semantic/Secrets.res.mjs";
+import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
-function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, tell, param) {
+function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, selfRegistrationInitiallyOpt, tell, param) {
   let channels = channelsOpt !== undefined ? channelsOpt : [
       "Email",
       "Sms"
@@ -16,6 +17,7 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
   let pushServices = pushServicesOpt !== undefined ? pushServicesOpt : [];
   let stashed = stashedOpt !== undefined ? stashedOpt : [];
   let text = textOpt !== undefined ? textOpt : Text$Reventless.sourceOnly;
+  let selfRegistrationInitially = selfRegistrationInitiallyOpt !== undefined ? selfRegistrationInitiallyOpt : Admission$Reventless.localInitially;
   let log = [];
   let geocode$1 = async text => {
     log.push({
@@ -201,7 +203,8 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
     secrets: capabilities_secrets,
     stash: capabilities_stash,
     text: text,
-    devices: capabilities_devices
+    devices: capabilities_devices,
+    selfRegistrationInitially: selfRegistrationInitially
   };
   return {
     capabilities: capabilities,

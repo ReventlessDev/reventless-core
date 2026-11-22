@@ -29,6 +29,7 @@ type command =
       role: Reventless.Role.name,
       requestedAt: Reventless.DateTime.t,
       language?: string,
+      initially?: @s.matches(Reventless.Admission.initiallySchema) Reventless.Admission.initially,
     })
 
 let targetName = "Registrations"

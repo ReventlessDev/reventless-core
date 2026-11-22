@@ -14,10 +14,21 @@ open Registration_Examples
 let until = "2026-10-31T00:00:00.000Z"
 
 describe("RegistrationPolicy StateChangeSlice", () => {
-  // Nothing recorded is open, so the first open records nothing.
+  // Nothing recorded is the deployment's starting state, which this slice does not
+  // know, so opening from it records.
   // scenario-id: 1df7c562-74b8-4405-b080-e0a2b673552b
-  test("a self-service role is open before anything is recorded", () =>
-    givenEvents([])->whenCmd(OpenRegistration({role: shopper}))->thenNoEvent
+  test("opening a role nothing is recorded about records it", () =>
+    givenEvents([])
+    ->whenCmd(OpenRegistration({role: shopper}))
+    ->thenEvent(RegistrationOpened({role: shopper}))
+  )
+
+  // And so does closing from it: a deployment that starts open is closed this way.
+  // scenario-id: 58eabbd4-126a-471b-bc4e-d51dd2ae6dc2
+  test("closing a role nothing is recorded about records it", () =>
+    givenEvents([])
+    ->whenCmd(CloseRegistration({role: shopper}))
+    ->thenEvent(RegistrationClosed({role: shopper}))
   )
 
   // scenario-id: af58e483-9fc1-41a1-8534-9d3df3b4d230
