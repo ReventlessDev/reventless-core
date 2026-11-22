@@ -757,7 +757,7 @@ be committed.
 
 | Key | Secret | Default | Without it |
 |---|---|---|---|
-| `platform:fingerprintKey` | yes | none | The plugin is refused at deploy. |
+| `platform:fingerprintKey` | yes | none | The plugin is refused at deploy. One under 32 characters is refused at the platform's deploy. |
 | `platform:personCheckSiteKey` | no | none | The plugin is refused at deploy. Set together with the secret below, or the platform deploy is refused. |
 | `platform:personCheckSecret` | yes | none | As above. |
 | `platform:messagingEmailSender` | no | none | The plugin is refused at deploy: no sender, so no bounded sender. See [the messaging keys](#per-instance-overrides-env-var-pulumilocalyaml). |
@@ -770,8 +770,8 @@ be committed.
 Notes on each:
 
 - **`fingerprintKey`**: at least 32 characters, for example `openssl rand -base64 36`. Never change
-  it once a deployment has registrations: every stored fingerprint was made with it. The deploy
-  checks only that it is set; a shorter key deploys, and then every sign-up fails.
+  it once a deployment has registrations: every stored fingerprint was made with it. A shorter
+  key is refused when the platform stack deploys.
 - **`personCheckSiteKey` and `personCheckSecret`**: the two keys of one Turnstile widget. See
   [Turnstile](#turnstile) below.
 - **`operatorAddress`**: the platform stack makes an alerts topic that mails this address. AWS sends

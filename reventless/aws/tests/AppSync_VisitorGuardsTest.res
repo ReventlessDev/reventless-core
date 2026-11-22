@@ -91,3 +91,14 @@ describe("the shell's configuration on a deployed platform", () => {
     )->toEqual(Some(JSON.String("/self-registration.json")))
   )
 })
+
+testSync("a fingerprint key shorter than 32 characters is refused, saying how long it is", () =>
+  expect((
+    ReventlessCore.Secrets_Node_Backend.checkFingerprintKey(~setting="k", "short")->Result.isError,
+    ReventlessCore.Secrets_Node_Backend.checkFingerprintKey(~setting="k", "x"->String.repeat(32)),
+    switch ReventlessCore.Secrets_Node_Backend.checkFingerprintKey(~setting="k", "short") {
+    | Error(m) => m->String.includes("5 characters")
+    | Ok(_) => false
+    },
+  ))->toEqual((true, Ok("x"->String.repeat(32)), true))
+)

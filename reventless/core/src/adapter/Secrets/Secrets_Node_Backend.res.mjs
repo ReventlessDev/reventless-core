@@ -33,6 +33,20 @@ function _draw(length, from) {
 
 let fingerprintKeyVariable = "REVENTLESS_FINGERPRINT_KEY";
 
+function checkFingerprintKey(setting, key) {
+  if (key.length >= 32) {
+    return {
+      TAG: "Ok",
+      _0: key
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: setting + ` is ` + key.length.toString() + ` characters; it needs at least ` + (32).toString() + `, such as the output of openssl rand -base64 36`
+    };
+  }
+}
+
 function fingerprintWith(key, purpose, input) {
   return Nodecrypto.createHmac("sha256", key).update(purpose + `\u0000` + input).digest("hex");
 }
@@ -104,6 +118,7 @@ export {
   _draw,
   fingerprintKeyVariable,
   minimumFingerprintKeyLength,
+  checkFingerprintKey,
   fingerprintWith,
   make,
   provider,

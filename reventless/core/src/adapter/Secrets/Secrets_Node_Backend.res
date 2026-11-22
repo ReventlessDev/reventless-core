@@ -52,6 +52,17 @@ let fingerprintKeyVariable = "REVENTLESS_FINGERPRINT_KEY"
     address again. */
 let minimumFingerprintKeyLength = 32
 
+/** A fingerprint key as configured, or why it cannot be one: shorter keys would
+    let every fingerprint fail at the first sign-up rather than at deploy. */
+let checkFingerprintKey = (~setting: string, key: string): result<string, string> =>
+  key->String.length >= minimumFingerprintKeyLength
+    ? Ok(key)
+    : Error(
+        `${setting} is ${key
+          ->String.length
+          ->Int.toString} characters; it needs at least ${minimumFingerprintKeyLength->Int.toString}, such as the output of openssl rand -base64 36`,
+      )
+
 /** HMAC-SHA256 of `purpose`, a NUL and `input`, as hex. The NUL keeps a purpose
     that is a prefix of another from colliding with it. */
 let fingerprintWith = (~key: string, ~purpose: string, input: string): string =>

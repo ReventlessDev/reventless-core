@@ -17,6 +17,7 @@ import * as Auth_IdentityStore$ReventlessAws from "./adapter/Auth/Auth_IdentityS
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
 import * as Stash_DynamoDb_Table$ReventlessAws from "./adapter/Stash/Stash_DynamoDb_Table.res.mjs";
+import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Util_CognitoGroupUser$ReventlessAws from "./util/Util_CognitoGroupUser.res.mjs";
 import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
 import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
@@ -122,7 +123,14 @@ function personCheckSecret() {
 function fingerprintKey() {
   let given = new Pulumi.Config("platform").getSecret("fingerprintKey");
   if (_present(given)) {
-    return given;
+    return given.apply(key => {
+      let key$1 = Secrets_Node_Backend$ReventlessCore.checkFingerprintKey("platform:fingerprintKey", key);
+      if (key$1.TAG === "Ok") {
+        return key$1._0;
+      } else {
+        return Stdlib_JsError.throwWithMessage(key$1._0);
+      }
+    });
   } else {
     return Pulumi.output("");
   }

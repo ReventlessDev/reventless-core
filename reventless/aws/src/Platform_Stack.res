@@ -211,7 +211,18 @@ let personCheckSecret = (): Pulumi.Output.t<string> =>
     fingerprint works; a deployment with a door for visitors is refused without it. */
 let fingerprintKey = (): Pulumi.Output.t<string> => {
   let given = Pulumi.Config.make(Some("platform"))->Pulumi.Config.getSecret("fingerprintKey")
-  _present(given) ? _asOutput(given) : Pulumi.Output.make("")
+  _present(given)
+    ? _asOutput(given)->Pulumi.Output.apply(key =>
+        // Refused here, where someone is watching, rather than at every sign-up.
+        switch ReventlessCore.Secrets_Node_Backend.checkFingerprintKey(
+          ~setting="platform:fingerprintKey",
+          key,
+        ) {
+        | Ok(key) => key
+        | Error(message) => JsError.throwWithMessage(message)
+        }
+      )
+    : Pulumi.Output.make("")
 }
 
 let _resolveUncached = (): cognitoUserPool => {
