@@ -127,7 +127,12 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
       "Discontinued"
     ],
     namedWhenRetired: true
-  }
+  },
+  trailIndex: [
+    "Listed",
+    "Archived",
+    "Discontinued"
+  ]
 });
 
 let name = "Products";

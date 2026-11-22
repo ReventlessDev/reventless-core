@@ -89,7 +89,11 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
     showWhenFalse: false,
     values: ["Archived"],
     namedWhenRetired: true
-  }
+  },
+  trailIndex: [
+    "Listed",
+    "Archived"
+  ]
 });
 
 let name = "Categories";

@@ -121,7 +121,12 @@ let stateSchema$2 = Sury.$Metadata_set(stateSchema$1, StateAnnotations$Reventles
   groupBy: undefined,
   visibility: undefined,
   live: true,
-  retired: undefined
+  retired: undefined,
+  trailIndex: [
+    "Placed",
+    "Shipped",
+    "Cancelled"
+  ]
 });
 
 let name = "Orders";

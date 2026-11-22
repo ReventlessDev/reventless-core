@@ -74,7 +74,8 @@ type state = {
   // Every state this order reached and when, appended by the projection
   // machinery. Retires the per-state timestamp fields: a cancellation and a
   // reopen are dated without a projection edge for each, and a state added later
-  // needs no new field.
+  // needs no new field. The server filters and sorts by the indexed states' dates.
+  @trail({index: [Placed, Shipped, Cancelled]})
   trail: Reventless.Lifecycle.Trail.t<lifecycle>,
   lines: array<orderLine>,
   // What the order cost, as the write side computed it at placement.

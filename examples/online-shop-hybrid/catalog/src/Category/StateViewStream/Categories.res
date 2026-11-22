@@ -43,6 +43,7 @@ type state = {
   @lifecycle shelfStatus: shelfStatus,
   // When this category reached each shelf state, appended by the projection
   // machinery. Archiving finally has a date; it never had one.
+  @trail({index: [Listed, Archived]})
   trail: Reventless.Lifecycle.Trail.t<shelfStatus>,
   // One picture, so a scalar rather than the set Products carries. Named for its
   // store, so `categoryImages` is what is provisioned.

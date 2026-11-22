@@ -1,6 +1,6 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done; [QDS6](#4-steps) done locally, the `alpha` stack open). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -171,10 +171,25 @@ against a live table. Each per-state index, and each lifecycle state, is one par
 writing past a partition's throughput would need it sharded.
 
 **QDS6 The shop opts in.** Orders gets `@trail({index: [Placed, Shipped, Cancelled]})`, Products
-and Categories `@trail({index: [Archived]})`. `placedAt` stays ([QDD5](#3-decisions)).
+`@trail({index: [Listed, Archived, Discontinued]})`, Categories `@trail({index: [Listed,
+Archived]})`: every state, since the first visit to `Listed` is when a row joined the catalog.
+`placedAt` stays ([QDD5](#3-decisions)).
 *Done when* the shop's GraphQL answers "orders in Placed for more than three days, oldest first" on
 the local platform and on the `alpha` stack, where the seed's runs on several days spread the trails
 ([online-shop-seed-over-days.md](done/online-shop-seed-over-days.md)).
+*Local half done* 2026-11-22. The three views carry the annotation; the GSIs per table are Orders 5
+(`_owner`, `_lifecycle`, `_entered_Placed`, `_entered_Shipped`, `_entered_Cancelled`), Products 5
+(`categoryId`, `_lifecycle`, `_entered_Listed`, `_entered_Archived`, `_entered_Discontinued`) and
+Categories 3. On the local platform (memory
+backend, the `full` set seeded, read as an elevated caller), `lifecycleEq: Placed` with
+`enteredCurrentTo` three days back returns no rows: one local seed run dates every trail within
+the same second. With a bound inside that second the same request pages Placed orders oldest
+first (`ord-001`, `ord-004`, `ord-006`, then `ord-009`, `ord-010`, `ord-011`), and
+`enteredShippedFrom` seven days back sorted by `enteredShipped` returns shipped orders in entry
+order. `enteredListedFirst` sorts products and categories by when they joined the catalog, and
+ordering by `enteredArchived` or `enteredDiscontinued` returns only the one product the seed
+archived and the one it discontinued ([QDD10](#3-decisions)). The seed reopens no order, so a
+second visit is not seen there. *Open:* the three-day request on the `alpha` stack, after the push.
 
 **QDS7 Docs.** The doc page's section
 [Recording When a Row Reached Each State](../../packages/doc/docs-app/components/stateviewslice.md#recording-when-a-row-reached-each-state)

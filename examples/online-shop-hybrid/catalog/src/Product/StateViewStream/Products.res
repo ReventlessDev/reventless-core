@@ -75,5 +75,6 @@ type state = {
   @lifecycle shelfStatus: shelfStatus,
   // When this product reached each shelf state, appended by the projection
   // machinery. The withdrawals finally have dates; they never had any.
+  @trail({index: [Listed, Archived, Discontinued]})
   trail: Reventless.Lifecycle.Trail.t<shelfStatus>,
 }

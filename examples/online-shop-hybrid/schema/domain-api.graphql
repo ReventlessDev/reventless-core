@@ -64,9 +64,31 @@ type Catalog_CategoryEdge {
 
 input Catalog_CategoryFilter {
   categoryIdEq: ID
+  enteredArchivedEq: String
+  enteredArchivedFirstEq: String
+  enteredArchivedFirstFrom: String
+  enteredArchivedFirstTo: String
+  enteredArchivedFrom: String
+  enteredArchivedTo: String
+  enteredCurrentEq: String
+  enteredCurrentFrom: String
+  enteredCurrentTo: String
+  enteredListedEq: String
+  enteredListedFirstEq: String
+  enteredListedFirstFrom: String
+  enteredListedFirstTo: String
+  enteredListedFrom: String
+  enteredListedTo: String
   ids: [ID!]
   search: String
   searchPrefix: String
+  shelfStatusEq: String
+  visitsArchivedEq: Int
+  visitsArchivedFrom: Int
+  visitsArchivedTo: Int
+  visitsListedEq: Int
+  visitsListedFrom: Int
+  visitsListedTo: Int
 }
 
 input Catalog_CategoryOrderBy {
@@ -76,6 +98,13 @@ input Catalog_CategoryOrderBy {
 
 enum Catalog_CategoryOrderField {
   categoryId
+  enteredArchived
+  enteredArchivedFirst
+  enteredCurrent
+  enteredListed
+  enteredListedFirst
+  visitsArchived
+  visitsListed
 }
 
 type Catalog_CategoryRef {
@@ -225,10 +254,41 @@ type Catalog_ProductEdge {
 
 input Catalog_ProductFilter {
   categoryIdEq: ID
+  enteredArchivedEq: String
+  enteredArchivedFirstEq: String
+  enteredArchivedFirstFrom: String
+  enteredArchivedFirstTo: String
+  enteredArchivedFrom: String
+  enteredArchivedTo: String
+  enteredCurrentEq: String
+  enteredCurrentFrom: String
+  enteredCurrentTo: String
+  enteredDiscontinuedEq: String
+  enteredDiscontinuedFirstEq: String
+  enteredDiscontinuedFirstFrom: String
+  enteredDiscontinuedFirstTo: String
+  enteredDiscontinuedFrom: String
+  enteredDiscontinuedTo: String
+  enteredListedEq: String
+  enteredListedFirstEq: String
+  enteredListedFirstFrom: String
+  enteredListedFirstTo: String
+  enteredListedFrom: String
+  enteredListedTo: String
   ids: [ID!]
   productIdEq: ID
   search: String
   searchPrefix: String
+  shelfStatusEq: String
+  visitsArchivedEq: Int
+  visitsArchivedFrom: Int
+  visitsArchivedTo: Int
+  visitsDiscontinuedEq: Int
+  visitsDiscontinuedFrom: Int
+  visitsDiscontinuedTo: Int
+  visitsListedEq: Int
+  visitsListedFrom: Int
+  visitsListedTo: Int
 }
 
 input Catalog_ProductOrderBy {
@@ -238,7 +298,17 @@ input Catalog_ProductOrderBy {
 
 enum Catalog_ProductOrderField {
   categoryId
+  enteredArchived
+  enteredArchivedFirst
+  enteredCurrent
+  enteredDiscontinued
+  enteredDiscontinuedFirst
+  enteredListed
+  enteredListedFirst
   productId
+  visitsArchived
+  visitsDiscontinued
+  visitsListed
 }
 
 type Catalog_ProductRef {
@@ -1104,10 +1174,41 @@ type Ordering_OrderEdge {
 }
 
 input Ordering_OrderFilter {
+  enteredCancelledEq: String
+  enteredCancelledFirstEq: String
+  enteredCancelledFirstFrom: String
+  enteredCancelledFirstTo: String
+  enteredCancelledFrom: String
+  enteredCancelledTo: String
+  enteredCurrentEq: String
+  enteredCurrentFrom: String
+  enteredCurrentTo: String
+  enteredPlacedEq: String
+  enteredPlacedFirstEq: String
+  enteredPlacedFirstFrom: String
+  enteredPlacedFirstTo: String
+  enteredPlacedFrom: String
+  enteredPlacedTo: String
+  enteredShippedEq: String
+  enteredShippedFirstEq: String
+  enteredShippedFirstFrom: String
+  enteredShippedFirstTo: String
+  enteredShippedFrom: String
+  enteredShippedTo: String
   ids: [ID!]
+  lifecycleEq: String
   orderIdEq: ID
   search: String
   searchPrefix: String
+  visitsCancelledEq: Int
+  visitsCancelledFrom: Int
+  visitsCancelledTo: Int
+  visitsPlacedEq: Int
+  visitsPlacedFrom: Int
+  visitsPlacedTo: Int
+  visitsShippedEq: Int
+  visitsShippedFrom: Int
+  visitsShippedTo: Int
 }
 
 enum Ordering_OrderLifecycle {
@@ -1130,7 +1231,17 @@ input Ordering_OrderOrderBy {
 }
 
 enum Ordering_OrderOrderField {
+  enteredCancelled
+  enteredCancelledFirst
+  enteredCurrent
+  enteredPlaced
+  enteredPlacedFirst
+  enteredShipped
+  enteredShippedFirst
   orderId
+  visitsCancelled
+  visitsPlaced
+  visitsShipped
 }
 
 type Ordering_OrderRef {
