@@ -27,6 +27,7 @@ import * as Messaging_Ses_Backend$ReventlessAws from "../Messaging/Messaging_Ses
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as Messaging_Log_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Messaging/Messaging_Log_Backend.res.mjs";
+import * as Stash_DynamoDb_Backend$ReventlessAws from "../Stash/Stash_DynamoDb_Backend.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSlice_Schedules$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Schedules.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
@@ -385,7 +386,7 @@ function capabilities() {
     messaging: messagingEmailProvider(),
     identityProvider: IdentityProvider_Cognito_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["IDENTITY_PROVIDER_ID"], ""), Stdlib_Option.getOr(process.env["IDENTITY_STORE_TABLE"], "")),
     secrets: Secrets_Node_Backend$ReventlessCore.provider,
-    stash: Capabilities$Reventless.none.stash,
+    stash: Stash_DynamoDb_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["STASH_TABLE"], "")),
     text: Text_Http_Backend$ReventlessAws.text(),
     devices: Capabilities$Reventless.none.devices,
     selfRegistrationInitially: AwsSelfRegistration$ReventlessAws.initially()

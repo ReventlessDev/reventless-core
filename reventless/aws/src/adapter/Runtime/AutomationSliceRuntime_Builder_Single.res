@@ -402,6 +402,29 @@ let identityProviderPoolActions = [
   "cognito-idp:AdminDeleteUser",
 ]
 
+/** Whether any slice on the shared Lambda declares the stash: the grant follows
+    the declaration, as the identity provider's does. */
+let declaresStash = (infos: array<sliceInfo>): bool =>
+  infos->Array.some(info => info.capabilityNeeds->Array.includes(Stash))
+
+let makeStashGrant = (~runtime: ReventlessCore.Runtime.environment<runtimeParts>, ~opts) =>
+  if PluginRuntime_Builder.stashProvisioned() && declaresStash(bundledInfos->Dict.valuesToArray) {
+    let customOpts =
+      opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name="AllAutomationSlicesStash",
+      ~args={
+        policy: PluginRuntime_Builder.stashArn()
+        ->Pulumi.Output.apply(arn =>
+          Stash_DynamoDb_Grant.policy(~id="AllAutomationSlicesStash", arn)
+        )
+        ->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
 // Built like the two grants above: a plain bool decides, the ARNs are Outputs,
 // and the RolePolicy is created at top level rather than inside an `apply`.
 let makeIdentityProviderGrant = (
@@ -965,6 +988,7 @@ let finishWithDcbEventLog = (
         makeMessagingGrant(~runtime, ~opts)
         makeRecipientLanguageGrant(~runtime, ~opts)
         makeIdentityProviderGrant(~runtime, ~opts)
+        makeStashGrant(~runtime, ~opts)
         if anyDcbFallback.contents {
           DcbCommandFunctions.addInvoker(
             ~name="AllAutomationSlices",

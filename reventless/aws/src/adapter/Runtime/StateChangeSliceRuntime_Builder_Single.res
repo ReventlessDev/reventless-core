@@ -46,6 +46,11 @@ let forDcbCommandTopic = (
   // `onWebhookUrl`. The entry point routes its requests by path.
   ~webhookSecrets: option<dict<Pulumi.Output.t<string>>>=?,
   ~onWebhookUrl: Pulumi.Output.t<string> => unit=_ => (),
+  // Whether a door on this function declares a stash the platform provisions: it is
+  // then handed the table and granted its two calls. Plain Outputs, `""` for none.
+  ~stashDeclared: bool=false,
+  ~stashTable: Pulumi.Output.t<string>=Pulumi.Output.make(""),
+  ~stashArn: Pulumi.Output.t<string>=Pulumi.Output.make(""),
   ~connect,
   dcbCommandTopic,
 ) => {
@@ -114,6 +119,9 @@ let forDcbCommandTopic = (
         }
       })
     )
+    if stashDeclared {
+      envVars->Dict.set("STASH_TABLE", stashTable->Pulumi.Output.asInput)
+    }
     let webhookSecrets = isAsync ? None : webhookSecrets
     webhookSecrets->Option.forEach(secrets =>
       secrets->Dict.forEachWithKey((value, key) =>
@@ -313,6 +321,18 @@ let forDcbCommandTopic = (
         )
       })
     | None => ()
+    }
+
+    if stashDeclared {
+      let _ = PulumiAws.IAM.RolePolicy.make(
+        ~name=`${name}-stash`,
+        ~args={
+          policy: stashArn
+          ->Pulumi.Output.apply(arn => Stash_DynamoDb_Grant.policy(~id=`${name}-stashPolicy`, arn))
+          ->Pulumi.Output.asInput,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
     }
 
     // The DCB command topic Lambda is invoked directly by AppSync (Route 1) and

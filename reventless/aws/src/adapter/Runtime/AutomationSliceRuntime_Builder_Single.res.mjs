@@ -22,6 +22,7 @@ import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-
 import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.mjs";
 import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
 import * as CommandTopicRegistry$ReventlessAws from "../CommandTopic/CommandTopicRegistry.res.mjs";
+import * as Stash_DynamoDb_Grant$ReventlessAws from "../Stash/Stash_DynamoDb_Grant.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -212,6 +213,21 @@ let identityProviderPoolActions = [
   "cognito-idp:AdminRemoveUserFromGroup",
   "cognito-idp:AdminDeleteUser"
 ];
+
+function declaresStash(infos) {
+  return infos.some(info => info.capabilityNeeds.includes("Stash"));
+}
+
+function makeStashGrant(runtime, opts) {
+  if (!(PluginRuntime_Builder$ReventlessAws.stashProvisioned() && declaresStash(Object.values(bundledInfos)))) {
+    return;
+  }
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  new (Aws.iam.RolePolicy)("AllAutomationSlicesStash", {
+    policy: PluginRuntime_Builder$ReventlessAws.stashArn().apply(arn => Stash_DynamoDb_Grant$ReventlessAws.policy("AllAutomationSlicesStash", arn)),
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
+}
 
 function makeIdentityProviderGrant(runtime, opts) {
   if (!(PluginRuntime_Builder$ReventlessAws.identityProviderProvisioned() && declaresIdentityProvider(Object.values(bundledInfos)))) {
@@ -527,6 +543,7 @@ function finishWithDcbEventLog(schedulerRoleArn, dcbEventLog) {
       makeMessagingGrant(runtime, opts);
       makeRecipientLanguageGrant(runtime, opts);
       makeIdentityProviderGrant(runtime, opts);
+      makeStashGrant(runtime, opts);
       if (anyDcbFallback.contents) {
         DcbCommandFunctions$ReventlessAws.addInvoker("AllAutomationSlices", runtime.parts.lambdaRole.id);
       }
@@ -565,6 +582,8 @@ export {
   makeRecipientLanguageGrant,
   declaresIdentityProvider,
   identityProviderPoolActions,
+  declaresStash,
+  makeStashGrant,
   makeIdentityProviderGrant,
   makeAutomationSchedules,
   finished,

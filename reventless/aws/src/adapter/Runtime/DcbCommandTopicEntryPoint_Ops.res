@@ -338,12 +338,12 @@ let buildInboundReceiver = (
 ) => {
   let callback = makeInboundCallback(spec)(translation)
   async (args: JSON.t, identity: Nullable.t<Reventless.Identity.t>): JSON.t => {
-    // No capabilities in this Lambda: a slice declaring a need is refused at
-    // deploy, so `none` is what every slice reaching here expects.
+    // What a door is handed here: see `DoorCapabilities`. A slice declaring any
+    // other need is refused at deploy.
     let result = await callback.receive(
       publishJsons,
       args,
-      ~capabilities=Reventless.Capabilities.none,
+      ~capabilities=DoorCapabilities.capabilities(),
       ~publishJsonsAndWait?,
       ~caller=ReventlessCore.InboundTranslationSlice_Callback.doorCaller(identity),
     )
@@ -377,7 +377,7 @@ let buildWebhookSlice = (
         await callback.receive(
           publishJsons,
           input,
-          ~capabilities=Reventless.Capabilities.none,
+          ~capabilities=DoorCapabilities.capabilities(),
           ~publishJsonsAndWait?,
           ~caller,
           ~door=Webhook,

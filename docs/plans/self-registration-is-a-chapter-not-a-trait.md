@@ -829,6 +829,21 @@ The deploy's refusal for `Stash` goes.
 
 **Exit:** tests for take-once, a late expiry read as gone, and the grant following the declaration.
 
+*As built (2026-11-22):* `Stash_DynamoDb_Backend` over a table of one item per key (`id`,
+`value`, `expiresAt` in seconds): `put` writes, `take` deletes and reads what the delete
+returned, and answers `None` for an item past its time that DynamoDB has not removed yet. The
+platform stack always makes the table (`Stash_DynamoDb_Table`: on demand, expiry on `expiresAt`,
+no point-in-time recovery, since a backup would keep a secret for weeks) and exports `stash` and
+`stashArn`. A plugin stack hands `STASH_TABLE` to its functions and grants `PutItem` and
+`DeleteItem` on the one table only where a slice declares `Stash`: to the automation function
+for an outbound slice, and to the command function for a door. A plugin deployed against a
+platform stack from before the table is refused if it declares the need, and told to deploy the
+platform again. The command function now hands a door unguessable material, the stash and the
+starting state (`DoorCapabilities`); a door declaring any other need is still refused there.
+Not yet read from the stack's configuration: `platform:selfRegistrationInitially`, which
+[DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws) hands the functions; until
+then a deployed function reads closed.
+
 #### DW8: the admission check and the shell's configuration on AWS
 
 The AWS deploy calls `AdmissionCheck` as the local platform does at start

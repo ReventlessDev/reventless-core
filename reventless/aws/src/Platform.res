@@ -2856,6 +2856,18 @@ module MakeWithConfig = (
         Platform_Stack.resolveCognitoUserPool().identityTable.arn
       ),
     })
+    // The stash, read across the same two halves; `""` from a platform stack
+    // deployed before it had one, which a declared need then refuses below.
+    let stashTable = platformOutput("stash", ~local=() =>
+      Platform_Stack.resolveCognitoUserPool().stashTable.name
+    )
+    PluginRuntime_Builder.registerCapabilityEnv("STASH_TABLE", stashTable)
+    PluginRuntime_Builder.registerStash(
+      ~table=stashTable,
+      ~arn=platformOutput("stashArn", ~local=() =>
+        Platform_Stack.resolveCognitoUserPool().stashTable.arn
+      ),
+    )
 
     module P = unpack(plugin)
     let pluginComponent = P.make()
@@ -2992,16 +3004,16 @@ module MakeWithConfig = (
           stackRef->Pulumi.StackReference.getOutput("objectStores"),
           geocoderPlaceIndex,
           messagingEmailSender,
-          identityProviderId,
+          Pulumi.Output.all2((identityProviderId, stashTable)),
         )
         ->Pulumi.Output.all5
         ->Pulumi.Output.apply((
-          (structure, objectStores, placeIndex, emailSender, poolId): (
+          (structure, objectStores, placeIndex, emailSender, (poolId, stash)): (
             _,
             option<JSON.t>,
             string,
             string,
-            string,
+            (string, string),
           ),
         ) => {
           // ── Declared capabilities ──────────────────────────────────────────
@@ -3030,6 +3042,7 @@ module MakeWithConfig = (
               placeIndex == "" ? [] : [Reventless.CapabilityNeed.Geocoding],
               emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
               poolId == "" ? [] : [Reventless.CapabilityNeed.IdentityProvider],
+              stash == "" ? [] : [Reventless.CapabilityNeed.Stash],
             ]->Array.flat,
           ) {
           | [] => ()
@@ -3049,7 +3062,7 @@ module MakeWithConfig = (
                 | IdentityProvider =>
                   `\n  IdentityProvider is the platform's Cognito pool, exported as ` ++ `\`identityProviderId\`. This platform stack exports none — deploy it first.`
                 | Stash =>
-                  `\n  Stash has no deployed backend yet; the local platform keeps one in ` ++ `memory. Host a plugin that needs it on the local platform.`
+                  `\n  Stash is the platform's stash table, exported as \`stash\`. This ` ++ `platform stack exports none — deploy it again first.`
                 }
               )
               // One line per capability, not per declaring component: two slices

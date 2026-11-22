@@ -14,9 +14,9 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
-import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
+import * as DoorCapabilities$ReventlessAws from "./DoorCapabilities.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice_Webhook$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Webhook.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
@@ -154,7 +154,7 @@ async function persistAudit(callback, auditQueryDbOps, result) {
 function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps, publishJsonsAndWait) {
   let callback = InboundTranslationSlice_CallbackResMjs.Make(spec)(translation);
   return async (args, identity) => {
-    let result = await callback.receive(publishJsons, args, Capabilities$Reventless.none, publishJsonsAndWait, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity), undefined);
+    let result = await callback.receive(publishJsons, args, DoorCapabilities$ReventlessAws.capabilities(), publishJsonsAndWait, InboundTranslationSlice_Callback$ReventlessCore.doorCaller(identity), undefined);
     await persistAudit(callback, auditQueryDbOps, result);
     return CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
   };
@@ -168,7 +168,7 @@ function buildWebhookSlice(spec, translation, publishJsons, auditQueryDbOps, pub
   };
   return Stdlib_Nullable.fromOption(Stdlib_Option.map(callback.webhook, route => ({
     route: route,
-    receive: async (input, caller) => await persisted(await callback.receive(publishJsons, input, Capabilities$Reventless.none, publishJsonsAndWait, caller, "Webhook")),
+    receive: async (input, caller) => await persisted(await callback.receive(publishJsons, input, DoorCapabilities$ReventlessAws.capabilities(), publishJsonsAndWait, caller, "Webhook")),
     refuse: async (body, errorCode, error) => await persisted(callback.refuse(body, errorCode, error))
   })));
 }

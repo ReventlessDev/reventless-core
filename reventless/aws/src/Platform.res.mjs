@@ -1468,6 +1468,9 @@ function MakeWithConfig(Config) {
       poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
       storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
     });
+    let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
+    PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -1526,8 +1529,12 @@ function MakeWithConfig(Config) {
         stackRef.getOutput("objectStores"),
         geocoderPlaceIndex,
         messagingEmailSender,
-        identityProviderId
+        Pulumi.all([
+          identityProviderId,
+          stashTable
+        ])
       ]).apply(param => {
+        let match = param[4];
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
@@ -1535,7 +1542,8 @@ function MakeWithConfig(Config) {
         ]), [
           param[2] === "" ? [] : ["Geocoding"],
           param[3] === "" ? [] : ["Messaging"],
-          param[4] === "" ? [] : ["IdentityProvider"]
+          match[0] === "" ? [] : ["IdentityProvider"],
+          match[1] === "" ? [] : ["Stash"]
         ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
@@ -1548,7 +1556,7 @@ function MakeWithConfig(Config) {
               case "IdentityProvider" :
                 return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
               case "Stash" :
-                return `\n  Stash has no deployed backend yet; the local platform keeps one in memory. Host a plugin that needs it on the local platform.`;
+                return `\n  Stash is the platform's stash table, exported as \`stash\`. This platform stack exports none — deploy it again first.`;
             }
           }))).join(""));
         }
@@ -2908,6 +2916,9 @@ function Make($star) {
       poolArn: platformOutput("identityProviderArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().poolArn),
       storeArn: platformOutput("identityStoreArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().identityTable.arn)
     });
+    let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
+    PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2966,8 +2977,12 @@ function Make($star) {
         stackRef.getOutput("objectStores"),
         geocoderPlaceIndex,
         messagingEmailSender,
-        identityProviderId
+        Pulumi.all([
+          identityProviderId,
+          stashTable
+        ])
       ]).apply(param => {
+        let match = param[4];
         let structure = param[0];
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
@@ -2975,7 +2990,8 @@ function Make($star) {
         ]), [
           param[2] === "" ? [] : ["Geocoding"],
           param[3] === "" ? [] : ["Messaging"],
-          param[4] === "" ? [] : ["IdentityProvider"]
+          match[0] === "" ? [] : ["IdentityProvider"],
+          match[1] === "" ? [] : ["Stash"]
         ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
@@ -2988,7 +3004,7 @@ function Make($star) {
               case "IdentityProvider" :
                 return `\n  IdentityProvider is the platform's Cognito pool, exported as \`identityProviderId\`. This platform stack exports none — deploy it first.`;
               case "Stash" :
-                return `\n  Stash has no deployed backend yet; the local platform keeps one in memory. Host a plugin that needs it on the local platform.`;
+                return `\n  Stash is the platform's stash table, exported as \`stash\`. This platform stack exports none — deploy it again first.`;
             }
           }))).join(""));
         }

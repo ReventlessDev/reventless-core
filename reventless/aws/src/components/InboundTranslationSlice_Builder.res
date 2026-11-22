@@ -8,8 +8,9 @@ module Make = (
   },
 ) => {
   // The deployed slice runs in the shared DCB command Lambda, which builds its
-  // own callback and is handed no capabilities; this in-process path answers the
-  // same, so the two cannot differ. A spec that declares a need is refused below.
+  // own callback and is handed a stash and nothing else of the platform's; this
+  // in-process path is the deploy's and answers nothing. A spec that declares
+  // any other need is refused below.
   module Inner = ReventlessCore.InboundTranslationSlice_Builder.Make(
     QueryDbStorage.DynamoDb,
     QueryDbResolvers.AppSync,
@@ -27,13 +28,17 @@ module Make = (
     // slice runs in has neither the capability settings nor the grants the
     // automation Lambda gets, so every call would answer `Unavailable` at run
     // time with nothing at deploy time to say why.
-    if Spec.capabilityNeeds != [] {
+    // A stash is the exception: the function is handed the platform's table and
+    // granted its two calls where a door declares it.
+    switch Spec.capabilityNeeds->Array.filter(need => need != Stash) {
+    | [] => ()
+    | unmet =>
       JsError.throwWithMessage(
-        `${Spec.name}: an inbound translation slice that declares capability needs (${Spec.capabilityNeeds
+        `${Spec.name}: an inbound translation slice that declares capability needs (${unmet
           ->Array.map(Reventless.CapabilityNeed.toString)
           ->Array.join(
             ", ",
-          )}) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed no capabilities. Host it on the local platform.`,
+          )}) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed only a stash. Host it on the local platform.`,
       )
     }
     // Register spec + translation module paths so the shared DCB command Lambda's
@@ -43,6 +48,7 @@ module Make = (
       ~specName=Spec.name,
       ~specPath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
       ~translationPath=Util_Bundle.getModuleSpecifier(Translation.moduleUrl),
+      ~capabilityNeeds=Spec.capabilityNeeds,
     )
     switch Spec.endpoint {
     | Some({auth: SignedBody({secret})}) =>

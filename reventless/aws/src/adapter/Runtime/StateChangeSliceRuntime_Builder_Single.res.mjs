@@ -14,17 +14,21 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
+import * as Stash_DynamoDb_Grant$ReventlessAws from "../Stash/Stash_DynamoDb_Grant.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, webhookSecrets, onWebhookUrlOpt, connect, dcbCommandTopic) {
+function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, webhookSecrets, onWebhookUrlOpt, stashDeclaredOpt, stashTableOpt, stashArnOpt, connect, dcbCommandTopic) {
   let inboundSlices = inboundSlicesOpt !== undefined ? inboundSlicesOpt : [];
   let sliceMemoryFloor = sliceMemoryFloorOpt !== undefined ? sliceMemoryFloorOpt : 0;
   let sliceTimeoutFloor = sliceTimeoutFloorOpt !== undefined ? sliceTimeoutFloorOpt : 0;
   let onWebhookUrl = onWebhookUrlOpt !== undefined ? onWebhookUrlOpt : param => {};
+  let stashDeclared = stashDeclaredOpt !== undefined ? stashDeclaredOpt : false;
+  let stashTable = stashTableOpt !== undefined ? stashTableOpt : Pulumi.output("");
+  let stashArn = stashArnOpt !== undefined ? stashArnOpt : Pulumi.output("");
   let channel = dcbCommandTopic.channel;
   let channelParts = channel.parts;
   let queue = channelParts.queue;
@@ -59,6 +63,9 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       return;
     }
   }));
+  if (stashDeclared) {
+    envVars["STASH_TABLE"] = stashTable;
+  }
   let webhookSecrets$1 = isAsync ? undefined : webhookSecrets;
   Stdlib_Option.forEach(webhookSecrets$1, secrets => Stdlib_Dict.forEachWithKey(secrets, (value, key) => {
     envVars[key] = value;
@@ -133,6 +140,12 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
         }])),
       role: runtime.parts.lambdaRole.id
     }));
+  }
+  if (stashDeclared) {
+    new (Aws.iam.RolePolicy)(name + `-stash`, {
+      policy: stashArn.apply(arn => Stash_DynamoDb_Grant$ReventlessAws.policy(name + `-stashPolicy`, arn)),
+      role: runtime.parts.lambdaRole.id
+    });
   }
   queue.arn.apply(queueArn => new (Aws.iam.RolePolicy)(name + `-sqsSend`, {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-sqsSendPolicy`, [{

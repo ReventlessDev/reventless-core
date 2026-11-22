@@ -13,6 +13,7 @@ import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs
 import * as Auth_IdentityStore$ReventlessAws from "./adapter/Auth/Auth_IdentityStore.res.mjs";
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as Auth_LoginIdentifier$ReventlessAws from "./adapter/Auth/Auth_LoginIdentifier.res.mjs";
+import * as Stash_DynamoDb_Table$ReventlessAws from "./adapter/Stash/Stash_DynamoDb_Table.res.mjs";
 import * as Util_CognitoGroupUser$ReventlessAws from "./util/Util_CognitoGroupUser.res.mjs";
 import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
 import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
@@ -68,6 +69,7 @@ function _resolveUncached() {
   let existingPoolId = _identityProviderId(cfg);
   let activeRoleTable = Auth_ActiveRoleStore$ReventlessAws.resolveTable(Auth_ActiveRoleStore$ReventlessAws.chooseStore(existingPoolId), {});
   let identityTable = Auth_IdentityStore$ReventlessAws.resolveTable(Auth_IdentityStore$ReventlessAws.chooseStore(existingPoolId), {});
+  let stashTable = Stash_DynamoDb_Table$ReventlessAws.make(undefined, {});
   let activeRoleTrigger = Auth_ActiveRoleTrigger$ReventlessAws.make(activeRoleTable.name, activeRoleTable.arn, identityTable.name, identityTable.arn, undefined, {});
   let result;
   if (existingPoolId !== undefined) {
@@ -107,7 +109,8 @@ function _resolveUncached() {
       poolArn: lookup.apply(r => r.arn),
       managed: false,
       activeRoleTable: activeRoleTable,
-      identityTable: identityTable
+      identityTable: identityTable,
+      stashTable: stashTable
     };
   } else {
     let loginIdentifier = _loginIdentifier(cfg);
@@ -164,6 +167,7 @@ function _resolveUncached() {
       managed: true,
       activeRoleTable: activeRoleTable,
       identityTable: identityTable,
+      stashTable: stashTable,
       loginIdentifier: loginIdentifier
     };
   }
@@ -188,6 +192,8 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   Pulumi$Pulumi.$$export("identityStore", result.identityTable.name);
   Pulumi$Pulumi.$$export("identityStoreArn", result.identityTable.arn);
+  Pulumi$Pulumi.$$export("stash", result.stashTable.name);
+  Pulumi$Pulumi.$$export("stashArn", result.stashTable.arn);
   return result;
 }
 

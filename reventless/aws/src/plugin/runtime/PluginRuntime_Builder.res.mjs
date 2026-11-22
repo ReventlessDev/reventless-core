@@ -109,6 +109,36 @@ function identityProviderProvisioned() {
   return identityProviderProvisionedRef.contents;
 }
 
+let stashArnRef = {
+  contents: Pulumi.output("")
+};
+
+let stashTableRef = {
+  contents: Pulumi.output("")
+};
+
+let stashProvisionedRef = {
+  contents: false
+};
+
+function registerStash(table, arn) {
+  stashTableRef.contents = table;
+  stashArnRef.contents = arn;
+  stashProvisionedRef.contents = true;
+}
+
+function stashArn() {
+  return stashArnRef.contents;
+}
+
+function stashTable() {
+  return stashTableRef.contents;
+}
+
+function stashProvisioned() {
+  return stashProvisionedRef.contents;
+}
+
 let dcbConfigRef = {
   contents: {
     pluginName: "",
@@ -127,18 +157,21 @@ function registerStateChangeSliceSpec(specPath, decisionPath) {
 
 let registeredInboundSlices = {};
 
-function registerInboundTranslationSliceSpec(specName, specPath, translationPath) {
+function registerInboundTranslationSliceSpec(specName, specPath, translationPath, capabilityNeedsOpt) {
+  let capabilityNeeds = capabilityNeedsOpt !== undefined ? capabilityNeedsOpt : [];
   let reg = registeredInboundSlices[specName];
   if (reg !== undefined) {
     registeredInboundSlices[specName] = {
       specPath: specPath,
       translationPath: translationPath,
+      capabilityNeeds: capabilityNeeds,
       auditTableName: reg.auditTableName
     };
   } else {
     registeredInboundSlices[specName] = {
       specPath: specPath,
       translationPath: translationPath,
+      capabilityNeeds: capabilityNeeds,
       auditTableName: Pulumi.output("")
     };
   }
@@ -152,6 +185,7 @@ function registerInboundAuditTableName(specName, tableName) {
     registeredInboundSlices[specName] = {
       specPath: "",
       translationPath: "",
+      capabilityNeeds: [],
       auditTableName: tableName
     };
   }
@@ -556,9 +590,10 @@ function Make(EventCollectorChannel) {
         };
       }
     });
+    let stashDeclared = stashProvisionedRef.contents && Object.values(registeredInboundSlices).some(reg => reg.capabilityNeeds.includes("Stash"));
     StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, inboundSlices, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, memorySize, timeout, webhookSlices.length !== 0 ? webhookSecrets : undefined, url => {
       webhookUrlRef.contents = url;
-    }, connect, dcbCommandTopic);
+    }, stashDeclared, stashTableRef.contents, stashArnRef.contents, connect, dcbCommandTopic);
   };
   let finish = () => {};
   return {
@@ -592,6 +627,13 @@ export {
   registerIdentityProvider,
   identityProvider,
   identityProviderProvisioned,
+  stashArnRef,
+  stashTableRef,
+  stashProvisionedRef,
+  registerStash,
+  stashArn,
+  stashTable,
+  stashProvisioned,
   dcbConfigRef,
   registeredSliceModulePaths,
   registerStateChangeSliceSpec,

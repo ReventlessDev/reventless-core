@@ -15,6 +15,10 @@ type cognitoUserPool = {
   /** Rows mapping each subject to the domain's own user id, read by the same
     trigger and written when an account is created — see [Auth_IdentityStore.res]. */
   identityTable: Auth_IdentityStore.storeTable,
+  /** Where a value is held for minutes outside the log and handed over once: the
+      password between the door that takes it and the slice that makes the account
+      — see [Stash_DynamoDb_Backend.res]. The stack's own in both pool modes. */
+  stashTable: Stash_DynamoDb_Table.table,
   /** The sign-in attribute this stack created the pool with. `None` in BYO mode:
     the pool's own choice was made elsewhere and no lookup here reads it back,
     so reporting one would be a guess. */
@@ -187,6 +191,9 @@ let _resolveUncached = (): cognitoUserPool => {
     ~choice=Auth_IdentityStore.chooseStore(~identityProviderId=existingPoolId),
     ~opts={},
   )
+  // Unconditional, for the reason the tables above are: a table that exists only
+  // when some caller asked first is a feature that can quietly not be there.
+  let stashTable = Stash_DynamoDb_Table.make(~opts={})
   let activeRoleTrigger = Auth_ActiveRoleTrigger.make(
     ~activeRoleTableName=activeRoleTable.name->Pulumi.Output.asInput,
     ~activeRoleTableArn=activeRoleTable.arn->Pulumi.Output.asInput,
@@ -250,6 +257,7 @@ let _resolveUncached = (): cognitoUserPool => {
       managed: false,
       activeRoleTable,
       identityTable,
+      stashTable,
     }
 
   | None =>
@@ -345,6 +353,7 @@ let _resolveUncached = (): cognitoUserPool => {
       managed: true,
       activeRoleTable,
       identityTable,
+      stashTable,
       loginIdentifier,
     }
   }
@@ -425,6 +434,9 @@ let _resolveUncached = (): cognitoUserPool => {
   Pulumi.Pulumi.export("identityStore", result.identityTable.name)
   // What a plugin stack grants its principal-making slices write access to.
   Pulumi.Pulumi.export("identityStoreArn", result.identityTable.arn)
+  // What a plugin stack hands, and grants, the slices that declare a stash.
+  Pulumi.Pulumi.export("stash", result.stashTable.name)
+  Pulumi.Pulumi.export("stashArn", result.stashTable.arn)
 
   result
 }

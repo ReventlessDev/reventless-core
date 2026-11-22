@@ -532,9 +532,11 @@ let capabilities = (): Reventless.Capabilities.t => {
     ~identityStore=NodeProcess.env->Dict.get("IDENTITY_STORE_TABLE")->Option.getOr(""),
   ),
   secrets: ReventlessCore.Secrets_Node_Backend.provider,
-  // None deployed yet: a slice declaring the need is refused by the deploy gate,
-  // and this answers `Unavailable` should one run regardless.
-  stash: Reventless.Capabilities.none.stash,
+  // The platform's stash table, read per call like the sender above. An empty
+  // name is a platform that provisions none, and refuses both calls.
+  stash: Stash_DynamoDb_Backend.provider(
+    ~tableName=NodeProcess.env->Dict.get("STASH_TABLE")->Option.getOr(""),
+  ),
   text: Text_Http_Backend.text(),
   // None deployed yet: a translation that tells a thing is told it is not reachable.
   devices: Reventless.Capabilities.none.devices,

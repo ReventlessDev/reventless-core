@@ -108,6 +108,24 @@ let registerIdentityProvider = (resources: identityProviderResources) => {
 let identityProvider = () => identityProviderRef.contents
 let identityProviderProvisioned = () => identityProviderProvisionedRef.contents
 
+/** The stash's table, carried for the grant: a slice that puts or takes needs
+    those two calls on the one table. Granted only to a function with a slice that
+    declares the need. `""` where the platform this plugin deploys against
+    provisions none. */
+let stashArnRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let stashTableRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let stashProvisionedRef = ref(false)
+
+let registerStash = (~table: Pulumi.Output.t<string>, ~arn: Pulumi.Output.t<string>) => {
+  stashTableRef := table
+  stashArnRef := arn
+  stashProvisionedRef := true
+}
+
+let stashArn = () => stashArnRef.contents
+let stashTable = () => stashTableRef.contents
+let stashProvisioned = () => stashProvisionedRef.contents
+
 type sliceModulePaths = {
   specPath: string,
   decisionPath: string,
@@ -143,6 +161,9 @@ let registerStateChangeSliceSpec = (~specPath: string, ~decisionPath: string) =>
 type inboundSliceReg = {
   specPath: string,
   translationPath: string,
+  /** What the slice says it needs of the platform: the stash is handed and
+      granted to the command function when one of them declares it. */
+  capabilityNeeds: array<Reventless.CapabilityNeed.t>,
   // Plain `Pulumi.Output.t<string>`, never `option<Pulumi.Output.t<string>>`:
   // any generic `Option.*` call over an Output runs `valFromOption`, whose
   // `.BS_PRIVATE_NESTED_SOME_NONE` probe hits the Output proxy (every property
@@ -157,13 +178,18 @@ let registerInboundTranslationSliceSpec = (
   ~specName: string,
   ~specPath: string,
   ~translationPath: string,
+  ~capabilityNeeds: array<Reventless.CapabilityNeed.t>=[],
 ) =>
   switch registeredInboundSlices->Dict.get(specName) {
-  | Some(reg) => registeredInboundSlices->Dict.set(specName, {...reg, specPath, translationPath})
+  | Some(reg) =>
+    registeredInboundSlices->Dict.set(
+      specName,
+      {...reg, specPath, translationPath, capabilityNeeds},
+    )
   | None =>
     registeredInboundSlices->Dict.set(
       specName,
-      {specPath, translationPath, auditTableName: Pulumi.Output.make("")},
+      {specPath, translationPath, capabilityNeeds, auditTableName: Pulumi.Output.make("")},
     )
   }
 
@@ -173,7 +199,7 @@ let registerInboundAuditTableName = (~specName: string, tableName: Pulumi.Output
   | None =>
     registeredInboundSlices->Dict.set(
       specName,
-      {specPath: "", translationPath: "", auditTableName: tableName},
+      {specPath: "", translationPath: "", capabilityNeeds: [], auditTableName: tableName},
     )
   }
 
@@ -931,9 +957,19 @@ module Make = (
               ),
             )
       )
+    // The stash follows a declaration: handed and granted only where a door says it
+    // needs one, and the platform provisions it.
+    let stashDeclared =
+      stashProvisioned() &&
+      registeredInboundSlices
+      ->Dict.valuesToArray
+      ->Array.some(reg => reg.capabilityNeeds->Array.includes(Stash))
     StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic(
       ~slicePaths,
       ~inboundSlices,
+      ~stashDeclared,
+      ~stashTable=stashTable(),
+      ~stashArn=stashArn(),
       ~webhookSecrets=?webhookSlices->Array.length > 0 ? Some(webhookSecrets) : None,
       ~onWebhookUrl=url => webhookUrlRef := url,
       ~dcbTableName=dcbConfig.dcbTableName,
