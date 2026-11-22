@@ -12,14 +12,18 @@ let capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability = {
     {name: "lifecycle", gqlType: "String", range: false},
     {name: "enteredPlaced", gqlType: "String", range: true},
     {name: "visitsPlaced", gqlType: "Int", range: true},
+    {name: "enteredShipped", gqlType: "String", range: true},
     {name: "enteredCurrent", gqlType: "String", range: true},
   ],
-  sortFields: ["enteredPlaced", "visitsPlaced", "enteredCurrent"],
+  sortFields: ["enteredPlaced", "visitsPlaced", "enteredShipped", "enteredCurrent"],
   stored: Dict.fromArray([
     ("enteredPlaced", "_entered_Placed"),
     ("visitsPlaced", "_visits_Placed"),
+    ("enteredShipped", "_entered_Shipped"),
     ("enteredCurrent", "_entered_current"),
   ]),
+  numeric: ["visitsPlaced"],
+  reached: ["enteredPlaced", "visitsPlaced", "enteredShipped"],
 }
 
 let row = (id, lifecycle, entries: array<(string, string)>) => {
@@ -58,6 +62,47 @@ let rows = [
   ),
   row("o-6", "Placed", [("Placed", "2026-02-27T09:00:00Z")]),
 ]
+
+// A row in Placed after `n` visits, Cancelled between them.
+let visitsRow = (id, n) => {
+  let pad = i => i < 10 ? "0" ++ Int.toString(i) : Int.toString(i)
+  row(
+    id,
+    "Placed",
+    Array.fromInitializer(~length=2 * n - 1, i => (
+      mod(i, 2) == 0 ? "Placed" : "Cancelled",
+      `2026-01-01T${pad(i)}:00:00Z`,
+    )),
+  )
+}
+
+let visitsRows = [visitsRow("v-2", 2), visitsRow("v-9", 9), visitsRow("v-10", 10)]
+
+let ordered = (~filter=[], ~first=?, ~after=?, field) =>
+  Dict.fromArray(
+    [
+      ("filter", Dict.fromArray(filter)->JSON.Encode.object),
+      (
+        "orderBy",
+        Dict.fromArray([
+          ("field", JSON.Encode.string(field)),
+          ("direction", JSON.Encode.string("ASC")),
+        ])->JSON.Encode.object,
+      ),
+    ]
+    ->Array.concat(
+      switch first {
+      | Some(n) => [("first", JSON.Encode.int(n))]
+      | None => []
+      },
+    )
+    ->Array.concat(
+      switch after {
+      | Some(c) => [("after", JSON.Encode.string(c))]
+      | None => []
+      },
+    ),
+  )
 
 let request = (~after=?) =>
   Dict.fromArray(
@@ -134,3 +179,46 @@ testPromise("SQLite: a state and how long rows have been in it, across two pages
   ))
   expect(second)->toEqual(spec(request(~after)))
 })
+
+testPromise(
+  "SQLite: visits compare as numbers, and a state's date lists only rows that entered it",
+  async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = SqliteDriver.openDb(~path=":memory:")
+    }
+    module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="orders", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+    let ops = await s.operations->TestRunner.resolve
+    let all = rows->Array.concat(visitsRows)
+    for i in 0 to all->Array.length - 1 {
+      let (id, item) = all->Array.getUnsafe(i)
+      let _ = await ops.save(id, item, ReventlessCore.QueryDb.Any, None)
+    }
+    let listPage = TestBus.getQueryDbListPage("orders")->Option.getOrThrow
+    let page = argsDict => listPage(~argsDict, ~capability, ~labelField="id")->Option.getOrThrow
+    let specAll = argsDict =>
+      ReventlessCore.QueryDbListQuery.run(
+        ~items=all->Array.map(((_, item)) => item),
+        ~argsDict,
+        ~capability,
+        ~labelField="id",
+      )
+
+    let visits = ordered(~filter=[("visitsPlacedFrom", JSON.Encode.int(3))], "visitsPlaced")
+    expect(ids(page(visits)))->toEqual(["v-9", "v-10"])
+    expect(page(visits))->toEqual(specAll(visits))
+
+    // Two to a page across the numeric order, the cursor compared as a number.
+    let byVisits = ordered(~first=2, "visitsPlaced")
+    let first = page(byVisits)
+    expect(first)->toEqual(specAll(byVisits))
+    let after = pageInfo(first, "endCursor")->JSON.Decode.string->Option.getOrThrow
+    let next = ordered(~first=2, ~after, "visitsPlaced")
+    expect(page(next))->toEqual(specAll(next))
+
+    let shipped = ordered("enteredShipped")
+    expect(ids(page(shipped)))->toEqual(["o-3"])
+    expect(page(shipped))->toEqual(specAll(shipped))
+  },
+)

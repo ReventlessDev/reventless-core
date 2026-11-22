@@ -146,7 +146,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @retired field "` + retiredField + `" is filtered after the page is read, so pages ` + "shrink as the archive's share of the rows grows. An @index on that field would not help — the list read does not use one, and a flag makes a poor partition key. Reshape the view so the rows you serve are the rows you keep, or accept the cost while the archive stays small.");
       }
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField, capability.stored, QueryDbResolvers_Trail$ReventlessAws.keyedReads(indexes)) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, elevatedGroups, retiredField, retiredValues, ownerIndex, ownerIndexSortField, capability.stored, capability.reached, QueryDbResolvers_Trail$ReventlessAws.keyedReads(indexes)) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.filter(ic => !ReadModel$Reventless.isDerivedIndex(ic)).map(indexConfig => {
       let index = indexConfig.index;
       let fieldName = GraphQL_FragmentGenerator$ReventlessCore.indexQueryFieldName(fieldNameForSingle, index);

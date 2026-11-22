@@ -426,6 +426,8 @@ let makeStorage = (
     }
   let jsonText = (field: string): string =>
     `CAST(json_extract(item, '$.${field->String.replaceAll("'", "''")}') AS TEXT)`
+  let jsonNumber = (field: string): string =>
+    `CAST(json_extract(item, '$.${field->String.replaceAll("'", "''")}') AS REAL)`
   let idExpr = "COALESCE(json_extract(item, '$.id'), partition_key)"
   let listPage = (
     ~argsDict: dict<JSON.t>,
@@ -507,6 +509,14 @@ let makeStorage = (
         | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
         }
       let stored = name => GraphQL_FragmentGenerator.storedName(capability, name)
+      let numeric = name => GraphQL_FragmentGenerator.isNumeric(capability, name)
+      // A numeric field compares as a number, its bound sent as one.
+      let rangeExpr = name => numeric(name) ? jsonNumber(stored(name)) : jsonText(stored(name))
+      let rangeParam = (name, s) =>
+        switch numeric(name) ? Float.fromString(s) : None {
+        | Some(n) => JSON.Encode.float(n)
+        | None => JSON.Encode.string(s)
+        }
       capability.filterFields->Array.forEach(f => {
         let attr = stored(f.name)
         switch filterDict->Dict.get(f.name ++ "Eq") {
@@ -518,33 +528,40 @@ let makeStorage = (
         if f.range {
           switch filterDict->Dict.get(f.name ++ "From") {
           | Some(v) if v != JSON.Encode.null =>
-            whereParts->Array.push(`${jsonText(attr)} >= ?`)
-            params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
+            whereParts->Array.push(`${rangeExpr(f.name)} >= ?`)
+            params->Array.push(rangeParam(f.name, valString(v)->Option.getOr("")))
           | _ => ()
           }
           switch filterDict->Dict.get(f.name ++ "To") {
           | Some(v) if v != JSON.Encode.null =>
-            whereParts->Array.push(`${jsonText(attr)} <= ?`)
-            params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
+            whereParts->Array.push(`${rangeExpr(f.name)} <= ?`)
+            params->Array.push(rangeParam(f.name, valString(v)->Option.getOr("")))
           | _ => ()
           }
         }
       })
       let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
-      let orderByField =
+      let orderByName =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("field"))
         ->Option.flatMap(JSON.Decode.string)
-        ->Option.map(stored)
+      let orderByField = orderByName->Option.map(stored)
       let isDesc =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("direction"))
         ->Option.flatMap(JSON.Decode.string)
         ->Option.getOr("ASC") == "DESC"
-      let cursorExpr = switch orderByField {
-      | Some(f) => jsonText(f)
+      // Ordering by a state's date lists the rows that entered the state.
+      switch (orderByName, orderByField) {
+      | (Some(name), Some(attr)) if GraphQL_FragmentGenerator.onlyReached(capability, name) =>
+        whereParts->Array.push(`${jsonText(attr)} IS NOT NULL`)
+      | _ => ()
+      }
+      let orderExpr = switch orderByName {
+      | Some(name) => rangeExpr(name)
       | None => idExpr
       }
+      let cursorExpr = orderExpr
       // Empty is absent, as it is in the spec: the host shell clears the opposite
       // cursor by setting it to "" rather than dropping it, and an empty cursor
       // pushed into SQL bounds the read on a decoded empty string.
@@ -556,11 +573,16 @@ let makeStorage = (
       switch afterCursor {
       | Some(c) =>
         whereParts->Array.push(`${cursorExpr} ${isDesc ? "<" : ">"} ?`)
-        params->Array.push(JSON.Encode.string(QueryDbListQuery.decodeCursor(c)))
+        params->Array.push(
+          switch orderByName {
+          | Some(name) => rangeParam(name, QueryDbListQuery.decodeCursor(c))
+          | None => JSON.Encode.string(QueryDbListQuery.decodeCursor(c))
+          },
+        )
       | None => ()
       }
-      let orderClause = switch orderByField {
-      | Some(f) => `${jsonText(f)} ${isDesc ? "DESC" : "ASC"}, ${idExpr} ASC`
+      let orderClause = switch orderByName {
+      | Some(_) => `${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExpr} ASC`
       | None => `${idExpr} ASC`
       }
       let pageSize =

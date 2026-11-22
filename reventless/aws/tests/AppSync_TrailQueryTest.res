@@ -14,7 +14,7 @@ type resolver = {request: JSON.t => JSON.t, response: JSON.t => JSON.t}
 // The generated module run with AppSync's `util` stood in.
 let evalResolver: string => resolver = %raw(`function(code) {
   const util = {
-    dynamodb: { toDynamoDB: v => ({ S: String(v) }) },
+    dynamodb: { toDynamoDB: v => (typeof v === 'number' ? { N: String(v) } : { S: String(v) }) },
     base64Encode: s => Buffer.from(String(s), 'utf8').toString('base64'),
     base64Decode: s => Buffer.from(String(s), 'base64').toString('utf8'),
     error: (m, t) => { throw Object.assign(new Error(m), { errorType: t }) },
@@ -47,6 +47,7 @@ let door = (~ownerIndex=false) =>
     ~ownerIndex=?ownerIndex ? Some("_owner") : None,
     ~ownerIndexSortField=?ownerIndex ? Some("id") : None,
     ~storedNames=?capability.stored,
+    ~reachedNames=?capability.reached,
     ~keyedReads=QueryDbResolvers_Trail.keyedReads(indexes),
   )
   ->asString
@@ -204,6 +205,40 @@ describe("a trail's indexes on DynamoDB", () => {
     ))->toEqual((
       Some(str("_lifecycle")),
       Some(str("#enteredPlaced >= :enteredPlacedFrom")),
+      Some(obj([("#enteredPlaced", str("_entered_Placed"))])),
+    ))
+  })
+
+  testSync("a visits bound goes as a number", () => {
+    let args = [
+      ("filter", obj([("lifecycleEq", str("Placed")), ("visitsPlacedFrom", JSON.Encode.int(9))])),
+    ]
+    let req = door().request(ctx(~args))
+    expect((
+      req->get(["filter", "expression"]),
+      req->get(["filter", "expressionValues", ":visitsPlacedFrom"]),
+    ))->toEqual((Some(str("#visitsPlaced >= :visitsPlacedFrom")), Some(obj([("N", str("9"))]))))
+  })
+
+  testSync("ordering by a state's date queries its index, which holds only who entered", () => {
+    let args = [("orderBy", obj([("field", str("enteredPlaced")), ("direction", str("ASC"))]))]
+    let req = door().request(ctx(~args))
+    expect((req->get(["index"]), req->get(["filter"])))->toEqual((
+      Some(str("_entered_Placed")),
+      None,
+    ))
+  })
+
+  testSync("a scoped caller ordering by a state's date gets only who entered it", () => {
+    let args = [("orderBy", obj([("field", str("enteredPlaced")), ("direction", str("ASC"))]))]
+    let req = door(~ownerIndex=true).request(ctx(~args, ~groups=[]))
+    expect((
+      req->get(["index"]),
+      req->get(["filter", "expression"]),
+      req->get(["filter", "expressionNames"]),
+    ))->toEqual((
+      Some(str("_owner")),
+      Some(str("attribute_exists(#enteredPlaced)")),
       Some(obj([("#enteredPlaced", str("_entered_Placed"))])),
     ))
   })

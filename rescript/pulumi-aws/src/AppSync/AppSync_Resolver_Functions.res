@@ -1009,6 +1009,8 @@ let listAllItemsConnection = (
   ~ownerIndexSortField: option<string>=?,
   // The attribute a filter or sort name is stored under where the two differ.
   ~storedNames: dict<string>=Dict.make(),
+  // Order names that list only the rows carrying the attribute.
+  ~reachedNames: array<string>=[],
   // Reads this door makes as a Query when the request names their key.
   ~keyedReads: array<keyedRead>=[],
 ) => {
@@ -1187,6 +1189,18 @@ ${switch retiredValues {
     names['#${f}'] = '${attrOf(f)}';
     values[':${f}To'] = util.dynamodb.toDynamoDB(filter.${f}To);
     parts.push('#${f} <= :${f}To');
+  }`
+    )
+    ->Array.join("")
+  // Ordering by a state's date lists the rows that entered it, as its sparse
+  // index does. Not on the Query that index answers: a filter may not name a key.
+  let reachedClauses =
+    reachedNames
+    ->Array.map(f =>
+      `
+  if (ctx.args.orderBy && ctx.args.orderBy.field === '${f}'${sortKeyGuard(f)}) {
+    names['#${f}'] = '${attrOf(f)}';
+    parts.push('attribute_exists(#${f})');
   }`
     )
     ->Array.join("")
@@ -1374,7 +1388,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}${retiredClause}
+  }${filterClauses}${rangeClauses}${reachedClauses}${requireAttributeClause}${ownerClause}${retiredClause}
 ${listCursorPreamble}${requestPathGuard}
   // The one page a cursor cannot reach: it begins in an earlier window, and a
   // continuation token cannot name the one before it. Refused by itself rather

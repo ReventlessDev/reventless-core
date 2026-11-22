@@ -225,10 +225,18 @@ switch processEnv->Dict.get("PG_URL") {
   let trailCapability: GraphQL_FragmentGenerator.serverCapability = {
     filterFields: [
       {name: "lifecycle", gqlType: "String", range: false},
+      {name: "visitsPlaced", gqlType: "Int", range: true},
+      {name: "enteredShipped", gqlType: "String", range: true},
       {name: "enteredCurrent", gqlType: "String", range: true},
     ],
-    sortFields: ["enteredCurrent"],
-    stored: Dict.fromArray([("enteredCurrent", "_entered_current")]),
+    sortFields: ["visitsPlaced", "enteredShipped", "enteredCurrent"],
+    stored: Dict.fromArray([
+      ("visitsPlaced", "_visits_Placed"),
+      ("enteredShipped", "_entered_Shipped"),
+      ("enteredCurrent", "_entered_current"),
+    ]),
+    numeric: ["visitsPlaced"],
+    reached: ["visitsPlaced", "enteredShipped"],
   }
   let trailRow = (id, lifecycle, entries: array<(string, string)>) => {
     let d = Dict.fromArray([
@@ -269,6 +277,19 @@ switch processEnv->Dict.get("PG_URL") {
     ),
     trailRow("o-6", "Placed", [("Placed", "2026-02-27T09:00:00Z")]),
   ]
+  let visitsRow = (id, n) => {
+    let pad = i => i < 10 ? "0" ++ Int.toString(i) : Int.toString(i)
+    trailRow(
+      id,
+      "Placed",
+      Array.fromInitializer(~length=2 * n - 1, i => (
+        mod(i, 2) == 0 ? "Placed" : "Cancelled",
+        `2026-01-01T${pad(i)}:00:00Z`,
+      )),
+    )
+  }
+  let visitsRows = [visitsRow("v-2", 2), visitsRow("v-9", 9), visitsRow("v-10", 10)]
+  let visitsName = "trailvisits"
   let trailRequest = (~after=?) =>
     argsOf(
       [
@@ -298,6 +319,16 @@ switch processEnv->Dict.get("PG_URL") {
     for i in 0 to trailRows->Array.length - 1 {
       let (id, item) = trailRows->Array.getUnsafe(i)
       let _ = await ops.save(id, item, QueryDb.Any, None)
+    }
+    let visitsOps = QueryDbStorage_Postgres.makeOperations(
+      ~pool,
+      ~name=visitsName,
+      ~indexes=[],
+      ~subIdField=None,
+    )
+    for i in 0 to visitsRows->Array.length - 1 {
+      let (id, item) = visitsRows->Array.getUnsafe(i)
+      let _ = await visitsOps.save(id, item, QueryDb.Any, None)
     }
   })
 
@@ -330,6 +361,61 @@ switch processEnv->Dict.get("PG_URL") {
     ))
     expect(second->norm)->toEqual(spec(trailRequest(~after)))
   })
+
+  testPromise(
+    "a trail's dates: visits compare as numbers, a state's date lists who entered it",
+    async () => {
+      let pageOf = async (~table, argsDict) =>
+        (
+          await Eng.listPage(
+            ~readModelName=table,
+            ~argsDict,
+            ~capability=trailCapability,
+            ~labelField="id",
+          )
+        )->Option.getOrThrow
+      let specOf = (~items, argsDict) =>
+        QueryDbListQuery.run(
+          ~items=items->Array.map(((_, item)) => item),
+          ~argsDict,
+          ~capability=trailCapability,
+          ~labelField="id",
+          ~decodeLocalId=_ => None,
+        )->norm
+      let page = pageOf(~table=visitsName, ...)
+      let spec = specOf(~items=visitsRows, ...)
+      let edgeIds = c => (c->norm).edges->Array.map(e => e.id)
+      let visits = argsOf([
+        ("filter", filterOf([("visitsPlacedFrom", JSON.Encode.int(3))])),
+        ("orderBy", orderBy("visitsPlaced", "ASC")),
+      ])
+      let got = await page(visits)
+      expect(edgeIds(got))->toEqual(["v-9", "v-10"])
+      expect(got->norm)->toEqual(spec(visits))
+
+      let byVisits = (~after=?) =>
+        argsOf(
+          [
+            ("orderBy", orderBy("visitsPlaced", "ASC")),
+            ("first", JSON.Encode.int(2)),
+          ]->Array.concat(
+            switch after {
+            | Some(c) => [("after", JSON.Encode.string(c))]
+            | None => []
+            },
+          ),
+        )
+      let first = await page(byVisits())
+      expect(first->norm)->toEqual(spec(byVisits()))
+      let after = (first->norm).endCursor->Option.getOrThrow
+      expect((await page(byVisits(~after)))->norm)->toEqual(spec(byVisits(~after)))
+
+      let shipped = argsOf([("orderBy", orderBy("enteredShipped", "ASC"))])
+      let got = await pageOf(~table=trailName, shipped)
+      expect(edgeIds(got))->toEqual(["o-3"])
+      expect(got->norm)->toEqual(specOf(~items=trailRows, shipped))
+    },
+  )
 
   // ── indexLookup / byIds push-downs ────────────────────────────────────────
   let idsOf = (items: array<JSON.t>): array<string> =>

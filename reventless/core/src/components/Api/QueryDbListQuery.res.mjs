@@ -2,6 +2,7 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Float from "@rescript/runtime/lib/es6/Stdlib_Float.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -36,6 +37,36 @@ function getFieldString(item, field) {
   });
 }
 
+function compareValues(numeric, a, b) {
+  let match = numeric ? [
+      Stdlib_Float.fromString(a),
+      Stdlib_Float.fromString(b)
+    ] : [
+      undefined,
+      undefined
+    ];
+  let x = match[0];
+  if (x !== undefined) {
+    let y = match[1];
+    if (y !== undefined) {
+      if (x < y) {
+        return -1;
+      } else if (x > y) {
+        return 1;
+      } else {
+        return 0;
+      }
+    }
+  }
+  if (a < b) {
+    return -1;
+  } else if (a > b) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf) {
   let edges = pageItems.map(item => ({
     node: item,
@@ -64,6 +95,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   let stored = name => GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name);
   let perFieldChecks = capability.filterFields.flatMap(f => {
     let attr = GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, f.name);
+    let cmp = (extra, extra$1) => compareValues(GraphQL_FragmentGenerator$ReventlessCore.isNumeric(capability, f.name), extra, extra$1);
     let checks = [];
     let v = filterDict[f.name + "Eq"];
     if (v !== undefined && v !== null) {
@@ -75,12 +107,12 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
       let v$1 = filterDict[f.name + "From"];
       if (v$1 !== undefined && v$1 !== null) {
         let from = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$1), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$1), f => f.toString()), ""));
-        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => v >= from));
+        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => cmp(v, from) >= 0));
       }
       let v$2 = filterDict[f.name + "To"];
       if (v$2 !== undefined && v$2 !== null) {
         let to_ = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$2), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$2), f => f.toString()), ""));
-        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => v <= to_));
+        checks.push(item => Stdlib_Option.mapOr(getFieldString(item, attr), false, v => cmp(v, to_) <= 0));
       }
     }
     return checks;
@@ -112,17 +144,18 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     }
   });
   let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
-  let orderByField = Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string), stored);
+  let orderByName = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
+  let orderByField = Stdlib_Option.map(orderByName, stored);
+  let orderNumeric = Stdlib_Option.mapOr(orderByName, false, extra => GraphQL_FragmentGenerator$ReventlessCore.isNumeric(capability, extra));
+  let filtered$1 = orderByName !== undefined && orderByField !== undefined && GraphQL_FragmentGenerator$ReventlessCore.onlyReached(capability, orderByName) ? filtered.filter(item => Stdlib_Option.isSome(getFieldString(item, orderByField))) : filtered;
   let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC");
   let isDesc = direction === "DESC";
   let sorted;
   if (orderByField !== undefined) {
-    sorted = filtered.toSorted((a, b) => {
+    sorted = filtered$1.toSorted((a, b) => {
       let av = Stdlib_Option.getOr(getFieldString(a, orderByField), "");
       let bv = Stdlib_Option.getOr(getFieldString(b, orderByField), "");
-      let primary = av < bv ? -1 : (
-          av > bv ? 1 : 0
-        );
+      let primary = compareValues(orderNumeric, av, bv);
       let primary$1 = isDesc ? -primary | 0 : primary;
       if (primary$1 !== 0) {
         return primary$1;
@@ -138,7 +171,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
       }
     });
   } else {
-    sorted = filtered.toSorted((a, b) => {
+    sorted = filtered$1.toSorted((a, b) => {
       let aid = getId(a);
       let bid = getId(b);
       if (aid < bid) {
@@ -169,11 +202,11 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     if (before !== undefined) {
       let cv = atob(before);
       cursorBounded = sorted.filter(item => {
-        let v = getCursorValue(item);
+        let d = compareValues(orderNumeric, getCursorValue(item), cv);
         if (isDesc) {
-          return v > cv;
+          return d > 0;
         } else {
-          return v < cv;
+          return d < 0;
         }
       });
     } else {
@@ -182,11 +215,11 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   } else if (after !== undefined) {
     let cv$1 = atob(after);
     cursorBounded = sorted.filter(item => {
-      let v = getCursorValue(item);
+      let d = compareValues(orderNumeric, getCursorValue(item), cv$1);
       if (isDesc) {
-        return v < cv$1;
+        return d < 0;
       } else {
-        return v > cv$1;
+        return d > 0;
       }
     });
   } else {
@@ -226,6 +259,7 @@ export {
   getId,
   getFieldBool,
   getFieldString,
+  compareValues,
   buildConnection,
   run,
 }

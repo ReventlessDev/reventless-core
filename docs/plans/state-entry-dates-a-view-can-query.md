@@ -74,6 +74,7 @@ The analysis's recommendations, taken.
 | **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. With them `_trail`, one value on every row whose trail has an entry, which the per-state indexes are keyed by ([QDS5](#4-steps)). Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
 | **QDD8** | What does the API call them? | Camel case without the underscore, in one table both the SDL and every resolver read: `enteredPlaced`, `enteredPlacedFirst`, `visitsPlaced`, `enteredCurrent`. Reading is an object beside the trail, `<trailField>Entered { placed { latest first visits } current }`. [SEF3](../analysis/state-entry-dates-as-queryable-fields.md#sef3-capability-and-the-graphql-surface). |
 | **QDD9** | When are they written? | On every write of a row with a trail, not only on a transition: they are a pure function of the trail, so recomputing is cheap, and a row whose typed state dropped the synthetic attributes on the way through an update gets them back. |
+| **QDD10** | What does a sort by a state's date do with a row that never entered the state? | Sorting or filtering by a state's date covers the rows that entered it; a row that never did is left out, on every backend, as the sparse index does. `enteredCurrent` covers every row with a trail. A count (`visits<State>`) compares as a number. |
 
 ## 4. Steps
 
@@ -136,6 +137,11 @@ all three; Postgres against a throwaway `postgres:16-alpine` (the test still ski
 `visits` range compares `"10"` below `"9"`; and a row with no date for the named state sorts first
 ascending on the in-memory and SQLite backends and last on Postgres, as any absent field does. The
 DynamoDB resolver reads the map in [QDS5](#4-steps).
+*Fixed* 2026-11-22, after [QDS5](#4-steps). The capability names its numeric fields (`numeric`) and
+the names that cover only rows carrying them (`reached`). A numeric field's range, order and cursor
+compare as numbers on every backend, declared numeric fields included; ordering by a state's date
+leaves out the rows without it ([QDD10](#3-decisions)). Absent values of declared fields sort as
+before.
 
 **QDS5 DynamoDB.** An opted-in trail adds derived GSIs: one per opted-in state on `_entered_<State>`
 (sparse: a row that never entered the state is not in it), and the lifecycle index, key the lifecycle
@@ -175,6 +181,10 @@ the local platform and on the `alpha` stack, where the seed's runs on several da
 gains the derived fields, `@trail({index: …})` and the lifecycle index; the vocabulary reference the
 annotation; the list ordering analysis a pointer under
 [Richer filter primitives](../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
+The docs also record a limit: each per-state index and each lifecycle state is one DynamoDB
+partition, so a view writing past a partition's throughput (about 1000 writes/s; throttling shows in
+CloudWatch) would need a shard count on `@trail`. Sharding keys the index by `hash(id) mod N`, a read
+queries all N and merges them, and a rebuild re-keys the rows.
 *Done when* the docs build, and their links check.
 
 ## 5. Out of scope

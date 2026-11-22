@@ -285,6 +285,15 @@ module Make = (
         | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
         }
       let stored = name => ReventlessCore.GraphQL_FragmentGenerator.storedName(capability, name)
+      let numeric = name => ReventlessCore.GraphQL_FragmentGenerator.isNumeric(capability, name)
+      // A numeric field compares as a number, its bound sent as one.
+      let rangeExpr = name =>
+        numeric(name) ? `${col(stored(name))}::numeric` : jsonTextC(stored(name))
+      let rangeParam = (name, s) =>
+        switch numeric(name) ? Float.fromString(s) : None {
+        | Some(n) => JSON.Encode.float(n)
+        | None => JSON.Encode.string(s)
+        }
       capability.filterFields->Array.forEach(f => {
         let attr = stored(f.name)
         switch filterDict->Dict.get(f.name ++ "Eq") {
@@ -298,8 +307,8 @@ module Make = (
           switch filterDict->Dict.get(f.name ++ "From") {
           | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
-              `${jsonTextC(attr)} >= ${b->param(
-                  JSON.Encode.string(valString(v)->Option.getOr("")),
+              `${rangeExpr(f.name)} >= ${b->param(
+                  rangeParam(f.name, valString(v)->Option.getOr("")),
                 )}`,
             )
           | _ => ()
@@ -307,8 +316,8 @@ module Make = (
           switch filterDict->Dict.get(f.name ++ "To") {
           | Some(v) if v != JSON.Encode.null =>
             whereParts->Array.push(
-              `${jsonTextC(attr)} <= ${b->param(
-                  JSON.Encode.string(valString(v)->Option.getOr("")),
+              `${rangeExpr(f.name)} <= ${b->param(
+                  rangeParam(f.name, valString(v)->Option.getOr("")),
                 )}`,
             )
           | _ => ()
@@ -316,32 +325,50 @@ module Make = (
         }
       })
       let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
-      let orderByField =
+      let orderByName =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("field"))
         ->Option.flatMap(JSON.Decode.string)
-        ->Option.map(stored)
+      let orderByField = orderByName->Option.map(stored)
       let isDesc =
         orderByDict
         ->Option.flatMap(ob => ob->Dict.get("direction"))
         ->Option.flatMap(JSON.Decode.string)
         ->Option.getOr("ASC") == "DESC"
-      let cursorExpr = switch orderByField {
-      | Some(f) => jsonTextC(f)
+      // Ordering by a state's date lists the rows that entered the state.
+      switch (orderByName, orderByField) {
+      | (Some(name), Some(attr))
+        if ReventlessCore.GraphQL_FragmentGenerator.onlyReached(capability, name) =>
+        whereParts->Array.push(`${col(attr)} IS NOT NULL`)
+      | _ => ()
+      }
+      let orderExpr = switch orderByName {
+      | Some(name) => rangeExpr(name)
       | None => idExprC
       }
       let afterCursor = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
       switch afterCursor {
       | Some(c) =>
+        let cv = ReventlessCore.QueryDbListQuery.decodeCursor(c)
+        // A cursor minted on a row without the value carries its id, not a number.
+        let cursorExpr = switch orderByField {
+        | Some(attr)
+          if numeric(orderByName->Option.getOr("")) && Float.fromString(cv)->Option.isNone =>
+          jsonTextC(attr)
+        | _ => orderExpr
+        }
         whereParts->Array.push(
           `${cursorExpr} ${isDesc ? "<" : ">"} ${b->param(
-              JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)),
+              switch orderByName {
+              | Some(name) => rangeParam(name, cv)
+              | None => JSON.Encode.string(cv)
+              },
             )}`,
         )
       | None => ()
       }
-      let orderClause = switch orderByField {
-      | Some(f) => `${jsonTextC(f)} ${isDesc ? "DESC" : "ASC"}, ${idExprC} ASC`
+      let orderClause = switch orderByName {
+      | Some(_) => `${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExprC} ASC`
       | None => `${idExprC} ASC`
       }
       let pageSize =

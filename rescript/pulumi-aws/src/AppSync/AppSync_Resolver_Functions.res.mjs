@@ -644,12 +644,13 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues, ownerIndex, ownerIndexSortField, storedNamesOpt, keyedReadsOpt) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt, retiredField, retiredValues, ownerIndex, ownerIndexSortField, storedNamesOpt, reachedNamesOpt, keyedReadsOpt) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
   let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   let storedNames = storedNamesOpt !== undefined ? storedNamesOpt : ({});
+  let reachedNames = reachedNamesOpt !== undefined ? reachedNamesOpt : [];
   let keyedReads = keyedReadsOpt !== undefined ? keyedReadsOpt : [];
   let ownerIndex$1 = Stdlib_Option.isSome(ownerField) ? ownerIndex : undefined;
   let attrOf = f => Stdlib_Option.getOr(storedNames[f], f);
@@ -763,6 +764,11 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
     names['#` + f + `'] = '` + attrOf(f) + `';
     values[':` + f + `To'] = util.dynamodb.toDynamoDB(filter.` + f + `To);
     parts.push('#` + f + ` <= :` + f + `To');
+  }`).join("");
+  let reachedClauses = reachedNames.map(f => `
+  if (ctx.args.orderBy && ctx.args.orderBy.field === '` + f + `'` + sortKeyGuard(f) + `) {
+    names['#` + f + `'] = '` + attrOf(f) + `';
+    parts.push('attribute_exists(#` + f + `)');
   }`).join("");
   let sortFieldsLiteral = sortFields.map(f => `'` + f + `'`).join(", ");
   let sortGuard = (
@@ -907,7 +913,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + retiredClause + `
+  }` + filterClauses + rangeClauses + reachedClauses + requireAttributeClause + ownerClause + retiredClause + `
 ` + listCursorPreamble + requestPathGuard + `
   // The one page a cursor cannot reach: it begins in an earlier window, and a
   // continuation token cannot name the one before it. Refused by itself rather

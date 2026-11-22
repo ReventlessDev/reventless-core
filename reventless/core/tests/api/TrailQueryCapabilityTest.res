@@ -90,6 +90,40 @@ let rows = [
   row("o-6", "Placed", [("Placed", "2026-02-27T09:00:00Z")]),
 ]
 
+// A row in Placed after `n` visits, Cancelled between them.
+let visitsRow = (id, n) => {
+  let pad = i => i < 10 ? "0" ++ Int.toString(i) : Int.toString(i)
+  let entries = Array.fromInitializer(~length=2 * n - 1, i => (
+    mod(i, 2) == 0 ? "Placed" : "Cancelled",
+    `2026-01-01T${pad(i)}:00:00Z`,
+  ))
+  row(id, "Placed", entries)
+}
+
+let visitsRows = [visitsRow("v-2", 2), visitsRow("v-9", 9), visitsRow("v-10", 10)]
+
+let visitsRequest = (~from, ~order) =>
+  Dict.fromArray([
+    ("filter", Dict.fromArray([("visitsPlacedFrom", JSON.Encode.int(from))])->JSON.Encode.object),
+    (
+      "orderBy",
+      Dict.fromArray([
+        ("field", JSON.Encode.string(order)),
+        ("direction", JSON.Encode.string("ASC")),
+      ])->JSON.Encode.object,
+    ),
+  ])
+
+let shippedOrder = Dict.fromArray([
+  (
+    "orderBy",
+    Dict.fromArray([
+      ("field", JSON.Encode.string("enteredShipped")),
+      ("direction", JSON.Encode.string("ASC")),
+    ])->JSON.Encode.object,
+  ),
+])
+
 // "In Placed since before Mar 3 noon, longest there first", two to a page.
 let request = (~after=?) =>
   Dict.fromArray(
@@ -170,6 +204,21 @@ describe("a trail's opted-in states on the filter and sort surface", () => {
     ])
   })
 
+  testSync("counts compare as numbers, and a state's dates cover the rows that entered it", () => {
+    let cap = capabilityOf(~trailIndex=Some(["Placed", "Shipped"]))
+    expect((cap.numeric, cap.reached))->toEqual((
+      Some(["visitsPlaced", "visitsShipped"]),
+      Some([
+        "enteredPlaced",
+        "enteredPlacedFirst",
+        "visitsPlaced",
+        "enteredShipped",
+        "enteredShippedFirst",
+        "visitsShipped",
+      ]),
+    ))
+  })
+
   testSync("the lifecycle index alone adds the current state's date and the lifecycle", () => {
     let cap = capabilityOf(~trailIndex=Some([]))
     expect(cap.filterFields->Array.map(f => f.name))->toEqual([
@@ -237,5 +286,27 @@ describe("a trail's opted-in states on the filter and sort surface", () => {
       ~labelField="orderId",
     )
     expect(ids(conn))->toEqual(["o-5"])
+  })
+
+  testSync("in-memory: visits compare as numbers, 9 below 10", () => {
+    let cap = capabilityOf(~trailIndex=Some(["Placed"]))
+    let conn = QueryDbListQuery.run(
+      ~items=visitsRows,
+      ~argsDict=visitsRequest(~from=3, ~order="visitsPlaced"),
+      ~capability=cap,
+      ~labelField="orderId",
+    )
+    expect(ids(conn))->toEqual(["v-9", "v-10"])
+  })
+
+  testSync("in-memory: ordering by a state's date leaves out rows that never entered it", () => {
+    let cap = capabilityOf(~trailIndex=Some(["Placed", "Shipped"]))
+    let conn = QueryDbListQuery.run(
+      ~items=rows,
+      ~argsDict=shippedOrder,
+      ~capability=cap,
+      ~labelField="orderId",
+    )
+    expect(ids(conn))->toEqual(["o-3"])
   })
 })

@@ -57,6 +57,14 @@ let getFieldString = (item: JSON.t, field: string): option<string> =>
     }
   )
 
+// Order two rendered values: as numbers when the field is numeric and both
+// parse, else as text. An absent value renders as "" and so keeps its text place.
+let compareValues = (~numeric: bool, a: string, b: string): int =>
+  switch numeric ? (Float.fromString(a), Float.fromString(b)) : (None, None) {
+  | (Some(x), Some(y)) => x < y ? -1 : x > y ? 1 : 0
+  | _ => a < b ? -1 : a > b ? 1 : 0
+  }
+
 // Build the Relay connection object from an already-ordered page. Shared by
 // `run` and the SQLite push-down so edges / cursors / pageInfo have one shape.
 let buildConnection = (
@@ -134,6 +142,7 @@ let run = (
   let stored = name => GraphQL_FragmentGenerator.storedName(capability, name)
   let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
     let attr = stored(f.name)
+    let cmp = compareValues(~numeric=GraphQL_FragmentGenerator.isNumeric(capability, f.name), ...)
     let checks: array<JSON.t => bool> = []
     switch filterDict->Dict.get(f.name ++ "Eq") {
     | Some(v) if v != JSON.Encode.null =>
@@ -153,7 +162,9 @@ let run = (
           v
           ->JSON.Decode.string
           ->Option.getOr(v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""))
-        checks->Array.push(item => getFieldString(item, attr)->Option.mapOr(false, v => v >= from))
+        checks->Array.push(item =>
+          getFieldString(item, attr)->Option.mapOr(false, v => cmp(v, from) >= 0)
+        )
       | _ => ()
       }
       switch filterDict->Dict.get(f.name ++ "To") {
@@ -162,7 +173,9 @@ let run = (
           v
           ->JSON.Decode.string
           ->Option.getOr(v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""))
-        checks->Array.push(item => getFieldString(item, attr)->Option.mapOr(false, v => v <= to_))
+        checks->Array.push(item =>
+          getFieldString(item, attr)->Option.mapOr(false, v => cmp(v, to_) <= 0)
+        )
       | _ => ()
       }
     }
@@ -213,11 +226,19 @@ let run = (
   })
 
   let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
-  let orderByField =
+  let orderByName =
     orderByDict
     ->Option.flatMap(ob => ob->Dict.get("field"))
     ->Option.flatMap(JSON.Decode.string)
-    ->Option.map(stored)
+  let orderByField = orderByName->Option.map(stored)
+  let orderNumeric =
+    orderByName->Option.mapOr(false, GraphQL_FragmentGenerator.isNumeric(capability, ...))
+  // Ordering by a state's date lists the rows that entered the state.
+  let filtered = switch (orderByName, orderByField) {
+  | (Some(name), Some(attr)) if GraphQL_FragmentGenerator.onlyReached(capability, name) =>
+    filtered->Array.filter(item => getFieldString(item, attr)->Option.isSome)
+  | _ => filtered
+  }
   let direction =
     orderByDict
     ->Option.flatMap(ob => ob->Dict.get("direction"))
@@ -229,13 +250,7 @@ let run = (
     let cmp = (a, b) => {
       let av = getFieldString(a, f)->Option.getOr("")
       let bv = getFieldString(b, f)->Option.getOr("")
-      let primary = if av < bv {
-        -1
-      } else if av > bv {
-        1
-      } else {
-        0
-      }
+      let primary = compareValues(~numeric=orderNumeric, av, bv)
       let primary = isDesc ? -primary : primary
       if primary != 0 {
         primary
@@ -291,14 +306,14 @@ let run = (
   | (false, Some(c), _) =>
     let cv = decodeCursor(c)
     sorted->Array.filter(item => {
-      let v = getCursorValue(item)
-      isDesc ? v < cv : v > cv
+      let d = compareValues(~numeric=orderNumeric, getCursorValue(item), cv)
+      isDesc ? d < 0 : d > 0
     })
   | (true, _, Some(c)) =>
     let cv = decodeCursor(c)
     sorted->Array.filter(item => {
-      let v = getCursorValue(item)
-      isDesc ? v > cv : v < cv
+      let d = compareValues(~numeric=orderNumeric, getCursorValue(item), cv)
+      isDesc ? d > 0 : d < 0
     })
   | _ => sorted
   }

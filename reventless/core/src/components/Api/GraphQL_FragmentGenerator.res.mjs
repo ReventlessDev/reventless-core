@@ -245,6 +245,14 @@ function storedName(capability, name) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(capability.stored, d => d[name]), name);
 }
 
+function isNumeric(capability, name) {
+  return Stdlib_Option.mapOr(capability.numeric, false, names => names.includes(name));
+}
+
+function onlyReached(capability, name) {
+  return Stdlib_Option.mapOr(capability.reached, false, names => names.includes(name));
+}
+
 let emptyCapability_filterFields = [];
 
 let emptyCapability_sortFields = [];
@@ -379,20 +387,38 @@ function deriveServerCapability(entityName, schema) {
   let sortFields = [];
   let seenFilter = new Set();
   let seenSort = new Set();
-  let pushFilter = (name, range, gqlType) => {
-    if (!seenFilter.has(name)) {
-      seenFilter.add(name);
-      filterFields.push({
-        name: name,
-        gqlType: Stdlib_Option.getOr(gqlType, scalarOf(name)),
-        range: range
-      });
+  let numeric = [];
+  let reached = [];
+  let isNumberType = t => {
+    if (t === "Int") {
+      return true;
+    } else {
+      return t === "Float";
+    }
+  };
+  let markNumeric = (name, gqlType) => {
+    if (isNumberType(gqlType) && !numeric.includes(name)) {
+      numeric.push(name);
       return;
     }
+  };
+  let pushFilter = (name, range, gqlType) => {
+    if (seenFilter.has(name)) {
+      return;
+    }
+    seenFilter.add(name);
+    let gqlType$1 = Stdlib_Option.getOr(gqlType, scalarOf(name));
+    markNumeric(name, gqlType$1);
+    filterFields.push({
+      name: name,
+      gqlType: gqlType$1,
+      range: range
+    });
   };
   let pushSort = name => {
     if (!seenSort.has(name)) {
       seenSort.add(name);
+      markNumeric(name, scalarOf(name));
       sortFields.push(name);
       return;
     }
@@ -436,7 +462,10 @@ function deriveServerCapability(entityName, schema) {
       pushSort(name);
     };
     match.forEach(state => {
-      Lifecycle$Reventless.Trail.queryNames(state).forEach(derived);
+      Lifecycle$Reventless.Trail.queryNames(state).forEach(q => {
+        derived(q);
+        reached.push(q.name);
+      });
     });
     derived({
       name: Lifecycle$Reventless.Trail.enteredCurrentName,
@@ -450,10 +479,17 @@ function deriveServerCapability(entityName, schema) {
     pushFilter(field, false, undefined);
     pushSort(field);
   }
+  let nonEmpty = a => {
+    if (a.length !== 0) {
+      return a;
+    }
+  };
   return {
     filterFields: filterFields,
     sortFields: sortFields,
-    stored: Stdlib_Dict.size(stored) > 0 ? stored : undefined
+    stored: Stdlib_Dict.size(stored) > 0 ? stored : undefined,
+    numeric: nonEmpty(numeric),
+    reached: nonEmpty(reached)
   };
 }
 
@@ -782,6 +818,8 @@ export {
   deriveConnectionTypes,
   deriveSubIdFilterType,
   storedName,
+  isNumeric,
+  onlyReached,
   emptyCapability,
   scalarOfSchemaType,
   isKeyFieldName,

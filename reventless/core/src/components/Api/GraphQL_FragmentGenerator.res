@@ -323,11 +323,22 @@ type serverCapability = {
   /** The attribute a name is stored under where the two differ: a trail's
       derived dates (`enteredPlaced` → `_entered_Placed`). */
   stored?: dict<string>,
+  /** Names whose values compare as numbers rather than as text. */
+  numeric?: array<string>,
+  /** Names that cover only the rows carrying them: a state's dates, which a row
+      that never entered the state does not have. */
+  reached?: array<string>,
 }
 
 /** The attribute a filter or sort name reads on a stored row. */
 let storedName = (capability: serverCapability, name: string): string =>
   capability.stored->Option.flatMap(d => d->Dict.get(name))->Option.getOr(name)
+
+let isNumeric = (capability: serverCapability, name: string): bool =>
+  capability.numeric->Option.mapOr(false, names => names->Array.includes(name))
+
+let onlyReached = (capability: serverCapability, name: string): bool =>
+  capability.reached->Option.mapOr(false, names => names->Array.includes(name))
 
 let emptyCapability: serverCapability = {filterFields: [], sortFields: []}
 
@@ -489,15 +500,25 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
   let sortFields: array<string> = []
   let seenFilter: Set.t<string> = Set.make()
   let seenSort: Set.t<string> = Set.make()
+  let numeric: array<string> = []
+  let reached: array<string> = []
+  let isNumberType = t => t == "Int" || t == "Float"
+  let markNumeric = (name, gqlType) =>
+    if isNumberType(gqlType) && !(numeric->Array.includes(name)) {
+      numeric->Array.push(name)
+    }
 
   let pushFilter = (name, ~range, ~gqlType=?) =>
     if !(seenFilter->Set.has(name)) {
       seenFilter->Set.add(name)
-      filterFields->Array.push({name, gqlType: gqlType->Option.getOr(scalarOf(name)), range})
+      let gqlType = gqlType->Option.getOr(scalarOf(name))
+      markNumeric(name, gqlType)
+      filterFields->Array.push({name, gqlType, range})
     }
   let pushSort = name =>
     if !(seenSort->Set.has(name)) {
       seenSort->Set.add(name)
+      markNumeric(name, scalarOf(name))
       sortFields->Array.push(name)
     }
 
@@ -551,7 +572,10 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
       pushSort(name)
     }
     states->Array.forEach(state =>
-      Reventless.Lifecycle.Trail.queryNames(state)->Array.forEach(derived)
+      Reventless.Lifecycle.Trail.queryNames(state)->Array.forEach(q => {
+        derived(q)
+        reached->Array.push(q.name)
+      })
     )
     derived({
       name: Reventless.Lifecycle.Trail.enteredCurrentName,
@@ -575,7 +599,14 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
   | None => ()
   }
 
-  {filterFields, sortFields, stored: ?(stored->Dict.size > 0 ? Some(stored) : None)}
+  let nonEmpty = a => a->Array.length > 0 ? Some(a) : None
+  {
+    filterFields,
+    sortFields,
+    stored: ?(stored->Dict.size > 0 ? Some(stored) : None),
+    numeric: ?nonEmpty(numeric),
+    reached: ?nonEmpty(reached),
+  }
 }
 
 // Returns one warning per `@scanSort` field that is NOT also a sort key of the
