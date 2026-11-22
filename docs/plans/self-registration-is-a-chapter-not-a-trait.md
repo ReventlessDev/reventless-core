@@ -917,9 +917,7 @@ writing the key inline.
   refused unless the deployment has a fingerprint key, the person check
   ([DW10](#dw10-a-check-that-a-person-is-signing-up)), the bounded sender
   ([DW11](#dw11-a-bounded-mail-sender)) and the bill alarm
-  ([DW12](#dw12-an-alarm-on-the-bill)), naming each that is missing. The last three are not
-  built, so today every self-service role is refused on AWS, by this check instead of by the
-  missing door.
+  ([DW12](#dw12-an-alarm-on-the-bill)), naming each that is missing.
 - **The shell** (`reventless-ui`) fetches the file at boot when `config.json` has no inline
   key, and sends the start, complete and open-roles calls to `endpoint` with the key and no
   signed-in token; the administrator's switch stays on the platform API.
@@ -953,6 +951,44 @@ The provider's secret is deployment configuration, never in `config.json`.
 
 **Exit:** the analysis's choice recorded here; GWT for a sign-up with no token, a bad token and a
 good one; the shell's test that the widget renders and its token is sent.
+
+*Decided 2026-11-22, from the analysis
+[A check that a person is signing up](../analysis/a-check-that-a-person-is-signing-up.md#recommendation):*
+Cloudflare Turnstile only, with no self-hosted provider for now. The deploy refuses a
+self-service role until the check is configured, so no provider is chosen silently
+([PQ1](../analysis/a-check-that-a-person-is-signing-up.md#open-questions)). A check that cannot be
+asked refuses the sign-up, says so, and raises an alarm
+([PQ2](../analysis/a-check-that-a-person-is-signing-up.md#open-questions)).
+
+*As built (2026-11-22), not yet deployed. Two things differ from the step as written:*
+
+- **A failed check is said, not answered alike.** The door refuses with "the check that a person
+  is signing up did not pass; try it again", the same for every address, so it tells nothing about
+  one. Answered alike, a person whose token expired would wait for mail that never comes.
+- **No provider name.** With one provider, the configuration is its two keys:
+  `platform:personCheckSiteKey` and the secret `platform:personCheckSecret`, both or neither. A
+  second provider would add a setting that names it.
+
+What is built:
+
+- **The capability** `PersonCheck` in spec: `verify(~token)` answers yes, `Rejected` or
+  `Unavailable`. `Capabilities.none` cannot be asked; the local platform's passes everyone. A
+  capability need of the same name, declared by `SignUp`, so the AWS deploy refuses a plugin with
+  the door and no check.
+- **The door** asks it first and relays nothing on either no. `SignUp`'s input gains an optional
+  `personCheck`, the widget's token, kept out of audit rows.
+- **On AWS**, `PersonCheck_Turnstile` posts the secret and token to Turnstile's verification
+  address, without the visitor's address
+  ([PQ3](../analysis/a-check-that-a-person-is-signing-up.md#open-questions)), and waits five
+  seconds at most. A missing token is a no without a call. Turnstile's own failure or a wrong
+  secret is `Unavailable`. The command function gets the secret; the shell's
+  `self-registration.json` gets `personCheck: {siteKey}`. An unavailable check writes a metric
+  line, and a plugin stack with a sign-up door has an alarm on it to the operator.
+- **The guards' refusal** ([DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws))
+  now counts the check as present when both keys are set.
+
+A command function in a VPC (a Postgres event log) has no route to Turnstile without a NAT
+gateway; it would refuse every sign-up, and the alarm would say so.
 
 #### DW11: a bounded mail sender
 
