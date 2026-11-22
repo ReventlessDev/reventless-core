@@ -396,7 +396,7 @@ describe("semantic composites are named once, not once per field", () => {
     let money = types->Array.find(t => t->String.startsWith("type Money "))->Option.getOr("")
     expect((
       types->Array.some(t => t->String.includes("price: Money!")),
-      money->String.includes(`"""${Reventless.Money.amountDescription}"""\n  amount: Float!`),
+      money->String.includes(`"${Reventless.Money.amountDescription}"\n  amount: Float!`),
     ))->toEqual((true, true))
   })
 })

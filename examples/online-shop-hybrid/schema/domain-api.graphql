@@ -431,6 +431,9 @@ type GeolocationUnresolvable {
 }
 
 type Money {
+  """
+  The amount of money as people say it: 0.45 EUR is forty-five cents. At most as many decimals as the currency has.
+  """
   amount: Float!
   currency: MoneyCurrency!
 }
@@ -449,6 +452,9 @@ enum MoneyCurrency {
 }
 
 input MoneyInput {
+  """
+  The amount of money as people say it: 0.45 EUR is forty-five cents. At most as many decimals as the currency has.
+  """
   amount: Float!
   currency: MoneyCurrency!
 }

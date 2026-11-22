@@ -151,7 +151,7 @@ function objectRefToGraphQL(asInputOpt, descriptionsOpt, typeName, fields, colle
     let gqlType = fromSchemaType(true, asInput, param[1], collectedTypes, seenTypes);
     let said = descriptions[fieldName];
     if (said !== undefined) {
-      return `  """` + said + `"""\n  ` + fieldName + `: ` + gqlType;
+      return `  "` + said + `"\n  ` + fieldName + `: ` + gqlType;
     } else {
       return `  ` + fieldName + `: ` + gqlType;
     }

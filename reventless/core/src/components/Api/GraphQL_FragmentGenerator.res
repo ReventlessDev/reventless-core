@@ -175,7 +175,7 @@ and objectRefToGraphQL = (
     ->Array.map(((fieldName, fieldType)) => {
       let gqlType = fromSchemaType(~required=true, ~asInput, fieldType, collectedTypes, seenTypes)
       switch descriptions->Dict.get(fieldName) {
-      | Some(said) => `  """${said}"""\n  ${fieldName}: ${gqlType}`
+      | Some(said) => `  "${said}"\n  ${fieldName}: ${gqlType}`
       | None => `  ${fieldName}: ${gqlType}`
       }
     })
