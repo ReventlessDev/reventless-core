@@ -128,7 +128,9 @@ as one of its people.
 ### A play file that expects
 
 A step of a play file may say what it expects: `expect: accepted` or
-`expect: {refused: <errorCode>}`, and `row: {view, key, has}`, a row the view
+`expect: {refused: <errorCode>}` (or `{acceptedOr: <errorCode>}`, for a step an
+earlier play may have made already, such as a person who is there before the
+story), and `row: {view, key, has}`, a row the view
 then shows, read as the step's person. A step with a `row` and no `send` sends
 nothing and only reads the row, as its `as`: someone looks at a view. `id`
 names the step. The play stops at

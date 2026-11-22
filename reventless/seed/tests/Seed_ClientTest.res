@@ -361,7 +361,10 @@ describe("Seed_Client answers:", () => {
       Seed_Client.meets({Seed_Client.accepted: false, code: "X"}, Refused("X")),
       Seed_Client.meets({Seed_Client.accepted: false, code: "Y"}, Refused("X")),
       Seed_Client.meets({Seed_Client.accepted: true}, Refused("X")),
-    ])->toEqual([true, true, false, false])
+      Seed_Client.meets({Seed_Client.accepted: true}, AcceptedOr("X")),
+      Seed_Client.meets({Seed_Client.accepted: false, code: "X"}, AcceptedOr("X")),
+      Seed_Client.meets({Seed_Client.accepted: false, code: "Y"}, AcceptedOr("X")),
+    ])->toEqual([true, true, false, false, true, true, false])
   )
 })
 

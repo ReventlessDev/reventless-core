@@ -11,7 +11,8 @@
 //       send: Ordering_PlaceOrder
 //       as: ada
 //       args: {orderId: "o-{run}-{rep}", ownerId: "{id:ada}"}
-//       expect: accepted                # or {refused: <errorCode>}
+//       expect: accepted                # or {refused: <errorCode>}, or {acceptedOr: <errorCode>}
+//                                       #   when an earlier play may have made it already
 //       row: {view: Ordering_OrdersByIds, key: "o-{run}-{rep}", has: {lifecycle: "{any}"}}
 //     - id: ada-looks                   # a step that only reads a row, as its person
 //       as: ada
@@ -58,11 +59,13 @@ let expectOf = (json: JSON.t, ~at: string): result<option<Seed_Client.expected>,
   | None => Ok(None)
   | Some(String("accepted")) => Ok(Some(Accepted))
   | Some(Object(_) as e) =>
-    switch e->Seed_Commands.str("refused") {
-    | Some(code) if code != "" => Ok(Some(Refused(code)))
-    | _ => Error(`${at}: expect is accepted or {refused: <errorCode>}`)
+    switch (e->Seed_Commands.str("refused"), e->Seed_Commands.str("acceptedOr")) {
+    | (Some(code), None) if code != "" => Ok(Some(Refused(code)))
+    | (None, Some(code)) if code != "" => Ok(Some(AcceptedOr(code)))
+    | _ => Error(`${at}: expect is accepted, {refused: <errorCode>} or {acceptedOr: <errorCode>}`)
     }
-  | Some(_) => Error(`${at}: expect is accepted or {refused: <errorCode>}`)
+  | Some(_) =>
+    Error(`${at}: expect is accepted, {refused: <errorCode>} or {acceptedOr: <errorCode>}`)
   }
 
 let rowOf = (json: JSON.t, ~at: string): result<option<row>, string> =>

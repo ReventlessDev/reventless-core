@@ -537,8 +537,9 @@ let checkQueryAccess = async (t: t, ~field as fieldName: string): access => {
 
 // ── Expecting ───────────────────────────────────────────────────────────────
 
-/** What a step expects its command to answer. */
-type expected = Accepted | Refused(string)
+/** What a step expects its command to answer. `AcceptedOr(code)`: accepted, or refused with
+    `code` because an earlier play made what it makes (a person who is there before the story). */
+type expected = Accepted | Refused(string) | AcceptedOr(string)
 
 /** What a command answered: accepted, or refused with a code (and its detail). */
 type answer = {accepted: bool, code?: string, detail?: string}
@@ -547,6 +548,7 @@ let expectedWords = (e: expected): string =>
   switch e {
   | Accepted => "accepted"
   | Refused(code) => `refused with ${code}`
+  | AcceptedOr(code) => `accepted, or refused with ${code}`
   }
 
 let answerWords = (a: answer): string =>
@@ -557,6 +559,7 @@ let meets = (answer: answer, expected: expected): bool =>
   switch expected {
   | Accepted => answer.accepted
   | Refused(code) => !answer.accepted && answer.code == Some(code)
+  | AcceptedOr(code) => answer.accepted || answer.code == Some(code)
   }
 
 /** A command's answer from what came back. A refusal of the caller is `Forbidden` on both

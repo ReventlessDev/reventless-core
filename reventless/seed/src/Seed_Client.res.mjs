@@ -468,8 +468,10 @@ async function checkQueryAccess(t, fieldName) {
 function expectedWords(e) {
   if (typeof e !== "object") {
     return "accepted";
-  } else {
+  } else if (e.TAG === "Refused") {
     return `refused with ` + e._0;
+  } else {
+    return `accepted, or refused with ` + e._0;
   }
 }
 
@@ -484,8 +486,14 @@ function answerWords(a) {
 function meets(answer, expected) {
   if (typeof expected !== "object") {
     return answer.accepted;
+  } else if (expected.TAG === "Refused") {
+    if (answer.accepted) {
+      return false;
+    } else {
+      return Primitive_object.equal(answer.code, expected._0);
+    }
   } else if (answer.accepted) {
-    return false;
+    return true;
   } else {
     return Primitive_object.equal(answer.code, expected._0);
   }

@@ -2,8 +2,8 @@
 
 **Date:** 2026-11-22<br/>
 **Status:** ✅ Built and released 2026-11-22: [PE1](#pe1-the-client-expects-an-answer-and-reads-a-row) to [PE7](#pe7-the-checks), the shop's file
-played on its alpha stack too (see [§8](#8-as-built)). A step that only reads a row came after, built,
-not yet released. Steps numbered PE1 to PE7, decisions PED1 to PED4, open questions PEQ1 to PEQ4,
+played on its alpha stack too (see [§8](#8-as-built)). A step that only reads a row and an answer that
+may meet an earlier play came after, built, not yet released. Steps numbered PE1 to PE7, decisions PED1 to PED4, open questions PEQ1 to PEQ4,
 each with a recommendation, all four answered as recommended. *PE* is short for *play,
 expected*.<br/>
 **Repos:** `reventless-core` only: `reventless/seed`, `reventless/seed-aws`, the hybrid shop's
@@ -255,3 +255,8 @@ step went as it expects (5 steps)*.
 into a play file): a story's step that looks at a view is its own step, as its own person, and
 sends nothing. A step with `row` and no `send` (`{id, as, row}`) reads the row as its `as`, counts
 as a step that expects, and is checked before the play as any `row` is.
+
+**An answer that may meet an earlier play** (added after the release, for the same reason): a
+story's cast is there before it, so the step that registers Ada is refused when the story is played
+a second time on one deployment. `expect: {acceptedOr: <errorCode>}` takes that refusal as the step
+having gone as expected; any other refusal still stops the play.

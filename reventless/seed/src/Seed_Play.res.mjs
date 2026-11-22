@@ -37,33 +37,50 @@ function expectOf(json, at) {
         }
         break;
       case "object" :
-        let code = Seed_Commands$ReventlessSeed.str(e, "refused");
-        if (code !== undefined) {
-          if (code !== "") {
+        let match = Seed_Commands$ReventlessSeed.str(e, "refused");
+        let match$1 = Seed_Commands$ReventlessSeed.str(e, "acceptedOr");
+        let exit = 0;
+        if (match !== undefined) {
+          if (match$1 !== undefined) {
+            exit = 2;
+          } else {
+            if (match !== "") {
+              return {
+                TAG: "Ok",
+                _0: {
+                  TAG: "Refused",
+                  _0: match
+                }
+              };
+            }
+            exit = 2;
+          }
+        } else if (match$1 !== undefined) {
+          if (match$1 !== "") {
             return {
               TAG: "Ok",
               _0: {
-                TAG: "Refused",
-                _0: code
+                TAG: "AcceptedOr",
+                _0: match$1
               }
             };
-          } else {
-            return {
-              TAG: "Error",
-              _0: at + `: expect is accepted or {refused: <errorCode>}`
-            };
           }
+          exit = 2;
         } else {
+          exit = 2;
+        }
+        if (exit === 2) {
           return {
             TAG: "Error",
-            _0: at + `: expect is accepted or {refused: <errorCode>}`
+            _0: at + `: expect is accepted, {refused: <errorCode>} or {acceptedOr: <errorCode>}`
           };
         }
+        break;
     }
   }
   return {
     TAG: "Error",
-    _0: at + `: expect is accepted or {refused: <errorCode>}`
+    _0: at + `: expect is accepted, {refused: <errorCode>} or {acceptedOr: <errorCode>}`
   };
 }
 

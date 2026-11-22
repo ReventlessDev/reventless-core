@@ -150,6 +150,13 @@ steps:
     }
   })
 
+  testSync("reads a step that may meet what an earlier play made", () =>
+    switch parsed(`steps: [{send: A, expect: {acceptedOr: AlreadyThere}}]`).steps[0] {
+    | Some(Send({expect: ?e})) => expect(e)->toEqual(Some(Seed_Client.AcceptedOr("AlreadyThere")))
+    | _ => failwith("expected a send")
+    }
+  )
+
   testSync("names what it cannot read", () =>
     expect(
       [
@@ -158,8 +165,9 @@ steps:
         `steps: [{send: A, row: {view: V}}]`,
         `steps: [{send: A, row: {view: V, key: k, has: [1]}}]`,
         `steps: [{as: ada, row: {view: V}}]`,
+        `steps: [{send: A, expect: {refused: X, acceptedOr: X}}]`,
       ]->Array.map(text => Seed_Play.parse(text)->Result.isError),
-    )->toEqual([true, true, true, true, true])
+    )->toEqual([true, true, true, true, true, true])
   )
 
   testSync("knows a play that expects, the people whose ids it names, and its mark", () =>
