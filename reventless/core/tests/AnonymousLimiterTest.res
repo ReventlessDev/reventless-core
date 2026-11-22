@@ -54,6 +54,10 @@ describe("AnonymousRequestLimit.parse", () => {
     expect(Reventless.AnonymousRequestLimit.parse("5")->Result.isError)->toBe(true)
     expect(Reventless.AnonymousRequestLimit.parse("0/60")->Result.isError)->toBe(true)
     expect(Reventless.AnonymousRequestLimit.parse("lots/hour")->Result.isError)->toBe(true)
+    // A fraction or a trailing word is refused, not cut to the number before it.
+    expect(Reventless.AnonymousRequestLimit.parse("1.5/60")->Result.isError)->toBe(true)
+    expect(Reventless.AnonymousRequestLimit.parse("5x/60")->Result.isError)->toBe(true)
+    expect(Reventless.AnonymousRequestLimit.parse("10/3600.9")->Result.isError)->toBe(true)
   })
 
   testSync("the default round-trips through its spelling", () =>

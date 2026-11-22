@@ -31,8 +31,13 @@ let toString = ({requests, windowSeconds}: t): string =>
 on anything else, because a limit someone set and mistyped would otherwise be
 silently replaced by one they did not choose.
 */
-let parse = (raw: string): result<t, string> =>
-  switch raw->String.trim->String.split("/")->Array.map(s => s->String.trim->Int.fromString) {
+let parse = (raw: string): result<t, string> => {
+  // Digits only: a number reader takes `1.5` as 1 and `5x` as 5, a limit nobody chose.
+  let whole = (s: string) => {
+    let s = s->String.trim
+    RegExp.test(/^\d+$/, s) ? Int.fromString(s) : None
+  }
+  switch raw->String.trim->String.split("/")->Array.map(whole) {
   | [Some(requests), Some(windowSeconds)] if requests > 0 && windowSeconds > 0 =>
     Ok({requests, windowSeconds})
   | _ =>
@@ -40,3 +45,4 @@ let parse = (raw: string): result<t, string> =>
       `${envKey}: "${raw}" is not a limit — write requests/seconds, such as ${default->toString}`,
     )
   }
+}

@@ -14,7 +14,13 @@ function toString(param) {
 }
 
 function parse(raw) {
-  let match = raw.trim().split("/").map(s => Stdlib_Int.fromString(s.trim(), undefined));
+  let whole = s => {
+    let s$1 = s.trim();
+    if (/^\d+$/.test(s$1)) {
+      return Stdlib_Int.fromString(s$1, undefined);
+    }
+  };
+  let match = raw.trim().split("/").map(whole);
   if (match.length === 2) {
     let requests = match[0];
     if (requests !== undefined) {
