@@ -127,3 +127,37 @@ let toJson = (c: config): JSON.t => {
 }
 
 let configEntry = (c: config): (string, JSON.t) => (configKey, toJson(c))
+
+// ── As a file of its own ────────────────────────────────────────────────────
+//
+// A platform that knows the doors when it writes `config.json` writes the key
+// above. One that does not — on AWS the doors belong to a plugin stack, deployed
+// after the shell's configuration — says where a file with the same settings
+// will be, and the plugin stack writes it there.
+
+/** The file beside `config.json`. */
+let fileName = "self-registration.json"
+
+/** The key of `config.json` naming where the file is. */
+let urlKey = "selfRegistrationUrl"
+
+let url = "/" ++ fileName
+
+let urlEntry = (): (string, JSON.t) => (urlKey, JSON.Encode.string(url))
+
+/** Where a visitor's requests go when the doors are not on the platform's own
+    API, and the key that identifies the deployment there. */
+type door = {endpoint: string, apiKey: string}
+
+/** The file's content: the settings where the plugin has the two doors, and where
+    the doors are. A plugin with fields for visitors but no door to sign up at
+    writes only where they are, which a shell reads as no sign-up. */
+let fileJson = (c: option<config>, ~door: door): JSON.t => {
+  let entries = switch c->Option.map(toJson) {
+  | Some(Object(entries)) => entries->Dict.copy
+  | _ => Dict.make()
+  }
+  entries->Dict.set("endpoint", JSON.Encode.string(door.endpoint))
+  entries->Dict.set("apiKey", JSON.Encode.string(door.apiKey))
+  JSON.Encode.object(entries)
+}

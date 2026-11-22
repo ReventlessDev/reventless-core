@@ -126,6 +126,29 @@ function configEntry(c) {
   ];
 }
 
+let fileName = "self-registration.json";
+
+let urlKey = "selfRegistrationUrl";
+
+let url = "/" + fileName;
+
+function urlEntry() {
+  return [
+    urlKey,
+    url
+  ];
+}
+
+function fileJson(c, door) {
+  let match = Stdlib_Option.map(c, toJson);
+  let entries = match !== undefined ? (
+      typeof match === "object" && match !== null && !Array.isArray(match) ? Object.assign({}, match) : ({})
+    ) : ({});
+  entries["endpoint"] = door.endpoint;
+  entries["apiKey"] = door.apiKey;
+  return entries;
+}
+
 export {
   configKey,
   marked,
@@ -136,5 +159,10 @@ export {
   fromStructures,
   toJson,
   configEntry,
+  fileName,
+  urlKey,
+  url,
+  urlEntry,
+  fileJson,
 }
 /* Role-Reventless Not a pure module */

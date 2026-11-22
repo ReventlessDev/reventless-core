@@ -155,4 +155,29 @@ describe("Platform_SelfRegistration", () => {
       )->Option.flatMap(c => c.policy),
     ))->toEqual((None, None))
   )
+
+  testSync("as a file, the settings say where the door for visitors is", () =>
+    expect(
+      Platform_SelfRegistration.fileJson(
+        Some({
+          start: "Registration_SignUp",
+          complete: "Registration_CompleteRegistration",
+          roles: ["Shopper"],
+          initially: "closed",
+        }),
+        ~door={endpoint: "https://x.appsync-api.eu-west-1.amazonaws.com/graphql", apiKey: "da2-k"},
+      )->JSON.stringify,
+    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"],"initially":"closed","endpoint":"https://x.appsync-api.eu-west-1.amazonaws.com/graphql","apiKey":"da2-k"}`)
+  )
+
+  testSync(
+    "a plugin with no door to sign up at writes only where its fields for visitors are",
+    () =>
+      expect(
+        Platform_SelfRegistration.fileJson(
+          None,
+          ~door={endpoint: "https://x/graphql", apiKey: "da2-k"},
+        )->JSON.stringify,
+      )->toEqual(`{"endpoint":"https://x/graphql","apiKey":"da2-k"}`),
+  )
 })

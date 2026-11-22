@@ -813,6 +813,9 @@ module MakeWithConfig = (
   // source schema to exist on the plugin's source API).
   let mergedSchemaPushedRef: ref<option<Pulumi.Output.t<unit>>> = ref(None)
 
+  // The host shell's bucket, for a plugin built in the platform's own program.
+  let hostShellBucketRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
   let resolveHookedApi = (): Types.AppSync.api =>
     switch hooksApiRef.contents {
     | Some({val}) => Obj.magic(val)
@@ -2663,7 +2666,11 @@ module MakeWithConfig = (
       }
 
       Pulumi.Pulumi.export("hostShellUrl", distributionUrl)
+      // Where a plugin stack with doors for visitors writes the shell's settings
+      // for signing up, beside `config.json`.
+      Pulumi.Pulumi.export("hostShellBucket", bucketName)
       hostShellUrlRef := distributionUrl
+      hostShellBucketRef := bucketName
     }
 
     // Where a caller records the role they want to act as
@@ -2928,9 +2935,12 @@ module MakeWithConfig = (
         Pulumi.Output.make(Platform_Stack.selfRegistrationInitially())
       ),
     )
+    let fingerprintKey = platformOutput("fingerprintKey", ~local=() =>
+      Platform_Stack.fingerprintKey()
+    )
     PluginRuntime_Builder.registerCapabilityEnv(
       ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
-      platformOutput("fingerprintKey", ~local=() => Platform_Stack.fingerprintKey()),
+      fingerprintKey,
     )
     AppSync_VisitorLimit.configure(anonymousRequestLimit)
     // A plugin stack hosts a narrow API for the fields it declares for visitors.
@@ -2959,6 +2969,63 @@ module MakeWithConfig = (
     // Export plugin outputs (plugin, tasks, eventMappers, extensionPoints) for cross-stack access.
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+
+    // The shell's settings for signing up, written beside its `config.json` by the
+    // stack that has the doors: which mutations start and complete a sign-up, the
+    // roles, how they start, and where the narrow API for visitors is.
+    switch AppSync_VisitorApi.made() {
+    | None => ()
+    | Some(visitors) =>
+      let bucket = platformOutput("hostShellBucket", ~local=() => hostShellBucketRef.contents)
+      let content =
+        (
+          pluginOutputs.id,
+          pluginOutputs.pluginStructure,
+          platformOutput("selfRegistrationInitially", ~local=() =>
+            Pulumi.Output.make(Platform_Stack.selfRegistrationInitially())
+          ),
+          visitors.endpoint,
+          visitors.key,
+        )
+        ->Pulumi.Output.all5
+        ->Pulumi.Output.apply(((id, structure, initially, endpoint, apiKey)) => {
+          let initially = switch Reventless.Admission.initiallyFrom(
+            Some(initially),
+            ~key=Reventless.Admission.initiallyConfigKey,
+            ~default=Reventless.Admission.awsInitially,
+          ) {
+          | Ok(i) => i
+          | Error(message) => JsError.throwWithMessage(message)
+          }
+          ReventlessCore.Platform_SelfRegistration.fileJson(
+            structure->Option.flatMap(s =>
+              ReventlessCore.Platform_SelfRegistration.fromStructures(
+                [(ReventlessCore.Plugin.name(id), s)],
+                ~initially,
+              )
+            ),
+            ~door={endpoint, apiKey},
+          )->JSON.stringify
+        })
+      let _ = PulumiAws.S3.BucketObject.make(
+        ~name="self-registration-json",
+        ~args={
+          bucket: bucket
+          ->Pulumi.Output.apply(name =>
+            name == ""
+              ? JsError.throwWithMessage(
+                  "This plugin has fields for visitors, and the platform stack exports no hostShellBucket to write the shell's settings for them to. Deploy the platform stack again first, with its host shell.",
+                )
+              : name
+          )
+          ->Pulumi.Output.asInput,
+          key: Pulumi.Input.make(ReventlessCore.Platform_SelfRegistration.fileName),
+          content: content->Pulumi.Output.asInput,
+          contentType: Pulumi.Input.make("application/json"),
+          cacheControl: Pulumi.Input.make("no-cache"),
+        },
+      )
+    }
 
     // What the manifest bake compares the read model against. Keyed by the bare
     // plugin name because that is how the Plugin read model keys its rows — the
@@ -3078,18 +3145,55 @@ module MakeWithConfig = (
           stackRef->Pulumi.StackReference.getOutput("objectStores"),
           geocoderPlaceIndex,
           messagingEmailSender,
-          Pulumi.Output.all2((identityProviderId, stashTable)),
+          Pulumi.Output.all4((identityProviderId, stashTable, fingerprintKey, pluginOutputs.id)),
         )
         ->Pulumi.Output.all5
         ->Pulumi.Output.apply((
-          (structure, objectStores, placeIndex, emailSender, (poolId, stash)): (
+          (structure, objectStores, placeIndex, emailSender, (poolId, stash, fingerprint, id)): (
             _,
             option<JSON.t>,
             string,
             string,
-            (string, string),
+            (string, string, string, _),
           ),
         ) => {
+          // ── Who may come to hold a role ────────────────────────────────────
+          //
+          // The check the local platform makes at start, made here at deploy: a
+          // role by invitation needs a door that invites, a self-service one the
+          // capabilities a sign-up uses. A plugin stack hosts the narrow API, so
+          // a door for callers who are not signed in is there.
+          let pluginName = ReventlessCore.Plugin.name(id)
+          let provisionedNow =
+            [
+              emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
+              poolId == "" ? [] : [Reventless.CapabilityNeed.IdentityProvider],
+              stash == "" ? [] : [Reventless.CapabilityNeed.Stash],
+            ]->Array.flat
+          structure->Option.forEach(s => {
+            Reventless.AdmissionCheck.check(
+              ~structures=[(pluginName, s)],
+              ~provisioned=provisionedNow,
+              ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
+              ~adminGroup=Reventless.Role.adminGroup(),
+              ~anonymousDoors=true,
+            )
+            // And what only a public address needs: the guards, all of them.
+            switch AppSync_VisitorGuards.refusal(
+              ~plugin=pluginName,
+              ~roles=AppSync_VisitorGuards.selfServiceRoles(s),
+              {
+                fingerprintKey: fingerprint != "",
+                personCheck: false,
+                boundedSender: false,
+                billAlarm: false,
+              },
+            ) {
+            | Some(why) => JsError.throwWithMessage(why)
+            | None => ()
+            }
+          })
+
           // ── Declared capabilities ──────────────────────────────────────────
           //
           // A slice that names `Geocoding` in `capabilityNeeds` says its

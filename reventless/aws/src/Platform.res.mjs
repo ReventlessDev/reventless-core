@@ -33,6 +33,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "./adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
+import * as AdmissionCheck$Reventless from "@reventlessdev/reventless-spec/src/types/AdmissionCheck.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
@@ -81,6 +82,7 @@ import * as AppSync_VisitorLimit$ReventlessAws from "./components/Api/AppSync_Vi
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
+import * as AppSync_VisitorGuards$ReventlessAws from "./components/Api/AppSync_VisitorGuards.res.mjs";
 import * as AppSync_VisitorSchema$ReventlessAws from "./components/Api/AppSync_VisitorSchema.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -103,6 +105,7 @@ import * as Capability_ObjectStore_S3$ReventlessAws from "./capability/Capabilit
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as PgChangeFeedRelay_Builder$ReventlessAws from "./adapter/Postgres/PgChangeFeedRelay_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as Platform_SelfRegistration$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_SelfRegistration.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
@@ -552,6 +555,9 @@ function MakeWithConfig(Config) {
   };
   let mergedSchemaPushedRef = {
     contents: undefined
+  };
+  let hostShellBucketRef = {
+    contents: Pulumi.output("")
   };
   let resolveHookedApi = () => {
     let match = hooksApiRef.contents;
@@ -1440,7 +1446,9 @@ function MakeWithConfig(Config) {
         Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
       Pulumi$Pulumi.$$export("hostShellUrl", distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellBucket", bucketName);
       hostShellUrlRef.contents = distributionUrl;
+      hostShellBucketRef.contents = bucketName;
     }
     if (Config.splitApi) {
       let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
@@ -1522,7 +1530,8 @@ function MakeWithConfig(Config) {
     let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
-    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey()));
+    let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, fingerprintKey);
     AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
@@ -1536,6 +1545,42 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    let visitors$1 = AppSync_VisitorApi$ReventlessAws.made();
+    if (visitors$1 !== undefined) {
+      let bucket = platformOutput("hostShellBucket", () => hostShellBucketRef.contents);
+      let content = Pulumi.all([
+        pluginOutputs.id,
+        pluginOutputs.pluginStructure,
+        platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())),
+        visitors$1.endpoint,
+        visitors$1.key
+      ]).apply(param => {
+        let id = param[0];
+        let i = Admission$Reventless.initiallyFrom(param[2], Admission$Reventless.initiallyConfigKey, Admission$Reventless.awsInitially);
+        let initially;
+        initially = i.TAG === "Ok" ? i._0 : Stdlib_JsError.throwWithMessage(i._0);
+        return JSON.stringify(Platform_SelfRegistration$ReventlessCore.fileJson(Stdlib_Option.flatMap(param[1], s => Platform_SelfRegistration$ReventlessCore.fromStructures([[
+            Plugin$ReventlessCore.name(id),
+            s
+          ]], initially)), {
+          endpoint: param[3],
+          apiKey: param[4]
+        }));
+      });
+      new (Aws.s3.BucketObject)("self-registration-json", {
+        bucket: bucket.apply(name => {
+          if (name === "") {
+            return Stdlib_JsError.throwWithMessage("This plugin has fields for visitors, and the platform stack exports no hostShellBucket to write the shell's settings for them to. Deploy the platform stack again first, with its host shell.");
+          } else {
+            return name;
+          }
+        }),
+        key: Platform_SelfRegistration$ReventlessCore.fileName,
+        content: content,
+        contentType: "application/json",
+        cacheControl: "no-cache"
+      });
+    }
     let key = structureOffloadKey.contents;
     if (key !== undefined) {
       Pulumi$Pulumi.$$export("pluginStructureRef", pluginOutputs.id.apply(id => Object.fromEntries([
@@ -1590,19 +1635,46 @@ function MakeWithConfig(Config) {
         messagingEmailSender,
         Pulumi.all([
           identityProviderId,
-          stashTable
+          stashTable,
+          fingerprintKey,
+          pluginOutputs.id
         ])
       ]).apply(param => {
         let match = param[4];
+        let fingerprint = match[2];
+        let stash = match[1];
+        let poolId = match[0];
+        let emailSender = param[3];
         let structure = param[0];
+        let pluginName = Plugin$ReventlessCore.name(match[3]);
+        let provisionedNow = [
+          emailSender === "" ? [] : ["Messaging"],
+          poolId === "" ? [] : ["IdentityProvider"],
+          stash === "" ? [] : ["Stash"]
+        ].flat();
+        Stdlib_Option.forEach(structure, s => {
+          AdmissionCheck$Reventless.check([[
+              pluginName,
+              s
+            ]], provisionedNow, OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
+          let why = AppSync_VisitorGuards$ReventlessAws.refusal(pluginName, AppSync_VisitorGuards$ReventlessAws.selfServiceRoles(s), {
+            fingerprintKey: fingerprint !== "",
+            personCheck: false,
+            boundedSender: false,
+            billAlarm: false
+          });
+          if (why !== undefined) {
+            return Stdlib_JsError.throwWithMessage(why);
+          }
+        });
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
         ]), [
           param[2] === "" ? [] : ["Geocoding"],
-          param[3] === "" ? [] : ["Messaging"],
-          match[0] === "" ? [] : ["IdentityProvider"],
-          match[1] === "" ? [] : ["Stash"]
+          emailSender === "" ? [] : ["Messaging"],
+          poolId === "" ? [] : ["IdentityProvider"],
+          stash === "" ? [] : ["Stash"]
         ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {
@@ -2077,6 +2149,9 @@ function Make($star) {
   };
   let mergedSchemaPushedRef = {
     contents: undefined
+  };
+  let hostShellBucketRef = {
+    contents: Pulumi.output("")
   };
   let resolveHookedApi = () => {
     let match = hooksApiRef.contents;
@@ -2942,7 +3017,9 @@ function Make($star) {
         Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
       Pulumi$Pulumi.$$export("hostShellUrl", distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellBucket", bucketName);
       hostShellUrlRef.contents = distributionUrl;
+      hostShellBucketRef.contents = bucketName;
     }
     let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
     Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, pool.activeRoleTable, pool.poolId, pool.poolArn, undefined, {});
@@ -3022,7 +3099,8 @@ function Make($star) {
     let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
-    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey()));
+    let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable, fingerprintKey);
     AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
@@ -3036,6 +3114,42 @@ function Make($star) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    let visitors$1 = AppSync_VisitorApi$ReventlessAws.made();
+    if (visitors$1 !== undefined) {
+      let bucket = platformOutput("hostShellBucket", () => hostShellBucketRef.contents);
+      let content = Pulumi.all([
+        pluginOutputs.id,
+        pluginOutputs.pluginStructure,
+        platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())),
+        visitors$1.endpoint,
+        visitors$1.key
+      ]).apply(param => {
+        let id = param[0];
+        let i = Admission$Reventless.initiallyFrom(param[2], Admission$Reventless.initiallyConfigKey, Admission$Reventless.awsInitially);
+        let initially;
+        initially = i.TAG === "Ok" ? i._0 : Stdlib_JsError.throwWithMessage(i._0);
+        return JSON.stringify(Platform_SelfRegistration$ReventlessCore.fileJson(Stdlib_Option.flatMap(param[1], s => Platform_SelfRegistration$ReventlessCore.fromStructures([[
+            Plugin$ReventlessCore.name(id),
+            s
+          ]], initially)), {
+          endpoint: param[3],
+          apiKey: param[4]
+        }));
+      });
+      new (Aws.s3.BucketObject)("self-registration-json", {
+        bucket: bucket.apply(name => {
+          if (name === "") {
+            return Stdlib_JsError.throwWithMessage("This plugin has fields for visitors, and the platform stack exports no hostShellBucket to write the shell's settings for them to. Deploy the platform stack again first, with its host shell.");
+          } else {
+            return name;
+          }
+        }),
+        key: Platform_SelfRegistration$ReventlessCore.fileName,
+        content: content,
+        contentType: "application/json",
+        cacheControl: "no-cache"
+      });
+    }
     let key = structureOffloadKey.contents;
     if (key !== undefined) {
       Pulumi$Pulumi.$$export("pluginStructureRef", pluginOutputs.id.apply(id => Object.fromEntries([
@@ -3090,19 +3204,46 @@ function Make($star) {
         messagingEmailSender,
         Pulumi.all([
           identityProviderId,
-          stashTable
+          stashTable,
+          fingerprintKey,
+          pluginOutputs.id
         ])
       ]).apply(param => {
         let match = param[4];
+        let fingerprint = match[2];
+        let stash = match[1];
+        let poolId = match[0];
+        let emailSender = param[3];
         let structure = param[0];
+        let pluginName = Plugin$ReventlessCore.name(match[3]);
+        let provisionedNow = [
+          emailSender === "" ? [] : ["Messaging"],
+          poolId === "" ? [] : ["IdentityProvider"],
+          stash === "" ? [] : ["Stash"]
+        ].flat();
+        Stdlib_Option.forEach(structure, s => {
+          AdmissionCheck$Reventless.check([[
+              pluginName,
+              s
+            ]], provisionedNow, OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
+          let why = AppSync_VisitorGuards$ReventlessAws.refusal(pluginName, AppSync_VisitorGuards$ReventlessAws.selfServiceRoles(s), {
+            fingerprintKey: fingerprint !== "",
+            personCheck: false,
+            boundedSender: false,
+            billAlarm: false
+          });
+          if (why !== undefined) {
+            return Stdlib_JsError.throwWithMessage(why);
+          }
+        });
         let missing = CapabilityNeed$Reventless.unmet(Stdlib_Option.getOr(Stdlib_Option.flatMap(structure, s => s.requiredCapabilities), []).map(d => [
           d.capability,
           d.component
         ]), [
           param[2] === "" ? [] : ["Geocoding"],
-          param[3] === "" ? [] : ["Messaging"],
-          match[0] === "" ? [] : ["IdentityProvider"],
-          match[1] === "" ? [] : ["Stash"]
+          emailSender === "" ? [] : ["Messaging"],
+          poolId === "" ? [] : ["IdentityProvider"],
+          stash === "" ? [] : ["Stash"]
         ].flat());
         if (missing.length !== 0) {
           Stdlib_JsError.throwWithMessage(CapabilityNeed$Reventless.unmetMessage(missing) + Belt_SetString.toArray(Belt_SetString.fromArray(missing.map(u => {

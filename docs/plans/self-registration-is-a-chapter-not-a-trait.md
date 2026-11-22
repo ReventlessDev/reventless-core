@@ -901,6 +901,29 @@ and open-roles calls there and everything else to the platform API.
 **Exit:** a test per refusal on the AWS path, the guards' one included; the written key; the
 shell's test that the three calls go to the narrow address with the key and no signed-in token.
 
+*As built (2026-11-22), not yet deployed. One thing differs from the step as written:* the
+narrow API's address and key belong to a plugin stack, which is deployed after the platform
+stack has written `config.json`, so the platform cannot write them there. Decided 2026-11-22:
+`config.json` names where the settings will be (`selfRegistrationUrl`, on every deployed
+platform), and the plugin stack that has the doors writes that file,
+`self-registration.json`, beside `config.json` in the host shell's bucket (the platform stack
+exports `hostShellBucket`). The file is the `selfRegistration` key's content plus `endpoint`
+and `apiKey`. A shell reads a file that is not there as no sign-up. The local platform keeps
+writing the key inline.
+
+- **The admission check** runs in the plugin stack's deploy, as the local platform's does at
+  start, with a door for visitors counted as there.
+- **The guards' refusal** (`AppSync_VisitorGuards`): a plugin declaring a self-service role is
+  refused unless the deployment has a fingerprint key, the person check
+  ([DW10](#dw10-a-check-that-a-person-is-signing-up)), the bounded sender
+  ([DW11](#dw11-a-bounded-mail-sender)) and the bill alarm
+  ([DW12](#dw12-an-alarm-on-the-bill)), naming each that is missing. The last three are not
+  built, so today every self-service role is refused on AWS, by this check instead of by the
+  missing door.
+- **The shell** (`reventless-ui`) fetches the file at boot when `config.json` has no inline
+  key, and sends the start, complete and open-roles calls to `endpoint` with the key and no
+  signed-in token; the administrator's switch stays on the platform API.
+
 #### DW9: the example on AWS, and the walk
 
 The hybrid shop's AWS root hosts the registration plugin, starting closed, with

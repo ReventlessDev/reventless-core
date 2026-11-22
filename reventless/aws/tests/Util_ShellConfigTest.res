@@ -15,7 +15,10 @@ let get = (out, key) => out->Dict.get(key)->Option.getOr(JSON.Encode.null)
 describe("Util_ShellConfig.fields — viewModes", () => {
   testSync("unset ⇒ no viewModes key and the computed set is untouched", () => {
     let out = Util_ShellConfig.fields(~computed)
-    expect(out->Dict.keysToArray)->toEqual(["apiEndpoint", "region"])
+    // Beside the computed keys, only where the settings for signing up will be:
+    // named for every deployment, since this deploy cannot know whether a plugin
+    // with doors for visitors follows.
+    expect(out->Dict.keysToArray)->toEqual(["apiEndpoint", "region", "selfRegistrationUrl"])
     expect(out->Dict.get("viewModes")->Option.isNone)->toBe(true)
   })
 
@@ -236,6 +239,7 @@ describe("Util_ShellConfig.fields — environment", () => {
       "region",
       "environment",
       "environmentPurpose",
+      "selfRegistrationUrl",
     ])
     expect((out->get("environment"), out->get("environmentPurpose")))->toEqual((
       JSON.Encode.string("test"),
@@ -275,7 +279,13 @@ describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
         ("accessTiers", JSON.Encode.array([JSON.Encode.string("public")])),
       ]),
     )
-    expect(out->Dict.keysToArray)->toEqual(["apiEndpoint", "region", "platformName", "accessTiers"])
+    expect(out->Dict.keysToArray)->toEqual([
+      "apiEndpoint",
+      "region",
+      "selfRegistrationUrl",
+      "platformName",
+      "accessTiers",
+    ])
     expect(out->get("platformName"))->toEqual(JSON.Encode.string("Online Shop"))
   })
 

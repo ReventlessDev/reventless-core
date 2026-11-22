@@ -98,6 +98,16 @@ let fields = (
   // deploy's own role mapping.
   ReventlessCore.Platform_AdminGroup.configEntry()->Option.forEach(((k, v)) => out->Dict.set(k, v))
 
+  {
+    // Where the settings for signing up will be, once a plugin stack with doors for
+    // visitors is deployed: it writes the file, after this one. Named for every
+    // deployment, because this deploy cannot know whether one will; a shell reads a
+    // file that is not there as no sign-up.
+
+    let (k, v) = ReventlessCore.Platform_SelfRegistration.urlEntry()
+    out->Dict.set(k, v)
+  }
+
   // The shell imports the module this key names, and imports nothing when the
   // key is absent — so writing the object without naming it here would ship a
   // file nothing fetches. Computed rather than left to `shellConfig` for the

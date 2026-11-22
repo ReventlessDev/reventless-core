@@ -9,6 +9,7 @@ import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
+import * as Platform_SelfRegistration$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_SelfRegistration.res.mjs";
 
 let journeyManifestsKey = "journeyManifestUrls";
 
@@ -62,6 +63,8 @@ function fields(computed, environment, viewModes, bakedManifest, uiSlotsFile, sh
   Stdlib_Option.forEach(Platform_AdminGroup$ReventlessCore.configEntry(), param => {
     out[param[0]] = param[1];
   });
+  let match = Platform_SelfRegistration$ReventlessCore.urlEntry();
+  out[match[0]] = match[1];
   Stdlib_Option.forEach(uiSlotsFile, param => {
     out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
   });
