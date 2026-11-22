@@ -50,17 +50,26 @@ let policy = (~id: string, arn: string): string => {
 type dataSource = {name: Pulumi.Output.t<string>}
 let dataSourceRef: ref<option<dataSource>> = ref(None)
 
+/** Whether the plugin being deployed builds a command function: where it has a
+    state-change slice. */
+let buildsCommandFunction = () =>
+  ReventlessCore.Plugin_Helpers.currentStructureRef.contents->Option.mapOr(false, s =>
+    s.stateChangeSlices->Array.length > 0
+  )
+
 /** The narrow API's data source for the plugin's command function, which counts:
-    made once, with a role that may invoke that function. None while the plugin
-    has no such function. */
+    made once, with a role that may invoke that function. The function is built
+    after the resolvers that need this, so its ARN is waited for. None where the
+    plugin builds no such function. */
 let dataSource = (
   ~visitors: AppSync_VisitorApi.made,
   ~opts: Pulumi.CustomResourceOptions.t,
 ): option<dataSource> =>
-  switch (dataSourceRef.contents, DcbCommandFunctions.functions->Array.get(0)) {
+  switch (dataSourceRef.contents, buildsCommandFunction()) {
   | (Some(made), _) => Some(made)
-  | (None, None) => None
-  | (None, Some(fn)) =>
+  | (None, false) => None
+  | (None, true) =>
+    let functionArn = DcbCommandFunctions.firstArn()
     let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
       ~name="VisitorLimitDS",
       ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
@@ -75,7 +84,7 @@ let dataSource = (
     let _invoke = PulumiAws.IAM.RolePolicy.make(
       ~name="VisitorLimitDS",
       ~args={
-        policy: fn.functionArn
+        policy: functionArn
         ->Pulumi.Output.apply(arn => {
           open PulumiAws.PolicyDocument
           PulumiAws.PolicyDocument.make(
@@ -102,7 +111,7 @@ let dataSource = (
           type_: AWS_LAMBDA,
           apiId: visitors.api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
           lambdaConfig: {
-            PulumiAws.AppSync.DataSource.functionArn: fn.functionArn->Pulumi.Output.asInput,
+            PulumiAws.AppSync.DataSource.functionArn: functionArn->Pulumi.Output.asInput,
           }->Pulumi.Input.make,
           serviceRoleArn: role.arn->Pulumi.Output.asInput,
         },

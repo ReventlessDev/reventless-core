@@ -3,12 +3,14 @@
 import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../../adapter/AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
 import * as AppSync_VisitorCode$ReventlessAws from "./AppSync_VisitorCode.res.mjs";
 import * as DcbCommandFunctions$ReventlessAws from "../../adapter/Runtime/DcbCommandFunctions.res.mjs";
@@ -51,18 +53,23 @@ let dataSourceRef = {
   contents: undefined
 };
 
+function buildsCommandFunction() {
+  return Stdlib_Option.mapOr(Plugin_Helpers$ReventlessCore.currentStructureRef.contents, false, s => s.stateChangeSlices.length !== 0);
+}
+
 function dataSource(visitors, opts) {
   let match = dataSourceRef.contents;
-  let match$1 = DcbCommandFunctions$ReventlessAws.functions[0];
+  let match$1 = buildsCommandFunction();
   if (match !== undefined) {
     return match;
   }
-  if (match$1 === undefined) {
+  if (!match$1) {
     return;
   }
+  let functionArn = DcbCommandFunctions$ReventlessAws.firstArn();
   let role = IAM$PulumiAws.Role.makeWithDefaultPolicy("VisitorLimitDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("VisitorLimitDS", "Plugin", "Identity", "plugin", undefined, undefined, undefined, undefined), opts);
   new (Aws.iam.RolePolicy)("VisitorLimitDS", {
-    policy: match$1.functionArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "VisitorLimitDSPolicy", [{
+    policy: functionArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "VisitorLimitDSPolicy", [{
         Sid: "AllowAskingTheLimit",
         Effect: "Allow",
         Action: "lambda:InvokeFunction",
@@ -75,7 +82,7 @@ function dataSource(visitors, opts) {
       type: "AWS_LAMBDA",
       apiId: Output$Pulumi.flatMap(visitors.api, api => api.id),
       lambdaConfig: {
-        functionArn: match$1.functionArn
+        functionArn: functionArn
       },
       serviceRoleArn: role.arn
     }, opts).name
@@ -180,6 +187,7 @@ export {
   actions,
   policy,
   dataSourceRef,
+  buildsCommandFunction,
   dataSource,
   guardedRef,
   guarding,

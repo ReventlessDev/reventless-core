@@ -15,6 +15,8 @@ let waiters = [];
 
 let ungated = [];
 
+let firstWaiters = [];
+
 function grant(invoker, fn) {
   new (Aws.iam.RolePolicy)(invoker.name + `-invoke-` + fn.name, {
     policy: fn.functionArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, invoker.name + `-invoke-` + fn.name, [{
@@ -49,6 +51,10 @@ function register(queueUrl, name, lambda) {
     functionArn: fn_functionArn
   };
   functions.push(fn);
+  if (functions.length === 1) {
+    firstWaiters.forEach(resolve => resolve(fn_functionArn));
+    firstWaiters.splice(0, firstWaiters.length);
+  }
   invokers.forEach(invoker => grant(invoker, fn));
   settle(queueUrl, fn_functionName);
 }
@@ -100,12 +106,24 @@ function functionFor(queueUrl) {
   }
 }
 
+function firstArn() {
+  let fn = functions[0];
+  if (fn !== undefined) {
+    return fn.functionArn;
+  } else {
+    return Pulumi.output(new Promise((resolve, param) => {
+      firstWaiters.push(resolve);
+    }));
+  }
+}
+
 export {
   functions,
   settled,
   invokers,
   waiters,
   ungated,
+  firstWaiters,
   grant,
   settle,
   register,
@@ -115,5 +133,6 @@ export {
   settledFor,
   registered,
   functionFor,
+  firstArn,
 }
 /* @pulumi/aws Not a pure module */

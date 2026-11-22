@@ -32,6 +32,9 @@ let waiters: array<waiter> = []
 // while the plugin is being built, before the plugin hands over its gate, so the
 // next gate is that plugin's.
 let ungated: array<Pulumi.Output.t<unit> => unit> = []
+// Waiting for the first sync command function's ARN, which is built inside the
+// plugin's callback, after the resolvers that ask for it.
+let firstWaiters: array<Pulumi.Output.t<string> => unit> = []
 
 let grant = (invoker: invoker, fn: commandFunction) => {
   open PulumiAws.PolicyDocument
@@ -76,6 +79,10 @@ let register = (~queueUrl, ~name, ~lambda: Pulumi.Output.t<PulumiAws.Lambda.Func
     functionArn: lambda->Pulumi.Output.flatMap(l => l.arn),
   }
   functions->Array.push(fn)
+  if functions->Array.length == 1 {
+    firstWaiters->Array.forEach(resolve => resolve(fn.functionArn))
+    firstWaiters->Array.splice(~start=0, ~remove=firstWaiters->Array.length, ~insert=[])
+  }
   invokers->Array.forEach(invoker => grant(invoker, fn))
   settle(queueUrl, fn.functionName)
 }
@@ -121,4 +128,12 @@ let functionFor = (queueUrl: Pulumi.Output.t<string>): Pulumi.Output.t<string> =
     Promise.make((resolve, _) => ungated->Array.push(inputs => resolve(inputs)))
     ->outputOfPromise
     ->Pulumi.Output.flatMap(() => registered(queueUrl))
+  }
+
+/** The ARN of the first sync command function this deploy builds, once it is built.
+    Asked only by a plugin that builds one: otherwise it never resolves. */
+let firstArn = (): Pulumi.Output.t<string> =>
+  switch functions->Array.get(0) {
+  | Some(fn) => fn.functionArn
+  | None => Promise.make((resolve, _) => firstWaiters->Array.push(resolve))->outputOfPromise
   }
