@@ -40,6 +40,8 @@ type made = {
   endpoint: Pulumi.Output.t<string>,
   /** What it carries as `x-api-key`. Public: it is in the shell's configuration. */
   key: Pulumi.Output.t<string>,
+  /** Resolved once the schema is active. */
+  schemaPushed: Pulumi.Output.t<unit>,
 }
 
 let madeRef: ref<option<made>> = ref(None)
@@ -53,9 +55,14 @@ let keyExpiry = (now: Date.t): string => {
   Date.fromTime(day +. 364. *. 86400000.)->Date.toISOString->String.slice(~start=0, ~end=19) ++ "Z"
 }
 
-/** The API, its role and its key. The schema is pushed by the caller, which
-    knows when the plugin's fragment is complete. */
-let make = (~name: string, ~opts: Pulumi.ComponentResource.options): made => {
+/** The API, its role and its key. `pushSchema` puts the schema on the API, by
+    its id, and resolves once it is active; the key is made after it, since AppSync
+    refuses a key while a schema is being altered. */
+let make = (
+  ~name: string,
+  ~opts: Pulumi.ComponentResource.options,
+  ~pushSchema: string => promise<unit>,
+): made => {
   let customOpts: Pulumi.CustomResourceOptions.t = {parent: ?opts.parent}
   let role = PulumiAws.IAM.Role.make(
     ~name=`${name}-appsync-role`,
@@ -100,10 +107,14 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): made => {
     },
     ~opts=Some(customOpts),
   )
+  let schemaPushed =
+    api.id->Pulumi.Output.flatMap(apiId => pushSchema(apiId)->Pulumi.Output.fromPromise)
   let key = PulumiAws.AppSync.ApiKey.make(
     ~name=`${name}-key`,
     ~args={
-      apiId: api.id->Pulumi.Output.asInput,
+      apiId: Pulumi.Output.all2((api.id, schemaPushed))
+      ->Pulumi.Output.apply(((apiId, ())) => apiId)
+      ->Pulumi.Output.asInput,
       description: "Identifies the deployment to its door for visitors; renewed by each deploy"->Pulumi.Input.make,
       expires: keyExpiry(Date.make())->Pulumi.Input.make,
     },
@@ -114,6 +125,7 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): made => {
     role: role->Pulumi.Output.make,
     endpoint: api.uris->Pulumi.Output.apply(uris => uris.graphQL),
     key: key.key,
+    schemaPushed,
   }
   madeRef := Some(made)
   made

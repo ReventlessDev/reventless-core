@@ -936,23 +936,25 @@ module MakeWithConfig = (
       // made here, at the top level, and its resolvers wait for its schema too.
       switch AppSync_VisitorApi.fragmentRef.contents {
       | Some(visitorFragment) if !AppSync_VisitorSchema.isEmpty(visitorFields) =>
-        let visitors = AppSync_VisitorApi.make(~name=`${name}Visitors`, ~opts={})
-        AppSync_VisitorLimit.makeCeiling(~name=`${name}Visitors`, ~visitors, ~opts={})
         let visitorSdl = AppSync_VisitorSchema.sdl(visitorFragment)
-        let visitorsPushed = visitors.api->Pulumi.Output.flatMap(api =>
-          api.id->Pulumi.Output.flatMap(apiId => {
+        let visitors = AppSync_VisitorApi.make(
+          ~name=`${name}Visitors`,
+          ~opts={},
+          ~pushSchema=async apiId => {
             log.info(
               ~comp="preResolversSchemaHook",
               `Pushing the schema for visitors of ${name}@${version} to API ${apiId}`,
             )
             let client = AppSync_Adapter.getClient()
-            client
-            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: visitorSdl})
-            ->Promise.then(async _ => await AppSync_Adapter.waitForSchemaActive(client, apiId))
-            ->Pulumi.Output.fromPromise
-          })
+            let _ = await client->AppSync_Adapter.startSchemaCreationRetrying({
+              apiId,
+              definition: visitorSdl,
+            })
+            let _ = await AppSync_Adapter.waitForSchemaActive(client, apiId)
+          },
         )
-        Pulumi.Output.all2((pushed, visitorsPushed))->Pulumi.Output.apply(_ => ())
+        AppSync_VisitorLimit.makeCeiling(~name=`${name}Visitors`, ~visitors, ~opts={})
+        Pulumi.Output.all2((pushed, visitors.schemaPushed))->Pulumi.Output.apply(_ => ())
       | _ => pushed
       }
     },

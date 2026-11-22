@@ -628,20 +628,20 @@ function MakeWithConfig(Config) {
     if (AppSync_VisitorSchema$ReventlessAws.isEmpty(visitorFields)) {
       return pushed;
     }
-    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
-    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
-    let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
+    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {}, async apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+      await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: visitorSdl
-      }).then(async () => await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined));
-    }));
+      });
+      await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+    });
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     return Pulumi.all([
       pushed,
-      visitorsPushed
+      visitors.schemaPushed
     ]).apply(param => {});
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => adminBarrier;
@@ -2255,20 +2255,20 @@ function Make($star) {
     if (AppSync_VisitorSchema$ReventlessAws.isEmpty(visitorFields)) {
       return pushed;
     }
-    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
-    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
-    let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
+    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {}, async apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+      await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: visitorSdl
-      }).then(async () => await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined));
-    }));
+      });
+      await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+    });
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
     return Pulumi.all([
       pushed,
-      visitorsPushed
+      visitors.schemaPushed
     ]).apply(param => {});
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => adminBarrier;

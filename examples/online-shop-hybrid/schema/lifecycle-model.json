@@ -341,7 +341,7 @@
     "level": "Collection",
     "allowedStates": [],
     "targets": [],
-    "scenarios": 2
+    "scenarios": 3
   },
   {
     "component": "RegistrationPolicy",
