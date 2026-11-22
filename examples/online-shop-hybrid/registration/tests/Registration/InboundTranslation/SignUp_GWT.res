@@ -77,4 +77,43 @@ describe("SignUp InboundTranslationSlice", () => {
   test("starting a registration reaches no capability", () =>
     whenInput({email: aliceAddress})->thenNothingSent
   )
+
+  // The deployment checks that a person sent the request before anything is
+  // relayed. This check knows one good token.
+  let checking = fakes(
+    ~personCheck={
+      verify: async (~token) => token == "person" ? Ok() : Error(Rejected("Turnstile said no")),
+    },
+    (),
+  )
+
+  test("a sign-up without the check's token relays nothing", () =>
+    whenInput({email: aliceAddress}, ~fakes=checking)->thenNotUnderstood(
+      ReventlessRegistration.SignUp_Translation.personCheckRejected,
+    )
+  )
+
+  test("a sign-up whose token does not pass relays nothing", () =>
+    whenInput({email: aliceAddress, personCheck: "script"}, ~fakes=checking)->thenNotUnderstood(
+      ReventlessRegistration.SignUp_Translation.personCheckRejected,
+    )
+  )
+
+  test("a sign-up whose token passes registers", () =>
+    whenInput({email: aliceAddress, personCheck: "person"}, ~fakes=checking)->thenRegisters(
+      `${aliceId}|${aliceId}|${shopperName}`,
+    )
+  )
+
+  // Refused rather than let through, and said so: a check that is down must not
+  // open the door to scripts, nor tell a person to wait for mail that never comes.
+  test("a check that cannot be asked relays nothing", () =>
+    whenInput(
+      {email: aliceAddress, personCheck: "person"},
+      ~fakes=fakes(
+        ~personCheck=Reventless.PersonCheck.unavailable(~reason="Turnstile cannot be reached"),
+        (),
+      ),
+    )->thenNotUnderstood(ReventlessRegistration.SignUp_Translation.personCheckUnavailable)
+  )
 })

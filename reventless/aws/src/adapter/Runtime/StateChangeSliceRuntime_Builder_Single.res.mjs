@@ -14,6 +14,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as VisitorLimit_Ops$ReventlessAws from "./VisitorLimit_Ops.res.mjs";
+import * as PersonCheckMetric$ReventlessAws from "../PersonCheck/PersonCheckMetric.res.mjs";
 import * as AppSync_VisitorApi$ReventlessAws from "../../components/Api/AppSync_VisitorApi.res.mjs";
 import * as DcbCommandFunctions$ReventlessAws from "./DcbCommandFunctions.res.mjs";
 import * as AppSync_VisitorLimit$ReventlessAws from "../../components/Api/AppSync_VisitorLimit.res.mjs";
@@ -135,7 +136,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       subnetIds: pgSelection.subnetIds,
       securityGroupIds: [sgId]
     })) : undefined;
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "StateChangeSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, undefined, vpcConfig, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "StateChangeSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, PersonCheckMetric$ReventlessAws.metricNames(), vpcConfig, opts);
   if (isAsync) {
     DcbCommandFunctions$ReventlessAws.noFunction(queue.id);
   } else {

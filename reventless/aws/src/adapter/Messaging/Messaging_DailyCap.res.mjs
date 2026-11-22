@@ -100,7 +100,8 @@ function forSlice(capabilities, slice) {
       stash: capabilities.stash,
       text: capabilities.text,
       devices: capabilities.devices,
-      selfRegistrationInitially: capabilities.selfRegistrationInitially
+      selfRegistrationInitially: capabilities.selfRegistrationInitially,
+      personCheck: capabilities.personCheck
     };
   } else {
     return capabilities;

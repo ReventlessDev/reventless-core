@@ -7,9 +7,10 @@ import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.r
 import * as Secrets$Reventless from "@reventlessdev/reventless-spec/src/semantic/Secrets.res.mjs";
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Messaging$Reventless from "@reventlessdev/reventless-spec/src/semantic/Messaging.res.mjs";
+import * as PersonCheck$Reventless from "@reventlessdev/reventless-spec/src/semantic/PersonCheck.res.mjs";
 import * as IdentityProvider$Reventless from "@reventlessdev/reventless-spec/src/semantic/IdentityProvider.res.mjs";
 
-function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, selfRegistrationInitiallyOpt, tell, param) {
+function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, token, hash, secrets, stashedOpt, stash, textOpt, selfRegistrationInitiallyOpt, personCheckOpt, tell, param) {
   let channels = channelsOpt !== undefined ? channelsOpt : [
       "Email",
       "Sms"
@@ -18,6 +19,7 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
   let stashed = stashedOpt !== undefined ? stashedOpt : [];
   let text = textOpt !== undefined ? textOpt : Text$Reventless.sourceOnly;
   let selfRegistrationInitially = selfRegistrationInitiallyOpt !== undefined ? selfRegistrationInitiallyOpt : Admission$Reventless.localInitially;
+  let personCheck = personCheckOpt !== undefined ? personCheckOpt : PersonCheck$Reventless.alwaysPasses;
   let log = [];
   let geocode$1 = async text => {
     log.push({
@@ -204,7 +206,8 @@ function make(geocode, send, channelsOpt, pushServicesOpt, createPrincipal, toke
     stash: capabilities_stash,
     text: text,
     devices: capabilities_devices,
-    selfRegistrationInitially: selfRegistrationInitially
+    selfRegistrationInitially: selfRegistrationInitially,
+    personCheck: personCheck
   };
   return {
     capabilities: capabilities,
@@ -355,6 +358,8 @@ let Secrets;
 
 let Stash;
 
+let PersonCheck;
+
 let Text;
 
 export {
@@ -364,6 +369,7 @@ export {
   IdentityProvider,
   Secrets,
   Stash,
+  PersonCheck,
   Text,
   make,
   toJson,

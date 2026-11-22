@@ -1917,7 +1917,8 @@ module MakeWithConfig = (
         | Geocoding
         | Messaging
         | IdentityProvider
-        | Stash =>
+        | Stash
+        | PersonCheck =>
           None
         }
       )
@@ -2976,12 +2977,24 @@ module MakeWithConfig = (
       ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
       fingerprintKey,
     )
+    // The person check's secret, for the doors; its public key goes to the shell.
+    let personCheckSecret = platformOutput("personCheckSecret", ~local=() =>
+      Platform_Stack.personCheckSecret()
+    )
+    let personCheckSiteKey = platformOutput("personCheckSiteKey", ~local=() =>
+      Pulumi.Output.make(Platform_Stack.personCheckSiteKey())
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      Reventless.PersonCheck.secretEnvKey,
+      personCheckSecret,
+    )
     AppSync_VisitorLimit.configure(anonymousRequestLimit)
     // A plugin stack hosts a narrow API for the fields it declares for visitors.
     AppSync_VisitorApi.host()
     module P = unpack(plugin)
     let pluginComponent = P.make()
     ReventlessCore.Plugin_Helpers.clearOffload()
+    PersonCheckAlarm.make()
     // Where a visitor's request goes and what identifies the deployment to it:
     // read by the step that writes the shell's configuration.
     switch AppSync_VisitorApi.made() {
@@ -3020,9 +3033,10 @@ module MakeWithConfig = (
           ),
           visitors.endpoint,
           visitors.key,
+          personCheckSiteKey,
         )
-        ->Pulumi.Output.all5
-        ->Pulumi.Output.apply(((id, structure, initially, endpoint, apiKey)) => {
+        ->Pulumi.Output.all6
+        ->Pulumi.Output.apply(((id, structure, initially, endpoint, apiKey, siteKey)) => {
           let initially = switch Reventless.Admission.initiallyFrom(
             Some(initially),
             ~key=Reventless.Admission.initiallyConfigKey,
@@ -3039,6 +3053,7 @@ module MakeWithConfig = (
               )
             ),
             ~door={endpoint, apiKey},
+            ~personCheck=?siteKey == "" ? None : Some({siteKey: siteKey}),
           )->JSON.stringify
         })
       let _ = PulumiAws.S3.BucketObject.make(
@@ -3185,7 +3200,7 @@ module MakeWithConfig = (
             fingerprintKey,
             pluginOutputs.id,
             messagingConfigurationSet,
-            billAlarm,
+            Pulumi.Output.all3((billAlarm, personCheckSiteKey, personCheckSecret)),
           )),
         )
         ->Pulumi.Output.all5
@@ -3195,8 +3210,14 @@ module MakeWithConfig = (
             objectStores,
             placeIndex,
             emailSender,
-            (poolId, stash, fingerprint, id, configurationSet, bill),
-          ): (_, option<JSON.t>, string, string, (string, string, string, _, string, string)),
+            (poolId, stash, fingerprint, id, configurationSet, (bill, checkSiteKey, checkSecret)),
+          ): (
+            _,
+            option<JSON.t>,
+            string,
+            string,
+            (string, string, string, _, string, (string, string, string)),
+          ),
         ) => {
           // ── Who may come to hold a role ────────────────────────────────────
           //
@@ -3205,11 +3226,13 @@ module MakeWithConfig = (
           // capabilities a sign-up uses. A plugin stack hosts the narrow API, so
           // a door for callers who are not signed in is there.
           let pluginName = ReventlessCore.Plugin.name(id)
+          let personCheckReady = checkSiteKey != "" && checkSecret != ""
           let provisionedNow =
             [
               emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
               poolId == "" ? [] : [Reventless.CapabilityNeed.IdentityProvider],
               stash == "" ? [] : [Reventless.CapabilityNeed.Stash],
+              personCheckReady ? [Reventless.CapabilityNeed.PersonCheck] : [],
             ]->Array.flat
           structure->Option.forEach(s => {
             Reventless.AdmissionCheck.check(
@@ -3225,7 +3248,7 @@ module MakeWithConfig = (
               ~roles=AppSync_VisitorGuards.selfServiceRoles(s),
               {
                 fingerprintKey: fingerprint != "",
-                personCheck: false,
+                personCheck: personCheckReady,
                 // Bounded: it keeps refusing addresses off its list, and the
                 // automation function caps its registration mail per day.
                 boundedSender: emailSender != "" && configurationSet != "",
@@ -3264,6 +3287,7 @@ module MakeWithConfig = (
               emailSender == "" ? [] : [Reventless.CapabilityNeed.Messaging],
               poolId == "" ? [] : [Reventless.CapabilityNeed.IdentityProvider],
               stash == "" ? [] : [Reventless.CapabilityNeed.Stash],
+              personCheckReady ? [Reventless.CapabilityNeed.PersonCheck] : [],
             ]->Array.flat,
           ) {
           | [] => ()
@@ -3284,6 +3308,8 @@ module MakeWithConfig = (
                   `\n  IdentityProvider is the platform's Cognito pool, exported as ` ++ `\`identityProviderId\`. This platform stack exports none — deploy it first.`
                 | Stash =>
                   `\n  Stash is the platform's stash table, exported as \`stash\`. This ` ++ `platform stack exports none — deploy it again first.`
+                | PersonCheck =>
+                  `\n  PersonCheck is Cloudflare Turnstile: set \`platform:personCheckSiteKey\` and the ` ++ `secret \`platform:personCheckSecret\` on the platform stack.`
                 }
               )
               // One line per capability, not per declaring component: two slices

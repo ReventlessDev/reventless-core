@@ -15,8 +15,7 @@ type guard =
   /** An alarm on what mail, accounts and requests cost. */
   | BillAlarm
 
-/** What this deployment has. A guard the framework does not provide yet is said
-    as missing, so a role stays closed to the public until it does. */
+/** What this deployment has. */
 type has = {
   fingerprintKey: bool,
   personCheck: bool,
@@ -27,7 +26,7 @@ type has = {
 let describe = (guard: guard): string =>
   switch guard {
   | FingerprintKey => "a fingerprint key: set the secret platform:fingerprintKey on the platform stack (32 characters or more, and never changed afterwards)"
-  | PersonCheck => "a check that a person is signing up, which the framework does not provide yet"
+  | PersonCheck => "a check that a person is signing up: set platform:personCheckSiteKey and the secret platform:personCheckSecret on the platform stack, from a Cloudflare Turnstile widget"
   | BoundedSender => "a mail sender that keeps bounced addresses off its list: a messaging sender on the platform, which then makes its configuration set; deploy the platform stack again first"
   | BillAlarm => "an alarm on the bill: set platform:operatorAddress on the platform stack, the address its alarms and budget write to"
   }

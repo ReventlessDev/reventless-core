@@ -6,7 +6,8 @@ let all = [
   "Geocoding",
   "Messaging",
   "IdentityProvider",
-  "Stash"
+  "Stash",
+  "PersonCheck"
 ];
 
 function toString(need) {

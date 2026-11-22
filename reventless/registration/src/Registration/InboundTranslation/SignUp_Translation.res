@@ -17,6 +17,14 @@ let languageOf = (raw: option<string>): option<string> =>
     String.length(tag) <= 35 && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/->RegExp.test(tag)
   )
 
+/** What a sign-up is told when the check says no: the same whatever the address,
+    so it says nothing of one. */
+let personCheckRejected = "the check that a person is signing up did not pass; try it again"
+
+/** What it is told when the check cannot be asked. Refused rather than let through,
+    so a check that is down never opens the door to scripts. */
+let personCheckUnavailable = "the check that a person is signing up cannot be reached; try again later"
+
 /** The door over the app's table, which picks the role a sign-up may leave out. */
 module Make = (App: Reventless.Admission.Declaration) => {
   module Spec = Spec
@@ -27,9 +35,15 @@ module Make = (App: Reventless.Admission.Declaration) => {
     ~capabilities: Reventless.Capabilities.t,
     ~caller as _,
   ) =>
-    switch (Reventless.Email.fromString(input.email->String.trim), input.role) {
-    | (Error(_), _) => Error("not an email address")
-    | (Ok(typed), role) =>
+    switch (
+      await capabilities.personCheck.verify(~token=input.personCheck->Option.getOr("")),
+      Reventless.Email.fromString(input.email->String.trim),
+      input.role,
+    ) {
+    | (Error(Rejected(_)), _, _) => Error(personCheckRejected)
+    | (Error(Unavailable(_)), _, _) => Error(personCheckUnavailable)
+    | (Ok(), Error(_), _) => Error("not an email address")
+    | (Ok(), Ok(typed), role) =>
       switch role
       ->Option.map(String.trim)
       ->Option.filter(r => r != "")

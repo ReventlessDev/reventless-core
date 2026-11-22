@@ -5,6 +5,7 @@ import * as Stash$Reventless from "./Stash.res.mjs";
 import * as Devices$Reventless from "./Devices.res.mjs";
 import * as Secrets$Reventless from "./Secrets.res.mjs";
 import * as Messaging$Reventless from "./Messaging.res.mjs";
+import * as PersonCheck$Reventless from "./PersonCheck.res.mjs";
 import * as IdentityProvider$Reventless from "./IdentityProvider.res.mjs";
 
 async function none_geocode(param) {
@@ -33,6 +34,8 @@ let none_stash = Stash$Reventless.unavailable("no stash is configured for this p
 
 let none_devices = Devices$Reventless.unreachable("no devices provider is configured for this platform");
 
+let none_personCheck = PersonCheck$Reventless.unavailable("no person check is configured for this platform");
+
 let none = {
   geocode: none_geocode,
   messaging: none_messaging,
@@ -41,7 +44,8 @@ let none = {
   stash: none_stash,
   text: Text$Reventless.sourceOnly,
   devices: none_devices,
-  selfRegistrationInitially: "closed"
+  selfRegistrationInitially: "closed",
+  personCheck: none_personCheck
 };
 
 export {

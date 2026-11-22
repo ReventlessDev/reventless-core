@@ -9,6 +9,7 @@ import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as PersonCheck$Reventless from "@reventlessdev/reventless-spec/src/semantic/PersonCheck.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as DcbBackend$ReventlessAws from "../../adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
@@ -49,7 +50,8 @@ function capabilityEnv() {
 let doorSettings = [
   AnonymousRequestLimit$Reventless.envKey,
   Admission$Reventless.initiallyEnvKey,
-  Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable
+  Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable,
+  PersonCheck$Reventless.secretEnvKey
 ];
 
 let geocoderPlaceIndexRef = {

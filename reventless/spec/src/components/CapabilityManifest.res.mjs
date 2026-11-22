@@ -12,7 +12,8 @@ let kindSchema = Sury.union([
   Sury.literal("Geocoding"),
   Sury.literal("Messaging"),
   Sury.literal("IdentityProvider"),
-  Sury.literal("Stash")
+  Sury.literal("Stash"),
+  Sury.literal("PersonCheck")
 ]);
 
 let provenanceSchema = Sury.$schema(s => ({
@@ -62,6 +63,9 @@ function fromStructure(structure) {
         break;
       case "Stash" :
         tmp = "Stash";
+        break;
+      case "PersonCheck" :
+        tmp = "PersonCheck";
         break;
     }
     return {

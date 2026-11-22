@@ -39,9 +39,13 @@ type t =
         provisions one: the local platform keeps it in memory, and a deployed one
         has none yet. */
   | Stash
+  /** A check that a person, not a script, is signing up, reached through
+        `Capabilities.personCheck`. Declared so a deployment that names no check
+        refuses the door rather than lets every caller through. */
+  | PersonCheck
 
 /** Every need, in declaration order: what `fromString` reads against. */
-let all = [Geocoding, Messaging, IdentityProvider, Stash]
+let all = [Geocoding, Messaging, IdentityProvider, Stash, PersonCheck]
 
 /** The spelling carried in `pluginStructure` and in `capabilities.json`: the
     case's own name. Persisted structures hold strings, not enum members, so a

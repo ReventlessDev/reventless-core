@@ -50,6 +50,8 @@ type t = {
       configuration of the deployment, handed to the doors beside what it can do, so
       the sign-up door stamps it onto the request. See `Admission.initially`. */
   selfRegistrationInitially: Admission.initially,
+  /** Whether a person, not a script, is at the sign-up form. See `PersonCheck.t`. */
+  personCheck: PersonCheck.t,
 }
 
 /**
@@ -92,4 +94,6 @@ let none: t = {
   devices: Devices.unreachable(~reason="no devices provider is configured for this platform"),
   // Closed: a platform that says nothing about its starting state takes no stranger.
   selfRegistrationInitially: Admission.InitiallyClosed,
+  // Refusing: a door with no check would let every script through.
+  personCheck: PersonCheck.unavailable(~reason="no person check is configured for this platform"),
 }

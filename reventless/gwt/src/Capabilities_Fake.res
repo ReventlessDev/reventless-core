@@ -8,6 +8,7 @@ module Messaging = Reventless.Messaging
 module IdentityProvider = Reventless.IdentityProvider
 module Secrets = Reventless.Secrets
 module Stash = Reventless.Stash
+module PersonCheck = Reventless.PersonCheck
 module Text = Reventless.Text
 
 /** One call a slice made through its capabilities. */
@@ -67,6 +68,7 @@ let make = (
   ~stash: option<Stash.t>=?,
   ~text: Text.t=Text.sourceOnly,
   ~selfRegistrationInitially: Reventless.Admission.initially=Reventless.Admission.localInitially,
+  ~personCheck: PersonCheck.t=PersonCheck.alwaysPasses,
   ~tell: option<
     (
       ~kind: string,
@@ -173,6 +175,7 @@ let make = (
       },
     },
     selfRegistrationInitially,
+    personCheck,
   }
   {capabilities, calls: () => log->Array.copy}
 }

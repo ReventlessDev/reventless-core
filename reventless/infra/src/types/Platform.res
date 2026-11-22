@@ -111,6 +111,7 @@ type capability =
   | Messaging
   | IdentityProvider
   | Stash
+  | PersonCheck
 
 // A provisioned geocoding place index, as returned by the framework's geocoding
 // capability helper. A record rather than a bare name so the handle can grow

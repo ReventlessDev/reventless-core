@@ -27,6 +27,9 @@ type kind =
   /** A short-lived handoff outside the log, reached through `Capabilities.stash`.
       Slice-declared, so no `field`. */
   | Stash
+  /** A check that a person is signing up, reached through
+      `Capabilities.personCheck`. Slice-declared, so no `field`. */
+  | PersonCheck
 
 /** The declaration site: the component's spec name, and — for a store — the field
     carrying the `@storageRef` annotation plus the store exactly as that field
@@ -88,6 +91,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       | Messaging => Messaging
       | IdentityProvider => IdentityProvider
       | Stash => Stash
+      | PersonCheck => PersonCheck
       },
       key,
       declaredBy: needs->Array.filterMap(

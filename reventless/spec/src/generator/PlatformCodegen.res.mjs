@@ -96,6 +96,11 @@ function renderEntry(entry) {
         TAG: "Ok",
         _0: renderComments(entry).concat(["  Stash,"])
       };
+    case "PersonCheck" :
+      return {
+        TAG: "Ok",
+        _0: renderComments(entry).concat(["  PersonCheck,"])
+      };
   }
 }
 

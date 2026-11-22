@@ -547,6 +547,8 @@ let capabilities = (): Reventless.Capabilities.t => {
   // None deployed yet: a translation that tells a thing is told it is not reachable.
   devices: Reventless.Capabilities.none.devices,
   selfRegistrationInitially: AwsSelfRegistration.initially(),
+  // Doors run in the command function; an automation checks nobody.
+  personCheck: Reventless.Capabilities.none.personCheck,
 }
 
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────

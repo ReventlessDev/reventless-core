@@ -177,7 +177,23 @@ describe("Platform_SelfRegistration", () => {
         Platform_SelfRegistration.fileJson(
           None,
           ~door={endpoint: "https://x/graphql", apiKey: "da2-k"},
+          ~personCheck={siteKey: "0x4A"},
         )->JSON.stringify,
       )->toEqual(`{"endpoint":"https://x/graphql","apiKey":"da2-k"}`),
+  )
+
+  testSync("the file names the person check's widget, by its public key only", () =>
+    expect(
+      Platform_SelfRegistration.fileJson(
+        Some({
+          start: "Registration_SignUp",
+          complete: "Registration_CompleteRegistration",
+          roles: ["Shopper"],
+          initially: "closed",
+        }),
+        ~door={endpoint: "https://x/graphql", apiKey: "da2-k"},
+        ~personCheck={siteKey: "0x4A"},
+      )->JSON.stringify,
+    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"],"initially":"closed","endpoint":"https://x/graphql","apiKey":"da2-k","personCheck":{"siteKey":"0x4A"}}`)
   )
 })

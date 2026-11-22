@@ -41,6 +41,7 @@ type capability =
   | Messaging
   | IdentityProvider
   | Stash
+  | PersonCheck
 ```
 
 | | **ObjectStore** | **Geocoding** | **Messaging** |
@@ -67,6 +68,22 @@ The stash exists for one step: a door receives a secret, such as a password, tha
 must reach a provider only after a `decide` the door cannot run has said yes. The
 door puts it in the stash under a key both sides can name, and the slice that reacts
 to the decision takes it. Taken once, and gone after its time either way.
+
+**PersonCheck** is declared by the sign-up door and reached as
+`capabilities.personCheck.verify(~token)`: whether a person, not a script, sent the
+form. It answers yes, `Rejected` (no token, or one that does not hold) or
+`Unavailable` (the check could not be asked), and the door refuses on both noes,
+saying so. Locally it passes everyone, and the shell shows no widget. On AWS it is
+Cloudflare Turnstile, turned on by two settings of the platform stack:
+`platform:personCheckSiteKey`, the widget's public key, which the shell is told, and
+the secret `platform:personCheckSecret`, which only the door's function gets. Without
+them a plugin with a self-service role is refused at deploy. A check that cannot be
+asked is counted, and an alarm tells the address in `platform:operatorAddress`; a
+command function inside a VPC has no route to Turnstile without a NAT gateway, so
+it would refuse every sign-up.
+
+Turnstile is a US service that sees each visitor's network address when the widget
+loads. A deployment using it names Cloudflare as a processor in its privacy notice.
 
 One more is reached through `capabilities` but declared by nobody: **Devices**,
 telling one thing at the app's edge something (*charge at 11 kW*). A translation
@@ -213,6 +230,8 @@ type t = {
   stash: Stash.t,
   text: Text.t,
   devices: Devices.t,
+  selfRegistrationInitially: Admission.initially,
+  personCheck: PersonCheck.t,
 }
 ```
 

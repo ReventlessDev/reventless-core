@@ -50,6 +50,7 @@ let doorSettings = [
   Reventless.AnonymousRequestLimit.envKey,
   Reventless.Admission.initiallyEnvKey,
   ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
+  Reventless.PersonCheck.secretEnvKey,
 ]
 
 /**

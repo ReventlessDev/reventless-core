@@ -295,6 +295,8 @@ let forDcbCommandTopic = (
       // This is the StateChangeSlice command handler — provision the DCB
       // retry/conflict metric filters (takes effect when logRetentionDays is set).
       ~dcbMetrics=true,
+      // And where a door here starts a sign-up, its person check being unreachable.
+      ~metricNames=PersonCheckMetric.metricNames(),
       ~opts,
     )
 

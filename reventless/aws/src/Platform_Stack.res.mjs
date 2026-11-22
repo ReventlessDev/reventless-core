@@ -9,6 +9,7 @@ import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
+import * as PersonCheck$Reventless from "@reventlessdev/reventless-spec/src/semantic/PersonCheck.res.mjs";
 import * as Auth_SignUpMode$ReventlessAws from "./adapter/Auth/Auth_SignUpMode.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
@@ -92,6 +93,31 @@ function selfRegistrationInitially() {
 }
 
 let _present = (v => v != null);
+
+function personCheckSiteKey() {
+  let cfg = new Pulumi.Config("platform");
+  let siteKey = Stdlib_Option.mapOr(cfg.get("personCheckSiteKey"), "", prim => prim.trim());
+  let match = _present(cfg.getSecret("personCheckSecret"));
+  if (siteKey === "") {
+    if (match) {
+      return Stdlib_JsError.throwWithMessage(PersonCheck$Reventless.secretConfigKey + ` is set, and ` + PersonCheck$Reventless.siteKeyConfigKey + ` is not: the shell needs it to show the check`);
+    } else {
+      return "";
+    }
+  } else if (match) {
+    return siteKey;
+  } else {
+    return Stdlib_JsError.throwWithMessage(PersonCheck$Reventless.siteKeyConfigKey + ` is set, and the secret ` + PersonCheck$Reventless.secretConfigKey + ` is not: set it with pulumi config set --secret`);
+  }
+}
+
+function personCheckSecret() {
+  if (personCheckSiteKey() === "") {
+    return Pulumi.output("");
+  } else {
+    return new Pulumi.Config("platform").getSecret("personCheckSecret");
+  }
+}
 
 function fingerprintKey() {
   let given = new Pulumi.Config("platform").getSecret("fingerprintKey");
@@ -233,6 +259,8 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("anonymousRequestLimit", Pulumi.output(anonymousRequestLimit()));
   Pulumi$Pulumi.$$export("selfRegistrationInitially", Pulumi.output(selfRegistrationInitially()));
   Pulumi$Pulumi.$$export("fingerprintKey", fingerprintKey());
+  Pulumi$Pulumi.$$export("personCheckSiteKey", Pulumi.output(personCheckSiteKey()));
+  Pulumi$Pulumi.$$export("personCheckSecret", personCheckSecret());
   Pulumi$Pulumi.$$export("stash", result.stashTable.name);
   Pulumi$Pulumi.$$export("stashArn", result.stashTable.arn);
   return result;
@@ -261,6 +289,8 @@ export {
   anonymousRequestLimit,
   selfRegistrationInitially,
   _present,
+  personCheckSiteKey,
+  personCheckSecret,
   fingerprintKey,
   _resolveUncached,
   _cached,

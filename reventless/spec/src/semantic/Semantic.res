@@ -328,6 +328,7 @@ let nonValueModules: array<string> = [
   "Media_Ref",
   "Messaging",
   "Offload",
+  "PersonCheck",
   // Defines quantities; a field's value is in one of `Energy`'s, `Power`'s or a
   // plugin's own.
   "Quantity",

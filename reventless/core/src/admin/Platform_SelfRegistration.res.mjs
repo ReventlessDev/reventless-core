@@ -139,13 +139,21 @@ function urlEntry() {
   ];
 }
 
-function fileJson(c, door) {
+let personCheckKey = "personCheck";
+
+function fileJson(c, door, personCheck) {
   let match = Stdlib_Option.map(c, toJson);
   let entries = match !== undefined ? (
       typeof match === "object" && match !== null && !Array.isArray(match) ? Object.assign({}, match) : ({})
     ) : ({});
   entries["endpoint"] = door.endpoint;
   entries["apiKey"] = door.apiKey;
+  if (c !== undefined && personCheck !== undefined) {
+    entries[personCheckKey] = Object.fromEntries([[
+        "siteKey",
+        personCheck.siteKey
+      ]]);
+  }
   return entries;
 }
 
@@ -163,6 +171,7 @@ export {
   urlKey,
   url,
   urlEntry,
+  personCheckKey,
   fileJson,
 }
 /* Role-Reventless Not a pure module */

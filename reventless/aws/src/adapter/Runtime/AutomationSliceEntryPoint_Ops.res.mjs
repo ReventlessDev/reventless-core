@@ -390,7 +390,8 @@ function capabilities() {
     stash: Stash_DynamoDb_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["STASH_TABLE"], "")),
     text: Text_Http_Backend$ReventlessAws.text(),
     devices: Capabilities$Reventless.none.devices,
-    selfRegistrationInitially: AwsSelfRegistration$ReventlessAws.initially()
+    selfRegistrationInitially: AwsSelfRegistration$ReventlessAws.initially(),
+    personCheck: Capabilities$Reventless.none.personCheck
   };
 }
 

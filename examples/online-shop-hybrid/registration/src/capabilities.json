@@ -19,6 +19,15 @@
       ]
     },
     {
+      "kind": "PersonCheck",
+      "key": "PersonCheck",
+      "declaredBy": [
+        {
+          "component": "SignUp"
+        }
+      ]
+    },
+    {
       "kind": "Stash",
       "key": "Stash",
       "declaredBy": [

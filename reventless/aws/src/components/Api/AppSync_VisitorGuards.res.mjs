@@ -9,7 +9,7 @@ function describe(guard) {
     case "FingerprintKey" :
       return "a fingerprint key: set the secret platform:fingerprintKey on the platform stack (32 characters or more, and never changed afterwards)";
     case "PersonCheck" :
-      return "a check that a person is signing up, which the framework does not provide yet";
+      return "a check that a person is signing up: set platform:personCheckSiteKey and the secret platform:personCheckSecret on the platform stack, from a Cloudflare Turnstile widget";
     case "BoundedSender" :
       return "a mail sender that keeps bounced addresses off its list: a messaging sender on the platform, which then makes its configuration set; deploy the platform stack again first";
     case "BillAlarm" :

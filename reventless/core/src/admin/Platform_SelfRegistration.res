@@ -149,15 +149,32 @@ let urlEntry = (): (string, JSON.t) => (urlKey, JSON.Encode.string(url))
     API, and the key that identifies the deployment there. */
 type door = {endpoint: string, apiKey: string}
 
-/** The file's content: the settings where the plugin has the two doors, and where
-    the doors are. A plugin with fields for visitors but no door to sign up at
-    writes only where they are, which a shell reads as no sign-up. */
-let fileJson = (c: option<config>, ~door: door): JSON.t => {
+/** The key naming the widget the sign-up form renders, where the deployment names
+    a person check: the Turnstile widget's public site key, never its secret. */
+let personCheckKey = "personCheck"
+
+/** The file's content: the settings where the plugin has the two doors, where the
+    doors are, and the person check's widget. A plugin with fields for visitors but
+    no door to sign up at writes only where they are, which a shell reads as no
+    sign-up. */
+let fileJson = (
+  c: option<config>,
+  ~door: door,
+  ~personCheck: option<Reventless.PersonCheck.widget>=?,
+): JSON.t => {
   let entries = switch c->Option.map(toJson) {
   | Some(Object(entries)) => entries->Dict.copy
   | _ => Dict.make()
   }
   entries->Dict.set("endpoint", JSON.Encode.string(door.endpoint))
   entries->Dict.set("apiKey", JSON.Encode.string(door.apiKey))
+  switch (c, personCheck) {
+  | (Some(_), Some({siteKey})) =>
+    entries->Dict.set(
+      personCheckKey,
+      JSON.Encode.object(Dict.fromArray([("siteKey", JSON.Encode.string(siteKey))])),
+    )
+  | _ => ()
+  }
   JSON.Encode.object(entries)
 }

@@ -7,19 +7,26 @@
 // learns none of it: a closed role, a role no visitor may have, a taken address
 // and a fresh one all answer alike.
 //
-// Anonymous because the caller is trying to become someone. The local platform
-// honors that; a deployed one refuses the rule until it has a door of its own,
-// which is why a plugin listing these slices is hosted by the local platform
-// only.
+// First it asks the person check whether a person sent the request; a missing,
+// failed or unanswerable check relays nothing and says so, which names no address.
+//
+// Anonymous because the caller is trying to become someone. A deployed platform
+// hosts it on a door for visitors, with its guards.
 
 @@reventless.spec
 @@reventless.authorize(AllowAnonymous)
 
 /** `role` may be left out where exactly one role is open to visitors; with
     several, a sign-up has to say which. `language` is the one the visitor reads the
-    shell in, which their mails are written in where the deployment offers it. */
+    shell in, which their mails are written in where the deployment offers it.
+    `personCheck` is the token of the widget the deployment names, if it names one. */
 @schema
-type externalInput = {@sensitive email: string, role?: string, language?: string}
+type externalInput = {
+  @sensitive email: string,
+  role?: string,
+  language?: string,
+  @sensitive personCheck?: string,
+}
 
 @schema
 type command =
@@ -33,7 +40,7 @@ type command =
     })
 
 let targetName = "Registrations"
-let capabilityNeeds: array<Reventless.CapabilityNeed.t> = []
+let capabilityNeeds = [Reventless.CapabilityNeed.PersonCheck]
 
 /** This door starts a registration; the platform tells the shell so. */
 let admissionDoor = Reventless.Admission.Start

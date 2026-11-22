@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
+import * as AwsPersonCheck$ReventlessAws from "../PersonCheck/AwsPersonCheck.res.mjs";
 import * as AwsSelfRegistration$ReventlessAws from "./AwsSelfRegistration.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
 import * as Stash_DynamoDb_Backend$ReventlessAws from "../Stash/Stash_DynamoDb_Backend.res.mjs";
@@ -15,7 +16,8 @@ function capabilities() {
     stash: Stash_DynamoDb_Backend$ReventlessAws.provider(Stdlib_Option.getOr(process.env["STASH_TABLE"], "")),
     text: Capabilities$Reventless.none.text,
     devices: Capabilities$Reventless.none.devices,
-    selfRegistrationInitially: AwsSelfRegistration$ReventlessAws.initially()
+    selfRegistrationInitially: AwsSelfRegistration$ReventlessAws.initially(),
+    personCheck: AwsPersonCheck$ReventlessAws.fromEnv()
   };
 }
 

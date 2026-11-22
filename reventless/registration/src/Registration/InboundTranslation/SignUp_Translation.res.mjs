@@ -25,24 +25,42 @@ function languageOf(raw) {
   });
 }
 
+let personCheckRejected = "the check that a person is signing up did not pass; try it again";
+
+let personCheckUnavailable = "the check that a person is signing up cannot be reached; try again later";
+
 function Make(App) {
   let translate = async (input, capabilities, param) => {
-    let match = Email$Reventless.fromString(input.email.trim());
-    let match$1 = input.role;
+    let match = await capabilities.personCheck.verify(Stdlib_Option.getOr(input.personCheck, ""));
+    let match$1 = Email$Reventless.fromString(input.email.trim());
+    let match$2 = input.role;
     if (match.TAG !== "Ok") {
+      if (match._0.TAG === "Rejected") {
+        return {
+          TAG: "Error",
+          _0: personCheckRejected
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: personCheckUnavailable
+        };
+      }
+    }
+    if (match$1.TAG !== "Ok") {
       return {
         TAG: "Error",
         _0: "not an email address"
       };
     }
-    let role = Stdlib_Option.orElse(Stdlib_Option.map(Stdlib_Option.filter(Stdlib_Option.map(match$1, prim => prim.trim()), r => r !== ""), prim => prim), defaultRole(App.table));
+    let role = Stdlib_Option.orElse(Stdlib_Option.map(Stdlib_Option.filter(Stdlib_Option.map(match$2, prim => prim.trim()), r => r !== ""), prim => prim), defaultRole(App.table));
     if (role === undefined) {
       return {
         TAG: "Error",
         _0: "say which role to sign up for"
       };
     }
-    let email = ContactAddressId$ReventlessRegistration.normalize(match._0);
+    let email = ContactAddressId$ReventlessRegistration.normalize(match$1._0);
     let why = ContactAddressId$ReventlessRegistration.fingerprint(capabilities.secrets, email);
     if (why.TAG !== "Ok") {
       return {
@@ -82,6 +100,8 @@ export {
   Spec,
   defaultRole,
   languageOf,
+  personCheckRejected,
+  personCheckUnavailable,
   Make,
   moduleUrl,
 }

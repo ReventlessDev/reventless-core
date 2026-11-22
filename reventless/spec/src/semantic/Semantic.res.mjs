@@ -295,6 +295,7 @@ let nonValueModules = [
   "Media_Ref",
   "Messaging",
   "Offload",
+  "PersonCheck",
   "Quantity",
   "RowImage",
   "Secrets",

@@ -63,6 +63,8 @@ let provisioned = (): array<Reventless.CapabilityNeed.t> =>
       : [Reventless.CapabilityNeed.IdentityProvider],
     // Always: an in-memory stash needs nothing a root could fail to provide.
     [Reventless.CapabilityNeed.Stash],
+    // Always: the local check passes everyone.
+    [Reventless.CapabilityNeed.PersonCheck],
   ]->Array.flat
 
 /**
@@ -89,7 +91,7 @@ let unmetWarning = (~declared: array<(string, string)>): option<string> =>
         | IdentityProvider =>
           `\n  IdentityProvider is \`Capability_IdentityProvider_AccountStore.make()\`, passed to the ` ++ `platform as \`~identityProvider\`.`
         // Never unmet here: the local platform always provisions one.
-        | Stash => ``
+        | Stash | PersonCheck => ``
         }
       )
       ->Belt.Set.String.fromArray
@@ -125,4 +127,6 @@ let capabilities = (): Reventless.Capabilities.t => {
   text: textRef.contents,
   devices: devicesRef.contents,
   selfRegistrationInitially: LocalSelfRegistration.initially(),
+  // Passes: the one signing up on a laptop is the developer, and no widget is needed.
+  personCheck: Reventless.PersonCheck.alwaysPasses,
 }

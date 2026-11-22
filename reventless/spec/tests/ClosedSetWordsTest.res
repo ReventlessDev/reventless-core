@@ -25,7 +25,7 @@ describe("ComponentKind", () => {
 })
 
 describe("CapabilityNeed", () => {
-  let words = ["Geocoding", "Messaging", "IdentityProvider", "Stash"]
+  let words = ["Geocoding", "Messaging", "IdentityProvider", "Stash", "PersonCheck"]
 
   testSync("prints each need as its name", () =>
     expect(CapabilityNeed.all->Array.map(CapabilityNeed.toString))->toEqual(words)
@@ -41,6 +41,7 @@ describe("CapabilityNeed", () => {
       Some("Messaging"),
       Some("IdentityProvider"),
       Some("Stash"),
+      Some("PersonCheck"),
       None,
       None,
     ])

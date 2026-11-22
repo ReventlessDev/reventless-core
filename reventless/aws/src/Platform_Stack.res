@@ -180,6 +180,32 @@ let selfRegistrationInitially = (): string =>
 let _present: Nullable.t<'a> => bool = %raw(`v => v != null`)
 external _asOutput: Nullable.t<Pulumi.Output.t<string>> => Pulumi.Output.t<string> = "%identity"
 
+/** `platform:personCheckSiteKey` and the secret `platform:personCheckSecret`: the
+    Cloudflare Turnstile widget a sign-up shows and the secret its door verifies
+    with. Both or neither; `""` for neither. */
+let personCheckSiteKey = (): string => {
+  let cfg = Pulumi.Config.make(Some("platform"))
+  let siteKey = cfg->Pulumi.Config.get("personCheckSiteKey")->Option.mapOr("", String.trim)
+  switch (siteKey, _present(cfg->Pulumi.Config.getSecret("personCheckSecret"))) {
+  | ("", false) => ""
+  | ("", true) =>
+    JsError.throwWithMessage(
+      `${Reventless.PersonCheck.secretConfigKey} is set, and ${Reventless.PersonCheck.siteKeyConfigKey} is not: the shell needs it to show the check`,
+    )
+  | (_, false) =>
+    JsError.throwWithMessage(
+      `${Reventless.PersonCheck.siteKeyConfigKey} is set, and the secret ${Reventless.PersonCheck.secretConfigKey} is not: set it with pulumi config set --secret`,
+    )
+  | (siteKey, true) => siteKey
+  }
+}
+
+/** The check's secret, `""` with no check. */
+let personCheckSecret = (): Pulumi.Output.t<string> =>
+  personCheckSiteKey() == ""
+    ? Pulumi.Output.make("")
+    : _asOutput(Pulumi.Config.make(Some("platform"))->Pulumi.Config.getSecret("personCheckSecret"))
+
 /** `platform:fingerprintKey`, a secret: what addresses are fingerprinted with
     before they are kept as a key. `""` when unset, and then nothing that needs a
     fingerprint works; a deployment with a door for visitors is refused without it. */
@@ -478,6 +504,8 @@ let _resolveUncached = (): cognitoUserPool => {
   Pulumi.Pulumi.export("anonymousRequestLimit", Pulumi.Output.make(anonymousRequestLimit()))
   Pulumi.Pulumi.export("selfRegistrationInitially", Pulumi.Output.make(selfRegistrationInitially()))
   Pulumi.Pulumi.export("fingerprintKey", fingerprintKey())
+  Pulumi.Pulumi.export("personCheckSiteKey", Pulumi.Output.make(personCheckSiteKey()))
+  Pulumi.Pulumi.export("personCheckSecret", personCheckSecret())
   // What a plugin stack hands, and grants, the slices that declare a stash.
   Pulumi.Pulumi.export("stash", result.stashTable.name)
   Pulumi.Pulumi.export("stashArn", result.stashTable.arn)

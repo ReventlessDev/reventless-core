@@ -5,6 +5,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Text$Reventless from "@reventlessdev/reventless-spec/src/i18n/Text.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Devices$Reventless from "@reventlessdev/reventless-spec/src/semantic/Devices.res.mjs";
+import * as PersonCheck$Reventless from "@reventlessdev/reventless-spec/src/semantic/PersonCheck.res.mjs";
 import * as Capabilities$Reventless from "@reventlessdev/reventless-spec/src/semantic/Capabilities.res.mjs";
 import * as CapabilityNeed$Reventless from "@reventlessdev/reventless-spec/src/semantic/CapabilityNeed.res.mjs";
 import * as LocalFingerprintKey$ReventlessLocal from "./LocalFingerprintKey.res.mjs";
@@ -54,7 +55,8 @@ function provisioned() {
     Stdlib_Option.isNone(geocodeRef.contents) ? [] : ["Geocoding"],
     messagingSenderRef.contents === "" ? [] : ["Messaging"],
     Primitive_object.equal(identityProviderRef.contents.operations, []) ? [] : ["IdentityProvider"],
-    ["Stash"]
+    ["Stash"],
+    ["PersonCheck"]
   ].flat();
 }
 
@@ -71,6 +73,7 @@ function unmetWarning(declared) {
         case "IdentityProvider" :
           return `\n  IdentityProvider is \`Capability_IdentityProvider_AccountStore.make()\`, passed to the platform as \`~identityProvider\`.`;
         case "Stash" :
+        case "PersonCheck" :
           return ``;
       }
     }))).join("");
@@ -106,7 +109,8 @@ function capabilities() {
     stash: stash.contents,
     text: textRef.contents,
     devices: devicesRef.contents,
-    selfRegistrationInitially: LocalSelfRegistration$ReventlessLocal.initially()
+    selfRegistrationInitially: LocalSelfRegistration$ReventlessLocal.initially(),
+    personCheck: PersonCheck$Reventless.alwaysPasses
   };
 }
 

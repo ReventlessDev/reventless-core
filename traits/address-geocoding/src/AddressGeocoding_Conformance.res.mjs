@@ -34,7 +34,8 @@ function Make(B) {
     stash: Capabilities$Reventless.none.stash,
     text: Capabilities$Reventless.none.text,
     devices: Capabilities$Reventless.none.devices,
-    selfRegistrationInitially: Capabilities$Reventless.none.selfRegistrationInitially
+    selfRegistrationInitially: Capabilities$Reventless.none.selfRegistrationInitially,
+    personCheck: Capabilities$Reventless.none.personCheck
   });
   let translateWith = answer => ((id, item) => B.translate(id, item, geocoder(answer)));
   let describeCommand = cmd => JSON.stringify(Message$Reventless.encode(cmd, B.Slice.inboundCommandSchema));

@@ -13,7 +13,8 @@ import * as ContactAddressId$ReventlessRegistration from "../ContactAddressId.re
 let externalInputSchema = Sury.$schema(s => ({
   email: s.m(Sensitive$Reventless.string),
   role: s.m(Sury.$option(Sury.string)),
-  language: s.m(Sury.$option(Sury.string))
+  language: s.m(Sury.$option(Sury.string)),
+  personCheck: s.m(Sury.$option(Sensitive$Reventless.string))
 }));
 
 let commandSchema = Sury.$schema(s => ({
@@ -26,7 +27,7 @@ let commandSchema = Sury.$schema(s => ({
   initially: s.m(Sury.$option(Admission$Reventless.initiallySchema))
 }));
 
-let capabilityNeeds = [];
+let capabilityNeeds = ["PersonCheck"];
 
 function authorizationOf(param) {
   return "AllowAnonymous";
