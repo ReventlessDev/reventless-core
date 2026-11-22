@@ -719,6 +719,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-11-22
+- fix(aws): a fingerprint key too short to use is refused at the platform's deploy ([09d2e8a](https://github.com/ReventlessDev/reventless-core/commit/09d2e8a54dd6074d93a0212d834f52f46d4727d9))
+- docs(guide): what a public sign-up needs on AWS, and how to make it real ([fb18d5d](https://github.com/ReventlessDev/reventless-core/commit/fb18d5ded42d7a1f8d83d42ceee3b1cf41b6d909))
+- docs: the packages reference lists registration, standin and rescript-dom ([77422ad](https://github.com/ReventlessDev/reventless-core/commit/77422ad3b0f43c19f88c32024938d285fe84c9c9))
+- docs: the stash is provisioned on AWS, as a table of the platform stack ([ba4413c](https://github.com/ReventlessDev/reventless-core/commit/ba4413c22412c7c393bf9a122f87de2f13275651))
+### 2026-11-22
 - feat(registration): a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
 - docs: a trail's derived dates, @trail and the backfill on the state view page ([ad2e384](https://github.com/ReventlessDev/reventless-core/commit/ad2e3849d3914d5ca51c7f2cd2f4d0ae64759cb1))
 ### 2026-11-21
