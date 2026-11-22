@@ -939,6 +939,29 @@ second; the request past the limit is throttled; closing hides the link at once,
 window closes at its end; a deploy missing a guard is refused. SES in its sandbox delivers only to
 verified addresses, so the walk uses one until the account has production access.
 
+*Walked 2026-11-22 on the hybrid shop's `alpha` stack, through the APIs rather than the shell,*
+with Cloudflare's Turnstile test keys (which pass every token) and mail logged rather than sent.
+What held:
+
+- The shell's settings file names the doors, `Shopper`, the closed start, the narrow API and the
+  site key, and no secret. The narrow API refuses a call without its key.
+- Closed: no open window; a sign-up without a token is refused with the plain message; one with a
+  token is accepted and records nothing, so no code is mailed.
+- An administrator opens `Shopper` for an hour; a sign-up with a token logs the code mail; the
+  proof and a password make a confirmed account in the `Shopper` group of a pool whose own sign-up
+  is admin-only, and it signs in.
+- A second sign-up for the address is answered alike and the address is told someone tried.
+- The eleventh read of the open roles in an hour from one source is throttled.
+- Closing: a sign-up afterwards is answered alike and mails nothing.
+
+Three faults the deploy found, each fixed: a door declaring the person check was refused by an
+older stash-only rule; the narrow API's key raced its schema; the limit's step asked for the
+command function before it was built. The walk found a fourth: a deployed function imported a
+packaged functor's file, which holds only `Make`, so the generated plugin now names its applied
+modules. Not yet walked: a bad token refused (needs real Turnstile keys), mail by SES, an unclosed
+window closing at its end, the shell's widget in a browser (needs the UI released), and a deploy
+missing a guard refused (tested, not deployed).
+
 #### DW10: a check that a person is signing up
 
 A capability, as messaging is: the sign-up door asks it to verify a token the form sends, before it
