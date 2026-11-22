@@ -328,7 +328,8 @@ deploys fine with all three unset.
 
 Under `ses`, setting the address is half the job: it has to be verified (AWS mails
 it a link, and until somebody follows it SES refuses every send), and an account in
-the SES sandbox can send only *to* verified recipients regardless. Under `log` the
+the SES sandbox can send only *to* verified recipients regardless. The steps to verify
+a domain and leave the sandbox are in [Mail that is really sent](#mail-that-is-really-sent). Under `log` the
 address is only a header — nothing verifies it, and it defaults if unset.
 
 These keys configure one of the deployment's three capabilities; for the roster,
@@ -726,6 +727,153 @@ org/my-app-platform/alpha      org/my-app-platform/main
 org/my-app-catalog/alpha       org/my-app-catalog/main
 org/my-app-ordering/alpha      org/my-app-ordering/main
 ```
+
+### Opening sign-up to the public
+
+A plugin with a role that visitors may sign up for (a *self-service* role) puts a door on the
+internet: anyone can type an address, and the deployment mails it a code. On AWS such a plugin is
+**refused at deploy** until the platform stack has everything that door needs. Nothing here
+applies to the local platform, or to a deployment whose roles are all provisioned or by
+invitation.
+
+What a public sign-up needs, and why:
+
+- **A fingerprint key**, so addresses and visitors' network addresses are stored only as keyed
+  fingerprints, never in the clear.
+- **A check that a person is signing up**: Cloudflare Turnstile.
+- **A mail sender that stays bounded**: bounced and complained-about addresses are suppressed, and
+  sign-up mail stops for the day at a cap.
+- **An operator who is told**: alarms and a monthly budget mail one address.
+
+The limit per source address and the closed start come with defaults.
+
+#### The settings
+
+All of them live on the **platform** stack, in `Pulumi.<stack>.yaml`, and are read from there only:
+unlike the keys in [Per-instance overrides](#per-instance-overrides-env-var-pulumilocalyaml),
+no environment variable or `Pulumi.local.yaml` overrides them. Set a secret with
+`pulumi config set --secret platform:<key> <value>`; Pulumi stores it encrypted, so the file can
+be committed.
+
+| Key | Secret | Default | Without it |
+|---|---|---|---|
+| `platform:fingerprintKey` | yes | none | The plugin is refused at deploy. |
+| `platform:personCheckSiteKey` | no | none | The plugin is refused at deploy. Set together with the secret below, or the platform deploy is refused. |
+| `platform:personCheckSecret` | yes | none | As above. |
+| `platform:messagingEmailSender` | no | none | The plugin is refused at deploy: no sender, so no bounded sender. See [the messaging keys](#per-instance-overrides-env-var-pulumilocalyaml). |
+| `platform:operatorAddress` | no (may be) | none | The plugin is refused at deploy: no alarm on the bill. |
+| `platform:registrationMailDailyCap` | no | `50` | Sign-up mail stops after 50 a day. |
+| `platform:billAlarmMonthlyUsd` | no | `20` | The budget alarm is at 20 US dollars a month. |
+| `platform:anonymousRequestLimit` | no | `10/3600` | A source may make 10 requests an hour to each door for visitors. |
+| `platform:selfRegistrationInitially` | no | `closed` | No role takes visitors until an administrator opens it. |
+
+Notes on each:
+
+- **`fingerprintKey`**: at least 32 characters, for example `openssl rand -base64 36`. Never change
+  it once a deployment has registrations: every stored fingerprint was made with it. The deploy
+  checks only that it is set; a shorter key deploys, and then every sign-up fails.
+- **`personCheckSiteKey` and `personCheckSecret`**: the two keys of one Turnstile widget. See
+  [Turnstile](#turnstile) below.
+- **`operatorAddress`**: the platform stack makes an alerts topic that mails this address. AWS sends
+  it a confirmation link once; until someone clicks it, no alarm arrives. The same address gets
+  the budget's mail. The key may be set as a secret, which keeps the address out of the
+  repository.
+- **`registrationMailDailyCap`**: counted over all sign-up mail of the deployment, whoever asks.
+  Past it, mail is refused for the rest of the day, the visitor's request is answered as usual,
+  and an alarm is raised.
+- **`billAlarmMonthlyUsd`**: whole dollars. The budget counts SES, Cognito, AppSync and WAF across
+  the **whole AWS account**, so other deployments in the account count too.
+- **`anonymousRequestLimit`**: `requests/seconds`, such as `10/3600`. Each sign-up uses a few
+  requests (reading which roles are open, starting, completing), so keep room for a person who
+  mistypes a code. A firewall rule also stops a source that makes more than ten times the limit's requests, and at
+  least 100, in five minutes.
+- **`selfRegistrationInitially`**: `open` or `closed`. An administrator opens a role for a time in
+  the shell; when that time ends the role returns to this state.
+
+A self-service role is refused in two more cases, whatever the settings: when its group is an
+administrator's or another elevated group, and when no door in the plugin starts and completes a
+registration.
+
+#### Turnstile
+
+The door asks Cloudflare whether the token the form sends came from a person. The visitor's
+network address is not sent along with it; Cloudflare sees it anyway when the widget loads.
+
+1. **Deploy a shell that shows the widget first.** A shell that does not show it sends no token,
+   and with real keys every sign-up is then refused. The widget comes with the host shell; make
+   sure the platform runs a version that has it before setting real keys.
+2. In a Cloudflare account, open **Turnstile** and add a widget. Mode: **Managed**. Hostnames: every
+   host the shell is served from, such as the stack's `hostShellUrl`.
+3. Set both keys on the platform stack:
+
+   ```bash
+   cd platform-aws
+   pulumi config set platform:personCheckSiteKey <site key> --stack <stack>
+   pulumi config set --secret platform:personCheckSecret <secret key> --stack <stack>
+   ```
+
+4. Deploy the platform stack, then the plugin stack with the sign-up. The plugin's function reads
+   the secret when the plugin deploys, so a new secret needs both.
+
+The shell is told only the site key, through `self-registration.json` beside its `config.json`.
+The secret reaches only the function behind the sign-up door.
+
+**For trying it out**, Cloudflare publishes test keys: site key `1x00000000000000000000AA` with
+secret `1x0000000000000000000000000000000AA` pass every token. Then a sign-up without a token is
+still refused, but a made-up one passes, so they prove nothing about scripts. Do not leave them on
+a public deployment.
+
+**When Turnstile cannot be asked** (Cloudflare unreachable, a wrong secret), every sign-up is
+refused, with a message saying the check cannot be reached, and the operator's alarm fires. A
+deployment whose functions run in a VPC (a Postgres event log) has no route to Cloudflare without
+a NAT gateway, and so refuses every sign-up.
+
+**Privacy.** Cloudflare processes the visitor's network address and browser details. A deployment
+that uses it names Cloudflare as a processor in its privacy notice.
+
+#### Mail that is really sent
+
+Sign-up codes go out through SES. Until the steps below are done, keep
+`platform:messagingEmailProvider: log`: every mail is written to the function's log, and the code
+can be read there.
+
+1. **Choose the sender address**, preferably on a domain or subdomain of your own, such as
+   `noreply@shop.example.com`.
+2. **Verify the domain in SES**, in the deployment's region: in the SES console, create an identity
+   for the domain with Easy DKIM. Add the three DKIM records it shows to the domain's DNS. Add an
+   SPF record and a DMARC record for the domain as well; mail without them is more often filed as
+   spam. Wait until the identity shows as verified.
+3. **Request production access.** A new AWS account's SES is in a sandbox: it sends only to
+   addresses verified in SES, and at most 200 mails a day. In the SES console, request production
+   access. AWS asks how recipients' addresses are collected and how bounces and complaints are
+   handled. For sign-up mail the true answers are: a person types their own address behind a check
+   that they are a person; each address is mailed a code once per request, with a limit per source
+   and a daily cap; bounced and complained-about addresses are suppressed and never mailed again;
+   an operator is alarmed when the cap is reached. Approval usually takes about a day.
+4. **Switch the stack to SES**: remove `platform:messagingEmailProvider: log` (or set it to `ses`),
+   set `platform:messagingEmailSender` to the address, and deploy the platform stack, then the
+   plugin stacks.
+
+The bounce and complaint suppression, the daily cap and its alarm are made by the framework; there
+is nothing to set up for them in SES.
+
+**Every plugin's mail switches together.** The sender is the platform's, so order notifications and
+any other mail of the deployment go out for real too. A development stack that must not mail
+customers keeps `log`.
+
+#### Checking it
+
+After the deploy, before opening a role:
+
+- The shell's `self-registration.json` names the sign-up's fields, the roles, the starting state,
+  the address of the door for visitors and its key, and `personCheck.siteKey`, and no secret.
+- The login page offers no sign-up while every role is closed.
+- An administrator opens a role for an hour in the shell. The sign-up link appears; the form shows
+  the widget; a sign-up gets a code by mail; the code and a password make an account in the role's
+  group, which can sign in.
+- A second sign-up for the same address is answered the same, and the address is told someone
+  tried.
+- Closing the role hides the link.
 
 ## 7. Deployment Scenarios
 

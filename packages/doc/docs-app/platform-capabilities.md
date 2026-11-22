@@ -83,7 +83,9 @@ command function inside a VPC has no route to Turnstile without a NAT gateway, s
 it would refuse every sign-up.
 
 Turnstile is a US service that sees each visitor's network address when the widget
-loads. A deployment using it names Cloudflare as a processor in its privacy notice.
+loads. A deployment using it names Cloudflare as a processor in its privacy notice. How to
+set it up, and everything else a public sign-up needs, is in
+[Opening sign-up to the public](/infrastructure/deployment-guide#opening-sign-up-to-the-public).
 
 One more is reached through `capabilities` but declared by nobody: **Devices**,
 telling one thing at the app's edge something (*charge at 11 kW*). A translation
