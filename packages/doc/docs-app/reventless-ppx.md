@@ -1055,6 +1055,54 @@ The label defaults to empty, which the schema emitter omits so a consumer can te
 
 ---
 
+### `@trail` — the states a view filters and sorts by on the server
+
+`@trail` goes on a `@schema type state` field typed `Reventless.Lifecycle.Trail.t<…>`, the
+lifecycle trail of a ReadModel or StateViewSlice. Place it **before the field name**. The trail
+itself needs no annotation: declaring the field is enough to record it and to read each state's
+entry dates. `@trail` opts those dates into server-side filtering and sorting.
+
+```rescript
+@schema
+type lifecycle = Placed | Shipped | Cancelled
+
+@schema
+type state = {
+  @id orderId: string,
+  lifecycle: lifecycle,
+  @trail({index: [Placed, Shipped]})
+  trail: Reventless.Lifecycle.Trail.t<lifecycle>,
+}
+```
+
+**Argument forms:**
+
+```rescript
+@trail({index: [Placed, Shipped]})   // these states' dates, and the lifecycle index
+@trail({index: true})                // the lifecycle index alone
+```
+
+- **`{index: [States]}`** adds, for each named state, the filter and order fields
+  `entered<State>`, `entered<State>First` and `visits<State>`, and on DynamoDB one sparse index per
+  state. It includes what `{index: true}` adds.
+- **`{index: true}`** adds `enteredCurrent` and `<lifecycleField>Eq`, and on DynamoDB the lifecycle
+  index (keyed by the lifecycle field, sorted by when the row entered its current state).
+
+**Rules:**
+
+- **The states are the lifecycle's own constructors.** One the lifecycle does not declare is a
+  compile error that lists the declared ones. The check runs where the lifecycle enum is declared
+  in the same file; an imported enum cannot be reached, as with `@retired`.
+- **Only on the trail field.** `@trail` on a field of any other type is a compile error.
+- **One per state record.** A second `@trail` is a compile error; a state record has one trail.
+- **A state's date covers the rows that entered it.** Filtering or sorting by a named state's
+  fields leaves out a row that never entered that state.
+
+What each field means, what the indexes cost and how to backfill rows saved before the opt-in are
+in [Recording When a Row Reached Each State](./components/stateviewslice.md#filtering-and-sorting-by-a-states-date).
+
+---
+
 ### Tagged unions as state fields
 
 A variant held by a `@schema type state` field is one fact with several shapes, and it is the honest
@@ -1109,8 +1157,8 @@ The pressure this creates is usually productive: an arm that seems to carry noth
 of the above applies to it.
 
 **Keys, filters, sorts and predicates are refused on a union field**: `@id`, `@subId` (and the
-composite forms), `@index`, `@indexSubId`, `@scan`, `@scanSort`, `@groupBy`, `@lifecycle` and
-`@retired` — including `@retired` on an arm. All of them end up comparing the field to a scalar,
+composite forms), `@index`, `@indexSubId`, `@scan`, `@scanSort`, `@groupBy`, `@lifecycle`, `@trail`
+and `@retired` — including `@retired` on an arm. All of them end up comparing the field to a scalar,
 and this field's value is an object whose shape depends on the row. The comparison would compile,
 publish a filter input, and never match. Put the annotation on a scalar field beside the union.
 "List the rows whose geolocation is `Unresolvable`" wants a derived arm-name field beside the union,

@@ -195,6 +195,14 @@ Beyond the missing default-changing annotations, the current model leaves severa
 
 ### Richer filter primitives
 
+> **2026-11-22:** one family of range filters has landed outside `@scanRange`. A lifecycle trail's
+> derived dates (`entered<State>`, `entered<State>First`, `visits<State>`, `enteredCurrent`) get
+> `From`/`To` and sort for the states a view names in `@trail({index: […]})`, and the lifecycle
+> field gets `Eq` with an index sorted by when the row entered its state. See the plan
+> [state-entry dates a view can query](../plans/state-entry-dates-a-view-can-query.md) and the doc
+> page's [Filtering and Sorting by a State's Date](../../packages/doc/docs-app/components/stateviewslice.md#filtering-and-sorting-by-a-states-date).
+> Ranges on declared fields are still open, as the first bullet says.
+
 - **`@scanRange` (or extend `@scan` with `range: true`).** `@scan` today only emits `<field>Eq`. Numeric / date / version columns commonly want `<field>From` / `<field>To`. The `serverCapability.filterFields[].range` flag already exists; only the annotation surface and the metadata-write are missing. Same code path as `@subId` range filters.
 - **Typed enum filter inputs.** When a field is a ReScript polymorphic variant or has `@s.enum`, the SDL currently lowers it to `<field>Eq: String`. Emitting `<field>Eq: <FieldEnum>` would let the UI render a dropdown automatically, would catch invalid values at request-validation time, and would make the GraphQL schema honest about the domain. `SchemaType.fromSuryObject` already knows the variant cases.
 - **`In` filters.** `<field>In: [<Scalar>!]` for multi-select facets — currently the UI has to issue N requests or fall back to client-side. A single `[<field> in (a, b, c)]` is cheap in both adapters.

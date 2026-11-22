@@ -1,6 +1,8 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) done; [QDS6](#4-steps) done locally, the `alpha` stack open; [QDS8](#4-steps) built, its run on `alpha` open). Written 2026-11-21 from the analysis
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps), [QDS7](#4-steps) and
+> [QDS8](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
+> GraphQL on the `alpha` stack). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
@@ -189,7 +191,12 @@ first (`ord-001`, `ord-004`, `ord-006`, then `ord-009`, `ord-010`, `ord-011`), a
 order. `enteredListedFirst` sorts products and categories by when they joined the catalog, and
 ordering by `enteredArchived` or `enteredDiscontinued` returns only the one product the seed
 archived and the one it discontinued ([QDD10](#3-decisions)). The seed reopens no order, so a
-second visit is not seen there. *Open:* the three-day request on the `alpha` stack, after the push.
+second visit is not seen there.
+*On the `alpha` stack* 2026-11-22, after the backfill of [QDS8](#4-steps): a `Query` on Orders'
+lifecycle index for `Placed` with `_entered_current` older than three days returned, oldest first,
+`ord-011` (2026-09-17), `ord-20261107-r2-004` and `ord-20261107-r2-006` (2026-11-07). The per-state
+indexes held Placed 79, Shipped 54 and Cancelled 21. *Still open:* the same request through the
+shop's GraphQL on `alpha`, which needs a login.
 
 **QDS7 Docs.** The doc page's section
 [Recording When a Row Reached Each State](../../packages/doc/docs-app/components/stateviewslice.md#recording-when-a-row-reached-each-state)
@@ -201,6 +208,12 @@ partition, so a view writing past a partition's throughput (about 1000 writes/s;
 CloudWatch) would need a shard count on `@trail`. Sharding keys the index by `hash(id) mod N`, a read
 queries all N and merges them, and a rebuild re-keys the rows.
 *Done when* the docs build, and their links check.
+*Done* 2026-11-22. The section gained four subsections: the derived dates and how they read, the
+annotation with its filter and order fields and the rule of [QDD10](#3-decisions), what the opt-in
+costs on DynamoDB (the indexes, the refusal past 20, the one-partition limit and what sharding
+would be), and the backfill of [QDS8](#4-steps). The PPX guide has a `@trail` section, and names it
+among the annotations a union field refuses. The list analysis points here from its range-filter
+bullet.
 
 **QDS8 Backfill.** A row saved before [QDS1](#4-steps) carries its trail and none of the derived
 attributes, so the indexes of [QDS5](#4-steps) leave it out until its next write, and the rows that
@@ -218,8 +231,9 @@ writes; a second run finds nothing.
 during the run being skipped, on DynamoDB and SQLite; and on the `alpha` stack the dry run counts
 the rows, `--apply` writes them, and the three-day request of [QDS6](#4-steps) answers.
 *Built* 2026-11-22. The `alpha` dry run picked `Categories-812337e` (9 rows, 8 to change),
-`Products-0ba6849` (26, 25) and `Orders-10f6a39` (79, 78) by their tags. *Open:* `--apply` on
-`alpha`, then the request of [QDS6](#4-steps).
+`Products-0ba6849` (26, 25) and `Orders-10f6a39` (79, 78) by their tags. `--apply` then wrote the
+111 rows with none skipped, a second run found nothing to change, and the request of
+[QDS6](#4-steps) answered on the lifecycle index (its note has the rows).
 
 ## 5. Out of scope
 

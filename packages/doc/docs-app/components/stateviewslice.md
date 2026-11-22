@@ -278,6 +278,151 @@ Sub-state rows (a view with `@subId`, projected with `UpdateMultiState`) are the
 one exception: pairing a before-row with an after-row needs the sub-id, which is
 not resolved until the action is applied, so those actions record no entry.
 
+### The Dates the Trail Derives
+
+Beside the trail, and from it alone, every save also writes a few plain dates, so
+a client does not have to walk the list:
+
+- for **each state** the row entered: the **latest** entry, the **first** entry,
+  and the number of **visits**;
+- for **the row**: when it entered the state it is in now.
+
+They are a pure function of the trail and are rewritten on every save of the row,
+not only on a transition. Nothing is declared for them. Over GraphQL they read as
+one object beside the trail, named `<trailField>Entered`, with one entry per
+lifecycle state (lower-case first letter) and `current`:
+
+```graphql
+{
+  Ordering_Orders(first: 10) {
+    edges {
+      node {
+        orderId
+        lifecycle
+        trailEntered {
+          placed { latest first visits }
+          shipped { latest first visits }
+          current
+        }
+      }
+    }
+  }
+}
+```
+
+A state the row never entered reads `null`; a reopened order reads `placed {
+visits: 2 }` with `first` and `latest` apart. The object is absent when the trail
+field is `@internal`, and a lifecycle state named `Current` is refused when the
+API is generated, because its key would collide with `current`.
+
+### Filtering and Sorting by a State's Date
+
+Reading the dates costs nothing. Filtering and sorting by them **on the server**
+is an opt-in, written on the trail field:
+
+```rescript
+@schema
+type state = {
+  @id orderId: string,
+  lifecycle: lifecycle,
+  @trail({index: [Placed, Shipped]})
+  trail: Reventless.Lifecycle.Trail.t<lifecycle>,
+}
+```
+
+| Annotation | The view's filter input and `orderBy` gain |
+|---|---|
+| `@trail({index: [Placed, Shipped]})` | For each named state: `entered<State>` (latest entry), `entered<State>First` and `visits<State>`, each with `Eq`, `From` and `To` and each an order field. Also everything the next row gives. |
+| `@trail({index: true})` | `enteredCurrent` with `Eq`, `From`, `To` and as an order field, and `<lifecycleField>Eq` (`lifecycleEq`, `shelfStatusEq`, …). |
+
+So *orders that have been `Placed` for more than three days, oldest first* is one
+request, with the bound an absolute instant the client computes:
+
+```graphql
+{
+  Ordering_Orders(
+    filter: { lifecycleEq: "Placed", enteredCurrentTo: "2026-11-19T00:00:00.000Z" }
+    orderBy: { field: enteredCurrent, direction: ASC }
+    first: 20
+  ) {
+    edges { node { orderId trailEntered { current } } }
+  }
+}
+```
+
+Three rules:
+
+- **A state's date covers only the rows that entered that state.** Filtering or
+  sorting by `enteredShipped`, `enteredShippedFirst` or `visitsShipped` leaves out
+  every row that never shipped, on every backend. `enteredCurrent` covers every
+  row with a trail.
+- **The unqualified name is the latest visit.** `enteredPlaced` answers "since
+  when in that state"; `enteredPlacedFirst` is the first time. For a state entered
+  once they are the same instant.
+- **Dates compare as ISO instants, counts as numbers.** There is no operator
+  relative to now and no stored duration: a client sends an absolute bound and
+  computes a duration from two dates.
+
+The PPX refuses a state the lifecycle does not declare, naming the ones it does;
+`@trail` on a field that is not typed `Reventless.Lifecycle.Trail.t<…>`; and a
+second `@trail` on one record. The state check runs when the lifecycle enum is
+declared in the same file.
+
+### What the Opt-in Costs on DynamoDB
+
+On the in-memory, SQLite and Postgres backends the opt-in only widens the filter
+input. On DynamoDB it provisions global secondary indexes:
+
+- **One per named state**, sorted by that state's latest entry. It is sparse: a
+  row that never entered the state is not in it.
+- **The lifecycle index**, keyed by the lifecycle field and sorted by when the row
+  entered its current state. A request that names `<lifecycleField>Eq` is a
+  `Query` on it, with `enteredCurrentFrom`/`To` as the key condition and
+  `orderBy: enteredCurrent` read in index order.
+
+A range on, or an order by, `entered<State>` queries that state's index; any
+other filter stays a filter on the page read. A caller that `@owner` scopes keeps
+the owner index for the read.
+
+Two limits:
+
+- **DynamoDB allows 20 global secondary indexes on a table.** A view whose
+  `@index`, `@owner` and `@trail` annotations ask for more is refused when the
+  table is declared, with each index and the annotation it came from. Name fewer
+  states.
+- **Each per-state index, and each lifecycle state, is one partition.** A
+  partition takes about 1,000 writes per second, and a throttled index throttles
+  the table's own writes; it shows as write throttling on the index in CloudWatch.
+  A view writing past that would need the index sharded (keyed by
+  `hash(id) mod N`, a read querying all N and merging them, a rebuild re-keying
+  the rows), which `@trail` does not offer today.
+
+Creating the indexes is slow once, as with any new GSI: the deploy that first
+adds the annotation waits for them to become `ACTIVE`.
+
+### Rows Saved Before the Opt-in
+
+A row saved before the derived dates existed carries its trail and none of the
+dates, so every entry of its `trailEntered` reads `null` and it is missing from the new indexes until
+it is written again. The rows that have sat longest in a state are the ones
+nothing writes again, so backfill them once with `views:rederive`, which computes
+each row's dates from its trail with the function a save uses:
+
+```bash
+# A deployed stack, from the deployment's platform project (AWS credentials from
+# the ambient chain). A dry run is the default: it prints, per table, the rows to change.
+AWS_REGION=eu-west-1 SEED_STACK=alpha pnpm run views:rederive
+AWS_REGION=eu-west-1 SEED_STACK=alpha pnpm run views:rederive -- --apply
+
+# A local SQLite store, from platform-local. The in-memory backend needs none.
+pnpm run views:rederive
+pnpm run views:rederive -- --apply
+```
+
+It finds the stack's view tables by their tags, sets or removes only the derived
+attributes, and skips a row that was written while it ran (that row's own save
+already derived them). A second run finds nothing to change.
+
 ## Comparison with ReadModel
 
 | Aspect | ReadModel | StateViewSlice |
