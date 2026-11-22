@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-22
+- feat(registration): a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+- docs: a trail's derived dates, @trail and the backfill on the state view page ([ad2e384](https://github.com/ReventlessDev/reventless-core/commit/ad2e3849d3914d5ca51c7f2cd2f4d0ae64759cb1))
 ### 2026-11-21
 - feat(gwt): a system's boundary is tested without a test written, and a flow reaches every part ([9475f85](https://github.com/ReventlessDev/reventless-core/commit/9475f858027b55a819b5132b25b9d2e186ade934))
 - feat(gwt): a flow says who acts, reacts once, and starts after another ([1cae4fc](https://github.com/ReventlessDev/reventless-core/commit/1cae4fcc3d0a3c2743efaba0ea876ff3e02664ec))
