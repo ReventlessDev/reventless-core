@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.334 (2026-11-22)
+
+### Features
+
+* **spec:** money is written down as people say it, and counted in minor units inside ([0588a5a](https://github.com/ReventlessDev/reventless-core/commit/0588a5ac4542930d518985764aaaeecf2356e4c9))
+
+
 # 1.0.0-alpha.333 (2026-11-22)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

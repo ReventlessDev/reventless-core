@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.350 (2026-11-22)
+
+### Bug Fixes
+
+* **core:** the money type's description is one line, and the shop's GraphQL contract carries it ([f3bd42c](https://github.com/ReventlessDev/reventless-core/commit/f3bd42c66419209ce2eb6385273fc14d632263eb))
+### Features
+
+* **spec:** money is written down as people say it, and counted in minor units inside ([0588a5a](https://github.com/ReventlessDev/reventless-core/commit/0588a5ac4542930d518985764aaaeecf2356e4c9))
+
+
 # 3.0.0-alpha.349 (2026-11-22)
 
 ### Bug Fixes
