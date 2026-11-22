@@ -987,6 +987,11 @@ What is built:
 - **The guards' refusal** ([DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws))
   now counts the check as present when both keys are set.
 
+- **The shell** (`reventless-ui`) reads `personCheck: {siteKey}`, draws the Turnstile widget,
+  keeps the submit disabled until it has a token, sends it as `personCheck`, and resets the widget
+  after a refusal. An entry it cannot read offers no sign-up. No Content-Security-Policy is set
+  anywhere, so none had to allow Turnstile's script.
+
 A command function in a VPC (a Postgres event log) has no route to Turnstile without a NAT
 gateway; it would refuse every sign-up, and the alarm would say so.
 
