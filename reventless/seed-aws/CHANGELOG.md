@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.63 (2026-11-22)
+
+### Features
+
+* **seed:** backfill a trail's derived dates on stored view rows ([7663b39](https://github.com/ReventlessDev/reventless-core/commit/7663b3977f25f3d03426853d7afb51892ed5ce17))
+
+
 # 1.0.0-alpha.62 (2026-11-22)
 
 ### Features

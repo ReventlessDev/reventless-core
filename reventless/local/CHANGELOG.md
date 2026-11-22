@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.342 (2026-11-22)
+
+### Features
+
+* **registration:** a self-service role starts open or closed, per platform ([3cf8de0](https://github.com/ReventlessDev/reventless-core/commit/3cf8de045bb893a8b0579cd1351a892fb7c4dbf4))
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+* **registration:** the shell is told how a role starts, and how to open and close it ([4ce8b28](https://github.com/ReventlessDev/reventless-core/commit/4ce8b28967d90f918e97ea79800f8863b48cccbc))
+* **seed:** backfill a trail's derived dates on stored view rows ([7663b39](https://github.com/ReventlessDev/reventless-core/commit/7663b3977f25f3d03426853d7afb51892ed5ce17))
+
+
 # 3.0.0-alpha.341 (2026-11-22)
 
 ### Features

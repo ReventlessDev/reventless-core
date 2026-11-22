@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.47 (2026-11-22)
+
+### Features
+
+* **aws:** registration mail is capped per day, and an operator is told ([7d9c320](https://github.com/ReventlessDev/reventless-core/commit/7d9c3209ec5ef96bfd5948ebe2d9a2953f487958))
+* **examples:** the hybrid shop's alpha stack hosts its sign-up door on AWS ([3d30dd9](https://github.com/ReventlessDev/reventless-core/commit/3d30dd93686df3707039bb2a83cef70cb8d05971))
+* **registration:** a self-service role starts open or closed, per platform ([3cf8de0](https://github.com/ReventlessDev/reventless-core/commit/3cf8de045bb893a8b0579cd1351a892fb7c4dbf4))
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+* **registration:** the shell is told how a role starts, and how to open and close it ([4ce8b28](https://github.com/ReventlessDev/reventless-core/commit/4ce8b28967d90f918e97ea79800f8863b48cccbc))
+
+
 # 1.0.0-alpha.46 (2026-11-22)
 
 ### Features

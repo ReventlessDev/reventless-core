@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.45 (2026-11-22)
+
+### Features
+
+* **aws:** fields for visitors are served by a narrow API with its own key ([5667465](https://github.com/ReventlessDev/reventless-core/commit/56674655d4817ec53cb7d2590e0241c5cdd96664))
+* **aws:** registration mail is capped per day, and an operator is told ([7d9c320](https://github.com/ReventlessDev/reventless-core/commit/7d9c3209ec5ef96bfd5948ebe2d9a2953f487958))
+* **aws:** the narrow API for visitors is limited per source address ([a42fea7](https://github.com/ReventlessDev/reventless-core/commit/a42fea707d926715c75745776f1c27d8b6dc8162))
+
+
 # 3.0.0-alpha.44 (2026-11-22)
 
 ### Features

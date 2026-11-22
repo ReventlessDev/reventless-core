@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.402 (2026-11-22)
+
+### Features
+
+* **examples:** the hybrid shop's alpha stack hosts its sign-up door on AWS ([3d30dd9](https://github.com/ReventlessDev/reventless-core/commit/3d30dd93686df3707039bb2a83cef70cb8d05971))
+* **seed:** backfill a trail's derived dates on stored view rows ([7663b39](https://github.com/ReventlessDev/reventless-core/commit/7663b3977f25f3d03426853d7afb51892ed5ce17))
+
+
 # 1.0.0-alpha.401 (2026-11-22)
 
 ### Features

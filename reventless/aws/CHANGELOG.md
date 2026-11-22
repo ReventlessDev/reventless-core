@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.442 (2026-11-22)
+
+### Bug Fixes
+
+* **aws:** a door that checks for a person deploys to AWS ([cac325c](https://github.com/ReventlessDev/reventless-core/commit/cac325c2d73cdd0a8cca5db9650e0e4508e6ef6d))
+* **aws:** the key of the API for visitors is made after its schema ([904d20b](https://github.com/ReventlessDev/reventless-core/commit/904d20b4fb05351cedc30ac655a98c9a45396d35))
+### Features
+
+* **aws:** a stash on DynamoDB, handed and granted where a slice declares it ([9d4ee19](https://github.com/ReventlessDev/reventless-core/commit/9d4ee19009be79c12530e095b13faf6ad7735232))
+* **aws:** fields for visitors are served by a narrow API with its own key ([5667465](https://github.com/ReventlessDev/reventless-core/commit/56674655d4817ec53cb7d2590e0241c5cdd96664))
+* **aws:** registration mail is capped per day, and an operator is told ([7d9c320](https://github.com/ReventlessDev/reventless-core/commit/7d9c3209ec5ef96bfd5948ebe2d9a2953f487958))
+* **aws:** the narrow API for visitors is limited per source address ([a42fea7](https://github.com/ReventlessDev/reventless-core/commit/a42fea707d926715c75745776f1c27d8b6dc8162))
+* **aws:** the shell learns where to sign up from a file the plugin stack writes ([716638e](https://github.com/ReventlessDev/reventless-core/commit/716638e72d8e135e3c674d119f51beaf4ae7cdbf))
+* **registration:** a self-service role starts open or closed, per platform ([3cf8de0](https://github.com/ReventlessDev/reventless-core/commit/3cf8de045bb893a8b0579cd1351a892fb7c4dbf4))
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+
+
 # 3.0.0-alpha.441 (2026-11-22)
 
 ### Bug Fixes
