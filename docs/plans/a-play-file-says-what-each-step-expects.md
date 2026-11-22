@@ -1,8 +1,9 @@
 # Plan: a play file says what each step expects
 
 **Date:** 2026-11-22<br/>
-**Status:** 🔨 Built 2026-11-22, not yet released: [PE1](#pe1-the-client-expects-an-answer-and-reads-a-row) to [PE7](#pe7-the-checks), the shop's file
-played on its alpha stack too (see [§8](#8-as-built)). Steps numbered PE1 to PE7, decisions PED1 to PED4, open questions PEQ1 to PEQ4,
+**Status:** ✅ Built and released 2026-11-22: [PE1](#pe1-the-client-expects-an-answer-and-reads-a-row) to [PE7](#pe7-the-checks), the shop's file
+played on its alpha stack too (see [§8](#8-as-built)). A step that only reads a row came after, built,
+not yet released. Steps numbered PE1 to PE7, decisions PED1 to PED4, open questions PEQ1 to PEQ4,
 each with a recommendation, all four answered as recommended. *PE* is short for *play,
 expected*.<br/>
 **Repos:** `reventless-core` only: `reventless/seed`, `reventless/seed-aws`, the hybrid shop's
@@ -250,3 +251,7 @@ the same order again refused with `OrderAlreadyPlaced`. What it made stays on al
 run. A play that ended well then printed nothing after its run line; it now closes with *every
 step went as it expects (5 steps)*.
 
+**A step that only reads a row** (added after the release, when the tools wrote a story's steps
+into a play file): a story's step that looks at a view is its own step, as its own person, and
+sends nothing. A step with `row` and no `send` (`{id, as, row}`) reads the row as its `as`, counts
+as a step that expects, and is checked before the play as any `row` is.

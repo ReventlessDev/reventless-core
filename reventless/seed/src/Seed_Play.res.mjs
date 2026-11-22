@@ -154,40 +154,68 @@ function stepOf(json, index) {
         };
       }
     }
-  } else if (match$1 === undefined && match$2 !== undefined) {
-    let match$5 = Seed_Commands$ReventlessSeed.str(match$2, "field");
-    let match$6 = Seed_Commands$ReventlessSeed.items(match$2, "ids");
-    if (match$5 !== undefined) {
-      if (match$6.length !== 0) {
-        return {
-          TAG: "Ok",
-          _0: {
-            TAG: "WaitFor",
-            field: match$5,
-            ids: Stdlib_Array.filterMap(match$6, id => {
-              if (typeof id === "string") {
-                return id;
-              }
-            }),
-            as_: as_
-          }
-        };
+  } else if (match$1 === undefined) {
+    if (match$2 !== undefined) {
+      let match$5 = Seed_Commands$ReventlessSeed.str(match$2, "field");
+      let match$6 = Seed_Commands$ReventlessSeed.items(match$2, "ids");
+      if (match$5 !== undefined) {
+        if (match$6.length !== 0) {
+          return {
+            TAG: "Ok",
+            _0: {
+              TAG: "WaitFor",
+              field: match$5,
+              ids: Stdlib_Array.filterMap(match$6, id => {
+                if (typeof id === "string") {
+                  return id;
+                }
+              }),
+              as_: as_
+            }
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: at + `: waitFor needs a field and a list of ids`
+          };
+        }
       } else {
         return {
           TAG: "Error",
           _0: at + `: waitFor needs a field and a list of ids`
         };
       }
-    } else {
-      return {
-        TAG: "Error",
-        _0: at + `: waitFor needs a field and a list of ids`
-      };
+    }
+    if (Stdlib_Option.isSome(Seed_Commands$ReventlessSeed.get(json, "row"))) {
+      let e = rowOf(json, at);
+      if (e.TAG !== "Ok") {
+        return {
+          TAG: "Error",
+          _0: e._0
+        };
+      }
+      let row = e._0;
+      if (row !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: {
+            TAG: "Read",
+            row: row,
+            as_: as_,
+            id: id
+          }
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: at + `: expected {send, args}, {waitFor: {field, ids}} or {row}`
+        };
+      }
     }
   }
   return {
     TAG: "Error",
-    _0: at + `: expected {send, args} or {waitFor: {field, ids}}`
+    _0: at + `: expected {send, args}, {waitFor: {field, ids}} or {row}`
   };
 }
 
@@ -231,24 +259,39 @@ function parse(text) {
 
 function expects(file) {
   return file.steps.some(step => {
-    if (step.TAG === "Send") {
-      if (Stdlib_Option.isSome(step.expect)) {
+    switch (step.TAG) {
+      case "Send" :
+        if (Stdlib_Option.isSome(step.expect)) {
+          return true;
+        } else {
+          return Stdlib_Option.isSome(step.row);
+        }
+      case "WaitFor" :
+        return false;
+      case "Read" :
         return true;
-      } else {
-        return Stdlib_Option.isSome(step.row);
-      }
-    } else {
-      return false;
     }
   });
 }
 
 function stepName(file, index) {
   let match = file.steps[index];
-  if (match !== undefined && match.TAG === "Send") {
-    let id = match.id;
-    if (id !== undefined) {
-      return id;
+  if (match !== undefined) {
+    switch (match.TAG) {
+      case "Send" :
+        let id = match.id;
+        if (id !== undefined) {
+          return id;
+        }
+        break;
+      case "WaitFor" :
+        break;
+      case "Read" :
+        let id$1 = match.id;
+        if (id$1 !== undefined) {
+          return id$1;
+        }
+        break;
     }
   }
   return `step ` + (index + 1 | 0).toString();
@@ -293,13 +336,20 @@ function strings(json) {
 }
 
 function valuesOf(step) {
-  if (step.TAG === "Send") {
-    return strings(step.args).concat(Stdlib_Option.mapOr(step.row, [], r => Belt_Array.concatMany([
-      [r.key],
-      strings(r.has)
-    ])));
-  } else {
-    return step.ids;
+  switch (step.TAG) {
+    case "Send" :
+      return strings(step.args).concat(Stdlib_Option.mapOr(step.row, [], r => Belt_Array.concatMany([
+        [r.key],
+        strings(r.has)
+      ])));
+    case "WaitFor" :
+      return step.ids;
+    case "Read" :
+      let row = step.row;
+      return Belt_Array.concatMany([
+        [row.key],
+        strings(row.has)
+      ]);
   }
 }
 
@@ -317,7 +367,15 @@ function idNames(file) {
 }
 
 function people(file) {
-  return Stdlib_Array.reduce(Stdlib_Array.filterMap(file.steps, step => step.as_).concat(idNames(file)), [], (seen, name) => {
+  return Stdlib_Array.reduce(Stdlib_Array.filterMap(file.steps, step => {
+    switch (step.TAG) {
+      case "Send" :
+      case "WaitFor" :
+        return step.as_;
+      case "Read" :
+        return step.as_;
+    }
+  }).concat(idNames(file)), [], (seen, name) => {
     if (seen.includes(name)) {
       return seen;
     } else {
@@ -449,110 +507,125 @@ async function playOnce(file, commands, client, clientOfOpt, vars, resultsOpt, r
         fields
       ])));
     };
+    let readTheRow = async (client, r, base) => {
+      let k = fill(r.key, vars);
+      let tmp;
+      tmp = typeof k === "string" ? k : r.key;
+      let h = fill(r.has, vars);
+      let tmp$1;
+      tmp$1 = typeof h === "object" && h !== null && !Array.isArray(h) ? h : r.has;
+      let r_view = r.view;
+      let r$1 = {
+        view: r_view,
+        key: tmp,
+        has: tmp$1
+      };
+      let read = await Seed_Client$ReventlessSeed.readRow(client, r_view, tmp, tmp$1, rowTimeoutMs);
+      said(Belt_Array.concatMany([
+        base,
+        [[
+            "row",
+            rowJson(r$1, read)
+          ]]
+      ]));
+      if (read.matches) {
+        return;
+      }
+      throw {
+        RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+        _1: name + `: ` + rowWords(r$1, read),
+        Error: new Error()
+      };
+    };
     let match = file.steps[i];
     if (match !== undefined) {
-      if (match.TAG === "Send") {
-        let row = match.row;
-        let expect = match.expect;
-        let as_ = match.as_;
-        let field = match.field;
-        let client$1 = await clientAs(as_);
-        let m = Seed_Commands$ReventlessSeed.encodeOrThrow(commands, field, fill(match.args, vars));
-        let who = Stdlib_Option.mapOr(as_, [], a => [[
-            "as",
-            a
-          ]]);
-        let exit = 0;
-        if (expect !== undefined || row !== undefined) {
-          exit = 1;
-        } else {
-          await Seed_Client$ReventlessSeed.send(client$1, m, undefined);
-          said(Belt_Array.concatMany([
-            [[
-                "send",
-                field
-              ]],
-            who,
-            [[
-                "came",
-                answerJson({
-                  accepted: true
-                })
-              ]]
-          ]));
-        }
-        if (exit === 1) {
-          let expected = Stdlib_Option.getOr(expect, "Accepted");
-          let match$1 = await Seed_Client$ReventlessSeed.sendExpecting(client$1, m, expected);
-          let answer = match$1[0];
-          let base = Belt_Array.concatMany([
-            [[
-                "send",
-                field
-              ]],
-            who,
-            [
-              [
-                "expected",
-                Seed_Client$ReventlessSeed.expectedWords(expected)
-              ],
-              [
-                "came",
-                answerJson(answer)
-              ]
-            ]
-          ]);
-          if (!match$1[1]) {
-            said(base);
-            throw {
-              RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-              _1: name + `: ` + field + ` was expected to be ` + Seed_Client$ReventlessSeed.expectedWords(expected) + `, and was ` + Seed_Client$ReventlessSeed.answerWords(answer) + Stdlib_Option.mapOr(answer.detail, "", d => ` (` + d + `)`),
-              Error: new Error()
-            };
-          }
-          if (row !== undefined) {
-            let k = fill(row.key, vars);
-            let tmp;
-            tmp = typeof k === "string" ? k : row.key;
-            let h = fill(row.has, vars);
-            let tmp$1;
-            tmp$1 = typeof h === "object" && h !== null && !Array.isArray(h) ? h : row.has;
-            let r_view = row.view;
-            let r = {
-              view: r_view,
-              key: tmp,
-              has: tmp$1
-            };
-            let read = await Seed_Client$ReventlessSeed.readRow(client$1, r_view, tmp, tmp$1, rowTimeoutMs);
+      switch (match.TAG) {
+        case "Send" :
+          let row = match.row;
+          let expect = match.expect;
+          let as_ = match.as_;
+          let field = match.field;
+          let client$1 = await clientAs(as_);
+          let m = Seed_Commands$ReventlessSeed.encodeOrThrow(commands, field, fill(match.args, vars));
+          let who = Stdlib_Option.mapOr(as_, [], a => [[
+              "as",
+              a
+            ]]);
+          let exit = 0;
+          if (expect !== undefined || row !== undefined) {
+            exit = 1;
+          } else {
+            await Seed_Client$ReventlessSeed.send(client$1, m, undefined);
             said(Belt_Array.concatMany([
-              base,
               [[
-                  "row",
-                  rowJson(r, read)
+                  "send",
+                  field
+                ]],
+              who,
+              [[
+                  "came",
+                  answerJson({
+                    accepted: true
+                  })
                 ]]
             ]));
-            if (!read.matches) {
+          }
+          if (exit === 1) {
+            let expected = Stdlib_Option.getOr(expect, "Accepted");
+            let match$1 = await Seed_Client$ReventlessSeed.sendExpecting(client$1, m, expected);
+            let answer = match$1[0];
+            let base = Belt_Array.concatMany([
+              [[
+                  "send",
+                  field
+                ]],
+              who,
+              [
+                [
+                  "expected",
+                  Seed_Client$ReventlessSeed.expectedWords(expected)
+                ],
+                [
+                  "came",
+                  answerJson(answer)
+                ]
+              ]
+            ]);
+            if (!match$1[1]) {
+              said(base);
               throw {
                 RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-                _1: name + `: ` + rowWords(r, read),
+                _1: name + `: ` + field + ` was expected to be ` + Seed_Client$ReventlessSeed.expectedWords(expected) + `, and was ` + Seed_Client$ReventlessSeed.answerWords(answer) + Stdlib_Option.mapOr(answer.detail, "", d => ` (` + d + `)`),
                 Error: new Error()
               };
             }
-          } else {
-            said(base);
+            if (row !== undefined) {
+              await readTheRow(client$1, row, base);
+            } else {
+              said(base);
+            }
           }
-        }
-      } else {
-        let client$2 = await clientAs(match.as_);
-        let ids = match.ids.map(id => {
-          let filled = fill(id, vars);
-          if (typeof filled === "string") {
-            return filled;
-          } else {
-            return id;
-          }
-        });
-        await Seed_Client$ReventlessSeed.waitForIds(client$2, match.field, ids, undefined);
+          break;
+        case "WaitFor" :
+          let client$2 = await clientAs(match.as_);
+          let ids = match.ids.map(id => {
+            let filled = fill(id, vars);
+            if (typeof filled === "string") {
+              return filled;
+            } else {
+              return id;
+            }
+          });
+          await Seed_Client$ReventlessSeed.waitForIds(client$2, match.field, ids, undefined);
+          break;
+        case "Read" :
+          let as_$1 = match.as_;
+          let client$3 = await clientAs(as_$1);
+          await readTheRow(client$3, match.row, Stdlib_Option.mapOr(as_$1, [], a => [[
+              "as",
+              a
+            ]]));
+          break;
       }
     }
   }
@@ -577,15 +650,24 @@ function namedOf(_t) {
 
 async function rowProblems(file, client, path) {
   let rows = Stdlib_Array.filterMapWithIndex(file.steps, (step, i) => {
-    if (step.TAG !== "Send") {
-      return;
-    }
-    let r = step.row;
-    if (r !== undefined) {
-      return [
-        stepName(file, i),
-        r
-      ];
+    switch (step.TAG) {
+      case "Send" :
+        let r = step.row;
+        if (r !== undefined) {
+          return [
+            stepName(file, i),
+            r
+          ];
+        } else {
+          return;
+        }
+      case "WaitFor" :
+        return;
+      case "Read" :
+        return [
+          stepName(file, i),
+          step.row
+        ];
     }
   });
   if (Primitive_object.equal(rows, [])) {
@@ -802,38 +884,42 @@ function dataSet(path, nameOpt) {
         };
       });
       file$1.steps.forEach((step, i) => {
-        if (step.TAG !== "Send") {
-          return;
+        switch (step.TAG) {
+          case "Send" :
+            let args = step.args;
+            let field = step.field;
+            let message = Seed_Commands$ReventlessSeed.encode(read, field, fill(args, [
+              [
+                "run",
+                run
+              ],
+              [
+                "rep",
+                "1"
+              ]
+            ]));
+            if (message.TAG !== "Ok") {
+              throw {
+                RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+                _1: path + `: ` + message._0,
+                Error: new Error()
+              };
+            }
+            if (!expects(file$1)) {
+              return;
+            }
+            let m = Seed_Commands$ReventlessSeed.encode(read, field, args);
+            if (m.TAG !== "Ok") {
+              return;
+            }
+            unmarkedIds(m._0).forEach(id => {
+              console.log(`  note: ` + stepName(file$1, i) + `: ` + id + ` carries no {run}: it names something that is there before the play`);
+            });
+            return;
+          case "WaitFor" :
+          case "Read" :
+            return;
         }
-        let args = step.args;
-        let field = step.field;
-        let message = Seed_Commands$ReventlessSeed.encode(read, field, fill(args, [
-          [
-            "run",
-            run
-          ],
-          [
-            "rep",
-            "1"
-          ]
-        ]));
-        if (message.TAG !== "Ok") {
-          throw {
-            RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-            _1: path + `: ` + message._0,
-            Error: new Error()
-          };
-        }
-        if (!expects(file$1)) {
-          return;
-        }
-        let m = Seed_Commands$ReventlessSeed.encode(read, field, args);
-        if (m.TAG !== "Ok") {
-          return;
-        }
-        unmarkedIds(m._0).forEach(id => {
-          console.log(`  note: ` + stepName(file$1, i) + `: ` + id + ` carries no {run}: it names something that is there before the play`);
-        });
       });
       let problems = await rowProblems(file$1, connection.client, path);
       if (problems.length !== 0) {

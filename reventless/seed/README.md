@@ -129,7 +129,9 @@ as one of its people.
 
 A step of a play file may say what it expects: `expect: accepted` or
 `expect: {refused: <errorCode>}`, and `row: {view, key, has}`, a row the view
-then shows, read as the step's person. `id` names the step. The play stops at
+then shows, read as the step's person. A step with a `row` and no `send` sends
+nothing and only reads the row, as its `as`: someone looks at a view. `id`
+names the step. The play stops at
 the first step that went otherwise and says what came instead, or says at the end
 that every step went as it expects, so it is a test
 of a running platform, local or deployed. The online-shop example's

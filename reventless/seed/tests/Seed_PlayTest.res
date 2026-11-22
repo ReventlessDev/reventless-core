@@ -44,7 +44,7 @@ steps:
       file.steps->Array.map(
         step =>
           switch step {
-          | Send({?as_}) | WaitFor({?as_}) => as_
+          | Send({?as_}) | WaitFor({?as_}) | Read({?as_}) => as_
           },
       ),
       Seed_Play.people(file),
@@ -126,6 +126,30 @@ steps:
     }
   )
 
+  testSync("reads a step that only reads a row, as its person", () => {
+    let read = parsed(`
+steps:
+  - {id: ada-looks, as: ada, row: {view: Shop_OrdersByIds, key: "o-{run}", has: {ownerId: "{id:ada}"}}}
+`)
+    switch read.steps[0] {
+    | Some(Read({row, ?as_, ?id})) =>
+      expect((
+        (row.view, row.key, as_, id),
+        Seed_Play.expects(read),
+        Seed_Play.people(read),
+        Seed_Play.marked(read),
+        Seed_Play.stepName(read, 0),
+      ))->toEqual((
+        ("Shop_OrdersByIds", "o-{run}", Some("ada"), Some("ada-looks")),
+        true,
+        ["ada"],
+        true,
+        "ada-looks",
+      ))
+    | _ => failwith("expected a step that reads a row")
+    }
+  })
+
   testSync("names what it cannot read", () =>
     expect(
       [
@@ -133,8 +157,9 @@ steps:
         `steps: [{send: A, expect: {refused: ""}}]`,
         `steps: [{send: A, row: {view: V}}]`,
         `steps: [{send: A, row: {view: V, key: k, has: [1]}}]`,
+        `steps: [{as: ada, row: {view: V}}]`,
       ]->Array.map(text => Seed_Play.parse(text)->Result.isError),
-    )->toEqual([true, true, true, true])
+    )->toEqual([true, true, true, true, true])
   )
 
   testSync("knows a play that expects, the people whose ids it names, and its mark", () =>
@@ -321,6 +346,41 @@ steps:
     expect(
       stopped->Option.map(m => m->String.startsWith("order: Shop_OrdersByIds shows no row o-R")),
     )->toEqual(Some(true))
+  })
+
+  testPromise("reads a row on a step that sends nothing, as the step's person", async () => {
+    let _ = shop()
+    let results = []
+    let readers = []
+    let _ = await Seed_Play.playOnce(
+      parsed(`
+steps:
+  - {id: order, send: Shop_PlaceOrder, args: {orderId: "o-{run}"}, expect: accepted}
+  - {id: ada-looks, as: ada, row: {view: Shop_OrdersByIds, key: "o-{run}", has: {state: Placed}}}
+`),
+      ~commands,
+      ~client=client(),
+      ~clientOf=async name => {
+        readers->Array.push(name)
+        client()
+      },
+      ~vars=[("run", "R")],
+      ~results,
+      ~rowTimeoutMs=2000,
+    )
+    let field = (j: JSON.t, k) =>
+      switch j {
+      | Object(d) => d->Dict.get(k)
+      | _ => None
+      }
+    expect((
+      readers,
+      results->Array.get(1)->Option.flatMap(r => field(r, "as")),
+      results
+      ->Array.get(1)
+      ->Option.flatMap(r => field(r, "row"))
+      ->Option.flatMap(r => field(r, "matches")),
+    ))->toEqual((["ada"], Some(JSON.String("ada")), Some(JSON.Boolean(true))))
   })
 
   testPromise("sends a person's id as the one their account carries", async () => {

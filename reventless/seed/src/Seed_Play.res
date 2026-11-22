@@ -13,6 +13,9 @@
 //       args: {orderId: "o-{run}-{rep}", ownerId: "{id:ada}"}
 //       expect: accepted                # or {refused: <errorCode>}
 //       row: {view: Ordering_OrdersByIds, key: "o-{run}-{rep}", has: {lifecycle: "{any}"}}
+//     - id: ada-looks                   # a step that only reads a row, as its person
+//       as: ada
+//       row: {view: Ordering_OrdersByIds, key: "o-{run}-{rep}", has: {ownerId: "{id:ada}"}}
 //
 // `{rep}` is the repetition's number in this run, `{run}` names the run
 // (`SEED_RUN_TAG`, else the start time), so ids differ between runs and repeat
@@ -45,6 +48,8 @@ type step =
       row?: row,
     })
   | WaitFor({field: string, ids: array<string>, as_?: string})
+  /** A step that sends nothing and reads a row, as its person: someone looks at a view. */
+  | Read({row: row, as_?: string, id?: string})
 
 type file = {pace?: string, repeatable: bool, steps: array<step>}
 
@@ -101,6 +106,12 @@ let stepOf = (json: JSON.t, ~index: int): result<step, string> => {
         }),
       )
     }
+  | (None, None, None) if json->Seed_Commands.get("row")->Option.isSome =>
+    switch rowOf(json, ~at) {
+    | Error(e) => Error(e)
+    | Ok(None) => Error(`${at}: expected {send, args}, {waitFor: {field, ids}} or {row}`)
+    | Ok(Some(row)) => Ok(Read({row, ?as_, ?id}))
+    }
   | (None, None, Some(wait)) =>
     switch (wait->Seed_Commands.str("field"), wait->Seed_Commands.items("ids")) {
     | (Some(field), ids) if ids->Array.length > 0 =>
@@ -118,7 +129,7 @@ let stepOf = (json: JSON.t, ~index: int): result<step, string> => {
       )
     | _ => Error(`${at}: waitFor needs a field and a list of ids`)
     }
-  | _ => Error(`${at}: expected {send, args} or {waitFor: {field, ids}}`)
+  | _ => Error(`${at}: expected {send, args}, {waitFor: {field, ids}} or {row}`)
   }
 }
 
@@ -149,6 +160,7 @@ let expects = (file: file): bool =>
   file.steps->Array.some(step =>
     switch step {
     | Send({?expect, ?row}) => expect->Option.isSome || row->Option.isSome
+    | Read(_) => true
     | WaitFor(_) => false
     }
   )
@@ -156,7 +168,7 @@ let expects = (file: file): bool =>
 /** How a step is named in what is said about it: its `id`, else its number. */
 let stepName = (file: file, index: int): string =>
   switch file.steps[index] {
-  | Some(Send({id: ?Some(id)})) => id
+  | Some(Send({id: ?Some(id)})) | Some(Read({id: ?Some(id)})) => id
   | _ => `step ${(index + 1)->Int.toString}`
   }
 
@@ -192,6 +204,7 @@ let valuesOf = (step: step): array<string> =>
   switch step {
   | Send({args, ?row}) =>
     Array.concat(strings(args), row->Option.mapOr([], r => [r.key, ...strings(JSON.Object(r.has))]))
+  | Read({row}) => [row.key, ...strings(JSON.Object(row.has))]
   | WaitFor({ids}) => ids
   }
 
@@ -213,7 +226,7 @@ let people = (file: file): array<string> =>
   file.steps
   ->Array.filterMap(step =>
     switch step {
-    | Send({?as_}) | WaitFor({?as_}) => as_
+    | Send({?as_}) | WaitFor({?as_}) | Read({?as_}) => as_
     }
   )
   ->Array.concat(idNames(file))
@@ -321,6 +334,30 @@ let playOnce = async (
     let name = stepName(file, i)
     let said = (fields: array<(string, JSON.t)>) =>
       results->Array.push(JSON.Object(Dict.fromArray([("step", str(name)), ...fields])))
+    // The row `r` read as `client`, said after `base`; a row that does not come stops the play.
+    let readTheRow = async (client, r: row, ~base) => {
+      let r = {
+        view: r.view,
+        key: switch fill(String(r.key), ~vars) {
+        | String(k) => k
+        | _ => r.key
+        },
+        has: switch fill(JSON.Object(r.has), ~vars) {
+        | Object(h) => h
+        | _ => r.has
+        },
+      }
+      let read = await client->Seed_Client.readRow(
+        ~field=r.view,
+        ~key=r.key,
+        ~wanted=r.has,
+        ~timeoutMs=rowTimeoutMs,
+      )
+      said([...base, ("row", rowJson(r, read))])
+      if !read.matches {
+        throw(Failed(`${name}: ${rowWords(r, read)}`))
+      }
+    }
     switch file.steps[i] {
     | Some(Send({field, args, ?as_, ?expect, ?row})) =>
       let client = await clientAs(as_)
@@ -353,30 +390,12 @@ let playOnce = async (
         }
         switch row {
         | None => said(base)
-        | Some(r) =>
-          let r = {
-            view: r.view,
-            key: switch fill(String(r.key), ~vars) {
-            | String(k) => k
-            | _ => r.key
-            },
-            has: switch fill(JSON.Object(r.has), ~vars) {
-            | Object(h) => h
-            | _ => r.has
-            },
-          }
-          let read = await client->Seed_Client.readRow(
-            ~field=r.view,
-            ~key=r.key,
-            ~wanted=r.has,
-            ~timeoutMs=rowTimeoutMs,
-          )
-          said([...base, ("row", rowJson(r, read))])
-          if !read.matches {
-            throw(Failed(`${name}: ${rowWords(r, read)}`))
-          }
+        | Some(r) => await readTheRow(client, r, ~base)
         }
       }
+    | Some(Read({row, ?as_})) =>
+      let client = await clientAs(as_)
+      await readTheRow(client, row, ~base=as_->Option.mapOr([], a => [("as", str(a))]))
     | Some(WaitFor({field, ids, ?as_})) =>
       let client = await clientAs(as_)
       let ids = ids->Array.map(id => {
@@ -407,7 +426,7 @@ let rec namedOf = (t: Seed_Commands.typeRef): string =>
 let rowProblems = async (file: file, ~client: Seed_Client.t, ~path: string): array<string> => {
   let rows = file.steps->Array.filterMapWithIndex((step, i) =>
     switch step {
-    | Send({row: ?Some(r)}) => Some((stepName(file, i), r))
+    | Send({row: ?Some(r)}) | Read({row: r}) => Some((stepName(file, i), r))
     | _ => None
     }
   )
@@ -568,7 +587,7 @@ let dataSet = (~path: string, ~name="file"): Seed_DataSet.t => {
             | Error(_) => ()
             }
           }
-        | WaitFor(_) => ()
+        | WaitFor(_) | Read(_) => ()
         }
       )
       switch await rowProblems(file, ~client=connection.client, ~path) {
