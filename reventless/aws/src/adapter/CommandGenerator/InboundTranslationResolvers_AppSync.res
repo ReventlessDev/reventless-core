@@ -12,17 +12,21 @@ let make = (
   ~api: Types.AppSync.api,
   ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
   ~fieldNames: array<string>,
+  // Set for the doors on the narrow API for visitors: its resources are named
+  // apart from the plugin API's, and it has no subscriptions.
+  ~forVisitors: bool=false,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
+  let named = (name: string) => forVisitors ? `Visitor${name}` : name
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let lambda = runtime.parts.lambda
 
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
-    ~name="InboundTranslationDS",
+    ~name=named("InboundTranslationDS"),
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
-      ~name="InboundTranslationDS",
+      ~name=named("InboundTranslationDS"),
       ~kind=ReventlessCore.ComponentType.Plugin,
       ~role=Identity,
       ~scope=Plugin,
@@ -35,7 +39,7 @@ let make = (
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((lambdaArn, dataSourceRoleId)) => {
       let _attachDataSourcePolicy = PulumiAws.IAM.RolePolicy.make(
-        ~name="InboundTranslationDS",
+        ~name=named("InboundTranslationDS"),
         ~args={
           PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
             ~id="InboundTranslationDSPolicy",
@@ -57,7 +61,7 @@ let make = (
     })
 
   let dataSource = PulumiAws.AppSync.DataSource.make(
-    ~name="InboundTranslation",
+    ~name=named("InboundTranslation"),
     ~args={
       type_: AWS_LAMBDA,
       apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
@@ -73,7 +77,7 @@ let make = (
 
   let _resolvers = fieldNames->Array.forEach(fieldName => {
     let _ = AppSync_Resolver_Retrying.makeUnitJsResolver(
-      ~name=fieldName->String.capitalize,
+      ~name=named(fieldName->String.capitalize),
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
@@ -89,10 +93,12 @@ let make = (
   // CommandGeneratorResolvers_AppSync.make / makeDcb do for aggregate / DCB
   // mutations. Reuses the mutation's data source — UNIT subscription code
   // never executes against it.
-  CommandSubscriptionResolvers_AppSync.make(
-    ~api,
-    ~mutationFields=fieldNames,
-    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
-    ~opts,
-  )
+  if !forVisitors {
+    CommandSubscriptionResolvers_AppSync.make(
+      ~api,
+      ~mutationFields=fieldNames,
+      ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+      ~opts,
+    )
+  }
 }

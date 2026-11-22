@@ -804,6 +804,20 @@ not host the narrow API.
 platform API's SDL is unchanged for a deployment with none; the key's expiry is renewed by a
 redeploy.
 
+*As built (2026-11-22), not yet deployed:* a plugin stack hosts the narrow API
+(`AppSync_VisitorApi`: an AppSync API whose only authorization is an API key, its role, and the
+key, which lives a year less a day from the start of the deploy's day, so a redeploy renews it
+and changes it at most once a day). `AppSync_VisitorSchema` says what goes where: the fields
+whose rule is `AllowAnonymous` leave the plugin's own schema, with the subscriptions that
+announced one of them, and make the narrow API's, with the types they reach and no other, and no
+directive. The doors' resolvers are made on the narrow API (no subscriptions there); a view for
+visitors gets the resolvers it would have had, on a data source of the narrow API whose role
+may read the view's table and nothing more. The plugin stack exports `visitorApiEndpoint` and
+`visitorApiKey` for [DW8](#dw8-the-admission-check-and-the-shells-configuration-on-aws). A
+deployment that hosts no narrow API refuses the fields as before. Needed the `AppSync.ApiKey`
+binding. Not yet shown on a deployed stack: that the schema document AppSync accepts, and the
+key's renewal; [DW9](#dw9-the-example-on-aws-and-the-walk) walks both.
+
 #### DW6: the limit on AWS
 
 Two layers. **The exact limit:** the narrow API's resolvers apply `AnonymousRequestLimit`, read

@@ -35,17 +35,55 @@ module Selectable = {
         ~opts,
       )
     } else {
-      QueryDbResolvers_AppSync.make(
-        ~name,
-        ~api,
-        ~apiRole,
-        ~dataSourceName,
-        ~indexes,
-        ~subIdField,
-        ~idResolverConfigs,
-        ~idsResolverConfigs,
-        ~authorization,
-        ~opts,
-      )
+      let onPluginApi = () =>
+        QueryDbResolvers_AppSync.make(
+          ~name,
+          ~api,
+          ~apiRole,
+          ~dataSourceName,
+          ~indexes,
+          ~subIdField,
+          ~idResolverConfigs,
+          ~idsResolverConfigs,
+          ~authorization,
+          ~opts,
+        )
+      switch authorization {
+      // A view for visitors is served by the narrow API: the same resolvers, on
+      // a data source of that API which may only read the view's table. Decided
+      // when the resolvers are made, by which time that API exists.
+      | AllowAnonymous if AppSync_VisitorApi.hosted() => {
+          resources: [],
+          resourcesMaker: allQueryDbs =>
+            switch AppSync_VisitorApi.made() {
+            | None => onPluginApi().resourcesMaker(allQueryDbs)
+            | Some(visitors) =>
+              let table =
+                allQueryDbs
+                ->ReventlessCore.Plugin_Helpers.getStorageResources(None, name->String.capitalize)
+                ->Util.DynamoDb.findResourceInOutput
+                ->ReventlessCore.Adapter.outputToResource
+              let dataSource = AppSync_VisitorView.dataSource(
+                ~name=name->String.capitalize,
+                ~visitors,
+                ~tableName=table.name,
+                ~opts,
+              )
+              QueryDbResolvers_AppSync.make(
+                ~name,
+                ~api=visitors.api,
+                ~apiRole=visitors.role,
+                ~dataSourceName=dataSource,
+                ~indexes,
+                ~subIdField,
+                ~idResolverConfigs,
+                ~idsResolverConfigs,
+                ~authorization,
+                ~opts,
+              ).resourcesMaker(allQueryDbs)
+            },
+        }
+      | _ => onPluginApi()
+      }
     }
 }

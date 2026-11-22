@@ -261,6 +261,9 @@ let injectAwsAuth = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   ~queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
+  // The fields declared `AllowAnonymous` are served by the narrow API for
+  // visitors and are no longer in `fragment`: nothing here is refused for them.
+  ~visitorsServed: bool=false,
 ): Reventless.Plugin.apiSchemaFragment => {
   let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
 
@@ -342,7 +345,7 @@ let injectAwsAuth = (
     }
   })
 
-  if anonymousFields->Array.length > 0 {
+  if anonymousFields->Array.length > 0 && !visitorsServed {
     AppSync_SdlDecorate.refuseAnonymousFields(anonymousFields)
   }
 
@@ -659,7 +662,20 @@ let generateFragment = (
   ~queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
 ): Reventless.Plugin.apiSchemaFragment => {
   let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
-  injectAwsAuth(fragment, ~mutationEntries, ~queryEntries)
+  if AppSync_VisitorApi.hosted() {
+    // The fields for visitors leave this schema for the narrow API's, taken
+    // before any directive is put on them: that API has one way in.
+    let fields = AppSync_VisitorSchema.fieldsOf(~mutationEntries, ~queryEntries)
+    AppSync_VisitorApi.register(~fields, ~fragment=AppSync_VisitorSchema.only(fragment, fields))
+    injectAwsAuth(
+      AppSync_VisitorSchema.without(fragment, fields),
+      ~mutationEntries,
+      ~queryEntries,
+      ~visitorsServed=true,
+    )
+  } else {
+    injectAwsAuth(fragment, ~mutationEntries, ~queryEntries)
+  }
 }
 
 // (updateSchema — the whole-replace stitched-schema push — was retired with

@@ -17,6 +17,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
@@ -64,6 +65,7 @@ import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core
 import * as Upload_Presign_S3$ReventlessAws from "./adapter/Upload/Upload_Presign_S3.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
+import * as AppSync_VisitorApi$ReventlessAws from "./components/Api/AppSync_VisitorApi.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
@@ -76,6 +78,7 @@ import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.r
 import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
+import * as AppSync_VisitorSchema$ReventlessAws from "./components/Api/AppSync_VisitorSchema.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
@@ -589,7 +592,9 @@ function MakeWithConfig(Config) {
     Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
-    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
+    let visitorFields = AppSync_VisitorApi$ReventlessAws.fields();
+    let pluginFragment$1 = AppSync_VisitorSchema$ReventlessAws.without(pluginFragment, visitorFields);
+    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment$1);
     let pushed = Output$Pulumi.flatMap(domainApi, api => Output$Pulumi.flatMap(api.id, apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing subgraph schema for ` + name + `@` + version + ` to source API ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
@@ -602,10 +607,48 @@ function MakeWithConfig(Config) {
       });
     }));
     mergedSchemaPushedRef.contents = pushed;
-    return pushed;
+    let visitorFragment = AppSync_VisitorApi$ReventlessAws.fragmentRef.contents;
+    if (visitorFragment === undefined) {
+      return pushed;
+    }
+    if (AppSync_VisitorSchema$ReventlessAws.isEmpty(visitorFields)) {
+      return pushed;
+    }
+    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
+    let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
+    let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
+      log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+        apiId: apiId,
+        definition: visitorSdl
+      }).then(async () => await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined));
+    }));
+    return Pulumi.all([
+      pushed,
+      visitorsPushed
+    ]).apply(param => {});
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => adminBarrier;
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => {
+    let opts = param.opts;
+    let fieldNames = param.fieldNames;
+    let runtime = param.runtime;
+    let match = AppSync_VisitorApi$ReventlessAws.made();
+    let match$1 = match !== undefined ? Stdlib_Array.partition(fieldNames, AppSync_VisitorApi$ReventlessAws.servesMutation) : [
+        [],
+        fieldNames
+      ];
+    let signedIn = match$1[1];
+    let forVisitors = match$1[0];
+    if (Primitive_object.notequal(signedIn, [])) {
+      InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), runtime, signedIn, undefined, opts);
+    }
+    let match$2 = AppSync_VisitorApi$ReventlessAws.made();
+    if (match$2 !== undefined && Primitive_object.notequal(forVisitors, [])) {
+      return InboundTranslationResolvers_AppSync$ReventlessAws.make(match$2.api, runtime, forVisitors, true, opts);
+    }
+  };
   let hooks_dcbAppSyncResolverHook = param => {
     let onAdminApi = param.onAdminApi;
     CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, onAdminApi, param.opts);
@@ -1471,8 +1514,14 @@ function MakeWithConfig(Config) {
     let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
+    AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
+    let visitors = AppSync_VisitorApi$ReventlessAws.made();
+    if (visitors !== undefined) {
+      Pulumi$Pulumi.$$export("visitorApiEndpoint", visitors.endpoint);
+      Pulumi$Pulumi.$$export("visitorApiKey", visitors.key);
+    }
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
@@ -2062,7 +2111,9 @@ function Make($star) {
     Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
-    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
+    let visitorFields = AppSync_VisitorApi$ReventlessAws.fields();
+    let pluginFragment$1 = AppSync_VisitorSchema$ReventlessAws.without(pluginFragment, visitorFields);
+    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment$1);
     let pushed = Output$Pulumi.flatMap(domainApi, api => Output$Pulumi.flatMap(api.id, apiId => {
       log.info("preResolversSchemaHook", undefined, `Pushing subgraph schema for ` + name + `@` + version + ` to source API ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
@@ -2075,10 +2126,48 @@ function Make($star) {
       });
     }));
     mergedSchemaPushedRef.contents = pushed;
-    return pushed;
+    let visitorFragment = AppSync_VisitorApi$ReventlessAws.fragmentRef.contents;
+    if (visitorFragment === undefined) {
+      return pushed;
+    }
+    if (AppSync_VisitorSchema$ReventlessAws.isEmpty(visitorFields)) {
+      return pushed;
+    }
+    let visitors = AppSync_VisitorApi$ReventlessAws.make(name + `Visitors`, {});
+    let visitorSdl = AppSync_VisitorSchema$ReventlessAws.sdl(visitorFragment);
+    let visitorsPushed = Output$Pulumi.flatMap(visitors.api, api => Output$Pulumi.flatMap(api.id, apiId => {
+      log.info("preResolversSchemaHook", undefined, `Pushing the schema for visitors of ` + name + `@` + version + ` to API ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+        apiId: apiId,
+        definition: visitorSdl
+      }).then(async () => await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined));
+    }));
+    return Pulumi.all([
+      pushed,
+      visitorsPushed
+    ]).apply(param => {});
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => adminBarrier;
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => {
+    let opts = param.opts;
+    let fieldNames = param.fieldNames;
+    let runtime = param.runtime;
+    let match = AppSync_VisitorApi$ReventlessAws.made();
+    let match$1 = match !== undefined ? Stdlib_Array.partition(fieldNames, AppSync_VisitorApi$ReventlessAws.servesMutation) : [
+        [],
+        fieldNames
+      ];
+    let signedIn = match$1[1];
+    let forVisitors = match$1[0];
+    if (Primitive_object.notequal(signedIn, [])) {
+      InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), runtime, signedIn, undefined, opts);
+    }
+    let match$2 = AppSync_VisitorApi$ReventlessAws.made();
+    if (match$2 !== undefined && Primitive_object.notequal(forVisitors, [])) {
+      return InboundTranslationResolvers_AppSync$ReventlessAws.make(match$2.api, runtime, forVisitors, true, opts);
+    }
+  };
   let hooks_dcbAppSyncResolverHook = param => {
     let onAdminApi = param.onAdminApi;
     CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, onAdminApi, param.opts);
@@ -2919,8 +3008,14 @@ function Make($star) {
     let stashTable = platformOutput("stash", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.name);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("STASH_TABLE", stashTable);
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
+    AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
+    let visitors = AppSync_VisitorApi$ReventlessAws.made();
+    if (visitors !== undefined) {
+      Pulumi$Pulumi.$$export("visitorApiEndpoint", visitors.endpoint);
+      Pulumi$Pulumi.$$export("visitorApiKey", visitors.key);
+    }
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);

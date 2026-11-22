@@ -11,11 +11,14 @@ let Resolver;
 
 let SourceApiAssociation;
 
+let ApiKey;
+
 export {
   GraphQLApi,
   DataSource,
   $$Function,
   Resolver,
   SourceApiAssociation,
+  ApiKey,
 }
 /* No side effect */

@@ -13,15 +13,23 @@ import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-p
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/CommandSubscriptionResolvers_AppSync.res.mjs";
 
-function make(api, runtime, fieldNames, opts) {
+function make(api, runtime, fieldNames, forVisitorsOpt, opts) {
+  let forVisitors = forVisitorsOpt !== undefined ? forVisitorsOpt : false;
+  let named = name => {
+    if (forVisitors) {
+      return `Visitor` + name;
+    } else {
+      return name;
+    }
+  };
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("InboundTranslationDS", "Plugin", "Identity", "plugin", undefined, undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(forVisitors ? `Visitor` + "InboundTranslationDS" : "InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(forVisitors ? `Visitor` + "InboundTranslationDS" : "InboundTranslationDS", "Plugin", "Identity", "plugin", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     dataSourceRole.id
   ]).apply(param => {
-    new (Aws.iam.RolePolicy)("InboundTranslationDS", {
+    new (Aws.iam.RolePolicy)(forVisitors ? `Visitor` + "InboundTranslationDS" : "InboundTranslationDS", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "InboundTranslationDSPolicy", [{
           Sid: "AllowInboundTranslationInvokeLambda",
           Effect: "Allow",
@@ -31,7 +39,7 @@ function make(api, runtime, fieldNames, opts) {
       role: param[1]
     }, opts$1);
   });
-  let dataSource = new (Aws.appsync.DataSource)("InboundTranslation", {
+  let dataSource = new (Aws.appsync.DataSource)(forVisitors ? `Visitor` + "InboundTranslation" : "InboundTranslation", {
     type: "AWS_LAMBDA",
     apiId: Output$Pulumi.flatMap(api, api => api.id),
     lambdaConfig: {
@@ -40,9 +48,11 @@ function make(api, runtime, fieldNames, opts) {
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
   fieldNames.forEach(fieldName => {
-    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
+    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(named(Stdlib_String.capitalize(fieldName)), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
   });
-  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
+  if (!forVisitors) {
+    return CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
+  }
 }
 
 export {

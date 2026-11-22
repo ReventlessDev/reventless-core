@@ -6,3 +6,4 @@ module DataSource = AppSync_DataSource
 module Function = AppSync_Function
 module Resolver = AppSync_Resolver
 module SourceApiAssociation = AppSync_SourceApiAssociation
+module ApiKey = AppSync_ApiKey

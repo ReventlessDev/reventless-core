@@ -844,12 +844,30 @@ module MakeWithConfig = (
     inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
-      InboundTranslationResolvers_AppSync.make(
-        ~api=resolveHookedApi(),
-        ~runtime=runtimeTyped,
-        ~fieldNames,
-        ~opts,
-      )
+      // A door for visitors is served by the narrow API, the rest by the plugin's own.
+      let (forVisitors, signedIn) = switch AppSync_VisitorApi.made() {
+      | Some(_) => fieldNames->Array.partition(AppSync_VisitorApi.servesMutation)
+      | None => ([], fieldNames)
+      }
+      if signedIn != [] {
+        InboundTranslationResolvers_AppSync.make(
+          ~api=resolveHookedApi(),
+          ~runtime=runtimeTyped,
+          ~fieldNames=signedIn,
+          ~opts,
+        )
+      }
+      switch (AppSync_VisitorApi.made(), forVisitors) {
+      | (Some(visitors), fields) if fields != [] =>
+        InboundTranslationResolvers_AppSync.make(
+          ~api=visitors.api,
+          ~runtime=runtimeTyped,
+          ~fieldNames=fields,
+          ~forVisitors=true,
+          ~opts,
+        )
+      | _ => ()
+      }
     },
     dcbAppSyncResolverHook: ({runtime, fieldNames, tags, onAdminApi, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
@@ -887,6 +905,10 @@ module MakeWithConfig = (
     // schema present). Under AUTO_MERGE every later schema update here
     // re-merges automatically.
     preResolversSchemaHook: (~name, ~version, pluginFragment) => {
+      // The subscriptions the builder added for a visitor mutation go with it:
+      // the plugin's own schema no longer has the mutation they announce.
+      let visitorFields = AppSync_VisitorApi.fields()
+      let pluginFragment = AppSync_VisitorSchema.without(pluginFragment, visitorFields)
       let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
       let pushed = domainApi->Pulumi.Output.flatMap(api =>
         api.id->Pulumi.Output.flatMap(apiId => {
@@ -907,7 +929,28 @@ module MakeWithConfig = (
         })
       )
       mergedSchemaPushedRef := Some(pushed)
-      pushed
+      // The narrow API for visitors, where the plugin declares fields for them:
+      // made here, at the top level, and its resolvers wait for its schema too.
+      switch AppSync_VisitorApi.fragmentRef.contents {
+      | Some(visitorFragment) if !AppSync_VisitorSchema.isEmpty(visitorFields) =>
+        let visitors = AppSync_VisitorApi.make(~name=`${name}Visitors`, ~opts={})
+        let visitorSdl = AppSync_VisitorSchema.sdl(visitorFragment)
+        let visitorsPushed = visitors.api->Pulumi.Output.flatMap(api =>
+          api.id->Pulumi.Output.flatMap(apiId => {
+            log.info(
+              ~comp="preResolversSchemaHook",
+              `Pushing the schema for visitors of ${name}@${version} to API ${apiId}`,
+            )
+            let client = AppSync_Adapter.getClient()
+            client
+            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: visitorSdl})
+            ->Promise.then(async _ => await AppSync_Adapter.waitForSchemaActive(client, apiId))
+            ->Pulumi.Output.fromPromise
+          })
+        )
+        Pulumi.Output.all2((pushed, visitorsPushed))->Pulumi.Output.apply(_ => ())
+      | _ => pushed
+      }
     },
     // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
     // Postgres-backed DCB logs (B2.3c) create no table, so there is no resource to read:
@@ -2869,9 +2912,19 @@ module MakeWithConfig = (
       ),
     )
 
+    // A plugin stack hosts a narrow API for the fields it declares for visitors.
+    AppSync_VisitorApi.host()
     module P = unpack(plugin)
     let pluginComponent = P.make()
     ReventlessCore.Plugin_Helpers.clearOffload()
+    // Where a visitor's request goes and what identifies the deployment to it:
+    // read by the step that writes the shell's configuration.
+    switch AppSync_VisitorApi.made() {
+    | Some(visitors) =>
+      Pulumi.Pulumi.export("visitorApiEndpoint", visitors.endpoint)
+      Pulumi.Pulumi.export("visitorApiKey", visitors.key)
+    | None => ()
+    }
     currentDeployTarget := Domain // reset after build
 
     // Note: StateTopic_AppSync.finish runs from inside subscriptionInfraHook —

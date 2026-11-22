@@ -19,7 +19,9 @@ import * as Util_LocalConfig$ReventlessAws from "../../util/Util_LocalConfig.res
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
 import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
+import * as AppSync_VisitorApi$ReventlessAws from "./AppSync_VisitorApi.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./AppSync_SdlDecorate.res.mjs";
+import * as AppSync_VisitorSchema$ReventlessAws from "./AppSync_VisitorSchema.res.mjs";
 import * as Util_LogGroup_Adopting$ReventlessAws from "../../util/Util_LogGroup_Adopting.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -114,7 +116,8 @@ async function waitForMergeSuccess(client, associationId, mergedApiIdentifier, m
   return Stdlib_JsError.throwWithMessage(`Source API association ` + associationId + ` on ` + mergedApiIdentifier + ` failed to merge (` + status + `): ` + detail);
 }
 
-function injectAwsAuth(fragment, mutationEntries, queryEntries) {
+function injectAwsAuth(fragment, mutationEntries, queryEntries, visitorsServedOpt) {
+  let visitorsServed = visitorsServedOpt !== undefined ? visitorsServedOpt : false;
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let iamFields = {};
   let iamQueryFieldPrefixes = [];
@@ -191,7 +194,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
       return;
     }
   });
-  if (anonymousFields.length !== 0) {
+  if (anonymousFields.length !== 0 && !visitorsServed) {
     AppSync_SdlDecorate$ReventlessAws.refuseAnonymousFields(anonymousFields);
   }
   let augmentedMutations = parts.mutations.map(field => {
@@ -325,7 +328,12 @@ function makePluginSourceApiResource(name, userPoolConfig, opts) {
 
 function generateFragment(mutationEntries, queryEntries) {
   let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries, queryEntries);
-  return injectAwsAuth(fragment, mutationEntries, queryEntries);
+  if (!AppSync_VisitorApi$ReventlessAws.hosted()) {
+    return injectAwsAuth(fragment, mutationEntries, queryEntries, undefined);
+  }
+  let fields = AppSync_VisitorSchema$ReventlessAws.fieldsOf(mutationEntries, queryEntries);
+  AppSync_VisitorApi$ReventlessAws.register(fields, AppSync_VisitorSchema$ReventlessAws.only(fragment, fields));
+  return injectAwsAuth(AppSync_VisitorSchema$ReventlessAws.without(fragment, fields), mutationEntries, queryEntries, true);
 }
 
 let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
