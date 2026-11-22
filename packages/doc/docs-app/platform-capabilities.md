@@ -61,7 +61,7 @@ Two more are reached the same way, through `capabilities`, and declared by a sli
 |---|---|---|
 | What it is | Making, grouping and unmaking accounts | A value held for minutes outside the log, handed over once |
 | Reached at runtime | `capabilities.identityProvider` | `capabilities.stash` |
-| Provisioned on AWS | the platform's Cognito pool, with no root opt-in; the admin grant follows the declaring slice | not yet — a plugin declaring it is refused at deploy |
+| Provisioned on AWS | the platform's Cognito pool, with no root opt-in; the admin grant follows the declaring slice | a DynamoDB table of the platform stack, with no root opt-in; the grant follows the declaring slice. A plugin declaring it against a platform stack deployed before the table existed is refused at deploy until that stack is deployed again |
 | Locally | `Capability_IdentityProvider_AccountStore.make()`, over the accounts file the login reads | always, in memory |
 
 The stash exists for one step: a door receives a secret, such as a password, that
