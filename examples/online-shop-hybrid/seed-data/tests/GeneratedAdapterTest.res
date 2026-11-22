@@ -45,7 +45,7 @@ let categoryId = CatalogPlugin.CategoryId.make("cat-01")
 let productId = CatalogSpec.ProductId.make("prd-001")
 let orderId = OrderingPlugin.OrderId.make("ord-001")
 let customerId = OrderingPlugin.CustomerId.make("cust-01")
-let price = Reventless.Money.make(~amount=1299.0, ~currency=EUR)
+let price = Reventless.Money.make(~amount=12.99, ~currency=EUR)
 let window =
   Reventless.DateRange.make(
     ~start="2026-11-21T09:00:00.000Z",

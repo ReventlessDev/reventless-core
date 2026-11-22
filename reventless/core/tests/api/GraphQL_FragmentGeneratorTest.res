@@ -378,6 +378,27 @@ describe("semantic composites are named once, not once per field", () => {
       types->Array.some(t => t->String.includes("price: Money!")),
     ))->toEqual((1, 1, true))
   })
+
+  // Money is what people say, and the API says so on the amount; a price per a
+  // quantity's unit is money in shape, so it is the same type and says the same.
+  testSync("a price per unit is money, whose amount says it is as people say it", () => {
+    let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(
+      ~typeName="Charging_Site",
+      ~includeIdParam=false,
+      S.schema(
+        s =>
+          {
+            "siteId": s.matches(S.string),
+            "price": s.matches(Reventless.PricePer.unit(Reventless.Energy.kilowattHour)),
+          },
+      )->S.castToUnknown,
+    )
+    let money = types->Array.find(t => t->String.startsWith("type Money "))->Option.getOr("")
+    expect((
+      types->Array.some(t => t->String.includes("price: Money!")),
+      money->String.includes(`"""${Reventless.Money.amountDescription}"""\n  amount: Float!`),
+    ))->toEqual((true, true))
+  })
 })
 
 // `mutationArgTypes` is what a client that assembles its own mutation document

@@ -48,11 +48,11 @@ function charge(price, per, quantity, in_) {
     };
   } else {
     return Stdlib_Result.flatMap(Quantity$Reventless.convert(priceQuantity, quantity, valueUnit, priceUnit), converted => {
-      let amount = roundHalfAway(snap(price.amount * converted));
-      if (Math.abs(amount) <= Number.MAX_SAFE_INTEGER) {
+      let minorUnits = roundHalfAway(snap(price.minorUnits * converted));
+      if (Math.abs(minorUnits) <= Number.MAX_SAFE_INTEGER) {
         return {
           TAG: "Ok",
-          _0: Money$Reventless.make(amount, price.currency)
+          _0: Money$Reventless.ofMinorUnits(minorUnits, price.currency)
         };
       } else {
         return {
@@ -76,17 +76,17 @@ function convert(price, from, to) {
       _0: `cannot turn a price per ` + fromUnit + ` into one per ` + toUnit + `: they measure different things`
     };
   } else {
-    return Stdlib_Result.flatMap(Quantity$Reventless.convert(fromQuantity, price.amount, toUnit, fromUnit), raw => {
-      let amount = snap(raw);
-      if (Math.trunc(amount) === amount) {
+    return Stdlib_Result.flatMap(Quantity$Reventless.convert(fromQuantity, price.minorUnits, toUnit, fromUnit), raw => {
+      let minorUnits = snap(raw);
+      if (Math.trunc(minorUnits) === minorUnits) {
         return {
           TAG: "Ok",
-          _0: Money$Reventless.make(amount, price.currency)
+          _0: Money$Reventless.ofMinorUnits(minorUnits, price.currency)
         };
       } else {
         return {
           TAG: "Error",
-          _0: Money$Reventless.format(price) + ` per ` + fromUnit + ` is ` + amount.toString() + ` minor units per ` + toUnit + `, not a whole amount`
+          _0: Money$Reventless.format(price) + ` per ` + fromUnit + ` is ` + minorUnits.toString() + ` minor units per ` + toUnit + `, not a whole amount`
         };
       }
     });

@@ -356,13 +356,10 @@ function parseSafely(json, schema) {
 
 function localized(json, id, locale) {
   if (id === Semantic$Reventless.Id.money) {
-    return Stdlib_Option.map(parseSafely(json, Money$Reventless.schema), m => {
-      let exponent = Currency$Reventless.exponent(m.currency);
-      return new Intl.NumberFormat([locale], {
-        currency: Currency$Reventless.toString(m.currency),
-        style: "currency"
-      }).format(m.amount / Math.pow(10.0, exponent));
-    });
+    return Stdlib_Option.map(parseSafely(json, Money$Reventless.schema), m => new Intl.NumberFormat([locale], {
+      currency: Currency$Reventless.toString(m.currency),
+      style: "currency"
+    }).format(Money$Reventless.amount(m)));
   } else if (id === Semantic$Reventless.Id.dateRange) {
     return Stdlib_Option.map(parseSafely(json, DateRange$Reventless.schema), range => new Intl.DateTimeFormat([locale], {
       dateStyle: "medium",

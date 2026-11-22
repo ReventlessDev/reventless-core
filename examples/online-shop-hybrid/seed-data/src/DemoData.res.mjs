@@ -333,7 +333,7 @@ function makeProduct(random, id, category) {
   let low = Math.log(5.0);
   let high = Math.log(900.0);
   let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
-  let price = Money$Reventless.ofMajor(raw, "EUR");
+  let price = Money$Reventless.make(raw, "EUR");
   return {
     id: id,
     name: name,
@@ -396,7 +396,7 @@ function discontinuedProducts(products) {
 }
 
 function scaledPrice(price, by) {
-  return Money$Reventless.make(Math.round(price.amount * by), price.currency);
+  return Money$Reventless.ofMinorUnits(Math.round(price.minorUnits * by), price.currency);
 }
 
 function discountedPrice(p) {

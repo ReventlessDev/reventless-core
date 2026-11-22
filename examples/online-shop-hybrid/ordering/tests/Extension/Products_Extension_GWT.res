@@ -20,13 +20,13 @@ describe("Products Extension delegate", () => {
       ExtensionPoint.ProductBecameAvailable({
         productId: p1,
         name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=9.99, ~currency=Reventless.Currency.EUR),
       }),
     )->thenPublishesCommand(
       Delegate.SyncNewProduct({
         productId: p1,
         name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=9.99, ~currency=Reventless.Currency.EUR),
       }),
     )
   )
@@ -36,12 +36,12 @@ describe("Products Extension delegate", () => {
     whenIncomingEvent(
       ExtensionPoint.ProductPriceChanged({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )->thenPublishesCommand(
       Delegate.ChangeSyncedPrice({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )
   )

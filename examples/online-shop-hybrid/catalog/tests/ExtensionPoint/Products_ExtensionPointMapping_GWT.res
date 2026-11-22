@@ -19,14 +19,14 @@ describe("Products ExtensionPoint mapping", () => {
         productId: p1,
         name: "Book",
         description: "A good book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=9.99, ~currency=Reventless.Currency.EUR),
       }),
     )->thenPublishesEvent(
       "p1",
       ExtensionPoint.ProductBecameAvailable({
         productId: p1,
         name: "Book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=9.99, ~currency=Reventless.Currency.EUR),
       }),
     )
   )
@@ -38,7 +38,7 @@ describe("Products ExtensionPoint mapping", () => {
         productId: p1,
         name: "Book",
         description: "A good book",
-        price: Reventless.Money.make(~amount=999.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=9.99, ~currency=Reventless.Currency.EUR),
       }),
     )->thenHandlesNoDirective
   )
@@ -48,13 +48,13 @@ describe("Products ExtensionPoint mapping", () => {
     whenDelegateEvent(
       Delegate.ProductPriceChanged({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )->thenPublishesEvent(
       "p1",
       ExtensionPoint.ProductPriceChanged({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )
   )
@@ -64,12 +64,12 @@ describe("Products ExtensionPoint mapping", () => {
     whenDelegateEvent(
       Delegate.ProductPriceChanged({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )->thenHandlesDirective(
       ExtensionPoint.EmitPricingUpdate({
         productId: p1,
-        price: Reventless.Money.make(~amount=750.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=7.5, ~currency=Reventless.Currency.EUR),
       }),
     )
   )

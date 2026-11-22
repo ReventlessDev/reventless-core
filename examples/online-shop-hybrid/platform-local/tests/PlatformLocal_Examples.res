@@ -21,23 +21,23 @@ let orderSubject: string = "Order"
 let pen: string = "Pen"
 
 let bookAndThreePensPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=1449.0,
+  ~amount=14.49,
   ~currency=Reventless.Currency.EUR,
 )
 let bookPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=999.0,
+  ~amount=9.99,
   ~currency=Reventless.Currency.EUR,
 )
 let penPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=150.0,
+  ~amount=1.5,
   ~currency=Reventless.Currency.EUR,
 )
 let threePensPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=450.0,
+  ~amount=4.5,
   ~currency=Reventless.Currency.EUR,
 )
 let twoBooksPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=1998.0,
+  ~amount=19.98,
   ~currency=Reventless.Currency.EUR,
 )
 

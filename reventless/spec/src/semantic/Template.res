@@ -306,13 +306,12 @@ let localized = (json: JSON.t, ~id: string, ~locale: string): option<string> =>
   if id == Semantic.Id.money {
     json
     ->parseSafely(Money.schema)
-    ->Option.map(m => {
-      let exponent = Currency.exponent(m.currency)
+    ->Option.map(m =>
       Intl.NumberFormat.make(
         ~locales=[locale],
         ~options={style: #currency, currency: Currency.toString(m.currency)},
-      )->Intl.NumberFormat.format(m.amount /. Math.pow(10.0, ~exp=Int.toFloat(exponent)))
-    })
+      )->Intl.NumberFormat.format(Money.amount(m))
+    )
   } else if id == Semantic.Id.dateRange {
     json
     ->parseSafely(DateRange.schema)

@@ -22,7 +22,7 @@ let ordering = (name: string): string => `Ordering_${name}`
     closed GraphQL type. Quoting it here would be rejected by the server, which
     is the one detail worth centralising in this file. */
 let money = (m: Reventless.Money.t): Seed.value => Object([
-  ("amount", Float(m.amount)),
+  ("amount", Float(Reventless.Money.amount(m))),
   ("currency", Enum(Reventless.Currency.toString(m.currency))),
 ])
 

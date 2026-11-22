@@ -149,7 +149,7 @@ let valueTypes = [
         ]
       ]
     },
-    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    sample: "Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.EUR)",
     writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)"
   },
   {
@@ -279,7 +279,7 @@ let valueTypes = [
         ]
       ]
     },
-    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    sample: "Reventless.Money.make(~amount=0.39, ~currency=Reventless.Currency.EUR)",
     writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)"
   }
 ];

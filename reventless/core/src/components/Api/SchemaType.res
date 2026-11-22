@@ -83,6 +83,9 @@ The `Node` / `PageInfo` / `SortOrder` base types already rely on exactly this.
 */
 let semanticCompositeNames = [
   (Reventless.Semantic.Id.money, "Money"),
+  // A price per a quantity's unit is money in shape: one type, described as money is. Its unit
+  // stays in the JSON Schema's semantic.
+  (Reventless.Semantic.Id.pricePerUnit, "Money"),
   (Reventless.Semantic.Id.dateRange, "DateRange"),
   (Reventless.Semantic.Id.geoPoint, "GeoPoint"),
   (Reventless.Semantic.Id.captionedImage, "CaptionedImage"),

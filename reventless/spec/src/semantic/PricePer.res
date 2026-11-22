@@ -63,9 +63,9 @@ let charge = (price: t, ~per: S.t<Quantity.t>, quantity: Quantity.t, ~in_: S.t<Q
       ~from=valueUnit,
       ~to=priceUnit,
     )->Result.flatMap(converted => {
-      let amount = roundHalfAway(snap(price.amount *. converted))
-      Math.abs(amount) <= Money.maxSafeInteger
-        ? Ok(Money.make(~amount, ~currency=price.currency))
+      let minorUnits = roundHalfAway(snap(price.minorUnits *. converted))
+      Math.abs(minorUnits) <= Money.maxSafeInteger
+        ? Ok(Money.ofMinorUnits(~minorUnits, ~currency=price.currency))
         : Error(
             `cannot charge ${Float.toString(quantity)} ${valueUnit} at ${Money.format(
                 price,
@@ -90,16 +90,16 @@ let convert = (price: t, ~from: S.t<Quantity.t>, ~to: S.t<Quantity.t>): result<t
     // A price per unit goes the other way round from a value: per larger unit, more money.
     Quantity.convert(
       fromQuantity,
-      price.amount,
+      price.minorUnits,
       ~from=toUnit,
       ~to=fromUnit,
     )->Result.flatMap(raw => {
-      let amount = snap(raw)
-      Math.trunc(amount) == amount
-        ? Ok(Money.make(~amount, ~currency=price.currency))
+      let minorUnits = snap(raw)
+      Math.trunc(minorUnits) == minorUnits
+        ? Ok(Money.ofMinorUnits(~minorUnits, ~currency=price.currency))
         : Error(
             `${Money.format(price)} per ${fromUnit} is ${Float.toString(
-                amount,
+                minorUnits,
               )} minor units per ${toUnit}, not a whole amount`,
           )
     })

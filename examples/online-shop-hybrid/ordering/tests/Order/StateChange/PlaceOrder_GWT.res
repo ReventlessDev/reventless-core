@@ -62,7 +62,7 @@ describe("PlaceOrder StateChangeSlice", () => {
       CatalogProductSynced({
         productId: p2,
         name: cirrusCharger,
-        price: Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.EUR),
       }),
     ])
     ->whenCmd(
@@ -84,17 +84,17 @@ describe("PlaceOrder StateChangeSlice", () => {
             name: fathomDock,
             quantity: 2,
             unitPrice: dockPrice,
-            lineTotal: Reventless.Money.make(~amount=5000.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=50.0, ~currency=Reventless.Currency.EUR),
           },
           {
             productId: p2,
             name: cirrusCharger,
             quantity: 1,
-            unitPrice: Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR),
-            lineTotal: Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR),
+            unitPrice: Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.EUR),
           },
         ],
-        total: Reventless.Money.make(~amount=6000.0, ~currency=Reventless.Currency.EUR),
+        total: Reventless.Money.make(~amount=60.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Standard,
         firstProductName: fathomDock,
       }),
@@ -132,10 +132,10 @@ describe("PlaceOrder StateChangeSlice", () => {
             name: fathomDock,
             quantity: 3,
             unitPrice: dockPrice,
-            lineTotal: Reventless.Money.make(~amount=7500.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=75.0, ~currency=Reventless.Currency.EUR),
           },
         ],
-        total: Reventless.Money.make(~amount=7500.0, ~currency=Reventless.Currency.EUR),
+        total: Reventless.Money.make(~amount=75.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Standard,
         firstProductName: fathomDock,
       }),
@@ -155,7 +155,7 @@ describe("PlaceOrder StateChangeSlice", () => {
       }),
       CatalogProductPriceChanged({
         productId: p1,
-        price: Reventless.Money.make(~amount=1800.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=18.0, ~currency=Reventless.Currency.EUR),
       }),
     ])
     ->whenCmd(
@@ -176,11 +176,11 @@ describe("PlaceOrder StateChangeSlice", () => {
             productId: p1,
             name: fathomDock,
             quantity: 2,
-            unitPrice: Reventless.Money.make(~amount=1800.0, ~currency=Reventless.Currency.EUR),
-            lineTotal: Reventless.Money.make(~amount=3600.0, ~currency=Reventless.Currency.EUR),
+            unitPrice: Reventless.Money.make(~amount=18.0, ~currency=Reventless.Currency.EUR),
+            lineTotal: Reventless.Money.make(~amount=36.0, ~currency=Reventless.Currency.EUR),
           },
         ],
-        total: Reventless.Money.make(~amount=3600.0, ~currency=Reventless.Currency.EUR),
+        total: Reventless.Money.make(~amount=36.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Standard,
         firstProductName: fathomDock,
       }),
@@ -263,7 +263,7 @@ describe("PlaceOrder StateChangeSlice", () => {
       CatalogProductSynced({
         productId: p2,
         name: cirrusCharger,
-        price: Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.USD),
+        price: Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.USD),
       }),
     ])
     ->whenCmd(
@@ -641,7 +641,7 @@ describe("PlaceOrder StateChangeSlice", () => {
           },
           dockLine,
         ],
-        total: Reventless.Money.make(~amount=5000.0, ~currency=Reventless.Currency.EUR),
+        total: Reventless.Money.make(~amount=50.0, ~currency=Reventless.Currency.EUR),
         shippingMethod: Standard,
         firstProductName: cirrusCharger,
       }),

@@ -18,7 +18,7 @@ steps:
       categoryId: "cat-once-{run}"
       name: "Once"
       description: "A product ordered once."
-      price: {amount: 1250, currency: EUR}
+      price: {amount: 12.5, currency: EUR}
     expect: accepted
   - waitFor: {field: Ordering_AvailableProductsByIds, ids: ["prd-once-{run}"]}
   # A customer registers

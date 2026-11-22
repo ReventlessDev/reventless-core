@@ -29,7 +29,7 @@ type event =
 
 let payload = JSON.parseOrThrow(`{
   "orderId": "o-1",
-  "total": {"amount": 123450, "currency": "EUR"},
+  "total": {"amount": 1234.5, "currency": "EUR"},
   "taxRate": 19.5,
   "packedSize": 1536,
   "packingSeconds": 3660,
@@ -131,7 +131,7 @@ describe("Template:", () => {
 
     testSync(
       "`| raw` renders what the payload holds",
-      () => expect(render("{{ total | raw }}"))->toBe(`{"amount":123450,"currency":"EUR"}`),
+      () => expect(render("{{ total | raw }}"))->toBe(`{"amount":1234.5,"currency":"EUR"}`),
     )
 
     // A shaping that cannot apply falls back to the value: it is there, only the

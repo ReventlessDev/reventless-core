@@ -8,7 +8,7 @@ let product = (i, ~listed=true): ShopSnapshot.product => {
   categoryId: "cat-01",
   name: `Product ${i->Int.toString}`,
   description: `Product ${i->Int.toString} description.`,
-  price: eur(1000.0),
+  price: eur(10.0),
   listed,
 }
 
@@ -38,10 +38,10 @@ let snapshot: ShopSnapshot.t = {
   availableProducts: Array.concat(
     Array.fromInitializer(~length=10, i => {
       ShopSnapshot.id: `prd-${DemoData.pad(i + 1, 3)}`,
-      price: eur(1000.0),
+      price: eur(10.0),
     }),
     // A supplier-fed product in another currency, which no order may mix in.
-    [{id: "SKU-4410", price: Reventless.Money.make(~amount=8990.0, ~currency=USD)}],
+    [{id: "SKU-4410", price: Reventless.Money.make(~amount=89.9, ~currency=USD)}],
   ),
   customers: Array.concat(
     Array.fromInitializer(~length=17, i => customer(`cust-${DemoData.pad(i + 1, 2)}`)),

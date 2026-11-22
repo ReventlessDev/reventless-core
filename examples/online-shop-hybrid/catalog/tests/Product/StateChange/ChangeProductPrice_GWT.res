@@ -14,7 +14,7 @@ describe("ChangeProductPrice StateChangeSlice", () => {
     ->whenCmd(
       ChangeProductPrice({
         productId: p1,
-        price: Reventless.Money.make(~amount=100.0, ~currency=Reventless.Currency.EUR),
+        price: Reventless.Money.make(~amount=1.0, ~currency=Reventless.Currency.EUR),
       }),
     )
     ->thenError(ProductNotFound)

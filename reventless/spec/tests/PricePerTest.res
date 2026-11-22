@@ -2,7 +2,7 @@ open JestGlobals
 
 // Money per a quantity's unit, and charging a quantity at it with one rounding.
 
-let cents = amount => Money.make(~amount, ~currency=Currency.EUR)
+let cents = minorUnits => Money.ofMinorUnits(~minorUnits, ~currency=Currency.EUR)
 let perKWh = Energy.kilowattHour
 let perMWh = Energy.megawattHour
 
@@ -54,12 +54,12 @@ describe("PricePer.charge", () => {
   testSync("the currency is the price's", () =>
     expect(
       PricePer.charge(
-        Money.make(~amount=39.0, ~currency=Currency.JPY),
+        Money.ofMinorUnits(~minorUnits=39.0, ~currency=Currency.JPY),
         ~per=perKWh,
         2.0,
         ~in_=perKWh,
       ),
-    )->toEqual(Ok(Money.make(~amount=78.0, ~currency=Currency.JPY)))
+    )->toEqual(Ok(Money.ofMinorUnits(~minorUnits=78.0, ~currency=Currency.JPY)))
   )
 })
 
@@ -81,9 +81,9 @@ describe("PricePer.convert", () => {
 describe("PricePer.unit", () => {
   let schema = PricePer.unit(perKWh)
 
-  testSync("the value is money", () =>
+  testSync("the value is money, said as people say it", () =>
     expect(
-      JSON.parseOrThrow(`{"amount": 39, "currency": "EUR"}`)->S.parseOrThrow(~to=schema),
+      JSON.parseOrThrow(`{"amount": 0.39, "currency": "EUR"}`)->S.parseOrThrow(~to=schema),
     )->toEqual(cents(39.0))
   )
 

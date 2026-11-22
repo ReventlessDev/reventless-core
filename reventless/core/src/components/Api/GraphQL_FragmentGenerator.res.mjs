@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
@@ -48,6 +49,8 @@ let rowChangeSdlType = `type RowChange {
   at: String!
 }`;
 
+let moneyTypeName = "Money";
+
 function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) {
   while (true) {
     let asInputOpt = _asInputOpt;
@@ -86,7 +89,7 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
           let name = st._0;
           if (!seenTypes.has(name)) {
             seenTypes.add(name);
-            let typeDef = objectRefToGraphQL(asInput, name, st._1, collectedTypes, seenTypes);
+            let typeDef = objectRefToGraphQL(asInput, undefined, name, st._1, collectedTypes, seenTypes);
             collectedTypes.push(typeDef);
           }
           return name + bang;
@@ -106,7 +109,11 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
               let typeName = asInput ? name$2 + "Input" : name$2;
               if (!seenTypes.has(typeName)) {
                 seenTypes.add(typeName);
-                let typeDef$1 = objectRefToGraphQL(asInput, typeName, inner._1, collectedTypes, seenTypes);
+                let descriptions = name$2 === moneyTypeName ? Object.fromEntries([[
+                      "amount",
+                      Money$Reventless.amountDescription
+                    ]]) : ({});
+                let typeDef$1 = objectRefToGraphQL(asInput, descriptions, typeName, inner._1, collectedTypes, seenTypes);
                 collectedTypes.push(typeDef$1);
               }
               return typeName + bang;
@@ -136,11 +143,18 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
   };
 }
 
-function objectRefToGraphQL(asInputOpt, typeName, fields, collectedTypes, seenTypes) {
+function objectRefToGraphQL(asInputOpt, descriptionsOpt, typeName, fields, collectedTypes, seenTypes) {
   let asInput = asInputOpt !== undefined ? asInputOpt : false;
+  let descriptions = descriptionsOpt !== undefined ? descriptionsOpt : ({});
   let fieldStrs = Object.entries(fields).map(param => {
+    let fieldName = param[0];
     let gqlType = fromSchemaType(true, asInput, param[1], collectedTypes, seenTypes);
-    return `  ` + param[0] + `: ` + gqlType;
+    let said = descriptions[fieldName];
+    if (said !== undefined) {
+      return `  """` + said + `"""\n  ` + fieldName + `: ` + gqlType;
+    } else {
+      return `  ` + fieldName + `: ` + gqlType;
+    }
   }).join("\n");
   let keyword = asInput ? "input" : "type";
   return keyword + ` ` + typeName + ` {\n` + fieldStrs + `\n}`;
@@ -204,7 +218,7 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   let collectedTypes = [];
   let seenTypes = new Set();
   seenTypes.add(typeName);
-  let mainType = objectRefToGraphQL(undefined, typeName, filteredFields, collectedTypes, seenTypes);
+  let mainType = objectRefToGraphQL(undefined, undefined, typeName, filteredFields, collectedTypes, seenTypes);
   let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` implements Node {\n  id: ID!\n`) : mainType;
   if (rowChange && Stdlib_Option.isSome(filteredFields[RowChange$ReventlessCore.key])) {
     Stdlib_JsError.throwWithMessage(typeName + `.` + RowChange$ReventlessCore.key + ` is a field of the state record, and every view row carries its last change under that name. Name the field something else.`);
@@ -808,6 +822,7 @@ export {
   log,
   commandResultSdlTypes,
   rowChangeSdlType,
+  moneyTypeName,
   fromSchemaType,
   objectRefToGraphQL,
   deriveFieldType,

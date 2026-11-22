@@ -24,7 +24,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
         productId: pid("p-1"),
         name: laptop,
         description: highEnd,
-        price: Reventless.Money.make(~amount=99999.0, ~currency=Reventless.Currency.USD),
+        price: Reventless.Money.make(~amount=999.99, ~currency=Reventless.Currency.USD),
         categoryId: cat1,
       }),
     )

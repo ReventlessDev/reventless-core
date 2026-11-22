@@ -233,6 +233,8 @@ let rec fromSchemaType = (~inputNames: bool=false, st: SchemaType.schemaType): J
     | (true, Some(name), ObjectRef(_, _)) => base->withGraphqlInput(name ++ "Input")
     | _ => base
     }
+    // Money's amount is what people say, at every edge that reads this schema.
+    let base = Reventless.Money.isMoney(sem) ? base->withAmountSaid : base
     base->withSemantic(sem)
   // JSON Schema's own keyword, not an `x-reventless-` extension: the vocabulary
   // already has a word for this one, so any client reads it.
@@ -300,6 +302,27 @@ and armToJsonSchema = (
 // Both paths write the same `x-reventless-semantic` key, on purpose: one wire
 // format, whatever the source. The payload rides in sibling keys so a reader
 // that knows only the bare string still reads it correctly.
+and withAmountSaid = (fieldSchema: JSON.t): JSON.t =>
+  switch fieldSchema->JSON.Decode.object {
+  | Some(obj) =>
+    switch obj->Dict.get("properties") {
+    | Some(Object(properties)) =>
+      switch properties->Dict.get("amount") {
+      | Some(Object(amount)) =>
+        let amount = amount->Dict.copy
+        amount->Dict.set("description", str(Reventless.Money.amountDescription))
+        let properties = properties->Dict.copy
+        properties->Dict.set("amount", JSON.Object(amount))
+        let obj = obj->Dict.copy
+        obj->Dict.set("properties", JSON.Object(properties))
+        JSON.Object(obj)
+      | _ => fieldSchema
+      }
+    | _ => fieldSchema
+    }
+  | None => fieldSchema
+  }
+
 and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
   switch fieldSchema->JSON.Decode.object {
   | None => fieldSchema

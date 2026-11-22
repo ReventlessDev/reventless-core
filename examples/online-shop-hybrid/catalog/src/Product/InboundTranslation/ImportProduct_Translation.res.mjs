@@ -33,7 +33,7 @@ async function translate(input, param, param$1) {
               productId: ProductId$CatalogSpec.makeFromString(input.sku),
               name: input.title,
               description: input.desc,
-              price: Money$Reventless.make(input.unitPrice, why._0),
+              price: Money$Reventless.ofMinorUnits(input.unitPrice, why._0),
               categoryId: CategoryId$CatalogPlugin.makeFromString(input.category)
             }
           ]]

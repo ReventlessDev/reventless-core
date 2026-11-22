@@ -50,6 +50,10 @@ let semanticCompositeNames = [
     "Money"
   ],
   [
+    Semantic$Reventless.Id.pricePerUnit,
+    "Money"
+  ],
+  [
     Semantic$Reventless.Id.dateRange,
     "DateRange"
   ],

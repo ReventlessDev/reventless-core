@@ -49,6 +49,10 @@ let rowChangeSdlType = `type RowChange {
 
 // ── SchemaType → GraphQL type reference ──────────────────────────────────────
 
+/** The one GraphQL type every money field is, a price per unit too: its `amount` is described
+    as people say it. */
+let moneyTypeName = "Money"
+
 let rec fromSchemaType = (
   ~required: bool,
   ~asInput: bool=false,
@@ -98,7 +102,19 @@ let rec fromSchemaType = (
     let typeName = asInput ? name ++ "Input" : name
     if !(seenTypes->Set.has(typeName)) {
       seenTypes->Set.add(typeName)
-      let typeDef = objectRefToGraphQL(~asInput, typeName, fields, collectedTypes, seenTypes)
+      // Money's amount is what people say, and the API says so.
+      let descriptions =
+        name == moneyTypeName
+          ? Dict.fromArray([("amount", Reventless.Money.amountDescription)])
+          : Dict.make()
+      let typeDef = objectRefToGraphQL(
+        ~asInput,
+        ~descriptions,
+        typeName,
+        fields,
+        collectedTypes,
+        seenTypes,
+      )
       collectedTypes->Array.push(typeDef)
     }
     `${typeName}${bang}`
@@ -147,6 +163,7 @@ let rec fromSchemaType = (
 
 and objectRefToGraphQL = (
   ~asInput: bool=false,
+  ~descriptions: dict<string>=Dict.make(),
   typeName: string,
   fields: dict<SchemaType.schemaType>,
   collectedTypes: array<string>,
@@ -157,7 +174,10 @@ and objectRefToGraphQL = (
     ->Dict.toArray
     ->Array.map(((fieldName, fieldType)) => {
       let gqlType = fromSchemaType(~required=true, ~asInput, fieldType, collectedTypes, seenTypes)
-      `  ${fieldName}: ${gqlType}`
+      switch descriptions->Dict.get(fieldName) {
+      | Some(said) => `  """${said}"""\n  ${fieldName}: ${gqlType}`
+      | None => `  ${fieldName}: ${gqlType}`
+      }
     })
     ->Array.join("\n")
   let keyword = asInput ? "input" : "type"

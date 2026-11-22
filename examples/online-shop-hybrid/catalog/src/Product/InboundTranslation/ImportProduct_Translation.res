@@ -1,8 +1,8 @@
 @@reventless.translation
 
 // The feed already speaks in minor units, so the translation is a *parse* of its
-// currency code rather than an arithmetic conversion: `Money.make` takes the two
-// facts the supplier sent and nothing is scaled.
+// currency code rather than an arithmetic conversion: `Money.ofMinorUnits` takes
+// the two facts the supplier sent and nothing is scaled.
 //
 // This used to read `Int.toFloat(input.unitPrice) /. 100.0` and reject anything
 // that was not USD — two halves of one mistake. The divide-by-100 was a minor
@@ -28,7 +28,10 @@ let translate = async (input: externalInput, ~capabilities as _, ~caller as _) =
             productId: CatalogSpec.ProductId.makeFromString(input.sku),
             name: input.title,
             description: input.desc,
-            price: Reventless.Money.make(~amount=Int.toFloat(input.unitPrice), ~currency),
+            price: Reventless.Money.ofMinorUnits(
+              ~minorUnits=Int.toFloat(input.unitPrice),
+              ~currency,
+            ),
             categoryId: CategoryId.makeFromString(input.category),
           }),
         ),

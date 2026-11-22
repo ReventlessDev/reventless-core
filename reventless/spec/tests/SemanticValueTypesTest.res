@@ -14,7 +14,7 @@ let semanticDir = here ++ "/../src/semantic"
 let ownSource = here ++ "/SemanticValueTypesTest.res"
 
 // ── Fixtures: each `valueTypes` sample, without the `Reventless.` namespace ──
-let sampleMoney = Money.make(~amount=1000.0, ~currency=Currency.EUR)
+let sampleMoney = Money.make(~amount=10.0, ~currency=Currency.EUR)
 let sampleCurrency = Currency.EUR
 let sampleDateRange = {DateRange.start: "2024-01-01T00:00:00Z", end_: "2024-01-02T00:00:00Z"}
 let sampleGeoPoint = {GeoPoint.lat: 0.0, lng: 0.0}
@@ -28,7 +28,7 @@ let samplePercent = 50.0
 let sampleBytes = 1024.0
 let sampleEnergy = 1.0
 let samplePower = 1.0
-let samplePricePer = Money.make(~amount=1000.0, ~currency=Currency.EUR)
+let samplePricePer = Money.make(~amount=0.39, ~currency=Currency.EUR)
 
 /** Whitespace and the formatter's trailing commas removed, so a fixture the
     formatter wrapped still matches its one-line sample. */
@@ -133,8 +133,8 @@ let decodesString: array<(string, string => bool)> = [
 /** Parts a module's sample does not fill: primitives, and a part that takes a
     value other than its module's sample (a range does not end where it starts). */
 let partOverrides: array<((string, string), string)> = [
-  (("Money", "amount"), "1000.0"),
-  (("PricePer", "amount"), "1000.0"),
+  (("Money", "amount"), "10.0"),
+  (("PricePer", "amount"), "0.39"),
   (("DateRange", "end_"), `"2024-01-02T00:00:00Z"`),
   (("GeoPoint", "lat"), "0.0"),
   (("GeoPoint", "lng"), "0.0"),

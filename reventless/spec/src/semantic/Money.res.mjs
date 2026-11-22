@@ -4,77 +4,124 @@ import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Currency$Reventless from "./Currency.res.mjs";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
 
-function validateAmount(amount) {
-  if (isFinite(amount)) {
-    if (amount !== Math.trunc(amount)) {
+function validateMinorUnits(minorUnits) {
+  if (isFinite(minorUnits)) {
+    if (minorUnits !== Math.trunc(minorUnits)) {
       return {
         TAG: "Error",
-        _0: `an amount is a whole number of a currency's minor units, got ` + (amount.toString() + `. There is no such thing as a fraction of the `) + `smallest unit — a major amount converts with Money.ofMajor.`
+        _0: `a count of minor units is whole, got ` + minorUnits.toString() + `. There is no such thing as a fraction of the smallest unit — an amount as people say it is made with Money.make.`
       };
     } else {
       return {
         TAG: "Ok",
-        _0: amount
+        _0: minorUnits
       };
     }
   } else {
     return {
       TAG: "Error",
-      _0: `an amount must be a finite number of minor units, got ` + amount.toString()
+      _0: `a count of minor units must be finite, got ` + minorUnits.toString()
     };
   }
 }
 
-let amountSchema = S.refine(Sury.number, amount => {
-  let match = validateAmount(amount);
+let minorUnitsSchema = S.refine(Sury.number, minorUnits => {
+  let match = validateMinorUnits(minorUnits);
   return match.TAG === "Ok";
-}, "expected a monetary amount", undefined);
-
-let schema = Sury.$schema(s => ({
-  amount: s.m(amountSchema),
-  currency: s.m(Currency$Reventless.schema)
-}));
-
-let schema$1 = Semantic$Reventless.mark(schema, Semantic$Reventless.Id.money, undefined);
-
-function make(amount, currency) {
-  return {
-    amount: amount,
-    currency: currency
-  };
-}
-
-function zero(currency) {
-  return {
-    amount: 0.0,
-    currency: currency
-  };
-}
+}, "expected a whole number of minor units", undefined);
 
 function scale(currency) {
   return Math.pow(10.0, Currency$Reventless.exponent(currency));
 }
 
-function ofMajor(amount, currency) {
+function counted(amount, currency) {
+  if (!isFinite(amount)) {
+    return;
+  }
+  let factor = Math.pow(10.0, Currency$Reventless.exponent(currency));
+  let minorUnits = Math.round(amount * factor);
+  if (minorUnits / factor === amount) {
+    return minorUnits;
+  }
+}
+
+function isMoney(s) {
+  if (s.id === Semantic$Reventless.Id.money) {
+    return true;
+  } else {
+    return s.id === Semantic$Reventless.Id.pricePerUnit;
+  }
+}
+
+let saidSchema = Sury.$schema(s => ({
+  amount: s.m(Sury.number),
+  currency: s.m(Currency$Reventless.schema)
+}));
+
+let countedSchema = Sury.$schema(s => ({
+  minorUnits: s.m(minorUnitsSchema),
+  currency: s.m(Currency$Reventless.schema)
+}));
+
+let schema = Semantic$Reventless.mark(S.to(saidSchema, countedSchema, {
+  decode: {
+    TAG: "Sync",
+    _0: m => {
+      let minorUnits = counted(m.amount, m.currency);
+      if (minorUnits !== undefined) {
+        return {
+          minorUnits: minorUnits,
+          currency: m.currency
+        };
+      } else {
+        return Stdlib_JsError.throwWithMessage(m.amount.toString() + ` has more decimals than ` + Currency$Reventless.toString(m.currency) + `'s ` + Currency$Reventless.exponent(m.currency).toString());
+      }
+    }
+  },
+  encode: {
+    TAG: "Sync",
+    _0: m => ({
+      amount: m.minorUnits / Math.pow(10.0, Currency$Reventless.exponent(m.currency)),
+      currency: m.currency
+    })
+  }
+}), Semantic$Reventless.Id.money, undefined);
+
+function make(amount, currency) {
   let scaled = amount * Math.pow(10.0, Currency$Reventless.exponent(currency));
   return {
-    amount: scaled < 0.0 ? - Math.round(- scaled) : Math.round(scaled),
+    minorUnits: scaled < 0.0 ? - Math.round(- scaled) : Math.round(scaled),
     currency: currency
   };
 }
 
-function toMajor(m) {
-  return m.amount / Math.pow(10.0, Currency$Reventless.exponent(m.currency));
+function ofMinorUnits(minorUnits, currency) {
+  return {
+    minorUnits: minorUnits,
+    currency: currency
+  };
+}
+
+function amount(m) {
+  return m.minorUnits / Math.pow(10.0, Currency$Reventless.exponent(m.currency));
+}
+
+function zero(currency) {
+  return {
+    minorUnits: 0.0,
+    currency: currency
+  };
 }
 
 function format(m) {
   let exponent = Currency$Reventless.exponent(m.currency);
-  let negative = m.amount < 0.0;
+  let negative = m.minorUnits < 0.0;
   let digits = (
-    negative ? - m.amount : m.amount
+    negative ? - m.minorUnits : m.minorUnits
   ).toString();
   let padded = digits.padStart(exponent + 1 | 0, "0");
   let split = padded.length - exponent | 0;
@@ -100,7 +147,7 @@ function add(a, b) {
     return {
       TAG: "Ok",
       _0: {
-        amount: a.amount + b.amount,
+        minorUnits: a.minorUnits + b.minorUnits,
         currency: a.currency
       }
     };
@@ -113,12 +160,12 @@ function add(a, b) {
 }
 
 function times(m, by) {
-  let product = m.amount * by;
+  let product = m.minorUnits * by;
   if (Math.abs(product) <= Number.MAX_SAFE_INTEGER) {
     return {
       TAG: "Ok",
       _0: {
-        amount: product,
+        minorUnits: product,
         currency: m.currency
       }
     };
@@ -137,14 +184,14 @@ function allocate(m, into) {
       _0: `cannot split ` + format(m) + ` into ` + into.toString() + ` parts: a split is into at least one part.`
     };
   }
-  let share = Math.trunc(m.amount / into);
-  let remainder = m.amount - share * into;
+  let share = Math.trunc(m.minorUnits / into);
+  let remainder = m.minorUnits - share * into;
   let step = remainder < 0.0 ? -1.0 : 1.0;
   let extra = Math.abs(remainder);
   return {
     TAG: "Ok",
     _0: Stdlib_Array.fromInitializer(into, i => ({
-      amount: share + (
+      minorUnits: share + (
         i < extra ? step : 0.0
       ),
       currency: m.currency
@@ -157,26 +204,33 @@ function sum(amounts) {
     return Stdlib_Array.reduce(amounts, {
       TAG: "Ok",
       _0: {
-        amount: 0.0,
+        minorUnits: 0.0,
         currency: amounts[0].currency
       }
     }, (acc, m) => Stdlib_Result.flatMap(acc, total => add(total, m)));
   }
 }
 
+let amountDescription = "The amount of money as people say it: 0.45 EUR is forty-five cents. At most as many decimals as the currency has.";
+
 export {
-  validateAmount,
-  amountSchema,
-  schema$1 as schema,
-  make,
-  zero,
+  validateMinorUnits,
+  minorUnitsSchema,
   scale,
-  ofMajor,
-  toMajor,
+  counted,
+  amountDescription,
+  isMoney,
+  saidSchema,
+  countedSchema,
+  schema,
+  make,
+  ofMinorUnits,
+  amount,
+  zero,
   format,
   add,
   times,
   allocate,
   sum,
 }
-/* amountSchema Not a pure module */
+/* minorUnitsSchema Not a pure module */

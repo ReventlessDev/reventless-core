@@ -29,14 +29,14 @@ let frontImage: Reventless.UploadableImage.t = "/uploads/3e7b41c8-5a2d-4f60-8c19
 let sideImage: Reventless.UploadableImage.t = "/uploads/9c1f2a30-0b7e-4a11-9d33-6f0d2e5a8b41/p1-side.jpg"
 
 let buchPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=1999.0,
+  ~amount=19.99,
   ~currency=Reventless.Currency.EUR,
 )
 let laptopChangedPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=89999.0,
+  ~amount=899.99,
   ~currency=Reventless.Currency.EUR,
 )
 let laptopPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=99999.0,
+  ~amount=999.99,
   ~currency=Reventless.Currency.EUR,
 )

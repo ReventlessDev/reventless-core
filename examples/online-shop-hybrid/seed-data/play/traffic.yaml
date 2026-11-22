@@ -16,7 +16,7 @@ steps:
       categoryId: "cat-{run}-{rep}"
       name: "Arrival {rep}"
       description: "A product that arrived with repetition {rep}."
-      price: {amount: 1999, currency: EUR}
+      price: {amount: 19.99, currency: EUR}
   - waitFor: {field: Ordering_AvailableProductsByIds, ids: ["prd-{run}-{rep}"]}
   - send: Ordering_Customer_Register
     args: {id: "cust-{run}-{rep}", email: "buyer.{run}.{rep}@example.com", address: "{rep} Market Street"}

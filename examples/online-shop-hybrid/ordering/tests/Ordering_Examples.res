@@ -34,27 +34,27 @@ let suppressedReason: string = "address on the suppression list"
 let viennaAddress: string = "Stephansplatz 1, Vienna"
 
 let bookPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=999.0,
+  ~amount=9.99,
   ~currency=Reventless.Currency.EUR,
 )
 
 let dockPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=2500.0,
+  ~amount=25.0,
   ~currency=Reventless.Currency.EUR,
 )
 
 let laptopChangedPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=89999.0,
+  ~amount=899.99,
   ~currency=Reventless.Currency.EUR,
 )
 
 let laptopPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=99999.0,
+  ~amount=999.99,
   ~currency=Reventless.Currency.EUR,
 )
 
 let twoBooksPrice: Reventless.Money.t = Reventless.Money.make(
-  ~amount=1998.0,
+  ~amount=19.98,
   ~currency=Reventless.Currency.EUR,
 )
 

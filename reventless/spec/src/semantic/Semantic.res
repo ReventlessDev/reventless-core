@@ -259,8 +259,8 @@ let valueTypes: array<valueType> = [
   {
     moduleName: "Money",
     shape: Parts({parts: [("amount", "float"), ("currency", "Currency")]}),
-    // Whole minor units: 1000 is 10.00 EUR.
-    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    // As people say it: 10.0 is 10.00 EUR.
+    sample: "Reventless.Money.make(~amount=10.0, ~currency=Reventless.Currency.EUR)",
     writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)",
   },
   {
@@ -306,7 +306,7 @@ let valueTypes: array<valueType> = [
   {
     moduleName: "PricePer",
     shape: Parts({parts: [("amount", "float"), ("currency", "Currency")]}),
-    sample: "Reventless.Money.make(~amount=1000.0, ~currency=Reventless.Currency.EUR)",
+    sample: "Reventless.Money.make(~amount=0.39, ~currency=Reventless.Currency.EUR)",
     writer: "Reventless.Money.make(~amount=$amount, ~currency=$currency)",
   },
 ]

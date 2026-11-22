@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
+import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Sensitive$Reventless from "@reventlessdev/reventless-spec/src/components/Sensitive.res.mjs";
@@ -275,7 +276,8 @@ function fromSchemaType(_inputNamesOpt, _st) {
           let base$1 = fromSchemaType(inputNames, inner);
           let match = SchemaType$ReventlessCore.canonicalName(sem.id);
           let base$2 = inputNames && match !== undefined && typeof inner === "object" && inner.TAG === "ObjectRef" ? withGraphqlInput(base$1, match + "Input") : base$1;
-          return withSemantic(base$2, sem);
+          let base$3 = Money$Reventless.isMoney(sem) ? withAmountSaid(base$2) : base$2;
+          return withSemantic(base$3, sem);
         case "Defaulted" :
           let inner$1 = st._1;
           let obj = Stdlib_JSON.Decode.object(fromSchemaType(inputNames, inner$1));
@@ -334,6 +336,34 @@ function armToJsonSchema(inputNamesOpt, tag, armType) {
   obj["required"] = required;
   obj["x-reventless-union-member"] = armType._0;
   return obj;
+}
+
+function withAmountSaid(fieldSchema) {
+  let obj = Stdlib_JSON.Decode.object(fieldSchema);
+  if (obj === undefined) {
+    return fieldSchema;
+  }
+  let match = obj["properties"];
+  if (match === undefined) {
+    return fieldSchema;
+  }
+  if (typeof match !== "object" || match === null || Array.isArray(match)) {
+    return fieldSchema;
+  }
+  let match$1 = match["amount"];
+  if (match$1 === undefined) {
+    return fieldSchema;
+  }
+  if (typeof match$1 !== "object" || match$1 === null || Array.isArray(match$1)) {
+    return fieldSchema;
+  }
+  let amount = Object.assign({}, match$1);
+  amount["description"] = Money$Reventless.amountDescription;
+  let properties = Object.assign({}, match);
+  properties["amount"] = amount;
+  let obj$1 = Object.assign({}, obj);
+  obj$1["properties"] = properties;
+  return obj$1;
 }
 
 function withSemantic(fieldSchema, sem) {
@@ -604,6 +634,7 @@ export {
   withGraphqlInput,
   fromSchemaType,
   armToJsonSchema,
+  withAmountSaid,
   withSemantic,
   objectRefToJsonSchema,
   trailKey,
