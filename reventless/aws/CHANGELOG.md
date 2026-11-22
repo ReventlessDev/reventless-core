@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.440 (2026-11-22)
+
+### Bug Fixes
+
+* **core:** numeric fields compare as numbers, and a state's date lists the rows that entered it ([a575c35](https://github.com/ReventlessDev/reventless-core/commit/a575c3541f0ff2f44d266b2cb6baea8c070977dc))
+### Features
+
+* **aws:** a trail's opted-in states are DynamoDB indexes the list door queries ([5cb84bc](https://github.com/ReventlessDev/reventless-core/commit/5cb84bcf23da2afbbb4d81965e2b6780ef6f1541))
+* **core:** a view reads its trail's dates over GraphQL ([76bb419](https://github.com/ReventlessDev/reventless-core/commit/76bb4190974e56de217e34e077a5a680c4649f26))
+* **core:** derive each state's entry dates from a lifecycle trail ([c21ec0a](https://github.com/ReventlessDev/reventless-core/commit/c21ec0aed905bafcc5cbaa2b41a7ff93c55b38b0))
+
+
 # 3.0.0-alpha.439 (2026-11-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

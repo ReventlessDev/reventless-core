@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.210 (2026-11-22)
+
+### Bug Fixes
+
+* **core:** numeric fields compare as numbers, and a state's date lists the rows that entered it ([a575c35](https://github.com/ReventlessDev/reventless-core/commit/a575c3541f0ff2f44d266b2cb6baea8c070977dc))
+### Features
+
+* **core:** filter and sort a view by its trail's opted-in dates ([5cf4392](https://github.com/ReventlessDev/reventless-core/commit/5cf43928492dd7255e3576c3fcc0250971e3cc70))
+
+
 # 3.0.0-alpha.209 (2026-11-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-postgres

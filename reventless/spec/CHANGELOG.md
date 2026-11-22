@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.208 (2026-11-22)
+
+### Features
+
+* **aws:** a trail's opted-in states are DynamoDB indexes the list door queries ([5cb84bc](https://github.com/ReventlessDev/reventless-core/commit/5cb84bcf23da2afbbb4d81965e2b6780ef6f1541))
+* **core:** a view reads its trail's dates over GraphQL ([76bb419](https://github.com/ReventlessDev/reventless-core/commit/76bb4190974e56de217e34e077a5a680c4649f26))
+* **core:** derive each state's entry dates from a lifecycle trail ([c21ec0a](https://github.com/ReventlessDev/reventless-core/commit/c21ec0aed905bafcc5cbaa2b41a7ff93c55b38b0))
+* **core:** filter and sort a view by its trail's opted-in dates ([5cf4392](https://github.com/ReventlessDev/reventless-core/commit/5cf43928492dd7255e3576c3fcc0250971e3cc70))
+* **ppx:** [@trail](https://github.com/trail) names the states a view filters and sorts by on the server ([9270790](https://github.com/ReventlessDev/reventless-core/commit/9270790592173899c86dc90aa0dcfe0d585b6dc2))
+
+
 # 3.0.0-alpha.207 (2026-11-21)
 
 ### Features

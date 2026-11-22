@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.329 (2026-11-22)
+
+### Features
+
+* **examples:** the shop's views filter and sort by their states' dates on the server ([9b99ebd](https://github.com/ReventlessDev/reventless-core/commit/9b99ebd822ebf7184dcef8b1f74e4939e68a8b27))
+
+
 # 1.0.0-alpha.328 (2026-11-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering
