@@ -423,6 +423,34 @@ It finds the stack's view tables by their tags, sets or removes only the derived
 attributes, and skips a row that was written while it ran (that row's own save
 already derived them). A second run finds nothing to change.
 
+### What the Schema Says About a Trail
+
+The view's JSON Schema, which a client reads from the component definitions,
+says what the trail offers on the trail's own property, under
+`x-reventless-trail`:
+
+```json
+"trail": {
+  "type": "array",
+  "x-reventless-trail": {
+    "lifecycle": "lifecycle",
+    "entered": "trailEntered",
+    "index": ["Placed", "Shipped", "Cancelled"]
+  }
+}
+```
+
+| Member | Says |
+|---|---|
+| `lifecycle` | The lifecycle field the trail's entries name. |
+| `entered` | The API field the derived dates read as. Its presence is how a client knows the platform derives them; a platform that predates them writes no `x-reventless-trail`. |
+| `index` | The states of `@trail({index: […]})`, as declared. Absent: nothing is filtered or sorted on the server. An empty list is `@trail({index: true})`, the lifecycle index alone. |
+
+From `index` a client builds the names of the previous sections by rule: for each
+listed state `entered<State>`, `entered<State>First` and `visits<State>`, and for
+any `index` at all `enteredCurrent` and `<lifecycle>Eq`. The key is absent when
+the view has no lifecycle field or the trail is `@internal`.
+
 ## Comparison with ReadModel
 
 | Aspect | ReadModel | StateViewSlice |

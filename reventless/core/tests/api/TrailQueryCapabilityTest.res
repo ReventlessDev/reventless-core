@@ -310,3 +310,58 @@ describe("a trail's opted-in states on the filter and sort surface", () => {
     expect(ids(conn))->toEqual(["o-3"])
   })
 })
+
+// The emitted JSON Schema alone says what the capability adds for a trail, so a
+// client that only holds the schema derives the same names.
+describe("what an emitted schema says a trail offers", () => {
+  let emitted = (~trailIndex) => SuryToJsonSchema.deriveObjectSchema(annotated(~trailIndex))
+  let sorted = names => names->Array.toSorted(String.compare)
+
+  let agrees = (~trailIndex) => {
+    let cap = capabilityOf(~trailIndex)
+    let offer = SuryToJsonSchema.trailOffer(emitted(~trailIndex))->Option.getOrThrow
+    let names = SuryToJsonSchema.trailQueryNames(offer)
+    // The names stored under another attribute are exactly the trail's.
+    expect(sorted(names))->toEqual(sorted(cap.stored->Option.mapOr([], Dict.keysToArray)))
+    names->Array.forEach(name => {
+      expect(cap.sortFields->Array.includes(name))->toBe(true)
+      expect(cap.filterFields->Array.some(f => f.name == name && f.range))->toBe(true)
+    })
+    expect(cap.filterFields->Array.some(f => f.name == offer.lifecycle))->toBe(
+      offer.index->Option.isSome,
+    )
+  }
+
+  testSync("the shop's Orders: three states opted in", () => {
+    let trailIndex = Some(["Placed", "Shipped", "Cancelled"])
+    let trail =
+      emitted(~trailIndex)
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("properties"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(p => p->Dict.get("trail"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(p => p->Dict.get("x-reventless-trail"))
+    expect(trail)->toEqual(
+      Some(
+        JSON.parseOrThrow(`{"lifecycle":"lifecycle","entered":"trailEntered","index":["Placed","Shipped","Cancelled"]}`),
+      ),
+    )
+    agrees(~trailIndex)
+  })
+
+  testSync("the lifecycle index alone is an empty list", () => {
+    let offer = SuryToJsonSchema.trailOffer(emitted(~trailIndex=Some([])))->Option.getOrThrow
+    expect(offer.index)->toEqual(Some([]))
+    expect(SuryToJsonSchema.trailQueryNames(offer))->toEqual(["enteredCurrent"])
+    agrees(~trailIndex=Some([]))
+  })
+
+  testSync("a trail that opts nothing in still says its dates are readable", () => {
+    let offer = SuryToJsonSchema.trailOffer(emitted(~trailIndex=None))->Option.getOrThrow
+    expect(offer.entered)->toBe("trailEntered")
+    expect(offer.index)->toEqual(None)
+    expect(SuryToJsonSchema.trailQueryNames(offer))->toEqual([])
+    agrees(~trailIndex=None)
+  })
+})

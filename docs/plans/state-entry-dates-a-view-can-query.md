@@ -1,7 +1,7 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps), [QDS7](#4-steps) and
-> [QDS8](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
+> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) and [QDS7](#4-steps) to
+> [QDS9](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
 > GraphQL on the `alpha` stack). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
@@ -234,6 +234,28 @@ the rows, `--apply` writes them, and the three-day request of [QDS6](#4-steps) a
 `Products-0ba6849` (26, 25) and `Orders-10f6a39` (79, 78) by their tags. `--apply` then wrote the
 111 rows with none skipped, a second run found nothing to change, and the request of
 [QDS6](#4-steps) answered on the lifecycle index (its note has the rows).
+
+**QDS9 The schema says what a trail offers.** The JSON Schema a client reads for a view names
+neither the `<trailField>Entered` field of [QDS2](#4-steps) (it is not a property of the state) nor
+the states of [QDD2](#3-decisions), so a client that mirrors the capability of [QDS4](#4-steps) from
+the schema's annotations has nothing to mirror, and cannot tell a platform that derives the dates
+from one that predates them. `SuryToJsonSchema.deriveObjectSchema` writes one key on the trail's
+property, `x-reventless-trail: {lifecycle, entered, index?}`: the lifecycle field, the name the
+derived dates read as, and the opted-in states as declared.
+*Done when* a test derives the trail's filter and sort names from the emitted schema alone and they
+equal what `deriveServerCapability` adds from the spec, for a view annotated as the shop's Orders,
+for the lifecycle index alone and for a trail that opts nothing in; and the doc page says what the
+key holds.
+*Done* 2026-11-22. An object, as `x-reventless-retired` and `x-reventless-metric` are, because the
+three facts belong to one field and are read together. `entered` holds the field's name rather than
+`true`, so its presence says the dates exist and a client need not rebuild the name. `index` is the
+spec's `trailIndex` unchanged: absent when nothing is queried on the server, a list of states, and
+the empty list for `@trail({index: true})`, so it has one type; the names follow from it by the rule
+`Lifecycle.Trail.queryNames` already is, which `SuryToJsonSchema.trailOffer` and `trailQueryNames`
+apply when reading the key back. The key is written wherever the `<trailField>Entered` field is (a
+trail with a lifecycle field, not `@internal`). The SDL does not change. The example packages do not
+depend on the package that holds the emitter, so the test's view carries the shop's Orders
+annotation and the real Orders schema was read once by hand.
 
 ## 5. Out of scope
 

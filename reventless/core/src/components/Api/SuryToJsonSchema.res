@@ -481,6 +481,95 @@ and objectRefToJsonSchema = (
   jsonObject(entries)
 }
 
+// ── What a trail offers ──────────────────────────────────────────────────
+
+let trailKey = "x-reventless-trail"
+
+/** What a trail's property says about it: the lifecycle field its entries name,
+    the API field its derived dates read as, and the states whose dates the
+    server filters and sorts by (absent: none; empty: the lifecycle index alone). */
+type trailOffer = {
+  trailField: string,
+  lifecycle: string,
+  entered: string,
+  index?: array<string>,
+}
+
+// Written on the trail's property, since the derived field and the opt-in are
+// not properties a reader could find otherwise.
+let withTrailOffer = (objSchema: JSON.t, schema: S.t<unknown>): JSON.t =>
+  switch (SchemaType.trailEntered(~typeName="", schema), Reventless.Lifecycle.fieldName(schema)) {
+  | (Some({trailField, field}), Some(lifecycle)) =>
+    let property =
+      objSchema
+      ->JSON.Decode.object
+      ->Option.flatMap(obj => obj->Dict.get("properties"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(props => props->Dict.get(trailField))
+      ->Option.flatMap(JSON.Decode.object)
+    switch property {
+    | Some(prop) =>
+      let entries = [("lifecycle", str(lifecycle)), ("entered", str(field))]
+      switch Reventless.StateAnnotations.getSpec(schema)->Option.flatMap(spec => spec.trailIndex) {
+      | Some(states) => entries->Array.push(("index", JSON.Encode.array(states->Array.map(str))))
+      | None => ()
+      }
+      prop->Dict.set(trailKey, jsonObject(entries))
+    | None => ()
+    }
+    objSchema
+  | _ => objSchema
+  }
+
+/** The offer an emitted object schema carries, read back off its trail property. */
+let trailOffer = (objSchema: JSON.t): option<trailOffer> =>
+  objSchema
+  ->JSON.Decode.object
+  ->Option.flatMap(obj => obj->Dict.get("properties"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(props =>
+    props
+    ->Dict.toArray
+    ->Array.findMap(((trailField, prop)) =>
+      prop
+      ->JSON.Decode.object
+      ->Option.flatMap(p => p->Dict.get(trailKey))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(
+        offer =>
+          switch (
+            offer->Dict.get("lifecycle")->Option.flatMap(JSON.Decode.string),
+            offer->Dict.get("entered")->Option.flatMap(JSON.Decode.string),
+          ) {
+          | (Some(lifecycle), Some(entered)) =>
+            Some({
+              trailField,
+              lifecycle,
+              entered,
+              index: ?(
+                offer
+                ->Dict.get("index")
+                ->Option.flatMap(JSON.Decode.array)
+                ->Option.map(states => states->Array.filterMap(JSON.Decode.string))
+              ),
+            })
+          | _ => None
+          },
+      )
+    )
+  )
+
+/** The names a server filters by range and sorts by for an offer: each indexed
+    state's dates and count, and the current state's entry. None without `index`. */
+let trailQueryNames = (offer: trailOffer): array<string> =>
+  switch offer.index {
+  | Some(states) =>
+    states
+    ->Array.flatMap(state => Reventless.Lifecycle.Trail.queryNames(state)->Array.map(q => q.name))
+    ->Array.concat([Reventless.Lifecycle.Trail.enteredCurrentName])
+  | None => []
+  }
+
 // ── Public API (sury → JSON Schema via SchemaType) ───────────────────────
 
 // `typeName` roots the walk where the SDL emitter roots its own — the mutation
@@ -495,15 +584,16 @@ let deriveObjectSchema = (
   switch SchemaType.fromSuryObject(~typeName, schema) {
   | Some(fields) =>
     let annotations = Reventless.StateAnnotations.getSpec(schema)
-    let objSchema = objectRefToJsonSchema(
-      ~annotations?,
-      ~optional=SchemaType.optionalFieldNames(schema),
-      ~owners=Reventless.Owner.fieldNames(schema),
-      ~sensitive=Reventless.Sensitive.fieldNames(schema),
-      ~pii=Reventless.Pii.fieldsOf(schema),
-      ~inputNames,
-      fields,
-    )
+    let objSchema =
+      objectRefToJsonSchema(
+        ~annotations?,
+        ~optional=SchemaType.optionalFieldNames(schema),
+        ~owners=Reventless.Owner.fieldNames(schema),
+        ~sensitive=Reventless.Sensitive.fieldNames(schema),
+        ~pii=Reventless.Pii.fieldsOf(schema),
+        ~inputNames,
+        fields,
+      )->withTrailOffer(schema)
     // Surface component-level hints on the top-level object schema.
     // Visibility is omitted entirely for the default `Public` (None) so schemas
     // stay compact; live is emitted only when declared — an absent key means
