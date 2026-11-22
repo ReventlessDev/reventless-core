@@ -1,0 +1,4 @@
+name: online-shop-hybrid-registration-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Hybrid — Registration plugin stack

@@ -22,3 +22,9 @@ plugins:
   - name: ordering
     path: ordering-aws
     depends-on: []
+
+  # The sign-up door for visitors and its guards. Starts closed: nothing is open
+  # to strangers until an administrator opens a role.
+  - name: registration
+    path: registration-aws
+    depends-on: []

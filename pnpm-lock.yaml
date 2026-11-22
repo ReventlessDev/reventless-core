@@ -958,6 +958,40 @@ importers:
         specifier: 11.1.0
         version: 11.1.0(sury@11.1.0(rescript@12.3.1))
 
+  examples/online-shop-hybrid/registration-aws:
+    dependencies:
+      '@reventlessdev/online-shop-hybrid-registration':
+        specifier: workspace:*
+        version: link:../registration
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/aws
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/infra
+      '@reventlessdev/reventless-registration':
+        specifier: workspace:*
+        version: link:../../../reventless/registration
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/spec
+      sury:
+        specifier: 11.1.0
+        version: 11.1.0(rescript@12.3.1)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: 12.3.1
+        version: 12.3.1
+      sury-ppx:
+        specifier: 11.1.0
+        version: 11.1.0(sury@11.1.0(rescript@12.3.1))
+
   examples/online-shop-hybrid/seed-data:
     dependencies:
       '@rescript/react':

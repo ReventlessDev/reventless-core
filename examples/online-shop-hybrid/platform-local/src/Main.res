@@ -28,10 +28,9 @@ let identityProvider = ReventlessLocal.Capability_IdentityProvider_AccountStore.
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
-// Self-registration, hosted here and not by the AWS root: its doors admit
-// callers who are not signed in, and a deployed platform has no door for them
-// yet. With the log transport a registration completes with no mailbox at all —
-// the code it sends is printed in this process's log.
+// Self-registration: its doors admit callers who are not signed in. With the log
+// transport a registration completes with no mailbox at all — the code it sends
+// is printed in this process's log. On AWS it is a plugin stack of its own.
 module Registration = RegistrationPlugin.Plugin.Make(Platform)
 
 Platform.makePlatform(

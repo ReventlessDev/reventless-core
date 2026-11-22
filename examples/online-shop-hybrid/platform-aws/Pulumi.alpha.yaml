@@ -13,3 +13,17 @@ config:
   # provider. `example.com` is IANA-reserved, so it is nobody's real inbox.
   platform:messagingEmailSender: orders@example.com
   platform:messagingEmailSenderName: Online Shop
+  # The check that a person is signing up: Cloudflare Turnstile's published test
+  # keys, which always pass. A missing token is still refused; a bad one passes
+  # until real keys replace these.
+  platform:personCheckSiteKey: 1x00000000000000000000AA
+  platform:personCheckSecret:
+    secure: AAABAIANkWH0ZIqZOX2OnvUhpCe2rj0KBZv3t26pZeRqduQ5f50Y5ghjQ/5ziOBDpCLi65LrEoDAHfJmcCU0OWKM4A==
+  # What addresses are kept as. Never changed afterwards: a new key orphans every
+  # registration and limit counted under the old one.
+  platform:fingerprintKey:
+    secure: AAABAN7MM9x4NTKfGmYA/bcMKCsCiQJFG1xU+lQjTLUbodYT1XWICVZ5qTSx7emBLojh7uJz+Eb+bMXdsmhXFHo91sZCkmaraYpZc1P1m5M=
+  # Who the alarms and the monthly budget write to; encrypted so the address is not
+  # in the repository. It confirms the alerts subscription once, from AWS's mail.
+  platform:operatorAddress:
+    secure: AAABADvzG+pQC5BEg3nonUn8559WQk2s2xUiLDJJp0LLO1alAQzxcrKGzDrDesaDjFJT
