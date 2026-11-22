@@ -57,8 +57,7 @@ type connection = {
   uploadsSkipped: bool,
   label: string,
   // Every account the platform's accounts file declares — `[]` when there was no
-  // file, since the `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` path
-  // bypasses it entirely. A data set resolves a demo owner through this, so the
+  // file. A data set resolves a demo owner through this, so the
   // id it seeds is the id the platform stamps rather than a literal that only
   // happens to match one platform's accounts.
   accounts: array<Seed_Accounts.user>,
@@ -76,6 +75,10 @@ type connection = {
   // not carry `Platform_SetActiveRole`), and a narrowing can then only be
   // reported, not fixed from here.
   roleSwitch?: roleSwitch,
+  // What the platform says it is for: `local` for the local platform, a deployment's
+  // `environmentPurpose` (`dev`, `test`, `production`, …) when its config says one. A play
+  // that expects is refused where this is `production` or absent.
+  purpose?: string,
 }
 
 let announceIdentity = (client: Seed_Client.t, ~prefix: string="Acting as"): unit =>
@@ -176,6 +179,7 @@ let make = async (
   ~login: (~username: string, ~password: string) => promise<string>,
   ~roleSwitch: option<roleSwitch>=?,
   ~localDefaults: bool=false,
+  ~purpose: option<string>=?,
 ): connection => {
   // `SEED_SKIP_UPLOADS` forces the upload phase to no-op — seed domain data fast, or
   // skip a broken/absent upload path without editing the data set. The data set reads
@@ -201,6 +205,7 @@ let make = async (
     callerId: ?Seed_Client.callerId(client),
     login,
     ?roleSwitch,
+    ?purpose,
   }
 }
 
@@ -328,5 +333,6 @@ let local = (~graphql=?, ~login=?, ()): (unit => promise<connection>) => {
       ~login=viaLoginEndpoint(~loginEndpoint),
       ~roleSwitch=viaSwitchRoleEndpoint(~switchRoleEndpoint),
       ~localDefaults=true,
+      ~purpose="local",
     )
 }

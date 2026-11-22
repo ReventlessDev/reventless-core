@@ -465,6 +465,222 @@ async function checkQueryAccess(t, fieldName) {
   }
 }
 
+function expectedWords(e) {
+  if (typeof e !== "object") {
+    return "accepted";
+  } else {
+    return `refused with ` + e._0;
+  }
+}
+
+function answerWords(a) {
+  if (a.accepted) {
+    return "accepted";
+  } else {
+    return `refused with ` + Stdlib_Option.getOr(a.code, "unknown");
+  }
+}
+
+function meets(answer, expected) {
+  if (typeof expected !== "object") {
+    return answer.accepted;
+  } else if (answer.accepted) {
+    return false;
+  } else {
+    return Primitive_object.equal(answer.code, expected._0);
+  }
+}
+
+function answerOf(o) {
+  if (o.TAG === "Data") {
+    let r = Stdlib_Option.getOr(field(o._0, "r"), null);
+    let match = nodeString(r, "__typename");
+    if (match === "CommandRejected") {
+      return {
+        TAG: "Ok",
+        _0: {
+          accepted: false,
+          code: isDeniedResult(r) ? "Forbidden" : Stdlib_Option.getOr(nodeString(r, "errorCode"), "unknown"),
+          detail: nodeString(r, "errorDetail")
+        }
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: {
+          accepted: true
+        }
+      };
+    }
+  }
+  let match$1 = o._0;
+  if (isDenied(match$1.errors)) {
+    return {
+      TAG: "Ok",
+      _0: {
+        accepted: false,
+        code: "Forbidden"
+      }
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: match$1.message
+    };
+  }
+}
+
+async function sendExpecting(t, m, expect) {
+  let label = Seed_Types$ReventlessSeed.describe(m);
+  let query = `mutation { r: ` + m.field + `(` + Seed_Types$ReventlessSeed.renderArgs(m.args) + `) { ` + commandResultSelection + ` } }`;
+  await paced(t);
+  let attempt = async n => {
+    let o = await gqlOutcome(t, query, label);
+    if (o.TAG === "Data" && Stdlib_Option.mapOr(field(o._0, "r"), false, isInfrastructureRejection) && n < 4) {
+      await sleep((250 * (1 << (n - 1 | 0)) | 0) + (Math.random() * 250 | 0) | 0);
+      return await attempt(n + 1 | 0);
+    }
+    let answer = answerOf(o);
+    if (answer.TAG === "Ok") {
+      return answer._0;
+    }
+    throw {
+      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+      _1: answer._0,
+      Error: new Error()
+    };
+  };
+  let answer = await attempt(1);
+  return [
+    answer,
+    meets(answer, expect)
+  ];
+}
+
+let anyValue = "{any}";
+
+function has(value, wanted) {
+  if (Array.isArray(wanted)) {
+    if (Array.isArray(value)) {
+      if (wanted.length === value.length) {
+        return wanted.every((x, i) => has(value[i], x));
+      } else {
+        return false;
+      }
+    } else {
+      return Primitive_object.equal(wanted, value);
+    }
+  }
+  if (wanted === null) {
+    return Primitive_object.equal(wanted, value);
+  }
+  switch (typeof wanted) {
+    case "string" :
+      if (wanted === anyValue) {
+        return value !== null;
+      } else {
+        return Primitive_object.equal(wanted, value);
+      }
+    case "object" :
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return Object.entries(wanted).every(param => {
+          let x = param[1];
+          return Stdlib_Option.mapOr(value[param[0]], false, y => has(y, x));
+        });
+      } else {
+        return Primitive_object.equal(wanted, value);
+      }
+    default:
+      return Primitive_object.equal(wanted, value);
+  }
+}
+
+function selectionOf(wanted) {
+  let fields = Object.entries(wanted);
+  if (fields.length !== 0) {
+    return fields.map(param => {
+      let v = param[1];
+      let k = param[0];
+      if (Array.isArray(v)) {
+        let match = v.find(x => typeof x === "object" && x !== null && !Array.isArray(x));
+        if (typeof match === "object" && match !== null && !Array.isArray(match)) {
+          return k + ` { ` + selectionOf(match) + ` }`;
+        } else {
+          return k;
+        }
+      }
+      if (v === null) {
+        return k;
+      }
+      switch (typeof v) {
+        case "object" :
+          return k + ` { ` + selectionOf(v) + ` }`;
+        default:
+          return k;
+      }
+    }).join(" ");
+  } else {
+    return "id";
+  }
+}
+
+async function readRow(t, fieldName, key, wanted, timeoutMsOpt) {
+  let timeoutMs = timeoutMsOpt !== undefined ? timeoutMsOpt : 60000;
+  let start = Date.now();
+  let query = `{ ` + fieldName + `(ids: [` + Seed_Types$ReventlessSeed.quote(key) + `]) { ` + selectionOf(wanted) + ` } }`;
+  let waited = () => Date.now() - start | 0;
+  let poll = async () => {
+    let data = await gqlOutcome(t, query, fieldName);
+    if (data.TAG === "Data") {
+      let r = field(data._0, fieldName);
+      let row;
+      if (r !== undefined) {
+        if (Array.isArray(r)) {
+          row = r[0];
+        } else if (r === null) {
+          row = undefined;
+        } else {
+          switch (typeof r) {
+            case "object" :
+              row = r;
+              break;
+            default:
+              row = undefined;
+          }
+        }
+      } else {
+        row = undefined;
+      }
+      let matches = Stdlib_Option.mapOr(row, false, r => has(r, wanted));
+      if (matches || waited() > timeoutMs) {
+        return {
+          values: row,
+          matches: matches,
+          denied: false,
+          waitedMs: waited()
+        };
+      } else {
+        await sleep(250);
+        return await poll();
+      }
+    }
+    let match = data._0;
+    if (isDenied(match.errors)) {
+      return {
+        matches: false,
+        denied: true,
+        waitedMs: waited()
+      };
+    }
+    throw {
+      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+      _1: match.message,
+      Error: new Error()
+    };
+  };
+  return await poll();
+}
+
 async function sendAll(t, mutations) {
   for (let i = 0, i_finish = mutations.length; i < i_finish; ++i) {
     let m = mutations[i];
@@ -613,6 +829,15 @@ export {
   isDeniedResult,
   checkCommandAccess,
   checkQueryAccess,
+  expectedWords,
+  answerWords,
+  meets,
+  answerOf,
+  sendExpecting,
+  anyValue,
+  has,
+  selectionOf,
+  readRow,
   sendAll,
   queryAllNodes,
   countNodes,

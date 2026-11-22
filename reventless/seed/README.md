@@ -44,6 +44,13 @@ observe what it produced:
 - **`waitForIds`** — polls a `<View>ByIds` field until every id is present.
   Cross-plugin propagation (extension point → extension → command) is
   asynchronous; waiting on the observable result beats sleeping and hoping.
+- **`sendExpecting`** — issues one command and returns what it answered
+  (accepted, or refused with its code) and whether that is what `~expect`
+  (`Accepted` or `Refused(code)`) says, instead of throwing: a command may be
+  meant to be refused. A refusal of the caller is `Forbidden` on both platforms.
+- **`readRow`** — reads one row of a `<View>ByIds` field until it has the values
+  asked for, or a time is up, and returns what it last showed and how long it
+  waited. `"{any}"` asks only that a field has a value: a time the app stamps.
 
 ### `Seed.Random` — deterministic generation
 
@@ -107,11 +114,36 @@ variables make it a player; each is checked before anything is sent:
   (`SEED_RUN_TAG`, else the start time). A step with `as: <name>` is sent as
   the account that plays that person (its `demoOwner`, else its username, in
   the accounts file), each signed in once; the rest go as the run's caller.
-  See `Seed_Play.res` for the format, and the online-shop example's
-  `seed-data/play/traffic.yaml`.
+  `{id:<name>}` in a value is the id of the account that plays that person on
+  the platform the file is played into. See `Seed_Play.res` for the format,
+  and the online-shop example's `seed-data/play/traffic.yaml`.
 
 A pace changes the gaps between events, never the time an event records: the
 platform stamps every event when it accepts the command.
+
+With `REVENTLESS_DEMO_USER` and `REVENTLESS_DEMO_PASSWORD` both given, the run
+signs in as that account and still reads the accounts file, so a step can act
+as one of its people.
+
+### A play file that expects
+
+A step of a play file may say what it expects: `expect: accepted` or
+`expect: {refused: <errorCode>}`, and `row: {view, key, has}`, a row the view
+then shows, read as the step's person. `id` names the step. The play stops at
+the first step that went otherwise and says what came instead, or says at the end
+that every step went as it expects, so it is a test
+of a running platform, local or deployed. The online-shop example's
+`seed-data/play/order-placed-once.yaml` is one.
+
+- **`SEED_RESULT`** — a file to write what came of each step to, as JSON, when
+  the play ends or stops.
+- **`SEED_ROW_TIMEOUT`** — seconds a `row` is read before it counts as not
+  come; 60 by default.
+- **Where it plays.** A play that expects writes where people may work, so it
+  is played only where the platform says what it is for and that is not
+  `production`: locally always, on a deployment by the `environmentPurpose` its
+  `config.json` carries. A file in which no value has `{run}` is refused, and
+  an `ID` with neither `{run}` nor `{id:…}` is said before the play.
 
 ## A minimal seed
 

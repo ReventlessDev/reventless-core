@@ -1,8 +1,9 @@
 # Plan: a play file says what each step expects
 
 **Date:** 2026-11-22<br/>
-**Status:** 📋 Planned 2026-11-22: decisions taken as recommended. Nothing built. Steps numbered PE1 to PE7, decisions PED1 to
-PED4, open questions PEQ1 to PEQ4, each with a recommendation. *PE* is short for *play,
+**Status:** 🔨 Built 2026-11-22, not yet released: [PE1](#pe1-the-client-expects-an-answer-and-reads-a-row) to [PE7](#pe7-the-checks), the shop's file
+played on its alpha stack too (see [§8](#8-as-built)). Steps numbered PE1 to PE7, decisions PED1 to PED4, open questions PEQ1 to PEQ4,
+each with a recommendation, all four answered as recommended. *PE* is short for *play,
 expected*.<br/>
 **Repos:** `reventless-core` only: `reventless/seed`, `reventless/seed-aws`, the hybrid shop's
 seed data.<br/>
@@ -206,3 +207,46 @@ slow deployment shows before it fails.
 | Two plays, or a play and a person, meet in one view | `{run}` required, and every `ID` without it said ([PE5](#pe5-a-play-that-expects-stays-off-production)) |
 | A view that fills late reads as a stop | [PE1](#pe1-the-client-expects-an-answer-and-reads-a-row) polls until a time, and [PE3](#pe3-the-result-as-data) says how long each row took |
 | A person's id differs between platforms | [PE4](#pe4-a-persons-id-in-a-play-file): the id is the account's, found where the file is played |
+
+## 8. As built
+
+Built 2026-11-22 as planned. Where it differs, or what the build showed:
+
+- **The client** ([PE1](#pe1-the-client-expects-an-answer-and-reads-a-row)): `Seed_Client.sendExpecting(m, ~expect)` returns the answer and whether
+  it meets `~expect`; `readRow(~field, ~key, ~wanted, ~timeoutMs)` returns the row as it last came,
+  whether it matches, whether the reader was refused, and how long it waited. The decisions are
+  pure functions beside them (`answerOf`, `meets`, `has`, `selectionOf`), tested without a
+  platform. A refusal of the caller is `Forbidden` on both platforms, whichever code or error
+  carries it.
+- **A refused read on the local platform** is an empty list, as `checkQueryAccess` already notes:
+  a row the step's person may not read reads there as a row that never came; on AppSync it is
+  said as a refusal.
+- **The preflight** ([PE2](#pe2-the-play-file-expects)) reads the API's query fields and each row type's fields, and
+  refuses a view the API does not have and a value a row does not carry; nested values are
+  checked when read, not before.
+- **The purpose** ([PE5](#pe5-a-play-that-expects-stays-off-production)) travels on the connection (`purpose`): `local` from the local
+  platform, `environmentPurpose` from a deployment's host-shell `config.json`. A stack that serves
+  no host shell says no purpose, so a play that expects is refused there.
+- **The accounts file read with a password** ([PE4](#pe4-a-persons-id-in-a-play-file)) changed more than plays: the shop's
+  follow-up run now finds its demo owners' accounts on the non-interactive path and checks each
+  owner's own reads, which it used to skip. The player test that counted the run's lines now counts
+  the growth check's own.
+- **The shop** ([PE6](#pe6-the-hybrid-shops-data-set-uses-it)): `seedRejectedDuplicate` is one `sendExpecting`, and
+  `seed-data/play/order-placed-once.yaml` makes its own category, product and customer, orders,
+  reads the order's row and is refused the same order again.
+- **The checks** ([PE7](#pe7-the-checks)): the client's and the file's decisions as unit tests, the player against
+  a fake API (a refusal as expected, an answer that differs, a row that never comes, a person's
+  id), and the shop's file played into the running local platform twice: to the end with its
+  result written, and with one wrong expectation, stopped at that step.
+- **The open questions** ([§6](#6-open-questions)) went as recommended: a row is compared exactly in the API's
+  shape; any purpose but `production` is played on, `demo` included; a play reads only the rows
+  its steps name; a row waits 60 seconds, `SEED_ROW_TIMEOUT` to change it.
+
+**Played on alpha** (2026-11-22, run `20261122T100428`): the shop's file, signed in as `admin`
+from the accounts file, on the stack whose `config.json` says `dev`. Every step went as it
+expects: the category, product, customer and order accepted, the order's row read on
+`Ordering_OrdersByIds` after 413 ms with its customer, two items, `Standard` and a `placedAt`, and
+the same order again refused with `OrderAlreadyPlaced`. What it made stays on alpha, marked by the
+run. A play that ended well then printed nothing after its run line; it now closes with *every
+step went as it expects (5 steps)*.
+

@@ -76,7 +76,7 @@ async function resolveRole(client, roleSwitch, login, caller) {
   }
 }
 
-async function make(label, endpoint, login, roleSwitch, localDefaultsOpt) {
+async function make(label, endpoint, login, roleSwitch, localDefaultsOpt, purpose) {
   let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
   let uploadsSkipped = Seed_Upload$ReventlessSeed.uploadsSkipped();
   let match = await Seed_Prompt$ReventlessSeed.credentials(localDefaults);
@@ -96,7 +96,8 @@ async function make(label, endpoint, login, roleSwitch, localDefaultsOpt) {
     caller: caller,
     callerId: Seed_Client$ReventlessSeed.callerId(client),
     login: login,
-    roleSwitch: roleSwitch
+    roleSwitch: roleSwitch,
+    purpose: purpose
   };
 }
 
@@ -198,7 +199,7 @@ function local(graphql, login, param) {
   let endpoint = Stdlib_Option.getOr(graphql, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_GRAPHQL_ENDPOINT"), "http://localhost:4000/graphql"));
   let loginEndpoint = Stdlib_Option.getOr(login, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOGIN_ENDPOINT"), "http://localhost:4000/__inmemory/login"));
   let switchRoleEndpoint = loginEndpoint.replace("/__inmemory/login", "/__inmemory/switch-role");
-  return () => make("local", endpoint, viaLoginEndpoint(loginEndpoint), viaSwitchRoleEndpoint(switchRoleEndpoint), true);
+  return () => make("local", endpoint, viaLoginEndpoint(loginEndpoint), viaSwitchRoleEndpoint(switchRoleEndpoint), true, "local");
 }
 
 export {

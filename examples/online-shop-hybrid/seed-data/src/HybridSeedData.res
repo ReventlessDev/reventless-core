@@ -240,12 +240,13 @@ let seedProductGallery = async (
 // that already exists. It comes back as CommandRejected/ProductAlreadyExists and
 // appends nothing, so the run shows the rejection path next to the accepted
 // ones. Acceptance is the failure mode here — a duplicate that slipped through
-// would leave two ProductAdded events on the same id — so an accepted duplicate
+// would leave two ProductAdded events on the same id — so any other answer
 // aborts the seed instead of passing quietly.
 let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: Seed.Client.t) =>
   switch products->Array.get(0) {
   | Some(p) =>
-    let outcome = await client->Seed.Client.send(
+    let expect = Seed.Client.Refused("ProductAlreadyExists")
+    let (answer, ok) = await client->Seed.Client.sendExpecting(
       DemoCommands.addProduct(
         AddProduct({
           productId: ProductId.make(p.id),
@@ -255,15 +256,17 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
           categoryId: CategoryId.make(p.categoryId),
         }),
       ),
-      ~tolerate=["ProductAlreadyExists"],
+      ~expect,
     )
-    switch outcome {
-    | Some(code) =>
-      Seed.Runner.report(`duplicate guard: re-adding ${p.id} was rejected with ${code} (expected)`)
-    | None =>
+    let came = Seed.Client.answerWords(answer)
+    if ok {
+      Seed.Runner.report(`duplicate guard: re-adding ${p.id} was ${came} (expected)`)
+    } else {
       throw(
         Seed.Failed(
-          `duplicate guard: re-adding product ${p.id} was accepted — AddProduct is no longer ` ++ `rejecting an existing productId with ProductAlreadyExists`,
+          `duplicate guard: re-adding product ${p.id} was ${came}, not ${Seed.Client.expectedWords(
+              expect,
+            )}`,
         ),
       )
     }

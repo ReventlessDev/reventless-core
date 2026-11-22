@@ -161,7 +161,8 @@ function endpointsFrom(stack, source) {
     return {
       graphql: resolveField("REVENTLESS_GRAPHQL_ENDPOINT", fromCfg("apiEndpoint"), "apiEndpoint"),
       cognitoRegion: resolveField("AWS_REGION", fromCfg("region"), "region"),
-      cognitoClientId: resolveField("COGNITO_CLIENT_ID", Stdlib_Option.orElse(fromCfg("identityProviderClientId"), fromCfg("cognitoClientId")), "identityProviderClientId")
+      cognitoClientId: resolveField("COGNITO_CLIENT_ID", Stdlib_Option.orElse(fromCfg("identityProviderClientId"), fromCfg("cognitoClientId")), "identityProviderClientId"),
+      purpose: fromCfg("environmentPurpose")
     };
   }
   let outputs = source._0;
@@ -307,7 +308,7 @@ function connect(projectDirOpt, stack, backend, param) {
     let backend$1 = url !== undefined ? url : backend;
     let stackName = await resolveStack(projectDir, backend$1, stack);
     let eps = await resolveEndpoints(projectDir, backend$1, stackName);
-    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, cognito(eps.cognitoRegion, eps.cognitoClientId), setActiveRole, undefined);
+    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, cognito(eps.cognitoRegion, eps.cognitoClientId), setActiveRole, undefined, eps.purpose);
   };
 }
 

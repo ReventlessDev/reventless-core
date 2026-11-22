@@ -162,6 +162,9 @@ type endpoints = {
   graphql: string,
   cognitoRegion: string,
   cognitoClientId: string,
+  // What the deployment says it is for (`environmentPurpose` in the host shell's config):
+  // absent when it says nothing, as a stack that serves no shell does.
+  purpose?: string,
 }
 
 /**
@@ -194,6 +197,7 @@ let endpointsFrom = (~stack: string, source: source): endpoints =>
         ~fromSource=fromCfg("identityProviderClientId")->Option.orElse(fromCfg("cognitoClientId")),
         ~human="identityProviderClientId",
       ),
+      purpose: ?fromCfg("environmentPurpose"),
     }
   | StackOutputs(outputs) =>
     let out = key => outputs->field(key)->Option.flatMap(asString)
@@ -378,5 +382,6 @@ let connect = (~projectDir: string=".", ~stack=?, ~backend=?, ()): (
       ~endpoint=eps.graphql,
       ~login=cognito(~region=eps.cognitoRegion, ~clientId=eps.cognitoClientId),
       ~roleSwitch=setActiveRole,
+      ~purpose=?eps.purpose,
     )
   }

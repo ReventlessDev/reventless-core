@@ -204,7 +204,7 @@ async function credentials(localDefaultsOpt) {
   if (envUser !== undefined && match !== undefined) {
     resolved = {
       caller: typedUser(envUser, match),
-      accounts: []
+      accounts: Stdlib_Option.mapOr(Seed_Accounts$ReventlessSeed.load(envValue("SEED_USERS_FILE")), [], prim => prim[1])
     };
   } else {
     exit = 1;

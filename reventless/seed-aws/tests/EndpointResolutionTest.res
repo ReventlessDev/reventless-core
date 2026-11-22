@@ -73,6 +73,18 @@ describe("endpointsFrom — host shell arm", () => {
     let eps = ReventlessSeedAws.endpointsFrom(~stack="alpha", HostShellConfig(oldConfig))
     expect(eps.cognitoClientId)->toBe("client-old")
   })
+
+  // A play that expects is played only where the deployment says it is not production.
+  testSync("reads what the deployment says it is for, and nothing when it says nothing", () =>
+    expect((
+      ReventlessSeedAws.endpointsFrom(
+        ~stack="alpha",
+        HostShellConfig(config(~extra=[("environmentPurpose", str("dev"))])),
+      ).purpose,
+      ReventlessSeedAws.endpointsFrom(~stack="alpha", HostShellConfig(oldConfig)).purpose,
+      ReventlessSeedAws.endpointsFrom(~stack="alpha", StackOutputs(outputs(~extra=[]))).purpose,
+    ))->toEqual((Some("dev"), None, None))
+  )
 })
 
 describe("endpointsFrom — stack outputs arm", () => {

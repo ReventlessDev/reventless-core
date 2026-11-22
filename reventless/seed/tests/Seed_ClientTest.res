@@ -318,3 +318,77 @@ describe("Seed_Client rejection causes:", () => {
     expect(Seed_Client.isDeniedResult(rejected("DOMAIN")))->toBe(false)
   })
 })
+
+// A step may be meant to be refused, so a refusal is an answer to compare, not a failure;
+// and a refusal of the caller reads the same on both platforms.
+describe("Seed_Client answers:", () => {
+  let data = r => Seed_Client.Data(
+    JSON.Encode.object(Dict.fromArray([("r", JSON.parseOrThrow(r))])),
+  )
+
+  testSync("reads an acceptance, a domain refusal and a refusal of the caller", () =>
+    expect((
+      Seed_Client.answerOf(data(`{"__typename": "CommandAccepted", "eventCount": 1}`)),
+      Seed_Client.answerOf(
+        data(`{"__typename": "CommandRejected", "errorCode": "OrderAlreadyPlaced", "errorDetail": "o-1"}`),
+      ),
+      Seed_Client.answerOf(data(`{"__typename": "CommandRejected", "errorCode": "AccessDenied"}`)),
+      Seed_Client.answerOf(
+        Errors({
+          errors: JSON.parseOrThrow(`[{"errorType": "Unauthorized", "message": "Not Authorized"}]`),
+          message: "",
+        }),
+      ),
+    ))->toEqual((
+      Ok({Seed_Client.accepted: true}),
+      Ok({Seed_Client.accepted: false, code: "OrderAlreadyPlaced", detail: "o-1"}),
+      Ok({Seed_Client.accepted: false, code: "Forbidden"}),
+      Ok({Seed_Client.accepted: false, code: "Forbidden"}),
+    ))
+  )
+
+  testSync("an error that is no answer stays an error", () =>
+    expect(
+      Seed_Client.answerOf(
+        Errors({errors: JSON.parseOrThrow(`[{"errorType": "FieldUndefined"}]`), message: "bad"}),
+      ),
+    )->toEqual(Error("bad"))
+  )
+
+  testSync("an answer meets what is expected only as it says", () =>
+    expect([
+      Seed_Client.meets({Seed_Client.accepted: true}, Accepted),
+      Seed_Client.meets({Seed_Client.accepted: false, code: "X"}, Refused("X")),
+      Seed_Client.meets({Seed_Client.accepted: false, code: "Y"}, Refused("X")),
+      Seed_Client.meets({Seed_Client.accepted: true}, Refused("X")),
+    ])->toEqual([true, true, false, false])
+  )
+})
+
+describe("Seed_Client rows:", () => {
+  let j = JSON.parseOrThrow
+
+  testSync("a row has the values it is asked for, nested and listed, any for a time", () =>
+    expect([
+      Seed_Client.has(j(`{"a": 1, "b": "x", "t": "2026"}`), j(`{"a": 1, "t": "{any}"}`)),
+      Seed_Client.has(j(`{"w": {"s": 1, "e": 2}}`), j(`{"w": {"s": 1}}`)),
+      Seed_Client.has(j(`{"l": [{"p": 1, "q": 2}]}`), j(`{"l": [{"p": 1}]}`)),
+      Seed_Client.has(j(`{"t": null}`), j(`{"t": "{any}"}`)),
+      Seed_Client.has(j(`{"a": 2}`), j(`{"a": 1}`)),
+      Seed_Client.has(j(`{"l": [1, 2]}`), j(`{"l": [1]}`)),
+    ])->toEqual([true, true, true, false, false, false])
+  )
+
+  testSync("reads the fields it is asked for, and the id when none", () =>
+    expect((
+      Seed_Client.selectionOf(
+        Dict.fromArray([
+          ("state", JSON.String("Placed")),
+          ("window", j(`{"start": "{any}"}`)),
+          ("lines", j(`[{"productId": "p-1"}]`)),
+        ]),
+      ),
+      Seed_Client.selectionOf(Dict.make()),
+    ))->toEqual(("state window { start } lines { productId }", "id"))
+  )
+})

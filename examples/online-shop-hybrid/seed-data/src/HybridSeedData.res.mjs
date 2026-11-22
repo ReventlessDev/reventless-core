@@ -208,20 +208,25 @@ async function seedRejectedDuplicate(products, client) {
   if (p === undefined) {
     return;
   }
-  let outcome = await Seed_Client$ReventlessSeed.send(client, DemoCommands$OnlineShopHybridSeed.addProduct({
+  let expect = {
+    TAG: "Refused",
+    _0: "ProductAlreadyExists"
+  };
+  let match = await Seed_Client$ReventlessSeed.sendExpecting(client, DemoCommands$OnlineShopHybridSeed.addProduct({
     TAG: "AddProduct",
     productId: ProductId$CatalogSpec.make(p.id),
     name: p.name,
     description: p.description,
     price: p.price,
     categoryId: CategoryId$CatalogPlugin.make(p.categoryId)
-  }), ["ProductAlreadyExists"]);
-  if (outcome !== undefined) {
-    return Seed_Runner$ReventlessSeed.report(`duplicate guard: re-adding ` + p.id + ` was rejected with ` + outcome + ` (expected)`);
+  }), expect);
+  let came = Seed_Client$ReventlessSeed.answerWords(match[0]);
+  if (match[1]) {
+    return Seed_Runner$ReventlessSeed.report(`duplicate guard: re-adding ` + p.id + ` was ` + came + ` (expected)`);
   }
   throw {
     RE_EXN_ID: Seed$ReventlessSeed.Failed,
-    _1: `duplicate guard: re-adding product ` + p.id + ` was accepted — AddProduct is no longer rejecting an existing productId with ProductAlreadyExists`,
+    _1: `duplicate guard: re-adding product ` + p.id + ` was ` + came + `, not ` + Seed_Client$ReventlessSeed.expectedWords(expect),
     Error: new Error()
   };
 }

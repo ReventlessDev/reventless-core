@@ -261,7 +261,8 @@ let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
  * Resolves the credentials a seed run logs in with.
  *
  * `REVENTLESS_DEMO_USER` + `REVENTLESS_DEMO_PASSWORD` together are the
- * non-interactive path and skip everything below. Otherwise the platform's
+ * non-interactive path and skip the choosing below; the accounts file, when there
+ * is one, is still read, so a step can act as one of its people. Otherwise the platform's
  * `.reventless/accounts.yaml` supplies the accounts to choose from, and only a
  * platform without one falls back to typing both halves — where, with
  * `localDefaults`, empty input means `admin`/`admin`.
@@ -272,7 +273,15 @@ let fromUsersFile = async (~envUser: option<string>): option<resolved> =>
 let credentials = async (~localDefaults: bool=false): resolved => {
   let envUser = envValue("REVENTLESS_DEMO_USER")
   let resolved = switch (envUser, envValue("REVENTLESS_DEMO_PASSWORD")) {
-  | (Some(username), Some(password)) => {caller: typedUser(~username, ~password), accounts: []}
+  // The accounts file is still read for the people a play acts as: the run's own
+  // account is given, the others are not.
+  | (Some(username), Some(password)) => {
+      caller: typedUser(~username, ~password),
+      accounts: Seed_Accounts.load(~path=?envValue("SEED_USERS_FILE"))->Option.mapOr(
+        [],
+        Pair.second,
+      ),
+    }
   | _ =>
     switch await fromUsersFile(~envUser) {
     | Some(resolved) => resolved

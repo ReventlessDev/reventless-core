@@ -1,0 +1,51 @@
+# An order placed once, played by the seed from a file that says what each step
+# expects: a play that stops at the first step that goes otherwise.
+#
+#   SEED_FILE=../seed-data/play/order-placed-once.yaml SEED_RESULT=result.json pnpm run seed
+#
+# It makes everything it orders, so it plays on any shop; {run} keeps one play
+# from meeting another. Played only where the platform says it is not production.
+pace: 100ms
+steps:
+  # A product to order
+  - send: Catalog_AddCategory
+    args: {categoryId: "cat-once-{run}", name: "Once {run}"}
+    expect: accepted
+  - waitFor: {field: Catalog_CategoriesByIds, ids: ["cat-once-{run}"]}
+  - send: Catalog_AddProduct
+    args:
+      productId: "prd-once-{run}"
+      categoryId: "cat-once-{run}"
+      name: "Once"
+      description: "A product ordered once."
+      price: {amount: 1250, currency: EUR}
+    expect: accepted
+  - waitFor: {field: Ordering_AvailableProductsByIds, ids: ["prd-once-{run}"]}
+  # A customer registers
+  - id: register
+    send: Ordering_Customer_Register
+    args: {id: "cust-once-{run}", email: "once.{run}@example.com", address: "1 Market Street"}
+    expect: accepted
+  - waitFor: {field: Ordering_CustomersByIds, ids: ["cust-once-{run}"]}
+  # They order two, and the order shows; when it ships is the shop's own
+  - id: order
+    send: Ordering_PlaceOrder
+    args:
+      orderId: "ord-once-{run}"
+      customerId: "cust-once-{run}"
+      lineItems: [{productId: "prd-once-{run}", quantity: 2}]
+      shippingMethod: Standard
+    expect: accepted
+    row:
+      view: Ordering_OrdersByIds
+      key: "ord-once-{run}"
+      has: {customerId: "cust-once-{run}", itemCount: 2, shippingMethod: Standard, placedAt: "{any}"}
+  # The same order again is refused
+  - id: order-again
+    send: Ordering_PlaceOrder
+    args:
+      orderId: "ord-once-{run}"
+      customerId: "cust-once-{run}"
+      lineItems: [{productId: "prd-once-{run}", quantity: 1}]
+      shippingMethod: Standard
+    expect: {refused: OrderAlreadyPlaced}

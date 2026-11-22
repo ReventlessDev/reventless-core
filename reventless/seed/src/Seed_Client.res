@@ -535,6 +535,162 @@ let checkQueryAccess = async (t: t, ~field as fieldName: string): access => {
   }
 }
 
+// ── Expecting ───────────────────────────────────────────────────────────────
+
+/** What a step expects its command to answer. */
+type expected = Accepted | Refused(string)
+
+/** What a command answered: accepted, or refused with a code (and its detail). */
+type answer = {accepted: bool, code?: string, detail?: string}
+
+let expectedWords = (e: expected): string =>
+  switch e {
+  | Accepted => "accepted"
+  | Refused(code) => `refused with ${code}`
+  }
+
+let answerWords = (a: answer): string =>
+  a.accepted ? "accepted" : `refused with ${a.code->Option.getOr("unknown")}`
+
+/** Whether `answer` is what `expected` says. */
+let meets = (answer: answer, expected: expected): bool =>
+  switch expected {
+  | Accepted => answer.accepted
+  | Refused(code) => !answer.accepted && answer.code == Some(code)
+  }
+
+/** A command's answer from what came back. A refusal of the caller is `Forbidden` on both
+    platforms: AppSync says so as a GraphQL error, the local server in the result. Any other
+    GraphQL error is no answer, and stops the run. */
+let answerOf = (o: outcome): result<answer, string> =>
+  switch o {
+  | Errors({errors, message}) =>
+    errors->isDenied ? Ok({accepted: false, code: "Forbidden"}) : Error(message)
+  | Data(data) =>
+    let r = data->field("r")->Option.getOr(JSON.Encode.null)
+    switch r->nodeString("__typename") {
+    | Some("CommandRejected") =>
+      Ok({
+        accepted: false,
+        code: r->isDeniedResult ? "Forbidden" : r->nodeString("errorCode")->Option.getOr("unknown"),
+        detail: ?(r->nodeString("errorDetail")),
+      })
+    | _ => Ok({accepted: true})
+    }
+  }
+
+/**
+ * Issues one command and reports what it answered, and whether that is what `expect` says,
+ * instead of throwing on a refusal: a step may be meant to be refused. A rejection the
+ * platform caused is resent, as `send` resends it.
+ */
+let sendExpecting = async (t: t, m: mutation, ~expect: expected): (answer, bool) => {
+  let label = m->describe
+  let query = `mutation { r: ${m.field}(${m.args->renderArgs}) { ${commandResultSelection} } }`
+  await paced(t)
+  let rec attempt = async (n: int): answer => {
+    let o = await gqlOutcome(t, ~query, ~label)
+    switch o {
+    | Data(data)
+      if data->field("r")->Option.mapOr(false, isInfrastructureRejection) && n < attempts =>
+      await sleep(250 * Int.shiftLeft(1, n - 1) + Int.fromFloat(Math.random() *. 250.))
+      await attempt(n + 1)
+    | _ =>
+      switch answerOf(o) {
+      | Ok(answer) => answer
+      | Error(message) => throw(Failed(message))
+      }
+    }
+  }
+  let answer = await attempt(1)
+  (answer, meets(answer, expect))
+}
+
+/** The placeholder a row's expected value takes when only its presence is known: a time the
+    app stamps, a state an automation moves on. */
+let anyValue = "{any}"
+
+/** Whether `value` has what `wanted` says: an object the fields it names, each as wanted; a
+    list each item; `{any}` any value but null; anything else itself. */
+let rec has = (value: JSON.t, wanted: JSON.t): bool =>
+  switch (wanted, value) {
+  | (String(s), v) if s == anyValue => v != JSON.Null
+  | (Object(w), Object(v)) =>
+    w->Dict.toArray->Array.every(((k, x)) => v->Dict.get(k)->Option.mapOr(false, y => has(y, x)))
+  | (Array(w), Array(v)) =>
+    w->Array.length == v->Array.length &&
+      w->Array.everyWithIndex((x, i) => has(v->Array.getUnsafe(i), x))
+  | _ => wanted == value
+  }
+
+/** The GraphQL selection that reads every field `wanted` names, nested ones as well; `id` when
+    it names none. */
+let rec selectionOf = (wanted: dict<JSON.t>): string =>
+  switch wanted->Dict.toArray {
+  | [] => "id"
+  | fields =>
+    fields
+    ->Array.map(((k, v)) =>
+      switch v {
+      | Object(d) => `${k} { ${selectionOf(d)} }`
+      | Array(xs) =>
+        switch xs->Array.find(x =>
+          switch x {
+          | Object(_) => true
+          | _ => false
+          }
+        ) {
+        | Some(Object(d)) => `${k} { ${selectionOf(d)} }`
+        | _ => k
+        }
+      | _ => k
+      }
+    )
+    ->Array.join(" ")
+  }
+
+/** A row as it was read: the values it last showed, whether they are what was wanted, whether
+    the reader may not read the view at all, and how long it waited. */
+type rowRead = {values?: JSON.t, matches: bool, denied: bool, waitedMs: int}
+
+/**
+ * Reads the row `key` of a `<View>ByIds` field until it has what `wanted` says, or `timeoutMs`
+ * is up. A view lags the command that feeds it, so the first read is rarely the last.
+ *
+ * A caller the view refuses is said as `denied` on AppSync; the local server answers an empty
+ * list, which reads as a row that never came.
+ */
+let readRow = async (
+  t: t,
+  ~field as fieldName: string,
+  ~key: string,
+  ~wanted: dict<JSON.t>,
+  ~timeoutMs: int=60000,
+): rowRead => {
+  let start = nowMs()
+  let query = `{ ${fieldName}(ids: [${quote(key)}]) { ${selectionOf(wanted)} } }`
+  let waited = () => Float.toInt(nowMs() -. start)
+  let rec poll = async (): rowRead =>
+    switch await gqlOutcome(t, ~query, ~label=fieldName) {
+    | Errors({errors, message}) =>
+      errors->isDenied ? {matches: false, denied: true, waitedMs: waited()} : throw(Failed(message))
+    | Data(data) =>
+      let row = switch data->field(fieldName) {
+      | Some(Array(rows)) => rows->Array.get(0)
+      | Some(Object(_) as r) => Some(r)
+      | _ => None
+      }
+      let matches = row->Option.mapOr(false, r => has(r, Object(wanted)))
+      if matches || waited() > timeoutMs {
+        {values: ?row, matches, denied: false, waitedMs: waited()}
+      } else {
+        await sleep(250)
+        await poll()
+      }
+    }
+  await poll()
+}
+
 let sendAll = async (t: t, mutations: array<mutation>): unit =>
   for i in 0 to mutations->Array.length - 1 {
     switch mutations->Array.get(i) {

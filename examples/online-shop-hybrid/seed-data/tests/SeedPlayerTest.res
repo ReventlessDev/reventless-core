@@ -246,12 +246,84 @@ describe("the seed player, against the example platform:", () => {
       expect(code)->toEqual(Some(0))
       expect(output->String.includes("Played 2 repetition(s)"))->toBe(true)
       expect(output->String.includes("stopped on request"))->toBe(true)
-      // The second repetition's own growth check ran, so its orders are all there.
-      expect(output->String.split("Ordering_Orders: ")->Array.length)->toBe(3)
+      // The second repetition's own growth check ran, so its orders are all there. Counted by
+      // its own shape: each owner's read of the view is reported on the same line start.
+      expect(
+        output->String.match(/Ordering_Orders: \d+ → \d+ ✓/g)->Option.mapOr(0, Array.length),
+      )->toBe(2)
 
       let (output, code) = await runUntil(~runDate="2026-01-07", ~signals=2)
       expect(code)->toEqual(Some(130))
       expect(output->String.includes("repetition 2 was cut short"))->toBe(true)
+    },
+    120_000,
+  )
+})
+
+// A play file that says what each step expects, played into the running shop: it plays to
+// the end and says what came of each step, and the same file with one wrong expectation
+// stops at that step and says what came instead.
+describe("a play file that expects, against the example platform:", () => {
+  let file = NodePath.join([here, "..", "play", "order-placed-once.yaml"])
+  let field = (j: JSON.t, k) =>
+    switch j {
+    | Object(d) => d->Dict.get(k)
+    | _ => None
+    }
+  let stepNames = r =>
+    switch field(r, "steps") {
+    | Some(Array(steps)) => steps->Array.filterMap(s => field(s, "step"))
+    | _ => []
+    }
+
+  testPromiseWithTimeout(
+    "plays every step as it expects, and says so in its result",
+    async () => {
+      let result = NodePath.join([scratch, "once.json"])
+      let (output, code, _) = await seed(
+        platform(unpaced),
+        ~vars=[("SEED_FILE", file), ("SEED_RESULT", result), ("SEED_RUN_TAG", "once-a")],
+      )
+      expect((
+        code,
+        output->String.includes("note:"),
+        output->String.includes("every step went as it expects (5 steps)"),
+      ))->toEqual((Some(0), false, true))
+      let r = JSON.parseOrThrow(NodeFs.readFileSync(result))
+      expect((field(r, "finished"), field(r, "purpose"), stepNames(r)))->toEqual((
+        Some(JSON.Boolean(true)),
+        Some(JSON.String("local")),
+        ["step 1", "step 3", "register", "order", "order-again"]->Array.map(s => JSON.String(s)),
+      ))
+    },
+    120_000,
+  )
+
+  testPromiseWithTimeout(
+    "stops at the step that went otherwise, and says what came",
+    async () => {
+      let wrong = NodePath.join([scratch, "once-wrong.yaml"])
+      let result = NodePath.join([scratch, "once-wrong.json"])
+      NodeFs.writeFileSync(
+        wrong,
+        NodeFs.readFileSync(file)->String.replace(
+          "expect: {refused: OrderAlreadyPlaced}",
+          "expect: accepted",
+        ),
+      )
+      let (output, code, _) = await seed(
+        platform(unpaced),
+        ~vars=[("SEED_FILE", wrong), ("SEED_RESULT", result), ("SEED_RUN_TAG", "once-b")],
+      )
+      let r = JSON.parseOrThrow(NodeFs.readFileSync(result))
+      expect((
+        code,
+        output->String.includes(
+          "order-again: Ordering_PlaceOrder was expected to be accepted, and was refused with OrderAlreadyPlaced",
+        ),
+        field(r, "finished"),
+        stepNames(r)->Array.length,
+      ))->toEqual((Some(1), true, Some(JSON.Boolean(false)), 5))
     },
     120_000,
   )

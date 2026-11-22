@@ -3,11 +3,14 @@
 import * as Yaml from "yaml";
 import * as Nodefs from "node:fs";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
+import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
 import * as Seed_Client$ReventlessSeed from "./Seed_Client.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "./Seed_Prompt.res.mjs";
@@ -15,9 +18,98 @@ import * as Seed_Connect$ReventlessSeed from "./Seed_Connect.res.mjs";
 import * as Seed_Accounts$ReventlessSeed from "./Seed_Accounts.res.mjs";
 import * as Seed_Commands$ReventlessSeed from "./Seed_Commands.res.mjs";
 
+function expectOf(json, at) {
+  let e = Seed_Commands$ReventlessSeed.get(json, "expect");
+  if (e === undefined) {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
+  if (!(e === null || Array.isArray(e))) {
+    switch (typeof e) {
+      case "string" :
+        if (e === "accepted") {
+          return {
+            TAG: "Ok",
+            _0: "Accepted"
+          };
+        }
+        break;
+      case "object" :
+        let code = Seed_Commands$ReventlessSeed.str(e, "refused");
+        if (code !== undefined) {
+          if (code !== "") {
+            return {
+              TAG: "Ok",
+              _0: {
+                TAG: "Refused",
+                _0: code
+              }
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: at + `: expect is accepted or {refused: <errorCode>}`
+            };
+          }
+        } else {
+          return {
+            TAG: "Error",
+            _0: at + `: expect is accepted or {refused: <errorCode>}`
+          };
+        }
+    }
+  }
+  return {
+    TAG: "Error",
+    _0: at + `: expect is accepted or {refused: <errorCode>}`
+  };
+}
+
+function rowOf(json, at) {
+  let r = Seed_Commands$ReventlessSeed.get(json, "row");
+  if (r === undefined) {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
+  let match = Seed_Commands$ReventlessSeed.str(r, "view");
+  let match$1 = Seed_Commands$ReventlessSeed.str(r, "key");
+  let match$2 = Seed_Commands$ReventlessSeed.get(r, "has");
+  if (match !== undefined && match$1 !== undefined) {
+    if (match$2 === undefined) {
+      return {
+        TAG: "Ok",
+        _0: {
+          view: match,
+          key: match$1,
+          has: {}
+        }
+      };
+    }
+    if (typeof match$2 === "object" && match$2 !== null && !Array.isArray(match$2)) {
+      return {
+        TAG: "Ok",
+        _0: {
+          view: match,
+          key: match$1,
+          has: match$2
+        }
+      };
+    }
+  }
+  return {
+    TAG: "Error",
+    _0: at + `: row needs a view, a key and, if any, an object of the values it has`
+  };
+}
+
 function stepOf(json, index) {
   let at = `step ` + (index + 1 | 0).toString();
   let as_ = Seed_Commands$ReventlessSeed.str(json, "as");
+  let id = Seed_Commands$ReventlessSeed.str(json, "id");
   let match = Seed_Commands$ReventlessSeed.str(json, "send");
   let match$1 = Seed_Commands$ReventlessSeed.get(json, "args");
   let match$2 = Seed_Commands$ReventlessSeed.get(json, "waitFor");
@@ -28,40 +120,51 @@ function stepOf(json, index) {
     };
   }
   if (match !== undefined) {
-    if (match$1 !== undefined) {
-      if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) && match$2 === undefined) {
+    let exit = 0;
+    if (!(match$1 !== undefined && (typeof match$1 !== "object" || match$1 === null || Array.isArray(match$1)))) {
+      exit = 2;
+    }
+    if (exit === 2 && match$2 === undefined) {
+      let match$3 = expectOf(json, at);
+      let match$4 = rowOf(json, at);
+      if (match$3.TAG === "Ok") {
+        if (match$4.TAG === "Ok") {
+          return {
+            TAG: "Ok",
+            _0: {
+              TAG: "Send",
+              field: match,
+              args: Stdlib_Option.getOr(match$1, {}),
+              as_: as_,
+              id: id,
+              expect: match$3._0,
+              row: match$4._0
+            }
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: match$4._0
+          };
+        }
+      } else {
         return {
-          TAG: "Ok",
-          _0: {
-            TAG: "Send",
-            field: match,
-            args: match$1,
-            as_: as_
-          }
+          TAG: "Error",
+          _0: match$3._0
         };
       }
-    } else if (match$2 === undefined) {
-      return {
-        TAG: "Ok",
-        _0: {
-          TAG: "Send",
-          field: match,
-          args: {},
-          as_: as_
-        }
-      };
     }
   } else if (match$1 === undefined && match$2 !== undefined) {
-    let match$3 = Seed_Commands$ReventlessSeed.str(match$2, "field");
-    let match$4 = Seed_Commands$ReventlessSeed.items(match$2, "ids");
-    if (match$3 !== undefined) {
-      if (match$4.length !== 0) {
+    let match$5 = Seed_Commands$ReventlessSeed.str(match$2, "field");
+    let match$6 = Seed_Commands$ReventlessSeed.items(match$2, "ids");
+    if (match$5 !== undefined) {
+      if (match$6.length !== 0) {
         return {
           TAG: "Ok",
           _0: {
             TAG: "WaitFor",
-            field: match$3,
-            ids: Stdlib_Array.filterMap(match$4, id => {
+            field: match$5,
+            ids: Stdlib_Array.filterMap(match$6, id => {
               if (typeof id === "string") {
                 return id;
               }
@@ -126,6 +229,31 @@ function parse(text) {
   }
 }
 
+function expects(file) {
+  return file.steps.some(step => {
+    if (step.TAG === "Send") {
+      if (Stdlib_Option.isSome(step.expect)) {
+        return true;
+      } else {
+        return Stdlib_Option.isSome(step.row);
+      }
+    } else {
+      return false;
+    }
+  });
+}
+
+function stepName(file, index) {
+  let match = file.steps[index];
+  if (match !== undefined && match.TAG === "Send") {
+    let id = match.id;
+    if (id !== undefined) {
+      return id;
+    }
+  }
+  return `step ` + (index + 1 | 0).toString();
+}
+
 function fill(json, vars) {
   if (Array.isArray(json)) {
     return json.map(x => fill(x, vars));
@@ -147,8 +275,36 @@ function runTag() {
   return Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("SEED_RUN_TAG"), new Date().toISOString().slice(0, 19).replaceAll("-", "").replaceAll(":", ""));
 }
 
-function people(file) {
-  return Stdlib_Array.reduce(Stdlib_Array.filterMap(file.steps, step => step.as_), [], (seen, name) => {
+function strings(json) {
+  if (Array.isArray(json)) {
+    return json.flatMap(strings);
+  }
+  if (json === null) {
+    return [];
+  }
+  switch (typeof json) {
+    case "string" :
+      return [json];
+    case "object" :
+      return Object.values(json).flatMap(strings);
+    default:
+      return [];
+  }
+}
+
+function valuesOf(step) {
+  if (step.TAG === "Send") {
+    return strings(step.args).concat(Stdlib_Option.mapOr(step.row, [], r => Belt_Array.concatMany([
+      [r.key],
+      strings(r.has)
+    ])));
+  } else {
+    return step.ids;
+  }
+}
+
+function idNames(file) {
+  return Stdlib_Array.reduce(file.steps.flatMap(valuesOf).flatMap(s => Stdlib_Array.filterMap(Stdlib_Option.getOr(Primitive_option.fromNullable(s.match(/\{id:([^}]+)\}/g)), []), m => Stdlib_Option.map(m, m => m.slice(4, -1)))), [], (seen, name) => {
     if (seen.includes(name)) {
       return seen;
     } else {
@@ -160,8 +316,121 @@ function people(file) {
   });
 }
 
-async function playOnce(file, commands, client, clientOfOpt, vars) {
+function people(file) {
+  return Stdlib_Array.reduce(Stdlib_Array.filterMap(file.steps, step => step.as_).concat(idNames(file)), [], (seen, name) => {
+    if (seen.includes(name)) {
+      return seen;
+    } else {
+      return Belt_Array.concatMany([
+        seen,
+        [name]
+      ]);
+    }
+  });
+}
+
+function marked(file) {
+  return file.steps.some(step => valuesOf(step).some(s => s.includes("{run}")));
+}
+
+function unmarkedIds(m) {
+  let walk = (path, v) => {
+    switch (v.TAG) {
+      case "Id" :
+        let s = v._0;
+        if (!s.includes("{run}") && !s.includes("{id:")) {
+          return [path + ` "` + s + `"`];
+        } else {
+          return [];
+        }
+      case "List" :
+        return v._0.flatMap((x, i) => walk(path + `[` + i.toString() + `]`, x));
+      case "Object" :
+        return v._0.flatMap(param => walk(path + `.` + param[0], param[1]));
+      default:
+        return [];
+    }
+  };
+  return m.args.flatMap(param => walk(m.field + `.` + param[0], param[1]));
+}
+
+function refusePurpose(purpose, label) {
+  if (purpose !== undefined) {
+    if (purpose === "production") {
+      return label + ` is production, and a file that says what its steps expect writes into it: it is never played there`;
+    } else {
+      return;
+    }
+  } else {
+    return label + ` does not say what it is for (its config.json has no environmentPurpose), so a file that says what its steps expect is not played there`;
+  }
+}
+
+function str(s) {
+  return s;
+}
+
+function answerJson(a) {
+  return Object.fromEntries([[
+      "accepted",
+      a.accepted
+    ]].concat(Stdlib_Option.mapOr(a.code, [], c => [[
+      "code",
+      c
+    ]]).concat(Stdlib_Option.mapOr(a.detail, [], d => [[
+      "detail",
+      d
+    ]]))));
+}
+
+function rowJson(r, read) {
+  return Object.fromEntries([
+    [
+      "view",
+      r.view
+    ],
+    [
+      "key",
+      r.key
+    ],
+    [
+      "has",
+      r.has
+    ],
+    [
+      "matches",
+      read.matches
+    ],
+    [
+      "waitedMs",
+      read.waitedMs
+    ]
+  ].concat(Stdlib_Option.mapOr(read.values, [], v => [[
+      "values",
+      v
+    ]]).concat(read.denied ? [[
+        "denied",
+        true
+      ]] : [])));
+}
+
+function rowWords(r, read) {
+  if (read.denied) {
+    return r.view + ` refuses the step's person, so its row ` + r.key + ` cannot be read`;
+  }
+  let seconds = (read.waitedMs / 1000 | 0).toString();
+  let values = read.values;
+  if (values !== undefined) {
+    return r.view + ` row ` + r.key + ` shows ` + JSON.stringify(values) + ` after ` + seconds + `s, not ` + JSON.stringify(r.has);
+  } else {
+    return r.view + ` shows no row ` + r.key + ` after ` + seconds + `s`;
+  }
+}
+
+async function playOnce(file, commands, client, clientOfOpt, vars, resultsOpt, rowTimeoutMsOpt) {
   let clientOf = clientOfOpt !== undefined ? clientOfOpt : async param => client;
+  let results = resultsOpt !== undefined ? resultsOpt : [];
+  let rowTimeoutMs = rowTimeoutMsOpt !== undefined ? rowTimeoutMsOpt : 60000;
   for (let i = 0, i_finish = file.steps.length; i < i_finish; ++i) {
     let clientAs = async as_ => {
       if (as_ !== undefined) {
@@ -170,11 +439,109 @@ async function playOnce(file, commands, client, clientOfOpt, vars) {
         return client;
       }
     };
+    let name = stepName(file, i);
+    let said = fields => {
+      results.push(Object.fromEntries(Belt_Array.concatMany([
+        [[
+            "step",
+            name
+          ]],
+        fields
+      ])));
+    };
     let match = file.steps[i];
     if (match !== undefined) {
       if (match.TAG === "Send") {
-        let client$1 = await clientAs(match.as_);
-        await Seed_Client$ReventlessSeed.send(client$1, Seed_Commands$ReventlessSeed.encodeOrThrow(commands, match.field, fill(match.args, vars)), undefined);
+        let row = match.row;
+        let expect = match.expect;
+        let as_ = match.as_;
+        let field = match.field;
+        let client$1 = await clientAs(as_);
+        let m = Seed_Commands$ReventlessSeed.encodeOrThrow(commands, field, fill(match.args, vars));
+        let who = Stdlib_Option.mapOr(as_, [], a => [[
+            "as",
+            a
+          ]]);
+        let exit = 0;
+        if (expect !== undefined || row !== undefined) {
+          exit = 1;
+        } else {
+          await Seed_Client$ReventlessSeed.send(client$1, m, undefined);
+          said(Belt_Array.concatMany([
+            [[
+                "send",
+                field
+              ]],
+            who,
+            [[
+                "came",
+                answerJson({
+                  accepted: true
+                })
+              ]]
+          ]));
+        }
+        if (exit === 1) {
+          let expected = Stdlib_Option.getOr(expect, "Accepted");
+          let match$1 = await Seed_Client$ReventlessSeed.sendExpecting(client$1, m, expected);
+          let answer = match$1[0];
+          let base = Belt_Array.concatMany([
+            [[
+                "send",
+                field
+              ]],
+            who,
+            [
+              [
+                "expected",
+                Seed_Client$ReventlessSeed.expectedWords(expected)
+              ],
+              [
+                "came",
+                answerJson(answer)
+              ]
+            ]
+          ]);
+          if (!match$1[1]) {
+            said(base);
+            throw {
+              RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+              _1: name + `: ` + field + ` was expected to be ` + Seed_Client$ReventlessSeed.expectedWords(expected) + `, and was ` + Seed_Client$ReventlessSeed.answerWords(answer) + Stdlib_Option.mapOr(answer.detail, "", d => ` (` + d + `)`),
+              Error: new Error()
+            };
+          }
+          if (row !== undefined) {
+            let k = fill(row.key, vars);
+            let tmp;
+            tmp = typeof k === "string" ? k : row.key;
+            let h = fill(row.has, vars);
+            let tmp$1;
+            tmp$1 = typeof h === "object" && h !== null && !Array.isArray(h) ? h : row.has;
+            let r_view = row.view;
+            let r = {
+              view: r_view,
+              key: tmp,
+              has: tmp$1
+            };
+            let read = await Seed_Client$ReventlessSeed.readRow(client$1, r_view, tmp, tmp$1, rowTimeoutMs);
+            said(Belt_Array.concatMany([
+              base,
+              [[
+                  "row",
+                  rowJson(r, read)
+                ]]
+            ]));
+            if (!read.matches) {
+              throw {
+                RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+                _1: name + `: ` + rowWords(r, read),
+                Error: new Error()
+              };
+            }
+          } else {
+            said(base);
+          }
+        }
       } else {
         let client$2 = await clientAs(match.as_);
         let ids = match.ids.map(id => {
@@ -188,6 +555,114 @@ async function playOnce(file, commands, client, clientOfOpt, vars) {
         await Seed_Client$ReventlessSeed.waitForIds(client$2, match.field, ids, undefined);
       }
     }
+  }
+}
+
+let queryFieldsQuery = Seed_Commands$ReventlessSeed.typeRefFragment + `
+query { __schema { queryType { fields { name type { ...TypeRef } } } } }`;
+
+function namedOf(_t) {
+  while (true) {
+    let t = _t;
+    switch (t.TAG) {
+      case "Named" :
+        return t._0;
+      case "NonNull" :
+      case "ListOf" :
+        _t = t._0;
+        continue;
+    }
+  };
+}
+
+async function rowProblems(file, client, path) {
+  let rows = Stdlib_Array.filterMapWithIndex(file.steps, (step, i) => {
+    if (step.TAG !== "Send") {
+      return;
+    }
+    let r = step.row;
+    if (r !== undefined) {
+      return [
+        stepName(file, i),
+        r
+      ];
+    }
+  });
+  if (Primitive_object.equal(rows, [])) {
+    return [];
+  }
+  let data = await Seed_Client$ReventlessSeed.gql(client, queryFieldsQuery, "introspection");
+  let views = Object.fromEntries(Stdlib_Array.filterMap(Stdlib_Option.mapOr(Stdlib_Option.flatMap(Seed_Commands$ReventlessSeed.get(data, "__schema"), s => Seed_Commands$ReventlessSeed.get(s, "queryType")), [], q => Seed_Commands$ReventlessSeed.items(q, "fields")), f => {
+    let match = Seed_Commands$ReventlessSeed.str(f, "name");
+    let match$1 = Seed_Commands$ReventlessSeed.get(f, "type");
+    if (match !== undefined && match$1 !== undefined) {
+      return [
+        match,
+        namedOf(Seed_Commands$ReventlessSeed.typeRefOf(match$1))
+      ];
+    }
+  }));
+  let problems = [];
+  for (let i = 0, i_finish = rows.length; i < i_finish; ++i) {
+    let match = rows[i];
+    let r = match[1];
+    let name = match[0];
+    let rowType = views[r.view];
+    if (rowType !== undefined) {
+      let typeData = await Seed_Client$ReventlessSeed.gql(client, `{ __type(name: ` + Seed_Types$ReventlessSeed.quote(rowType) + `) { fields { name } } }`, "introspection");
+      let fields = Stdlib_Array.filterMap(Stdlib_Option.mapOr(Seed_Commands$ReventlessSeed.get(typeData, "__type"), [], t => Seed_Commands$ReventlessSeed.items(t, "fields")), f => Seed_Commands$ReventlessSeed.str(f, "name"));
+      Object.keys(r.has).filter(k => !fields.includes(k)).forEach(k => {
+        problems.push(path + `: ` + name + `: a row of ` + r.view + ` has no "` + k + `"`);
+      });
+    } else {
+      problems.push(path + `: ` + name + `: the API has no view "` + r.view + `"`);
+    }
+  }
+  return problems;
+}
+
+function writeResult(connection, run, repetition, results, stopped) {
+  let path = Seed_Prompt$ReventlessSeed.envValue("SEED_RESULT");
+  if (path === undefined) {
+    return;
+  }
+  let record = Object.fromEntries([
+    [
+      "platform",
+      connection.label
+    ],
+    [
+      "run",
+      run
+    ],
+    [
+      "repetition",
+      repetition
+    ],
+    [
+      "finished",
+      Stdlib_Option.isNone(stopped)
+    ],
+    [
+      "steps",
+      results
+    ]
+  ].concat(Stdlib_Option.mapOr(connection.purpose, [], p => [[
+      "purpose",
+      p
+    ]]).concat(Stdlib_Option.mapOr(stopped, [], s => [[
+      "stopped",
+      s
+    ]]))));
+  Nodefs.writeFileSync(path, JSON.stringify(record, undefined, 2) + "\n", "utf8");
+}
+
+function rowTimeoutMs() {
+  let seconds = Stdlib_Option.flatMap(Seed_Prompt$ReventlessSeed.envValue("SEED_ROW_TIMEOUT"), s => Stdlib_Int.fromString(s, undefined));
+  if (seconds !== undefined && seconds > 0) {
+    return seconds * 1000 | 0;
+  } else {
+    return 60000;
   }
 }
 
@@ -239,18 +714,56 @@ function dataSet(path, nameOpt) {
           Error: new Error()
         };
       };
+      let names = idNames(file$1);
+      let ids = [];
+      for (let i = 0, i_finish = names.length; i < i_finish; ++i) {
+        let person = names[i];
+        let id = Seed_Client$ReventlessSeed.callerId(await clientOf(person));
+        if (id !== undefined) {
+          ids.push([
+            `id:` + person,
+            id
+          ]);
+        } else {
+          throw {
+            RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+            _1: path + `: the account that plays ` + person + ` carries no id in its sign-in`,
+            Error: new Error()
+          };
+        }
+      }
+      let results = [];
       let commands$1 = commands.contents;
       if (commands$1 !== undefined) {
-        return await playOnce(file$1, commands$1, connection.client, clientOf, [
-          [
-            "run",
-            run
-          ],
-          [
-            "rep",
-            rep
-          ]
-        ]);
+        try {
+          await playOnce(file$1, commands$1, connection.client, clientOf, Belt_Array.concatMany([
+            [
+              [
+                "run",
+                run
+              ],
+              [
+                "rep",
+                rep
+              ]
+            ],
+            ids
+          ]), results, rowTimeoutMs());
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          if (exn.RE_EXN_ID === Seed_Types$ReventlessSeed.Failed) {
+            writeResult(connection, run, rep, results, exn._1);
+            throw exn;
+          }
+          throw exn;
+        }
+        writeResult(connection, run, rep, results, undefined);
+        if (expects(file$1)) {
+          console.log(`  every step went as it expects (` + results.length.toString() + ` steps)`);
+          return;
+        } else {
+          return;
+        }
       }
       throw {
         RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
@@ -259,6 +772,23 @@ function dataSet(path, nameOpt) {
       };
     },
     preflight: async connection => {
+      if (expects(file$1)) {
+        let message = refusePurpose(connection.purpose, connection.label);
+        if (message !== undefined) {
+          throw {
+            RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+            _1: path + `: ` + message,
+            Error: new Error()
+          };
+        }
+        if (!marked(file$1)) {
+          throw {
+            RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+            _1: path + `: a file that says what its steps expect needs {run} in the ids it makes, so one play never meets another, and no value has it`,
+            Error: new Error()
+          };
+        }
+      }
       let read = await Seed_Commands$ReventlessSeed.fetch(connection.client);
       people(file$1).forEach(name => {
         let match = Seed_Accounts$ReventlessSeed.playing(connection.accounts, name);
@@ -267,15 +797,17 @@ function dataSet(path, nameOpt) {
         }
         throw {
           RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-          _1: path + `: a step acts as ` + name + `, and no account in the accounts file plays ` + name,
+          _1: path + `: a step acts as ` + name + `, or names their id, and no account in the accounts file plays ` + name,
           Error: new Error()
         };
       });
-      file$1.steps.forEach(step => {
+      file$1.steps.forEach((step, i) => {
         if (step.TAG !== "Send") {
           return;
         }
-        let message = Seed_Commands$ReventlessSeed.encode(read, step.field, fill(step.args, [
+        let args = step.args;
+        let field = step.field;
+        let message = Seed_Commands$ReventlessSeed.encode(read, field, fill(args, [
           [
             "run",
             run
@@ -285,15 +817,32 @@ function dataSet(path, nameOpt) {
             "1"
           ]
         ]));
-        if (message.TAG === "Ok") {
+        if (message.TAG !== "Ok") {
+          throw {
+            RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+            _1: path + `: ` + message._0,
+            Error: new Error()
+          };
+        }
+        if (!expects(file$1)) {
           return;
         }
+        let m = Seed_Commands$ReventlessSeed.encode(read, field, args);
+        if (m.TAG !== "Ok") {
+          return;
+        }
+        unmarkedIds(m._0).forEach(id => {
+          console.log(`  note: ` + stepName(file$1, i) + `: ` + id + ` carries no {run}: it names something that is there before the play`);
+        });
+      });
+      let problems = await rowProblems(file$1, connection.client, path);
+      if (problems.length !== 0) {
         throw {
           RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-          _1: path + `: ` + message._0,
+          _1: problems.join("\n"),
           Error: new Error()
         };
-      });
+      }
       commands.contents = read;
     },
     repeatable: file$1.repeatable,
@@ -302,12 +851,31 @@ function dataSet(path, nameOpt) {
 }
 
 export {
+  expectOf,
+  rowOf,
   stepOf,
   parse,
+  expects,
+  stepName,
   fill,
   runTag,
+  strings,
+  valuesOf,
+  idNames,
   people,
+  marked,
+  unmarkedIds,
+  refusePurpose,
+  str,
+  answerJson,
+  rowJson,
+  rowWords,
   playOnce,
+  queryFieldsQuery,
+  namedOf,
+  rowProblems,
+  writeResult,
+  rowTimeoutMs,
   dataSet,
 }
 /* yaml Not a pure module */
