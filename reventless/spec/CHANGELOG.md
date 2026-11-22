@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.211 (2026-11-22)
+
+### Bug Fixes
+
+* **aws:** a deployed function loads a slice body a plugin applies to its declaration ([b83e7d2](https://github.com/ReventlessDev/reventless-core/commit/b83e7d27ba9b04eb6ffb9dc67300811d8e0cab28))
+
+
 # 3.0.0-alpha.210 (2026-11-22)
 
 ### Bug Fixes

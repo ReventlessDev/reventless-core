@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.343 (2026-11-22)
+
+**Note:** Version bump only for package @reventlessdev/reventless-local
+
+
+
+
+
 # 3.0.0-alpha.342 (2026-11-22)
 
 ### Features

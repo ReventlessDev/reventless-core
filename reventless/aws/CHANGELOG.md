@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.443 (2026-11-22)
+
+### Bug Fixes
+
+* **aws:** a deployed function loads a slice body a plugin applies to its declaration ([b83e7d2](https://github.com/ReventlessDev/reventless-core/commit/b83e7d27ba9b04eb6ffb9dc67300811d8e0cab28))
+* **aws:** a fingerprint key too short to use is refused at the platform's deploy ([09d2e8a](https://github.com/ReventlessDev/reventless-core/commit/09d2e8a54dd6074d93a0212d834f52f46d4727d9))
+* **aws:** a view for visitors waits for the command function that counts it ([e6832f6](https://github.com/ReventlessDev/reventless-core/commit/e6832f68eda8810caf2bfa3b6574904177b2bb85))
+
+
 # 3.0.0-alpha.442 (2026-11-22)
 
 ### Bug Fixes

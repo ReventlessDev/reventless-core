@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.349 (2026-11-22)
+
+### Bug Fixes
+
+* **aws:** a fingerprint key too short to use is refused at the platform's deploy ([09d2e8a](https://github.com/ReventlessDev/reventless-core/commit/09d2e8a54dd6074d93a0212d834f52f46d4727d9))
+
+
 # 3.0.0-alpha.348 (2026-11-22)
 
 ### Bug Fixes
